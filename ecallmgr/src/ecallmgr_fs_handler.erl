@@ -31,6 +31,7 @@
 -define(AUTH_MOD, ecallmgr_fs_auth).
 -define(ROUTE_MOD, ecallmgr_fs_route).
 -define(NODE_MOD, ecallmgr_fs_node).
+-define(STARTUP_DEFAULT_CONFIG, <<"{fs_nodes, []}.">>).
 
 -record(node_handler, {node = 'undefined' :: atom()
 		       ,options = [] :: proplist()
@@ -157,7 +158,7 @@ handle_call({diagnostics}, From, #state{fs_nodes=Nodes}=State) ->
 			  ,{known_fs_nodes, KnownNodes}
 			  ,{handler_diagnostics, HandlerD}
 			  ,{recorded, erlang:now()}
-			  ,{amqp_host, amqp_manager:get_host()}
+			  ,{amqp_host, amqp_mgr:get_host()}
 			 ],
 		  gen_server:reply(From, Resp)
 	  end),
@@ -215,11 +216,15 @@ handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
     {noreply, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}};
 handle_info(timeout, State) ->
     spawn(fun() ->
-                  {ok, Startup} = file:consult(?STARTUP_FILE),
-                  Nodes = props:get_value(fs_nodes, Startup, []),
-                  lists:foreach(fun(Node) -> 
-                                        ?MODULE:add_fs_node(whistle_util:to_atom(Node, true))
-                                end, Nodes)
+                  case file:consult(?STARTUP_FILE) of
+		      {ok, Startup} ->
+			  Nodes = props:get_value(fs_nodes, Startup, []),
+			  lists:foreach(fun(Node) -> 
+						?MODULE:add_fs_node(wh_util:to_atom(Node, true))
+					end, Nodes);
+		      {error, enoent} ->
+			  file:write_file(?STARTUP_FILE, ?STARTUP_DEFAULT_CONFIG)
+		  end
           end),
     {noreply, State};
 handle_info({'EXIT', Pid, _Reason}, State) ->

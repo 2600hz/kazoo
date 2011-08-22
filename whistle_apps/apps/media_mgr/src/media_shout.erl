@@ -181,7 +181,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 
 	MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
 
-	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}}
+	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}, hibernate}
     catch A:B ->
 	    ?LOG("exception thrown ~p:~p", [A, B]),
 	    ?LOG("stacktrace ~p", [erlang:get_stacktrace()]),
@@ -195,7 +195,7 @@ handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_name=Med
 		  {ok, ShoutSrv} = media_shout_sup:start_shout(Media, ListenerQ, continuous, media_srv:next_port(), CallID),
 		  media_srv:add_stream(MediaName, ShoutSrv)
 	  end),
-    {noreply, S};
+    {noreply, S, hibernate};
 
 handle_info({add_listener, ListenerQ}, #state{media_file=#media_file{stream_url=StreamUrl}, media_name=MediaName, send_to=SendTo}=S) ->
     send_media_resp(MediaName, StreamUrl, ListenerQ),
@@ -205,11 +205,11 @@ handle_info({send_media, Socket}, #state{media_loop=undefined, media_file=MediaF
     CallID = get(callid),
     ?LOG("starting a new process to satisfy send media request"),
     MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
-    gen_tcp:controlling_process(Socket, MediaLoop),
+    ok = gen_tcp:controlling_process(Socket, MediaLoop),
     MediaLoop ! {add_socket, Socket},
-    {noreply, S#state{media_loop = MediaLoop}};
+    {noreply, S#state{media_loop = MediaLoop}, hibernate};
 handle_info({send_media, Socket}, #state{media_loop=MediaLoop}=S) ->
-    gen_tcp:controlling_process(Socket, MediaLoop),
+    ok = gen_tcp:controlling_process(Socket, MediaLoop),
     MediaLoop ! {add_socket, Socket},
     {noreply, S};
 
@@ -221,7 +221,7 @@ handle_info({'EXIT', From, Reason}, #state{media_loop=MediaLoop, media_file=Medi
     CallID = get(callid),
     MediaLoop1 = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
     ?LOG("media stream process ~p unexpectly died ~s, restarting", [From, Reason]),
-    {noreply, S#state{media_loop = MediaLoop1}};
+    {noreply, S#state{media_loop = MediaLoop1}, hibernate};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -262,9 +262,9 @@ code_change(_OldVsn, State, _Extra) ->
 send_media_resp(MediaName, Url, To) ->
     Prop = [{<<"Media-Name">>, MediaName}
 	    ,{<<"Stream-URL">>, Url}
-	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?APP_NAME, ?APP_VERSION)],
+	    | wh_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?APP_NAME, ?APP_VERSION)],
 
-    {ok, JSON} = whistle_api:media_resp(Prop),
+    {ok, JSON} = wh_api:media_resp(Prop),
     ?LOG("notifying requestor that ~s as available at ~s", [MediaName, Url]),
     amqp_util:targeted_publish(To, JSON).
 
@@ -282,7 +282,7 @@ start_shout_acceptor(Parent, LSock) ->
 		    gen_tcp:close(S);
 	        _ ->
                     ?LOG_END("new client connected"),
-		    gen_tcp:controlling_process(S, Parent),
+		    ok = gen_tcp:controlling_process(S, Parent),
 		    Parent ! {send_media, S}
 	    end;
 	_ -> ok
@@ -301,7 +301,7 @@ start_stream_acceptor(Parent, LSock) ->
 
 	    _Req = wh_shout:get_request(S),
 
-	    gen_tcp:controlling_process(S, Parent),
+	    ok = gen_tcp:controlling_process(S, Parent),
 	    Parent ! {send_media, S};
 	_ -> ok
     end.
@@ -314,7 +314,7 @@ play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader}=M
     receive
 	{add_socket, S} ->
 	    ?LOG("started stream"),
-	    gen_tcp:send(S, [ShoutResponse]),
+	    ok = gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S], 0, Stop, <<>>, ShoutHeader);
 	shutdown ->
 	    ?LOG_END("stream shutdown")
@@ -325,7 +325,7 @@ play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shou
 	   ,Socks, Offset, Stop, SoFar, Header) ->
     receive
 	{add_socket, S} ->
-	    gen_tcp:send(S, [ShoutResponse]),
+	    ok = gen_tcp:send(S, [ShoutResponse]),
 	    play_media(MediaFile, [S | Socks], Offset, Stop, SoFar, Header);
 	shutdown ->
 	    ?LOG_END("stream shutdown")
@@ -350,6 +350,6 @@ play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shou
 get_http_response_headers(CT, CL) ->
     ["HTTP/1.1 200 OK\r\n"
      ,"Server: ", ?APP_NAME, "/", ?APP_VERSION, "\r\n"
-     ,"Content-Type: ", whistle_util:to_list(CT), "\r\n"
+     ,"Content-Type: ", wh_util:to_list(CT), "\r\n"
      ,"Content-Disposition: identity\r\n"
-     ,"Content-Length: ", whistle_util:to_list(CL), "\r\n\r\n"].
+     ,"Content-Length: ", wh_util:to_list(CL), "\r\n\r\n"].

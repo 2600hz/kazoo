@@ -38,9 +38,9 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId
                ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
                ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
                ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
-               | whistle_api:default_headers(AmqpQ, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wh_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     amqp_util:offnet_resource_publish(Payload),
     case wait_for_offnet_response(60000) of
         {ok, _} ->

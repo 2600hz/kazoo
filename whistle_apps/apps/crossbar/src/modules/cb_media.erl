@@ -24,7 +24,6 @@
 
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).
--define(VIEW_FILE, <<"views/media.json">>).
 
 -define(MEDIA_MIME_TYPES, ["audio/x-wav", "audio/mpeg", "application/octet-stream"]).
 
@@ -136,6 +135,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.media">>, Payloa
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.media">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -146,10 +146,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.media">>, [RD, Conte
     case Params of
 	[_MediaID, ?BIN_DATA] ->
 	    spawn(fun() ->
+                          crossbar_util:put_reqid(Context),
 			  Context1 = Context#cb_context{resp_headers = [{<<"Content-Type">>
 									     ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
 									,{<<"Content-Length">>
-									      ,whistle_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
+									      ,wh_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
 									| Context#cb_context.resp_headers]},
 			  Pid ! {binding_result, true, [RD, Context1, Params]}
 		  end);
@@ -162,6 +163,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.media">>, [RD, Conte
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.media">>, [RD, #cb_context{req_files=[], resp_status=RespStatus}=Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  #cb_context{resp_status=Resp}=Context1 = case RespStatus =:= success of
 							       true -> crossbar_doc:save(Context);
@@ -173,6 +175,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.media">>, [RD, #cb_
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.media">>, [RD, #cb_context{req_files=[{_, FileObj}]}=Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid, infinity),
 		  [MediaID, ?BIN_DATA] = Params,
 		  HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
@@ -185,6 +188,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.media">>, [RD, #cb_
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.media">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  case props:get_value(<<"Location">>, Context#cb_context.resp_headers) of
 		      undefined ->
@@ -207,12 +211,14 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.media">>, [RD, Co
     case Params of
 	[MediaID, ?BIN_DATA] ->
 	    spawn(fun() ->
+                          crossbar_util:put_reqid(Context),
 			  crossbar_util:binding_heartbeat(Pid),
 			  #cb_context{resp_status=RS}=Context1 = delete_media_binary(MediaID, Context),
 			  Pid ! {binding_result, RS =:= success, [RD, Context1, Params]}
 		  end);
 	[_] ->
 	    spawn(fun() ->
+                          crossbar_util:put_reqid(Context),
 			  crossbar_util:binding_heartbeat(Pid),
 			  Context1 = delete_media(Context),
 			  Pid ! {binding_result, Context1#cb_context.resp_status =:= success, [RD, Context1, Params]}
@@ -220,22 +226,15 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.media">>, [RD, Co
     end,
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, _}, State) ->
-    Pid ! {binding_result, true, ?VIEW_FILE},
-    whapps_util:replicate_from_accounts(<<"media_files">>, <<"media/export">>),
-    {noreply, State};
-
 handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
-    whapps_util:update_all_accounts(?VIEW_FILE),
     bind_to_crossbar(),
     {noreply, State};
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -280,8 +279,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.media">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.media">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.media">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.media">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.media">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -408,14 +406,14 @@ create_media_meta(Data, Context) ->
     Doc1 = lists:foldr(fun(Meta, DocAcc) ->
 			       case wh_json:get_value(Meta, Data) of
 				   undefined -> [{Meta, <<>>} | DocAcc];
-				   V -> [{Meta, whistle_util:to_binary(V)} | DocAcc]
+				   V -> [{Meta, wh_util:to_binary(V)} | DocAcc]
 			       end
 		       end, [], ?METADATA_FIELDS),
     crossbar_doc:save(Context#cb_context{doc={struct, [{<<"pvt_type">>, <<"media">>} | Doc1]}}).
 
 update_media_binary(MediaID, Contents, Context, HeadersJObj) ->
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
-    Opts = [{headers, [{content_type, whistle_util:to_list(CT)}]}],
+    Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
 
     ?LOG("Setting Content-Type to ~s", [CT]),
 

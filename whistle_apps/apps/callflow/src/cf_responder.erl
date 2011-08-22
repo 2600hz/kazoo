@@ -33,43 +33,41 @@
 %%-----------------------------------------------------------------------------
 %% PUBLIC API
 %%-----------------------------------------------------------------------------
-%%
 
-%------------------------------------------------------------------------------
-% @public
-% @doc
-% Starts the server
-%
-% @end
-%------------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the server
+%%
+%% @end
+%%------------------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %%-----------------------------------------------------------------------------
 %% GEN SERVER CALLBACKS
 %%-----------------------------------------------------------------------------
-%%
 
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% Initializes the server
-%
-% @end
-%------------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initializes the server
+%%
+%% @end
+%%------------------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting new callflow responder"),
     ?LOG("ensuring callflow views exist in all accounts"),
-    whapps_util:revise_whapp_views_in_accounts(callflow),
+    spawn(fun() -> whapps_util:revise_whapp_views_in_accounts(callflow) end),
     {ok, #state{self=self()}, 0}.
 
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% Handles call messages
-%
-% @end
-%------------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handles call messages
+%%
+%% @end
+%%------------------------------------------------------------------------------
 handle_call({find_flow, Number, AccountId}, From, State) ->
     spawn(fun() ->
                   case lookup_callflow(#cf_call{request_user=Number, account_id=AccountId}) of
@@ -83,23 +81,23 @@ handle_call({find_flow, Number, AccountId}, From, State) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% Handles cast messages
-%
-% @end
-%------------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handles cast messages
+%%
+%% @end
+%%------------------------------------------------------------------------------
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% Handles all non call/cast messages
-%
-% @end
-%------------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handles all non call/cast messages
+%%
+%% @end
+%%------------------------------------------------------------------------------
 handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     try
 	{ok, Q} = start_amqp(),
@@ -145,26 +143,26 @@ handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#
 handle_info(_Info, State) ->
     {noreply, State}.
 
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% Is called by a gen_server when it is about to terminate. It should be the
-% opposite of Module:init/1 and do any necessary cleaning up. When it returns,
-% the gen_server terminates with Reason. The return value is ignored.
-%
-% @end
-%------------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @private
+%% @doc
+%% Is called by a gen_server when it is about to terminate. It should be the
+%% opposite of Module:init/1 and do any necessary cleaning up. When it returns,
+%% the gen_server terminates with Reason. The return value is ignored.
+%%
+%% @end
+%%------------------------------------------------------------------------------
 terminate( _Reason, _State) ->
     ?LOG_SYS("callflow responder ~p termination", [_Reason]),
     ok.
 
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% Converts process state when code is changed
-%
-% @end
-%------------------------------------------------------------------------------
+%%------------------------------------------------------------------------------
+%% @private
+%% @doc
+%% Converts process state when code is changed
+%%
+%% @end
+%%------------------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
@@ -178,7 +176,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ensure the exhanges exist, build a queue, bind, and consume
 %% @end
 %%--------------------------------------------------------------------
--spec(start_amqp/0 :: () -> tuple(ok, binary())).
+-spec start_amqp/0 :: () -> tuple(ok, binary()).
 start_amqp() ->
     try
         _ = amqp_util:callmgr_exchange(),
@@ -202,7 +200,10 @@ start_amqp() ->
 %% process AMQP request
 %% @end
 %%-----------------------------------------------------------------------------
--spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), State :: #state{}) -> no_return()).
+-spec process_req/3 :: (MsgType, JObj, State) -> no_return() when
+      MsgType :: tuple(binary(), binary()),
+      JObj :: json_object(),
+      State :: #state{}.
 process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
     case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
         undefined ->
@@ -225,7 +226,7 @@ process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
                             ,cid_name = wh_json:get_value(<<"Caller-ID-Name">>, JObj)
                             ,cid_number = wh_json:get_value(<<"Caller-ID-Number">>, JObj)
                             ,request = Request
-                            ,request_user = whistle_util:to_e164(RequestUser)
+                            ,request_user = wh_util:to_e164(RequestUser)
                             ,request_realm = RequestRealm
                             ,from = From
                             ,from_user = FromUser
@@ -258,7 +259,7 @@ process_req({_, <<"route_win">>}, JObj, #state{self=Self}) ->
                    },
     ?LOG_END("imported custom channel vars, starting callflow"),
 
-    supervisor:start_child(cf_exe_sup, [C2, wh_json:get_value(<<"flow">>, Flow)]);
+    cf_exe_sup:start_proc(C2, wh_json:get_value(<<"flow">>, Flow));
 
 process_req({_, _}, _, _) ->
     {error, invalid_event}.
@@ -269,7 +270,9 @@ process_req({_, _}, _, _) ->
 %% attempt to fulfill authorized call requests
 %% @end
 %%-----------------------------------------------------------------------------
--spec(fulfill_call_request/2 :: (Call :: #cf_call{}, JObj :: json_object()) -> no_return()).
+-spec fulfill_call_request/2 :: (Call, JObj) -> no_return() when
+      Call :: #cf_call{},
+      JObj :: json_object().
 fulfill_call_request(Call, JObj) ->
     case lookup_callflow(Call) of
         {ok, Flow, NoMatch} ->
@@ -287,7 +290,8 @@ fulfill_call_request(Call, JObj) ->
 %% lookup the callflow based on the requested number in the account
 %% @end
 %%-----------------------------------------------------------------------------
--spec(lookup_callflow/1 :: (Call :: #cf_call{}) -> tuple(ok, binary(), boolean())|tuple(error, atom())).
+-spec lookup_callflow/1 :: (Call) -> tuple(ok, binary(), boolean()) | tuple(error, atom()) when
+      Call :: #cf_call{}.
 lookup_callflow(#cf_call{request_user=Number, account_id=AccountId}=Call) ->
     ?LOG("lookup callflow for ~s in account ~s", [Number, AccountId]),
     case wh_cache:fetch({cf_flow, Number, AccountId}) of
@@ -322,14 +326,16 @@ lookup_callflow(#cf_call{request_user=Number, account_id=AccountId}=Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec(send_route_response/2 :: (Call :: #cf_call{}, JObj :: json_object()) -> no_return()).
+-spec send_route_response/2 :: (Call, JObj) -> no_return() when
+      Call :: #cf_call{},
+      JObj :: json_object().
 send_route_response(#cf_call{channel_vars=CVs, bdst_q=Q}, JObj) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
             ,{<<"channel_vars">>, CVs}
-            | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
+            | wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
            ],
-    {ok, Payload} = whistle_api:route_resp(Resp),
+    {ok, Payload} = wh_api:route_resp(Resp),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload),
     ?LOG_END("replied to route request").

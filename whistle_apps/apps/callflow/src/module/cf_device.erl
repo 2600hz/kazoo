@@ -29,12 +29,10 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     EndpointId = wh_json:get_value(<<"id">>, Data),
     case cf_endpoint:build(EndpointId, Data, Call) of
         {ok, Endpoints} ->
-            Timeout = wh_json:get_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
-            IgnoreEarlyMedia = lists:foldr(fun(Endpoint, Acc) ->
-                                                   whistle_util:is_true(wh_json:get_value(<<"Ignore-Early-Media">>, Endpoint)) or Acc
-                                           end, false, Endpoints),
-            case bridge_to_endpoints(Endpoints, Timeout, IgnoreEarlyMedia, Call) of
-                {ok, complete} ->
+            Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
+            case bridge_to_endpoints(Endpoints, Timeout, Call) of
+                {ok, _} ->
+                    ?LOG("endpoint was unbridged"),
                     CFPid ! { stop };
                 _ ->
                     CFPid ! { continue }
@@ -50,15 +48,16 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %% Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec(bridge_to_endpoints/4 :: (Endpoints :: json_object(), Timeout :: binary(), IgnoreEarlyMedia :: binary(), Call :: #cf_call{})
-                               -> tuple(ok, complete) | tuple(fail, json_object()) | tuple(error, atom())).
-bridge_to_endpoints(Endpoints, Timeout, IgnoreEarlyMedia, Call) ->
+-spec bridge_to_endpoints/3 :: (Endpoints, Timeout, Call) -> cf_api_bridge_return() when
+      Endpoints :: json_objects(),
+      Timeout :: binary(),
+      Call :: #cf_call{}.
+bridge_to_endpoints(Endpoints, Timeout, Call) ->
+    IgnoreEarlyMedia = ignore_early_media(Endpoints),
     case b_bridge(Endpoints, Timeout, <<"internal">>, <<"single">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
             ?LOG("bridged to endpoint"),
-            _ = wait_for_unbridge(),
-            ?LOG("bridge completed"),
-            {ok, complete};
+            wait_for_unbridge();
         {fail, Reason}=Fail ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
             ?LOG("failed to bridge to endpoint ~s:~s", [Code, Cause]),
@@ -67,3 +66,18 @@ bridge_to_endpoints(Endpoints, Timeout, IgnoreEarlyMedia, Call) ->
             ?LOG("failed to bridge to endpoint ~w", [R]),
             Error
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determine if we should ignore early media
+%% @end
+%%--------------------------------------------------------------------
+-spec ignore_early_media/1 :: (Endpoints) -> binary() when
+      Endpoints :: json_objects().
+ignore_early_media(Endpoints) ->
+    Ignore = lists:foldr(fun(Endpoint, Acc) ->
+                                 wh_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
+                                     or Acc
+                         end, false, Endpoints),
+    wh_util:to_binary(Ignore).

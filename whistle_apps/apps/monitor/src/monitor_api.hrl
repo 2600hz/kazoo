@@ -1,4 +1,4 @@
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 %% Default Headers
 %% All messages MUST include the DEFAULT_HEADERS list.

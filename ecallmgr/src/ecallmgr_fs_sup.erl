@@ -37,30 +37,30 @@ start_link() ->
 
 -spec(start_handlers/2 :: (Node :: atom(), Options :: proplist()) -> list(tuple(ok, pid()))).
 start_handlers(Node, Options) when is_atom(Node) ->
-    NodeB = whistle_util:to_binary(Node),
+    NodeB = wh_util:to_binary(Node),
     [ begin
-	  Name = whistle_util:to_atom(<<NodeB/binary, H/binary>>, true),
-	  Mod = whistle_util:to_atom(<<"ecallmgr_fs", H/binary>>),
+	  Name = wh_util:to_atom(<<NodeB/binary, H/binary>>, true),
+	  Mod = wh_util:to_atom(<<"ecallmgr_fs", H/binary>>),
 	  supervisor:start_child(?SERVER, ?CHILD(Name, Mod, [Node, Options]))
       end
       || H <- [<<"_auth">>, <<"_route">>, <<"_node">>] ].
 
 -spec(stop_handlers/1 :: (Node :: atom()) -> list(ok | tuple(error, running | not_found | simple_one_for_one))).
 stop_handlers(Node) when is_atom(Node) ->
-    NodeB = whistle_util:to_binary(Node),
+    NodeB = wh_util:to_binary(Node),
     [ begin
 	  ok = supervisor:terminate_child(?SERVER, Name),
 	  supervisor:delete_child(?SERVER, Name)
       end || {Name, _, _, [_]} <- supervisor:which_children(?SERVER)
-		 ,node_matches(NodeB, whistle_util:to_binary(Name))
+		 ,node_matches(NodeB, wh_util:to_binary(Name))
     ].
     
 
 -spec(get_handler_pids/1 :: (Node :: atom()) -> tuple(pid() | undefined, pid() | undefined, pid() | undefined)).
 get_handler_pids(Node) when is_atom(Node) ->
-    NodeB = whistle_util:to_binary(Node),
+    NodeB = wh_util:to_binary(Node),
     NodePids = [ {HandlerMod, Pid} || {Name, Pid, worker, [HandlerMod]} <- supervisor:which_children(?SERVER)
-					  ,node_matches(NodeB, whistle_util:to_binary(Name))],
+					  ,node_matches(NodeB, wh_util:to_binary(Name))],
     {
       props:get_value(ecallmgr_fs_auth, NodePids, error)
      ,props:get_value(ecallmgr_fs_route, NodePids, error)

@@ -26,15 +26,8 @@
 
 -define(TOKEN_DB, <<"token_auth">>).
 
--define(VIEW_FILE, <<"views/user_auth.json">>).
--define(MD5_LIST, <<"user_auth/creds_by_md5">>).
--define(SHA1_LIST, <<"user_auth/creds_by_sha">>).
-
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
-
--define(AGG_DB, <<"user_auth">>).
--define(AGG_FILTER, <<"users/export">>).
 
 %%%===================================================================
 %%% API
@@ -109,11 +102,17 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]
+                                   ,req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authorizing request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
+                 ,{RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]
+                                   ,req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authenticating request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
@@ -133,15 +132,19 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.user_auth">>, Pa
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.user_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Pid ! {binding_result, true, [RD, validate(Params, Context), Params]}
+                  crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.user_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Pid ! {binding_result, true, [RD, create_token(RD, Context), Params]}
+                  crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = create_token(RD, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
 
@@ -152,12 +155,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 handle_info(timeout, State) ->
     bind_to_crossbar(),
     couch_mgr:db_create(?TOKEN_DB),
-    couch_mgr:db_create(?AGG_DB),
-    case couch_mgr:update_doc_from_file(?AGG_DB, crossbar, ?VIEW_FILE) of
-        {error, _} ->
-            couch_mgr:load_doc_from_file(?AGG_DB, crossbar, ?VIEW_FILE);
-        {ok, _} -> ok
-    end,
     {noreply, State};
 
 handle_info(_, State) ->
@@ -191,7 +188,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec bind_to_crossbar/0 :: () -> no_return().
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
@@ -209,7 +206,8 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (Paths) -> tuple(boolean(), http_methods()) when
+      Paths :: list().
 allowed_methods([]) ->
     {true, ['PUT']};
 allowed_methods(_) ->
@@ -223,7 +221,8 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (Paths) -> tuple(boolean(), []) when
+      Paths :: list().
 resource_exists([]) ->
     {true, []};
 resource_exists(_) ->
@@ -238,7 +237,9 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/2 :: (Params, Context) -> #cb_context{} when
+      Params :: list(),
+      Context :: #cb_context{}.
 validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
     authorize_user(Context
 		   ,wh_json:get_value(<<"realm">>, JObj)
@@ -257,39 +258,58 @@ validate(_, Context) ->
 %% Failure here returns 401
 %% @end
 %%--------------------------------------------------------------------
--spec(authorize_user/4 :: (Context :: #cb_context{}, Realm :: binary(), Credentials :: binary(), Method :: binary()) -> #cb_context{}).
+-spec authorize_user/4 :: (Context, Realm, Credentials, Method) -> #cb_context{} when
+      Context :: #cb_context{},
+      Realm :: binary(),
+      Credentials :: binary(),
+      Method :: binary().
 authorize_user(Context, _, Credentials, _) when not is_binary(Credentials) ->
+    ?LOG("credentials is not the correct format"),
     crossbar_util:response_invalid_data([<<"credentials">>], Context);
 authorize_user(Context, Realm, _, _) when not is_binary(Realm) ->
+    ?LOG("realm is not the correct format"),
     crossbar_util:response_invalid_data([<<"realm">>], Context);
 authorize_user(Context, <<>>, <<>>, _) ->
+    ?LOG("request has no realm or credentials"),
     crossbar_util:response_invalid_data([<<"realm">>, <<"credentials">>], Context);
 authorize_user(Context, <<>>, _, _) ->
+    ?LOG("request has no realm"),
     crossbar_util:response_invalid_data([<<"realm">>], Context);
 authorize_user(Context, _, <<>>, _) ->
+    ?LOG("request has no credentials"),
     crossbar_util:response_invalid_data([<<"credentials">>], Context);
 authorize_user(Context, Realm, Credentials, Method) ->
     case whapps_util:get_account_by_realm(Realm) of
-	{ok, AcctDB} -> authorize_user(Context, Realm, Credentials, Method, AcctDB);
-	{error, not_found} -> crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
+	{ok, AccountDb} ->
+            ?LOG("realm ~s belongs to account ~s", [Realm, whapps_util:get_db_name(AccountDb, raw)]),
+            authorize_user(Context, Realm, Credentials, Method, AccountDb);
+	{error, not_found} ->
+            ?LOG("could not find account with realm ~s", [Realm]),
+            crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end.
 
 authorize_user(Context, _, Credentials, <<"md5">>, AcctDB) ->
     case crossbar_doc:load_view(?ACCT_MD5_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=AcctDB}) of
         #cb_context{resp_status=success, doc=[JObj|_]} ->
+            ?LOG("found more that one user with MD5 ~s, using ~s", [Credentials, wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         #cb_context{resp_status=success, doc=JObj} when JObj =/= []->
+            ?LOG("found MD5 credentials belong to user ~s", [wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         _ ->
+            ?LOG("credentials do not belong to any user"),
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
 authorize_user(Context, _, Credentials, <<"sha">>, AcctDB) ->
     case crossbar_doc:load_view(?ACCT_SHA1_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=AcctDB}) of
         #cb_context{resp_status=success, doc=[JObj|_]} ->
+            ?LOG("found more that one user with SHA1 ~s, using ~s", [Credentials, wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         #cb_context{resp_status=success, doc=JObj} when JObj =/= []->
+            ?LOG("found SHA1 credentials belong to user ~s", [wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         _ ->
+            ?LOG("credentials do not belong to any user"),
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
 authorize_user(Context, _, _, _, _) ->
@@ -307,26 +327,30 @@ authorize_user(Context, _, _, _, _) ->
 create_token(_, #cb_context{doc = ?EMPTY_JSON_OBJECT}=Context) ->
     crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
 create_token(RD, #cb_context{doc=JObj}=Context) ->
-    AccountId = whapps_util:get_db_name(wh_json:get_value(<<"account_db">>, JObj), raw),
-    Token = {struct, [
-                       {<<"account_id">>, AccountId}
+    AccountId = wh_json:get_value(<<"account_id">>, JObj, <<>>),
+    OwnerId = wh_json:get_value(<<"owner_id">>, JObj, <<>>),
+    Token = {struct, [{<<"account_id">>, AccountId}
+                      ,{<<"owner_id">>, OwnerId}
                       ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                       ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                      ,{<<"peer">>, whistle_util:to_binary(wrq:peer(RD))}
-                      ,{<<"user_agent">>, whistle_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-                      ,{<<"accept">>, whistle_util:to_binary(wrq:get_req_header("Accept", RD))}
-                      ,{<<"accept_charset">>, whistle_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-                      ,{<<"accept_endocing">>, whistle_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-                      ,{<<"accept_language">>, whistle_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-                      ,{<<"connection">>, whistle_util:to_binary(wrq:get_req_header("Conntection", RD))}
-                      ,{<<"keep_alive">>, whistle_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+                      ,{<<"method">>, wh_util:to_binary(?MODULE)}
+                      ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
+                      ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+                      ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
+                      ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+                      ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+                      ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+                      ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
+                      ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
                      ]},
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->
             AuthToken = wh_json:get_value(<<"_id">>, Doc),
-            crossbar_util:response(
-              {struct, [{<<"account_id">>, AccountId}]}
-              ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
-        {error, _} ->
+            ?LOG("created new local auth token ~s", [AuthToken]),
+            crossbar_util:response({struct, [{<<"account_id">>, AccountId}
+                                             ,{<<"owner_id">>, OwnerId}]}
+                                   ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
+        {error, R} ->
+            ?LOG("could not create new local auth token, ~p", [R]),
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end.

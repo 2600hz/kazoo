@@ -25,8 +25,6 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
-
--define(VIEW_FILE, <<"views/conferences.json">>).
 -define(CB_LIST, <<"conferences/crossbar_listing">>).
 
 %%%===================================================================
@@ -118,14 +116,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.conferences">>, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.conferences">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
+                  crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.conferences">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -133,6 +133,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.conferences">>, [RD
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.conferences">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -140,13 +141,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.conferences">>, [RD,
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.conferences">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -155,7 +153,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    whapps_util:update_all_accounts(?VIEW_FILE),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -201,8 +198,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.conferences">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.conferences">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.conferences">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.conferences">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.conferences">>).
 
 %%--------------------------------------------------------------------
 %% @private

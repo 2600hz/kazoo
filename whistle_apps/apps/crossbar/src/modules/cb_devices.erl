@@ -21,10 +21,9 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
-
--define(VIEW_FILE, <<"views/devices.json">>).
 
 -define(DEVICES_LIST, <<"devices/listing_by_id">>).
 -define(FIXTURE_LIST, [<<"611.device.json">>]). %% fixtures to load into each account DB
@@ -123,14 +122,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.devices">>, Payl
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
+                  crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, RD, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
 		  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
@@ -139,6 +140,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
 		  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
@@ -147,14 +149,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"account.created">>, DBName}, State) ->
-    spawn(fun() -> import_fixtures(?FIXTURE_LIST, DBName) end),
-    Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -163,9 +161,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    couch_mgr:db_create(?AGG_DB),
-    whapps_util:update_all_accounts(?VIEW_FILE),
-    whapps_util:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -211,8 +206,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.devices">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.devices">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.devices">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.devices">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.devices">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -256,18 +250,18 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_device_summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
+-spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
+    load_device_summary(Context, QueryString);
+validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
     create_device(Context);
-validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
+validate([DocId], _, #cb_context{req_verb = <<"get">>}=Context) ->
     load_device(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
+validate([DocId], _, #cb_context{req_verb = <<"post">>}=Context) ->
     update_device(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
+validate([DocId], _, #cb_context{req_verb = <<"delete">>}=Context) ->
     load_device(DocId, Context);
-validate(_, Context) ->
+validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
@@ -277,11 +271,14 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_summary/1 :: (Context) -> #cb_context{} when
+-spec load_device_summary/2 :: (Context, QueryParams) -> #cb_context{} when
+      QueryParams :: list(),
       Context :: #cb_context{}.
-load_device_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
-
+load_device_summary(Context, []) ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+load_device_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
+    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams),
+    Context#cb_context{resp_data=Result, resp_status=success}.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -345,28 +342,3 @@ normalize_view_results(JObj, Acc) ->
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
 is_valid_doc(_JObj) ->
     {true, []}.
-
--spec import_fixtures/2 :: (Fixtures, DBName) -> list(#cb_context{} | tuple(error, no_file)) when
-      Fixtures :: [<<_:120>>,...],
-      DBName :: binary().
-import_fixtures(Fixtures, DBName) ->
-    ?LOG_SYS("Importing fixtures into ~s", [DBName]),
-    Context = #cb_context{db_name=DBName},
-    [ import_fixture(Fixture, Context) || Fixture <- Fixtures].
-
--spec import_fixture/2 :: (Fixture, Context) -> #cb_context{} | tuple(error, no_file) when
-      Fixture :: <<_:120>>,
-      Context :: #cb_context{}.
-import_fixture(Fixture, Context) ->
-    Path = list_to_binary([code:priv_dir(crossbar), <<"/couchdb/fixtures/">>, Fixture]),
-    ?LOG_SYS("Read from ~s", [Path]),
-    case filelib:is_regular(Path) of
-	true ->
-	    {ok, FixStr} = file:read_file(Path),
-	    ?LOG_SYS("Saving fixture from ~s: ~s", [Path, FixStr]),
-	    JObj = mochijson2:decode(FixStr),
-	    crossbar_doc:save(Context#cb_context{doc=JObj});
-	false ->
-	    ?LOG_SYS("File path doesn't point to a file"),
-	    {error, no_file}
-    end.

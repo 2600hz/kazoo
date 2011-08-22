@@ -9,7 +9,7 @@
 -module(crossbar_doc).
 
 -export([load/2, load_from_file/2, load_merge/3, load_view/3, load_view/4, load_attachment/3]).
--export([save/1, delete/1, save_attachment/4, save_attachment/5, delete_attachment/3]).
+-export([save/1, delete/1, delete/2, save_attachment/4, save_attachment/5, delete_attachment/3]).
 -export([public_fields/1, private_fields/1, is_private_key/1]).
 -export([rev_to_etag/1, current_doc_vsn/0]).
 
@@ -48,14 +48,14 @@ load(_DocId, #cb_context{db_name = <<>>}=Context) ->
 load(DocId, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:open_doc(DB, DocId) of
         {error, db_not_reachable} ->
-	    ?LOG_SYS("loading doc ~s from ~s failed: db not reachable", [DocId, DB]),
+	    ?LOG("loading doc ~s from ~s failed: db not reachable", [DocId, DB]),
             crossbar_util:response_datastore_timeout(Context);
         {error, not_found} ->
-	    ?LOG_SYS("loading doc ~s from ~s failed: doc not found", [DocId, DB]),
+	    ?LOG("loading doc ~s from ~s failed: doc not found", [DocId, DB]),
             crossbar_util:response_bad_identifier(DocId, Context);
 	{ok, Doc} ->
-	    ?LOG_SYS("loaded doc ~s from ~s", [DocId, DB]),
-            case whistle_util:is_true(wh_json:get_value(<<"pvt_deleted">>, Doc)) of
+	    ?LOG("loaded doc ~s from ~s", [DocId, DB]),
+            case wh_util:is_true(wh_json:get_value(<<"pvt_deleted">>, Doc)) of
                 true ->
                     crossbar_util:response_bad_identifier(DocId, Context);
                 false ->
@@ -66,7 +66,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
                                       }
             end;
         _Else ->
-	    ?LOG_SYS("Unexpected return from datastore: ~p", [_Else]),
+	    ?LOG("Unexpected return from datastore: ~p", [_Else]),
             Context#cb_context{doc=?EMPTY_JSON_OBJECT}
     end.
 
@@ -96,12 +96,12 @@ load_from_file(Db, File) ->
 %%--------------------------------------------------------------------
 -spec(load_merge/3 :: (DocId :: binary(), Data :: json_object(), Context :: #cb_context{}) -> #cb_context{}).
 load_merge(_DocId, _Data, #cb_context{db_name = <<>>}=Context) ->
-    ?LOG_SYS("db missing from #cb_context for doc ~s", [_DocId]),
+    ?LOG("db missing from #cb_context for doc ~s", [_DocId]),
     crossbar_util:response_db_missing(Context);
 load_merge(DocId, {struct, Data}, #cb_context{db_name=DBName}=Context) ->
     case load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc}=Context1 ->
-	    ?LOG_SYS("loaded doc ~s from ~s, merging", [DocId, DBName]),
+	    ?LOG("loaded doc ~s from ~s, merging", [DocId, DBName]),
 	    {struct, PrivProp} = private_fields(Doc),
             Doc1 = {struct, PrivProp ++ Data},
             Context1#cb_context{
@@ -111,7 +111,7 @@ load_merge(DocId, {struct, Data}, #cb_context{db_name=DBName}=Context) ->
 	      ,resp_etag=rev_to_etag(Doc1)
 	     };
         Else ->
-	    ?LOG_SYS("loading doc ~s from ~s failed unexpectedly: ~p", [DocId, DBName, Else]),
+	    ?LOG("loading doc ~s from ~s failed unexpectedly: ~p", [DocId, DBName, Else]),
             Else
     end.
 
@@ -126,25 +126,25 @@ load_merge(DocId, {struct, Data}, #cb_context{db_name=DBName}=Context) ->
 %%--------------------------------------------------------------------
 -spec(load_view/3 :: (View :: binary(), Options :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
 load_view(_View, _Options, #cb_context{db_name = <<>>}=Context) ->
-    ?LOG_SYS("db missing from #cb_context for view ~s", [view_name_to_binary(_View)]),
+    ?LOG("db missing from #cb_context for view ~s", [view_name_to_binary(_View)]),
     crossbar_util:response_db_missing(Context);
 load_view(View, Options, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:get_results(DB, View, Options) of
 	{error, invalid_view_name} ->
-	    ?LOG_SYS("loading view ~s from ~s failed: invalid view", [view_name_to_binary(View), DB]),
+	    ?LOG("loading view ~s from ~s failed: invalid view", [view_name_to_binary(View), DB]),
             crossbar_util:response_missing_view(Context);
 	{error, not_found} ->
-	    ?LOG_SYS("loading view ~s from ~s failed: not found", [view_name_to_binary(View), DB]),
+	    ?LOG("loading view ~s from ~s failed: not found", [view_name_to_binary(View), DB]),
 	    crossbar_util:response_missing_view(Context);
 	{ok, Doc} ->
-	    ?LOG_SYS("loaded view ~s from ~s", [view_name_to_binary(View), DB]),
+	    ?LOG("loaded view ~s from ~s", [view_name_to_binary(View), DB]),
             Context#cb_context{
 	      doc=Doc
 	      ,resp_status=success
 	      ,resp_etag=rev_to_etag(Doc)
 	     };
         _Else ->
-	    ?LOG_SYS("loading view ~s from ~s failed: unexpected ~p", [view_name_to_binary(View), DB, _Else]),
+	    ?LOG("loading view ~s from ~s failed: unexpected ~p", [view_name_to_binary(View), DB, _Else]),
             Context#cb_context{doc=?EMPTY_JSON_OBJECT}
     end.
 
@@ -182,18 +182,18 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
 %%--------------------------------------------------------------------
 -spec(load_attachment/3 :: (DocId :: binary(), AName :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_attachment(_DocId, _AName, #cb_context{db_name = <<>>}=Context) ->
-    ?LOG_SYS("loading attachment ~s from doc ~s failed: no db", [_DocId, _AName]),
+    ?LOG("loading attachment ~s from doc ~s failed: no db", [_DocId, _AName]),
     crossbar_util:response_db_missing(Context);
 load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:fetch_attachment(DB, DocId, AName) of
         {error, db_not_reachable} ->
-	    ?LOG_SYS("loading attachment ~s from doc ~s from db ~s failed: db not reachable", [AName, DocId, DB]),
+	    ?LOG("loading attachment ~s from doc ~s from db ~s failed: db not reachable", [AName, DocId, DB]),
             crossbar_util:response_datastore_timeout(Context);
 	{error, not_found} ->
-	    ?LOG_SYS("loading attachment ~s from doc ~s from db ~s failed: attachment not found", [AName, DocId, DB]),
+	    ?LOG("loading attachment ~s from doc ~s from db ~s failed: attachment not found", [AName, DocId, DB]),
 	    crossbar_util:response_bad_identifier(DocId, Context);
 	{ok, AttachBin} ->
-	    ?LOG_SYS("loaded attachment ~s from doc ~s from db ~s", [AName, DocId, DB]),
+	    ?LOG("loaded attachment ~s from doc ~s from db ~s", [AName, DocId, DB]),
 	    #cb_context{resp_status=success, doc=Doc} = Context1 = load(DocId, Context),
 
             Context1#cb_context{
@@ -203,7 +203,7 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 	      ,resp_etag=rev_to_etag(Doc)
 	     };
         _Else ->
-	    ?LOG_SYS("loading attachment ~s from doc ~s from db ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
+	    ?LOG("loading attachment ~s from doc ~s from db ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
             Context
     end.
 
@@ -218,19 +218,19 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 %%--------------------------------------------------------------------
 -spec(save/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 save(#cb_context{db_name = <<>>}=Context) ->
-    ?LOG_SYS("DB undefined, cannot save"),
+    ?LOG("DB undefined, cannot save"),
     crossbar_util:response_db_missing(Context);
 save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:save_doc(DB, JObj0) of
         {error, db_not_reachable} ->
-	    ?LOG_SYS("Failed to save json: db not reachable"),
+	    ?LOG("Failed to save json: db not reachable"),
             crossbar_util:response_datastore_timeout(Context);
 	{error, conflict} ->
-	    ?LOG_SYS("Failed to save json: conflicts with existing doc"),
+	    ?LOG("Failed to save json: conflicts with existing doc"),
 	    crossbar_util:response_conflicting_docs(Context);
 	{ok, JObj1} when Verb =:= <<"put">> ->
-	    ?LOG_SYS("Saved a put request, setting location headers"),
+	    ?LOG("Saved a put request, setting location headers"),
             Context#cb_context{
                  doc=JObj1
                 ,resp_status=success
@@ -239,7 +239,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
                 ,resp_etag=rev_to_etag(JObj1)
             };
 	{ok, JObj2} ->
-	    ?LOG_SYS("Saved json doc"),
+	    ?LOG("Saved json doc"),
             Context#cb_context{
                  doc=JObj2
                 ,resp_status=success
@@ -247,7 +247,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
                 ,resp_etag=rev_to_etag(JObj2)
             };
         _Else ->
-            ?LOG_SYS("Save failed: unexpected return from datastore: ~p", [_Else]),
+            ?LOG("Save failed: unexpected return from datastore: ~p", [_Else]),
             Context
     end.
 
@@ -273,7 +273,7 @@ save_attachment(DocId, AName, Contents, Context) ->
 %%--------------------------------------------------------------------
 -spec(save_attachment/5 :: (DocId :: binary(), AName :: binary(), Contents :: binary(), Context :: #cb_context{}, Options :: proplist()) -> #cb_context{}).
 save_attachment(_DocId, _AName, _, #cb_context{db_name = <<>>}=Context, _) ->
-    ?LOG_SYS("Saving attachment ~s to doc ~s failed: no db specified", [_AName, _DocId]),
+    ?LOG("Saving attachment ~s to doc ~s failed: no db specified", [_AName, _DocId]),
     crossbar_util:response_db_missing(Context);
 save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options) ->
     Opts1 = case props:get_value(rev, Options) of
@@ -284,13 +284,13 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
 	    end,
     case couch_mgr:put_attachment(DB, DocId, AName, Contents, Opts1) of
         {error, db_not_reachable} ->
-	    ?LOG_SYS("Saving attachment ~s to doc ~s to db ~s failed: db not reachable", [AName, DocId, DB]),
+	    ?LOG("Saving attachment ~s to doc ~s to db ~s failed: db not reachable", [AName, DocId, DB]),
             crossbar_util:response_datastore_timeout(Context);
 	{error, conflict} ->
-	    ?LOG_SYS("Saving attachment ~s to doc ~s to db ~s failed: conflict", [AName, DocId, DB]),
+	    ?LOG("Saving attachment ~s to doc ~s to db ~s failed: conflict", [AName, DocId, DB]),
 	    crossbar_util:response_conflicting_docs(Context);
 	{ok, _Res} ->
-	    ?LOG_SYS("Saved attachment ~s to doc ~s to db ~s", [AName, DocId, DB]),
+	    ?LOG("Saved attachment ~s to doc ~s to db ~s", [AName, DocId, DB]),
 	    {ok, Rev1} = couch_mgr:lookup_doc_rev(DB, DocId),
             Context#cb_context{
 	      resp_status=success
@@ -298,7 +298,7 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
 	      ,resp_etag=rev_to_etag(Rev1)
             };
         _Else ->
-	    ?LOG_SYS("Saving attachment ~s to doc ~s to db ~s failed: unexpected: ~p", [AName, DocId, DB, _Else]),
+	    ?LOG("Saving attachment ~s to doc ~s to db ~s failed: unexpected: ~p", [AName, DocId, DB, _Else]),
             crossbar_util:response_datastore_conn_refused(Context)
     end.
 
@@ -313,26 +313,51 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(delete/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec delete/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
+-spec delete/2 :: (Context, Switch) -> #cb_context{} when
+      Context :: #cb_context{},
+      Switch :: permanent.
+
 delete(#cb_context{db_name = <<>>, doc=JObj}=Context) ->
-    ?LOG_SYS("deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
+    ?LOG("deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
     crossbar_util:response_db_missing(Context);
 delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     JObj1 = wh_json:set_value(<<"pvt_deleted">>, true, JObj0),
     case couch_mgr:save_doc(DB, JObj1) of
         {error, db_not_reachable} ->
-	    ?LOG_SYS("deleting ~s from ~s failed, db not reachable", [wh_json:get_value(<<"_id">>, JObj), DB]),
+	    ?LOG("deleting ~s from ~s failed, db not reachable", [wh_json:get_value(<<"_id">>, JObj), DB]),
             crossbar_util:response_datastore_timeout(Context);
 	{ok, _Doc} ->
-	    ?LOG_SYS("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
+	    ?LOG("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
             Context#cb_context{
 	       doc = ?EMPTY_JSON_OBJECT
 	      ,resp_status=success
 	      ,resp_data=[]
 	     };
         _Else ->
-	    ?LOG_SYS("deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
+	    ?LOG("deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
+            Context
+    end.
+
+delete(#cb_context{db_name = <<>>, doc=JObj}=Context, permanent) ->
+    ?LOG("permanent deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
+    crossbar_util:response_db_missing(Context);
+delete(#cb_context{db_name=DB, doc=JObj}=Context, permanent) ->
+    case couch_mgr:del_doc(DB, JObj) of
+        {error, db_not_reachable} ->
+	    ?LOG("permanent deleting ~s from ~s failed, db not reachable", [wh_json:get_value(<<"_id">>, JObj), DB]),
+            crossbar_util:response_datastore_timeout(Context);
+	{ok, _Doc} ->
+	    ?LOG("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
+            Context#cb_context{
+	       doc = ?EMPTY_JSON_OBJECT
+	      ,resp_status=success
+	      ,resp_data=[]
+	     };
+        _Else ->
+	    ?LOG("permanently deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
             Context
     end.
 
@@ -347,18 +372,18 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec(delete_attachment/3 :: (DocId :: binary(), AName :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 delete_attachment(_DocId, _AName, #cb_context{db_name = <<>>}=Context) ->
-    ?LOG_SYS("deleting attachment ~s from doc ~s failed: no db", [_AName, _DocId]),
+    ?LOG("deleting attachment ~s from doc ~s failed: no db", [_AName, _DocId]),
     crossbar_util:response_db_missing(Context);
 delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:delete_attachment(DB, DocId, AName) of
         {error, db_not_reachable} ->
-	    ?LOG_SYS("deleting attachment ~s from doc ~s from ~s failed: db not reachable", [AName, DocId, DB]),
+	    ?LOG("deleting attachment ~s from doc ~s from ~s failed: db not reachable", [AName, DocId, DB]),
             crossbar_util:response_datastore_timeout(Context);
 	{error, not_found} ->
-	    ?LOG_SYS("deleting attachment ~s from doc ~s from ~s failed: not found", [AName, DocId, DB]),
+	    ?LOG("deleting attachment ~s from doc ~s from ~s failed: not found", [AName, DocId, DB]),
 	    crossbar_util:response_bad_identifier(DocId, Context);
 	{ok, _Res} ->
-	    ?LOG_SYS("deleted attachment ~s from doc ~s from ~s", [AName, DocId, DB]),
+	    ?LOG("deleted attachment ~s from doc ~s from ~s", [AName, DocId, DB]),
 	    {ok, Rev} = couch_mgr:lookup_doc_rev(DB, DocId),
             Context#cb_context{
 	      resp_status=success
@@ -366,7 +391,7 @@ delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 	      ,resp_etag=rev_to_etag(Rev)
             };
         _Else ->
-	    ?LOG_SYS("deleting attachment ~s from doc ~s from ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
+	    ?LOG("deleting attachment ~s from doc ~s from ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
             Context
     end.
 
@@ -389,7 +414,7 @@ public_fields({struct, Prop}) ->
 	    wh_json:set_value(<<"id">>, Id, PubJObj)
     end;
 public_fields(Json) ->
-    ?LOG_SYS("Unhandled JSON format in public_fields: ~p", [Json]),
+    ?LOG("Unhandled JSON format in public_fields: ~p", [Json]),
     Json.
 
 %%--------------------------------------------------------------------
@@ -405,7 +430,7 @@ private_fields([{struct, _}|_]=Json)->
 private_fields({struct, Prop}) ->
     {struct, [ Tuple || {K,_}=Tuple <- Prop, is_private_key(K)]};
 private_fields(Json) ->
-    ?LOG_SYS("Unhandled JSON format in private fields: ~p", [Json]),
+    ?LOG("Unhandled JSON format in private fields: ~p", [Json]),
     Json.
 
 %%--------------------------------------------------------------------
@@ -439,12 +464,12 @@ rev_to_etag({struct, Props}) ->
     end;
 rev_to_etag([]) -> undefined;
 rev_to_etag(Rev) when is_binary(Rev) ->
-    rev_to_etag(whistle_util:to_list(Rev));
+    rev_to_etag(wh_util:to_list(Rev));
 rev_to_etag(ETag) when is_list(ETag) ->
-    ?LOG_SYS("Etag in rev to etag: ~p", [ETag]),
+    ?LOG("Etag in rev to etag: ~p", [ETag]),
     string:sub_string(ETag, 1, 2) ++ string:sub_string(ETag, 4);
 rev_to_etag(_Json) ->
-    ?LOG_SYS("Unhandled JSON format in rev to etag: ~p", [_Json]),
+    ?LOG("Unhandled JSON format in rev to etag: ~p", [_Json]),
     undefined.
 
 %%--------------------------------------------------------------------
@@ -459,7 +484,12 @@ update_pvt_parameters(JObj0, #cb_context{db_name=DBName}) ->
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName) end, JObj0, ?PVT_FUNS).
 
 add_pvt_vsn(JObj, _) ->
-    wh_json:set_value(<<"pvt_vsn">>, ?CROSSBAR_DOC_VSN, JObj).
+    case wh_json:get_value(<<"pvt_vsn">>, JObj) of
+        undefined ->
+            wh_json:set_value(<<"pvt_vsn">>, ?CROSSBAR_DOC_VSN, JObj);
+        _ ->
+            JObj
+    end.
 
 add_pvt_account_db(JObj, DBName) ->
     wh_json:set_value(<<"pvt_account_db">>, DBName, JObj).
@@ -489,10 +519,10 @@ add_pvt_modified(JObj, _) ->
 %%--------------------------------------------------------------------
 -spec(view_name_to_binary/1 :: (View :: tuple(binary() | string(), binary() | string()) | binary() | string()) -> binary()).
 view_name_to_binary({Cat, View}) ->
-    <<(whistle_util:to_binary(Cat))/binary, "/", (whistle_util:to_binary(View))/binary>>;
+    <<(wh_util:to_binary(Cat))/binary, "/", (wh_util:to_binary(View))/binary>>;
 view_name_to_binary(View) when is_binary(View) ->
     View;
 view_name_to_binary(View) ->
-    whistle_util:to_binary(View).
+    wh_util:to_binary(View).
 
 %% ADD Unit Tests for private/public field filtering and merging

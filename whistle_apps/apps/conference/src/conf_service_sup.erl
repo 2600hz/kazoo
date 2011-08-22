@@ -1,14 +1,16 @@
-%%%============================================================================
+%%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011 VoIP Inc
 %%% @doc
 %%% Supervisor for running conference service processes
 %%% @end
 %%% Created : 28 Jun 2011 by Karl Anderson <karl@2600hz.org>
-%%%============================================================================
+%%%-------------------------------------------------------------------
 -module(conf_service_sup).
 
 -behaviour(supervisor).
+
+-include_lib("whistle/include/wh_types.hrl").
 
 %% API
 -export([start_link/0, start_service/2, start_service/3]).
@@ -32,21 +34,22 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
--spec start_service/2 :: (ConfId, Conference) -> tuple(ok, pid()) | ignore | tuple(error, term()) when
+-spec start_service/2 :: (ConfId, Conference) -> sup_startchild_ret() when
       ConfId :: binary(),
       Conference :: json_object().
 start_service(ConfId, Conference) ->
     start_service(ConfId, Conference, undefined).
 
--spec start_service/3 :: (ConfId, Conference, Caller) -> tuple(ok, pid()) | ignore | tuple(error, term()) when
+-spec start_service/3 :: (ConfId, Conference, Caller) -> sup_startchild_ret() when
       ConfId :: binary(),
       Conference :: json_object(),
       Caller :: undefined | json_object().
 start_service(ConfId, Conference, Caller) ->
-    supervisor:delete_child(conf_service_sup, ConfId),
+    _ = supervisor:delete_child(conf_service_sup, ConfId),
     supervisor:start_child(?SERVER, ?CHILD(ConfId, conf_service, [Conference, Caller])).
 
 %%%===================================================================
@@ -66,6 +69,8 @@ start_service(ConfId, Conference, Caller) ->
 %%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init(Args) -> sup_init_ret() when
+      Args :: [].
 init([]) ->
     RestartStrategy = one_for_one,
     MaxRestarts = 1,

@@ -109,8 +109,10 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %% returns the first valid callflow, or the default.
 %% @end
 %%--------------------------------------------------------------------
--spec(process_rules/3 :: (Temporal :: #temporal{}, Rules :: [#rule{}], Call :: #cf_call{})
-                         -> default | binary()).
+-spec process_rules/3 :: (Temporal, Rules, Call) -> default | binary() when
+      Temporal :: #temporal{},
+      Rules :: list(),
+      Call :: #cf_call{}.
 process_rules(_, [], _) ->
     ?LOG("continuing with default callflow"),
     default;
@@ -145,7 +147,7 @@ process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}}=T,
 %% the future as well as pertain to this temporal route mapping.
 %% @end
 %%--------------------------------------------------------------------
--spec(get_temporal_rules/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> json_objects()).
+-spec(get_temporal_rules/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> list()).
 get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}
                    ,#cf_call{account_db=Db}) ->
     case couch_mgr:get_results(Db, ?FIND_RULES, [{<<"startkey">>, null}
@@ -162,7 +164,7 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}
                    ,cycle =
                        wh_json:get_value([<<"doc">>, <<"cycle">>], R, Default#rule.cycle)
                    ,interval =
-                       whistle_util:to_integer(
+                       wh_util:to_integer(
                               wh_json:get_value([<<"doc">>, <<"interval">>], R, Default#rule.interval))
                    ,days =
                        wh_json:get_value([<<"doc">>, <<"days">>], R, Default#rule.days)
@@ -175,10 +177,10 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}
                    ,start_date =
                        get_date(wh_json:get_value([<<"doc">>, <<"start_date">>], R, LSec))
                    ,wtime_start =
-                       whistle_util:to_integer(
+                       wh_util:to_integer(
                                  wh_json:get_value([<<"doc">>, <<"time_window_start">>], R, Default#rule.wtime_start))
                    ,wtime_stop =
-                       whistle_util:to_integer(
+                       wh_util:to_integer(
                                wh_json:get_value([<<"doc">>, <<"time_window_stop">>], R, Default#rule.wtime_stop))
                }
              || R <- JObj,
@@ -214,7 +216,7 @@ get_temporal_route(JObj, #cf_call{cf_pid=CFPid}) ->
 get_date({{_,_,_}=Date, {_,_,_}})->
     Date;
 get_date(Term) when is_binary(Term) ->
-    get_date(whistle_util:to_integer(Term));
+    get_date(wh_util:to_integer(Term));
 get_date(Term) when is_integer(Term) ->
    get_date(calendar:gregorian_seconds_to_datetime(Term)).
 
@@ -229,7 +231,6 @@ get_date(Term) when is_integer(Term) ->
 -spec(temporal_route_menu/3 :: (Temporal :: #temporal{}, Rules :: list(),  Call :: #cf_call{}) -> no_return()).
 temporal_route_menu(#temporal{keys=#keys{enable=Enable, disable=Disable, reset=Reset}
                               ,prompts=Prompts}=Temporal, Rules, Call) ->
-    _ = cf_call_command:flush_dtmf(Call),
     case cf_call_command:b_play_and_collect_digit(Prompts#prompts.main_menu, Call) of
         {ok, Enable} ->
             enable_temporal_rules(Temporal, Rules, Call);
@@ -347,7 +348,7 @@ enable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
 load_current_time(#temporal{timezone=Timezone}=Temporal)->
     {LocalDate, LocalTime} = localtime:utc_to_local(
                                 calendar:universal_time()
-                               ,whistle_util:to_list(Timezone)
+                               ,wh_util:to_list(Timezone)
                               ),
     ?LOG("local time for ~s is {~w,~w}", [Timezone, LocalDate, LocalTime]),
     Temporal#temporal{local_sec=calendar:datetime_to_gregorian_seconds({LocalDate, LocalTime})

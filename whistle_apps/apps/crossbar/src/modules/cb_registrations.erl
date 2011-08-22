@@ -25,6 +25,7 @@
 -define(REG_VIEW_FILE, <<"views/registrations.json">>).
 -define(LOOKUP_ACCOUNT_REGS, <<"reg_doc/lookup_realm_user">>).
 -define(LOOKUP_ACCOUNT_USER_REALM, <<"reg_doc/realm_and_username">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -114,6 +115,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.registrations">>
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, RD, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -128,6 +130,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.registrations">>, [R
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  {Context1, Resp} = case Context#cb_context.resp_status =:= success of
 					 true -> {crossbar_doc:save(Context), true};
@@ -139,6 +142,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.registrations">>, [
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Pid ! {binding_result, true, [RD, Context, Params]}
 	  end),
@@ -146,13 +150,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.registrations">>, [R
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Pid ! {binding_result, true, [RD, Context, Params]}
 	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, ?REG_VIEW_FILE},
     {noreply, State};
 
 handle_info(timeout, State) ->
@@ -161,7 +162,6 @@ handle_info(timeout, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
-    logger:format_log(info, "CB_REG(~p): Unhandled info: ~p~n", [self(), _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -206,8 +206,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.registrations">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.registrations">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.registrations">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.registrations">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.registrations">>).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -2,9 +2,11 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% User auth module
+%%% Token auth module
 %%%
-%%%
+%%% This is a simple auth mechanism, once the user has aquired an
+%%% auth token this module will allow access.  This module should be
+%%% updated to be FAR more robust.
 %%% @end
 %%% Created : 15 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -25,13 +27,6 @@
 -define(SERVER, ?MODULE).
 
 -define(TOKEN_DB, <<"token_auth">>).
-
--define(VIEW_FILE, <<"views/token_auth.json">>).
--define(MD5_LIST, <<"users/creds_by_md5">>).
--define(SHA1_LIST, <<"users/creds_by_sha">>).
-
--define(AGG_DB, <<"token_auth">>).
--define(AGG_FILTER, <<"users/export">>).
 
 %%%===================================================================
 %%% API
@@ -108,10 +103,11 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{auth_token=AuthToken}=Context}}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  case authenticate_token(AuthToken) of
+                  case couch_mgr:open_doc(?TOKEN_DB, AuthToken) of
                       {ok, JObj} ->
-                          update_token_doc(JObj, RD),
+                          ?LOG("authenticating request"),
                           Pid ! {binding_result, true, {RD, Context#cb_context{auth_doc=JObj}}};
                       {error, _} ->
                           Pid ! {binding_result, false, {RD, Context}}
@@ -126,11 +122,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 handle_info(timeout, State) ->
     bind_to_crossbar(),
     couch_mgr:db_create(?TOKEN_DB),
-    case couch_mgr:update_doc_from_file(?TOKEN_DB, crossbar, ?VIEW_FILE) of
-        {error, _} ->
-            couch_mgr:load_doc_from_file(?TOKEN_DB, crossbar, ?VIEW_FILE);
-        {ok, _} -> ok
-    end,
     {noreply, State};
 
 handle_info(_, State) ->
@@ -164,45 +155,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec bind_to_crossbar/0 :: () -> no_return().
 bind_to_crossbar() ->
     crossbar_bindings:bind(<<"v1_resource.authenticate">>).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to create a token and save it to the token db
-%% @end
-%%--------------------------------------------------------------------
--spec(authenticate_token/1 :: (AuthToken :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
-authenticate_token(AuthToken) ->
-    case couch_mgr:lookup_doc_rev(?TOKEN_DB, AuthToken) of
-        {ok, <<"undefined">>} ->
-            {error, bad_token};
-        {ok, _} ->
-            couch_mgr:open_doc(?TOKEN_DB, AuthToken);
-        {error, _}=E ->
-            E
-    end.
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update the token doc timestamp
-%%
-%% TODO:
-%%    Record the URL and verb in token 'history'
-%% @end
-%%--------------------------------------------------------------------
--spec(update_token_doc/2 :: (JObj :: json_object(), RD :: #wm_reqdata{}) -> no_return()).
-update_token_doc(JObj, _) ->
-    spawn(fun() ->
-                  Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-                  couch_mgr:save_doc(?TOKEN_DB,  wh_json:set_value(<<"modified">>, Now, JObj))
-          end).
-
-%% TODO:
-%%   - Create a map reduce on the peer and implement as a limit
-%%   - Create spawn to clean expired docs
-%%   - Use revision id as hash/seq ?

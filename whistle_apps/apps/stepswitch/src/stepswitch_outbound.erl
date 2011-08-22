@@ -113,7 +113,7 @@ handle_call({reload_resrcs}, _, State) ->
 
 handle_call({process_number, Number}, From, #state{resrcs=Resrcs}=State) ->
     spawn(fun() ->
-                  Num = whistle_util:to_e164(whistle_util:to_binary(Number)),
+                  Num = wh_util:to_e164(wh_util:to_binary(Number)),
                   EPs = print_endpoints(evaluate_number(Num, Resrcs), 0, []),
                   gen_server:reply(From, EPs)
           end),
@@ -122,7 +122,7 @@ handle_call({process_number, Number}, From, #state{resrcs=Resrcs}=State) ->
 handle_call({process_number, Number, Flags}, From, #state{resrcs=R1}=State) ->
     spawn(fun() ->
                   R2 = evaluate_flags(Flags, R1),
-                  Num = whistle_util:to_e164(whistle_util:to_binary(Number)),
+                  Num = wh_util:to_e164(wh_util:to_binary(Number)),
                   EPs = print_endpoints(evaluate_number(Num, R2), 0, []),
                   gen_server:reply(From, EPs)
           end),
@@ -255,7 +255,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% ensure the exhanges exist, build a queue, bind, and consume
 %% @end
 %%--------------------------------------------------------------------
--spec(start_amqp/0 :: () -> tuple(ok, binary()) | tuple(error, amqp_error)).
+-spec start_amqp/0 :: () -> tuple(ok, binary()) | tuple(error, amqp_error).
 start_amqp() ->
     try
         %% control egress of messages from the queue, only fetch one at time (load balances)
@@ -278,8 +278,10 @@ start_amqp() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec(process_req/3 :: (MsgType :: tuple(binary(), binary()), JObj :: json_object(), State :: #state{})
-                       -> no_return()).
+-spec process_req/3 :: (MsgType, JObj, State) -> no_return() when
+      MsgType :: tuple(binary(), binary()),
+      JObj :: json_object(),
+      State :: #state{}.
 process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
     whapps_util:put_callid(JObj),
     CallId = get(callid),
@@ -318,7 +320,7 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                                               ,{<<"Hangup-Code">>, <<"sip:404">>}
                                              ]}, 0, JObj);
         Attempts ->
-            {ok, Payload} = whistle_api:bridge_req({struct, BridgeReq}),
+            {ok, Payload} = wh_api:bridge_req({struct, BridgeReq}),
             amqp_util:callctl_publish(wh_json:get_value(<<"Control-Queue">>, JObj), Payload),
 
             case wait_for_bridge(60000) of
@@ -354,14 +356,14 @@ process_req({_, _}, _, _) ->
 %% Gets a list of all active resources from the DB
 %% @end
 %%--------------------------------------------------------------------
--spec(get_resrcs/0 :: () -> []|[#resrc{}]).
+-spec get_resrcs/0 :: () -> [#resrc{}].
 get_resrcs() ->
     case couch_mgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, [{<<"include_docs">>, true}]) of
         {ok, Resrcs} ->
             [couch_mgr:add_change_handler(?RESOURCES_DB, wh_json:get_value(<<"id">>, R))
              || R <- Resrcs],
             [create_resrc(wh_json:get_value(<<"doc">>, R))
-             || R <- Resrcs, whistle_util:is_true(wh_json:get_value([<<"doc">>, <<"enabled">>], R, true))];
+             || R <- Resrcs, wh_util:is_true(wh_json:get_value([<<"doc">>, <<"enabled">>], R, true))];
         {error, _}=E ->
             E
     end.
@@ -373,12 +375,14 @@ get_resrcs() ->
 %% of resources
 %% @end
 %%--------------------------------------------------------------------
--spec(update_resrc/2 :: (DocId :: binary(), Resrcs :: [#resrc{}]) -> []|[#resrc{}]).
+-spec update_resrc/2 :: (DocId, Resrcs) -> [#resrc{}] when
+      DocId :: binary(),
+      Resrcs :: [#resrc{}].
 update_resrc(DocId, Resrcs) ->
     ?LOG_SYS("received notification that resource ~s has changed", [DocId]),
     case couch_mgr:open_doc(?RESOURCES_DB, DocId) of
         {ok, JObj} ->
-            case whistle_util:is_true(wh_json:get_value(<<"enabled">>, JObj)) of
+            case wh_util:is_true(wh_json:get_value(<<"enabled">>, JObj)) of
                 true ->
                     NewResrc = create_resrc(JObj),
                     ?LOG_SYS("resource ~s updated to rev ~s", [DocId, NewResrc#resrc.rev]),
@@ -400,7 +404,8 @@ update_resrc(DocId, Resrcs) ->
 %% populates it with all enabled gateways
 %% @end
 %%--------------------------------------------------------------------
--spec(create_resrc/1 :: (JObj :: json_object()) -> #resrc{}).
+-spec create_resrc/1 :: (JObj) -> #resrc{} when
+      JObj :: json_object().
 create_resrc(JObj) ->
     Default = #resrc{},
     Id = wh_json:get_value(<<"_id">>, JObj),
@@ -411,7 +416,7 @@ create_resrc(JObj) ->
            ,weight_cost =
                constrain_weight(wh_json:get_value(<<"weight_cost">>, JObj, Default#resrc.weight_cost))
            ,grace_period =
-               whistle_util:to_integer(wh_json:get_value(<<"grace_period">>, JObj, Default#resrc.grace_period))
+               wh_util:to_integer(wh_json:get_value(<<"grace_period">>, JObj, Default#resrc.grace_period))
            ,flags =
                wh_json:get_value(<<"flags">>, JObj, Default#resrc.flags)
            ,rules =
@@ -419,7 +424,7 @@ create_resrc(JObj) ->
                           ,(R2 = compile_rule(R1, Id)) =/= error]
            ,gateways =
                [create_gateway(G, Id) || G <- wh_json:get_value(<<"gateways">>, JObj, []),
-                                         whistle_util:is_true(wh_json:get_value(<<"enabled">>, G, true))]
+                                         wh_util:is_true(wh_json:get_value(<<"enabled">>, G, true))]
           }.
 
 %%--------------------------------------------------------------------
@@ -428,7 +433,9 @@ create_resrc(JObj) ->
 %% Given a gateway JSON object it builds a gateway record
 %% @end
 %%--------------------------------------------------------------------
--spec(create_gateway/2 :: (JObj :: json_object(), Id :: binary()) -> #gateway{}).
+-spec create_gateway/2 :: (JObj, Id) -> #gateway{} when
+      JObj :: json_object(),
+      Id :: binary().
 create_gateway(JObj, Id) ->
     Default = #gateway{},
     #gateway{resource_id = Id
@@ -443,9 +450,9 @@ create_gateway(JObj, Id) ->
              ,route =
                  wh_json:get_value(<<"route">>, JObj, Default#gateway.route)
              ,prefix =
-                 whistle_util:to_binary(wh_json:get_value(<<"prefix">>, JObj, Default#gateway.prefix))
+                 wh_util:to_binary(wh_json:get_value(<<"prefix">>, JObj, Default#gateway.prefix))
              ,suffix =
-                 whistle_util:to_binary(wh_json:get_value(<<"suffix">>, JObj, Default#gateway.suffix))
+                 wh_util:to_binary(wh_json:get_value(<<"suffix">>, JObj, Default#gateway.suffix))
              ,codecs =
                  wh_json:get_value(<<"codecs">>, JObj, Default#gateway.codecs)
              ,bypass_media =
@@ -455,7 +462,7 @@ create_gateway(JObj, Id) ->
              ,sip_headers =
                  wh_json:get_value(<<"custom_sip_headers">>, JObj, Default#gateway.sip_headers)
              ,progress_timeout =
-                 whistle_util:to_integer(wh_json:get_value(<<"progress_timeout">>, JObj, Default#gateway.progress_timeout))
+                 wh_util:to_integer(wh_json:get_value(<<"progress_timeout">>, JObj, Default#gateway.progress_timeout))
             }.
 
 %%--------------------------------------------------------------------
@@ -465,7 +472,9 @@ create_gateway(JObj, Id) ->
 %% which resource it was on).
 %% @end
 %%--------------------------------------------------------------------
--spec(compile_rule/2 :: (Rule :: binary(), Id :: binary()) -> re:mp()|error).
+-spec compile_rule/2 :: (Rule, Id) -> re:mp() | error when
+      Rule :: binary(),
+      Id :: binary().
 compile_rule(Rule, Id) ->
     case re:compile(Rule) of
         {ok, MP} ->
@@ -482,9 +491,10 @@ compile_rule(Rule, Id) ->
 %% constrain the weight on a scale from 1 to 100
 %% @end
 %%--------------------------------------------------------------------
--spec(constrain_weight/1 :: (W :: binary() | integer()) -> integer()).
+-spec constrain_weight/1 :: (W) -> integer() when
+      W :: binary() | integer().
 constrain_weight(W) when not is_integer(W) ->
-    constrain_weight(whistle_util:to_integer(W));
+    constrain_weight(wh_util:to_integer(W));
 constrain_weight(W) when W > 100 -> 100;
 constrain_weight(W) when W < 1 -> 1;
 constrain_weight(W) -> W.
@@ -496,7 +506,9 @@ constrain_weight(W) -> W.
 %% flag provided
 %% @end
 %%--------------------------------------------------------------------
--spec(evaluate_flags/2 :: (F1 :: list(), Resrcs :: [#resrc{}]) -> []|[#resrc{}]).
+-spec evaluate_flags/2 :: (F1, Resrcs) -> [#resrc{}] when
+      F1 :: list(),
+      Resrcs :: [#resrc{}].
 evaluate_flags(F1, Resrcs) ->
     [Resrc || #resrc{flags=F2}=Resrc <- Resrcs
                   ,lists:all(fun(Flag) -> lists:member(Flag, F2) end, F1)].
@@ -509,7 +521,9 @@ evaluate_flags(F1, Resrcs) ->
 %% the weight, the captured component of the number, and the gateways.
 %% @end
 %%--------------------------------------------------------------------
--spec(evaluate_number/2 :: (Number :: binary(), Resrcs :: [#resrc{}]) -> endpoints()).
+-spec evaluate_number/2 :: (Number, Resrcs) -> endpoints() when
+      Number :: binary(),
+      Resrcs :: [#resrc{}].
 evaluate_number(Number, Resrcs) ->
     sort_endpoints(get_endpoints(Number, Resrcs)).
 
@@ -520,7 +534,8 @@ evaluate_number(Number, Resrcs) ->
 %% weight.
 %% @end
 %%--------------------------------------------------------------------
--spec(sort_endpoints/1 :: (Endpoints :: endpoints()) -> endpoints()).
+-spec sort_endpoints/1 :: (Endpoints) -> endpoints() when
+      Endpoints :: endpoints().
 sort_endpoints(Endpoints) ->
     lists:sort(fun({W1, _, _, _}, {W2, _, _, _}) ->
                        W1 =< W2
@@ -531,7 +546,9 @@ sort_endpoints(Endpoints) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(get_endpoints/2 :: (Number :: binary(), Resrcs :: [#resrc{}]) -> endpoints()).
+-spec get_endpoints/2 :: (Number, Resrcs) -> endpoints() when
+      Number :: binary(),
+      Resrcs :: [#resrc{}].
 get_endpoints(Number, Resrcs) ->
     [Endpoint || Endpoint <- lists:map(fun(R) -> get_endpoint(Number, R) end, Resrcs)
                      ,Endpoint =/= no_match].
@@ -542,7 +559,9 @@ get_endpoints(Number, Resrcs) ->
 %% Given a gateway JSON object it builds a gateway record
 %% @end
 %%--------------------------------------------------------------------
--spec(get_endpoint/2 :: (Number :: binary(), Resrc :: #resrc{}) -> endpoint()|no_match).
+-spec get_endpoint/2 :: (Number, Resrc) -> endpoint() | no_match when
+      Number :: binary(),
+      Resrc :: #resrc{}.
 get_endpoint(Number, #resrc{weight_cost=WC, gateways=Gtws, rules=Rules, grace_period=GP}) ->
     case evaluate_rules(Rules, Number) of
         {ok, DestNum} ->
@@ -560,7 +579,9 @@ get_endpoint(Number, #resrc{weight_cost=WC, gateways=Gtws, rules=Rules, grace_pe
 %% number.  In the event that no rules match then return an error.
 %% @end
 %%--------------------------------------------------------------------
--spec(evaluate_rules/2 :: (Regex :: re:mp(), Number:: binary()) -> tuple(ok, binary())|tuple(error, no_match)) .
+-spec evaluate_rules/2 :: (Regex, Number) -> tuple(ok, binary()) | tuple(error, no_match) when
+      Regex :: re:mp(),
+      Number:: binary().
 evaluate_rules([], _) ->
     {error, no_match};
 evaluate_rules([Regex|T], Number) ->
@@ -583,8 +604,10 @@ evaluate_rules([Regex|T], Number) ->
 %% off-net request, endpoints, and our AMQP Q
 %% @end
 %%--------------------------------------------------------------------
--spec(build_loopback_request/3 :: (JObj :: json_object(), Number :: binary(), Q :: binary())
-                                -> proplist()).
+-spec build_loopback_request/3 :: (JObj, Number, Q) -> proplist() when
+      JObj :: json_object(),
+      Number :: binary(),
+      Q :: binary().
 build_loopback_request(JObj, Number, Q) ->
     Endpoints = [{struct, [{<<"Invite-Format">>, <<"route">>}
                            ,{<<"Route">>, <<"loopback/", (Number)/binary>>}
@@ -604,7 +627,7 @@ build_loopback_request(JObj, Number, Q) ->
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
                ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)}
                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
     [ KV || {_, V}=KV <- Command, V =/= undefined ].
 
@@ -616,8 +639,10 @@ build_loopback_request(JObj, Number, Q) ->
 %% off-net request, endpoints, and our AMQP Q
 %% @end
 %%--------------------------------------------------------------------
--spec(build_bridge_request/3 :: (JObj :: json_object(), Endpoints :: endpoints(), Q :: binary())
-                                -> proplist()).
+-spec build_bridge_request/3 :: (JObj, Endpoints, Q) -> proplist() when
+      JObj :: json_object(),
+      Endpoints :: endpoints(),
+      Q :: binary().
 build_bridge_request(JObj, Endpoints, Q) ->
     CCVs = wh_json:set_value(<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)
                              ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
@@ -634,7 +659,7 @@ build_bridge_request(JObj, Endpoints, Q) ->
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
                ,{<<"Custom-Channel-Vars">>, CCVs}
                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
     [ KV || {_, V}=KV <- Command, V =/= undefined ].
 
@@ -645,8 +670,10 @@ build_bridge_request(JObj, Endpoints, Q) ->
 %% off-net request, endpoints, and our AMQP Q
 %% @end
 %%--------------------------------------------------------------------
--spec(build_endpoints/3 :: (Endpoints :: endpoints(), Delay :: non_neg_integer(), Acc :: proplist())
-                           -> proplist()).
+-spec build_endpoints/3 :: (Endpoints, Delay, Acc) -> proplist() when
+      Endpoints :: endpoints(),
+      Delay :: non_neg_integer(),
+      Acc :: proplist().
 build_endpoints([], _, Acc) ->
     lists:reverse(Acc);
 build_endpoints([{_, GracePeriod, Number, [Gateway]}|T], Delay, Acc0) ->
@@ -665,20 +692,22 @@ build_endpoints([{_, GracePeriod, Number, Gateways}|T], Delay, Acc0) ->
 %% Build the endpoint for use in the route request
 %% @end
 %%--------------------------------------------------------------------
--spec(build_endpoint/3 :: (Number :: binary(), Gateway :: #gateway{}, Delay :: non_neg_integer())
-                          -> json_object()).
+-spec build_endpoint/3 :: (Number, Gateway, Delay) -> json_object() when
+      Number :: binary(),
+      Gateway :: #gateway{},
+      Delay :: non_neg_integer().
 build_endpoint(Number, Gateway, Delay) ->
     Route = get_dialstring(Gateway, Number),
     ?LOG("using ~s on ~s delayed by ~b sec", [Route, Gateway#gateway.resource_id, Delay]),
     Prop = [
              {<<"Invite-Format">>, <<"route">>}
             ,{<<"Route">>, get_dialstring(Gateway, Number)}
-            ,{<<"Callee-ID-Number">>, whistle_util:to_binary(Number)}
+            ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
             ,{<<"Caller-ID-Type">>, Gateway#gateway.caller_id_type}
             %% TODO: Do not enable this feature until WHISTLE-408 is completed
-            %%,{<<"Endpoint-Delay">>, whistle_util:to_binary(Delay)}
+            %%,{<<"Endpoint-Delay">>, wh_util:to_binary(Delay)}
             ,{<<"Bypass-Media">>, Gateway#gateway.bypass_media}
-            ,{<<"Endpoint-Progress-Timeout">>, whistle_util:to_binary(Gateway#gateway.progress_timeout)}
+            ,{<<"Endpoint-Progress-Timeout">>, wh_util:to_binary(Gateway#gateway.progress_timeout)}
             ,{<<"Codecs">>, Gateway#gateway.codecs}
             ,{<<"Auth-User">>, Gateway#gateway.username}
             ,{<<"Auth-Password">>, Gateway#gateway.password}
@@ -693,8 +722,10 @@ build_endpoint(Number, Gateway, Delay) ->
 %% Builds a list of tuples for humans from the lookup number request
 %% @end
 %%--------------------------------------------------------------------
--spec(print_endpoints/3 :: (Endpoints :: endpoints(), Delay :: non_neg_integer(), Acc :: list())
-                           -> list()).
+-spec print_endpoints/3 :: (Endpoints, Delay, Acc) -> list() when
+      Endpoints :: endpoints(),
+      Delay :: non_neg_integer(),
+      Acc :: list().
 print_endpoints([], _, Acc) ->
     lists:reverse(Acc);
 print_endpoints([{_, GracePeriod, Number, [Gateway]}|T], Delay, Acc0) ->
@@ -713,8 +744,10 @@ print_endpoints([{_, GracePeriod, Number, Gateways}|T], Delay, Acc0) ->
 %% Builds a tuple for humans from the lookup number request
 %% @end
 %%--------------------------------------------------------------------
--spec(print_endpoint/3 :: (Number :: binary(), Gateway :: #gateway{}, Delay :: non_neg_integer())
-                          -> tuple(binary(), non_neg_integer(), binary())).
+-spec print_endpoint/3 :: (Number, Gateway, Delay) -> tuple(binary(), non_neg_integer(), binary()) when
+      Number :: binary(),
+      Gateway :: #gateway{},
+      Delay :: non_neg_integer().
 print_endpoint(Number, Gateway, Delay) ->
     {Gateway#gateway.resource_id, Delay, get_dialstring(Gateway, Number)}.
 
@@ -724,14 +757,15 @@ print_endpoint(Number, Gateway, Delay) ->
 %% Builds the route dialstring
 %% @end
 %%--------------------------------------------------------------------
--spec(get_dialstring/2 :: (Gateway :: #gateway{}, Number :: binary())
-                          -> binary()).
+-spec get_dialstring/2 :: (Gateway, Number) -> binary() when
+      Gateway :: #gateway{},
+      Number :: binary().
 get_dialstring(#gateway{route=undefined}=Gateway, Number) ->
     <<"sip:"
-      ,(whistle_util:to_binary(Gateway#gateway.prefix))/binary,
+      ,(wh_util:to_binary(Gateway#gateway.prefix))/binary,
       Number/binary
-      ,(whistle_util:to_binary(Gateway#gateway.suffix))/binary
-      ,"@", (whistle_util:to_binary(Gateway#gateway.server))/binary
+      ,(wh_util:to_binary(Gateway#gateway.suffix))/binary
+      ,"@", (wh_util:to_binary(Gateway#gateway.server))/binary
     >>;
 get_dialstring(#gateway{route=Route}, _) ->
     Route.
@@ -742,7 +776,9 @@ get_dialstring(#gateway{route=Route}, _) ->
 %% waits for the return from the bridge request
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_bridge/1 :: (Timeout :: non_neg_integer()) -> tuple(ok|fail|hungup|error, json_object())|tuple(error, timeout)).
+-spec wait_for_bridge/1 :: (Timeout) -> tuple(ok | fail | hungup | error, json_object())
+                                            | tuple(error, timeout) when
+      Timeout :: non_neg_integer().
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
@@ -781,7 +817,9 @@ wait_for_bridge(Timeout) ->
 %% queue of the requestor
 %% @end
 %%--------------------------------------------------------------------
--spec(respond_bridged_to_resource/2 :: (BridgeResp :: json_object(), JObj :: json_object()) -> no_return()).
+-spec respond_bridged_to_resource/2 :: (BridgeResp, JObj) -> ok when
+      BridgeResp :: json_object(),
+      JObj :: json_object().
 respond_bridged_to_resource(BridgeResp, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, BridgeResp),
     Response = [
@@ -794,9 +832,9 @@ respond_bridged_to_resource(BridgeResp, JObj) ->
                 ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, BridgeResp)}
                 ,{<<"Timestamp">>, wh_json:get_value(<<"Timestamp">>, BridgeResp)}
                 ,{<<"Channel-Call-State">>, wh_json:get_value(<<"Channel-Call-State">>, BridgeResp)}
-               | whistle_api:default_headers(Q, <<"resource">>, <<"offnet_resp">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"resource">>, <<"offnet_resp">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:resource_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
+    {ok, Payload} = wh_api:resource_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 %%--------------------------------------------------------------------
@@ -806,19 +844,21 @@ respond_bridged_to_resource(BridgeResp, JObj) ->
 %% the targeted queue of the requestor
 %% @end
 %%--------------------------------------------------------------------
--spec(respond_resource_failed/3 :: (BridgeResp :: json_object()
-                                                  ,Attempts :: non_neg_integer(), JObj :: json_object()) -> no_return()).
+-spec respond_resource_failed/3 :: (BridgeResp, Attempts, JObj) -> ok when
+      BridgeResp :: json_object(),
+      Attempts :: non_neg_integer(),
+      JObj :: json_object().
 respond_resource_failed(BridgeResp, Attempts, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, BridgeResp, <<>>),
     Response = [
                  {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-                ,{<<"Failed-Attempts">>, whistle_util:to_binary(Attempts)}
+                ,{<<"Failed-Attempts">>, wh_util:to_binary(Attempts)}
                 ,{<<"Failure-Message">>,
                   wh_json:get_value(<<"Application-Response">>, BridgeResp, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp))}
                 ,{<<"Failure-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
-               | whistle_api:default_headers(Q, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:resource_error([ KV || {_, V}=KV <- Response, V =/= undefined ]),
+    {ok, Payload} = wh_api:resource_error([ KV || {_, V}=KV <- Response, V =/= undefined ]),
     _ = amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 %%--------------------------------------------------------------------
@@ -828,13 +868,15 @@ respond_resource_failed(BridgeResp, Attempts, JObj) ->
 %% the targeted queue of the requestor
 %% @end
 %%--------------------------------------------------------------------
--spec(respond_erroneously/2 :: (ErrorResp :: json_object(), JObj :: json_object()) -> no_return()).
+-spec respond_erroneously/2 :: (ErrorResp, JObj) -> ok when
+      ErrorResp :: json_object(),
+      JObj :: json_object().
 respond_erroneously(ErrorResp, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, ErrorResp, <<>>),
     Response = [
                  {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                 ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, ErrorResp)}
-               | whistle_api:default_headers(Q, <<"error">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"error">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:error_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
+    {ok, Payload} = wh_api:error_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
     _ = amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).

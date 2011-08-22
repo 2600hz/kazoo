@@ -6,10 +6,9 @@
 
   <body>
     <h1>Upload tester</h1>
-    <form name="uploader" action="http://localhost:8000/v1/accounts/687e71b765b012cfccad7d192d020227/media/687e71b765b012cfccad7d192d022949/raw" method="POST" enctype="multipart/form-data">
+    <form name="uploader" action="http://localhost:8000/v1/account/ACCTID/media/MEDIAID/raw" method="POST" enctype="multipart/form-data">
       <input type="hidden" name="auth_token" value="abc123" />
       <input type="file" name="data[media_file]" />
-
       <input type="submit" />
     </form>
   </body>

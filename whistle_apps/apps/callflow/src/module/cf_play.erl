@@ -28,7 +28,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) 
                 <<"system_media", _/binary>> = Path -> Path;
                 Path ->
                     ?LOG("prepending media ID with /~s/", [AccountId]),
-                    <<$/, (whistle_util:to_binary(AccountId))/binary, $/, Path/binary>>
+                    <<$/, (wh_util:to_binary(AccountId))/binary, $/, Path/binary>>
             end,
     ?LOG("playing media ~s", [Media]),
     b_play(Media, wh_json:get_value(<<"terminators">>, Data), Call),

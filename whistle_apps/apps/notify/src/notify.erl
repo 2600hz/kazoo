@@ -8,21 +8,50 @@
 %%%-------------------------------------------------------------------
 -module(notify).
 
+-include_lib("whistle/include/wh_types.hrl").
+
 -author('James Aimonetti <james@2600hz.org>').
 -export([start/0, start_link/0, stop/0]).
 
-%% @spec start_link() -> {ok,Pid::pid()}
-%% @doc Starts the app for inclusion in a supervisor tree
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the app for inclusion in a supervisor tree
+%% @end
+%%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     start_deps(),
     notify_sup:start_link().
 
-%% @spec start() -> ok
-%% @doc Start the app
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the app
+%% @end
+%%--------------------------------------------------------------------
+-spec start/0 :: () -> ok.
 start() ->
     start_deps(),
     application:start(notify).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Stop the app
+%% @end
+%%--------------------------------------------------------------------
+-spec stop/0 :: () -> ok.
+stop() ->
+    ok = application:stop(notify).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all dependencies for this app are already running
+%% @end
+%%--------------------------------------------------------------------
+-spec start_deps/0 :: () -> ok.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     ensure_started(sasl), % logging
@@ -30,11 +59,14 @@ start_deps() ->
     ensure_started(whistle_amqp), % amqp wrapper
     ensure_started(whistle_couch). % couch wrapper
 
-%% @spec stop() -> ok
-%% @doc Stop the basicapp server.
-stop() ->
-    ok = application:stop(notify).
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Verify that an application is running
+%% @end
+%%--------------------------------------------------------------------
+-spec ensure_started/1 :: (App) -> ok when
+      App :: atom().
 ensure_started(App) ->
     case application:start(App) of
 	ok ->

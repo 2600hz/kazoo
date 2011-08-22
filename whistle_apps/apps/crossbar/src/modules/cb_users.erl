@@ -24,7 +24,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/users.json">>).
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(GROUP_BY_USERNAME, <<"users/group_by_username">>).
 
@@ -117,6 +116,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.users">>, Payloa
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -125,6 +125,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context 
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(hash_password(Context)),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -132,6 +133,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.users">>, [RD, Cont
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(hash_password(Context)),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -139,13 +141,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.users">>, [RD, Conte
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -154,7 +153,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    whapps_util:update_all_accounts(?VIEW_FILE),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -200,8 +198,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.users">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.users">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.users">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -376,8 +373,8 @@ hash_password(#cb_context{doc=JObj}=Context) ->
             Context;
         Password ->
             Creds = <<(wh_json:get_value(<<"username">>, JObj, <<>>))/binary, $:, Password/binary>>,
-            SHA1 = whistle_util:to_binary(whistle_util:to_hex(crypto:sha(Creds))),
-            MD5 = whistle_util:to_binary(whistle_util:to_hex(erlang:md5(Creds))),
+            SHA1 = wh_util:to_binary(wh_util:to_hex(crypto:sha(Creds))),
+            MD5 = wh_util:to_binary(wh_util:to_hex(erlang:md5(Creds))),
             JObj1 = wh_json:set_value(<<"pvt_md5_auth">>, MD5, JObj),
             {struct, Props} = wh_json:set_value(<<"pvt_sha1_auth">>, SHA1, JObj1),
             Context#cb_context{doc={struct, props:delete(<<"password">>, Props)}}

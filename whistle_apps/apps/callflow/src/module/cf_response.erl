@@ -26,5 +26,5 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, ctrl_q=CtrlQ}) ->
     Cause = wh_json:get_value(<<"message">>, Data),
     Media = wh_json:get_value(<<"media">>, Data),
     ?LOG("repsonding to call with ~s ~s", [Code, Cause]),
-    whistle_util:call_response(CallId, CtrlQ, Code, Cause, Media),
+    wh_util:call_response(CallId, CtrlQ, Code, Cause, Media),
     CFPid ! { stop }.

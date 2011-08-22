@@ -21,10 +21,11 @@
 %% @doc Give Prop, the Auth API request, create the API response JSON
 %% @end
 %%--------------------------------------------------------------------
--spec(handle_req/1 :: (JObj :: json_object()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec handle_req/1 :: (JObj) -> {ok, iolist()} | {error, string()} when
+      JObj :: json_object().
 handle_req(JObj) ->
     AuthU = wh_json:get_value(<<"Auth-User">>, JObj),
-    AuthR0 = wh_json:get_value(<<"Auth-Domain">>, JObj),
+    AuthR0 = wh_json:get_value(<<"Auth-Realm">>, JObj),
 
     %% if we're authing, it's an outbound call; no auth means carrier authed by ACL, hence inbound
     %% until we introduce IP-based auth
@@ -52,7 +53,7 @@ handle_req(JObj) ->
 						       ,{<<"Authorizing-ID">>, AcctID}
 						      ]
 					     }}
-		| whistle_api:default_headers(<<>> % serverID is not important, though we may want to define it eventually
+		| wh_api:default_headers(<<>> % serverID is not important, though we may want to define it eventually
 					      ,wh_json:get_value(<<"Event-Category">>, JObj)
 					      ,<<"authn_resp">>
 					      ,?APP_NAME
@@ -64,36 +65,9 @@ handle_req(JObj) ->
 %%% Internal functions
 %%%===================================================================
 
-%% Inbound detection will likely be done in ACLs for carriers, so this function is more a place-holder
-%% than something more meaningful. Auth will likely be bypassed for known carriers, and this function
-%% will most likely return false everytime
-%% -spec(is_inbound/1 :: (Domain :: binary()) -> false).
-  %% is_inbound(Domain) ->
-    %% IP = ts_util:find_ip(Domain),
-    %% Options = [{"key", IP}],
-    %% logger:format_log(info, "TS_AUTH(~p): lookup_carrier using ~p(~p) in ~p~n", [self(), Domain, IP, ?TS_VIEW_CARRIERIP]),
-    %% case couch_mgr:get_results(?TS_DB, ?TS_VIEW_CARRIERIP, Options) of
-    %% 	{error, not_found} ->
-    %% 	    logger:format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
-    %% 	    false;
-    %% 	{error,  db_not_reachable} ->
-    %% 	    logger:format_log(info, "TS_AUTH(~p): No DB accessible~n", [self()]),
-    %% 	    false;
-    %% 	{error, view_not_found} ->
-    %% 	    logger:format_log(info, "TS_AUTH(~p): View ~p missing~n", [self(), ?TS_VIEW_CARRIERIP]),
-    %% 	    false;
-    %% 	{ok, []} ->
-    %% 	    logger:format_log(info, "TS_AUTH(~p): No Carrier matching ~p(~p)~n", [self(), Domain, IP]),
-    %% 	    false;
-    %% 	{ok, [{struct, ViewProp} | _Rest]} ->
-    %% 	    logger:format_log(info, "TS_AUTH(~p): Carrier found for ~p(~p)~n~p~n", [self(), Domain, IP, ViewProp]),
-    %% 	    true;
-    %% 	_Else ->
-    %% 	    logger:format_log(error, "TS_AUTH(~p): Got something unexpected during inbound check~n~p~n", [self(), _Else]),
-    %% 	    false
-    %% end.
-
--spec(lookup_user/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, json_object()) | tuple(error, user_not_found)).
+-spec lookup_user/2 :: (Name, Realm) -> {ok, json_object()} | {error, user_not_found} when
+      Name :: binary(),
+      Realm :: binary().
 lookup_user(Name, Realm) ->
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTHREALM, [{<<"key">>, [Realm, Name]}]) of
 	{error, _}=E -> E;
@@ -103,17 +77,20 @@ lookup_user(Name, Realm) ->
 	    {ok, wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), Auth)}
     end.
 
--spec(response/2 :: (AuthJObj :: json_object() | integer(), Prop :: proplist()) -> tuple(ok, iolist()) | tuple(error, string())).
+-spec response/2 :: (AuthJObj, Prop) -> {ok, iolist()} | {error, string()} when
+      AuthJObj :: json_object(),
+      Prop :: proplist().
 response(?EMPTY_JSON_OBJECT, Prop) ->
     Data = lists:umerge(specific_response(403), Prop),
-    whistle_api:authn_resp(Data);
+    wh_api:authn_resp(Data);
 response(AuthJObj, Prop) ->
     Data = lists:umerge(specific_response(AuthJObj), Prop),
-    whistle_api:authn_resp(Data).
+    wh_api:authn_resp(Data).
 
--spec(specific_response/1 :: (AuthJObj :: json_object() | integer()) -> proplist()).
+-spec specific_response/1 :: (AuthJObj) -> proplist() when
+      AuthJObj :: json_object() | 403.
 specific_response({struct, _}=AuthJObj) ->
-    Method = whistle_util:to_binary(string:to_lower(whistle_util:to_list(wh_json:get_value(<<"auth_method">>, AuthJObj)))),
+    Method = wh_util:to_binary(string:to_lower(wh_util:to_list(wh_json:get_value(<<"auth_method">>, AuthJObj)))),
     [{<<"Auth-Password">>, wh_json:get_value(<<"auth_password">>, AuthJObj)}
      ,{<<"Auth-Method">>, Method}
      ,{<<"Event-Name">>, <<"authn_resp">>}

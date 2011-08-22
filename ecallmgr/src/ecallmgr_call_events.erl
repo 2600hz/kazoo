@@ -47,7 +47,10 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec(start_link/3 :: (Node :: atom(), UUID :: binary(), CtlPid :: pid() | undefined) -> tuple(ok, pid())).
+-spec start_link/3 :: (Node, UUID, CtlPid) -> {ok, pid()} when
+      Node :: atom(),
+      UUID :: binary(),
+      CtlPid :: pid() | undefined.
 start_link(Node, UUID, CtlPid) ->
     gen_server:start_link(?MODULE, [Node, UUID, CtlPid], []).
 
@@ -340,13 +343,13 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                         ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop1)}
                         ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop1)}
 		       | event_specific(EvtName, Prop1) ],
-	    EvtProp1 = EvtProp0 ++ whistle_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
+	    EvtProp1 = EvtProp0 ++ wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
 			   [] -> EvtProp1;
 			   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
 		       end,
 
-	    {ok, JSON} = whistle_api:call_event(EvtProp2),
+	    {ok, JSON} = wh_api:call_event(EvtProp2),
 	    amqp_util:callevt_publish(UUID, JSON, event);
 	false ->
 	    ?LOG("skipped event ~s", [EvtName])
@@ -465,7 +468,7 @@ handle_amqp_prop(<<"status_req">>, JObj, Node, IsNodeUp) ->
     put(callid, CallID),
 
     try
-	true = whistle_api:call_status_req_v(JObj),
+	true = wh_api:call_status_req_v(JObj),
 	?LOG_START("call status request received"),
 
 	{Status, ErrMsg} = case IsNodeUp of
@@ -477,8 +480,8 @@ handle_amqp_prop(<<"status_req">>, JObj, Node, IsNodeUp) ->
 	RespJObj = [{<<"Call-ID">>, CallID}
 		    ,{<<"Status">>, Status}
 		    ,{<<"Node">>, Node}
-		    | whistle_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION) ],
-	{ok, Payload} = whistle_api:call_status_resp([ ErrMsg | RespJObj ]),
+		    | wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION) ],
+	{ok, Payload} = wh_api:call_status_resp([ ErrMsg | RespJObj ]),
 	amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
     catch
 	E:R ->
@@ -487,9 +490,9 @@ handle_amqp_prop(<<"status_req">>, JObj, Node, IsNodeUp) ->
     end.
 
 query_call(Node, CallID) ->
-    case freeswitch:api(Node, uuid_exists, whistle_util:to_list(CallID)) of
+    case freeswitch:api(Node, uuid_exists, wh_util:to_list(CallID)) of
 	{ok, Result} ->
-	    case whistle_util:is_true(Result) of
+	    case wh_util:is_true(Result) of
 		true -> {<<"active">>, {ignore, me}};
 		false -> {<<"down">>, {<<"Error-Msg">>, <<"Call is no longer active">>}}
 	    end;
@@ -529,8 +532,8 @@ send_queued(Node, UUID, [_|_]=Evts, Tries) ->
       Node :: atom(),
       UUID :: binary().
 is_node_up(Node, UUID) ->
-    case ecallmgr_fs_handler:is_node_up(Node) andalso freeswitch:api(Node, uuid_exists, whistle_util:to_list(UUID)) of
-	{ok, IsUp} -> whistle_util:to_boolean(IsUp);
+    case ecallmgr_fs_handler:is_node_up(Node) andalso freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
+	{ok, IsUp} -> wh_util:to_boolean(IsUp);
 	_ -> false
     end.
 
@@ -540,7 +543,7 @@ is_node_up(Node, UUID) ->
       Var :: binary(),
       Default :: binary().
 get_fs_var(Node, UUID, Var, Default) ->
-    case freeswitch:api(Node, uuid_getvar, whistle_util:to_list(<<UUID/binary, " ", Var/binary>>)) of
+    case freeswitch:api(Node, uuid_getvar, wh_util:to_list(<<UUID/binary, " ", Var/binary>>)) of
         {ok, <<"_undef_">>} -> Default;
         {ok, <<"_none_">>} -> Default;
         {ok, Value} -> Value;

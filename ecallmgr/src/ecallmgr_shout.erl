@@ -38,9 +38,13 @@
 
 -spec(start_link/2 :: (Path :: binary(), Type :: srv | recv) -> tuple(ok, pid())).
 start_link(Path, recv) ->
-    proc_lib:start_link(?MODULE, init_recv, [self(), binary:replace(Path, <<".wav">>, <<".mp3">>)]);
+    proc_lib:start_link(?MODULE, init_recv, [self(), binary:replace(Path, <<".wav">>, <<".mp3">>)]
+			,infinity, [{fullsweep_after, 0}]
+		       );
 start_link(Path, srv) ->
-    proc_lib:start_link(?MODULE, init_srv, [self(), binary:replace(Path, <<".wav">>, <<".mp3">>)]).
+    proc_lib:start_link(?MODULE, init_srv, [self(), binary:replace(Path, <<".wav">>, <<".mp3">>)]
+			,infinity, [{fullsweep_after, 0}]
+		       ).
 
 -spec(get_recv_url/1 :: (Srv :: pid()) -> binary() | timeout).
 get_recv_url(Srv) ->
@@ -115,8 +119,8 @@ main_loop(Path, Port, SrvRef, LSock) ->
 	    Sender ! {Ref, Path},
 	    main_loop(Path, Port, SrvRef, LSock);
 	{Sender, Ref, get_recv_url} ->
-	    Host = whistle_util:to_binary(net_adm:localhost()),
-	    PortBin = whistle_util:to_binary(Port),
+	    Host = wh_util:to_binary(net_adm:localhost()),
+	    PortBin = wh_util:to_binary(Port),
 	    Base = filename:basename(Path),
 	    Url = <<"shout://foo:bar@", Host/binary, ":", PortBin/binary, "/fs_", Base/binary>>,
 	    Sender ! {Ref, Url},
@@ -125,8 +129,8 @@ main_loop(Path, Port, SrvRef, LSock) ->
 	    Sender ! {SrvRef, LSock},
 	    main_loop(Path, Port, SrvRef, LSock);
 	{Sender, Ref, get_srv_url} ->
-	    Host = whistle_util:to_binary(net_adm:localhost()),
-	    PortBin = whistle_util:to_binary(Port),
+	    Host = wh_util:to_binary(net_adm:localhost()),
+	    PortBin = wh_util:to_binary(Port),
 	    Base = filename:basename(Path),
 	    Url = <<"shout://", Host/binary, ":", PortBin/binary, "/", Base/binary>>,
 	    Sender ! {Ref, Url},

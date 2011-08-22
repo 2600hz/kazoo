@@ -24,7 +24,9 @@
 %% execution of the first node
 %% @end
 %%--------------------------------------------------------------------
--spec(start_link/2 :: (Call :: #cf_call{}, Flow :: json_object()) -> tuple(ok, pid())).
+-spec start_link/2 :: (Call, Flow) -> tuple(ok, pid()) when
+      Call :: #cf_call{},
+      Flow :: json_object().
 start_link(Call, Flow) ->
     proc_lib:start_link(?MODULE, init, [self(), Call, Flow]).
 
@@ -34,7 +36,10 @@ start_link(Call, Flow) ->
 %% initialize the new call flow execution process
 %% @end
 %%-----------------------------------------------------------------------------
--spec(init/3 :: (Parent :: pid(), Call :: #cf_call{}, Flow :: json_object()) -> no_return()).
+-spec init/3 :: (Parent, Call, Flow) -> no_return() when
+      Parent :: pid(),
+      Call :: #cf_call{},
+      Flow :: json_object().
 init(Parent, #cf_call{authorizing_id=AuthId}=Call, Flow) ->
     process_flag(trap_exit, true),
     _ = call_info(Call),
@@ -51,12 +56,14 @@ init(Parent, #cf_call{authorizing_id=AuthId}=Call, Flow) ->
 %% then waits for the modules reply, unexpected death, or timeout.
 %% @end
 %%--------------------------------------------------------------------
--spec(next/2 :: (Call :: #cf_call{}, Flow :: json_object()) -> no_return()).
+-spec next/2 :: (Call, Flow) -> no_return() when
+      Call :: #cf_call{},
+      Flow :: json_object().
 next(Call, Flow) ->
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow),
     try
-        CF_Module = whistle_util:to_atom(Module, true),
+        CF_Module = wh_util:to_atom(Module, true),
         Pid = spawn_link(CF_Module, handle, [Data, Call]),
         ?LOG("moving to action ~s", [Module]),
         _ = wait(Call#cf_call{last_action=CF_Module}, Flow, Pid)
@@ -74,7 +81,10 @@ next(Call, Flow) ->
 %% unexpectly die, or timeout and advance the call flow accordingly
 %% @end
 %%--------------------------------------------------------------------
--spec(wait/3 :: (Call :: #cf_call{}, Flow :: json_object(), Pid :: pid() | undefined) -> no_return()).
+-spec wait/3 :: (Call, Flow, Pid) -> no_return() when
+      Call :: #cf_call{},
+      Flow :: json_object(),
+      Pid :: undefined | pid().
 wait(Call, Flow, Pid) ->
    receive
        {'EXIT', Pid, Reason} when Reason =/= normal ->
@@ -135,9 +145,10 @@ wait(Call, Flow, Pid) ->
            next(Call, NewFlow);
        {stop} ->
            ?LOG_END("execution has been stopped");
-       {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
-           Msg = mochijson2:decode(Payload),
-           is_pid(Pid) andalso Pid ! {amqp_msg, Msg},
+       {_, #amqp_msg{props = Props, payload = Payload}} when
+             Props#'P_basic'.content_type == <<"application/json">> ->
+           JObj = mochijson2:decode(Payload),
+           is_pid(Pid) andalso Pid ! {amqp_msg, JObj},
            wait(Call, Flow, Pid);
        _Msg ->
            %% dont let the mailbox grow unbounded if
@@ -154,12 +165,13 @@ wait(Call, Flow, Pid) ->
 %% Initializes a AMQP queue and consumer to recieve call events
 %% @end
 %%--------------------------------------------------------------------
--spec(init_amqp/1 :: (Call :: #cf_call{}) -> binary()).
+-spec init_amqp/1 :: (Call) -> binary() when
+      Call :: #cf_call{}.
 init_amqp(#cf_call{call_id=CallId}) ->
     AmqpQ = amqp_util:new_queue(),
-    amqp_util:bind_q_to_callevt(AmqpQ, CallId),
-    amqp_util:bind_q_to_targeted(AmqpQ),
-    amqp_util:basic_consume(AmqpQ),
+    _ = amqp_util:bind_q_to_callevt(AmqpQ, CallId),
+    _ = amqp_util:bind_q_to_targeted(AmqpQ),
+    _ = amqp_util:basic_consume(AmqpQ),
     AmqpQ.
 
 %%-----------------------------------------------------------------------------
@@ -169,7 +181,8 @@ init_amqp(#cf_call{call_id=CallId}) ->
 %% the call that is about to be processed
 %% @end
 %%-----------------------------------------------------------------------------
--spec(call_info/1 :: (Call :: #cf_call{}) -> no_return()).
+-spec call_info/1 :: (Call) -> ok when
+      Call :: #cf_call{}.
 call_info(#cf_call{flow_id=FlowId, call_id=CallId, cid_name=CIDName, cid_number=CIDNumber
                ,request=Request, from=From, to=To, inception=Inception, authorizing_id=AuthorizingId }) ->
     put(callid, CallId),

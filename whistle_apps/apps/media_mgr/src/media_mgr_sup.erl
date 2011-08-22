@@ -35,13 +35,12 @@ upgrade() ->
     New = sets:from_list([Name || {Name, _, _, _, _, _} <- Specs]),
     Kill = sets:subtract(Old, New),
 
-    sets:fold(fun (Id, ok) ->
-                      supervisor:terminate_child(?MODULE, Id),
-                      supervisor:delete_child(?MODULE, Id),
-                      ok
+    sets:fold(fun (Id, _) ->
+                      _ = supervisor:terminate_child(?MODULE, Id),
+                      supervisor:delete_child(?MODULE, Id)
               end, ok, Kill),
 
-    [supervisor:start_child(?MODULE, Spec) || Spec <- Specs],
+    _ = [supervisor:start_child(?MODULE, Spec) || Spec <- Specs],
     ok.
 
 

@@ -5,12 +5,10 @@
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
--spec(start_link/0 :: () -> tuple(ok, pid()) | ignore | tuple(error, term())).
+-spec start_link/0 :: () -> {ok, pid()} | ignore | {error, term()}.
 start_link() ->
     start_deps(),
-    Res = trunkstore_sup:start_link(),
-    spawn(fun() -> [ ts_responder_sup:start_handler() || _ <- [1,2,3] ] end),
-    Res.
+    trunkstore_sup:start_link().
 
 %% @spec start() -> ok
 %% @doc Start the callmgr server.

@@ -21,7 +21,7 @@
 -spec default/0 :: () -> {boolean(), []}.
 default() ->
     case ecallmgr_util:get_setting(authz_default, deny) of
-	allow -> {true, []};
+	{ok, allow} -> {true, []};
 	_ -> {false, []}
     end.
 
@@ -32,7 +32,7 @@ default() ->
 authorize(FSID, CallID, FSData) ->
     proc_lib:start_link(?MODULE, init_authorize, [self(), FSID, CallID, FSData]).
 
--spec is_authorized/1 :: (Pid) -> {boolean(), proplist()} when
+-spec is_authorized/1 :: (Pid) -> {boolean(), json_object()} when
       Pid :: pid() | undefined.
 is_authorized(Pid) when is_pid(Pid) ->
     Ref = make_ref(),
@@ -59,7 +59,7 @@ init_authorize(Parent, FSID, CallID, FSData) ->
 
     {IsAuth, CCV} = try
 			{ok, RespJObj} = ecallmgr_amqp_pool:authz_req(ReqProp, 2000),
-			{whistle_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj))
+			{wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj))
 			 ,wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, [])}
 		    catch
 			_:_ ->
@@ -71,7 +71,7 @@ init_authorize(Parent, FSID, CallID, FSData) ->
 
 -spec authorize_loop/2 :: (IsAuth, CCV) -> no_return() when
       IsAuth :: boolean(),
-      CCV :: proplist().
+      CCV :: json_object().
 authorize_loop(IsAuth, CCV) ->
     ?LOG("Is Authorized: ~s", [IsAuth]),
     receive
@@ -92,6 +92,7 @@ request(FSID, CallID, FSData) ->
      ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
      ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
      ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
+     ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
      ,{<<"Call-ID">>, CallID}
      ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
-     | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"authz_req">>, ?APP_NAME, ?APP_VERSION)].
+     | wh_api:default_headers(<<>>, <<"dialplan">>, <<"authz_req">>, ?APP_NAME, ?APP_VERSION)].

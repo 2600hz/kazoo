@@ -25,11 +25,9 @@
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/vmboxes.json">>).
 -define(CB_LIST, <<"vmboxes/crossbar_listing">>).
 
 -define(MESSAGES_RESOURCE, <<"messages">>).
--define(MESSAGE_AUDIO_EXT, <<".mp3">>).
 -define(BIN_DATA, <<"raw">>).
 -define(MEDIA_MIME_TYPES, [ "application/octet-stream"]).
 
@@ -128,8 +126,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.vmboxes">>, Payl
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.vmboxes">>, [RD, Context | Params]}, State) ->
-
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -138,16 +136,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.vmboxes">>, [RD, Contex
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.vmboxes">>, [RD, Context | Params]}, State) ->
     case Params of
-	[_, ?MESSAGES_RESOURCE, AttachmentId, ?BIN_DATA] ->
+	[_, ?MESSAGES_RESOURCE, _MediaId, ?BIN_DATA] ->
 	    spawn(fun() ->
-			  Name = attachment_name(AttachmentId),
-			  Context1 = Context#cb_context{resp_headers = [
-				      {<<"Content-Type">> ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc)},
-				      {<<"Content-Disposition">>, << "Content-Disposition: attachment; filename=", Name/binary>>},
-				      {<<"Content-Length">> ,whistle_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
-				      | Context#cb_context.resp_headers]},
-
-			  Pid ! {binding_result, true, [RD, Context1, Params]}
+                          crossbar_util:put_reqid(Context),
+			  Pid ! {binding_result, true, [RD, Context, Params]}
 
 		  end);
 	_ ->
@@ -158,8 +150,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.vmboxes">>, [RD, Con
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.vmboxes">>, [RD, Context | Params]}, State) ->
-
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  Context1 = crossbar_doc:save(Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -167,6 +159,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.vmboxes">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.vmboxes">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
 		  Context1 = crossbar_doc:save(Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -176,19 +169,17 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.vmboxes">>, [RD, 
     case Params of
 	[_, ?MESSAGES_RESOURCE, _] ->
 	    spawn(fun() ->
+                          crossbar_util:put_reqid(Context),
 			  Context1 = crossbar_doc:save(Context),
 			  Pid ! {binding_result, true, [RD, Context1, Params]}
 		  end);
 	_ ->
 	    spawn(fun() ->
+                          crossbar_util:put_reqid(Context),
 			  Context1 = crossbar_doc:delete(Context),
 			  Pid ! {binding_result, true, [RD, Context1, Params]}
 		  end)
     end,
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
 handle_info({binding_fired, Pid, _false, Payload}, State) ->
@@ -197,7 +188,6 @@ handle_info({binding_fired, Pid, _false, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    whapps_util:update_all_accounts(?VIEW_FILE),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -242,12 +232,9 @@ code_change(_OldVsn, State, _Extra) ->
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.vmboxes">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.vmboxes">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.vmboxes">>),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.vmboxes">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.vmboxes">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.vmboxes">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.vmboxes">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.vmboxes">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -326,21 +313,16 @@ validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
     update_vmbox(DocId, Context);
 validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
     load_vmbox(DocId, Context);
-
 validate([DocId, ?MESSAGES_RESOURCE], #cb_context{req_verb = <<"get">>}=Context) ->
     load_message_summary(DocId, Context);
-
-validate([DocId, ?MESSAGES_RESOURCE, AttachmentId], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_message(DocId, AttachmentId, Context);
-
-validate([DocId, ?MESSAGES_RESOURCE, AttachmentId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_message(DocId, AttachmentId, Context);
-
-validate([DocId, ?MESSAGES_RESOURCE, AttachmentId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    delete_message(DocId, AttachmentId, Context);
-
-validate([DocId, ?MESSAGES_RESOURCE, AttachmentId, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
-    get_message_binary(DocId, AttachmentId, Context);
+validate([DocId, ?MESSAGES_RESOURCE, MediaId], #cb_context{req_verb = <<"get">>}=Context) ->
+    load_message(DocId, MediaId, Context);
+validate([DocId, ?MESSAGES_RESOURCE, MediaId], #cb_context{req_verb = <<"post">>}=Context) ->
+    update_message(DocId, MediaId, Context);
+validate([DocId, ?MESSAGES_RESOURCE, MediaId], #cb_context{req_verb = <<"delete">>}=Context) ->
+    delete_message(DocId, MediaId, Context);
+validate([_, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
+    get_media_binary(MediaId, Context);
 
 validate(_Other, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -429,37 +411,40 @@ is_valid_doc(JObj) ->
 %%--------------------------------------------------------------------
 -spec(load_message_summary/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_message_summary(DocId, Context) ->
-    case load_messages_from_doc(DocId, Context) of
+    case load_messages(DocId, Context) of
 	[] ->
-	    crossbar_util:response(error, no_messages_attached, Context);
+	    crossbar_util:response(error, no_messages, Context);
 	[?EMPTY_JSON_OBJECT] ->
-	    crossbar_util:response(error, no_messages_attached, Context);
+	    crossbar_util:response(error, no_messages, Context);
 	Messages ->
 	    crossbar_util:response(Messages,Context)
     end.
 
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Get message by its attachment ID (ie attachmentid.wav)
+%% Get associated  Messages as a List of json obj
 %% @end
 %%--------------------------------------------------------------------
--spec(load_message/3 :: (DocId :: binary(), AttachmentId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-load_message(DocId, AttachmentId, Context) ->
-    Messages = load_messages_from_doc(DocId, Context),
-    Attachment = attachment_name(AttachmentId),
+-spec(load_messages/2 :: (DocId :: binary(), Context :: #cb_context{}) -> json_objects()).
+load_messages(DocId, Context) ->
+    #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
+    wh_json:get_value(<<"messages">>, Doc).
 
-    case load_message(Attachment, Messages) of
-	{struct, _}=Message ->
-	    crossbar_util:response(Message,Context);
-	no_message ->
-	    crossbar_util:response_bad_identifier(AttachmentId, Context)
-    end.
-
-load_message(Attachment, Messages) ->
-    case [Message || Message <- Messages, wh_json:get_value(<<"attachment">>, Message ) =:= Attachment] of
-	[Mess | _] -> Mess;
-	[] -> no_message
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Get message by its media ID
+%% @end
+%%--------------------------------------------------------------------
+-spec(load_message/3 :: (DocId :: binary(), MediaId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+load_message(DocId, MediaId, Context) ->
+    case lists:filter(fun(M) -> wh_json:get_value(<<"media_id">>, M) =:= MediaId end, load_messages(DocId, Context)) of
+	[M] ->
+	    crossbar_util:response(M,Context);
+	_ ->
+	    crossbar_util:response_bad_identifier(MediaId, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -468,36 +453,38 @@ load_message(Attachment, Messages) ->
 %% Get message binary content so it can be downloaded
 %% @end
 %%--------------------------------------------------------------------
--spec(get_message_binary/3 :: (DocId :: binary(), AttachmentId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-get_message_binary(DocId, AttachmentId, Context) ->
-    crossbar_doc:load_attachment(DocId, attachment_name(AttachmentId), Context).
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get full attachment name from its ID
-%% @end
-%%--------------------------------------------------------------------
--spec(attachment_name/1 :: (AttachmentId :: binary()) -> binary()).
-attachment_name(AttachmentId) ->
-    <<AttachmentId/binary, ?MESSAGE_AUDIO_EXT/binary>>.
+-spec(get_media_binary/2 :: (MediaId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+get_media_binary(MediaId, #cb_context{db_name=Db}=Context) ->
+    {Filename, Metadata} = get_attachment_data(Db, MediaId, first),
+    Ctx = crossbar_doc:load_attachment(MediaId, Filename, Context),
+    Ctx#cb_context{resp_headers = [
+       {<<"Content-Type">>, wh_json:get_value(<<"content-type">>, Metadata)},
+       {<<"Content-Disposition">>, <<"Content-Disposition: attachment; filename=", Filename/binary>>},
+       {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value(<<"length">>, Metadata))}
+       | Context#cb_context.resp_headers]}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% DELETE the message (set folder prop to deleted)
 %% @end
-%%--------------------------------------------------------------------\
--spec(delete_message/3 :: (DocId :: binary(), AttachmentId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-delete_message(DocId, AttachmentId, Context) ->
+%%--------------------------------------------------------------------
+-spec(delete_message/3 :: (DocId :: binary(), MediaId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+delete_message(DocId, MediaId, #cb_context{db_name=Db}=Context) ->
     Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
     Messages = wh_json:get_value(<<"messages">>, Doc),
 
-    case get_message_index(AttachmentId, Messages) of
+    case get_message_index(MediaId, Messages) of
 	Index when Index > 0 ->
 	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], <<"deleted">>, Doc),
+
+	    %% let's not forget the associated private_media doc
+	    {ok, D} = couch_mgr:open_doc(Db, MediaId),
+	    couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deleted">>, true, D)),
+
 	    Context1#cb_context{doc=Doc1};
 	0 ->
-	    crossbar_util:response_bad_identifier(AttachmentId, Context)
+	    crossbar_util:response_bad_identifier(MediaId, Context)
     end.
 
 
@@ -508,9 +495,9 @@ delete_message(DocId, AttachmentId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(get_message_index/2 :: (AttachmentId :: binary(), Messages :: json_objects()) -> non_neg_integer()).
-get_message_index(AttachmentId, Messages) ->
-    find_index(AttachmentId, Messages, 1).
+-spec(get_message_index/2 :: (MediaId :: binary(), Messages :: json_objects()) -> non_neg_integer()).
+get_message_index(MediaId, Messages) ->
+    find_index(MediaId, Messages, 1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -519,15 +506,13 @@ get_message_index(AttachmentId, Messages) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(find_index/3 :: (AttachmentId :: binary(), list(), Index :: non_neg_integer()) -> non_neg_integer()).
-find_index(_, [], _) ->
-    0;
-find_index(AttachmentId, [Messages | Other], Index) ->
-    case wh_json:get_value(<<"attachment">>, Messages) =:= attachment_name(AttachmentId) of
+-spec(find_index/3 :: (MediaId :: binary(), list(), Index :: non_neg_integer()) -> non_neg_integer()).
+find_index(MediaId, [Message | Other], Index) ->
+    case wh_json:get_value(<<"media_id">>, Message) =:= MediaId of
 	true ->
 	    Index;
 	false ->
-	    find_index(AttachmentId, Other, Index + 1)
+	    find_index(MediaId, Other, Index + 1)
     end.
 
 %%--------------------------------------------------------------------
@@ -537,35 +522,48 @@ find_index(AttachmentId, [Messages | Other], Index) ->
 %% Only Folder prop is editable atm
 %% @end
 %%--------------------------------------------------------------------
--spec(update_message/3 :: (DocId :: binary(), AttachmentId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_message(DocId, AttachmentId, #cb_context{req_data=JObj}=Context) ->
+-spec(update_message/3 :: (DocId :: binary(), MediaId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+update_message(DocId, MediaId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, _} ->
-	    update_message1(DocId, AttachmentId, Context)
+	    update_message1(DocId, MediaId, Context)
     end.
 
-update_message1(DocId, AttachmentId, Context) ->
+update_message1(DocId, MediaId, Context) ->
     RequestedValue = wh_json:get_value(<<"folder">>, Context#cb_context.req_data),
     Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
     Messages = wh_json:get_value(<<"messages">>, Doc),
 
-    case get_message_index(AttachmentId, Messages) of
+    case get_message_index(MediaId, Messages) of
   	Index when Index > 0 ->
 	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], RequestedValue, Doc),
 	    Context1#cb_context{doc=Doc1};
 	0 ->
-	    crossbar_util:response_bad_identifier(AttachmentId, Context)
+	    crossbar_util:response_bad_identifier(MediaId, Context)
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Returns associated Messages as a List of json obj
+%% Find the first attachment for this private media doc
 %% @end
 %%--------------------------------------------------------------------
--spec(load_messages_from_doc/2 :: (DocId :: binary(), Context :: #cb_context{}) -> json_objects()).
-load_messages_from_doc(DocId, Context) ->
-    #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
-    wh_json:get_value(<<"messages">>, Doc).
+-spec(get_attachment_data/3 :: (binary(), binary(), first) -> tuple(binary(), json_object())).
+get_attachment_data(Db, MediaId, first) ->
+    DbName = case couch_mgr:db_exists(Db) of
+                 true -> Db;
+                 false -> whapps_util:get_db_name(Db, encoded)
+             end,
+    case couch_mgr:open_doc(DbName, MediaId) of
+	{ok, JObj} ->
+	    case wh_json:get_value(<<"_attachments">>, JObj, false) of
+		false ->
+		    no_data;
+		{struct, [{AttachmentName, MetaData} | _]} ->
+                    {AttachmentName, MetaData}
+            end;
+        _->
+            not_found
+    end.

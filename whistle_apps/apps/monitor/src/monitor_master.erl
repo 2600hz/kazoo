@@ -15,7 +15,7 @@
 
 -import(logger, [format_log/3]).
 -import(proplists, [get_value/2, get_value/3]).
--import(whistle_util, [to_binary/1]).
+-import(wh_util, [to_binary/1]).
 
 %% API
 -export([start_link/1]).

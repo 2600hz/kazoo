@@ -102,7 +102,8 @@ get_db_report() ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("Started compactor"),
-    {ok, ?DEFAULT_THRESHOLDS, ?TIMEOUT}.
+    {ok, ?DEFAULT_THRESHOLDS}.
+%{ok, ?DEFAULT_THRESHOLDS, ?TIMEOUT}.
 
 handle_call(get_thresholds, _From, Thresholds) ->
     {reply, orddict:to_list(Thresholds), Thresholds};
@@ -185,9 +186,19 @@ compact_nodes(Thresholds) ->
 	{ok, []} ->
 	    ?LOG_SYS("No Nodes to compact");
 	{ok, Nodes} ->
-	    NodesData = [ get_node_data(wh_json:get_value(<<"id">>, Node), Thresholds) || Node <- Nodes ],
-	    put(callid, undefined),
-	    [ spawn(fun() -> [ compact(D) || D <- NodeData ] end) || NodeData <- NodesData ];
+	    [ begin
+		  try
+		      Data = get_node_data(wh_json:get_value(<<"id">>, Node), Thresholds),
+		      [compact(D) || D <- Data]
+		  catch
+		      E:R ->
+			  ST = erlang:get_stacktrace(),
+			  ?LOG_SYS("Error getting node data for ~s: ~p:~p", [wh_json:get_value(<<"id">>, Node), E, R]),
+			  _ = [?LOG("stacktrace: ~p", [ST1]) || ST1 <- ST],
+			  []
+		  end
+	      end
+	      || Node <- Nodes ];
 	{error, _E} ->
 	    ?LOG_SYS("Failed to lookup nodes: ~p", [_E])
     end.
@@ -204,7 +215,10 @@ get_db_report(From, Thresholds) ->
 	    NodesData = [ begin
 			      NodeId = wh_json:get_value(<<"id">>, Node),
 			      Data = get_node_data(NodeId, Thresholds),
-			      {NodeId, [ get_report_data(D) || D <- lists:usort(fun sort_report_data/2, Data) ]}
+			      ?LOG_SYS("Got ~b entries for node ~s", [length(Data), NodeId]),
+			      try {NodeId, [ get_report_data(D) || D <- lists:usort(fun sort_report_data/2, Data) ]}
+			      catch E:R -> ?LOG_SYS("Error: ~p:~p", [E, R]), ?LOG("Stacktrace: ~p", [erlang:get_stacktrace()]), {NodeId, []}
+			      end
 			  end
 			  || Node <- Nodes ],
 	    gen_server:reply(From, NodesData);
@@ -240,8 +254,8 @@ sort_report_data(#db_data{disk_size=DiskA}, #db_data{disk_size=DiskB}) ->
 get_node_data(NodeBin, Thresholds) ->
     put(callid, NodeBin),
     [_Name, H] = binary:split(NodeBin, <<"@">>),
-    Host = whistle_util:to_list(H),
-    Node = whistle_util:to_atom(NodeBin, true),
+    Host = wh_util:to_list(H),
+    Node = wh_util:to_atom(NodeBin, true),
     ?LOG_SYS("Trying to contact host ~s (node ~s)", [Host, _Name]),
 
     {User,Pass} = couch_mgr:get_creds(),
@@ -257,6 +271,7 @@ get_node_data(NodeBin, Thresholds) ->
       Pass :: string(),
       AdminPort :: non_neg_integer().
 get_conns(Host, Port, User, Pass, AdminPort) ->
+    ?LOG_SYS("get_conns: H: ~s P: ~b U: ~s P: ~s AP: ~b", [Host, Port, User, Pass, AdminPort]),
     {couch_util:get_new_connection(Host, Port, User, Pass),
      couch_util:get_new_connection(Host, AdminPort, User, Pass)}.
 
@@ -281,7 +296,7 @@ get_ports(Node, pong) ->
 		   couch_mgr:get_port();
 	       P ->
 		   ?LOG_SYS("Got port ~s", [P]),
-		   whistle_util:to_integer(P)
+		   wh_util:to_integer(P)
 	   end,
     AdminPort = case rpc:call(Node, couch_config, get, ["httpd", "port"]) of
 		    {badrpc, _} ->
@@ -289,7 +304,7 @@ get_ports(Node, pong) ->
 			couch_mgr:get_admin_port();
 		    AP ->
 			?LOG_SYS("Got admin port ~s", [AP]),
-			whistle_util:to_integer(AP)
+			wh_util:to_integer(AP)
 		end,
     {Port, AdminPort};
 get_ports(_Node, pang) ->
@@ -303,8 +318,18 @@ get_ports(_Node, pang) ->
       Thresholds :: thresholds().
 get_dbs_and_designs(Node, Conn, AdminConn, Thresholds) ->
     case get_dbs(Node, Conn, AdminConn, Thresholds) of
-	[] -> [];
-	DBs -> get_design_docs(Node, Conn, AdminConn, DBs, Thresholds)
+	[] -> ?LOG_SYS("No DB Data loaded for ~s", [Node]), [];
+	DBs ->
+	    ?LOG_SYS("Got DB data for ~b DBs", [length(DBs)]),
+	    try
+		get_design_docs(Node, Conn, AdminConn, DBs, Thresholds)
+	    catch
+		E:R ->
+		    ST = erlang:get_stacktrace(),
+		    ?LOG_SYS("error getting design docs: ~p:~p", [E, R]),
+		    _ = [?LOG("stacktrace: ~p", [ST1]) || ST1 <- ST],
+		    DBs
+	    end
     end.
 
 -spec get_dbs/4 :: (Node, Conn, AdminConn, Thresholds) -> [#db_data{} | {db_error, binary()},...] | [] when
@@ -332,16 +357,20 @@ create_db_data(Node, Conn, AdminConn, DBName, Thresholds) ->
 	?LOG_SYS("Create db data for ~s" , [DBName]),
 	{ok, DBData} = get_db_data(AdminConn, DBName),
 
-	DiskSize = whistle_util:to_integer(wh_json:get_value(<<"disk_size">>, DBData, -1)),
-	DataSize = whistle_util:to_integer(wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1)),
-	CompactIsRunning = whistle_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
+	DiskSize = wh_util:to_integer(wh_json:get_value(<<"disk_size">>, DBData, -1)),
+	DataSize = wh_util:to_integer(wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1)),
+	CompactIsRunning = wh_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
 
 	{_MDS, Ratio} = orddict:fold(fun(K, V, Acc) -> filter_thresholds(K, V, Acc, DiskSize) end, {?LARGEST_MDS,1}, Thresholds),
-	DoCompaction = ((DiskSize div DataSize) > Ratio) andalso (not CompactIsRunning),
 
 	?LOG_SYS("Data for ~s: Dataset: ~b Disksize: ~b", [DBName, DataSize, DiskSize]),
 	?LOG_SYS("Using MDS: ~b with ratio ~b", [_MDS, Ratio]),
 	?LOG_SYS("Compact is running already: ~s", [CompactIsRunning]),
+
+	DoCompaction = try ((DiskSize div DataSize) > Ratio) andalso (not CompactIsRunning)
+		       catch _:_ -> ?LOG_SYS("Err determining whether to compact"), true
+		       end,
+
 	?LOG_SYS("Do Compaction: ~s", [DoCompaction]),
 
 	#db_data{db_name=DBName
@@ -370,19 +399,26 @@ get_design_docs(Node, Conn, AdminConn, DBData, Thresholds) ->
 
     lists:foldr(fun({DBName, DesignID}, Acc) ->
 			case get_design_data(Conn, DBName, DesignID) of
-			    {error, failed} -> Acc;
+			    {error, failed} ->
+				?LOG_SYS("Failed to get design data for ~s / ~s", [DBName, DesignID]), Acc;
 			    {ok, DDocData} ->
-				DataSize = whistle_util:to_integer(wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, -1)),
-				DiskSize = whistle_util:to_integer(wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1)),
-				CompactIsRunning = whistle_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
+				DataSize = wh_util:to_integer(wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, -1)),
+				DiskSize = wh_util:to_integer(wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1)),
+				CompactIsRunning = wh_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
+
+				?LOG_SYS("design info for ~s:~s: Dataset: ~b Disksize: ~b", [DesignID, DBName, DataSize, DiskSize]),
+				?LOG_SYS("Compact is running already: ~s", [CompactIsRunning]),
 
 				{_MDS, Ratio} = orddict:fold(fun(K, V, AccT) -> filter_thresholds(K, V, AccT, DiskSize) end, {?LARGEST_MDS,1}, Thresholds),
 
-				DoCompaction = ((DiskSize div DataSize) > Ratio) andalso (not CompactIsRunning),
-
-				?LOG_SYS("design info for ~s:~s: Dataset: ~b Disksize: ~b", [DesignID, DBName, DataSize, DiskSize]),
 				?LOG_SYS("Using MDS: ~b with ratio ~b", [_MDS, Ratio]),
 				?LOG_SYS("Compact is running already: ~s", [CompactIsRunning]),
+
+				DoCompaction = try ((DiskSize div DataSize) > Ratio) andalso (not CompactIsRunning)
+					       catch _:_ -> ?LOG_SYS("Err determining whether to compact"), true
+					       end,
+
+				?LOG_SYS("Do Compaction: ~s", [DoCompaction]),
 
 				Shards = find_shards(DBName, DBData),
 
@@ -421,7 +457,8 @@ get_design_data(Conn, DB, Design) ->
       DB :: binary(),
       Design :: binary(),
       Cnt :: non_neg_integer().
-get_design_data(_C, _DB, _Design, Cnt) when Cnt > 10 ->
+get_design_data(C, _DB, _Design, Cnt) when Cnt > 10 ->
+    ?LOG_SYS("Failed to find design data for ~s / ~s on ~s after 10 tries", [_DB, _Design, couchbeam:server_url(C)]),
     {error, failed};
 get_design_data(Conn, DB, Design, Cnt) ->
     case couch_util:design_info(Conn, DB, Design) of
@@ -439,8 +476,8 @@ get_db_data(AdminConn, DB) ->
       AdminConn :: #server{},
       DB :: binary(),
       Cnt :: non_neg_integer().
-get_db_data(_AC, _DB, Cnt) when Cnt > 10 ->
-    ?LOG_SYS("Failed to find data for db ~s", [_DB]),
+get_db_data(AC, _DB, Cnt) when Cnt > 10 ->
+    ?LOG_SYS("Failed to find data for db ~s on ~s after 10 tries", [_DB, couchbeam:server_url(AC)]),
     {error, failed};
 get_db_data(AC, DB, Cnt) ->
     case couch_util:db_info(AC, DB) of
@@ -458,8 +495,8 @@ get_ddocs(Conn, DB) ->
       Conn :: #server{},
       DB :: binary(),
       Cnt :: non_neg_integer().
-get_ddocs(_C, _DB, Cnt) when Cnt > 10 ->
-    ?LOG_SYS("Failed to get design docs for ~s", [_DB]),
+get_ddocs(C, _DB, Cnt) when Cnt > 10 ->
+    ?LOG_SYS("Failed to find design docs for db ~s on ~s after 10 tries", [_DB, couchbeam:server_url(C)]),
     {error, failed};
 get_ddocs(Conn, DB, Cnt) ->
     case couch_util:all_design_docs(Conn, DB) of
@@ -470,10 +507,10 @@ get_ddocs(Conn, DB, Cnt) ->
 -spec compact/1 :: (Data) -> ok when
       Data :: #db_data{} | #design_data{}.
 compact(#db_data{db_name=DBName, node=Node, admin_conn=AC, do_compaction=true}) ->
-    timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
+    timer:sleep(random:uniform(5)*1000), %sleep between 1 and 5 seconds
     ?LOG_SYS("Compact DB ~s on ~s: ~p and VC: ~p", [DBName, Node, couch_util:db_compact(AC, DBName), couch_util:db_view_cleanup(AC, DBName)]);
 compact(#design_data{shards=Shards, node=Node, design_name=Design, admin_conn=AC, do_compaction=true}) ->
-    timer:sleep(random:uniform(10)*1000), %sleep between 1 and 10 seconds
+    timer:sleep(random:uniform(5)*1000), %sleep between 1 and 5 seconds
     [ ?LOG_SYS("Compact design ~s for ~s on ~s: ~p", [Design, DBName, Node, couch_util:design_compact(AC, DBName, Design)]) || DBName <- Shards ];
 compact(_) -> ok.
 
@@ -519,3 +556,8 @@ is_the_db(_,_) ->
 filter_thresholds(K, V, {AccK, _}, DiskSize) when K > DiskSize andalso K < AccK ->
     {K,V};
 filter_thresholds(_, _, Acc, _) -> Acc.
+
+%% release file descriptors so disk usage is reported more accurately
+%% replace inner bit with couch_file:close(Pid)
+
+%%  lists:foreach(fun(Pid) -> case erlang:process_info(Pid, dictionary) of {dictionary, D} -> case couch_util:get_value('$initial_call', D) of {couch_file,init,1} -> io:format("~p ~p~n", [Pid, couch_file:bytes(Pid)]); _ -> false end; _ -> false end end, processes()).

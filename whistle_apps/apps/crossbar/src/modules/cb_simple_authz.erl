@@ -102,27 +102,35 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"accounts">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{req_nouns=[{<<"accounts">>,[]}], req_verb=Verb}=Context}}, State) ->
     %% Only sys-admins can do this?
-    Pid ! {binding_result, false, {RD, Context}},
+    Pid ! {binding_result, Verb =:= <<"put">>, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{auth_doc=AuthDoc, req_nouns=Nouns}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{auth_doc=AuthDoc, req_nouns=Nouns}=Context}}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   case props:get_value(<<"accounts">>, Nouns) of
                       undefined ->
                           Pid ! {binding_result, false, {RD, Context}};
                       Params ->
                           AuthAccountId = wh_json:get_value(<<"account_id">>, AuthDoc),
                           ReqAccountId = hd(Params),
-                          case couch_mgr:get_results(?ACCOUNTS_DB, ?VIEW_SUMMARY, [
-                                                                                {<<"startkey">>, [ReqAccountId]}
-                                                                                ,{<<"endkey">>, [ReqAccountId, ?EMPTY_JSON_OBJECT ] } ] ) of
+                          case couch_mgr:get_results(?ACCOUNTS_DB, ?VIEW_SUMMARY, [{<<"startkey">>, [ReqAccountId]}
+                                                                                   ,{<<"endkey">>, [ReqAccountId, ?EMPTY_JSON_OBJECT ]}]) of
                               {ok, []} ->
                                   Pid ! {binding_result, false, {RD, Context}};
                               {ok, [JObj]} ->
                                   [_, Tree] = wh_json:get_value(<<"key">>, JObj),
-                                  Pid ! {binding_result, lists:member(AuthAccountId, Tree), {RD, Context}};
+                                  case lists:member(AuthAccountId, Tree) of
+                                      true ->
+                                          ?LOG("authorizing request, account ~s has access to ~s", [AuthAccountId, ReqAccountId]),
+                                          Pid ! {binding_result, true, {RD, Context}};
+                                      false ->
+                                          Pid ! {binding_result, false, {RD, Context}}
+                                  end;
                               {error, _} ->
                                   Pid ! {binding_result, false, {RD, Context}}
                           end
@@ -169,6 +177,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec bind_to_crossbar/0 :: () -> no_return().
 bind_to_crossbar() ->
     crossbar_bindings:bind(<<"v1_resource.authorize">>).

@@ -129,7 +129,7 @@ handle_info(timeout, #state{amqp_q = <<>>, ports=Ps, port_range=PortRange}=S) ->
     catch
 	_:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
-            timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+            {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    Ps2 = updated_reserved_ports(Ps, PortRange),
 	    {noreply, S#state{amqp_q = <<>>, ports=Ps2}}
     end;
@@ -143,18 +143,18 @@ handle_info({amqp_reconnect, T}, State) ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
-                    timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
-                    timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
     end;
 
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, State#state{amqp_q = <<>>}};
 
 handle_info({_, #amqp_msg{payload = Payload}}, #state{ports=Ports, port_range=PortRange, streams=Streams}=State) ->
@@ -180,7 +180,7 @@ handle_info({_, #amqp_msg{payload = Payload}}, #state{ports=Ports, port_range=Po
 
     false = queue:is_empty(Ps2),
 
-    {noreply, State#state{ports=Ps2}};
+    {noreply, State#state{ports=Ps2}, hibernate};
 
 handle_info({'DOWN', Ref, process, ShoutSrv, Info}, #state{streams=Ss}=S) ->
     case lists:keyfind(ShoutSrv, 2, Ss) of
@@ -248,24 +248,24 @@ start_amqp() ->
 send_error_resp(JObj, ErrCode, <<>>) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
     Prop = [{<<"Media-Name">>, MediaName}
-	    ,{<<"Error-Code">>, whistle_util:to_binary(ErrCode)}
-	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, Payload} = whistle_api:media_error(Prop),
+	    ,{<<"Error-Code">>, wh_util:to_binary(ErrCode)}
+	    | wh_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
+    {ok, Payload} = wh_api:media_error(Prop),
     ?LOG_END("sending error reply ~s for ~s", [ErrCode, MediaName]),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
 send_error_resp(JObj, _ErrCode, ErrMsg) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
     Prop = [{<<"Media-Name">>, MediaName}
 	    ,{<<"Error-Code">>, <<"other">>}
-	    ,{<<"Error-Msg">>, whistle_util:to_binary(ErrMsg)}
-	    | whistle_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, Payload} = whistle_api:media_error(Prop),
+	    ,{<<"Error-Msg">>, wh_util:to_binary(ErrMsg)}
+	    | wh_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
+    {ok, Payload} = wh_api:media_error(Prop),
     ?LOG_END("sending error reply ~s for ~s", [_ErrCode, MediaName]),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 -spec(handle_req/3 :: (JObj :: json_object(), Port :: port(), Streams :: list()) -> no_return()).
 handle_req(JObj, Port, Streams) ->
-    true = whistle_api:media_req_v(JObj),
+    true = wh_api:media_req_v(JObj),
     case find_attachment(binary:split(wh_json:get_value(<<"Media-Name">>, JObj, <<>>), <<"/">>, [global, trim])) of
         not_found ->
             send_error_resp(JObj, <<"not_found">>, <<>>);
@@ -329,7 +329,17 @@ find_attachment([Db, Doc, Attachment]) ->
       JObj :: json_object(),
       MetaData :: json_object().
 get_content_type(JObj, MetaData) ->
-    case wh_json:get_value(<<"content_type">>, MetaData, wh_json:get_value(<<"content_type">>, JObj)) of
+    case valid_content_type(JObj) of
+        undefined ->
+            valid_content_type(MetaData);
+        ContentType ->
+            ContentType
+    end.
+
+-spec valid_content_type/1 :: (JObj) -> undefined | binary() when
+      JObj :: json_object().
+valid_content_type(JObj) ->
+    case wh_json:get_value(<<"content_type">>, JObj) of
         <<"audio/mp3">> -> <<"mp3">>; %% Jon's computer uses this, is this legit?
         <<"audio/mpeg">> -> <<"mp3">>;
         <<"audio/x-wav">> -> <<"wav">>;
@@ -339,7 +349,7 @@ get_content_type(JObj, MetaData) ->
 
 -spec(is_streamable/1 :: (JObj :: json_object()) -> boolean()).
 is_streamable(JObj) ->
-    whistle_util:is_true(wh_json:get_value(<<"streamable">>, JObj, true)).
+    wh_util:is_true(wh_json:get_value(<<"streamable">>, JObj, true)).
 
 -spec start_stream/6 :: (JObj, Db, Doc, Attachment, CType, Port) -> no_return() when
       JObj :: json_object(),

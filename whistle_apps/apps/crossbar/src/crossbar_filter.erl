@@ -19,12 +19,13 @@
 %% filtered on the query string params
 %% @end
 %%--------------------------------------------------------------------
--spec filter_on_query_string/3 :: (DbName :: binary(), View :: binary(), QueryParams :: proplist()) -> [binary(),...] | [].
+-spec filter_on_query_string/3 :: (DbName :: binary(), View :: binary(), QueryParams :: proplist()) -> json_objects().
 filter_on_query_string(DbName, View, QueryParams) ->
-    QueryParams1 = [{list_to_binary(K), list_to_binary(V)} || {K, V} <- QueryParams], %% qs from wm are strings
+    QueryParams1 = [{list_to_binary(K), list_to_binary(V)} || {K, V} <- QueryParams],
+     %% qs from wm are strings
     {ok, AllDocs} = couch_mgr:get_results(DbName, View, [{<<"include_docs">>, true}]),
-    UnfilteredDocs = [wh_json:get_value(<<"doc">>, UnfilteredDoc, ?EMPTY_JSON_OBJECT) || UnfilteredDoc <- AllDocs],
-    [wh_json:get_value(<<"_id">>, Doc) || Doc <- UnfilteredDocs, filter_doc(Doc, QueryParams1)].
+    [wh_json:get_value(<<"value">>, Doc, ?EMPTY_JSON_OBJECT) || Doc <- AllDocs,
+                                                                filter_doc(wh_json:get_value(<<"doc">>, Doc), QueryParams1)].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -35,8 +36,10 @@ filter_on_query_string(DbName, View, QueryParams) ->
 -spec filter_doc/2 :: (Doc, Props) -> boolean() when
       Doc :: json_object(),
       Props :: proplist().
+filter_doc(undefined, _) ->
+    false;
 filter_doc(Doc, Props) ->
-    Result = [true || {Key, Val} <- Props, filter_prop(Doc, Key, Val)],
+    Result = [filter_prop(Doc, Key, Val) || {Key, Val} <- Props],
     (Result =/= [] andalso lists:all(fun(Term) -> Term end, Result)).
 
 %%--------------------------------------------------------------------
@@ -52,15 +55,15 @@ filter_doc(Doc, Props) ->
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
     wh_json:get_value(Key, Doc) == Val;
 filter_prop(Doc, <<"created_from">>, Val) ->
-    whistle_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) >= whistle_util:to_integer(Val);
+    wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) >= wh_util:to_integer(Val);
 filter_prop(Doc, <<"created_to">>, Val) ->
-    whistle_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) =< whistle_util:to_integer(Val);
+    wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) =< wh_util:to_integer(Val);
 filter_prop(Doc, <<"modified_from">>, Val) ->
-    whistle_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) >= whistle_util:to_integer(Val);
+    wh_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) >= wh_util:to_integer(Val);
 filter_prop(Doc, <<"modified_to">>, Val) ->
-    whistle_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) =< whistle_util:to_integer(Val);
+    wh_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) =< wh_util:to_integer(Val);
 filter_prop(_, _, _) ->
-    false.
+    true.
 
 %% next filters to implement are to range on a prop
 %% build_filter_options(<<"range_", Param/binary, "_from">>) -> nyi.

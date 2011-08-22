@@ -1,5 +1,5 @@
--include_lib("whistle/include/whistle_types.hrl").
--include_lib("whistle/include/whistle_amqp.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
 
@@ -51,7 +51,7 @@
                ,conf_id = undefined
                ,route = undefined
                ,focus = undefined
-               ,ctrl_q = undefined
+               ,ctrl_q = []
                ,auth_pwd = <<"\/\/|-|157L3_(0|\|Ph3R3|\|(3">>
                ,member_pins = []
                ,moderator_pins = []

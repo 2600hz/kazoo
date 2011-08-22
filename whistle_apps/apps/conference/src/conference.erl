@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(conference).
 
+-include_lib("whistle/include/wh_types.hrl").
+
 -export([start/0, start_link/0, stop/0]).
 
 %%--------------------------------------------------------------------
@@ -16,7 +18,7 @@
 %% Starts the app for inclusion in a supervisor tree
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> {ok, pid()}.
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     start_deps(),
     conference_sup:start_link().

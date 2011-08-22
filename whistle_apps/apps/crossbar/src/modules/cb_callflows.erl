@@ -21,16 +21,10 @@
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/callflows.json">>).
-
 -define(CALLFLOWS_LIST, <<"callflows/listing_by_id">>).
 -define(FIXTURE_LIST, [<<"611.callflow.json">>]).
 
--define(AGG_DB, <<"callflows">>).
--define(AGG_FILTER, <<"callflows/export">>).
-
 -define(CB_LIST, <<"callflows/crossbar_listing">>).
-
 
 %%-----------------------------------------------------------------------------
 %% PUBLIC API
@@ -106,45 +100,51 @@ handle_info ({binding_fired, Pid, <<"v1_resource.resource_exists.callflows">>, P
 
 handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                crossbar_util:binding_heartbeat(Pid),
-                Context1 = validate(Params, Context),
-                Pid ! {binding_result, true, [RD, Context1, Params]}
+                  crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
-                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
+                  timer:sleep(1000),
+                  try stepswitch_maintenance:reconcile(Context1#cb_context.account_id, false) catch _:_ -> ok end
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
-                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
+                  timer:sleep(1000),
+                  try stepswitch_maintenance:reconcile(Context1#cb_context.account_id, false) catch _:_ -> ok end
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
-                  stepswitch_maintenance:reconcile(Context1#cb_context.account_id)
+                  timer:sleep(1000),
+                  try stepswitch_maintenance:reconcile(Context1#cb_context.account_id, false) catch _:_ -> ok end
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"account.created">>, DBName}, State) ->
     spawn(fun() ->
                   couch_mgr:revise_views_from_folder(DBName, callflow),
-                  import_fixtures(?FIXTURE_LIST, DBName)
+                  Pid ! {binding_result, true, []}
           end),
-    Pid ! {binding_result, true, ?VIEW_FILE},
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -153,7 +153,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    whapps_util:update_all_accounts(?VIEW_FILE),
     {noreply, State};
 
 handle_info (_Info, State) ->
@@ -297,7 +296,13 @@ create_callflow(#cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec(load_callflow/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 load_callflow(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
+    case crossbar_doc:load(DocId, Context) of
+        #cb_context{resp_status=success, doc=Doc, resp_data=Data, db_name=Db}=Context1 ->
+            Meta = get_metadata(wh_json:get_value(<<"flow">>, Doc), Db, ?EMPTY_JSON_OBJECT),
+            Context1#cb_context{resp_data=wh_json:set_value(<<"metadata">>, Meta, Data)};
+        Else ->
+            Else
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -335,45 +340,85 @@ normalize_view_results(JObj, Acc) ->
 is_valid_doc(_JObj) ->
     {true, []}.
 
--spec import_fixtures/2 :: (Fixtures, DBName) -> [#cb_context{} | {error, no_file},...] when
-      Fixtures :: [binary(),...],
-      DBName :: binary().
-import_fixtures(Fixtures, DBName) ->
-    ?LOG_SYS("Importing fixtures into ~s", [DBName]),
-    Context = #cb_context{db_name=DBName},
-    [ import_fixture(Fixture, Context) || Fixture <- Fixtures].
-
--spec import_fixture/2 :: (Fixture, Context) -> #cb_context{} | {error, no_file} when
-      Fixture :: <<_:136>>, %% binary(), but with one fixture, this is to quiet Dialyzer.
-      Context :: #cb_context{}.
-import_fixture(Fixture, #cb_context{db_name=DBName}=Context) ->
-    Path = [code:priv_dir(crossbar), <<"/couchdb/fixtures/">>],
-    ?LOG_SYS("Read from ~s", [[Path, Fixture]]),
-    FixFile = list_to_binary([Path, Fixture]),
-    case filelib:is_regular(FixFile) of
-	true ->
-	    {ok, FixStr} = file:read_file(FixFile),
-	    ?LOG_SYS("Loaded fixture ~s", [FixStr]),
-	    JObj = mochijson2:decode(FixStr),
-
-	    DeviceFile = list_to_binary([Path, binary:replace(Fixture, <<"callflow">>, <<"device">>)]),
-	    ?LOG_SYS("Trying device file ~s", [DeviceFile]),
-	    JObj1 = case file:read_file(DeviceFile) of
-			{ok, Device} ->
-			    DevJObj = mochijson2:decode(Device),
-			    ?LOG_SYS("Set device id to ~s", [wh_json:get_value(<<"_id">>, DevJObj)]),
-			    wh_json:set_value([<<"flow">>, <<"data">>, <<"id">>], wh_json:get_value(<<"_id">>, DevJObj), JObj);
-			{error, _E} ->
-			    ?LOG_SYS("No corresponding device(~p), just update the realms", [_E]),
-			    JObj
-		    end,
-
-	    {ok, Realm} = whapps_util:get_realm_from_db(DBName),
-	    JObj2 = wh_json:set_value([<<"realms">>], [Realm], JObj1),
-	    ?LOG_SYS("Set realms to [~s]", [Realm]),
-
-	    crossbar_doc:save(Context#cb_context{doc=JObj2});
-	false ->
-	    ?LOG_SYS("File path doesn't point to a file"),
-	    {error, no_file}
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% collect addional informat about the objects referenced in the flow
+%% @end
+%%--------------------------------------------------------------------
+-spec get_metadata/3 :: (Flow, Db, JObj) -> json_object() when
+      Flow :: undefined | json_object(),
+      Db :: binary(),
+      JObj :: json_object().
+get_metadata(undefined, db, JObj) ->
+    JObj;
+get_metadata(Flow, Db, JObj) ->
+    JObj1 = case wh_json:get_value([<<"data">>, <<"id">>], Flow) of
+                undefined ->
+                    %% this node has no id, dont change the metadata
+                    JObj;
+                Id ->
+                    %% node has an id, try to update the metadata
+                    create_metadata(Db, Id, JObj)
+            end,
+    case wh_json:get_value(<<"children">>, Flow) of
+        ?EMPTY_JSON_OBJECT ->
+            %% no children, this branch is done
+            JObj1;
+        {struct, Children} ->
+            %% iterate through each child, collecting metadata on the
+            %% branch name (things like temporal routes)
+            lists:foldr(fun({K, Child}, J) ->
+                                get_metadata(Child, Db
+                                             ,create_metadata(Db, K, J))
+                        end, JObj1, Children);
+        _ ->
+            %% somebody didnt read  the docs on callflows...
+            JObj1
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Given the metadata json object, an ID and a db find the document
+%% and add the fields to the metadata.  However, skip if the ID already
+%% exists in metadata.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_metadata/3 :: (Db, Id, JObj) -> json_object() when
+      Db :: binary(),
+      Id :: binary(),
+      JObj :: json_object().
+create_metadata(Db, Id, JObj) ->
+    case wh_json:get_value(Id, JObj) =:= undefined
+        andalso couch_mgr:open_doc(Db, Id) of
+        false  ->
+            %% the id already exists in the metadata
+            JObj;
+        {ok, Doc} ->
+            %% the id was found in the db
+            wh_json:set_value(Id, create_metadata(Doc), JObj);
+        _ ->
+            %% eh, whatevs
+            JObj
+    end.
+
+-spec create_metadata/1 :: (Doc) -> json_object() when
+      Doc :: json_object().
+create_metadata(Doc) ->
+    %% simple funciton for setting the same key in one json object
+    %% with the value of that key in another, unless it doesnt exist
+    Metadata = fun(K, D, J) ->
+                     case wh_json:get_value(K, D) of
+                         undefined -> J;
+                         V -> wh_json:set_value(K, V, J)
+                     end
+             end,
+    %% list of keys to extract from documents and set on the metadata
+    Funs = [fun(D, J) -> Metadata(<<"name">>, D, J) end,
+            fun(D, J) -> Metadata(<<"numbers">>, D, J) end,
+            fun(D, J) -> Metadata(<<"pvt_type">>, D, J) end],
+    %% do it
+    lists:foldl(fun(Fun, JObj) ->
+                         Fun(Doc, JObj)
+                end, ?EMPTY_JSON_OBJECT, Funs).

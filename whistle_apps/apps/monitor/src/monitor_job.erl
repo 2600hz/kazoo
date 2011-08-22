@@ -16,7 +16,7 @@
 -import(logger, [format_log/3]).
 -import(props, [get_value/2, get_value/3]).
 -import(timer, [send_interval/2, cancel/1]).
--import(whistle_util, [to_list/1, to_binary/1]).
+-import(wh_util, [to_list/1, to_binary/1]).
 
 %% API
 -export([start_link/3]).

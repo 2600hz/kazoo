@@ -22,7 +22,9 @@
 %% or on a busy system call forwarding will not appear to disable....
 %% @end
 %%-----------------------------------------------------------------------------
--spec(call_forward/2 :: (DeviceId :: cf_api_binary(), Call :: #cf_call{}) -> undefined | json_object()).
+-spec call_forward/2 :: (DeviceId, Call) -> undefined | json_object() when
+      DeviceId :: cf_api_binary(),
+      Call :: #cf_call{}.
 call_forward(DeviceId, #cf_call{account_db=Db}=Call) ->
     OwnerId = owner_id(DeviceId, Call),
     CallFwd = case couch_mgr:get_all_results(Db, get_view(call_forward)) of
@@ -52,12 +54,15 @@ call_forward(DeviceId, #cf_call{account_db=Db}=Call) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec(caller_id/4 :: (CIDType :: cf_api_binary(), DeviceId :: cf_api_binary(), OwnerId :: cf_api_binary(), Call :: #cf_call{})
-                     -> tuple(cf_api_binary(), cf_api_binary())).
+-spec caller_id/4 :: (CIDType, DeviceId, OwnerId, Call) -> tuple(cf_api_binary(), cf_api_binary()) when
+      CIDType :: cf_api_binary(),
+      DeviceId :: cf_api_binary(),
+      OwnerId :: cf_api_binary(),
+      Call :: #cf_call{}.
 caller_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, cid_number=Num, cid_name=Name, channel_vars=CCVs}=Call) ->
     Ids = [begin ?LOG("looking for caller id type ~s on doc ~s", [CIDType, Id]), Id end
            || Id <- [DeviceId, OwnerId, AccountId], Id =/= undefined],
-    case whistle_util:is_true(wh_json:get_value(<<"Retain-CID">>, CCVs)) of
+    case wh_util:is_true(wh_json:get_value(<<"Retain-CID">>, CCVs)) of
         true ->
             {Num, Name};
         false ->
@@ -75,8 +80,11 @@ caller_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, cid_number=
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec(callee_id/4 :: (CIDType :: cf_api_binary(), DeviceId :: cf_api_binary(), OwnerId :: cf_api_binary(), Call :: #cf_call{})
-                     -> tuple(cf_api_binary(), cf_api_binary())).
+-spec callee_id/4 :: (CIDType, DeviceId, OwnerId, Call) -> tuple(cf_api_binary(), cf_api_binary()) when
+      CIDType :: cf_api_binary(),
+      DeviceId :: cf_api_binary(),
+      OwnerId :: cf_api_binary(),
+      Call :: #cf_call{}.
 callee_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, request_user=Num}=Call) ->
     Ids = [begin ?LOG("looking for callee id type ~s on doc ~s", [CIDType, Id]), Id end
            || Id <- [DeviceId, OwnerId, AccountId], Id =/= undefined],
@@ -93,8 +101,11 @@ callee_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, request_use
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec(caller_id_options/4 :: (Option :: binary(), DeviceId :: cf_api_binary(), OwnerId :: cf_api_binary(), #cf_call{})
-                             -> cf_api_binary()).
+-spec caller_id_options/4 :: (Option, DeviceId, OwnerId, Call) -> cf_api_binary() when
+      Option :: binary(),
+      DeviceId :: cf_api_binary(),
+      OwnerId :: cf_api_binary(),
+      Call :: #cf_call{}.
 caller_id_options(Option, DeviceId, OwnerId, #cf_call{account_id=AccountId}=Call) ->
     Ids = [begin ?LOG("looking for caller id option ~s on doc ~s", [Option, Id]), Id end
            || Id <- [DeviceId, OwnerId, AccountId], Id =/= undefined],
@@ -110,10 +121,13 @@ caller_id_options(Option, DeviceId, OwnerId, #cf_call{account_id=AccountId}=Call
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
+-spec owner_id/2 :: (ObjectId, Call) -> undefined | json_object() when
+      ObjectId :: undefined | binary(),
+      Call :: #cf_call{}.
 owner_id(undefined, _) ->
     undefined;
 owner_id(ObjectId, #cf_call{account_db=Db})->
-    Id = whistle_util:to_binary(ObjectId),
+    Id = wh_util:to_binary(ObjectId),
     case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owner">>}, [{<<"key">>, Id}]) of
         {ok, []} ->
             undefined;
@@ -128,8 +142,10 @@ owner_id(ObjectId, #cf_call{account_db=Db})->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec(search_attributes/3 :: (Key :: cf_api_binary(), Ids :: list(), Attributes :: proplist())
-                             -> cf_api_binary()).
+-spec search_attributes/3 :: (Key, Ids, Attributes) -> cf_api_binary() when
+      Key :: cf_api_binary(),
+      Ids :: list(),
+      Attributes :: proplist().
 search_attributes(_, _, []) ->
     undefined;
 search_attributes(_, [], _) ->
@@ -148,8 +164,10 @@ search_attributes(Key, [Id|T], Attributes) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec(fetch_sub_key/3 :: (Key :: cf_api_binary(), Id :: cf_api_binary(), Attributes :: proplist())
-                         -> cf_api_binary()).
+-spec fetch_sub_key/3 :: (Key, Id, Attributes) -> cf_api_binary() when
+      Key :: cf_api_binary(),
+      Id :: cf_api_binary(),
+      Attributes :: proplist().
 fetch_sub_key(Key, Id, Attributes) ->
     fetch_sub_key(Key, props:get_value(Id, Attributes)).
 fetch_sub_key(_, undefined) ->
@@ -162,7 +180,10 @@ fetch_sub_key(Key, JObj) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec(fetch_attributes/3 :: (Attribute :: atom(), Expires :: non_neg_integer(), Call :: #cf_call{}) -> list()).
+-spec fetch_attributes/3 :: (Attribute, Expires, Call) -> list() when
+      Attribute :: atom(),
+      Expires :: non_neg_integer(),
+      Call :: #cf_call{}.
 fetch_attributes(Attribute, Expires, #cf_call{account_db=Db}) ->
     case wh_cache:fetch({cf_attribute, Db, Attribute}) of
         {ok, Attributes} ->
@@ -184,6 +205,7 @@ fetch_attributes(Attribute, Expires, #cf_call{account_db=Db}) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec(get_view/1 :: (Attribute :: atom()) -> tuple(binary(), binary())).
+-spec get_view/1 :: (Attribute) -> tuple(binary(), binary()) when
+      Attribute :: atom().
 get_view(Attribute) ->
-    {<<"cf_attributes">>, whistle_util:to_binary(Attribute)}.
+    {<<"cf_attributes">>, wh_util:to_binary(Attribute)}.

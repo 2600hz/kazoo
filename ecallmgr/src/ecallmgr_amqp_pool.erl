@@ -56,21 +56,21 @@ start_link(WorkerCount) ->
 authn_req(Prop) ->
     authn_req(Prop, ?DEFAULT_TIMEOUT).
 authn_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun whistle_api:authn_req/1
+    gen_server:call(?SERVER, {request, Prop, fun wh_api:authn_req/1
 			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_AUTHN_REQ) end
 			      }, Timeout).
 
 authz_req(Prop) ->
     authz_req(Prop, ?DEFAULT_TIMEOUT).
 authz_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun whistle_api:authz_req/1
+    gen_server:call(?SERVER, {request, Prop, fun wh_api:authz_req/1
 			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_AUTHZ_REQ) end
 			     }, Timeout).
 
 route_req(Prop) ->
     route_req(Prop, ?DEFAULT_TIMEOUT).
 route_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun whistle_api:route_req/1
+    gen_server:call(?SERVER, {request, Prop, fun wh_api:route_req/1
 			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_ROUTE_REQ) end
 			     }, Timeout).
 
@@ -78,7 +78,7 @@ reg_query(Prop) ->
     reg_query(Prop, ?DEFAULT_TIMEOUT).
 
 reg_query(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun whistle_api:reg_query/1
+    gen_server:call(?SERVER, {request, Prop, fun wh_api:reg_query/1
 			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_QUERY) end
 			     }, Timeout).
 
@@ -86,7 +86,7 @@ media_req(Prop) ->
     media_req(Prop, ?DEFAULT_TIMEOUT).
 
 media_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun whistle_api:media_req/1
+    gen_server:call(?SERVER, {request, Prop, fun wh_api:media_req/1
 			      ,fun(JSON) -> amqp_util:callevt_publish(JSON) end
 			     }, Timeout).
 

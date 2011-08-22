@@ -11,9 +11,9 @@
 -include("ts.hrl").
 
 %% API
--export([start_link/0, check/1, reserve/5]).
+-export([start_link/0, reserve/5]).
 
--spec(start_link/0 :: () -> ignore).
+-spec start_link/0 :: () -> ignore.
 start_link() ->
     couch_mgr:db_create(?TS_RATES_DB),
     {ok, DBInfo} = couch_mgr:db_info(?TS_RATES_DB),
@@ -30,97 +30,40 @@ start_link() ->
     ?LOG("setup ~s DB for rates", [?TS_RATES_DB]),
     ignore.
 
--spec(reserve/5 :: (ToDID :: binary(), CallID :: binary(), AcctID :: binary(), Direction :: inbound | outbound, RouteOpts :: list(binary()) | []) -> tuple(ok, proplist()) | tuple(error, term())).
-reserve(ToDID, CallID, AcctID, inbound, RouteOpts) ->
-    case ?MODULE:check(#route_flags{to_user=ToDID, direction = <<"inbound">>, route_options=RouteOpts, account_doc_id=AcctID, callid=CallID, flat_rate_enabled = true}) of
-        {error, _}=E -> E;
-        {ok, #route_flags{
-           rate = R
-           ,rate_increment = RI
-           ,rate_minimum = RM
-           ,surcharge = S
-           ,rate_name = RN
-           ,flat_rate_enabled = FRE
-          }} ->
-            TrunkType = case FRE of true -> <<"flat">>; false -> <<"per_min">> end,
-
-            {ok, [{<<"Rate">>, whistle_util:to_binary(R)}
-                  ,{<<"Rate-Increment">>, whistle_util:to_binary(RI)}
-                  ,{<<"Rate-Minimum">>, whistle_util:to_binary(RM)}
-                  ,{<<"Surcharge">>, whistle_util:to_binary(S)}
-                  ,{<<"Rate-Name">>, whistle_util:to_binary(RN)}
-                  ,{<<"Trunk-Type">>, TrunkType}
-                 ]}
-    end;
-reserve(ToDID, CallID, AcctID, outbound, RouteOpts) ->
-    case ?MODULE:check(#route_flags{to_user=ToDID, direction = <<"outbound">>, route_options=RouteOpts, account_doc_id=AcctID, callid=CallID, flat_rate_enabled = true}) of
-        {error, _}=E -> E;
-        {ok, #route_flags{
-           rate = R
-           ,rate_increment = RI
-           ,rate_minimum = RM
-           ,surcharge = S
-           ,rate_name = RN
-           ,flat_rate_enabled = FRE
-          }} ->
-            TrunkType = case FRE of true -> <<"flat">>; false -> <<"per_min">> end,
-
-            {ok, [{<<"Rate">>, whistle_util:to_binary(R)}
-                  ,{<<"Rate-Increment">>, whistle_util:to_binary(RI)}
-                  ,{<<"Rate-Minimum">>, whistle_util:to_binary(RM)}
-                  ,{<<"Surcharge">>, whistle_util:to_binary(S)}
-                  ,{<<"Rate-Name">>, whistle_util:to_binary(RN)}
-                  ,{<<"Trunk-Type">>, TrunkType}
-                 ]}
-    end.
-
--spec(check/1 :: (Flags :: #route_flags{}) -> tuple(ok, #route_flags{}) | tuple(error, atom())).
-check(#route_flags{to_user=To, direction=Direction, route_options=RouteOptions
-		  ,account_doc_id=AccountDocId, callid=CallID, flat_rate_enabled=FlatRateEnabled}=Flags) ->
-    <<Start:1/binary, _/binary>> = Number = whistle_util:to_1npan(To),
+-spec reserve/5 :: (ToDID, CallID, AcctID, Direction, RouteOptions) -> {ok, proplist()} | {error, no_rate_found} when
+      ToDID :: binary(),
+      CallID :: binary(),
+      AcctID :: binary(),
+      Direction :: inbound | outbound,
+      RouteOptions :: [binary(),...] | [].
+reserve(ToDID, CallID, AcctID, Direction, RouteOptions) ->
+    <<Start:1/binary, _/binary>> = Number = wh_util:to_1npan(ToDID),
     ?LOG("searching for rates in the range ~s to ~s", [Start, Number]),
-    case couch_mgr:get_results(?TS_RATES_DB, <<"lookuprates/lookuprate">>, [{<<"startkey">>, whistle_util:to_integer(Start)}
-									    ,{<<"endkey">>, whistle_util:to_integer(Number)}]) of
-	{ok, []} -> ?LOG("rate lookup had no results"), {error, no_route_found};
-	{error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_route_found};
+    case couch_mgr:get_results(?TS_RATES_DB, <<"lookuprates/lookuprate">>, [{<<"startkey">>, wh_util:to_integer(Start)}
+									    ,{<<"endkey">>, wh_util:to_integer(Number)}]) of
+	{ok, []} -> ?LOG("rate lookup had no results"), {error, no_rate_found};
+	{error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_rate_found};
 	{ok, Rates} ->
-	    [?LOG("fetched rate definition ~s", [wh_json:get_value(<<"id">>, Rate)]) || Rate <- Rates],
-	    Matching = filter_rates(To, Direction, RouteOptions, Rates),
+	    _ = [?LOG("fetched rate definition: ~s", [wh_json:get_value(<<"id">>, Rate)]) || Rate <- Rates],
+	    Matching = filter_rates(ToDID, Direction, RouteOptions, Rates),
 	    case lists:usort(fun sort_rates/2, Matching) of
-		[] -> ?LOG("no rates left after filter"), {error, no_route_found};
+		[] -> ?LOG("no rates left after filter"), {error, no_rate_found};
 		[Rate|_] ->
 		    %% wh_timer:tick("post usort data found"),
 		    ?LOG("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
 
-		    BaseCost = whistle_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * whistle_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate))
-			+ whistle_util:to_float(wh_json:get_value(<<"rate_surcharge">>, Rate)),
+		    BaseCost = wh_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * wh_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate))
+			+ wh_util:to_float(wh_json:get_value(<<"rate_surcharge">>, Rate)),
 
-		    case ts_acctmgr:reserve_trunk(AccountDocId, CallID, BaseCost, FlatRateEnabled) of
-			{ok, flat_rate} ->
-			    ?LOG("flat rate trunk reserved"),
-			    {ok, set_flat_flags(Flags, Direction)};
-			{ok, per_min} ->
-			    ?LOG("per minute trunk reserved. at cost ~p", [BaseCost]),
-			    {ok, set_rate_flags(Flags, Direction, Rate)};
-			{error, entry_exists}=E ->
-			    ?LOG("failed reserving a trunk; call-id exists in DB"),
-			    E;
-			{error, no_funds}=E1 ->
-			    ?LOG("failed reserving a trunk; no funds or flat-rate trunks"),
-			    E1;
-			{error, no_account}=E2 ->
-			    ?LOG("failed reserving a trunk; no account passed: ~p tried", [AccountDocId]),
-			    E2;
-			{error, no_callid}=E3 ->
-			    ?LOG("failed reserving a trunk; no call id passed: ~p tried", [CallID]),
-			    E3;
-			{error, not_found}=E4 ->
-			    ?LOG("failed reserving a trunk; ts_acctmgr:reserve_trunk/4 failed"),
-			    E4;
-                        {error, no_results}=E5 ->
-                            ?LOG("no results from ts_acctmgr:reserve_trunk/4"),
-                            E5
-		    end
+		    _ = ts_acctmgr:reserve_trunk(AcctID, CallID, BaseCost, ts_util:is_flat_rate_eligible(ToDID)),
+
+		    {ok, [{<<"Rate">>, wh_util:to_binary(wh_json:get_value(<<"rate_cost">>, Rate))}
+			  ,{<<"Rate-Increment">>, wh_util:to_binary(wh_json:get_value(<<"rate_increment">>, Rate))}
+			  ,{<<"Rate-Minimum">>, wh_util:to_binary(wh_json:get_value(<<"rate_minimum">>, Rate))}
+			  ,{<<"Surcharge">>, wh_util:to_binary(wh_json:get_value(<<"rate_surcharge">>, Rate, 0))}
+			  ,{<<"Rate-Name">>, wh_util:to_binary(wh_json:get_value(<<"rate_name">>, Rate))}
+			  ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
+			 ]}
 	    end
     end.
 
@@ -134,64 +77,60 @@ matching_rate(To, Direction, RouteOptions, Rate) ->
     %% need to match direction and options at some point too
     Routes = wh_json:get_value([<<"value">>, <<"routes">>], Rate),
 
-    lists:member(Direction, wh_json:get_value([<<"value">>, <<"direction">>], Rate, [])) andalso
+    direction_match(Direction, wh_json:get_value([<<"value">>, <<"direction">>], Rate, [])) andalso
 	options_match(RouteOptions, wh_json:get_value([<<"value">>, <<"options">>], Rate, [])) andalso
-	lists:any(fun(Regex) -> re:run(To, Regex) =/= nomatch end, Routes).
+        routes_match(To, Routes).
 
 %% Return true of RateA has higher weight than RateB
 sort_rates(RateA, RateB) ->
     ts_util:constrain_weight(wh_json:get_value(<<"weight">>, RateA, 1)) >= ts_util:constrain_weight(wh_json:get_value(<<"weight">>, RateB, 1)).
 
-set_rate_flags(Flags, <<"inbound">>, RateData) ->
-    RateName = wh_json:get_value(<<"rate_name">>, RateData),
-    Flags#route_flags{
-      rate = whistle_util:to_float(wh_json:get_value(<<"rate_cost">>, RateData))
-      ,rate_increment = whistle_util:to_integer(wh_json:get_value(<<"rate_increment">>, RateData))
-      ,rate_minimum = whistle_util:to_integer(wh_json:get_value(<<"rate_minimum">>, RateData))
-      ,surcharge = whistle_util:to_float(wh_json:get_value(<<"rate_surcharge">>, RateData, 0))
-      ,rate_name = RateName
-      ,flat_rate_enabled = false
-     };
-set_rate_flags(Flags, <<"outbound">>, RateData) ->
-    RateName = wh_json:get_value(<<"rate_name">>, RateData),
-    Flags#route_flags{
-      rate = whistle_util:to_float(wh_json:get_value(<<"rate_cost">>, RateData))
-      ,rate_increment = whistle_util:to_integer(wh_json:get_value(<<"rate_increment">>, RateData))
-      ,rate_minimum = whistle_util:to_integer(wh_json:get_value(<<"rate_minimum">>, RateData))
-      ,surcharge = whistle_util:to_float(wh_json:get_value(<<"rate_surcharge">>, RateData, 0))
-      ,rate_name = RateName
-      ,flat_rate_enabled = false
-     }.
+-spec routes_match/2 :: (To, Routes) -> boolean() when
+      To :: binary(),
+      Routes :: list().
+routes_match(To, Routes) ->
+    case lists:any(fun(Regex) ->
+                            re:run(To, Regex) =/= nomatch
+                   end, Routes) of
+        true ->
+            ?LOG("rate has a matching route"), true;
+        false ->
+            ?LOG("rate has no matching routes"), false
+    end.
 
-set_flat_flags(Flags, <<"inbound">>) ->
-    Flags#route_flags{
-      rate = 0.0
-      ,rate_increment = 0
-      ,rate_minimum = 0
-      ,surcharge = 0.0
-      ,rate_name = <<"flat-rate">>
-      ,flat_rate_enabled = true
-     };
-set_flat_flags(Flags, <<"outbound">>) ->
-    Flags#route_flags{
-      rate = 0.0
-      ,rate_increment = 0
-      ,rate_minimum = 0
-      ,surcharge = 0.0
-      ,rate_name = <<"flat-rate">>
-      ,flat_rate_enabled = true
-     }.
+-spec direction_match/2 :: (Direction, RateDirections) -> boolean() when
+      Direction :: binary() | atom(),
+      RateDirections :: list().
+direction_match(Direction, RateDirections) when not is_binary(Direction) ->
+    direction_match(wh_util:to_binary(Direction), RateDirections);
+direction_match(Direction, RateDirections) ->
+    case lists:member(Direction, RateDirections) of
+        true ->
+            ?LOG("rate is valid for ~s calls", [Direction]), true;
+         false ->
+            ?LOG("rate is not valid for ~s calls", [Direction]), false
+    end.
 
 %% match options set in Flags to options available in Rate
 %% All options set in Flags must be set in Rate to be usable
--spec(options_match/2 :: (RouteOptions :: list(binary()) | json_object(), RateOptions :: list(binary()) | json_object()) -> boolean()).
+%% RouteOptions come from client's DID/server/account
+-spec options_match/2 :: (RouteOptions, RateOptions) -> boolean() when
+      RouteOptions :: list(binary()) | json_object(),
+      RateOptions :: list(binary()) | json_object().
 options_match(RouteOptions, {struct, RateOptions}) ->
     options_match(RouteOptions, RateOptions);
 options_match({struct, RouteOptions}, RateOptions) ->
     options_match(RouteOptions, RateOptions);
 options_match([], []) ->
+    ?LOG("both options are empty, continue"),
     true;
 options_match([], _) ->
+    ?LOG("route does not require options, continue"),
     true;
 options_match(RouteOptions, RateOptions) ->
-    lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions).
+    case lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions) of
+        true ->
+            ?LOG("all route options present on rate"), true;
+        false ->
+            ?LOG("route options defines options that are not on rate"), false
+    end.

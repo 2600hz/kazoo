@@ -194,7 +194,7 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>
     end;
 
 handle_info({execute_complete, UUID, EvtName}, #state{uuid=UUID, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
-    case lists:member(EvtName, whistle_api:convert_whistle_app_name(CurrApp)) of
+    case lists:member(EvtName, wh_api:convert_whistle_app_name(CurrApp)) of
         false ->
             {noreply, State};
         true ->
@@ -312,12 +312,12 @@ insert_command(State, <<"now">>, JObj) ->
 	    ecallmgr_call_events:publish_msg(State#state.node, State#state.uuid, Prop),
 	    State#state.command_q;
 	<<"queue">> ->
-	    true = whistle_api:queue_req_v(JObj),
-	    DefProp = whistle_api:extract_defaults(JObj), %% each command lacks the default headers
+	    true = wh_api:queue_req_v(JObj),
+	    DefProp = wh_api:extract_defaults(JObj), %% each command lacks the default headers
 	    lists:foreach(fun(?EMPTY_JSON_OBJECT) -> ok;
 			     ({struct, Cmd}) ->
 				  AppCmd = {struct, DefProp ++ Cmd},
-				  true = whistle_api:dialplan_req_v(AppCmd),
+				  true = wh_api:dialplan_req_v(AppCmd),
                                   execute_control_request(Cmd, State)
 			  end, wh_json:get_value(<<"Commands">>, JObj)),
 	    State#state.command_q;
@@ -356,17 +356,17 @@ insert_command(State, <<"tail">>, JObj) ->
 insert_command_into_queue(Q, InsertFun, JObj) ->
     case wh_json:get_value(<<"Application-Name">>, JObj) of
 	<<"queue">> -> %% list of commands that need to be added
-	    true = whistle_api:queue_req_v(JObj),
-	    DefProp = whistle_api:extract_defaults(JObj), %% each command lacks the default headers
+	    true = wh_api:queue_req_v(JObj),
+	    DefProp = wh_api:extract_defaults(JObj), %% each command lacks the default headers
 	    lists:foldl(fun(?EMPTY_JSON_OBJECT, TmpQ) -> TmpQ;
 			   ({struct, Cmd}, TmpQ) ->
 				AppCmd = {struct, DefProp ++ Cmd},
-				true = whistle_api:dialplan_req_v(AppCmd),
+				true = wh_api:dialplan_req_v(AppCmd),
 				?LOG("inserting queued command ~s into queue", [wh_json:get_value(<<"Application-Name">>, AppCmd)]),
 				InsertFun(AppCmd, TmpQ)
 			end, Q, wh_json:get_value(<<"Commands">>, JObj));
 	_AppName ->
-	    true = whistle_api:dialplan_req_v(JObj),
+	    true = wh_api:dialplan_req_v(JObj),
 	    InsertFun(JObj, Q)
     end.
 
@@ -380,7 +380,7 @@ post_hangup_commands(CmdQ) ->
 execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
     try
         ?LOG("executing application ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)]),
-        Mod = whistle_util:to_atom(<<"ecallmgr_"
+        Mod = wh_util:to_atom(<<"ecallmgr_"
                                      ,(wh_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
                                      ,"_"
                                      ,(wh_json:get_value(<<"Event-Name">>, Cmd, <<>>))/binary
@@ -392,9 +392,9 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
 	    Resp = [
 		    {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
 		    ,{<<"Error-Message">>, <<"Channel was hungup before completing command ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>}
-		    | whistle_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
+		    | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
 		   ],
-            {ok, Payload} = whistle_api:error_resp(Resp),
+            {ok, Payload} = wh_api:error_resp(Resp),
             amqp_util:callevt_publish(UUID, Payload, event),
             self() ! {hangup, undefined, UUID},
 	    ok;
@@ -404,9 +404,9 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
             Resp = [
 		    {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
 		    ,{<<"Error-Message">>, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>}
-		    | whistle_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
+		    | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
 		   ],
-            {ok, Payload} = whistle_api:error_resp(Resp),
+            {ok, Payload} = wh_api:error_resp(Resp),
             amqp_util:callevt_publish(UUID, Payload, event),
             self() ! {force_queue_advance, UUID},
             ok

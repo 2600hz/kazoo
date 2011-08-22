@@ -61,15 +61,15 @@ restart_app(App) when is_atom(App) ->
     whapps_sup:restart_app(App).
 
 set_amqp_host(H) ->
-    amqp_manager:set_host(H).
+    amqp_mgr:set_host(H).
 
 get_amqp_host() ->
-    amqp_manager:get_host().
+    amqp_mgr:get_host().
 
 set_couch_host(H) ->
     set_couch_host(H, "", "").
 set_couch_host(H, U, P) ->
-    couch_mgr:set_host(whistle_util:to_list(H), whistle_util:to_list(U), whistle_util:to_list(P)).
+    couch_mgr:set_host(wh_util:to_list(H), wh_util:to_list(U), wh_util:to_list(P)).
 
 -spec running_apps/0 :: () -> [atom(),...] | [].
 running_apps() ->

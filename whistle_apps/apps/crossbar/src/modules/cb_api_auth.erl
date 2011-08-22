@@ -2,8 +2,13 @@
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% User auth module
+%%% Account API auth module
 %%%
+%%% This is a non-standard module:
+%%% * it authenticates and authorizes itself
+%%% * it has a completely unique role
+%%% * it operates without an account id (or account db)
+%%% * it authorizes an account level cred
 %%%
 %%% @end
 %%% Created : 15 Jan 2011 by Karl Anderson <karl@2600hz.org>
@@ -103,11 +108,17 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}]
+                                   ,req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authorizing request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}]}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
+                 ,{RD, #cb_context{req_nouns=[{<<"api_auth">>,[]}]
+                                   ,req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authenticating request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
@@ -127,15 +138,19 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.api_auth">>, Pay
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.api_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Pid ! {binding_result, true, [RD, validate(Params, Context), Params]}
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.api_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Pid ! {binding_result, true, [RD, create_token(RD, Context), Params]}
+                  Context1 = create_token(RD, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
 
@@ -146,12 +161,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 handle_info(timeout, State) ->
     bind_to_crossbar(),
     couch_mgr:db_create(?TOKEN_DB),
-    couch_mgr:db_create(?AGG_DB),
-    case couch_mgr:update_doc_from_file(?AGG_DB, crossbar, ?AGG_VIEW_FILE) of
-        {error, _} ->
-            couch_mgr:load_doc_from_file(?AGG_DB, crossbar, ?AGG_VIEW_FILE);
-        {ok, _} -> ok
-    end,
     {noreply, State};
 
 handle_info(_, State) ->
@@ -185,7 +194,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec bind_to_crossbar/0 :: () -> no_return().
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
@@ -203,7 +212,8 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (Paths) -> tuple(boolean(), http_methods()) when
+      Paths :: list().
 allowed_methods([]) ->
     {true, ['PUT']};
 allowed_methods(_) ->
@@ -217,7 +227,8 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (Paths) -> tuple(boolean(), []) when
+      Paths :: list().
 resource_exists([]) ->
     {true, []};
 resource_exists(_) ->
@@ -233,11 +244,11 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/2 :: (Params, Context) -> #cb_context{} when
+      Params :: list(),
+      Context :: #cb_context{}.
 validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
-    authorize_api_key(Context,
-                   wh_json:get_value(<<"api_key">>, JObj)
-                  );
+    authorize_api_key(Context, wh_json:get_value(<<"api_key">>, JObj));
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -250,18 +261,25 @@ validate(_, Context) ->
 %% Failure here returns 401
 %% @end
 %%--------------------------------------------------------------------
--spec(authorize_api_key/2 :: (Context :: #cb_context{}, ApiKey :: binary()) -> #cb_context{}).
+-spec authorize_api_key/2 :: (Context, ApiKey) -> #cb_context{} when
+      Context :: #cb_context{},
+      ApiKey :: binary().
 authorize_api_key(Context, ApiKey) when not is_binary(ApiKey) ->
+    ?LOG("api key is not the correct format"),
     crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
 authorize_api_key(Context, <<"">>) ->
+    ?LOG("request has no api key"),
     crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
 authorize_api_key(Context, ApiKey) ->
     case crossbar_doc:load_view(?AGG_VIEW_API, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?AGG_DB}) of
         #cb_context{resp_status=success, doc=[JObj|_]}->
+            ?LOG("found more account with ~s, using ~s", [ApiKey, wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         #cb_context{resp_status=success, doc=JObj} when JObj =/= ?EMPTY_JSON_OBJECT->
+            ?LOG("found API key belongs to account ~s", [wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         _ ->
+            ?LOG("API key does not belong to any account"),
             crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
     end.
 
@@ -271,8 +289,11 @@ authorize_api_key(Context, ApiKey) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec(create_token/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+-spec create_token/2 :: (RD, Context) -> #cb_context{} when
+      RD :: #wm_reqdata{},
+      Context :: #cb_context{}.
 create_token(_, #cb_context{doc=?EMPTY_JSON_OBJECT}=Context) ->
+    ?LOG("refusing to create auth token for an empty doc"),
     crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
 create_token(RD, #cb_context{doc=JObj}=Context) ->
     AccountId = wh_json:get_value(<<"account_id">>, JObj),
@@ -280,21 +301,23 @@ create_token(RD, #cb_context{doc=JObj}=Context) ->
                        {<<"account_id">>, AccountId}
                       ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                       ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                      ,{<<"peer">>, whistle_util:to_binary(wrq:peer(RD))}
-                      ,{<<"user_agent">>, whistle_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-                      ,{<<"accept">>, whistle_util:to_binary(wrq:get_req_header("Accept", RD))}
-                      ,{<<"accept_charset">>, whistle_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-                      ,{<<"accept_endocing">>, whistle_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-                      ,{<<"accept_language">>, whistle_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-                      ,{<<"connection">>, whistle_util:to_binary(wrq:get_req_header("Conntection", RD))}
-                      ,{<<"keep_alive">>, whistle_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+                      ,{<<"method">>, wh_util:to_binary(?MODULE)}
+                      ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
+                      ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+                      ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
+                      ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+                      ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+                      ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+                      ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
+                      ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
                      ]},
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->
             AuthToken = wh_json:get_value(<<"_id">>, Doc),
-            crossbar_util:response(
-              {struct, [{<<"account_id">>, AccountId}]}
-              ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
-        {error, _} ->
+            ?LOG("created new local auth token ~s", [AuthToken]),
+            crossbar_util:response({struct, [{<<"account_id">>, AccountId}]}
+                                   ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
+        {error, R} ->
+            ?LOG("could not create new local auth token, ~p", [R]),
             crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
     end.

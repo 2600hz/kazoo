@@ -1,8 +1,8 @@
 -include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
--include_lib("whistle/include/whistle_types.hrl").
--include_lib("whistle/include/whistle_amqp.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/freeswitch_xml.hrl").
--include_lib("whistle/src/whistle_api.hrl").
+-include_lib("whistle/src/wh_api.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
 -record(handler_stats, {lookups_success = 0 :: integer()

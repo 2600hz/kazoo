@@ -13,7 +13,7 @@
 -export([init/1]).
 -export([to_json/2, to_xml/2, to_binary/2]).
 -export([from_json/2, from_xml/2, from_form/2, from_binary/2]).
--export([encodings_provided/2, finish_request/2, is_authorized/2, forbidden/2, allowed_methods/2]).
+-export([encodings_provided/2, finish_request/2, forbidden/2, allowed_methods/2]).
 -export([malformed_request/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
 -export([allow_missing_post/2, post_is_create/2, create_path/2, options/2]).
 -export([expires/2, generate_etag/2]).
@@ -39,7 +39,8 @@ init(Opts) ->
 
 allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     ?TIMER_TICK("v1.allowed_methods begin"),
-    put(callid, couch_mgr:get_uuid()),
+    ReqId = couch_mgr:get_uuid(),
+    put(callid, ReqId),
     ?LOG_START("recieved new request ~s", [wrq:disp_path(RD)]),
     ?LOG("host: ~s", [wrq:get_req_header("Host", RD)]),
     ?LOG("content type: ~s", [wrq:get_req_header("Content-Type", RD)]),
@@ -50,23 +51,23 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     %% Body = wrq:req_body(RD),
     #cb_context{req_json=ReqJSON}=Context1 = case wrq:get_req_header("Content-Type", RD) of
 		   "multipart/form-data" ++ _ ->
-		       extract_files_and_params(RD, Context);
+		       extract_files_and_params(RD, Context#cb_context{req_id=ReqId});
 		   "application/x-www-form-urlencoded" ++ _ ->
-		       extract_files_and_params(RD, Context);
+		       extract_files_and_params(RD, Context#cb_context{req_id=ReqId});
 		   "application/json" ++ _ ->
-		       Context#cb_context{req_json=get_json_body(RD)};
+		       Context#cb_context{req_json=get_json_body(RD), req_id=ReqId};
 		   "application/x-json" ++ _ ->
-		       Context#cb_context{req_json=get_json_body(RD)};
+		       Context#cb_context{req_json=get_json_body(RD), req_id=ReqId};
 		   %% _ when Body =:= undefined; Body =:= <<>> ->
                    %%     Context#cb_context{req_json=?EMPTY_JSON_OBJECT};
 		   _ ->
-		       extract_file(RD, Context#cb_context{req_json=?EMPTY_JSON_OBJECT})
+		       extract_file(RD, Context#cb_context{req_json=?EMPTY_JSON_OBJECT, req_id=ReqId})
 	       end,
 
     Verb = get_http_verb(RD, ReqJSON),
     ?LOG("method using for request: ~s", [Verb]),
 
-    Tokens = lists:map(fun whistle_util:to_binary/1, wrq:path_tokens(RD)),
+    Tokens = lists:map(fun wh_util:to_binary/1, wrq:path_tokens(RD)),
 
     case parse_path_tokens(Tokens) of
         [{Mod, Params}|_] = Nouns ->
@@ -79,11 +80,15 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
                     {['OPTIONS'], RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}};
                 false ->
 		    ?TIMER_TICK("v1.allowed_methods end Meth1"),
-                    {Methods1 , RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}}
+                    {Methods1
+                     ,add_cors_headers(RD, Context1)
+                     ,Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}}
             end;
         [] ->
 	    ?TIMER_TICK("v1.allowed_methods end Meths"),
-            {Methods, RD, Context1#cb_context{req_verb=Verb}}
+            {Methods
+             ,add_cors_headers(RD, Context1)
+             ,Context1#cb_context{req_verb=Verb}}
     end.
 
 -spec(malformed_request/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(boolean(), #wm_reqdata{}, #cb_context{})).
@@ -107,23 +112,15 @@ malformed_request(RD, #cb_context{req_json=Json, req_verb=Verb}=Context) ->
     ?TIMER_TICK("v1.malformed_request end"),
     {false, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}.
 
-is_authorized(RD, #cb_context{auth_token=AuthToken}=Context) ->
-    ?TIMER_TICK("v1.is_authorized start"),
-    S0 = crossbar_session:start_session(AuthToken),
-    Event = <<"v1_resource.start_session">>,
-    S = crossbar_bindings:fold(Event, S0),
-    ?TIMER_TICK("v1.is_authorized end"),
-    {true, RD, Context#cb_context{session=S}}.
-
 forbidden(RD, Context) ->
     ?TIMER_TICK("v1.forbidden start"),
     case is_authentic(RD, Context) of
         {true, RD1, Context1} ->
-            ?LOG("the request has been authorized"),
+            ?LOG("the request has been authenticated"),
             case is_permitted(RD1, Context1) of
                 {true, RD2, Context2} ->
 		    ?TIMER_TICK("v1.forbidden false end"),
-                    ?LOG("the request has been permitted"),
+                    ?LOG("the request has been authorized"),
                     {false, RD2, Context2};
                 false ->
 		    ?TIMER_TICK("v1.forbidden true end"),
@@ -148,7 +145,7 @@ resource_exists(RD, Context) ->
             case succeeded(Context1) of
                 true ->
 		    ?LOG("requested resource validated, executing"),
-                    execute_request(add_cors_headers(RD1, Context1), Context1);
+                    execute_request(RD1, Context1);
                 false ->
                     Content = create_resp_content(RD, Context1),
                     RD2 = wrq:append_to_response_body(Content, RD1),
@@ -223,20 +220,14 @@ delete_resource(RD, Context) ->
     _ = crossbar_bindings:map(Event, {RD, Context}),
     create_push_response(RD, Context).
 
-finish_request(RD, #cb_context{start=T1, session=undefined}=Context) ->
+finish_request(RD, #cb_context{start=T1}=Context) ->
     ?TIMER_TICK("v1.finish_request start"),
     Event = <<"v1_resource.finish_request">>,
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
+    ?LOG("response body: ~s", [wrq:resp_body(RD1)]),
     ?LOG_END("fulfilled in ~p ms", [timer:now_diff(now(), T1)*0.001]),
     ?TIMER_STOP("v1.finish_request end"),
-    {true, RD1, Context1};
-finish_request(RD, #cb_context{start=T1, session=S}=Context) ->
-    ?TIMER_TICK("v1.finish_request start"),
-    Event = <<"v1_resource.finish_request">>,
-    {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
-    ?LOG_END("fulfilled in ~p ms, finish session", [timer:now_diff(now(), T1)*0.001]),
-    ?TIMER_STOP("v1.finish_request end"),
-    {true, crossbar_session:finish_session(S, RD1), Context1#cb_context{session=undefined}}.
+    {true, set_req_header(RD1, Context1), Context1}.
 
 %%%===================================================================
 %%% Content Acceptors
@@ -297,7 +288,7 @@ to_binary(RD, #cb_context{resp_data=RespData}=Context) ->
 -spec parse_path_tokens/1 :: (Tokens) -> [{binary(), [binary(),...]},...] | [] when
       Tokens :: [binary(),...] | [].
 parse_path_tokens(Tokens) ->
-    Loaded = [ whistle_util:to_binary(Mod) || {Mod, _, _, _} <- supervisor:which_children(crossbar_module_sup) ],
+    Loaded = [ wh_util:to_binary(Mod) || {Mod, _, _, _} <- supervisor:which_children(crossbar_module_sup) ],
     parse_path_tokens(Tokens, Loaded, []).
 
 -spec parse_path_tokens/3 :: (Tokens, Loaded, Events) -> [{binary(), [binary(),...]},...] | [] when
@@ -312,9 +303,18 @@ parse_path_tokens([Mod|T], Loaded, Events) ->
 	    [];
         true ->
             {Params, List2} = lists:splitwith(fun(Elem) -> not lists:member(<<"cb_", (Elem)/binary>>, Loaded) end, T),
-            Params1 = [ whistle_util:to_binary(P) || P <- Params ],
+            Params1 = [ wh_util:to_binary(P) || P <- Params ],
             parse_path_tokens(List2, Loaded, [{Mod, Params1} | Events])
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Addes the request id as a custom header on all responses
+%% @end
+%%--------------------------------------------------------------------
+set_req_header(RD, #cb_context{req_id=ReqId}) ->
+    wrq:set_resp_header("X-Request-ID", wh_util:to_list(ReqId), RD).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -326,9 +326,9 @@ parse_path_tokens([Mod|T], Loaded, Events) ->
 %%--------------------------------------------------------------------
 -spec(get_http_verb/2 :: (RD :: #wm_reqdata{}, JSON :: json_object() | malformed) -> binary()).
 get_http_verb(RD, {malformed, _}) ->
-    whistle_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD))));
+    wh_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD))));
 get_http_verb(RD, JSON) ->
-    HttpV = whistle_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD)))),
+    HttpV = wh_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD)))),
     case override_verb(RD, JSON, HttpV) of
 	{true, OverrideV} ->
             ?LOG("override verb, treating request as a ~s", [OverrideV]),
@@ -342,22 +342,22 @@ override_verb(RD, JSON, <<"post">>) ->
 	undefined ->
 	    case wrq:get_qs_value("verb", RD) of
 		undefined -> false;
-		V -> {true, whistle_util:to_binary(string:to_lower(V))}
+		V -> {true, wh_util:to_binary(string:to_lower(V))}
 	    end;
-	V -> {true, whistle_util:to_binary(string:to_lower(binary_to_list(V)))}
+	V -> {true, wh_util:to_binary(string:to_lower(binary_to_list(V)))}
     end;
 override_verb(RD, _, <<"options">>) ->
     case wrq:get_req_header("Access-Control-Request-Method", RD) of
         undefined -> false;
 
-        V -> {true, whistle_util:to_binary(string:to_lower(V))}
+        V -> {true, wh_util:to_binary(string:to_lower(V))}
     end;
 override_verb(_, _, _) -> false.
 
 -spec(get_json_body/1 :: (RD :: #wm_reqdata{}) -> json_object() | tuple(malformed, binary())).
 get_json_body(RD) ->
     try
-	QS = [ {whistle_util:to_binary(K), whistle_util:to_binary(V)} || {K,V} <- wrq:req_qs(RD)],
+	QS = [ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- wrq:req_qs(RD)],
 	case wrq:req_body(RD) of
 	    <<>> -> {struct, QS};
 	    ReqBody ->
@@ -371,8 +371,8 @@ get_json_body(RD) ->
 	end
     catch
 	_:{badmatch, {comma,{decoder,_,S,_,_,_}}} ->
-            ?LOG("failed to decode json: comma error around char ~s", [whistle_util:to_list(S)]),
-	    {malformed, list_to_binary(["Failed to decode: comma error around char ", whistle_util:to_list(S)])};
+            ?LOG("failed to decode json: comma error around char ~s", [wh_util:to_list(S)]),
+	    {malformed, list_to_binary(["Failed to decode: comma error around char ", wh_util:to_list(S)])};
 	_:E ->
 	    ?LOG("failed to decode json: ~p", [E]),
 	    {malformed, <<"JSON failed to validate; check your commas and curlys">>}
@@ -398,7 +398,7 @@ extract_files_and_params(RD, Context) ->
 
 -spec(extract_file/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
 extract_file(RD, Context) ->
-    FileContents = whistle_util:to_binary(wrq:req_body(RD)),
+    FileContents = wh_util:to_binary(wrq:req_body(RD)),
     ContentType = wrq:get_req_header("Content-Type", RD),
     ContentSize = wrq:get_req_header("Content-Length", RD),
     ?LOG("extracting file content type ~s", [ContentType]),
@@ -419,17 +419,17 @@ get_streamed_body(done_parts, ReqProp, FilesProp) ->
     ?LOG("Done streaming body"),
     {ReqProp, FilesProp};
 get_streamed_body({{_Ignored, {Params, []}, Content}, Next}, ReqProp, FilesProp) ->
-    Key = whistle_util:to_binary(props:get_value(<<"name">>, Params)),
-    Value = binary:replace(whistle_util:to_binary(Content), <<$\r,$\n>>, <<>>, [global]),
+    Key = wh_util:to_binary(props:get_value(<<"name">>, Params)),
+    Value = binary:replace(wh_util:to_binary(Content), <<$\r,$\n>>, <<>>, [global]),
 
     ?LOG("streamed query params: ~s: ~s", [Key, Value]),
 
     get_streamed_body(Next(), [{Key, Value} | ReqProp], FilesProp);
 get_streamed_body({{_Ignored, {Params, Hdrs}, Content}, Next}, ReqProp, FilesProp) ->
-    Key = whistle_util:to_binary(props:get_value(<<"name">>, Params)),
-    FileName = whistle_util:to_binary(props:get_value(<<"filename">>, Params)),
+    Key = wh_util:to_binary(props:get_value(<<"name">>, Params)),
+    FileName = wh_util:to_binary(props:get_value(<<"filename">>, Params)),
 
-    Value = whistle_util:to_binary(Content),
+    Value = wh_util:to_binary(Content),
 
     ?LOG("streamed file headers ~p", [Hdrs]),
     ?LOG("streamed file name ~s (~s)", [Key, FileName]),
@@ -497,12 +497,12 @@ get_auth_token(RD, JsonToken, Verb) ->
         undefined ->
             case Verb of
                 <<"get">> ->
-                    whistle_util:to_binary(props:get_value("auth_token", wrq:req_qs(RD), <<>>));
+                    wh_util:to_binary(props:get_value("auth_token", wrq:req_qs(RD), <<>>));
 		_ ->
 		    JsonToken
 	    end;
         AuthToken ->
-            whistle_util:to_binary(AuthToken)
+            wh_util:to_binary(AuthToken)
     end.
 
 %%--------------------------------------------------------------------
@@ -734,7 +734,7 @@ fix_header(RD, "Location"=H, Url) ->
     %% http://some.host.com:port/"
     Port = case wrq:port(RD) of
 	       80 -> "";
-	       P -> [":", whistle_util:to_list(P)]
+	       P -> [":", wh_util:to_list(P)]
 	   end,
 
     Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
@@ -742,7 +742,7 @@ fix_header(RD, "Location"=H, Url) ->
 
     %% /v1/accounts/acct_id/module => [module, acct_id, accounts, v1]
     PathTokensRev = lists:reverse(string:tokens(wrq:path(RD), "/")),
-    UrlTokens = string:tokens(whistle_util:to_list(Url), "/"),
+    UrlTokens = string:tokens(wh_util:to_list(Url), "/"),
 
     Url1 =
 	string:join(
@@ -756,7 +756,7 @@ fix_header(RD, "Location"=H, Url) ->
 
     {H, lists:concat([Host | [Url1]])};
 fix_header(_, H, V) ->
-    {whistle_util:to_list(H), whistle_util:to_list(V)}.
+    {wh_util:to_list(H), wh_util:to_list(V)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -780,6 +780,7 @@ is_cors_request(RD) ->
 add_cors_headers(RD, Context) ->
     case is_cors_request(RD) of
         true ->
+            ?LOG("determined that this request requires CORS headers"),
             wrq:set_resp_headers(get_cors_headers(Context), RD);
         false ->
             RD
@@ -796,7 +797,7 @@ get_cors_headers(#cb_context{allow_methods=Allowed}) ->
     ?LOG("adding CORS headers to response"),
     [
       {<<"Access-Control-Allow-Origin">>, <<"*">>}
-     ,{<<"Access-Control-Allow-Methods">>, string:join([whistle_util:to_list(A) || A <- Allowed], ", ")}
+     ,{<<"Access-Control-Allow-Methods">>, string:join([wh_util:to_list(A) || A <- Allowed], ", ")}
      ,{<<"Access-Control-Allow-Headers">>, <<"Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token">>}
      ,{<<"Access-Control-Max-Age">>, <<"86400">>}
     ].
@@ -830,10 +831,10 @@ create_resp_envelope(#cb_context{auth_token=AuthToken, resp_data=RespData, resp_
 				 ,resp_error_code=undefined, resp_error_msg=RespErrorMsg}) ->
     Msg = case RespErrorMsg of
 	      undefined ->
-		  StatusBin = whistle_util:to_binary(RespStatus),
+		  StatusBin = wh_util:to_binary(RespStatus),
 		  <<"Unspecified server error: ", StatusBin/binary>>;
 	      Else ->
-		  whistle_util:to_binary(Else)
+		  wh_util:to_binary(Else)
 	  end,
     ?LOG("generating ~s 500 response, ~s", [RespStatus, Msg]),
     [{<<"auth_token">>, AuthToken}
@@ -846,13 +847,13 @@ create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespSt
 				 ,resp_data=RespData, auth_token=AuthToken}) ->
     Msg = case RespErrorMsg of
 	      undefined ->
-		  StatusBin = whistle_util:to_binary(RespStatus),
-		  ErrCodeBin = whistle_util:to_binary(RespErrorCode),
+		  StatusBin = wh_util:to_binary(RespStatus),
+		  ErrCodeBin = wh_util:to_binary(RespErrorCode),
 		  <<"Unspecified server error: ", StatusBin/binary, "(", ErrCodeBin/binary, ")">>;
 	      Else ->
-		  whistle_util:to_binary(Else)
+		  wh_util:to_binary(Else)
 	  end,
-    ?LOG("generating ~s ~b response, ~s", [RespStatus, whistle_util:to_integer(RespErrorCode), Msg]),
+    ?LOG("generating ~s ~b response, ~s", [RespStatus, wh_util:to_integer(RespErrorCode), Msg]),
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, RespStatus}
      ,{<<"message">>, Msg}

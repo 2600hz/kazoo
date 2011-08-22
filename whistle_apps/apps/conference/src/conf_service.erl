@@ -130,16 +130,19 @@ handle_cast({set_route, Node}, #conf{route=undefined, conf_id=ConfId}=Conf) ->
     ?LOG("set conference route to ~s", [Route]),
     {noreply, Conf#conf{route=Route, focus=Focus}};
 
-handle_cast({set_control_queue, CtrlQ}, Conf) ->
+handle_cast({set_control_queue, error}, Conf) ->
+    {noreply, Conf};
+
+handle_cast({set_control_queue, CtrlQ}, #conf{ctrl_q=CtrlQs}=Conf) ->
     ?LOG("set conference control queue ~s", [CtrlQ]),
-    {noreply, Conf#conf{ctrl_q=CtrlQ}};
+    {noreply, Conf#conf{ctrl_q=[CtrlQ|CtrlQs]}};
 
 handle_cast({Action, CallId, ControlQ}, #conf{route=undefined, amqp_q=Q}=Conf) ->
     find_conference_route(CallId, Q),
     %% Put the request back into to mailbox after a brief timeout (hopefully we get the
     %% conference route by then) and re-processes it
     ?LOG("delaying ~s ~s until the route is known", [Action, CallId]),
-    timer:apply_after(500, ?MODULE, Action, [self(), CallId, ControlQ]),
+    {ok, _} = timer:apply_after(500, ?MODULE, Action, [self(), CallId, ControlQ]),
     {noreply, Conf};
 
 handle_cast({add_member, CallId, ControlQ}, #conf{participants=Participants, amqp_q=Q}=Conf) ->
@@ -231,22 +234,22 @@ handle_cast({toggle_participant_deaf, CallId}, Conf) ->
             {noreply, Conf}
     end;
 
-handle_cast({remove_participant, CallId}, #conf{participants=Participants}=Conf) ->
-    NewPtcp = case find_participant(CallId, Conf) of
-                  error ->
-                      ?LOG("could not find active participant ~s for removal", [CallId]),
-                      Participants;
-                  #participant{call_id=Id} ->
-                      ?LOG("removing conference participant ~s (~s)", [Id, CallId]),
-                      remove_participant_event(CallId, Conf),
-                      dict:erase(Id, Participants)
+handle_cast({remove_participant, CallId}, #conf{participants=Participants, ctrl_q=CtrlQs}=Conf) ->
+    {NewPtcp, NewQs} = case find_participant(CallId, Conf) of
+                           error ->
+                               ?LOG("could not find active participant ~s for removal", [CallId]),
+                               {Participants, CtrlQs};
+                           #participant{call_id=Id} ->
+                               ?LOG("removing conference participant ~s (~s)", [Id, CallId]),
+                               remove_participant_event(CallId, Conf),
+                               {dict:erase(Id, Participants), lists:delete(find_ctrl_q(Id, Conf), CtrlQs)}
               end,
     case dict:size(NewPtcp) of
         0 ->
             ?LOG("last participant has left, shuting down"),
-            {stop, shutdown, Conf#conf{participants=NewPtcp}};
+            {stop, shutdown, Conf#conf{participants=NewPtcp, ctrl_q=NewQs}};
         _ ->
-            {noreply, Conf#conf{participants=NewPtcp}}
+            {noreply, Conf#conf{participants=NewPtcp, ctrl_q=NewQs}}
     end;
 
 handle_cast({set_participant_id, CallId, ParticipantId}, #conf{participants=Participants}=Conf) ->
@@ -294,18 +297,18 @@ handle_info({amqp_reconnect, T}, #conf{conf_id=ConfId}=Conf) ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
-                    timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, Conf};
                 Timeout ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
-                    timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, Conf}
             end
     end;
 
 handle_info({amqp_host_down, _}, Conf) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, Conf#conf{amqp_q = <<>>}};
 
 handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}}, #conf{conf_id=ConfId}=Conf) ->
@@ -319,33 +322,29 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
 %% TODO: Temporary, since we dont have a reliable control channel for the conference yet some commands may bounce back
 %%  since the callers control channel we were using has gone away.  When his happens take the control channel of the next
 %%  participant and replay the conference command.
-handle_info({#'basic.return'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}}
-            ,#conf{conf_id=ConfId, participants=Participants, service=Srv, ctrl_q=OldCtrlQ}=Conf) ->
-    spawn(fun() ->
-                  try
-                      JObj = mochijson2:decode(Payload),
-                      {<<"conference">>, <<"command">>} = whapps_util:get_event_type(JObj),
-                      ConfId = wh_json:get_value(<<"Conference-ID">>, JObj),
-                      Candidates = dict:to_list(dict:filter(fun(_, #participant{control_q=Q}) when Q =:= OldCtrlQ -> false;
-                                                               (_, #participant{bridge_ctrl=Q}) when Q =:= OldCtrlQ -> false;
-                                                               (_, _) -> true
-                                                            end, Participants)),
-                      case lists:nth(random:uniform(length(Candidates)), Candidates) of
-                          %% participant that is connected locally
-                          {_, #participant{bridge_ctrl=undefined, control_q=CtrlQ}} ->
-                              ?LOG("replay a conference command on local participant control channel"),
-                              set_control_queue(Srv, CtrlQ),
-                              amqp_util:callctl_publish(CtrlQ, Payload, <<"application/json">>, [{mandatory, true}]);
-                          {_, #participant{bridge_ctrl=CtrlQ}} ->
-                              ?LOG("replay a conference command on participant bridge control channel"),
-                              set_control_queue(Srv, CtrlQ),
-                              amqp_util:callctl_publish(CtrlQ, Payload, <<"application/json">>, [{mandatory, true}])
-                      end
-                  catch
-                      _:_ -> ok
-                  end
-          end),
+handle_info({#'basic.return'{}, #amqp_msg{}}, #conf{ctrl_q=[]}=Conf) ->
+    ?LOG("no control channels left to replay conference command, dropping"),
     {noreply, Conf};
+
+handle_info({#'basic.return'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}}
+            ,#conf{conf_id=ConfId, ctrl_q=CtrlQs}=Conf) ->
+    try
+        JObj = mochijson2:decode(Payload),
+        {<<"conference">>, <<"command">>} = whapps_util:get_event_type(JObj),
+        ConfId = wh_json:get_value(<<"Conference-ID">>, JObj),
+        case tl(CtrlQs) of
+            [] ->
+                ?LOG("no control channels left to replay conference command, dropping"),
+                {noreply, Conf#conf{ctrl_q=[]}};
+            NewQ ->
+                ?LOG("replay a conference command on new control channel"),
+                amqp_util:callctl_publish(NewQ, Payload, <<"application/json">>, [{mandatory, true}]),
+                {noreply, Conf#conf{ctrl_q=NewQ}}
+        end
+    catch
+        _:_ ->
+            {noreply, Conf}
+    end;
 
 handle_info(_Info, Conf) ->
     {noreply, Conf}.
@@ -391,13 +390,13 @@ start_amqp(ConfId) ->
         _ = amqp_util:targeted_exchange(),
         _ = amqp_util:callmgr_exchange(),
         _ = amqp_util:callevt_exchange(),
-        Q = amqp_util:new_conference_queue(ConfId),
-	amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHN_REQ),
-        amqp_util:bind_q_to_callmgr(Q, ?KEY_ROUTE_REQ),
-        amqp_util:bind_q_to_conference(Q, service, ConfId),
-        amqp_util:bind_q_to_conference(Q, events, ConfId),
-        amqp_util:bind_q_to_targeted(Q),
-	amqp_util:basic_consume(Q),
+        true = is_binary(Q = amqp_util:new_conference_queue(ConfId)),
+	ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHN_REQ),
+        ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_ROUTE_REQ),
+        ok = amqp_util:bind_q_to_conference(Q, service, ConfId),
+        ok = amqp_util:bind_q_to_conference(Q, events, ConfId),
+        ok = amqp_util:bind_q_to_targeted(Q),
+	ok = amqp_util:basic_consume(Q),
         amqp_util:register_return_handler(),
         ?LOG_SYS("connected to AMQP"),
         {ok, Q}
@@ -449,19 +448,6 @@ process_req({<<"call_event">>, <<"status_resp">>}, JObj, #conf{focus=Focus}=Conf
             bridge_to_conference(CallId, Conf)
     end;
 
-process_req({<<"call_event">>, <<"CHANNEL_EXECUTE">>}, JObj, #conf{service=Srv, ctrl_q=undefined}=Conf) ->
-    %% When a participant joins the conference but we have no control queue use the new new calls control queue
-    %% as the conference q
-    case wh_json:get_value(<<"Application-Name">>, JObj) of
-        <<"conference">> ->
-            CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-            CtrlQ = find_ctrl_q(CallId, Conf),
-            set_control_queue(Srv, CtrlQ),
-            process_req({<<"call_event">>, <<"CHANNEL_EXECUTE">>}, JObj, Conf#conf{ctrl_q=CtrlQ});
-        _ ->
-            ok
-    end;
-
 process_req({<<"call_event">>, <<"CHANNEL_EXECUTE">>}, JObj, #conf{service=Srv, prompts=Prompts
                                                                    ,member_join_muted=MBJM, member_join_deaf=MBJD
                                                                    ,moderator_join_muted=MDJM, moderator_join_deaf=MDJD}=Conf) ->
@@ -472,6 +458,7 @@ process_req({<<"call_event">>, <<"CHANNEL_EXECUTE">>}, JObj, #conf{service=Srv, 
         <<"conference">> ->
             CallId = wh_json:get_value(<<"Call-ID">>, JObj),
             ParticipantId = wh_json:get_value(<<"Application-Response">>, JObj),
+            set_control_queue(Srv, find_ctrl_q(CallId, Conf)),
             set_participant_id(Srv, CallId, ParticipantId),
             added_participant_event(CallId, Conf),
             %% This could be done (and originally was) by the join_local conference
@@ -542,8 +529,7 @@ process_req({_, <<"route_win">>}, JObj, #conf{service=Srv, amqp_q=Q}=Conf) ->
 
     ?LOG("recieved route win for ~s", [BridgeId]),
 
-    %% TODO: fix the unbind helper functions so they have the same spec as the bind
-    amqp_util:unbind_q_from_callevt(Q, <<?KEY_CALL_EVENT/binary, CallId/binary>>),
+    amqp_util:unbind_q_from_callevt(Q, CallId, events),
     amqp_util:bind_q_to_callevt(Q, BridgeId),
 
     add_bridge(Srv, CallId, BridgeId, CtrlQ),
@@ -579,20 +565,20 @@ join_local_conference(CallId, CtrlQ, #conf{conf_id=ConfId, amqp_q=Q}) ->
     ?LOG("attempting to have ~s join the conference locally via ~p", [CallId, CtrlQ]),
     Answer = [{<<"Application-Name">>, <<"answer">>}
               ,{<<"Call-ID">>, CallId}
-              | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
              ],
     Conference = [{<<"Application-Name">>, <<"conference">>}
                   ,{<<"Conference-ID">>, ConfId}
                   ,{<<"Moderator">>, <<"false">>}
                   ,{<<"Call-ID">>, CallId}
-                  | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                  | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                  ],
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, [{struct, Conference}, {struct, Answer}]}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:queue_req(Command),
+    {ok, Payload} = wh_api:queue_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload).
 
 %%--------------------------------------------------------------------
@@ -632,9 +618,9 @@ bridge_to_conference(CallId, CtrlQ, #conf{amqp_q=Q, route=Route, auth_pwd=AuthPw
                ,{<<"Media">>, <<"bypass">>}
                ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
                ,{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:bridge_req(Command),
+    {ok, Payload} = wh_api:bridge_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload).
 
 %%--------------------------------------------------------------------
@@ -669,7 +655,7 @@ in_conf_control(_, _, _) ->
 %% the moderators list and the control queue.
 %% @end
 %%--------------------------------------------------------------------
--spec find_participant/2 :: (CallId, Conf) -> error | boolean() when
+-spec find_participant/2 :: (CallId, Conf) -> error | #participant{}  when
       CallId :: binary(),
       Conf :: #conf{}.
 find_participant(CallId, #conf{participants=Participants}) ->
@@ -722,7 +708,8 @@ is_participant(CallId, Conf) ->
 find_ctrl_q(CallId, Conf) ->
     case find_participant(CallId, Conf) of
         error -> error;
-        #participant{control_q=CtrlQ} -> CtrlQ
+        #participant{bridge_ctrl=undefined, control_q=CtrlQ} -> CtrlQ;
+        #participant{bridge_ctrl=CtrlQ} -> CtrlQ
     end.
 
 %%--------------------------------------------------------------------
@@ -800,7 +787,7 @@ add_caller(Srv, JObj) ->
 %% and the request loops back it will be processed normally.
 %% @end
 %%--------------------------------------------------------------------
--spec find_conference_route/2 :: (CallId, Q) -> no_return() when
+-spec find_conference_route/2 :: (CallId, Q) -> ok when
       CallId :: binary(),
       Q :: binary().
 find_conference_route(CallId, Q) ->
@@ -817,15 +804,15 @@ find_conference_route(CallId, Q) ->
 %% appropriate action to connect them to the conferece.
 %% @end
 %%--------------------------------------------------------------------
--spec request_call_status/2 :: (CallId, Q) -> no_return() when
+-spec request_call_status/2 :: (CallId, Q) -> ok when
       CallId :: binary(),
       Q :: binary().
 request_call_status(CallId, Q) ->
     ?LOG("requesting the status of participant ~s", [CallId]),
     Command = [{<<"Call-ID">>, CallId}
-               | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = whistle_api:call_status_req({struct, Command}),
+    {ok, Payload} = wh_api:call_status_req({struct, Command}),
     amqp_util:callevt_publish(CallId, Payload, status_req).
 
 %%--------------------------------------------------------------------
@@ -835,7 +822,7 @@ request_call_status(CallId, Q) ->
 %% this conference
 %% @end
 %%--------------------------------------------------------------------
--spec added_participant_event/2 :: (CallId, Conf) -> no_return() when
+-spec added_participant_event/2 :: (CallId, Conf) -> ok when
       CallId :: binary(),
       Conf :: #conf{}.
 added_participant_event(CallId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
@@ -843,8 +830,8 @@ added_participant_event(CallId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
     ?LOG("sending event that ~s (~s) has been added to ~s", [Id, CallId, ConfId]),
     Command = [{<<"Conference-ID">>, ConfId}
                ,{<<"Call-ID">>, Id}
-               ,{<<"Moderator">>, whistle_util:to_binary(Moderator)}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"added_participant">>, ?APP_NAME, ?APP_VERSION)
+               ,{<<"Moderator">>, wh_util:to_binary(Moderator)}
+               | wh_api:default_headers(Q, <<"conference">>, <<"added_participant">>, ?APP_NAME, ?APP_VERSION)
               ],
     Payload = mochijson2:encode({struct, Command}),
     amqp_util:conference_publish(Payload, events, ConfId).
@@ -864,8 +851,8 @@ remove_participant_event(CallId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
     ?LOG("sending event that ~s (~s) has been removed from ~s", [Id, CallId, ConfId]),
     Command = [{<<"Conference-ID">>, ConfId}
                ,{<<"Call-ID">>, Id}
-               ,{<<"Moderator">>, whistle_util:to_binary(Moderator)}
-               | whistle_api:default_headers(Q, <<"conference">>, <<"removed_participant">>, ?APP_NAME, ?APP_VERSION)
+               ,{<<"Moderator">>, wh_util:to_binary(Moderator)}
+               | wh_api:default_headers(Q, <<"conference">>, <<"removed_participant">>, ?APP_NAME, ?APP_VERSION)
               ],
     Payload = mochijson2:encode({struct, Command}),
     amqp_util:conference_publish(Payload, events, ConfId).
@@ -884,9 +871,10 @@ send_route_response(JObj, Q) ->
     Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                 ,{<<"Routes">>, []}
                 ,{<<"Method">>, <<"park">>}
-                | whistle_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
+                ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)}
+                | wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
                ],
-    {ok, Payload} = whistle_api:route_resp(Response),
+    {ok, Payload} = wh_api:route_resp(Response),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 %%--------------------------------------------------------------------
@@ -907,10 +895,10 @@ send_auth_response(JObj, ConfId, AuthUser, AuthPwd, Q) ->
                 ,{<<"Auth-Password">>, AuthPwd}
                 ,{<<"Auth-Method">>, <<"password">>}
                 ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Username">>, AuthUser}
-                                                       ,{<<"Realm">>, wh_json:get_value(<<"Auth-Domain">>, JObj)}
+                                                       ,{<<"Realm">>, wh_json:get_value(<<"Auth-Realm">>, JObj)}
                                                        ,{<<"Authorizing-ID">>, ConfId}
                                                        ,{<<"Conference-ID">>, ConfId}]}}
-                | whistle_api:default_headers(Q, <<"directory">>, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
+                | wh_api:default_headers(Q, <<"directory">>, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
                ],
-    {ok, Payload} = whistle_api:authn_resp(Response),
+    {ok, Payload} = wh_api:authn_resp(Response),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
