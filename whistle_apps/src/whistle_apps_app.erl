@@ -5,12 +5,15 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
+-define(PIDFILE, [code:priv_dir(whistle_apps), "/whistle_apps.pid"]).
+
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
+    wh_util:write_pid(?PIDFILE),
     whistle_apps:start_link().
 
 stop(_State) ->
-    ok.
+    ok = file:delete(?PIDFILE).
