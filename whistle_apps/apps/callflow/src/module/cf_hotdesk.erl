@@ -29,6 +29,7 @@
 -import(cf_call_command, [b_bridge/6, wait_for_unbridge/0]).
 
 -define(MAX_LOGIN_ATTEMPTS, 3).
+-define(CF_HOTDESK_VIEW, <<"cf_attributes/hotdesk_id">>).
 
 -record(hotdesk, {
           hotdesk_id = undefined :: undefined | binary()
@@ -223,14 +224,14 @@ get_hotdesk_profile({user_id, Id}, #cf_call{account_db=Db}) ->
             ?LOG("failed to load hotdesking profile ~s, ~w", [Id, R]),
             #hotdesk{}
     end;
-get_hotdesk_profile({hotdesk_id, HId}, #cf_call{account_db=Db})=Call ->
+get_hotdesk_profile({hotdesk_id, HId}, #cf_call{account_db=Db}=Call) ->
     %% get user id from hotdesk id
-    case couch_mgr:get_results(Db, <<"hotdesks/crossbar_listing">>) of
+    case couch_mgr:get_results(Db, ?CF_HOTDESK_VIEW, [{<<"key">>, HId}]) of
 	{ok, Doc} ->
 	    ?LOG(">>> ~p", [Doc]),
-	    get_hotdesk_profile({user_id, UserId}, Call);
-	{error, _} -> 
-	    ?LOG("failed to load hotdesking profile ~s, ~w", [Id, R]),
+	    get_hotdesk_profile({user_id, wh_json:get_value([<<"value">>, <<"owner_id">>])}, Call);
+	{error, R} ->
+	    ?LOG("failed to load hotdesking profile ~s, ~w", [HId, R]),
 	    #hotdesk{}
     end.
 
