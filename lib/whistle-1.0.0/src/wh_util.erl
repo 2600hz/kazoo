@@ -8,7 +8,7 @@
 -export([current_tstamp/0]).
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1]).
 -export([microseconds_to_seconds/1]).
--export([whistle_version/0]).
+-export([whistle_version/0, write_pid/1]).
 -export([is_ipv4/1, is_ipv6/1]).
 
 -include_lib("proper/include/proper.hrl").
@@ -239,6 +239,11 @@ whistle_version(FileName) ->
 			end;
 	_ ->  <<"not available">>
     end.
+
+-spec write_pid/1 :: (FileName) -> ok | {error, atom()} when
+      FileName :: binary() | string().
+write_pid(FileName) ->
+    file:write_file(FileName, io_lib:format("~s", [os:getpid()]), [write, binary]).
 
 %% there are 86400 seconds in a day
 %% there are 62167219200 seconds between Jan 1, 0 and Jan 1, 1970
