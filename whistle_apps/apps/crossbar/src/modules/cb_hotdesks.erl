@@ -21,7 +21,6 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -249,7 +248,8 @@ validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     set_hotdesk(Context);
 validate([], #cb_context{req_verb = <<"delete">>}=Context) ->
     delete_hotdesk(Context);
-validate(_, Context) ->
+validate(Booya, Context) ->
+    ?LOG("+++++++++++, ~p", [Booya]),
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
@@ -262,7 +262,7 @@ validate(_, Context) ->
       Context :: #cb_context{}.
 load_hotdesk(#cb_context{auth_doc=AuthDoc}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc),
-    crossbar_doc:load_view(<<"hotdesks/crossbar_listing">>, [{<<"key">>, UserId}], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [{<<"key">>, UserId}], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -273,15 +273,19 @@ load_hotdesk(#cb_context{auth_doc=AuthDoc}=Context) ->
 -spec set_hotdesk/1 :: (Context) -> #cb_context{} when
       Context :: #cb_context{}.
 set_hotdesk(#cb_context{auth_doc=AuthDoc, req_data=JObj, db_name=Db}=Context) ->
+    UserId = wh_json:get_value(<<"owner_id">>,AuthDoc),
+
     case is_valid_doc(JObj) of
         %% {false, Fields} ->
         %%     crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-	    UserId = wh_json:get_value(<<"owner_id">>,AuthDoc),
-	    case couch_mgr:load_doc(Db, UserId) of
+	    case couch_mgr:open_doc(Db, UserId) of
 		{ok, Doc} ->
-		    Context#cb_context{doc=wh_json:set_value(<<"hotdesk">>, JObj,Doc)};
-		{error, _} -> crossbar_util:response_bad_identifier(UserId, Context)
+		    ?LOG(" >>> ++++++++++++++++++++ ~p ", [JObj]),
+		    N = wh_json:set_value(<<"hotdesk">>, JObj,Doc),
+		    io:format(" --------- ~p", [N]),
+		    Context#cb_context{doc=N};
+		{error, _} -> crossbar_util:response_bad_identifier(1234, Context)
 	    end
     end.
 
@@ -296,7 +300,7 @@ set_hotdesk(#cb_context{auth_doc=AuthDoc, req_data=JObj, db_name=Db}=Context) ->
       Context :: #cb_context{}.
 delete_hotdesk(#cb_context{auth_doc=AuthDoc, db_name=Db}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>,AuthDoc),
-    case couch_mgr:load_doc(Db, UserId) of
+    case couch_mgr:open_doc(Db, UserId) of
 	{ok, Doc} ->
 	    Context#cb_context{doc=wh_json:delete_key(<<"hotdesk">>, Doc)};
 	{error, _} -> crossbar_util:response_bad_identifier(UserId, Context)
