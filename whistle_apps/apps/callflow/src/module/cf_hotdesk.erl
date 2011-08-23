@@ -35,7 +35,7 @@
 	  ,pin = undefined :: binary()
 	  ,login_attempts = 1 :: non_neg_integer()
 	  ,require_pin = false :: boolean()
-	  ,keep_logged_elsewhere = false :: boolean()
+	  ,keep_logged_in_elsewhere = false :: boolean()
 	  ,owner_id = <<>> :: binary()
           ,prompts = #prompts{}
 	 }).
@@ -51,7 +51,6 @@
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
     UserId = wh_json:get_value(<<"id">>, Data),
-    ?LOG(" >>>> ~p", [UserId]),
     H = get_hotdesk_profile({user_id, UserId}, Call),
     Devices = cf_attributes:owned_by(H#hotdesk.owner_id, Call, device),
     case wh_json:get_value(<<"action">>, Data) of
@@ -159,13 +158,13 @@ login(Devices, #hotdesk{hotdesk_id=HId, require_pin=false}=H, Call, _)
       Devices :: list(),
       H :: #hotdesk{},
       Call :: #cf_call{}.
-do_login(_, #hotdesk{keep_logged_elsewhere=true, owner_id=OwnerId,prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
+do_login(_, #hotdesk{keep_logged_in_elsewhere=true, owner_id=OwnerId,prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
     case couch_mgr:open_doc(Db, AId) of
 	{ok, JObj} -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, OwnerId, JObj));
 	{error, _} -> error
     end,
     b_play(Bye, Call);
-do_login(Devices, #hotdesk{keep_logged_elsewhere=false, owner_id=OwnerId, prompts=#prompts{goodbye=Bye}}, #cf_call{account_db=Db}=Call) ->
+do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId, prompts=#prompts{goodbye=Bye}}, #cf_call{account_db=Db}=Call) ->
     lists:foreach(fun(D) -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, OwnerId, D)) end, Devices),
     b_play(Bye, Call).
 
@@ -187,13 +186,13 @@ do_login(Devices, #hotdesk{keep_logged_elsewhere=false, owner_id=OwnerId, prompt
       Devices :: list(),
       H :: #hotdesk{},
       Call :: #cf_call{}.
-logout(_, #hotdesk{keep_logged_elsewhere=true, prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
+logout(_, #hotdesk{keep_logged_in_elsewhere=true, prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
     case couch_mgr:open_doc(Db, AId) of
 	{ok, JObj} -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, <<>>, JObj));
 	{error, _} -> error
     end,
     b_play(Bye, Call);
-logout(Devices, #hotdesk{keep_logged_elsewhere=false, prompts=#prompts{goodbye=Bye}}, #cf_call{account_db=Db}=Call) ->
+logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{goodbye=Bye}}, #cf_call{account_db=Db}=Call) ->
     lists:foreach(fun(D) -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, <<>>, D)) end, Devices),
     b_play(Bye, Call).
 
@@ -218,15 +217,23 @@ get_hotdesk_profile({user_id, Id}, #cf_call{account_db=Db}) ->
                      ,pin = wh_json:get_binary_value(<<"pin">>, JObj, <<>>)
                      ,require_pin = wh_json:get_binary_boolean(<<"require_pin">>, JObj, false)
                      ,owner_id = Id
-                     ,keep_logged_elsewhere = wh_json:get_binary_value(<<"keep_logged_elsewhere">>, JObj, <<>>)
+                     ,keep_logged_in_elsewhere = wh_json:get_binary_value(<<"keep_logged_in_elsewhere">>, JObj, <<>>)
                     };
         {error, R} ->
             ?LOG("failed to load hotdesking profile ~s, ~w", [Id, R]),
             #hotdesk{}
     end;
-get_hotdesk_profile({hotdesk_id, HId}, #cf_call{account_db=Db}) ->
+get_hotdesk_profile({hotdesk_id, HId}, #cf_call{account_db=Db})=Call ->
     %% get user id from hotdesk id
-    #hotdesk{}.
+    case couch_mgr:get_results(Db, <<"hotdesks/crossbar_listing">>) of
+	{ok, Doc} ->
+	    ?LOG(">>> ~p", [Doc]),
+	    get_hotdesk_profile({user_id, UserId}, Call);
+	{error, _} -> 
+	    ?LOG("failed to load hotdesking profile ~s, ~w", [Id, R]),
+	    #hotdesk{}
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
