@@ -45,6 +45,8 @@ start_link() ->
 				      ,{bindings, ?BINDINGS}
 				     ], []).
 
+-spec stop/1 :: (Srv) -> ok when
+      Srv :: atom() | pid().
 stop(Srv) ->
     gen_listener:stop(Srv).
 

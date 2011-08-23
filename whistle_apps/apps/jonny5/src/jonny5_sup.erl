@@ -52,6 +52,6 @@ init([]) ->
 	   ,[
 	     ?CACHE(j5_cache)
 	     ,?CHILD(jonny5_acct_sup, supervisor)
-	     ,?CHILD(jonny5_acct, worker)
+	     ,?CHILD(jonny5_listener, worker)
 	    ]
 	 } }.
