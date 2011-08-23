@@ -142,18 +142,18 @@ owner_id(ObjectId, #cf_call{account_db=Db})->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec owned_by/2 :: (OwnerId, Call) -> undefined | json_object() when
+-spec owned_by/2 :: (OwnerId, Call) -> undefined | list() when
       OwnerId :: undefined | binary(),
       Call :: #cf_call{}.
 owned_by(undefined, _) ->
     undefined;
 owned_by(OwnerId, #cf_call{account_db=Db})->
     Id = wh_util:to_binary(OwnerId),
-    case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owned">>}, [{<<"start_key">>, [Id, [], []]}, {<<"endkey">>, [ Id, [], []]} ]) of
+    case couch_mgr:get_results(Db, <<"cf_attributes/owned">>, [{<<"start_key">>, [Id, []]}, {<<"end_key">>, [Id, ?EMPTY_JSON_OBJECT]} ]) of
         {ok, []} ->
             undefined;
         {ok, JObj} ->
-            wh_json:get_value(<<"value">>, hd(JObj));
+	    [wh_json:get_value(<<"id">>, D)  || D <- JObj];
         {error, _} ->
             undefined
     end.
@@ -161,9 +161,10 @@ owned_by(OwnerId, #cf_call{account_db=Db})->
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
+%% Returns a list of doc ID of the specified type for thiw owner
 %% @end
 %%-----------------------------------------------------------------------------
--spec owned_by/3 :: (OwnerId, Call, Type) -> undefined | json_object() when
+-spec owned_by/3 :: (OwnerId, Call, Type) -> undefined | list() when
       OwnerId :: undefined | binary(),
       Call :: #cf_call{},
       Type :: atom().
@@ -171,11 +172,13 @@ owned_by(undefined, _, _) ->
     undefined;
 owned_by(OwnerId, #cf_call{account_db=Db}, Type)->
     Id = wh_util:to_binary(OwnerId),
-    case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owned">>}, [{<<"start_key">>, [Id, Type, []]}, {<<"endkey">>, [ Id, Type, []]} ]) of
+    T = wh_util:to_binary(Type),
+    ?LOG(">>> Looking for ~p with owner_id of ~p", [T, Id]),
+    case couch_mgr:get_results(Db, <<"cf_attributes/owned">>, [{<<"key">>, [Id, T]}]) of
         {ok, []} ->
             undefined;
         {ok, JObj} ->
-            wh_json:get_value(<<"value">>, hd(JObj));
+	    [wh_json:get_value(<<"id">>, D)  || D <- JObj];
         {error, _} ->
             undefined
     end.
