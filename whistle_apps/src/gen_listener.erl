@@ -106,8 +106,12 @@ reply(From, Msg) ->
 start_link(Module, Params, InitArgs) ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
 
-stop(Pid) when is_pid(Pid) ->
-    gen_server:cast(Pid, stop).
+-spec stop/1 :: (Srv) -> ok when
+      Srv :: atom() | pid().
+stop(Srv) when is_atom(Srv) ->
+    stop(whereis(Srv));
+stop(Srv) when is_pid(Srv) ->
+    gen_server:cast(Srv, stop).
 
 -spec add_responder/3 :: (Srv, Responder, Key) -> ok when
       Srv :: atom() | pid(),
