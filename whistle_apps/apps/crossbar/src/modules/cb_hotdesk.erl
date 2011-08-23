@@ -117,7 +117,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.hotdesks">>, Pay
 handle_info({binding_fired, Pid, <<"v1_resource.validate.hotdesks">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
@@ -248,8 +247,8 @@ validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     set_hotdesk(Context);
 validate([], #cb_context{req_verb = <<"delete">>}=Context) ->
     delete_hotdesk(Context);
-validate(Booya, Context) ->
-    ?LOG("+++++++++++, ~p", [Booya]),
+validate(_Booya, Context) ->
+    %?LOG("+++++++++++, ~p", [Context#cb_context.req_nouns]),
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
@@ -281,9 +280,8 @@ set_hotdesk(#cb_context{auth_doc=AuthDoc, req_data=JObj, db_name=Db}=Context) ->
         {true, []} ->
 	    case couch_mgr:open_doc(Db, UserId) of
 		{ok, Doc} ->
-		    ?LOG(" >>> ++++++++++++++++++++ ~p ", [JObj]),
 		    N = wh_json:set_value(<<"hotdesk">>, JObj,Doc),
-		    io:format(" --------- ~p", [N]),
+		    %% io:format(" --------- ~p", [N]),
 		    Context#cb_context{doc=N};
 		{error, _} -> crossbar_util:response_bad_identifier(1234, Context)
 	    end

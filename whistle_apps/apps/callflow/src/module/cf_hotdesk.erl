@@ -6,7 +6,7 @@
 %%% @end
 %%% Created :  4 Aug 2011 by Edouard Swiac <edouard@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cf_hotdesking).
+-module(cf_hotdesk).
 
 -include("../callflow.hrl").
 
@@ -51,6 +51,7 @@
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
     UserId = wh_json:get_value(<<"id">>, Data),
+    ?LOG(" >>>> ~p", [UserId]),
     H = get_hotdesk_profile({user_id, UserId}, Call),
     Devices = cf_attributes:owned_by(H#hotdesk.owner_id, Call, device),
     case wh_json:get_value(<<"action">>, Data) of
