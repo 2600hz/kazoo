@@ -37,7 +37,7 @@
 	  ,login_attempts = 1 :: non_neg_integer()
 	  ,require_pin = false :: boolean()
 	  ,keep_logged_in_elsewhere = false :: boolean()
-	  ,owner_id = <<>> :: binary()
+	  ,owner_id = undefined :: binary()
           ,prompts = #prompts{}
 	 }).
 %%--------------------------------------------------------------------
@@ -54,6 +54,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     UserId = wh_json:get_value(<<"id">>, Data),
     H = get_hotdesk_profile({user_id, UserId}, Call),
     Devices = cf_attributes:owned_by(H#hotdesk.owner_id, Call, device),
+
     case wh_json:get_value(<<"action">>, Data) of
 	<<"bridge">> ->
 	    Endpoints = lists:foldl(fun(Device, Acc) ->
@@ -79,6 +80,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 	    login(Devices, H, Call),
             CFPid ! {stop};
         <<"logout">> ->
+	    ?LOG("User ~p logs out in hotdesk", [UserId]),
             answer(Call),
 	    logout(Devices, H, Call),
             CFPid ! {stop};
@@ -115,7 +117,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 login(Devices, H, Call) ->
     login(Devices, H, Call, 1).
 
-login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, #cf_call{authorizing_id=AId}=Call, _) when AId =/= <<>> orelse AId =/= undefined->
+login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, #cf_call{authorizing_id=AId}=Call, _) when AId == <<>> orelse AId == undefined->
     %% sanitize authorizing_id
     b_play(AbortLogin, Call);
 login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS->
@@ -128,17 +130,17 @@ login(Devices, #hotdesk{hotdesk_id=undefined, prompts=#prompts{enter_hotdesk=Ent
     {ok, HId} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterHId, <<"1">>, Call),
     NewH = H#hotdesk{hotdesk_id = HId},
     login(Devices, NewH, Call, Loop);
-login(Devices, #hotdesk{hotdesk_id=HId, require_pin=true, pin=Pin, prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}=H}, Call, Loop) 
+login(Devices, #hotdesk{hotdesk_id=HId, require_pin=true, pin=Pin, prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}=H}, Call, Loop)
   when HId =/= undefined orelse HId =/= <<>> ->
     try
         %% Request the pin number from the caller but crash if it doesnt match
-	?LOG("Matching PIN for this hotdesk_id as required"),
+	?LOG(" >>> the pin should be ~p, try is ~p", [Pin, Loop]),
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call),
         do_login(Devices, H, Call)
     catch
         _:R ->
-            ?LOG("invalid mailbox login ~w", [R]),
-            {ok, _} = b_play(InvalidLogin, Call),
+            ?LOG("invalid hotdesk PIN ~p", [R]),
+            b_play(InvalidLogin, Call),
             login(Devices, H, Call, Loop+1)
     end;
 login(Devices, #hotdesk{hotdesk_id=HId, require_pin=false}=H, Call, _)
@@ -160,15 +162,16 @@ login(Devices, #hotdesk{hotdesk_id=HId, require_pin=false}=H, Call, _)
       H :: #hotdesk{},
       Call :: #cf_call{}.
 do_login(_, #hotdesk{keep_logged_in_elsewhere=true, owner_id=OwnerId,prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
-    case couch_mgr:open_doc(Db, AId) of
-	{ok, JObj} -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, OwnerId, JObj));
-	{error, _} -> error
-    end,
+    %% keep logged in elsewhere, so we update only the device used to call 
+    ?LOG(" >>>>>>>> ENTER DO LOGIN keep logged"),
+    set_device_owner(Db, AId, OwnerId),
     b_play(Bye, Call);
-do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId, prompts=#prompts{goodbye=Bye}}, #cf_call{account_db=Db}=Call) ->
-    lists:foreach(fun(D) -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, OwnerId, D)) end, Devices),
+do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId, prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
+    %% log out from owned devices , since we don't want to keep logged in elsewhere, then log unto the device currently used
+    ?LOG(" >>>>>>>> ENTER DO LOGIN no keep logged"),
+    logout_from_elsewhere(Db, Devices),
+    set_device_owner(Db, AId, OwnerId),
     b_play(Bye, Call).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -188,13 +191,11 @@ do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId, pro
       H :: #hotdesk{},
       Call :: #cf_call{}.
 logout(_, #hotdesk{keep_logged_in_elsewhere=true, prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
-    case couch_mgr:open_doc(Db, AId) of
-	{ok, JObj} -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, <<>>, JObj));
-	{error, _} -> error
-    end,
+    set_device_owner(Db, AId, <<>>),
     b_play(Bye, Call);
-logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{goodbye=Bye}}, #cf_call{account_db=Db}=Call) ->
-    lists:foreach(fun(D) -> couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, <<>>, D)) end, Devices),
+logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
+    logout_from_elsewhere(Db, Devices),
+    set_device_owner(Db, AId, <<>>),
     b_play(Bye, Call).
 
 %%--------------------------------------------------------------------
@@ -207,18 +208,18 @@ logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{goodby
 -spec get_hotdesk_profile/2 :: (Id, Call) -> #hotdesk{} when
       Id :: undefined | binary(),
       Call :: #cf_call{}.
-get_hotdesk_profile(undefined, _) ->
+get_hotdesk_profile({_, undefined}, _) ->
     #hotdesk{};
 get_hotdesk_profile({user_id, Id}, #cf_call{account_db=Db}) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
-            ?LOG("loaded hotdesking profile ~s", [Id]),
+	    ?LOG("loading hotdesking profile for ~p", [Id]),
             #hotdesk{
-                     hotdesk_id = wh_json:get_binary_value(<<"id">>, JObj, <<>>)
-                     ,pin = wh_json:get_binary_value(<<"pin">>, JObj, <<>>)
-                     ,require_pin = wh_json:get_binary_boolean(<<"require_pin">>, JObj, false)
+                     hotdesk_id = wh_json:get_value([<<"hotdesk">>, <<"id">>], JObj)
+                     ,pin = wh_json:get_value([<<"hotdesk">>, <<"pin">>], JObj)
+                     ,require_pin = wh_json:get_value([<<"hotdesk">>, <<"require_pin">>], JObj)
                      ,owner_id = Id
-                     ,keep_logged_in_elsewhere = wh_json:get_binary_value(<<"keep_logged_in_elsewhere">>, JObj, <<>>)
+                     ,keep_logged_in_elsewhere = wh_json:get_value([<<"hotdesk">>, <<"keep_logged_in_elsewhere">>], JObj)
                     };
         {error, R} ->
             ?LOG("failed to load hotdesking profile ~s, ~w", [Id, R]),
@@ -229,7 +230,7 @@ get_hotdesk_profile({hotdesk_id, HId}, #cf_call{account_db=Db}=Call) ->
     case couch_mgr:get_results(Db, ?CF_HOTDESK_VIEW, [{<<"key">>, HId}]) of
 	{ok, Doc} ->
 	    ?LOG(">>> ~p", [Doc]),
-	    get_hotdesk_profile({user_id, wh_json:get_value([<<"value">>, <<"owner_id">>])}, Call);
+	    get_hotdesk_profile({user_id, wh_json:get_value([<<"value">>, <<"owner_id">>], Doc)}, Call);
 	{error, R} ->
 	    ?LOG("failed to load hotdesking profile ~s, ~w", [HId, R]),
 	    #hotdesk{}
@@ -275,3 +276,31 @@ ignore_early_media(Endpoints) ->
                                      or Acc
                          end, false, Endpoints),
     wh_util:to_binary(Ignore).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Reset owner_id for all specified devices
+%% @end
+%%--------------------------------------------------------------------
+-spec logout_from_elsewhere/2 :: (Db, Devices) -> no_return() when
+      Db :: binary(),
+      Devices :: list(binary()).
+logout_from_elsewhere(Db, Devices) ->
+    lists:foreach(fun(D) -> set_device_owner(Db, D, <<>>) end, Devices).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Set owner id for a specified device
+%% @end
+%%--------------------------------------------------------------------
+-spec set_device_owner/3 :: (Db, Device, OwnerId) -> {ok, _} | {error, _} when
+      Db :: binary(),
+      Device :: binary(),
+      OwnerId :: binary().
+set_device_owner(Db, Device, OwnerId) ->
+    case couch_mgr:open_doc(Db, Device) of
+	{ok, JObj} -> ?LOG(">> setting owner ~p~n to device", [OwnerId]), couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, OwnerId, JObj));
+	{error, _} -> ?LOG(">> error while setting owner for device ~p~n", [Device])
+    end.
