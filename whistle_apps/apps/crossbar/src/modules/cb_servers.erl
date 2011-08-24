@@ -205,7 +205,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.servers">>, [RD, 
                   crossbar_util:put_reqid(Context),
                   case crossbar_doc:delete(Context, permanent) of
                       #cb_context{resp_status=success}=Context1 ->
-                          execute_delete_command(Context1, State),
+                          execute_delete_command(Context, State),
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
@@ -476,9 +476,9 @@ is_valid_doc(JObj) ->
 execute_delete_command(_, #state{delete_tmpl=undefined}) ->
     ?LOG("no delete template defined"),
     ok;
-execute_delete_command(Context, #state{delete_tmpl=DeleteTmpl}=State) ->
-    Props = template_props(Context, State),
-    {ok, C} = DeleteTmpl:render(Props),
+execute_delete_command(#cb_context{doc=JObj}, #state{delete_tmpl=DeleteTmpl}) ->
+    Props = wh_json:to_proplist(JObj),
+    {ok, C} = DeleteTmpl:render([{<<"server">>, Props}]),
     Cmd = binary_to_list(iolist_to_binary(C)),
     ?LOG("executing delete template: ~s", [Cmd]),
     os:cmd(Cmd),
