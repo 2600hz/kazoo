@@ -173,7 +173,6 @@ owned_by(undefined, _, _) ->
 owned_by(OwnerId, #cf_call{account_db=Db}, Type)->
     Id = wh_util:to_binary(OwnerId),
     T = wh_util:to_binary(Type),
-    ?LOG(">>> Looking for ~p with owner_id of ~p", [T, Id]),
     case couch_mgr:get_results(Db, <<"cf_attributes/owned">>, [{<<"key">>, [Id, T]}]) of
         {ok, []} ->
             undefined;
