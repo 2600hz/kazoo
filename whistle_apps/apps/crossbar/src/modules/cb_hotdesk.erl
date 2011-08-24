@@ -9,7 +9,7 @@
 %%% @end
 %%% Created : 20 Aug 2011 by Edouard Swiac <edouard@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cb_hotdesks).
+-module(cb_hotdesk).
 
 -behaviour(gen_server).
 
