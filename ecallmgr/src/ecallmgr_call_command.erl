@@ -33,9 +33,8 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 		{error, AppName, Msg} ->
                     send_error_response(App, Msg, UUID, JObj),
                     ControlPID ! {execute_complete, UUID, AppName};
-                {return, Result} -> Result;
-		{AppName, noop} ->
-                    ControlPID ! {execute_complete, UUID, AppName};
+                {return, Result} ->
+                    Result;
 		{AppName, AppData} ->
                     send_cmd(Node, UUID, AppName, AppData)
 	    end;
@@ -59,11 +58,24 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
       UUID :: binary(),
       JObj :: json_object(),
       Application :: binary().
-get_fs_app(Node, UUID, JObj, <<"noop">>=App) ->
-    spawn(fun() ->
-                  send_noop_call_event(Node, UUID, JObj)
-          end),
-    {App, noop};
+get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
+    case wh_api:noop_req_v(JObj) of
+	false ->
+            {error, <<"noop">>, <<"noop failed to execute as JObj did not validate">>};
+	true ->
+            Args = case wh_json:get_value(<<"Msg-ID">>, JObj) of
+                       undefined ->
+                           <<"Event-Subclass=whistle::noop,Event-Name=CUSTOM"
+                             ,",whistle_event_name=CHANNEL_EXECUTE_COMPLETE"
+                             ,",whistle_application_name=noop">>;
+                       NoopId ->
+                           <<"Event-Subclass=whistle::noop,Event-Name=CUSTOM"
+                             ,",whistle_event_name=CHANNEL_EXECUTE_COMPLETE"
+                             ,",whistle_application_name=noop"
+                             ,",whistle_application_response=", (wh_util:to_binary(NoopId))/binary>>
+                   end,
+	    {<<"event">>, Args}
+    end;
 
 get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case wh_api:play_req_v(JObj) of
@@ -230,6 +242,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
                           ],
             case DialStrings of
                 [[]] ->
+                    freeswitch:api(Node, log, lists:flatten(io_lib:format("Notice log|~s|nobody is home", [UUID]))),
                     {error, <<"bridge failed to execute no endpoints avaliable">>};
                 _ ->
                     BridgeCmd = lists:flatten(ecallmgr_fs_xml:get_channel_vars(JObj))
@@ -334,6 +347,7 @@ send_cmd(Node, UUID, AppName, Args) ->
 				    {"call-command", "execute"}
 				    ,{"execute-app-name", wh_util:to_list(AppName)}
 				    ,{"execute-app-arg", wh_util:to_list(Args)}
+                                    ,{"event-lock", "true"}
 				   ]).
 
 %%--------------------------------------------------------------------
@@ -667,47 +681,6 @@ send_fetch_call_event(Node, UUID, JObj) ->
                      ,{<<"Error-Message">>, "failed to construct or publish fetch call event"}
                      ,{<<"Call-ID">>, UUID}
                      ,{<<"Application-Name">>, <<"fetch">>}
-                     ,{<<"Application-Response">>, <<>>}
-                     | wh_api:default_headers(<<>>, <<"error">>, wh_util:to_binary(Type), ?APP_NAME, ?APP_VERSION)
-                    ],
-            {ok, P2} = wh_api:error_resp(Error),
-            amqp_util:callevt_publish(UUID, P2, event)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec send_noop_call_event/3 :: (Node, UUID, JObj) -> no_return() when
-      Node :: binary(),
-      UUID :: binary(),
-      JObj :: json_object().
-send_noop_call_event(Node, UUID, JObj) ->
-    try
-        {ok, Dump} = freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)),
-        Prop = ecallmgr_util:eventstr_to_proplist(Dump),
-        EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
-                    ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
-                    ,{<<"Call-ID">>, UUID}
-                    ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
-                    ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
-                    ,{<<"Application-Name">>, <<"noop">>}
-                    ,{<<"Application-Response">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-                    | wh_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-                   ],
-        EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
-                       [] -> EvtProp1;
-                       CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
-                   end,
-        {ok, P1} = wh_api:call_event(EvtProp2),
-        amqp_util:callevt_publish(UUID, P1, event)
-    catch
-        Type:_ ->
-            Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                     ,{<<"Error-Message">>, "failed to construct or publish noop call event"}
-                     ,{<<"Call-ID">>, UUID}
-                     ,{<<"Application-Name">>, <<"noop">>}
                      ,{<<"Application-Response">>, <<>>}
                      | wh_api:default_headers(<<>>, <<"error">>, wh_util:to_binary(Type), ?APP_NAME, ?APP_VERSION)
                     ],
