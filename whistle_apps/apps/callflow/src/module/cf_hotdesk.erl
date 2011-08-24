@@ -67,26 +67,26 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 	end,
 
     Devices = cf_attributes:owned_by(H#hotdesk.owner_id, Call, device),
-    io:format("profile is ~p", [H]),
     ?LOG(">>>> Devices are ~p", [Devices]),
     case wh_json:get_value(<<"action">>, Data) of
 	<<"bridge">> ->
 	    Endpoints = lists:foldl(fun(Device, Acc) ->
 					    case cf_endpoint:build(Device, Call) of
-						{ok, Endpoint} -> [Endpoint | Acc];
+						{ok, Endpoint} -> Endpoint ++ Acc;
 						{error, _} -> Acc
 					    end
 				    end, [], Devices),
+	    io:format(" >>> endpoints are ~p", [Endpoints]),
 	    case bridge_to_endpoints(Endpoints, 2000, Call) of
 		{ok, _} ->
 		    wait_for_unbridge(),
 		    CFPid ! {stop};
 		{fail, Reason} ->
 		    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-		    ?LOG("failed to bridge to hotdesk user ~s:~s", [Code, Cause]),
+		    ?LOG("failed to bridge to hotdesk user ~p:~p", [Code, Cause]),
 		    CFPid ! {continue};
 		{error, R} ->
-		    ?LOG("failed to bridge to hotdesk user ~w, error : ~p", [H#hotdesk.owner_id], R),
+		    ?LOG("failed to bridge to hotdesk user ~p, error : ~p", [H#hotdesk.owner_id, R]),
 		    CFPid ! {continue}
 	    end;
         <<"login">> ->
@@ -266,7 +266,7 @@ get_hotdesk_profile({hotdesk_id, HId}, #cf_call{account_db=Db}=Call) ->
       Call :: #cf_call{}.
 bridge_to_endpoints(Endpoints, Timeout, Call) ->
     IgnoreEarlyMedia = ignore_early_media(Endpoints),
-    case b_bridge(Endpoints, Timeout, <<"internal">>, <<"single">>, IgnoreEarlyMedia, Call) of
+    case b_bridge(Endpoints, Timeout, <<"internal">>, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
             ?LOG("bridged to endpoint"),
             wait_for_unbridge();
