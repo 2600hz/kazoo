@@ -25,6 +25,7 @@
 -include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -export([behaviour_info/1]).
 
@@ -155,7 +156,7 @@ rm_binding(Srv, Binding) ->
       Args :: [atom() | proplist(),...].
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
-    ModState = case Module:init(InitArgs) of
+    ModState = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
 		   {ok, MS} ->
 		       MS;
 		   {ok, MS, hibernate} ->

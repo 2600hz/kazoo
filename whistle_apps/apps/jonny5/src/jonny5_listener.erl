@@ -24,7 +24,7 @@
          ,cache_ref = make_ref() :: reference()
 	 }).
 
--define(RESPONDERS, [ {authn_req, [{<<"dialplan">>, <<"authz_req">>}]} ]).
+-define(RESPONDERS, [ {authz_req, [{<<"dialplan">>, <<"authz_req">>}]} ]).
 -define(BINDINGS, [ {authorization, []} ]).
 
 -define(SERVER, ?MODULE).
@@ -68,8 +68,6 @@ stop(Srv) ->
 init([]) ->
     CPid = whereis(j5_cache),
     Ref = erlang:monitor(process, CPid),
-
-    spawn(fun() -> preload_accounts() end),
 
     {ok, #state{cache=CPid, cache_ref=Ref}}.
 
@@ -158,14 +156,3 @@ terminate(_Reason, _) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-preload_accounts() ->
-    {ok, Accts} = couch_mgr:get_results(<<"accounts">>, <<"accounts/listing_by_id">>, []),
-    ?LOG_SYS("Preloading ~b accounts", [length(Accts)]),
-    _ = [ jonny5_acct_sup:start_proc(wh_json:get_value(<<"id">>, AcctJObj)) || AcctJObj <- Accts],
-    {ok, TSAccts} = couch_mgr:get_results(<<"ts">>, <<"LookUpDID/DIDsByAcct">>, []), %% crappy way, make new view
-    ?LOG_SYS("Preloading ~b trunkstore accounts", [length(TSAccts)]),
-    [ jonny5_acct_sup:start_proc(wh_json:get_value(<<"id">>, TSAcctJObj)) || TSAcctJObj <- TSAccts].
