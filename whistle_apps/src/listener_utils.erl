@@ -41,7 +41,14 @@ rm_responder(Responders, Responder, Keys) ->
       Responders :: [responder(),...] | [],
       Responder :: atom().
 is_responder_known(Responders, Responder) ->
+    _ = maybe_load_responder(Responder),
     erlang:function_exported(Responder, init, 0) andalso wh_util:is_false(lists:keyfind(Responder, 2, Responders)).
+
+maybe_load_responder(Responder) ->
+    case erlang:module_loaded(Responder) of
+	true -> ok;
+	false -> {module, Responder} = code:ensure_loaded(Responder)
+    end.
 
 -spec maybe_add_mapping/2 :: (Mapping, Acc) -> [responder(),...] when
       Mapping :: responder(),

@@ -2,32 +2,30 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Listener for authn_req, reg_success, and reg_query AMQP requests
+%%% Handle updating devices and emails about voicemails
 %%% @end
-%%% Created : 13 Jan 2011 by James Aimonetti <james@2600hz.org>
+%%% Created :  3 May 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(jonny5_listener).
+-module(hotornot_listener).
 
 -behaviour(gen_listener).
 
 %% API
 -export([start_link/0, stop/1]).
 
-%% gen_listener callbacks
+%% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
 	 ,terminate/2, code_change/3]).
 
--include("jonny5.hrl").
-
--record(state, {
-	  cache = undefined :: undefined | pid()
-         ,cache_ref = make_ref() :: reference()
-	 }).
-
--define(RESPONDERS, [ {authz_req, [{<<"dialplan">>, <<"authz_req">>}]} ]).
--define(BINDINGS, [ {authorization, []} ]).
+-include("hotornot.hrl").
 
 -define(SERVER, ?MODULE).
+
+-define(BINDINGS, [ {rating, []} ]).
+-define(RESPONDERS, [{hon_rater, [{<<"call">>, <<"rating_req">>}]}]).
+
+-record(state, {
+	 }).
 
 %%%===================================================================
 %%% API
@@ -40,6 +38,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
 				      ,{bindings, ?BINDINGS}
@@ -51,7 +50,7 @@ stop(Srv) ->
     gen_listener:stop(Srv).
 
 %%%===================================================================
-%%% gen_listener callbacks
+%%% gen_server callbacks
 %%%===================================================================
 
 %%--------------------------------------------------------------------
@@ -66,10 +65,8 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    CPid = whereis(j5_cache),
-    Ref = erlang:monitor(process, CPid),
-
-    {ok, #state{cache=CPid, cache_ref=Ref}}.
+    ?LOG_SYS("starting hotornot listener"),
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -85,7 +82,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_, _From, State) ->
+handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
 %%--------------------------------------------------------------------
@@ -111,11 +108,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', MRef, process, Cache, _Reason}, #state{cache=Cache}=State) ->
-    ?LOG_SYS("registrar cache process went down, attempting to reconnect"),
-    erlang:demonitor(MRef),
-    {noreply, State#state{cache=undefined}, 50};
-
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
@@ -128,23 +120,23 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{cache=Cache}) ->
-    {reply, [{cache, Cache}]}.
+handle_event(_JObj, _State) ->
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function is called by a gen_listener when it is about to
+%% This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_listener terminates
+%% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
 %%
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), #state{}) -> ok.
-terminate(_Reason, _) ->
-    ?LOG_SYS("jonny5 server ~p termination", [_Reason]).
+terminate(_Reason, _State) ->
+    ?LOG_SYS("vm hotornot process ~p termination", [_Reason]),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
