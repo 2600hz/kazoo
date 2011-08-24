@@ -13,10 +13,12 @@
 -export([handle/2]).
 
 -record(prompts, {
-          enter_password = <<"/system_media/vm-enter_pass">>
+          enter_hotdesk = <<"/system_media/hotdesk-enter_id">>
+          ,enter_password = <<"/system_media/hotdesk-enter_pin">>
           ,invalid_login = <<"/system_media/vm-fail_auth">>
           ,abort_login = <<"/system_media/vm-abort">>
-          ,enter_hotdesk = <<"/system_media/vm-enter_id">>
+          ,hotdesk_login = <<"/system_media/hotdesk-logged_in">>
+          ,hotdesk_logout = <<"/system_media/hotdesk-logged_out">>
 	  ,goodbye = <<"/system_media/vm-goodbye">>
 	 }).
 
@@ -51,10 +53,22 @@
       Call :: #cf_call{}.
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
-    UserId = wh_json:get_value(<<"id">>, Data),
-    H = get_hotdesk_profile({user_id, UserId}, Call),
-    Devices = cf_attributes:owned_by(H#hotdesk.owner_id, Call, device),
+    ?LOG(">>> Getting Owner Id"),
+    H = case wh_json:get_value(<<"id">>, Data) of
+	    undefined ->
+		?LOG(">>> owner id undefined in callflow, asking for hotdesk id"),
+		P = #prompts{},
+		answer(Call),
+		{ok, HId} = b_play_and_collect_digits(<<"1">>, <<"10">>, P#prompts.enter_hotdesk, <<"1">>, Call),
+		get_hotdesk_profile({hotdesk_id, HId}, Call);
+	    UserId ->
+		?LOG(">>> owner_id defined in callflow, value ~p", [UserId]),
+		get_hotdesk_profile({user_id, UserId}, Call)
+	end,
 
+    Devices = cf_attributes:owned_by(H#hotdesk.owner_id, Call, device),
+    io:format("profile is ~p", [H]),
+    ?LOG(">>>> Devices are ~p", [Devices]),
     case wh_json:get_value(<<"action">>, Data) of
 	<<"bridge">> ->
 	    Endpoints = lists:foldl(fun(Device, Acc) ->
@@ -123,12 +137,6 @@ login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, Call, Loop) when Lo
     %% if we have exceeded the maximum loop attempts then terminate this call
     ?LOG("maximum number of invalid attempts to check mailbox"),
     b_play(AbortLogin, Call);
-login(Devices, #hotdesk{hotdesk_id=undefined, prompts=#prompts{enter_hotdesk=EnterHId}}=H, Call, Loop) ->
-    %% if the callflow did not define the owner_id, ask for hotdesk id and load hotdesk profile from hotdesk_id
-    ?LOG("requesting hotdesk id"),
-    {ok, HId} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterHId, <<"1">>, Call),
-    NewH = H#hotdesk{hotdesk_id = HId},
-    login(Devices, NewH, Call, Loop);
 login(Devices, #hotdesk{hotdesk_id=HId, require_pin=true, pin=Pin, prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}}=H, Call, Loop)
   when HId =/= undefined orelse HId =/= <<>> ->
     try
@@ -160,16 +168,16 @@ login(Devices, #hotdesk{hotdesk_id=HId, require_pin=false}=H, Call, _)
       Devices :: list(),
       H :: #hotdesk{},
       Call :: #cf_call{}.
-do_login(_, #hotdesk{keep_logged_in_elsewhere=true, owner_id=OwnerId,prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
-    %% keep logged in elsewhere, so we update only the device used to call 
-    ?LOG(" >>>>>>>> ENTER DO LOGIN keep logged"),
+do_login(_, #hotdesk{keep_logged_in_elsewhere=true, owner_id=OwnerId,prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
+    %% keep logged in elsewhere, so we update only the device used to call
     set_device_owner(Db, AId, OwnerId),
+    b_play(HotdeskLogin, Call),
     b_play(Bye, Call);
-do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId, prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
+do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId, prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
     %% log out from owned devices , since we don't want to keep logged in elsewhere, then log unto the device currently used
-    ?LOG(" >>>>>>>> ENTER DO LOGIN no keep logged"),
     logout_from_elsewhere(Db, Devices),
     set_device_owner(Db, AId, OwnerId),
+    b_play(HotdeskLogin, Call),
     b_play(Bye, Call).
 
 %%--------------------------------------------------------------------
@@ -189,12 +197,14 @@ do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId, pro
       Devices :: list(),
       H :: #hotdesk{},
       Call :: #cf_call{}.
-logout(_, #hotdesk{keep_logged_in_elsewhere=true, prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
+logout(_, #hotdesk{keep_logged_in_elsewhere=true, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
     set_device_owner(Db, AId, <<>>),
+    b_play(HotdeskLogout, Call),
     b_play(Bye, Call);
-logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
+logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
     logout_from_elsewhere(Db, Devices),
     set_device_owner(Db, AId, <<>>),
+    b_play(HotdeskLogout, Call),
     b_play(Bye, Call).
 
 %%--------------------------------------------------------------------
@@ -212,7 +222,7 @@ get_hotdesk_profile({_, undefined}, _) ->
 get_hotdesk_profile({user_id, Id}, #cf_call{account_db=Db}) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
-	    ?LOG("loading hotdesking profile for ~p", [Id]),
+	    ?LOG(">>> Loading hotdesking profile for user_id ~p", [Id]),
             #hotdesk{
                      hotdesk_id = wh_json:get_value([<<"hotdesk">>, <<"id">>], JObj)
                      ,pin = wh_json:get_value([<<"hotdesk">>, <<"pin">>], JObj)
@@ -221,17 +231,25 @@ get_hotdesk_profile({user_id, Id}, #cf_call{account_db=Db}) ->
                      ,keep_logged_in_elsewhere = wh_json:get_value([<<"hotdesk">>, <<"keep_logged_in_elsewhere">>], JObj)
                     };
         {error, R} ->
-            ?LOG("failed to load hotdesking profile ~s, ~w", [Id, R]),
+            ?LOG("failed to load hotdesking profile for user ~p because ~p", [Id, R]),
             #hotdesk{}
     end;
 get_hotdesk_profile({hotdesk_id, HId}, #cf_call{account_db=Db}=Call) ->
     %% get user id from hotdesk id
-    case couch_mgr:get_results(Db, ?CF_HOTDESK_VIEW, [{<<"key">>, HId}]) of
+    ?LOG(">>> getting user_id from hotdesk_id ~p in DB ~p", [HId, Db]),
+
+    case couch_mgr:get_results(Db, <<"cf_attributes/hotdesk_id">>, [{<<"key">>, HId}]) of
 	{ok, Doc} ->
-	    ?LOG(">>> ~p", [Doc]),
-	    get_hotdesk_profile({user_id, wh_json:get_value([<<"value">>, <<"owner_id">>], Doc)}, Call);
+	    case Doc of
+		[JObj] ->
+		    ?LOG(">>> +++++ owner_id is ~p", [wh_json:get_value([<<"value">>, <<"owner_id">>], JObj)]),
+		    get_hotdesk_profile({user_id, wh_json:get_value([<<"value">>, <<"owner_id">>], JObj)}, Call);
+		_ ->
+		    %% set incorrect credentials so that the user dont know this hotdesk_id doesnt exist, avoid brute force
+		    #hotdesk{hotdesk_id = abc, pin = xyz, require_pin = true}
+	    end;
 	{error, R} ->
-	    ?LOG("failed to load hotdesking profile ~s, ~w", [HId, R]),
+	    ?LOG("failed to get user id from hotdesk id  ~p, ~p", [HId, R]),
 	    #hotdesk{}
     end.
 
@@ -291,7 +309,6 @@ logout_from_elsewhere(Db, Devices) ->
 	undefined -> nothing;
 	[]  -> nothing;
 	_ ->   lists:foreach(fun(D) -> set_device_owner(Db, D, <<>>) end, Devices)
-	       %%lists:foreach(fun(D) -> io:format(" inside a foreach ++++++++++") end, Devices).
     end.
 
 
@@ -306,7 +323,7 @@ logout_from_elsewhere(Db, Devices) ->
       Device :: binary(),
       OwnerId :: binary().
 set_device_owner(Db, Device, OwnerId) ->
-    ?LOG(" >> Setting device ~p for owner_id ~p on db ~p", [Db, Device, OwnerId]),
+    ?LOG(" >> Setting device ~p for owner_id ~p on db ~p", [Device, OwnerId, Db]),
     case couch_mgr:open_doc(Db, Device) of
 	{ok, JObj} -> ?LOG(">> setting owner ~p~n to device", [OwnerId]), couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, OwnerId, JObj));
 	{error, _} -> ?LOG(">> error while setting owner for device ~p~n", [Device])
