@@ -25,6 +25,7 @@
 -include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -export([behaviour_info/1]).
 
@@ -106,8 +107,12 @@ reply(From, Msg) ->
 start_link(Module, Params, InitArgs) ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
 
-stop(Pid) when is_pid(Pid) ->
-    gen_server:cast(Pid, stop).
+-spec stop/1 :: (Srv) -> ok when
+      Srv :: atom() | pid().
+stop(Srv) when is_atom(Srv) ->
+    stop(whereis(Srv));
+stop(Srv) when is_pid(Srv) ->
+    gen_server:cast(Srv, stop).
 
 -spec add_responder/3 :: (Srv, Responder, Key) -> ok when
       Srv :: atom() | pid(),
@@ -151,7 +156,7 @@ rm_binding(Srv, Binding) ->
       Args :: [atom() | proplist(),...].
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
-    ModState = case Module:init(InitArgs) of
+    ModState = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
 		   {ok, MS} ->
 		       MS;
 		   {ok, MS, hibernate} ->
@@ -216,11 +221,11 @@ handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State
     {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}};
 
 handle_cast({add_binding, Binding, Props}, #state{queue=Q}=State) ->
-    add_binding_to_q(Q, Binding, Props),
+    queue_bindings:add_binding_to_q(Q, Binding, Props),
     {noreply, State};
 
 handle_cast({rm_binding, Binding}, #state{queue=Q}=State) ->
-    rm_binding_from_q(Q, Binding),
+    queue_bindings:rm_binding_from_q(Q, Binding),
     {noreply, State};
 
 handle_cast(Message, #state{module=Module, module_state=ModState}=State) ->
@@ -319,10 +324,10 @@ start_amqp(Bindings, Props) ->
     QueueProps = props:get_value(queue_options, Props, []),
     QueueName = props:get_value(queue_name, Props, <<>>),
     Q = amqp_util:new_queue(QueueName, QueueProps),
-     
+
     ConsumeProps = props:get_value(consume_options, Props, []),
 
-    _ = [ add_binding_to_q(Q, Type, BindProps) || {Type, BindProps} <- Bindings ],
+    _ = [ queue_bindings:add_binding_to_q(Q, Type, BindProps) || {Type, BindProps} <- Bindings ],
 
     amqp_util:basic_consume(Q, ConsumeProps),
     {ok, Q}.
@@ -332,30 +337,5 @@ start_amqp(Bindings, Props) ->
       Bindings :: bindings().
 stop_amqp(<<>>, _) -> ok;
 stop_amqp(Q, Bindings) ->
-    _ = [ rm_binding_from_q(Q, Type) || {Type, _} <- Bindings],
+    _ = [ queue_bindings:rm_binding_from_q(Q, Type) || {Type, _} <- Bindings],
     amqp_util:queue_delete(Q).
-
--type bind_types() :: authentication | registrations.
-
--spec add_binding_to_q/3 :: (Q, Type, Props) -> ok when
-      Q :: binary(),
-      Type :: bind_types(),
-      Props :: proplist().
-add_binding_to_q(Q, authentication, _Props) ->
-    amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHN_REQ),
-    ok;
-add_binding_to_q(Q, registrations, _Props) ->
-    amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
-    ok.
-
--spec rm_binding_from_q/2 :: (Q, Type) -> ok when
-      Q :: binary(),
-      Type :: bind_types().
-rm_binding_from_q(Q, authentication) ->
-    amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHN_REQ);
-rm_binding_from_q(Q, registrations) ->
-    amqp_util:unbind_q_from_callmgr(Q, ?KEY_REG_SUCCESS),
-    amqp_util:unbind_q_from_callmgr(Q, ?KEY_REG_QUERY).
