@@ -281,9 +281,8 @@ set_hotdesk(#cb_context{auth_doc=AuthDoc, req_data=JObj, db_name=Db}=Context) ->
 	    case couch_mgr:open_doc(Db, UserId) of
 		{ok, Doc} ->
 		    N = wh_json:set_value(<<"hotdesk">>, JObj,Doc),
-		    %% io:format(" --------- ~p", [N]),
 		    Context#cb_context{doc=N};
-		{error, _} -> crossbar_util:response_bad_identifier(1234, Context)
+		{error, _} -> crossbar_util:response_bad_identifier(UserId, Context)
 	    end
     end.
 
