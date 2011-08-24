@@ -80,7 +80,6 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 	    login(Devices, H, Call),
             CFPid ! {stop};
         <<"logout">> ->
-	    ?LOG("User ~p logs out in hotdesk", [UserId]),
             answer(Call),
 	    logout(Devices, H, Call),
             CFPid ! {stop};
@@ -130,7 +129,7 @@ login(Devices, #hotdesk{hotdesk_id=undefined, prompts=#prompts{enter_hotdesk=Ent
     {ok, HId} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterHId, <<"1">>, Call),
     NewH = H#hotdesk{hotdesk_id = HId},
     login(Devices, NewH, Call, Loop);
-login(Devices, #hotdesk{hotdesk_id=HId, require_pin=true, pin=Pin, prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}=H}, Call, Loop)
+login(Devices, #hotdesk{hotdesk_id=HId, require_pin=true, pin=Pin, prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}}=H, Call, Loop)
   when HId =/= undefined orelse HId =/= <<>> ->
     try
         %% Request the pin number from the caller but crash if it doesnt match
@@ -138,8 +137,8 @@ login(Devices, #hotdesk{hotdesk_id=HId, require_pin=true, pin=Pin, prompts=#prom
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call),
         do_login(Devices, H, Call)
     catch
-        _:R ->
-            ?LOG("invalid hotdesk PIN ~p", [R]),
+        _:_ ->
+            ?LOG("invalid hotdesk PIN ~p", [Pin]),
             b_play(InvalidLogin, Call),
             login(Devices, H, Call, Loop+1)
     end;
@@ -206,7 +205,7 @@ logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{goodby
 %% @end
 %%--------------------------------------------------------------------
 -spec get_hotdesk_profile/2 :: (Id, Call) -> #hotdesk{} when
-      Id :: undefined | binary(),
+      Id :: {_, undefined} | {user_id, binary()} | {hotdesk_id, binary()},
       Call :: #cf_call{}.
 get_hotdesk_profile({_, undefined}, _) ->
     #hotdesk{};
@@ -287,7 +286,14 @@ ignore_early_media(Endpoints) ->
       Db :: binary(),
       Devices :: list(binary()).
 logout_from_elsewhere(Db, Devices) ->
-    lists:foreach(fun(D) -> set_device_owner(Db, D, <<>>) end, Devices).
+    ?LOG("Db is ~p and devices are ~p~n", [Db, Devices]),
+    case Devices of
+	undefined -> nothing;
+	[]  -> nothing;
+	_ ->   lists:foreach(fun(D) -> set_device_owner(Db, D, <<>>) end, Devices)
+	       %%lists:foreach(fun(D) -> io:format(" inside a foreach ++++++++++") end, Devices).
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -300,6 +306,7 @@ logout_from_elsewhere(Db, Devices) ->
       Device :: binary(),
       OwnerId :: binary().
 set_device_owner(Db, Device, OwnerId) ->
+    ?LOG(" >> Setting device ~p for owner_id ~p on db ~p", [Db, Device, OwnerId]),
     case couch_mgr:open_doc(Db, Device) of
 	{ok, JObj} -> ?LOG(">> setting owner ~p~n to device", [OwnerId]), couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, OwnerId, JObj));
 	{error, _} -> ?LOG(">> error while setting owner for device ~p~n", [Device])
