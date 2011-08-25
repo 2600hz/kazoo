@@ -18,26 +18,16 @@ start() ->
 start_deps() ->
     ecallmgr_deps:ensure(),
     logger:start_link(),
-    ensure_started(sasl),
-    ensure_started(crypto),
-    ensure_started(riak_err),
-    ensure_started(whistle_amqp),
-    ensure_started(ibrowse).
+    wh_util:ensure_started(sasl),
+    wh_util:ensure_started(crypto),
+    wh_util:ensure_started(riak_err),
+    wh_util:ensure_started(whistle_amqp),
+    wh_util:ensure_started(ibrowse).
 
 %% @spec stop() -> ok
 %% @doc Stop the callmgr server.
 stop() ->
     application:stop(ecallmgr).
-
-ensure_started(App) ->
-    case application:start(App) of
-	ok ->
-	    ok;
-	{error, {already_started, App}} ->
-	    ok;
-	E -> io:format("ERROR: ~p~n", [E]),
-	     ok
-    end.
 
 add_fs_node(Node) ->
     ecallmgr_fs_handler:add_fs_node(Node).
