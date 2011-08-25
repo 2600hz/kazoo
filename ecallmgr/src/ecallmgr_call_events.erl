@@ -327,8 +327,6 @@ send_ctl_event(CtlPid, UUID, <<"CUSTOM">>, Props) when is_pid(CtlPid) ->
     ok;
 send_ctl_event(_, _, _, _) -> ok.
 
-
-
 -spec publish_msg/3 :: (Node, UUID, Prop) -> 'ok' when
       Node :: atom(),
       UUID :: binary(),
@@ -349,7 +347,7 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
              | props:delete(<<"Application-Response">>, Prop)],
 
     case lists:member(EvtName, ?FS_EVENTS) of
-	true ->
+        true ->
             AppName = case props:get_value(<<"Event-Name">>, Prop) of
                           <<"CUSTOM">> ->
                               props:get_value(<<"whistle_application_name">>, Prop);
@@ -371,13 +369,13 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                         ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop1)}
                         ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop1)}
                         ,{<<"Channel-State">>, get_channel_state(Prop1)}
+                        ,{<<"During-Transfer">>, wh_util:to_binary(is_during_transfer(Prop))}
 		       | event_specific(EvtName, AppName, Prop1) ],
 	    EvtProp1 = EvtProp0 ++ wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
 			   [] -> EvtProp1;
 			   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
 		       end,
-            AppName =:= <<"noop">> andalso io:format("~p~n", [EvtProp2]),
 	    {ok, JSON} = wh_api:call_event(EvtProp2),
 	    amqp_util:callevt_publish(UUID, JSON, event);
 	_ ->
@@ -591,3 +589,10 @@ get_fs_var(Node, UUID, Var, Default) ->
         {ok, Value} -> Value;
         _ -> Default
     end.
+
+-spec is_during_transfer/1 ::  (Props) -> boolean() when
+      Props :: proplist().
+is_during_transfer(Props) ->
+    props:get_value(<<"variable_endpoint_disposition">>, Props) =:= <<"ATTENDED_TRANSFER">>
+        orelse props:get_value(<<"variable_endpoint_disposition">>, Props) =:= <<"BLIND_TRANSFER">>
+        orelse wh_util:is_true(props:get_value(<<"variable_was_transferred">>, Props)).
