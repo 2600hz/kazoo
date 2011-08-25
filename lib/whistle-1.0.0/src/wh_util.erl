@@ -232,11 +232,8 @@ whistle_version() ->
 
 -spec(whistle_version/1 :: (binary()) -> binary()).
 whistle_version(FileName) ->
-    case file:open(FileName, [read]) of
-	{ok, Device} -> case io:get_line(Device, "") of
-			    eof  -> file:close(Device), <<"not available">>;
-			    Line -> file:close(Device), list_to_binary(string:strip(Line, right, $\n))
-			end;
+    case file:consult(FileName) of
+	{ok, [Version]} -> Version;
 	_ ->  <<"not available">>
     end.
 
