@@ -282,7 +282,9 @@ get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
         false -> {error, <<"set failed to execute as JObj did not validate">>};
         true ->
             {struct, ChannelVars} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
-            lists:foreach(fun({K,V}) ->
+            lists:foreach(fun({<<"was_transferred">> = K,V}) ->
+                                  set(Node, UUID, list_to_binary([wh_util:to_list(K), "=", wh_util:to_list(V)]));
+                             ({K,V}) ->
                                   Arg = list_to_binary([?CHANNEL_VAR_PREFIX
                                                         ,wh_util:to_list(K), "=", wh_util:to_list(V)]),
                                   set(Node, UUID, Arg)
@@ -347,7 +349,6 @@ send_cmd(Node, UUID, AppName, Args) ->
 				    {"call-command", "execute"}
 				    ,{"execute-app-name", wh_util:to_list(AppName)}
 				    ,{"execute-app-arg", wh_util:to_list(Args)}
-                                    ,{"event-lock", "true"}
 				   ]).
 
 %%--------------------------------------------------------------------
