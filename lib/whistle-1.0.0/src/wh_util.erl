@@ -226,7 +226,8 @@ whistle_version() ->
     case wh_cache:fetch({whistle_util, whistle_version}) of
 	{ok, V}    ->  V;
 	{error, _} ->
-	    wh_cache:store({whistle_util, whistle_version}, whistle_version(<<"/opt/whistle/whistle/VERSION">>)),
+	    VersionFile = code:lib_dir(whistle) ++ "/../../VERSION",
+	    wh_cache:store({whistle_util, whistle_version}, whistle_version(to_binary(VersionFile))),
 	    whistle_version()
     end.
 
