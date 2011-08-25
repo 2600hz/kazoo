@@ -273,7 +273,9 @@ transfer_auth(AuthJObj) ->
     AuthData = {struct, AuthProps}
         = wh_json:get_value(<<"value">>, AuthJObj, ?EMPTY_JSON_OBJECT),
 
-    SipAuthDoc = {struct, [{<<"_id">>, ID}
+    DocID = <<ID/binary, (wh_util:to_binary(wh_json:get_value(<<"server_id">>, AuthData, <<"0">>)))/binary>>,
+
+    SipAuthDoc = {struct, [{<<"_id">>, DocID}
 			   ,{<<"sip">>, {struct, [
 						  {<<"realm">>, wh_json:get_value(<<"auth_realm">>, AuthData, <<"">>)}
 						  ,{<<"method">>, wh_json:get_value(<<"auth_method">>, AuthData, <<"">>)}
