@@ -5,13 +5,29 @@
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1, is_false/1, binary_to_lower/1]).
 -export([a1hash/3, floor/1, ceiling/1]).
--export([current_tstamp/0]).
+-export([current_tstamp/0, ensure_started/1]).
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1]).
 -export([microseconds_to_seconds/1]).
 -export([whistle_version/0, write_pid/1]).
 -export([is_ipv4/1, is_ipv6/1]).
 
 -include_lib("proper/include/proper.hrl").
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Verify that an application is running
+%% @end
+%%--------------------------------------------------------------------
+-spec ensure_started/1 :: (App) -> ok when
+      App :: atom().
+ensure_started(App) ->
+    case application:start(App) of
+	ok ->
+	    ok;
+	{error, {already_started, App}} ->
+	    ok
+    end.
 
 -spec(call_response/3 :: (CallId :: binary(), CtrlQ :: binary(), Code :: binary()) -> ok).
 -spec(call_response/4 :: (CallId :: binary(), CtrlQ :: binary(), Code :: binary(), Cause :: undefined|binary()) -> ok).
