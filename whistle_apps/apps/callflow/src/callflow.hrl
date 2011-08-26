@@ -16,6 +16,8 @@
 -define(DIALPLAN_MAP, [{ <<"tone">>, <<"tones">> }]).
 
 -define(LIST_BY_NUMBER, {<<"callflow">>, <<"listing_by_number">>}).
+-define(LIST_BY_PATTERN, {<<"callflow">>, <<"listing_by_pattern">>}).
+
 -define(NO_MATCH_CF, <<"no_match">>).
 
 -define(DEFAULT_TIMEOUT, <<"20">>).
@@ -53,4 +55,5 @@
             ,owner_id = undefined :: binary() | undefined           %% The ID of the that owns the authorizing endpoint
             ,channel_vars = undefined :: json_object() | undefined  %% Any custom channel vars that where provided with the route request
             ,last_action = undefined :: undefined | atom()          %% Previous action
+            ,capture_group = undefined :: undefined | binary()      %% If the callflow was found using a pattern this is the capture group
            }).
