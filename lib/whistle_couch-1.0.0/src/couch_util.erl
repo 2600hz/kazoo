@@ -331,7 +331,7 @@ do_save_docs(#db{}=Db, Docs, Options) ->
     retry504s(fun() -> couchbeam:save_docs(Db, Docs, Options) end).
 
 %% Attachment-related functions ------------------------------------------------
--spec fetch_attachment/4 :: (Conn, DbName, DocId, AName) -> {ok, binary()} | {error, atom()} when
+-spec fetch_attachment/4 :: (Conn, DbName, DocId, AName) -> {'ok', binary()} | {'error', atom()} when
       Conn :: #server{},
       DbName :: binary(),
       DocId :: binary(),
@@ -340,7 +340,7 @@ fetch_attachment(#server{}=Conn, DbName, DocId, AName) ->
     Db = get_db(Conn, DbName),
     do_fetch_attachment(Db, DocId, AName).
 
--spec put_attachment/5 :: (Conn, DbName, DocId, AName, Contents) -> {ok, json_object()} | {error, atom()} when
+-spec put_attachment/5 :: (Conn, DbName, DocId, AName, Contents) -> {'ok', json_object()} | {'error', atom()} when
       Conn :: #server{},
       DbName :: binary(),
       DocId :: binary(),
@@ -351,7 +351,7 @@ put_attachment(#server{}=Conn, DbName, DocId, AName, Contents) ->
     {ok, Rev} = do_fetch_rev(Db, DocId),
     do_put_attachment(Db, DocId, AName, Contents, [{rev, Rev}]).
 
--spec put_attachment/6 :: (Conn, DbName, DocId, AName, Contents, Options) -> {ok, json_object()} | {error, atom()} when
+-spec put_attachment/6 :: (Conn, DbName, DocId, AName, Contents, Options) -> {'ok', json_object()} | {'error', atom()} when
       Conn :: #server{},
       DbName :: binary(),
       DocId :: binary(),
@@ -368,7 +368,7 @@ put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
 	    do_put_attachment(Db, DocId, AName, Contents, Options)
     end.
 
--spec delete_attachment/4 :: (Conn, DbName, DocId, AName) -> {ok, json_object()} | {error, atom()} when
+-spec delete_attachment/4 :: (Conn, DbName, DocId, AName) -> {'ok', json_object()} | {'error', atom()} when
       Conn :: #server{},
       DbName :: binary(),
       DocId :: binary(),
@@ -378,7 +378,7 @@ delete_attachment(#server{}=Conn, DbName, DocId, AName) ->
     {ok, Rev} = do_fetch_rev(Db, DocId),
     do_del_attachment(Db, DocId, AName, [{rev, Rev}]).
 
--spec delete_attachment/5 :: (Conn, DbName, DocId, AName, Options) -> {ok, json_object()} | {error, atom()} when
+-spec delete_attachment/5 :: (Conn, DbName, DocId, AName, Options) -> {'ok', json_object()} | {'error', atom()} when
       Conn :: #server{},
       DbName :: binary(),
       DocId :: binary(),
@@ -395,14 +395,14 @@ delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     end.
 
 %% Internal Attachment-related functions ---------------------------------------
--spec do_fetch_attachment/3 :: (Db, DocId, AName) -> {ok, binary()} | {error, atom()} when
+-spec do_fetch_attachment/3 :: (Db, DocId, AName) -> {'ok', binary()} | {'error', atom()} when
       Db :: #db{},
       DocId :: binary(),
       AName :: binary().
 do_fetch_attachment(#db{}=Db, DocId, AName) ->
     retry504s(fun() -> couchbeam:fetch_attachment(Db, DocId, AName) end).
 
--spec do_put_attachment/5 :: (Db, DocId, AName, Contents, Options) -> {ok, json_object()} | {error, atom()} when
+-spec do_put_attachment/5 :: (Db, DocId, AName, Contents, Options) -> {'ok', json_object()} | {'error', atom()} when
       Db :: #db{},
       DocId :: binary(),
       AName :: binary(),
@@ -411,7 +411,7 @@ do_fetch_attachment(#db{}=Db, DocId, AName) ->
 do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
     retry504s(fun() -> couchbeam:put_attachment(Db, DocId, AName, Contents, Options) end).
 
--spec do_del_attachment/4 :: (Db, DocId, AName, Options) -> {ok, json_object()} | {error, atom()} when
+-spec do_del_attachment/4 :: (Db, DocId, AName, Options) -> {'ok', json_object()} | {'error', atom()} when
       Db :: #db{},
       DocId :: binary(),
       AName :: binary(),
@@ -456,10 +456,10 @@ get_view(#db{}=Db, DesignDoc, ViewOptions) ->
 %% until 3 failed retries occur.
 %% @end
 %%------------------------------------------------------------------------------
--spec retry504s/1 :: (Fun) -> {ok, json_object() | json_objects() | binary() | [binary(),...] | boolean()} | {error, atom()} when
-      Fun :: fun(() -> {ok, json_object() | json_objects() | binary()} | {error, term()}).
--spec retry504s/2 :: (Fun, Cnt) -> {ok, json_object() | json_objects() | binary() | [binary(),...] | boolean()} | {error, atom()} when
-      Fun :: fun(() -> {ok, json_object() | json_objects() | binary()} | {error, term()}),
+-spec retry504s/1 :: (Fun) -> {'ok', json_object() | json_objects() | binary() | [binary(),...] | boolean()} | {'error', atom()} when
+      Fun :: fun(() -> {'ok', json_object() | json_objects() | binary()} | {'error', term()}).
+-spec retry504s/2 :: (Fun, Cnt) -> {'ok', json_object() | json_objects() | binary() | [binary(),...] | boolean()} | {'error', atom()} when
+      Fun :: fun(() -> {'ok', json_object() | json_objects() | binary()} | {'error', term()}),
       Cnt :: 0..3.
 retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
