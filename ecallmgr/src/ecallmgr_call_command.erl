@@ -282,17 +282,21 @@ get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
         false -> {error, <<"set failed to execute as JObj did not validate">>};
         true ->
             {struct, ChannelVars} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
-            lists:foreach(fun({<<"was_transferred">> = K,V}) ->
-                                  set(Node, UUID, list_to_binary([wh_util:to_list(K), "=", wh_util:to_list(V)]));
+            lists:foreach(fun({<<"Auto-Answer">>,V}) ->
+                                  set(Node, UUID, list_to_binary(["sip_auto_answer=", wh_util:to_list(V)]));
+                             ({<<"was_transferred">>,V}) ->
+                                  set(Node, UUID, list_to_binary(["was_transferred=", wh_util:to_list(V)]));
                              ({K,V}) ->
-                                  Arg = list_to_binary([?CHANNEL_VAR_PREFIX
-                                                        ,wh_util:to_list(K), "=", wh_util:to_list(V)]),
+                                  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K), "=", wh_util:to_list(V)]),
                                   set(Node, UUID, Arg)
                           end, ChannelVars),
             {struct, CallVars} = wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
-            lists:foreach(fun({K,V}) ->
-                                  Arg = list_to_binary([?CHANNEL_VAR_PREFIX
-                                                        ,wh_util:to_list(K), "=", wh_util:to_list(V)]),
+            lists:foreach(fun({<<"Auto-Answer">>,V}) ->
+                                  export(Node, UUID, list_to_binary(["sip_auto_answer=", wh_util:to_list(V)]));
+                              ({<<"was_transferred">>,V}) ->
+                                  export(Node, UUID, list_to_binary(["was_transferred=", wh_util:to_list(V)]));
+                              ({K,V}) ->
+                                  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K), "=", wh_util:to_list(V)]),
                                   export(Node, UUID, Arg)
                           end, CallVars),
             {App, noop}
