@@ -310,7 +310,7 @@
 -define(RESOURCE_ERROR_TYPES, []).
 
 %% Call Events
--define(CALL_EVENT_HEADERS, [<<"Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
+-define(CALL_EVENT_HEADERS, [<<"Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>, <<"Channel-State">>, <<"During-Transfer">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>, <<"Custom-Channel-Vars">>
 					  ,<<"Msg-ID">>
 					  ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>, <<"Other-Leg-Caller-ID-Number">> %% BRIDGE
@@ -869,7 +869,7 @@
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
 			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
 			,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>, <<"RECORD_STOP">>
-			,<<"CHANNEL_EXECUTE_ERROR">> %% custom error
+			,<<"CUSTOM">> ,<<"CHANNEL_EXECUTE_ERROR">> %% custom error
 		   ]).
 
 %% List of tuples: {dialplan application-name, validation_fun}
@@ -894,3 +894,17 @@
 				,{<<"conference">>, fun wh_api:conference_req_v/1}
 				,{<<"noop">>, fun wh_api:noop_req_v/1}
 			       ]).
+
+-define(FS_CHANNEL_STATES, [{<<"CS_NEW">>, <<"new">>}
+                            ,{<<"CS_INIT">>, <<"initialize">>}
+                            ,{<<"CS_ROUTING">>, <<"routing">>}
+                            ,{<<"CS_SOFT_EXECUTE">>, <<"soft_execute">>}
+                            ,{<<"CS_EXECUTE">>, <<"execute">>}
+                            ,{<<"CS_EXCHANGE_MEDIA">>, <<"exchange_media">>}
+                            ,{<<"CS_PARK">>, <<"park">>}
+                            ,{<<"CS_CONSUME_MEDIA">>, <<"consume_media">>}
+                            ,{<<"CS_HIBERNATE">>, <<"hibernate">>}
+                            ,{<<"CS_RESET">>, <<"reset">>}
+                            ,{<<"CS_HANGUP">>, <<"hangup">>}
+                            ,{<<"CS_REPORTING">>, <<"reporting">>}
+                            ,{<<"CS_DESTROY">>, <<"destroy">>}]).

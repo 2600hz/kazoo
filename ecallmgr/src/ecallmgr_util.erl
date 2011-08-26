@@ -9,7 +9,7 @@
 -module(ecallmgr_util).
 
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
--export([eventstr_to_proplist/1, get_setting/1, get_setting/2]).
+-export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 
 -include("ecallmgr.hrl").
 
@@ -67,6 +67,17 @@ eventstr_to_proplist(EvtStr) ->
 	 [{V1,[]}] = mochiweb_util:parse_qs(V),
 	 {wh_util:to_binary(K), wh_util:to_binary(V1)}
      end || X <- string:tokens(wh_util:to_list(EvtStr), "\n")].
+
+%% convert a raw FS list of vars  to a proplist
+%% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
+-spec varstr_to_proplist/1 :: (VarStr) -> proplist() when
+      VarStr :: string().
+varstr_to_proplist(VarStr) ->
+    [begin
+	 [K, V] = string:tokens(X, "="),
+	 [{V1,[]}] = mochiweb_util:parse_qs(V),
+	 {wh_util:to_binary(K), wh_util:to_binary(V1)}
+     end || X <- string:tokens(wh_util:to_list(VarStr), ",")].
 
 -spec get_setting/1 :: (Setting) -> {ok, term()} when
       Setting :: atom().

@@ -41,6 +41,7 @@
 -export([wait_for_message/1, wait_for_message/2, wait_for_message/3, wait_for_message/4]).
 -export([wait_for_application/1, wait_for_application/2, wait_for_application/3, wait_for_application/4]).
 -export([wait_for_bridge/1, wait_for_unbridge/0]).
+-export([wait_for_callee_release/1]).
 -export([wait_for_dtmf/1]).
 -export([wait_for_noop/1]).
 -export([wait_for_hangup/0]).
@@ -1221,13 +1222,57 @@ wait_for_bridge(Timeout) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Waits for and determines the status of the bridge command
+%% @end
+%%--------------------------------------------------------------------
+-spec wait_for_callee_release/1 :: (Call) -> cf_api_bridge_return() when
+      Call :: #cf_call{}.
+wait_for_callee_release(Call) ->
+    receive
+        {amqp_msg, {struct, _}=JObj} ->
+            Transfer = wh_json:is_true(<<"During-Transfer">>, JObj),
+            case get_event_type(JObj) of
+                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } when not Transfer ->
+                    ?LOG("channel was unbridged while waiting for bridge"),
+                    {error, channel_unbridge};
+                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } when not Transfer ->
+                    ?LOG("channel was hungup while waiting for bridge"),
+                    {error, channel_hungup};
+                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">> } when not Transfer ->
+                    case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
+                        <<"SUCCESS">> ->
+                            {ok, JObj};
+                        _ ->
+                            {fail, JObj}
+                    end;
+                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"park">> } when Transfer ->
+                    set({struct, [{<<"was_transferred">>, <<"false">>}]}, undefined, Call),
+                    ?LOG("call transfer complete"),
+                    wait_for_callee_release(Call);
+                { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } when Transfer ->
+                    set({struct, [{<<"was_transferred">>, <<"false">>}]}, undefined, Call),
+                    ?LOG("call control was moved to transfer reciepient"),
+                    {transfer, JObj};
+                {_, Event, App} when Transfer ->
+                    ?LOG("ignoring ~s (~s) occuring during a transfer", [Event, App]),
+                    wait_for_callee_release(Call);
+                _ ->
+                    wait_for_callee_release(Call)
+            end;
+        _ ->
+            wait_for_callee_release(Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Wait for a noop or a specific noop to occur
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_noop/1 :: (NoopId) -> cf_api_std_return() when
       NoopId :: undefined | binary().
 wait_for_noop(NoopId) ->
-    case wait_for_message(<<"noop">>) of
+    case wait_for_message(<<"noop">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, infinity) of
         {ok, JObj}=OK ->
             case wh_json:get_value(<<"Application-Response">>, JObj) of
                 NoopId when is_binary(NoopId), NoopId =/= <<>> ->
