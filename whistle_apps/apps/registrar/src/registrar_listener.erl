@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, lookup/3, stop/1]).
+-export([start_link/0, lookup/3, lookup/2, stop/1]).
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -58,10 +58,15 @@ start_link() ->
 				      ,{consume_options, ?REG_CONSUME_OPTIONS}
 				     ], []).
 
+-spec lookup/2 :: (Srv, Realm) -> {'ok', json_objects()} | {'error', 'not_found'} when
+      Srv :: pid() | atom(),
+      Realm :: binary().
 -spec lookup/3 :: (Srv, Realm, Username) -> {'ok', json_object()} | {'error', 'not_found'} when
       Srv :: pid() | atom(),
       Realm :: binary(),
       Username :: binary().
+lookup(Srv, Realm) when is_pid(Srv) orelse is_atom(Srv) ->
+    gen_listener:call(Srv, {lookup, Realm}).
 lookup(Srv, Realm, Username) when is_pid(Srv) orelse is_atom(Srv) ->
     gen_listener:call(Srv, {lookup, Realm, Username}).
 
@@ -115,6 +120,9 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({lookup, Realm}, From, #state{cache=Cache}=State) ->
+    spawn(fun() -> gen_listener:reply(From, reg_util:lookup_registrations(Realm, Cache)) end),
+    {noreply, State};
 handle_call({lookup, Realm, Username}, From, #state{cache=Cache}=State) ->
     spawn(fun() -> gen_listener:reply(From, reg_util:lookup_registration(Realm, Username, Cache)) end),
     {noreply, State}.
@@ -214,6 +222,6 @@ code_change(_OldVsn, State, _Extra) ->
       Pid :: pid().
 prime_cache(Pid) when is_pid(Pid) ->
     ?LOG_SYS("priming registrar cache"),
-    {ok, Docs} = couch_mgr:get_results(?REG_DB, <<"_all_docs">>, [{include_docs, true}]),
-    _ = [ reg_util:prime_cache(Pid, View) || View <- Docs ],
+    {ok, Docs} = couch_mgr:all_docs(?REG_DB),
+    _ = [ reg_util:prime_cache(Pid, View) || View <- Docs, binary:match(wh_json:get_value(<<"id">>, View), <<"_design/">>) =:= nomatch ],
     ok.
