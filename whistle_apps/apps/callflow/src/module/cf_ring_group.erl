@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/6, wait_for_unbridge/0]).
+-import(cf_call_command, [b_bridge/6, wait_for_callee_release/1]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -32,9 +32,18 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     case b_bridge(Endpoints, Timeout, <<"internal">>, Strategy, <<"true">>, Call) of
         {ok, _} ->
             ?LOG("bridged to ring group"),
-            _ = wait_for_unbridge(),
-            ?LOG("ring group completed"),
-            CFPid ! { stop };
+            case wait_for_callee_release(Call) of
+                {fail, Reason} ->
+                    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+                    ?LOG("bridge to ring group failed ~s:~s", [Code, Cause]),
+                    CFPid ! { continue };
+                {transfer, _} ->
+                    ?LOG("ring group was transferred"),
+                    CFPid ! { transferred };
+                _ ->
+                    ?LOG("ring group was unbridged"),
+                    CFPid ! { stop }
+            end;
         {fail, Reason} ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
             ?LOG("failed to bridge to ring group ~s:~s", [Code, Cause]),
