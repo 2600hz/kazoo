@@ -226,17 +226,15 @@ whistle_version() ->
     case wh_cache:fetch({whistle_util, whistle_version}) of
 	{ok, V}    ->  V;
 	{error, _} ->
-	    wh_cache:store({whistle_util, whistle_version}, whistle_version(<<"/opt/whistle/whistle/VERSION">>)),
+	    VersionFile = code:lib_dir(whistle) ++ "/../../VERSION",
+	    wh_cache:store({whistle_util, whistle_version}, whistle_version(to_binary(VersionFile))),
 	    whistle_version()
     end.
 
 -spec(whistle_version/1 :: (binary()) -> binary()).
 whistle_version(FileName) ->
-    case file:open(FileName, [read]) of
-	{ok, Device} -> case io:get_line(Device, "") of
-			    eof  -> file:close(Device), <<"not available">>;
-			    Line -> file:close(Device), list_to_binary(string:strip(Line, right, $\n))
-			end;
+    case file:consult(FileName) of
+	{ok, [Version]} -> Version;
 	_ ->  <<"not available">>
     end.
 

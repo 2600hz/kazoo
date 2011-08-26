@@ -14,8 +14,14 @@
        "owner": {
            "map": "function(doc) { if (!doc.owner_id || doc.pvt_deleted) return; emit(doc._id, doc.owner_id); }"
        },
+       "owned": {
+           "map": "function(doc) { if (!doc.owner_id || doc.pvt_deleted) return; emit([doc.owner_id, doc.pvt_type], doc._id); }"
+       },
        "owned_devices": {
            "map": "function(doc) { if (!doc.owner_id || doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc.owner_id, {'sip_username':doc.sip.username, 'sip_realm': doc.sip.realm}); }"
+       },
+       "hotdesk_id": {
+           "map": "function(doc) { if (!doc.hotdesk  || doc.pvt_deleted) return; emit(doc.hotdesk.id, {'owner_id':doc._id, 'hotdesk':doc.hotdesk}); }"
        }
    }
 }
