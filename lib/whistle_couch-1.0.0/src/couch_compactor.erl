@@ -554,7 +554,7 @@ get_ddocs(C, _DB, Cnt) when Cnt > 10 ->
     ?LOG_SYS("Failed to find design docs for db ~s on ~s after 10 tries", [_DB, couchbeam:server_url(C)]),
     {error, failed};
 get_ddocs(Conn, DB, Cnt) ->
-    case couch_util:all_design_docs(Conn, DB) of
+    case couch_util:all_design_docs(Conn, DB, []) of
 	{ok, _}=Resp -> ?LOG_SYS("Found ddocs for ~s in ~p tries", [DB, Cnt]), Resp;
 	_ -> get_ddocs(Conn, DB, Cnt+1)
     end.

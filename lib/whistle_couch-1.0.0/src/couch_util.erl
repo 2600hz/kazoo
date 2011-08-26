@@ -22,8 +22,8 @@
 	]).
 
 %% View-related
--export([design_compact/3, design_info/3, all_design_docs/2, get_results/4
-	,all_docs/2
+-export([design_compact/3, design_info/3, all_design_docs/3, get_results/4
+	,all_docs/3
 	]).
 
 %% Attachment-related
@@ -179,19 +179,21 @@ design_info(#server{}=Conn, DBName, Design) ->
     Db = get_db(Conn, DBName),
     do_get_design_info(Db, Design).
 
--spec all_design_docs/2 :: (Conn, DBName) -> {'ok', json_objects()} | {'error', atom()} when
+-spec all_design_docs/3 :: (Conn, DBName, Options) -> {'ok', json_objects()} | {'error', atom()} when
       Conn :: #server{},
-      DBName :: binary().
-all_design_docs(#server{}=Conn, DBName) ->
+      DBName :: binary(),
+      Options :: proplist().
+all_design_docs(#server{}=Conn, DBName, Options) ->
     Db = get_db(Conn, DBName),
-    {'ok', View} = couchbeam:view(Db, "_design_docs", []),
+    {'ok', View} = couchbeam:view(Db, "_design_docs", Options),
     do_fetch_results(View).
 
--spec all_docs/2 :: (Conn, DbName) -> {'ok', json_objects()} | {'error', atom()} when
+-spec all_docs/3 :: (Conn, DbName, Options) -> {'ok', json_objects()} | {'error', atom()} when
       Conn :: #server{},
-      DbName :: binary().
-all_docs(#server{}=Conn, DbName) ->
-    {'ok', View} = couchbeam:all_docs(get_db(Conn, DbName)),
+      DbName :: binary(),
+      Options :: proplist().
+all_docs(#server{}=Conn, DbName, Options) ->
+    {'ok', View} = couchbeam:all_docs(get_db(Conn, DbName), Options),
     do_fetch_results(View).
 
 -spec get_results/4 :: (Conn, DbName, DesignDoc, ViewOptions) -> {'ok', json_objects()} | {'error', atom()} when
