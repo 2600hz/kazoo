@@ -10,11 +10,12 @@
 %%% Params :: [
 %%%   {bindings, [ {atom(), proplist()}, ...]} -> the type of bindings, with optional properties to pass along
 %%%   {responders, [ {responder, [ {<<"event-category">>, <<"event-name">>}, ...]} ]
-%%%      responder is the module name to call handle/1 on for those category/name combos
-%%%   {queue_name, <<"some name">>} -> if you want a named queue
-%%%   {queue_options, [{key, value}]} -> if the queue requires different params
-%%%   {consume_options, [{key, value}]} -> if the consumption requires special params
-%%%
+%%%      responder is the module name to call handle_req/2 on for those category/name combos
+%%%   {queue_name, <<"some name">>} -> optional, if you want a named queue
+%%%   {queue_options, [{key, value}]} -> optional, if the queue requires different params
+%%%   {consume_options, [{key, value}]} -> optional, if the consumption requires special params
+%%%   {basic_qos, integer()} -> optional, if QoS is being set on this queue
+%%% ]
 %%% @end
 %%% Created : 19 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -60,7 +61,8 @@ behaviour_info(_) ->
 			 {bindings, bindings()} |
 			 {queue_name, binary()} |
 			 {queue_options, proplist()} |
-			 {consume_options, proplist()}
+			 {consume_options, proplist()} |
+			 {basic_qos, non_neg_integer()}
 			 ,...] | [].
 
 -record(state, {
@@ -327,6 +329,8 @@ start_amqp(Bindings, Props) ->
 
     ConsumeProps = props:get_value(consume_options, Props, []),
 
+    set_qos(props:get_value(basic_qos, Props)),
+
     _ = [ queue_bindings:add_binding_to_q(Q, Type, BindProps) || {Type, BindProps} <- Bindings ],
 
     amqp_util:basic_consume(Q, ConsumeProps),
@@ -339,3 +343,8 @@ stop_amqp(<<>>, _) -> ok;
 stop_amqp(Q, Bindings) ->
     _ = [ queue_bindings:rm_binding_from_q(Q, Type) || {Type, _} <- Bindings],
     amqp_util:queue_delete(Q).
+
+-spec set_qos/1 :: (N) -> ok when
+      N :: undefined | non_neg_integer().
+set_qos(undefined) -> ok;
+set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
