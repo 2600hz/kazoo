@@ -203,7 +203,7 @@ handle_info({call_event, {event, [ UUID | Data ] } }, #state{node=Node, uuid=UUI
 
     case IsAmqpUp of
 	true ->
-	    spawn(fun() -> put(callid, UUID), send_ctl_event(CtlPid, UUID, EvtName, AppName), publish_msg(Node, UUID, Data) end),
+	    spawn(fun() -> put(callid, UUID), send_ctl_event(CtlPid, UUID, EvtName, Data), publish_msg(Node, UUID, Data) end),
 	    {noreply, State};
 	false ->
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
@@ -304,15 +304,26 @@ shutdown(CtlPid, UUID) ->
     ok.
 
 %% let the ctl process know a command finished executing
--spec send_ctl_event/4 :: (CtlPid, UUID, Evt, AppName) -> ok when
+-spec send_ctl_event/4 :: (CtlPid, UUID, EventName, Event) -> ok when
       CtlPid :: pid() | undefined,
       UUID :: binary(),
-      Evt :: binary(),
-      AppName :: binary().
+      EventName :: binary(),
+      Event :: proplist().
 send_ctl_event(undefined, _, _, _) -> ok;
-send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, AppName) when is_pid(CtlPid) ->
+send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, Props) when is_pid(CtlPid) ->
+    AppName = props:get_value(<<"Application">>, Props),
+
     ?LOG("sending execution completion to control queue"),
     erlang:is_process_alive(CtlPid) andalso CtlPid ! {execute_complete, UUID, AppName},
+    ok;
+send_ctl_event(CtlPid, UUID, <<"CUSTOM">>, Props) when is_pid(CtlPid) ->
+    case props:get_value(<<"Event-Subclass">>, Props) of
+	<<"whistle::noop">> ->
+            ?LOG("sending noop completion to control queue"),
+            erlang:is_process_alive(CtlPid) andalso CtlPid ! {execute_complete, UUID, <<"noop">>};
+        _ ->
+            ok
+    end,
     ok;
 send_ctl_event(_, _, _, _) -> ok.
 
@@ -322,19 +333,34 @@ send_ctl_event(_, _, _, _) -> ok.
       Prop :: proplist().
 publish_msg(_, _, []) -> ok;
 publish_msg(Node, UUID, Prop) when is_list(Prop) ->
-    EvtName = props:get_value(<<"Event-Name">>, Prop),
-
-    ok = case EvtName =:= ?HANGUP_EVENT_NAME of
-	     true -> spawn(fun() -> put(callid, UUID), ecallmgr_call_cdr:new_cdr(UUID, Prop) end), ok;
-	     false -> ok
-	 end,
+    EvtName = case props:get_value(<<"Event-Name">>, Prop) of
+                  <<"CUSTOM">> ->
+                      props:get_value(<<"whistle_event_name">>, Prop);
+                  ?HANGUP_EVENT_NAME ->
+                      spawn(fun() -> put(callid, UUID), ecallmgr_call_cdr:new_cdr(UUID, Prop) end),
+                      ?HANGUP_EVENT_NAME;
+                  Evt ->
+                      Evt
+              end,
 
     Prop1 = [{<<"Application-Response">>, application_response(props:get_value(<<"Application">>, Prop), Prop, Node, UUID)}
              | props:delete(<<"Application-Response">>, Prop)],
 
     case lists:member(EvtName, ?FS_EVENTS) of
-	true ->
-            AppName = props:get_value(<<"Application">>, Prop),
+        true ->
+            AppName = case props:get_value(<<"Event-Name">>, Prop) of
+                          <<"CUSTOM">> ->
+                              props:get_value(<<"whistle_application_name">>, Prop);
+                          _ ->
+                              case props:get_value(<<"Application">>, Prop) of
+                                  <<"event">> ->
+                                      Args = ecallmgr_util:varstr_to_proplist(props:get_value(<<"Application-Data">>, Prop, <<>>)),
+                                      props:get_value(<<"whistle_application_name">>, Args);
+                                  App ->
+                                      App
+                              end
+                      end,
+
             ?LOG("published ~s call event for ~s", [EvtName, AppName]),
 
 	    EvtProp0 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop1)}
@@ -342,17 +368,26 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                         ,{<<"Call-ID">>, UUID}
                         ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop1)}
                         ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop1)}
-		       | event_specific(EvtName, Prop1) ],
+                        ,{<<"Channel-State">>, get_channel_state(Prop1)}
+                        ,{<<"During-Transfer">>, wh_util:to_binary(is_during_transfer(Prop))}
+		       | event_specific(EvtName, AppName, Prop1) ],
 	    EvtProp1 = EvtProp0 ++ wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
 			   [] -> EvtProp1;
 			   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
 		       end,
-
 	    {ok, JSON} = wh_api:call_event(EvtProp2),
 	    amqp_util:callevt_publish(UUID, JSON, event);
-	false ->
+	_ ->
 	    ?LOG("skipped event ~s", [EvtName])
+    end.
+
+-spec get_channel_state/1 :: (Prop) -> binary() when
+      Prop :: proplist().
+get_channel_state(Prop) ->
+    case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
+        undefined -> <<"unknown">>;
+        ChannelState -> ChannelState
     end.
 
 %% Setup process to listen for call.status_req api calls and respond in the affirmative
@@ -383,13 +418,19 @@ application_response(_AppName, Prop, _Node, _UUID) ->
     props:get_value(<<"Application-Response">>, Prop, <<"">>).
 
 %% return a proplist of k/v pairs specific to the event
--spec(event_specific/2 :: (EventName :: binary(), Prop :: proplist()) -> proplist()).
-event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
-    Application = props:get_value(<<"Application">>, Prop),
+-spec event_specific/3 :: (EventName, Application, Prop) -> proplist() when
+      EventName :: binary(),
+      Application :: binary(),
+      Prop :: proplist().
+event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Prop) ->
     case props:get_value(Application, ?SUPPORTED_APPLICATIONS) of
 	undefined ->
             ?LOG("~s is not a supported application", [Application]),
 	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
+        <<"noop">> ->
+	    [{<<"Application-Name">>, props:get_value(<<"whistle_application_name">>, Prop, <<"">>)}
+	     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop, <<"">>)}
+	    ];
         <<"bridge">> ->
 	    [{<<"Application-Name">>, <<"bridge">>}
 	     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
@@ -406,8 +447,7 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Prop) ->
 	     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
 	    ]
     end;
-event_specific(<<"CHANNEL_EXECUTE">>, Prop) ->
-    Application = props:get_value(<<"Application">>, Prop),
+event_specific(<<"CHANNEL_EXECUTE">>, Application, Prop) ->
     case props:get_value(Application, ?SUPPORTED_APPLICATIONS) of
 	undefined ->
             ?LOG("~s is not a supported application", [Application]),
@@ -417,13 +457,13 @@ event_specific(<<"CHANNEL_EXECUTE">>, Prop) ->
 	     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
 	    ]
     end;
-event_specific(<<"CHANNEL_BRIDGE">>, Prop) ->
+event_specific(<<"CHANNEL_BRIDGE">>, _, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}];
-event_specific(<<"CHANNEL_UNBRIDGE">>, Prop) ->
+event_specific(<<"CHANNEL_UNBRIDGE">>, _, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
@@ -431,7 +471,7 @@ event_specific(<<"CHANNEL_UNBRIDGE">>, Prop) ->
      ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
      ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
      ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}];
-event_specific(<<"CHANNEL_HANGUP">>, Prop) ->
+event_specific(<<"CHANNEL_HANGUP">>, _, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
@@ -440,7 +480,7 @@ event_specific(<<"CHANNEL_HANGUP">>, Prop) ->
      ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
      ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
     ];
-event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, Prop) ->
+event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, _, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
@@ -449,18 +489,18 @@ event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, Prop) ->
      ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
      ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
     ];
-event_specific(<<"RECORD_STOP">>, Prop) ->
+event_specific(<<"RECORD_STOP">>, _, Prop) ->
     [{<<"Application-Name">>, <<"record">>}
      ,{<<"Application-Response">>, props:get_value(<<"Record-File-Path">>, Prop, <<>>)}
      ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Prop, <<>>)}
     ];
-event_specific(<<"DETECTED_TONE">>, Prop) ->
+event_specific(<<"DETECTED_TONE">>, _, Prop) ->
     [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Prop, <<>>)}];
-event_specific(<<"DTMF">>, Prop) ->
+event_specific(<<"DTMF">>, _, Prop) ->
     [{<<"DTMF-Digit">>, props:get_value(<<"DTMF-Digit">>, Prop, <<>>)}
      ,{<<"DTMF-Duration">>, props:get_value(<<"DTMF-Duration">>, Prop, <<>>)}
     ];
-event_specific(_Evt, _Prop) ->
+event_specific(_Evt, _App, _Prop) ->
     [].
 
 handle_amqp_prop(<<"status_req">>, JObj, Node, IsNodeUp) ->
@@ -549,3 +589,10 @@ get_fs_var(Node, UUID, Var, Default) ->
         {ok, Value} -> Value;
         _ -> Default
     end.
+
+-spec is_during_transfer/1 ::  (Props) -> boolean() when
+      Props :: proplist().
+is_during_transfer(Props) ->
+    props:get_value(<<"variable_endpoint_disposition">>, Props) =:= <<"ATTENDED_TRANSFER">>
+        orelse props:get_value(<<"variable_endpoint_disposition">>, Props) =:= <<"BLIND_TRANSFER">>
+        orelse wh_util:is_true(props:get_value(<<"variable_was_transferred">>, Props)).

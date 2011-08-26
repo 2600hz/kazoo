@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/7, wait_for_unbridge/0, find_failure_branch/2]).
+-import(cf_call_command, [b_bridge/7, wait_for_callee_release/1, find_failure_branch/2]).
 
 -define(VIEW_BY_RULES, <<"resources/listing_active_by_rules">>).
 
@@ -53,9 +53,19 @@ bridge_to_resources([{DestNum, Gateways, CIDType}|T], Timeout, IgnoreEarlyMedia,
                   ,Timeout, CIDType, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
             ?LOG("resource acquired"),
-            wait_for_unbridge(),
-            ?LOG("resource released"),
-            CFPid ! { stop };
+            case wait_for_callee_release(Call) of
+                {fail, Reason} ->
+                    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+                    ?LOG("resource request failed ~s:~s", [Cause, Code]),
+                    find_failure_branch({Cause, Code}, Call)
+                        orelse CFPid ! { continue };
+                {transfer, _} ->
+                    ?LOG("resource was transferred"),
+                    CFPid ! { transferred };
+                _ ->
+                    ?LOG("resource was unbridged"),
+                    CFPid ! { stop }
+            end;
         {fail, Reason} when T =:= [] ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
             ?LOG("resource failed ~s:~s", [Cause, Code]),

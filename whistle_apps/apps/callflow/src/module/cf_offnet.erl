@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [wait_for_unbridge/0, find_failure_branch/2]).
+-import(cf_call_command, [wait_for_callee_release/1, find_failure_branch/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -44,8 +44,19 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId
     amqp_util:offnet_resource_publish(Payload),
     case wait_for_offnet_response(60000) of
         {ok, _} ->
-            wait_for_unbridge(),
-            CFPid ! { stop };
+            case wait_for_callee_release(Call) of
+                {fail, Reason} ->
+                    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+                    ?LOG("offnet request failed ~s:~s", [Cause, Code]),
+                    find_failure_branch({Cause, Code}, Call)
+                        orelse CFPid ! { continue };
+                {transfer, _} ->
+                    ?LOG("offnet request was transferred"),
+                    CFPid ! { transferred };
+                _ ->
+                    ?LOG("offnet request was unbridged"),
+                    CFPid ! { stop }
+            end;
         {fail, Reason} ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
             ?LOG("offnet request failed ~s:~s", [Cause, Code]),
