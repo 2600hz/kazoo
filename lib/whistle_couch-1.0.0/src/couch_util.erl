@@ -55,7 +55,7 @@ get_new_connection(Host, Port, User, Pass) ->
 get_new_conn(Host, Port, Opts) ->
     Conn = couchbeam:server_connection(Host, Port, "", Opts),
     ?LOG_SYS("New connection to Host ~s, testing", [Host]),
-    {ok, _Version} = couchbeam:server_info(Conn),
+    {'ok', _Version} = couchbeam:server_info(Conn),
     ?LOG_SYS("Connected successfully to ~s: ~p", [Host, _Version]),
     Conn.
 
@@ -101,8 +101,8 @@ db_create(#server{}=Conn, DbName) ->
       Options :: [{q,integer()} | {n,integer()},...] | [].
 db_create(#server{}=Conn, DbName, Options) ->
     case couchbeam:create_db(Conn, wh_util:to_list(DbName), [], Options) of
-	{error, _} -> false;
-	{ok, _} -> true
+	{'error', _} -> false;
+	{'ok', _} -> true
     end.
 
 -spec db_delete/2 :: (Conn, DbName) -> boolean() when
@@ -110,11 +110,11 @@ db_create(#server{}=Conn, DbName, Options) ->
       DbName :: binary().
 db_delete(#server{}=Conn, DbName) ->
     case couchbeam:delete_db(Conn, wh_util:to_list(DbName)) of
-	{error, _} -> false;
-	{ok, _} -> true
+	{'error', _} -> false;
+	{'ok', _} -> true
     end.
 
--spec db_replicate/2 :: (Conn, JSON) -> {ok, json_object()} | {error, term()} when
+-spec db_replicate/2 :: (Conn, JSON) -> {'ok', json_object()} | {'error', term()} when
       Conn :: #server{},
       JSON :: json_object() | proplist().
 db_replicate(#server{}=Conn, {struct, _}=JSON) ->
@@ -129,12 +129,12 @@ db_view_cleanup(#server{}=Conn, DbName) ->
     Db = get_db(Conn, DbName),
     do_db_view_cleanup(Db).
 
--spec db_info/1 :: (Conn) -> {ok, [binary(),...] | []} | {error, term()} when
+-spec db_info/1 :: (Conn) -> {'ok', [binary(),...] | []} | {'error', term()} when
       Conn :: #server{}.
 db_info(#server{}=Conn) ->
     retry504s(fun() -> couchbeam:all_dbs(Conn) end).
 
--spec db_info/2 :: (Conn, DbName) -> {ok, json_object()} | {error, term()} when
+-spec db_info/2 :: (Conn, DbName) -> {'ok', json_object()} | {'error', term()} when
       Conn :: #server{},
       DbName :: binary().
 db_info(#server{}=Conn, DbName) ->
@@ -151,13 +151,13 @@ db_exists(#server{}=Conn, DbName) ->
 -spec do_db_compact/1 :: (Db) -> boolean() when
       Db :: #db{}.
 do_db_compact(#db{}=Db) ->
-    {ok, B} = retry504s(fun() -> couchbeam:compact(Db) end),
+    {'ok', B} = retry504s(fun() -> couchbeam:compact(Db) end),
     wh_util:is_true(B).
 
 -spec do_db_view_cleanup/1 :: (Db) -> boolean() when
       Db :: #db{}.
 do_db_view_cleanup(#db{}=Db) ->
-    {ok, B} = retry504s(fun() -> couchbeam:view_cleanup(Db) end),
+    {'ok', B} = retry504s(fun() -> couchbeam:view_cleanup(Db) end),
     wh_util:is_true(B).
 
 %%% View-related functions -----------------------------------------------------
@@ -167,11 +167,11 @@ do_db_view_cleanup(#db{}=Db) ->
       Design :: binary().
 design_compact(#server{}=Conn, DbName, Design) ->
     case couchbeam:compact(get_db(Conn, DbName), Design) of
-	{error, _E} -> false;
+	{'error', _E} -> false;
 	ok -> true
     end.
 
--spec design_info/3 :: (Conn, DBName, Design) -> {ok, json_object()} | {error, atom()} when
+-spec design_info/3 :: (Conn, DBName, Design) -> {'ok', json_object()} | {'error', atom()} when
       Conn :: #server{},
       DBName :: binary(),
       Design :: binary().
@@ -179,22 +179,22 @@ design_info(#server{}=Conn, DBName, Design) ->
     Db = get_db(Conn, DBName),
     do_get_design_info(Db, Design).
 
--spec all_design_docs/2 :: (Conn, DBName) -> {ok, json_objects()} | {error, atom()} when
+-spec all_design_docs/2 :: (Conn, DBName) -> {'ok', json_objects()} | {'error', atom()} when
       Conn :: #server{},
       DBName :: binary().
 all_design_docs(#server{}=Conn, DBName) ->
     Db = get_db(Conn, DBName),
-    {ok, View} = couchbeam:view(Db, "_design_docs", []),
+    {'ok', View} = couchbeam:view(Db, "_design_docs", []),
     do_fetch_results(View).
 
--spec all_docs/2 :: (Conn, DbName) -> {ok, json_objects()} | {error, atom()} when
+-spec all_docs/2 :: (Conn, DbName) -> {'ok', json_objects()} | {'error', atom()} when
       Conn :: #server{},
       DbName :: binary().
 all_docs(#server{}=Conn, DbName) ->
-    {ok, View} = couchbeam:all_docs(get_db(Conn, DbName)),
+    {'ok', View} = couchbeam:all_docs(get_db(Conn, DbName)),
     do_fetch_results(View).
 
--spec get_results/4 :: (Conn, DbName, DesignDoc, ViewOptions) -> {ok, json_objects()} | {error, atom()} when
+-spec get_results/4 :: (Conn, DbName, DesignDoc, ViewOptions) -> {'ok', json_objects()} | {'error', atom()} when
       Conn :: #server{},
       DbName :: binary(),
       DesignDoc :: binary(),
@@ -206,26 +206,26 @@ get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 
 %% Design Doc/View internal functions
 
--spec do_fetch_results/1 :: (View) -> {ok, json_objects() | [binary(),...]} | {error, atom()} when
+-spec do_fetch_results/1 :: (View) -> {'ok', json_objects() | [binary(),...]} | {'error', atom()} when
       View :: #view{}.
 do_fetch_results(#view{}=View) ->
     retry504s(fun() ->
 		      case couchbeam_view:fetch(View) of
-			  {ok, JObj} ->
+			  {'ok', JObj} ->
 			      Rows = wh_json:get_value(<<"rows">>, JObj, []),
-			      {ok, Rows};
+			      {'ok', Rows};
 			  Other -> Other
 		      end
 	      end).
 
--spec do_get_design_info/2 :: (Db, Design) -> {ok, json_object()} | {error, atom()} when
+-spec do_get_design_info/2 :: (Db, Design) -> {'ok', json_object()} | {'error', atom()} when
       Db :: #db{},
       Design :: binary().
 do_get_design_info(#db{}=Db, Design) ->
     retry504s(fun() -> couchbeam:design_info(Db, Design) end).
 
 %% Document related functions --------------------------------------------------
--spec open_doc/4 :: (Conn, DbName, DocId, Options) -> {ok, json_object()} | {error, atom()} when
+-spec open_doc/4 :: (Conn, DbName, DocId, Options) -> {'ok', json_object()} | {'error', atom()} when
       Conn :: #server{},
       DbName :: binary(),
       DocId :: binary(),
@@ -242,7 +242,7 @@ save_docs(#server{}=Conn, DbName, Docs, Options) ->
     Db = get_db(Conn, DbName),
     do_save_docs(Db, Docs, Options).
 
--spec lookup_doc_rev/3 :: (Conn, DbName, DocId) -> {ok, binary()} | {error, atom()} when
+-spec lookup_doc_rev/3 :: (Conn, DbName, DocId) -> {'ok', binary()} | {'error', atom()} when
       Conn :: #server{},
       DbName :: binary(),
       DocId :: binary().
@@ -250,7 +250,7 @@ lookup_doc_rev(#server{}=Conn, DbName, DocId) ->
     Db = get_db(Conn, DbName),
     do_fetch_rev(Db, DocId).
 
--spec ensure_saved/4 :: (Conn, DbName, Doc, Opts) -> {ok, json_object()} | {error, atom()} when
+-spec ensure_saved/4 :: (Conn, DbName, Doc, Opts) -> {'ok', json_object()} | {'error', atom()} when
       Conn :: #server{},
       DbName :: binary(),
       Doc :: json_object(),
@@ -259,15 +259,21 @@ ensure_saved(#server{}=Conn, DbName, Doc, Opts) ->
     Db = get_db(Conn, DbName),
     do_ensure_saved(Db, Doc, Opts).
 
--spec del_doc/3 :: (Conn, DbName, Doc) -> {ok, json_object()} | {error, atom()} when
+-spec del_doc/3 :: (Conn, DbName, Doc) -> {'ok', json_object()} | {'error', atom()} when
       Conn :: #server{},
       DbName :: binary(),
-      Doc :: json_object().
+      Doc :: json_object() | binary().
+del_doc(#server{}=Conn, DbName, DocId) when is_binary(DocId) ->
+    case lookup_doc_rev(Conn, DbName, DocId) of
+	{'error', _}=Err -> Err;
+	{'ok', Rev} ->
+	    del_doc(Conn, DbName, {struct, [{<<"_id">>, DocId}, {<<"_rev">>, Rev}]})
+    end;
 del_doc(#server{}=Conn, DbName, Doc) ->
     Db = get_db(Conn, DbName),
     do_delete_doc(Db, Doc).
 
--spec del_docs/3 :: (Conn, DbName, Doc) -> {ok, json_objects()} | {error, atom()} when
+-spec del_docs/3 :: (Conn, DbName, Doc) -> {'ok', json_objects()} | {'error', atom()} when
       Conn :: #server{},
       DbName :: binary(),
       Doc :: json_objects().
@@ -277,53 +283,53 @@ del_docs(#server{}=Conn, DbName, Doc) ->
 
 %% Internal Doc functions
 
--spec do_delete_doc/2 :: (Db, Doc) -> {ok, json_object()} | {error, atom()} when
+-spec do_delete_doc/2 :: (Db, Doc) -> {'ok', json_object()} | {'error', atom()} when
       Db :: #db{},
       Doc :: json_object().
 do_delete_doc(#db{}=Db, Doc) ->
     retry504s(fun() -> couchbeam:delete_doc(Db, Doc) end).
 
--spec do_delete_docs/2 :: (Db, Docs) -> {ok, json_objects()} | {error, atom()} when
+-spec do_delete_docs/2 :: (Db, Docs) -> {'ok', json_objects()} | {'error', atom()} when
       Db :: #db{},
       Docs :: json_objects().
 do_delete_docs(#db{}=Db, Docs) ->
     retry504s(fun() -> couchbeam:delete_docs(Db, Docs) end).
 
--spec do_ensure_saved/3 :: (Db, Doc, Opts) -> {ok, json_object()} | {error, atom()} when
+-spec do_ensure_saved/3 :: (Db, Doc, Opts) -> {'ok', json_object()} | {'error', atom()} when
       Db :: #db{},
       Doc :: json_object(),
       Opts :: proplist().
 do_ensure_saved(#db{}=Db, Doc, Opts) ->
     case do_save_doc(Db, Doc, Opts) of
-	{ok, _}=Saved -> Saved;
-	{error, conflict} ->
+	{'ok', _}=Saved -> Saved;
+	{'error', conflict} ->
 	    Id = wh_json:get_value(<<"_id">>, Doc, <<>>),
-	    {ok, Rev} = do_fetch_rev(Db, Id),
+	    {'ok', Rev} = do_fetch_rev(Db, Id),
 	    do_ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, Doc), Opts);
-	{error, _}=E -> E
+	{'error', _}=E -> E
     end.
 
--spec do_fetch_rev/2 :: (Db, DocId) -> {ok, binary()} | {error, atom()} when
+-spec do_fetch_rev/2 :: (Db, DocId) -> {'ok', binary()} | {'error', atom()} when
       Db :: #db{},
       DocId :: binary().
 do_fetch_rev(#db{}=Db, DocId) ->
     retry504s(fun() -> couchbeam:lookup_doc_rev(Db, DocId) end).
 
--spec do_fetch_doc/3 :: (Db, DocId, Options) -> {ok, json_object()} | {error, atom()} when
+-spec do_fetch_doc/3 :: (Db, DocId, Options) -> {'ok', json_object()} | {'error', atom()} when
       Db :: #db{},
       DocId :: binary(),
       Options :: proplist().
 do_fetch_doc(#db{}=Db, DocId, Options) ->
     retry504s(fun() -> couchbeam:open_doc(Db, DocId, Options) end).
 
--spec do_save_doc/3 :: (Db, Doc, Options) -> {ok, json_object()} | {error, atom()} when
+-spec do_save_doc/3 :: (Db, Doc, Options) -> {'ok', json_object()} | {'error', atom()} when
       Db :: #db{},
       Doc :: json_object(),
       Options :: proplist().
 do_save_doc(#db{}=Db, Doc, Options) ->
     retry504s(fun() -> couchbeam:save_doc(Db, Doc, Options) end).
 
--spec do_save_docs/3 :: (Db, Docs, Options) -> {ok, json_objects()} | {error, atom()} when
+-spec do_save_docs/3 :: (Db, Docs, Options) -> {'ok', json_objects()} | {'error', atom()} when
       Db :: #db{},
       Docs :: json_objects(),
       Options :: proplist().
@@ -348,7 +354,7 @@ fetch_attachment(#server{}=Conn, DbName, DocId, AName) ->
       Contents :: binary().
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents) ->
     Db = get_db(Conn, DbName),
-    {ok, Rev} = do_fetch_rev(Db, DocId),
+    {'ok', Rev} = do_fetch_rev(Db, DocId),
     do_put_attachment(Db, DocId, AName, Contents, [{rev, Rev}]).
 
 -spec put_attachment/6 :: (Conn, DbName, DocId, AName, Contents, Options) -> {'ok', json_object()} | {'error', atom()} when
@@ -362,7 +368,7 @@ put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
     Db = get_db(Conn, DbName),
     case props:get_value(rev, Options) of
 	undefined ->
-	    {ok, Rev} = do_fetch_rev(Db, DocId),
+	    {'ok', Rev} = do_fetch_rev(Db, DocId),
 	    do_put_attachment(Db, DocId, AName, Contents, [{rev, Rev} | Options]);
 	_ ->
 	    do_put_attachment(Db, DocId, AName, Contents, Options)
@@ -375,7 +381,7 @@ put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
       AName :: binary().
 delete_attachment(#server{}=Conn, DbName, DocId, AName) ->
     Db = get_db(Conn, DbName),
-    {ok, Rev} = do_fetch_rev(Db, DocId),
+    {'ok', Rev} = do_fetch_rev(Db, DocId),
     do_del_attachment(Db, DocId, AName, [{rev, Rev}]).
 
 -spec delete_attachment/5 :: (Conn, DbName, DocId, AName, Options) -> {'ok', json_object()} | {'error', atom()} when
@@ -388,7 +394,7 @@ delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     Db = get_db(Conn, DbName),
     case props:get_value(rev, Options) of
 	undefined ->
-	    {ok, Rev} = do_fetch_rev(Db, DocId),
+	    {'ok', Rev} = do_fetch_rev(Db, DocId),
 	    do_del_attachment(Db, DocId, AName, [{rev, Rev} | Options]);
 	_ ->
 	    do_del_attachment(Db, DocId, AName, Options)
@@ -431,7 +437,7 @@ do_del_attachment(#db{}=Db, DocId, AName, Options) ->
       Conn :: #server{},
       DbName :: binary().
 get_db(#server{}=Conn, DbName) ->
-    {ok, Db} = couchbeam:open_db(Conn, DbName),
+    {'ok', Db} = couchbeam:open_db(Conn, DbName),
     Db.
 
 %%------------------------------------------------------------------------------
@@ -446,7 +452,7 @@ get_db(#server{}=Conn, DbName) ->
       DesignDoc :: binary(),
       ViewOptions :: list().
 get_view(#db{}=Db, DesignDoc, ViewOptions) ->
-    {ok, View} = couchbeam:view(Db, DesignDoc, ViewOptions),
+    {'ok', View} = couchbeam:view(Db, DesignDoc, ViewOptions),
     View.
 
 %%------------------------------------------------------------------------------
@@ -465,12 +471,12 @@ retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
 retry504s(_Fun, 3) ->
     ?LOG_SYS("504 retry failed"),
-    {error, timeout};
+    {'error', timeout};
 retry504s(Fun, Cnt) ->
     case Fun() of
-	{error, {ok, "504", _, _}} ->
+	{'error', {'ok', "504", _, _}} ->
 	    timer:sleep(100),
 	    retry504s(Fun, Cnt+1);
-	{error, _}=E -> E;
-	{ok, _}=OK -> OK
+	{'error', _}=E -> E;
+	{'ok', _}=OK -> OK
     end.

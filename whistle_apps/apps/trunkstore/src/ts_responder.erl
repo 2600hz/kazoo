@@ -270,6 +270,8 @@ transfer_auth() ->
       AuthJObj :: json_object().
 transfer_auth(AuthJObj) ->
     ID = wh_json:get_value(<<"id">>, AuthJObj),
+    spawn(fun() -> ?LOG_SYS("del doc ~s: ~p", [ID, couch_mgr:del_doc(<<"sip_auth">>, ID)]) end), %% cleanup old imports
+
     AuthData = {struct, AuthProps}
         = wh_json:get_value(<<"value">>, AuthJObj, ?EMPTY_JSON_OBJECT),
 

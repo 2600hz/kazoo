@@ -452,7 +452,7 @@ save_docs(DbName, Docs, Opts) ->
 %%--------------------------------------------------------------------
 -spec del_doc/2 :: (DbName, Doc) -> {ok, json_object()} | {error, atom()} when
       DbName :: binary(),
-      Doc :: json_object().
+      Doc :: json_object() | binary().
 del_doc(DbName, Doc) ->
     couch_util:del_doc(get_conn(), DbName, Doc).
 
