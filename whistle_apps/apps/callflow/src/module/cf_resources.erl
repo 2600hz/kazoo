@@ -48,7 +48,9 @@ handle(Data, #cf_call{call_id=CallId}=Call) ->
 -spec(bridge_to_resources/5 :: (Endpoints :: endpoints(), Timeout :: cf_api_binary()
                                 ,IngoreEarlyMeida :: cf_api_binary(), Ringback :: cf_api_binary()
                                 ,Call :: #cf_call{}) -> no_return()).
-bridge_to_resources([{DestNum, Gateways, CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, #cf_call{cf_pid=CFPid}=Call) ->
+bridge_to_resources([{DestNum, Gateways, CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, #cf_call{cf_pid=CFPid
+                                                                                                    ,inception_during_transfer=IDT
+                                                                                                    ,channel_vars=CCV}=Call) ->
     case b_bridge([create_endpoint(DestNum, Gtw) || Gtw <- Gateways]
                   ,Timeout, CIDType, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
@@ -65,6 +67,20 @@ bridge_to_resources([{DestNum, Gateways, CIDType}|T], Timeout, IgnoreEarlyMedia,
                 _ ->
                     ?LOG("resource was unbridged"),
                     CFPid ! { stop }
+            end;
+        {fail, Reason} when IDT, T =:= [] ->
+            case wh_json:get_binary_value(<<"Transfer-Fallback">>, CCV) of
+                undefined ->
+                    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+                    ?LOG("offnet request during transfer failed ~s:~s", [Cause, Code]),
+                    find_failure_branch({Cause, Code}, Call)
+                        orelse CFPid ! { continue };
+                FallbackId ->
+                    Gen = [fun(J) -> wh_json:set_value(<<"module">>, <<"device">>, J) end
+                           ,fun(J) -> wh_json:set_value([<<"data">>, <<"id">>], FallbackId, J) end
+                           ,fun(J) -> wh_json:set_value([<<"children">>, <<"_">>], ?EMPTY_JSON_OBJECT, J) end],
+                    Flow = lists:foldr(fun(Fun, JObj) -> Fun(JObj) end, ?EMPTY_JSON_OBJECT, Gen),
+                    CFPid ! {branch, Flow}
             end;
         {fail, Reason} when T =:= [] ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),

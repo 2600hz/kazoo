@@ -21,8 +21,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId
-                      ,ctrl_q=CtrlQ, amqp_q=AmqpQ, cf_pid=CFPid, owner_id=OwnerId, authorizing_id=AuthId}=Call) ->
+handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId, inception_during_transfer=IDT
+                      ,ctrl_q=CtrlQ, amqp_q=AmqpQ, cf_pid=CFPid, owner_id=OwnerId, authorizing_id=AuthId, channel_vars=CCV}=Call) ->
     put(callid, CallId),
     {CIDNum, CIDName}
         = cf_attributes:caller_id(wh_json:get_value(<<"caller_id_options">>, Data, <<"external">>), AuthId, OwnerId, Call),
@@ -56,6 +56,20 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId
                 _ ->
                     ?LOG("offnet request was unbridged"),
                     CFPid ! { stop }
+            end;
+        {fail, Reason} when IDT ->
+            case wh_json:get_binary_value(<<"Transfer-Fallback">>, CCV) of
+                undefined ->
+                    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+                    ?LOG("offnet request during transfer failed ~s:~s", [Cause, Code]),
+                    find_failure_branch({Cause, Code}, Call)
+                        orelse CFPid ! { continue };
+                FallbackId ->
+                    Gen = [fun(J) -> wh_json:set_value(<<"module">>, <<"device">>, J) end
+                           ,fun(J) -> wh_json:set_value([<<"data">>, <<"id">>], FallbackId, J) end
+                           ,fun(J) -> wh_json:set_value([<<"children">>, <<"_">>], ?EMPTY_JSON_OBJECT, J) end],
+                    Flow = lists:foldr(fun(Fun, JObj) -> Fun(JObj) end, ?EMPTY_JSON_OBJECT, Gen),
+                    CFPid ! {branch, Flow}
             end;
         {fail, Reason} ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),

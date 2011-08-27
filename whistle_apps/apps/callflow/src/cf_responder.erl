@@ -238,6 +238,7 @@ process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
                             ,account_id = AccountId
                             ,authorizing_id = wh_json:get_value(<<"Authorizing-ID">>, CVs)
                             ,channel_vars = CVs
+                            ,inception_during_transfer = wh_json:is_true(<<"During-Transfer">>, JObj)
                            },
             fulfill_call_request(Call, JObj)
     end;
@@ -245,7 +246,7 @@ process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
 process_req({_, <<"route_win">>}, JObj, #state{self=Self}) ->
     ?LOG_START("received route win"),
 
-    {ok, #cf_call{request_user=Number, account_id=AccountId, no_match=NoMatch}=C1}
+    {ok, #cf_call{request_user=Number, account_id=AccountId, no_match=NoMatch, authorizing_id=AuthId}=C1}
         = wh_cache:fetch({cf_call, get(callid)}),
     {ok, Flow} = case NoMatch of
                      true -> wh_cache:fetch({cf_flow, ?NO_MATCH_CF, AccountId});
@@ -259,6 +260,18 @@ process_req({_, <<"route_win">>}, JObj, #state{self=Self}) ->
                     ,capture_group = wh_json:get_value(<<"capture_group">>, Flow)
                    },
     ?LOG_END("imported custom channel vars, starting callflow"),
+    case AuthId of
+        undefined ->
+            cf_call_command:set(undefined
+                                ,{struct, [{<<"Transferred">>, <<"false">>}]}
+                                ,C2);
+        _ ->
+            ?LOG("set transfer fallback to ~s", [AuthId]),
+            cf_call_command:set(undefined
+                                ,{struct, [{<<"Transferred">>, <<"false">>}
+                                           ,{<<"Transfer-Fallback">>, AuthId}]}
+                                ,C2)
+    end,
     cf_exe_sup:start_proc(C2, wh_json:get_value(<<"flow">>, Flow));
 
 process_req({_, _}, _, _) ->
