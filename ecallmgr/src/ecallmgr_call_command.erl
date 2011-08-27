@@ -35,6 +35,8 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                     ControlPID ! {execute_complete, UUID, AppName};
                 {return, Result} ->
                     Result;
+                {AppName, noop} ->
+                    ControlPID ! {execute_complete, UUID, AppName};
 		{AppName, AppData} ->
                     send_cmd(Node, UUID, AppName, AppData)
 	    end;
@@ -284,7 +286,7 @@ get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
             {struct, ChannelVars} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
             lists:foreach(fun({<<"Auto-Answer">>,V}) ->
                                   set(Node, UUID, list_to_binary(["sip_auto_answer=", wh_util:to_list(V)]));
-                             ({<<"was_transferred">>,V}) ->
+                             ({<<"Transferred">>,V}) ->
                                   set(Node, UUID, list_to_binary(["was_transferred=", wh_util:to_list(V)]));
                              ({K,V}) ->
                                   Arg = list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K), "=", wh_util:to_list(V)]),
@@ -293,7 +295,7 @@ get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
             {struct, CallVars} = wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
             lists:foreach(fun({<<"Auto-Answer">>,V}) ->
                                   export(Node, UUID, list_to_binary(["sip_auto_answer=", wh_util:to_list(V)]));
-                              ({<<"was_transferred">>,V}) ->
+                              ({<<"Transferred">>,V}) ->
                                   export(Node, UUID, list_to_binary(["was_transferred=", wh_util:to_list(V)]));
                               ({K,V}) ->
                                   Arg = list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K), "=", wh_util:to_list(V)]),

@@ -169,7 +169,7 @@
 
 %% Route Requests
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
-				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"During-Transfer">>
 			   ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
 					 ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
@@ -179,6 +179,7 @@
 			   ,{<<"Event-Name">>, <<"route_req">>}
 			   ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>, <<"audio">>, <<"video">>, <<"chat">>]}
 			   ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
+                           ,{<<"During-Transfer">>, [<<"true">>, <<"false">>]}
 			  ]).
 -define(ROUTE_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
 			  ,{<<"To">>, fun is_binary/1}
@@ -303,16 +304,17 @@
 
 %% Resource Error
 -define(RESOURCE_ERROR_HEADERS, [<<"Msg-ID">>]).
--define(OPTIONAL_RESOURCE_ERROR_HEADERS, [<<"Failed-Attempts">>, <<"Failed-Route">>, <<"Failure-Message">>, <<"Failure-Code">>]).
+-define(OPTIONAL_RESOURCE_ERROR_HEADERS, [<<"Failed-Attempts">>, <<"Failed-Route">>, <<"Failure-Message">>
+                                              ,<<"Failure-Code">>, <<"Hangup-Cause">>, <<"Hangup-Code">>]).
 -define(RESOURCE_ERROR_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                 ,{<<"Event-Name">>, [<<"originate_error">>, <<"resource_error">>]}
                                ]).
 -define(RESOURCE_ERROR_TYPES, []).
 
 %% Call Events
--define(CALL_EVENT_HEADERS, [<<"Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>, <<"Channel-State">>, <<"During-Transfer">>]).
+-define(CALL_EVENT_HEADERS, [<<"Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>, <<"Custom-Channel-Vars">>
-					  ,<<"Msg-ID">>
+					  ,<<"Msg-ID">>, <<"Channel-State">>, <<"During-Transfer">>
 					  ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>, <<"Other-Leg-Caller-ID-Number">> %% BRIDGE
 					  ,<<"Other-Leg-Destination-Number">>,<<"Other-Leg-Unique-ID">> %% BRIDGE
 					  ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
