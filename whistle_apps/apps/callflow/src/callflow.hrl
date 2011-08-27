@@ -56,4 +56,5 @@
             ,channel_vars = undefined :: json_object() | undefined  %% Any custom channel vars that where provided with the route request
             ,last_action = undefined :: undefined | atom()          %% Previous action
             ,capture_group = undefined :: undefined | binary()      %% If the callflow was found using a pattern this is the capture group
+            ,inception_during_transfer = false :: boolean()         %% If the hunt for this callflow was intiated during transfer
            }).
