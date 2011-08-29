@@ -220,6 +220,8 @@ bind_to_crossbar() ->
 -spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
+allowed_methods([<<"status">>]) ->
+    {true, ['GET']};
 allowed_methods([_]) ->
     {true, ['GET', 'POST', 'DELETE']};
 allowed_methods(_) ->
@@ -255,6 +257,8 @@ validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=
     load_device_summary(Context, QueryString);
 validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
     create_device(Context);
+validate([<<"status">>], _, #cb_context{req_verb = <<"get">>}=Context) ->
+    load_device_status(Context);
 validate([DocId], _, #cb_context{req_verb = <<"get">>}=Context) ->
     load_device(DocId, Context);
 validate([DocId], _, #cb_context{req_verb = <<"post">>}=Context) ->
@@ -322,6 +326,17 @@ update_device(DocId, #cb_context{req_data=JObj}=Context) ->
         {true, []} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Retrieve the status of the devices linked to the account
+%% @end
+%%--------------------------------------------------------------------
+-spec load_device_status/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
+load_device_status(#cb_context{db_name=Db}=Context) ->
+    crossbar_util:response(<<"devices status">>, Context).
 
 %%--------------------------------------------------------------------
 %% @private
