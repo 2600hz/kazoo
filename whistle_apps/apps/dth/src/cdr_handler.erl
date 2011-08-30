@@ -26,6 +26,38 @@
 init() ->
     ok.
 
+handle_req2(JObj, Props) ->
+    true = wh_api:call_cdr_v(JObj),
+
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
+    ?LOG_SYS(CallID, "Valid call cdr", []),
+    ?LOG_SYS(CallID, "Call Direction: ~s", [CallDirection]),
+
+    <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
+
+    Timestamp = wh_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())),
+    BillingSec = wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
+
+    DateTime = now_to_datetime(Timestamp - BillingSec),
+
+    ToE164 = wh_util:to_e164(get_to_user(JObj)),
+    FromE164 = wh_util:to_e164(get_from_user(JObj)),
+
+    AccountCode = get_account_code(JObj),
+
+    ?LOG(CallID, "CDR from ~s to ~s with account code ~s", [FromE164, ToE164, AccountCode]),
+
+    CallRecord = #'p:CallRecord'{'CustomerID'=AccountCode
+				 ,'OriginatingNumber'=FromE164
+				 ,'DestinationNumber'=ToE164
+				 ,'StartTime'=DateTime
+				 ,'Duration'=wh_util:to_binary(BillingSec)
+				 ,'UniqueID'=CallID
+				 ,'CallType'=?DTH_CALL_TYPE_OTHER},
+    WsdlModel = props:get_value(wsdl, Props),
+    detergent:call(WsdlModel, "SubmitCallRecord", [CallRecord]).
+
 handle_req(JObj, Props) ->
     true = wh_api:call_cdr_v(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -59,6 +91,9 @@ handle_req(JObj, Props) ->
 
     ?LOG(CallID, "XML to send: ~s", [XML]),
 
+    send_xml(XML, Props).
+
+send_xml(XML, Props) ->
     Headers = [{"Content-Type", "text/xml; charset=utf-8"}
 	       ,{"Content-Length", binary:referenced_byte_size(XML)}
 	       ,{"SOAPAction", "http://tempuri.org/SubmitCallRecord"}
