@@ -5,7 +5,7 @@
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1, is_false/1, binary_to_lower/1]).
 -export([a1hash/3, floor/1, ceiling/1]).
--export([current_tstamp/0]).
+-export([current_tstamp/0, ensure_started/1]).
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1]).
 -export([microseconds_to_seconds/1]).
 -export([whistle_version/0, write_pid/1]).
@@ -242,6 +242,16 @@ whistle_version(FileName) ->
       FileName :: binary() | string().
 write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), [write, binary]).
+
+-spec ensure_started/1 :: (App) -> 'ok' when
+      App :: atom().
+ensure_started(App) when is_atom(App) ->
+    case application:start(App) of
+	ok ->
+	    ok;
+	{error, {already_started, App}} ->
+	    ok
+    end.
 
 %% there are 86400 seconds in a day
 %% there are 62167219200 seconds between Jan 1, 0 and Jan 1, 1970
