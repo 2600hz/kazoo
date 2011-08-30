@@ -41,7 +41,7 @@
 -define(SIGNUP_CONF, [code:lib_dir(crossbar, priv), "/signup/signup.conf"]).
 
 -record(state, {cleanup_interval = 18000 :: integer() %% once every 5 hours (in seconds)
-                ,signup_lifespan = 86400 :: integer() %% 24 hours (in seconds)
+                ,signup_lifespan = ?SECONDS_IN_DAY :: integer() %% 24 hours (in seconds)
                 ,register_cmd = undefined :: undefined | atom()
                 ,activation_email_plain = undefined
                 ,activation_email_html = undefined
