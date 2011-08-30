@@ -71,7 +71,12 @@ eventstr_to_proplist(EvtStr) ->
 to_kv(X, Separator) ->
     [K, V] = string:tokens(X, Separator),
     [{V1,[]}] = mochiweb_util:parse_qs(V),
-    {wh_util:to_binary(K), wh_util:to_binary(V1)}.
+    {wh_util:to_binary(K), wh_util:to_binary(fix_value(K, V1))}.
+
+fix_value("Event-Date-Timestamp", TStamp) ->
+    wh_util:microseconds_to_seconds(wh_util:to_integer(TStamp));
+fix_value(_K, V) -> V.
+
 
 %% convert a raw FS list of vars  to a proplist
 %% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
