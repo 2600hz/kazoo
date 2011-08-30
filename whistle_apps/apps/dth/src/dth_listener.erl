@@ -29,6 +29,7 @@
 		  ]).
 
 -define(SERVER, ?MODULE).
+-define(BLACKLIST_REFRESH, 60000).
 
 -record(state, {
 	  wsdl_model = undefined :: 'undefined' | term()
@@ -75,7 +76,7 @@ init([]) ->
     {ok, Configs} = file:consult([code:priv_dir(dth), "/startup.config"]),
     URL = props:get_value(dth_cdr_url, Configs),
 
-    erlang:send_after(1000, self(), blacklist_refresh),
+    erlang:send_after(?BLACKLIST_REFRESH, self(), blacklist_refresh),
     
     WSDLFile = [code:priv_dir(dth), "/dthsoap.wsdl"],
     WSDLHrlFile = [code:lib_dir(dth, include), "/dthsoap.hrl"],
@@ -136,7 +137,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(blacklist_refresh, #state{wsdl_model=WSDL, cache=Cache}=State) ->
-    erlang:send_after(1000, self(), blacklist_refresh),
+    erlang:send_after(?BLACKLIST_REFRESH, self(), blacklist_refresh),
     spawn(fun() -> refresh_blacklist(Cache, WSDL) end),
     {noreply, State};
 handle_info(timeout, #state{cache=undefined}=State) ->
