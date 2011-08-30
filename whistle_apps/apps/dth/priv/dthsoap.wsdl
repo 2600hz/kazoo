@@ -30,6 +30,7 @@
           <s:element minOccurs="0" maxOccurs="1" name="ShippingAddress" type="tns:ShippingAddress" />
           <s:element minOccurs="0" maxOccurs="1" name="ServiceAddress" type="tns:ServiceAddress" />
           <s:element minOccurs="0" maxOccurs="1" name="ExternalID" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="SpendingLimit" nillable="true" type="s:decimal" />
         </s:sequence>
       </s:complexType>
       <s:simpleType name="ActiveValues">
@@ -56,14 +57,6 @@
       </s:complexType>
       <s:complexType name="Address" abstract="true">
         <s:sequence>
-          <s:element minOccurs="0" maxOccurs="1" name="sCustomerID" type="s:string" />
-          <s:element minOccurs="0" maxOccurs="1" name="sAddress1" type="s:string" />
-          <s:element minOccurs="0" maxOccurs="1" name="sAddress2" type="s:string" />
-          <s:element minOccurs="0" maxOccurs="1" name="sCity" type="s:string" />
-          <s:element minOccurs="0" maxOccurs="1" name="sState" type="s:string" />
-          <s:element minOccurs="0" maxOccurs="1" name="sCountry" type="s:string" />
-          <s:element minOccurs="0" maxOccurs="1" name="sZipCode" type="s:string" />
-          <s:element minOccurs="0" maxOccurs="1" name="sAddressNote" type="s:string" />
           <s:element minOccurs="0" maxOccurs="1" name="CustomerID" type="s:string" />
           <s:element minOccurs="0" maxOccurs="1" name="Address1" type="s:string" />
           <s:element minOccurs="0" maxOccurs="1" name="Address2" type="s:string" />
@@ -76,7 +69,12 @@
       </s:complexType>
       <s:complexType name="ServiceAddress">
         <s:complexContent mixed="false">
-          <s:extension base="tns:Address" />
+          <s:extension base="tns:Address">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="County" type="s:string" />
+              <s:element minOccurs="0" maxOccurs="1" name="Locality" type="s:string" />
+            </s:sequence>
+          </s:extension>
         </s:complexContent>
       </s:complexType>
       <s:complexType name="ShippingAddress">
@@ -84,7 +82,6 @@
           <s:extension base="tns:Address">
             <s:sequence>
               <s:element minOccurs="0" maxOccurs="1" name="FullName" type="s:string" />
-              <s:element minOccurs="0" maxOccurs="1" name="County" type="s:string" />
             </s:sequence>
           </s:extension>
         </s:complexContent>
@@ -184,9 +181,20 @@
       </s:complexType>
       <s:simpleType name="CallTypeValues">
         <s:restriction base="s:string">
+          <s:enumeration value="Information" />
+          <s:enumeration value="Emergency" />
+          <s:enumeration value="LocalESL" />
+          <s:enumeration value="LocalLI" />
           <s:enumeration value="Local" />
+          <s:enumeration value="TollFreeOrigination" />
+          <s:enumeration value="TieredOriginationLI" />
+          <s:enumeration value="TieredOriginationELS" />
           <s:enumeration value="TieredOrigination" />
+          <s:enumeration value="OutboundTollFree" />
+          <s:enumeration value="International" />
+          <s:enumeration value="OTInterstate" />
           <s:enumeration value="Interstate" />
+          <s:enumeration value="OTTIntrastate" />
           <s:enumeration value="Intrastate" />
           <s:enumeration value="Other" />
         </s:restriction>
@@ -325,7 +333,9 @@
           <s:element minOccurs="0" maxOccurs="1" name="Password" type="s:string" />
           <s:element minOccurs="0" maxOccurs="1" name="MACAddress" type="s:string" />
           <s:element minOccurs="0" maxOccurs="1" name="LocationID" type="s:string" />
-          <s:element minOccurs="1" maxOccurs="1" name="Tier" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="Tier" nillable="true" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="RateCenter" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Provider" type="s:string" />
         </s:sequence>
       </s:complexType>
       <s:element name="AddDIDtoCustomerResponse">
@@ -783,6 +793,8 @@
           <s:element minOccurs="0" maxOccurs="1" name="CustomerID" type="s:string" />
           <s:element minOccurs="1" maxOccurs="1" name="DeliveryMethod" type="s:int" />
           <s:element minOccurs="0" maxOccurs="1" name="EmailAddress" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="EmailAddress2" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="CDRonStatement" type="s:int" />
         </s:sequence>
       </s:complexType>
       <s:element name="SaveCustomerDeliverySetupResponse">
@@ -1152,6 +1164,179 @@
           </s:sequence>
         </s:complexType>
       </s:element>
+      <s:element name="SubmitRatedCallRecord">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="oCallRecord_Rated" type="tns:CallRecord_Rated" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="CallRecord_Rated">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="CustomerID" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="BatchID" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="OriginatingNumber" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="DestinationNumber" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="DestinationName" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="Direction" type="s1:char" />
+          <s:element minOccurs="1" maxOccurs="1" name="StartTime" type="s:dateTime" />
+          <s:element minOccurs="1" maxOccurs="1" name="Duration" type="s:decimal" />
+          <s:element minOccurs="1" maxOccurs="1" name="BilledDuration" type="s:decimal" />
+          <s:element minOccurs="1" maxOccurs="1" name="RetailRate" type="s:decimal" />
+          <s:element minOccurs="1" maxOccurs="1" name="CallCost" type="s:decimal" />
+          <s:element minOccurs="0" maxOccurs="1" name="UniqueID" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="AccountCode" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Channel" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="dstChannel" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="OriginatingIPAddress" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="CallID" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="CallType" type="tns:CallTypeValue" />
+        </s:sequence>
+      </s:complexType>
+      <s:simpleType name="CallTypeValue">
+        <s:restriction base="s:string">
+          <s:enumeration value="Information" />
+          <s:enumeration value="Emergency" />
+          <s:enumeration value="LocalESL" />
+          <s:enumeration value="LocalLI" />
+          <s:enumeration value="Local" />
+          <s:enumeration value="TollFreeOrigination" />
+          <s:enumeration value="TieredOriginationLI" />
+          <s:enumeration value="TieredOriginationELS" />
+          <s:enumeration value="TieredOrigination" />
+          <s:enumeration value="OutboundTollFree" />
+          <s:enumeration value="International" />
+          <s:enumeration value="OTInterstate" />
+          <s:enumeration value="Interstate" />
+          <s:enumeration value="OTTIntrastate" />
+          <s:enumeration value="Intrastate" />
+          <s:enumeration value="Other" />
+        </s:restriction>
+      </s:simpleType>
+      <s:element name="SubmitRatedCallRecordResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="SubmitRatedCallRecordResult" type="tns:Response" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetBlockList">
+        <s:complexType />
+      </s:element>
+      <s:element name="GetBlockListResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetBlockListResult" type="tns:ArrayOfBlockListEntry" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfBlockListEntry">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="BlockListEntry" nillable="true" type="tns:BlockListEntry" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="BlockListEntry">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="CustomerID" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="BlockReason" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="ProcessCreditCard_Braintree">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="oCCTransaction" type="tns:CreditCardTransaction" />
+            <s:element minOccurs="0" maxOccurs="1" name="oPGCredentials" type="tns:PaymentGatewayCredentials_Braintree" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="CreditCardTransaction">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="CustomerID" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="PaymentAmount" type="s:decimal" />
+          <s:element minOccurs="0" maxOccurs="1" name="CardNumber" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="ExpiryYear" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="ExpiryMonth" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="CVV" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="FirstName" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="LastName" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Address1" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Address2" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="City" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="StateProv" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Country" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Zip" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="PaymentGatewayCredentials_Braintree">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="MerchantID" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="PublicKey" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="PrivateKey" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="ProcessCreditCard_BraintreeResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ProcessCreditCard_BraintreeResult" type="tns:Response" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetCycleIDList">
+        <s:complexType />
+      </s:element>
+      <s:element name="GetCycleIDListResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetCycleIDListResult" type="tns:ArrayOfCycleIDEntry" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfCycleIDEntry">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="CycleIDEntry" nillable="true" type="tns:CycleIDEntry" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="CycleIDEntry">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="CycleID" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="CycleDesc" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="UpdateDID">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="oDID" type="tns:DID" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdateDIDResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="UpdateDIDResult" type="tns:Response" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="SaveCustomerPaymentTerms">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="oPaymentTerms" type="tns:PaymentTerms" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="PaymentTerms">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="CustomerID" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="PaymentTerm" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="GracePeriod" type="s:int" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="SaveCustomerPaymentTermsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="SaveCustomerPaymentTermsResult" type="tns:Response" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
     </s:schema>
     <s:schema elementFormDefault="qualified" targetNamespace="http://microsoft.com/wsdl/types/">
       <s:simpleType name="char">
@@ -1495,6 +1680,42 @@
   <wsdl:message name="TestConnectionSoapOut">
     <wsdl:part name="parameters" element="tns:TestConnectionResponse" />
   </wsdl:message>
+  <wsdl:message name="SubmitRatedCallRecordSoapIn">
+    <wsdl:part name="parameters" element="tns:SubmitRatedCallRecord" />
+  </wsdl:message>
+  <wsdl:message name="SubmitRatedCallRecordSoapOut">
+    <wsdl:part name="parameters" element="tns:SubmitRatedCallRecordResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetBlockListSoapIn">
+    <wsdl:part name="parameters" element="tns:GetBlockList" />
+  </wsdl:message>
+  <wsdl:message name="GetBlockListSoapOut">
+    <wsdl:part name="parameters" element="tns:GetBlockListResponse" />
+  </wsdl:message>
+  <wsdl:message name="ProcessCreditCard_BraintreeSoapIn">
+    <wsdl:part name="parameters" element="tns:ProcessCreditCard_Braintree" />
+  </wsdl:message>
+  <wsdl:message name="ProcessCreditCard_BraintreeSoapOut">
+    <wsdl:part name="parameters" element="tns:ProcessCreditCard_BraintreeResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetCycleIDListSoapIn">
+    <wsdl:part name="parameters" element="tns:GetCycleIDList" />
+  </wsdl:message>
+  <wsdl:message name="GetCycleIDListSoapOut">
+    <wsdl:part name="parameters" element="tns:GetCycleIDListResponse" />
+  </wsdl:message>
+  <wsdl:message name="UpdateDIDSoapIn">
+    <wsdl:part name="parameters" element="tns:UpdateDID" />
+  </wsdl:message>
+  <wsdl:message name="UpdateDIDSoapOut">
+    <wsdl:part name="parameters" element="tns:UpdateDIDResponse" />
+  </wsdl:message>
+  <wsdl:message name="SaveCustomerPaymentTermsSoapIn">
+    <wsdl:part name="parameters" element="tns:SaveCustomerPaymentTerms" />
+  </wsdl:message>
+  <wsdl:message name="SaveCustomerPaymentTermsSoapOut">
+    <wsdl:part name="parameters" element="tns:SaveCustomerPaymentTermsResponse" />
+  </wsdl:message>
   <wsdl:portType name="DTHSOAPServiceSoap">
     <wsdl:operation name="CreateCustomer">
       <wsdl:input message="tns:CreateCustomerSoapIn" />
@@ -1719,6 +1940,30 @@
     <wsdl:operation name="TestConnection">
       <wsdl:input message="tns:TestConnectionSoapIn" />
       <wsdl:output message="tns:TestConnectionSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="SubmitRatedCallRecord">
+      <wsdl:input message="tns:SubmitRatedCallRecordSoapIn" />
+      <wsdl:output message="tns:SubmitRatedCallRecordSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetBlockList">
+      <wsdl:input message="tns:GetBlockListSoapIn" />
+      <wsdl:output message="tns:GetBlockListSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ProcessCreditCard_Braintree">
+      <wsdl:input message="tns:ProcessCreditCard_BraintreeSoapIn" />
+      <wsdl:output message="tns:ProcessCreditCard_BraintreeSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetCycleIDList">
+      <wsdl:input message="tns:GetCycleIDListSoapIn" />
+      <wsdl:output message="tns:GetCycleIDListSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="UpdateDID">
+      <wsdl:input message="tns:UpdateDIDSoapIn" />
+      <wsdl:output message="tns:UpdateDIDSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="SaveCustomerPaymentTerms">
+      <wsdl:input message="tns:SaveCustomerPaymentTermsSoapIn" />
+      <wsdl:output message="tns:SaveCustomerPaymentTermsSoapOut" />
     </wsdl:operation>
   </wsdl:portType>
   <wsdl:binding name="DTHSOAPServiceSoap" type="tns:DTHSOAPServiceSoap">
@@ -2220,6 +2465,60 @@
     </wsdl:operation>
     <wsdl:operation name="TestConnection">
       <soap:operation soapAction="http://tempuri.org/TestConnection" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="SubmitRatedCallRecord">
+      <soap:operation soapAction="http://tempuri.org/SubmitRatedCallRecord" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetBlockList">
+      <soap:operation soapAction="http://tempuri.org/GetBlockList" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ProcessCreditCard_Braintree">
+      <soap:operation soapAction="http://tempuri.org/ProcessCreditCard_Braintree" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetCycleIDList">
+      <soap:operation soapAction="http://tempuri.org/GetCycleIDList" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdateDID">
+      <soap:operation soapAction="http://tempuri.org/UpdateDID" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="SaveCustomerPaymentTerms">
+      <soap:operation soapAction="http://tempuri.org/SaveCustomerPaymentTerms" style="document" />
       <wsdl:input>
         <soap:body use="literal" />
       </wsdl:input>
@@ -2734,13 +3033,67 @@
         <soap12:body use="literal" />
       </wsdl:output>
     </wsdl:operation>
+    <wsdl:operation name="SubmitRatedCallRecord">
+      <soap12:operation soapAction="http://tempuri.org/SubmitRatedCallRecord" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetBlockList">
+      <soap12:operation soapAction="http://tempuri.org/GetBlockList" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ProcessCreditCard_Braintree">
+      <soap12:operation soapAction="http://tempuri.org/ProcessCreditCard_Braintree" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetCycleIDList">
+      <soap12:operation soapAction="http://tempuri.org/GetCycleIDList" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdateDID">
+      <soap12:operation soapAction="http://tempuri.org/UpdateDID" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="SaveCustomerPaymentTerms">
+      <soap12:operation soapAction="http://tempuri.org/SaveCustomerPaymentTerms" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
   </wsdl:binding>
   <wsdl:service name="DTHSOAPService">
     <wsdl:port name="DTHSOAPServiceSoap" binding="tns:DTHSOAPServiceSoap">
-      <soap:address location="http://173.203.64.57/dthsoapapi/dthsoap.asmx" />
+      <soap:address location="http://173.203.64.57/DTHSOAPAPI_v3/dthSOAP.asmx" />
     </wsdl:port>
     <wsdl:port name="DTHSOAPServiceSoap12" binding="tns:DTHSOAPServiceSoap12">
-      <soap12:address location="http://173.203.64.57/dthsoapapi/dthsoap.asmx" />
+      <soap12:address location="http://173.203.64.57/DTHSOAPAPI_v3/dthSOAP.asmx" />
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>

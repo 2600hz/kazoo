@@ -33,7 +33,6 @@
 -record(state, {
 	  wsdl_model = undefined :: 'undefined' | term()
 	 ,cache = undefined :: 'undefined' | pid()
-         ,blacklist_tref = undefined :: 'undefined' | reference()
 	 ,dth_cdr_url = <<>> :: binary()
          }).
 
@@ -76,22 +75,25 @@ init([]) ->
     {ok, Configs} = file:consult([code:priv_dir(dth), "/startup.config"]),
     URL = props:get_value(dth_cdr_url, Configs),
 
-    TRef = erlang:send_after(1000, self(), blacklist_refresh),
+    erlang:send_after(1000, self(), blacklist_refresh),
     
-    %% WSDLFile = [code:priv_dir(dth), "/dthsoap.wsdl"],
-    %% WSDLHrlFile = [code:lib_dir(dth, include), "/dthsoap.hrl"],
+    WSDLFile = [code:priv_dir(dth), "/dthsoap.wsdl"],
+    WSDLHrlFile = [code:lib_dir(dth, include), "/dthsoap.hrl"],
 
-    %% true = filelib:is_regular(WSDLFile),
+    true = filelib:is_regular(WSDLFile),
 
-    %% case filelib:is_regular(WSDLHrlFile) of
-    %%     true -> ok;
-    %%     false ->
-    %%         true = filelib:is_regular(WSDLFile),
-    %%         ok = detergent:write_hrl(WSDLFile, WSDLHrlFile, ?PREFIX)
-    %% end,
+    case filelib:is_regular(WSDLHrlFile) of
+        true -> ok;
+	false ->
+	    true = filelib:is_regular(WSDLFile),
+	    ok = detergent:write_hrl(WSDLFile, WSDLHrlFile)
+    end,
 
-    %% {ok, #state{wsdl_model=detergent:initModel(WSDLFile, ?PREFIX), dth_cdr_url=URL}, 0}.
-    {ok, #state{dth_cdr_url=URL, blacklist_tref=TRef}, 0}.
+    {ok, #state{wsdl_model=detergent:initModel(WSDLFile)
+		,dth_cdr_url=URL
+	       }
+     , 0}.
+    %%{ok, #state{dth_cdr_url=URL, blacklist_tref=TRef}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -133,10 +135,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({timeout, TRef, blacklist_refresh}, #state{cache=Cache, blacklist_tref=TRef}=State) ->
-    NewTRef = erlang:send_after(1000, self(), blacklist_refresh),
-    spawn(fun() -> refresh_blacklist(Cache) end),
-    {noreply, State#state{blacklist_tref=NewTRef}};
+handle_info(blacklist_refresh, #state{wsdl_model=WSDL, cache=Cache}=State) ->
+    erlang:send_after(1000, self(), blacklist_refresh),
+    spawn(fun() -> refresh_blacklist(Cache, WSDL) end),
+    {noreply, State};
 handle_info(timeout, #state{cache=undefined}=State) ->
     Cache = whereis(dth_cache),
     erlang:monitor(process, Cache),
@@ -156,8 +158,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{dth_cdr_url=Url, cache=Cache}) ->
-    {reply, [{cdr_url, Url}, {cache, Cache}]}.
+handle_event(_JObj, #state{dth_cdr_url=Url, cache=Cache, wsdl_model=WSDL}) ->
+    {reply, [{cdr_url, Url}, {cache, Cache}, {wsdl, WSDL}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -188,5 +190,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-refresh_blacklist(Cache) ->
-    ok.
+-spec refresh_blacklist/2 :: (Cache, WSDL) -> ok when
+      Cache :: pid(),
+      WSDL :: #wsdl{}.
+refresh_blacklist(Cache, WSDL) ->
+    {ok, _, [Response]} = detergent:call(WSDL, "GetBlockList", []),
+    BlockListEntries = get_blocklist_entries(Response),
+    wh_cache:store_local(Cache, dth_util:blacklist_cache_key(), BlockListEntries).
+
+-spec get_blocklist_entries/1 :: (Response) -> [#'p:BlockListEntry'{},...] | [] when
+      Response :: #'p:GetBlockListResponse'{}.
+get_blocklist_entries(#'p:GetBlockListResponse'{
+			 'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
+			   'BlockListEntry'=undefined
+			  }}) ->
+    [];
+get_blocklist_entries(#'p:GetBlockListResponse'{
+			 'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
+			   'BlockListEntry'=Entries
+			  }}) when is_list(Entries) ->
+    %% do some formatting of the entries to be [{ID, Reason}]
+    Entries.

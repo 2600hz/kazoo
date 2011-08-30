@@ -32,6 +32,6 @@ start_link() ->
 init([]) ->
     Processes = [
 		 ?CACHE(dth_cache)
-		 ,?CHILD(dth_cdr_listener, worker)
+		 ,?CHILD(dth_listener, worker)
 		],
     {ok, { {one_for_one, 5, 10}, Processes} }.

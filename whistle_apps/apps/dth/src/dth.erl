@@ -25,7 +25,7 @@ start() ->
 
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    wh_util:ensure_started(inets),
+    inets:start(),
     wh_util:ensure_started(sasl), % logging
     wh_util:ensure_started(crypto), % random
     wh_util:ensure_started(ibrowse),
