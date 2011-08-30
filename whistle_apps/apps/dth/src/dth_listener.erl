@@ -197,9 +197,10 @@ code_change(_OldVsn, State, _Extra) ->
 refresh_blacklist(Cache, WSDL) ->
     {ok, _, [Response]} = detergent:call(WSDL, "GetBlockList", []),
     BlockListEntries = get_blocklist_entries(Response),
+    ?LOG_SYS("Entries: ~p", [BlockListEntries]),
     wh_cache:store_local(Cache, dth_util:blacklist_cache_key(), BlockListEntries).
 
--spec get_blocklist_entries/1 :: (Response) -> [#'p:BlockListEntry'{},...] | [] when
+-spec get_blocklist_entries/1 :: (Response) -> [{binary(),binary()},...] | [] when
       Response :: #'p:GetBlockListResponse'{}.
 get_blocklist_entries(#'p:GetBlockListResponse'{
 			 'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
@@ -211,4 +212,4 @@ get_blocklist_entries(#'p:GetBlockListResponse'{
 			   'BlockListEntry'=Entries
 			  }}) when is_list(Entries) ->
     %% do some formatting of the entries to be [{ID, Reason}]
-    Entries.
+    [{wh_util:to_binary(ID), wh_util:to_binary(Reason)} || #'p:BlockListEntry'{'CustomerID'=ID, 'BlockReason'=Reason} <- Entries].
