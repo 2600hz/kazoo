@@ -9,6 +9,7 @@
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
 -export([callmgr_exchange/0, callmgr_publish/3]).
+-export([configuration_exchange/0, configuration_publish/3]).
 -export([monitor_exchange/0, monitor_publish/3]).
 -export([conference_exchange/0, conference_publish/2, conference_publish/3, conference_publish/4]).
 
@@ -17,6 +18,7 @@
 -export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2, unbind_q_from_callevt/3]).
 -export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
 -export([bind_q_to_callmgr/2, unbind_q_from_callmgr/2]).
+-export([bind_q_to_configuration/2, unbind_q_from_configuration/2]).
 -export([bind_q_to_monitor/2]).
 -export([bind_q_to_conference/2, bind_q_to_conference/3]).
 -export([bind_q_to_exchange/3, bind_q_to_exchange/4]).
@@ -25,6 +27,7 @@
 -export([new_callctl_queue/1, delete_callctl_queue/1]).
 -export([new_callevt_queue/1, delete_callevt_queue/1]).
 -export([new_callmgr_queue/1, new_callmgr_queue/2, delete_callmgr_queue/1]).
+-export([new_configuration_queue/1, new_configuration_queue/2, delete_configuration_queue/1]).
 -export([new_resource_queue/0, new_resource_queue/1]).
 -export([new_monitor_queue/0, new_monitor_queue/1, delete_monitor_queue/1]).
 -export([new_conference_queue/1, new_conference_queue/2]).
@@ -61,6 +64,13 @@ targeted_publish(Queue, Payload, ContentType) ->
 %% TODO: The routing key on this function should be the first argument for consistency
 callmgr_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
+
+-spec configuration_publish/3 :: (RoutingKey, Payload, ContentType) -> ok when
+      RoutingKey :: binary(),
+      Payload :: iolist(),
+      ContentType :: binary().
+configuration_publish(RoutingKey, Payload, ContentType) ->
+    basic_publish(?EXCHANGE_CONFIGURATION, RoutingKey, Payload, ContentType).
 
 -spec callctl_publish/2 :: (CallID, Payload) -> ok when
       CallID :: binary(),
@@ -235,6 +245,10 @@ resource_exchange() ->
 callmgr_exchange() ->
     new_exchange(?EXCHANGE_CALLMGR, ?TYPE_CALLMGR).
 
+-spec configuration_exchange/0 :: () -> ok.
+configuration_exchange() ->
+    new_exchange(?EXCHANGE_CONFIGURATION, ?TYPE_CONFIGURATION).
+
 -spec monitor_exchange/0 :: () -> ok.
 monitor_exchange() ->
     new_exchange(?EXCHANGE_MONITOR, ?TYPE_MONITOR).
@@ -309,6 +323,16 @@ new_callmgr_queue(Queue) ->
 new_callmgr_queue(Queue, Opts) ->
     new_queue(Queue, Opts).
 
+-spec new_configuration_queue/1 :: (Queue) -> binary() | {error, amqp_error} when
+      Queue :: binary().
+-spec new_configuration_queue/2 :: (Queue, Options) -> binary() | {error, amqp_error} when
+      Queue :: binary(),
+      Options :: proplist().
+new_configuration_queue(Queue) ->
+    new_configuration_queue(Queue, []).
+new_configuration_queue(Queue, Options) ->
+    new_queue(Queue, Options).
+
 -spec new_monitor_queue/0 :: () -> binary() | {error, amqp_error}.
 -spec new_monitor_queue/1 :: (Queue :: binary()) -> binary() | {error, amqp_error}.
 new_monitor_queue() ->
@@ -376,6 +400,9 @@ delete_callctl_queue(CallID, Prop) ->
     queue_delete(list_to_binary([?EXCHANGE_CALLCTL, ".", CallID]), Prop).
 
 delete_callmgr_queue(Queue) ->
+    queue_delete(Queue, []).
+
+delete_configuration_queue(Queue) ->
     queue_delete(Queue, []).
 
 delete_monitor_queue(Queue) ->
@@ -454,6 +481,15 @@ bind_q_to_resource(Queue, Routing) ->
 bind_q_to_callmgr(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
 
+-spec bind_q_to_configuration/2 :: (Queue, Routing) -> ok | {error, term()} when
+      Queue :: binary(),
+      Routing :: binary().
+bind_q_to_configuration(Queue, Routing) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CONFIGURATION).
+
+-spec bind_q_to_monitor/2 :: (Queue, Routing) -> ok | {error, term()} when
+      Queue :: binary(),
+      Routing :: binary().
 bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
@@ -540,6 +576,9 @@ unbind_q_from_resource(Queue, Routing) ->
 
 unbind_q_from_callmgr(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
+
+unbind_q_from_configuration(Queue, Routing) ->
+    unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CONFIGURATION).
 
 unbind_q_from_targeted(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
