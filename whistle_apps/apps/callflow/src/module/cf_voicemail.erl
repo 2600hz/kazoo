@@ -591,7 +591,7 @@ record_unavailable_greeting(RecordingName, #mailbox{unavailable_media_id=undefin
 record_unavailable_greeting(RecordingName, #mailbox{prompts=#prompts{record_unavail_greeting=RecordUnavailGreeting
                                                                      ,tone_spec=ToneSpec, saved=Saved, deleted=Deleted}
                                                    ,unavailable_media_id=MediaId}=Box, Call) ->
-    ?LOG("recoding unavailable greeting"),
+    ?LOG("recording unavailable greeting"),
     audio_macro([{play, RecordUnavailGreeting}
                  ,{tones, ToneSpec}]
                 ,Call),
