@@ -12,6 +12,7 @@
 -export([is_ipv4/1, is_ipv6/1]).
 
 -include_lib("proper/include/proper.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, whistle_version}).
 
@@ -309,7 +310,6 @@ ensure_started(App) when is_atom(App) ->
 
 %% there are 86400 seconds in a day
 %% there are 62167219200 seconds between Jan 1, 0000 and Jan 1, 1970
--define(SECONDS_IN_DAY, 86400).
 -define(UNIX_EPOCH_AS_GREG_SECONDS, 62167219200).
 
 -spec gregorian_seconds_to_unix_seconds/1 :: (GregorianSeconds) -> non_neg_integer() when
