@@ -259,6 +259,9 @@ handle_info({document_deleted, DocID}, State) ->
     ?LOG_SYS("account ~s deleted, going down", [DocID]),
     {stop, normal, State};
 
+handle_info(#'basic.consume_ok'{}, State) ->
+    {noreply, State};
+
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.

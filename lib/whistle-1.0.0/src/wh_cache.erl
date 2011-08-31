@@ -141,7 +141,8 @@ handle_call({fetch, K}, _, Dict) ->
 handle_call(fetch_keys, _, Dict) ->
     {reply, dict:fetch_keys(Dict), Dict};
 handle_call({filter, Pred}, _, Dict) ->
-    {reply, dict:to_list(dict:filter(Pred, Dict)), Dict}.
+    KV = dict:map(fun(_, {_,V,_}) -> V end, Dict),
+    {reply, dict:to_list(dict:filter(Pred, KV)), Dict}.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -13,7 +13,7 @@
 -export([caller_id/4]).
 -export([callee_id/4]).
 -export([caller_id_options/4]).
--export([owner_id/2]).
+-export([owner_id/2, owned_by/2, owned_by/3]).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -133,6 +133,51 @@ owner_id(ObjectId, #cf_call{account_db=Db})->
             undefined;
         {ok, JObj} ->
             wh_json:get_value(<<"value">>, hd(JObj));
+        {error, _} ->
+            undefined
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec owned_by/2 :: (OwnerId, Call) -> undefined | list() when
+      OwnerId :: undefined | binary(),
+      Call :: #cf_call{}.
+owned_by(undefined, _) ->
+    undefined;
+owned_by(OwnerId, #cf_call{account_db=Db})->
+    Id = wh_util:to_binary(OwnerId),
+    case couch_mgr:get_results(Db, <<"cf_attributes/owned">>, [{<<"start_key">>, [Id, []]}, {<<"end_key">>, [Id, ?EMPTY_JSON_OBJECT]} ]) of
+        {ok, []} ->
+            undefined;
+        {ok, JObj} ->
+	    [wh_json:get_value(<<"id">>, D)  || D <- JObj];
+        {error, _} ->
+            undefined
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% Returns a list of doc ID of the specified type for thiw owner
+%% @end
+%%-----------------------------------------------------------------------------
+-spec owned_by/3 :: (OwnerId, Call, Type) -> undefined | list() when
+      OwnerId :: undefined | binary(),
+      Call :: #cf_call{},
+      Type :: atom().
+owned_by(undefined, _, _) ->
+    undefined;
+owned_by(OwnerId, #cf_call{account_db=Db}, Type)->
+    Id = wh_util:to_binary(OwnerId),
+    T = wh_util:to_binary(Type),
+    case couch_mgr:get_results(Db, <<"cf_attributes/owned">>, [{<<"key">>, [Id, T]}]) of
+        {ok, []} ->
+            undefined;
+        {ok, JObj} ->
+	    [wh_json:get_value(<<"id">>, D)  || D <- JObj];
         {error, _} ->
             undefined
     end.

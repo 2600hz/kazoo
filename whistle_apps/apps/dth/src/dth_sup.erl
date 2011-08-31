@@ -16,6 +16,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
 
 %% ===================================================================
 %% API functions
@@ -29,5 +30,8 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    Processes = [ ?CHILD(dth_cdr_listener, worker) ],
+    Processes = [
+		 ?CACHE(dth_cache)
+		 ,?CHILD(dth_listener, worker)
+		],
     {ok, { {one_for_one, 5, 10}, Processes} }.

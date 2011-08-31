@@ -21,14 +21,12 @@
 %% the latest version.
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_voicemail/0:: () -> done | error.
+-spec migrate_voicemail/0:: () -> [done | error,...].
 -spec migrate_voicemail/1 :: (Account) -> done | error when
       Account :: binary().
 
 migrate_voicemail() ->
-    lists:foreach(fun(Account) ->
-                          migrate_voicemail(Account)
-                  end, whapps_util:get_all_accounts(raw)).
+    [ migrate_voicemail(Account) || Account <- whapps_util:get_all_accounts(raw) ].
 
 migrate_voicemail(Account) ->
     Db = whapps_util:get_db_name(Account, encoded),
@@ -169,8 +167,11 @@ migrate_vm_unavailable_greeting(_, Box, Db, _) ->
             BoxNum = wh_json:get_value(<<"mailbox">>, Box, <<"">>),
             Name = <<"mailbox ", BoxNum/binary, " unavailable greeting">>,
             Props = [{<<"name">>, Name}
-                     ,{<<"description">>, Id}
+                     ,{<<"description">>, <<"voicemail recorded/prompt media">>}
+                     ,{<<"source_type">>, <<"voicemail">>}
+                     ,{<<"source_id">>, Id}
                      ,{<<"media_type">>, <<"mp3">>}
+                     ,{<<"content_type">>, <<"audio/mpeg">>}
                      ,{<<"streamable">>, true}],
             Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"media">>}]),
             try
@@ -221,6 +222,7 @@ try_move_vm_attachment(Attachment, Msg, Box, Db) ->
              ,{<<"description">>, <<"voicemail message media">>}
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
+             ,{<<"media_type">>, <<"mp3">>}
              ,{<<"content_type">>, <<"audio/mpeg">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"private_media">>}]),

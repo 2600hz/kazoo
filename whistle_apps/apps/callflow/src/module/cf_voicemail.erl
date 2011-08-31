@@ -893,6 +893,7 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
              ,{<<"content_type">>, <<"audio/mpeg">>}
+             ,{<<"media_type">>, <<"mp3">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"private_media">>}]),
     {ok, JObj} = couch_mgr:save_doc(Db, Doc),
@@ -915,6 +916,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum, mailbox_id=Id}, #
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
              ,{<<"content_type">>, <<"audio/mpeg">>}
+             ,{<<"media_type">>, <<"mp3">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"media">>}]),
     {ok, JObj} = couch_mgr:save_doc(Db, Doc),

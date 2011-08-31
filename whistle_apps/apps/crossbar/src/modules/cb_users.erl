@@ -348,7 +348,6 @@ normalize_view_results(JObj, Acc) ->
 is_valid_doc(JObj) ->
     RequiredFields = [<<"email">>, <<"username">>],
     ErrorFields = [Field || Field <- RequiredFields, not field_exists(Field, JObj) ],
-    logger:format_log(info, ">>>> POO  ~p ", [ErrorFields]),
 
     case ErrorFields of
 	[] -> {true, []};

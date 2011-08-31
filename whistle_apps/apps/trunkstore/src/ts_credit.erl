@@ -52,7 +52,7 @@ reserve(ToDID, CallID, AcctID, Direction, RouteOptions) ->
 		    %% wh_timer:tick("post usort data found"),
 		    ?LOG("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
 
-		    BaseCost = wh_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * wh_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate))
+		    BaseCost = wh_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * (wh_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate)) div 60)
 			+ wh_util:to_float(wh_json:get_value(<<"rate_surcharge">>, Rate)),
 
 		    _ = ts_acctmgr:reserve_trunk(AcctID, CallID, BaseCost, ts_util:is_flat_rate_eligible(ToDID)),

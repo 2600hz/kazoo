@@ -17,13 +17,17 @@
 -record('p:AddTrunkToCustomerResponse', {anyAttribs, 'AddTrunkToCustomerResult'}).
 -record('p:AddVirtualNumberToCustomer', {anyAttribs, 'oVirtualNumber'}).
 -record('p:AddVirtualNumberToCustomerResponse', {anyAttribs, 'AddVirtualNumberToCustomerResult'}).
--record('p:Address', {anyAttribs, 'sCustomerID', 'sAddress1', 'sAddress2', 'sCity', 'sState', 'sCountry', 'sZipCode', 'sAddressNote', 'CustomerID', 'Address1', 'Address2', 'City', 'State', 'Country', 'ZipCode', 'AddressNote'}).
+-record('p:Address', {anyAttribs, 'CustomerID', 'Address1', 'Address2', 'City', 'State', 'Country', 'ZipCode', 'AddressNote'}).
+-record('p:ArrayOfBlockListEntry', {anyAttribs, 'BlockListEntry'}).
 -record('p:ArrayOfCallRecord', {anyAttribs, 'CallRecord'}).
+-record('p:ArrayOfCycleIDEntry', {anyAttribs, 'CycleIDEntry'}).
 -record('p:ArrayOfResponse', {anyAttribs, 'Response'}).
 -record('p:AssignSMSDevice', {anyAttribs, 'oSMSDevice'}).
 -record('p:AssignSMSDeviceResponse', {anyAttribs, 'AssignSMSDeviceResult'}).
--record('p:BillingAddress', {anyAttribs, 'sCustomerID', 'sAddress1', 'sAddress2', 'sCity', 'sState', 'sCountry', 'sZipCode', 'sAddressNote', 'CustomerID', 'Address1', 'Address2', 'City', 'State', 'Country', 'ZipCode', 'AddressNote'}).
--record('p:CallRecord', {anyAttribs, 'CustomerID', 'BatchID', 'OriginatingNumber', 'DestinationNumber', 'StartTime', 'Duration', 'UniqueID', 'AccountCode', 'Disposition', 'dcontext', 'Channel', 'dstChannel', 'OriginatingIPAddress', 'CallID', 'DestinationName', 'BilledDuration', 'CallCost', 'CallTotal', 'Direction', 'BilledPrefix', 'RateID', 'WholesaleRate', 'WholesaleCost', 'RetailRate', 'CallTax', 'IsIncluded', 'BilledTier', 'ChargeID', 'StatementID', 'PrintIndicator', 'MasterNumber', 'EndTime', 'CallType'}).
+-record('p:BillingAddress', {anyAttribs, 'CustomerID', 'Address1', 'Address2', 'City', 'State', 'Country', 'ZipCode', 'AddressNote'}).
+-record('p:BlockListEntry', {anyAttribs, 'CustomerID', 'BlockReason'}).
+-record('p:CallRecord', {anyAttribs, 'CustomerID', 'BatchID', 'OriginatingNumber', 'DestinationNumber', 'StartTime', 'Duration', 'UniqueID', 'AccountCode', 'Disposition', 'dcontext', 'Channel', 'dstChannel', 'OriginatingIPAddress', 'CallID', 'DestinationName', 'BilledDuration' = <<"0">>, 'CallCost' = <<"0">>, 'CallTotal' = <<"0">>, 'Direction' = <<"i">>, 'BilledPrefix', 'RateID', 'WholesaleRate' = <<"0">>, 'WholesaleCost' = <<"0">>, 'RetailRate' = <<"0">>, 'CallTax' = <<"0">>, 'IsIncluded' = 0, 'BilledTier' = 0, 'ChargeID', 'StatementID', 'PrintIndicator' = 0, 'MasterNumber', 'EndTime' = <<"0000-00-00T00:00:00Z">>, 'CallType'}).
+-record('p:CallRecord_Rated', {anyAttribs, 'CustomerID', 'BatchID', 'OriginatingNumber', 'DestinationNumber', 'DestinationName', 'Direction', 'StartTime', 'Duration', 'BilledDuration', 'RetailRate', 'CallCost', 'UniqueID', 'AccountCode', 'Channel', 'dstChannel', 'OriginatingIPAddress', 'CallID', 'CallType'}).
 -record('p:Charge', {anyAttribs, 'ChargeID', 'Voided', 'CustomerID', 'ChargeType', 'BaseAmount', 'CurrencyID', 'ConversionRate', 'ChargeAmount', 'TaxAmount1', 'TaxAmount2', 'TaxAmount3', 'TotalChargeAmount', 'OutstandingAmount', 'ChargeDate', 'ChargeDueDate', 'PeriodStartDate', 'PeriodEndDate', 'ServiceType', 'ChargeDesc', 'BatchID', 'ChargeSource', 'RecurringChargeID', 'ChargeMult01', 'OnStatement', 'PrintIndicator'}).
 -record('p:ContactInformation', {anyAttribs, 'CustomerID', 'ContactPerson1', 'ContactPerson2', 'Phone1', 'Phone2', 'Phone3', 'Phone4', 'Phone5', 'Email'}).
 -record('p:CreateCharge', {anyAttribs, 'oCharge'}).
@@ -33,22 +37,26 @@
 -record('p:CreateCustomer', {anyAttribs, 'customer'}).
 -record('p:CreateCustomerResponse', {anyAttribs, 'CreateCustomerResult'}).
 -record('p:CreditCardInformation', {anyAttribs, 'CustomerID', 'CreditCardType', 'CreditCardNumber', 'NameOnCard', 'ExpiryMonth', 'ExpiryYear'}).
--record('p:Customer', {anyAttribs, 'CustomerID', 'FirstName', 'LastName', 'BusinessName', 'Active', 'CycleID', 'NoActivityStatement', 'CustomerClassID', 'CustomerType', 'RemitID', 'PenaltyType', 'CollectionExempt', 'ZoneID', 'MailingAddress', 'BillingAddress', 'ShippingAddress', 'ServiceAddress', 'ExternalID'}).
+-record('p:CreditCardTransaction', {anyAttribs, 'CustomerID', 'PaymentAmount', 'CardNumber', 'ExpiryYear', 'ExpiryMonth', 'CVV', 'FirstName', 'LastName', 'Address1', 'Address2', 'City', 'StateProv', 'Country', 'Zip'}).
+-record('p:Customer', {anyAttribs, 'CustomerID', 'FirstName', 'LastName', 'BusinessName', 'Active', 'CycleID', 'NoActivityStatement', 'CustomerClassID', 'CustomerType', 'RemitID', 'PenaltyType', 'CollectionExempt', 'ZoneID', 'MailingAddress', 'BillingAddress', 'ShippingAddress', 'ServiceAddress', 'ExternalID', 'SpendingLimit'}).
 -record('p:CustomerExists', {anyAttribs, 'customerID'}).
 -record('p:CustomerExistsResponse', {anyAttribs, 'CustomerExistsResult'}).
 -record('p:CustomerRegionalSettings', {anyAttribs, 'CustomerID', 'LanguageName', 'CurrencyID'}).
 -record('p:CustomerWebRegistration', {anyAttribs, 'CustomerID', 'EmailAddress', 'Password', 'Status', 'EmailVerificationStatus', 'AutoLoginGUID'}).
--record('p:DID', {anyAttribs, 'DIDDigits', 'CustomerID', 'PackageID', 'RecurringChargeID', 'ActivationDate', 'Username', 'Password', 'MACAddress', 'LocationID', 'Tier'}).
+-record('p:CycleIDEntry', {anyAttribs, 'CycleID', 'CycleDesc'}).
+-record('p:DID', {anyAttribs, 'DIDDigits', 'CustomerID', 'PackageID', 'RecurringChargeID', 'ActivationDate', 'Username', 'Password', 'MACAddress', 'LocationID', 'Tier', 'RateCenter', 'Provider'}).
 -record('p:DecryptCreditCard', {anyAttribs, 'shEncryptionType', 'sEncryptedCCNumber'}).
 -record('p:DecryptCreditCardResponse', {anyAttribs, 'DecryptCreditCardResult'}).
 -record('p:DeleteLocation', {anyAttribs, 'sLocationID'}).
 -record('p:DeleteLocationResponse', {anyAttribs, 'DeleteLocationResult'}).
 -record('p:DeleteRecurringCharge', {anyAttribs, 'sRecurringChargeID'}).
 -record('p:DeleteRecurringChargeResponse', {anyAttribs, 'DeleteRecurringChargeResult'}).
--record('p:DeliverySetup', {anyAttribs, 'CustomerID', 'DeliveryMethod', 'EmailAddress'}).
+-record('p:DeliverySetup', {anyAttribs, 'CustomerID', 'DeliveryMethod', 'EmailAddress', 'EmailAddress2', 'CDRonStatement'}).
 -record('p:EncryptCreditCard', {anyAttribs, 'shEncryptionType', 'sCCNumber'}).
 -record('p:EncryptCreditCardResponse', {anyAttribs, 'EncryptCreditCardResult'}).
 -record('p:Extension', {anyAttribs, 'Server', 'ExtensionDigits', 'CustomerID', 'ActiveDateTime', 'RateID', 'RecurringChargeID', 'Password'}).
+-record('p:GetBlockList', {anyAttribs}).
+-record('p:GetBlockListResponse', {anyAttribs, 'GetBlockListResult'}).
 -record('p:GetCallRecordbyCallID', {anyAttribs, 'sCallID'}).
 -record('p:GetCallRecordbyCallIDResponse', {anyAttribs, 'GetCallRecordbyCallIDResult'}).
 -record('p:GetCallRecordbyUniqueID', {anyAttribs, 'sUniqueID'}).
@@ -61,6 +69,8 @@
 -record('p:GetCustomerRegionalSettings', {anyAttribs, 'sCustomerID'}).
 -record('p:GetCustomerRegionalSettingsResponse', {anyAttribs, 'GetCustomerRegionalSettingsResult'}).
 -record('p:GetCustomerResponse', {anyAttribs, 'GetCustomerResult'}).
+-record('p:GetCycleIDList', {anyAttribs}).
+-record('p:GetCycleIDListResponse', {anyAttribs, 'GetCycleIDListResult'}).
 -record('p:GetDID', {anyAttribs, 'sDID'}).
 -record('p:GetDIDResponse', {anyAttribs, 'GetDIDResult'}).
 -record('p:GetExtension', {anyAttribs, 'sExtension', 'sCustomerID'}).
@@ -71,7 +81,9 @@
 -record('p:GetVirtualNumberResponse', {anyAttribs, 'GetVirtualNumberResult'}).
 -record('p:IPAddress', {anyAttribs, 'IPAddressDigits', 'CustomerID', 'ActiveDateTime', 'RateID', 'RecurringChargeID'}).
 -record('p:Location', {anyAttribs, 'LocationID', 'CustomerID', 'LocationClass', 'LocationStatus'}).
--record('p:MailingAddress', {anyAttribs, 'sCustomerID', 'sAddress1', 'sAddress2', 'sCity', 'sState', 'sCountry', 'sZipCode', 'sAddressNote', 'CustomerID', 'Address1', 'Address2', 'City', 'State', 'Country', 'ZipCode', 'AddressNote', 'County'}).
+-record('p:MailingAddress', {anyAttribs, 'CustomerID', 'Address1', 'Address2', 'City', 'State', 'Country', 'ZipCode', 'AddressNote', 'County'}).
+-record('p:PaymentGatewayCredentials_Braintree', {anyAttribs, 'MerchantID', 'PublicKey', 'PrivateKey'}).
+-record('p:PaymentTerms', {anyAttribs, 'CustomerID', 'PaymentTerm', 'GracePeriod'}).
 -record('p:PostPaymentCash', {anyAttribs, 'sCustomerID', 'dPaymentAmount', 'dtPaymentDate'}).
 -record('p:PostPaymentCashResponse', {anyAttribs, 'PostPaymentCashResult'}).
 -record('p:PostPaymentCheck', {anyAttribs, 'sCustomerID', 'dPaymentAmount', 'dtPaymentDate', 'sCheckNumber', 'sPaymentDesc'}).
@@ -80,6 +92,8 @@
 -record('p:PostPaymentCreditCardResponse', {anyAttribs, 'PostPaymentCreditCardResult'}).
 -record('p:PostPaymentCreditNote', {anyAttribs, 'sCustomerID', 'dPaymentAmount', 'dtPaymentDate', 'sCreditNoteType', 'sPaymentDesc'}).
 -record('p:PostPaymentCreditNoteResponse', {anyAttribs, 'PostPaymentCreditNoteResult'}).
+-record('p:ProcessCreditCard_Braintree', {anyAttribs, 'oCCTransaction', 'oPGCredentials'}).
+-record('p:ProcessCreditCard_BraintreeResponse', {anyAttribs, 'ProcessCreditCard_BraintreeResult'}).
 -record('p:RemoveCreditCardInformation', {anyAttribs, 'sCustomerID'}).
 -record('p:RemoveCreditCardInformationResponse', {anyAttribs, 'RemoveCreditCardInformationResult'}).
 -record('p:RemoveDIDfromCustomer', {anyAttribs, 'sDID'}).
@@ -107,6 +121,8 @@
 -record('p:SaveCustomerContactInfoResponse', {anyAttribs, 'SaveCustomerContactInfoResult'}).
 -record('p:SaveCustomerDeliverySetup', {anyAttribs, 'oDeliveryMethod'}).
 -record('p:SaveCustomerDeliverySetupResponse', {anyAttribs, 'SaveCustomerDeliverySetupResult'}).
+-record('p:SaveCustomerPaymentTerms', {anyAttribs, 'oPaymentTerms'}).
+-record('p:SaveCustomerPaymentTermsResponse', {anyAttribs, 'SaveCustomerPaymentTermsResult'}).
 -record('p:SaveCustomerRegionalSettings', {anyAttribs, 'oCRS', 'iTZOffset'}).
 -record('p:SaveCustomerRegionalSettingsResponse', {anyAttribs, 'SaveCustomerRegionalSettingsResult'}).
 -record('p:SaveCustomerSalesAgent', {anyAttribs, 'sCustomerID', 'sSalesAgentID'}).
@@ -125,25 +141,29 @@
 -record('p:SaveServiceAddressResponse', {anyAttribs, 'SaveServiceAddressResult'}).
 -record('p:SaveShippingAddress', {anyAttribs, 'oShippingAddress'}).
 -record('p:SaveShippingAddressResponse', {anyAttribs, 'SaveShippingAddressResult'}).
--record('p:ServiceAddress', {anyAttribs, 'sCustomerID', 'sAddress1', 'sAddress2', 'sCity', 'sState', 'sCountry', 'sZipCode', 'sAddressNote', 'CustomerID', 'Address1', 'Address2', 'City', 'State', 'Country', 'ZipCode', 'AddressNote'}).
--record('p:ShippingAddress', {anyAttribs, 'sCustomerID', 'sAddress1', 'sAddress2', 'sCity', 'sState', 'sCountry', 'sZipCode', 'sAddressNote', 'CustomerID', 'Address1', 'Address2', 'City', 'State', 'Country', 'ZipCode', 'AddressNote', 'FullName', 'County'}).
+-record('p:ServiceAddress', {anyAttribs, 'CustomerID', 'Address1', 'Address2', 'City', 'State', 'Country', 'ZipCode', 'AddressNote', 'County', 'Locality'}).
+-record('p:ShippingAddress', {anyAttribs, 'CustomerID', 'Address1', 'Address2', 'City', 'State', 'Country', 'ZipCode', 'AddressNote', 'FullName'}).
 -record('p:SubmitCallRecord', {anyAttribs, 'oCallRecord'}).
 -record('p:SubmitCallRecordResponse', {anyAttribs, 'SubmitCallRecordResult'}).
 -record('p:SubmitCallRecords', {anyAttribs, 'oCallRecords'}).
 -record('p:SubmitCallRecordsResponse', {anyAttribs, 'SubmitCallRecordsResult'}).
+-record('p:SubmitRatedCallRecord', {anyAttribs, 'oCallRecord_Rated'}).
+-record('p:SubmitRatedCallRecordResponse', {anyAttribs, 'SubmitRatedCallRecordResult'}).
 -record('p:TestConnection', {anyAttribs}).
 -record('p:TestConnectionResponse', {anyAttribs, 'TestConnectionResult'}).
 -record('p:Trunk', {anyAttribs, 'TrunkID', 'CustomerID', 'ActiveDateTime', 'RateID', 'RecurringChargeID'}).
 -record('p:UnmeteredService', {anyAttribs, 'ChargeType', 'RecurringChargeID', 'ChargeAmount', 'CustomerID', 'CycleID', 'ActivationDate', 'DeactivationDate', 'ChargeMult01', 'UserDefined01', 'UserDefined02', 'UserDefined03'}).
 -record('p:UpdateCustomer', {anyAttribs, 'oCustomer'}).
 -record('p:UpdateCustomerResponse', {anyAttribs, 'UpdateCustomerResult'}).
+-record('p:UpdateDID', {anyAttribs, 'oDID'}).
+-record('p:UpdateDIDResponse', {anyAttribs, 'UpdateDIDResult'}).
 -record('p:VirtualNumber', {anyAttribs, 'VirtualNumberDigits', 'PrimaryNumber', 'CustomerID', 'ActiveDateTime', 'RecurringFee'}).
 -record('p:VoidCharge', {anyAttribs, 'sDocID', 'sVoidReason'}).
 -record('p:VoidChargeResponse', {anyAttribs, 'VoidChargeResult'}).
 -record('p:VoidPayment', {anyAttribs, 'sDocID', 'sVoidReason', 'dtVoidDate'}).
 -record('p:VoidPaymentResponse', {anyAttribs, 'VoidPaymentResult'}).
--record('soap:Body', {anyAttribs, choice}).
--record('soap:Envelope', {anyAttribs, 'Header', 'Body', choice}).
--record('soap:Fault', {anyAttribs, 'faultcode', 'faultstring', 'faultactor', 'detail'}).
--record('soap:Header', {anyAttribs, choice}).
--record('soap:detail', {anyAttribs, choice}).
+%% -record('soap:Body', {anyAttribs, choice}).
+%% -record('soap:Envelope', {anyAttribs, 'Header', 'Body', choice}).
+%% -record('soap:Fault', {anyAttribs, 'faultcode', 'faultstring', 'faultactor', 'detail'}).
+%% -record('soap:Header', {anyAttribs, choice}).
+%% -record('soap:detail', {anyAttribs, choice}).
