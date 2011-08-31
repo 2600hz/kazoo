@@ -293,7 +293,7 @@ publish_register_event(Data, AppVsn) ->
 					  end;
 				      V -> [{K, V} | Api]
 				  end
-			  end, [{<<"Event-Timestamp">>, round(calendar:datetime_to_gregorian_seconds(calendar:local_time()))} | DefProp], Keys),
+			  end, [{<<"Event-Timestamp">>, round(wh_util:current_tstamp())} | DefProp], Keys),
     ?LOG("sending successful registration"),
     case wh_api:reg_success(ApiProp) of
 	{error, E} ->
