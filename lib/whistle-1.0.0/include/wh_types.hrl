@@ -1,5 +1,7 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
 
+-define(SECONDS_IN_DAY, 86400).
+
 -type proplist() :: [{binary() | atom(), term()} | binary() | atom(),...] | [].
 
 %% for setting types on dicts

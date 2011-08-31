@@ -15,19 +15,24 @@
 -include_lib("hotornot/include/hon_amqp.hrl").
 -include_lib("dth/include/dth_amqp.hrl").
 
--type bind_types() :: authentication |
-		      registrations |
-		      rating |
-		      routing |
-		      cdrs |
-		      dth |
-		      call_events |
-		      authorization.
+-type bind_types() :: 'authentication' |
+		      'registrations' |
+		      'rating' |
+		      'routing' |
+		      'cdrs' |
+		      'dth' |
+		      'call_events' |
+		      'self' |
+		      'authorization'.
 
 -spec add_binding_to_q/3 :: (Q, Type, Props) -> 'ok' when
       Q :: binary(),
       Type :: bind_types(),
       Props :: proplist().
+add_binding_to_q(Q, self, _Props) ->
+    amqp_util:targeted_exchange(),
+    amqp_util:bind_q_to_targeted(Q),
+    ok;
 add_binding_to_q(Q, authentication, _Props) ->
     amqp_util:callmgr_exchange(),
     amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHN_REQ),
@@ -64,6 +69,8 @@ add_binding_to_q(Q, registrations, _Props) ->
 -spec rm_binding_from_q/2 :: (Q, Type) -> 'ok' when
       Q :: binary(),
       Type :: bind_types().
+rm_binding_from_q(Q, self) ->
+    amqp_util:unbind_q_from_targeted(Q);
 rm_binding_from_q(Q, authentication) ->
     amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHN_REQ);
 rm_binding_from_q(Q, authorization) ->
