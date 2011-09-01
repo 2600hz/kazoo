@@ -12,15 +12,6 @@
 %% For dialplan messages, what does the Invite-Format param accept as values?
 -define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}).
 
--define(IS_JSON_OBJECT,
-        fun({struct, L}) when is_list(L) ->
-                lists:all(fun({K, V}) when (is_binary(K) orelse is_atom(K)) andalso
-                                           (is_binary(V) orelse is_number(V)) -> true;
-                             (_) -> false
-                          end, L);
-           (_) -> false
-        end).
-
 %%% *_HEADERS defines a list of Keys that must exist in every message of type *
 %%% (substitute AUTHN_REQ, AUTHN_RESP, etc, for *) to be considered valid.
 %%%
