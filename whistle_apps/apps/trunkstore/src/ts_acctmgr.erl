@@ -30,9 +30,9 @@
 
 -define(SERVER, ?MODULE).
 -define(TS_ACCTMGR_VIEWS, ["accounts.json", "credit.json", "trunks.json"]).
--define(DOLLARS_TO_UNITS(X), whistle_util:to_integer(X * 100000)). %% $1.00 = 100,000 thousand-ths of a cent
--define(CENTS_TO_UNITS(X), whistle_util:to_integer(X * 1000)). %% 100 cents = 100,000 thousand-ths of a cent
--define(UNITS_TO_DOLLARS(X), whistle_util:to_binary(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
+-define(DOLLARS_TO_UNITS(X), wh_util:to_integer(X * 100000)). %% $1.00 = 100,000 thousand-ths of a cent
+-define(CENTS_TO_UNITS(X), wh_util:to_integer(X * 1000)). %% 100 cents = 100,000 thousand-ths of a cent
+-define(UNITS_TO_DOLLARS(X), wh_util:to_binary(X / 100000)). %% $1.00 = 100,000 thousand-ths of a cent
 -define(TS_USAGE_PREFIX, <<"ts_usage">>).
 
 -define(ACTIVE_CALL_TIMEOUT, 1000).
@@ -69,14 +69,14 @@ has_credit(<<>>, _) ->
     ?LOG("no_account at entry to has_credit/2"),
     {error, no_account};
 has_credit(Acct, Amt) ->
-    gen_server:call(?SERVER, {has_credit, whistle_util:to_binary(Acct), [Amt]}, infinity).
+    gen_server:call(?SERVER, {has_credit, wh_util:to_binary(Acct), [Amt]}, infinity).
 
 -spec(has_flatrates/1 :: (Acct :: binary()) -> boolean() | tuple(error, no_account)).
 has_flatrates(<<>>) ->
     ?LOG("no_account at entry to has_flatrates/1"),
     {error, no_account};
 has_flatrates(Acct) ->
-    gen_server:call(?SERVER, {has_flatrates, whistle_util:to_binary(Acct)}).
+    gen_server:call(?SERVER, {has_flatrates, wh_util:to_binary(Acct)}).
 
 %% try to reserve a trunk
 %% first try to reserve a flat_rate trunk; if none are available, try a per_min trunk;
@@ -94,12 +94,12 @@ reserve_trunk(_, <<>>, _, _) ->
     ?LOG("no_callid at entry to reserve_trunk/4"),
     {error, no_callid};
 reserve_trunk(Acct, CallID, Amt, FRE) ->
-    gen_server:call(?SERVER, {reserve_trunk, whistle_util:to_binary(Acct), [CallID, Amt, FRE]}, infinity).
+    gen_server:call(?SERVER, {reserve_trunk, wh_util:to_binary(Acct), [CallID, Amt, FRE]}, infinity).
 
 %% when an a-leg CALLID-failover is resolved into a B-leg CallID, transfer the type of trunk to the B-leg CallID
 -spec(copy_reserve_trunk/4 :: (AcctID :: binary(), ACallID :: binary(), BCallID :: binary(), Amt :: float() | integer()) -> ok).
 copy_reserve_trunk(AcctID, ACallID, BCallID, Amt) ->
-    gen_server:call(?SERVER, {copy_reserve_trunk, whistle_util:to_binary(AcctID), [ACallID, BCallID, Amt]}, infinity).
+    gen_server:call(?SERVER, {copy_reserve_trunk, wh_util:to_binary(AcctID), [ACallID, BCallID, Amt]}, infinity).
 
 %% release a reserved trunk
 %% pass the account and the callid from the reserve_trunk/2 call to release the trunk back to the account
@@ -111,7 +111,7 @@ release_trunk(_, <<>>, _) ->
     ?LOG("no_callid at entry to release_trunk/4"),
     {error, no_callid};
 release_trunk(Acct, CallID, Amt) ->
-    gen_server:cast(?SERVER, {release_trunk, whistle_util:to_binary(Acct), [CallID,Amt]}).
+    gen_server:cast(?SERVER, {release_trunk, wh_util:to_binary(Acct), [CallID,Amt]}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -170,7 +170,7 @@ handle_call({has_flatrates, AcctId}, From, #state{current_read_db=RDB}=S) ->
 handle_call({reserve_trunk, AcctId, [CallID, Amt, FRE]}, From, #state{current_write_db=WDB}=S) ->
     ?LOG(CallID, "Try to reserve a trunk for ~s (against $~p if needed)", [AcctId, Amt]),
     spawn(fun() ->
-		  case whistle_util:is_true(FRE) of
+		  case wh_util:is_true(FRE) of
 		      true ->
 			  _ = couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)),
 			  ?LOG(CallID, "Flat-rate reserved for ~s", [AcctId]),
@@ -248,7 +248,7 @@ handle_cast({release_trunk, AcctID, [CallID,Amt]}, #state{current_write_db=WDB, 
 		  case trunk_type(RDB, AcctID, CallID) of
 		      non_existant ->
 			  case trunk_type(WDB, AcctID, CallID) of
-			      non_existant -> ?LOG(CallID, "Trunk not found for release for ~s", []);
+			      non_existant -> ?LOG(CallID, "Trunk not found for release for ~s", [AcctID]);
 			      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, per_min, Amt));
 			      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, flat_rate))
 			  end;
@@ -541,8 +541,8 @@ update_from_couch(AcctId, WDB, RDB) ->
 
     Acct = wh_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
     Credits = wh_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
-    Balance = ?DOLLARS_TO_UNITS(whistle_util:to_float(wh_json:get_value(<<"prepay">>, Credits, 0.0))),
-    Trunks = whistle_util:to_integer(wh_json:get_value(<<"trunks">>, Acct, 0)),
+    Balance = ?DOLLARS_TO_UNITS(wh_util:to_float(wh_json:get_value(<<"prepay">>, Credits, 0.0))),
+    Trunks = wh_util:to_integer(wh_json:get_value(<<"trunks">>, Acct, 0)),
 
     {ok, UsageJObj} = couch_mgr:open_doc(RDB, AcctId),
     T0 = wh_json:get_value(<<"trunks">>, UsageJObj),
@@ -580,12 +580,12 @@ load_account(AcctId, DB, Srv) ->
 	    case couch_mgr:open_doc(?TS_DB, AcctId) of
 		{error, not_found} -> ok;
 		{ok, JObj} ->
-		    Balance = ?DOLLARS_TO_UNITS(wh_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], JObj, 0.0)),
-		    Trunks = whistle_util:to_integer(wh_json:get_value([<<"account">>, <<"trunks">>], JObj, 0)),
+		    Balance = ?DOLLARS_TO_UNITS(wh_json:get_float_value([<<"account">>, <<"credits">>, <<"prepay">>], JObj, 0.0)),
+		    Trunks = wh_json:get_integer_value([<<"account">>, <<"trunks">>], JObj, 0),
 
 		    _ = couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)),
 		    couch_mgr:add_change_handler(?TS_DB, AcctId, Srv),
-		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 5),
+		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 60),
 		    build_view(DB, AcctId) %% force the view to refresh
 	    end
     end.
@@ -605,9 +605,9 @@ is_call_active(CallID) ->
 	_ = amqp_util:bind_q_to_targeted(Q),
 
 	Req = [{<<"Call-ID">>, CallID}
-	       | whistle_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_acctmgr">>, <<>>)],
+	       | wh_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_acctmgr">>, <<>>)],
 
-	{ok, JSON} = whistle_api:call_status_req(Req),
+	{ok, JSON} = wh_api:call_status_req(Req),
 	amqp_util:callevt_publish(CallID, JSON, status_req),
 
 	is_call_active_loop()
@@ -623,7 +623,7 @@ is_call_active_loop() ->
     receive
 	{_, #amqp_msg{payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    whistle_api:call_status_resp_v(Prop);
+	    wh_api:call_status_resp_v(Prop);
 	_ ->
 	    is_call_active_loop()
     after ?ACTIVE_CALL_TIMEOUT ->
@@ -641,7 +641,7 @@ release_trunk_error(AcctId, CallID, DB) ->
 	per_min ->
 	    Amt = case ts_cdr:fetch_cdr(binary:replace(DB, ?TS_USAGE_PREFIX, ?TS_CDR_PREFIX), CallID) of
 		      {error, not_found} -> 0;
-		      {ok, CDR} -> whistle_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, CDR, 0))
+		      {ok, CDR} -> wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, CDR, 0))
 		  end,
 	    couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, per_min, Amt))
     end.

@@ -182,8 +182,8 @@ handle_call({authz, JObj, outbound}, _From, State) ->
     ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
 		[<<"nouser">>, _] ->
 		    [RUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>),
-		    whistle_util:to_e164(RUser);
-		[ToUser, _] -> whistle_util:to_e164(ToUser)
+		    wh_util:to_e164(RUser);
+		[ToUser, _] -> wh_util:to_e164(ToUser)
 	    end,
     {Resp, State1} = case is_us48(ToDID) of
 			 true -> try_twoway(CallID, State);
@@ -259,6 +259,9 @@ handle_info({document_deleted, DocID}, State) ->
     ?LOG_SYS("account ~s deleted, going down", [DocID]),
     {stop, normal, State};
 
+handle_info(#'basic.consume_ok'{}, State) ->
+    {noreply, State};
+
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
@@ -301,9 +304,9 @@ get_trunks_available(AcctID, account) ->
 	    ?LOG_SYS("Account ~s not found, trying ts", [AcctID]),
 	    get_trunks_available(AcctID, ts);
 	{ok, JObj} ->
-	    Trunks = whistle_util:to_integer(wh_json:get_value(<<"trunks">>, JObj, 0)),
-	    InboundTrunks = whistle_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, JObj, 0)),
-	    Prepay = whistle_util:to_float(wh_json:get_value(<<"prepay">>, JObj, 0.0)),
+	    Trunks = wh_util:to_integer(wh_json:get_value(<<"trunks">>, JObj, 0)),
+	    InboundTrunks = wh_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, JObj, 0)),
+	    Prepay = wh_util:to_float(wh_json:get_value(<<"prepay">>, JObj, 0.0)),
 	    %% Balance = ?DOLLARS_TO_UNITS(),
 	    ?LOG_SYS("Found trunk levels for ~s: ~b two way, ~b inbound, and $ ~p prepay", [AcctID, Trunks, InboundTrunks, Prepay]),
 	    {Trunks, InboundTrunks, Prepay, account}
@@ -317,9 +320,9 @@ get_trunks_available(AcctID, ts) ->
 	    Acct = wh_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
 	    Credits = wh_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
 
-	    Trunks = whistle_util:to_integer(wh_json:get_value(<<"trunks">>, Acct, 0)),
-	    InboundTrunks = whistle_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, Acct, 0)),
-	    Prepay = whistle_util:to_float(wh_json:get_value(<<"prepay">>, Credits, 0.0)),
+	    Trunks = wh_util:to_integer(wh_json:get_value(<<"trunks">>, Acct, 0)),
+	    InboundTrunks = wh_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, Acct, 0)),
+	    Prepay = wh_util:to_float(wh_json:get_value(<<"prepay">>, Credits, 0.0)),
 	    %% Balance = ?DOLLARS_TO_UNITS(),
 	    ?LOG_SYS("Found trunk levels for ~s: ~b two way, ~b inbound, and $ ~p prepay", [AcctID, Trunks, InboundTrunks, Prepay]),
 	    {Trunks, InboundTrunks, Prepay, ts}
@@ -482,4 +485,4 @@ update_limits(#state{acct_type=account, acct_id=AcctID}=State) ->
 -spec todays_db/0 :: () -> binary().
 todays_db() ->
     {{Y,M,D}, _} = calendar:universal_time(),
-    whistle_util:to_binary(io_lib:format("ts_usage%2F~4B%2F~2..0B%2F~2..0B", [Y,M,D])).
+    wh_util:to_binary(io_lib:format("ts_usage%2F~4B%2F~2..0B%2F~2..0B", [Y,M,D])).

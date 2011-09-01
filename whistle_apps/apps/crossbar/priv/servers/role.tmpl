@@ -18,15 +18,16 @@
   "env_run_lists": {
   },
   "run_list": [
-    "role[base_centos]"
   ],
   "description": "bigcouch role",
   "chef_type": "role",
   "override_attributes": {
     "client_id": "{{ account._id }}",
     "haproxy": {
-      "proxy_port": "5984",
+      "proxy_port": "15984",
+      "admin_proxy_port": "15986",
       "app_server_role": "bigcouch",
+      "admin_port": "5986",
       "member_port": "5984"
     },
     "chef_client": {
@@ -35,4 +36,3 @@
     }
   }
 }
-

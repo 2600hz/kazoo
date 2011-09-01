@@ -24,10 +24,9 @@
 
 -define(SERVER, ?MODULE).
 
+-define(TS_DB, <<"ts">>).
 -define(VIEW_FILE, <<"views/ts_accounts.json">>).
 -define(CB_LIST, <<"ts_accounts/crossbar_listing">>).
-
--define(TS_DB, <<"ts">>).
 
 %%%===================================================================
 %%% API
@@ -358,7 +357,7 @@ check_ts_account(TSAccountId, #cb_context{db_name=Db}=Context) ->
         {ok, Rev} ->
             Context#cb_context{resp_status=success
                                ,resp_data=[]
-                               ,resp_etag=whistle_util:to_list(Rev)};
+                               ,resp_etag=wh_util:to_list(Rev)};
         {error, _} ->
             crossbar_util:response_bad_identifier(TSAccountId, Context)
     end.

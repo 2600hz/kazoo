@@ -41,7 +41,7 @@
 -define(SIGNUP_CONF, [code:lib_dir(crossbar, priv), "/signup/signup.conf"]).
 
 -record(state, {cleanup_interval = 18000 :: integer() %% once every 5 hours (in seconds)
-                ,signup_lifespan = 86400 :: integer() %% 24 hours (in seconds)
+                ,signup_lifespan = ?SECONDS_IN_DAY :: integer() %% 24 hours (in seconds)
                 ,register_cmd = undefined :: undefined | atom()
                 ,activation_email_plain = undefined
                 ,activation_email_html = undefined
@@ -221,7 +221,37 @@ handle_info(cleanup, State) ->
     cleanup_signups(State),
     {noreply, State};
 
-handle_info(timeout, #state{cleanup_timer=CurTRef}) ->
+handle_info(timeout, S) ->
+    {ok, State} = code_change(0, S, []),
+    {ok, TRef} = timer:send_interval(State#state.cleanup_interval * 1000, cleanup),
+    {noreply, State#state{cleanup_timer=TRef}};
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
+terminate(_Reason, _State) ->
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
+code_change(_OldVsn, #state{cleanup_timer=CurTRef}, _Extra) ->
     timer:cancel(CurTRef),
     bind_to_crossbar(),
     couch_mgr:db_create(?SIGNUP_DB),
@@ -253,35 +283,6 @@ handle_info(timeout, #state{cleanup_timer=CurTRef}) ->
                     ?LOG_SYS("could not read config from ~s", [?SIGNUP_CONF]),
                     #state{}
             end,
-    {ok, TRef} = timer:send_interval(State#state.cleanup_interval * 1000, cleanup),
-    {noreply, State#state{cleanup_timer=TRef}};
-
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %%%===================================================================
@@ -435,7 +436,10 @@ validate_user(User, Context) ->
 %%--------------------------------------------------------------------
 -spec create_activation_key/0 :: () -> binary().
 create_activation_key() ->
-     whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))).
+    ActivationKey =
+        wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(32))),
+    ?LOG("created new activation key ~s", [ActivationKey]),
+    ActivationKey.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -566,7 +570,7 @@ send_activation_email(RD, #cb_context{doc=JObj, req_id=ReqId}=Context, #state{ac
     From = case FromTmpl:render(Props) of
                {ok, F} -> F;
                _ ->
-                   <<"no_reply@", (whistle_util:to_binary(net_adm:localhost()))/binary>>
+                   <<"no_reply@", (wh_util:to_binary(net_adm:localhost()))/binary>>
            end,
     Email = {<<"multipart">>, <<"alternative">> %% Content Type / Sub Type
 		 ,[ %% Headers
@@ -578,10 +582,9 @@ send_activation_email(RD, #cb_context{doc=JObj, req_id=ReqId}=Context, #state{ac
              ,create_body(State, Props, [])
 	    },
     Encoded = mimemail:encode(Email),
-    SmartHost = smtp_util:guess_FQDN(),
     ?LOG("sending activation email to ~s", [To]),
-    gen_smtp_client:send({From, [To], Encoded}, [{relay, SmartHost}]
-			 ,fun(X) -> ?LOG(ReqId, "sending email to ~s via ~s resulted in ~p", [To, SmartHost, X]) end).
+    gen_smtp_client:send({From, [To], Encoded}, [{relay, "localhost"}]
+			 ,fun(X) -> ?LOG(ReqId, "sending email to ~s resulted in ~p", [To, X]) end).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -631,7 +634,7 @@ create_body(_, _, Body) ->
 template_props(RD, #cb_context{doc=JObj, req_data=Data}) ->
     Port = case wrq:port(RD) of
 	       80 -> "";
-	       P -> [":", whistle_util:to_list(P)]
+	       P -> [":", wh_util:to_list(P)]
 	   end,
     ApiHost = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
     %% remove the redundant request data
@@ -641,9 +644,9 @@ template_props(RD, #cb_context{doc=JObj, req_data=Data}) ->
     [{<<"account">>, wh_json:to_proplist(<<"pvt_account">>, JObj)}
      ,{<<"user">>, wh_json:to_proplist(<<"pvt_user">>, JObj)}
      ,{<<"request">>, wh_json:to_proplist(Req2)}
-     ,{<<"api_url">>, [{<<"host">>, whistle_util:to_binary(ApiHost)}
+     ,{<<"api_url">>, [{<<"host">>, wh_util:to_binary(ApiHost)}
                        ,{<<"path">>, <<"v1/signup/">>}]}
-     ,{<<"host">>, whistle_util:to_binary(net_adm:localhost())}
+     ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
      ,{<<"activation_key">>, wh_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)}
     ].
 

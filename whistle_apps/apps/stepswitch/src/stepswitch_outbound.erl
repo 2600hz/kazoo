@@ -113,7 +113,7 @@ handle_call({reload_resrcs}, _, State) ->
 
 handle_call({process_number, Number}, From, #state{resrcs=Resrcs}=State) ->
     spawn(fun() ->
-                  Num = whistle_util:to_e164(whistle_util:to_binary(Number)),
+                  Num = wh_util:to_e164(wh_util:to_binary(Number)),
                   EPs = print_endpoints(evaluate_number(Num, Resrcs), 0, []),
                   gen_server:reply(From, EPs)
           end),
@@ -122,7 +122,7 @@ handle_call({process_number, Number}, From, #state{resrcs=Resrcs}=State) ->
 handle_call({process_number, Number, Flags}, From, #state{resrcs=R1}=State) ->
     spawn(fun() ->
                   R2 = evaluate_flags(Flags, R1),
-                  Num = whistle_util:to_e164(whistle_util:to_binary(Number)),
+                  Num = wh_util:to_e164(wh_util:to_binary(Number)),
                   EPs = print_endpoints(evaluate_number(Num, R2), 0, []),
                   gen_server:reply(From, EPs)
           end),
@@ -320,7 +320,7 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                                               ,{<<"Hangup-Code">>, <<"sip:404">>}
                                              ]}, 0, JObj);
         Attempts ->
-            {ok, Payload} = whistle_api:bridge_req({struct, BridgeReq}),
+            {ok, Payload} = wh_api:bridge_req({struct, BridgeReq}),
             amqp_util:callctl_publish(wh_json:get_value(<<"Control-Queue">>, JObj), Payload),
 
             case wait_for_bridge(60000) of
@@ -363,7 +363,7 @@ get_resrcs() ->
             [couch_mgr:add_change_handler(?RESOURCES_DB, wh_json:get_value(<<"id">>, R))
              || R <- Resrcs],
             [create_resrc(wh_json:get_value(<<"doc">>, R))
-             || R <- Resrcs, whistle_util:is_true(wh_json:get_value([<<"doc">>, <<"enabled">>], R, true))];
+             || R <- Resrcs, wh_util:is_true(wh_json:get_value([<<"doc">>, <<"enabled">>], R, true))];
         {error, _}=E ->
             E
     end.
@@ -382,7 +382,7 @@ update_resrc(DocId, Resrcs) ->
     ?LOG_SYS("received notification that resource ~s has changed", [DocId]),
     case couch_mgr:open_doc(?RESOURCES_DB, DocId) of
         {ok, JObj} ->
-            case whistle_util:is_true(wh_json:get_value(<<"enabled">>, JObj)) of
+            case wh_util:is_true(wh_json:get_value(<<"enabled">>, JObj)) of
                 true ->
                     NewResrc = create_resrc(JObj),
                     ?LOG_SYS("resource ~s updated to rev ~s", [DocId, NewResrc#resrc.rev]),
@@ -416,7 +416,7 @@ create_resrc(JObj) ->
            ,weight_cost =
                constrain_weight(wh_json:get_value(<<"weight_cost">>, JObj, Default#resrc.weight_cost))
            ,grace_period =
-               whistle_util:to_integer(wh_json:get_value(<<"grace_period">>, JObj, Default#resrc.grace_period))
+               wh_util:to_integer(wh_json:get_value(<<"grace_period">>, JObj, Default#resrc.grace_period))
            ,flags =
                wh_json:get_value(<<"flags">>, JObj, Default#resrc.flags)
            ,rules =
@@ -424,7 +424,7 @@ create_resrc(JObj) ->
                           ,(R2 = compile_rule(R1, Id)) =/= error]
            ,gateways =
                [create_gateway(G, Id) || G <- wh_json:get_value(<<"gateways">>, JObj, []),
-                                         whistle_util:is_true(wh_json:get_value(<<"enabled">>, G, true))]
+                                         wh_util:is_true(wh_json:get_value(<<"enabled">>, G, true))]
           }.
 
 %%--------------------------------------------------------------------
@@ -450,9 +450,9 @@ create_gateway(JObj, Id) ->
              ,route =
                  wh_json:get_value(<<"route">>, JObj, Default#gateway.route)
              ,prefix =
-                 whistle_util:to_binary(wh_json:get_value(<<"prefix">>, JObj, Default#gateway.prefix))
+                 wh_util:to_binary(wh_json:get_value(<<"prefix">>, JObj, Default#gateway.prefix))
              ,suffix =
-                 whistle_util:to_binary(wh_json:get_value(<<"suffix">>, JObj, Default#gateway.suffix))
+                 wh_util:to_binary(wh_json:get_value(<<"suffix">>, JObj, Default#gateway.suffix))
              ,codecs =
                  wh_json:get_value(<<"codecs">>, JObj, Default#gateway.codecs)
              ,bypass_media =
@@ -462,7 +462,7 @@ create_gateway(JObj, Id) ->
              ,sip_headers =
                  wh_json:get_value(<<"custom_sip_headers">>, JObj, Default#gateway.sip_headers)
              ,progress_timeout =
-                 whistle_util:to_integer(wh_json:get_value(<<"progress_timeout">>, JObj, Default#gateway.progress_timeout))
+                 wh_util:to_integer(wh_json:get_value(<<"progress_timeout">>, JObj, Default#gateway.progress_timeout))
             }.
 
 %%--------------------------------------------------------------------
@@ -494,7 +494,7 @@ compile_rule(Rule, Id) ->
 -spec constrain_weight/1 :: (W) -> integer() when
       W :: binary() | integer().
 constrain_weight(W) when not is_integer(W) ->
-    constrain_weight(whistle_util:to_integer(W));
+    constrain_weight(wh_util:to_integer(W));
 constrain_weight(W) when W > 100 -> 100;
 constrain_weight(W) when W < 1 -> 1;
 constrain_weight(W) -> W.
@@ -622,12 +622,14 @@ build_loopback_request(JObj, Number, Q) ->
                ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
-               ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+               %% TODO: Do not enable this feature until WHISTLE-408 is completed
+               %% ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Continue-On-Fail">>, <<"true">>}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
                ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj)}
                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
     [ KV || {_, V}=KV <- Command, V =/= undefined ].
 
@@ -654,12 +656,14 @@ build_bridge_request(JObj, Endpoints, Q) ->
                ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
-               ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+               %% TODO: Do not enable this feature until WHISTLE-408 is completed
+               %% ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
+               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Continue-On-Fail">>, <<"true">>}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
                ,{<<"Custom-Channel-Vars">>, CCVs}
                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-               | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
     [ KV || {_, V}=KV <- Command, V =/= undefined ].
 
@@ -702,12 +706,12 @@ build_endpoint(Number, Gateway, Delay) ->
     Prop = [
              {<<"Invite-Format">>, <<"route">>}
             ,{<<"Route">>, get_dialstring(Gateway, Number)}
-            ,{<<"Callee-ID-Number">>, whistle_util:to_binary(Number)}
+            ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
             ,{<<"Caller-ID-Type">>, Gateway#gateway.caller_id_type}
             %% TODO: Do not enable this feature until WHISTLE-408 is completed
-            %%,{<<"Endpoint-Delay">>, whistle_util:to_binary(Delay)}
+            %%,{<<"Endpoint-Delay">>, wh_util:to_binary(Delay)}
             ,{<<"Bypass-Media">>, Gateway#gateway.bypass_media}
-            ,{<<"Endpoint-Progress-Timeout">>, whistle_util:to_binary(Gateway#gateway.progress_timeout)}
+            ,{<<"Endpoint-Progress-Timeout">>, wh_util:to_binary(Gateway#gateway.progress_timeout)}
             ,{<<"Codecs">>, Gateway#gateway.codecs}
             ,{<<"Auth-User">>, Gateway#gateway.username}
             ,{<<"Auth-Password">>, Gateway#gateway.password}
@@ -762,10 +766,10 @@ print_endpoint(Number, Gateway, Delay) ->
       Number :: binary().
 get_dialstring(#gateway{route=undefined}=Gateway, Number) ->
     <<"sip:"
-      ,(whistle_util:to_binary(Gateway#gateway.prefix))/binary,
+      ,(wh_util:to_binary(Gateway#gateway.prefix))/binary,
       Number/binary
-      ,(whistle_util:to_binary(Gateway#gateway.suffix))/binary
-      ,"@", (whistle_util:to_binary(Gateway#gateway.server))/binary
+      ,(wh_util:to_binary(Gateway#gateway.suffix))/binary
+      ,"@", (wh_util:to_binary(Gateway#gateway.server))/binary
     >>;
 get_dialstring(#gateway{route=Route}, _) ->
     Route.
@@ -832,9 +836,9 @@ respond_bridged_to_resource(BridgeResp, JObj) ->
                 ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, BridgeResp)}
                 ,{<<"Timestamp">>, wh_json:get_value(<<"Timestamp">>, BridgeResp)}
                 ,{<<"Channel-Call-State">>, wh_json:get_value(<<"Channel-Call-State">>, BridgeResp)}
-               | whistle_api:default_headers(Q, <<"resource">>, <<"offnet_resp">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"resource">>, <<"offnet_resp">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:resource_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
+    {ok, Payload} = wh_api:resource_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 %%--------------------------------------------------------------------
@@ -852,13 +856,15 @@ respond_resource_failed(BridgeResp, Attempts, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, BridgeResp, <<>>),
     Response = [
                  {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-                ,{<<"Failed-Attempts">>, whistle_util:to_binary(Attempts)}
+                ,{<<"Failed-Attempts">>, wh_util:to_binary(Attempts)}
                 ,{<<"Failure-Message">>,
                   wh_json:get_value(<<"Application-Response">>, BridgeResp, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp))}
                 ,{<<"Failure-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
-               | whistle_api:default_headers(Q, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
+                ,{<<"Hangup-Cause">>, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp)}
+                ,{<<"Hangup-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
+               | wh_api:default_headers(Q, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:resource_error([ KV || {_, V}=KV <- Response, V =/= undefined ]),
+    {ok, Payload} = wh_api:resource_error([ KV || {_, V}=KV <- Response, V =/= undefined ]),
     _ = amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 %%--------------------------------------------------------------------
@@ -876,7 +882,7 @@ respond_erroneously(ErrorResp, JObj) ->
     Response = [
                  {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                 ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, ErrorResp)}
-               | whistle_api:default_headers(Q, <<"error">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"error">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:error_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
+    {ok, Payload} = wh_api:error_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
     _ = amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).

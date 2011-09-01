@@ -23,12 +23,12 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 
 -define(SERVER_CONF, [code:lib_dir(crossbar, priv), "/servers/servers.conf"]).
 
--define(VIEW_FILE, <<"views/servers.json">>).
 -define(CB_LIST, <<"servers/crossbar_listing">>).
 -define(VIEW_DEPLOY_ROLES, <<"servers/list_deployment_roles">>).
 
@@ -39,7 +39,8 @@
                 ,dev_role = <<"all_in_one">>
                 ,role_path_tmpl=undefined
                 ,databag_path_tmpl=undefined
-                ,databag_mapping=undefined}).
+                ,databag_mapping=undefined
+                ,delete_tmpl=undefined}).
 
 %%%===================================================================
 %%% API
@@ -156,7 +157,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.servers">>, [RD, Contex
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, Context),
+                  Context1 = validate(Params, RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
@@ -190,10 +191,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Con
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
+                  Id = wh_util:to_binary(wh_util:to_hex(crypto:md5([wh_json:get_value(<<"ip">>, Doc), wh_json:get_value(<<"ssh_port">>, Doc)]))),
+                  Context1 = crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(<<"_id">>, Id, Doc)}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
@@ -201,13 +203,15 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Con
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
-    {noreply, State};
+                  case crossbar_doc:delete(Context, permanent) of
+                      #cb_context{resp_status=success}=Context1 ->
+                          execute_delete_command(Context, State),
+                          Pid ! {binding_result, true, [RD, Context1, Params]};
+                      Else ->
+                          Pid ! {binding_result, true, [RD, Else, Params]}
+                  end
 
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, ?VIEW_FILE},
+	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -215,32 +219,7 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     {noreply, State};
 
 handle_info(timeout, _) ->
-    bind_to_crossbar(),
-    whapps_util:update_all_accounts(?VIEW_FILE),
-    State = case file:consult(?SERVER_CONF) of
-                {ok, Terms} ->
-                    ?LOG_SYS("loaded config from ~s", [?SERVER_CONF]),
-                    #state{data_bag_tmpl =
-                               compile_template(props:get_value(data_bag_tmpl, Terms), cb_servers_data_bag)
-                           ,databag_mapping =
-                               props:get_value(databag_mapping, Terms, [])
-                           ,databag_path_tmpl =
-                               compile_template(props:get_value(databag_path_tmpl, Terms), cb_servers_databag_path_tmpl)
-                           ,role_tmpl =
-                               compile_template(props:get_value(role_tmpl, Terms), cb_servers_role_tmpl)
-                           ,role_path_tmpl =
-                               compile_template(props:get_value(role_path_tmpl, Terms), cb_servers_role_path_tmpl)
-                           ,prod_deploy_tmpl =
-                               compile_template(props:get_value(prod_deploy_tmpl, Terms), cb_servers_prod_deploy_tmpl)
-                           ,dev_deploy_tmpl =
-                               compile_template(props:get_value(dev_deploy_tmpl, Terms), cb_servers_dev_deploy_tmpl)
-                           ,dev_role =
-                               whistle_util:to_binary(props:get_value(dev_role, Terms, <<"all_in_one">>))
-                          };
-                {error, _} ->
-                    ?LOG_SYS("could not read config from ~s", [?SERVER_CONF]),
-                    #state{}
-            end,
+    {ok, State} = code_change(0, undefined, []),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -268,8 +247,34 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
+code_change(_OldVsn, _State, _Extra) ->
     bind_to_crossbar(),
+    State = case file:consult(?SERVER_CONF) of
+                {ok, Terms} ->
+                    ?LOG_SYS("loaded config from ~s", [?SERVER_CONF]),
+                    #state{data_bag_tmpl =
+                               compile_template(props:get_value(data_bag_tmpl, Terms), cb_servers_data_bag)
+                           ,databag_mapping =
+                               props:get_value(databag_mapping, Terms, [])
+                           ,databag_path_tmpl =
+                               compile_template(props:get_value(databag_path_tmpl, Terms), cb_servers_databag_path_tmpl)
+                           ,role_tmpl =
+                               compile_template(props:get_value(role_tmpl, Terms), cb_servers_role_tmpl)
+                           ,role_path_tmpl =
+                               compile_template(props:get_value(role_path_tmpl, Terms), cb_servers_role_path_tmpl)
+                           ,prod_deploy_tmpl =
+                               compile_template(props:get_value(prod_deploy_tmpl, Terms), cb_servers_prod_deploy_tmpl)
+                           ,dev_deploy_tmpl =
+                               compile_template(props:get_value(dev_deploy_tmpl, Terms), cb_servers_dev_deploy_tmpl)
+                           ,dev_role =
+                               wh_util:to_binary(props:get_value(dev_role, Terms, <<"all_in_one">>))
+                           ,delete_tmpl =
+                               compile_template(props:get_value(delete_tmpl, Terms), cb_server_delete_tmpl)
+                          };
+                {error, _} ->
+                    ?LOG_SYS("could not read config from ~s", [?SERVER_CONF]),
+                    #state{}
+            end,
     {ok, State}.
 
 %%%===================================================================
@@ -289,8 +294,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.servers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.servers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.servers">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.servers">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.servers">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -338,32 +342,32 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_server_summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
+-spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
+    load_server_summary(Context, QueryString);
+validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
     create_server(Context);
-validate([ServerId], #cb_context{req_verb = <<"get">>}=Context) ->
+validate([ServerId], _, #cb_context{req_verb = <<"get">>}=Context) ->
     load_server(ServerId, Context);
-validate([ServerId], #cb_context{req_verb = <<"post">>}=Context) ->
+validate([ServerId], _, #cb_context{req_verb = <<"post">>}=Context) ->
     update_server(ServerId, Context);
-validate([ServerId], #cb_context{req_verb = <<"delete">>}=Context) ->
+validate([ServerId], _, #cb_context{req_verb = <<"delete">>}=Context) ->
     load_server(ServerId, Context);
-validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"get">>}=Context) ->
+validate([ServerId, <<"deployment">>], _, #cb_context{req_verb = <<"get">>}=Context) ->
     case load_server(ServerId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
             Context1#cb_context{resp_data={struct, [{<<"status">>, wh_json:get_value(<<"pvt_deploy_status">>, JObj)}
                                                     ,{<<"log">>,wh_json:get_value(<<"pvt_deploy_log">>, JObj)}]}};
         Else -> Else
     end;
-validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"post">>}=Context) ->
+validate([ServerId, <<"deployment">>], _, #cb_context{req_verb = <<"post">>}=Context) ->
     case load_server(ServerId, Context) of
         #cb_context{resp_status=success, doc=JObj, req_data=Data}=Context1 ->
             DeployLog = [Data | wh_json:get_value(<<"pvt_deploy_log">>, JObj, [])],
             Context1#cb_context{doc=wh_json:set_value(<<"pvt_deploy_log">>, DeployLog, JObj)};
         Else -> Else
     end;
-validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"put">>}=Context) ->
+validate([ServerId, <<"deployment">>], _, #cb_context{req_verb = <<"put">>}=Context) ->
     case load_server(ServerId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
             case wh_json:get_value(<<"pvt_deploy_status">>, JObj) of
@@ -375,7 +379,7 @@ validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"put">>}=Context
         Else ->
             Else
     end;
-validate(_, Context) ->
+validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
@@ -385,9 +389,13 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_server_summary/1 :: (Context) -> #cb_context{} when
+-spec load_server_summary/2 :: (Context, QueryParams) -> #cb_context{} when
+      QueryParams :: list(),
       Context :: #cb_context{}.
-load_server_summary(Context) ->
+load_server_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
+    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams),
+    Context#cb_context{resp_data=Result, resp_status=success};
+load_server_summary(Context, []) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
@@ -454,6 +462,27 @@ normalize_view_results(JObj, Acc) ->
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
 is_valid_doc(JObj) ->
     {(wh_json:get_value(<<"hostname">>, JObj) =/= undefined), [<<"hostname">>]}.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Optional command template to execute on the deletion of a server
+%% @end
+%%--------------------------------------------------------------------
+-spec execute_delete_command/2 :: (Context, State) -> ok when
+      Context :: #cb_context{},
+      State :: #state{}.
+execute_delete_command(_, #state{delete_tmpl=undefined}) ->
+    ?LOG("no delete template defined"),
+    ok;
+execute_delete_command(#cb_context{doc=JObj}, #state{delete_tmpl=DeleteTmpl}) ->
+    Props = wh_json:to_proplist(JObj),
+    {ok, C} = DeleteTmpl:render([{<<"server">>, Props}]),
+    Cmd = binary_to_list(iolist_to_binary(C)),
+    ?LOG("executing delete template: ~s", [Cmd]),
+    os:cmd(Cmd),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -547,7 +576,7 @@ template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context, State) 
      ,{<<"request">>, wh_json:to_proplist(Data)}
      ,{<<"servers">>, Servers}
      ,{<<"server">>, Server}
-     ,{<<"host">>, whistle_util:to_binary(net_adm:localhost())}
+     ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
     ].
 
 %%--------------------------------------------------------------------
@@ -565,18 +594,18 @@ create_role(_, _, #state{role_tmpl=undefined}) ->
 create_role(Account, #cb_context{db_name=Db}, #state{role_tmpl=RoleTmpl}) ->
     try
         Props = [{<<"account">>, Account}
-                 ,{<<"host">>, whistle_util:to_binary(net_adm:localhost())}
+                 ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
                  %% The list index syntax of erlydtl doesnt seem to compile
-                 ,{<<"rand_small_1">>, whistle_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_small_2">>, whistle_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_small_3">>, whistle_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_small_4">>, whistle_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_small_5">>, whistle_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_large_1">>, whistle_util:to_hex(crypto:rand_bytes(24))}
-                 ,{<<"rand_large_2">>, whistle_util:to_hex(crypto:rand_bytes(24))}
-                 ,{<<"rand_large_3">>, whistle_util:to_hex(crypto:rand_bytes(24))}
-                 ,{<<"rand_large_4">>, whistle_util:to_hex(crypto:rand_bytes(24))}
-                 ,{<<"rand_large_5">>, whistle_util:to_hex(crypto:rand_bytes(24))}
+                 ,{<<"rand_small_1">>, wh_util:to_hex(crypto:rand_bytes(8))}
+                 ,{<<"rand_small_2">>, wh_util:to_hex(crypto:rand_bytes(8))}
+                 ,{<<"rand_small_3">>, wh_util:to_hex(crypto:rand_bytes(8))}
+                 ,{<<"rand_small_4">>, wh_util:to_hex(crypto:rand_bytes(8))}
+                 ,{<<"rand_small_5">>, wh_util:to_hex(crypto:rand_bytes(8))}
+                 ,{<<"rand_large_1">>, wh_util:to_hex(crypto:rand_bytes(24))}
+                 ,{<<"rand_large_2">>, wh_util:to_hex(crypto:rand_bytes(24))}
+                 ,{<<"rand_large_3">>, wh_util:to_hex(crypto:rand_bytes(24))}
+                 ,{<<"rand_large_4">>, wh_util:to_hex(crypto:rand_bytes(24))}
+                 ,{<<"rand_large_5">>, wh_util:to_hex(crypto:rand_bytes(24))}
                 ],
         {ok, Role} = RoleTmpl:render(Props),
         JObj = mochijson2:decode(binary_to_list(iolist_to_binary(Role))),

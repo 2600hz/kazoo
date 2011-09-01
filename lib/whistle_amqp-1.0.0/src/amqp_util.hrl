@@ -1,6 +1,6 @@
--include_lib("whistle/include/whistle_amqp.hrl").
+-include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
 %% Targeted Exchange
@@ -53,3 +53,12 @@
 %%   routing keys they want messages for.
 -define(EXCHANGE_MONITOR, <<"monitor">>).
 -define(TYPE_MONITOR, <<"topic">>).
+
+%% Configuration Exchange
+%% - Crossbar will publish events to this exchange using routing keys
+%%   apps that want to handle certain messages will create a queue with the appropriate routing key
+%%   in the binding to receive the messages.
+%% -  publishes to the exchange with a routing key; consumers bind their queue with the
+%%   routing keys they want messages for.
+-define(EXCHANGE_CONFIGURATION, <<"configuration">>).
+-define(TYPE_CONFIGURATION, <<"topic">>).

@@ -13,7 +13,7 @@
 -export([caller_id/4]).
 -export([callee_id/4]).
 -export([caller_id_options/4]).
--export([owner_id/2]).
+-export([owner_id/2, owned_by/2, owned_by/3]).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -62,7 +62,7 @@ call_forward(DeviceId, #cf_call{account_db=Db}=Call) ->
 caller_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, cid_number=Num, cid_name=Name, channel_vars=CCVs}=Call) ->
     Ids = [begin ?LOG("looking for caller id type ~s on doc ~s", [CIDType, Id]), Id end
            || Id <- [DeviceId, OwnerId, AccountId], Id =/= undefined],
-    case whistle_util:is_true(wh_json:get_value(<<"Retain-CID">>, CCVs)) of
+    case wh_util:is_true(wh_json:get_value(<<"Retain-CID">>, CCVs)) of
         true ->
             {Num, Name};
         false ->
@@ -127,12 +127,57 @@ caller_id_options(Option, DeviceId, OwnerId, #cf_call{account_id=AccountId}=Call
 owner_id(undefined, _) ->
     undefined;
 owner_id(ObjectId, #cf_call{account_db=Db})->
-    Id = whistle_util:to_binary(ObjectId),
+    Id = wh_util:to_binary(ObjectId),
     case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owner">>}, [{<<"key">>, Id}]) of
         {ok, []} ->
             undefined;
         {ok, JObj} ->
             wh_json:get_value(<<"value">>, hd(JObj));
+        {error, _} ->
+            undefined
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec owned_by/2 :: (OwnerId, Call) -> undefined | list() when
+      OwnerId :: undefined | binary(),
+      Call :: #cf_call{}.
+owned_by(undefined, _) ->
+    undefined;
+owned_by(OwnerId, #cf_call{account_db=Db})->
+    Id = wh_util:to_binary(OwnerId),
+    case couch_mgr:get_results(Db, <<"cf_attributes/owned">>, [{<<"start_key">>, [Id, []]}, {<<"end_key">>, [Id, ?EMPTY_JSON_OBJECT]} ]) of
+        {ok, []} ->
+            undefined;
+        {ok, JObj} ->
+	    [wh_json:get_value(<<"id">>, D)  || D <- JObj];
+        {error, _} ->
+            undefined
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% Returns a list of doc ID of the specified type for thiw owner
+%% @end
+%%-----------------------------------------------------------------------------
+-spec owned_by/3 :: (OwnerId, Call, Type) -> undefined | list() when
+      OwnerId :: undefined | binary(),
+      Call :: #cf_call{},
+      Type :: atom().
+owned_by(undefined, _, _) ->
+    undefined;
+owned_by(OwnerId, #cf_call{account_db=Db}, Type)->
+    Id = wh_util:to_binary(OwnerId),
+    T = wh_util:to_binary(Type),
+    case couch_mgr:get_results(Db, <<"cf_attributes/owned">>, [{<<"key">>, [Id, T]}]) of
+        {ok, []} ->
+            undefined;
+        {ok, JObj} ->
+	    [wh_json:get_value(<<"id">>, D)  || D <- JObj];
         {error, _} ->
             undefined
     end.
@@ -208,4 +253,4 @@ fetch_attributes(Attribute, Expires, #cf_call{account_db=Db}) ->
 -spec get_view/1 :: (Attribute) -> tuple(binary(), binary()) when
       Attribute :: atom().
 get_view(Attribute) ->
-    {<<"cf_attributes">>, whistle_util:to_binary(Attribute)}.
+    {<<"cf_attributes">>, wh_util:to_binary(Attribute)}.

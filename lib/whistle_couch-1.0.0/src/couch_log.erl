@@ -35,7 +35,7 @@
 
 -record(log_line_http, {
 	  uri = <<>> :: binary()
-	 ,qs = [] :: [binary(),...] | []
+	 ,qs = [] :: [binary()|integer(),...] | []
          ,status_code = 0 :: integer()
          ,time_elapsed = 0 :: integer() %% milliseconds
 	 ,method = <<>> :: binary()
@@ -231,12 +231,12 @@ analyze_data(#log_data{by_date = ByDate}=LogData, LineData, Filter) ->
 	false -> {false, LogData};
 	stop -> {stop, LogData};
 	true ->
-	    LogLine = [#log_line{date=DateStamp
+	    LogLine = #log_line{date=DateStamp
 				 ,log_level=LogLevel
 				 ,couch_pid=CouchPid
 				 ,req_id=ReqID
-				}],
-	    {true, analyze_req_data(LogData#log_data{by_date=orddict:append_list(DateStamp, LogLine, ByDate)}, ReqData, ReqID, DateStamp)}
+				},
+	    {true, analyze_req_data(LogData#log_data{by_date=orddict:update(DateStamp, fun(Old) -> [LogLine | Old] end, [LogLine], ByDate)}, ReqData, ReqID, DateStamp)}
     end.
 
 -spec analyze_req_data/4 :: (LogData, ReqData, ReqID, DateStamp) -> #log_data{} when
@@ -251,25 +251,26 @@ analyze_req_data(#log_data{io_device=IODev}=LogData, ReqData, ReqID, DateStamp) 
 	    #log_data{by_http=ByHttp, by_uri=ByUri, by_statuscode=ByStatus} = LogData,
 
 	    HttpVerb = get_verb(Verb),
-	    StatusCode = whistle_util:to_integer(binary:replace(SC, <<"\n">>, <<>>)),
+	    StatusCode = wh_util:to_integer(binary:replace(SC, <<"\n">>, <<>>)),
 
 	    {U, QS} = case binary:split(Uri, <<"?">>) of
 			  [U1, QS1] -> {U1, QS1};
 			  [U1] -> {U1, <<>>}
 		      end,
 
-	    HTTP = [#log_line_http{
+	    HTTP = #log_line_http{
 	      uri = U
 	      ,qs = mochiweb_util:parse_qs(QS)
 	      ,status_code = StatusCode
 	      ,method = HttpVerb
 	      ,date = DateStamp
 	      ,req_id = ReqID
-	     }],
+	     },
+	    AppendFun = fun(Old) -> [HTTP | Old] end,
 
-	    LogData#log_data{by_http=dict:append_list(HttpVerb, HTTP, ByHttp)
-			     ,by_uri=dict:append_list(U, HTTP, ByUri)
-			     ,by_statuscode=dict:append_list(StatusCode, HTTP, ByStatus)
+	    LogData#log_data{by_http=dict:update(HttpVerb, AppendFun, [HTTP], ByHttp)
+			     ,by_uri=dict:update(U, AppendFun, [HTTP], ByUri)
+			     ,by_statuscode=dict:update(StatusCode, AppendFun, [HTTP], ByStatus)
 			    };
 	[<<"Uncaught">> | _] -> LogData; %% Skip errors in HTTP request
 	[<<"could">>, <<"not">> | _] -> LogData; %% Skip errors
@@ -285,24 +286,25 @@ analyze_req_data(#log_data{io_device=IODev}=LogData, ReqData, ReqID, DateStamp) 
 	    #log_data{by_http=ByHttp, by_uri=ByUri, by_statuscode=ByStatus} = LogData,
 
 	    HttpVerb = get_verb(Verb),
-	    StatusCode = whistle_util:to_integer(SC),
+	    StatusCode = wh_util:to_integer(SC),
 
 	    {U, QS} = case binary:split(Uri, <<"?">>) of
 			  [U1, QS1] -> {U1, QS1};
 			  [U1] -> {U1, <<>>}
 		      end,
 
-	    HTTP = [#log_line_http{
+	    HTTP = #log_line_http{
 	      uri = U
 	      ,qs = mochiweb_util:parse_qs(QS)
 	      ,status_code = StatusCode
 	      ,method = HttpVerb
-	      ,time_elapsed = whistle_util:to_integer(binary:replace(Time, <<"\n">>, <<>>))
-	     }],
+	      ,time_elapsed = wh_util:to_integer(binary:replace(Time, <<"\n">>, <<>>))
+	     },
+	    AppendFun = fun(Old) -> [HTTP | Old] end,
 
-	    LogData#log_data{by_http=dict:append_list(HttpVerb, HTTP, ByHttp)
-			     ,by_uri=dict:append_list(U, HTTP, ByUri)
-			     ,by_statuscode=dict:append_list(StatusCode, HTTP, ByStatus)
+	    LogData#log_data{by_http=dict:update(HttpVerb, AppendFun, [HTTP], ByHttp)
+			     ,by_uri=dict:update(U, AppendFun, [HTTP], ByUri)
+			     ,by_statuscode=dict:update(StatusCode, AppendFun, [HTTP], ByStatus)
 			    };
 	_ -> LogData
     end.
@@ -327,7 +329,7 @@ get_verb(V) ->
     binary:replace(V, <<"'">>, <<>>, [global]).
 
 convert_datestamp(DS) ->
-    httpd_util:convert_request_date(whistle_util:to_list(DS)).
+    httpd_util:convert_request_date(wh_util:to_list(DS)).
 
 %% [Wed, 27 Jul 2011 16:55:21 GMT] [error] [<0.21421.543>] [--------] {error_report,<0.146.0>,
 %%     {<0.21421.543>,crash_report,

@@ -206,10 +206,10 @@ get_call_forward(#cf_call{authorizing_id=AuthId, account_db=Db}) ->
             ?LOG("loaded call forwarding object from ~s", [Id]),
             #callfwd{
                        doc_id = wh_json:get_value(<<"_id">>, JObj)
-                      ,enabled = whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"enabled">>], JObj, false))
+                      ,enabled = wh_util:is_true(wh_json:get_value([<<"call_forward">>, <<"enabled">>], JObj, false))
                       ,number = wh_json:get_value([<<"call_forward">>, <<"number">>], JObj, <<>>)
-                      ,require_keypress = whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"require_keypress">>], JObj, true))
-                      ,keep_caller_id = whistle_util:is_true(wh_json:get_value([<<"call_forward">>, <<"keep_caller_id">>], JObj, true))
+                      ,require_keypress = wh_util:is_true(wh_json:get_value([<<"call_forward">>, <<"require_keypress">>], JObj, true))
+                      ,keep_caller_id = wh_util:is_true(wh_json:get_value([<<"call_forward">>, <<"keep_caller_id">>], JObj, true))
                     };
         {error, R} ->
             ?LOG("failed to load call forwarding object from ~s, ~w", [Id, R]),

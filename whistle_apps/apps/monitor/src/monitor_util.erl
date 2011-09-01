@@ -16,10 +16,10 @@
 -import(random).
 
 to_binary(Term) ->
-    whistle_util:to_binary(Term).
+    wh_util:to_binary(Term).
 
 to_list(Term) ->
-    whistle_util:to_list(Term).
+    wh_util:to_list(Term).
 
 prop_update(Key, Value, Prop) ->
     [{Key, Value} | proplists:delete(Key, Prop)].

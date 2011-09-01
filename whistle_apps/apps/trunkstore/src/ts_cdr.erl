@@ -70,7 +70,7 @@ find_route_used(<<"outbound">>, ToUri, Routes) ->
 			case wh_json:get_value(<<"Route">>, RouteJObj) of
 			    <<"sip:", DS/binary>> ->
 				[DSUser, DSDomain] = binary:split(DS, <<"@">>),
-				DS_IP = whistle_util:to_binary(ts_util:find_ip(DSDomain)),
+				DS_IP = wh_util:to_binary(ts_util:find_ip(DSDomain)),
 				case binary:match(<<DSUser/bitstring, "@", DS_IP/bitstring>>, ToUri) =/= nomatch orelse
 				    binary:match(DS, ToUri) of
 				    true -> RouteJObj; % Matched by IP
@@ -78,7 +78,7 @@ find_route_used(<<"outbound">>, ToUri, Routes) ->
 				    _ -> RouteJObj % matched by hostname
 				end;
 			    [<<"user:", _U/binary>>, DID] ->
-				case whistle_util:to_e164(ToUser) =:= whistle_util:to_e164(DID) of
+				case wh_util:to_e164(ToUser) =:= wh_util:to_e164(DID) of
 				    true -> RouteJObj;
 				    false -> Acc
 				end
@@ -86,7 +86,7 @@ find_route_used(<<"outbound">>, ToUri, Routes) ->
 		end, ?EMPTY_JSON_OBJECT, Routes);
 find_route_used(<<"inbound">>, _, _) -> ?EMPTY_JSON_OBJECT.
 
--spec fetch_cdr/2 :: (CallID, DB) -> {error, not_found} | {ok, json_object()} when
+-spec fetch_cdr/2 :: (CallID, DB) -> {'error', 'not_found'} | {'ok', json_object()} when
       CallID :: binary(),
       DB :: binary().
 fetch_cdr(CallID, DB) ->

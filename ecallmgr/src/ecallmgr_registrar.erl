@@ -110,7 +110,7 @@ handle_cast(_Msg, State) ->
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
     ?LOG_SYS("Storing registration information for ~s@~s", [User, Realm]),
     wh_cache:store({ecall_registrar, Realm, User}, RegFields
-		   ,whistle_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
+		   ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
 		  ),
     {noreply, State};
 
@@ -187,11 +187,11 @@ lookup_reg(Realm, User, Fields) ->
 	    RegProp = [{<<"Username">>, User}
 		       ,{<<"Realm">>, Realm}
 		       ,{<<"Fields">>, []}
-		       | whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
+		       | wh_api:default_headers(<<>>, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
 	    try
 		case ecallmgr_amqp_pool:reg_query(RegProp, 1000) of
 		    {ok, {struct, RegResp}} ->
-			true = whistle_api:reg_query_resp_v(RegResp),
+			true = wh_api:reg_query_resp_v(RegResp),
 
 			{struct, RegFields} = props:get_value(<<"Fields">>, RegResp, ?EMPTY_JSON_OBJECT),
 			?SERVER ! {cache_registrations, Realm, User, RegFields},

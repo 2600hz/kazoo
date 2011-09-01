@@ -27,7 +27,7 @@ open_conn(Host, Port, User, Pass) ->
 
 start(Source, Target) ->
     {ok, DBs} = couch_util:db_info(Source),
-    [ repl_db(Source, Target, whistle_util:to_binary(mochiweb_util:quote_plus(DB))) || DB <- DBs].
+    [ repl_db(Source, Target, wh_util:to_binary(mochiweb_util:quote_plus(DB))) || DB <- DBs].
 
 %% url-encoded DB required here
 repl_db(Source, Target, DB) ->

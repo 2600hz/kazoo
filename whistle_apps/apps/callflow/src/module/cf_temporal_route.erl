@@ -50,7 +50,7 @@
                ,month = 1 :: wh_month()
                ,start_date = {2011, 1, 1} :: wh_date()
                ,wtime_start = 0 :: non_neg_integer()
-               ,wtime_stop = 86400 :: non_neg_integer()
+               ,wtime_stop = ?SECONDS_IN_DAY :: non_neg_integer()
               }).
 
 -record(temporal, {local_sec = 0 :: non_neg_integer()
@@ -164,7 +164,7 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}
                    ,cycle =
                        wh_json:get_value([<<"doc">>, <<"cycle">>], R, Default#rule.cycle)
                    ,interval =
-                       whistle_util:to_integer(
+                       wh_util:to_integer(
                               wh_json:get_value([<<"doc">>, <<"interval">>], R, Default#rule.interval))
                    ,days =
                        wh_json:get_value([<<"doc">>, <<"days">>], R, Default#rule.days)
@@ -177,10 +177,10 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}
                    ,start_date =
                        get_date(wh_json:get_value([<<"doc">>, <<"start_date">>], R, LSec))
                    ,wtime_start =
-                       whistle_util:to_integer(
+                       wh_util:to_integer(
                                  wh_json:get_value([<<"doc">>, <<"time_window_start">>], R, Default#rule.wtime_start))
                    ,wtime_stop =
-                       whistle_util:to_integer(
+                       wh_util:to_integer(
                                wh_json:get_value([<<"doc">>, <<"time_window_stop">>], R, Default#rule.wtime_stop))
                }
              || R <- JObj,
@@ -216,7 +216,7 @@ get_temporal_route(JObj, #cf_call{cf_pid=CFPid}) ->
 get_date({{_,_,_}=Date, {_,_,_}})->
     Date;
 get_date(Term) when is_binary(Term) ->
-    get_date(whistle_util:to_integer(Term));
+    get_date(wh_util:to_integer(Term));
 get_date(Term) when is_integer(Term) ->
    get_date(calendar:gregorian_seconds_to_datetime(Term)).
 
@@ -348,7 +348,7 @@ enable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
 load_current_time(#temporal{timezone=Timezone}=Temporal)->
     {LocalDate, LocalTime} = localtime:utc_to_local(
                                 calendar:universal_time()
-                               ,whistle_util:to_list(Timezone)
+                               ,wh_util:to_list(Timezone)
                               ),
     ?LOG("local time for ~s is {~w,~w}", [Timezone, LocalDate, LocalTime]),
     Temporal#temporal{local_sec=calendar:datetime_to_gregorian_seconds({LocalDate, LocalTime})

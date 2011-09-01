@@ -37,10 +37,10 @@ start_link() ->
       Direction :: inbound | outbound,
       RouteOptions :: [binary(),...] | [].
 reserve(ToDID, CallID, AcctID, Direction, RouteOptions) ->
-    <<Start:1/binary, _/binary>> = Number = whistle_util:to_1npan(ToDID),
+    <<Start:1/binary, _/binary>> = Number = wh_util:to_1npan(ToDID),
     ?LOG("searching for rates in the range ~s to ~s", [Start, Number]),
-    case couch_mgr:get_results(?TS_RATES_DB, <<"lookuprates/lookuprate">>, [{<<"startkey">>, whistle_util:to_integer(Start)}
-									    ,{<<"endkey">>, whistle_util:to_integer(Number)}]) of
+    case couch_mgr:get_results(?TS_RATES_DB, <<"lookuprates/lookuprate">>, [{<<"startkey">>, wh_util:to_integer(Start)}
+									    ,{<<"endkey">>, wh_util:to_integer(Number)}]) of
 	{ok, []} -> ?LOG("rate lookup had no results"), {error, no_rate_found};
 	{error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_rate_found};
 	{ok, Rates} ->
@@ -52,17 +52,17 @@ reserve(ToDID, CallID, AcctID, Direction, RouteOptions) ->
 		    %% wh_timer:tick("post usort data found"),
 		    ?LOG("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
 
-		    BaseCost = whistle_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * whistle_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate))
-			+ whistle_util:to_float(wh_json:get_value(<<"rate_surcharge">>, Rate)),
+		    BaseCost = wh_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * (wh_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate)) div 60)
+			+ wh_util:to_float(wh_json:get_value(<<"rate_surcharge">>, Rate)),
 
 		    _ = ts_acctmgr:reserve_trunk(AcctID, CallID, BaseCost, ts_util:is_flat_rate_eligible(ToDID)),
 
-		    {ok, [{<<"Rate">>, whistle_util:to_binary(wh_json:get_value(<<"rate_cost">>, Rate))}
-			  ,{<<"Rate-Increment">>, whistle_util:to_binary(wh_json:get_value(<<"rate_increment">>, Rate))}
-			  ,{<<"Rate-Minimum">>, whistle_util:to_binary(wh_json:get_value(<<"rate_minimum">>, Rate))}
-			  ,{<<"Surcharge">>, whistle_util:to_binary(wh_json:get_value(<<"rate_surcharge">>, Rate, 0))}
-			  ,{<<"Rate-Name">>, whistle_util:to_binary(wh_json:get_value(<<"rate_name">>, Rate))}
-			  ,{<<"Base-Cost">>, whistle_util:to_binary(BaseCost)}
+		    {ok, [{<<"Rate">>, wh_util:to_binary(wh_json:get_value(<<"rate_cost">>, Rate))}
+			  ,{<<"Rate-Increment">>, wh_util:to_binary(wh_json:get_value(<<"rate_increment">>, Rate))}
+			  ,{<<"Rate-Minimum">>, wh_util:to_binary(wh_json:get_value(<<"rate_minimum">>, Rate))}
+			  ,{<<"Surcharge">>, wh_util:to_binary(wh_json:get_value(<<"rate_surcharge">>, Rate, 0))}
+			  ,{<<"Rate-Name">>, wh_util:to_binary(wh_json:get_value(<<"rate_name">>, Rate))}
+			  ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
 			 ]}
 	    end
     end.
@@ -77,13 +77,39 @@ matching_rate(To, Direction, RouteOptions, Rate) ->
     %% need to match direction and options at some point too
     Routes = wh_json:get_value([<<"value">>, <<"routes">>], Rate),
 
-    lists:member(Direction, wh_json:get_value([<<"value">>, <<"direction">>], Rate, [])) andalso
+    direction_match(Direction, wh_json:get_value([<<"value">>, <<"direction">>], Rate, [])) andalso
 	options_match(RouteOptions, wh_json:get_value([<<"value">>, <<"options">>], Rate, [])) andalso
-	lists:any(fun(Regex) -> re:run(To, Regex) =/= nomatch end, Routes).
+        routes_match(To, Routes).
 
 %% Return true of RateA has higher weight than RateB
 sort_rates(RateA, RateB) ->
     ts_util:constrain_weight(wh_json:get_value(<<"weight">>, RateA, 1)) >= ts_util:constrain_weight(wh_json:get_value(<<"weight">>, RateB, 1)).
+
+-spec routes_match/2 :: (To, Routes) -> boolean() when
+      To :: binary(),
+      Routes :: list().
+routes_match(To, Routes) ->
+    case lists:any(fun(Regex) ->
+                            re:run(To, Regex) =/= nomatch
+                   end, Routes) of
+        true ->
+            ?LOG("rate has a matching route"), true;
+        false ->
+            ?LOG("rate has no matching routes"), false
+    end.
+
+-spec direction_match/2 :: (Direction, RateDirections) -> boolean() when
+      Direction :: binary() | atom(),
+      RateDirections :: list().
+direction_match(Direction, RateDirections) when not is_binary(Direction) ->
+    direction_match(wh_util:to_binary(Direction), RateDirections);
+direction_match(Direction, RateDirections) ->
+    case lists:member(Direction, RateDirections) of
+        true ->
+            ?LOG("rate is valid for ~s calls", [Direction]), true;
+         false ->
+            ?LOG("rate is not valid for ~s calls", [Direction]), false
+    end.
 
 %% match options set in Flags to options available in Rate
 %% All options set in Flags must be set in Rate to be usable
@@ -96,8 +122,15 @@ options_match(RouteOptions, {struct, RateOptions}) ->
 options_match({struct, RouteOptions}, RateOptions) ->
     options_match(RouteOptions, RateOptions);
 options_match([], []) ->
+    ?LOG("both options are empty, continue"),
     true;
 options_match([], _) ->
+    ?LOG("route does not require options, continue"),
     true;
 options_match(RouteOptions, RateOptions) ->
-    lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions).
+    case lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions) of
+        true ->
+            ?LOG("all route options present on rate"), true;
+        false ->
+            ?LOG("route options defines options that are not on rate"), false
+    end.

@@ -3,6 +3,7 @@
 */error_log
 */ebin/*.beam
 */ebin/*.app
+*/priv/*.pid
 .eunit
 ecallmgr/priv/startup.config
 whistle_apps/priv/startup.config

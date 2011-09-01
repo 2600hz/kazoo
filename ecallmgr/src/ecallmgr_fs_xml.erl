@@ -120,11 +120,11 @@ build_route(RouteProp, DIDFormat) ->
 
 -spec(format_did/2 :: (DID :: binary(), Format :: binary()) -> binary()).
 format_did(DID, <<"e164">>) ->
-    whistle_util:to_e164(DID);
+    wh_util:to_e164(DID);
 format_did(DID, <<"npan">>) ->
-    whistle_util:to_npan(DID);
+    wh_util:to_npan(DID);
 format_did(DID, <<"1npan">>) ->
-    whistle_util:to_1npan(DID).
+    wh_util:to_1npan(DID).
 
 -spec(get_leg_vars/1 :: (JObj :: json_object() | proplist()) -> iolist()).
 get_leg_vars({struct, Prop}) -> get_leg_vars(Prop);
@@ -173,43 +173,43 @@ get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
 get_channel_vars({<<"Progress-Timeout">>, V}, Vars) ->
     [ list_to_binary([<<"progress_timeout=">>, V]) | Vars];
 get_channel_vars({<<"Rate">>, V}, Vars) ->
-    [ list_to_binary([<<"rate=">>, whistle_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"rate=">>, wh_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Rate-Increment">>, V}, Vars) ->
-    [ list_to_binary([<<"rate_increment=">>, whistle_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"rate_increment=">>, wh_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Rate-Minimum">>, V}, Vars) ->
-    [ list_to_binary([<<"rate_minimum=">>, whistle_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"rate_minimum=">>, wh_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Surcharge">>, V}, Vars) ->
-    [ list_to_binary([<<"surcharge=">>, whistle_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"surcharge=">>, wh_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Ignore-Early-Media">>, V}, Vars) ->
-    [ list_to_binary([<<"ignore_early_media=">>, whistle_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"ignore_early_media=">>, wh_util:to_list(V)]) | Vars];
 %%get_channel_vars({<<"Bypass-Media">>, V}, Vars) ->
-%%    [ list_to_binary([<<"bypass_media_after_bridge=">>, whistle_util:to_list(V)]) | Vars];
+%%    [ list_to_binary([<<"bypass_media_after_bridge=">>, wh_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Continue-On-Fail">>, V}, Vars) ->
-    [ list_to_binary([<<"continue_on_fail=">>, whistle_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"continue_on_fail=">>, wh_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Endpoint-Timeout">>, V}, Vars) ->
-    [ list_to_binary([<<"leg_timeout=">>, whistle_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"leg_timeout=">>, wh_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Endpoint-Progress-Timeout">>, V}, Vars) ->
-    [ list_to_binary([<<"leg_progress_timeout=">>, whistle_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"leg_progress_timeout=">>, wh_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Endpoint-Delay">>, V}, Vars) ->
-    [ list_to_binary([<<"leg_delay_start=">>, whistle_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"leg_delay_start=">>, wh_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Endpoint-Ignore-Forward">>, V}, Vars) ->
-    [ list_to_binary([<<"outbound_redirect_fatal=">>, whistle_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"outbound_redirect_fatal=">>, wh_util:to_list(V)]) | Vars];
 get_channel_vars({<<"Overwrite-Channel-Vars">>, V}, Vars) ->
-    [ list_to_binary([<<"local_var_clobber=">>, whistle_util:to_list(V)]) | Vars];
+    [ list_to_binary([<<"local_var_clobber=">>, wh_util:to_list(V)]) | Vars];
 %% SPECIAL CASE: Custom Channel Vars
 get_channel_vars({<<"Custom-Channel-Vars">>, {struct, Custom}}, Vars) ->
     lists:foldl(fun
                     %% These are a temporary abstraction leak until we can locate a call via the API, originate
                     %% on the located server only and transfer to an existing UUID...
                     ({<<"Confirm-File">>, V}, Vars0) ->
-                        [ list_to_binary([<<"group_confirm_file=">>, whistle_util:to_list(V)]) | Vars0];
+                        [ list_to_binary([<<"group_confirm_file=">>, wh_util:to_list(V)]) | Vars0];
                     ({<<"Confirm-Key">>, V}, Vars0) ->
-                       [ list_to_binary([<<"group_confirm_key=">>, whistle_util:to_list(V)]) | Vars0];
+                       [ list_to_binary([<<"group_confirm_key=">>, wh_util:to_list(V)]) | Vars0];
                     ({<<"Confirm-Cancel-Timeout">>, V}, Vars0) ->
-                       [ list_to_binary([<<"group_confirm_cancel_timeout=">>, whistle_util:to_list(V)]) | Vars0];
+                       [ list_to_binary([<<"group_confirm_cancel_timeout=">>, wh_util:to_list(V)]) | Vars0];
                     %% end of leak
                     ({K,V}, Vars0) ->
-                       [ list_to_binary([?CHANNEL_VAR_PREFIX, whistle_util:to_list(K), "=", whistle_util:to_list(V)]) | Vars0]
+                       [ list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K), "=", wh_util:to_list(V)]) | Vars0]
                end, Vars, Custom);
 %% SPECIAL CASE: SIP Headers
 get_channel_vars({<<"SIP-Headers">>, {struct, SIPHeaders}}, Vars) ->
@@ -218,9 +218,9 @@ get_channel_vars({<<"SIP-Headers">>, {struct, SIPHeaders}}, Vars) ->
 		end, Vars, SIPHeaders);
 %% SPECIAL CASE: Timeout must be larger than zero
 get_channel_vars({<<"Timeout">>, V}, Vars) ->
-    case whistle_util:to_integer(V) of
+    case wh_util:to_integer(V) of
         TO when TO > 0 ->
-            [ <<"call_timeout=", (whistle_util:to_binary(TO))/binary>> | Vars];
+            [ <<"call_timeout=", (wh_util:to_binary(TO))/binary>> | Vars];
         _Else ->
             Vars
     end;

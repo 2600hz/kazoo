@@ -17,6 +17,8 @@
 
 -export([add_threshold/2, get_thresholds/0, rm_threshold/1, get_db_report/0]).
 
+-export([close_files/0]).
+
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
@@ -24,6 +26,7 @@
 -define(SERVER, ?MODULE).
 -define(DEFAULT_THRESHOLDS, orddict:from_list([{0,1}])). %% catch-all to force compaction
 -define(LARGEST_MDS, round(math:pow(2,30))).
+-define(SLEEP_BETWEEN_COMPACTIONS, 1000 * 60 * 10). %% ten minutes between each compaction event
 
 -type thresholds() :: orddict:orddict().
 %% State :: orddict()
@@ -85,6 +88,12 @@ rm_threshold(MDS) when is_integer(MDS) ->
 get_db_report() ->
     gen_server:call(?SERVER, get_db_report, 10*60*1000). %% takes a while to get the report
 
+%% When nodes have file descriptors opened but the file is deleted, disk reporting tools
+%% like df don't accurately report available disk space.
+-spec close_files/0 :: () -> ok.
+close_files() ->
+    gen_server:cast(?SERVER, close_files).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -102,12 +111,13 @@ get_db_report() ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("Started compactor"),
-    {ok, ?DEFAULT_THRESHOLDS, ?TIMEOUT}.
+    process_flag(trap_exit, true),
+    {ok, ?DEFAULT_THRESHOLDS}.
 
 handle_call(get_thresholds, _From, Thresholds) ->
     {reply, orddict:to_list(Thresholds), Thresholds};
 handle_call(get_db_report, From, Thresholds) ->
-    spawn(fun() -> get_db_report(From, Thresholds) end),
+    spawn_link(fun() -> get_db_report(From, Thresholds) end),
     {noreply, Thresholds}.
 
 %%--------------------------------------------------------------------
@@ -125,10 +135,13 @@ handle_cast({add_threshold, MDS, Ratio}, Thresholds) ->
 handle_cast({rm_threshold, MDS}, Thresholds) ->
     {noreply, orddict:erase(MDS, Thresholds)};
 handle_cast({force_compaction, MDS, CT}, Thresholds) ->
-    spawn(fun() -> compact_nodes(orddict:from_list([{MDS, CT}])) end),
+    spawn_link(fun() -> compact_nodes(orddict:from_list([{MDS, CT}])) end),
     {noreply, Thresholds};
 handle_cast({compact_db, DBName}, Thresholds) ->
-    spawn(fun() -> compact_a_db(DBName) end),
+    spawn_link((fun compact_a_db/1)(DBName)),
+    {noreply, Thresholds};
+handle_cast(close_files, Thresholds) ->
+    spawn_link(fun close_files_on_all_nodes/0),
     {noreply, Thresholds}.
 
 %%--------------------------------------------------------------------
@@ -141,11 +154,9 @@ handle_cast({compact_db, DBName}, Thresholds) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, Thresholds) ->
-    ?LOG_SYS("Checking if compaction is needed"),
-    spawn(fun() -> compact_nodes(Thresholds) end),
-    {noreply, Thresholds, ?TIMEOUT};
-
+handle_info({'EXIT', _Pid, _Reason}, Thresholds) ->
+    ?LOG_SYS("~p exited with ~p", [_Pid, _Reason]),
+    {noreply, Thresholds};
 handle_info(_Info, Thresholds) ->
     ?LOG_SYS("Unhandled message: ~p~n", [_Info]),
     {noreply, Thresholds, ?TIMEOUT}.
@@ -202,6 +213,51 @@ compact_nodes(Thresholds) ->
 	    ?LOG_SYS("Failed to lookup nodes: ~p", [_E])
     end.
 
+-spec close_files_on_all_nodes/0 :: () -> no_return().
+close_files_on_all_nodes() ->
+    case couch_mgr:admin_all_docs(<<"nodes">>) of
+	{ok, []} ->
+	    ?LOG_SYS("No nodes to release files on");
+	{ok, Nodes} ->
+	    ?LOG_SYS("Closing files on nodes"),
+	    [ close_files_on_node(wh_json:get_value(<<"id">>, Node)) || Node <- Nodes]
+    end.
+
+-spec close_files_on_node/1 :: (Node) -> no_return() when
+      Node :: binary().
+close_files_on_node(NodeBin) ->
+    put(callid, NodeBin),
+    [_Name, H] = binary:split(NodeBin, <<"@">>),
+    Host = wh_util:to_list(H),
+    Node = wh_util:to_atom(NodeBin, true),
+    ?LOG_SYS("Trying to contact host ~s (node ~s)", [Host, _Name]),
+
+    Cookie = couch_mgr:get_node_cookie(),
+    ?LOG_SYS("Using cookie ~s on node ~s", [Cookie, Node]),
+    try
+	erlang:set_cookie(Node, Cookie),
+	pong = net_adm:ping(Node),
+	?LOG_SYS("Ponged with ~s", [Node]),
+	[ close_pid(Node, Pid) || Pid <- rpc:call(Node, erlang, processes, []) ]
+    catch
+        _E:_R -> ?LOG_SYS("Failed to close files: ~p:~p", [_E, _R])
+    end.
+
+-spec close_pid/2 :: (Node, Pid) -> no_return() when
+      Node :: atom(),
+      Pid :: pid().
+close_pid(Node, Pid) ->
+    ?LOG_SYS("Looking up ~p on ~s", [Pid, Node]),
+    case rpc:call(Node, erlang, process_info, [Pid, dictionary]) of
+	{dictionary, Data} ->
+	    ?LOG_SYS("Got dictionary data for ~p", [Pid]),
+	    case props:get_value('$initial_call', Data) of
+		{couch_file,init,1} -> ?LOG_SYS("Closing ~p", [Pid]), catch(rpc:call(Node, couch_file, close, [Pid]));
+		_ -> ok
+	    end;
+	_ -> ok
+    end.
+
 -spec get_db_report/2 :: (From, Thresholds) -> [proplist(),...] when
       From :: {pid(), reference()},
       Thresholds :: thresholds().
@@ -253,8 +309,8 @@ sort_report_data(#db_data{disk_size=DiskA}, #db_data{disk_size=DiskB}) ->
 get_node_data(NodeBin, Thresholds) ->
     put(callid, NodeBin),
     [_Name, H] = binary:split(NodeBin, <<"@">>),
-    Host = whistle_util:to_list(H),
-    Node = whistle_util:to_atom(NodeBin, true),
+    Host = wh_util:to_list(H),
+    Node = wh_util:to_atom(NodeBin, true),
     ?LOG_SYS("Trying to contact host ~s (node ~s)", [Host, _Name]),
 
     {User,Pass} = couch_mgr:get_creds(),
@@ -295,7 +351,7 @@ get_ports(Node, pong) ->
 		   couch_mgr:get_port();
 	       P ->
 		   ?LOG_SYS("Got port ~s", [P]),
-		   whistle_util:to_integer(P)
+		   wh_util:to_integer(P)
 	   end,
     AdminPort = case rpc:call(Node, couch_config, get, ["httpd", "port"]) of
 		    {badrpc, _} ->
@@ -303,7 +359,7 @@ get_ports(Node, pong) ->
 			couch_mgr:get_admin_port();
 		    AP ->
 			?LOG_SYS("Got admin port ~s", [AP]),
-			whistle_util:to_integer(AP)
+			wh_util:to_integer(AP)
 		end,
     {Port, AdminPort};
 get_ports(_Node, pang) ->
@@ -356,9 +412,9 @@ create_db_data(Node, Conn, AdminConn, DBName, Thresholds) ->
 	?LOG_SYS("Create db data for ~s" , [DBName]),
 	{ok, DBData} = get_db_data(AdminConn, DBName),
 
-	DiskSize = whistle_util:to_integer(wh_json:get_value(<<"disk_size">>, DBData, -1)),
-	DataSize = whistle_util:to_integer(wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1)),
-	CompactIsRunning = whistle_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
+	DiskSize = wh_util:to_integer(wh_json:get_value(<<"disk_size">>, DBData, -1)),
+	DataSize = wh_util:to_integer(wh_json:get_value([<<"other">>, <<"data_size">>], DBData, -1)),
+	CompactIsRunning = wh_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
 
 	{_MDS, Ratio} = orddict:fold(fun(K, V, Acc) -> filter_thresholds(K, V, Acc, DiskSize) end, {?LARGEST_MDS,1}, Thresholds),
 
@@ -401,9 +457,9 @@ get_design_docs(Node, Conn, AdminConn, DBData, Thresholds) ->
 			    {error, failed} ->
 				?LOG_SYS("Failed to get design data for ~s / ~s", [DBName, DesignID]), Acc;
 			    {ok, DDocData} ->
-				DataSize = whistle_util:to_integer(wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, -1)),
-				DiskSize = whistle_util:to_integer(wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1)),
-				CompactIsRunning = whistle_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
+				DataSize = wh_util:to_integer(wh_json:get_value([<<"view_index">>, <<"data_size">>], DDocData, -1)),
+				DiskSize = wh_util:to_integer(wh_json:get_value([<<"view_index">>, <<"disk_size">>], DDocData, -1)),
+				CompactIsRunning = wh_util:is_true(wh_json:get_value(<<"compact_running">>, DBData, false)),
 
 				?LOG_SYS("design info for ~s:~s: Dataset: ~b Disksize: ~b", [DesignID, DBName, DataSize, DiskSize]),
 				?LOG_SYS("Compact is running already: ~s", [CompactIsRunning]),
@@ -498,7 +554,7 @@ get_ddocs(C, _DB, Cnt) when Cnt > 10 ->
     ?LOG_SYS("Failed to find design docs for db ~s on ~s after 10 tries", [_DB, couchbeam:server_url(C)]),
     {error, failed};
 get_ddocs(Conn, DB, Cnt) ->
-    case couch_util:all_design_docs(Conn, DB) of
+    case couch_util:all_design_docs(Conn, DB, []) of
 	{ok, _}=Resp -> ?LOG_SYS("Found ddocs for ~s in ~p tries", [DB, Cnt]), Resp;
 	_ -> get_ddocs(Conn, DB, Cnt+1)
     end.
@@ -506,10 +562,10 @@ get_ddocs(Conn, DB, Cnt) ->
 -spec compact/1 :: (Data) -> ok when
       Data :: #db_data{} | #design_data{}.
 compact(#db_data{db_name=DBName, node=Node, admin_conn=AC, do_compaction=true}) ->
-    timer:sleep(random:uniform(5)*1000), %sleep between 1 and 5 seconds
+    timer:sleep(?SLEEP_BETWEEN_COMPACTIONS),
     ?LOG_SYS("Compact DB ~s on ~s: ~p and VC: ~p", [DBName, Node, couch_util:db_compact(AC, DBName), couch_util:db_view_cleanup(AC, DBName)]);
 compact(#design_data{shards=Shards, node=Node, design_name=Design, admin_conn=AC, do_compaction=true}) ->
-    timer:sleep(random:uniform(5)*1000), %sleep between 1 and 5 seconds
+    timer:sleep(?SLEEP_BETWEEN_COMPACTIONS),
     [ ?LOG_SYS("Compact design ~s for ~s on ~s: ~p", [Design, DBName, Node, couch_util:design_compact(AC, DBName, Design)]) || DBName <- Shards ];
 compact(_) -> ok.
 

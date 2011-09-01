@@ -5,7 +5,7 @@
       "map": "function(doc) { if(doc.type != 'sys_info') return; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs)  { if (srv[1].auth) { emit(srv[1].auth.auth_user, srv[1].auth); } } }}"
     }
     ,"LookUpUserAuthRealm":{
-      "map": "function(doc) { if(doc.type != 'sys_info') return; var realm = doc.account.auth_realm; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs)  { if (srv[1].auth) { var auth_clone = JSON.parse(JSON.stringify(srv[1].auth)); auth_clone.auth_realm = realm; emit([realm, auth_clone.auth_user], auth_clone); } } }}"
+       "map": "function(doc) { if(doc.type != 'sys_info') return; var realm = doc.account.auth_realm; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs)  { if (srv[1].auth) { var auth_clone = JSON.parse(JSON.stringify(srv[1].auth)); auth_clone.server_id = srv[0]; auth_clone.auth_realm = realm; for(var key in doc) {  if (key.indexOf('pvt_') == 0) auth_clone[key] = doc[key];  }; emit([realm, auth_clone.auth_user], auth_clone); } } }}"
     }
   }
 }

@@ -32,7 +32,7 @@ do_validate(File, SchemaName) when is_list(File)->
     do_validate(wh_json:get_value(<<"data">>, Data), SchemaName);
 %% for crossbar usage
 do_validate(Data, SchemaName)  ->
-    {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, whistle_util:to_binary(SchemaName)),
+    {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, wh_util:to_binary(SchemaName)),
     Errors = [X || {T, _}=X <- validate(Data, Schema), T == validation_error],
     case Errors of
 	[] -> ok;
@@ -552,14 +552,14 @@ to_list(X) when is_list(X) ->
 validation_error({struct, _}, _) ->
     {validation_error, <<"json is invalid">>};
 validation_error(Instance, Msg) ->
-    {validation_error, <<(whistle_util:to_binary(Instance))/binary,
-			     " ", (whistle_util:to_binary(Msg))/binary>>}.
+    {validation_error, <<(wh_util:to_binary(Instance))/binary,
+			     " ", (wh_util:to_binary(Msg))/binary>>}.
 
 -spec(validation_error/3 :: (term(), binary(), term()) -> tuple(validation_error, binary())).
 validation_error(Instance, Msg, Attribute) ->
-    {validation_error, <<(whistle_util:to_binary(Instance))/binary,
-			     " ", (whistle_util:to_binary(Msg))/binary,
-                             " ", (whistle_util:to_binary(Attribute))/binary>>}.
+    {validation_error, <<(wh_util:to_binary(Instance))/binary,
+			     " ", (wh_util:to_binary(Msg))/binary,
+                             " ", (wh_util:to_binary(Attribute))/binary>>}.
 %% EUNIT TESTING
 -ifdef(TEST).
 

@@ -1,5 +1,5 @@
--include_lib("whistle/include/whistle_types.hrl").
--include_lib("whistle/include/whistle_amqp.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
 -include_lib("cf_amqp.hrl").
@@ -16,6 +16,8 @@
 -define(DIALPLAN_MAP, [{ <<"tone">>, <<"tones">> }]).
 
 -define(LIST_BY_NUMBER, {<<"callflow">>, <<"listing_by_number">>}).
+-define(LIST_BY_PATTERN, {<<"callflow">>, <<"listing_by_pattern">>}).
+
 -define(NO_MATCH_CF, <<"no_match">>).
 
 -define(DEFAULT_TIMEOUT, <<"20">>).
@@ -53,4 +55,6 @@
             ,owner_id = undefined :: binary() | undefined           %% The ID of the that owns the authorizing endpoint
             ,channel_vars = undefined :: json_object() | undefined  %% Any custom channel vars that where provided with the route request
             ,last_action = undefined :: undefined | atom()          %% Previous action
+            ,capture_group = undefined :: undefined | binary()      %% If the callflow was found using a pattern this is the capture group
+            ,inception_during_transfer = false :: boolean()         %% If the hunt for this callflow was intiated during transfer
            }).

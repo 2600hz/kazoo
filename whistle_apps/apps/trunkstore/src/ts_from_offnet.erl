@@ -31,12 +31,12 @@ endpoint_data(State) ->
     CallID = ts_callflow:get_aleg_id(State),
     Q = ts_callflow:get_my_queue(State),
 
-    true = whistle_api:bridge_req_endpoint_v(EP),
+    true = wh_api:bridge_req_endpoint_v(EP),
     ?LOG("Valid endpoint"),
 
     MediaHandling = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Offnet-Loopback-Number">>], JObj) of
                         undefined ->
-                            case whistle_util:is_false(wh_json:get_value(<<"Bypass-Media">>, EP)) of
+                            case wh_util:is_false(wh_json:get_value(<<"Bypass-Media">>, EP)) of
                                 true -> <<"process">>; %% bypass media is false, process media
                                 false -> <<"bypass">>
                             end;
@@ -50,7 +50,7 @@ endpoint_data(State) ->
                ,{<<"Media">>, MediaHandling}
 	       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
 	       ,{<<"Call-ID">>, CallID}
-	       | whistle_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+	       | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
     ?LOG("Endpoint loaded"),
 
@@ -73,7 +73,7 @@ wait_for_win(State, Command) ->
     end.
 
 send_onnet(State, Command) ->
-    {ok, Payload} = whistle_api:bridge_req(Command),
+    {ok, Payload} = wh_api:bridge_req(Command),
     ?LOG("Sending onnet command: ~s", [Payload]),
 
     CtlQ = ts_callflow:get_control_queue(State),
@@ -176,10 +176,10 @@ try_failover_sip(State, SIPUri) ->
 	       {<<"Call-ID">>, CallID}
 	       ,{<<"Application-Name">>, <<"bridge">>}
 	       ,{<<"Endpoints">>, [EndPoint]}
-	       | whistle_api:default_headers(Q, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+	       | wh_api:default_headers(Q, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
 
-    {ok, Payload} = whistle_api:bridge_req(Command),
+    {ok, Payload} = wh_api:bridge_req(Command),
 
     ?LOG("Sending SIP failover for ~s: ~s", [SIPUri, Payload]),
 
@@ -210,9 +210,9 @@ try_failover_e164(State, ToDID) ->
 	       ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
 	       ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
 	       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
-	       | whistle_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
+	       | wh_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
 	      ],
-    {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined, V =/= <<>> ]),
+    {ok, Payload} = wh_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined, V =/= <<>> ]),
 
     ?LOG("Sending E.164 failover: ~s", [Payload]),
 
@@ -222,7 +222,7 @@ try_failover_e164(State, ToDID) ->
 %%--------------------------------------------------------------------
 %% Out-of-band functions
 %%--------------------------------------------------------------------
--spec get_endpoint_data/1 :: (JObj) -> {endpoint, json_object()} | {error, no_rate_found} when
+-spec get_endpoint_data/1 :: (JObj) -> {'endpoint', json_object()} | {'error', 'no_rate_found'} when
       JObj :: json_object().
 get_endpoint_data(JObj) ->
     %% wh_timer:tick("inbound_route/1"),
@@ -235,10 +235,10 @@ get_endpoint_data(JObj) ->
                 [<<"nouser">>, _] ->
                     [ReqU, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
                     ?LOG("EP: ReqU: ~s", [ReqU]),
-                    whistle_util:to_e164(ReqU);
+                    wh_util:to_e164(ReqU);
                 [T, _] ->
                     ?LOG("EP: ToUser: ~s", [T]),
-                    whistle_util:to_e164(T)
+                    wh_util:to_e164(T)
             end,
     ?LOG("EP: ToDID: ~s", [ToDID]),
 
@@ -254,7 +254,7 @@ get_endpoint_data(JObj) ->
         {error, _}=E -> ?LOG("Release ~s from ~s", [CallID, AcctID]), ok = ts_acctmgr:release_trunk(AcctID, CallID, 0), E;
         {ok, RateData} ->
             InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
-            Invite = ts_util:invite_format(whistle_util:binary_to_lower(InFormat), ToDID) ++ RoutingData,
+            Invite = ts_util:invite_format(wh_util:binary_to_lower(InFormat), ToDID) ++ RoutingData,
 
             {endpoint, {struct, [{<<"Custom-Channel-Vars">>, {struct, [
                                                                        {<<"Auth-User">>, AuthUser}
@@ -297,7 +297,7 @@ routing_data(ToDID) ->
 
     SrvOptions = wh_json:get_value(<<"options">>, Srv, ?EMPTY_JSON_OBJECT),
 
-    true = whistle_util:is_true(wh_json:get_value(<<"enabled">>, SrvOptions)),
+    true = wh_util:is_true(wh_json:get_value(<<"enabled">>, SrvOptions)),
 
     InboundFormat = wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>),
 

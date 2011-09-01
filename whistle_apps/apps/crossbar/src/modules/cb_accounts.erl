@@ -24,8 +24,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/account.json">>).
-
 -define(AGG_DB, <<"accounts">>).
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_SUMMARY, <<"accounts/listing_by_id">>).
@@ -56,7 +54,6 @@ get_realm_from_db(DBName) ->
 	{ok, JObj} -> {ok, wh_json:get_value(<<"realm">>, JObj)};
 	{error, _}=E -> E
     end.
-
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -222,14 +219,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    couch_mgr:db_create(?AGG_DB),
-    case couch_mgr:update_doc_from_file(?AGG_DB, crossbar, ?AGG_VIEW_FILE) of
-        {error, _} ->
-            couch_mgr:load_doc_from_file(?AGG_DB, crossbar, ?AGG_VIEW_FILE);
-        {ok, _} -> ok
-    end,
-    whapps_util:update_all_accounts(?VIEW_FILE),
-    whapps_util:replicate_from_accounts(?AGG_DB, ?AGG_FILTER),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -620,7 +609,7 @@ add_pvt_type(JObj, _) ->
     wh_json:set_value(<<"pvt_type">>, <<"account">>, JObj).
 
 add_pvt_api_key(JObj, _) ->
-    wh_json:set_value(<<"pvt_api_key">>, whistle_util:to_binary(whistle_util:to_hex(crypto:rand_bytes(32))), JObj).
+    wh_json:set_value(<<"pvt_api_key">>, wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(32))), JObj).
 
 add_pvt_tree(JObj, #cb_context{auth_doc=undefined}) ->
     wh_json:set_value(<<"pvt_tree">>, [], JObj);
@@ -684,12 +673,9 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
             JObj = wh_json:set_value(<<"_id">>, DbName, Doc),
             case crossbar_doc:save(Context#cb_context{db_name=Db, doc=JObj}) of
                 #cb_context{resp_status=success}=Context1 ->
-                    spawn(fun() ->
-                                  couch_mgr:load_doc_from_file(Db, crossbar, ?VIEW_FILE),
-                                  Responses = crossbar_bindings:map(<<"account.created">>, Db),
-                                  _ = [couch_mgr:load_doc_from_file(Db, crossbar, File) || {true, File} <- crossbar_bindings:succeeded(Responses)],
-                                  whapps_util:replicate_from_account(whapps_util:get_db_name(Db, unencoded), ?AGG_DB, ?AGG_FILTER)
-                             end),
+                    crossbar_bindings:map(<<"account.created">>, Db),
+                    couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
+                    whapps_util:replicate_from_account(whapps_util:get_db_name(Db, unencoded), ?AGG_DB, ?AGG_FILTER),
                     Context1;
                 Else ->
 		    ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),

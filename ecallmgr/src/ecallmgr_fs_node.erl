@@ -26,12 +26,12 @@
 
 -define(SERVER, ?MODULE).
 
--define(YR_TO_MICRO(Y), whistle_util:to_integer(Y)*365*24*3600*1000000).
--define(DAY_TO_MICRO(D), whistle_util:to_integer(D)*24*3600*1000000).
--define(HR_TO_MICRO(Hr), whistle_util:to_integer(Hr)*3600*1000000).
--define(MIN_TO_MICRO(Min), whistle_util:to_integer(Min)*60*1000000).
--define(SEC_TO_MICRO(Sec), whistle_util:to_integer(Sec)*1000000).
--define(MILLI_TO_MICRO(Mil), whistle_util:to_integer(Mil)*1000).
+-define(YR_TO_MICRO(Y), wh_util:to_integer(Y)*365*24*3600*1000000).
+-define(DAY_TO_MICRO(D), wh_util:to_integer(D)*24*3600*1000000).
+-define(HR_TO_MICRO(Hr), wh_util:to_integer(Hr)*3600*1000000).
+-define(MIN_TO_MICRO(Min), wh_util:to_integer(Min)*60*1000000).
+-define(SEC_TO_MICRO(Sec), wh_util:to_integer(Sec)*1000000).
+-define(MILLI_TO_MICRO(Mil), wh_util:to_integer(Mil)*1000).
 
 -define(FS_TIMEOUT, 5000).
 
@@ -74,7 +74,7 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
 	    {ok, Chans} = freeswitch:api(Node, show, "channels"),
 	    {ok, R} = re:compile("([\\d+])"),
 	    {match, Match} = re:run(Chans, R, [{capture, [1], list}]),
-	    Active = whistle_util:to_integer(lists:flatten(Match)),
+	    Active = wh_util:to_integer(lists:flatten(Match)),
 
 	    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
 					 ,'CUSTOM', 'sofia::register'
@@ -246,7 +246,7 @@ channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) ->
       Node :: atom().
 extract_node_data(Node) ->
     {ok, Status} = freeswitch:api(Node, status),
-    Lines = string:tokens(whistle_util:to_list(Status), [$\n]),
+    Lines = string:tokens(wh_util:to_list(Status), [$\n]),
     process_status(Lines).
 
 -spec process_status/1 :: (Lines) -> [{'cpu',string()} |
@@ -261,16 +261,16 @@ process_status([Uptime, _, SessSince, Sess30, SessMax, CPU]) ->
 process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->
     {match, [[Y],[D],[Hour],[Min],[Sec],[Milli],[Micro]]} = re:run(Uptime, "([\\d]+)", [{capture, [1], list}, global]),
     UpMicro = ?YR_TO_MICRO(Y) + ?DAY_TO_MICRO(D) + ?HR_TO_MICRO(Hour) + ?MIN_TO_MICRO(Min)
-	+ ?SEC_TO_MICRO(Sec) + ?MILLI_TO_MICRO(Milli) + whistle_util:to_integer(Micro),
+	+ ?SEC_TO_MICRO(Sec) + ?MILLI_TO_MICRO(Milli) + wh_util:to_integer(Micro),
     {match, SessSinceNum} = re:run(SessSince, "([\\d]+)", [{capture, [1], list}]),
     {match, Sess30Num} = re:run(Sess30, "([\\d]+)", [{capture, [1], list}]),
     {match, SessMaxNum} = re:run(SessMax, "([\\d]+)", [{capture, [1], list}]),
     {match, CPUNum} = re:run(CPU, "([\\d\.]+)", [{capture, [1], list}]),
 
     [{uptime, UpMicro}
-     ,{sessions_since_startup, whistle_util:to_integer(lists:flatten(SessSinceNum))}
-     ,{sessions_per_thirty, whistle_util:to_integer(lists:flatten(Sess30Num))}
-     ,{sessions_max, whistle_util:to_integer(lists:flatten(SessMaxNum))}
+     ,{sessions_since_startup, wh_util:to_integer(lists:flatten(SessSinceNum))}
+     ,{sessions_per_thirty, wh_util:to_integer(lists:flatten(Sess30Num))}
+     ,{sessions_max, wh_util:to_integer(lists:flatten(SessMaxNum))}
      ,{cpu, lists:flatten(CPUNum)}
     ].
 
@@ -283,9 +283,9 @@ process_custom_data(Data, AppVsn) ->
 
 publish_register_event(Data, AppVsn) ->
     Keys = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
-    DefProp = whistle_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, whistle_util:to_binary(?MODULE), AppVsn),
+    DefProp = wh_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, wh_util:to_binary(?MODULE), AppVsn),
     ApiProp = lists:foldl(fun(K, Api) ->
-				  case props:get_value(whistle_util:binary_to_lower(K), Data) of
+				  case props:get_value(wh_util:binary_to_lower(K), Data) of
 				      undefined ->
 					  case props:get_value(K, Data) of
 					      undefined -> Api;
@@ -293,9 +293,9 @@ publish_register_event(Data, AppVsn) ->
 					  end;
 				      V -> [{K, V} | Api]
 				  end
-			  end, [{<<"Event-Timestamp">>, round(calendar:datetime_to_gregorian_seconds(calendar:local_time()))} | DefProp], Keys),
+			  end, [{<<"Event-Timestamp">>, round(wh_util:current_tstamp())} | DefProp], Keys),
     ?LOG("sending successful registration"),
-    case whistle_api:reg_success(ApiProp) of
+    case wh_api:reg_success(ApiProp) of
 	{error, E} ->
             ?LOG("failed API message creation: ~p", [E]);
 	{ok, JSON} ->
@@ -306,7 +306,7 @@ get_originate_action(<<"transfer">>, Data) ->
     case wh_json:get_value(<<"Route">>, Data) of
 	undefined -> <<"error">>;
 	Route ->
-	    list_to_binary([ <<"transfer(">>, whistle_util:to_e164(Route), <<" XML context_2)">>])
+	    list_to_binary([ <<"transfer(">>, wh_util:to_e164(Route), <<" XML context_2)">>])
     end;
 get_originate_action(<<"bridge">>, Data) ->
     case ecallmgr_fs_xml:build_route(Data, wh_json:get_value(<<"Invite-Format">>, Data)) of

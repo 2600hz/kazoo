@@ -9,7 +9,8 @@
 -module(ecallmgr_util).
 
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
--export([eventstr_to_proplist/1, get_setting/1, get_setting/2]).
+-export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
+-export([is_during_transfer/1, is_during_transfer/2]).
 
 -include("ecallmgr.hrl").
 
@@ -62,11 +63,27 @@ custom_channel_vars(Prop) ->
 -spec eventstr_to_proplist/1 :: (EvtStr) -> proplist() when
       EvtStr :: string().
 eventstr_to_proplist(EvtStr) ->
-    [begin
-	 [K, V] = string:tokens(X, ": "),
-	 [{V1,[]}] = mochiweb_util:parse_qs(V),
-	 {whistle_util:to_binary(K), whistle_util:to_binary(V1)}
-     end || X <- string:tokens(whistle_util:to_list(EvtStr), "\n")].
+    [to_kv(X, ": ") || X <- string:tokens(wh_util:to_list(EvtStr), "\n")].
+
+-spec to_kv/2 :: (X, Separator) -> {binary(), binary()} when
+      X :: string(),
+      Separator :: string().
+to_kv(X, Separator) ->
+    [K, V] = string:tokens(X, Separator),
+    [{V1,[]}] = mochiweb_util:parse_qs(V),
+    {wh_util:to_binary(K), wh_util:to_binary(fix_value(K, V1))}.
+
+fix_value("Event-Date-Timestamp", TStamp) ->
+    wh_util:microseconds_to_seconds(wh_util:to_integer(TStamp));
+fix_value(_K, V) -> V.
+
+
+%% convert a raw FS list of vars  to a proplist
+%% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
+-spec varstr_to_proplist/1 :: (VarStr) -> proplist() when
+      VarStr :: string().
+varstr_to_proplist(VarStr) ->
+    [to_kv(X, "=") || X <- string:tokens(wh_util:to_list(VarStr), ",")].
 
 -spec get_setting/1 :: (Setting) -> {ok, term()} when
       Setting :: atom().
@@ -89,3 +106,27 @@ get_setting(Setting, Default) ->
                     {ok, Default}
             end
     end.
+
+-spec is_during_transfer/1 :: (Props) -> boolean() when
+      Props :: proplist().
+-spec is_during_transfer/2 :: (Props, Type) -> boolean() when
+      Props :: proplist(),
+      Type :: boolean;
+                              (Props, Type) -> list() when
+      Props :: proplist(),
+      Type :: list;
+                              (Props, Type) -> binary() when
+      Props :: proplist(),
+      Type :: binary.
+
+is_during_transfer(Props) ->
+    props:get_value(<<"variable_endpoint_disposition">>, Props) =:= <<"ATTENDED_TRANSFER">>
+        orelse props:get_value(<<"variable_endpoint_disposition">>, Props) =:= <<"BLIND_TRANSFER">>
+        orelse wh_util:is_true(props:get_value(<<"variable_was_transferred">>, Props)).
+
+is_during_transfer(Props, boolean) ->
+    is_during_transfer(Props);
+is_during_transfer(Props, list) ->
+    wh_util:to_list(is_during_transfer(Props));
+is_during_transfer(Props, binary) ->
+    wh_util:to_binary(is_during_transfer(Props)).

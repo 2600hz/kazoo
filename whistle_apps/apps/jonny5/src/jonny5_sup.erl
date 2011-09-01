@@ -11,7 +11,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, upgrade/0]).
+-export([start_link/0, upgrade/0, start_child/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -26,6 +26,9 @@
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+start_child(Module) ->
+    supervisor:start_child(?MODULE, ?CHILD(Module, worker)).
 
 %% @spec upgrade() -> ok
 %% @doc Add processes if necessary.
@@ -52,6 +55,6 @@ init([]) ->
 	   ,[
 	     ?CACHE(j5_cache)
 	     ,?CHILD(jonny5_acct_sup, supervisor)
-	     ,?CHILD(jonny5_acct, worker)
+	     ,?CHILD(jonny5_listener, worker)
 	    ]
 	 } }.

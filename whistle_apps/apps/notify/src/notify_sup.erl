@@ -10,7 +10,7 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 %% API
 -export([start_link/0]).
@@ -20,7 +20,9 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
--define(CHILDREN, [{notify_vm, worker}]).
+-define(CHILDREN, [{notify_vm, worker} %% does init work, then returns ignore
+		   ,{notify_listener, worker} %% amqp listener
+		  ]).
 
 %% ===================================================================
 %% API functions

@@ -45,7 +45,7 @@ parse([Line | Lines], Docs) ->
 			   ,{<<"rate_surcharge">>, <<"0.00">>, optional}
 			   ,{<<"rate_cost">>, RateCost}
 			   ,{<<"internal_cost">>, InternalCost}
-			   ,{<<"routes">>, [<<"^011", (whistle_util:to_binary(Prefix))/binary, "(\\d*)$">>, <<"^\\+", (whistle_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
+			   ,{<<"routes">>, [<<"^011", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>, <<"^\\+", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
 			   ,{<<"weight">>, (byte_size(Prefix) * 10), optional}
 			   ,{<<"iso_country_code">>, CountryCode}
 			   ,{<<"rate_name">>, Desc}

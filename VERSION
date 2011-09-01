@@ -1,0 +1,4 @@
+1.37.
+
+%% Only the first line is read and cached
+%% must be an Erlang term followed by a dot

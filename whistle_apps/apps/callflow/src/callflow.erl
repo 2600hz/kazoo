@@ -8,9 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(callflow).
 
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
--export([start/0, start_link/0, stop/0]).
+-export([start_link/0, stop/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -22,17 +22,6 @@
 start_link() ->
     start_deps(),
     callflow_sup:start_link().
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Starts the app
-%% @end
-%%--------------------------------------------------------------------
--spec start/0 :: () -> ok.
-start() ->
-    start_deps(),
-    application:start(callflow).
 
 %%--------------------------------------------------------------------
 %% @public

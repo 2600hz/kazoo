@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(notify).
 
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -author('James Aimonetti <james@2600hz.org>').
 -export([start/0, start_link/0, stop/0]).

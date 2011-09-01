@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [wait_for_unbridge/0, find_failure_branch/2]).
+-import(cf_call_command, [wait_for_callee_release/1, find_failure_branch/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -21,8 +21,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId
-                      ,ctrl_q=CtrlQ, amqp_q=AmqpQ, cf_pid=CFPid, owner_id=OwnerId, authorizing_id=AuthId}=Call) ->
+handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId, inception_during_transfer=IDT
+                      ,ctrl_q=CtrlQ, amqp_q=AmqpQ, cf_pid=CFPid, owner_id=OwnerId, authorizing_id=AuthId, channel_vars=CCV}=Call) ->
     put(callid, CallId),
     {CIDNum, CIDName}
         = cf_attributes:caller_id(wh_json:get_value(<<"caller_id_options">>, Data, <<"external">>), AuthId, OwnerId, Call),
@@ -38,14 +38,39 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId
                ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
                ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
                ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
-               | whistle_api:default_headers(AmqpQ, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = whistle_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wh_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     amqp_util:offnet_resource_publish(Payload),
     case wait_for_offnet_response(60000) of
         {ok, _} ->
-            wait_for_unbridge(),
-            CFPid ! { stop };
+            case wait_for_callee_release(Call) of
+                {fail, Reason} ->
+                    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+                    ?LOG("offnet request failed ~s:~s", [Cause, Code]),
+                    find_failure_branch({Cause, Code}, Call)
+                        orelse CFPid ! { continue };
+                {transfer, _} ->
+                    ?LOG("offnet request was transferred"),
+                    CFPid ! { transferred };
+                _ ->
+                    ?LOG("offnet request was unbridged"),
+                    CFPid ! { stop }
+            end;
+        {fail, Reason} when IDT ->
+            case wh_json:get_binary_value(<<"Transfer-Fallback">>, CCV) of
+                undefined ->
+                    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+                    ?LOG("offnet request during transfer failed ~s:~s", [Cause, Code]),
+                    find_failure_branch({Cause, Code}, Call)
+                        orelse CFPid ! { continue };
+                FallbackId ->
+                    Gen = [fun(J) -> wh_json:set_value(<<"module">>, <<"device">>, J) end
+                           ,fun(J) -> wh_json:set_value([<<"data">>, <<"id">>], FallbackId, J) end
+                           ,fun(J) -> wh_json:set_value([<<"children">>, <<"_">>], ?EMPTY_JSON_OBJECT, J) end],
+                    Flow = lists:foldr(fun(Fun, JObj) -> Fun(JObj) end, ?EMPTY_JSON_OBJECT, Gen),
+                    CFPid ! {branch, Flow}
+            end;
         {fail, Reason} ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
             ?LOG("offnet request failed ~s:~s", [Cause, Code]),

@@ -44,7 +44,7 @@ reconcile() ->
 reconcile(all) ->
     reconcile(all, undefined);
 reconcile(AccountId) when not is_binary(AccountId) ->
-    reconcile(whistle_util:to_binary(AccountId));
+    reconcile(wh_util:to_binary(AccountId));
 reconcile(AccountId) ->
     case couch_mgr:lookup_doc_rev(?TS_DB, AccountId) of
         {ok, _} ->
@@ -58,7 +58,7 @@ reconcile(all, _) ->
     reconcile_trunkstore(),
     done;
 reconcile(AccountId, TSAccount) when not is_binary(AccountId) ->
-    reconcile(whistle_util:to_binary(AccountId), TSAccount);
+    reconcile(wh_util:to_binary(AccountId), TSAccount);
 reconcile(AccountId, true) ->
     Numbers = get_trunkstore_account_numbers(AccountId),
     reconcile_account_route(whapps_util:get_db_name(AccountId, raw), Numbers),
@@ -155,7 +155,7 @@ get_callflow_account_numbers(AccountId) ->
             {struct, [{Num, ?EMPTY_JSON_OBJECT}
                       || Number <- Numbers
                              ,begin
-                                  Num = whistle_util:to_e164(wh_json:get_value(<<"key">>, Number)),
+                                  Num = wh_util:to_e164(wh_json:get_value(<<"key">>, Number)),
                                   is_binary(Num) andalso re:run(Num, <<"^\\+{0,1}1{0,1}(\\d{10})$">>) =/= nomatch
                               end]};
         {error, _} ->

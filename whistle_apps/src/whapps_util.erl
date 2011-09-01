@@ -17,7 +17,7 @@
 -export([get_event_type/1, put_callid/1]).
 -export([get_call_termination_reason/1]).
 
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
 -define(REPLICATE_ENCODING, encoded).
@@ -31,9 +31,11 @@
 %% the name of the account database
 %% @end
 %%--------------------------------------------------------------------
--spec(get_db_name/1 :: (AccountId :: list(binary()) | json_object() | binary()) -> binary()).
--spec(get_db_name/2 :: (AccountId :: list(binary()) | binary() | json_object(), Encoding :: unencoded | encoded | raw) -> binary()).
-
+-spec get_db_name/1 :: (AccountId) -> binary() when
+      AccountId :: [binary(),...] | json_object() | binary().
+-spec get_db_name/2 :: (AccountId, Encoding) -> binary() when
+      AccountId :: [binary(),...] | binary() | json_object(),
+      Encoding :: unencoded | encoded | raw.
 get_db_name(Doc) -> get_db_name(Doc, unencoded).
 
 get_db_name({struct, _}=Doc, Encoding) ->
@@ -41,7 +43,7 @@ get_db_name({struct, _}=Doc, Encoding) ->
 get_db_name([AccountId], Encoding) ->
     get_db_name(AccountId, Encoding);
 get_db_name(AccountId, Encoding) when not is_binary(AccountId) ->
-    get_db_name(whistle_util:to_binary(AccountId), Encoding);
+    get_db_name(wh_util:to_binary(AccountId), Encoding);
 get_db_name(<<"accounts">>, _) ->
     <<"accounts">>;
 %% unencode the account db name
@@ -50,16 +52,16 @@ get_db_name(<<"account/", _/binary>>=DbName, unencoded) ->
 get_db_name(<<"account%2F", _/binary>>=DbName, unencoded) ->
     binary:replace(DbName, <<"%2F">>, <<"/">>, [global]);
 get_db_name(AccountId, unencoded) ->
-    [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(AccountId),
-    whistle_util:to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
+    [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
+    wh_util:to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
 %% encode the account db name
 get_db_name(<<"account%2F", _/binary>>=DbName, encoded) ->
     DbName;
 get_db_name(<<"account/", _/binary>>=DbName, encoded) ->
     binary:replace(DbName, <<"/">>, <<"%2F">>, [global]);
 get_db_name(AccountId, encoded) when is_binary(AccountId) ->
-    [Id1, Id2, Id3, Id4 | IdRest] = whistle_util:to_list(AccountId),
-    whistle_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
+    [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
+    wh_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
 %% get just the account ID from the account db name
 get_db_name(<<"account%2F", AccountId/binary>>, raw) ->
     binary:replace(AccountId, <<"%2F">>, <<>>, [global]);
@@ -76,9 +78,11 @@ get_db_name(AccountId, raw) ->
 %% @spec update_all_accounts() -> ok | error
 %% @end
 %%--------------------------------------------------------------------
--spec(update_all_accounts/1 :: (File :: binary()) -> no_return()).
+-spec update_all_accounts/1 :: (File) -> no_return() when
+      File :: binary().
 update_all_accounts(File) ->
     lists:foreach(fun(AccountDb) ->
+                          timer:sleep(2000),
                           couch_mgr:revise_doc_from_file(AccountDb, crossbar, File)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
@@ -89,9 +93,11 @@ update_all_accounts(File) ->
 %% application priv/couchdb/views/ folder into every account
 %% @end
 %%--------------------------------------------------------------------
--spec(revise_whapp_views_in_accounts/1 :: (App :: atom()) -> no_return()).
+-spec revise_whapp_views_in_accounts/1 :: (App) -> no_return() when
+      App :: atom().
 revise_whapp_views_in_accounts(App) ->
     lists:foreach(fun(AccountDb) ->
+                          timer:sleep(2000),
                           couch_mgr:revise_views_from_folder(AccountDb, App)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
@@ -102,16 +108,13 @@ revise_whapp_views_in_accounts(App) ->
 %% account db into the target database
 %% @end
 %%--------------------------------------------------------------------
--spec(replicate_from_accounts/2 :: (TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
+-spec replicate_from_accounts/2 :: (TargetDb, FilterDoc) -> no_return() when
+      TargetDb :: binary(),
+      FilterDoc :: binary().
 replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
-    BaseReplicate = [{<<"target">>, TargetDb}
-                     ,{<<"filter">>, FilterDoc}
-                    ],
-    couch_mgr:db_create(TargetDb),
-    lists:foreach(fun(AccountDb) when TargetDb =/= AccountDb ->
-                          R = couch_mgr:db_replicate([{<<"source">>, AccountDb} | BaseReplicate]),
-                          ?LOG_SYS("replicate ~s to ~s using filter ~s returned ~s", [AccountDb, TargetDb, FilterDoc, element(1, R)]);
-		     (_) -> ok
+    lists:foreach(fun(AccountDb) ->
+                          timer:sleep(2000),
+                          replicate_from_account(AccountDb, TargetDb, FilterDoc)
                   end, get_all_accounts(?REPLICATE_ENCODING)).
 
 %%--------------------------------------------------------------------
@@ -121,20 +124,30 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
 %% source database into the target database
 %% @end
 %%--------------------------------------------------------------------
--spec(replicate_from_account/3 :: (AccountDb :: binary(), TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
-replicate_from_account(AccountDb, TargetDb, FilterDoc) when AccountDb =/= TargetDb ->
-    BaseReplicate = [{<<"source">>, get_db_name(AccountDb, ?REPLICATE_ENCODING)}
-                     ,{<<"target">>, TargetDb}
-                     ,{<<"filter">>, FilterDoc}
-                    ],
-    couch_mgr:db_create(TargetDb),
-    ?LOG_SYS("replicate ~s to ~s using filter ~s", [get_db_name(AccountDb, ?REPLICATE_ENCODING), TargetDb, FilterDoc]),
-    case couch_mgr:db_replicate(BaseReplicate) of
-	{ok, _}=OK -> ?LOG_SYS("replication succeeded"), OK;
-	{error, E}=Err -> ?LOG_SYS("replication failed with ~p", [E]), Err
-    end;
-replicate_from_account(_,_,_) -> {error, matching_dbs}.
-
+-spec replicate_from_account/3 :: (AccountDb, TargetDb, FilterDoc) -> no_return() when
+      AccountDb :: binary(),
+      TargetDb :: binary(),
+      FilterDoc :: binary().
+replicate_from_account(AccountDb, AccountDb, _) ->
+    ?LOG_SYS("requested to replicate from db ~s to self, skipping", [AccountDb]),
+    {error, matching_dbs};
+replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
+    ReplicateProps = [{<<"source">>, get_db_name(AccountDb, ?REPLICATE_ENCODING)}
+                      ,{<<"target">>, TargetDb}
+                      ,{<<"filter">>, FilterDoc}
+                      ,{<<"create_target">>, true}
+                     ],
+    try
+        case couch_mgr:db_replicate(ReplicateProps) of
+            {ok, _} ->
+                ?LOG_SYS("replicate ~s to ~s using filter ~s succeeded", [AccountDb, TargetDb, FilterDoc]);
+            {error, _} ->
+                ?LOG_SYS("replicate ~s to ~s using filter ~s failed", [AccountDb, TargetDb, FilterDoc])
+        end
+    catch
+        _:_ ->
+            ?LOG_SYS("replicate ~s to ~s using filter ~s error", [AccountDb, TargetDb, FilterDoc])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -162,10 +175,11 @@ get_all_accounts(Encoding) ->
 %% @doc Realms are one->one with accounts.
 %% @end
 %%--------------------------------------------------------------------
--spec(get_account_by_realm/1 :: (Realm :: binary()) -> tuple(ok, binary()) | tuple(error, not_found)).
+-spec get_account_by_realm/1 :: (Realm) -> {ok, binary()}| {error, not_found} when
+      Realm :: binary().
 get_account_by_realm(Realm) ->
     case couch_mgr:get_results(?AGG_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
-	{ok, [{struct, _}=V]} ->
+	{ok, [{struct, _}=V|_]} ->
 	    {ok, wh_json:get_value([<<"value">>, <<"account_db">>], V)};
 	_ -> {error, not_found}
     end.
@@ -177,7 +191,8 @@ get_account_by_realm(Realm) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec(get_event_type/1 :: (JObj :: json_object()) -> tuple(binary(), binary())).
+-spec get_event_type/1 :: (JObj) -> {binary(), binary()} when
+      JObj :: json_object().
 get_event_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
 
@@ -188,7 +203,8 @@ get_event_type(JObj) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec(put_callid/1 :: (JObj :: json_object()) -> no_return()).
+-spec put_callid/1 :: (JObj) -> no_return() when
+      JObj :: json_object().
 put_callid(JObj) ->
     _ = put(callid, wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
 
@@ -199,7 +215,8 @@ put_callid(JObj) ->
 %% this returns the cause and code for the call termination
 %% @end
 %%--------------------------------------------------------------------
--spec(get_call_termination_reason/1 :: (JObj :: json_object()) -> {binary(), binary()}).
+-spec get_call_termination_reason/1 :: (JObj) -> {binary(), binary()} when
+      JObj :: json_object().
 get_call_termination_reason(JObj) ->
     Cause = case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
                <<>> ->

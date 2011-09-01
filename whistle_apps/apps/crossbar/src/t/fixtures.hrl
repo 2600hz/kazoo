@@ -6,5 +6,5 @@
 			 ]).
 
 -define(ACCT_JOBJ, {struct, [{<<"name">>, <<"fixtures account">>}
-			     ,{<<"realm">>, whistle_util:to_binary(net_adm:localhost())}
+			     ,{<<"realm">>, wh_util:to_binary(net_adm:localhost())}
 			    ]}).

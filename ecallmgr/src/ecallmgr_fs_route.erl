@@ -191,7 +191,7 @@ handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
 handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
     ActiveLUs = [ [{fs_route_id, ID}, {started, Started}] || {_, ID, Started} <- LUs],
     Resp = [{active_lookups, ActiveLUs}
-	    ,{amqp_host, amqp_manager:get_host()}
+	    ,{amqp_host, amqp_mgr:get_host()}
 	    | ecallmgr_diagnostics:get_diagnostics(Stats) ],
     Pid ! Resp,
     {noreply, State};
@@ -263,13 +263,14 @@ process_route_req(Node, FSID, CallID, FSData) ->
 	       ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
 	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
 	       ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
+               ,{<<"During-Transfer">>, ecallmgr_util:is_during_transfer(FSData, binary)}
 	       ,{<<"Call-ID">>, CallID}
 	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
-	       | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
+	       | wh_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
     %% Server-ID will be over-written by the pool worker
 
     {ok, AuthZEnabled} = ecallmgr_util:get_setting(authz_enabled, true),
-    case whistle_util:is_true(AuthZEnabled) of
+    case wh_util:is_true(AuthZEnabled) of
 	true -> authorize_and_route(Node, FSID, CallID, FSData, DefProp);
 	false -> route(Node, FSID, CallID, DefProp, undefined)
     end.
@@ -306,7 +307,7 @@ route(Node, FSID, CallID, DefProp, AuthZPid) ->
       RouteCCV :: json_object().
 authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->
     ?LOG("No authz available, validating route_resp"),
-    true = whistle_api:route_resp_v(RespJObj),
+    true = wh_api:route_resp_v(RespJObj),
     reply(Node, FSID, CallID, RespJObj, RouteCCV);
 authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
     ?LOG("Checking authz_resp"),
@@ -316,7 +317,7 @@ authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
 	    reply_forbidden(Node, FSID);
 	{true, {struct, CCV}} ->
 	    ?LOG("Authz is true"),
-	    true = whistle_api:route_resp_v(RespJObj),
+	    true = wh_api:route_resp_v(RespJObj),
 	    ?LOG("Valid route resp"),
 	    RouteCCV1 = lists:foldl(fun({K,V}, RouteCCV0) -> wh_json:set_value(K, V, RouteCCV0) end, RouteCCV, CCV),
 
@@ -378,7 +379,7 @@ start_control_and_events(Node, CallID, SendTo, CCVs) ->
 		   ,{<<"Call-ID">>, CallID}
 		   ,{<<"Control-Queue">>, CtlQ}
                    ,{<<"Custom-Channel-Vars">>, CCVs}
-		   | whistle_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
+		   | wh_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
 	send_control_queue(SendTo, CtlProp)
     catch
 	_:Reason ->
@@ -390,7 +391,7 @@ start_control_and_events(Node, CallID, SendTo, CCVs) ->
       SendTo :: binary(),
       CtlProp :: proplist().
 send_control_queue(SendTo, CtlProp) ->
-    case whistle_api:route_win(CtlProp) of
+    case wh_api:route_win(CtlProp) of
 	{ok, JSON} ->
 	    ?LOG_END("sending route_win to ~s", [SendTo]),
 	    amqp_util:targeted_publish(SendTo, JSON, <<"application/json">>);

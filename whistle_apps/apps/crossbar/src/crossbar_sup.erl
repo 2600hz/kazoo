@@ -1,12 +1,16 @@
+%%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010 James Aimonetti
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% 
+%%%
 %%% @end
-%%% Created :  Tue, 07 Dec 2010 19:26:22 GMT: James Aimonetti <james@2600hz.org>
+%%% Created :  7 Dec 2010 by James Aimonetti <james@2600hz.org>
+%%%-------------------------------------------------------------------
 -module(crossbar_sup).
 
 -behaviour(supervisor).
+
+-include_lib("whistle/include/wh_types.hrl").
 
 %% API
 -export([start_link/0, upgrade/0]).
@@ -25,11 +29,22 @@
 %% API functions
 %% ===================================================================
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the supervisor
+%% @end
+%%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-%% @spec upgrade() -> ok
-%% @doc Add processes if necessary.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec upgrade/0 :: () -> ok.
 upgrade() ->
     {ok, {_, Specs}} = init([]),
 
@@ -48,6 +63,17 @@ upgrade() ->
 %% Supervisor callbacks
 %% ===================================================================
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%% this function is called by the new process to find out about
+%% restart strategy, maximum restart frequency and child
+%% specifications.
+%% @end
+%%--------------------------------------------------------------------
+-spec init(Args) -> sup_init_ret() when
+      Args :: [].
 init([]) ->
     {ok, Dispatch} = file:consult(?DISPATCH_FILE),
 
@@ -76,11 +102,9 @@ init([]) ->
     Web = ?CHILD(webmachine_mochiweb, worker, WebConfig),
     ModuleSup = ?CHILD(crossbar_module_sup, supervisor),
     BindingServer = ?CHILD(crossbar_bindings, worker),
-    SessionServer = ?CHILD(crossbar_session, worker),
     Processes = [
 		 Web
 		 ,BindingServer
-		 ,SessionServer
 		 ,ModuleSup
 		], %% Put list of ?CHILD(crossbar_server, worker) or ?CHILD(crossbar_other_sup, supervisor)
     {ok, { {one_for_one, 10, 10}, Processes} }.

@@ -25,7 +25,7 @@ start_link() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}
 	   ,[
-	     ?CHILD(amqp_manager, worker)
+	     ?CHILD(amqp_mgr, worker)
 	     ,?CHILD(amqp_host_sup, supervisor)
 	    ]
 	 }

@@ -26,6 +26,7 @@
 -export([revise_docs_from_folder/3, revise_views_from_folder/2, ensure_saved/2]).
 
 -export([all_docs/1, all_design_docs/1, admin_all_docs/1]).
+-export([all_docs/2, all_design_docs/2, admin_all_docs/2]).
 
 %% attachments
 -export([fetch_attachment/3, put_attachment/4, put_attachment/5, delete_attachment/3, delete_attachment/4]).
@@ -69,7 +70,7 @@
       App :: atom(),
       File :: list() | binary().
 load_doc_from_file(DbName, App, File) ->
-    Path = list_to_binary([code:priv_dir(App), "/couchdb/", whistle_util:to_list(File)]),
+    Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
     ?LOG_SYS("Read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
@@ -166,13 +167,23 @@ revise_docs_from_folder(DbName, App, Folder) ->
 do_revise_docs_from_folder(_, []) ->
     ok;
 do_revise_docs_from_folder(DbName, [H|T]) ->
-    {ok, Bin} = file:read_file(H),
-    case ?MODULE:ensure_saved(DbName, mochijson2:decode(Bin)) of
-        {ok, _} ->
-            ?LOG_SYS("loaded view ~s into ~s", [H, DbName]),
-            do_revise_docs_from_folder(DbName, T);
-        {error, Reason} ->
-            ?LOG_SYS("failed to load view ~s into ~s, ~w", [H, DbName, Reason]),
+    try
+        {ok, Bin} = file:read_file(H),
+        JObj = mochijson2:decode(Bin),
+        timer:sleep(250),
+        case lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)) of
+            {ok, Rev} ->
+                ?LOG_SYS("update doc from file ~s in ~s", [H, DbName]),
+                save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj));
+            {error, not_found} ->
+                ?LOG_SYS("import doc from file ~s in ~s", [H, DbName]),
+                save_doc(DbName, JObj);
+            {error, Reason} ->
+                ?LOG_SYS("failed to load doc ~s into ~s, ~p", [H, DbName, Reason])
+        end,
+        do_revise_docs_from_folder(DbName, T)
+    catch
+        _:_ ->
             do_revise_docs_from_folder(DbName, T)
     end.
 
@@ -367,14 +378,31 @@ open_doc(DbName, DocId, Options) ->
 -spec admin_all_docs/1 :: (DbName) -> {ok, json_objects()} | {error, atom()} when
       DbName :: binary().
 all_docs(DbName) ->
-    couch_util:all_docs(get_conn(), DbName).
+    couch_util:all_docs(get_conn(), DbName, []).
 admin_all_docs(DbName) ->
-    couch_util:all_docs(get_admin_conn(), DbName).
+    couch_util:all_docs(get_admin_conn(), DbName, []).
+
+-spec all_docs/2 :: (DbName, Options) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary(),
+      Options :: proplist().
+-spec admin_all_docs/2 :: (DbName, Options) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary(),
+      Options :: proplist().
+all_docs(DbName, Options) ->
+    couch_util:all_docs(get_conn(), DbName, Options).
+admin_all_docs(DbName, Options) ->
+    couch_util:all_docs(get_admin_conn(), DbName, Options).
 
 -spec all_design_docs/1 :: (DbName) -> {ok, json_objects()} | {error, atom()} when
       DbName :: binary().
 all_design_docs(DbName) ->
-    couch_util:all_design_docs(get_conn(), DbName).
+    couch_util:all_design_docs(get_conn(), DbName, []).
+
+-spec all_design_docs/2 :: (DbName, Options) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary(),
+      Options :: proplist().
+all_design_docs(DbName, Options) ->
+    couch_util:all_design_docs(get_conn(), DbName, Options).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -442,7 +470,7 @@ save_docs(DbName, Docs, Opts) ->
 %%--------------------------------------------------------------------
 -spec del_doc/2 :: (DbName, Doc) -> {ok, json_object()} | {error, atom()} when
       DbName :: binary(),
-      Doc :: json_object().
+      Doc :: json_object() | binary().
 del_doc(DbName, Doc) ->
     couch_util:del_doc(get_conn(), DbName, Doc).
 
@@ -611,30 +639,30 @@ set_node_cookie(Cookie) when is_atom(Cookie) ->
 
 -spec get_url/0 :: () -> binary().
 get_url() ->
-    case {whistle_util:to_binary(get_host()), get_creds(), get_port()} of
+    case {wh_util:to_binary(get_host()), get_creds(), get_port()} of
         {<<"">>, _, _} ->
             undefined;
         {H, {[], []}, P} ->
-            <<"http://", H/binary, ":", (whistle_util:to_binary(P))/binary, $/>>;
+            <<"http://", H/binary, ":", (wh_util:to_binary(P))/binary, $/>>;
         {H, {User, Pwd}, P} ->
             <<"http://"
-              ,(whistle_util:to_binary(User))/binary, $: ,(whistle_util:to_binary(Pwd))/binary
+              ,(wh_util:to_binary(User))/binary, $: ,(wh_util:to_binary(Pwd))/binary
               ,$@, H/binary
-              ,":", (whistle_util:to_binary(P))/binary, $/>>
+              ,":", (wh_util:to_binary(P))/binary, $/>>
     end.
 
 -spec(get_admin_url/0 :: () -> binary()).
 get_admin_url() ->
-    case {whistle_util:to_binary(get_host()), get_creds(), get_admin_port()} of
+    case {wh_util:to_binary(get_host()), get_creds(), get_admin_port()} of
         {<<"">>, _, _} ->
             undefined;
         {H, {[], []}, P} ->
-            <<"http://", H/binary, ":", (whistle_util:to_binary(P))/binary, $/>>;
+            <<"http://", H/binary, ":", (wh_util:to_binary(P))/binary, $/>>;
         {H, {User, Pwd}, P} ->
             <<"http://"
-              ,(whistle_util:to_binary(User))/binary, $: ,(whistle_util:to_binary(Pwd))/binary
+              ,(wh_util:to_binary(User))/binary, $: ,(wh_util:to_binary(Pwd))/binary
               ,$@, H/binary
-              ,":", (whistle_util:to_binary(P))/binary, $/>>
+              ,":", (wh_util:to_binary(P))/binary, $/>>
     end.
 
 -spec get_cache_pid/0 :: () -> pid() | undefined.
@@ -643,15 +671,15 @@ get_cache_pid() ->
 
 add_change_handler(DBName, DocID) ->
     ?LOG_SYS("Add change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
-    gen_server:cast(?SERVER, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), self()}).
+    gen_server:cast(?SERVER, {add_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID), self()}).
 
 add_change_handler(DBName, DocID, Pid) ->
     ?LOG_SYS("Add change handler for Pid: ~p for DB: ~s and Doc: ~s", [Pid, DBName, DocID]),
-    gen_server:cast(?SERVER, {add_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID), Pid}).
+    gen_server:cast(?SERVER, {add_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID), Pid}).
 
 rm_change_handler(DBName, DocID) ->
     ?LOG_SYS("RM change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
-    gen_server:call(?SERVER, {rm_change_handler, whistle_util:to_binary(DBName), whistle_util:to_binary(DocID)}).
+    gen_server:call(?SERVER, {rm_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID)}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -840,8 +868,8 @@ init_state() ->
 								   {couch_host,H,Port,U,Pass} -> {ok, H, Port, U, Pass, ?DEFAULT_ADMIN_PORT};
 								   {couch_host,H,Port,U,Pass,AdminP} -> {ok, H, Port, U, Pass, AdminP}
 							       end,
-	    Conn = couch_util:get_new_connection(Host, whistle_util:to_integer(NormalPort), User, Password),
-	    AdminConn = couch_util:get_new_connection(Host, whistle_util:to_integer(AdminPort), User, Password),
+	    Conn = couch_util:get_new_connection(Host, wh_util:to_integer(NormalPort), User, Password),
+	    AdminConn = couch_util:get_new_connection(Host, wh_util:to_integer(AdminPort), User, Password),
 
 	    Cookie = case lists:keyfind(bigcouch_cookie, 1, Ts) of
 			 false -> monster;
@@ -851,7 +879,7 @@ init_state() ->
 
 	    #state{connection=Conn
 		   ,admin_connection=AdminConn
-		   ,host={Host, whistle_util:to_integer(NormalPort), whistle_util:to_integer(AdminPort)}
+		   ,host={Host, wh_util:to_integer(NormalPort), wh_util:to_integer(AdminPort)}
 		   ,creds={User, Password}
 		   ,cache=Pid
 		  };

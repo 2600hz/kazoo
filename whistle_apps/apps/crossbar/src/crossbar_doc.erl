@@ -9,7 +9,7 @@
 -module(crossbar_doc).
 
 -export([load/2, load_from_file/2, load_merge/3, load_view/3, load_view/4, load_attachment/3]).
--export([save/1, delete/1, save_attachment/4, save_attachment/5, delete_attachment/3]).
+-export([save/1, delete/1, delete/2, save_attachment/4, save_attachment/5, delete_attachment/3]).
 -export([public_fields/1, private_fields/1, is_private_key/1]).
 -export([rev_to_etag/1, current_doc_vsn/0]).
 
@@ -55,7 +55,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
             crossbar_util:response_bad_identifier(DocId, Context);
 	{ok, Doc} ->
 	    ?LOG("loaded doc ~s from ~s", [DocId, DB]),
-            case whistle_util:is_true(wh_json:get_value(<<"pvt_deleted">>, Doc)) of
+            case wh_util:is_true(wh_json:get_value(<<"pvt_deleted">>, Doc)) of
                 true ->
                     crossbar_util:response_bad_identifier(DocId, Context);
                 false ->
@@ -231,6 +231,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
 	    crossbar_util:response_conflicting_docs(Context);
 	{ok, JObj1} when Verb =:= <<"put">> ->
 	    ?LOG("Saved a put request, setting location headers"),
+	    send_amqp_event(JObj1, <<"created">>),
             Context#cb_context{
                  doc=JObj1
                 ,resp_status=success
@@ -240,6 +241,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
             };
 	{ok, JObj2} ->
 	    ?LOG("Saved json doc"),
+	    send_amqp_event(JObj2, <<"edited">>),
             Context#cb_context{
                  doc=JObj2
                 ,resp_status=success
@@ -251,6 +253,25 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
             Context
     end.
 
+-spec send_amqp_event/2 :: (Doc, Type) -> 'ok' when
+      Doc :: json_object(),
+      Type :: binary().%<<"created">> | <<"edited">> | <<"deleted">>.
+send_amqp_event(Doc, Type) ->
+    JObj = {struct, [{<<"ID">>, wh_json:get_value(<<"_id">>, Doc)}
+		      ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
+		      ,{<<"Type">>, wh_json:get_value(<<"pvt_type">>, Doc)}
+		      ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
+		      ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
+		      ,{<<"Event-Type">>, Type}
+		      ,{<<"Date-Modified">>, wh_json:get_value(<<"pvt_created">>, Doc)}
+		      ,{<<"Date-Created">>, wh_json:get_value(<<"pvt_modified">>, Doc)}
+		      ,{<<"Version">>, wh_json:get_value(<<"pvt_vsn">>, Doc)}
+		      ,{<<"Custom-Fields">>, public_fields(Doc)}
+			| wh_api:default_headers(<<>>, <<"crossbar">>, <<"document_event">>, ?APP_NAME, ?APP_VSN)
+		     ]},
+    ?LOG("Publishing configuration event for ID: ~p, type: ~p", [wh_json:get_value(<<"ID">>, JObj), Type]),
+    {ok, Payload} = cb_api:new_document_event(JObj),
+    amqp_util:configuration_publish(?DOCUMENT_EVENT, Payload, <<"application/json">>).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -313,7 +334,12 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(delete/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec delete/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
+-spec delete/2 :: (Context, Switch) -> #cb_context{} when
+      Context :: #cb_context{},
+      Switch :: permanent.
+
 delete(#cb_context{db_name = <<>>, doc=JObj}=Context) ->
     ?LOG("deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
     crossbar_util:response_db_missing(Context);
@@ -326,6 +352,7 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
             crossbar_util:response_datastore_timeout(Context);
 	{ok, _Doc} ->
 	    ?LOG("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
+	    send_amqp_event(JObj1, <<"deleted">>),
             Context#cb_context{
 	       doc = ?EMPTY_JSON_OBJECT
 	      ,resp_status=success
@@ -333,6 +360,26 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
 	     };
         _Else ->
 	    ?LOG("deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
+            Context
+    end.
+
+delete(#cb_context{db_name = <<>>, doc=JObj}=Context, permanent) ->
+    ?LOG("permanent deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
+    crossbar_util:response_db_missing(Context);
+delete(#cb_context{db_name=DB, doc=JObj}=Context, permanent) ->
+    case couch_mgr:del_doc(DB, JObj) of
+        {error, db_not_reachable} ->
+	    ?LOG("permanent deleting ~s from ~s failed, db not reachable", [wh_json:get_value(<<"_id">>, JObj), DB]),
+            crossbar_util:response_datastore_timeout(Context);
+	{ok, _Doc} ->
+	    ?LOG("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
+            Context#cb_context{
+	       doc = ?EMPTY_JSON_OBJECT
+	      ,resp_status=success
+	      ,resp_data=[]
+	     };
+        _Else ->
+	    ?LOG("permanently deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
             Context
     end.
 
@@ -439,7 +486,7 @@ rev_to_etag({struct, Props}) ->
     end;
 rev_to_etag([]) -> undefined;
 rev_to_etag(Rev) when is_binary(Rev) ->
-    rev_to_etag(whistle_util:to_list(Rev));
+    rev_to_etag(wh_util:to_list(Rev));
 rev_to_etag(ETag) when is_list(ETag) ->
     ?LOG("Etag in rev to etag: ~p", [ETag]),
     string:sub_string(ETag, 1, 2) ++ string:sub_string(ETag, 4);
@@ -459,7 +506,12 @@ update_pvt_parameters(JObj0, #cb_context{db_name=DBName}) ->
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName) end, JObj0, ?PVT_FUNS).
 
 add_pvt_vsn(JObj, _) ->
-    wh_json:set_value(<<"pvt_vsn">>, ?CROSSBAR_DOC_VSN, JObj).
+    case wh_json:get_value(<<"pvt_vsn">>, JObj) of
+        undefined ->
+            wh_json:set_value(<<"pvt_vsn">>, ?CROSSBAR_DOC_VSN, JObj);
+        _ ->
+            JObj
+    end.
 
 add_pvt_account_db(JObj, DBName) ->
     wh_json:set_value(<<"pvt_account_db">>, DBName, JObj).
@@ -489,10 +541,10 @@ add_pvt_modified(JObj, _) ->
 %%--------------------------------------------------------------------
 -spec(view_name_to_binary/1 :: (View :: tuple(binary() | string(), binary() | string()) | binary() | string()) -> binary()).
 view_name_to_binary({Cat, View}) ->
-    <<(whistle_util:to_binary(Cat))/binary, "/", (whistle_util:to_binary(View))/binary>>;
+    <<(wh_util:to_binary(Cat))/binary, "/", (wh_util:to_binary(View))/binary>>;
 view_name_to_binary(View) when is_binary(View) ->
     View;
 view_name_to_binary(View) ->
-    whistle_util:to_binary(View).
+    wh_util:to_binary(View).
 
 %% ADD Unit Tests for private/public field filtering and merging

@@ -1,4 +1,3 @@
-
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
@@ -16,9 +15,6 @@
 -define(FOLDER_NEW, <<"new">>).
 -define(FOLDER_SAVED, <<"saved">>).
 -define(FOLDER_DELETED, <<"deleted">>).
-
--define(UNAVAILABLE_GREETING, <<"unavailable_greeting.mp3">>).
--define(NAME_RECORDING, <<"name_recording.mp3">>).
 
 -import(cf_call_command, [answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
                           ,b_store/3, b_play_and_collect_digits/5, b_play_and_collect_digit/2
@@ -103,8 +99,7 @@
          }).
 
 -record(mailbox, {
-           has_unavailable_greeting = false :: boolean()
-          ,mailbox_id = undefined :: undefined | binary()
+           mailbox_id = undefined :: undefined | binary()
           ,mailbox_number = <<>> :: binary()
           ,exists = false :: boolean()
           ,skip_instructions = false :: boolean()
@@ -212,7 +207,7 @@ find_mailbox(#mailbox{prompts=#prompts{enter_mailbox=EnterBox, enter_password=En
              ,#cf_call{account_db=Db}=Call, Loop) ->
     ?LOG("requesting mailbox number to check"),
     {ok, Mailbox} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterBox, <<"1">>, Call),
-    BoxNum = try whistle_util:to_integer(Mailbox) catch _:_ -> 0 end,
+    BoxNum = try wh_util:to_integer(Mailbox) catch _:_ -> 0 end,
 
     %% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
     %% caller is the owner, and the pin is not required then we skip requesting the pin
@@ -427,33 +422,33 @@ message_count_prompts(1, 1, #prompts{you_have=YouHave, new_and=NewAnd, saved_mes
     ];
 message_count_prompts(New, 0, #prompts{you_have=YouHave, new_messages=NewMessages}) ->
     [{play, YouHave}
-     ,{say, whistle_util:to_binary(New), <<"number">>}
+     ,{say, wh_util:to_binary(New), <<"number">>}
      ,{play, NewMessages}
     ];
 message_count_prompts(New, 1, #prompts{you_have=YouHave, new_and=NewAnd, saved_message=SavedMessage}) ->
     [{play, YouHave}
-     ,{say, whistle_util:to_binary(New), <<"number">>}
+     ,{say, wh_util:to_binary(New), <<"number">>}
      ,{play, NewAnd}
      ,{say, <<"1">>}
      ,{play, SavedMessage}
     ];
 message_count_prompts(0, Saved, #prompts{you_have=YouHave, saved_messages=SavedMessages}) ->
     [{play, YouHave}
-     ,{say, whistle_util:to_binary(Saved), <<"number">>}
+     ,{say, wh_util:to_binary(Saved), <<"number">>}
      ,{play, SavedMessages}
     ];
 message_count_prompts(1, Saved, #prompts{you_have=YouHave, new_and=NewAnd, saved_messages=SavedMessages}) ->
     [{play, YouHave}
      ,{say, <<"1">>}
      ,{play, NewAnd}
-     ,{say, whistle_util:to_binary(Saved), <<"number">>}
+     ,{say, wh_util:to_binary(Saved), <<"number">>}
      ,{play, SavedMessages}
     ];
 message_count_prompts(New, Saved, #prompts{you_have=YouHave, new_and=NewAnd, saved_messages=SavedMessages}) ->
     [{play, YouHave}
-     ,{say, whistle_util:to_binary(New), <<"number">>}
+     ,{say, wh_util:to_binary(New), <<"number">>}
      ,{play, NewAnd}
-     ,{say, whistle_util:to_binary(Saved), <<"number">>}
+     ,{say, wh_util:to_binary(Saved), <<"number">>}
      ,{play, SavedMessages}
     ].
 
@@ -477,7 +472,7 @@ play_messages([{struct, _}=H|T]=Messages, Count, #mailbox{timezone=Timezone
     ?LOG("reviewing mailbox message"),
     Message = get_message(H, Call),
     Prompt = [{play, MsgNum}
-              ,{say, whistle_util:to_binary(Count - length(Messages) + 1), <<"number">>}
+              ,{say, wh_util:to_binary(Count - length(Messages) + 1), <<"number">>}
               ,{play, Message}
               ,{play, Received}
               ,{say,  get_unix_epoch(wh_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
@@ -501,7 +496,7 @@ play_messages([{struct, _}=H|T]=Messages, Count, #mailbox{timezone=Timezone
         {error, _} ->
             ok
     end;
-play_messages(_, _, _, _) ->
+play_messages([], _, _, _) ->
     ok.
 
 %%--------------------------------------------------------------------
@@ -591,12 +586,12 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName
       Call :: #cf_call{}.
 record_unavailable_greeting(RecordingName, #mailbox{unavailable_media_id=undefined}=Box, Call) ->
     MediaId = recording_media_doc(<<"unavailable greeting">>, Box, Call),
-    ok = update_doc(<<"unavailable_media_id">>, MediaId, Box, Call),
+    ok = update_doc([<<"media">>, <<"unavailable">>], MediaId, Box, Call),
     record_unavailable_greeting(RecordingName, Box#mailbox{unavailable_media_id=MediaId}, Call);
 record_unavailable_greeting(RecordingName, #mailbox{prompts=#prompts{record_unavail_greeting=RecordUnavailGreeting
                                                                      ,tone_spec=ToneSpec, saved=Saved, deleted=Deleted}
                                                    ,unavailable_media_id=MediaId}=Box, Call) ->
-    ?LOG("recoding unavailable greeting"),
+    ?LOG("recording unavailable greeting"),
     audio_macro([{play, RecordUnavailGreeting}
                  ,{tones, ToneSpec}]
                 ,Call),
@@ -625,7 +620,7 @@ record_unavailable_greeting(RecordingName, #mailbox{prompts=#prompts{record_unav
       Call :: #cf_call{}.
 record_name(RecordingName, #mailbox{name_media_id=undefined}=Box, Call) ->
     MediaId = recording_media_doc(<<"users name">>, Box, Call),
-    ok = update_doc(<<"name_media_id">>, MediaId, Box, Call),
+    ok = update_doc([<<"media">>, <<"name">>], MediaId, Box, Call),
     record_name(RecordingName, Box#mailbox{name_media_id=MediaId}, Call);
 record_name(RecordingName, #mailbox{prompts=#prompts{record_name=RecordName, tone_spec=ToneSpec
                                                  ,saved=Saved, deleted=Deleted}
@@ -718,7 +713,7 @@ new_message(RecordingName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, 
 				       ,{<<"Caller-ID-Name">>, CIDName}
 				       ,{<<"Caller-ID-Number">>, CIDNumber}
 				       ,{<<"Voicemail-Timestamp">>, Tstamp}
-				       | whistle_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
+				       | wh_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
 				      ]),
     ?LOG("new voicemail message ~s whistle API broadcast", [MediaId]),
     amqp_util:callevt_publish(CallID, JSON, ?NOTIFY_VOICEMAIL_NEW),
@@ -769,8 +764,6 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                          wh_json:is_true(<<"skip_instructions">>, JObj, Default#mailbox.skip_instructions)
                      ,skip_greeting =
                          wh_json:is_true(<<"skip_greeting">>, JObj, Default#mailbox.skip_greeting)
-                     ,has_unavailable_greeting =
-                         wh_json:get_value([<<"_attachments">>, ?UNAVAILABLE_GREETING], JObj) =/= undefined
                      ,pin =
                          wh_json:get_binary_value(<<"pin">>, JObj, <<>>)
                      ,timezone =
@@ -778,13 +771,13 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                      ,mailbox_number =
                          wh_json:get_binary_value(<<"mailbox">>, JObj, ReqUser)
                      ,require_pin =
-                         wh_json:get_binary_value(<<"require_pin">>, JObj, false)
+                         wh_json:is_true(<<"require_pin">>, JObj)
                      ,check_if_owner =
                          wh_json:is_true(<<"check_if_owner">>, JObj, CheckIfOwner)
                      ,unavailable_media_id =
-                         wh_json:get_value(<<"unavailable_media_id">>, JObj)
+                         wh_json:get_value([<<"media">>, <<"unavailable">>], JObj)
                      ,name_media_id =
-                         wh_json:get_value(<<"name_media_id">>, JObj)
+                         wh_json:get_value([<<"media">>, <<"name">>], JObj)
                      ,owner_id =
                          wh_json:get_value(<<"owner_id">>, JObj)
                      ,is_setup =
@@ -890,13 +883,16 @@ lookup_doc_rev(Db, Id) ->
       Box :: #mailbox{}.
 
 message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Timezone}) ->
-    UtcDateTime = calendar:gregorian_seconds_to_datetime(whistle_util:current_tstamp()),
-    {{Y,M,D},{H,I,S}} = localtime:utc_to_local(UtcDateTime, whistle_util:to_list(Timezone)),
+    UtcDateTime = calendar:gregorian_seconds_to_datetime(wh_util:current_tstamp()),
+    {{Y,M,D},{H,I,S}} = localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)),
     Name = <<"mailbox ", BoxNum/binary, " message "
-             ,(whistle_util:to_binary(M))/binary, $-, (whistle_util:to_binary(D))/binary, $-, (whistle_util:to_binary(Y))/binary
-             ,$ , (whistle_util:to_binary(H))/binary, $:, (whistle_util:to_binary(I))/binary, $:, (whistle_util:to_binary(S))/binary>>,
+             ,(wh_util:to_binary(M))/binary, $-, (wh_util:to_binary(D))/binary, $-, (wh_util:to_binary(Y))/binary
+             ,$ , (wh_util:to_binary(H))/binary, $:, (wh_util:to_binary(I))/binary, $:, (wh_util:to_binary(S))/binary>>,
     Props = [{<<"name">>, Name}
-             ,{<<"description">>, Id}
+             ,{<<"description">>, <<"voicemail message media">>}
+             ,{<<"source_type">>, <<"voicemail">>}
+             ,{<<"source_id">>, Id}
+             ,{<<"content_type">>, <<"audio/mpeg">>}
              ,{<<"media_type">>, <<"mp3">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"private_media">>}]),
@@ -916,7 +912,10 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
 recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum, mailbox_id=Id}, #cf_call{account_db=Db}) ->
     Name = <<"mailbox ", BoxNum/binary, $ , Recording/binary>>,
     Props = [{<<"name">>, Name}
-             ,{<<"description">>, Id}
+             ,{<<"description">>, <<"voicemail recorded/prompt media">>}
+             ,{<<"source_type">>, <<"voicemail">>}
+             ,{<<"source_id">>, Id}
+             ,{<<"content_type">>, <<"audio/mpeg">>}
              ,{<<"media_type">>, <<"mp3">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"media">>}]),
@@ -1084,7 +1083,7 @@ update_doc(Key, Value, Id, Db) ->
 %%--------------------------------------------------------------------
 -spec tmp_file/0 :: () -> binary().
 tmp_file() ->
-     <<(list_to_binary(whistle_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
+     <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1097,7 +1096,7 @@ tmp_file() ->
 %%--------------------------------------------------------------------
 -spec new_timestamp/0 :: () -> binary().
 new_timestamp() ->
-    whistle_util:to_binary(whistle_util:current_tstamp()).
+    wh_util:to_binary(wh_util:current_tstamp()).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1110,9 +1109,9 @@ new_timestamp() ->
       Epoch :: binary(),
       Timezone :: binary().
 get_unix_epoch(Epoch, Timezone) ->
-    UtcDateTime = calendar:gregorian_seconds_to_datetime(whistle_util:to_integer(Epoch)),
-    LocalDateTime = localtime:utc_to_local(UtcDateTime, whistle_util:to_list(Timezone)),
-    whistle_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - 62167219200).
+    UtcDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(Epoch)),
+    LocalDateTime = localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)),
+    wh_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - 62167219200).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1147,12 +1146,12 @@ update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, #cf_call{account_db=Db}) ->
                               Realm = wh_json:get_value([<<"value">>, <<"sip_realm">>], Device),
                               Command = {struct, [{<<"Notify-User">>, User}
                                                   ,{<<"Notify-Realm">>, Realm}
-                                                  ,{<<"Messages-New">>, whistle_util:to_binary(New)}
-                                                  ,{<<"Messages-Saved">>, whistle_util:to_binary(Saved)}
-                                                  | whistle_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
+                                                  ,{<<"Messages-New">>, wh_util:to_binary(New)}
+                                                  ,{<<"Messages-Saved">>, wh_util:to_binary(Saved)}
+                                                  | wh_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
                                                  ]},
                               ?LOG("sending mwi update to ~s@~s ~p:~p", [User, Realm, New, Saved]),
-                              {ok, Payload} = whistle_api:mwi_update(Command),
+                              {ok, Payload} = wh_api:mwi_update(Command),
                               amqp_util:callmgr_publish(Payload, <<"application/json">>, ?KEY_SIP_NOTIFY)
                       end, Devices),
             ok;

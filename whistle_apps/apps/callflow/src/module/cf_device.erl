@@ -13,7 +13,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/6, wait_for_unbridge/0]).
+-import(cf_call_command, [b_bridge/6, wait_for_callee_release/1]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -31,11 +31,15 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
         {ok, Endpoints} ->
             Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
             case bridge_to_endpoints(Endpoints, Timeout, Call) of
-                {ok, _} ->
-                    ?LOG("endpoint was unbridged"),
-                    CFPid ! { stop };
+                {fail, _} ->
+                    ?LOG("could not reach endpoint"),
+                    CFPid ! { continue };
+                {transfer, _} ->
+                    ?LOG("endpoint was transferred"),
+                    CFPid ! { transferred };
                 _ ->
-                    CFPid ! { continue }
+                    ?LOG("endpoint was unbridged"),
+                    CFPid ! { stop }
             end;
         {error, Reason} ->
             ?LOG("no endpoints to bridge to, ~w", [Reason]),
@@ -54,10 +58,10 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
       Call :: #cf_call{}.
 bridge_to_endpoints(Endpoints, Timeout, Call) ->
     IgnoreEarlyMedia = ignore_early_media(Endpoints),
-    case b_bridge(Endpoints, Timeout, <<"internal">>, <<"single">>, IgnoreEarlyMedia, Call) of
+    case b_bridge(Endpoints, Timeout, <<"internal">>, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
             ?LOG("bridged to endpoint"),
-            wait_for_unbridge();
+            wait_for_callee_release(Call);
         {fail, Reason}=Fail ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
             ?LOG("failed to bridge to endpoint ~s:~s", [Code, Cause]),
@@ -80,4 +84,4 @@ ignore_early_media(Endpoints) ->
                                  wh_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
                                      or Acc
                          end, false, Endpoints),
-    whistle_util:to_binary(Ignore).
+    wh_util:to_binary(Ignore).

@@ -19,7 +19,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--include_lib("whistle/include/whistle_types.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -define(SERVER, ?MODULE). 
 -define(EXPIRES, 3600). %% an hour
@@ -135,13 +135,14 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({fetch, K}, _, Dict) ->
     case dict:find(K, Dict) of
-	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {whistle_util:current_tstamp()+T, V, T} end, Dict)};
+	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {wh_util:current_tstamp()+T, V, T} end, Dict)};
 	error -> {reply, {error, not_found}, Dict}
     end;
 handle_call(fetch_keys, _, Dict) ->
     {reply, dict:fetch_keys(Dict), Dict};
 handle_call({filter, Pred}, _, Dict) ->
-    {reply, dict:to_list(dict:filter(Pred, Dict)), Dict}.
+    KV = dict:map(fun(_, {_,V,_}) -> V end, Dict),
+    {reply, dict:to_list(dict:filter(Pred, KV)), Dict}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -154,7 +155,7 @@ handle_call({filter, Pred}, _, Dict) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({store, K, V, T}, Dict) ->
-    {noreply, dict:store(K, {whistle_util:current_tstamp()+T, V, T}, Dict)};
+    {noreply, dict:store(K, {wh_util:current_tstamp()+T, V, T}, Dict)};
 handle_cast({erase, K}, Dict) ->
     {noreply, dict:erase(K, Dict)};
 handle_cast({flush}, _) ->
@@ -171,7 +172,7 @@ handle_cast({flush}, _) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(flush, Dict) ->
-    Now = whistle_util:current_tstamp(),
+    Now = wh_util:current_tstamp(),
     {noreply, dict:filter(fun(_, {T, _, _}) -> Now < T end, Dict)};
 handle_info(_Info, State) ->
     {noreply, State}.

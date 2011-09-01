@@ -7,7 +7,7 @@
 	      ,whistle_amqp_app
 	      ,whistle_amqp_sup
 	      ,whistle_amqp_deps
-	      ,amqp_manager
+	      ,amqp_mgr
 	      ,amqp_util
 	     ]
    }

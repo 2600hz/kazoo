@@ -59,7 +59,7 @@ init_authorize(Parent, FSID, CallID, FSData) ->
 
     {IsAuth, CCV} = try
 			{ok, RespJObj} = ecallmgr_amqp_pool:authz_req(ReqProp, 2000),
-			{whistle_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj))
+			{wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj))
 			 ,wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, [])}
 		    catch
 			_:_ ->
@@ -95,4 +95,4 @@ request(FSID, CallID, FSData) ->
      ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
      ,{<<"Call-ID">>, CallID}
      ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
-     | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"authz_req">>, ?APP_NAME, ?APP_VERSION)].
+     | wh_api:default_headers(<<>>, <<"dialplan">>, <<"authz_req">>, ?APP_NAME, ?APP_VERSION)].

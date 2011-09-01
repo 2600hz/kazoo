@@ -25,7 +25,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(VIEW_FILE, <<"views/vmboxes.json">>).
 -define(CB_LIST, <<"vmboxes/crossbar_listing">>).
 
 -define(MESSAGES_RESOURCE, <<"messages">>).
@@ -183,17 +182,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.vmboxes">>, [RD, 
     end,
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, ?VIEW_FILE},
-    {noreply, State};
-
 handle_info({binding_fired, Pid, _false, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
 handle_info(timeout, State) ->
     bind_to_crossbar(),
-    whapps_util:update_all_accounts(?VIEW_FILE),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -240,8 +234,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.validate.vmboxes">>),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.vmboxes">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.vmboxes">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.vmboxes">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.vmboxes">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -467,7 +460,7 @@ get_media_binary(MediaId, #cb_context{db_name=Db}=Context) ->
     Ctx#cb_context{resp_headers = [
        {<<"Content-Type">>, wh_json:get_value(<<"content_type">>, Metadata)},
        {<<"Content-Disposition">>, <<"Content-Disposition: attachment; filename=", Filename/binary>>},
-       {<<"Content-Length">> ,whistle_util:to_binary(wh_json:get_value(<<"length">>, Metadata))}
+       {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value(<<"length">>, Metadata))}
        | Context#cb_context.resp_headers]}.
 
 %%--------------------------------------------------------------------

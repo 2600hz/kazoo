@@ -28,17 +28,17 @@ init([]) ->
      ,{
        {one_for_one, 5, 10}
        ,[
-	 ?CHILD(resource_mgr, worker) % handles resource requests / resource availability
+	 ?CHILD(ecallmgr_fs_sup, supervisor)
+	 ,?CHILD(ecallmgr_call_sup, supervisor) % handles dynamic call {event,control} processes
+         ,?CHILD(ecallmgr_shout_sup, supervisor) % handles dynamic record streams from FreeSWITCH to local filesystem
+	 ,?CHILD(ecallmgr_fs_route_sup, supervisor)
+	 ,?CHILD(ecallmgr_fs_auth_sup, supervisor)
+	 ,?CHILD(resource_mgr, worker) % handles resource requests / resource availability
          ,?CHILD(ecallmgr_registrar, worker) % local cache for registrations
 	 ,?CHILD(ecallmgr_amqp_pool, worker) % pool of queues for sending msgs
 	 ,?CHILD(ecallmgr_fs_handler, worker) % handles starting FreeSWITCH handlers for a given FS node
 	 ,?CHILD(ecallmgr_media_registry, worker) % handles tracking media names and files per-call
 	 ,?CHILD(ecallmgr_notify, worker) % handles notify-type API calls (like MWI, BLF, check-sync)
-	 ,?CHILD(ecallmgr_call_sup, supervisor) % handles dynamic call {event,control} processes
-         ,?CHILD(ecallmgr_shout_sup, supervisor) % handles dynamic record streams from FreeSWITCH to local filesystem
-	 ,?CHILD(ecallmgr_fs_sup, supervisor)
-	 ,?CHILD(ecallmgr_fs_route_sup, supervisor)
-	 ,?CHILD(ecallmgr_fs_auth_sup, supervisor)
          ,?CHILD(wh_cache, worker) % provides a cache
 	]
       }

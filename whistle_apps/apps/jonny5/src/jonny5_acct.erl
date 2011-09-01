@@ -178,7 +178,7 @@ start_amqp() ->
       JObj :: json_object(),
       CPid :: pid().
 handle_authz(JObj, CPid) ->
-    true = whistle_api:authz_req_v(JObj),
+    true = wh_api:authz_req_v(JObj),
     put(callid, wh_json:get_value(<<"Call-ID">>, JObj)),
 
     ?LOG("Authorize ~s can make the call to ~s", [wh_json:get_value(<<"From">>, JObj), wh_json:get_value(<<"To">>, JObj)]),
@@ -208,14 +208,14 @@ send_resp(JObj, {AuthzResp, CCV}) ->
 
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
 
-    Prop = [{<<"Is-Authorized">>, whistle_util:to_binary(AuthzResp)}
+    Prop = [{<<"Is-Authorized">>, wh_util:to_binary(AuthzResp)}
 	     ,{<<"Custom-Channel-Vars">>, {struct, CCV}}
 	     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
 	     ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-	     | whistle_api:default_headers(<<>>, <<"dialplan">>, <<"authz_resp">>, ?APP_NAME, ?APP_VSN)
+	     | wh_api:default_headers(<<>>, <<"dialplan">>, <<"authz_resp">>, ?APP_NAME, ?APP_VSN)
 	    ],
 
-    {ok, JSON} = whistle_api:authz_resp(Prop),
+    {ok, JSON} = wh_api:authz_resp(Prop),
     ?LOG_END("Sending authz resp: ~s", [JSON]),
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
 
