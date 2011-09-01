@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 30 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(dth_blacklist).
+-module(j5_dth_blacklist).
 
 -behaviour(gen_listener).
 

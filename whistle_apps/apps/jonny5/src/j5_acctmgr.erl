@@ -20,7 +20,6 @@
 -include("jonny5.hrl").
 
 -define(SERVER, ?MODULE).
--define(UPDATE_LIMITS_TIMEOUT, 300000). %% 5 minutes
 
 -record(state, {
 	  my_q = undefined :: binary() | undefined
@@ -36,7 +35,6 @@
          ,inbound = 0 :: non_neg_integer()
          ,prepay = 0.0 :: float()
          ,trunks_in_use = dict:new() :: dict() %% {CallID, Type :: inbound | two_way}
-	 ,tref = undefined :: undefined | reference()
 	 }).
 
 %%%===================================================================
@@ -53,7 +51,6 @@
 -spec start_link/1 :: (AcctID) -> {ok, pid()} | ignore | {error, term()} when
       AcctID :: binary().
 start_link(AcctID) ->
-    ?LOG_SYS("starting with acct ~s", [AcctID]),
     gen_server:start_link(?MODULE, [AcctID], []).
 
 -spec authz_trunk/3 :: (Pid, JObj, CallDir) -> {boolean(), proplist()} when
@@ -119,32 +116,33 @@ known_calls(AcctID) when is_binary(AcctID) ->
 %%--------------------------------------------------------------------
 init([AcctID]) ->
     CPid = whereis(j5_cache),
-    ?LOG_SYS("CPid: ~p", [CPid]),
     Ref = erlang:monitor(process, CPid),
-    ?LOG_SYS("Ref for CPid: ~p", [Ref]),
     wh_cache:store_local(CPid, {j5_authz, AcctID}, self(), 24 * 3600), %% 1 day
-    ?LOG_SYS("Stored acct in cache with ~p as the value", [self()]),
 
     Q = amqp_util:new_queue(),
-    ?LOG_SYS("Will listen for call events/cdrs on ~s", [Q]),
-
-    TRef = erlang:start_timer(?UPDATE_LIMITS_TIMEOUT, self(), update_limits),
 
     case get_trunks_available(AcctID, account) of
 	{error, not_found} ->
 	    ?LOG_SYS("No account found for ~s", [AcctID]),
 	    {stop, no_account};
-	{TwoWay, Inbound, _, Type} ->
-	    ?LOG_SYS("Init for ~s complete", [AcctID]),
+	{TwoWay, Inbound, Prepay, ts} ->
+	    ?LOG_SYS("Init for ts ~s complete", [AcctID]),
 	    couch_mgr:add_change_handler(<<"ts">>, AcctID),
 
 	    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"ts">>, AcctID),
 
 	    {ok, #state{my_q=Q, is_amqp_up=is_binary(Q)
-			,cache=CPid, cache_ref=Ref, tref=TRef
+			,cache=CPid, cache_ref=Ref, prepay=Prepay
 			,two_way=TwoWay, inbound=Inbound
 			,max_two_way=TwoWay, max_inbound=Inbound
-			,acct_rev=Rev, acct_id=AcctID, acct_type=Type
+			,acct_rev=Rev, acct_id=AcctID, acct_type=ts
+		       }};
+	{TwoWay, Inbound, Prepay, account} ->
+	    {ok, #state{my_q=Q, is_amqp_up=is_binary(Q)
+			,cache=CPid, cache_ref=Ref, prepay=Prepay
+			,two_way=TwoWay, inbound=Inbound
+			,max_two_way=TwoWay, max_inbound=Inbound
+			,acct_id=AcctID, acct_type=account
 		       }}
     end.
 
@@ -236,10 +234,6 @@ handle_info({_, #amqp_msg{payload=Payload}}, #state{my_q=Q, two_way=Two, inbound
 	    ?LOG_END(CallID, "Ignoring event", []),
 	    {noreply, State}
     end;
-
-handle_info({timeout, TRef, _}, #state{tref=TRef}=State) ->
-    ?LOG_SYS("Updating limits"),
-    {noreply, update_limits(State)};
 
 handle_info({document_changes, AcctID, Changes}, #state{acct_rev=Rev, acct_id=AcctID, acct_type=AcctType}=State) ->
     ?LOG_SYS("change to account ~s to be processed", [AcctID]),
@@ -378,12 +372,18 @@ try_inbound(CallID, #state{my_q=Q, inbound=In, trunks_in_use=Dict}=State) ->
 try_prepay(_CallID, #state{prepay=Pre}=State) when Pre =< 0.0 ->
     ?LOG_SYS(_CallID, "Failed to authz a per_min trunk", []),
     {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State};
-try_prepay(CallID, #state{my_q=Q, prepay=_Pre, trunks_in_use=Dict}=State) ->
-    ?LOG_SYS(CallID, "Authz a per_min trunk with $~p prepay", [_Pre]),
-    monitor_call(Q, CallID),
-    {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
-     ,State#state{trunks_in_use=dict:store(CallID, per_min, Dict)}
-    }.
+try_prepay(CallID, #state{acct_id=AcctId, my_q=Q, prepay=_Pre, trunks_in_use=Dict}=State) ->
+    case jonny5_listener:is_blacklisted(AcctId) of
+	{true, Reason} ->
+	    ?LOG_SYS(CallID, "Authz false for per_min: ~s", [Reason]),
+	    {{false, [{<<"Error">>, Reason}]}, State};
+	false ->
+	    ?LOG_SYS(CallID, "Authz a per_min trunk with $~p prepay", [_Pre]),
+	    monitor_call(Q, CallID),
+	    {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
+	     ,State#state{trunks_in_use=dict:store(CallID, per_min, Dict)}
+	    }
+    end.
 
 -spec monitor_call/2 :: (Q, CallID) -> ok when
       Q :: binary(),
@@ -457,32 +457,3 @@ release_trunk(CallID, Dict) ->
 %% Match +1XXXYYYZZZZ as US-48; all others are not
 is_us48(<<"+1", Rest/binary>>) when erlang:byte_size(Rest) =:= 10 -> true;
 is_us48(_) -> false.
-
--spec update_limits/1 :: (State) -> #state{} when
-      State :: #state{}.
-update_limits(#state{acct_type=ts, acct_id=AcctID}=State) ->
-    RDB = todays_db(),
-    case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctID}, {<<"group">>, true}]) of
-	{error, not_found} ->
-	    ?LOG_SYS("View accounts/balance not found in DB ~s", [RDB]),
-	    State;
-	{ok, []} ->
-	    ?LOG_SYS("No view results for ~s", [AcctID]),
-	    State;
-	{ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
-	    Two = wh_json:get_value(<<"trunks">>, Funds, 0),
-	    In = wh_json:get_value(<<"inbound_trunks">>, Funds, 0),
-	    Pre = wh_json:get_value(<<"credit">>, Funds, 0.0),
-	    State#state{two_way=Two, inbound=In, prepay=Pre}
-    end;
-update_limits(#state{acct_type=account, acct_id=AcctID}=State) ->
-    %% Make a call to DTH to update prepay?
-    case get_trunks_available(AcctID, account) of
-	{Two, In, _, _} -> State#state{max_two_way=Two, max_inbound=In};
-	_ -> State
-    end.
-
--spec todays_db/0 :: () -> binary().
-todays_db() ->
-    {{Y,M,D}, _} = calendar:universal_time(),
-    wh_util:to_binary(io_lib:format("ts_usage%2F~4B%2F~2..0B%2F~2..0B", [Y,M,D])).
