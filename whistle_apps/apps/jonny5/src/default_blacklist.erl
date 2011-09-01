@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(default_blacklist).
 
--export([start_link/0, is_blacklisted/1, stop/1]).
+-export([start_link/0, is_blacklisted/2, stop/1]).
 
 start_link() -> ignore.
 
