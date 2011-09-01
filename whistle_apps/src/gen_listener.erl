@@ -305,7 +305,7 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
     {reply, Props} = Module:handle_event(JObj, ModState),
     Props1 = [{queue, Queue} | Props],
     Key = whapps_util:get_event_type(JObj),
-    Handlers = [spawn_monitor(fun() -> Responder:handle_req(JObj, Props1) end) || {Evt, Responder} <- Responders, Key =:= Evt],
+    Handlers = [spawn_monitor(fun() -> ?LOG("calling handle_req/2 in module ~s", [Responder]),Responder:handle_req(JObj, Props1) end) || {Evt, Responder} <- Responders, Key =:= Evt],
     wait_for_handlers(Handlers).
 
 %% Collect the spawned handlers going down so the main process_req proc doesn't end until all
