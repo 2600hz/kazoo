@@ -24,6 +24,8 @@ init() ->
       Props :: proplist().
 handle_req(JObj, _Props) ->
     true = cf_api:new_voicemail_v(JObj),
+    whapps_util:put_callid(JObj),
+
     AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
     {ok, VMBox} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),
     {ok, UserJObj} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"owner_id">>, VMBox)),
