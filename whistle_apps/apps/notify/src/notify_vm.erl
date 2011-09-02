@@ -58,8 +58,11 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
 
     From = <<"no_reply@", (wh_util:to_binary(net_adm:localhost()))/binary>>,
 
+    ?LOG_SYS("Opening ~s in ~s", [DocId, DB]),
     {ok, JObj} = couch_mgr:open_doc(DB, DocId),
-    {AttachmentId, _MetaData} = wh_json:get_value(<<"_attachments">>, JObj),
+    
+    {struct, [{AttachmentId, _MetaData}]} = wh_json:get_value(<<"_attachments">>, JObj),
+    ?LOG_SYS("Attachment doc: ~s", [AttachmentId]),
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
     Email = {<<"multipart">>, <<"mixed">> %% Content Type / Sub Type
@@ -82,6 +85,7 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
 	      ]
 	    },
     Encoded = mimemail:encode(Email),
+    ?LOG_SYS("Sending email to ~s", [To]),
     gen_smtp_client:send({From, [To], Encoded}, [{relay, "localhost"}]
 			 ,fun(X) -> ?LOG("Sending email to ~s resulted in ~p", [To, X]) end).
 
