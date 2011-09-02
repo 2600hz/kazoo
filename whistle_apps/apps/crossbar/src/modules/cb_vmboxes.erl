@@ -501,7 +501,6 @@ delete_message(DocId, MediaId, #cb_context{db_name=Db}=Context) ->
 	    crossbar_util:response_bad_identifier(MediaId, Context)
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
