@@ -451,21 +451,30 @@ load_message(DocId, MediaId, Context) ->
 %% @private
 %% @doc
 %% Get message binary content so it can be downloaded
+%% VMBoxId is the doc id for the voicemail box document
+%% VMId is the id for the voicemail document, containing the binary data
 %% @end
 %%--------------------------------------------------------------------
--spec(load_message_binary/3 :: (DocId :: binary(), MediaId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-load_message_binary(DocId, MediaId, #cb_context{db_name=Db}=Context) ->
-    MediaDoc = load_private_media(Db, MediaId),
-    #cb_context{resp_data=MessageDoc} = load_message(DocId, MediaId, Context),
-    Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, MessageDoc)
-				   ,wh_json:get_value(<<"timestamp">>, MessageDoc)
-				   ,wh_json:get_value(<<"media_type">>, MediaDoc)
+-spec load_message_binary/3 :: (VMBoxId, VMId, Context) -> #cb_context{} when
+      VMBoxId :: binary(),
+      VMId :: binary(),
+      Context :: #cb_context{}.
+load_message_binary(VMBoxId, VMId, #cb_context{db_name=Db}=Context) ->
+    {ok, VMJObj} = couch_mgr:open_doc(Db, VMId),
+    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
+
+    #cb_context{resp_data=VMMetaJObj} = load_message(VMBoxId, VMId, Context),
+
+    Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
+				   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
+				   ,wh_json:get_value(<<"media_type">>, VMJObj)
 				  ),
-    Ctx = crossbar_doc:load_attachment(MediaId, MediaId, Context),
+
+    Ctx = crossbar_doc:load_attachment(VMId, AttachmentId, Context),
     Ctx#cb_context{resp_headers = [
-       {<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, MediaId, <<"content_type">>], MediaDoc)},
+       {<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], VMJObj)},
        {<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>},
-       {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value([<<"_attachments">>, MediaId, <<"length">>], MediaDoc))}
+       {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], VMJObj))}
        | Context#cb_context.resp_headers]}.
 
 %%--------------------------------------------------------------------
@@ -548,20 +557,6 @@ update_message1(DocId, MediaId, Context) ->
 	0 ->
 	    crossbar_util:response_bad_identifier(MediaId, Context)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load the private media doc from the media_id of the voicemail message
-%% metadata
-%% @end
-%%--------------------------------------------------------------------
--spec(load_private_media/2 :: (binary(), binary()) -> json_object()).
-load_private_media(Db, MediaId) ->
-    case couch_mgr:open_doc(Db, MediaId) of
-	{ok, JObj} ->JObj %% must always match
-    end.
-
 
 %%--------------------------------------------------------------------
 %% @private
