@@ -1,27 +1,28 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 15 Aug 2011 by James Aimonetti <>
+%%% Created : 15 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(notify_vm).
 
--export([start_link/0, handle_req/1]).
+-export([init/0, handle_req/2]).
 
 -include("notify.hrl").
 
--spec start_link/0 :: () -> ignore.
-start_link() ->
+-spec init/0 :: () -> 'ok'.
+init() ->
     %% ensure the vm template can compile, otherwise crash the processes
     {ok, notify_vm_tmpl} = erlydtl:compile(?DEFAULT_VM_TEMPLATE, notify_vm_tmpl),
     {ok, notify_html_vm_tmpl} = erlydtl:compile(?DEFAULT_HTML_VM_TEMPLATE, notify_html_vm_tmpl),
-    ignore.
+    ?LOG_SYS("init done for vm-to-email").
 
--spec handle_req/1 :: (JObj) -> no_return() when
-      JObj :: json_object().
-handle_req(JObj) ->
+-spec handle_req/2 :: (JObj, Props) -> no_return() when
+      JObj :: json_object(),
+      Props :: proplist().
+handle_req(JObj, _Props) ->
     true = cf_api:new_voicemail_v(JObj),
     AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
     {ok, VMBox} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),

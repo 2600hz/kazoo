@@ -8,12 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(default_blacklist).
 
--export([start_link/0, is_blacklisted/1]).
--include("jonny5.hrl").
+-export([start_link/0, is_blacklisted/2, stop/1]).
 
-start_link() ->
-    ?LOG("ignore me"),
-    ignore.
+start_link() -> ignore.
 
-is_blacklisted(_AccountID) ->
-    false.
+stop(_) -> ok.
+
+is_blacklisted(_Srv, _AccountID) -> false.

@@ -2,35 +2,38 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Handle updating devices and emails about voicemails
+%%% Query DTH whapps for their blacklist
 %%% @end
-%%% Created :  3 May 2011 by James Aimonetti <james@2600hz.org>
+%%% Created : 30 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(notify_listener).
+-module(j5_dth_blacklist).
 
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, stop/1]).
+-export([start_link/0, is_blacklisted/2, handle_req/2, stop/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
 	 ,terminate/2, code_change/3]).
 
--include("notify.hrl").
-
--define(SERVER, ?MODULE).
+-include("jonny5.hrl").
+-include_lib("dth/include/dth_amqp.hrl").
 
 -define(RESPONDERS, [
-		     {notify_vm, [
-				  {<<"notification">>, <<"new_voicemail">>}
-				 ]}
+		     {?MODULE, [{<<"dth">>, <<"blacklist_resp">>}]}
 		    ]).
 -define(BINDINGS, [
-		   {notifications, []}
+		   {self, []}
 		  ]).
 
--record(state, {}).
+-define(SERVER, ?MODULE).
+-define(BLACKLIST_UPDATE_TIMER, 5000).
+
+-record(state, {
+	  blacklist = dict:new() :: dict() %% {AccountID, Reason}
+	 }).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -50,6 +53,22 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
+-spec is_blacklisted/2 :: (Srv, AccountID) -> 'false' | 'true' | {'true', binary()} when
+      Srv :: pid(),
+      AccountID :: binary().
+is_blacklisted(Srv, AccountID) ->
+    gen_listener:call(Srv, {is_blacklisted, AccountID}).
+
+-spec handle_req/2 :: (JObj, Props) -> 'ok' when
+      JObj :: json_object(),
+      Props :: proplist().
+handle_req(JObj, Props) ->
+    true = dth_api:blacklist_resp_v(JObj),
+    Srv = props:get_value(server, Props),
+    ?LOG_SYS("Sending blacklist to ~p", [Srv]),
+    Accounts = wh_json:get_value(<<"Accounts">>, JObj, []),
+    gen_listener:cast(Srv, {blacklist, Accounts}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -66,7 +85,8 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new vm notify process"),
+    ?LOG_SYS("DTH blacklist server started"),
+    true = is_reference(erlang:send_after(?BLACKLIST_UPDATE_TIMER, self(), update_blacklist)),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -83,8 +103,14 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+handle_call({is_blacklisted, AccountID}, _From, #state{blacklist=BL}=State) ->
+    try
+	Reason = dict:fetch(AccountID, BL),
+	{reply, {true, Reason}, State}
+    catch
+	_:_ ->
+	    {reply, false, State}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -96,8 +122,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast({blacklist, {struct, Accounts}}, State) ->
+    ?LOG_SYS("Updating blacklist with ~p", [Accounts]),
+    {noreply, State#state{blacklist=dict:from_list(Accounts)}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -109,6 +136,11 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(update_blacklist, State) ->
+    true = is_reference(erlang:send_after(?BLACKLIST_UPDATE_TIMER, self(), update_blacklist)),
+    Self = self(),
+    spawn(fun() -> request_blacklist(Self) end),
+    {noreply, State};
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
@@ -121,8 +153,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {reply, []}.
+handle_event(_, _) ->
+    {reply, [{server, self()}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -136,7 +168,6 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG_SYS("vm notify process ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -149,3 +180,13 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+request_blacklist(Srv) ->
+    Queue = gen_listener:queue_name(Srv),
+    Prop = wh_api:default_headers(Queue, <<"dth">>, <<"blacklist_req">>, ?APP_NAME, ?APP_VSN),
+    {ok, JSON} = dth_api:blacklist_req(Prop),
+    ?LOG_SYS("Sending request for blacklist: ~s", [JSON]),
+    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_DTH_BLACKLIST_REQ).

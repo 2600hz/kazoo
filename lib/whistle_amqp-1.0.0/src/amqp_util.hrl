@@ -53,3 +53,12 @@
 %%   routing keys they want messages for.
 -define(EXCHANGE_MONITOR, <<"monitor">>).
 -define(TYPE_MONITOR, <<"topic">>).
+
+%% Configuration Exchange
+%% - Crossbar will publish events to this exchange using routing keys
+%%   apps that want to handle certain messages will create a queue with the appropriate routing key
+%%   in the binding to receive the messages.
+%% -  publishes to the exchange with a routing key; consumers bind their queue with the
+%%   routing keys they want messages for.
+-define(EXCHANGE_CONFIGURATION, <<"configuration">>).
+-define(TYPE_CONFIGURATION, <<"topic">>).
