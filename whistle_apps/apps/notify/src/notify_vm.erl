@@ -61,8 +61,8 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
 
     ?LOG_SYS("Opening ~s in ~s", [DocId, DB]),
     {ok, JObj} = couch_mgr:open_doc(DB, DocId),
-    
-    {struct, [{AttachmentId, _MetaData}]} = wh_json:get_value(<<"_attachments">>, JObj),
+
+    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, JObj),
     ?LOG_SYS("Attachment doc: ~s", [AttachmentId]),
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
