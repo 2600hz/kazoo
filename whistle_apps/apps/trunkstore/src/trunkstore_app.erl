@@ -11,7 +11,9 @@
 %% Application callbacks
 %% ===================================================================
 
--spec(start/2 :: (StartType :: term(), StartArgs :: term()) -> tuple(ok, pid()) | tuple(error, term())).
+-spec start/2 :: (StartType, StartArgs) -> {'ok', pid()} | {'error', term()} when
+      StartType :: term(),
+      StartArgs :: term().
 start(_StartType, _StartArgs) ->
     trunkstore_app:revise_views(),
     trunkstore_app:setup_base_docs(),

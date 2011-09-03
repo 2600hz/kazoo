@@ -26,6 +26,7 @@
 -export([revise_docs_from_folder/3, revise_views_from_folder/2, ensure_saved/2]).
 
 -export([all_docs/1, all_design_docs/1, admin_all_docs/1]).
+-export([all_docs/2, all_design_docs/2, admin_all_docs/2]).
 
 %% attachments
 -export([fetch_attachment/3, put_attachment/4, put_attachment/5, delete_attachment/3, delete_attachment/4]).
@@ -377,14 +378,31 @@ open_doc(DbName, DocId, Options) ->
 -spec admin_all_docs/1 :: (DbName) -> {ok, json_objects()} | {error, atom()} when
       DbName :: binary().
 all_docs(DbName) ->
-    couch_util:all_docs(get_conn(), DbName).
+    couch_util:all_docs(get_conn(), DbName, []).
 admin_all_docs(DbName) ->
-    couch_util:all_docs(get_admin_conn(), DbName).
+    couch_util:all_docs(get_admin_conn(), DbName, []).
+
+-spec all_docs/2 :: (DbName, Options) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary(),
+      Options :: proplist().
+-spec admin_all_docs/2 :: (DbName, Options) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary(),
+      Options :: proplist().
+all_docs(DbName, Options) ->
+    couch_util:all_docs(get_conn(), DbName, Options).
+admin_all_docs(DbName, Options) ->
+    couch_util:all_docs(get_admin_conn(), DbName, Options).
 
 -spec all_design_docs/1 :: (DbName) -> {ok, json_objects()} | {error, atom()} when
       DbName :: binary().
 all_design_docs(DbName) ->
-    couch_util:all_design_docs(get_conn(), DbName).
+    couch_util:all_design_docs(get_conn(), DbName, []).
+
+-spec all_design_docs/2 :: (DbName, Options) -> {ok, json_objects()} | {error, atom()} when
+      DbName :: binary(),
+      Options :: proplist().
+all_design_docs(DbName, Options) ->
+    couch_util:all_design_docs(get_conn(), DbName, Options).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -452,7 +470,7 @@ save_docs(DbName, Docs, Opts) ->
 %%--------------------------------------------------------------------
 -spec del_doc/2 :: (DbName, Doc) -> {ok, json_object()} | {error, atom()} when
       DbName :: binary(),
-      Doc :: json_object().
+      Doc :: json_object() | binary().
 del_doc(DbName, Doc) ->
     couch_util:del_doc(get_conn(), DbName, Doc).
 

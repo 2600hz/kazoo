@@ -50,7 +50,7 @@
                ,month = 1 :: wh_month()
                ,start_date = {2011, 1, 1} :: wh_date()
                ,wtime_start = 0 :: non_neg_integer()
-               ,wtime_stop = 86400 :: non_neg_integer()
+               ,wtime_stop = ?SECONDS_IN_DAY :: non_neg_integer()
               }).
 
 -record(temporal, {local_sec = 0 :: non_neg_integer()

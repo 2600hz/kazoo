@@ -26,8 +26,8 @@
 -record('wsdl:tBinding', {anyAttribs, 'name', 'type', 'documentation', choice, 'operation'}).
 -record('wsdl:tFault', {anyAttribs, 'name', 'message', 'documentation'}).
 -record('wsdl:tParam', {anyAttribs, 'name', 'message', 'documentation'}).
--record('wsdl:solicit-response-or-notification-operation', {anyAttribs, 'output', 'solicit-response-or-notification-operation/SEQ2'}).
--record('wsdl:solicit-response-or-notification-operation/SEQ2', {anyAttribs, 'input', 'fault'}).
+-record('wsdl:solicit-response-or-notification-operation', {anyAttribs, 'output', 'solicit-response-or-notification-operation/SEQ1'}).
+-record('wsdl:solicit-response-or-notification-operation/SEQ1', {anyAttribs, 'input', 'fault'}).
 -record('wsdl:request-response-or-one-way-operation', {anyAttribs, 'input', 'request-response-or-one-way-operation/SEQ1'}).
 -record('wsdl:request-response-or-one-way-operation/SEQ1', {anyAttribs, 'output', 'fault'}).
 -record('wsdl:tOperation', {anyAttribs, 'name', 'parameterOrder', 'documentation', any, choice}).

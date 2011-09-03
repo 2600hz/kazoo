@@ -324,8 +324,8 @@ validate([DocId, ?MESSAGES_RESOURCE, MediaId], #cb_context{req_verb = <<"post">>
     update_message(DocId, MediaId, Context);
 validate([DocId, ?MESSAGES_RESOURCE, MediaId], #cb_context{req_verb = <<"delete">>}=Context) ->
     delete_message(DocId, MediaId, Context);
-validate([_, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
-    get_media_binary(MediaId, Context);
+validate([DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
+    load_message_binary(DocId, MediaId, Context);
 
 validate(_Other, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -450,7 +450,7 @@ load_messages(DocId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Get message by its media ID
+%% Get message by its media ID and its context
 %% @end
 %%--------------------------------------------------------------------
 -spec load_message/3 :: (DocId, MediaId, Context) -> #cb_context{} when
@@ -469,19 +469,31 @@ load_message(DocId, MediaId, Context) ->
 %% @private
 %% @doc
 %% Get message binary content so it can be downloaded
+%% VMBoxId is the doc id for the voicemail box document
+%% VMId is the id for the voicemail document, containing the binary data
 %% @end
 %%--------------------------------------------------------------------
--spec get_media_binary/2 :: (MediaId, Context) -> #cb_context{} when
-      MediaId :: binary(),
+-spec load_message_binary/3 :: (VMBoxId, VMId, Context) -> #cb_context{} when
+      VMBoxId :: binary(),
+      VMId :: binary(),
       Context :: #cb_context{}.
-get_media_binary(MediaId, #cb_context{resp_headers=RespHeaders, db_name=Db}=Context) ->
-    {Filename, Metadata} = get_attachment_data(Db, MediaId, first),
-    Ctx = crossbar_doc:load_attachment(MediaId, Filename, Context),
+load_message_binary(VMBoxId, VMId, #cb_context{db_name=Db}=Context) ->
+    {ok, VMJObj} = couch_mgr:open_doc(Db, VMId),
+    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
+
+    #cb_context{resp_data=VMMetaJObj} = load_message(VMBoxId, VMId, Context),
+
+    Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
+				   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
+				   ,wh_json:get_value(<<"media_type">>, VMJObj)
+				  ),
+
+    Ctx = crossbar_doc:load_attachment(VMId, AttachmentId, Context),
     Ctx#cb_context{resp_headers = [
-       {<<"Content-Type">>, wh_json:get_value(<<"content-type">>, Metadata)},
-       {<<"Content-Disposition">>, <<"Content-Disposition: attachment; filename=", Filename/binary>>},
-       {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value(<<"length">>, Metadata))}
-       | RespHeaders]}.
+       {<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], VMJObj)},
+       {<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>},
+       {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], VMJObj))}
+       | Context#cb_context.resp_headers]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -509,7 +521,6 @@ delete_message(DocId, MediaId, #cb_context{db_name=Db}=Context) ->
 	_ ->
 	    crossbar_util:response_bad_identifier(MediaId, Context)
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -582,26 +593,16 @@ update_message1(DocId, MediaId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Find the first attachment for this private media doc
+%% generate a media name based on CallerID and creation date
+%% CallerID_YYYY-MM-DD_HH-MM-SS.ext
 %% @end
 %%--------------------------------------------------------------------
--spec get_attachment_data/3 :: (Db, MediaId, Attachment) -> {binary(), json_object()} when
-      Db :: binary(),
-      MediaId :: binary(),
-      Attachment :: 'first'.
-get_attachment_data(Db, MediaId, first) ->
-    DbName = case couch_mgr:db_exists(Db) of
-                 true -> Db;
-                 false -> whapps_util:get_db_name(Db, encoded)
-             end,
-    case couch_mgr:open_doc(DbName, MediaId) of
-	{ok, JObj} ->
-	    case wh_json:get_value(<<"_attachments">>, JObj, false) of
-		false ->
-		    no_data;
-		{struct, [{AttachmentName, MetaData} | _]} ->
-                    {AttachmentName, MetaData}
-            end;
-        _->
-            not_found
+-spec(generate_media_name/3 :: (binary(), binary(), binary()) -> binary()).
+generate_media_name(CallerId, GregorianSeconds, Ext) ->
+    {{Y,Mo,D}, {H, Mi, S}}  = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(GregorianSeconds)),
+    Date = iolist_to_binary(io_lib:format("_~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
+					  [Y, Mo, D, H, Mi, S])),
+    case CallerId of
+	undefined -> <<"unknown", Date/binary, ".", Ext/binary>>;
+	_ -> <<CallerId/binary, Date/binary, ".", Ext/binary>>
     end.

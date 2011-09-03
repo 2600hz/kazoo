@@ -11,7 +11,8 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, stop/1]).
+-export([start_link/0, stop/1, set_blacklist_provider/2
+	,add_responder/3, add_binding/2, is_blacklisted/1]).
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -20,14 +21,19 @@
 -include("jonny5.hrl").
 
 -record(state, {
-	  cache = undefined :: undefined | pid()
+	  cache = undefined :: 'undefined' | pid()
          ,cache_ref = make_ref() :: reference()
+	 ,bl_provider_mod = 'default_blacklist' :: atom()
+         ,bl_provider_pid = 'undefined' :: 'undefined' | pid()
+         ,bl_provider_ref = 'undefined' :: 'undefined' | reference()
 	 }).
 
 -define(RESPONDERS, [ {authz_req, [{<<"dialplan">>, <<"authz_req">>}]} ]).
 -define(BINDINGS, [ {authorization, []} ]).
 
 -define(SERVER, ?MODULE).
+-define(SETTINGS_FILE, [code:priv_dir(jonny5), "/settings.conf"]).
+-define(DEFAULT_BL_PROVIDER, default_blacklist).
 
 %%%===================================================================
 %%% API
@@ -50,6 +56,28 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
+set_blacklist_provider(Srv, Provider) ->
+    gen_listener:cast(Srv, {set_blacklist_provider, Provider}).
+
+-spec add_responder/3 :: (Srv, Responder, Key) -> 'ok' when
+      Srv :: pid() | atom(),
+      Responder :: atom(),
+      Key :: {binary(), binary()}.
+add_responder(Srv, Responder, Key) ->
+    gen_listener:add_responder(Srv, Responder, Key).
+
+-spec add_binding/2 :: (Srv, Binding) -> 'ok' when
+      Srv :: pid() | atom(),
+      Binding :: atom().
+add_binding(Srv, Binding) ->
+    gen_listener:add_binding(Srv, {Binding, []}).
+
+-spec is_blacklisted/1 :: (AccountId) -> {'true', binary()} | 'false' when
+      AccountId :: binary().
+is_blacklisted(AccountId) ->
+    {Mod, Srv} = jonny5_sup:get_blacklist_server(),
+    Mod:is_blacklisted(Srv, AccountId).
+
 %%%===================================================================
 %%% gen_listener callbacks
 %%%===================================================================
@@ -69,7 +97,19 @@ init([]) ->
     CPid = whereis(j5_cache),
     Ref = erlang:monitor(process, CPid),
 
-    {ok, #state{cache=CPid, cache_ref=Ref}}.
+    Provider = case file:consult(?SETTINGS_FILE) of
+		   {ok, Config} ->
+		       case props:get_value(blacklist_provider, Config) of
+			   undefined -> ?DEFAULT_BL_PROVIDER;
+			   P -> P
+		       end;
+		   _ -> ?DEFAULT_BL_PROVIDER
+	       end,
+    ?LOG_SYS("Blacklist provider: ~s", [Provider]),
+
+    {ok, #state{cache=CPid, cache_ref=Ref
+		,bl_provider_mod=Provider
+	       }, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -98,8 +138,10 @@ handle_call(_, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast({set_blacklist_provider, Provider}, #state{bl_provider_mod=PMod, bl_provider_pid=PPid}=State) ->
+    PMod:stop(PPid),
+    ?LOG_SYS("Switching blacklist provider from ~s to ~s", [PMod, Provider]),
+    {noreply, State#state{bl_provider_mod=Provider, bl_provider_pid=undefined}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -115,6 +157,23 @@ handle_info({'DOWN', MRef, process, Cache, _Reason}, #state{cache=Cache}=State) 
     ?LOG_SYS("registrar cache process went down, attempting to reconnect"),
     erlang:demonitor(MRef),
     {noreply, State#state{cache=undefined}, 50};
+
+handle_info({'DOWN', PRef, process, _PPid, _Reason}, #state{bl_provider_ref=PRef, bl_provider_mod=PMod}=State) ->
+    ?LOG_SYS("blacklist provider ~s down: ~p", [PMod, _Reason]),
+    try
+	PPid1 = find_bl_provider_pid(PMod),
+	PRef1 = erlang:monitor(process, PPid1),
+	{noreply, State#state{bl_provider_ref=PRef1, bl_provider_pid=PPid1}}
+    catch
+	_:_ ->
+	    {noreply, State#state{bl_provider_pid=undefined}}
+    end;
+
+handle_info(timeout, #state{bl_provider_mod=PMod, bl_provider_pid=undefined}=State) ->
+    ?LOG_SYS("blacklist provider ~s unknown, starting", [PMod]),
+    PPid1 = find_bl_provider_pid(PMod),
+    PRef1 = erlang:monitor(process, PPid1),
+    {noreply, State#state{bl_provider_ref=PRef1, bl_provider_pid=PPid1}};
 
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
@@ -156,3 +215,22 @@ terminate(_Reason, _) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+-spec find_bl_provider_pid/1 :: (PMod) -> pid() when
+      PMod :: atom().
+find_bl_provider_pid(PMod) ->
+    ?LOG_SYS("trying to start ~s" , [PMod]),
+    {module, PMod} = code:ensure_loaded(PMod),
+    case jonny5_sup:start_child(PMod) of
+	{ok, undefined} -> ?LOG("ignored"), undefined;
+	{ok, Pid} -> ?LOG("started"), Pid;
+	{ok, Pid, _Info} -> ?LOG("started with ~p", [_Info]), Pid;
+	{error, already_present} ->
+	    ?LOG_SYS("already present"),
+	    %% supervisor has the child but it isn't running
+	    timer:sleep(100),
+	    find_bl_provider_pid(PMod);
+	{error, {already_started, Pid}} ->
+	    ?LOG("already started"),
+	    Pid
+    end.

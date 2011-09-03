@@ -86,7 +86,7 @@ find_route_used(<<"outbound">>, ToUri, Routes) ->
 		end, ?EMPTY_JSON_OBJECT, Routes);
 find_route_used(<<"inbound">>, _, _) -> ?EMPTY_JSON_OBJECT.
 
--spec fetch_cdr/2 :: (CallID, DB) -> {error, not_found} | {ok, json_object()} when
+-spec fetch_cdr/2 :: (CallID, DB) -> {'error', 'not_found'} | {'ok', json_object()} when
       CallID :: binary(),
       DB :: binary().
 fetch_cdr(CallID, DB) ->

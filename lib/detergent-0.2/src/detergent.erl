@@ -33,7 +33,6 @@
 -include_lib("detergent.hrl").
 
 -define(HTTP_REQ_TIMEOUT, 20000).
--define(SOAP_PREFIX, "soap").
 
 %%-define(dbg(X,Y),
 %%        error_logger:info_msg("*dbg ~p(~p): " X,
@@ -55,7 +54,7 @@ write_hrl(WsdlURL, Output) when is_list(WsdlURL) ->
 write_hrl(#wsdl{model = Model}, Output) when is_list(Output) ->
     erlsom:write_hrl(Model, Output).
 
-write_hrl(WsdlURL, Output, Prefix) when is_list(WsdlURL), (is_list(Prefix) orelse Prefix =:= undefined) ->
+write_hrl(WsdlURL, Output, Prefix) when is_list(WsdlURL),is_list(Prefix) ->
     write_hrl(initModel(WsdlURL, Prefix), Output).
 
 
@@ -311,7 +310,7 @@ initModel2(WsdlFile, Prefix, Path, Import, AddFiles) ->
     WsdlName = filename:join([Path, "wsdl.xsd"]),
     IncludeWsdl = {"http://schemas.xmlsoap.org/wsdl/", "wsdl", WsdlName},
     {ok, WsdlModel} = erlsom:compile_xsd_file(filename:join([Path, "soap.xsd"]),
-                          [{prefix, ?SOAP_PREFIX},
+                          [{prefix, "soap"},
                            {include_files, [IncludeWsdl]}]),
     %% add the xsd model (since xsd is also used in the wsdl)
     WsdlModel2 = erlsom:add_xsd_model(WsdlModel),
@@ -322,7 +321,7 @@ initModel2(WsdlFile, Prefix, Path, Import, AddFiles) ->
     %% TODO: add files as required
     %% now compile envelope.xsd, and add Model
     {ok, EnvelopeModel} = erlsom:compile_xsd_file(filename:join([Path, "envelope.xsd"]),
-                          [{prefix, ?SOAP_PREFIX}]),
+                          [{prefix, "soap"}]),
     SoapModel = erlsom:add_model(EnvelopeModel, Model),
     SoapModel2 = addModels(AddFiles, SoapModel),
     #wsdl{operations = Operations, model = SoapModel2}.
@@ -418,14 +417,12 @@ get_url_file(Fname) ->
 %%% --------------------------------------------------------------------
 http_request(URL, SoapAction, Request, Options, Headers, ContentType) ->
     case code:ensure_loaded(ibrowse) of
-	{module, ibrowse} ->
-	    %% If ibrowse exist in the path then let's use it...
-            io:format("IBROWSE REQ to URL: ~p~nSoapAction: ~p~nRequest: ~p~nOptions: ~p~nHeaders: ~p~nContentType: ~p~n", [URL, SoapAction, Request, Options, Headers, ContentType]),
-	    ibrowse_request(URL, SoapAction, Request, Options, Headers, ContentType);
-	_ ->
-	    %% ...otherwise, let's use the OTP http client.
-	    io:format("INETS REQ to URL: ~p~nSoapAction: ~p~nRequest: ~p~nOptions: ~p~nHeaders: ~p~nContentType: ~p~n", [URL, SoapAction, Request, Options, Headers, ContentType]),
-	    inets_request(URL, SoapAction, Request, Options, Headers, ContentType)
+    {module, ibrowse} ->
+        %% If ibrowse exist in the path then let's use it...
+        ibrowse_request(URL, SoapAction, Request, Options, Headers, ContentType);
+    _ ->
+        %% ...otherwise, let's use the OTP http client.
+        inets_request(URL, SoapAction, Request, Options, Headers, ContentType)
     end.
 
 inets_request(URL, SoapAction, Request, Options, Headers, ContentType) ->

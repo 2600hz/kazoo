@@ -1,5 +1,16 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
 
+-define(SECONDS_IN_DAY, 86400).
+
+-define(IS_JSON_OBJECT,
+        fun({struct, L}) when is_list(L) ->
+                lists:all(fun({K, V}) when (is_binary(K) orelse is_atom(K)) andalso
+                                           (is_binary(V) orelse is_number(V)) -> true;
+                             (_) -> false
+                          end, L);
+           (_) -> false
+        end).
+
 -type proplist() :: [{binary() | atom(), term()} | binary() | atom(),...] | [].
 
 %% for setting types on dicts

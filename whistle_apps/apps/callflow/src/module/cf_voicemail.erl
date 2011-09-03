@@ -591,7 +591,7 @@ record_unavailable_greeting(RecordingName, #mailbox{unavailable_media_id=undefin
 record_unavailable_greeting(RecordingName, #mailbox{prompts=#prompts{record_unavail_greeting=RecordUnavailGreeting
                                                                      ,tone_spec=ToneSpec, saved=Saved, deleted=Deleted}
                                                    ,unavailable_media_id=MediaId}=Box, Call) ->
-    ?LOG("recoding unavailable greeting"),
+    ?LOG("recording unavailable greeting"),
     audio_macro([{play, RecordUnavailGreeting}
                  ,{tones, ToneSpec}]
                 ,Call),
@@ -713,6 +713,7 @@ new_message(RecordingName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, 
 				       ,{<<"Caller-ID-Name">>, CIDName}
 				       ,{<<"Caller-ID-Number">>, CIDNumber}
 				       ,{<<"Voicemail-Timestamp">>, Tstamp}
+				       ,{<<"Call-ID">>, CallID}
 				       | wh_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
 				      ]),
     ?LOG("new voicemail message ~s whistle API broadcast", [MediaId]),

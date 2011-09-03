@@ -10,11 +10,12 @@
 %%% Params :: [
 %%%   {bindings, [ {atom(), proplist()}, ...]} -> the type of bindings, with optional properties to pass along
 %%%   {responders, [ {responder, [ {<<"event-category">>, <<"event-name">>}, ...]} ]
-%%%      responder is the module name to call handle/1 on for those category/name combos
-%%%   {queue_name, <<"some name">>} -> if you want a named queue
-%%%   {queue_options, [{key, value}]} -> if the queue requires different params
-%%%   {consume_options, [{key, value}]} -> if the consumption requires special params
-%%%
+%%%      responder is the module name to call handle_req/2 on for those category/name combos
+%%%   {queue_name, <<"some name">>} -> optional, if you want a named queue
+%%%   {queue_options, [{key, value}]} -> optional, if the queue requires different params
+%%%   {consume_options, [{key, value}]} -> optional, if the consumption requires special params
+%%%   {basic_qos, integer()} -> optional, if QoS is being set on this queue
+%%% ]
 %%% @end
 %%% Created : 19 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -30,6 +31,8 @@
 -export([behaviour_info/1]).
 
 -export([start_link/3, stop/1]).
+
+-export([queue_name/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2
@@ -60,7 +63,8 @@ behaviour_info(_) ->
 			 {bindings, bindings()} |
 			 {queue_name, binary()} |
 			 {queue_options, proplist()} |
-			 {consume_options, proplist()}
+			 {consume_options, proplist()} |
+			 {basic_qos, non_neg_integer()}
 			 ,...] | [].
 
 -record(state, {
@@ -68,10 +72,16 @@ behaviour_info(_) ->
 	 ,responders = [] :: responders() %% { {EvtCat, EvtName}, Module }
          ,bindings = [] :: bindings() %% authentication | {authentication, [{key, value},...]}
          ,params = [] :: proplist()
-	 ,module = undefined :: atom()
-         ,module_state = undefined :: term()
+	 ,module = 'undefined' :: atom()
+         ,module_state = 'undefined' :: term()
          ,active_responders = [] :: [pid(),...] | [] %% list of pids processing requests
 	 }).
+
+%% API functions for requesting data from the gen_listener
+-spec queue_name/1 :: (Srv) -> {'ok', binary()} | {'error', atom()} when
+      Srv :: atom() | pid().
+queue_name(Srv) ->
+    gen_server:call(Srv, queue_name).
 
 %% API functions that mirror gen_server:call,cast,reply
 -spec call/2 :: (Name, Request) -> term() when
@@ -185,8 +195,10 @@ init([Module, Params, InitArgs]) ->
       Request :: term(),
       From :: {pid(), reference()},
       State :: #state{}.
+handle_call(queue_name, _From, #state{queue=Q}=State) ->
+    {reply, Q, State};
 handle_call(Request, From, #state{module=Module, module_state=ModState}=State) ->
-    case Module:handle_call(Request, From, ModState) of
+    case catch Module:handle_call(Request, From, ModState) of
 	{reply, Reply, ModState1} ->
 	    {reply, Reply, State#state{module_state=ModState1}};
 	{reply, Reply, ModState1, Timeout} ->
@@ -198,7 +210,9 @@ handle_call(Request, From, #state{module=Module, module_state=ModState}=State) -
 	{stop, Reason, ModState1} ->
 	    {stop, Reason, State#state{module_state=ModState1}};
 	{stop, Reason, Reply, ModState1} ->
-	    {stop, Reason, Reply, State#state{module_state=ModState1}}
+	    {stop, Reason, Reply, State#state{module_state=ModState1}};
+	{'EXIT', Why} ->
+	    {stop, Why, State}
     end.
 
 -spec handle_cast/2 :: (Request, State) -> handle_cast_ret() when
@@ -229,21 +243,27 @@ handle_cast({rm_binding, Binding}, #state{queue=Q}=State) ->
     {noreply, State};
 
 handle_cast(Message, #state{module=Module, module_state=ModState}=State) ->
-    case Module:handle_cast(Message, ModState) of
+    case catch Module:handle_cast(Message, ModState) of
 	{noreply, ModState1} ->
 	    {noreply, State#state{module_state=ModState1}};
 	{noreply, ModState1, Timeout} ->
 	    {noreply, State#state{module_state=ModState1}, Timeout};
 	{stop, Reason, ModState1} ->
-	    {stop, Reason, State#state{module_state=ModState1}}
+	    {stop, Reason, State#state{module_state=ModState1}};
+	{'EXIT', Why} ->
+	    {stop, Why, State}
     end.
 
 -spec handle_info/2 :: (Request, State) -> handle_info_ret() when
       Request :: term(),
       State :: #state{}.
 handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, #state{active_responders=ARs}=State) ->
-    Pid = spawn_link(fun() -> handle_event(Payload, CT, State) end),
-    {noreply, State#state{active_responders=[Pid | ARs]}, hibernate};
+    case catch handle_event(Payload, CT, State) of
+	Pid when is_pid(Pid) ->
+	    {noreply, State#state{active_responders=[Pid | ARs]}, hibernate};
+	{'EXIT', Why} ->
+	    {stop, Why, State}
+    end;
 
 handle_info({'EXIT', Pid, _Reason}=Message, #state{active_responders=ARs}=State) ->
     case lists:member(Pid, ARs) of
@@ -268,13 +288,15 @@ handle_info(Message, State) ->
     handle_callback_info(Message, State).
 
 handle_callback_info(Message, #state{module=Module, module_state=ModState}=State) ->
-    case Module:handle_info(Message, ModState) of
+    case catch Module:handle_info(Message, ModState) of
 	{noreply, ModState1} ->
 	    {noreply, State#state{module_state=ModState1}, hibernate};
 	{noreply, ModState1, Timeout} ->
 	    {noreply, State#state{module_state=ModState1}, Timeout};
 	{stop, Reason, ModState1} ->
-	    {stop, Reason, State#state{module_state=ModState1}}
+	    {stop, Reason, State#state{module_state=ModState1}};
+	{'EXIT', Why} ->
+	    {stop, Why, State}
     end.
 
 code_change(_OldVersion, State, _Extra) ->
@@ -284,7 +306,7 @@ terminate(Reason, #state{module=Module, module_state=ModState}) ->
     Module:terminate(Reason, ModState),
     ok.
 
--spec handle_event/3 :: (Payload, ContentType, State) -> no_return() when
+-spec handle_event/3 :: (Payload, ContentType, State) -> pid() when
       Payload :: binary(),
       ContentType :: binary(),
       State :: #state{}.
@@ -295,16 +317,20 @@ handle_event(Payload, <<"application/erlang">>, State) ->
     JObj = binary_to_term(Payload),
     process_req(State, JObj).
 
--spec process_req/2 :: (State, JObj) -> no_return() when
+-spec process_req/2 :: (State, JObj) -> pid() when
       State :: #state{},
       JObj :: json_object().
 process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj) ->
     whapps_util:put_callid(JObj),
     {reply, Props} = Module:handle_event(JObj, ModState),
-    Props1 = [{queue, Queue} | Props],
-    Key = whapps_util:get_event_type(JObj),
-    Handlers = [spawn_monitor(fun() -> Responder:handle_req(JObj, Props1) end) || {Evt, Responder} <- Responders, Key =:= Evt],
-    wait_for_handlers(Handlers).
+
+    %% moved spawn_link here so Module:handle_event is done in the Module's process
+    spawn_link(fun() ->
+		       Props1 = [{queue, Queue} | Props],
+		       Key = whapps_util:get_event_type(JObj),
+		       Handlers = [spawn_monitor(fun() -> ?LOG("calling handle_req/2 in module ~s", [Responder]),Responder:handle_req(JObj, Props1) end) || {Evt, Responder} <- Responders, Key =:= Evt],
+		       wait_for_handlers(Handlers)
+	       end).
 
 %% Collect the spawned handlers going down so the main process_req proc doesn't end until all
 %% handlers have completed (for graceful stopping).
@@ -327,6 +353,8 @@ start_amqp(Bindings, Props) ->
 
     ConsumeProps = props:get_value(consume_options, Props, []),
 
+    set_qos(props:get_value(basic_qos, Props)),
+
     _ = [ queue_bindings:add_binding_to_q(Q, Type, BindProps) || {Type, BindProps} <- Bindings ],
 
     amqp_util:basic_consume(Q, ConsumeProps),
@@ -339,3 +367,8 @@ stop_amqp(<<>>, _) -> ok;
 stop_amqp(Q, Bindings) ->
     _ = [ queue_bindings:rm_binding_from_q(Q, Type) || {Type, _} <- Bindings],
     amqp_util:queue_delete(Q).
+
+-spec set_qos/1 :: (N) -> ok when
+      N :: undefined | non_neg_integer().
+set_qos(undefined) -> ok;
+set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).

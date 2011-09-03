@@ -283,7 +283,8 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
--spec(restart_amqp_queue/1 :: (Queue :: binary()) -> 'ok' | tuple('error', 'amqp_error')).
+-spec restart_amqp_queue/1 :: (Queue) -> 'ok' | {'error', 'amqp_error'} when
+      Queue :: binary().
 restart_amqp_queue(Queue) ->
     case amqp_util:new_callctl_queue(Queue) of
 	Q when Q =:= Queue ->
@@ -295,7 +296,10 @@ restart_amqp_queue(Queue) ->
     end.
 
 %% execute all commands in JObj immediately, irregardless of what is running (if anything).
--spec(insert_command/3 :: (State :: #state{}, InsertAt :: binary(), JObj :: json_object()) -> queue()).
+-spec insert_command/3 :: (State, InsertAt, JObj) -> queue() when
+      State :: #state{},
+      InsertAt :: binary(),
+      JObj :: json_object().
 insert_command(State, <<"now">>, JObj) ->
     AName = wh_json:get_value(<<"Application-Name">>, JObj),
     case State#state.is_node_up andalso AName of
@@ -352,7 +356,10 @@ insert_command(State, <<"tail">>, JObj) ->
 	    insert_command_into_queue(State#state.command_q, fun queue:in/2, JObj)
     end.
 
--spec(insert_command_into_queue/3 :: (Q :: queue(), InsertFun :: fun(), JObj :: json_object()) -> queue()).
+-spec insert_command_into_queue/3 :: (Q, InsertFun, JObj) -> queue() when
+      Q :: queue(),
+      InsertFun :: fun(),
+      JObj :: json_object().
 insert_command_into_queue(Q, InsertFun, JObj) ->
     case wh_json:get_value(<<"Application-Name">>, JObj) of
 	<<"queue">> -> %% list of commands that need to be added
@@ -370,13 +377,17 @@ insert_command_into_queue(Q, InsertFun, JObj) ->
 	    InsertFun(JObj, Q)
     end.
 
--spec(post_hangup_commands/1 :: (CmdQ :: queue()) -> json_objects()).
+-spec post_hangup_commands/1 :: (CmdQ) -> json_objects() when
+      CmdQ :: queue().
 post_hangup_commands(CmdQ) ->
     ?LOG("removing non post hangup commands from command queue"),
     [ JObj || JObj <- queue:to_list(CmdQ),
 	      lists:member(wh_json:get_value(<<"Application-Name">>, JObj), ?POST_HANGUP_COMMANDS)
     ].
 
+-spec execute_control_request/2 :: (Cmd, State) -> 'ok' when
+      Cmd :: json_object(),
+      State :: #state{}.
 execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
     try
         ?LOG("executing application ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)]),
@@ -398,21 +409,34 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
             amqp_util:callevt_publish(UUID, Payload, event),
             self() ! {hangup, undefined, UUID},
 	    ok;
+	error:{badmatch, {error, ErrMsg}} ->
+	    ?LOG("Matching error: {'error': ~s} when executing ~s", [ErrMsg, wh_json:get_value(<<"Application-Name">>, Cmd)]),
+	    ?LOG("Stacktrace: ~w", [erlang:get_stacktrace()]),
+	    send_error_resp(UUID, Cmd),
+	    self() ! {force_queue_advance, UUID},
+	    ok;
         _A:_B ->
 	    ?LOG("Exception ~s:~w when executing ~s", [_A, _B, wh_json:get_value(<<"Application-Name">>, Cmd)]),
 	    ?LOG("Stacktrace: ~w", [erlang:get_stacktrace()]),
-            Resp = [
-		    {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
-		    ,{<<"Error-Message">>, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>}
-		    | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
-		   ],
-            {ok, Payload} = wh_api:error_resp(Resp),
-            amqp_util:callevt_publish(UUID, Payload, event),
+	    send_error_resp(UUID, Cmd),
             self() ! {force_queue_advance, UUID},
             ok
     end.
 
--spec(get_keep_alive_ref/1 :: (TRef :: undefined | timer:tref()) -> undefined | timer:tref()).
+-spec send_error_resp/2 :: (UUID, Cmd) -> 'ok' when
+      UUID :: binary(),
+      Cmd :: json_object().
+send_error_resp(UUID, Cmd) ->
+    Resp = [
+	    {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
+	    ,{<<"Error-Message">>, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>}
+	    | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
+	   ],
+    {ok, Payload} = wh_api:error_resp(Resp),
+    amqp_util:callevt_publish(UUID, Payload, event).
+
+-spec get_keep_alive_ref/1 :: (TRef) -> 'undefined' | timer:tref() when
+      TRef :: 'undefined' | timer:tref().
 get_keep_alive_ref(undefined) -> undefined;
 get_keep_alive_ref(TRef) ->
     _ = case timer:cancel(TRef) of

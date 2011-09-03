@@ -38,9 +38,9 @@ build(EndpointId, Call) ->
 
 build(EndpointId, undefined, Call) ->
     build(EndpointId, ?EMPTY_JSON_OBJECT, Call);
-build(EndpointId, Properties, #cf_call{authorizing_id=AuthId}=Call) ->
+build(EndpointId, Properties, #cf_call{authorizing_id=AuthId, inception_during_transfer=IDT}=Call) ->
     case wh_util:is_false(wh_json:get_value(<<"can_call_self">>, Properties, false))
-        andalso (is_binary(AuthId) andalso EndpointId =:= AuthId) of
+        andalso (is_binary(AuthId) andalso EndpointId =:= AuthId) andalso not IDT of
         true ->
             ?LOG("call is from endpoint ~s, skipping", [EndpointId]),
             {error, called_self};

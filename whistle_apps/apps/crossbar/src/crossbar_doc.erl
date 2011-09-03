@@ -231,6 +231,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
 	    crossbar_util:response_conflicting_docs(Context);
 	{ok, JObj1} when Verb =:= <<"put">> ->
 	    ?LOG("Saved a put request, setting location headers"),
+	    send_amqp_event(JObj1, <<"created">>),
             Context#cb_context{
                  doc=JObj1
                 ,resp_status=success
@@ -240,6 +241,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
             };
 	{ok, JObj2} ->
 	    ?LOG("Saved json doc"),
+	    send_amqp_event(JObj2, <<"edited">>),
             Context#cb_context{
                  doc=JObj2
                 ,resp_status=success
@@ -251,6 +253,25 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
             Context
     end.
 
+-spec send_amqp_event/2 :: (Doc, Type) -> 'ok' when
+      Doc :: json_object(),
+      Type :: binary().%<<"created">> | <<"edited">> | <<"deleted">>.
+send_amqp_event(Doc, Type) ->
+    JObj = {struct, [{<<"ID">>, wh_json:get_value(<<"_id">>, Doc)}
+		      ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
+		      ,{<<"Type">>, wh_json:get_value(<<"pvt_type">>, Doc)}
+		      ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
+		      ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
+		      ,{<<"Event-Type">>, Type}
+		      ,{<<"Date-Modified">>, wh_json:get_value(<<"pvt_created">>, Doc)}
+		      ,{<<"Date-Created">>, wh_json:get_value(<<"pvt_modified">>, Doc)}
+		      ,{<<"Version">>, wh_json:get_value(<<"pvt_vsn">>, Doc)}
+		      ,{<<"Custom-Fields">>, public_fields(Doc)}
+			| wh_api:default_headers(<<>>, <<"crossbar">>, <<"document_event">>, ?APP_NAME, ?APP_VSN)
+		     ]},
+    ?LOG("Publishing configuration event for ID: ~p, type: ~p", [wh_json:get_value(<<"ID">>, JObj), Type]),
+    {ok, Payload} = cb_api:new_document_event(JObj),
+    amqp_util:configuration_publish(?DOCUMENT_EVENT, Payload, <<"application/json">>).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -331,6 +352,7 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
             crossbar_util:response_datastore_timeout(Context);
 	{ok, _Doc} ->
 	    ?LOG("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
+	    send_amqp_event(JObj1, <<"deleted">>),
             Context#cb_context{
 	       doc = ?EMPTY_JSON_OBJECT
 	      ,resp_status=success

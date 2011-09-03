@@ -263,6 +263,7 @@ process_route_req(Node, FSID, CallID, FSData) ->
 	       ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
 	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
 	       ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
+               ,{<<"During-Transfer">>, ecallmgr_util:is_during_transfer(FSData, binary)}
 	       ,{<<"Call-ID">>, CallID}
 	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
 	       | wh_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],

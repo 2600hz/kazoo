@@ -1,28 +1,31 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 15 Aug 2011 by James Aimonetti <>
+%%% Created : 15 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(notify_vm).
 
--export([start_link/0, handle_req/1]).
+-export([init/0, handle_req/2]).
 
 -include("notify.hrl").
 
--spec start_link/0 :: () -> ignore.
-start_link() ->
+-spec init/0 :: () -> 'ok'.
+init() ->
     %% ensure the vm template can compile, otherwise crash the processes
     {ok, notify_vm_tmpl} = erlydtl:compile(?DEFAULT_VM_TEMPLATE, notify_vm_tmpl),
     {ok, notify_html_vm_tmpl} = erlydtl:compile(?DEFAULT_HTML_VM_TEMPLATE, notify_html_vm_tmpl),
-    ignore.
+    ?LOG_SYS("init done for vm-to-email").
 
--spec handle_req/1 :: (JObj) -> no_return() when
-      JObj :: json_object().
-handle_req(JObj) ->
+-spec handle_req/2 :: (JObj, Props) -> no_return() when
+      JObj :: json_object(),
+      Props :: proplist().
+handle_req(JObj, _Props) ->
     true = cf_api:new_voicemail_v(JObj),
+    whapps_util:put_callid(JObj),
+
     AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
     {ok, VMBox} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),
     {ok, UserJObj} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"owner_id">>, VMBox)),
@@ -54,12 +57,16 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
     {ok, HTMLBody} = format_html(JObj, HTMLTmpl),
 
     DB = wh_json:get_value(<<"Account-DB">>, JObj),
-    Doc = wh_json:get_value(<<"Voicemail-Box">>, JObj),
-    AttachmentId = wh_json:get_value(<<"Voicemail-Name">>, JObj),
+    DocId = wh_json:get_value(<<"Voicemail-Name">>, JObj),
 
     From = <<"no_reply@", (wh_util:to_binary(net_adm:localhost()))/binary>>,
 
-    {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, Doc, AttachmentId),
+    ?LOG_SYS("Opening ~s in ~s", [DocId, DB]),
+    {ok, VMJObj} = couch_mgr:open_doc(DB, DocId),
+
+    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
+    ?LOG_SYS("Attachment doc: ~s", [AttachmentId]),
+    {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
     Email = {<<"multipart">>, <<"mixed">> %% Content Type / Sub Type
 		 ,[ %% Headers
@@ -81,6 +88,7 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
 	      ]
 	    },
     Encoded = mimemail:encode(Email),
+    ?LOG_SYS("Sending email to ~s", [To]),
     gen_smtp_client:send({From, [To], Encoded}, [{relay, "localhost"}]
 			 ,fun(X) -> ?LOG("Sending email to ~s resulted in ~p", [To, X]) end).
 

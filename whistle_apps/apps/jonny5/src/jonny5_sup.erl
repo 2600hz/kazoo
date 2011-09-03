@@ -11,13 +11,16 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, upgrade/0]).
+-export([start_link/0, upgrade/0, start_child/1, get_blacklist_server/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
+-include("jonny5.hrl").
+
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-define(BL(I), {?BLACKLIST_SERVER, {I, start_link, []}, temporary, 5000, worker, [I]}).
 -define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
 
 %% ===================================================================
@@ -26,6 +29,14 @@
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+start_child(Module) ->
+    supervisor:start_child(?MODULE, ?BL(Module)).
+
+-spec get_blacklist_server/0 :: () -> {atom(), pid()}.
+get_blacklist_server() ->
+    [{_, _}=Pair] = [ {Mod, Pid} || {?BLACKLIST_SERVER, Pid, worker, [Mod]} <- supervisor:which_children(?MODULE)],
+    Pair.
 
 %% @spec upgrade() -> ok
 %% @doc Add processes if necessary.

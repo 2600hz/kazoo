@@ -16,6 +16,7 @@
 -export([is_true/2, is_true/3, is_false/2, is_false/3]).
 
 -export([get_value/2, get_value/3]).
+-export([get_keys/2]).
 -export([set_value/3]).
 -export([delete_key/2, delete_key/3]).
 
@@ -151,6 +152,18 @@ get_binary_boolean(Key, JObj) ->
 
 get_binary_boolean(Key, JObj, Default) ->
     wh_util:to_binary(is_true(Key, JObj, Default)).
+
+-spec get_keys/2 :: (Key, JObj) -> 'undefined' | [term(),...] | [] when
+      Key :: term(),
+      JObj :: json_object().
+get_keys([], JObj) ->
+    get_keys1(JObj);
+get_keys(Key, JObj) ->
+    get_keys1(get_value(Key, JObj)).
+
+get_keys1(KVs) when is_list(KVs) -> props:get_keys(KVs);
+get_keys1({struct, KVs}) when is_list(KVs) -> props:get_keys(KVs);
+get_keys1(_) -> undefined.
 
 -spec get_value/2 :: (Key, JObj) -> term() when
       Key :: term(),
@@ -420,6 +433,11 @@ normalizer({_,_}=DataTuple) ->
 -define(P4, [?P1, ?P2, ?P3]).
 -define(P6, [{<<"d2k1">>, 1},{<<"d2k2">>, 3.14},{<<"sub_d1">>, [{<<"d1k1">>, "d1v1"}]}]).
 -define(P7, [{<<"d1k1">>, <<"d1v1">>}]).
+
+get_keys_test() ->
+    Keys = [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>],
+    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, get_keys([], ?D1))),
+    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, get_keys([<<"sub_docs">>, 1], ?D3))).
 
 -spec to_proplist_test/0 :: () -> no_return().
 to_proplist_test() ->
