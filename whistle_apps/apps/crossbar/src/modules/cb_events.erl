@@ -3,6 +3,20 @@
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Subscribe to AMQP events on behalf of user
+%%%
+%%% Subscribing
+%%% 1. Request comes in from an account's user to start/stop subscribing to events
+%%%    a. spawn process to save/delete the subscription from the user's event sub doc in Couch
+%%% 2. cb_events asks cb_events_sup for the user's event server
+%%%    a. if no server exists (and a sub is requested, start the server)
+%%% 3. cb_events uses the returned PID to call cb_events_srv:sub/unsub with requested subs
+%%%    a. if unsubbing the last subscription, cb_events_srv stops running
+%%%
+%%% Polling
+%%% 1. Same as (1) above
+%%% 2. Same as (2), except an error is returned if no server exists
+%%% 3. cb_events uses the returned PID to call cb_events_srv:fetch to retrieve all events
+%%%
 %%% @end
 %%% Created : 24 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------

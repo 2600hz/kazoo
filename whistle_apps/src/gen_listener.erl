@@ -117,14 +117,14 @@ reply(From, Msg) ->
 start_link(Module, Params, InitArgs) ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
 
--spec stop/1 :: (Srv) -> ok when
+-spec stop/1 :: (Srv) -> 'ok' when
       Srv :: atom() | pid().
 stop(Srv) when is_atom(Srv) ->
     stop(whereis(Srv));
 stop(Srv) when is_pid(Srv) ->
     gen_server:cast(Srv, stop).
 
--spec add_responder/3 :: (Srv, Responder, Key) -> ok when
+-spec add_responder/3 :: (Srv, Responder, Key) -> 'ok' when
       Srv :: atom() | pid(),
       Responder :: atom(),
       Key :: {binary(), binary()} | [{binary(), binary()},...].
@@ -133,10 +133,10 @@ add_responder(Srv, Responder, Key) when not is_list(Key) ->
 add_responder(Srv, Responder, [{_,_}|_] = Keys) ->
     gen_server:cast(Srv, {add_responder, Responder, Keys}).
 
--spec rm_responder/2 :: (Srv, Responder) -> ok when
+-spec rm_responder/2 :: (Srv, Responder) -> 'ok' when
       Srv :: atom() | pid(),
       Responder :: atom().
--spec rm_responder/3 :: (Srv, Responder, Key) -> ok when
+-spec rm_responder/3 :: (Srv, Responder, Key) -> 'ok' when
       Srv :: atom() | pid(),
       Responder :: atom(),
       Key :: [{binary(), binary()},...] | []. %% empty list removes all
@@ -147,13 +147,13 @@ rm_responder(Srv, Responder, {_,_}=Key) ->
 rm_responder(Srv, Responder, Keys) ->
     gen_server:cast(Srv, {rm_responder, Responder, Keys}).
 
--spec add_binding/2 :: (Srv, Binding) -> ok when
+-spec add_binding/2 :: (Srv, Binding) -> 'ok' when
       Srv :: atom() | pid(),
       Binding :: {atom(), proplist()}.
 add_binding(Srv, {Binding, Props}) ->
     gen_server:cast(Srv, {add_binding, Binding, Props}).
 
--spec rm_binding/2 :: (Srv, Binding) -> ok when
+-spec rm_binding/2 :: (Srv, Binding) -> 'ok' when
       Srv :: atom() | pid(),
       Binding :: atom().
 rm_binding(Srv, Binding) ->
@@ -162,7 +162,7 @@ rm_binding(Srv, Binding) ->
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
--spec init/1 :: (Args) -> {ok, #state{}, hibernate} when
+-spec init/1 :: (Args) -> {'ok', #state{}, 'hibernate'} when
       Args :: [atom() | proplist(),...].
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
