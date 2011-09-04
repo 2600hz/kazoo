@@ -75,7 +75,7 @@ filter_active_calls(CallID, ActiveCalls) ->
 		    (_) -> true end, ActiveCalls).
 
 -spec get_media_handling/1 :: (L) -> binary() when
-      L :: [undefined | json_object() | binary(),...].
+      L :: ['undefined' | json_object() | binary(),...].
 get_media_handling(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"process">>;
@@ -197,14 +197,14 @@ invite_format(<<"npan">>, To) ->
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>} ].
 
--spec sip_headers/1 :: (L) -> undefined | json_object() when
-      L :: [undefined | json_object(),...] | [].
--spec sip_headers/2 :: (L, Acc) -> undefined | json_object() when
-      L :: [undefined | json_object(),...] | [],
+-spec sip_headers/1 :: (L) -> 'undefined' | json_object() when
+      L :: ['undefined' | json_object(),...] | [].
+-spec sip_headers/2 :: (L, Acc) -> 'undefined' | json_object() when
+      L :: ['undefined' | json_object(),...] | [],
       Acc :: proplist().
 sip_headers(L) ->
     sip_headers(L, []).
-sip_headers([undefined | T], Acc) ->
+sip_headers([undefined| T], Acc) ->
     sip_headers(T, Acc);
 sip_headers([?EMPTY_JSON_OBJECT | T], Acc) ->
     sip_headers(T, Acc);
@@ -228,32 +228,32 @@ failover(L) ->
 	    Other
     end.
 
--spec progress_timeout/1 :: (L) -> undefined | json_object() | binary() when
-      L :: [undefined | json_object() | binary(),...].
+-spec progress_timeout/1 :: (L) -> 'undefined' | json_object() | binary() when
+      L :: ['undefined' | json_object() | binary(),...].
 progress_timeout(L) -> simple_extract(L).
 
--spec bypass_media/1 :: (L) -> binary() when
-      L :: [undefined | json_object() | binary(),...].
+-spec bypass_media/1 :: (L) -> 'true' | 'false' when
+      L :: ['undefined' | json_object() | binary(),...].
 bypass_media(L) ->
     case simple_extract(L) of
-        <<"process">> -> <<"false">>;
-        _ -> <<"true">>
+        <<"process">> -> false;
+        _ -> true
     end.
 
--spec delay/1 :: (L) -> undefined | json_object() | binary() when
-      L :: [undefined | json_object() | binary(),...].
+-spec delay/1 :: (L) -> 'undefined' | json_object() | binary() when
+      L :: ['undefined' | json_object() | binary(),...].
 delay(L) -> simple_extract(L).
 
--spec ignore_early_media/1 :: (L) -> undefined | json_object() | binary() when
-      L :: [undefined | json_object() | binary(),...].
+-spec ignore_early_media/1 :: (L) -> 'undefined' | json_object() | binary() when
+      L :: ['undefined' | json_object() | binary(),...].
 ignore_early_media(L) -> simple_extract(L).
 
--spec ep_timeout/1 :: (L) -> undefined | json_object() | binary() when
-      L :: [undefined | json_object() | binary(),...].
+-spec ep_timeout/1 :: (L) -> 'undefined' | json_object() | binary() when
+      L :: ['undefined' | json_object() | binary(),...].
 ep_timeout(L) -> simple_extract(L).
 
--spec simple_extract/1 :: (L) -> undefined | json_object() | binary() when
-      L :: [undefined | json_object() | binary(),...].
+-spec simple_extract/1 :: (L) -> 'undefined' | json_object() | binary() when
+      L :: ['undefined' | json_object() | binary(),...].
 simple_extract([undefined|T]) ->
     simple_extract(T);
 simple_extract([?EMPTY_JSON_OBJECT | T]) ->

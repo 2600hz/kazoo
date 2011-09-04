@@ -31,9 +31,11 @@
 %% the name of the account database
 %% @end
 %%--------------------------------------------------------------------
--spec(get_db_name/1 :: (AccountId :: list(binary()) | json_object() | binary()) -> binary()).
--spec(get_db_name/2 :: (AccountId :: list(binary()) | binary() | json_object(), Encoding :: unencoded | encoded | raw) -> binary()).
-
+-spec get_db_name/1 :: (AccountId) -> binary() when
+      AccountId :: [binary(),...] | json_object() | binary().
+-spec get_db_name/2 :: (AccountId, Encoding) -> binary() when
+      AccountId :: [binary(),...] | binary() | json_object(),
+      Encoding :: unencoded | encoded | raw.
 get_db_name(Doc) -> get_db_name(Doc, unencoded).
 
 get_db_name({struct, _}=Doc, Encoding) ->
@@ -76,7 +78,8 @@ get_db_name(AccountId, raw) ->
 %% @spec update_all_accounts() -> ok | error
 %% @end
 %%--------------------------------------------------------------------
--spec(update_all_accounts/1 :: (File :: binary()) -> no_return()).
+-spec update_all_accounts/1 :: (File) -> no_return() when
+      File :: binary().
 update_all_accounts(File) ->
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2000),
@@ -90,7 +93,8 @@ update_all_accounts(File) ->
 %% application priv/couchdb/views/ folder into every account
 %% @end
 %%--------------------------------------------------------------------
--spec(revise_whapp_views_in_accounts/1 :: (App :: atom()) -> no_return()).
+-spec revise_whapp_views_in_accounts/1 :: (App) -> no_return() when
+      App :: atom().
 revise_whapp_views_in_accounts(App) ->
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2000),
@@ -104,7 +108,9 @@ revise_whapp_views_in_accounts(App) ->
 %% account db into the target database
 %% @end
 %%--------------------------------------------------------------------
--spec(replicate_from_accounts/2 :: (TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
+-spec replicate_from_accounts/2 :: (TargetDb, FilterDoc) -> no_return() when
+      TargetDb :: binary(),
+      FilterDoc :: binary().
 replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2000),
@@ -118,7 +124,10 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
 %% source database into the target database
 %% @end
 %%--------------------------------------------------------------------
--spec(replicate_from_account/3 :: (AccountDb :: binary(), TargetDb :: binary(), FilterDoc :: binary()) -> no_return()).
+-spec replicate_from_account/3 :: (AccountDb, TargetDb, FilterDoc) -> no_return() when
+      AccountDb :: binary(),
+      TargetDb :: binary(),
+      FilterDoc :: binary().
 replicate_from_account(AccountDb, AccountDb, _) ->
     ?LOG_SYS("requested to replicate from db ~s to self, skipping", [AccountDb]),
     {error, matching_dbs};
@@ -182,7 +191,8 @@ get_account_by_realm(Realm) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec(get_event_type/1 :: (JObj :: json_object()) -> tuple(binary(), binary())).
+-spec get_event_type/1 :: (JObj) -> {binary(), binary()} when
+      JObj :: json_object().
 get_event_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
 
@@ -193,7 +203,8 @@ get_event_type(JObj) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec(put_callid/1 :: (JObj :: json_object()) -> no_return()).
+-spec put_callid/1 :: (JObj) -> no_return() when
+      JObj :: json_object().
 put_callid(JObj) ->
     _ = put(callid, wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
 
@@ -204,7 +215,8 @@ put_callid(JObj) ->
 %% this returns the cause and code for the call termination
 %% @end
 %%--------------------------------------------------------------------
--spec(get_call_termination_reason/1 :: (JObj :: json_object()) -> {binary(), binary()}).
+-spec get_call_termination_reason/1 :: (JObj) -> {binary(), binary()} when
+      JObj :: json_object().
 get_call_termination_reason(JObj) ->
     Cause = case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
                <<>> ->

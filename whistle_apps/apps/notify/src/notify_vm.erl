@@ -54,12 +54,13 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
     {ok, HTMLBody} = format_html(JObj, HTMLTmpl),
 
     DB = wh_json:get_value(<<"Account-DB">>, JObj),
-    Doc = wh_json:get_value(<<"Voicemail-Box">>, JObj),
-    AttachmentId = wh_json:get_value(<<"Voicemail-Name">>, JObj),
+    DocId = wh_json:get_value(<<"Voicemail-Name">>, JObj),
 
     From = <<"no_reply@", (wh_util:to_binary(net_adm:localhost()))/binary>>,
 
-    {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, Doc, AttachmentId),
+    {ok, JObj} = couch_mgr:open_doc(DB, DocId),
+    {AttachmentId, _MetaData} = wh_json:get_value(<<"_attachments">>, JObj),
+    {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
     Email = {<<"multipart">>, <<"mixed">> %% Content Type / Sub Type
 		 ,[ %% Headers

@@ -1,5 +1,7 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
 
+-define(SECONDS_IN_DAY, 86400).
+
 -type proplist() :: [{binary() | atom(), term()} | binary() | atom(),...] | [].
 
 %% for setting types on dicts
@@ -43,6 +45,17 @@
 %% Recreate the non-exported types defined in the erlang gen_server source
 -type startlink_err() :: {'already_started', pid()} | 'shutdown' | term().
 -type startlink_ret() :: {'ok', pid()} | 'ignore' | {'error', startlink_err()}.
+
+-type gen_server_timeout() :: 'hibernate' | non_neg_integer().
+-type handle_call_ret() :: {'reply', term(), term()} | {'reply', term(), term(), gen_server_timeout()} |
+			   {'noreply', term()} | {'noreply', term(), gen_server_timeout()} |
+			   {'stop', term(), term()} | {'stop', term(), term(), term()}.
+
+-type handle_cast_ret() :: {'noreply', term()} | {'noreply', term(), gen_server_timeout()} |
+			   {'stop', term(), term()}.
+
+-type handle_info_ret() :: {'noreply', term()} | {'noreply', term(), gen_server_timeout()} |
+			   {'stop', term(), term()}.
 
 -define(WHISTLE_TYPES_INCLUDED, true).
 -endif.

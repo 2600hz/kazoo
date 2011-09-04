@@ -24,24 +24,15 @@ start() ->
     application:start(dth).
 
 start_deps() ->
-    inets:start(),
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    ensure_started(sasl), % logging
-    ensure_started(crypto), % random
-    ensure_started(ibrowse),
-    ensure_started(whistle_amqp), % amqp wrapper
-    ensure_started(whistle_couch). % couch wrapper
+    inets:start(),
+    wh_util:ensure_started(sasl), % logging
+    wh_util:ensure_started(crypto), % random
+    wh_util:ensure_started(ibrowse),
+    wh_util:ensure_started(whistle_amqp), % amqp wrapper
+    wh_util:ensure_started(whistle_couch). % couch wrapper
 
 %% @spec stop() -> ok
 %% @doc Stop the basicapp server.
 stop() ->
-    application:stop(dth),
-    ok.
-
-ensure_started(App) ->
-    case application:start(App) of
-	ok ->
-	    ok;
-	{error, {already_started, App}} ->
-	    ok
-    end.
+    application:stop(dth).

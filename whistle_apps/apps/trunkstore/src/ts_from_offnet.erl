@@ -222,7 +222,7 @@ try_failover_e164(State, ToDID) ->
 %%--------------------------------------------------------------------
 %% Out-of-band functions
 %%--------------------------------------------------------------------
--spec get_endpoint_data/1 :: (JObj) -> {endpoint, json_object()} | {error, no_rate_found} when
+-spec get_endpoint_data/1 :: (JObj) -> {'endpoint', json_object()} | {'error', 'no_rate_found'} when
       JObj :: json_object().
 get_endpoint_data(JObj) ->
     %% wh_timer:tick("inbound_route/1"),

@@ -1,8 +1,9 @@
-all: 
-	@(./rebar compile)
+.PHONY: all compile clean
 
-get-deps:
-	@(./rebar get-deps)
+all: compile
+
+compile:
+	@./rebar compile
 
 clean:
-	@(./rebar clean)
+	@./rebar clean

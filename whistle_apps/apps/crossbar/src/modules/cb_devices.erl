@@ -220,6 +220,8 @@ bind_to_crossbar() ->
 -spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
+allowed_methods([<<"status">>]) ->
+    {true, ['GET']};
 allowed_methods([_]) ->
     {true, ['GET', 'POST', 'DELETE']};
 allowed_methods(_) ->
@@ -255,6 +257,8 @@ validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=
     load_device_summary(Context, QueryString);
 validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
     create_device(Context);
+validate([<<"status">>], _, #cb_context{req_verb = <<"get">>}=Context) ->
+    load_device_status(Context);
 validate([DocId], _, #cb_context{req_verb = <<"get">>}=Context) ->
     load_device(DocId, Context);
 validate([DocId], _, #cb_context{req_verb = <<"post">>}=Context) ->
@@ -322,6 +326,31 @@ update_device(DocId, #cb_context{req_data=JObj}=Context) ->
         {true, []} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Retrieve the status of the devices linked to the account
+%% Reads registered devices in registrations, then map to devices of the account
+%% @end
+%%--------------------------------------------------------------------
+-spec load_device_status/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
+load_device_status(#cb_context{db_name=Db}=Context) ->
+    %% RegisteredDevices = [[realm1, user1], [realmN, userN], ...], those are owners of currently  registered devices.
+    %% RegisteredDevices is reinjected as keys for devices/sip_credentials
+    RegisteredDevices = case couch_mgr:get_results(<<"registrations">>, <<"reg_doc/realm_and_username">>, []) of
+	    {ok, JObjs} -> lists:foldl(fun(JObj, Acc) -> [wh_json:get_value(<<"key">>, JObj) | Acc] end, [], JObjs)
+	end,
+
+    DevicesJObj = case couch_mgr:get_results(Db, <<"devices/sip_credentials">>, [{<<"keys">>, RegisteredDevices}]) of
+		      {ok, Devices} -> lists:foldl(fun(JObj, Acc) ->
+							   IsReg = lists:member(wh_json:get_value(<<"key">>, JObj), RegisteredDevices),
+							   RegDevice = wh_json:set_value(<<"device_id">>, wh_json:get_value([<<"value">>, <<"authorizing_id">>], JObj), ?EMPTY_JSON_OBJECT),
+							   [wh_json:set_value(<<"registered">>, IsReg, RegDevice)| Acc]
+						   end, [], Devices)
+		  end,
+    crossbar_util:response(DevicesJObj, Context).
 
 %%--------------------------------------------------------------------
 %% @private

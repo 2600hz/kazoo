@@ -1,0 +1,9 @@
+{
+    "_id": "_design/hotdesks"
+    ,"language": "javascript"
+    ,"views": {
+       "crossbar_listing" : {
+           "map": "function(doc) { if (doc.pvt_deleted || !doc.hotdesk) return; emit(doc._id, {'id': doc.hotdesk.id, 'pin': doc.hotdesk.pin, 'require_pin': doc.hotdesk.require_pin , 'keep_logged_in_elsewhere': doc.hotdesk.keep_logged_in_elsewhere}); }"
+       }
+    }
+}

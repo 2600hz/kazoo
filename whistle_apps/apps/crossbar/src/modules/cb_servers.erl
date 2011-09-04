@@ -23,6 +23,7 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -156,7 +157,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.servers">>, [RD, Contex
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, Context),
+                  Context1 = validate(Params, RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
@@ -204,7 +205,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.servers">>, [RD, 
                   crossbar_util:put_reqid(Context),
                   case crossbar_doc:delete(Context, permanent) of
                       #cb_context{resp_status=success}=Context1 ->
-                          execute_delete_command(Context1, State),
+                          execute_delete_command(Context, State),
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
@@ -341,32 +342,32 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_server_summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
+-spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
+    load_server_summary(Context, QueryString);
+validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
     create_server(Context);
-validate([ServerId], #cb_context{req_verb = <<"get">>}=Context) ->
+validate([ServerId], _, #cb_context{req_verb = <<"get">>}=Context) ->
     load_server(ServerId, Context);
-validate([ServerId], #cb_context{req_verb = <<"post">>}=Context) ->
+validate([ServerId], _, #cb_context{req_verb = <<"post">>}=Context) ->
     update_server(ServerId, Context);
-validate([ServerId], #cb_context{req_verb = <<"delete">>}=Context) ->
+validate([ServerId], _, #cb_context{req_verb = <<"delete">>}=Context) ->
     load_server(ServerId, Context);
-validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"get">>}=Context) ->
+validate([ServerId, <<"deployment">>], _, #cb_context{req_verb = <<"get">>}=Context) ->
     case load_server(ServerId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
             Context1#cb_context{resp_data={struct, [{<<"status">>, wh_json:get_value(<<"pvt_deploy_status">>, JObj)}
                                                     ,{<<"log">>,wh_json:get_value(<<"pvt_deploy_log">>, JObj)}]}};
         Else -> Else
     end;
-validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"post">>}=Context) ->
+validate([ServerId, <<"deployment">>], _, #cb_context{req_verb = <<"post">>}=Context) ->
     case load_server(ServerId, Context) of
         #cb_context{resp_status=success, doc=JObj, req_data=Data}=Context1 ->
             DeployLog = [Data | wh_json:get_value(<<"pvt_deploy_log">>, JObj, [])],
             Context1#cb_context{doc=wh_json:set_value(<<"pvt_deploy_log">>, DeployLog, JObj)};
         Else -> Else
     end;
-validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"put">>}=Context) ->
+validate([ServerId, <<"deployment">>], _, #cb_context{req_verb = <<"put">>}=Context) ->
     case load_server(ServerId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
             case wh_json:get_value(<<"pvt_deploy_status">>, JObj) of
@@ -378,7 +379,7 @@ validate([ServerId, <<"deployment">>], #cb_context{req_verb = <<"put">>}=Context
         Else ->
             Else
     end;
-validate(_, Context) ->
+validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
@@ -388,9 +389,13 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_server_summary/1 :: (Context) -> #cb_context{} when
+-spec load_server_summary/2 :: (Context, QueryParams) -> #cb_context{} when
+      QueryParams :: list(),
       Context :: #cb_context{}.
-load_server_summary(Context) ->
+load_server_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
+    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams),
+    Context#cb_context{resp_data=Result, resp_status=success};
+load_server_summary(Context, []) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
@@ -471,9 +476,9 @@ is_valid_doc(JObj) ->
 execute_delete_command(_, #state{delete_tmpl=undefined}) ->
     ?LOG("no delete template defined"),
     ok;
-execute_delete_command(Context, #state{delete_tmpl=DeleteTmpl}=State) ->
-    Props = template_props(Context, State),
-    {ok, C} = DeleteTmpl:render(Props),
+execute_delete_command(#cb_context{doc=JObj}, #state{delete_tmpl=DeleteTmpl}) ->
+    Props = wh_json:to_proplist(JObj),
+    {ok, C} = DeleteTmpl:render([{<<"server">>, Props}]),
     Cmd = binary_to_list(iolist_to_binary(C)),
     ?LOG("executing delete template: ~s", [Cmd]),
     os:cmd(Cmd),

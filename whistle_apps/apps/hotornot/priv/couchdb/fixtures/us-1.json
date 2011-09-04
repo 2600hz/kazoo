@@ -1,0 +1,15 @@
+{ "_id":"US-1"
+  ,"direction":["inbound","outbound"]
+  ,"flatrate":true
+  ,"internal_cost":"0.01"
+  ,"iso_country_code":"US"
+  ,"options":{}
+  ,"prefix":1
+  ,"rate_cost":"0.02"
+  ,"rate_increment":60
+  ,"rate_minimum":60
+  ,"rate_name":"US-1"
+  ,"rate_surcharge":"0.00"
+  ,"routes":[ "^0111(\\d{10})$", "^\\+1(\\d{10})$" ]
+  ,"weight":1
+}

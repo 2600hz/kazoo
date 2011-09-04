@@ -41,6 +41,7 @@
 -export([wait_for_message/1, wait_for_message/2, wait_for_message/3, wait_for_message/4]).
 -export([wait_for_application/1, wait_for_application/2, wait_for_application/3, wait_for_application/4]).
 -export([wait_for_bridge/1, wait_for_unbridge/0]).
+-export([wait_for_callee_release/1]).
 -export([wait_for_dtmf/1]).
 -export([wait_for_noop/1]).
 -export([wait_for_hangup/0]).
@@ -49,6 +50,7 @@
 -export([send_callctrl/2]).
 
 -export([find_failure_branch/2]).
+-export([update_fallback/2]).
 
 %%--------------------------------------------------------------------
 %% @pubic
@@ -291,7 +293,13 @@ b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Call) ->
     b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, undefined, Call).
 b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
     bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback, Call),
-    wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000).
+    case wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000) of
+        {ok, Bridge}=Ok ->
+            spawn(fun() -> update_fallback(Bridge, Call) end),
+            Ok;
+        Else ->
+            Else
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1221,13 +1229,58 @@ wait_for_bridge(Timeout) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Waits for and determines the status of the bridge command
+%% @end
+%%--------------------------------------------------------------------
+-spec wait_for_callee_release/1 :: (Call) -> cf_api_bridge_return() when
+      Call :: #cf_call{}.
+wait_for_callee_release(Call) ->
+    receive
+        {amqp_msg, {struct, _}=JObj} ->
+            Transfer = wh_json:is_true(<<"During-Transfer">>, JObj),
+            case get_event_type(JObj) of
+                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } when not Transfer ->
+                    ?LOG("channel was unbridged while waiting for bridge"),
+                    {error, channel_unbridge};
+                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } when not Transfer ->
+                    ?LOG("channel was hungup while waiting for bridge"),
+                    {error, channel_hungup};
+                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">> } when not Transfer ->
+                    case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
+                        <<"SUCCESS">> ->
+                            {ok, JObj};
+                        _ ->
+                            {fail, JObj}
+                    end;
+                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"park">> } when Transfer ->
+                    set({struct, [{<<"Transferred">>, <<"false">>}]}, undefined, Call),
+                    spawn(fun() -> update_fallback(JObj, Call) end),
+                    ?LOG("call transfer complete"),
+                    wait_for_callee_release(Call);
+                { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } when Transfer ->
+                    set({struct, [{<<"Transferred">>, <<"false">>}]}, undefined, Call),
+                    ?LOG("call control was moved to transfer reciepient"),
+                    {transfer, JObj};
+                {_, Event, App} when Transfer ->
+                    ?LOG("ignoring ~s (~s) occuring during a transfer", [Event, App]),
+                    wait_for_callee_release(Call);
+                _ ->
+                    wait_for_callee_release(Call)
+            end;
+        _ ->
+            wait_for_callee_release(Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Wait for a noop or a specific noop to occur
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_noop/1 :: (NoopId) -> cf_api_std_return() when
       NoopId :: undefined | binary().
 wait_for_noop(NoopId) ->
-    case wait_for_message(<<"noop">>) of
+    case wait_for_message(<<"noop">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, infinity) of
         {ok, JObj}=OK ->
             case wh_json:get_value(<<"Application-Response">>, JObj) of
                 NoopId when is_binary(NoopId), NoopId =/= <<>> ->
@@ -1381,4 +1434,35 @@ find_failure_branch(Error, #cf_call{cf_pid=CFPid}) ->
     after
         1000 ->
             false
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%.
+%% @end
+%%--------------------------------------------------------------------
+-spec update_fallback/2 :: (Bridge, Call) -> ok when
+      Bridge :: json_object(),
+      Call :: #cf_call{}.
+update_fallback(Bridge, Call) ->
+    Fallback = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Bridge) of
+                   undefined ->
+                       case b_fetch(true, Call) of
+                           {ok, OtherLeg} ->
+                               wh_json:get_value(<<"Endpoint-ID">>, OtherLeg);
+                           _ ->
+                               undefined
+                       end;
+                   AuthId ->
+                       AuthId
+               end,
+    case Fallback =/= undefined of
+        true ->
+            io:format("set transfer fallback to ~s~n", [Fallback]),
+            ?LOG("set transfer fallback to ~s", [Fallback]),
+            set(undefined, {struct, [{<<"Transfer-Fallback">>, Fallback}]}, Call),
+            ok;
+        false ->
+            ok
     end.

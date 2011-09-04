@@ -860,6 +860,8 @@ respond_resource_failed(BridgeResp, Attempts, JObj) ->
                 ,{<<"Failure-Message">>,
                   wh_json:get_value(<<"Application-Response">>, BridgeResp, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp))}
                 ,{<<"Failure-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
+                ,{<<"Hangup-Cause">>, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp)}
+                ,{<<"Hangup-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
                | wh_api:default_headers(Q, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
             ],
     {ok, Payload} = wh_api:resource_error([ KV || {_, V}=KV <- Response, V =/= undefined ]),

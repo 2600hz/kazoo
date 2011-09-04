@@ -591,7 +591,7 @@ record_unavailable_greeting(RecordingName, #mailbox{unavailable_media_id=undefin
 record_unavailable_greeting(RecordingName, #mailbox{prompts=#prompts{record_unavail_greeting=RecordUnavailGreeting
                                                                      ,tone_spec=ToneSpec, saved=Saved, deleted=Deleted}
                                                    ,unavailable_media_id=MediaId}=Box, Call) ->
-    ?LOG("recoding unavailable greeting"),
+    ?LOG("recording unavailable greeting"),
     audio_macro([{play, RecordUnavailGreeting}
                  ,{tones, ToneSpec}]
                 ,Call),
@@ -893,6 +893,7 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
              ,{<<"content_type">>, <<"audio/mpeg">>}
+             ,{<<"media_type">>, <<"mp3">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"private_media">>}]),
     {ok, JObj} = couch_mgr:save_doc(Db, Doc),
@@ -915,6 +916,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum, mailbox_id=Id}, #
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
              ,{<<"content_type">>, <<"audio/mpeg">>}
+             ,{<<"media_type">>, <<"mp3">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters({struct, Props}, Db, [{type, <<"media">>}]),
     {ok, JObj} = couch_mgr:save_doc(Db, Doc),
