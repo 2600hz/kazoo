@@ -19,10 +19,12 @@
 %% filtered on the query string params
 %% @end
 %%--------------------------------------------------------------------
--spec filter_on_query_string/3 :: (DbName :: binary(), View :: binary(), QueryParams :: proplist()) -> json_objects().
+-spec filter_on_query_string/3 :: (DbName, View, QueryParams) -> json_objects() when
+      DbName :: binary(),
+      View :: binary(),
+      QueryParams :: proplist().
 filter_on_query_string(DbName, View, QueryParams) ->
-    QueryParams1 = [{list_to_binary(K), list_to_binary(V)} || {K, V} <- QueryParams],
-     %% qs from wm are strings
+    QueryParams1 = [{wh_util:to_binary(K), wh_util:to_binary(V)} || {K, V} <- QueryParams],
     {ok, AllDocs} = couch_mgr:get_results(DbName, View, [{<<"include_docs">>, true}]),
     [wh_json:get_value(<<"value">>, Doc, ?EMPTY_JSON_OBJECT) || Doc <- AllDocs,
                                                                 filter_doc(wh_json:get_value(<<"doc">>, Doc), QueryParams1)].

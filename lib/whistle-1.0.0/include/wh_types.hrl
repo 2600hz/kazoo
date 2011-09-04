@@ -11,7 +11,7 @@
            (_) -> false
         end).
 
--type proplist() :: [{binary() | atom(), term()} | binary() | atom(),...] | [].
+-type proplist() :: [{string() | binary() | atom(), term()} | atom(),...] | [].
 
 %% for setting types on dicts
 -type dict(K,V) :: [{K, V}].

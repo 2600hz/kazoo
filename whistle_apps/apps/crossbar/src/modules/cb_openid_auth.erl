@@ -231,7 +231,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD,
                                   Pid ! {binding_result, true, [RD, Context1, Params]};
                               {ok, AccountId} ->
                                   #cb_context{auth_token=AuthToken} = create_token(IdentityUrl, AccountId, RD, Context),
-                                  Location = lists:flatten([AppUrl, "?account_id=", AccountId, "&token=", AuthToken]),
+                                  Location = wh_util:to_list(list_to_binary([AppUrl, "?account_id=", AccountId, "&token=", AuthToken])),
                                   ?LOG("redirecting client to web app url: ~s", [Location]),
                                   Pid ! redirect_client(Location, RD, Context, Params);
                               %% ...nope-ish
@@ -246,7 +246,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD,
                                   Pid ! {binding_result, true, [RD, Context1, Params]};
                               {error, _}  ->
                                   RespQS = mochiweb_util:urlencode(extract_attributes(QS)),
-                                  Location = lists:flatten([RegUrl, "?", RespQS]),
+                                  Location = wh_util:to_list(list_to_binary([RegUrl, "?", RespQS])),
                                   ?LOG("redirecting client to registration url: ~s", [Location]),
                                   Pid ! redirect_client(Location, RD, Context, Params)
                           end;
@@ -493,7 +493,7 @@ extract_attributes(QS) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec extract_attribute/4 :: (Attributes, QS, RemainingQS, Accumulator) -> proplist() when
-      Attributes :: proplist(),
+      Attributes :: [{string(), binary()},...],
       QS :: proplist(),
       RemainingQS :: proplist(),
       Accumulator :: proplist().
@@ -518,13 +518,13 @@ extract_attribute(Attributes, QS, [{K, V}|T], Acc) ->
 %% to a given URL
 %% @end
 %%--------------------------------------------------------------------
--spec redirect_client/4 :: (Location, RD, Context, Params) -> tuple(binding_result, true, list()) when
+-spec redirect_client/4 :: (Location, RD, Context, Params) -> {'binding_result', 'true', list()} when
       Location :: string(),
       RD :: #wm_reqdata{},
       Context :: #cb_context{},
       Params :: list().
 redirect_client(Location, RD, Context, Params) ->
-    Context1 = Context#cb_context{resp_headers=[{"Location", Location}]
+    Context1 = Context#cb_context{resp_headers=[{<<"Location">>, Location}]
                                   ,resp_error_code=302
                                   ,resp_status=error},
     RD1 = wrq:set_resp_header("Location", Location, RD),

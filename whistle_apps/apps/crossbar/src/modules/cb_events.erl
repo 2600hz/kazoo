@@ -203,7 +203,8 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (Paths) -> {boolean(), http_methods()} when
+      Paths :: list().
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
@@ -219,7 +220,8 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (Paths) -> {boolean(), []} when
+      Paths :: list().
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -236,7 +238,9 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/2 :: (Params, Context) -> #cb_context{} when
+      Params :: list(),
+      Context :: #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     read_skel_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
@@ -274,7 +278,9 @@ create_skel(#cb_context{req_data=JObj}=Context) ->
 %% Load a skel document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(read_skel/2 :: (SkelId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec read_skel/2 :: (SkelId, Context) -> #cb_context{} when
+      SkelId :: binary(),
+      Context :: #cb_context{}.
 read_skel(SkelId, Context) ->
     crossbar_doc:load(SkelId, Context).
 
@@ -285,7 +291,9 @@ read_skel(SkelId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_skel/2 :: (SkelId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_skel/2 :: (SkelId, Context) -> #cb_context{} when
+      SkelId :: binary(),
+      Context :: #cb_context{}.
 update_skel(SkelId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
@@ -312,7 +320,9 @@ read_skel_summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (JObj, Acc) -> json_objects() when
+      JObj :: json_object(),
+      Acc :: json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
