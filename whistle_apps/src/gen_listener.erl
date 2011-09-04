@@ -321,16 +321,33 @@ handle_event(Payload, <<"application/erlang">>, State) ->
       State :: #state{},
       JObj :: json_object().
 process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj) ->
-    whapps_util:put_callid(JObj),
-    {reply, Props} = Module:handle_event(JObj, ModState),
+    _ = whapps_util:put_callid(JObj),
+    Props1 = case catch Module:handle_event(JObj, ModState) of
+		 {reply, Props} -> [{queue, Queue} | Props];
+		 {'EXIT', _Why} -> [{queue, Queue}]
+	     end,
+    spawn_link(fun() -> process_req(Props1, Responders, JObj) end).
 
-    %% moved spawn_link here so Module:handle_event is done in the Module's process
-    spawn_link(fun() ->
-		       Props1 = [{queue, Queue} | Props],
-		       Key = whapps_util:get_event_type(JObj),
-		       Handlers = [spawn_monitor(fun() -> ?LOG("calling handle_req/2 in module ~s", [Responder]),Responder:handle_req(JObj, Props1) end) || {Evt, Responder} <- Responders, Key =:= Evt],
-		       wait_for_handlers(Handlers)
-	       end).
+-spec process_req/3 :: (Props, Responders, JObj) -> 'ok' when
+      Props :: proplist(),
+      Responders :: responders(),
+      JObj :: json_object().
+process_req(Props, Responders, JObj) ->
+    Key = whapps_util:get_event_type(JObj),
+    Handlers = [spawn_monitor(fun() ->
+				      Responder:handle_req(JObj, Props)
+			      end) || {Evt, Responder} <- Responders, maybe_event_matches_key(Evt, Key)],
+    wait_for_handlers(Handlers).
+
+%% allow wildcard (<<"*">>) in the Key to match either (or both) Category and Name
+-spec maybe_event_matches_key/2 :: (Event, Key) -> boolean() when
+      Event :: {binary(), binary()},
+      Key :: {binary(), binary()}.
+maybe_event_matches_key(Evt, Evt) -> true;
+maybe_event_matches_key({_, Name}, {<<"*">>, Name}) -> true;
+maybe_event_matches_key({Cat, _}, {Cat, <<"*">>}) -> true;
+maybe_event_matches_key({_,_}, {<<"*">>, <<"*">>}) -> true;
+maybe_event_matches_key(_, _) -> false.
 
 %% Collect the spawned handlers going down so the main process_req proc doesn't end until all
 %% handlers have completed (for graceful stopping).
