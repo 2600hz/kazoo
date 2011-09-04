@@ -22,15 +22,8 @@
 
 -include("crossbar.hrl").
 
--define(RESPONDERS, [
-		     {authn_req, [{<<"directory">>, <<"authn_req">>}]}
-		     ,{reg_success, [{<<"directory">>, <<"reg_success">>}]}
-		     ,{reg_query, [{<<"directory">>, <<"reg_query">>}]}
-		    ]).
--define(BINDINGS, [
-		   {authentication, []}
-		   ,{registrations, []}
-		  ]).
+-define(RESPONDERS, [{?MODULE, [{<<"*">>, <<"*">>}]}]). % all matching event cat/name combos go to here
+-define(BINDINGS, []).
 
 -define(SERVER, ?MODULE).
 
@@ -54,7 +47,7 @@
 %%--------------------------------------------------------------------
 start_link(AccountID, UserID) ->
     gen_listener:start_link(?MODULE
-			    ,[{responders, []}, {bindings, []}]
+			    ,[{responders, ?RESPONDERS}, {bindings, ?BINDINGS}]
 			    ,[AccountID, UserID]
 			   ).
 
