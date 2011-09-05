@@ -26,6 +26,8 @@
 		      'self' |
 		      'notifications' |
 		      'authorization'.
+-export_type([bind_types/0]).
+
 -spec known_bind_types/0 :: () -> [bind_types(),...].
 known_bind_types() ->
     ['authentication', 'registrations', 'rating', 'routing'
