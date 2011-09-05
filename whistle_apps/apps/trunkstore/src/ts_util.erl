@@ -232,12 +232,12 @@ failover(L) ->
       L :: ['undefined' | json_object() | binary(),...].
 progress_timeout(L) -> simple_extract(L).
 
--spec bypass_media/1 :: (L) -> 'true' | 'false' when
+-spec bypass_media/1 :: (L) -> binary() when
       L :: ['undefined' | json_object() | binary(),...].
 bypass_media(L) ->
     case simple_extract(L) of
-        <<"process">> -> false;
-        _ -> true
+        <<"process">> -> <<"false">>;
+        _ -> <<"true">>
     end.
 
 -spec delay/1 :: (L) -> 'undefined' | json_object() | binary() when
