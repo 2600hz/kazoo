@@ -17,6 +17,23 @@
 %%% 2. Same as (2), except an error is returned if no server exists
 %%% 3. cb_events uses the returned PID to call cb_events_srv:fetch to retrieve all events
 %%%
+%%% REST API
+%%%
+%%% /v1/accounts/{AID}/events
+%%% - GET => fetches all events and overflow flag: RESP: {"events": [{},...], "overflow":boolean()}
+%%% - POST => {"max_events": integer()} sets the max events to store
+%%% - DELETE => removes all subscriptions
+%%%
+%%% /v1/accounts/{AID}/events/available
+%%% - GET => returns all known subscriptions: RESP: {"subscriptions": ["authentication", "cdrs",...]}
+%%%
+%%% /v1/accounts/{AID}/events/subscriptions
+%%% - GET => returns the list of subscriptions currently subscribed
+%%%
+%%% /v1/accounts/{AID}/events/{SUBSCRIPTION}
+%%% - PUT => adds the subscription
+%%% - DELETE => removes the subscription
+%%%
 %%% @end
 %%% Created : 24 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -34,7 +51,8 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
--define(CB_LIST, <<"events/list">>).
+-define(DEFAULT_USER, <<"events_user">>).
+-define(EVENT_DOC_ID(User), <<"event_sub_", User/binary>>).
 
 %%%===================================================================
 %%% API
@@ -134,7 +152,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.events">>, [RD, Context
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.events">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
+                  Context1 = crossbar_doc:ensure_saved(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
@@ -142,7 +160,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.events">>, [RD, Con
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.events">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
+                  Context1 = crossbar_doc:ensure_saved(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
@@ -201,7 +219,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec bind_to_crossbar/0 :: () ->  ok.
+-spec bind_to_crossbar/0 :: () ->  'ok'.
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.events">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.events">>),
@@ -220,9 +238,13 @@ bind_to_crossbar() ->
 -spec allowed_methods/1 :: (Paths) -> {boolean(), http_methods()} when
       Paths :: list().
 allowed_methods([]) ->
-    {true, ['GET', 'PUT']};
-allowed_methods([_]) ->
     {true, ['GET', 'POST', 'DELETE']};
+allowed_methods([<<"available">>]) ->
+    {true, ['GET']};
+allowed_methods([<<"subscriptions">>]) ->
+    {true, ['GET']};
+allowed_methods([_]) ->
+    {true, ['PUT', 'DELETE']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -238,8 +260,12 @@ allowed_methods(_) ->
       Paths :: list().
 resource_exists([]) ->
     {true, []};
-resource_exists([_]) ->
+resource_exists([<<"available">>]) ->
     {true, []};
+resource_exists([<<"subscriptions">>]) ->
+    {true, []};
+resource_exists([Sub]) ->
+    {lists:member(wh_util:to_atom(Sub), queue_bindings:known_bind_types()), []};
 resource_exists(_) ->
     {false, []}.
 
@@ -252,105 +278,111 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
+
 -spec validate/2 :: (Params, Context) -> #cb_context{} when
       Params :: list(),
       Context :: #cb_context{}.
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    read_skel_summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_skel(Context);
-validate([SkelId], #cb_context{req_verb = <<"get">>}=Context) ->
-    read_skel(SkelId, Context);
-validate([SkelId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_skel(SkelId, Context);
-validate([SkelId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    read_skel(SkelId, Context);
-validate(_, Context) ->
-    crossbar_util:response_faulty_request(Context).
+validate([], #cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
+    UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
+    case cb_events_sup:find_srv(AcctId, UserId) of
+	{ok, Pid} when is_pid(Pid) ->
+	    load_events(Context, Pid);
+	_ ->
+	    crossbar_util:response_faulty_request(Context)
+    end;
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new skel document with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create_skel/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
-create_skel(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
-            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"skel">>, JObj)
-                               ,resp_status=success
-                              }
+validate([], #cb_context{req_verb = <<"post">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
+    UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
+    case cb_events_sup:find_srv(AcctId, UserId) of
+	{ok, Pid} when is_pid(Pid) ->
+	    update_srv(Context, Pid, UserId);
+	_ ->
+	    crossbar_util:response_faulty_request(Context)
+    end;
+
+validate([], #cb_context{req_verb = <<"delete">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
+    UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
+    case cb_events_sup:find_srv(AcctId, UserId) of
+	{ok, Pid} when is_pid(Pid) ->
+	    stop_srv(Context, Pid, UserId);
+	_ ->
+	    crossbar_util:response_faulty_request(Context)
+    end;
+
+validate([<<"available">>], #cb_context{req_verb = <<"get">>}=Context) ->
+    load_available_bindings(Context);
+
+validate([<<"subscriptions">>], #cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
+    UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
+    case cb_events_sup:find_srv(AcctId, UserId) of
+	{ok, Pid} when is_pid(Pid) ->
+	    load_current_subscriptions(Context, Pid);
+	_ ->
+	    crossbar_util:response_faulty_request(Context)
+    end;
+
+validate([Subscription], #cb_context{req_verb = <<"put">>, auth_doc=AuthDoc, account_id=AcctId}=Context) ->
+    UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
+    case cb_events_sup:find_srv(AcctId, UserId) of
+	{ok, Pid} when is_pid(Pid) ->
+	    add_subscription(Context, Pid, Subscription, UserId);
+	_ ->
+	    crossbar_util:response_faulty_request(Context)
+    end;
+
+validate([Subscription], #cb_context{req_verb = <<"delete">>, auth_doc=AuthDoc, account_id=AcctId}=Context) ->
+    UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
+    case cb_events_sup:find_srv(AcctId, UserId) of
+	{ok, Pid} when is_pid(Pid) ->
+	    rm_subscription(Context, Pid, Subscription, UserId);
+	_ ->
+	    crossbar_util:response_faulty_request(Context)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a skel document from the database
-%% @end
-%%--------------------------------------------------------------------
--spec read_skel/2 :: (SkelId, Context) -> #cb_context{} when
-      SkelId :: binary(),
-      Context :: #cb_context{}.
-read_skel(SkelId, Context) ->
-    crossbar_doc:load(SkelId, Context).
+load_events(Context, Srv) ->
+    {Events, Overflow} = cb_events_srv:fetch(Srv),
+    RespJObj = {struct, [{<<"events">>, Events}, {<<"overflow">>, Overflow}]},
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing skel document with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update_skel/2 :: (SkelId, Context) -> #cb_context{} when
-      SkelId :: binary(),
-      Context :: #cb_context{}.
-update_skel(SkelId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
-            crossbar_doc:load_merge(SkelId, JObj, Context)
+    crossbar_util:response(RespJObj, Context).
+
+update_srv(#cb_context{req_data=ReqJObj}=Context, Srv, User) ->
+    MaxEvents = wh_json:get_integer_value(<<"max_events">>, ReqJObj),
+    {ok, EventsDropped} = cb_events_srv:set_maxevents(Srv, MaxEvents),
+
+    #cb_context{resp_status=success} = crossbar_doc:load(?EVENT_DOC_ID(User), Context),
+
+    RespJObj = wh_json:set_value(<<"events_dropped">>, EventsDropped, ?EMPTY_JSON_OBJECT),
+
+    crossbar_util:response(RespJObj, Context).
+
+stop_srv(Context, Srv, User) ->
+    ok = cb_events_srv:stop(Srv),
+    crossbar_doc:load(?EVENT_DOC_ID(User), Context).
+
+load_available_bindings(Context) ->
+    RespJObj = {struct, [{<<"available_bindings">>, queue_bindings:known_bind_types()}]},
+    crossbar_util:response(RespJObj, Context).
+
+load_current_subscriptions(Context, Srv) ->
+    {ok, Subs} = cb_events_srv:subscriptions(Srv),
+    RespJObj = wh_json:set_value(<<"current_subscriptions">>, Subs, ?EMPTY_JSON_OBJECT),
+    crossbar_util:response(RespJObj, Context).
+
+add_subscription(#cb_context{req_data=ReqJObj}=Context, Srv, Sub, User) ->
+    case cb_events_srv:subscribe(Srv, Sub, wh_json:get_value(<<"options">>, ReqJObj, [])) of
+	{error, unknown} ->
+	    crossbar_util:response_faulty_request(Context);
+	{error, already_present} ->
+	    crossbar_util:response(?EMPTY_JSON_OBJECT, Context);
+	ok ->
+	    save_latest(Context, Srv, User)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
-%% account summary.
-%% @end
-%%--------------------------------------------------------------------
--spec read_skel_summary/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
-read_skel_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+rm_subscription(Context, Srv, Sub, User) ->
+    cb_events_srv:unsubscribe(Srv, Sub),
+    save_latest(Context, Srv, User).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the resuts of a view
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (JObj, Acc) -> json_objects() when
-      JObj :: json_object(),
-      Acc :: json_objects().
-normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (JObj) -> {boolean(), [binary(),...] | []} when
-      JObj :: json_object().
-is_valid_doc(JObj) ->
-    case wh_json:get_value(<<"default">>, JObj) of
-	undefined -> {false, [<<"default">>]};
-	_ -> {true, []}
-    end.
+save_latest(Context, Srv, User) ->
+    {ok, Subs} = cb_events_srv:subscriptions(Srv),
+    Doc = wh_json:set_value(<<"subscriptions">>, Subs, ?EMPTY_JSON_OBJECT),
+    crossbar_doc:load_merge(?EVENT_DOC_ID(User), Doc, Context).

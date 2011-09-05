@@ -6,7 +6,7 @@
 -include("cb_amqp.hrl").
 
 -define(APP_NAME, <<"crossbar">>).
--define(APP_VSN, <<"0.1.0">>).
+-define(APP_VSN, <<"0.8.0">>).
 
 -define(CONTENT_PROVIDED, [
                             {to_json, ["application/json","application/x-json"]}

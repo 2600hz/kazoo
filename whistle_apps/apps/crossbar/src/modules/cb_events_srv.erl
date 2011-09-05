@@ -11,7 +11,8 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2, subscribe/3, unsubscribe/2, fetch/1, stop/1]).
+-export([start_link/2, subscribe/3, unsubscribe/2, fetch/1, set_maxevents/2, stop/1]).
+-export([subscriptions/1]).
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -30,8 +31,10 @@
 -record(state, {
 	  account_id = <<>> :: binary()
 	  ,user_id = <<>> :: binary()
-          ,subscriptions = [] :: [atom(),...] | []
-	  ,events = [] :: json_objects()
+          ,max_events = 100 :: pos_integer()
+          ,subscriptions = [] :: [queue_bindings:bind_types(),...] | []
+	  ,events = queue:new() :: queue() %% queue(json_object())
+          ,overflow = false :: boolean() %% set to true if events are dropped before being fetched; reset after fetch
 	 }).
 
 %%%===================================================================
@@ -64,10 +67,21 @@ subscribe(Srv, Sub, Options) ->
 unsubscribe(Srv, Sub) ->
     gen_listener:cast(Srv, {unsubscribe, Sub}).
 
--spec fetch/1 :: (Srv) -> json_objects() when
+-spec subscriptions/1 :: (Srv) -> {'ok', [queue_bindings:bind_types(),...] | []} when
+      Srv :: pid().
+subscriptions(Srv) ->
+    gen_listener:call(Srv, subscriptions).
+
+-spec fetch/1 :: (Srv) -> {json_objects(), Overflow :: boolean()} when
       Srv :: pid().
 fetch(Srv) ->
     gen_listener:call(Srv, fetch).
+
+-spec set_maxevents/2 :: (Srv, Max) -> {'ok', EventsDropped :: non_neg_integer()} when
+      Srv :: pid(),
+      Max :: pos_integer().
+set_maxevents(Srv, Max) when Max > 0 ->
+    gen_listener:call(Srv, {set_maxevents, Max}).
 
 -spec stop/1 :: (Srv) -> 'ok' when
       Srv :: pid().
@@ -113,8 +127,18 @@ init([AccountID, UserID]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(fetch, _, #state{events=Events}=State) ->
-    {reply, lists:reverse(Events), State#state{events=[]}};
+handle_call(fetch, _, #state{events=Events, overflow=Overflow}=State) ->
+    {reply, {queue:to_list(Events), Overflow}, State#state{events=queue:new(), overflow=false}};
+
+handle_call({set_maxevents, Max}, _, #state{events=Events}=State) ->
+    case (Len = queue:len(Events)) > Max of
+	true ->
+	    {DroppedEvents, KeptEvents} = queue:split(Len-Max, Events),
+	    {reply, {ok, queue:len(DroppedEvents)}, State#state{max_events=Max, events=KeptEvents, overflow=true}};
+	false ->
+	    {reply, {ok, 0}, State#state{max_events=Max}}
+    end;
+
 handle_call({subscribe, Sub, Options}, _, #state{subscriptions=Subs}=State) ->
     case lists:member(Sub, queue_bindings:known_bind_types()) of
 	false -> {reply, {error, unknown}, State};
@@ -140,8 +164,14 @@ handle_call({subscribe, Sub, Options}, _, #state{subscriptions=Subs}=State) ->
 handle_cast({unsubscribe, Sub}, #state{subscriptions=Subs}=State) ->
     gen_listener:rm_binding(self(), Sub),
     {noreply, State#state{subscriptions=lists:delete(Sub, Subs)}};
-handle_cast({add_event, JObj}, #state{events=Events}=State) ->
-    {noreply, State#state{events=[JObj|Events]}}.
+handle_cast({add_event, JObj}, #state{events=Events, max_events=Max}=State) ->
+    case (Len = queue:len(Events)) >= Max of
+	true ->
+	    {_, KeptEvents} = queue:split(Len-Max, Events),
+	    {noreply, State#state{events=queue:in(JObj, KeptEvents), overflow=true}};
+	false ->
+	    {noreply, State#state{events=queue:in(JObj, Events)}}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
