@@ -44,7 +44,8 @@
 
 %% gen_listener API
 -export([add_responder/3, rm_responder/2, rm_responder/3]).
--export([add_binding/2, rm_binding/2]).
+
+-export([add_binding/2, add_binding/3, rm_binding/2]).
 
 behaviour_info(callbacks) ->
     [{init, 1}
@@ -58,7 +59,8 @@ behaviour_info(_) ->
     undefined.
 
 -type responders() :: [listener_utils:responder(),...] | [].
--type bindings() :: [{atom(), proplist()},...] | [].
+-type binding() :: {queue_bindings:bind_types(), proplist()}.
+-type bindings() :: [binding(),...] | [].
 -type start_params() :: [{responders, responders()} |
 			 {bindings, bindings()} |
 			 {queue_name, binary()} |
@@ -149,8 +151,16 @@ rm_responder(Srv, Responder, Keys) ->
 
 -spec add_binding/2 :: (Srv, Binding) -> 'ok' when
       Srv :: atom() | pid(),
-      Binding :: {atom(), proplist()}.
+      Binding :: binding().
 add_binding(Srv, {Binding, Props}) ->
+    gen_server:cast(Srv, {add_binding, Binding, Props}).
+
+-spec add_binding/3 :: (Srv, Binding, Props) -> 'ok' when
+      Srv :: atom() | pid(),
+      Binding :: queue_bindings:bind_types(),
+      Props :: proplist().
+add_binding(Srv, Binding, Props) ->
+    io:format("add_binding/3 ~p ~p ~p", [Srv, Binding, Props]),
     gen_server:cast(Srv, {add_binding, Binding, Props}).
 
 -spec rm_binding/2 :: (Srv, Binding) -> 'ok' when
@@ -212,6 +222,7 @@ handle_call(Request, From, #state{module=Module, module_state=ModState}=State) -
 	{stop, Reason, Reply, ModState1} ->
 	    {stop, Reason, Reply, State#state{module_state=ModState1}};
 	{'EXIT', Why} ->
+	    ?LOG("exception: ~p", [Why]),
 	    {stop, Why, State}
     end.
 
@@ -251,6 +262,7 @@ handle_cast(Message, #state{module=Module, module_state=ModState}=State) ->
 	{stop, Reason, ModState1} ->
 	    {stop, Reason, State#state{module_state=ModState1}};
 	{'EXIT', Why} ->
+	    ?LOG("exception: ~p", [Why]),
 	    {stop, Why, State}
     end.
 
@@ -262,6 +274,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type=CT}, 
 	Pid when is_pid(Pid) ->
 	    {noreply, State#state{active_responders=[Pid | ARs]}, hibernate};
 	{'EXIT', Why} ->
+	    ?LOG("exception: ~p", [Why]),
 	    {stop, Why, State}
     end;
 
@@ -276,7 +289,8 @@ handle_info({amqp_host_down, _}=Down, #state{bindings=Bindings, params=Params}=S
 	{ok, Q} = start_amqp(Bindings, Params),
 	{noreply, State#state{queue=Q}}
     catch
-	_:_ ->
+	_:_Why ->
+	    ?LOG("exception: ~p", [_Why]),
 	    erlang:send_after(1000, self(), Down),
 	    {noreply, State#state{queue = <<>>}}
     end;
@@ -296,6 +310,7 @@ handle_callback_info(Message, #state{module=Module, module_state=ModState}=State
 	{stop, Reason, ModState1} ->
 	    {stop, Reason, State#state{module_state=ModState1}};
 	{'EXIT', Why} ->
+	    ?LOG("exception: ~p", [Why]),
 	    {stop, Why, State}
     end.
 
@@ -321,12 +336,11 @@ handle_event(Payload, <<"application/erlang">>, State) ->
       State :: #state{},
       JObj :: json_object().
 process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj) ->
-    _ = whapps_util:put_callid(JObj),
     Props1 = case catch Module:handle_event(JObj, ModState) of
 		 {reply, Props} -> [{queue, Queue} | Props];
 		 {'EXIT', _Why} -> [{queue, Queue}]
 	     end,
-    spawn_link(fun() -> process_req(Props1, Responders, JObj) end).
+    spawn_link(fun() -> whapps_util:put_callid(JObj), process_req(Props1, Responders, JObj) end).
 
 -spec process_req/3 :: (Props, Responders, JObj) -> 'ok' when
       Props :: proplist(),
@@ -336,13 +350,15 @@ process_req(Props, Responders, JObj) ->
     Key = whapps_util:get_event_type(JObj),
     Handlers = [spawn_monitor(fun() ->
 				      Responder:handle_req(JObj, Props)
-			      end) || {Evt, Responder} <- Responders, maybe_event_matches_key(Evt, Key)],
+			      end) || {Evt, Responder} <- Responders,
+				      maybe_event_matches_key(Key, Evt)
+	       ],
     wait_for_handlers(Handlers).
 
 %% allow wildcard (<<"*">>) in the Key to match either (or both) Category and Name
--spec maybe_event_matches_key/2 :: (Event, Key) -> boolean() when
-      Event :: {binary(), binary()},
-      Key :: {binary(), binary()}.
+-spec maybe_event_matches_key/2 :: (Key, Event) -> boolean() when
+      Key :: {binary(), binary()},
+      Event :: {binary(), binary()}.
 maybe_event_matches_key(Evt, Evt) -> true;
 maybe_event_matches_key({_, Name}, {<<"*">>, Name}) -> true;
 maybe_event_matches_key({Cat, _}, {Cat, <<"*">>}) -> true;
