@@ -150,7 +150,7 @@ resource_exists(RD, Context) ->
                     Content = create_resp_content(RD, Context1),
                     RD2 = wrq:append_to_response_body(Content, RD1),
                     ReturnCode = Context1#cb_context.resp_error_code,
-		    ?LOG("requested resource did not validate, returning ~b", [ReturnCode]),
+		    ?LOG("requested resource did not validate, returning ~w", [ReturnCode]),
 		    ?TIMER_TICK("v1.resource_exists halt end"),
                     {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
             end;

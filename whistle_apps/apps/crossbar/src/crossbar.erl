@@ -38,7 +38,7 @@ start_link() ->
 %% Stop the app
 %% @end
 %%--------------------------------------------------------------------
--spec stop/0 :: () -> ok.
+-spec stop/0 :: () -> 'ok'.
 stop() ->
     ok = application:stop(crossbar).
 
@@ -48,7 +48,7 @@ stop() ->
 %% Ensures that all dependencies for this app are already running
 %% @end
 %%--------------------------------------------------------------------
--spec start_deps/0 :: () -> ok.
+-spec start_deps/0 :: () -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     wh_util:ensure_started(sasl), % logging
@@ -66,8 +66,8 @@ start_deps() ->
 %% Verify that an application is running
 %% @end
 %%--------------------------------------------------------------------
--spec refresh/0 :: () -> started.
--spec refresh/1 :: (Account) -> ok when
+-spec refresh/0 :: () -> 'started'.
+-spec refresh/1 :: (Account) -> 'ok' when
       Account :: binary() | string().
 
 refresh() ->
