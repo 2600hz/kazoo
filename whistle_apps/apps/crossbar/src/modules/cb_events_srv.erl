@@ -59,13 +59,13 @@ start_link(AccountID, UserID) ->
       Sub :: atom(),
       Options :: proplist().
 subscribe(Srv, Sub, Options) ->
-    gen_listener:call(Srv, {subscribe, Sub, Options}).
+    gen_listener:call(Srv, {subscribe, wh_util:to_atom(Sub), Options}).
 
 -spec unsubscribe/2 :: (Srv, Sub) -> 'ok' when
       Srv :: pid(),
       Sub :: atom().
 unsubscribe(Srv, Sub) ->
-    gen_listener:cast(Srv, {unsubscribe, Sub}).
+    gen_listener:cast(Srv, {unsubscribe, wh_util:to_atom(Sub)}).
 
 -spec subscriptions/1 :: (Srv) -> {'ok', [queue_bindings:bind_types(),...] | []} when
       Srv :: pid().
@@ -139,13 +139,17 @@ handle_call({set_maxevents, Max}, _, #state{events=Events}=State) ->
 	    {reply, {ok, 0}, State#state{max_events=Max}}
     end;
 
+handle_call(subscriptions, _, #state{subscriptions=Subs}=State) ->
+    {reply, {ok, Subs}, State};
+
 handle_call({subscribe, Sub, Options}, _, #state{subscriptions=Subs}=State) ->
     case lists:member(Sub, queue_bindings:known_bind_types()) of
 	false -> {reply, {error, unknown}, State};
 	true ->
 	    case lists:member(Sub, Subs) of
-		false -> {reply, {error, already_present}, State};
-		true ->
+		true -> {reply, {error, already_present}, State};
+		false ->
+		    ?LOG("Adding binding ~s", [Sub]),
 		    gen_listener:add_binding(self(), Sub, Options),
 		    {reply, ok, State#state{subscriptions=[Sub|Subs]}}
 	    end
@@ -211,7 +215,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), #state{}) -> ok.
 terminate(_Reason, _) ->
-    ?LOG_SYS("registrar server ~p termination", [_Reason]).
+    ?LOG_SYS("termination: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

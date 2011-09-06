@@ -27,7 +27,7 @@
 %%% /v1/accounts/{AID}/events/available
 %%% - GET => returns all known subscriptions: RESP: {"subscriptions": ["authentication", "cdrs",...]}
 %%%
-%%% /v1/accounts/{AID}/events/subscriptions
+%%% /v1/accounts/{AID}/events/subscribed
 %%% - GET => returns the list of subscriptions currently subscribed
 %%%
 %%% /v1/accounts/{AID}/events/{SUBSCRIPTION}
@@ -84,6 +84,8 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init(_) ->
+    ?LOG("Known bindings at init:"),
+    [?LOG("~s", [Binding]) || Binding <- queue_bindings:known_bind_types()],
     {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
@@ -178,7 +180,9 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     {noreply, State};
 
 handle_info(timeout, State) ->
+    crossbar_module_sup:start_mod(cb_events_sup),
     bind_to_crossbar(),
+    start_event_srvs(),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -229,6 +233,15 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Load all event docs to start event servers for users
+%% @end
+%%--------------------------------------------------------------------
+start_event_srvs() ->
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
 %%
@@ -241,7 +254,7 @@ allowed_methods([]) ->
     {true, ['GET', 'POST', 'DELETE']};
 allowed_methods([<<"available">>]) ->
     {true, ['GET']};
-allowed_methods([<<"subscriptions">>]) ->
+allowed_methods([<<"subscribed">>]) ->
     {true, ['GET']};
 allowed_methods([_]) ->
     {true, ['PUT', 'DELETE']};
@@ -262,7 +275,7 @@ resource_exists([]) ->
     {true, []};
 resource_exists([<<"available">>]) ->
     {true, []};
-resource_exists([<<"subscriptions">>]) ->
+resource_exists([<<"subscribed">>]) ->
     {true, []};
 resource_exists([Sub]) ->
     {lists:member(wh_util:to_atom(Sub), queue_bindings:known_bind_types()), []};
@@ -287,7 +300,7 @@ validate([], #cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthD
     case cb_events_sup:find_srv(AcctId, UserId) of
 	{ok, Pid} when is_pid(Pid) ->
 	    load_events(Context, Pid);
-	_ ->
+	_Other ->
 	    crossbar_util:response_faulty_request(Context)
     end;
 
@@ -312,12 +325,12 @@ validate([], #cb_context{req_verb = <<"delete">>, account_id=AcctId, auth_doc=Au
 validate([<<"available">>], #cb_context{req_verb = <<"get">>}=Context) ->
     load_available_bindings(Context);
 
-validate([<<"subscriptions">>], #cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
+validate([<<"subscribed">>], #cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
 	{ok, Pid} when is_pid(Pid) ->
 	    load_current_subscriptions(Context, Pid);
-	_ ->
+	_Other ->
 	    crossbar_util:response_faulty_request(Context)
     end;
 
@@ -335,9 +348,12 @@ validate([Subscription], #cb_context{req_verb = <<"delete">>, auth_doc=AuthDoc, 
     case cb_events_sup:find_srv(AcctId, UserId) of
 	{ok, Pid} when is_pid(Pid) ->
 	    rm_subscription(Context, Pid, Subscription, UserId);
-	_ ->
+	_Other ->
 	    crossbar_util:response_faulty_request(Context)
-    end.
+    end;
+
+validate(_, Context) ->
+    crossbar_util:response_faulty_request(Context).
 
 load_events(Context, Srv) ->
     {Events, Overflow} = cb_events_srv:fetch(Srv),
@@ -371,6 +387,7 @@ load_current_subscriptions(Context, Srv) ->
 add_subscription(#cb_context{req_data=ReqJObj}=Context, Srv, Sub, User) ->
     case cb_events_srv:subscribe(Srv, Sub, wh_json:get_value(<<"options">>, ReqJObj, [])) of
 	{error, unknown} ->
+	    ?LOG("Unknown subscription ~s", [Sub]),
 	    crossbar_util:response_faulty_request(Context);
 	{error, already_present} ->
 	    crossbar_util:response(?EMPTY_JSON_OBJECT, Context);
@@ -385,4 +402,10 @@ rm_subscription(Context, Srv, Sub, User) ->
 save_latest(Context, Srv, User) ->
     {ok, Subs} = cb_events_srv:subscriptions(Srv),
     Doc = wh_json:set_value(<<"subscriptions">>, Subs, ?EMPTY_JSON_OBJECT),
-    crossbar_doc:load_merge(?EVENT_DOC_ID(User), Doc, Context).
+
+    case crossbar_doc:load_merge(?EVENT_DOC_ID(User), Doc, Context) of
+	#cb_context{resp_status=success}=Context1 ->
+	    Context1;
+	_ ->
+	    Context#cb_context{doc=Doc}
+    end.

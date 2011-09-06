@@ -43,14 +43,17 @@ start_link() ->
 start_srv(AccountID, UserID) when is_binary(AccountID), is_binary(UserID) ->
     supervisor:start_child(?MODULE, ?CHILD(AccountID, UserID)).
 
--spec find_srv/2 :: (AccountID, UserID) -> {'ok', sup_child_id()} | {'error', 'not_found'} when
+-spec find_srv/2 :: (AccountID, UserID) -> sup_startchild_ret() when
       AccountID :: binary(),
       UserID :: binary().
 find_srv(AccountID, UserID) when is_binary(AccountID), is_binary(UserID) ->
     case [ Pid || {ID, Pid, _, _} <- supervisor:which_children(?MODULE),
 		  ?SRV_ID(AccountID, UserID) =:= ID ] of
+	[undefined] ->
+	    ok = supervisor:delete_child(?MODULE, ?SRV_ID(AccountID, UserID)),
+	    start_srv(AccountID, UserID);
 	[Pid] -> {ok, Pid};
-	_ -> {error, not_found}
+	_Other -> start_srv(AccountID, UserID)
     end.
 
 %%%===================================================================
