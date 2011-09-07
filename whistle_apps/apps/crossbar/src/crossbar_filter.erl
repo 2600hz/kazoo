@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_filter).
 
--export([filter_on_query_string/3]).
+-export([filter_on_query_string/3, filter_on_query_string/4]).
 
 -include("crossbar.hrl").
 
@@ -21,12 +21,18 @@
 %%--------------------------------------------------------------------
 -spec filter_on_query_string/3 :: (DbName :: binary(), View :: binary(), QueryParams :: proplist()) -> json_objects().
 filter_on_query_string(DbName, View, QueryParams) ->
+    filter_on_query_string(DbName, View, QueryParams, []).
+
+-spec filter_on_query_string/4 :: (DbName :: binary(), View :: binary(), QueryParams :: proplist(), ViewOptions :: proplist()) -> json_objects().
+filter_on_query_string(DbName, View, QueryParams, ViewOptions) ->
     QueryParams1 = [{list_to_binary(K), list_to_binary(V)} || {K, V} <- QueryParams],
      %% qs from wm are strings
-    {ok, AllDocs} = couch_mgr:get_results(DbName, View, [{<<"include_docs">>, true}]),
-    [wh_json:get_value(<<"value">>, Doc, ?EMPTY_JSON_OBJECT) || Doc <- AllDocs,
-                                                                filter_doc(wh_json:get_value(<<"doc">>, Doc), QueryParams1)].
-
+    {ok, AllDocs} = couch_mgr:get_results(DbName, View,  [{<<"include_docs">>, true} | ViewOptions]),
+    case QueryParams of
+	[] -> [wh_json:get_value(<<"value">>, Doc, ?EMPTY_JSON_OBJECT) || Doc <- AllDocs];
+	_ -> [wh_json:get_value(<<"value">>, Doc, ?EMPTY_JSON_OBJECT) || Doc <- AllDocs,
+                                                                filter_doc(wh_json:get_value(<<"doc">>, Doc), QueryParams1)]
+    end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
