@@ -24,7 +24,7 @@
 -include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
--define(CB_LIST, <<"cdr/crossbar_listing">>).
+-define(CB_LIST_BY_USER, <<"cdr/listing_by_owner">>).
 
 %%%===================================================================
 %%% API
@@ -248,10 +248,8 @@ normalize_view_results(JObj, Acc) ->
 -spec load_cdr_summary/2 :: (Context, QueryParams) -> #cb_context{} when
       Context :: #cb_context{},
       QueryParams :: proplist().
-load_cdr_summary(Context, []) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
-load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
-    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams),
+load_cdr_summary(#cb_context{db_name=DbName, auth_doc=AuthDoc}=Context, QueryParams) ->
+    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"key">>, wh_json:get_value(<<"owner_id">>, AuthDoc)}]),
     Context#cb_context{resp_data=Result, resp_status=success}.
 
 %%--------------------------------------------------------------------

@@ -5,6 +5,9 @@
    "views": {
        "crossbar_listing": {
            "map": "function(doc) { if(doc.pvt_deleted || doc.pvt_type != 'cdr') return; emit(doc._id, {'id':doc._id, 'call_id':doc.call_id, 'hangup_cause':doc.hangup_cause, 'other_leg_call_id':doc.other_leg_call_id, 'timestamp':doc.timestamp, 'call_direction':doc.call_direction, 'to_uri':doc.to_uri, 'from_uri':doc.from_uri, 'duration_seconds':doc.duration_seconds, 'billing_seconds':doc.billing_seconds, 'ringing_seconds':doc.ringing_seconds,})}"
-       }
+       },
+       "listing_by_owner" : {
+       	   "map": "function(doc) { if(doc.pvt_deleted || doc.pvt_type != 'cdr') return; emit(doc.custom_channel_vars.owner_id, {'cid':doc._id, 'call_id':doc.call_id, 'hangup_cause':doc.hangup_cause, 'other_leg_call_id':doc.other_leg_call_id, 'timestamp':doc.timestamp, 'call_direction':doc.call_direction, 'to_uri':doc.to_uri, 'from_uri':doc.from_uri, 'duration_seconds':doc.duration_seconds, 'billing_seconds':doc.billing_seconds, 'ringing_seconds':doc.ringing_seconds,})}"
+       	}
    }
 }
