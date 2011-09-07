@@ -112,7 +112,7 @@ load_merge(DocId, {struct, Data}, #cb_context{db_name=DBName}=Context) ->
 	      ,resp_etag=rev_to_etag(Doc1)
 	     };
         Else ->
-	    ?LOG("loading doc ~s from ~s failed unexpectedly: ~p", [DocId, DBName, Else]),
+	    ?LOG("loading doc ~s from ~s failed unexpectedly", [DocId, DBName]),
             Else
     end.
 
