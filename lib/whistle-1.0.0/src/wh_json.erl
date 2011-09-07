@@ -16,9 +16,11 @@
 -export([is_true/2, is_true/3, is_false/2, is_false/3]).
 
 -export([get_value/2, get_value/3]).
--export([get_keys/2]).
+-export([get_keys/1, get_keys/2]).
 -export([set_value/3]).
 -export([delete_key/2, delete_key/3]).
+
+-export([from_list/1, merge_jobjs/2]).
 
 -export([normalize_jobj/1]).
 
@@ -26,6 +28,21 @@
 -export([prune/2, no_prune/2]).
 
 -include_lib("whistle/include/wh_types.hrl").
+
+-spec from_list/1 :: (L) -> json_object() when
+      L :: proplist().
+from_list(L) ->
+    lists:foldl(fun({K,V}, Acc) -> wh_json:set_value(K, V, Acc) end, ?EMPTY_JSON_OBJECT, L).
+
+%% only a top-level merge
+%% merges JObj1 into JObj2
+-spec merge_jobjs/2 :: (JObj1, JObj2) -> json_object() when
+      JObj1 :: json_object(),
+      JObj2 :: json_object().
+merge_jobjs(JObj1, JObj2) ->
+    lists:foldl(fun(K, Acc) ->
+			wh_json:set_value(K, wh_json:get_value(K, JObj1), Acc)
+		end, JObj2, ?MODULE:get_keys(JObj1)).
 
 -spec to_proplist/1 :: (JObj) -> proplist() when
       JObj :: json_object().
@@ -153,9 +170,14 @@ get_binary_boolean(Key, JObj) ->
 get_binary_boolean(Key, JObj, Default) ->
     wh_util:to_binary(is_true(Key, JObj, Default)).
 
+-spec get_keys/1 :: (JObj) -> [term(),...] | [] when
+      JObj :: json_object().
 -spec get_keys/2 :: (Key, JObj) -> 'undefined' | [term(),...] | [] when
       Key :: term(),
       JObj :: json_object().
+get_keys(JObj) ->
+    get_keys1(JObj).
+
 get_keys([], JObj) ->
     get_keys1(JObj);
 get_keys(Key, JObj) ->
@@ -194,7 +216,7 @@ get_value1([], JObj, _Default) -> JObj;
 get_value1(Key, JObj, Default) when not is_list(Key)->
     get_value1([Key], JObj, Default);
 get_value1([K|Ks], {struct, Props}, Default) ->
-    get_value1(Ks, props:get_value(wh_util:to_binary(K), Props, Default), Default);
+    get_value1(Ks, props:get_value(K, Props, Default), Default);
 get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
     case try lists:nth(wh_util:to_integer(K), JObjs) catch _:_ -> undefined end of
 	undefined -> Default;
@@ -226,7 +248,7 @@ set_value1([Key|T], Value, [{struct, _}|_]=JObjs) ->
         true ->
             try
                 %% Create a new object with the next key as a property
-                NxtKey = wh_util:to_binary(hd(T)),
+                NxtKey = hd(T),
                 JObjs ++ [set_value1(T, Value, {struct, [{NxtKey, []}]})]
             catch
                 %% There are no more keys in the list, add it unless not an object
@@ -243,8 +265,7 @@ set_value1([Key|T], Value, [{struct, _}|_]=JObjs) ->
                                       end, {1, Key1}, JObjs))
     end;
 %% Figure out how to set the current key in an existing object
-set_value1([Key|T], Value, {struct, Props}) ->
-    Key1 = wh_util:to_binary(Key),
+set_value1([Key1|T], Value, {struct, Props}) ->
     case lists:keyfind(Key1, 1, Props) of
         {Key1, {struct, _}=V1} ->
             %% Replace or add a property in an object in the object at this key
@@ -436,8 +457,8 @@ normalizer({_,_}=DataTuple) ->
 
 get_keys_test() ->
     Keys = [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>],
-    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, get_keys([], ?D1))),
-    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, get_keys([<<"sub_docs">>, 1], ?D3))).
+    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([], ?D1))),
+    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([<<"sub_docs">>, 1], ?D3))).
 
 -spec to_proplist_test/0 :: () -> no_return().
 to_proplist_test() ->
@@ -468,15 +489,15 @@ delete_key_test() ->
 -spec(get_value_test/0 :: () -> no_return()).
 get_value_test() ->
     %% Basic first level key
-    ?assertEqual(undefined, get_value(["d1k1"], ?EMPTY_JSON_OBJECT)),
-    ?assertEqual("d1v1",    get_value(["d1k1"], ?D1)),
-    ?assertEqual(undefined, get_value(["d1k1"], ?D2)),
-    ?assertEqual(undefined, get_value(["d1k1"], ?D3)),
-    ?assertEqual(undefined, get_value(["d1k1"], ?D4)),
+    ?assertEqual(undefined, get_value([<<"d1k1">>], ?EMPTY_JSON_OBJECT)),
+    ?assertEqual("d1v1", get_value([<<"d1k1">>], ?D1)),
+    ?assertEqual(undefined, get_value([<<"d1k1">>], ?D2)),
+    ?assertEqual(undefined, get_value([<<"d1k1">>], ?D3)),
+    ?assertEqual(undefined, get_value([<<"d1k1">>], ?D4)),
     %% Basic nested key
     ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?EMPTY_JSON_OBJECT)),
     ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?D1)),
-    ?assertEqual(d1v2,      get_value(["sub_d1", "d1k2"], ?D2)),
+    ?assertEqual(d1v2,      get_value([<<"sub_d1">>, <<"d1k2">>], ?D2)),
     ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?D3)),
     ?assertEqual(undefined, get_value(["sub_d1", "d1k2"], ?D4)),
     %% Get the value in an object in an array in another object that is part of
@@ -485,7 +506,7 @@ get_value_test() ->
     ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?D1)),
     ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?D2)),
     ?assertEqual(undefined, get_value([3, "sub_docs", 2, "d2k2"], ?D3)),
-    ?assertEqual(3.14,      get_value([3, "sub_docs", 2, "d2k2"], ?D4)),
+    ?assertEqual(3.14,      get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D4)),
     %% Get the value in an object in an array in another object that is part of
     %% an array of objects, but change the default return if it is not present.
     %% Also tests the ability to have indexs represented as strings
@@ -493,7 +514,7 @@ get_value_test() ->
     ?assertEqual(<<"not">>, get_value([3, "sub_docs", "2", "d2k2"], ?D1, <<"not">>)),
     ?assertEqual(<<"not">>, get_value([3, "sub_docs", "2", "d2k2"], ?D2, <<"not">>)),
     ?assertEqual(<<"not">>, get_value([3, "sub_docs", "2", "d2k2"], ?D3, <<"not">>)),
-    ?assertEqual(3.14,      get_value([3, "sub_docs", "2", "d2k2"], ?D4, <<"not">>)).
+    ?assertEqual(3.14,      get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D4, <<"not">>)).
 
 -define(T2R1, {struct, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, <<"update">>}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]}).
 -define(T2R2, {struct, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}, {<<"d1k4">>, new_value}]}).
@@ -502,13 +523,13 @@ get_value_test() ->
 
 set_value_object_test() ->
     %% Test setting an existing key
-    ?assertEqual(?T2R1, set_value(["d1k2"], <<"update">>, ?D1)),
+    ?assertEqual(?T2R1, set_value([<<"d1k2">>], <<"update">>, ?D1)),
     %% Test setting a non-existing key
-    ?assertEqual(?T2R2, set_value(["d1k4"], new_value, ?D1)),
+    ?assertEqual(?T2R2, set_value([<<"d1k4">>], new_value, ?D1)),
     %% Test setting an existing key followed by a non-existant key
-    ?assertEqual(?T2R3, set_value(["d1k2", "new_key"], added_value, ?D1)),
+    ?assertEqual(?T2R3, set_value([<<"d1k2">>, <<"new_key">>], added_value, ?D1)),
     %% Test setting a non-existing key followed by another non-existant key
-    ?assertEqual(?T2R4, set_value(["d1k4", "new_key"], added_value, ?D1)).
+    ?assertEqual(?T2R4, set_value([<<"d1k4">>, <<"new_key">>], added_value, ?D1)).
 
 -define(D5,   [{struct,[{<<"k1">>, v1}]}, {struct, [{<<"k2">>, v2}]}]).
 -define(T3R1, [{struct,[{<<"k1">>,test}]},{struct,[{<<"k2">>,v2}]}]).
@@ -519,15 +540,15 @@ set_value_object_test() ->
 
 set_value_multiple_object_test() ->
     %% Set an existing key in the first json_object()
-    ?assertEqual(?T3R1, set_value([1, "k1"], test, ?D5)),
+    ?assertEqual(?T3R1, set_value([1, <<"k1">>], test, ?D5)),
     %% Set a non-existing key in the first json_object()
-    ?assertEqual(?T3R2, set_value([1, "pi"], 3.14, ?D5)),
+    ?assertEqual(?T3R2, set_value([1, <<"pi">>], 3.14, ?D5)),
     %% Set a non-existing key followed by another non-existant key in the first json_object()
-    ?assertEqual(?T3R3, set_value([1, "callerid", "name"], "2600hz", ?D5)),
+    ?assertEqual(?T3R3, set_value([1, <<"callerid">>, <<"name">>], "2600hz", ?D5)),
     %% Set an existing key in the second json_object()
-    ?assertEqual(?T3R4, set_value([2, "k2"], "updated", ?D5)),
+    ?assertEqual(?T3R4, set_value([2, <<"k2">>], "updated", ?D5)),
     %% Set a non-existing key in a non-existing json_object()
-    ?assertEqual(?T3R5, set_value([3, "new_key"], "added", ?D5)).
+    ?assertEqual(?T3R5, set_value([3, <<"new_key">>], "added", ?D5)).
 
 %% "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ"
 -define(T4R1,  {struct, [{<<"Caller-ID">>, 1234},{list_to_binary(lists:seq(16#C0, 16#D6)), <<"Smith">>} ]}).
