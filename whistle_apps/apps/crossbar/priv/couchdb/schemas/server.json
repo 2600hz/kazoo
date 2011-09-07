@@ -1,0 +1,28 @@
+{
+   "_id": "server",
+   "id": "http://json-schema.org/draft-03/schema#",
+   "type": "object",
+   "description": "",
+   "properties": {
+       "hostname": {
+           "type": "string",
+           "required": "true"
+       },
+       "ip": {
+           "type": "string",
+           "required": "true"
+       },
+       "roles": {
+           "type": "array",
+           "required": "true"
+       },
+       "password": {
+           "type": "string",
+           "required": "true"
+       },
+       "operating_system": {
+           "type": "string",
+           "required": "true"
+       }
+   }
+}

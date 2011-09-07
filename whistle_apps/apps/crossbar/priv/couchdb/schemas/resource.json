@@ -1,0 +1,38 @@
+{
+   "_id": "resource",
+   "id": "http://json-schema.org/draft-03/schema#",
+   "type": "object",
+   "description": "",
+   "properties": {
+       "name": {
+           "type": "string",
+           "required": "true"
+       },
+       "enabled": {
+           "type": "boolean",
+           "required": "true"
+       },
+       "weight_cost": {
+           "type": "number",
+           "minimum": 1,
+           "maximum": 100
+       },
+       "rules": {
+           "type": "array"
+       },
+       "flags": {
+           "type": "array"
+       },
+       "caller_id_options": {
+           "type": "object",
+           "properties": {
+               "type": {
+                   "type": "string"
+               }
+           }
+       },
+       "gateways": {
+           "type": "array"
+       }
+   }
+}

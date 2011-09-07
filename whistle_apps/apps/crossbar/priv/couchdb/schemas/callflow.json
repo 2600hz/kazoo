@@ -1,0 +1,29 @@
+{
+   "_id": "callflow",
+   "id": "http://json-schema.org/draft-03/schema#",
+   "type": "object",
+   "description": "Call flows describe steps to take in order to process a phone call. They are trees of information related to a phone call such as \"answer, play file, record file\" etc. that are logically grouped together and ordered.",
+   "properties": {
+       "numbers": {
+           "description": "",
+           "type": "array",
+           "required": "true"
+       },
+       "flow": {
+           "description": "",
+           "type": "object",
+           "required": "true",
+           "properties": {
+               "module": {
+                   "type": "string"
+               },
+               "data": {
+                   "type": "object"
+               },
+               "children": {
+                   "type": "object"
+               }
+           }
+       }
+   }
+}

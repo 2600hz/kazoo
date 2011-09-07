@@ -1,0 +1,34 @@
+{
+   "_id": "c2c",
+   "id": "http://json-schema.org/draft-03/schema#",
+   "type": "object",
+   "description": "Click-to-call allows you to create URLs that can be POSTed to with a phone number or SIP URI and create a phone call from the provided contact information to a destination you have pre-determined.",
+   "properties": {
+       "name": {
+           "description": "",
+           "type": "string",
+           "required": "true"
+       },
+       "extension": {
+           "description": "",
+           "type": "string",
+           "required": "true"
+       },
+       "realm": {
+           "description": "",
+           "type": "string"
+       },
+       "auth_required": {
+           "description": "",
+           "type": "boolean"
+       },
+       "whitelist": {
+           "description": "",
+           "type": "array"
+       },
+       "throttle": {
+           "description": "",
+           "type": "number"
+       }
+   }
+}

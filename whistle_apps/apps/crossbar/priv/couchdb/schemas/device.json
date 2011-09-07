@@ -1,0 +1,43 @@
+{
+   "_id": "device",
+   "$schema": "http://json-schema.org/draft-03/schema#",
+   "id": "http://json-schema.org/draft-03/schema#",
+   "type": "object",
+   "description": "Schema for a device",
+   "properties": {
+       "name": {
+           "description": "Name of the device",
+           "required": true,
+           "type": "string"
+       },
+       "sip": {
+           "type": "object",
+           "properties": {
+               "realm": {
+                   "type": "string",
+                   "description": "The realm must be unique among the accounts",
+                   "required": true
+               },
+               "method": {
+                   "type": "string",
+                   "description": "Type of auth",
+                   "required": true
+               },
+               "username": {
+                   "type": "string",
+                   "description": "Username to login",
+                   "required": true
+               },
+               "password": {
+                   "type": "string",
+                   "description": "Password to login",
+                   "required": true
+               },
+               "invite_format": {
+                   "type": "string",
+                   "required": true
+               }
+           }
+       }
+   }
+}
