@@ -160,7 +160,6 @@ add_binding(Srv, {Binding, Props}) ->
       Binding :: queue_bindings:bind_types(),
       Props :: proplist().
 add_binding(Srv, Binding, Props) ->
-    io:format("add_binding/3 ~p ~p ~p", [Srv, Binding, Props]),
     gen_server:cast(Srv, {add_binding, Binding, Props}).
 
 -spec rm_binding/2 :: (Srv, Binding) -> 'ok' when
@@ -340,7 +339,7 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
 		 {reply, Props} -> [{queue, Queue} | Props];
 		 {'EXIT', _Why} -> [{queue, Queue}]
 	     end,
-    spawn_link(fun() -> whapps_util:put_callid(JObj), process_req(Props1, Responders, JObj) end).
+    spawn_link(fun() -> _ = whapps_util:put_callid(JObj), process_req(Props1, Responders, JObj) end).
 
 -spec process_req/3 :: (Props, Responders, JObj) -> 'ok' when
       Props :: proplist(),
