@@ -276,8 +276,8 @@ validate(_, _, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_device_summary/2 :: (Context, QueryParams) -> #cb_context{} when
-      QueryParams :: list(),
-      Context :: #cb_context{}.
+      Context :: #cb_context{},
+      QueryParams :: proplist().
 load_device_summary(Context, []) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 load_device_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->

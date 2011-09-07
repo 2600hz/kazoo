@@ -10,6 +10,7 @@
 
 -export([load/2, load_from_file/2, load_merge/3, load_view/3, load_view/4, load_attachment/3]).
 -export([save/1, delete/1, delete/2, save_attachment/4, save_attachment/5, delete_attachment/3]).
+-export([ensure_saved/1]).
 -export([public_fields/1, private_fields/1, is_private_key/1]).
 -export([rev_to_etag/1, current_doc_vsn/0]).
 
@@ -111,7 +112,7 @@ load_merge(DocId, {struct, Data}, #cb_context{db_name=DBName}=Context) ->
 	      ,resp_etag=rev_to_etag(Doc1)
 	     };
         Else ->
-	    ?LOG("loading doc ~s from ~s failed unexpectedly: ~p", [DocId, DBName, Else]),
+	    ?LOG("loading doc ~s from ~s failed unexpectedly", [DocId, DBName]),
             Else
     end.
 
@@ -216,7 +217,8 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(save/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec save/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
 save(#cb_context{db_name = <<>>}=Context) ->
     ?LOG("DB undefined, cannot save"),
     crossbar_util:response_db_missing(Context);
@@ -253,25 +255,71 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
             Context
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function attempts to save the provided document to the accounts
+%% database. The result is loaded into the context record.
+%%
+%% Failure here returns 500 or 503
+%% @end
+%%--------------------------------------------------------------------
+-spec ensure_saved/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
+ensure_saved(#cb_context{db_name = <<>>}=Context) ->
+    ?LOG("DB undefined, cannot ensure save"),
+    crossbar_util:response_db_missing(Context);
+ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context) ->
+    JObj0 = update_pvt_parameters(JObj, Context),
+    case couch_mgr:ensure_saved(DB, JObj0) of
+        {error, db_not_reachable} ->
+	    ?LOG("Failed to save json: db not reachable"),
+            crossbar_util:response_datastore_timeout(Context);
+	{ok, JObj1} when Verb =:= <<"put">> ->
+	    ?LOG("Saved a put request, setting location headers"),
+	    send_amqp_event(JObj1, <<"created">>),
+            Context#cb_context{
+                 doc=JObj1
+                ,resp_status=success
+                ,resp_headers=[{"Location", wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
+                ,resp_data=public_fields(JObj1)
+                ,resp_etag=rev_to_etag(JObj1)
+            };
+	{ok, JObj2} ->
+	    ?LOG("Saved json doc"),
+	    send_amqp_event(JObj2, <<"edited">>),
+            Context#cb_context{
+                 doc=JObj2
+                ,resp_status=success
+                ,resp_data=public_fields(JObj2)
+                ,resp_etag=rev_to_etag(JObj2)
+            };
+        _Else ->
+            ?LOG("Save failed: unexpected return from datastore: ~p", [_Else]),
+            Context
+    end.
+
 -spec send_amqp_event/2 :: (Doc, Type) -> 'ok' when
       Doc :: json_object(),
       Type :: binary().%<<"created">> | <<"edited">> | <<"deleted">>.
 send_amqp_event(Doc, Type) ->
-    JObj = {struct, [{<<"ID">>, wh_json:get_value(<<"_id">>, Doc)}
-		      ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
-		      ,{<<"Type">>, wh_json:get_value(<<"pvt_type">>, Doc)}
-		      ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
-		      ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
-		      ,{<<"Event-Type">>, Type}
-		      ,{<<"Date-Modified">>, wh_json:get_value(<<"pvt_created">>, Doc)}
-		      ,{<<"Date-Created">>, wh_json:get_value(<<"pvt_modified">>, Doc)}
-		      ,{<<"Version">>, wh_json:get_value(<<"pvt_vsn">>, Doc)}
-		      ,{<<"Custom-Fields">>, public_fields(Doc)}
-			| wh_api:default_headers(<<>>, <<"crossbar">>, <<"document_event">>, ?APP_NAME, ?APP_VSN)
-		     ]},
-    ?LOG("Publishing configuration event for ID: ~p, type: ~p", [wh_json:get_value(<<"ID">>, JObj), Type]),
-    {ok, Payload} = cb_api:new_document_event(JObj),
-    amqp_util:configuration_publish(?DOCUMENT_EVENT, Payload, <<"application/json">>).
+    spawn(fun() ->
+		  JObj = {struct, [{<<"ID">>, wh_json:get_value(<<"_id">>, Doc)}
+				   ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
+				   ,{<<"Type">>, wh_json:get_value(<<"pvt_type">>, Doc)}
+				   ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
+				   ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
+				   ,{<<"Event-Type">>, Type}
+				   ,{<<"Date-Modified">>, wh_json:get_value(<<"pvt_created">>, Doc)}
+				   ,{<<"Date-Created">>, wh_json:get_value(<<"pvt_modified">>, Doc)}
+				   ,{<<"Version">>, wh_json:get_value(<<"pvt_vsn">>, Doc)}
+				   ,{<<"Custom-Fields">>, public_fields(Doc)}
+				   | wh_api:default_headers(<<>>, <<"crossbar">>, <<"document_event">>, ?APP_NAME, ?APP_VSN)
+				  ]},
+		  ?LOG("Publishing configuration event for ID: ~p, type: ~p", [wh_json:get_value(<<"ID">>, JObj), Type]),
+		  {ok, Payload} = cb_api:new_document_event(JObj),
+		  amqp_util:configuration_publish(?DOCUMENT_EVENT, Payload, <<"application/json">>)
+	  end).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

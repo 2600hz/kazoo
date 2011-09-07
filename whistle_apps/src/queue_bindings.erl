@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(queue_bindings).
 
--export([add_binding_to_q/3, rm_binding_from_q/2]).
+-export([known_bind_types/0, add_binding_to_q/3, rm_binding_from_q/2]).
 
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
@@ -26,6 +26,14 @@
 		      'self' |
 		      'notifications' |
 		      'authorization'.
+-export_type([bind_types/0]).
+
+-spec known_bind_types/0 :: () -> [bind_types(),...].
+known_bind_types() ->
+    ['authentication', 'registrations', 'rating', 'routing'
+     ,'cdrs', 'dth', 'call_events', 'self', 'notifications'
+     ,'authorization'
+    ].
 
 -spec add_binding_to_q/3 :: (Q, Type, Props) -> 'ok' when
       Q :: binary(),

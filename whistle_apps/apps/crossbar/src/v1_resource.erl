@@ -106,7 +106,7 @@ malformed_request(RD, #cb_context{req_json={malformed, ErrBin}}=Context) ->
     {true, RD1, Context1};
 malformed_request(RD, #cb_context{req_json=Json, req_verb=Verb}=Context) ->
     ?TIMER_TICK("v1.malformed_request start"),
-    Data = wh_json:get_value(["data"], Json),
+    Data = wh_json:get_value([<<"data">>], Json),
     Auth = get_auth_token(RD, wh_json:get_value(<<"auth_token">>, Json, <<>>), Verb),
     ?LOG("request is using auth token ~s", [Auth]),
     ?TIMER_TICK("v1.malformed_request end"),
@@ -150,7 +150,7 @@ resource_exists(RD, Context) ->
                     Content = create_resp_content(RD, Context1),
                     RD2 = wrq:append_to_response_body(Content, RD1),
                     ReturnCode = Context1#cb_context.resp_error_code,
-		    ?LOG("requested resource did not validate, returning ~b", [ReturnCode]),
+		    ?LOG("requested resource did not validate, returning ~w", [ReturnCode]),
 		    ?TIMER_TICK("v1.resource_exists halt end"),
                     {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
             end;
@@ -357,13 +357,13 @@ override_verb(_, _, _) -> false.
 -spec(get_json_body/1 :: (RD :: #wm_reqdata{}) -> json_object() | tuple(malformed, binary())).
 get_json_body(RD) ->
     try
-	QS = [ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- wrq:req_qs(RD)],
+	QS = wh_json:from_list([ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- wrq:req_qs(RD)]),
 	case wrq:req_body(RD) of
-	    <<>> -> {struct, QS};
+	    <<>> -> QS;
 	    ReqBody ->
-		{struct, Prop} = JSON = mochijson2:decode(ReqBody),
+		JSON = mochijson2:decode(ReqBody),
 		case is_valid_request_envelope(JSON) of
-		    true -> {struct, Prop ++ QS};
+		    true -> wh_json:merge_jobjs(JSON, QS);
 		    false ->
                         ?LOG("invalid request envelope"),
                         {malformed, <<"Invalid request envelope">>}

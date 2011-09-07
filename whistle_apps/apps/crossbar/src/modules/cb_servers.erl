@@ -27,7 +27,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(SERVER_CONF, [code:lib_dir(crossbar, priv), "/servers/servers.conf"]).
+-define(SERVER_CONF, list_to_binary([code:lib_dir(crossbar, priv), "/servers/servers.conf"])).
 
 -define(CB_LIST, <<"servers/crossbar_listing">>).
 -define(VIEW_DEPLOY_ROLES, <<"servers/list_deployment_roles">>).
@@ -248,7 +248,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, _State, _Extra) ->
-    bind_to_crossbar(),
+    _ = bind_to_crossbar(),
     State = case file:consult(?SERVER_CONF) of
                 {ok, Terms} ->
                     ?LOG_SYS("loaded config from ~s", [?SERVER_CONF]),
@@ -287,7 +287,7 @@ code_change(_OldVsn, _State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  no_return()).
+-spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
@@ -305,7 +305,8 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (Paths) -> {boolean(), http_methods()} when
+      Paths :: list().
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
@@ -343,8 +344,8 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
-    load_server_summary(Context, QueryString);
+validate([], RD, #cb_context{req_verb = <<"get">>}=Context) ->
+    load_server_summary(Context, wrq:req_qs(RD));
 validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
     create_server(Context);
 validate([ServerId], _, #cb_context{req_verb = <<"get">>}=Context) ->
@@ -390,13 +391,13 @@ validate(_, _, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_server_summary/2 :: (Context, QueryParams) -> #cb_context{} when
-      QueryParams :: list(),
-      Context :: #cb_context{}.
+      Context :: #cb_context{},
+      QueryParams :: proplist().
+load_server_summary(Context, []) ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 load_server_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
     Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams),
-    Context#cb_context{resp_data=Result, resp_status=success};
-load_server_summary(Context, []) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    Context#cb_context{resp_data=Result, resp_status=success}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -404,7 +405,8 @@ load_server_summary(Context, []) ->
 %% Create a new server document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_server/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec create_server/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
 create_server(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
@@ -422,7 +424,9 @@ create_server(#cb_context{req_data=JObj}=Context) ->
 %% Load a server document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_server/2 :: (ServerId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_server/2 :: (ServerId, Context) -> #cb_context{} when
+      ServerId :: binary(),
+      Context :: #cb_context{}.
 load_server(ServerId, Context) ->
     crossbar_doc:load(ServerId, Context).
 
@@ -433,7 +437,9 @@ load_server(ServerId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_server/2 :: (ServerId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_server/2 :: (ServerId, Context) -> #cb_context{} when
+      ServerId :: binary(),
+      Context :: #cb_context{}.
 update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
@@ -448,7 +454,9 @@ update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (Doc, Acc) -> json_objects() when
+      Doc :: json_object(),
+      Acc :: json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -459,7 +467,8 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
+-spec is_valid_doc/1 :: (JObj) -> {boolean(), [binary(),...]} when
+      JObj :: json_object().
 is_valid_doc(JObj) ->
     {(wh_json:get_value(<<"hostname">>, JObj) =/= undefined), [<<"hostname">>]}.
 
@@ -481,7 +490,8 @@ execute_delete_command(#cb_context{doc=JObj}, #state{delete_tmpl=DeleteTmpl}) ->
     {ok, C} = DeleteTmpl:render([{<<"server">>, Props}]),
     Cmd = binary_to_list(iolist_to_binary(C)),
     ?LOG("executing delete template: ~s", [Cmd]),
-    os:cmd(Cmd),
+    Res = os:cmd(Cmd),
+    ?LOG("Deleting template resulted in ~s", [Cmd, Res]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -511,8 +521,8 @@ execute_deploy_command(#cb_context{db_name=Db, doc=JObj}=Context, State) ->
         {ok, _} ->
             spawn(fun() ->
                           ?LOG("executing deploy command ~s", [Cmd]),
-                          os:cmd(Cmd),
-                          ?LOG("deploy command execution completed"),
+                          Res = os:cmd(Cmd),
+                          ?LOG("deploy command execution completed: ~s", [Res]),
                           {ok, _} = mark_deploy_complete(Db, ServerId)
                   end),
             crossbar_util:response([], Context);
@@ -639,7 +649,7 @@ write_databag(Account, Server, JObj, #state{databag_path_tmpl=PathTmpl}) ->
     {ok, P} = PathTmpl:render(Props),
     Path = binary_to_list(iolist_to_binary(P)),
     ?LOG("writing databag to ~s", [Path]),
-    file:write_file(Path, JSON),
+    ok = file:write_file(Path, JSON),
     Path.
 
 %%--------------------------------------------------------------------
@@ -689,7 +699,7 @@ write_role(Account, Server, JObj, #state{role_path_tmpl=PathTmpl}) ->
     {ok, P} = PathTmpl:render(Props),
     Path = binary_to_list(iolist_to_binary(P)),
     ?LOG("writing role to ~s", [Path]),
-    file:write_file(Path, JSON),
+    ok = file:write_file(Path, JSON),
     Path.
 
 %%--------------------------------------------------------------------

@@ -19,7 +19,10 @@
 %% filtered on the query string params
 %% @end
 %%--------------------------------------------------------------------
--spec filter_on_query_string/3 :: (DbName :: binary(), View :: binary(), QueryParams :: proplist()) -> json_objects().
+-spec filter_on_query_string/3 :: (DbName, View, QueryParams) -> json_objects() when
+      DbName :: binary(),
+      View :: binary(),
+      QueryParams :: proplist().
 filter_on_query_string(DbName, View, QueryParams) ->
     filter_on_query_string(DbName, View, QueryParams, []).
 
