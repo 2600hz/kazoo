@@ -11,8 +11,8 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2, subscribe/3, unsubscribe/2, fetch/1, set_maxevents/2, stop/1]).
--export([subscriptions/1]).
+-export([start_link/2, subscribe/3, unsubscribe/2, fetch/1, stop/1]).
+-export([subscriptions/1, set_maxevents/2, get_maxevents/1]).
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -77,6 +77,11 @@ subscriptions(Srv) ->
 fetch(Srv) ->
     gen_listener:call(Srv, fetch).
 
+-spec get_maxevents/1 :: (Srv) -> integer() when
+      Srv :: pid().
+get_maxevents(Srv) ->
+    gen_listener:call(Srv, get_maxevents).
+
 -spec set_maxevents/2 :: (Srv, Max) -> {'ok', EventsDropped :: non_neg_integer()} when
       Srv :: pid(),
       Max :: pos_integer().
@@ -111,6 +116,7 @@ handle_req(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([AccountID, UserID]) ->
+    ?LOG_SYS("Started for ~s / ~s", [UserID, AccountID]),
     {ok, #state{account_id=AccountID, user_id=UserID}}.
 
 %%--------------------------------------------------------------------
@@ -129,6 +135,9 @@ init([AccountID, UserID]) ->
 %%--------------------------------------------------------------------
 handle_call(fetch, _, #state{events=Events, overflow=Overflow}=State) ->
     {reply, {queue:to_list(Events), Overflow}, State#state{events=queue:new(), overflow=false}};
+
+handle_call(get_maxevents, _, #state{max_events=Max}=State) ->
+    {reply, Max, State};
 
 handle_call({set_maxevents, Max}, _, #state{events=Events}=State) ->
     case (Len = queue:len(Events)) > Max of
@@ -166,6 +175,7 @@ handle_call({subscribe, Sub, Options}, _, #state{subscriptions=Subs}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({unsubscribe, Sub}, #state{subscriptions=Subs}=State) ->
+    ?LOG("removing binding: ~s", [Sub]),
     gen_listener:rm_binding(self(), Sub),
     {noreply, State#state{subscriptions=lists:delete(Sub, Subs)}};
 handle_cast({add_event, JObj}, #state{events=Events, max_events=Max}=State) ->
