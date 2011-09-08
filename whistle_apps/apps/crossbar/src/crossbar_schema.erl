@@ -3,8 +3,8 @@
 %%% @author Edouard Swiac <edouard@2600hx.com>
 %%%
 %%% @copyright (C) 2011, Karl Anderson
-%%% @doc 
-%%% 
+%%% @doc
+%%%
 %%% Implementation of JSON Schema spec
 %%% http://tools.ietf.org/html/draft-zyp-json-schema-03
 %%%
@@ -12,14 +12,14 @@
 %%% Created : 18 Feb 2011 by Karl Anderson <karl@2600hz.org>
 %%% 28 July 2011 - remove dust & refresh code, json schema still v0.3
 %%%-------------------------------------------------------------------
--module(json_schema).
+-module(crossbar_schema).
 
 -export([do_validate/2]).
 
 -include("crossbar.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--define(CROSSBAR_SCHEMA_DB, <<"crossbar%2Fschema">>).
+-define(CROSSBAR_SCHEMA_DB, <<"crossbar%2Fschemas">>).
 -define(TRACE, false). %% trace through the validation steps
 
 %% for testing purpose with particular JSON data from file
@@ -31,8 +31,8 @@ do_validate(File, SchemaName) when is_list(File)->
     Data = mochijson2:decode(Bin1),
     do_validate(wh_json:get_value(<<"data">>, Data), SchemaName);
 %% for crossbar usage
-do_validate(JObj, SchemaName)  ->
-    {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, wh_util:to_binary(SchemaName)),
+do_validate(JObj, SchemaName) when is_binary(SchemaName) ->
+    {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, SchemaName),
     Errors = [X || {T, _}=X <- validate(JObj, Schema), T == validation_error],
     case Errors of
 	[] -> ok;
