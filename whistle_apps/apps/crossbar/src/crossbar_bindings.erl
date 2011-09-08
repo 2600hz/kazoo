@@ -194,19 +194,19 @@ handle_call({fold, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) -
     {noreply, State};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=[]}=State) ->
     link(From),
-    {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())}]}};
+    {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())}]}, hibernate};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
     ?LOG_SYS("~w is binding ~s", [From, Binding]),
     case lists:keyfind(Binding, 1, Bs) of
 	false ->
 	    link(From),
-	    {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())} | Bs]}};
+	    {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())} | Bs]}, hibernate};
 	{_, Subscribers} ->
 	    case queue:member(From, Subscribers) of
 		true -> {reply, {error, exists}, State};
 		false ->
 		    link(From),
-		    {reply, ok, State#state{bindings=[{Binding, queue:in(From, Subscribers)} | lists:keydelete(Binding, 1, Bs)]}}
+		    {reply, ok, State#state{bindings=[{Binding, queue:in(From, Subscribers)} | lists:keydelete(Binding, 1, Bs)]}, hibernate}
 	    end
     end.
 
@@ -222,13 +222,13 @@ handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
 %%--------------------------------------------------------------------
 handle_cast(flush, #state{bindings=Bs}=State) ->
     lists:foreach(fun flush_binding/1, Bs),
-    {noreply, State#state{bindings=[]}};
+    {noreply, State#state{bindings=[]}, hibernate};
 handle_cast({flush, Binding}, #state{bindings=Bs}=State) ->
     case lists:keyfind(Binding, 1, Bs) of
 	false -> {noreply, State};
 	{_, _}=B ->
 	    flush_binding(B),
-	    {noreply, State#state{bindings=lists:keydelete(Binding, 1, Bs)}}
+	    {noreply, State#state{bindings=lists:keydelete(Binding, 1, Bs)}, hibernate}
     end;
 handle_cast(stop, State) ->
     {stop, normal, State}.
@@ -248,7 +248,7 @@ handle_info({'EXIT', Pid, _Reason}, #state{bindings=Bs}=State) ->
     Bs1 = lists:foldr(fun({B, Subs}, Acc) ->
 			      [{B, remove_subscriber(Pid, Subs)} | Acc]
 		      end, [], Bs),
-    {noreply, State#state{bindings=Bs1}};
+    {noreply, State#state{bindings=Bs1}, hibernate};
 handle_info(_Info, State) ->
     {noreply, State}.
 

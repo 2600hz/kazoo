@@ -112,7 +112,7 @@ handle_cast(_Msg, State) ->
 handle_info(?REFRESH_MSG, OldCarriers) ->
     case get_current_carriers() of
 	{ok, Carriers} ->
-	    {noreply, Carriers};
+	    {noreply, Carriers, hibernate};
 	{error, _Err} ->
 	    ?LOG_SYS("Error getting carriers: ~p", [_Err]),
 	    {noreply, OldCarriers}
@@ -130,7 +130,7 @@ handle_info({document_changes, DocID, Changes}, Carriers) ->
 						  NewCarriers
 					  end
 				  end, Carriers, Changes),
-    {noreply, ChangedCarriers};
+    {noreply, ChangedCarriers, hibernate};
 handle_info({document_deleted, DocID}, Carriers) ->
     CurrID = props:get_value(<<"_id">>, Carriers),
     case DocID =:= CurrID of
