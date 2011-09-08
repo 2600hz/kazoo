@@ -28,7 +28,6 @@ init([]) ->
     {ok, { {one_for_one, 5, 10}, [
 				  ?CACHE(wh_couch_cache)
 				  ,?CHILD(couch_mgr, worker)
-				  ,?CHILD(couch_compactor, worker)
 				  ,?CHILD(change_mgr_sup, supervisor)
 				 ]} }.
 

@@ -2,7 +2,7 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, James Aimonetti
 %%% @doc
-%%% Utilities to compact BigCouch nodes, dbs, and design docs
+%%% Utilities to compact BigCouch clusters, nodes, and DBs
 %%% @end
 %%% Created :  8 Sep 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -14,14 +14,12 @@
 -define(SLEEP_BETWEEN_COMPACTION, 5000). %% sleep 5 seconds between shard compactions
 -define(SLEEP_BETWEEN_POLL, 5000). %% sleep 5 seconds before polling the shard for compaction status
 
--spec compact_all/0 :: () -> 'started'.
+-spec compact_all/0 :: () -> 'done'.
 compact_all() ->
-    spawn(fun() ->
-		  ?LOG_SYS("Compacting all nodes"),
-		  {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
-		  _ = [ compact_node(wh_json:get_value(<<"id">>, Node)) || Node <- Nodes]
-	  end),
-    started.
+    ?LOG_SYS("Compacting all nodes"),
+    {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
+    _ = [ compact_node(wh_json:get_value(<<"id">>, Node)) || Node <- Nodes],
+    done.
 
 -spec compact_node/1 :: (Node) -> 'done' when
       Node :: atom() | binary().
@@ -59,37 +57,36 @@ compact_db(NodeBin, DB, Conn, AdminConn) ->
 
     Shards = get_db_shards(AdminConn, DBEncoded),
     DesignDocs = get_db_design_docs(Conn, DBEncoded),
-    _ = [ compact_shard(AdminConn, Shard) || Shard <- Shards ],
-    _ = [ compact_design(AdminConn, Design, Shards) || Design <- DesignDocs ],
+    _ = [ compact_shard(AdminConn, Shard, DesignDocs) || Shard <- Shards ],
     ok.
 
--spec compact_design/3 :: (AdminConn, Design, Shards) -> 'ok' when
+-spec compact_shard/3 :: (AdminConn, Shard, DesignDocs) -> 'ok' when
       AdminConn :: #server{},
-      Design :: binary(),
-      Shards :: [binary(),...].
-compact_design(AdminConn, Design, Shards) ->
-    ?LOG("Compacting design ~s", [Design]),
-    _ = [ couch_util:design_compact(AdminConn, Shard, Design) || Shard <- Shards ],
-    ok.
-
--spec compact_shard/2 :: (AdminConn, Shard) -> 'ok' when
-      AdminConn :: #server{},
-      Shard :: binary().
-compact_shard(AdminConn, Shard) ->
+      Shard :: binary(),
+      DesignDocs :: [binary(),...].
+compact_shard(AdminConn, Shard, DesignDocs) ->
     wait_for_compaction(AdminConn, Shard),
     ?LOG("Compacting shard ~s", [Shard]),
     couch_util:db_compact(AdminConn, Shard),
-    couch_util:db_view_cleanup(AdminConn, Shard),
     wait_for_compaction(AdminConn, Shard),
-    timer:sleep(?SLEEP_BETWEEN_COMPACTION),
+
+    ?LOG("View cleanup"),
+    couch_util:db_view_cleanup(AdminConn, Shard),
+
+    ?LOG("Design cleanup"),
+    _ = [ couch_util:design_compact(AdminConn, Shard, Design) || Design <- DesignDocs ],
+    ok = timer:sleep(?SLEEP_BETWEEN_COMPACTION),
     ok.
 
+-spec wait_for_compaction/2 :: (AdminConn, Shard) -> 'ok' when
+      AdminConn :: #server{},
+      Shard :: binary().
 wait_for_compaction(AdminConn, Shard) ->
     {ok, ShardData} = couch_util:db_info(AdminConn, Shard),
     case wh_json:is_true(<<"compact_running">>, ShardData, false) of
 	true ->
 	    ?LOG("Compaction running for shard"),
-	    timer:sleep(?SLEEP_BETWEEN_POLL),
+	    ok = timer:sleep(?SLEEP_BETWEEN_POLL),
 	    wait_for_compaction(AdminConn, Shard);
 	false ->
 	    ?LOG("Compaction is not running for shard"),

@@ -468,10 +468,12 @@ get_view(#db{}=Db, DesignDoc, ViewOptions) ->
 %% until 3 failed retries occur.
 %% @end
 %%------------------------------------------------------------------------------
--spec retry504s/1 :: (Fun) -> {'ok', json_object() | json_objects() | binary() | [binary(),...] | boolean()} | {'error', atom()} when
-      Fun :: fun(() -> {'ok', json_object() | json_objects() | binary()} | {'error', term()}).
--spec retry504s/2 :: (Fun, Cnt) -> {'ok', json_object() | json_objects() | binary() | [binary(),...] | boolean()} | {'error', atom()} when
-      Fun :: fun(() -> {'ok', json_object() | json_objects() | binary()} | {'error', term()}),
+-type retry504_ret() :: {'ok', json_object() | json_objects() | binary() | [binary(),...] | boolean()} | {'error', atom()} | 'ok'.
+
+-spec retry504s/1 :: (Fun) -> retry504_ret() when
+      Fun :: fun(() -> retry504_ret()).
+-spec retry504s/2 :: (Fun, Cnt) -> retry504_ret() when
+      Fun :: fun(() -> retry504_ret()),
       Cnt :: 0..3.
 retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
