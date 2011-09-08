@@ -2,7 +2,7 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Handle updating devices and emails about voicemails
+%%% Rater whapp; send me a DID, get a rate back
 %%% @end
 %%% Created :  3 May 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------

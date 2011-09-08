@@ -3,6 +3,7 @@
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Handle serializing account access for crossbar accounts
+%%% TODO: convert to gen_listener
 %%% @end
 %%% Created : 16 Jul 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -173,7 +174,7 @@ handle_call({authz, JObj, inbound}, _From, #state{}=State) ->
 			 true -> try_inbound_then_twoway(CallID, State);
 			 false -> try_prepay(CallID, State)
 		     end,
-    {reply, Resp, State1};
+    {reply, Resp, State1, hibernate};
 
 handle_call({authz, JObj, outbound}, _From, State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -187,7 +188,7 @@ handle_call({authz, JObj, outbound}, _From, State) ->
 			 true -> try_twoway(CallID, State);
 			 false -> try_prepay(CallID, State)
 		     end,
-    {reply, Resp, State1}.
+    {reply, Resp, State1, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -224,12 +225,12 @@ handle_info({_, #amqp_msg{payload=Payload}}, #state{my_q=Q, two_way=Two, inbound
 	    ?LOG_END(CallID, "Releasing inbound trunk", []),
 	    unmonitor_call(Q, CallID),
 	    NewIn = case (In+1) of I when I > MaxIn -> MaxIn; I -> I end,
-	    {noreply, State#state{inbound=NewIn, trunks_in_use=Dict1}};
+	    {noreply, State#state{inbound=NewIn, trunks_in_use=Dict1}, hibernate};
 	{release, twoway, Dict2} ->
 	    ?LOG_END(CallID, "Releasing two-way trunk", []),
 	    unmonitor_call(Q, CallID),
 	    NewTwo = case (Two+1) of T when T > MaxTwo -> MaxTwo; T -> T end,
-	    {noreply, State#state{two_way=NewTwo, trunks_in_use=Dict2}};
+	    {noreply, State#state{two_way=NewTwo, trunks_in_use=Dict2}, hibernate};
 	ignore ->
 	    ?LOG_END(CallID, "Ignoring event", []),
 	    {noreply, State}
@@ -247,7 +248,7 @@ handle_info({document_changes, AcctID, Changes}, #state{acct_rev=Rev, acct_id=Ac
 					 State0#state{max_two_way=Two, max_inbound=In}
 				 end
 			 end, State, Changes),
-    {noreply, State1};
+    {noreply, State1, hibernate};
 
 handle_info({document_deleted, DocID}, State) ->
     ?LOG_SYS("account ~s deleted, going down", [DocID]),
