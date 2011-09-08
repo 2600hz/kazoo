@@ -10,6 +10,7 @@
 -module(props).
 
 -export([get_value/2, get_value/3, delete/2, is_defined/2]).
+-export([get_keys/1]).
 
 -include_lib("whistle/include/wh_types.hrl").
 
@@ -38,6 +39,11 @@ get_value(Key, Prop, Default) ->
 	Other when is_tuple(Other) -> % otherwise return the default
 	    Default
     end.
+
+-spec get_keys/1 :: (Prop) -> [term(),...] | [] when
+      Prop :: proplist().
+get_keys(Prop) ->
+    [ K || {K,_} <- Prop].
 
 -spec delete/2 :: (Key, Prop) -> proplist() when
       Key :: binary() | atom(),

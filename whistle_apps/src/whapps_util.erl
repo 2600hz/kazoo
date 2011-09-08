@@ -203,10 +203,10 @@ get_event_type(JObj) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (JObj) -> no_return() when
+-spec put_callid/1 :: (JObj) -> binary() | 'undefined' when
       JObj :: json_object().
 put_callid(JObj) ->
-    _ = put(callid, wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
+    erlang:put(callid, wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
 
 %%--------------------------------------------------------------------
 %% @public

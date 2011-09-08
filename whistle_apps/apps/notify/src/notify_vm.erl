@@ -24,6 +24,8 @@ init() ->
       Props :: proplist().
 handle_req(JObj, _Props) ->
     true = cf_api:new_voicemail_v(JObj),
+    whapps_util:put_callid(JObj),
+
     AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
     {ok, VMBox} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),
     {ok, UserJObj} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"owner_id">>, VMBox)),
@@ -59,8 +61,11 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
 
     From = <<"no_reply@", (wh_util:to_binary(net_adm:localhost()))/binary>>,
 
-    {ok, JObj} = couch_mgr:open_doc(DB, DocId),
-    {AttachmentId, _MetaData} = wh_json:get_value(<<"_attachments">>, JObj),
+    ?LOG_SYS("Opening ~s in ~s", [DocId, DB]),
+    {ok, VMJObj} = couch_mgr:open_doc(DB, DocId),
+
+    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
+    ?LOG_SYS("Attachment doc: ~s", [AttachmentId]),
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
     Email = {<<"multipart">>, <<"mixed">> %% Content Type / Sub Type
@@ -83,6 +88,7 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
 	      ]
 	    },
     Encoded = mimemail:encode(Email),
+    ?LOG_SYS("Sending email to ~s", [To]),
     gen_smtp_client:send({From, [To], Encoded}, [{relay, "localhost"}]
 			 ,fun(X) -> ?LOG("Sending email to ~s resulted in ~p", [To, X]) end).
 

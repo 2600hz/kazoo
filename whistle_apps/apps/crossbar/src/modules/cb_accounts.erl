@@ -673,7 +673,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
             JObj = wh_json:set_value(<<"_id">>, DbName, Doc),
             case crossbar_doc:save(Context#cb_context{db_name=Db, doc=JObj}) of
                 #cb_context{resp_status=success}=Context1 ->
-                    crossbar_bindings:map(<<"account.created">>, Db),
+                    _ = crossbar_bindings:map(<<"account.created">>, Db),
                     couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
                     whapps_util:replicate_from_account(whapps_util:get_db_name(Db, unencoded), ?AGG_DB, ?AGG_FILTER),
                     Context1;

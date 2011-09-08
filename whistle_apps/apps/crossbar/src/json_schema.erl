@@ -19,54 +19,57 @@
 -include("crossbar.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--import(logger, [format_log/3]).
-
 -define(CROSSBAR_SCHEMA_DB, <<"crossbar%2Fschema">>).
 -define(TRACE, false). %% trace through the validation steps
 
 %% for testing purpose with particular JSON data from file
--spec(do_validate/2 :: (File :: string() | json_object(), SchemaName :: atom()) -> list()).
+-spec do_validate/2 :: (File, SchemaName) -> list() when
+      File :: string() | json_object(),
+      SchemaName :: atom().
 do_validate(File, SchemaName) when is_list(File)->
     {ok, Bin1} = file:read_file(File),
     Data = mochijson2:decode(Bin1),
     do_validate(wh_json:get_value(<<"data">>, Data), SchemaName);
 %% for crossbar usage
-do_validate(Data, SchemaName)  ->
+do_validate(JObj, SchemaName)  ->
     {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, wh_util:to_binary(SchemaName)),
-    Errors = [X || {T, _}=X <- validate(Data, Schema), T == validation_error],
+    Errors = [X || {T, _}=X <- validate(JObj, Schema), T == validation_error],
     case Errors of
 	[] -> ok;
 	_ -> Errors
     end.
 
--spec(validate/2 :: (Instance :: term(), json_object()) -> list()).
-validate(Instance, {struct, Definitions}) ->
-    validate(Instance, {struct, Definitions}, []).
+-spec validate/2 :: (Instance, JObj) -> [{'ok', []} | {'validation_error', _},...] when
+      Instance :: term(),
+      JObj :: json_object().
+-spec validate/3 :: (Instance, JObj, Messages) -> [{'ok', []} | {'validation_error', _},...] when
+      Instance :: term(),
+      JObj :: json_object(),
+      Messages :: list().
 
--spec(validate/3 :: (Instance :: term(), json_object(), Messages :: list()) -> list()).
+validate(Instance, Definitions) ->
+    validate(Instance, Definitions, []).
+
 validate(Instance, {struct, Definitions}, Messages) ->
-    L = lists:foldl(fun({Definition, Attributes}, Acc) ->
-			    Validation = case Definition of
-					     <<"_id">>  -> true;
-					     <<"_rev">> -> true;
-					     _          -> validate_instance(Instance, Definition, Attributes)
-					 end,
-			    case Validation of
-				true                   -> [{ok, []} | Acc];
-				_                      -> [Validation | Acc] % {validation_error, _}
-			    end
-		    end, Messages, Definitions),
-    lists:flatten(L). % flattening because of the recursive nature of validate
+    lists:foldl(fun({Definition, Attributes}, Acc) ->
+			case validate_instance(Instance, Definition, Attributes) of
+			    true -> [{ok, []} | Acc];
+			    {validation_error, _}=Error -> [Error | Acc]; % {validation_error, _}
+			    [_|_]=Validations -> Validations ++ Acc
+			end
+		end, Messages, Definitions).
 
-
--spec(trace_validate/3 :: (term(), term(), term()) -> atom()).
+-spec trace_validate/3 :: (Instance, Type, Attribute) -> 'ok' | 'false' when
+      Instance :: term(),
+      Type :: binary(),
+      Attribute :: term().
 trace_validate(Instance, Type, Attribute) ->
-    case ?TRACE of
-	true ->
-	    io:format("~n_+ Validating Instance :: ~p, ~n_+ Type :: ~p, ~n_+ Attribute :: ~p~n", [Instance, Type, Attribute]);
-	false ->
-	    nothing
-    end.
+    ?TRACE andalso begin
+		       ?LOG_SYS("_+ Validating Instance :: ~p", [Instance]),
+		       ?LOG_SYS("_+ Type :: ~p", [Type]),
+		       ?LOG_SYS("_+ Attribute :: ~p", [Attribute])
+		   end.
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.7
@@ -74,10 +77,16 @@ trace_validate(Instance, Type, Attribute) ->
 %%            value, and not be undefined.
 %% @end
 %%--------------------------------------------------------------------
--spec(validate_instance/3 :: (Instance :: term(), binary(), term()) -> true | tuple(validation_error, binary())).
+-type validation_result() :: 'true' | {'validation_error', binary()}.
+-type validation_results() :: validation_result() | [validation_results(),...].
+
+-spec validate_instance/3 :: (Instance, Type, Attribute) -> validation_results() when
+      Instance :: term(),
+      Type :: binary(),
+      Attribute :: term().
 validate_instance(Instance, <<"required">>, Attribute) ->
     trace_validate(Instance, <<"required">>, Attribute),
-    case is_boolean_true(Attribute) of
+    case wh_util:is_true(Attribute) of
 	true -> true;
 	false -> validation_error(Instance, <<"required but not found">>)
     end;
@@ -101,16 +110,28 @@ validate_instance(undefined, _, _) ->
 validate_instance(Instance, <<"type">>, [{struct, _}=Schema]) ->
     trace_validate(Instance, <<"type">>, struct),
     validate(Instance, Schema);
+
 validate_instance(Instance, <<"type">>, [{struct, _}=Schema|T]) ->
     trace_validate(Instance, <<"type">>, struct_list),
-    validate(Instance, Schema) orelse validate_instance(Instance, <<"type">>, T);
+    case lists:all(fun({ok, _}) -> true; (_) -> false end, validate(Instance, Schema)) of
+	true -> true;
+	false -> validate_instance(Instance, <<"type">>, T)
+    end;
+
+validate_instance(Instance, <<"type">>, [H]) ->
+    trace_validate(Instance, <<"type">>, list),
+    case validate_instance(Instance, <<"type">>, H) of
+	true -> true;
+	_ -> validation_error(Instance, <<"type ", H, " is invalid">>)
+    end;
+
 validate_instance(Instance, <<"type">>, [H|T]) ->
     trace_validate(Instance, <<"type">>, list),
     case validate_instance(Instance, <<"type">>, H) of
-        false when T =:= [] -> validation_error(Instance, <<"type ", H, " is invalid">>);
-        false               -> validate_instance(Instance, <<"type">>, T);
-        true                -> true
+        true -> true;
+        _ -> validate_instance(Instance, <<"type">>, T)
     end;
+
 validate_instance(Instance, <<"type">>, <<"null">>) ->
     trace_validate(Instance, <<"type">>, <<"null">>),
     case Instance of
@@ -118,6 +139,7 @@ validate_instance(Instance, <<"type">>, <<"null">>) ->
         null       -> true;
         _          -> validation_error(Instance, <<"must be null">>)
     end;
+
 validate_instance(Instance, <<"type">>, <<"string">>) ->
     trace_validate(Instance, <<"type">>, <<"string">>),
     case Instance of
@@ -145,28 +167,26 @@ validate_instance(Instance, <<"type">>, <<"integer">>) ->
     end;
 validate_instance(Instance, <<"type">>, <<"boolean">>) ->
     trace_validate(Instance, <<"type">>, <<"boolean">>),
-    case Instance of
-        true         -> true;
-        <<"true">>   -> true;
-        false        -> true;
-        <<"false">>  -> true;
-        _            -> validation_error(Instance, <<"must be of type boolean">>)
+    case wh_util:is_true(Instance) orelse wh_util:is_false(Instance) of
+        true -> true;
+        _ -> validation_error(Instance, <<"must be of type boolean">>)
     end;
+validate_instance([_|_]=Instance, <<"type">>, <<"array">>) ->
+    trace_validate(Instance, <<"type">>, <<"array">>),
+    true;
+
 validate_instance(Instance, <<"type">>, <<"array">>) ->
     trace_validate(Instance, <<"type">>, <<"array">>),
-    case is_list(Instance) of
-	true  -> true;
-	false -> validation_error(Instance, <<"must be of type array">>)
-    end;
+    validation_error(Instance, <<"must be of type array">>);
+
+
+validate_instance({struct, _}=Instance, <<"type">>, <<"object">>) ->
+    trace_validate(Instance, <<"type">>, <<"object">>),
+    true;
 validate_instance(Instance, <<"type">>, <<"object">>) ->
     trace_validate(Instance, <<"type">>, <<"object">>),
-    try
-	{struct, _} = Instance,
-	true
-    catch
-	_:_ ->
-	    validation_error(Instance, <<"must be an object">>)
-    end;
+    validation_error(Instance, <<"must be an object">>);
+
 validate_instance(_, <<"type">>, _) ->
     trace_validate(none, <<"type">>, none),
     true;
@@ -181,10 +201,8 @@ validate_instance(_, <<"type">>, _) ->
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"properties">>, {struct, Attribute}) ->
     trace_validate(Instance, <<"properties">>, Attribute),
-    not validate_instance(Instance, <<"type">>, <<"object">>) orelse
-	lists:map(fun({Name, Schema}) ->
-			    validate(wh_json:get_value(Name, Instance), Schema)
-		    end, Attribute);
+    (not validate_instance(Instance, <<"type">>, <<"object">>)) orelse
+	[validate(wh_json:get_value(Name, Instance), Schema) || {Name, Schema} <- Attribute];
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -215,7 +233,7 @@ validate_instance(Instance, <<"items">>, {struct, _} = Schema) ->
     trace_validate(Instance, <<"items">>, none),
     not validate_instance(Instance, <<"type">>, <<"array">>) orelse
 	lists:foldr(fun(Item, Acc) ->
-			    Acc and validate(Item, Schema)
+			    Acc and lists:all(fun({ok, []}) -> true; (_) -> false end, validate(Item, Schema))
 		    end, true, Instance);
 
 %%--------------------------------------------------------------------
@@ -359,7 +377,7 @@ validate_instance(Instance, <<"uniqueItems">>, _) ->
 validate_instance(Instance, <<"minLength">>, Attribute) ->
     trace_validate(Instance, <<"minLength">>, Attribute),
     case not validate_instance(Instance, <<"type">>, <<"string">>)
-        orelse length(to_list(Instance)) >= Attribute of
+        orelse length(wh_util:to_list(Instance)) >= Attribute of
 	true -> true;
 	false -> validation_error(Instance, <<"is too short, min. characters allowed:">>, Attribute)
     end;
@@ -373,7 +391,7 @@ validate_instance(Instance, <<"minLength">>, Attribute) ->
 validate_instance(Instance, <<"maxLength">>, Attribute) ->
     trace_validate(Instance, <<"maxLength">>, Attribute),
     case not validate_instance(Instance, <<"type">>, <<"string">>)
-        orelse length(to_list(Instance)) =< Attribute of
+        orelse length(wh_util:to_list(Instance)) =< Attribute of
 	true -> true;
 	false -> validation_error(Instance, <<"is too long, max. characters allowed:">>, Attribute)
     end;
@@ -436,7 +454,7 @@ validate_instance(_, <<"description">>, _) ->
 %%--------------------------------------------------------------------
 validate_instance(Instance, <<"divisibleBy">>, Attribute) ->
     trace_validate(Instance, <<"divisibleBy">>, Attribute),
-    case not validate_instance(Instance, <<"type">>, <<"number">>)
+    case validate_instance(Instance, <<"type">>, <<"number">>) =/= true
         orelse case {Instance, Attribute} of
                    {_, 0} -> validation_error(division_0, <<"Division by 0">>);
                    {0, _} -> true;
@@ -446,7 +464,7 @@ validate_instance(Instance, <<"divisibleBy">>, Attribute) ->
 			     end
 	       end of
 	true -> true;
-	false -> validation_error(Instance, <<"must be divisible by">>, Attribute)
+	Error -> Error
     end;
 
 %%--------------------------------------------------------------------
@@ -462,7 +480,7 @@ validate_instance(Instance, <<"disallow">>, Attribute) ->
     trace_validate(Instance, <<"disallow">>, Attribute),
     case not validate_instance(Instance, <<"type">>, Attribute) of
 	true -> true;
-	false -> validation_error(Instance, <<"this type is not allowed">>)
+	_ -> validation_error(Instance, <<"this type is not allowed">>)
     end;
 
 %%--------------------------------------------------------------------
@@ -505,6 +523,16 @@ validate_instance(_, <<"\$schema">>, _) ->
 
 %%--------------------------------------------------------------------
 %% @doc
+%% Ignore CouchDB document properties
+%% @end
+%%--------------------------------------------------------------------
+validate_instance(_, <<"_id">>, _) ->
+    true;
+validate_instance(_, <<"_rev">>, _) ->
+    true;
+
+%%--------------------------------------------------------------------
+%% @doc
 %% End of validate_instance
 %% @end
 %%--------------------------------------------------------------------
@@ -512,50 +540,19 @@ validate_instance(_,_,_) ->
     trace_validate(none, none, none),
     validation_error(error, <<"This instance is not valid">>).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Helper function to test if the json term is the boolean true
-%% @end
-%%--------------------------------------------------------------------
--spec(is_boolean_true/1 :: (Instance :: json_term()) -> boolean()).
-is_boolean_true(Instance) ->
-    case Instance of
-        <<"true">> ->
-            true;
-        true ->
-            true;
-        _ ->
-            false
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Helper function to convert any json_term to a list
-%% @end
-%%--------------------------------------------------------------------
--spec(to_list/1 :: (X :: atom() | list() | binary() | integer() | float()) -> list()).
-to_list(X) when is_float(X) ->
-    mochinum:digits(X);
-to_list(X) when is_integer(X) ->
-    integer_to_list(X);
-to_list(X) when is_binary(X) ->
-    binary_to_list(X);
-to_list(X) when is_atom(X) ->
-    atom_to_list(X);
-to_list(X) when is_list(X) ->
-    X.
-
-
--spec(validation_error/2 :: (term(), binary()) -> tuple(validation_error, binary())).
+-spec validation_error/2 :: (Instance, Message) -> {'validation_error', binary()} when
+      Instance :: term(),
+      Message :: binary().
 validation_error({struct, _}, _) ->
     {validation_error, <<"json is invalid">>};
 validation_error(Instance, Msg) ->
     {validation_error, <<(wh_util:to_binary(Instance))/binary,
 			     " ", (wh_util:to_binary(Msg))/binary>>}.
 
--spec(validation_error/3 :: (term(), binary(), term()) -> tuple(validation_error, binary())).
+-spec validation_error/3 :: (Instance, Message, Attribute) -> {'validation_error', binary()} when
+      Instance :: term(),
+      Message :: binary(),
+      Attribute :: term().
 validation_error(Instance, Msg, Attribute) ->
     {validation_error, <<(wh_util:to_binary(Instance))/binary,
 			     " ", (wh_util:to_binary(Msg))/binary,
@@ -876,13 +873,13 @@ validate_test(Succeed, Fail, Schema) ->
     lists:foreach(fun(Elem) ->
 			  Validation = validate(Elem, S),
 			  Result = lists:all(fun({T, _}) -> T == ok end, Validation),
-			  ?debugFmt("Testing success of ~p => ~p~n", [Validation, Result]),
+			  ?debugFmt("~p: ~p: Testing success of ~p => ~p~n", [Schema, Elem, Validation, Result]),
 			  ?assertEqual(true, Result)
 		  end, Succeed),
     lists:foreach(fun(Elem) ->
 			  Validation = validate(Elem, S),
 			  Result = lists:any(fun({T, _}) -> T == validation_error end, Validation),
-			  ?debugFmt("Testing failure of ~p => ~p~n", [Validation, Result]),
+			  ?debugFmt("~p: ~p: Testing failure of ~p => ~p~n", [Schema, Elem, Validation, Result]),
 			  ?assertEqual(true, Result)
 		  end, Fail).
 -endif.

@@ -35,7 +35,9 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
--spec(start_handlers/2 :: (Node :: atom(), Options :: proplist()) -> list(tuple(ok, pid()))).
+-spec start_handlers/2 :: (Node, Options) -> [startlink_ret(),...] when
+      Node :: atom(),
+      Options :: proplist().
 start_handlers(Node, Options) when is_atom(Node) ->
     NodeB = wh_util:to_binary(Node),
     [ begin
@@ -45,7 +47,8 @@ start_handlers(Node, Options) when is_atom(Node) ->
       end
       || H <- [<<"_auth">>, <<"_route">>, <<"_node">>] ].
 
--spec(stop_handlers/1 :: (Node :: atom()) -> list(ok | tuple(error, running | not_found | simple_one_for_one))).
+-spec stop_handlers/1 :: (Node) -> ['ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'},...] when
+      Node :: atom().
 stop_handlers(Node) when is_atom(Node) ->
     NodeB = wh_util:to_binary(Node),
     [ begin
@@ -56,7 +59,8 @@ stop_handlers(Node) when is_atom(Node) ->
     ].
     
 
--spec(get_handler_pids/1 :: (Node :: atom()) -> tuple(pid() | undefined, pid() | undefined, pid() | undefined)).
+-spec get_handler_pids/1 :: (Node) -> {pid() | 'error', pid() | 'error', pid() | 'error'} when
+      Node :: atom().
 get_handler_pids(Node) when is_atom(Node) ->
     NodeB = wh_util:to_binary(Node),
     NodePids = [ {HandlerMod, Pid} || {Name, Pid, worker, [HandlerMod]} <- supervisor:which_children(?SERVER)
@@ -97,7 +101,9 @@ init([]) ->
 %%% Internal functions
 %%%===================================================================
 
--spec(node_matches/2 :: (NodeB :: binary(), Name :: binary()) -> boolean()).
+-spec node_matches/2 :: (NodeB, Name) -> boolean() when
+      NodeB :: binary(),
+      Name :: binary().
 node_matches(NodeB, Name) ->
     Size = byte_size(NodeB),
     case binary:match(Name, NodeB) of

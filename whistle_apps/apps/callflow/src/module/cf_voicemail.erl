@@ -713,6 +713,7 @@ new_message(RecordingName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, 
 				       ,{<<"Caller-ID-Name">>, CIDName}
 				       ,{<<"Caller-ID-Number">>, CIDNumber}
 				       ,{<<"Voicemail-Timestamp">>, Tstamp}
+				       ,{<<"Call-ID">>, CallID}
 				       | wh_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
 				      ]),
     ?LOG("new voicemail message ~s whistle API broadcast", [MediaId]),

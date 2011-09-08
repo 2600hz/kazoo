@@ -8,12 +8,14 @@
 -include("crossbar.hrl").
 
 -record(context, {
-	  root = "" :: string()
+	  root = "" :: iolist()
 	  ,filepath = "" :: string()
 	  ,fileinfo = #file_info{} :: #file_info{}
 	  ,data = <<>> :: binary()
 	 }).
 
+-spec init/1 :: (Opts) -> {'ok', #context{}} when
+      Opts :: proplist().
 init(Opts) ->
     Path = [code:priv_dir(crossbar), props:get_value(root, Opts)],
     ?LOG_SYS("Init filepath: ~s", [Path]),
@@ -26,7 +28,7 @@ content_types_provided(RD, Context) ->
     ?LOG_SYS("Mime: ~s", [Mime]),
     {[{Mime, content}], RD, Context}.
 
-resource_exists(RD, Context=#context{root=Root}) ->
+resource_exists(RD, #context{root=Root}=Context) ->
     FP = filename:join([Root, wrq:disp_path(RD)]),
     ?LOG_SYS("Disp_path: ~s", [wrq:disp_path(RD)]),
     ?LOG_SYS("Requested file: ~s", [FP]),

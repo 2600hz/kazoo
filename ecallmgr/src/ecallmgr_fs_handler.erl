@@ -386,7 +386,7 @@ rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
 	    {{ok, close_node(N)}, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
     end.
 
--spec close_node/1 :: (N) -> list(ok | tuple(error, 'not_found' | 'running' | 'simple_one_for_one')) when
+-spec close_node/1 :: (N) -> ['ok' | {'error', 'not_found' | 'running' | 'simple_one_for_one'},...] when
       N :: #node_handler{}.
 close_node(#node_handler{node=Node}) ->
     erlang:monitor_node(Node, false),
