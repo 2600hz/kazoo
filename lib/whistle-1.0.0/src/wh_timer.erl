@@ -90,12 +90,12 @@ init([]) ->
 handle_call({start, Msg}, {Pid, _}, S) ->
     D = io_lib:format("TS_TIMER(~p): ~p~n", [Pid, Msg]),
     erlang:monitor(process, Pid),
-    {reply, ok, dict:store(Pid, {erlang:now(), [D]}, S)};
+    {reply, ok, dict:store(Pid, {erlang:now(), [D]}, S), hibernate};
 handle_call({tick, Msg}, {Pid, _}, S) ->
     case dict:find(Pid, S) of
 	{ok, {Start, L}} ->
 	    {reply, ok, dict:store(Pid, {Start, [io_lib:format("TS_TIMER(~p): ~10.w micros: Tick-~p~n", [Pid, timer:now_diff(erlang:now(), Start), Msg])
-						 | L]}, S)};
+						 | L]}, S), hibernate};
 	error -> {reply, {error, not_started}, S}
     end;
 handle_call({stop, Msg}, {Pid, _}, S) ->
@@ -103,7 +103,7 @@ handle_call({stop, Msg}, {Pid, _}, S) ->
 	{ok, {Start, L}} ->
 	    lists:foreach(fun(D) -> io:format(D, []) end, lists:reverse(L)),
 	    io:format("TS_TIMER(~p): ~10.w: End: ~p~n", [Pid, timer:now_diff(erlang:now(), Start), Msg]),
-	    {reply, ok, dict:erase(Pid, S)};
+	    {reply, ok, dict:erase(Pid, S), hibernate};
 	error -> {reply, {error, not_started}, S}
     end.
 
@@ -132,7 +132,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _, process, Pid, _}, State) ->
     _ = handle_call({stop, "Stop"}, {Pid, ok}, State),
-    {noreply, dict:erase(Pid, State)};
+    {noreply, dict:erase(Pid, State), hibernate};
 handle_info(_Info, State) ->
     logger:format_log(info, "WH_TIMER(~p): unhandled info: ~p~n", [self(), _Info]),
     {noreply, State}.

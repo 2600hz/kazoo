@@ -155,11 +155,11 @@ handle_call({filter, Pred}, _, Dict) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({store, K, V, T}, Dict) ->
-    {noreply, dict:store(K, {wh_util:current_tstamp()+T, V, T}, Dict)};
+    {noreply, dict:store(K, {wh_util:current_tstamp()+T, V, T}, Dict), hibernate};
 handle_cast({erase, K}, Dict) ->
-    {noreply, dict:erase(K, Dict)};
+    {noreply, dict:erase(K, Dict), hibernate};
 handle_cast({flush}, _) ->
-    {noreply, dict:new()}.
+    {noreply, dict:new(), hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -173,7 +173,7 @@ handle_cast({flush}, _) ->
 %%--------------------------------------------------------------------
 handle_info(flush, Dict) ->
     Now = wh_util:current_tstamp(),
-    {noreply, dict:filter(fun(_, {T, _, _}) -> Now < T end, Dict)};
+    {noreply, dict:filter(fun(_, {T, _, _}) -> Now < T end, Dict), hibernate};
 handle_info(_Info, State) ->
     {noreply, State}.
 

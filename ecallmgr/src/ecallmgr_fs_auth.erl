@@ -107,22 +107,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, #state{node=Node}=State) ->
-    Type = {bind, directory},
-    erlang:monitor_node(Node, true),
-    {foo, Node} ! Type,
-    receive
-	ok ->
-	    ?LOG_SYS("bound to directory request on ~s", [Node]),
-	    {noreply, State};
-	{error, Reason} ->
-	    ?LOG_SYS("failed to bind to directory requests on ~s, ~p", [Node, Reason]),
-	    {stop, Reason, State}
-    after ?FS_TIMEOUT ->
-	    ?LOG_SYS("timed out binding to directory requests on ~s", [Node]),
-	    {stop, timeout, State}
-    end;
-
 handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
     ?LOG_START(ID, "received fetch request for domain parameters (user creds) from ~s", [Node]),
     case props:get_value(<<"Event-Name">>, Data) of
@@ -131,7 +115,7 @@ handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined 
 	    erlang:monitor(process, LookupPid),
 
 	    LookupsReq = Stats#handler_stats.lookups_requested + 1,
-	    {noreply, State#state{lookups=[{LookupPid, ID, erlang:now()} | LUs], stats=Stats#handler_stats{lookups_requested=LookupsReq}}};
+	    {noreply, State#state{lookups=[{LookupPid, ID, erlang:now()} | LUs], stats=Stats#handler_stats{lookups_requested=LookupsReq}}, hibernate};
 	_Other ->
 	    _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
 	    ?LOG_END("ignoring request for ~s", [Node, _Other]),
@@ -183,11 +167,27 @@ handle_info({diagnostics, Pid}, #state{lookups=LUs, stats=Stats}=State) ->
     {noreply, State};
 
 handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
-    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}};
+    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
 
 handle_info({'EXIT', LU, _Reason}, #state{node=Node, lookups=LUs}=State) ->
     ?LOG_SYS("lookup ~w for node ~s exited unexpectedly", [LU, Node]),
-    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}};
+    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
+
+handle_info(timeout, #state{node=Node}=State) ->
+    Type = {bind, directory},
+    erlang:monitor_node(Node, true),
+    {foo, Node} ! Type,
+    receive
+	ok ->
+	    ?LOG_SYS("bound to directory request on ~s", [Node]),
+	    {noreply, State};
+	{error, Reason} ->
+	    ?LOG_SYS("failed to bind to directory requests on ~s, ~p", [Node, Reason]),
+	    {stop, Reason, State}
+    after ?FS_TIMEOUT ->
+	    ?LOG_SYS("timed out binding to directory requests on ~s", [Node]),
+	    {stop, timeout, State}
+    end;
 
 handle_info(_Info, State) ->
     {noreply, State}.
