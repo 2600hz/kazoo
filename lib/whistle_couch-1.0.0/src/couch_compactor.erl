@@ -11,7 +11,7 @@
 -export([compact_db/2, compact_node/1, compact_all/0]).
 
 -include("wh_couch.hrl").
--define(SLEEP_BETWEEN_COMPACTION, 1000). %% sleep one minute between shard compactions
+-define(SLEEP_BETWEEN_COMPACTION, 5000). %% sleep 5 seconds between shard compactions
 -define(SLEEP_BETWEEN_POLL, 5000). %% sleep 5 seconds before polling the shard for compaction status
 
 -spec compact_all/0 :: () -> 'started'.
