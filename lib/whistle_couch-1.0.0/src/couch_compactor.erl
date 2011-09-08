@@ -11,7 +11,7 @@
 -export([compact_db/2, compact_node/1, compact_all/0]).
 
 -include("wh_couch.hrl").
--define(SLEEP_BETWEEN_COMPACTION, 5000). %% sleep 5 seconds between shard compactions
+-define(SLEEP_BETWEEN_COMPACTION, 60000). %% sleep 60 seconds between shard compactions
 -define(SLEEP_BETWEEN_POLL, 5000). %% sleep 5 seconds before polling the shard for compaction status
 
 -spec compact_all/0 :: () -> 'done'.
@@ -31,6 +31,7 @@ compact_node(NodeBin) ->
 
     {Conn, AdminConn} = get_node_connections(NodeBin),
     {ok, DBs} = couch_util:db_info(Conn),
+    ?LOG("Found ~b DBs to compact", [length(DBs)]),
     _ = [ compact_db(NodeBin, DB, Conn, AdminConn) || DB <- DBs ],
     done.
 
@@ -111,7 +112,7 @@ get_db_shards(AdminConn, DBEncoded) ->
       Shard :: binary(),
       DB :: binary().
 is_a_shard(Shard, DB) ->
-    binary:match(Shard, DB) =/= nomatch.
+    binary:match(Shard, <<"%2f", DB/binary, ".">>) =/= nomatch.
 
 -spec get_node_connections/1 :: (NodeBin) -> {#server{}, #server{}} when
       NodeBin :: binary().
