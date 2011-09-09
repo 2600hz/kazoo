@@ -42,12 +42,14 @@ val(P, I) ->
 do_validate(File, SchemaName) when is_list(File)->
     {ok, Bin1} = file:read_file(File),
     Data = mochijson2:decode(Bin1),
-    do_validate(Data, SchemaName);
+    validate_instance(Data, SchemaName);
 %% for crossbar usage
 do_validate(JObj, SchemaName) when is_binary(SchemaName) ->
     {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, SchemaName),
     validate_instance(JObj, Schema).
+
 %%%% ------ do not forget name ----- %%%%
+
 trace_validate(Property, AttrName, AttrValue) ->
     trace_validate(none, Property, AttrName, AttrValue).
 
@@ -60,41 +62,61 @@ trace_validate(_Instance, Property, AttrName, AttrValue) ->
     ?TRACE andalso begin
 		       ?O("~n----------------------------------------------------~n", []),
 		       ?O("-Validating property :: ~p~n", [Property]),
-		       ?O("-Attribute ame :: ~p~n", [AttrName]),
+		       ?O("-Attribute name :: ~p~n", [AttrName]),
 		       ?O("-Attribute value :: ~p~n", [AttrValue]),
 		       ?O("----------------------------------------------------~n", [])
 		   end.
 
 
-%% "properties" : {
-%%    "address" : {
-%%      "title": "Street name and number",
-%%      "type" : "string"
-%%     },
-%%    "city" : {
-%%      "title" : "City name",
-%%      "type" : "string"
-%%     },
-%%
-%% PropertyName are "address" or "city", most likely strings
-%% PropertyAttributes are {"title" : ..., }, and JSON objects
-%%
 -spec validate_instance/2 :: (Instance, Schema) -> validation_results() when
       Instance :: term(),
       Schema :: json_object().
 validate_instance(Instance, {struct, Definitions}) ->
+    io:format("definitions ~p~n", [Definitions]),
     R = lists:foldl(fun({Property, Attributes}, Acc) ->
+			    io:format(" instance prop is ~p and attr is ~p~n", [Property, Attributes]),
 			    M = validate_property(Instance, Property, Attributes),
 			    [M|Acc]
 		    end, [], Definitions),
     ?O(" final ======== ~p", [R]).
 
-
-validate_property(Instance, Property, Attributes) ->
-    R = lists:foldl(fun({AttrName, AttrValue}, Acc) ->
+-spec validate_property/3 :: (Instance, Property, Attributes) -> validation_results() when
+      Instance :: json_object(),
+      Property :: attribute_name(),
+      Attributes :: attribute_value().
+validate_property(Instance, Property, {struct, Attributes}) ->
+    ?O(" object prop >>>> ~p", [Property]),
+    lists:foldl(fun({AttrName, AttrValue}, Acc) ->
+			    io:format(" property ~p~n", [AttrName]),
 			    M = validate(Instance, Property, AttrName, AttrValue),
 			    [M|Acc]
-		    end, [], Attributes).
+		end, [], Attributes);
+
+validate_property(Instance, Property, Value) ->
+    ?O(" flat prop >>>> ~p", [Property]),
+    validate(osef, Property, Property, Value).
+
+-spec validate/4 :: (Instance, Property, AttrName, AttrValue) -> validation_results() when
+      Instance :: json_object(),
+      Property :: binary(),
+      AttrName :: attribute_name(),
+      AttrValue :: attribute_value().
+validate(undefined, _, _, _) ->
+    %trace_validate(undefined,  <<"Instance is undefined">>, none),
+    ?INVALID(undefined_instance, <<"Undefined instance">>);
+
+validate(_, undefined, _, _) ->
+    %trace_validate(undefined, none, none, none),
+    ?INVALID(undefined_property, <<"Undefined property">>);
+
+validate(_, _, undefined, _) ->
+    %trace_validate(undefined, none, none, none),
+    ?INVALID(undefined_attr_name, <<"Undefined attribute name">>);
+
+validate(_, _, _, undefined) ->
+    %trace_validate(undefined, none, none, none),
+    ?INVALID(undefined_attr_value, <<"Undefined attribute value">>);
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.7
@@ -102,27 +124,23 @@ validate_property(Instance, Property, Attributes) ->
 %%            value, and not be undefined.
 %% @end
 %%--------------------------------------------------------------------
--spec validate/4 :: (Instance, Property, AttrName, AttrValue) -> validation_results() when
-      Instance :: json_object(),
-      Property :: binary(),
-      AttrName :: attribute_name(),
-      AttrValue :: attribute_value().
-validate(Instance, Property, <<"required">>, AttrValue) ->
-    trace_validate(Property, <<"required">>, AttrValue),
+
+validate(Instance, Property, <<"required">>=AttrName, AttrValue) ->
+    trace_validate(Property, AttrName, AttrValue),
     case val(Property, Instance) of
 	undefined -> ?INVALID(Property, <<"required but not found">>);
 	_-> ?VALID
     end;
 
-validate(Instance, Property, <<"type">>, <<"object">>) ->
-    trace_validate(Instance, Property, <<"type">>, <<"object">>),
+validate(Instance, Property, <<"type">>=AttrName, <<"object">>=AttrValue) ->
+    trace_validate(Property, AttrName, AttrValue),
     case val(<<"properties">>, Instance) of
 	undefined -> ?INVALID(Property, <<"object must define their properties">>);
 	_ -> ?VALID
     end;
 
-validate(Instance, Property, <<"properties">>, Properties) ->
-    trace_validate(Instance, Property, <<"properties">>, <<"properties json()">>),
+validate(Instance, Property, <<"properties">>=AttrName, Properties) ->
+    trace_validate(Instance, Property, AttrName, <<"json_props()">>),
     case val(<<"type">>, Instance) =:= <<"object">> of
 	true -> validate_instance(wh_json:get_value(Property, Instance), Properties);
 	false -> ?INVALID(Property, <<"must be of type object">>)
@@ -133,9 +151,7 @@ validate(Instance, Property, <<"properties">>, Properties) ->
 %% No other functions should run if the Instance is undefined
 %% @end
 %%--------------------------------------------------------------------
-validate(undefined, _, _, _) ->
-    trace_validate(undefined, none, none, none),
-    ?INVALID(instance_undefined, <<"The instance is undefined">>).
+
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -196,35 +212,30 @@ validate(Instance, Property, <<"type">>, <<"number">>) ->
 	false -> ?INVALID(Property, <<"must be of type number">>);
 	true  -> ?VALID
     end;
-validate_instance(Instance, Property, <<"type">>, <<"integer">>) ->
+validate(Instance, Property, <<"type">>, <<"integer">>) ->
     trace_validate(Instance, Property, <<"type">>, <<"integer">>),
     case is_integer(val(Property, Instance)) of
 	false -> ?INVALID(Property, <<"must be of type integer">>);
 	true  -> ?VALID
     end;
-validate_instance(Instance, <<"type">>, <<"boolean">>) ->
-    trace_validate(Instance, <<"type">>, <<"boolean">>),
-    case wh_util:is_true(Instance) orelse wh_util:is_false(Instance) of
+validate(Instance, Property, <<"type">>, <<"boolean">>) ->
+    trace_validate(Property, <<"type">>, <<"boolean">>),
+    V = wh_json:get_binary_boolean(Property, Instance),
+    case wh_util:is_true(V) orelse wh_util:is_false(V) of
         true -> ?VALID;
-        _ -> ?INVALID(Instance, <<"must be of type boolean">>)
+        _ -> ?INVALID(Property, <<"must be of type boolean">>)
     end;
-validate_instance([_|_]=Instance, <<"type">>, <<"array">>) ->
-    trace_validate(Instance, <<"type">>, <<"array">>),
-    ?VALID;
+%validate_instance([_|_]=Instance, <<"type">>, <<"array">>) ->
+%    trace_validate(Instance, <<"type">>, <<"array">>),
+%    ?VALID;
 
-validate_instance(Instance, <<"type">>, <<"array">>) ->
-    trace_validate(Instance, <<"type">>, <<"array">>),
-    ?INVALID(Instance, <<"must be of type array">>).
+%validate_instance(Instance, <<"type">>, <<"array">>) ->
+%    trace_validate(Instance, <<"type">>, <<"array">>),
+%    ?INVALID(Instance, <<"must be of type array">>).
 
-validate_instance(_, <<"type">>, _) ->
-    trace_validate(none, <<"type">>, none),
-    ?VALID;
-
-
-
-
-
-			  
+validate(_Instance, Property, <<"type">>, Type) ->
+    trace_validate(Property, <<"type">>, Type),
+    ?INVALID(Property, <<Type/binary, "type is not a valid type">>);
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -234,10 +245,10 @@ validate_instance(_, <<"type">>, _) ->
 %%              values.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"properties">>, {struct, Attribute}) ->
-    trace_validate(Instance, <<"properties">>, Attribute),
-    (not validate_instance(Instance, <<"type">>, <<"object">>)) orelse
-	[validate(wh_json:get_value(Name, Instance), Schema) || {Name, Schema} <- Attribute];
+%validate_instance(Instance, <<"properties">>, {struct, Attribute}) ->
+%    trace_validate(Instance, <<"properties">>, Attribute),
+%    (not validate_instance(Instance, <<"type">>, <<"object">>)) orelse
+%	[validate(wh_json:get_value(Name, Instance), Schema) || {Name, Schema} <- Attribute];
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -264,12 +275,12 @@ validate_instance(Instance, <<"properties">>, {struct, Attribute}) ->
 %%         and MUST be a schema or an array of schemas.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"items">>, {struct, _} = Schema) ->
-    trace_validate(Instance, <<"items">>, none),
-    not validate_instance(Instance, <<"type">>, <<"array">>) orelse
-	lists:foldr(fun(Item, Acc) ->
-			    Acc and lists:all(fun({ok, []}) -> true; (_) -> false end, validate(Item, Schema))
-		    end, true, Instance);
+%validate_instance(Instance, <<"items">>, {struct, _} = Schema) ->
+%    trace_validate(Instance, <<"items">>, none),
+%    not validate_instance(Instance, <<"type">>, <<"array">>) orelse
+%	lists:foldr(fun(Item, Acc) ->
+%			    Acc and lists:all(fun({ok, []}) -> true; (_) -> false end, validate(Item, Schema))
+%		    end, true, Instance);
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -297,12 +308,12 @@ validate_instance(Instance, <<"items">>, {struct, _} = Schema) ->
 %%           property when the type of the instance value is a number.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"minimum">>, Attribute)->
-    case (catch validate_instance(Instance, <<"type">>, <<"number">>)) =/= true
-	orelse Instance >= Attribute of
-	true -> ?VALID;
-	false -> ?INVALID(Instance, <<"must be an integer and/or must have a minimum of ">>, Attribute)
-    end;
+%validate_instance(Instance, Property, <<"minimum">>, Value)->
+%    case (validate(Instance, Property, <<"type">>, <<"number">>)) =/= 
+%	orelse Instance >= Attribute of
+%	true -> ?VALID;
+%	false -> ?INVALID(Instance, <<"must be an integer and/or must have a minimum of ">>, Attribute)
+%    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -311,13 +322,13 @@ validate_instance(Instance, <<"minimum">>, Attribute)->
 %%           property when the type of the instance value is a number.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"maximum">>, Attribute) ->
-    trace_validate(Instance, <<"maximum">>, Attribute),
-    case not validate_instance(Instance, <<"type">>, <<"number">>)
-        orelse Instance =< Attribute of
-	true -> ?VALID;
-	false -> ?INVALID(Instance, <<"must be an integer and/or must have a maximum of">>, Attribute)
-    end;
+%validate_instance(Instance, <<"maximum">>, Attribute) ->
+%    trace_validate(Instance, <<"maximum">>, Attribute),
+%    case not validate_instance(Instance, <<"type">>, <<"number">>)
+%        orelse Instance =< Attribute of
+%	true -> ?VALID;
+%	false -> ?INVALID(Instance, <<"must be an integer and/or must have a maximum of">>, Attribute)
+%    end;
 %%--------------------------------------------------------------------
 %% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.11
@@ -326,12 +337,12 @@ validate_instance(Instance, <<"maximum">>, Attribute) ->
 %%                    equal the number defined by the "minimum" attribute.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"exclusiveMinimum">>, Instance) when is_number(Instance) ->
-    trace_validate(Instance, <<"exclusiveMinimum">>, Instance),
-    ?INVALID(Instance, <<"error in exclusiveMinimum">>);
-validate_instance(Instance, <<"exclusiveMinimum">>, Attribute) ->
-    trace_validate(Instance, <<"exclusiveMinimum">>, Attribute),
-    ?INVALID(Instance, <<"must be an integer and/or must have an exclusive minimum of">>, Attribute);
+%validate_instance(Instance, <<"exclusiveMinimum">>, Instance) when is_number(Instance) ->
+%    trace_validate(Instance, <<"exclusiveMinimum">>, Instance),
+%    ?INVALID(Instance, <<"error in exclusiveMinimum">>);
+%validate_instance(Instance, <<"exclusiveMinimum">>, Attribute) ->
+%    trace_validate(Instance, <<"exclusiveMinimum">>, Attribute),
+%    ?INVALID(Instance, <<"must be an integer and/or must have an exclusive minimum of">>, Attribute);
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -341,12 +352,12 @@ validate_instance(Instance, <<"exclusiveMinimum">>, Attribute) ->
 %%                    equal the number defined by the "maximum" attribute.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"exclusiveMaximum">>, Instance) when is_number(Instance) ->
-    trace_validate(Instance, <<"exclusiveMaximum">>,Instance),
-    ?INVALID(Instance, <<"error in exclusiveMaximun">>);
-validate_instance(Instance, <<"exclusiveMaximum">>, Attribute) ->
-    trace_validate(Instance, <<"exclusiveMaximum">>, Attribute),
-    validate_instance(Instance, <<"must be an integer and/or must have an exclusive maximum of">>, Attribute);
+%validate_instance(Instance, <<"exclusiveMaximum">>, Instance) when is_number(Instance) ->
+%    trace_validate(Instance, <<"exclusiveMaximum">>,Instance),
+%    ?INVALID(Instance, <<"error in exclusiveMaximun">>);
+%validate_instance(Instance, <<"exclusiveMaximum">>, Attribute) ->
+%    trace_validate(Instance, <<"exclusiveMaximum">>, Attribute),
+%    validate_instance(Instance, <<"must be an integer and/or must have an exclusive maximum of">>, Attribute);
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -355,13 +366,13 @@ validate_instance(Instance, <<"exclusiveMaximum">>, Attribute) ->
 %%            an array when the array is the instance value.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"minItems">>, Attribute) ->
-    trace_validate(Instance, <<"minItems">>, Attribute),
-    case not validate_instance(Instance, <<"type">>, <<"array">>)
-        orelse length(Instance) >= Attribute of
-	true -> ?VALID;
-	false -> ?INVALID(Instance, <<"must be an array to have minItems and/or there are less items than minItems in array">>)
-    end;
+%validate_instance(Instance, <<"minItems">>, Attribute) ->
+%    trace_validate(Instance, <<"minItems">>, Attribute),
+%    case not validate_instance(Instance, <<"type">>, <<"array">>)
+%        orelse length(Instance) >= Attribute of
+%	true -> ?VALID;
+%	false -> ?INVALID(Instance, <<"must be an array to have minItems and/or there are less items than minItems in array">>)
+%    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -370,13 +381,13 @@ validate_instance(Instance, <<"minItems">>, Attribute) ->
 %%            an array when the array is the instance value.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"maxItems">>, Attribute) ->
-    trace_validate(Instance, <<"maxItems">>, Attribute),
-    case not validate_instance(Instance, <<"type">>, <<"array">>)
-        orelse length(Instance) =< Attribute of
-	true -> ?VALID;
-	false -> ?INVALID(Instance, <<"must be an array to have maxItems and/or there are more items than maxItems in array">>)
-    end;
+%validate_instance(Instance, <<"maxItems">>, Attribute) ->
+%    trace_validate(Instance, <<"maxItems">>, Attribute),
+%    case not validate_instance(Instance, <<"type">>, <<"array">>)
+%        orelse length(Instance) =< Attribute of
+%	true -> ?VALID;
+%	false -> ?INVALID(Instance, <<"must be an array to have maxItems and/or there are more items than maxItems in array">>)
+%    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -385,13 +396,13 @@ validate_instance(Instance, <<"maxItems">>, Attribute) ->
 %%               instance MUST be unique (contains no two identical values).
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"uniqueItems">>, _) ->
-    trace_validate(Instance, <<"uniqueItems">>, none),
-    case not validate_instance(Instance, <<"type">>, <<"array">>)
-        orelse length(Instance) =:= length(lists:usort(Instance)) of
-	true -> ?VALID;
-	false -> ?INVALID(Instance, <<"items in array must be unique">>)
-    end;
+%validate_instance(Instance, <<"uniqueItems">>, _) ->
+%    trace_validate(Instance, <<"uniqueItems">>, none),
+%    case not validate_instance(Instance, <<"type">>, <<"array">>)
+%        orelse length(Instance) =:= length(lists:usort(Instance)) of
+%	true -> ?VALID;
+%	false -> ?INVALID(Instance, <<"items in array must be unique">>)
+%    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -409,13 +420,13 @@ validate_instance(Instance, <<"uniqueItems">>, _) ->
 %%             minimum length of the string.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"minLength">>, Attribute) ->
-    trace_validate(Instance, <<"minLength">>, Attribute),
-    case not validate_instance(Instance, <<"type">>, <<"string">>)
-        orelse length(wh_util:to_list(Instance)) >= Attribute of
-	true -> ?VALID;
-	false -> ?INVALID(Instance, <<"is too short, min. characters allowed:">>, Attribute)
-    end;
+%validate_instance(Instance, <<"minLength">>, Attribute) ->
+%    trace_validate(Instance, <<"minLength">>, Attribute),
+%    case not validate_instance(Instance, <<"type">>, <<"string">>)
+%        orelse length(wh_util:to_list(Instance)) >= Attribute of
+%	true -> ?VALID;
+%	false -> ?INVALID(Instance, <<"is too short, min. characters allowed:">>, Attribute)
+%    end;
 %%--------------------------------------------------------------------
 %% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.18
@@ -423,13 +434,13 @@ validate_instance(Instance, <<"minLength">>, Attribute) ->
 %%              the maximum length of the string.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"maxLength">>, Attribute) ->
-    trace_validate(Instance, <<"maxLength">>, Attribute),
-    case not validate_instance(Instance, <<"type">>, <<"string">>)
-        orelse length(wh_util:to_list(Instance)) =< Attribute of
-	true -> ?VALID;
-	false -> ?INVALID(Instance, <<"is too long, max. characters allowed:">>, Attribute)
-    end;
+%validate_instance(Instance, <<"maxLength">>, Attribute) ->
+%    trace_validate(Instance, <<"maxLength">>, Attribute),
+%    case not validate_instance(Instance, <<"type">>, <<"string">>)
+%        orelse length(wh_util:to_list(Instance)) =< Attribute of
+%	true -> ?VALID;
+%	false -> ?INVALID(Instance, <<"is too long, max. characters allowed:">>, Attribute)
+%    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -438,12 +449,12 @@ validate_instance(Instance, <<"maxLength">>, Attribute) ->
 %%        valid for the instance property.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"enum">>, Attribute) ->
-    trace_validate(Instance, <<"enum">>, Attribute),
-    case lists:member(Instance, Attribute) of
-	true -> ?VALID;
-	false -> ?INVALID(Instance, <<"must be member of the array">>)
-    end;
+%validate_instance(Instance, <<"enum">>, Attribute) ->
+%    trace_validate(Instance, <<"enum">>, Attribute),
+%    case lists:member(Instance, Attribute) of
+%	true -> ?VALID;
+%	false -> ?INVALID(Instance, <<"must be member of the array">>)
+%    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -460,8 +471,8 @@ validate_instance(Instance, <<"enum">>, Attribute) ->
 %%         description of the instance property.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(_, <<"description">>, _) ->
-    trace_validate(none, <<"description">>, none),
+validate(_Instance, Property, <<"description">>=AttrName, AttrValue) ->
+    trace_validate(Property, AttrName, AttrValue),
     ?VALID;
 
 %%--------------------------------------------------------------------
@@ -487,20 +498,20 @@ validate_instance(_, <<"description">>, _) ->
 %%                must be divisible by with no remainder.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"divisibleBy">>, Attribute) ->
-    trace_validate(Instance, <<"divisibleBy">>, Attribute),
-    case validate_instance(Instance, <<"type">>, <<"number">>) =/= true
-        orelse case {Instance, Attribute} of
-                   {_, 0} -> ?INVALID(division_0, <<"Division by 0">>);
-                   {0, _} -> ?VALID;
-                   {I, A} -> case trunc(I/A) == I/A of
-				 true -> ?VALID;
-				 false -> ?INVALID(error, <<"Not divisible">>)
-			     end
-	       end of
-	true -> ?VALID;
-	Error -> Error
-    end;
+%validate_instance(Instance, <<"divisibleBy">>, Attribute) ->
+%    trace_validate(Instance, <<"divisibleBy">>, Attribute),
+%    case validate_instance(Instance, <<"type">>, <<"number">>) =/= true
+%        orelse case {Instance, Attribute} of
+%                   {_, 0} -> ?INVALID(division_0, <<"Division by 0">>);
+%                   {0, _} -> ?VALID;
+%                   {I, A} -> case trunc(I/A) == I/A of
+%				 true -> ?VALID;
+%				 false -> ?INVALID(error, <<"Not divisible">>)
+%			     end
+%	       end of
+%	true -> ?VALID;
+%	Error -> Error
+%    end;%
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -511,12 +522,12 @@ validate_instance(Instance, <<"divisibleBy">>, Attribute) ->
 %%            or schema in the array, then this instance is not valid.
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(Instance, <<"disallow">>, Attribute) ->
-    trace_validate(Instance, <<"disallow">>, Attribute),
-    case not validate_instance(Instance, <<"type">>, Attribute) of
-	true -> ?VALID;
-	_ -> ?INVALID(Instance, <<"this type is not allowed">>)
-    end;
+%validate_instance(Instance, <<"disallow">>, Attribute) ->
+%    trace_validate(Instance, <<"disallow">>, Attribute),
+%    case not validate_instance(Instance, <<"type">>, Attribute) of
+%	true -> ?VALID;
+%	_ -> ?INVALID(Instance, <<"this type is not allowed">>)
+%    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -533,7 +544,8 @@ validate_instance(Instance, <<"disallow">>, Attribute) ->
 %% id - defines the current URI of this schem
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(_, <<"id">>, _) ->
+validate(_Instance, Property, <<"id">>=AttrName, AttrValue) ->
+    trace_validate(Property, AttrName, AttrValue),
     ?VALID;
 
 %%--------------------------------------------------------------------
@@ -551,7 +563,8 @@ validate_instance(_, <<"id">>, _) ->
 %%           the current schema
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(_, <<"\$schema">>, _) ->
+validate(_Instance, Property, <<"\$schema">>=AttrName, AttrValue) ->
+    trace_validate(Property, AttrName, AttrValue),
     ?VALID;
 
 %%--------------------------------------------------------------------
@@ -559,9 +572,9 @@ validate_instance(_, <<"\$schema">>, _) ->
 %% Ignore CouchDB document properties
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(_, <<"_id">>, _) ->
+validate(_, _, <<"_id">>, _) ->
     ?VALID;
-validate_instance(_, <<"_rev">>, _) ->
+validate(_, _, <<"_rev">>, _) ->
     ?VALID;
 
 %%--------------------------------------------------------------------
@@ -569,9 +582,9 @@ validate_instance(_, <<"_rev">>, _) ->
 %% End of validate_instance
 %% @end
 %%--------------------------------------------------------------------
-validate_instance(_,_,_) ->
+validate(_,_,_,_) ->
     trace_validate(none, none, none),
-    ?INVALID(error, <<"This instance is not valid">>).
+    ?INVALID(error, <<"Holy cow, something really bad happened">>).
 
 -spec validation_error/2 :: (Instance, Message) -> validation_result() when
       Instance :: term(),
@@ -591,7 +604,7 @@ validation_error(Instance, Msg, Attribute) ->
 			     " ", (wh_util:to_binary(Msg))/binary,
                              " ", (wh_util:to_binary(Attribute))/binary>>}.
 %% EUNIT TESTING
--ifdef(TEST).
+-ifdef(TESTASd).
 
 -define(NULL, <<"null">>).
 -define(TRUE, <<"true">>).
@@ -904,13 +917,13 @@ disallow_complex_union_test() ->
 validate_test(Succeed, Fail, Schema) ->
     S = mochijson2:decode(binary:list_to_bin(Schema)),
     lists:foreach(fun(Elem) ->
-			  Validation = validate(Elem, S),
+			  Validation = validate_instance(Elem, S),
 			  Result = lists:all(fun({T, _}) -> T == ok end, Validation),
 			  ?debugFmt("~p: ~p: Testing success of ~p => ~p~n", [Schema, Elem, Validation, Result]),
 			  ?assertEqual(true, Result)
 		  end, Succeed),
     lists:foreach(fun(Elem) ->
-			  Validation = validate(Elem, S),
+			  Validation = validate_instance(Elem, S),
 			  Result = lists:any(fun({T, _}) -> T == error end, Validation),
 			  ?debugFmt("~p: ~p: Testing failure of ~p => ~p~n", [Schema, Elem, Validation, Result]),
 			  ?assertEqual(true, Result)
