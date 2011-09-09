@@ -975,7 +975,6 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, T);
                         _NID when is_binary(NoopId), NoopId =/= <<>> ->
                             %% if we were given the NoopId of the noop and this is not it, then keep waiting
-                            ?LOG("ignoring playback noop ~s, waiting for ~s", [_NID, NoopId]),
                             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
                         _ ->
                             %% if we are not given the NoopId of the noop then just use the first to start the timer
@@ -985,7 +984,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                     end;
                 { <<"call_event">>, <<"DTMF">>, _ } ->
                     %% remove any queued prompts, and start collecting digits
-                    flush(Call),
+                    Digits =:= <<>> andalso flush(Call),
                     %% DTMF received, collect and start interdigit timeout
                     Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj, <<>>),
                     case lists:member(Digit, Terminators) of
