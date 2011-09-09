@@ -18,7 +18,7 @@
 
 -define(EMPTY_JSON_OBJECT, {'struct', []}).
 
--type json_string() :: atom() | binary().
+-type json_string() :: atom() | binary() | string().
 -type json_number() :: integer() | float().
 -type json_array() :: [json_term(),...] | [].
 -type json_object() :: {'struct', [{json_string(), json_term()},...]} | ?EMPTY_JSON_OBJECT.

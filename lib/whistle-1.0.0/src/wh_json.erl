@@ -22,17 +22,41 @@
 
 -export([from_list/1, merge_jobjs/2]).
 
--export([normalize_jobj/1]).
+-export([normalize_jobj/1, is_json_object/1, is_json_term/1]).
 
 %% not for public use
 -export([prune/2, no_prune/2]).
 
+-include_lib("proper/include/proper.hrl").
 -include_lib("whistle/include/wh_types.hrl").
+
+-spec is_json_object/1 :: (MaybeJObj) -> boolean() when
+      MaybeJObj :: term().
+is_json_object(MaybeJObj) ->
+    try
+	lists:all(fun(K) ->
+			  %ok = io:format("K: ~p~nV: ~p~n", [K, ?MODULE:get_value(K, MaybeJObj)]),
+			  ?MODULE:is_json_term(?MODULE:get_value(K, MaybeJObj))
+		  end,
+		  ?MODULE:get_keys(MaybeJObj))
+    catch
+	throw:_ -> false;
+	error:_ -> false
+    end.
+
+-spec is_json_term/1 :: (V) -> boolean() when
+      V :: json_term().
+is_json_term(V) when is_atom(V) orelse is_binary(V) orelse is_integer(V) orelse is_float(V) -> true;
+is_json_term(Vs) when is_list(Vs) ->
+    lists:all(fun ?MODULE:is_json_term/1, Vs);
+is_json_term({json, IOList}) when is_list(IOList) -> true;
+is_json_term(MaybeJObj) ->
+    ?MODULE:is_json_object(MaybeJObj).
 
 -spec from_list/1 :: (L) -> json_object() when
       L :: proplist().
 from_list(L) ->
-    lists:foldl(fun({K,V}, Acc) -> wh_json:set_value(K, V, Acc) end, ?EMPTY_JSON_OBJECT, L).
+    lists:foldr(fun({K,V}, Acc) -> wh_json:set_value(K, V, Acc) end, ?EMPTY_JSON_OBJECT, L).
 
 %% only a top-level merge
 %% merges JObj1 into JObj2
@@ -417,6 +441,16 @@ normalizer({_, {struct, _}}=DataTuple) ->
 normalizer({_,_}=DataTuple) ->
     normalize_binary_tuple(DataTuple).
 
+%% PropEr Testing
+prop_is_json_object() ->
+    ?FORALL(JObj, json_object(), ?MODULE:is_json_object(JObj)).
+
+prop_is_json_term() ->
+    ?FORALL(Term, json_object(), ?MODULE:is_json_term(Term)).
+
+prop_from_list() ->
+    ?FORALL(Prop, proplist(), ?MODULE:is_json_object(?MODULE:from_list(Prop))).
+
 %% EUNIT TESTING
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -432,6 +466,19 @@ normalizer({_,_}=DataTuple) ->
 		     ]
 	    }).
 -define(D7, {struct, [{<<"d1k1">>, <<"d1v1">>}]}).
+
+is_json_object_proper_test_() ->
+    {"Runs wh_json PropEr tests for is_json_object/1",
+     {timeout, 10000, [?_assertEqual([], proper:module(?MODULE, 1000))]}}.
+
+-spec is_json_object_test/0 :: () -> no_return().
+is_json_object_test() ->
+    ?assertEqual(true, ?MODULE:is_json_object(?D1)),
+    ?assertEqual(true, ?MODULE:is_json_object(?D2)),
+    ?assertEqual(true, ?MODULE:is_json_object(?D3)),
+    ?assertEqual(true, lists:all(fun ?MODULE:is_json_object/1, ?D4)),
+    ?assertEqual(true, ?MODULE:is_json_object(?D6)),
+    ?assertEqual(true, ?MODULE:is_json_object(?D7)).
 
 %% delete results
 -define(D1_AFTER_K1, {struct, [{<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]}).
@@ -455,6 +502,7 @@ normalizer({_,_}=DataTuple) ->
 -define(P6, [{<<"d2k1">>, 1},{<<"d2k2">>, 3.14},{<<"sub_d1">>, [{<<"d1k1">>, "d1v1"}]}]).
 -define(P7, [{<<"d1k1">>, <<"d1v1">>}]).
 
+-spec get_keys_test/0 :: () -> no_return().
 get_keys_test() ->
     Keys = [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>],
     ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([], ?D1))),
@@ -469,7 +517,7 @@ to_proplist_test() ->
     ?assertEqual(?P6, to_proplist(?D6)),
     ?assertEqual(?P7, to_proplist(?D7)).
 
--spec(delete_key_test/0 :: () -> no_return()).
+-spec delete_key_test/0 :: () -> no_return().
 delete_key_test() ->
     ?assertEqual(?EMPTY_JSON_OBJECT, delete_key(<<"foo">>, ?EMPTY_JSON_OBJECT)),
     ?assertEqual(?EMPTY_JSON_OBJECT, delete_key(<<"foo">>, ?EMPTY_JSON_OBJECT, prune)),
@@ -486,7 +534,7 @@ delete_key_test() ->
     ?assertEqual(?D6_AFTER_SUB, delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6)),
     ?assertEqual(?D6_AFTER_SUB_PRUNE, delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6, prune)).
 
--spec(get_value_test/0 :: () -> no_return()).
+-spec get_value_test/0 :: () -> no_return().
 get_value_test() ->
     %% Basic first level key
     ?assertEqual(undefined, get_value([<<"d1k1">>], ?EMPTY_JSON_OBJECT)),
@@ -563,8 +611,6 @@ set_value_multiple_object_test() ->
 -define(T4R2V, {struct, [{<<"account_id">>, <<"45AHGJDF8DFDS2130S">>}, {<<"trunk">>, false}, {<<"node1">>, ?T4R1V}, {<<"node2">>, ?T4R1V}]}).
 -define(T4R3,  {struct, [{<<"Node-1">>, {struct, [{<<"Node-2">>, ?T4R2  }] }}, {<<"Another-Node">>, ?T4R1 }] }).
 -define(T4R3V, {struct, [{<<"node_1">>, {struct, [{<<"node_2">>, ?T4R2V }] }}, {<<"another_node">>, ?T4R1V}] }).
-
-
 
 set_value_normalizer_test() ->
     %% Normalize a flat JSON object
