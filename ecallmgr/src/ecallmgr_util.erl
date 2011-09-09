@@ -12,6 +12,7 @@
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_during_transfer/1, is_during_transfer/2]).
 -export([is_node_up/1, is_node_up/2]).
+-export([fs_log/3]).
 
 -include("ecallmgr.hrl").
 
@@ -147,3 +148,16 @@ is_node_up(Node, UUID) ->
 	timeout -> timer:sleep(100), is_node_up(Node, UUID);
 	_ -> false
     end.
+
+-spec fs_log/3 :: (Node, Format, Args) -> ok when
+      Node :: binary(),
+      Format :: string(),
+      Args :: list().
+fs_log(Node, Format, Args) ->
+    Log = case lists:flatten(io_lib:format("Notice log|~s|" ++ Format, [get(callid)] ++ Args)) of
+              L when length(L) > 1016 ->
+                  [lists:sublist(L, 1, 1016), "..."];
+              Else  ->
+                  Else
+          end,
+    _ = freeswitch:api(Node, log, lists:flatten(Log)).
