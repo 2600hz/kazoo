@@ -262,14 +262,11 @@ process_req({_, <<"route_win">>}, JObj, #state{self=Self}) ->
     ?LOG_END("imported custom channel vars, starting callflow"),
     case AuthId of
         undefined ->
-            cf_call_command:set(undefined
-                                ,{struct, [{<<"Transferred">>, <<"false">>}]}
-                                ,C2);
+            ok;
         _ ->
             ?LOG("set transfer fallback to ~s", [AuthId]),
             cf_call_command:set(undefined
-                                ,{struct, [{<<"Transferred">>, <<"false">>}
-                                           ,{<<"Transfer-Fallback">>, AuthId}]}
+                                ,{struct, [{<<"Transfer-Fallback">>, AuthId}]}
                                 ,C2)
     end,
     cf_exe_sup:start_proc(C2, wh_json:get_value(<<"flow">>, Flow));
