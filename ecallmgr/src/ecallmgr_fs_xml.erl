@@ -104,6 +104,7 @@ build_route(RouteProp, <<"username">>) ->
 	    RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
             <<?SIP_INTERFACE, (RURI)/binary>>;
 	{error, timeout}=E ->
+            ?LOG("failed to lookup user ~s@~s in the registrar", [User, Realm]),
 	    E
     end;
 build_route(RouteProp, DIDFormat) ->
@@ -115,6 +116,7 @@ build_route(RouteProp, DIDFormat) ->
 	    RURI = binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>),
             <<?SIP_INTERFACE, (RURI)/binary>>;
 	{error, timeout}=E ->
+            ?LOG("failed to lookup user ~s@~s in the registrar", [User, Realm]),
 	    E
     end.
 
