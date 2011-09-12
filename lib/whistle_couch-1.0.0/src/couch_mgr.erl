@@ -617,13 +617,16 @@ get_conn() ->
 get_admin_conn() ->
     gen_server:call(?SERVER, get_admin_conn).
 
+-spec get_uuid/0 :: () -> binary().
 get_uuid() ->
     [UUID] = couchbeam:get_uuid(get_conn()),
-    UUID.
+    wh_util:to_binary(UUID).
 
+-spec get_uuids/1 :: (Count) -> [binary(),...] when
+      Count :: pos_integer().
 get_uuids(Count) ->
     Conn = get_conn(),
-    couchbeam:get_uuids(Conn, Count).
+    [wh_util:to_binary(UUID) || UUID <- couchbeam:get_uuids(Conn, Count)].
 
 -spec get_node_cookie/0 :: () -> atom().
 get_node_cookie() ->

@@ -97,24 +97,20 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
 handle_info(Msg, #state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=S) when De > Cr ->
     handle_info(Msg, S#state{stats=Stats#node_stats{created_channels=De, destroyed_channels=De}});
 
-handle_info({diagnostics, Pid}, #state{stats=Stats}=State) ->
-    spawn(fun() -> diagnostics(Pid, Stats) end),
-    {noreply, State};
-
 handle_info({event, [undefined | Data]}, #state{stats=Stats}=State) ->
     EvtName = props:get_value(<<"Event-Name">>, Data),
     case EvtName of
 	<<"HEARTBEAT">> ->
-	    {noreply, State#state{stats=Stats#node_stats{last_heartbeat=erlang:now()}}};
+	    {noreply, State#state{stats=Stats#node_stats{last_heartbeat=erlang:now()}}, hibernate};
 	<<"CUSTOM">> ->
 	    spawn(fun() ->
                           put(callid, props:get_value(<<"call-id">>, Data)),
                           ?LOG("custom event received ~s", [EvtName]),
                           process_custom_data(Data, ?APP_VERSION)
                   end),
-	    {noreply, State};
+	    {noreply, State, hibernate};
 	_ ->
-	    {noreply, State}
+	    {noreply, State, hibernate}
     end;
 
 handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
@@ -122,28 +118,28 @@ handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr
     case EvtName of
 	<<"CHANNEL_CREATE">> ->
 	    ?LOG(UUID, "received channel create event", []),
-	    {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}};
+	    {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}, hibernate};
 	<<"CHANNEL_DESTROY">> ->
 	    ChanState = props:get_value(<<"Channel-State">>, Data),
 	    case ChanState of
 		<<"CS_NEW">> -> % ignore
 		    ?LOG(UUID, "ignoring channel destroy because of CS_NEW", []),
-		    {noreply, State};
+		    {noreply, State, hibernate};
 		<<"CS_DESTROY">> ->
 		    ?LOG(UUID, "received channel destroyed", []),
-		    {noreply, State#state{stats=Stats#node_stats{destroyed_channels=De+1}}}
+		    {noreply, State#state{stats=Stats#node_stats{destroyed_channels=De+1}}, hibernate}
 	    end;
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
-	    {noreply, State};
+	    {noreply, State, hibernate};
 	<<"CUSTOM">> ->
 	    spawn(fun() ->
                           put(callid, props:get_value(<<"call-id">>, Data)),
                           ?LOG("custom event received ~s", [EvtName]),
                           process_custom_data(Data, ?APP_VERSION)
                   end),
-	    {noreply, State};
+	    {noreply, State, hibernate};
 	_ ->
-	    {noreply, State}
+	    {noreply, State, hibernate}
     end;
 handle_info({resource_request, Pid, <<"audio">>, ChanOptions}
 	    ,#state{options=Opts, stats=#node_stats{created_channels=Cr, destroyed_channels=De}}=State) ->
@@ -166,6 +162,10 @@ handle_info({resource_consume, Pid, Route, JObj}, #state{node=Node, options=Opts
 
 handle_info({update_options, NewOptions}, State) ->
     {noreply, State#state{options=NewOptions}};
+
+handle_info({diagnostics, Pid}, #state{stats=Stats}=State) ->
+    spawn(fun() -> diagnostics(Pid, Stats) end),
+    {noreply, State};
 
 handle_info(_Msg, State) ->
     {noreply, State}.

@@ -134,59 +134,53 @@ handle_cast(stop, State) ->
 
 handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=MediaName, content_type=CType
 			    ,lsocket=LSocket, send_to=SendTo, stream_type=StreamType}=S) ->
-    try
-	{ok, PortNo} = inet:port(LSocket),
-	{ok, Content} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
+    {ok, PortNo} = inet:port(LSocket),
+    {ok, Content} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
 
-	Size = byte_size(Content),
-	ChunkSize = case ?CHUNKSIZE > Size of
-			true -> Size;
-			false -> ?CHUNKSIZE
-		    end,
+    Size = byte_size(Content),
+    ChunkSize = case ?CHUNKSIZE > Size of
+		    true -> Size;
+		    false -> ?CHUNKSIZE
+		end,
 
-        ContentType = case filename:extension(Attachment) of
-                          <<$., Ext/binary>> ->
-                              Ext;
-                           _ -> CType
-                      end,
+    ContentType = case filename:extension(Attachment) of
+		      <<$., Ext/binary>> ->
+			  Ext;
+		      _ -> CType
+		  end,
 
-	CallID = get(callid),
-	{Resp, Header, CT, StreamUrl} = case ContentType of
-					    <<"mp3">> ->
-						Self = self(),
-						spawn(fun() -> put(callid, CallID), start_shout_acceptor(Self, LSocket) end),
-						Url = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.mp3"]),
+    CallID = get(callid),
+    {Resp, Header, CT, StreamUrl} = case ContentType of
+					<<"mp3">> ->
+					    Self = self(),
+					    spawn(fun() -> put(callid, CallID), start_shout_acceptor(Self, LSocket) end),
+					    Url = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.mp3"]),
 
-						{
-						  wh_shout:get_shout_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, Url, ?CONTENT_TYPE_MP3)
-						  ,{0,wh_shout:get_shout_header(MediaName, Url)}
-						  ,?CONTENT_TYPE_MP3
-						  ,Url
-						};
-					    <<"wav">> ->
-						Self = self(),
-						spawn(fun() -> put(callid, CallID), start_stream_acceptor(Self, LSocket) end),
-						{
-						  get_http_response_headers(?CONTENT_TYPE_WAV, Size)
-						  ,undefined
-						  ,?CONTENT_TYPE_WAV
-						  ,list_to_binary(["http://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.wav"])
-						}
-					end,
+					    {
+					      wh_shout:get_shout_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, Url, ?CONTENT_TYPE_MP3)
+					      ,{0,wh_shout:get_shout_header(MediaName, Url)}
+					      ,?CONTENT_TYPE_MP3
+					      ,Url
+					    };
+					<<"wav">> ->
+					    Self = self(),
+					    spawn(fun() -> put(callid, CallID), start_stream_acceptor(Self, LSocket) end),
+					    {
+					      get_http_response_headers(?CONTENT_TYPE_WAV, Size)
+					      ,undefined
+					      ,?CONTENT_TYPE_WAV
+					      ,list_to_binary(["http://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.wav"])
+					    }
+				    end,
 
-	lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
+    lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
 
-	MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
-				,shout_response=Resp, shout_header=Header, continuous=(StreamType =:= continuous), pad_response=(CT =:= ?CONTENT_TYPE_MP3)},
+    MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
+			    ,shout_response=Resp, shout_header=Header, continuous=(StreamType =:= continuous), pad_response=(CT =:= ?CONTENT_TYPE_MP3)},
 
-	MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
+    MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
 
-	{noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}, hibernate}
-    catch A:B ->
-	    ?LOG("exception thrown ~p:~p", [A, B]),
-	    ?LOG("stacktrace ~p", [erlang:get_stacktrace()]),
-	    {stop, normal, S}
-    end;
+    {noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}, hibernate};
 
 handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_name=MediaName, db=Db, doc=Doc, attachment=Attachment}=S) ->
     CallID = get(callid),
@@ -199,7 +193,7 @@ handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_name=Med
 
 handle_info({add_listener, ListenerQ}, #state{media_file=#media_file{stream_url=StreamUrl}, media_name=MediaName, send_to=SendTo}=S) ->
     send_media_resp(MediaName, StreamUrl, ListenerQ),
-    {noreply, S#state{send_to=[ListenerQ | SendTo]}};
+    {noreply, S#state{send_to=[ListenerQ | SendTo]}, hibernate};
 
 handle_info({send_media, Socket}, #state{media_loop=undefined, media_file=MediaFile}=S) ->
     CallID = get(callid),

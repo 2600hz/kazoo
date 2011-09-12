@@ -76,7 +76,7 @@ init([]) ->
     {ok, Configs} = file:consult([code:priv_dir(dth), "/startup.config"]),
     URL = props:get_value(dth_cdr_url, Configs),
 
-    erlang:send_after(?BLACKLIST_REFRESH, self(), blacklist_refresh),
+    erlang:send_after(0, self(), blacklist_refresh),
     
     WSDLFile = [code:priv_dir(dth), "/dthsoap.wsdl"],
     WSDLHrlFile = [code:lib_dir(dth, include), "/dthsoap.hrl"],
@@ -90,11 +90,13 @@ init([]) ->
 	    ok = detergent:write_hrl(WSDLFile, WSDLHrlFile)
     end,
 
+    Cache = whereis(dth_cache),
+    erlang:monitor(process, Cache),
+
     {ok, #state{wsdl_model=detergent:initModel(WSDLFile)
 		,dth_cdr_url=URL
-	       }
-     , 0}.
-    %%{ok, #state{dth_cdr_url=URL, blacklist_tref=TRef}, 0}.
+		,cache=Cache
+	       }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -140,10 +142,6 @@ handle_info(blacklist_refresh, #state{wsdl_model=WSDL, cache=Cache}=State) ->
     erlang:send_after(?BLACKLIST_REFRESH, self(), blacklist_refresh),
     spawn(fun() -> refresh_blacklist(Cache, WSDL) end),
     {noreply, State};
-handle_info(timeout, #state{cache=undefined}=State) ->
-    Cache = whereis(dth_cache),
-    erlang:monitor(process, Cache),
-    {noreply, State#state{cache=Cache}};
 handle_info({'DOWN', _, process, Pid, Reason}, #state{cache=Pid}=State) ->
     ?LOG_SYS("Cache ~p went down: ~p", [Pid, Reason]),
     {noreply, State#state{cache=undefined}, 0};
@@ -206,10 +204,10 @@ get_blocklist_entries(#'p:GetBlockListResponse'{
 			 'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
 			   'BlockListEntry'=undefined
 			  }}) ->
-    [];
+    {struct, []};
 get_blocklist_entries(#'p:GetBlockListResponse'{
 			 'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
 			   'BlockListEntry'=Entries
 			  }}) when is_list(Entries) ->
     %% do some formatting of the entries to be [{ID, Reason}]
-    [{wh_util:to_binary(ID), wh_util:to_binary(Reason)} || #'p:BlockListEntry'{'CustomerID'=ID, 'BlockReason'=Reason} <- Entries].
+    {struct, [{wh_util:to_binary(ID), wh_util:to_binary(Reason)} || #'p:BlockListEntry'{'CustomerID'=ID, 'BlockReason'=Reason} <- Entries]}.

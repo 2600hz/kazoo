@@ -112,7 +112,7 @@ handle_info({cache_registrations, Realm, User, RegFields}, State) ->
     wh_cache:store({ecall_registrar, Realm, User}, RegFields
 		   ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
 		  ),
-    {noreply, State};
+    {noreply, State, hibernate};
 
 handle_info({_, #amqp_msg{payload=Payload}}, State) ->
     spawn(fun() ->
@@ -123,7 +123,7 @@ handle_info({_, #amqp_msg{payload=Payload}}, State) ->
 		  wh_cache:erase({ecall_registrar, Realm, User})
 	  end),
 
-    {noreply, State};
+    {noreply, State, hibernate};
 
 handle_info(timeout, #state{is_amqp_up=false}=State) ->
     ?LOG_SYS("AMQP is down, trying"),

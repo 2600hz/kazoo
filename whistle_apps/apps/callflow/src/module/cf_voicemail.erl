@@ -184,14 +184,14 @@ check_mailbox(#mailbox{prompts=#prompts{enter_password=EnterPass, invalid_login=
     try
         %% Request the pin number from the caller but crash if it doesnt match the mailbox
         ?LOG("requesting pin number to check mailbox"),
-        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call),
-        main_menu(Box, Call)
+        {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call)
     catch
         _:R ->
             ?LOG("invalid mailbox login ~w", [R]),
             {ok, _} = b_play(InvalidLogin, Call),
             check_mailbox(Box#mailbox{exists=false}, Call, Loop+1)
-    end.
+    end,
+    main_menu(Box, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -713,6 +713,7 @@ new_message(RecordingName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, 
 				       ,{<<"Caller-ID-Name">>, CIDName}
 				       ,{<<"Caller-ID-Number">>, CIDNumber}
 				       ,{<<"Voicemail-Timestamp">>, Tstamp}
+				       ,{<<"Call-ID">>, CallID}
 				       | wh_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
 				      ]),
     ?LOG("new voicemail message ~s whistle API broadcast", [MediaId]),

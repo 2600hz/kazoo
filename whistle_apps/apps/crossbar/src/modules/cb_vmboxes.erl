@@ -279,7 +279,8 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (Paths) -> {boolean(), []} when
+      Paths :: [binary(),...] | [].
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -302,7 +303,9 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/2 :: (Params, Context) -> #cb_context{} when
+      Params :: [binary(),...] | [],
+      Context :: #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_vmbox_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
@@ -321,8 +324,8 @@ validate([DocId, ?MESSAGES_RESOURCE, MediaId], #cb_context{req_verb = <<"post">>
     update_message(DocId, MediaId, Context);
 validate([DocId, ?MESSAGES_RESOURCE, MediaId], #cb_context{req_verb = <<"delete">>}=Context) ->
     delete_message(DocId, MediaId, Context);
-validate([_, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
-    get_media_binary(MediaId, Context);
+validate([DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
+    load_message_binary(DocId, MediaId, Context);
 
 validate(_Other, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -345,7 +348,8 @@ load_vmbox_summary(Context) ->
 %% Create a new vmbox document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_vmbox/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec create_vmbox/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
 create_vmbox(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
@@ -363,7 +367,9 @@ create_vmbox(#cb_context{req_data=JObj}=Context) ->
 %% Load a vmbox document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_vmbox/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_vmbox/2 :: (DocId, Context) -> #cb_context{} when
+      DocId :: binary(),
+      Context :: #cb_context{}.
 load_vmbox(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
@@ -374,7 +380,9 @@ load_vmbox(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_vmbox/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_vmbox/2 :: (DocId, Context) -> #cb_context{} when
+      DocId :: binary(),
+      Context :: #cb_context{}.
 update_vmbox(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
@@ -389,7 +397,9 @@ update_vmbox(DocId, #cb_context{req_data=JObj}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (JObj, Acc) -> json_objects() when
+      JObj :: json_object(),
+      Acc :: json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -399,7 +409,8 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
+-spec is_valid_doc/1 :: (JObj) -> {boolean(), [binary()]} when
+      JObj :: json_object().
 is_valid_doc(JObj) ->
     {(wh_json:get_value(<<"mailbox">>, JObj) =/= undefined), [<<"mailbox">>]}.
 
@@ -409,7 +420,9 @@ is_valid_doc(JObj) ->
 %% Get messages summary for a given mailbox
 %% @end
 %%--------------------------------------------------------------------
--spec(load_message_summary/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_message_summary/2 :: (DocId, Context) -> #cb_context{} when
+      DocId :: binary(),
+      Context :: #cb_context{}.
 load_message_summary(DocId, Context) ->
     case load_messages(DocId, Context) of
 	[] ->
@@ -427,7 +440,9 @@ load_message_summary(DocId, Context) ->
 %% Get associated  Messages as a List of json obj
 %% @end
 %%--------------------------------------------------------------------
--spec(load_messages/2 :: (DocId :: binary(), Context :: #cb_context{}) -> json_objects()).
+-spec load_messages/2 :: (DocId, Context) -> json_objects() when
+      DocId :: binary(),
+      Context :: #cb_context{}.
 load_messages(DocId, Context) ->
     #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
     wh_json:get_value(<<"messages">>, Doc).
@@ -435,10 +450,13 @@ load_messages(DocId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Get message by its media ID
+%% Get message by its media ID and its context
 %% @end
 %%--------------------------------------------------------------------
--spec(load_message/3 :: (DocId :: binary(), MediaId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_message/3 :: (DocId, MediaId, Context) -> #cb_context{} when
+      DocId :: binary(),
+      MediaId :: binary(),
+      Context :: #cb_context{}.
 load_message(DocId, MediaId, Context) ->
     case lists:filter(fun(M) -> wh_json:get_value(<<"media_id">>, M) =:= MediaId end, load_messages(DocId, Context)) of
 	[M] ->
@@ -451,16 +469,30 @@ load_message(DocId, MediaId, Context) ->
 %% @private
 %% @doc
 %% Get message binary content so it can be downloaded
+%% VMBoxId is the doc id for the voicemail box document
+%% VMId is the id for the voicemail document, containing the binary data
 %% @end
 %%--------------------------------------------------------------------
--spec(get_media_binary/2 :: (MediaId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-get_media_binary(MediaId, #cb_context{db_name=Db}=Context) ->
-    {Filename, Metadata} = get_attachment_data(Db, MediaId, first),
-    Ctx = crossbar_doc:load_attachment(MediaId, Filename, Context),
+-spec load_message_binary/3 :: (VMBoxId, VMId, Context) -> #cb_context{} when
+      VMBoxId :: binary(),
+      VMId :: binary(),
+      Context :: #cb_context{}.
+load_message_binary(VMBoxId, VMId, #cb_context{db_name=Db}=Context) ->
+    {ok, VMJObj} = couch_mgr:open_doc(Db, VMId),
+    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
+
+    #cb_context{resp_data=VMMetaJObj} = load_message(VMBoxId, VMId, Context),
+
+    Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
+				   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
+				   ,wh_json:get_value(<<"media_type">>, VMJObj)
+				  ),
+
+    Ctx = crossbar_doc:load_attachment(VMId, AttachmentId, Context),
     Ctx#cb_context{resp_headers = [
-       {<<"Content-Type">>, wh_json:get_value(<<"content-type">>, Metadata)},
-       {<<"Content-Disposition">>, <<"Content-Disposition: attachment; filename=", Filename/binary>>},
-       {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value(<<"length">>, Metadata))}
+       {<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], VMJObj)},
+       {<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>},
+       {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], VMJObj))}
        | Context#cb_context.resp_headers]}.
 
 %%--------------------------------------------------------------------
@@ -469,7 +501,10 @@ get_media_binary(MediaId, #cb_context{db_name=Db}=Context) ->
 %% DELETE the message (set folder prop to deleted)
 %% @end
 %%--------------------------------------------------------------------
--spec(delete_message/3 :: (DocId :: binary(), MediaId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec delete_message/3 :: (DocId, MediaId, Context) -> #cb_context{} when
+      DocId :: binary(),
+      MediaId :: binary(),
+      Context :: #cb_context{}.
 delete_message(DocId, MediaId, #cb_context{db_name=Db}=Context) ->
     Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
     Messages = wh_json:get_value(<<"messages">>, Doc),
@@ -483,10 +518,9 @@ delete_message(DocId, MediaId, #cb_context{db_name=Db}=Context) ->
 	    couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deleted">>, true, D)),
 
 	    Context1#cb_context{doc=Doc1};
-	0 ->
+	_ ->
 	    crossbar_util:response_bad_identifier(MediaId, Context)
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -495,7 +529,9 @@ delete_message(DocId, MediaId, #cb_context{db_name=Db}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(get_message_index/2 :: (MediaId :: binary(), Messages :: json_objects()) -> non_neg_integer()).
+-spec get_message_index/2 :: (MediaId, Messages) -> pos_integer() when
+      MediaId :: binary(),
+      Messages :: json_objects().
 get_message_index(MediaId, Messages) ->
     find_index(MediaId, Messages, 1).
 
@@ -506,13 +542,16 @@ get_message_index(MediaId, Messages) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(find_index/3 :: (MediaId :: binary(), list(), Index :: non_neg_integer()) -> non_neg_integer()).
-find_index(MediaId, [Message | Other], Index) ->
+-spec find_index/3 :: (MediaId, Ms, Index) -> pos_integer() when
+      MediaId :: binary(),
+      Ms :: list(),
+      Index :: non_neg_integer().
+find_index(MediaId, [Message | Ms], Index) ->
     case wh_json:get_value(<<"media_id">>, Message) =:= MediaId of
 	true ->
 	    Index;
 	false ->
-	    find_index(MediaId, Other, Index + 1)
+	    find_index(MediaId, Ms, Index + 1)
     end.
 
 %%--------------------------------------------------------------------
@@ -522,7 +561,10 @@ find_index(MediaId, [Message | Other], Index) ->
 %% Only Folder prop is editable atm
 %% @end
 %%--------------------------------------------------------------------
--spec(update_message/3 :: (DocId :: binary(), MediaId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_message/3 :: (DocId, MediaId, Context) -> #cb_context{} when
+      DocId :: binary(),
+      MediaId :: binary(),
+      Context :: #cb_context{}.
 update_message(DocId, MediaId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
@@ -531,6 +573,10 @@ update_message(DocId, MediaId, #cb_context{req_data=JObj}=Context) ->
 	    update_message1(DocId, MediaId, Context)
     end.
 
+-spec update_message1/3 :: (DocId, MediaId, Context) -> #cb_context{} when
+      DocId :: binary(),
+      MediaId :: binary(),
+      Context :: #cb_context{}.
 update_message1(DocId, MediaId, Context) ->
     RequestedValue = wh_json:get_value(<<"folder">>, Context#cb_context.req_data),
     Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
@@ -540,30 +586,23 @@ update_message1(DocId, MediaId, Context) ->
   	Index when Index > 0 ->
 	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], RequestedValue, Doc),
 	    Context1#cb_context{doc=Doc1};
-	0 ->
+	_ ->
 	    crossbar_util:response_bad_identifier(MediaId, Context)
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Find the first attachment for this private media doc
+%% generate a media name based on CallerID and creation date
+%% CallerID_YYYY-MM-DD_HH-MM-SS.ext
 %% @end
 %%--------------------------------------------------------------------
--spec(get_attachment_data/3 :: (binary(), binary(), first) -> tuple(binary(), json_object())).
-get_attachment_data(Db, MediaId, first) ->
-    DbName = case couch_mgr:db_exists(Db) of
-                 true -> Db;
-                 false -> whapps_util:get_db_name(Db, encoded)
-             end,
-    case couch_mgr:open_doc(DbName, MediaId) of
-	{ok, JObj} ->
-	    case wh_json:get_value(<<"_attachments">>, JObj, false) of
-		false ->
-		    no_data;
-		{struct, [{AttachmentName, MetaData} | _]} ->
-                    {AttachmentName, MetaData}
-            end;
-        _->
-            not_found
+-spec(generate_media_name/3 :: (binary(), binary(), binary()) -> binary()).
+generate_media_name(CallerId, GregorianSeconds, Ext) ->
+    {{Y,Mo,D}, {H, Mi, S}}  = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(GregorianSeconds)),
+    Date = iolist_to_binary(io_lib:format("_~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
+					  [Y, Mo, D, H, Mi, S])),
+    case CallerId of
+	undefined -> <<"unknown", Date/binary, ".", Ext/binary>>;
+	_ -> <<CallerId/binary, Date/binary, ".", Ext/binary>>
     end.

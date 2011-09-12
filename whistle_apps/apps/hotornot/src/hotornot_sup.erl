@@ -51,6 +51,6 @@ init([]) ->
     {ok, { {one_for_one, 2, 5}
 	   ,[
 	     ?CACHE(hotornot_cache)
-	     ,?CHILD(hotornot_responder, worker)
+	     ,?CHILD(hotornot_listener, worker)
 	    ]
 	 } }.

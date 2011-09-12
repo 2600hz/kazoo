@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [wait_for_callee_release/1, find_failure_branch/2]).
+-import(cf_call_command, [wait_for_bridge/2, find_failure_branch/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -20,7 +20,9 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
+-spec handle/2 :: (Data, Call) -> no_return() when
+      Data :: json_object(),
+      Call :: #cf_call{}.
 handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId, inception_during_transfer=IDT
                       ,ctrl_q=CtrlQ, amqp_q=AmqpQ, cf_pid=CFPid, owner_id=OwnerId, authorizing_id=AuthId, channel_vars=CCV}=Call) ->
     put(callid, CallId),
@@ -42,21 +44,10 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId,
             ],
     {ok, Payload} = wh_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     amqp_util:offnet_resource_publish(Payload),
-    case wait_for_offnet_response(60000) of
+    case wait_for_offnet(60000, Call) of
         {ok, _} ->
-            case wait_for_callee_release(Call) of
-                {fail, Reason} ->
-                    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-                    ?LOG("offnet request failed ~s:~s", [Cause, Code]),
-                    find_failure_branch({Cause, Code}, Call)
-                        orelse CFPid ! { continue };
-                {transfer, _} ->
-                    ?LOG("offnet request was transferred"),
-                    CFPid ! { transferred };
-                _ ->
-                    ?LOG("offnet request was unbridged"),
-                    CFPid ! { stop }
-            end;
+            ?LOG("completed successful offnet bridge"),
+            CFPid ! { stop };
         {fail, Reason} when IDT ->
             case wh_json:get_binary_value(<<"Transfer-Fallback">>, CCV) of
                 undefined ->
@@ -77,7 +68,7 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId,
             find_failure_branch({Cause, Code}, Call)
                 orelse CFPid ! { continue };
         {error, Reason} ->
-            ?LOG("offnet resource request error ~w", [Reason]),
+            ?LOG("offnet resource bridge error ~p", [Reason]),
             CFPid ! { continue }
     end.
 
@@ -87,15 +78,17 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId,
 %% Consume Erlang messages and return on resource completion message
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_offnet_response/1 :: (Timeout :: integer())
-                                    -> tuple(ok | fail, json_object()) | tuple(error, channel_hungup | execution_failed | timeout)).
-wait_for_offnet_response(Timeout) ->
+-spec wait_for_offnet/2 :: (Timeout, Call) -> tuple(ok | fail, json_object())
+                                                  | tuple(error, channel_hungup | execution_failed | timeout) when
+      Timeout :: integer(),
+      Call :: #cf_call{}.
+wait_for_offnet(Timeout, Call) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case { wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
                 { <<"offnet_resp">>, <<"resource">> } ->
-                    {ok, JObj};
+                    wait_for_bridge(infinity, Call);
                 { <<"resource_error">>, <<"resource">> } ->
                     {fail, JObj};
                 { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
@@ -104,13 +97,13 @@ wait_for_offnet_response(Timeout) ->
                     {error, execution_failed};
                 _ ->
 		    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_offnet_response(Timeout - (DiffMicro div 1000))
+                    wait_for_offnet(Timeout - (DiffMicro div 1000), Call)
             end;
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
             DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_offnet_response(Timeout - (DiffMicro div 1000))
+            wait_for_offnet(Timeout - (DiffMicro div 1000), Call)
     after
         Timeout ->
             {error, timeout}

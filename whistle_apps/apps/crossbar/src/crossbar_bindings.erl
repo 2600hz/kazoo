@@ -58,7 +58,9 @@
 %% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
--spec(map/2 :: (Routing :: binary(), Payload :: term()) -> list(tuple(term(), term()))).
+-spec map/2 :: (Routing, Payload) -> [{term(), term()},...] when
+      Routing :: binary(),
+      Payload :: term().
 map(Routing, Payload) ->
     gen_server:call(?MODULE, {map, Routing, Payload, get(callid)}, infinity).
 
@@ -69,7 +71,9 @@ map(Routing, Payload) ->
 %% all matching bindings
 %% @end
 %%--------------------------------------------------------------------
--spec(fold/2 :: (Routing :: binary(), Payload :: term()) -> term()).
+-spec fold/2 :: (Routing, Payload) -> term() when
+      Routing :: binary(),
+      Payload :: term().
 fold(Routing, Payload) ->
     gen_server:call(?MODULE, {fold, Routing, Payload, get(callid)}, infinity).
 
@@ -78,16 +82,20 @@ fold(Routing, Payload) ->
 %% Helper functions for working on a result set of bindings
 %% @end
 %%-------------------------------------------------------------------
--spec(any/1 :: (Res :: proplist()) -> boolean()).
+-spec any/1 :: (Res) -> boolean() when
+      Res :: proplist().
 any(Res) when is_list(Res) -> lists:any(fun check_bool/1, Res).
 
--spec(all/1 :: (Res :: proplist()) -> boolean()).
+-spec all/1 :: (Res) -> boolean() when
+      Res :: proplist().
 all(Res) when is_list(Res) -> lists:all(fun check_bool/1, Res).
 
--spec(failed/1 :: (Res :: proplist_bool()) -> proplist_bool()).
+-spec failed/1 :: (Res) -> proplist_bool() when
+      Res :: proplist_bool().
 failed(Res) when is_list(Res) -> [R || R <- Res, filter_out_succeeded(R)].
 
--spec(succeeded/1 :: (Res :: proplist_bool()) -> proplist_bool()).
+-spec succeeded/1 :: (Res) -> proplist_bool() when
+      Res :: proplist_bool().
 succeeded(Res) when is_list(Res) -> [R || R <- Res, filter_out_failed(R)].
 
 %%--------------------------------------------------------------------
@@ -103,15 +111,17 @@ start_link() ->
 stop() ->
     gen_server:cast(?SERVER, stop).
 
--spec(bind/1 :: (Binding :: binary()) -> ok | tuple(error, exists)).
+-spec bind/1 :: (Binding) -> ok | {error, exists} when
+      Binding :: binary().
 bind(Binding) ->
     gen_server:call(?MODULE, {bind, Binding}, infinity).
 
--spec(flush/0 :: () -> ok).
+-spec flush/0 :: () -> ok.
 flush() ->
     gen_server:cast(?MODULE, flush).
 
--spec(flush/1 :: (Binding :: binary()) -> ok).
+-spec flush/1 :: (Binding) -> ok when
+      Binding :: binary().
 flush(Binding) ->
     gen_server:cast(?MODULE, {flush, Binding}).
 
@@ -184,19 +194,19 @@ handle_call({fold, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) -
     {noreply, State};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=[]}=State) ->
     link(From),
-    {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())}]}};
+    {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())}]}, hibernate};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
     ?LOG_SYS("~w is binding ~s", [From, Binding]),
     case lists:keyfind(Binding, 1, Bs) of
 	false ->
 	    link(From),
-	    {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())} | Bs]}};
+	    {reply, ok, State#state{bindings=[{Binding, queue:in(From, queue:new())} | Bs]}, hibernate};
 	{_, Subscribers} ->
 	    case queue:member(From, Subscribers) of
 		true -> {reply, {error, exists}, State};
 		false ->
 		    link(From),
-		    {reply, ok, State#state{bindings=[{Binding, queue:in(From, Subscribers)} | lists:keydelete(Binding, 1, Bs)]}}
+		    {reply, ok, State#state{bindings=[{Binding, queue:in(From, Subscribers)} | lists:keydelete(Binding, 1, Bs)]}, hibernate}
 	    end
     end.
 
@@ -212,13 +222,13 @@ handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
 %%--------------------------------------------------------------------
 handle_cast(flush, #state{bindings=Bs}=State) ->
     lists:foreach(fun flush_binding/1, Bs),
-    {noreply, State#state{bindings=[]}};
+    {noreply, State#state{bindings=[]}, hibernate};
 handle_cast({flush, Binding}, #state{bindings=Bs}=State) ->
     case lists:keyfind(Binding, 1, Bs) of
 	false -> {noreply, State};
 	{_, _}=B ->
 	    flush_binding(B),
-	    {noreply, State#state{bindings=lists:keydelete(Binding, 1, Bs)}}
+	    {noreply, State#state{bindings=lists:keydelete(Binding, 1, Bs)}, hibernate}
     end;
 handle_cast(stop, State) ->
     {stop, normal, State}.
@@ -234,11 +244,11 @@ handle_cast(stop, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', Pid, _Reason}, #state{bindings=Bs}=State) ->
-    ?LOG_SYS("~w went down(~w)", [Pid, _Reason]),
+    ?LOG_SYS("subscriber ~w went down(~w)", [Pid, _Reason]),
     Bs1 = lists:foldr(fun({B, Subs}, Acc) ->
 			      [{B, remove_subscriber(Pid, Subs)} | Acc]
 		      end, [], Bs),
-    {noreply, State#state{bindings=Bs1}};
+    {noreply, State#state{bindings=Bs1}, hibernate};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -276,7 +286,9 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(remove_subscriber/2 :: (Pid :: pid() | atom(), Subs :: queue()) -> queue()).
+-spec remove_subscriber/2 :: (Pid, Subs) -> queue() when
+      Pid :: pid() | atom(),
+      Subs :: queue().
 remove_subscriber(Pid, Subs) ->
     case queue:member(Pid, Subs) of
 	false -> Subs;
@@ -295,7 +307,9 @@ remove_subscriber(Pid, Subs) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(binding_matches/2 :: (B :: binary(), R :: binary()) -> boolean()).
+-spec binding_matches/2 :: (B, R) -> boolean() when
+      B :: binary(),
+      R :: binary().
 binding_matches(B, B) -> true;
 binding_matches(B, R) ->
     Opts = [global],
@@ -312,7 +326,9 @@ binding_matches(B, R) ->
 %%
 %%--------------------------------------------------------------------
 %% if both are empty, we made it!
--spec(matches/2 :: (Bs :: list(binary()), Rs :: list(binary())) -> boolean()).
+-spec matches/2 :: (Bs, Rs) -> boolean() when
+      Bs :: [binary(),...] | [],
+      Rs :: [binary(),...] | [].
 matches([], []) -> true;
 matches([<<"#">>], []) -> true;
 
@@ -364,7 +380,11 @@ matches(_, _) -> false.
 %% Results is the accumulated results list so far
 %% @end
 %%--------------------------------------------------------------------
--spec(map_bind_results/4 :: (Pids :: queue(), Payload :: term(), Results :: list(binding_result()), Route :: binary()) -> list(tuple(term() | timeout, term()))).
+-spec map_bind_results/4 :: (Pids, Payload, Results, Route) -> [{term() | 'timeout', term()}] when
+      Pids :: queue(),
+      Payload :: term(),
+      Results :: [binding_result(),...],
+      Route :: binary().
 map_bind_results(Pids, Payload, Results, Route) ->
     S = self(),
     [ receive {Pid, DS} -> DS end
@@ -387,7 +407,7 @@ map_bind_results(Pids, Payload, Results, Route) ->
 %% Run a receive loop if we recieve hearbeat, otherwise collect binding results
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_map_binding/0 :: () -> tuple(ok, atom(), term()) | timeout | tuple(error, atom())).
+-spec wait_for_map_binding/0 :: () -> {'ok', atom(), term()} | 'timeout' | {'error', atom()}.
 wait_for_map_binding() ->
     receive
         {binding_result, Resp, Pay} -> {ok, Resp, Pay};
@@ -405,11 +425,20 @@ wait_for_map_binding() ->
 %% previous payload being passed to the next invocation.
 %% @end
 %%--------------------------------------------------------------------
--spec(fold_bind_results/3 :: (Pids :: queue(), Payload :: term(), Route :: binary()) -> term()).
+-spec fold_bind_results/3 :: (Pids, Payload, Route) -> term() when
+      Pids :: queue(),
+      Payload :: term(),
+      Route :: binary().
 fold_bind_results(_, {error, _}=E, _) -> E;
 fold_bind_results(Pids, Payload, Route) ->
     fold_bind_results(Pids, Payload, Route, queue:len(Pids), queue:new()).
 
+-spec fold_bind_results/5 :: (Pids, Payload, Route, PidsLen, ReRunQ) -> term() when
+      Pids :: queue(),
+      Payload :: term(),
+      Route :: binary(),
+      PidsLen :: non_neg_integer(),
+      ReRunQ :: queue().
 fold_bind_results(Pids, Payload, Route, PidsLen, ReRunQ) ->
     case queue:out(Pids) of
 	{empty, _} ->
@@ -440,7 +469,7 @@ fold_bind_results(Pids, Payload, Route, PidsLen, ReRunQ) ->
 %% Run a receive loop if we recieve hearbeat, otherwise collect binding results
 %% @end
 %%--------------------------------------------------------------------
--spec(wait_for_fold_binding/0 :: () -> tuple(ok, term())|timeout|eoq|tuple(error, atom())).
+-spec wait_for_fold_binding/0 :: () -> {'ok', term()} | 'timeout' | 'eoq' | {'error', atom()}.
 wait_for_fold_binding() ->
     receive
         {binding_result, eoq, _} -> eoq;
@@ -457,7 +486,8 @@ wait_for_fold_binding() ->
 %% let those bound know their binding is flushed
 %% @end
 %%--------------------------------------------------------------------
--spec(flush_binding/1 :: (Binding :: binding()) -> no_return()).
+-spec flush_binding/1 :: (Binding) -> 'ok' when
+      Binding :: binding().
 flush_binding({B, Subs}) ->
     lists:foreach(fun(S) -> S ! {binding_flushed, B} end, queue:to_list(Subs)).
 
@@ -466,7 +496,7 @@ flush_binding({B, Subs}) ->
 %% Helpers for the result set helpers
 %% @end
 %%-------------------------------------------------------------------------
--spec(check_bool/1 :: (tuple(boolean(), term()) | term()) -> boolean()).
+-spec check_bool/1 :: ({boolean(), term()} | term()) -> boolean().
 check_bool({true, _}) -> true;
 check_bool({timeout, _}) -> true;
 check_bool(_) -> false.
@@ -476,7 +506,7 @@ check_bool(_) -> false.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(filter_out_failed/1 :: (tuple(boolean(), _)) -> boolean()).
+-spec filter_out_failed/1 :: ({boolean(), _}) -> boolean().
 filter_out_failed({true, _}) -> true;
 filter_out_failed({_, _}) -> false.
 
@@ -485,7 +515,7 @@ filter_out_failed({_, _}) -> false.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(filter_out_succeeded/1 :: (tuple(boolean(), _)) -> boolean()).
+-spec filter_out_succeeded/1 :: ({boolean(), _}) -> boolean().
 filter_out_succeeded({true, _}) -> false;
 filter_out_succeeded({_, _}) -> true.
 

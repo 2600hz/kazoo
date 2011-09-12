@@ -13,7 +13,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/6, wait_for_callee_release/1]).
+-import(cf_call_command, [b_bridge/6]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -30,17 +30,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     case cf_endpoint:build(EndpointId, Data, Call) of
         {ok, Endpoints} ->
             Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
-            case bridge_to_endpoints(Endpoints, Timeout, Call) of
-                {fail, _} ->
-                    ?LOG("could not reach endpoint"),
-                    CFPid ! { continue };
-                {transfer, _} ->
-                    ?LOG("endpoint was transferred"),
-                    CFPid ! { transferred };
-                _ ->
-                    ?LOG("endpoint was unbridged"),
-                    CFPid ! { stop }
-            end;
+            bridge_to_endpoints(Endpoints, Timeout, Call);
         {error, Reason} ->
             ?LOG("no endpoints to bridge to, ~w", [Reason]),
             CFPid ! { continue }
@@ -56,19 +46,19 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
       Endpoints :: json_objects(),
       Timeout :: binary(),
       Call :: #cf_call{}.
-bridge_to_endpoints(Endpoints, Timeout, Call) ->
+bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid}=Call) ->
     IgnoreEarlyMedia = ignore_early_media(Endpoints),
     case b_bridge(Endpoints, Timeout, <<"internal">>, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
-            ?LOG("bridged to endpoint"),
-            wait_for_callee_release(Call);
-        {fail, Reason}=Fail ->
+            ?LOG("completed successful bridge to the device"),
+            CFPid ! { stop };
+        {fail, Reason} ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
             ?LOG("failed to bridge to endpoint ~s:~s", [Code, Cause]),
-            Fail;
-        {error, R}=Error ->
-            ?LOG("failed to bridge to endpoint ~w", [R]),
-            Error
+            CFPid ! { continue };
+        {error, R} ->
+            ?LOG("failed to bridge to endpoint ~p", [R]),
+            CFPid ! { continue }
     end.
 
 %%--------------------------------------------------------------------

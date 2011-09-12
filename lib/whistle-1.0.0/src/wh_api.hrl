@@ -12,15 +12,6 @@
 %% For dialplan messages, what does the Invite-Format param accept as values?
 -define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}).
 
--define(IS_JSON_OBJECT,
-        fun({struct, L}) when is_list(L) ->
-                lists:all(fun({K, V}) when (is_binary(K) orelse is_atom(K)) andalso
-                                           (is_binary(V) orelse is_number(V)) -> true;
-                             (_) -> false
-                          end, L);
-           (_) -> false
-        end).
-
 %%% *_HEADERS defines a list of Keys that must exist in every message of type *
 %%% (substitute AUTHN_REQ, AUTHN_RESP, etc, for *) to be considered valid.
 %%%
@@ -169,7 +160,7 @@
 
 %% Route Requests
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
-				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"During-Transfer">>
+				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
 			   ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
 					 ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
@@ -179,7 +170,6 @@
 			   ,{<<"Event-Name">>, <<"route_req">>}
 			   ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>, <<"audio">>, <<"video">>, <<"chat">>]}
 			   ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
-                           ,{<<"During-Transfer">>, [<<"true">>, <<"false">>]}
 			  ]).
 -define(ROUTE_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
 			  ,{<<"To">>, fun is_binary/1}
@@ -314,12 +304,11 @@
 %% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>, <<"Custom-Channel-Vars">>
-					  ,<<"Msg-ID">>, <<"Channel-State">>, <<"During-Transfer">>
+					  ,<<"Msg-ID">>, <<"Channel-State">>, <<"Call-Direction">>
 					  ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>, <<"Other-Leg-Caller-ID-Number">> %% BRIDGE
 					  ,<<"Other-Leg-Destination-Number">>,<<"Other-Leg-Unique-ID">> %% BRIDGE
 					  ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
                                           ,<<"Terminator">>, <<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
-					  ,<<"Call-Direction">>
 				     ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
@@ -872,7 +861,7 @@
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
 			,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
 			,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>, <<"RECORD_STOP">>
-			,<<"CUSTOM">> ,<<"CHANNEL_EXECUTE_ERROR">> %% custom error
+			,<<"CUSTOM">>, <<"CHANNEL_DESTROY">>, <<"CHANNEL_EXECUTE_ERROR">> %% custom error
 		   ]).
 
 %% List of tuples: {dialplan application-name, validation_fun}

@@ -6,3 +6,4 @@
 
 -define(APP_NAME, <<"jonny5">>).
 -define(APP_VSN, <<"0.1.0">>).
+-define(BLACKLIST_SERVER, blacklist_server).

@@ -38,7 +38,7 @@ start_link() ->
 %% Stop the app
 %% @end
 %%--------------------------------------------------------------------
--spec stop/0 :: () -> ok.
+-spec stop/0 :: () -> 'ok'.
 stop() ->
     ok = application:stop(crossbar).
 
@@ -48,17 +48,17 @@ stop() ->
 %% Ensures that all dependencies for this app are already running
 %% @end
 %%--------------------------------------------------------------------
--spec start_deps/0 :: () -> ok.
+-spec start_deps/0 :: () -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    ensure_started(sasl), % logging
-    ensure_started(crypto), % random
-    ensure_started(inets),
-    ensure_started(mochiweb),
+    wh_util:ensure_started(sasl), % logging
+    wh_util:ensure_started(crypto), % random
+    wh_util:ensure_started(inets),
+    wh_util:ensure_started(mochiweb),
     application:set_env(webmachine, webmachine_logger_module, webmachine_logger),
-    ensure_started(webmachine),
-    ensure_started(whistle_amqp), % amqp wrapper
-    ensure_started(whistle_couch). % couch wrapper
+    wh_util:ensure_started(webmachine),
+    wh_util:ensure_started(whistle_amqp), % amqp wrapper
+    wh_util:ensure_started(whistle_couch). % couch wrapper
 
 %%--------------------------------------------------------------------
 %% @private
@@ -66,24 +66,8 @@ start_deps() ->
 %% Verify that an application is running
 %% @end
 %%--------------------------------------------------------------------
--spec ensure_started/1 :: (App) -> ok when
-      App :: atom().
-ensure_started(App) ->
-    case application:start(App) of
-	ok ->
-	    ok;
-	{error, {already_started, App}} ->
-	    ok
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Verify that an application is running
-%% @end
-%%--------------------------------------------------------------------
--spec refresh/0 :: () -> started.
--spec refresh/1 :: (Account) -> ok when
+-spec refresh/0 :: () -> 'started'.
+-spec refresh/1 :: (Account) -> 'ok' when
       Account :: binary() | string().
 
 refresh() ->

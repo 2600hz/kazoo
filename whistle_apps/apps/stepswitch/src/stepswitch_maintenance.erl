@@ -31,12 +31,12 @@
 %% exist
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile/0 :: () -> done.
--spec reconcile/1 :: (Account) -> done when
-      Account :: string() | binary() | all.
--spec reconcile/2 :: (Account, Flag) -> done when
-      Account :: string() | binary() | all,
-      Flag :: boolean().
+-spec reconcile/0 :: () -> 'done'.
+-spec reconcile/1 :: (Account) -> 'done' when
+      Account :: string() | binary() | 'all'.
+-spec reconcile/2 :: (AccountId, IsTSAccount) -> 'done' when
+      AccountId :: binary() | string() | 'all',
+      IsTSAccount :: 'undefined' | boolean().
 
 reconcile() ->
     reconcile(all).
@@ -53,20 +53,20 @@ reconcile(AccountId) ->
             reconcile(AccountId, false)
     end.
 
-reconcile(all, _) ->
+reconcile(all, undefined) ->
     reconcile_accounts(),
-    reconcile_trunkstore(),
+    ok = reconcile_trunkstore(),
     done;
 reconcile(AccountId, TSAccount) when not is_binary(AccountId) ->
     reconcile(wh_util:to_binary(AccountId), TSAccount);
 reconcile(AccountId, true) ->
     Numbers = get_trunkstore_account_numbers(AccountId),
-    reconcile_account_route(whapps_util:get_db_name(AccountId, raw), Numbers),
+    _ = reconcile_account_route(whapps_util:get_db_name(AccountId, raw), Numbers),
     done;
 reconcile(AccountId, false) ->
     Db = whapps_util:get_db_name(AccountId, encoded),
     Numbers = get_callflow_account_numbers(Db),
-    reconcile_account_route(whapps_util:get_db_name(AccountId, raw), Numbers),
+    _ = reconcile_account_route(whapps_util:get_db_name(AccountId, raw), Numbers),
     done.
 
 %%--------------------------------------------------------------------
@@ -77,7 +77,7 @@ reconcile(AccountId, false) ->
 %%--------------------------------------------------------------------
 -spec validate_routes/0 :: () -> done.
 validate_routes() ->
-    find_duplicate_numbers(),
+    ok = find_duplicate_numbers(),
 %%    find_missing_accounts(),
     done.
 
@@ -132,12 +132,12 @@ process_number(Number, Flags) ->
 %%--------------------------------------------------------------------
 -spec reconcile_accounts/0 :: () -> ok.
 reconcile_accounts() ->
-    [begin
-         Numbers = get_callflow_account_numbers(AccountId),
-         reconcile_account_route(
-           whapps_util:get_db_name(AccountId, raw), Numbers)
-     end
-     || AccountId <- whapps_util:get_all_accounts(encoded)],
+    _ = [begin
+	     Numbers = get_callflow_account_numbers(AccountId),
+	     reconcile_account_route(
+	       whapps_util:get_db_name(AccountId, raw), Numbers)
+	 end
+	 || AccountId <- whapps_util:get_all_accounts(encoded)],
     ok.
 
 %%--------------------------------------------------------------------
@@ -174,12 +174,12 @@ get_callflow_account_numbers(AccountId) ->
 reconcile_trunkstore() ->
     case couch_mgr:all_docs(?TS_DB) of
         {ok, JObj} ->
-            [begin
-                 AccountId = wh_json:get_value(<<"id">>, Account),
-                 Numbers = get_trunkstore_account_numbers(AccountId),
-                 reconcile_account_route(AccountId, Numbers)
-             end
-             || Account <- JObj],
+            _ = [begin
+		     AccountId = wh_json:get_value(<<"id">>, Account),
+		     Numbers = get_trunkstore_account_numbers(AccountId),
+		     reconcile_account_route(AccountId, Numbers)
+		 end
+		 || Account <- JObj],
             ok;
         {error, _}=E ->
             E
@@ -275,13 +275,13 @@ reconcile_account_route(AccountId, Numbers) ->
 find_duplicate_numbers() ->
     case couch_mgr:get_results(?ROUTES_DB, ?LIST_ROUTE_DUPS, [{<<"group">>, <<"true">>}]) of
         {ok, Routes} ->
-            [begin
-                 Accounts = [", " ++ Account || Account <- wh_json:get_value([<<"value">>, <<"accounts">>], Route, [])],
-                 Number = wh_json:get_value(<<"key">>, Route),
-                 ?LOG_SYS("the number ~s routes to multiple accounts~s", [Number, Accounts])
-             end
-             || Route <- Routes,
-                wh_json:get_value([<<"value">>, <<"total">>], Route, 0) > 1],
+            _ = [begin
+		     Accounts = [", " ++ Account || Account <- wh_json:get_value([<<"value">>, <<"accounts">>], Route, [])],
+		     Number = wh_json:get_value(<<"key">>, Route),
+		     ?LOG_SYS("the number ~s routes to multiple accounts~s", [Number, Accounts])
+		 end
+		 || Route <- Routes,
+		    wh_json:get_value([<<"value">>, <<"total">>], Route, 0) > 1],
             ok;
         {error, _}=E ->
             ?LOG_SYS("unable to check for duplicate routes ~p~n", [E]),

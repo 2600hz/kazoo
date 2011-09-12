@@ -165,10 +165,10 @@ handle_call({diagnostics}, From, #state{fs_nodes=Nodes}=State) ->
     {noreply, State};
 handle_call({add_fs_node, Node, Options}, _From, State) ->
 	{Resp, State1} = add_fs_node(Node, check_options(Options), State),
-	{reply, Resp, State1};
+	{reply, Resp, State1, hibernate};
 handle_call({rm_fs_node, Node}, _From, State) ->
     {Resp, State1} = rm_fs_node(Node, State),
-    {reply, Resp, State1};
+    {reply, Resp, State1, hibernate};
 handle_call({request_resource, Type, Options}, From, #state{fs_nodes=Nodes}=State) ->
     spawn(fun() ->
 		  Resp = process_resource_request(Type, Nodes, Options),
@@ -213,7 +213,7 @@ handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
 		  watch_node_for_restart(Node, Opts)
 	  end),
 
-    {noreply, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}};
+    {noreply, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}, hibernate};
 handle_info(timeout, State) ->
     spawn(fun() ->
                   case file:consult(?STARTUP_FILE) of
@@ -386,7 +386,7 @@ rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
 	    {{ok, close_node(N)}, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
     end.
 
--spec close_node/1 :: (N) -> list(ok | tuple(error, 'not_found' | 'running' | 'simple_one_for_one')) when
+-spec close_node/1 :: (N) -> ['ok' | {'error', 'not_found' | 'running' | 'simple_one_for_one'},...] when
       N :: #node_handler{}.
 close_node(#node_handler{node=Node}) ->
     erlang:monitor_node(Node, false),

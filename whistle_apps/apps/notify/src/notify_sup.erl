@@ -20,9 +20,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
--define(CHILDREN, [{notify_vm, worker} %% does init work, then returns ignore
-		   ,{notify_listener, worker} %% amqp listener
-		  ]).
+-define(CHILDREN, [{notify_listener, worker}]). %% amqp listener
 
 %% ===================================================================
 %% API functions

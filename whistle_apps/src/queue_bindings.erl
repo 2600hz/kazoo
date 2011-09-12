@@ -8,12 +8,13 @@
 %%%-------------------------------------------------------------------
 -module(queue_bindings).
 
--export([add_binding_to_q/3, rm_binding_from_q/2]).
+-export([known_bind_types/0, add_binding_to_q/3, rm_binding_from_q/2]).
 
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("hotornot/include/hon_amqp.hrl").
 -include_lib("dth/include/dth_amqp.hrl").
+-include_lib("callflow/include/cf_amqp.hrl").
 
 -type bind_types() :: 'authentication' |
 		      'registrations' |
@@ -23,7 +24,16 @@
 		      'dth' |
 		      'call_events' |
 		      'self' |
+		      'notifications' |
 		      'authorization'.
+-export_type([bind_types/0]).
+
+-spec known_bind_types/0 :: () -> [bind_types(),...].
+known_bind_types() ->
+    ['authentication', 'registrations', 'rating', 'routing'
+     ,'cdrs', 'dth', 'call_events', 'self', 'notifications'
+     ,'authorization'
+    ].
 
 -spec add_binding_to_q/3 :: (Q, Type, Props) -> 'ok' when
       Q :: binary(),
@@ -60,6 +70,9 @@ add_binding_to_q(Q, call_events, Props) ->
     CallID = get_callid(Props),
     amqp_util:bind_q_to_callevt(Q, CallID, events),
     ok;
+add_binding_to_q(Q, notifications, _Props) ->
+    amqp_util:bind_q_to_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other),
+    ok;
 add_binding_to_q(Q, registrations, _Props) ->
     amqp_util:callmgr_exchange(),
     amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
@@ -85,6 +98,8 @@ rm_binding_from_q(Q, call_events) ->
     rm_binding_from_q(Q, call_events, []);
 rm_binding_from_q(Q, dth) ->
     amqp_util:unbind_q_from_callmgr(Q, ?KEY_DTH_BLACKLIST_REQ);
+rm_binding_from_q(Q, notifications) ->
+    amqp_util:unbind_q_from_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other);
 rm_binding_from_q(Q, registrations) ->
     amqp_util:unbind_q_from_callmgr(Q, ?KEY_REG_SUCCESS),
     amqp_util:unbind_q_from_callmgr(Q, ?KEY_REG_QUERY).

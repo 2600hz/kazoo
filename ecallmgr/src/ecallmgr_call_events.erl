@@ -14,6 +14,7 @@
 
 -define(EVENT_CAT, <<"call_event">>).
 -define(MAX_FAILED_NODE_CHECKS, 5).
+-define(MAX_WAIT_FOR_EVENT, 10000). %% how long to wait for an event from FS before checking status of call
 
 %% API
 -export([start_link/3, publish_msg/3]).
@@ -24,7 +25,6 @@
 
 -define(SERVER, ?MODULE).
 -define(HANGUP_EVENT_NAME, <<"CHANNEL_HANGUP_COMPLETE">>).
-
 -record(state, {
 	  node = undefined :: atom()
           ,uuid = <<>> :: binary()
@@ -69,14 +69,15 @@ start_link(Node, UUID, CtlPid) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([atom() | binary() | pid(),...]) -> {'ok', #state{}, 0}.
+-spec init/1 :: ([atom() | binary() | pid(),...]) -> {'ok', #state{}}.
 init([Node, UUID, CtlPid]) ->
     process_flag(trap_exit, true),
     put(callid, UUID),
+    self() ! startup,
     ?LOG_START("starting new call events listener"),
     is_pid(CtlPid) andalso link(CtlPid),
     ?LOG("linked to control listener ~p",[CtlPid]),
-    {'ok', #state{node=Node, uuid=UUID, ctlpid=CtlPid}, 0}.
+    {'ok', #state{node=Node, uuid=UUID, ctlpid=CtlPid}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -118,70 +119,22 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info/2 :: ('timeout', #state{}) -> handle_info_ret();
+-spec handle_info/2 :: ('startup', #state{}) -> handle_info_ret();
 		       ({'nodedown', atom()}, #state{}) -> {'noreply', #state{}};
                        ({'is_node_up', non_neg_integer()}, #state{}) -> handle_info_ret();
-		       ({'call', {'event', [binary() | proplist()]}}, #state{}) -> {'noreply', #state{}};
-		       ({'call_event', {'event', [binary() | proplist()]}}, #state{}) -> {'noreply', #state{}};
+		       ({'call', {'event', [binary() | proplist()]}}, #state{}) -> {'noreply', #state{}, 'hibernate'};
+		       ({'call_event', {'event', [binary() | proplist()]}}, #state{}) -> {'noreply', #state{}, 'hibernate'};
 		       ('call_hangup', #state{}) -> {'stop', 'normal', #state{}};
 		       ({'amqp_host_down', binary()}, #state{}) -> {'noreply', #state{}};
 		       ('is_amqp_up', #state{}) -> {'noreply', #state{}};
-		       ({#'basic.deliver'{}, #amqp_msg{}}, #state{}) -> {'noreply', #state{}} | {'stop', 'normal', #state{}};
-		       (#'basic.consume_ok'{}, #state{}) -> {'noreply', #state{}}.
-handle_info(timeout, #state{node=Node, uuid=UUID}=State) ->
-    erlang:monitor_node(Node, true),
-    case freeswitch:handlecall(Node, UUID) of
-	ok ->
-	    ?LOG("handling call events for ~s", [Node]),
-	    Q = add_amqp_listener(UUID),
-	    {'noreply', State#state{amqp_q = Q, is_amqp_up = is_binary(Q)}};
-	timeout ->
-	    ?LOG("timed out trying to handle events for ~s, trying again", [Node]),
-	    {'noreply', State, 0};
-	{'error', badsession} ->
-	    ?LOG("bad session received when handling events for ~s", [Node]),
-	    {'stop', 'normal', State};
-	_E ->
-	    ?LOG("failed to handle call events for ~s: ~p", [Node, _E]),
-	    {'stop', 'normal', State}
-    end;
-
-handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
-    ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
-    erlang:monitor_node(Node, false),
-    {'ok', _} = timer:send_after(0, self(), {is_node_up, 100}),
-    {'noreply', State#state{is_node_up=false}};
-
-handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false, failed_node_checks=FNC}=State) ->
-    case ecallmgr_fs_handler:is_node_up(Node) of
-	true ->
-            ?LOG("reconnected to node ~s", [Node]),
-	    {'noreply', State#state{is_node_up=true, failed_node_checks=0}, 0};
-	false ->
-	    case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
-		true ->
-		    case FNC > ?MAX_FAILED_NODE_CHECKS of
-			true ->
-			    ?LOG("node ~p still not up after ~p checks, giving up", [Node, FNC]),
-			    {'stop', 'normal', State};
-			false ->
-			    ?LOG("node ~p still not up after ~p checks, trying again", [Node, FNC]),
-			    {'ok', _} = timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART}),
-			    {'noreply', State#state{is_node_up=false, failed_node_checks=FNC+1}}
-		    end;
-		false ->
-		    ?LOG("node ~s still not up, waiting ~p seconds to test again", [Node, Timeout]),
-		    {'ok', _} = timer:send_after(Timeout, self(), {is_node_up, Timeout*2}),
-		    {'noreply', State}
-	    end
-    end;
-
+		       ({#'basic.deliver'{}, #amqp_msg{}}, #state{}) -> {'noreply', #state{}, 'hibernate'} | {'stop', 'normal', #state{}};
+		       (#'basic.consume_ok'{}, #state{}) -> {'noreply', #state{}, 'hibernate'}.
 handle_info({call, {event, [UUID | Data]}}, #state{uuid=UUID, is_amqp_up=true, node=Node}=State) ->
     spawn(fun() -> put(callid, UUID), publish_msg(Node, UUID, Data) end),
     {'noreply', State};
 
 handle_info({call, {event, [UUID | Data]}}, #state{uuid=UUID, is_amqp_up=false, queued_events=QEs}=State) ->
-    {'noreply', State#state{queued_events = [Data | QEs]}};
+    {'noreply', State#state{queued_events = [Data | QEs]}, hibernate};
 
 handle_info({call_event, {event, [ UUID | Data ] } }, #state{node=Node, uuid=UUID, ctlpid=CtlPid, is_amqp_up=IsAmqpUp, queued_events=QEs}=State) ->
     EvtName = props:get_value(<<"Event-Name">>, Data),
@@ -205,7 +158,7 @@ handle_info({call_event, {event, [ UUID | Data ] } }, #state{node=Node, uuid=UUI
 	    {'noreply', State};
 	false ->
 	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
-	    {'noreply', State#state{queued_events = [Data | QEs]}}
+	    {'noreply', State#state{queued_events = [Data | QEs]}, hibernate}
     end;
 
 handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid, is_amqp_up=false, queued_events=Evts, node=Node}=State) ->
@@ -215,21 +168,52 @@ handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid, is_amqp_up=false, queu
     {'stop', 'normal', State};
 
 handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid}=State) ->
-    ?LOG("noraml call hangup received, going down"),
+    ?LOG("normal call hangup received, going down"),
     shutdown(CtlPid, UUID),
     {'stop', 'normal', State};
+
+handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
+    ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
+    erlang:monitor_node(Node, false),
+    {'ok', _} = timer:send_after(0, self(), {is_node_up, 100}),
+    {'noreply', State#state{is_node_up=false}, hibernate};
+
+handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false, failed_node_checks=FNC}=State) ->
+    case ecallmgr_util:is_node_up(Node, UUID) of
+	true ->
+            ?LOG("reconnected to node ~s and call is active", [Node]),
+	    {'noreply', State#state{is_node_up=true, failed_node_checks=0}, hibernate};
+	false ->
+	    case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
+		true ->
+		    case FNC > ?MAX_FAILED_NODE_CHECKS of
+			true ->
+			    ?LOG("node ~p still not up after ~p checks, giving up", [Node, FNC]),
+			    self() ! call_hangup,
+			    {'noreply', State};
+			false ->
+			    ?LOG("node ~p still not up after ~p checks, trying again", [Node, FNC]),
+			    {'ok', _} = timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART}),
+			    {'noreply', State#state{is_node_up=false, failed_node_checks=FNC+1}, hibernate}
+		    end;
+		false ->
+		    ?LOG("node ~s still not up, waiting ~p seconds to test again", [Node, Timeout]),
+		    {'ok', _} = timer:send_after(Timeout, self(), {is_node_up, Timeout*2}),
+		    {'noreply', State}
+	    end
+    end;
 
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
     {'ok', _} = timer:send_after(1000, self(), is_amqp_up),
-    {'noreply', State#state{amqp_q={'error', amqp_host_down}, is_amqp_up=false}};
+    {'noreply', State#state{amqp_q={'error', amqp_host_down}, is_amqp_up=false}, hibernate};
 
 handle_info(is_amqp_up, #state{uuid=UUID, amqp_q={'error', _}, queued_events=Evts, node=Node}=State) ->
     Q1 = add_amqp_listener(UUID),
     case is_binary(Q1) of
 	true ->
 	    spawn(fun() -> put(callid, UUID), send_queued(Node, UUID, Evts) end),
-	    {'noreply', State#state{amqp_q = Q1, is_amqp_up = true, queued_events=[]}};
+	    {'noreply', State#state{amqp_q = Q1, is_amqp_up = true, queued_events=[]}, hibernate};
 	false ->
 	    {'ok', _} = timer:send_after(1000, self(), is_amqp_up),
 	    {'noreply', State}
@@ -237,14 +221,14 @@ handle_info(is_amqp_up, #state{uuid=UUID, amqp_q={'error', _}, queued_events=Evt
 
 handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}
 	    ,#state{node=Node, uuid=UUID, failed_node_checks=FNC}=State) ->
-    JObj = mochijson2:decode(binary_to_list(Payload)),
-    IsUp = is_node_up(Node, UUID),
+    JObj = mochijson2:decode(Payload),
+    IsUp = ecallmgr_util:is_node_up(Node, UUID),
 
     spawn(fun() -> put(callid, UUID), handle_amqp_prop(wh_json:get_value(<<"Event-Name">>, JObj), JObj, Node, IsUp) end),
 
     case IsUp of
 	true ->
-	    {'noreply', State#state{is_node_up=IsUp, failed_node_checks=0}};
+	    {'noreply', State#state{is_node_up=IsUp, failed_node_checks=0}, hibernate};
 	false ->
 	    case FNC > ?MAX_FAILED_NODE_CHECKS of
 		true ->
@@ -252,8 +236,28 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
 		    {'stop', 'normal', State};
 		false ->
 		    ?LOG(UUID, "node ~s appears down, and we've checked ~b times now; will check again", [Node, FNC]),
-		    {'noreply', State#state{is_node_up=IsUp, failed_node_checks=FNC+1}}
+		    {'ok', _} = timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART}),
+		    {'noreply', State#state{is_node_up=IsUp, failed_node_checks=FNC+1}, hibernate}
 	    end
+    end;
+
+handle_info(startup, #state{node=Node, uuid=UUID}=State) ->
+    erlang:monitor_node(Node, true),
+    case freeswitch:handlecall(Node, UUID) of
+	ok ->
+	    ?LOG("handling call events for ~s", [Node]),
+	    Q = add_amqp_listener(UUID),
+	    {'noreply', State#state{amqp_q = Q, is_amqp_up = is_binary(Q)}, hibernate};
+	timeout ->
+	    ?LOG("timed out trying to handle events for ~s, trying again", [Node]),
+	    self() ! startup,
+	    {'noreply', State};
+	{'error', badsession} ->
+	    ?LOG("bad session received when handling events for ~s", [Node]),
+	    {'stop', 'normal', State};
+	_E ->
+	    ?LOG("failed to handle call events for ~s: ~p", [Node, _E]),
+	    {'stop', 'normal', State}
     end;
 
 handle_info(#'basic.consume_ok'{}, State) ->
@@ -331,7 +335,13 @@ send_ctl_event(_, _, _, _) -> 'ok'.
       Prop :: proplist().
 publish_msg(_, _, []) -> 'ok';
 publish_msg(Node, UUID, Prop) when is_list(Prop) ->
-    EvtName = case props:get_value(<<"Event-Name">>, Prop) of
+    FSEvtName = props:get_value(<<"Event-Name">>, Prop),
+    FSAppName = props:get_value(<<"Application">>, Prop),
+
+    %% whistle generates custom events that should masquerade as standard events
+    %% for simplicity in the high level code (like bridge which "completes" during
+    %% transfers even though the bridge still continues).
+    EvtName = case FSEvtName of
                   <<"CUSTOM">> ->
                       props:get_value(<<"whistle_event_name">>, Prop);
                   ?HANGUP_EVENT_NAME ->
@@ -341,16 +351,18 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                       Evt
               end,
 
-    Prop1 = [{<<"Application-Response">>, application_response(props:get_value(<<"Application">>, Prop), Prop, Node, UUID)}
+    Prop1 = [{<<"Application-Response">>, application_response(FSAppName, Prop, Node, UUID)}
              | props:delete(<<"Application-Response">>, Prop)],
 
-    case lists:member(EvtName, ?FS_EVENTS) of
+    %% suppress certain events (like bridge completion) as whistle will generate proper masquerades
+    %% at more appropriate times using custom events
+    case should_publish(FSEvtName, FSAppName, EvtName) of
         true ->
-            AppName = case props:get_value(<<"Event-Name">>, Prop) of
+            AppName = case FSEvtName of
                           <<"CUSTOM">> ->
                               props:get_value(<<"whistle_application_name">>, Prop);
                           _ ->
-                              case props:get_value(<<"Application">>, Prop) of
+                              case FSAppName of
                                   <<"event">> ->
                                       Args = ecallmgr_util:varstr_to_proplist(props:get_value(<<"Application-Data">>, Prop, <<>>)),
                                       props:get_value(<<"whistle_application_name">>, Args);
@@ -359,7 +371,13 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                               end
                       end,
 
-            ?LOG("published ~s call event for ~s", [EvtName, AppName]),
+            %% some event are 'remapped' to be of other types, when that happens log it differently
+            case EvtName =/= FSEvtName orelse AppName =/= FSAppName of
+                true ->
+                    ?LOG("published event masquerade ~s ~s as ~s ~s", [FSEvtName, FSAppName, EvtName, AppName]);
+                false ->
+                    ?LOG("published event ~s ~s", [EvtName, AppName])
+            end,
 
 	    EvtProp0 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop1)}
                         ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop1)}
@@ -367,7 +385,6 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                         ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop1)}
                         ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop1)}
                         ,{<<"Channel-State">>, get_channel_state(Prop1)}
-                        ,{<<"During-Transfer">>, ecallmgr_util:is_during_transfer(Prop1, binary)}
 		       | event_specific(EvtName, AppName, Prop1) ],
 	    EvtProp1 = EvtProp0 ++ wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
@@ -377,7 +394,8 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
 	    {'ok', JSON} = wh_api:call_event(EvtProp2),
 	    amqp_util:callevt_publish(UUID, JSON, event);
 	_ ->
-	    ?LOG("skipped event ~s", [EvtName])
+            ok
+%%	    ?LOG("skipped event ~s ~s", [FSEvtName, FSAppName])
     end.
 
 -spec get_channel_state/1 :: (Prop) -> binary() when
@@ -389,7 +407,7 @@ get_channel_state(Prop) ->
     end.
 
 %% Setup process to listen for call.status_req api calls and respond in the affirmative
--spec add_amqp_listener/1 :: (CallID) -> binary() | {'error', amqp_error} when
+-spec add_amqp_listener/1 :: (CallID) -> binary() | {'error', 'amqp_error'} when
       CallID :: binary().
 add_amqp_listener(CallID) ->
     case amqp_util:new_queue(<<>>) of
@@ -430,8 +448,8 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Prop) ->
 	     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop, <<"">>)}
 	    ];
         <<"bridge">> ->
-	    [{<<"Application-Name">>, <<"bridge">>}
-	     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
+            [{<<"Application-Name">>, <<"bridge">>}
+	     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
 	     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
 	     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
 	     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
@@ -478,7 +496,7 @@ event_specific(<<"CHANNEL_HANGUP">>, _, Prop) ->
      ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
      ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
     ];
-event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, _, Prop) ->
+event_specific(?HANGUP_EVENT_NAME, _, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
@@ -566,15 +584,6 @@ send_queued(Node, UUID, [_|_]=Evts, Tries) ->
 	    'ok'
     end.
 
--spec is_node_up/2 :: (Node, UUID) -> boolean() when
-      Node :: atom(),
-      UUID :: binary().
-is_node_up(Node, UUID) ->
-    case ecallmgr_fs_handler:is_node_up(Node) andalso freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
-	{'ok', IsUp} -> wh_util:to_boolean(IsUp);
-	_ -> false
-    end.
-
 -spec get_fs_var/4 :: (Node, UUID, Var, Default) -> binary() when
       Node :: atom(),
       UUID :: binary(),
@@ -587,3 +596,14 @@ get_fs_var(Node, UUID, Var, Default) ->
         {'ok', Value} -> Value;
         _ -> Default
     end.
+
+-spec should_publish/3 :: (FSEvtName, FSAppName, EvtName) -> boolean() when
+      FSEvtName :: binary(),
+      FSAppName :: binary(),
+      EvtName :: binary().
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, _) ->
+    false;
+should_publish(_, <<"event">>, _) ->
+    false;
+should_publish(_, _, EvtName) ->
+    lists:member(EvtName, ?FS_EVENTS).

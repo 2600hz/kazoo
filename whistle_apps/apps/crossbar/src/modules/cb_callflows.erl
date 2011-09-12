@@ -347,10 +347,10 @@ is_valid_doc(_JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_metadata/3 :: (Flow, Db, JObj) -> json_object() when
-      Flow :: undefined | json_object(),
+      Flow :: 'undefined' | json_object(),
       Db :: binary(),
       JObj :: json_object().
-get_metadata(undefined, db, JObj) ->
+get_metadata(undefined, _, JObj) ->
     JObj;
 get_metadata(Flow, Db, JObj) ->
     JObj1 = case wh_json:get_value([<<"data">>, <<"id">>], Flow) of

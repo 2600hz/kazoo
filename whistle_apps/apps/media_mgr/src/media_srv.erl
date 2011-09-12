@@ -1,8 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INCE
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Receive AMQP requests for media, spawn a handler for the response
+%%% TODO: convert to gen_listener
 %%% @end
 %%% Created : 15 Mar 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -86,14 +87,14 @@ init([]) ->
 handle_call(next_port, From, #state{ports=Ports, port_range=PortRange}=S) ->
     case queue:out(Ports) of
 	{{value, Port}, Ps1} ->
-	    {reply, Port, S#state{ports=updated_reserved_ports(Ps1, PortRange)}};
+	    {reply, Port, S#state{ports=updated_reserved_ports(Ps1, PortRange)}, hibernate};
 	{empty, _} ->
 	    handle_call({next_port, from_empty}, From, S#state{ports=updated_reserved_ports(Ports, PortRange)})
     end;
 handle_call({next_port, from_empty}, _, #state{ports=Ports, port_range=PortRange}=S) ->
     case queue:out(Ports) of
 	{{value, Port}, Ps1} ->
-	    {reply, Port, S#state{ports=updated_reserved_ports(Ps1, PortRange)}};
+	    {reply, Port, S#state{ports=updated_reserved_ports(Ps1, PortRange)}, hibernate};
 	{empty, _} ->
 	    {reply, no_ports, S}
     end.
@@ -109,7 +110,7 @@ handle_call({next_port, from_empty}, _, #state{ports=Ports, port_range=PortRange
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({add_stream, MediaID, ShoutSrv}, #state{streams=Ss}=S) ->
-    {noreply, S#state{streams=[{MediaID, ShoutSrv, erlang:monitor(process, ShoutSrv)} | Ss]}}.
+    {noreply, S#state{streams=[{MediaID, ShoutSrv, erlang:monitor(process, ShoutSrv)} | Ss]}, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -125,19 +126,19 @@ handle_info(timeout, #state{amqp_q = <<>>, ports=Ps, port_range=PortRange}=S) ->
     try
 	{ok, Q} = start_amqp(),
 	Ps1 = updated_reserved_ports(Ps, PortRange),
-	{noreply, S#state{amqp_q=Q, ports=Ps1}}
+	{noreply, S#state{amqp_q=Q, ports=Ps1}, hibernate}
     catch
 	_:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
             {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    Ps2 = updated_reserved_ports(Ps, PortRange),
-	    {noreply, S#state{amqp_q = <<>>, ports=Ps2}}
+	    {noreply, S#state{amqp_q = <<>>, ports=Ps2}, hibernate}
     end;
 
 handle_info({amqp_reconnect, T}, State) ->
     try
 	{ok, NewQ} = start_amqp(),
-	{noreply, State#state{amqp_q=NewQ}}
+	{noreply, State#state{amqp_q=NewQ}, hibernate}
     catch
 	_:_ ->
             case T * 2 of
@@ -155,7 +156,7 @@ handle_info({amqp_reconnect, T}, State) ->
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
     {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
-    {noreply, State#state{amqp_q = <<>>}};
+    {noreply, State#state{amqp_q = <<>>}, hibernate};
 
 handle_info({_, #amqp_msg{payload = Payload}}, #state{ports=Ports, port_range=PortRange, streams=Streams}=State) ->
     {{value, Port}, Ps1} = queue:out(Ports),
@@ -186,7 +187,7 @@ handle_info({'DOWN', Ref, process, ShoutSrv, Info}, #state{streams=Ss}=S) ->
     case lists:keyfind(ShoutSrv, 2, Ss) of
 	{MediaID, _, Ref1} when Ref =:= Ref1 ->
 	    ?LOG_SYS("MediaSrv for ~s(~p) went down(~p)", [MediaID, ShoutSrv, Info]),
-	    {noreply, S#state{streams=lists:keydelete(MediaID, 1, Ss)}};
+	    {noreply, S#state{streams=lists:keydelete(MediaID, 1, Ss)}, hibernate};
 	_ ->
 	    ?LOG_SYS("Unknown 'DOWN' received for ~p(~p)", [ShoutSrv, Info]),
 	    {noreply, S}

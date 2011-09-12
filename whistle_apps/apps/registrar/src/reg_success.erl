@@ -33,7 +33,9 @@ handle_req(JObj, Props) ->
 
     Id = wh_util:to_binary(wh_util:to_hex(erlang:md5(Contact1))),
     CacheKey = reg_util:cache_reg_key(Id),
-    Expires = wh_util:current_tstamp() + wh_util:to_integer(wh_json:get_value(<<"Expires">>, JObj, 3600)),
+    Expiry = wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
+    Fudge = round(Expiry * 0.25),
+    Expires = Expiry + Fudge,
 
     Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),

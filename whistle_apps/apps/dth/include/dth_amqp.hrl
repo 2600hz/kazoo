@@ -1,3 +1,5 @@
+-include_lib("whistle/include/wh_types.hrl").
+
 %% Route used to publish blacklist requests
 -define(KEY_DTH_BLACKLIST_REQ, <<"dth.blacklist_req">>).
 
@@ -13,4 +15,4 @@
 -define(DTH_BLACKLIST_RESP_VALUES, [{<<"Event-Category">>, <<"dth">>}
 				    ,{<<"Event-Name">>, <<"blacklist_resp">>}
 				   ]).
--define(DTH_BLACKLIST_RESP_TYPES, [{<<"Accounts">>, fun({struct, [{_,_}|_]}) -> true; (_) -> false end}]).
+-define(DTH_BLACKLIST_RESP_TYPES, [{<<"Accounts">>, ?IS_JSON_OBJECT}]).

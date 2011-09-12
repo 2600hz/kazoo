@@ -129,12 +129,12 @@ handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W, worker_coun
     case queue:out(W) of
 	{{value, Worker}, W1} ->
 	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
-	    {noreply, State#state{workers=W1, requests_per=RP+1}};
+	    {noreply, State#state{workers=W1, requests_per=RP+1}, hibernate};
 	{empty, _} ->
 	    Worker = start_worker(),
 	    ?LOG("starting additional worker ~p", [Worker]),
 	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
-	    {noreply, State#state{worker_count=WC+1, requests_per=RP+1}}
+	    {noreply, State#state{worker_count=WC+1, requests_per=RP+1}, hibernate}
     end.
 
 %%--------------------------------------------------------------------
@@ -171,21 +171,21 @@ handle_info(timeout, #state{worker_count=WC, workers=Ws, orig_worker_count=OWC}=
     ?LOG("adding ~b workers", [Count]),
     Ws1 = lists:foldr(fun(W, Ws0) -> queue:in(W, Ws0) end, Ws, [ start_worker() || _ <- lists:seq(1, Count) ]),
     erlang:start_timer(?BACKOFF_PERIOD, self(), reduce_labor_force),
-    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}, hibernate};
 
 handle_info({worker_free, W}, #state{workers=Ws}=State) ->
-    {noreply, State#state{workers=queue:in(W, Ws)}};
+    {noreply, State#state{workers=queue:in(W, Ws)}, hibernate};
 
 handle_info({'EXIT', W, amqp_host_down}, #state{workers=Ws, amqp_ref=undefined}=State) ->
     ?LOG("AMQP host down, ~p exited, starting timer", [W]),
     Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
     Ref = erlang:start_timer(1000, self(), {amqp_check, 1000}),
-    {noreply, State#state{worker_count=queue:len(Ws1), workers=Ws1, amqp_ref=Ref}};
+    {noreply, State#state{worker_count=queue:len(Ws1), workers=Ws1, amqp_ref=Ref}, hibernate};
 
 handle_info({'EXIT', W, amqp_host_down}, #state{workers=Ws}=State) ->
     ?LOG("AMQP host down, ~p exited", [W]),
     Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
-    {noreply, State#state{worker_count=queue:len(Ws1), workers=Ws1}};
+    {noreply, State#state{worker_count=queue:len(Ws1), workers=Ws1}, hibernate};
 
 handle_info({timeout, Ref, {amqp_check, LastTimeout}}, #state{amqp_ref=Ref}=State) ->
     ?LOG("checking AMQP host connectivity"),
@@ -195,23 +195,23 @@ handle_info({timeout, Ref, {amqp_check, LastTimeout}}, #state{amqp_ref=Ref}=Stat
 	    NewT = LastTimeout*2,
 	    Timeout = case NewT > ?BACKOFF_PERIOD of true -> ?BACKOFF_PERIOD; false -> NewT end,
 	    Ref1 = erlang:start_timer(Timeout, self(), {amqp_check, Timeout}),
-	    {noreply, State#state{amqp_ref=Ref1}}
+	    {noreply, State#state{amqp_ref=Ref1}, hibernate}
     end;
 
 handle_info({'EXIT', W, _Reason}, #state{workers=Ws, amqp_ref=Ref}=State) when is_reference(Ref) ->
     ?LOG("Worker down, amqp_ref set so wait: ~p", [_Reason]),
     Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
-    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}, hibernate};
 
 handle_info({'EXIT', W, _Reason}, #state{workers=Ws, worker_count=WC, orig_worker_count=OWC}=State) when WC < OWC ->
     ?LOG("Worker down: ~p", [_Reason]),
     Ws1 = queue:in(start_worker(), queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws)),
-    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}, hibernate};
 
 handle_info({'EXIT', W, _Reason}, #state{workers=Ws}=State) ->
     ?LOG("Worker down: ~p", [_Reason]),
     Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
-    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}};
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1)}, hibernate};
 
 handle_info({timeout, _, reduce_labor_force}
 	    ,#state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < OWC andalso WC > OWC ->
@@ -225,7 +225,7 @@ handle_info({timeout, _, reduce_labor_force}
 				      Q1
 			      end
 		      end, Ws, lists:seq(1,WC-OWC)),
-    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}};
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}, hibernate};
 
 handle_info({timeout, _, reduce_labor_force}
 	    ,#state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC}=State) when RP < WC andalso WC > OWC ->
@@ -239,10 +239,10 @@ handle_info({timeout, _, reduce_labor_force}
 				      Q1
 			      end
 		      end, Ws, lists:seq(1,WC-RP)),
-    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}};
+    {noreply, State#state{workers=Ws1, worker_count=queue:len(Ws1), requests_per=0}, hibernate};
 
 handle_info({timeout, _, reduce_labor_force}, State) ->
-    {noreply, State#state{requests_per=0}};
+    {noreply, State#state{requests_per=0}, hibernate};
 
 handle_info(_Info, State) ->
     ?LOG("Unhandled message: ~p", [_Info]),

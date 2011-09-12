@@ -2,7 +2,16 @@
 
 -define(SECONDS_IN_DAY, 86400).
 
--type proplist() :: [{binary() | atom(), term()} | binary() | atom(),...] | [].
+-define(IS_JSON_OBJECT,
+        fun({struct, L}) when is_list(L) ->
+                lists:all(fun({K, V}) when (is_binary(K) orelse is_atom(K)) andalso
+                                           (is_binary(V) orelse is_number(V)) -> true;
+                             (_) -> false
+                          end, L);
+           (_) -> false
+        end).
+
+-type proplist() :: [{string() | binary() | atom(), term()} | atom(),...] | [].
 
 %% for setting types on dicts
 -type dict(K,V) :: [{K, V}].
@@ -18,6 +27,7 @@
 -type json_objects() :: [json_object(),...] | [].
 -type mochijson() :: json_object() | json_objects() | json_term() | [].
 
+-type wh_now() :: calendar:t_now().
 -type wh_year() :: non_neg_integer().
 -type wh_month() :: 1..12.
 -type wh_day() :: 1..31.
