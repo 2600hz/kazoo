@@ -209,11 +209,11 @@ handle_call(queue_name, _From, #state{queue=Q}=State) ->
 handle_call(Request, From, #state{module=Module, module_state=ModState}=State) ->
     case catch Module:handle_call(Request, From, ModState) of
 	{reply, Reply, ModState1} ->
-	    {reply, Reply, State#state{module_state=ModState1}};
+	    {reply, Reply, State#state{module_state=ModState1}, hibernate};
 	{reply, Reply, ModState1, Timeout} ->
 	    {reply, Reply, State#state{module_state=ModState1}, Timeout};
 	{noreply, ModState1} ->
-	    {noreply, State#state{module_state=ModState1}};
+	    {noreply, State#state{module_state=ModState1}, hibernate};
 	{noreply, ModState1, Timeout} ->
 	    {noreply, State#state{module_state=ModState1}, Timeout};
 	{stop, Reason, ModState1} ->
@@ -239,10 +239,10 @@ handle_cast(stop, #state{queue=Q, bindings=Bindings}=State) ->
     {noreply, State#state{queue = <<>>}, 0};
 
 handle_cast({add_responder, Responder, Keys}, #state{responders=Responders}=State) ->
-    {noreply, State#state{responders=listener_utils:add_responder(Responders, Responder, Keys)}};
+    {noreply, State#state{responders=listener_utils:add_responder(Responders, Responder, Keys)}, hibernate};
 
 handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State) ->
-    {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}};
+    {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}, hibernate};
 
 handle_cast({add_binding, Binding, Props}, #state{queue=Q}=State) ->
     queue_bindings:add_binding_to_q(Q, Binding, Props),
@@ -255,7 +255,7 @@ handle_cast({rm_binding, Binding}, #state{queue=Q}=State) ->
 handle_cast(Message, #state{module=Module, module_state=ModState}=State) ->
     case catch Module:handle_cast(Message, ModState) of
 	{noreply, ModState1} ->
-	    {noreply, State#state{module_state=ModState1}};
+	    {noreply, State#state{module_state=ModState1}, hibernate};
 	{noreply, ModState1, Timeout} ->
 	    {noreply, State#state{module_state=ModState1}, Timeout};
 	{stop, Reason, ModState1} ->
@@ -279,19 +279,19 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type=CT}, 
 
 handle_info({'EXIT', Pid, _Reason}=Message, #state{active_responders=ARs}=State) ->
     case lists:member(Pid, ARs) of
-	true -> {noreply, State#state{active_responders=lists:delete(Pid, ARs)}};
+	true -> {noreply, State#state{active_responders=lists:delete(Pid, ARs)}, hibernate};
 	false -> handle_callback_info(Message, State)
     end;
 
 handle_info({amqp_host_down, _}=Down, #state{bindings=Bindings, params=Params}=State) ->
     try
 	{ok, Q} = start_amqp(Bindings, Params),
-	{noreply, State#state{queue=Q}}
+	{noreply, State#state{queue=Q}, hibernate}
     catch
 	_:_Why ->
 	    ?LOG("exception: ~p", [_Why]),
 	    erlang:send_after(1000, self(), Down),
-	    {noreply, State#state{queue = <<>>}}
+	    {noreply, State#state{queue = <<>>}, hibernate}
     end;
 
 handle_info({'basic.consume_ok', _}, S) ->

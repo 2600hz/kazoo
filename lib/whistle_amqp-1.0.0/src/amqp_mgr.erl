@@ -103,7 +103,7 @@ handle_call({set_host, Host}, _, #state{host=OldHost}=State) ->
     ?LOG_SYS("changing amqp host from ~s to ~s, all channels going down", [OldHost, Host]),
     stop_amqp_host(State),
     case start_amqp_host(Host, State) of
-	{ok, State1} -> {reply, ok, State1};
+	{ok, State1} -> {reply, ok, State1, hibernate};
 	{error, _}=E -> {reply, E, State, 0}
     end;
 
@@ -159,7 +159,7 @@ handle_info(timeout, #state{host={Host,Port}=Settings, handler_pid=undefined}=St
     case start_amqp_host(Settings, State) of
 	{ok, State1} ->
             ?LOG_SYS("connected to AMQP host"),
-            {noreply, State1};
+            {noreply, State1, hibernate};
 	{error, R} ->
             ?LOG_SYS("attempting to connect again(~w) in ~b ms", [R, ?START_TIMEOUT]),
             {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
@@ -171,7 +171,7 @@ handle_info(timeout, #state{host=Host, handler_pid=undefined}=State) ->
     case start_amqp_host(Host, State) of
 	{ok, State1} ->
             ?LOG_SYS("connected to AMQP host"),
-            {noreply, State1};
+            {noreply, State1, hibernate};
 	{error, R} ->
             ?LOG_SYS("attempting to connect again(~w) in ~b ms", [R, ?START_TIMEOUT]),
             {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
@@ -182,7 +182,7 @@ handle_info({reconnect, T}, #state{host={Host,Port}=Settings}=State) ->
     ?LOG_SYS("attempting to reconnect to ~s on port ~b", [Host, Port]),
     case start_amqp_host(Settings, State) of
 	{ok, State1} ->
-            {noreply, State1};
+            {noreply, State1, hibernate};
 	{error, _} ->
             case T * 2 of
                 Timeout when Timeout > ?MAX_TIMEOUT ->
@@ -200,7 +200,7 @@ handle_info({reconnect, T}, #state{host=Host}=State) ->
     ?LOG_SYS("attempting to reconnect to ~s", [Host]),
     case start_amqp_host(Host, State) of
 	{ok, State1} ->
-            {noreply, State1};
+            {noreply, State1, hibernate};
 	{error, _} ->
             case T * 2 of
                 Timeout when Timeout > ?MAX_TIMEOUT ->
@@ -218,21 +218,21 @@ handle_info({'DOWN', Ref, process, _, _Reason}, #state{handler_ref=Ref}=State) -
     ?LOG_SYS("amqp host process went down, ~w", [_Reason]),
     erlang:demonitor(Ref, [flush]),
     {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
-    {noreply, State#state{handler_pid=undefined, handler_ref=undefined}};
+    {noreply, State#state{handler_pid=undefined, handler_ref=undefined}, hibernate};
 
 handle_info({nodedown, RabbitNode}, #state{conn_params=#'amqp_params'{node=RabbitNode}}=State) ->
     ?LOG_SYS("received node down notification for amqp"),
     stop_amqp_host(State),
-    {noreply, State#state{handler_pid=undefined, handler_ref=undefined}};
+    {noreply, State#state{handler_pid=undefined, handler_ref=undefined}, hibernate};
 
 handle_info({nodeup, RabbitNode}, #state{host=Host, conn_params=#'amqp_params'{node=RabbitNode}=ConnParams, conn_type=ConnType}=State) ->
     ?LOG_SYS("received node up notification for amqp"),
     case start_amqp_host(Host, State, {ConnType, ConnParams}) of
 	{error, E} ->
             ?LOG_SYS("unable to bring amqp node back up, ~p", [E]),
-	    {noreply, #state{host="localhost"}};
+	    {noreply, #state{host="localhost"}, hibernate};
 	{ok, State1} ->
-	    {noreply, State1}
+	    {noreply, State1, hibernate}
     end;
 
 handle_info(_Info, State) ->

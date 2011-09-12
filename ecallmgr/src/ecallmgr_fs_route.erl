@@ -110,33 +110,15 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--type handle_info_return() :: {noreply, #state{}} | {noreply, #state{}, non_neg_integer()} | {stop, term(), #state{}}.
-
--spec handle_info/2 :: (timeout, #state{}) -> handle_info_return();
-		       ({nodedown, atom()}, #state{}) -> {noreply, #state{}};
-                       ({is_node_up, non_neg_integer()}, #state{}) -> handle_info_return();
-		       ({fetch, atom(), _, _, _, binary(), proplist()}, #state{}) ->
-			       {noreply, #state{}};
-		       (shutdown, #state{}) -> {stop, term(), #state{}};
-		       ({'diagnostics', pid()}, #state{}) -> {noreply, #state{}};
-		       ({'DOWN', reference(), process, pid(), term()}, #state{}) -> {noreply, #state{}};
-		       ({'EXIT', pid(), term()}, #state{}) -> {noreply, #state{}}.
-handle_info(timeout, #state{node=Node}=State) ->
-    Type = {bind, dialplan},
-    erlang:monitor_node(Node, true),
-    {foo, Node} ! Type,
-    receive
-	ok ->
-	    ?LOG_SYS("bound to dialplan request on ~s", [Node]),
-	    {noreply, State};
-	{error, Reason} ->
-	    ?LOG_SYS("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
-	    {stop, Reason, State}
-    after ?FS_TIMEOUT ->
-	    ?LOG_SYS("timed out binding to dialplan requests on ~s", [Node]),
-	    {stop, timeout, State}
-    end;
-
+-spec handle_info/2 :: ('timeout', #state{}) -> handle_info_ret();
+		       ({'nodedown', atom()}, #state{}) -> {'noreply', #state{}};
+                       ({'is_node_up', non_neg_integer()}, #state{}) -> handle_info_ret();
+		       ({'fetch', atom(), _, _, _, binary(), proplist()}, #state{}) ->
+			       {'noreply', #state{}};
+		       ('shutdown', #state{}) -> {'stop', term(), #state{}};
+		       ({'diagnostics', pid()}, #state{}) -> {'noreply', #state{}};
+		       ({'DOWN', reference(), 'process', pid(), term()}, #state{}) -> {'noreply', #state{}};
+		       ({'EXIT', pid(), term()}, #state{}) -> {'noreply', #state{}}.
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
     ?LOG("fetch unknown section: ~p So: ~p, K: ~p V: ~p ID: ~s", [_Section, _Something, _Key, _Value, ID]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
@@ -151,12 +133,20 @@ handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #sta
 	    LookupsReq = Stats#handler_stats.lookups_requested + 1,
 	    ?LOG_START(CallID, "processing fetch request ~s (~b) in PID ~p", [FSID, LookupsReq, LookupPid]),
 	    {noreply, State#state{lookups=[{LookupPid, FSID, erlang:now()} | LUs]
-				  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}};
+				  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}, hibernate};
 	{_Other, _Context} ->
 	    ?LOG("ignoring event ~s in context ~s", [_Other, _Context]),
 	    _ = freeswitch:fetch_reply(Node, FSID, ?EMPTYRESPONSE),
-	    {noreply, State}
+	    {noreply, State, hibernate}
     end;
+
+handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
+    ?LOG("lookup task ~p went down, ~p", [LU, _Reason]),
+    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
+
+handle_info({'EXIT', LU, _Reason}, #state{lookups=LUs}=State) ->
+    ?LOG("lookup task ~p exited, ~p", [LU, _Reason]),
+    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
 
 handle_info({nodedown, Node}, #state{node=Node}=State) ->
     ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
@@ -187,7 +177,6 @@ handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
     ?LOG("commanded to shutdown node ~s", [Node]),
     {stop, normal, State};
 
-%% send diagnostic info
 handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
     ActiveLUs = [ [{fs_route_id, ID}, {started, Started}] || {_, ID, Started} <- LUs],
     Resp = [{active_lookups, ActiveLUs}
@@ -196,13 +185,21 @@ handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
     Pid ! Resp,
     {noreply, State};
 
-handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
-    ?LOG("lookup task ~p went down, ~p", [LU, _Reason]),
-    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}};
-
-handle_info({'EXIT', LU, _Reason}, #state{lookups=LUs}=State) ->
-    ?LOG("lookup task ~p exited, ~p", [LU, _Reason]),
-    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}};
+handle_info(timeout, #state{node=Node}=State) ->
+    Type = {bind, dialplan},
+    erlang:monitor_node(Node, true),
+    {foo, Node} ! Type,
+    receive
+	ok ->
+	    ?LOG_SYS("bound to dialplan request on ~s", [Node]),
+	    {noreply, State};
+	{error, Reason} ->
+	    ?LOG_SYS("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
+	    {stop, Reason, State}
+    after ?FS_TIMEOUT ->
+	    ?LOG_SYS("timed out binding to dialplan requests on ~s", [Node]),
+	    {stop, timeout, State}
+    end;
 
 handle_info(_Other, State) ->
     {noreply, State}.
@@ -236,7 +233,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(handle_route_req/4 :: (Node :: atom(), FSID :: binary(), CallID :: binary(), FSData :: proplist()) -> tuple(ok, pid())).
+-spec handle_route_req/4 :: (Node, FSID, CallID, FSData) -> {'ok', pid()} when
+      Node :: atom(),
+      FSID :: binary(),
+      CallID :: binary(),
+      FSData :: proplist().
 handle_route_req(Node, FSID, CallID, FSData) ->
     proc_lib:start_link(?MODULE, init_route_req, [self(), Node, FSID, CallID, FSData]).
 
@@ -263,7 +264,6 @@ process_route_req(Node, FSID, CallID, FSData) ->
 	       ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
 	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
 	       ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
-               ,{<<"During-Transfer">>, ecallmgr_util:is_during_transfer(FSData, binary)}
 	       ,{<<"Call-ID">>, CallID}
 	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
 	       | wh_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
@@ -275,7 +275,7 @@ process_route_req(Node, FSID, CallID, FSData) ->
 	false -> route(Node, FSID, CallID, DefProp, undefined)
     end.
 
--spec authorize_and_route/5 :: (Node, FSID, CallID, FSData, DefProp) -> ok when
+-spec authorize_and_route/5 :: (Node, FSID, CallID, FSData, DefProp) -> 'ok' when
       Node :: atom(),
       FSID :: binary(),
       CallID :: binary(),

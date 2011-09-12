@@ -163,7 +163,7 @@ handle_cast({publish, From, BasicPub, AmqpMsg}, #state{publish_channel={C,_,T}}=
 handle_cast({register_return_handler, {FromPid, _}=From}, #state{return_handlers=RHDict}=State) ->
     gen_server:reply(From, ok),
     ?LOG_SYS("adding ~p as a return handler", [FromPid]),
-    {noreply, State#state{return_handlers=dict:store(erlang:monitor(process, FromPid), FromPid, RHDict)}};
+    {noreply, State#state{return_handlers=dict:store(erlang:monitor(process, FromPid), FromPid, RHDict)}, hibernate};
 
 handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #state{connection=Conn, consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
@@ -172,7 +172,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 		{C,R,T} -> % channel, channel ref, ticket
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, {C, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)}),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    ?LOG_SYS("Failed to start channel: closing"),
 		    gen_server:reply(From, {error, closing}),
@@ -194,7 +194,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.cancel'{}=BasicCancel}, #state{
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, amqp_channel:cast(C, BasicCancel, FromPid)),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    ?LOG_SYS("Failed to start channel: closing"),
 		    gen_server:reply(From, {error, closing}),
@@ -215,7 +215,7 @@ handle_cast({consume, {FromPid, _}=From, #'queue.bind'{}=QueueBind}, #state{conn
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, amqp_channel:call(C, QueueBind#'queue.bind'{ticket=T})),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    ?LOG_SYS("Failed to start channel: closing"),
 		    gen_server:reply(From, {error, closing}),
@@ -236,7 +236,7 @@ handle_cast({consume, {FromPid, _}=From, #'queue.unbind'{}=QueueUnbind}, #state{
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, amqp_channel:call(C, QueueUnbind#'queue.unbind'{ticket=T})),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
@@ -256,7 +256,7 @@ handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #stat
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, amqp_channel:call(C, QueueDeclare#'queue.declare'{ticket=T})),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
@@ -277,7 +277,7 @@ handle_cast({consume, {FromPid, _}=From, #'queue.delete'{}=QueueDelete}, #state{
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, amqp_channel:cast(C, QueueDelete#'queue.delete'{ticket=T})),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
@@ -297,7 +297,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.qos'{}=BasicQos}, #state{connec
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, amqp_channel:call(C, BasicQos)),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
@@ -317,7 +317,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.ack'{}=BasicAck}, #state{connec
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, amqp_channel:cast(C, BasicAck)),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
@@ -337,7 +337,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.nack'{}=BasicNack}, #state{conn
 		{C,R,T} ->
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, amqp_channel:cast(C, BasicNack)),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}};
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
@@ -383,12 +383,12 @@ handle_cast(_Msg, State) ->
 
 handle_info({'DOWN', Ref, process, _Pid, Reason}, #state{connection={_, Ref}, return_handlers=RHDict}=State) ->
     ?LOG_SYS("recieved notification our connection to the amqp broker died: ~p", [Reason]),
-    {stop, Reason, State#state{return_handlers=dict:erase(Ref, RHDict)}};
+    {stop, Reason, State#state{return_handlers=dict:erase(Ref, RHDict)}, hibernate};
 
 handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{return_handlers=RHDict}=State) ->
     ?LOG_SYS("recieved notification monitored process ~p  died ~p, searching for reference", [_Pid, _Reason]),
     erlang:demonitor(Ref, [flush]),
-    {noreply, remove_ref(Ref, State#state{return_handlers=dict:erase(Ref, RHDict)})};
+    {noreply, remove_ref(Ref, State#state{return_handlers=dict:erase(Ref, RHDict)}), hibernate};
 
 handle_info(timeout, {Host, Conn}) ->
     Ref = erlang:monitor(process, Conn),
@@ -404,6 +404,7 @@ handle_info(timeout, {Host, Conn}) ->
 	       ,manager = whereis(amqp_mgr)
                ,amqp_h = Host
 	      }
+	     , hibernate
 	    };
 	{error, E} ->
             ?LOG_SYS("unable to initialize publish channel for amqp host ~s, ~p", [Host, E]),

@@ -103,7 +103,7 @@ handle_call({register_local_media, MediaName, CallId}, {Pid, _Ref}, Dict) ->
 	    Path = binary:replace(generate_local_path(MediaName), <<".wav">>, <<".mp3">>),
 	    {ok, RecvSrv} = ecallmgr_shout_sup:start_recv(Path),
 	    Url = ecallmgr_shout:get_recv_url(RecvSrv),
-	    {reply, Url, dict:store({Pid, CallId, MediaName, RecvSrv}, Path, Dict)};
+	    {reply, Url, dict:store({Pid, CallId, MediaName, RecvSrv}, Path, Dict), hibernate};
 	[{_, Path}] ->
 	    {reply, Path, Dict}
     end;
@@ -175,7 +175,7 @@ handle_cast(_Msg, Dict) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _Ref, process, Pid, _Reason}, Dict) ->
     ?LOG("Pid ~p down, Reason: ~p, cleaning up...", [Pid, _Reason]),
-    {noreply, dict:filter(fun({Pid1, _CallId, _Name}, _Value) -> Pid =/= Pid1 end, Dict)};
+    {noreply, dict:filter(fun({Pid1, _CallId, _Name}, _Value) -> Pid =/= Pid1 end, Dict), hibernate};
 
 handle_info({'EXIT', Pid, _Reason}, Dict) ->
     {noreply, dict:filter(fun({Pid1, CallId, _Name, _RecvSrv}, Path) ->
@@ -186,7 +186,7 @@ handle_info({'EXIT', Pid, _Reason}, Dict) ->
 					  _ = file:delete(Path),
 					  false
 				  end
-			  end, Dict)};
+			  end, Dict), hibernate};
 
 handle_info(_Info, Dict) ->
     ?LOG("Unhandled message: ~p", [self(), _Info]),

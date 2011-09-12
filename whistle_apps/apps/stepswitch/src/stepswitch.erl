@@ -53,24 +53,8 @@ stop() ->
 -spec start_deps/0 :: () -> ok.
 start_deps() ->
     whistle_apps_deps:ensure(),
-    ensure_started(sasl),
-    ensure_started(crypto),
-    ensure_started(whistle_amqp),
-    ensure_started(couchbeam),
-    ensure_started(whistle_couch).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Verify that an application is running
-%% @end
-%%--------------------------------------------------------------------
--spec ensure_started/1 :: (App) -> ok when
-      App :: atom().
-ensure_started(App) ->
-    case application:start(App) of
-	ok ->
-	    ok;
-	{error, {already_started, App}} ->
-	    ok
-    end.
+    wh_util:ensure_started(sasl),
+    wh_util:ensure_started(crypto),
+    wh_util:ensure_started(whistle_amqp),
+    wh_util:ensure_started(couchbeam),
+    wh_util:ensure_started(whistle_couch).

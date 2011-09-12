@@ -128,14 +128,14 @@ handle_cast({set_route, Node}, #conf{route=undefined, conf_id=ConfId}=Conf) ->
     [_, Focus] = binary:split(Node, <<"@">>),
     Route = <<"sip:conference_", ConfId/binary, "@", Focus/binary>>,
     ?LOG("set conference route to ~s", [Route]),
-    {noreply, Conf#conf{route=Route, focus=Focus}};
+    {noreply, Conf#conf{route=Route, focus=Focus}, hibernate};
 
 handle_cast({set_control_queue, error}, Conf) ->
     {noreply, Conf};
 
 handle_cast({set_control_queue, CtrlQ}, #conf{ctrl_q=CtrlQs}=Conf) ->
     ?LOG("set conference control queue ~s", [CtrlQ]),
-    {noreply, Conf#conf{ctrl_q=[CtrlQ|CtrlQs]}};
+    {noreply, Conf#conf{ctrl_q=[CtrlQ|CtrlQs]}, hibernate};
 
 handle_cast({Action, CallId, ControlQ}, #conf{route=undefined, amqp_q=Q}=Conf) ->
     find_conference_route(CallId, Q),
@@ -151,7 +151,7 @@ handle_cast({add_member, CallId, ControlQ}, #conf{participants=Participants, amq
     request_call_status(CallId, Q),
     {noreply, Conf#conf{participants =
                             dict:store(CallId, #participant{call_id=CallId
-                                                            ,control_q=ControlQ}, Participants)}};
+                                                            ,control_q=ControlQ}, Participants)}, hibernate};
 
 handle_cast({add_moderator, CallId, ControlQ}, #conf{participants=Participants, amqp_q=Q}=Conf) ->
     ?LOG("adding new conference moderator ~s", [CallId]),
@@ -160,7 +160,7 @@ handle_cast({add_moderator, CallId, ControlQ}, #conf{participants=Participants, 
     {noreply, Conf#conf{participants =
                             dict:store(CallId, #participant{call_id=CallId
                                                             ,control_q=ControlQ
-                                                            ,moderator=true}, Participants)}};
+                                                            ,moderator=true}, Participants)}, hibernate};
 
 handle_cast({mute_participant, CallId, Notify}, #conf{participants=Participants, prompts=#prompts{muted=Muted}}=Conf) ->
     case find_participant(CallId, Conf) of
@@ -169,7 +169,7 @@ handle_cast({mute_participant, CallId, Notify}, #conf{participants=Participants,
             conf_command:mute(ParticipantId, Conf),
             Notify andalso conf_command:play(Muted, ParticipantId, Conf),
             {noreply, Conf#conf{participants =
-                                    dict:store(Id, Participant#participant{muted=true}, Participants)}};
+                                    dict:store(Id, Participant#participant{muted=true}, Participants)}, hibernate};
         error ->
             {noreply, Conf}
     end;
@@ -181,7 +181,7 @@ handle_cast({unmute_participant, CallId, Notify}, #conf{participants=Participant
             conf_command:unmute(ParticipantId, Conf),
             Notify andalso conf_command:play(Unmuted, ParticipantId, Conf),
             {noreply, Conf#conf{participants =
-                                    dict:store(Id, Participant#participant{muted=false}, Participants)}};
+                                    dict:store(Id, Participant#participant{muted=false}, Participants)}, hibernate};
         error ->
             {noreply, Conf}
     end;
@@ -205,7 +205,7 @@ handle_cast({deaf_participant, CallId, Notify}, #conf{participants=Participants,
             conf_command:deaf(ParticipantId, Conf),
             Notify andalso conf_command:play(Deaf, ParticipantId, Conf),
             {noreply, Conf#conf{participants =
-                                    dict:store(Id, Participant#participant{deaf=true}, Participants)}};
+                                    dict:store(Id, Participant#participant{deaf=true}, Participants)}, hibernate};
         error ->
             {noreply, Conf}
     end;
@@ -217,7 +217,7 @@ handle_cast({undeaf_participant, CallId, Notify}, #conf{participants=Participant
             conf_command:undeaf(ParticipantId, Conf),
             Notify andalso conf_command:play(Undeaf, ParticipantId, Conf),
             {noreply, Conf#conf{participants =
-                                    dict:store(Id, Participant#participant{deaf=false}, Participants)}};
+                                    dict:store(Id, Participant#participant{deaf=false}, Participants)}, hibernate};
         error ->
             {noreply, Conf}
     end;
@@ -247,9 +247,10 @@ handle_cast({remove_participant, CallId}, #conf{participants=Participants, ctrl_
     case dict:size(NewPtcp) of
         0 ->
             ?LOG("last participant has left, shuting down"),
+	    %% why change the state record?
             {stop, shutdown, Conf#conf{participants=NewPtcp, ctrl_q=NewQs}};
         _ ->
-            {noreply, Conf#conf{participants=NewPtcp, ctrl_q=NewQs}}
+            {noreply, Conf#conf{participants=NewPtcp, ctrl_q=NewQs}, hibernate}
     end;
 
 handle_cast({set_participant_id, CallId, ParticipantId}, #conf{participants=Participants}=Conf) ->
@@ -258,7 +259,7 @@ handle_cast({set_participant_id, CallId, ParticipantId}, #conf{participants=Part
             ?LOG("setting participant id for ~s (~s) to ~s", [Id, CallId, ParticipantId]),
             {noreply, Conf#conf{participants =
                                     dict:store(Id, Participant#participant{call_id=CallId
-                                                                           ,participant_id=ParticipantId}, Participants)}};
+                                                                           ,participant_id=ParticipantId}, Participants)}, hibernate};
         error ->
             {noreply, Conf}
     end;
@@ -270,12 +271,12 @@ handle_cast({add_bridge, CallId, BridgeId, ControlQ}, #conf{participants=Partici
             {noreply, Conf#conf{participants =
                                     dict:store(Id, Participant#participant{call_id=CallId
                                                                            ,bridge_id=BridgeId
-                                                                           ,bridge_ctrl=ControlQ}, Participants)}};
+                                                                           ,bridge_ctrl=ControlQ}, Participants)}, hibernate};
         _ ->
             {noreply, Conf#conf{participants =
                                     dict:store(CallId, #participant{call_id=CallId
                                                                     ,bridge_id=BridgeId
-                                                                    ,bridge_ctrl=ControlQ}, Participants)}}
+                                                                    ,bridge_ctrl=ControlQ}, Participants)}, hibernate}
     end;
 
 handle_cast(_Msg, Conf) ->
@@ -291,7 +292,7 @@ handle_cast(_Msg, Conf) ->
 handle_info({amqp_reconnect, T}, #conf{conf_id=ConfId}=Conf) ->
     try
 	{ok, NewQ} = start_amqp(ConfId),
-	{noreply, Conf#conf{amqp_q=NewQ}}
+	{noreply, Conf#conf{amqp_q=NewQ}, hibernate}
     catch
 	_:_ ->
             case T * 2 of
@@ -309,7 +310,7 @@ handle_info({amqp_reconnect, T}, #conf{conf_id=ConfId}=Conf) ->
 handle_info({amqp_host_down, _}, Conf) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
     {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
-    {noreply, Conf#conf{amqp_q = <<>>}};
+    {noreply, Conf#conf{amqp_q = <<>>}, hibernate};
 
 handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}}, #conf{conf_id=ConfId}=Conf) ->
     spawn(fun() ->
@@ -335,11 +336,11 @@ handle_info({#'basic.return'{}, #amqp_msg{props=#'P_basic'{content_type = <<"app
         case tl(CtrlQs) of
             [] ->
                 ?LOG("no control channels left to replay conference command, dropping"),
-                {noreply, Conf#conf{ctrl_q=[]}};
+                {noreply, Conf#conf{ctrl_q=[]}, hibernate};
             NewQ ->
                 ?LOG("replay a conference command on new control channel"),
                 amqp_util:callctl_publish(NewQ, Payload, <<"application/json">>, [{mandatory, true}]),
-                {noreply, Conf#conf{ctrl_q=NewQ}}
+                {noreply, Conf#conf{ctrl_q=NewQ}, hibernate}
         end
     catch
         _:_ ->

@@ -221,36 +221,62 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
 	    {App, Arg}
     end;
 
-get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
+get_fs_app(_Node, UUID, JObj, <<"bridge">>=App) ->
     case wh_api:bridge_req_v(JObj) of
 	false -> {'error', <<"bridge failed to execute as JObj did not validate">>};
 	true ->
-            'ok' = set_ringback(Node, UUID, wh_json:get_value(<<"Ringback">>, JObj)),
-            %% NOTE: at this time FS is not honoring call_timeout when set in the bridge string, arg...
-            'ok' = set_timeout(Node, UUID, wh_json:get_value(<<"Timeout">>, JObj)),
-            'ok' = set_media_mode(Node, UUID, wh_json:get_value(<<"Media">>, JObj)),
-            'ok' = set(Node, UUID, "failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"),
-	    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
-				<<"simultaneous">> -> ",";
-				<<"single">> -> "|"
-			    end,
-            %% Taken from http://montsamu.blogspot.com/2007/02/erlang-parallel-map-and-parallel.html
-            S = self(),
-            DialStrings = [ receive {Pid, DS} -> DS end
-                            || Pid <- [
-                                       spawn(fun() -> S ! {self(), (catch get_bridge_endpoint(EP))} end)
-                                       || EP <- wh_json:get_value(<<"Endpoints">>, JObj, [])
-                                      ]
-                          ],
-            case DialStrings of
-                [[]] ->
-                    _ = freeswitch:api(Node, log, lists:flatten(io_lib:format("Notice log|~s|nobody is home", [UUID]))),
-                    {'error', <<"bridge failed to execute no endpoints avaliable">>};
-                _ ->
-                    BridgeCmd = lists:flatten(ecallmgr_fs_xml:get_channel_vars(JObj))
-                        ++ string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
-                    {App, BridgeCmd}
-            end
+            Generators = [fun(DP) ->
+                                  case wh_json:get_integer_value(<<"Timeout">>, JObj) of
+                                      undefined ->
+                                          DP;
+                                      TO when TO > 0 ->
+                                          [{"application", "set call_timeout=" ++ wh_util:to_list(TO)}|DP]
+                                  end
+                          end,
+                          fun(DP) ->
+                                  case wh_json:get_value(<<"Ringback">>, JObj) of
+                                      undefined ->
+                                          {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)"),
+                                          [{"application", "set ringback=" ++ wh_util:to_list(RBSetting)}|DP];
+                                      Ringback ->
+                                          [{"application", "set ringback=" ++ wh_util:to_list(media_path(Ringback, extant, UUID))},
+                                           {"application", "set instant_ringback=true"}|DP]
+                                  end
+                          end,
+                          fun(DP) ->
+                                  case wh_json:get_value(<<"Media">>, JObj) of
+                                      <<"process">> ->
+                                          [{"application", "set bypass_media=false"}|DP];
+                                      <<"bypass">> ->
+                                          [{"application", "set bypass_media=true"}|DP];
+                                      _ ->
+                                          DP
+                                  end
+                          end,
+                         fun(DP) ->
+                                 [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
+                                  ,{"application", "set continue_on_fail=true"}|DP]
+                         end,
+                         fun(DP) ->
+                                 DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
+                                                     <<"simultaneous">> -> ",";
+                                                     <<"single">> -> "|"
+                                                 end,
+                                 %% Taken from http://montsamu.blogspot.com/2007/02/erlang-parallel-map-and-parallel.html
+                                 S = self(),
+                                 DialStrings = [ receive {Pid, DS} -> DS end
+                                                 || Pid <- [
+                                                            spawn(fun() -> S ! {self(), (catch get_bridge_endpoint(EP))} end)
+                                                            || EP <- wh_json:get_value(<<"Endpoints">>, JObj, [])
+                                                           ]
+                                               ],
+                                 BridgeCmd = lists:flatten(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)])
+                                     ++ string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
+                                 [{"application", BridgeCmd}|DP]
+                         end],
+            Dialplan = lists:foldr(fun(F, DP) -> F(DP) end, [], Generators),
+
+            {App, Dialplan}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
@@ -286,8 +312,6 @@ get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
             {struct, ChannelVars} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
             lists:foreach(fun({<<"Auto-Answer">>,V}) ->
                                   set(Node, UUID, list_to_binary(["sip_auto_answer=", wh_util:to_list(V)]));
-                             ({<<"Transferred">>,V}) ->
-                                  set(Node, UUID, list_to_binary(["was_transferred=", wh_util:to_list(V)]));
                              ({K,V}) ->
                                   Arg = list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K), "=", wh_util:to_list(V)]),
                                   set(Node, UUID, Arg)
@@ -295,8 +319,6 @@ get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
             {struct, CallVars} = wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
             lists:foreach(fun({<<"Auto-Answer">>,V}) ->
                                   export(Node, UUID, list_to_binary(["sip_auto_answer=", wh_util:to_list(V)]));
-                              ({<<"Transferred">>,V}) ->
-                                  export(Node, UUID, list_to_binary(["was_transferred=", wh_util:to_list(V)]));
                               ({K,V}) ->
                                   Arg = list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K), "=", wh_util:to_list(V)]),
                                   export(Node, UUID, Arg)
@@ -341,16 +363,25 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
       Node :: atom(),
       UUID :: binary(),
       AppName :: binary() | string(),
-      Args :: binary() | string().
+      Args :: binary() | string() | proplist().
 send_cmd(Node, UUID, <<"hangup">>, _) ->
-    ?LOG("terminate call on node: ~p", [Node]),
-    _ = freeswitch:api(Node, log, lists:flatten(io_lib:format("Notice log|~s|whistle terminating call", [UUID]))),
+    ?LOG("terminate call on node ~s", [Node]),
+    ecallmgr_util:fs_log(Node, "whistle terminating call", []),
     freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
+send_cmd(Node, UUID, <<"bridge">>, Args) ->
+    Dialplan = Args ++ [{"application", "event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade,whistle_event_name=CHANNEL_EXECUTE_COMPLETE,whistle_application_name=bridge"}
+                        ,{"application", "park  "}],
+    [begin
+         App = lists:takewhile(fun($ ) -> false; (_) -> true end, V),
+         Data = tl(lists:dropwhile(fun($ ) -> false; (_) -> true end, V)),
+         ecallmgr_util:fs_log(Node, "whistle queing command in 'xferext' extension: ~s ~s", [App, Data]),
+         ?LOG("building xferext on node ~s: ~s(~s)", [Node, App, Data])
+     end || {_, V} <- Dialplan],
+    freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ Dialplan),
+    ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
 send_cmd(Node, UUID, AppName, Args) ->
-    ?LOG("SendMsg: Node: ~p", [Node]),
-    ?LOG("SendMsg: App: ~s", [AppName]),
-    ?LOG("SendMsg: Args: ~s", [Args]),
-    _ = freeswitch:api(Node, log, lists:flatten(io_lib:format("Notice log|~s|whistle executing ~s(~s)", [UUID, AppName, Args]))),
+    ?LOG("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
+    ecallmgr_util:fs_log(Node, "whistle executing ~s ~s", [AppName, Args]),
     freeswitch:sendmsg(Node, UUID, [
 				    {"call-command", "execute"}
 				    ,{"execute-app-name", wh_util:to_list(AppName)}
@@ -369,7 +400,8 @@ send_cmd(Node, UUID, AppName, Args) ->
       JObj :: json_object().
 get_bridge_endpoint(JObj) ->
     case ecallmgr_fs_xml:build_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
-	{'error', 'timeout'} -> "";
+	{'error', 'timeout'} ->
+            "";
 	EndPoint ->
 	    CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
 	    wh_util:to_list(list_to_binary([CVs, EndPoint]))
@@ -545,61 +577,6 @@ set_terminators(Node, UUID, <<>>) ->
 set_terminators(Node, UUID, Ts) ->
     Terms = list_to_binary(["playback_terminators=", Ts]),
     set(Node, UUID, Terms).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec set_ringback/3 :: (Node, UUID, RingBack) -> 'ok' | 'timeout' | {'error', string()} when
-      Node :: atom(),
-      UUID :: binary(),
-      RingBack :: undefined | binary().
-set_ringback(Node, UUID, undefined) ->
-    {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)"),
-    RB = list_to_binary(["ringback=", RBSetting]),
-    'ok' = set(Node, UUID, RB);
-set_ringback(Node, UUID, RingBack) ->
-    RB = list_to_binary(["ringback=", media_path(RingBack, extant, UUID)]),
-    'ok' = set(Node, UUID, RB),
-    set(Node, UUID, "instant_ringback=true").
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec set_timeout/3 :: (Node, UUID, Timeout) -> 'ok' | 'timeout' | {'error', string()} when
-      Node :: atom(),
-      UUID :: binary(),
-      Timeout :: undefined | binary().
-set_timeout(_Node, _UUID, undefined) ->
-    'ok';
-set_timeout(Node, UUID, Timeout) ->
-    case wh_util:to_integer(Timeout) of
-        TO when TO > 0 ->
-            set(Node, UUID, <<"call_timeout=", (wh_util:to_binary(TO))/binary>>);
-        _Else ->
-            'ok'
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec set_media_mode/3 :: (Node, UUID, MediaMode) -> 'ok' | 'timeout' | {'error', string()} when
-      Node :: atom(),
-      UUID :: binary(),
-      MediaMode :: undefined | binary().
-set_media_mode(Node, UUID, <<"process">>) ->
-    set(Node, UUID, <<"bypass_media=false">>);
-set_media_mode(Node, UUID, <<"bypass">>) ->
-    set(Node, UUID, <<"bypass_media=true">>);
-%%set_media_mode(_Node, _UUID, <<"auto">>) ->
-%%    set(Node, UUID, <<"bypass_media=TODO">>);
-set_media_mode(_Node, _UUID, _) ->
-    'ok'.
 
 %%--------------------------------------------------------------------
 %% @private

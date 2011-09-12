@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 15 Mar 2011 by James Aimonetti <>
+%%% Created : 15 Mar 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(media_shout_sup).
 

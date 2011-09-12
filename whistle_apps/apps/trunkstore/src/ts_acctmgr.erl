@@ -297,9 +297,11 @@ handle_info(?EOD, S) ->
 
     spawn(fun() -> load_views(DB) end),
 
-    {noreply, S#state{
-		current_write_db = DB % all new writes should go in new DB, but old DB is needed still
-	       }};
+    {noreply
+     ,S#state{
+	current_write_db = DB % all new writes should go in new DB, but old DB is needed still
+       }
+     ,hibernate};
 handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB}=S) ->
     Self = self(),
     spawn(fun() -> lists:foreach(fun(Acct) ->
@@ -312,7 +314,7 @@ handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB
 		   %% once active accounts from yesterday are done, make sure all others are in too
 		   load_accounts_from_ts(WDB, Self)
 	   end),
-    {noreply, S#state{current_read_db=WDB}};
+    {noreply, S#state{current_read_db=WDB}, hibernate};
 handle_info({document_changes, DocID, _Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     ?LOG_SYS("Changes for account ~s to be processed", [DocID]),
     spawn(fun() -> update_from_couch(DocID, WDB, RDB) end),

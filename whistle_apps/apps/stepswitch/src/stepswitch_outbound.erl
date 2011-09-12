@@ -109,7 +109,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({reload_resrcs}, _, State) ->
     Resrcs = get_resrcs(),
-    {reply, ok, State#state{resrcs=Resrcs}};
+    {reply, ok, State#state{resrcs=Resrcs}, hibernate};
 
 handle_call({process_number, Number}, From, #state{resrcs=Resrcs}=State) ->
     spawn(fun() ->
@@ -157,36 +157,36 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     try
 	{ok, Q} = start_amqp(),
-	{noreply, State#state{amqp_q=Q, resrcs=get_resrcs()}}
+	{noreply, State#state{amqp_q=Q, resrcs=get_resrcs()}, hibernate}
     catch
 	_:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
-            timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+            {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
 	    {noreply, State}
     end;
 
 handle_info({amqp_reconnect, T}, State) ->
     try
 	{ok, NewQ} = start_amqp(),
-	{noreply, State#state{amqp_q=NewQ, resrcs=get_resrcs()}}
+	{noreply, State#state{amqp_q=NewQ, resrcs=get_resrcs()}, hibernate}
     catch
 	_:_ ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
-                    timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
-                    timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
     end;
 
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
-    {noreply, State#state{amqp_q = <<>>}};
+    {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    {noreply, State#state{amqp_q = <<>>}, hibernate};
 
 handle_info({document_changes, DocId, Changes}, #state{last_doc_change={DocId, Changes}}=State) ->
     %% Ignore the duplicate document change notifications used for keep alives
@@ -195,8 +195,8 @@ handle_info({document_changes, DocId, Changes}, #state{last_doc_change={DocId, C
 handle_info({document_changes, DocId, [Changes]=C}, #state{resrcs=Resrcs}=State) ->
     Rev = wh_json:get_value(<<"rev">>, Changes),
     case lists:keysearch(DocId, #resrc.id, Resrcs) of
-        {value, #resrc{rev=Rev}} -> {noreply, State#state{last_doc_change={DocId, C}}};
-        _ -> {noreply, State#state{resrcs=update_resrc(DocId, Resrcs), last_doc_change={DocId, C}}}
+        {value, #resrc{rev=Rev}} -> {noreply, State#state{last_doc_change={DocId, C}}, hibernate};
+        _ -> {noreply, State#state{resrcs=update_resrc(DocId, Resrcs), last_doc_change={DocId, C}}, hibernate}
     end;
 
 handle_info({document_deleted, DocId}, #state{resrcs=Resrcs}=State) ->
@@ -205,7 +205,7 @@ handle_info({document_deleted, DocId}, #state{resrcs=Resrcs}=State) ->
         {value, _} ->
             ?LOG_SYS("resource ~p deleted", [DocId]),
             couch_mgr:rm_change_handler(?RESOURCES_DB, DocId),
-            {noreply, State#state{resrcs=lists:keydelete(DocId, #resrc.id, Resrcs)}}
+            {noreply, State#state{resrcs=lists:keydelete(DocId, #resrc.id, Resrcs)}, hibernate}
     end;
 
 handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State)
@@ -305,7 +305,7 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                         EPs = case wh_json:get_value(<<"Flags">>, JObj) of
                                   undefined -> evaluate_number(Number, R1);
                                   Flags ->
-                                      [?LOG("resource must have ~s flag", [F]) || F <- Flags],
+                                      _ = [?LOG("resource must have ~s flag", [F]) || F <- Flags],
                                       R2 = evaluate_flags(Flags, R1),
                                       evaluate_number(Number, R2)
                               end,
@@ -360,8 +360,8 @@ process_req({_, _}, _, _) ->
 get_resrcs() ->
     case couch_mgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, [{<<"include_docs">>, true}]) of
         {ok, Resrcs} ->
-            [couch_mgr:add_change_handler(?RESOURCES_DB, wh_json:get_value(<<"id">>, R))
-             || R <- Resrcs],
+            _ = [couch_mgr:add_change_handler(?RESOURCES_DB, wh_json:get_value(<<"id">>, R))
+		 || R <- Resrcs],
             [create_resrc(wh_json:get_value(<<"doc">>, R))
              || R <- Resrcs, wh_util:is_true(wh_json:get_value([<<"doc">>, <<"enabled">>], R, true))];
         {error, _}=E ->

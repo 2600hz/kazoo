@@ -55,8 +55,12 @@ get_new_connection(Host, Port, User, Pass) ->
 get_new_conn(Host, Port, Opts) ->
     Conn = couchbeam:server_connection(Host, Port, "", Opts),
     ?LOG_SYS("New connection to Host ~s, testing", [Host]),
-    {'ok', _Version} = couchbeam:server_info(Conn),
-    ?LOG_SYS("Connected successfully to ~s: ~p", [Host, _Version]),
+    {'ok', ConnData} = couchbeam:server_info(Conn),
+    CouchVersion = wh_json:get_value(<<"version">>, ConnData),
+    BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
+    ?LOG_SYS("Connected successfully to ~s", [Host]),
+    ?LOG_SYS("CouchDB: ~s", [CouchVersion]),
+    is_binary(BigCouchVersion) andalso ?LOG_SYS("BigCouch: ~s", [BigCouchVersion]),
     Conn.
 
 -spec server_url/1 :: (Conn) -> binary() when
@@ -151,14 +155,14 @@ db_exists(#server{}=Conn, DbName) ->
 -spec do_db_compact/1 :: (Db) -> boolean() when
       Db :: #db{}.
 do_db_compact(#db{}=Db) ->
-    {'ok', B} = retry504s(fun() -> couchbeam:compact(Db) end),
-    wh_util:is_true(B).
+    Resp = retry504s(fun() -> couchbeam:compact(Db) end),
+    Resp =:= 'ok'.
 
 -spec do_db_view_cleanup/1 :: (Db) -> boolean() when
       Db :: #db{}.
 do_db_view_cleanup(#db{}=Db) ->
-    {'ok', B} = retry504s(fun() -> couchbeam:view_cleanup(Db) end),
-    wh_util:is_true(B).
+    Resp = retry504s(fun() -> couchbeam:view_cleanup(Db) end),
+    Resp =:= 'ok'.
 
 %%% View-related functions -----------------------------------------------------
 -spec design_compact/3 :: (Conn, DbName, Design) -> boolean() when
@@ -464,10 +468,12 @@ get_view(#db{}=Db, DesignDoc, ViewOptions) ->
 %% until 3 failed retries occur.
 %% @end
 %%------------------------------------------------------------------------------
--spec retry504s/1 :: (Fun) -> {'ok', json_object() | json_objects() | binary() | [binary(),...] | boolean()} | {'error', atom()} when
-      Fun :: fun(() -> {'ok', json_object() | json_objects() | binary()} | {'error', term()}).
--spec retry504s/2 :: (Fun, Cnt) -> {'ok', json_object() | json_objects() | binary() | [binary(),...] | boolean()} | {'error', atom()} when
-      Fun :: fun(() -> {'ok', json_object() | json_objects() | binary()} | {'error', term()}),
+-type retry504_ret() :: {'ok', json_object() | json_objects() | binary() | [binary(),...] | boolean()} | {'error', atom()} | 'ok'.
+
+-spec retry504s/1 :: (Fun) -> retry504_ret() when
+      Fun :: fun(() -> retry504_ret()).
+-spec retry504s/2 :: (Fun, Cnt) -> retry504_ret() when
+      Fun :: fun(() -> retry504_ret()),
       Cnt :: 0..3.
 retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
@@ -480,5 +486,6 @@ retry504s(Fun, Cnt) ->
 	    timer:sleep(100),
 	    retry504s(Fun, Cnt+1);
 	{'error', _}=E -> E;
-	{'ok', _}=OK -> OK
+	{'ok', _}=OK -> OK;
+	'ok' -> 'ok'
     end.

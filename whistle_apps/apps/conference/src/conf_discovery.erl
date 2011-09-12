@@ -102,7 +102,7 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     try
 	{ok, Q} = start_amqp(),
-	{noreply, State#state{amqp_q=Q}}
+	{noreply, State#state{amqp_q=Q}, hibernate}
     catch
 	_:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
@@ -113,7 +113,7 @@ handle_info(timeout, #state{amqp_q = <<>>}=State) ->
 handle_info({amqp_reconnect, T}, State) ->
     try
 	{ok, NewQ} = start_amqp(),
-	{noreply, State#state{amqp_q=NewQ}}
+	{noreply, State#state{amqp_q=NewQ}, hibernate}
     catch
 	_:_ ->
             case T * 2 of
@@ -131,7 +131,7 @@ handle_info({amqp_reconnect, T}, State) ->
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
     {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
-    {noreply, State#state{amqp_q = <<>>}};
+    {noreply, State#state{amqp_q = <<>>}, hibernate};
 
 handle_info({#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}}, State) when
       Props#'P_basic'.content_type == <<"application/json">> ->

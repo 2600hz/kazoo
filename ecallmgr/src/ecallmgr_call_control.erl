@@ -146,35 +146,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, #state{node=N, amqp_q=Q}=State) ->
-    erlang:monitor_node(N, true),
-    amqp_util:basic_consume(Q),
-    {noreply, State};
-
-handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
-    ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
-    erlang:monitor_node(Node, false),
-    {ok, _} = timer:send_after(0, self(), {is_node_up, 100}),
-    {noreply, State#state{is_node_up=false}};
-
-handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
-    case ecallmgr_fs_handler:is_node_up(Node) of
-	true ->
-	    erlang:monitor_node(Node, true),
-            ?LOG("reconnected to node ~s", [Node]),
-	    {noreply, State#state{is_node_up=true}};
-	false ->
-	    {ok, _} = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
-			  true ->
-			      ?LOG("node ~p down, waiting ~p to check again", [Node, ?MAX_TIMEOUT_FOR_NODE_RESTART]),
-			      timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
-			  false ->
-			      ?LOG("node ~p down, waiting ~p to check again", [Node, Timeout]),
-			      timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
-		      end,
-	    {noreply, State}
-    end;
-
 handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}
 	    ,#state{keep_alive_ref=Ref, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
     JObj = mochijson2:decode(binary_to_list(Payload)),
@@ -188,9 +159,9 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>
 	    execute_control_request(Cmd, State),
 	    AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
             ?LOG("advance to ~s", [AppName]),
-	    {noreply, State#state{command_q = NewCmdQ1, current_app = AppName, keep_alive_ref=get_keep_alive_ref(Ref)}};
+	    {noreply, State#state{command_q = NewCmdQ1, current_app = AppName, keep_alive_ref=get_keep_alive_ref(Ref)}, hibernate};
 	false ->
-	    {noreply, State#state{command_q = NewCmdQ, keep_alive_ref=get_keep_alive_ref(Ref)}}
+	    {noreply, State#state{command_q = NewCmdQ, keep_alive_ref=get_keep_alive_ref(Ref)}, hibernate}
     end;
 
 handle_info({execute_complete, UUID, EvtName}, #state{uuid=UUID, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
@@ -202,15 +173,39 @@ handle_info({execute_complete, UUID, EvtName}, #state{uuid=UUID, command_q=CmdQ,
 	    case INU andalso queue:out(CmdQ) of
 		false ->
 		    %% if the node is down, don't inject the next FS event
-		    {noreply, State#state{current_app = <<>>}};
+		    {noreply, State#state{current_app = <<>>}, hibernate};
 		{empty, _} ->
-		    {noreply, State#state{current_app = <<>>}};
+		    {noreply, State#state{current_app = <<>>}, hibernate};
 		{{value, Cmd}, CmdQ1} ->
 		    execute_control_request(Cmd, State),
                     AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
                     ?LOG("advance to ~s", [AppName]),
-		    {noreply, State#state{command_q = CmdQ1, current_app = AppName}}
+		    {noreply, State#state{command_q = CmdQ1, current_app = AppName}, hibernate}
 	    end
+    end;
+
+handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
+    ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
+    erlang:monitor_node(Node, false),
+    {ok, _} = timer:send_after(0, self(), {is_node_up, 100}),
+    {noreply, State#state{is_node_up=false}, hibernate};
+
+handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
+    case ecallmgr_util:is_node_up(Node) of
+	true ->
+	    erlang:monitor_node(Node, true),
+            ?LOG("reconnected to node ~s", [Node]),
+	    {noreply, State#state{is_node_up=true}, hibernate};
+	false ->
+	    {ok, _} = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
+			  true ->
+			      ?LOG("node ~p down, waiting ~p to check again", [Node, ?MAX_TIMEOUT_FOR_NODE_RESTART]),
+			      timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
+			  false ->
+			      ?LOG("node ~p down, waiting ~p to check again", [Node, Timeout]),
+			      timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
+		      end,
+	    {noreply, State}
     end;
 
 handle_info({force_queue_advance, UUID}, #state{uuid=UUID, command_q=CmdQ, is_node_up=INU, current_app=CurrApp}=State) ->
@@ -218,21 +213,21 @@ handle_info({force_queue_advance, UUID}, #state{uuid=UUID, command_q=CmdQ, is_no
     case INU andalso queue:out(CmdQ) of
         false ->
             %% if the node is down, don't inject the next FS event
-            {noreply, State#state{current_app = <<>>}};
+            {noreply, State#state{current_app = <<>>}, hibernate};
         {empty, _} ->
-            {noreply, State#state{current_app = <<>>}};
+            {noreply, State#state{current_app = <<>>}, hibernate};
         {{value, Cmd}, CmdQ1} ->
             execute_control_request(Cmd, State),
             AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
             ?LOG("advance to ~s", [AppName]),
-            {noreply, State#state{command_q = CmdQ1, current_app = AppName}}
+            {noreply, State#state{command_q = CmdQ1, current_app = AppName}, hibernate}
     end;
 
 handle_info({hangup, _EvtPid, UUID}, #state{uuid=UUID, command_q=CmdQ}=State) ->
     ?LOG("recieved hangup notification"),
     lists:foreach(fun(Cmd) -> execute_control_request(Cmd, State) end, post_hangup_commands(CmdQ)),
     {ok, TRef} = timer:send_after(?KEEP_ALIVE, keep_alive_expired),
-    {noreply, State#state{keep_alive_ref=TRef}};
+    {noreply, State#state{keep_alive_ref=TRef}, hibernate};
 
 handle_info(keep_alive_expired, #state{start_time=StartTime}=State) ->
     ?LOG("KeepAlive expired, control queue was up for ~p microseconds", [timer:now_diff(erlang:now(), StartTime)]),
@@ -249,6 +244,11 @@ handle_info(is_amqp_up, #state{amqp_q=Q}=State) ->
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
     {ok, _} = timer:send_after(1000, self(), is_amqp_up),
+    {noreply, State};
+
+handle_info(timeout, #state{node=N, amqp_q=Q}=State) ->
+    erlang:monitor_node(N, true),
+    amqp_util:basic_consume(Q),
     {noreply, State};
 
 handle_info(#'basic.consume_ok'{}, State) ->
@@ -358,7 +358,7 @@ insert_command(State, <<"tail">>, JObj) ->
 
 -spec insert_command_into_queue/3 :: (Q, InsertFun, JObj) -> queue() when
       Q :: queue(),
-      InsertFun :: fun(),
+      InsertFun :: fun((json_object(), queue()) -> queue()),
       JObj :: json_object().
 insert_command_into_queue(Q, InsertFun, JObj) ->
     case wh_json:get_value(<<"Application-Name">>, JObj) of
@@ -400,13 +400,7 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
     catch
 	_:{error,nosession} ->
 	    ?LOG("Session in FS down"),
-	    Resp = [
-		    {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
-		    ,{<<"Error-Message">>, <<"Channel was hungup before completing command ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>}
-		    | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
-		   ],
-            {ok, Payload} = wh_api:error_resp(Resp),
-            amqp_util:callevt_publish(UUID, Payload, event),
+	    send_error_resp(UUID, Cmd, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>),
             self() ! {hangup, undefined, UUID},
 	    ok;
 	error:{badmatch, {error, ErrMsg}} ->
@@ -427,9 +421,16 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
       UUID :: binary(),
       Cmd :: json_object().
 send_error_resp(UUID, Cmd) ->
+    send_error_resp(UUID, Cmd, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>).
+
+-spec send_error_resp/3 :: (UUID, Cmd, Msg) -> 'ok' when
+      UUID :: binary(),
+      Cmd :: json_object(),
+      Msg :: binary().
+send_error_resp(UUID, Cmd, Msg) ->
     Resp = [
 	    {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
-	    ,{<<"Error-Message">>, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>}
+	    ,{<<"Error-Message">>, Msg}
 	    | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
 	   ],
     {ok, Payload} = wh_api:error_resp(Resp),
