@@ -10,8 +10,8 @@
 
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
--export([is_during_transfer/1, is_during_transfer/2]).
 -export([is_node_up/1, is_node_up/2]).
+-export([fs_log/3]).
 
 -include("ecallmgr.hrl").
 
@@ -108,31 +108,6 @@ get_setting(Setting, Default) ->
             end
     end.
 
--spec is_during_transfer/1 :: (Props) -> boolean() when
-      Props :: proplist().
--spec is_during_transfer/2 :: (Props, Type) -> boolean() when
-      Props :: proplist(),
-      Type :: boolean;
-                              (Props, Type) -> list() when
-      Props :: proplist(),
-      Type :: list;
-                              (Props, Type) -> binary() when
-      Props :: proplist(),
-      Type :: binary.
-
-is_during_transfer(Props) ->
-    props:get_value(<<"variable_endpoint_disposition">>, Props) =:= <<"ATTENDED_TRANSFER">>
-        orelse props:get_value(<<"variable_endpoint_disposition">>, Props) =:= <<"BLIND_TRANSFER">>
-        orelse wh_util:is_true(props:get_value(<<"variable_was_transferred">>, Props)).
-
-is_during_transfer(Props, boolean) ->
-    is_during_transfer(Props);
-is_during_transfer(Props, list) ->
-    wh_util:to_list(is_during_transfer(Props));
-is_during_transfer(Props, binary) ->
-    wh_util:to_binary(is_during_transfer(Props)).
-
-
 -spec is_node_up/1 :: (Node) -> boolean() when
       Node :: atom().
 is_node_up(Node) ->
@@ -147,3 +122,16 @@ is_node_up(Node, UUID) ->
 	timeout -> timer:sleep(100), is_node_up(Node, UUID);
 	_ -> false
     end.
+
+-spec fs_log/3 :: (Node, Format, Args) -> ok when
+      Node :: binary(),
+      Format :: string(),
+      Args :: list().
+fs_log(Node, Format, Args) ->
+    Log = case lists:flatten(io_lib:format("Notice log|~s|" ++ Format, [get(callid)] ++ Args)) of
+              L when length(L) > 1016 ->
+                  [lists:sublist(L, 1, 1016), "..."];
+              Else  ->
+                  Else
+          end,
+    _ = freeswitch:api(Node, log, lists:flatten(Log)).

@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/7, wait_for_callee_release/1, find_failure_branch/2]).
+-import(cf_call_command, [b_bridge/7, find_failure_branch/2]).
 
 -define(VIEW_BY_RULES, <<"resources/listing_active_by_rules">>).
 
@@ -54,20 +54,8 @@ bridge_to_resources([{DestNum, Gateways, CIDType}|T], Timeout, IgnoreEarlyMedia,
     case b_bridge([create_endpoint(DestNum, Gtw) || Gtw <- Gateways]
                   ,Timeout, CIDType, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
-            ?LOG("resource acquired"),
-            case wait_for_callee_release(Call) of
-                {fail, Reason} ->
-                    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-                    ?LOG("resource request failed ~s:~s", [Cause, Code]),
-                    find_failure_branch({Cause, Code}, Call)
-                        orelse CFPid ! { continue };
-                {transfer, _} ->
-                    ?LOG("resource was transferred"),
-                    CFPid ! { transferred };
-                _ ->
-                    ?LOG("resource was unbridged"),
-                    CFPid ! { stop }
-            end;
+            ?LOG("completed successful bridge to resource"),
+            CFPid ! { stop };
         {fail, Reason} when IDT, T =:= [] ->
             case wh_json:get_binary_value(<<"Transfer-Fallback">>, CCV) of
                 undefined ->
@@ -92,7 +80,7 @@ bridge_to_resources([{DestNum, Gateways, CIDType}|T], Timeout, IgnoreEarlyMedia,
             ?LOG("resource failed ~s:~s", [Code, Cause]),
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call);
         {error, R} ->
-            ?LOG("resource error ~w", [R]),
+            ?LOG("resource bridge error ~p", [R]),
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call)
     end;
 bridge_to_resources([], _, _, _, #cf_call{cf_pid=CFPid}) ->

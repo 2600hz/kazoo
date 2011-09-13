@@ -25,7 +25,6 @@
 
 -define(SERVER, ?MODULE).
 -define(HANGUP_EVENT_NAME, <<"CHANNEL_HANGUP_COMPLETE">>).
-
 -record(state, {
 	  node = undefined :: atom()
           ,uuid = <<>> :: binary()
@@ -339,6 +338,9 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
     FSEvtName = props:get_value(<<"Event-Name">>, Prop),
     FSAppName = props:get_value(<<"Application">>, Prop),
 
+    %% whistle generates custom events that should masquerade as standard events
+    %% for simplicity in the high level code (like bridge which "completes" during
+    %% transfers even though the bridge still continues).
     EvtName = case FSEvtName of
                   <<"CUSTOM">> ->
                       props:get_value(<<"whistle_event_name">>, Prop);
@@ -352,7 +354,9 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
     Prop1 = [{<<"Application-Response">>, application_response(FSAppName, Prop, Node, UUID)}
              | props:delete(<<"Application-Response">>, Prop)],
 
-    case lists:member(EvtName, ?FS_EVENTS) of
+    %% suppress certain events (like bridge completion) as whistle will generate proper masquerades
+    %% at more appropriate times using custom events
+    case should_publish(FSEvtName, FSAppName, EvtName) of
         true ->
             AppName = case FSEvtName of
                           <<"CUSTOM">> ->
@@ -367,7 +371,13 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                               end
                       end,
 
-            ?LOG("published ~s call event for app: ~s", [EvtName, AppName]),
+            %% some event are 'remapped' to be of other types, when that happens log it differently
+            case EvtName =/= FSEvtName orelse AppName =/= FSAppName of
+                true ->
+                    ?LOG("published event masquerade ~s ~s as ~s ~s", [FSEvtName, FSAppName, EvtName, AppName]);
+                false ->
+                    ?LOG("published event ~s ~s", [EvtName, AppName])
+            end,
 
 	    EvtProp0 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop1)}
                         ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop1)}
@@ -375,7 +385,6 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                         ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop1)}
                         ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop1)}
                         ,{<<"Channel-State">>, get_channel_state(Prop1)}
-                        ,{<<"During-Transfer">>, ecallmgr_util:is_during_transfer(Prop1, binary)}
 		       | event_specific(EvtName, AppName, Prop1) ],
 	    EvtProp1 = EvtProp0 ++ wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
@@ -385,7 +394,8 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
 	    {'ok', JSON} = wh_api:call_event(EvtProp2),
 	    amqp_util:callevt_publish(UUID, JSON, event);
 	_ ->
-	    ?LOG("skipped event ~s", [EvtName])
+            ok
+%%	    ?LOG("skipped event ~s ~s", [FSEvtName, FSAppName])
     end.
 
 -spec get_channel_state/1 :: (Prop) -> binary() when
@@ -438,8 +448,8 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Prop) ->
 	     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop, <<"">>)}
 	    ];
         <<"bridge">> ->
-	    [{<<"Application-Name">>, <<"bridge">>}
-	     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
+            [{<<"Application-Name">>, <<"bridge">>}
+	     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
 	     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
 	     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
 	     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
@@ -586,3 +596,14 @@ get_fs_var(Node, UUID, Var, Default) ->
         {'ok', Value} -> Value;
         _ -> Default
     end.
+
+-spec should_publish/3 :: (FSEvtName, FSAppName, EvtName) -> boolean() when
+      FSEvtName :: binary(),
+      FSAppName :: binary(),
+      EvtName :: binary().
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, _) ->
+    false;
+should_publish(_, <<"event">>, _) ->
+    false;
+should_publish(_, _, EvtName) ->
+    lists:member(EvtName, ?FS_EVENTS).

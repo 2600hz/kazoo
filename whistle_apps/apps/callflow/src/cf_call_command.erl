@@ -40,8 +40,7 @@
 
 -export([wait_for_message/1, wait_for_message/2, wait_for_message/3, wait_for_message/4]).
 -export([wait_for_application/1, wait_for_application/2, wait_for_application/3, wait_for_application/4]).
--export([wait_for_bridge/1, wait_for_unbridge/0]).
--export([wait_for_callee_release/1]).
+-export([wait_for_bridge/2, wait_for_unbridge/0]).
 -export([wait_for_dtmf/1]).
 -export([wait_for_noop/1]).
 -export([wait_for_hangup/0]).
@@ -293,7 +292,7 @@ b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Call) ->
     b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, undefined, Call).
 b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
     bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback, Call),
-    case wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000) of
+    case wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000, Call) of
         {ok, Bridge}=Ok ->
             spawn(fun() -> update_fallback(Bridge, Call) end),
             Ok;
@@ -975,7 +974,6 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, T);
                         _NID when is_binary(NoopId), NoopId =/= <<>> ->
                             %% if we were given the NoopId of the noop and this is not it, then keep waiting
-                            ?LOG("ignoring playback noop ~s, waiting for ~s", [_NID, NoopId]),
                             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
                         _ ->
                             %% if we are not given the NoopId of the noop then just use the first to start the timer
@@ -985,7 +983,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                     end;
                 { <<"call_event">>, <<"DTMF">>, _ } ->
                     %% remove any queued prompts, and start collecting digits
-                    flush(Call),
+                    Digits =:= <<>> andalso flush(Call),
                     %% DTMF received, collect and start interdigit timeout
                     Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj, <<>>),
                     case lists:member(Digit, Terminators) of
@@ -1185,90 +1183,47 @@ wait_for_dtmf(Timeout) ->
 %% Waits for and determines the status of the bridge command
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_bridge/1 :: (Timeout) -> cf_api_bridge_return() when
-      Timeout :: infinity | integer().
-wait_for_bridge(Timeout) ->
+-spec wait_for_bridge/2 :: (Timeout, Call) -> cf_api_bridge_return() when
+      Timeout :: infinity | integer(),
+      Call :: #cf_call{}.
+wait_for_bridge(Timeout, Call) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } ->
-                    ?LOG("channel was unbridged while waiting for bridge"),
-                    {error, channel_unbridge};
+                { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
+                    ?LOG("channel was destroyed while waiting for bridge"),
+                    {ok, JObj};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
                     ?LOG("channel was hungup while waiting for bridge"),
-                    {error, channel_hungup};
+                    {ok, JObj};
                 { <<"error">>, _, _ } ->
                     ?LOG("channel execution error while waiting for bridge"),
                     {error, execution_failure};
                 { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } ->
-                    {ok, JObj};
+                    spawn(fun() -> update_fallback(JObj, Call) end),
+                    wait_for_bridge(infinity, Call);
                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">> } ->
                     case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
                         <<"SUCCESS">> -> {ok, JObj};
                         _ -> {fail, JObj}
                     end;
                 _ when Timeout =:= infinity ->
-                    wait_for_bridge(Timeout);
+                    wait_for_bridge(Timeout, Call);
                 _ ->
 		    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_bridge(Timeout - (DiffMicro div 1000))
+                    wait_for_bridge(Timeout - (DiffMicro div 1000), Call)
             end;
         _ when Timeout =:= infinity ->
-            wait_for_bridge(Timeout);
+            wait_for_bridge(Timeout, Call);
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
             DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_bridge(Timeout - (DiffMicro div 1000))
+            wait_for_bridge(Timeout - (DiffMicro div 1000), Call)
     after
         Timeout ->
             {error, timeout}
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Waits for and determines the status of the bridge command
-%% @end
-%%--------------------------------------------------------------------
--spec wait_for_callee_release/1 :: (Call) -> cf_api_bridge_return() when
-      Call :: #cf_call{}.
-wait_for_callee_release(Call) ->
-    receive
-        {amqp_msg, {struct, _}=JObj} ->
-            Transfer = wh_json:is_true(<<"During-Transfer">>, JObj),
-            case get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } when not Transfer ->
-                    ?LOG("channel was unbridged while waiting for bridge"),
-                    {error, channel_unbridge};
-                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } when not Transfer ->
-                    ?LOG("channel was hungup while waiting for bridge"),
-                    {error, channel_hungup};
-                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">> } when not Transfer ->
-                    case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
-                        <<"SUCCESS">> ->
-                            {ok, JObj};
-                        _ ->
-                            {fail, JObj}
-                    end;
-                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"park">> } when Transfer ->
-                    set({struct, [{<<"Transferred">>, <<"false">>}]}, undefined, Call),
-                    spawn(fun() -> update_fallback(JObj, Call) end),
-                    ?LOG("call transfer complete"),
-                    wait_for_callee_release(Call);
-                { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } when Transfer ->
-                    set({struct, [{<<"Transferred">>, <<"false">>}]}, undefined, Call),
-                    ?LOG("call control was moved to transfer reciepient"),
-                    {transfer, JObj};
-                {_, Event, App} when Transfer ->
-                    ?LOG("ignoring ~s (~s) occuring during a transfer", [Event, App]),
-                    wait_for_callee_release(Call);
-                _ ->
-                    wait_for_callee_release(Call)
-            end;
-        _ ->
-            wait_for_callee_release(Call)
     end.
 
 %%--------------------------------------------------------------------
