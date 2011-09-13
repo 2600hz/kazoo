@@ -22,22 +22,19 @@
 
 -export([from_list/1, merge_jobjs/2]).
 
--export([normalize_jobj/1, is_json_object/1, is_json_term/1]).
+-export([normalize_jobj/1, is_json_object/1]).
 
 %% not for public use
 -export([prune/2, no_prune/2]).
 
--include_lib("proper/include/proper.hrl").
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("proper/include/proper.hrl").
 
 -spec is_json_object/1 :: (MaybeJObj) -> boolean() when
       MaybeJObj :: term().
 is_json_object(MaybeJObj) ->
     try
-	lists:all(fun(K) ->
-			  %ok = io:format("K: ~p~nV: ~p~n", [K, ?MODULE:get_value(K, MaybeJObj)]),
-			  ?MODULE:is_json_term(?MODULE:get_value(K, MaybeJObj))
-		  end,
+ 	lists:all(fun(K) -> is_json_term(?MODULE:get_value(K, MaybeJObj)) end,
 		  ?MODULE:get_keys(MaybeJObj))
     catch
 	throw:_ -> false;
@@ -46,17 +43,25 @@ is_json_object(MaybeJObj) ->
 
 -spec is_json_term/1 :: (V) -> boolean() when
       V :: json_term().
-is_json_term(V) when is_atom(V) orelse is_binary(V) orelse is_integer(V) orelse is_float(V) -> true;
+is_json_term(V) when is_atom(V) -> true;
+is_json_term(V) when is_binary(V) -> true;
+is_json_term(V) when is_integer(V) -> true;
+is_json_term(V) when is_float(V) -> true;
 is_json_term(Vs) when is_list(Vs) ->
     lists:all(fun ?MODULE:is_json_term/1, Vs);
 is_json_term({json, IOList}) when is_list(IOList) -> true;
 is_json_term(MaybeJObj) ->
-    ?MODULE:is_json_object(MaybeJObj).
+    is_json_object(MaybeJObj).
 
 -spec from_list/1 :: (L) -> json_object() when
       L :: proplist().
-from_list(L) ->
-    lists:foldr(fun({K,V}, Acc) -> wh_json:set_value(K, V, Acc) end, ?EMPTY_JSON_OBJECT, L).
+from_list(L) when is_list(L) ->
+    io:format("L: ~p~n", [L]),
+    lists:foldr(fun({K, [{_,_}|_]=V}, Acc) -> set_value(K, from_list(V), Acc); % convert proplist to json_object
+		   ({K, [A|_]=V}, Acc) when is_atom(A) -> set_value(K, from_list(V), Acc); % proplist may start with an atom
+		    ({K,V}, Acc) -> set_value(K, V, Acc); % set all other Values normally
+		    (A, Acc) when is_atom(A) -> set_value(A, true, Acc)
+		end, ?EMPTY_JSON_OBJECT, L).
 
 %% only a top-level merge
 %% merges JObj1 into JObj2
@@ -443,13 +448,54 @@ normalizer({_,_}=DataTuple) ->
 
 %% PropEr Testing
 prop_is_json_object() ->
-    ?FORALL(JObj, json_object(), ?MODULE:is_json_object(JObj)).
+    ?FORALL(JObj, json_object(),
+      ?WHENFAIL(io:format("Failed prop_is_json_object ~p~n", [JObj]),
+      ?MODULE:is_json_object(JObj))
+    ).
 
-prop_is_json_term() ->
-    ?FORALL(Term, json_object(), ?MODULE:is_json_term(Term)).
+%% GENERATORS
+%% create json objects
+json_object_builder() ->
+    ?LET(Prop, a_proplist(), {struct, Prop}).
 
-prop_from_list() ->
-    ?FORALL(Prop, proplist(), ?MODULE:is_json_object(?MODULE:from_list(Prop))).
+a_proplist() ->
+    ?SUCHTHAT(L, list( ?LET({K,V}, {binary(), proplist_value()}, {K, V}) ), length(L) < 5).
+
+proplist_value() ->
+    ?LAZY(weighted_union([{15,binary()},{1,json_object_builder()}])).
+
+%% prop_from_list() ->
+%%     ?FORALL(Prop, a_proplist(),
+%% 	    ?WHENFAIL(io:format("Failed prop_from_list with ~p~n", [Prop]),
+%% 		      ?MODULE:is_json_object(?MODULE:from_list(Prop)))
+%% 	   ).
+
+%% prop_is_json_object() ->
+%%     ?FORALL(JObj, json_object_builder(),
+%% 	    ?WHENFAIL(io:format("Failed prop_is_json_object ~p~n", [JObj]),
+%% 		      ?MODULE:is_json_object(JObj))
+%% 	    ).
+
+%% GENERATORS
+%% create json objects
+%% json_object_builder() ->
+%%     ?LET(Prop, a_proplist(), ?MODULE:from_list(Prop)).
+
+%% a_proplist() ->
+%%     io:format("a_prop~n", []),
+%%     ?SUCHTHAT(L, list( ?LET({K,V}, {proplist_key(), proplist_value()}, {K, V}) ), length(L) < 5).
+
+%% proplist_key() ->
+%%     io:format("p_key~n", []),
+%%     ?LAZY(union([binary(),atom(),nonempty_string()])).
+
+%% nonempty_string() ->
+%%     io:format("nonem~n", []),
+%%     ?SUCHTHAT(Str, list(char()), length(Str) > 0 andalso length(Str) < 10).
+
+%% proplist_value() ->
+%%     io:format("p_val~n", []),
+%%     ?LAZY(weighted_union([{15,binary()},{1,a_proplist()}])).
 
 %% EUNIT TESTING
 -ifdef(TEST).
@@ -469,7 +515,7 @@ prop_from_list() ->
 
 is_json_object_proper_test_() ->
     {"Runs wh_json PropEr tests for is_json_object/1",
-     {timeout, 10000, [?_assertEqual([], proper:module(?MODULE, 1000))]}}.
+     {timeout, 10000, [?_assertEqual([], proper:module(?MODULE))]}}.
 
 -spec is_json_object_test/0 :: () -> no_return().
 is_json_object_test() ->
