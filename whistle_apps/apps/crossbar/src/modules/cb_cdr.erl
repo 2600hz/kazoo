@@ -238,8 +238,8 @@ validate(_, _, Context) ->
 -spec load_cdr_summary/2 :: (Context, QueryParams) -> #cb_context{} when
       Context :: #cb_context{},
       QueryParams :: proplist().
-load_cdr_summary(#cb_context{db_name=DbName, auth_doc=AuthDoc}=Context, QueryParams) ->
-    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"key">>, wh_json:get_value(<<"owner_id">>, AuthDoc)}]),
+load_cdr_summary(#cb_context{db_name=DbName, doc=JObj}=Context, QueryParams) ->
+    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"key">>, wh_json:get_value(<<"_id">>, JObj, <<>>)}]),
     Context#cb_context{resp_data=Result, resp_status=success}.
 
 %%--------------------------------------------------------------------
