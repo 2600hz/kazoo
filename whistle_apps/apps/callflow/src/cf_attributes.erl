@@ -14,6 +14,22 @@
 -export([callee_id/4]).
 -export([caller_id_options/4]).
 -export([owner_id/2, owned_by/2, owned_by/3]).
+-export([temporal_rules/1]).
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec temporal_rules/1 :: (Call) -> undefined | json_object() when
+      Call :: #cf_call{}.
+temporal_rules(#cf_call{account_db=Db}) ->
+    case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"temporal_rules">>}, [{<<"include_docs">>, true}]) of
+        {ok, JObj} ->
+            JObj;
+        {error, _} ->
+            []
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public
