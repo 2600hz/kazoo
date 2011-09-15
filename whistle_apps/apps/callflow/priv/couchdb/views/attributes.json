@@ -22,6 +22,9 @@
        },
        "hotdesk_id": {
            "map": "function(doc) { if (!doc.hotdesk  || doc.pvt_deleted) return; emit(doc.hotdesk.id, {'owner_id':doc._id, 'hotdesk':doc.hotdesk}); }"
+       },
+       "temporal_rules": {
+           "map": "function(doc) { if (doc.pvt_type != 'temporal_rule' || doc.pvt_deleted) return; emit(doc._id, null); }"
        }
    }
 }
