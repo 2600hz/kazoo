@@ -35,23 +35,6 @@
 val(P, I) ->
     wh_json:get_value(P, I, undefined).
 
-%% for testing purpose with particular JSON data from file
--spec do_validate/2 :: (File, SchemaName) -> list() when
-      File :: string() | json_object(),
-      SchemaName :: atom().
-do_validate(File, SchemaName) when is_list(File)->
-    {ok, Bin1} = file:read_file(File),
-    Data = mochijson2:decode(Bin1),
-    validate_instance(Data, SchemaName);
-%% for crossbar usage
-do_validate(JObj, SchemaName) when is_binary(SchemaName) ->
-    {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, SchemaName),
-    validate_instance(JObj, Schema).
-
-%%%% ------ do not forget name ----- %%%%
-
-trace_validate(Property, AttrName, AttrValue) ->
-    trace_validate(none, Property, AttrName, AttrValue).
 
 -spec trace_validate/4 :: (Instance, Property, AttrName, AttrValue) -> 'ok' | 'false' when
       Instance :: json_object(),
@@ -60,62 +43,29 @@ trace_validate(Property, AttrName, AttrValue) ->
       AttrValue :: attribute_value().
 trace_validate(_Instance, Property, AttrName, AttrValue) ->
     ?TRACE andalso begin
-		       ?O("~n----------------------------------------------------~n", []),
-		       ?O("-Validating property :: ~p~n", [Property]),
-		       ?O("-Attribute name :: ~p~n", [AttrName]),
-		       ?O("-Attribute value :: ~p~n", [AttrValue]),
-		       ?O("----------------------------------------------------~n", [])
+		       ?O("~nproperty :: ~p - attribute :: ~p - value :: ~p~n", [Property, AttrName, AttrValue])
 		   end.
+trace_validate(Property, AttrName, AttrValue) ->
+    trace_validate(none, Property, AttrName, AttrValue).
 
 
--spec validate_instance/2 :: (Instance, Schema) -> validation_results() when
-      Instance :: term(),
-      Schema :: json_object().
-validate_instance(Instance, {struct, Definitions}) ->
-    io:format("definitions ~p~n", [Definitions]),
-    R = lists:foldl(fun({Property, Attributes}, Acc) ->
-			    io:format(" instance prop is ~p and attr is ~p~n", [Property, Attributes]),
-			    M = validate_property(Instance, Property, Attributes),
-			    [M|Acc]
-		    end, [], Definitions),
-    ?O(" final ======== ~p", [R]).
+-spec do_validate/2 :: (File, SchemaName) -> list() when
+      File :: string() | json_object(),
+      SchemaName :: atom().
+do_validate(JObj, SchemaName) when is_binary(SchemaName) ->
+    {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, SchemaName),
+    R = [E || {error, _}=E <- lists:flatten(validate(wh_json:set_value(SchemaName, JObj, ?EMPTY_JSON_OBJECT), SchemaName, Schema))],
+    ?O("Result > ~p~n", [R]).
 
--spec validate_property/3 :: (Instance, Property, Attributes) -> validation_results() when
-      Instance :: json_object(),
-      Property :: attribute_name(),
-      Attributes :: attribute_value().
-validate_property(Instance, Property, {struct, Attributes}) ->
-    ?O(" object prop >>>> ~p", [Property]),
-    lists:foldl(fun({AttrName, AttrValue}, Acc) ->
-			    io:format(" property ~p~n", [AttrName]),
-			    M = validate(Instance, Property, AttrName, AttrValue),
-			    [M|Acc]
-		end, [], Attributes);
 
-validate_property(Instance, Property, Value) ->
-    ?O(" flat prop >>>> ~p", [Property]),
-    validate(osef, Property, Property, Value).
-
--spec validate/4 :: (Instance, Property, AttrName, AttrValue) -> validation_results() when
+-spec validate/3 :: (Instance, Property, {AttrName, AttrValue}) -> validation_results() when
       Instance :: json_object(),
       Property :: binary(),
       AttrName :: attribute_name(),
       AttrValue :: attribute_value().
-validate(undefined, _, _, _) ->
-    %trace_validate(undefined,  <<"Instance is undefined">>, none),
-    ?INVALID(undefined_instance, <<"Undefined instance">>);
-
-validate(_, undefined, _, _) ->
-    %trace_validate(undefined, none, none, none),
-    ?INVALID(undefined_property, <<"Undefined property">>);
-
-validate(_, _, undefined, _) ->
-    %trace_validate(undefined, none, none, none),
-    ?INVALID(undefined_attr_name, <<"Undefined attribute name">>);
-
-validate(_, _, _, undefined) ->
-    %trace_validate(undefined, none, none, none),
-    ?INVALID(undefined_attr_value, <<"Undefined attribute value">>);
+validate(_, Prop, undefined) ->
+    trace_validate(none, Prop,  <<"Instance is undefined">>),
+    ?INVALID(Prop, <<"Undefined property">>);
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -124,26 +74,28 @@ validate(_, _, _, undefined) ->
 %%            value, and not be undefined.
 %% @end
 %%--------------------------------------------------------------------
+validate(Instance, Property, {struct, Definitions}) ->
+    [validate(Instance, Property, {K, V}) || {K, V} <- Definitions];
 
-validate(Instance, Property, <<"required">>=AttrName, AttrValue) ->
-    trace_validate(Property, AttrName, AttrValue),
+validate(Instance, Property, {<<"required">>, AttrValue}) ->
+    trace_validate(Property, <<"required">>, AttrValue),
     case val(Property, Instance) of
 	undefined -> ?INVALID(Property, <<"required but not found">>);
 	_-> ?VALID
     end;
 
-validate(Instance, Property, <<"type">>=AttrName, <<"object">>=AttrValue) ->
-    trace_validate(Property, AttrName, AttrValue),
-    case val(<<"properties">>, Instance) of
-	undefined -> ?INVALID(Property, <<"object must define their properties">>);
-	_ -> ?VALID
+validate(Instance, Property, {<<"type">>, <<"object">>}) ->
+    trace_validate(Property, <<"type">>, <<"object">>),
+    case val(Property, Instance) of
+	{struct,_} -> ?VALID;
+	_ -> ?INVALID(Property, <<"must define properties">>)
     end;
 
-validate(Instance, Property, <<"properties">>=AttrName, Properties) ->
-    trace_validate(Instance, Property, AttrName, <<"json_props()">>),
-    case val(<<"type">>, Instance) =:= <<"object">> of
-	true -> validate_instance(wh_json:get_value(Property, Instance), Properties);
-	false -> ?INVALID(Property, <<"must be of type object">>)
+validate(Instance, Property, {<<"properties">>, {struct, Properties}}) ->
+    trace_validate(Instance, Property, <<"properties">>, <<"json_props()">>),
+    case val(Property, Instance) of
+	{struct, _}=ChildInstance -> [validate(ChildInstance, K, V) || {K,V} <- Properties];
+	undefined -> ?INVALID(Property, <<"must be of type object">>)
     end;
 
 %%--------------------------------------------------------------------
@@ -185,7 +137,7 @@ validate(Instance, Property, <<"properties">>=AttrName, Properties) ->
 %%        _ -> validate_instance(Instance, <<"type">>, T)
 %%    end;
 
-validate(Instance, Property, <<"type">>, <<"null">>) ->
+validate(Instance, Property, {<<"type">>, <<"null">>}) ->
     trace_validate(Property, <<"type">>, <<"null">>),
     case val(Property, Instance) of
         <<"null">> -> ?VALID;
@@ -193,12 +145,12 @@ validate(Instance, Property, <<"type">>, <<"null">>) ->
         _          -> ?INVALID(Instance, <<"must be null">>)
     end;
 
-validate(Instance, Property, <<"type">>, <<"string">>) ->
+validate(Instance, Property, {<<"type">>, <<"string">>}) ->
     trace_validate(Property, <<"type">>, <<"string">>),
     case val(Property, Instance) of
         Str when is_atom(Str); is_binary(Str) ->
-	    case validate(Instance, Property, <<"type">>, <<"null">>) =/= true
-                andalso validate(Instance, Property, <<"type">>, <<"boolean">>) =/= true of
+	    case validate(Instance, Property, {<<"type">>, <<"null">>}) =/= true
+                andalso validate(Instance, Property, {<<"type">>, <<"boolean">>}) =/= true of
 		true  ->
 		    ?VALID;
 		false ->
@@ -206,21 +158,21 @@ validate(Instance, Property, <<"type">>, <<"string">>) ->
 	    end;
         _ -> ?INVALID(Property, <<"must be of type string">>)
     end;
-validate(Instance, Property, <<"type">>, <<"number">>) ->
+validate(Instance, Property, {<<"type">>, <<"number">>}) ->
     trace_validate(Property, <<"type">>, <<"number">>),
     case is_number(val(Property, Instance)) of
 	false -> ?INVALID(Property, <<"must be of type number">>);
 	true  -> ?VALID
     end;
-validate(Instance, Property, <<"type">>, <<"integer">>) ->
+validate(Instance, Property, {<<"type">>, <<"integer">>}) ->
     trace_validate(Instance, Property, <<"type">>, <<"integer">>),
     case is_integer(val(Property, Instance)) of
 	false -> ?INVALID(Property, <<"must be of type integer">>);
 	true  -> ?VALID
     end;
-validate(Instance, Property, <<"type">>, <<"boolean">>) ->
+validate(Instance, Property, {<<"type">>, <<"boolean">>}) ->
     trace_validate(Property, <<"type">>, <<"boolean">>),
-    V = wh_json:get_binary_boolean(Property, Instance),
+    V = wh_json:get_value(Property, Instance),
     case wh_util:is_true(V) orelse wh_util:is_false(V) of
         true -> ?VALID;
         _ -> ?INVALID(Property, <<"must be of type boolean">>)
@@ -233,7 +185,7 @@ validate(Instance, Property, <<"type">>, <<"boolean">>) ->
 %    trace_validate(Instance, <<"type">>, <<"array">>),
 %    ?INVALID(Instance, <<"must be of type array">>).
 
-validate(_Instance, Property, <<"type">>, Type) ->
+validate(_Instance, Property, {<<"type">>, Type}) ->
     trace_validate(Property, <<"type">>, Type),
     ?INVALID(Property, <<Type/binary, "type is not a valid type">>);
 
@@ -471,8 +423,8 @@ validate(_Instance, Property, <<"type">>, Type) ->
 %%         description of the instance property.
 %% @end
 %%--------------------------------------------------------------------
-validate(_Instance, Property, <<"description">>=AttrName, AttrValue) ->
-    trace_validate(Property, AttrName, AttrValue),
+validate(_Instance, Property, {<<"description">>, AttrValue}) ->
+    trace_validate(Property, <<"description">>, AttrValue),
     ?VALID;
 
 %%--------------------------------------------------------------------
@@ -544,8 +496,8 @@ validate(_Instance, Property, <<"description">>=AttrName, AttrValue) ->
 %% id - defines the current URI of this schem
 %% @end
 %%--------------------------------------------------------------------
-validate(_Instance, Property, <<"id">>=AttrName, AttrValue) ->
-    trace_validate(Property, AttrName, AttrValue),
+validate(_Instance, Property, {<<"id">>, AttrValue}) ->
+    trace_validate(Property, <<"id">>, AttrValue),
     ?VALID;
 
 %%--------------------------------------------------------------------
@@ -563,8 +515,8 @@ validate(_Instance, Property, <<"id">>=AttrName, AttrValue) ->
 %%           the current schema
 %% @end
 %%--------------------------------------------------------------------
-validate(_Instance, Property, <<"\$schema">>=AttrName, AttrValue) ->
-    trace_validate(Property, AttrName, AttrValue),
+validate(_Instance, Property, {<<"\$schema">>, AttrValue}) ->
+    trace_validate(Property, <<"\$schema">>, AttrValue),
     ?VALID;
 
 %%--------------------------------------------------------------------
@@ -572,9 +524,11 @@ validate(_Instance, Property, <<"\$schema">>=AttrName, AttrValue) ->
 %% Ignore CouchDB document properties
 %% @end
 %%--------------------------------------------------------------------
-validate(_, _, <<"_id">>, _) ->
+validate(_, _, {<<"_id">>, _}) ->
     ?VALID;
-validate(_, _, <<"_rev">>, _) ->
+validate(_, _, {<<"_rev">>, _}) ->
+    ?VALID;
+validate(_, _, {<<"name">>, _}) ->
     ?VALID;
 
 %%--------------------------------------------------------------------
@@ -582,9 +536,9 @@ validate(_, _, <<"_rev">>, _) ->
 %% End of validate_instance
 %% @end
 %%--------------------------------------------------------------------
-validate(_,_,_,_) ->
-    trace_validate(none, none, none),
-    ?INVALID(error, <<"Holy cow, something really bad happened">>).
+validate(_,P,{K,V}) ->
+    trace_validate(P, K, V),
+    ?INVALID(P, <<"something wrong happened on our side">>).
 
 -spec validation_error/2 :: (Instance, Message) -> validation_result() when
       Instance :: term(),
@@ -604,7 +558,7 @@ validation_error(Instance, Msg, Attribute) ->
 			     " ", (wh_util:to_binary(Msg))/binary,
                              " ", (wh_util:to_binary(Attribute))/binary>>}.
 %% EUNIT TESTING
--ifdef(TESTASd).
+-ifdef(TEST).
 
 -define(NULL, <<"null">>).
 -define(TRUE, <<"true">>).
@@ -629,7 +583,6 @@ validation_error(Instance, Msg, Attribute) ->
 %%     string Value MUST be a string
 type_string_test() ->
     Schema = "{ \"type\": \"string\" }",
-    %Schema = {<<"type">>, <<"string">>},
     Succeed = [?STR1, ?STR2],
     Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?ARR1, ?ARR2, ?OBJ1],
     validate_test(Succeed, Fail, Schema).
@@ -916,16 +869,22 @@ disallow_complex_union_test() ->
 %% Helper function to run the eunit tests listed above
 validate_test(Succeed, Fail, Schema) ->
     S = mochijson2:decode(binary:list_to_bin(Schema)),
+    InstanceName = <<"instance">>,
+    F = fun(X) -> ?O(" >>> ~p~n", [X]); ({error, _}) -> false; (?VALID) -> true end,
     lists:foreach(fun(Elem) ->
-			  Validation = validate_instance(Elem, S),
-			  Result = lists:all(fun({T, _}) -> T == ok end, Validation),
-			  ?debugFmt("~p: ~p: Testing success of ~p => ~p~n", [Schema, Elem, Validation, Result]),
+			  Instance = wh_json:set_value(InstanceName, Elem, ?EMPTY_JSON_OBJECT),
+			  Validation = lists:flatten(validate(Instance, InstanceName, S)),
+			  ?O("~n------- VALIDATION SUCCEED----- ~p => ~p~n", [Elem, Validation]),
+			  Result = lists:all(F, Validation),
+			  %?debugFmt("~p: ~p: Testing success of ~p => ~p~n", [S, Elem, Validation, Result]),
 			  ?assertEqual(true, Result)
 		  end, Succeed),
     lists:foreach(fun(Elem) ->
-			  Validation = validate_instance(Elem, S),
-			  Result = lists:any(fun({T, _}) -> T == error end, Validation),
-			  ?debugFmt("~p: ~p: Testing failure of ~p => ~p~n", [Schema, Elem, Validation, Result]),
+			  Instance = wh_json:set_value(InstanceName, Elem, ?EMPTY_JSON_OBJECT),
+			  Validation = lists:flatten(validate(Instance, InstanceName, S)),
+			  ?O("~n------- VALIDATION FAIL----- ~p => ~p~n", [Elem, Validation]),
+			  Result = lists:any(F, Validation),
+			  %?debugFmt("~p: ~p: Testing failure of ~p => ~p~n", [S, Elem, Validation, Result]),
 			  ?assertEqual(true, Result)
 		  end, Fail).
 -endif.
