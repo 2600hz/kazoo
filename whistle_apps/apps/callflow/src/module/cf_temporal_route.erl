@@ -17,7 +17,7 @@
                    ,last_day_of_the_month/2, gregorian_days_to_date/1
                   ]).
 
--define(FIND_RULES, <<"temporal_route/listing_by_next_occurrence">>).
+-define(FIND_RULES, <<"">>).
 
 -type improper_month() :: non_neg_integer().
 -type improper_day() :: non_neg_integer().
@@ -148,46 +148,35 @@ process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}}=T,
 %% @end
 %%--------------------------------------------------------------------
 -spec(get_temporal_rules/2 :: (Temporal :: #temporal{}, Call :: #cf_call{}) -> list()).
-get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}
-                   ,#cf_call{account_db=Db}) ->
-    case couch_mgr:get_results(Db, ?FIND_RULES, [{<<"startkey">>, null}
-                                                 ,{<<"endkey">>, LSec}
-                                                 ,{<<"include_docs">>, true}]) of
-        {ok, JObj} ->
-            Default=#rule{},
-            [#rule{id =
-                       wh_json:get_value(<<"id">>, R)
-                   ,enabled =
-                       wh_json:get_binary_boolean([<<"doc">>, <<"enabled">>], R)
-                   ,name =
-                       wh_json:get_value([<<"doc">>, <<"name">>], R, Default#rule.name)
-                   ,cycle =
-                       wh_json:get_value([<<"doc">>, <<"cycle">>], R, Default#rule.cycle)
-                   ,interval =
-                       wh_util:to_integer(
-                              wh_json:get_value([<<"doc">>, <<"interval">>], R, Default#rule.interval))
-                   ,days =
-                       wh_json:get_value([<<"doc">>, <<"days">>], R, Default#rule.days)
-                   ,wdays =
-                       wh_json:get_value([<<"doc">>, <<"wdays">>], R, Default#rule.wdays)
-                   ,ordinal =
-                       wh_json:get_value([<<"doc">>, <<"ordinal">>], R, Default#rule.ordinal)
-                   ,month =
-                       wh_json:get_value([<<"doc">>, <<"month">>], R, Default#rule.month)
-                   ,start_date =
-                       get_date(wh_json:get_value([<<"doc">>, <<"start_date">>], R, LSec))
-                   ,wtime_start =
-                       wh_util:to_integer(
-                                 wh_json:get_value([<<"doc">>, <<"time_window_start">>], R, Default#rule.wtime_start))
-                   ,wtime_stop =
-                       wh_util:to_integer(
-                               wh_json:get_value([<<"doc">>, <<"time_window_stop">>], R, Default#rule.wtime_stop))
-               }
-             || R <- JObj,
-                lists:member(wh_json:get_value(<<"id">>, R), Routes)];
-        {error, _} ->
-            []
-    end.
+get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
+    Default=#rule{},
+    [#rule{id =
+               wh_json:get_value(<<"id">>, R)
+           ,enabled =
+               wh_json:get_binary_boolean([<<"doc">>, <<"enabled">>], R)
+           ,name =
+               wh_json:get_value([<<"doc">>, <<"name">>], R, Default#rule.name)
+           ,cycle =
+               wh_json:get_value([<<"doc">>, <<"cycle">>], R, Default#rule.cycle)
+           ,interval =
+               wh_json:get_integer_value([<<"doc">>, <<"interval">>], R, Default#rule.interval)
+           ,days =
+               wh_json:get_value([<<"doc">>, <<"days">>], R, Default#rule.days)
+           ,wdays =
+               wh_json:get_value([<<"doc">>, <<"wdays">>], R, Default#rule.wdays)
+           ,ordinal =
+               wh_json:get_value([<<"doc">>, <<"ordinal">>], R, Default#rule.ordinal)
+           ,month =
+               wh_json:get_value([<<"doc">>, <<"month">>], R, Default#rule.month)
+           ,start_date =
+               get_date(wh_json:get_integer_value([<<"doc">>, <<"start_date">>], R, LSec))
+           ,wtime_start =
+               wh_json:get_integer_value([<<"doc">>, <<"time_window_start">>], R, Default#rule.wtime_start)
+           ,wtime_stop =
+               wh_json:get_integer_value([<<"doc">>, <<"time_window_stop">>], R, Default#rule.wtime_stop)
+          }
+     || R <- cf_attributes:temporal_rules(Call),
+        lists:member(wh_json:get_value(<<"id">>, R), Routes)].
 
 %%--------------------------------------------------------------------
 %% @private
