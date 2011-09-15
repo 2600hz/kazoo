@@ -30,8 +30,9 @@
 
 -define(VALID, true).
 -define(INVALID, fun validation_error/2).
-
+-define(VALIDATION_FUN, fun({error, _}) -> false; (?VALID) -> true end).
 -define(O, fun io:format/2).
+
 val(P, I) ->
     wh_json:get_value(P, I, undefined).
 
@@ -112,33 +113,8 @@ validate(Instance, Property, {<<"properties">>, {struct, Properties}}) ->
 %%        of the instance MUST be in order to validate.
 %% @end
 %%--------------------------------------------------------------------
-%%validate(Instance, Property, <<"type">>, [{struct, _}=Schema]) ->
-%%   trace_validate(Instance, <<"type">>, struct),
-%%    validate(Instance, Schema);
-
-%%validate_instance(Instance, <<"type">>, [{struct, _}=Schema|T]) ->
- %%   trace_validate(Instance, <<"type">>, struct_list),
-  %%  case lists:all(fun({ok, _}) -> true; (_) -> false end, validate(Instance, Schema)) of
-%%	true -> ?VALID;
-%%	false -> ?INVALID(Instance, <<"type">>, T)
-%%    end;
-
-%%validate_instance(Instance, <<"type">>, [H]) ->
-%%    trace_validate(Instance, <<"type">>, list),
-%%    case validate_instance(Instance, <<"type">>, H) of
-%%	true -> ?VALID;
-%%	_ -> ?INVALID(Instance, <<"type ", H, " is invalid">>)
-%%   end;
-
-%%validate_instance(Instance, <<"type">>, [H|T]) ->
-%%    trace_validate(Instance, <<"type">>, list),
-%%    case validate_instance(Instance, <<"type">>, H) of
-%%        true ->  ?VALID;
-%%        _ -> validate_instance(Instance, <<"type">>, T)
-%%    end;
-
 validate(Instance, Property, {<<"type">>, <<"null">>}) ->
-    trace_validate(Property, <<"type">>, <<"null">>),
+    trace_validate(Property,<<"type">>, <<"null">>),
     case val(Property, Instance) of
         <<"null">> -> ?VALID;
         null       -> ?VALID;
@@ -149,8 +125,8 @@ validate(Instance, Property, {<<"type">>, <<"string">>}) ->
     trace_validate(Property, <<"type">>, <<"string">>),
     case val(Property, Instance) of
         Str when is_atom(Str); is_binary(Str) ->
-	    case validate(Instance, Property, {<<"type">>, <<"null">>}) =/= true
-                andalso validate(Instance, Property, {<<"type">>, <<"boolean">>}) =/= true of
+	    case validate(Instance, Property, {<<"type">>, <<"null">>}) =/= ?VALID
+                andalso validate(Instance, Property, {<<"type">>, <<"boolean">>}) =/= ?VALID of
 		true  ->
 		    ?VALID;
 		false ->
@@ -177,18 +153,47 @@ validate(Instance, Property, {<<"type">>, <<"boolean">>}) ->
         true -> ?VALID;
         _ -> ?INVALID(Property, <<"must be of type boolean">>)
     end;
-%validate_instance([_|_]=Instance, <<"type">>, <<"array">>) ->
-%    trace_validate(Instance, <<"type">>, <<"array">>),
-%    ?VALID;
+validate(Instance, Property, {<<"type">>, <<"array">>}) ->
+    trace_validate(Property, <<"type">>, <<"array">>),
+    case val(Property, Instance) of
+	[_|_] -> ?VALID;
+	[] -> ?VALID;
+	_ -> ?INVALID(Property, <<"must be an array">>)
+    end;
 
-%validate_instance(Instance, <<"type">>, <<"array">>) ->
-%    trace_validate(Instance, <<"type">>, <<"array">>),
-%    ?INVALID(Instance, <<"must be of type array">>).
+validate(_Instance, Property, {<<"type">>, <<"any">>}) ->
+    trace_validate(Property, <<"type">>, <<"any">>),
+    ?VALID;
 
+validate(Instance, Property, {<<"type">>, [{struct, _}=Schema]}) ->
+    trace_validate(Property, <<"type">>, struct),
+    validate(Instance, Property, Schema);
+
+validate(Instance, Property, {<<"type">>, [{struct, _}=Schema|T]}) ->
+    trace_validate(Instance, <<"type">>, struct_list),
+    case lists:all(?VALIDATION_FUN, validate(Instance, Property, Schema)) of
+	true -> ?VALID;
+	false -> ?INVALID(Property, <<"type ", T/binary, " is invalid">>)
+    end;
+
+validate(Instance, Property, {<<"type">>, [H]}) ->
+    trace_validate(Property, <<"type">>, H),
+    case validate(Instance, Property, {<<"type">>, H}) of
+	true -> ?VALID;
+	_ -> ?INVALID(Property, <<"type ", H, " is invalid">>)
+    end;
+
+validate(Instance, Property, {<<"type">>, [H|T]}) ->
+    trace_validate(Property, <<"type">>, H),
+    case validate(Instance, Property, {<<"type">>, H}) of
+        true ->  ?VALID;
+        _ -> validate(Instance, Property, { <<"type">>, T})
+    end;
+
+%% any type is valid
 validate(_Instance, Property, {<<"type">>, Type}) ->
     trace_validate(Property, <<"type">>, Type),
-    ?INVALID(Property, <<Type/binary, "type is not a valid type">>);
-
+    ?VALID;
 %%--------------------------------------------------------------------
 %% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.2
@@ -197,10 +202,6 @@ validate(_Instance, Property, {<<"type">>, Type}) ->
 %%              values.
 %% @end
 %%--------------------------------------------------------------------
-%validate_instance(Instance, <<"properties">>, {struct, Attribute}) ->
-%    trace_validate(Instance, <<"properties">>, Attribute),
-%    (not validate_instance(Instance, <<"type">>, <<"object">>)) orelse
-%	[validate(wh_json:get_value(Name, Instance), Schema) || {Name, Schema} <- Attribute];
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -227,12 +228,12 @@ validate(_Instance, Property, {<<"type">>, Type}) ->
 %%         and MUST be a schema or an array of schemas.
 %% @end
 %%--------------------------------------------------------------------
-%validate_instance(Instance, <<"items">>, {struct, _} = Schema) ->
-%    trace_validate(Instance, <<"items">>, none),
-%    not validate_instance(Instance, <<"type">>, <<"array">>) orelse
-%	lists:foldr(fun(Item, Acc) ->
-%			    Acc and lists:all(fun({ok, []}) -> true; (_) -> false end, validate(Item, Schema))
-%		    end, true, Instance);
+validate(Instance, Property, {<<"items">>, {struct, _} = Schema}) ->
+    trace_validate(Property, <<"items">>, items),
+    case validate(Instance, Property, {<<"type">>, <<"array">>}) of
+	?VALID -> validate(val(Property, Instance), Property , Schema);
+	_ -> ?INVALID(Property, <<"must be an array to define items">>)
+    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -260,12 +261,14 @@ validate(_Instance, Property, {<<"type">>, Type}) ->
 %%           property when the type of the instance value is a number.
 %% @end
 %%--------------------------------------------------------------------
-%validate_instance(Instance, Property, <<"minimum">>, Value)->
-%    case (validate(Instance, Property, <<"type">>, <<"number">>)) =/= 
-%	orelse Instance >= Attribute of
-%	true -> ?VALID;
-%	false -> ?INVALID(Instance, <<"must be an integer and/or must have a minimum of ">>, Attribute)
-%    end;
+validate(Instance, Property, {<<"minimum">>, Minimum})->
+    case validate(Instance, Property, {<<"type">>, <<"number">>}) of
+	?VALID -> case val(Property, Instance) >= Minimum of
+		      ?VALID -> ?VALID;
+		      _ -> ?INVALID(Property, <<"is lower than">>, Minimum)
+		  end;
+	_ -> ?INVALID(Property, <<"must be an integer to have a minimum">>)
+    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -274,13 +277,14 @@ validate(_Instance, Property, {<<"type">>, Type}) ->
 %%           property when the type of the instance value is a number.
 %% @end
 %%--------------------------------------------------------------------
-%validate_instance(Instance, <<"maximum">>, Attribute) ->
-%    trace_validate(Instance, <<"maximum">>, Attribute),
-%    case not validate_instance(Instance, <<"type">>, <<"number">>)
-%        orelse Instance =< Attribute of
-%	true -> ?VALID;
-%	false -> ?INVALID(Instance, <<"must be an integer and/or must have a maximum of">>, Attribute)
-%    end;
+validate(Instance, Property, {<<"maximum">>, Maximum})->
+    case validate(Instance, Property, {<<"type">>, <<"number">>}) of
+	?VALID -> case val(Property, Instance) =< Maximum of
+		      ?VALID -> ?VALID;
+		      _ -> ?INVALID(Property, <<"is greater than">>, Maximum)
+		  end;
+	_ -> ?INVALID(Property, <<"must be an integer to have a maximum">>)
+    end;
 %%--------------------------------------------------------------------
 %% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.11
@@ -870,12 +874,12 @@ disallow_complex_union_test() ->
 validate_test(Succeed, Fail, Schema) ->
     S = mochijson2:decode(binary:list_to_bin(Schema)),
     InstanceName = <<"instance">>,
-    F = fun(X) -> ?O(" >>> ~p~n", [X]); ({error, _}) -> false; (?VALID) -> true end,
+    
     lists:foreach(fun(Elem) ->
 			  Instance = wh_json:set_value(InstanceName, Elem, ?EMPTY_JSON_OBJECT),
 			  Validation = lists:flatten(validate(Instance, InstanceName, S)),
 			  ?O("~n------- VALIDATION SUCCEED----- ~p => ~p~n", [Elem, Validation]),
-			  Result = lists:all(F, Validation),
+			  Result = lists:all(?VALIDATION_FUN, Validation),
 			  %?debugFmt("~p: ~p: Testing success of ~p => ~p~n", [S, Elem, Validation, Result]),
 			  ?assertEqual(true, Result)
 		  end, Succeed),
@@ -883,8 +887,8 @@ validate_test(Succeed, Fail, Schema) ->
 			  Instance = wh_json:set_value(InstanceName, Elem, ?EMPTY_JSON_OBJECT),
 			  Validation = lists:flatten(validate(Instance, InstanceName, S)),
 			  ?O("~n------- VALIDATION FAIL----- ~p => ~p~n", [Elem, Validation]),
-			  Result = lists:any(F, Validation),
+			  Result = lists:any(?VALIDATION_FUN, Validation),
 			  %?debugFmt("~p: ~p: Testing failure of ~p => ~p~n", [S, Elem, Validation, Result]),
-			  ?assertEqual(true, Result)
+			  ?assertEqual(false, Result)
 		  end, Fail).
 -endif.
