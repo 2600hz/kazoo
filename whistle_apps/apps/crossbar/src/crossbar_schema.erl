@@ -50,23 +50,114 @@ trace_validate(Property, AttrName, AttrValue) ->
     trace_validate(none, Property, AttrName, AttrValue).
 
 
+
+
+trace({IK, IV}, {SK, SV}) ->
+    ?TRACE andalso begin
+			?O("[TRACE] instance { ~p : ~p } || schema { ~p : ~p }~n", [IK,IV,SK,SV])
+		    end;
+trace(schema, {SK, SV}) ->
+    ?TRACE andalso begin
+		       ?O("[TRACE] schema { ~p : ~p }~n", [SK,SV])
+		   end;
+trace(instance, {IK, IV}) ->
+    ?TRACE andalso begin
+		       ?O("[TRACE] instance { ~p : ~p }~n", [IK,IV])
+		   end.
+
 -spec do_validate/2 :: (File, SchemaName) -> list() when
       File :: string() | json_object(),
       SchemaName :: atom().
 do_validate(JObj, SchemaName) when is_binary(SchemaName) ->
     {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, SchemaName),
-    R = [E || {error, _}=E <- lists:flatten(validate(wh_json:set_value(SchemaName, JObj, ?EMPTY_JSON_OBJECT), SchemaName, Schema))],
-    ?O("Result > ~p~n", [R]).
+    %V = validate(wh_json:set_value(SchemaName, JObj, ?EMPTY_JSON_OBJECT), SchemaName, Schema),
+    {struct, SchemaDefinitions} = Schema,
+    R = [validate({JObj, AttrName, val(AttrName, JObj)}, {Schema, AttrName, AttrValue}) || {AttrName, AttrValue} <- SchemaDefinitions],
+    S = [E || {error, _}=E <- lists:flatten(R)],
+    ?O("Result > ~p~n", [S]).
 
 
--spec validate/3 :: (Instance, Property, {AttrName, AttrValue}) -> validation_results() when
+-spec validate/2 :: ({Instance, IAttName, IAttVal}, {Schema, SAttName,SAttVal}) -> validation_results() when
       Instance :: json_object(),
-      Property :: binary(),
-      AttrName :: attribute_name(),
-      AttrValue :: attribute_value().
-validate(_, Prop, undefined) ->
-    trace_validate(none, Prop,  <<"Instance is undefined">>),
-    ?INVALID(Prop, <<"Undefined property">>);
+      IAttName :: attribute_name(),
+      IAttVal :: attribute_value(),
+      Schema :: json_object(),
+      SAttName :: attribute_name(),
+      SAttVal :: attribute_value().
+
+
+%% metadata ignored for validation
+validate({_, _, _}, {_, <<"_id">>, V}) ->
+    %trace(schema, {<<"_id">>, V}),
+    ?VALID;
+validate({_, _, _}, {_, <<"_rev">>, V}) ->
+    %trace(schema, {<<"_rev">>, V}),
+    ?VALID;
+validate({_, _, _}, {_, <<"id">>, V}) ->
+    %trace(schema, {<<"id">>, V}),
+    ?VALID;
+validate({_, _, _}, {_, <<"\$schema">>, V}) ->
+    %trace(schema, {<<"\$schema">>, V}),
+    ?VALID;
+validate({_, _, _}, {_, <<"description">>, D}) ->
+    %trace(schema, {<<"description">>, D}),
+    ?VALID;
+
+
+
+%% properties define an object
+validate({Instance, _, _}, {Schema, <<"properties">>, {struct, Properties}}) ->
+    trace(schema, {<<"properties">>, <<"properties_list()">>}),
+    [validate(
+       {val(AttName, Instance), AttName, val(AttName, Instance)},
+       {val([<<"properties">>, AttName], Schema), AttName, SAttValue})
+     || {AttName, SAttValue} <- Properties];
+
+%% instance type
+validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"string">>}) ->
+    trace({IAttName, IAttVal}, {<<"type">>, <<"string">>}),
+    ?VALID;
+
+validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"boolean">>}) when is_boolean(IAttVal)->
+    trace({IAttName, IAttVal}, {<<"type">>, <<"boolean">>}),
+    ?VALID;
+validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"boolean">>}) ->
+    trace({IAttName, IAttVal}, {<<"type">>, <<"boolean">>}),
+    ?VALID;
+
+validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"number">>}) when is_number(IAttVal)->
+    trace({IAttName, IAttVal}, {<<"type">>, <<"number">>}),
+    ?VALID;
+validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"number">>})->
+    trace({IAttName, IAttVal}, {<<"type">>, <<"number">>}),
+    ?INVALID(IAttVal, <<"must be a number">>);
+
+validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"null">>}) ->
+    trace({IAttName, IAttVal}, {<<"type">>, <<"null">>});
+
+validate({_, IAttName, {struct, _}=IAttVal}, {_, <<"type">>, <<"object">>}) ->
+    trace({IAttName, IAttVal}, {<<"type">>, <<"object">>}),
+    ?VALID;
+validate({_, IAttName, IAttVal}, {_, <<"type">>, SAttVal}) ->
+    trace({IAttName, IAttVal}, {<<"!type">>, SAttVal});
+
+
+
+%% attribute defined in the schema that doesn't exist in the instance
+validate({_, IAttName, undefined}, {Schema, SAttName, SAttVal}) ->
+    trace({IAttName, undefined}, {SAttName, SAttVal}),
+    case val(<<"required">>, Schema) of 
+	false -> ?VALID;
+        _ -> ?INVALID(IAttName, <<"is undefined">>)
+    end;
+
+validate({Instance, AttName, IAttVal}, {Schema, AttName, {struct, SAttValues}}) ->
+    trace({AttName, IAttVal}, {AttName, <<"attributes()">>}),
+    [validate({Instance, AttName, IAttVal}, {Schema, SAttName, SAttValue}) || {SAttName, SAttValue} <- SAttValues];
+
+validate({_Instance, IAttName, IAttVal}, {_Schema, SAttName, SAttVal}) ->
+    trace({IAttName, IAttVal}, {SAttName, SAttVal}),
+    ?INVALID(IAttName, <<"error">>).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -76,7 +167,7 @@ validate(_, Prop, undefined) ->
 %% @end
 %%--------------------------------------------------------------------
 validate(Instance, Property, {struct, Definitions}) ->
-    [validate(Instance, Property, {K, V}) || {K, V} <- Definitions];
+    [validate(Instance, Property, {Schema, Property}) || {Property, Schema} <- Definitions];
 
 validate(Instance, Property, {<<"required">>, AttrValue}) ->
     trace_validate(Property, <<"required">>, AttrValue),
@@ -277,7 +368,7 @@ validate(Instance, Property, {<<"minimum">>, Minimum})->
 %%           property when the type of the instance value is a number.
 %% @end
 %%--------------------------------------------------------------------
-validate(Instance, Property, {<<"maximum">>, Maximum})->
+validate(Instance, Property, {<<"maximum">>, Maximum}) ->
     case validate(Instance, Property, {<<"type">>, <<"number">>}) of
 	?VALID -> case val(Property, Instance) =< Maximum of
 		      ?VALID -> ?VALID;
@@ -293,12 +384,15 @@ validate(Instance, Property, {<<"maximum">>, Maximum})->
 %%                    equal the number defined by the "minimum" attribute.
 %% @end
 %%--------------------------------------------------------------------
-%validate_instance(Instance, <<"exclusiveMinimum">>, Instance) when is_number(Instance) ->
-%    trace_validate(Instance, <<"exclusiveMinimum">>, Instance),
-%    ?INVALID(Instance, <<"error in exclusiveMinimum">>);
-%validate_instance(Instance, <<"exclusiveMinimum">>, Attribute) ->
-%    trace_validate(Instance, <<"exclusiveMinimum">>, Attribute),
-%    ?INVALID(Instance, <<"must be an integer and/or must have an exclusive minimum of">>, Attribute);
+validate(_Instance, _Property, {<<"exclusiveMinimum">>, _Bool}) ->
+%    case validate(Instance, Property, {<<"type">>, <<"number">>}) of
+%	?VALID -> case val(Property, Instance) >  of
+%		      ?VALID -> ?VALID;
+%		      _ -> ?INVALID(Property, <<"is not strictly greater than">>, ExclusiveMinimum)
+%		  end;
+%	_ -> ?INVALID(Property, <<"must be an integer to have a minimum">>)
+%    end;
+    ?VALID;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -308,12 +402,15 @@ validate(Instance, Property, {<<"maximum">>, Maximum})->
 %%                    equal the number defined by the "maximum" attribute.
 %% @end
 %%--------------------------------------------------------------------
-%validate_instance(Instance, <<"exclusiveMaximum">>, Instance) when is_number(Instance) ->
-%    trace_validate(Instance, <<"exclusiveMaximum">>,Instance),
-%    ?INVALID(Instance, <<"error in exclusiveMaximun">>);
-%validate_instance(Instance, <<"exclusiveMaximum">>, Attribute) ->
-%    trace_validate(Instance, <<"exclusiveMaximum">>, Attribute),
-%    validate_instance(Instance, <<"must be an integer and/or must have an exclusive maximum of">>, Attribute);
+validate(_Instance, _Property, {<<"exclusiveMaximum">>, _Bool}) ->
+%    case validate(Instance, Property, {<<"type">>, <<"number">>}) of
+%	?VALID -> case val(Property, Instance) < ExclusiveMaximum of
+%		      ?VALID -> ?VALID;
+%		      _ -> ?INVALID(Property, <<"is not strictly lower than">>, ExclusiveMaximum)
+%		  end;
+%	_ -> ?INVALID(Property, <<"must be an integer to have a maximum">>)
+%    end;
+    ?VALID;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -872,23 +969,20 @@ disallow_complex_union_test() ->
 
 %% Helper function to run the eunit tests listed above
 validate_test(Succeed, Fail, Schema) ->
-    S = mochijson2:decode(binary:list_to_bin(Schema)),
-    InstanceName = <<"instance">>,
-    
+    {struct, S} = mochijson2:decode(binary:list_to_bin(Schema)),
     lists:foreach(fun(Elem) ->
-			  Instance = wh_json:set_value(InstanceName, Elem, ?EMPTY_JSON_OBJECT),
-			  Validation = lists:flatten(validate(Instance, InstanceName, S)),
+			  ?O(">>>elem ~p, schema ~p", [Elem, S]),
+			  Validation = [validate({none, none, Elem}, {S, AttName, AttValue}) || {AttName, AttValue} <- S],
 			  ?O("~n------- VALIDATION SUCCEED----- ~p => ~p~n", [Elem, Validation]),
 			  Result = lists:all(?VALIDATION_FUN, Validation),
-			  %?debugFmt("~p: ~p: Testing success of ~p => ~p~n", [S, Elem, Validation, Result]),
+			  ?debugFmt("~p: ~p: Testing success of ~p => ~p~n", [S, Elem, Validation, Result]),
 			  ?assertEqual(true, Result)
 		  end, Succeed),
     lists:foreach(fun(Elem) ->
-			  Instance = wh_json:set_value(InstanceName, Elem, ?EMPTY_JSON_OBJECT),
-			  Validation = lists:flatten(validate(Instance, InstanceName, S)),
+			  Validation = [],
 			  ?O("~n------- VALIDATION FAIL----- ~p => ~p~n", [Elem, Validation]),
 			  Result = lists:any(?VALIDATION_FUN, Validation),
 			  %?debugFmt("~p: ~p: Testing failure of ~p => ~p~n", [S, Elem, Validation, Result]),
 			  ?assertEqual(false, Result)
-		  end, Fail).
+		  end, []).
 -endif.
