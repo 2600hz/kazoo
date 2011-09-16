@@ -104,27 +104,44 @@ validate({_, _, _}, {_, <<"description">>, D}) ->
     ?VALID;
 
 
+%% apply schema on instance
+validate({Instance, IAttName, IAttVal}, {{struct, Definition}=Schema}) ->
+    trace({IAttName, IAttVal}, {IAttName, <<"attributes()">>}),
+    [validate({Instance, IAttName, IAttVal}, {Schema, SAttName, SAttValue}) || {SAttName, SAttValue} <- Definition];
 
 %% properties define an object
 validate({Instance, _, _}, {Schema, <<"properties">>, {struct, Properties}}) ->
     trace(schema, {<<"properties">>, <<"properties_list()">>}),
     [validate(
        {val(AttName, Instance), AttName, val(AttName, Instance)},
-       {val([<<"properties">>, AttName], Schema), AttName, SAttValue})
+       {val([<<"properties">>, AttName], Schema)})
      || {AttName, SAttValue} <- Properties];
 
-%% instance type
-validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"string">>}) ->
+%% INSTANCE TYPE
+%% string
+validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"string">>}) ->
     trace({IAttName, IAttVal}, {<<"type">>, <<"string">>}),
-    ?VALID;
+    case IAttVal of
+        Str when is_atom(Str); is_binary(Str) ->
+	    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"null">>}) =/= ?VALID
+                andalso validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"boolean">>}) =/= ?VALID of
+		true  ->
+		    ?VALID;
+		false ->
+		    ?INVALID(IAttName, <<"must be a string">>)
+	    end;
+        _ -> ?INVALID(IAttName, <<"must be a string">>)
+    end;
 
+%% boolean
 validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"boolean">>}) when is_boolean(IAttVal)->
     trace({IAttName, IAttVal}, {<<"type">>, <<"boolean">>}),
     ?VALID;
 validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"boolean">>}) ->
     trace({IAttName, IAttVal}, {<<"type">>, <<"boolean">>}),
-    ?VALID;
+    ?INVALID(IAttName, <<"must be a boolean">>);
 
+%% number
 validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"number">>}) when is_number(IAttVal)->
     trace({IAttName, IAttVal}, {<<"type">>, <<"number">>}),
     ?VALID;
@@ -132,32 +149,108 @@ validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"number">>})->
     trace({IAttName, IAttVal}, {<<"type">>, <<"number">>}),
     ?INVALID(IAttVal, <<"must be a number">>);
 
-validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"null">>}) ->
-    trace({IAttName, IAttVal}, {<<"type">>, <<"null">>});
+%% integer
+validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"integer">>}) when is_integer(IAttVal)->
+    trace({IAttName, IAttVal}, {<<"type">>, <<"integer">>}),
+    ?VALID;
+validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"integer">>})->
+    trace({IAttName, IAttVal}, {<<"type">>, <<"integer">>}),
+    ?INVALID(IAttVal, <<"must be an integer">>);
 
+%% array
+validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"array">>})->
+    trace({IAttName, IAttVal}, {<<"type">>, <<"array">>}),
+    case IAttVal of
+	[_|_] -> ?VALID;
+	[] -> ?VALID;
+	_ -> ?INVALID(IAttName, <<"must be an array">>)
+    end;
+
+%% null
+validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"null">>}) ->
+    trace({IAttName, IAttVal}, {<<"type">>, <<"null">>}),
+    case IAttVal of
+        <<"null">> -> ?VALID;
+	null       -> ?VALID;
+        _          -> ?INVALID(IAttName, <<"must be null">>)
+    end;
+
+%% object
 validate({_, IAttName, {struct, _}=IAttVal}, {_, <<"type">>, <<"object">>}) ->
     trace({IAttName, IAttVal}, {<<"type">>, <<"object">>}),
     ?VALID;
-validate({_, IAttName, IAttVal}, {_, <<"type">>, SAttVal}) ->
-    trace({IAttName, IAttVal}, {<<"!type">>, SAttVal});
+
+%% any
+validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"any">>}) ->
+    trace({IAttName, IAttVal}, {<<"type">>, <<"any">>}),
+    ?VALID;
+
+%% schema as a type
+validate({_, IAttName, IAttVal}, {_, <<"type">>, [{struct, _}=Schema]}) ->
+    trace({IAttName, IAttVal}, {<<"type">>, struct}),
+    ?INVALID(IAttName, <<"types not supported">>);
+
+validate({_, IAttName, IAttVal}, {_, <<"type">>, [{struct, _}=Schema|T]}) ->
+    trace({IAttName, IAttVal}, {<<"type">>, struct_list}),
+    ?INVALID(IAttName, <<"types not supported">>);
+    %case lists:all(?VALIDATION_FUN, validate(Instance, Property, Schema)) of
+%	true -> ?VALID;
+%	false -> ?INVALID(Property, <<"type ", T/binary, " is invalid">>)
+%    end;
+
+%% union of type
+validate({Instance, IAttName, IAttVal},{Schema, <<"type">>, [H]}) ->
+    trace({IAttName, IAttVal}, {<<"type">>, H}),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, H}) of
+	?VALID -> ?VALID;
+	_ -> ?INVALID(IAttName, <<"type is invalid">>)
+    end;
+
+%% union of type
+validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, [H|T]}) ->
+    trace({IAttName, IAttVal}, {<<"type">>, H}),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, H})  of
+        ?VALID ->  ?VALID;
+        _ -> validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, T})
+    end;
+
+%% any type is considered valid
+validate({_, IAttName, IAttVal}, {_, <<"type">>, _}) ->
+    trace({IAttName, IAttVal}, {<<"any type">>, IAttVal}),
+    ?VALID;
 
 
 
+%% ARRAY ITEMS
+%% items schema (does not support tuple typing!)
+validate({Instance, IAttName, IAttVal}, {Schema, <<"items">>, ItemSchema}) ->
+    trace({IAttName, IAttVal}, {<<"items">>, <<"items()">>}),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"array">>}) of
+	?VALID -> [validate({Instance, IAttName, AttVal}, {ItemSchema}) || AttVal <- IAttVal];
+	_ -> ?INVALID(IAttVal, <<"must be an array to define items">>)
+    end;
+
+
+
+%% UNDEFINED ATTR
 %% attribute defined in the schema that doesn't exist in the instance
 validate({_, IAttName, undefined}, {Schema, SAttName, SAttVal}) ->
     trace({IAttName, undefined}, {SAttName, SAttVal}),
-    case val(<<"required">>, Schema) of 
+    case val(<<"required">>, Schema) of
 	false -> ?VALID;
         _ -> ?INVALID(IAttName, <<"is undefined">>)
     end;
 
-validate({Instance, AttName, IAttVal}, {Schema, AttName, {struct, SAttValues}}) ->
-    trace({AttName, IAttVal}, {AttName, <<"attributes()">>}),
-    [validate({Instance, AttName, IAttVal}, {Schema, SAttName, SAttValue}) || {SAttName, SAttValue} <- SAttValues];
+%% REQUIRED
+%% all proprs are required by default, see UNDEFINED ATTR
+validate({Instance, IAttName, IAttVal}, {Schema, <<"required">>, Boolean}) ->
+    trace({IAttName, IAttVal}, {<<"required">>, Boolean}),
+    ?VALID;
 
+%% catch all
 validate({_Instance, IAttName, IAttVal}, {_Schema, SAttName, SAttVal}) ->
     trace({IAttName, IAttVal}, {SAttName, SAttVal}),
-    ?INVALID(IAttName, <<"error">>).
+    ?INVALID(IAttName, <<" : unexpected error with value">>, IAttVal).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -166,29 +259,6 @@ validate({_Instance, IAttName, IAttVal}, {_Schema, SAttName, SAttVal}) ->
 %%            value, and not be undefined.
 %% @end
 %%--------------------------------------------------------------------
-validate(Instance, Property, {struct, Definitions}) ->
-    [validate(Instance, Property, {Schema, Property}) || {Property, Schema} <- Definitions];
-
-validate(Instance, Property, {<<"required">>, AttrValue}) ->
-    trace_validate(Property, <<"required">>, AttrValue),
-    case val(Property, Instance) of
-	undefined -> ?INVALID(Property, <<"required but not found">>);
-	_-> ?VALID
-    end;
-
-validate(Instance, Property, {<<"type">>, <<"object">>}) ->
-    trace_validate(Property, <<"type">>, <<"object">>),
-    case val(Property, Instance) of
-	{struct,_} -> ?VALID;
-	_ -> ?INVALID(Property, <<"must define properties">>)
-    end;
-
-validate(Instance, Property, {<<"properties">>, {struct, Properties}}) ->
-    trace_validate(Instance, Property, <<"properties">>, <<"json_props()">>),
-    case val(Property, Instance) of
-	{struct, _}=ChildInstance -> [validate(ChildInstance, K, V) || {K,V} <- Properties];
-	undefined -> ?INVALID(Property, <<"must be of type object">>)
-    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -280,6 +350,7 @@ validate(Instance, Property, {<<"type">>, [H|T]}) ->
         true ->  ?VALID;
         _ -> validate(Instance, Property, { <<"type">>, T})
     end;
+
 
 %% any type is valid
 validate(_Instance, Property, {<<"type">>, Type}) ->
@@ -971,7 +1042,6 @@ disallow_complex_union_test() ->
 validate_test(Succeed, Fail, Schema) ->
     {struct, S} = mochijson2:decode(binary:list_to_bin(Schema)),
     lists:foreach(fun(Elem) ->
-			  ?O(">>>elem ~p, schema ~p", [Elem, S]),
 			  Validation = [validate({none, none, Elem}, {S, AttName, AttValue}) || {AttName, AttValue} <- S],
 			  ?O("~n------- VALIDATION SUCCEED----- ~p => ~p~n", [Elem, Validation]),
 			  Result = lists:all(?VALIDATION_FUN, Validation),
@@ -979,7 +1049,7 @@ validate_test(Succeed, Fail, Schema) ->
 			  ?assertEqual(true, Result)
 		  end, Succeed),
     lists:foreach(fun(Elem) ->
-			  Validation = [],
+			  Validation = [validate({none, none, Elem}, {S, AttName, AttValue}) || {AttName, AttValue} <- S],
 			  ?O("~n------- VALIDATION FAIL----- ~p => ~p~n", [Elem, Validation]),
 			  Result = lists:any(?VALIDATION_FUN, Validation),
 			  %?debugFmt("~p: ~p: Testing failure of ~p => ~p~n", [S, Elem, Validation, Result]),
