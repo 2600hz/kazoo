@@ -17,12 +17,12 @@
 
 -export([get_value/2, get_value/3]).
 -export([get_keys/1, get_keys/2]).
--export([set_value/3]).
+-export([set_value/3, new/0]).
 -export([delete_key/2, delete_key/3]).
 
 -export([from_list/1, merge_jobjs/2]).
 
--export([normalize_jobj/1, is_json_object/1]).
+-export([normalize_jobj/1, is_json_object/1, is_json_term/1]).
 
 %% not for public use
 -export([prune/2, no_prune/2]).
@@ -30,11 +30,15 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("proper/include/proper.hrl").
 
+-spec new/0 :: () -> ?EMPTY_JSON_OBJECT.
+new() ->
+    ?EMPTY_JSON_OBJECT.
+
 -spec is_json_object/1 :: (MaybeJObj) -> boolean() when
       MaybeJObj :: term().
 is_json_object(MaybeJObj) ->
     try
- 	lists:all(fun(K) -> is_json_term(?MODULE:get_value(K, MaybeJObj)) end,
+ 	lists:all(fun(K) -> is_json_term(?MODULE:get_value([K], MaybeJObj)) end,
 		  ?MODULE:get_keys(MaybeJObj))
     catch
 	throw:_ -> false;
@@ -43,8 +47,10 @@ is_json_object(MaybeJObj) ->
 
 -spec is_json_term/1 :: (V) -> boolean() when
       V :: json_term().
+is_json_term(undefined) -> false;
 is_json_term(V) when is_atom(V) -> true;
 is_json_term(V) when is_binary(V) -> true;
+is_json_term(V) when is_bitstring(V) -> true;
 is_json_term(V) when is_integer(V) -> true;
 is_json_term(V) when is_float(V) -> true;
 is_json_term(Vs) when is_list(Vs) ->
@@ -54,13 +60,27 @@ is_json_term(MaybeJObj) ->
     is_json_object(MaybeJObj).
 
 -spec from_list/1 :: (L) -> json_object() when
-      L :: proplist().
+      L :: wh_proplist().
 from_list(L) when is_list(L) ->
-    io:format("L: ~p~n", [L]),
-    lists:foldr(fun({K, [{_,_}|_]=V}, Acc) -> set_value(K, from_list(V), Acc); % convert proplist to json_object
-		   ({K, [A|_]=V}, Acc) when is_atom(A) -> set_value(K, from_list(V), Acc); % proplist may start with an atom
-		    ({K,V}, Acc) -> set_value(K, V, Acc); % set all other Values normally
-		    (A, Acc) when is_atom(A) -> set_value(A, true, Acc)
+    lists:foldr(fun({K, V}, Acc) when is_list(V) ->
+			set_value([K]
+				  ,lists:foldr(fun(Items, Acc1) when is_list(Items) ->
+						       case lists:all(fun(Atom) when is_atom(Atom) -> true;
+									 (Tuple) when is_tuple(Tuple) andalso size(Tuple) =:= 2 -> true;
+									 (_) -> false
+								      end, Items) of
+							   true -> [from_list(Items) | Acc1];
+							   false -> [Items | Acc1]
+						       end;
+						  ({K1,V1}, Acc1) -> [wh_json:set_value(K1, V1, ?EMPTY_JSON_OBJECT) | Acc1];
+						  (Item, Acc1) ->
+						       [ Item | Acc1]
+					       end, [], V)
+				  ,Acc);
+		   ({K,V}, Acc) ->
+			true = is_json_term(V), % crash if invalid
+			set_value([K], V, Acc); % set all other Values normally
+		   (A, Acc) when is_atom(A) -> set_value([A], true, Acc)
 		end, ?EMPTY_JSON_OBJECT, L).
 
 %% only a top-level merge
@@ -453,49 +473,25 @@ prop_is_json_object() ->
       ?MODULE:is_json_object(JObj))
     ).
 
-%% GENERATORS
-%% create json objects
-json_object_builder() ->
-    ?LET(Prop, a_proplist(), {struct, Prop}).
+prop_from_list() ->
+    ?FORALL(Prop, wh_proplist(),
+ 	    ?WHENFAIL(io:format("Failed prop_from_list with ~p~n", [Prop]),
+ 		      ?MODULE:is_json_object(?MODULE:from_list(Prop)))
+ 	   ).
 
-a_proplist() ->
-    ?SUCHTHAT(L, list( ?LET({K,V}, {binary(), proplist_value()}, {K, V}) ), length(L) < 5).
-
-proplist_value() ->
-    ?LAZY(weighted_union([{15,binary()},{1,json_object_builder()}])).
-
-%% prop_from_list() ->
-%%     ?FORALL(Prop, a_proplist(),
-%% 	    ?WHENFAIL(io:format("Failed prop_from_list with ~p~n", [Prop]),
-%% 		      ?MODULE:is_json_object(?MODULE:from_list(Prop)))
-%% 	   ).
-
-%% prop_is_json_object() ->
-%%     ?FORALL(JObj, json_object_builder(),
-%% 	    ?WHENFAIL(io:format("Failed prop_is_json_object ~p~n", [JObj]),
-%% 		      ?MODULE:is_json_object(JObj))
-%% 	    ).
-
-%% GENERATORS
-%% create json objects
-%% json_object_builder() ->
-%%     ?LET(Prop, a_proplist(), ?MODULE:from_list(Prop)).
-
-%% a_proplist() ->
-%%     io:format("a_prop~n", []),
-%%     ?SUCHTHAT(L, list( ?LET({K,V}, {proplist_key(), proplist_value()}, {K, V}) ), length(L) < 5).
-
-%% proplist_key() ->
-%%     io:format("p_key~n", []),
-%%     ?LAZY(union([binary(),atom(),nonempty_string()])).
-
-%% nonempty_string() ->
-%%     io:format("nonem~n", []),
-%%     ?SUCHTHAT(Str, list(char()), length(Str) > 0 andalso length(Str) < 10).
-
-%% proplist_value() ->
-%%     io:format("p_val~n", []),
-%%     ?LAZY(weighted_union([{15,binary()},{1,a_proplist()}])).
+prop_get_value() ->
+    ?FORALL(Prop, wh_proplist(),
+	    ?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop]),
+		      begin
+			  JObj = from_list(Prop),
+			  case length(Prop) > 0 andalso hd(Prop) of
+			      {K,V} ->
+				  V =:= get_value([K], JObj);
+			      false -> wh_json:new() =:= JObj;
+			      A ->
+				  true =:= get_value([A], JObj)
+			  end
+		      end)).
 
 %% EUNIT TESTING
 -ifdef(TEST).

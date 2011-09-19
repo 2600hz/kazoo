@@ -19,10 +19,13 @@
 
 -define(EMPTY_JSON_OBJECT, {'struct', []}).
 
--type json_string() :: atom() | binary() | string().
+-type wh_proplist() :: [{binary() | atom(), binary() | atom() | integer() | float()}] | [].
+
+-type json_string() :: atom() | binary().
 -type json_number() :: integer() | float().
 -type json_array() :: [json_term(),...] | [].
--type json_object() :: {'struct', [{json_string(), json_term()},...]} | ?EMPTY_JSON_OBJECT.
+-type json_proplist() :: [{json_string(), json_term()},...] | [].
+-type json_object() :: {'struct', json_proplist()} | ?EMPTY_JSON_OBJECT.
 -type json_iolist() :: {'json', iolist()}.
 -type json_term() :: json_string() | json_number() | json_array() | json_object() | json_iolist().
 -type json_objects() :: [json_object(),...] | [].
