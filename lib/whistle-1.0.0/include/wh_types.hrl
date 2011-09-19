@@ -19,7 +19,7 @@
 
 -define(EMPTY_JSON_OBJECT, {'struct', []}).
 
--type wh_proplist() :: [{binary() | atom(), binary() | atom() | integer() | float()}] | [].
+-type wh_proplist() :: [{binary() | atom(), binary() | atom() | integer() | float() | string()} | atom(),...] | [].
 
 -type json_string() :: atom() | binary().
 -type json_number() :: integer() | float().
