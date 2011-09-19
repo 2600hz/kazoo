@@ -9,7 +9,7 @@
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
 -export([callmgr_exchange/0, callmgr_publish/3]).
--export([configuration_exchange/0, configuration_publish/3]).
+-export([configuration_exchange/0, configuration_publish/2, configuration_publish/3, document_change_publish/5]).
 -export([monitor_exchange/0, monitor_publish/3]).
 -export([conference_exchange/0, conference_publish/2, conference_publish/3, conference_publish/4]).
 
@@ -65,12 +65,32 @@ targeted_publish(Queue, Payload, ContentType) ->
 callmgr_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
 
+
+-spec configuration_publish/2 :: (RoutingKey, Payload) -> 'ok' when
+      RoutingKey :: binary(),
+      Payload :: iolist().
 -spec configuration_publish/3 :: (RoutingKey, Payload, ContentType) -> 'ok' when
       RoutingKey :: binary(),
       Payload :: iolist(),
       ContentType :: binary().
+configuration_publish(RoutingKey, Payload) ->
+    configuration_publish(RoutingKey, Payload, <<"application/json">>).
 configuration_publish(RoutingKey, Payload, ContentType) ->
     basic_publish(?EXCHANGE_CONFIGURATION, RoutingKey, Payload, ContentType).
+
+
+-spec document_change_publish/5 :: (Action, Db, Type, Id, Payload) -> 'ok' when
+      Action :: binary(), %% edited | created | deleted
+      Db :: binary(),
+      Type :: binary(),
+      Id :: binary(),
+      Payload :: iolist().
+document_change_publish(Action, Db, Type, Id, Payload) ->
+    RoutingKey = <<"doc_", Action/binary
+                   ,".", Db/binary
+                   ,".", Type/binary
+                   ,".", Id/binary>>,
+    configuration_publish(RoutingKey, Payload).
 
 -spec callctl_publish/2 :: (CallID, Payload) -> 'ok' when
       CallID :: binary(),
