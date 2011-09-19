@@ -9,7 +9,7 @@
 -module(wh_json).
 
 -export([to_proplist/1, to_proplist/2]).
--export([get_binary_boolean/2, get_binary_boolean/3]).
+-export([get_binary_boolean/2]).
 -export([get_integer_value/2, get_integer_value/3]).
 -export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
@@ -169,18 +169,11 @@ is_true(Key, JObj) ->
 -spec get_binary_boolean/2 :: (Key, JObj) -> 'undefined' | binary() when
       Key :: term(),
       JObj :: json_object() | json_objects().
--spec get_binary_boolean/3 :: (Key, JObj, Default) -> binary() when
-      Key :: term(),
-      JObj :: json_object() | json_objects(),
-      Default :: boolean().
 get_binary_boolean(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
         Value -> wh_util:to_binary(wh_util:is_true(Value))
     end.
-
-get_binary_boolean(Key, JObj, Default) when is_boolean(Default) ->
-    wh_util:to_binary(is_true(Key, JObj, Default)).
 
 -spec get_keys/1 :: (JObj) -> [term(),...] | [] when
       JObj :: json_object().
