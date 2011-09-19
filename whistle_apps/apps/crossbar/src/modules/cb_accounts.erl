@@ -30,7 +30,7 @@
 -define(AGG_VIEW_PARENT, <<"accounts/listing_by_parent">>).
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
--define(AGG_GROUP_BY_REALM, <<"accounts/group_by_realm">>).
+-define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
 -define(AGG_FILTER, <<"account/export">>).
 
 %%%===================================================================
@@ -693,32 +693,23 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
 -spec(is_unique_realm/2 :: (AccountId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).
 is_unique_realm(AccountId, #cb_context{req_data=JObj}=Context) ->
     is_unique_realm(AccountId, Context, wh_json:get_value(<<"realm">>, JObj)).
-
 is_unique_realm(_, _, undefined) -> false;
-is_unique_realm(undefined, Context, Realm) ->
-    V = case crossbar_doc:load_view(?AGG_GROUP_BY_REALM, [{<<"key">>, Realm}
-							  ,{<<"reduce">>, <<"true">>}
-							 ]
-				    ,Context#cb_context{db_name=?AGG_DB}) of
-	    #cb_context{resp_status=success, doc=[J]} -> wh_json:get_value(<<"value">>, J, []);
-	    #cb_context{resp_status=success, doc=[]} -> []
-	end,
-    ?LOG_SYS("Is unique realm: ~s AcctID: undefined V: ~p", [Realm, V]),
-    is_unique_realm1(Realm, V);
-is_unique_realm(AccountId, Context, Realm) ->
-    V = case crossbar_doc:load_view(?AGG_GROUP_BY_REALM, [{<<"key">>, Realm}
-							  ,{<<"reduce">>, <<"true">>}
-							 ]
-				    ,Context#cb_context{db_name=?AGG_DB}) of
-	    #cb_context{resp_status=success, doc=[J]} -> wh_json:get_value(<<"value">>, J, []);
-	    #cb_context{resp_status=success, doc=[]} -> []
-	end,
-    ?LOG_SYS("Is unique realm: ~s AcctID: ~s V: ~p", [Realm, AccountId, V]),
-    is_unique_realm1(Realm, V).
 
-is_unique_realm1(undefined, [_]) -> false;
-is_unique_realm1(undefined, []) -> false;
-is_unique_realm1(_, []) -> true;
-is_unique_realm1(Realm, [Realm]) -> true;
-is_unique_realm1(_, [_]) -> true;
-is_unique_realm1(_, _) -> false.
+is_unique_realm(undefined, _, Realm) ->
+    %% unique if Realm doesn't exist in agg DB
+    case couch_mgr:get_results(?AGG_DB, ?AGG_VIEW_REALM, [{<<"key">>, Realm}]) of
+	{ok, []} -> true;
+	{ok, [_|_]} -> false
+    end;
+
+is_unique_realm(AccountId, Context, Realm) ->
+    {ok, Doc} = couch_mgr:open_doc(?AGG_DB, AccountId),
+    %% Unique if, for this account, request and account's realm are same
+    %% or request Realm doesn't exist in DB (cf is_unique_realm(undefined ...)
+    case wh_json:get_value(<<"realm">>, Doc) of
+	Realm -> true;
+	_ -> is_unique_realm(undefined, Context, Realm)
+    end.
+
+%% for testing purpose, don't forget to export !
+%% is_unique_realm({AccountId, Realm}) -> is_unique_realm(AccountId, #cb_context{}, Realm).
