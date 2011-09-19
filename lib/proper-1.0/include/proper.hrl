@@ -23,7 +23,7 @@
 %%% @doc User header file: This file should be included in each file containing
 %%%      user type declarations and/or properties to be tested.
 
--include("proper_common.hrl").
+-include_lib("proper/include/proper_common.hrl").
 
 -ifndef(PROPER_NO_IMPORTS).
 
