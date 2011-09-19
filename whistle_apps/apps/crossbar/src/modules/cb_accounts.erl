@@ -279,7 +279,7 @@ bind_to_crossbar() ->
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
-    {true, ['GET', 'POST', 'DELETE']};
+    {true, ['GET', 'PUT', 'POST', 'DELETE']};
 allowed_methods([_, <<"parent">>]) ->
     {true, ['GET', 'POST', 'DELETE']};
 allowed_methods([_, Path]) ->
@@ -322,6 +322,8 @@ validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account_summary([], Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create_account(Context);
+validate([ParrentId], #cb_context{req_verb = <<"put">>}=Context) ->
+    create_account(Context, ParrentId);
 validate([AccountId], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account(AccountId, Context);
 validate([AccountId], #cb_context{req_verb = <<"post">>}=Context) ->
@@ -365,8 +367,16 @@ load_account_summary(AccountId, Context) ->
 %% Create a new account document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_account(#cb_context{req_data=JObj}=Context) ->
+-spec create_account/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
+-spec create_account/2 :: (Context, Parrent) -> #cb_context{} when
+      Context :: #cb_context{},
+      Parrent :: undefined | binary().
+
+create_account(Context) ->
+    create_account(Context, undefined).
+
+create_account(#cb_context{req_data=JObj}=Context, ParrentId) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
 	    ?LOG_SYS("Invalid JSON failed on fields ~p", [Fields]),
@@ -377,7 +387,7 @@ create_account(#cb_context{req_data=JObj}=Context) ->
                 true ->
 		    ?LOG_SYS("Realm ~s is valid and unique", [wh_json:get_value(<<"realm">>, JObj)]),
                     Context#cb_context{
-                      doc=set_private_fields(JObj, Context)
+                      doc=set_private_fields(JObj, Context, ParrentId)
                       ,resp_status=success
                      };
                 false ->
@@ -599,11 +609,28 @@ update_doc_tree(_ParentTree, _Object, Acc) ->
 %% document
 %% @end
 %%--------------------------------------------------------------------
--spec(set_private_fields/2 :: (JObj :: json_object(), Context :: #cb_context{}) -> json_object()).
-set_private_fields(JObj0, Context) ->
+-spec set_private_fields/3 :: (JObj, Context, ParrentId) -> json_object() when
+      JObj :: json_object(),
+      Context :: #cb_context{},
+      ParrentId :: undefined | binary().
+
+set_private_fields(JObj0, Context, undefined) ->
     lists:foldl(fun(Fun, JObj1) ->
                         Fun(JObj1, Context)
-                end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, fun add_pvt_tree/2]).
+                end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, fun add_pvt_tree/2]);
+set_private_fields(JObj0, Context, ParrentId) ->
+    case is_binary(ParrentId) andalso couch_mgr:open_doc(whapps_util:get_db_name(ParrentId, encoded), ParrentId) of
+        {ok, ParrentJObj} ->
+            Tree = wh_json:get_value(<<"pvt_tree">>, ParrentJObj, []) ++ [ParrentId],
+            AddPvtTree = fun(JObj, _) -> wh_json:set_value(<<"pvt_tree">>, Tree, JObj) end,
+            lists:foldl(fun(Fun, JObj1) ->
+                                Fun(JObj1, Context)
+                        end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, AddPvtTree]);
+        false ->
+            set_private_fields(JObj0, Context, undefined);
+        _ ->
+            set_private_fields(JObj0, Context, undefined)
+    end.
 
 add_pvt_type(JObj, _) ->
     wh_json:set_value(<<"pvt_type">>, <<"account">>, JObj).
