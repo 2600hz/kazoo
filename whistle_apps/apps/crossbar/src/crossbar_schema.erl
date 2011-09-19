@@ -33,50 +33,24 @@
 -define(VALIDATION_FUN, fun({error, _}) -> false; (?VALID) -> true end).
 -define(O, fun io:format/2).
 
-val(P, I) ->
-    wh_json:get_value(P, I, undefined).
 
-
--spec trace_validate/4 :: (Instance, Property, AttrName, AttrValue) -> 'ok' | 'false' when
-      Instance :: json_object(),
-      Property :: binary(),
-      AttrName :: attribute_name(),
-      AttrValue :: attribute_value().
-trace_validate(_Instance, Property, AttrName, AttrValue) ->
-    ?TRACE andalso begin
-		       ?O("~nproperty :: ~p - attribute :: ~p - value :: ~p~n", [Property, AttrName, AttrValue])
-		   end.
-trace_validate(Property, AttrName, AttrValue) ->
-    trace_validate(none, Property, AttrName, AttrValue).
-
-
-
-
-trace({IK, IV}, {SK, SV}) ->
-    ?TRACE andalso begin
-			?O("[TRACE] instance { ~p : ~p } || schema { ~p : ~p }~n", [IK,IV,SK,SV])
-		    end;
-trace(schema, {SK, SV}) ->
-    ?TRACE andalso begin
-		       ?O("[TRACE] schema { ~p : ~p }~n", [SK,SV])
-		   end;
-trace(instance, {IK, IV}) ->
-    ?TRACE andalso begin
-		       ?O("[TRACE] instance { ~p : ~p }~n", [IK,IV])
-		   end.
 
 -spec do_validate/2 :: (File, SchemaName) -> list() when
       File :: string() | json_object(),
       SchemaName :: atom().
 do_validate(JObj, SchemaName) when is_binary(SchemaName) ->
     {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, SchemaName),
-    %V = validate(wh_json:set_value(SchemaName, JObj, ?EMPTY_JSON_OBJECT), SchemaName, Schema),
     {struct, SchemaDefinitions} = Schema,
-    R = [validate({JObj, AttrName, val(AttrName, JObj)}, {Schema, AttrName, AttrValue}) || {AttrName, AttrValue} <- SchemaDefinitions],
+    R = validate({JObj}, {Schema}),
     S = [E || {error, _}=E <- lists:flatten(R)],
     ?O("Result > ~p~n", [S]).
 
 
+%%--------------------------------------------------------------------
+%% @doc
+%% validation method that is recursively applied on the JSON object
+%% @end
+%%--------------------------------------------------------------------
 -spec validate/2 :: ({Instance, IAttName, IAttVal}, {Schema, SAttName,SAttVal}) -> validation_results() when
       Instance :: json_object(),
       IAttName :: attribute_name(),
@@ -85,39 +59,91 @@ do_validate(JObj, SchemaName) when is_binary(SchemaName) ->
       SAttName :: attribute_name(),
       SAttVal :: attribute_value().
 
+%% couch metadata ignored for our validation impl.
+validate({_, _, _}, {_, <<"_id">>, _}) ->
+    %trace(schema, {<<"_id">>, _V}),
+    ?VALID;
+validate({_, _, _}, {_, <<"_rev">>, _}) ->
+    %trace(schema, {<<"_rev">>, _V}),
+    ?VALID;
 
-%% metadata ignored for validation
-validate({_, _, _}, {_, <<"_id">>, V}) ->
-    %trace(schema, {<<"_id">>, V}),
-    ?VALID;
-validate({_, _, _}, {_, <<"_rev">>, V}) ->
-    %trace(schema, {<<"_rev">>, V}),
-    ?VALID;
-validate({_, _, _}, {_, <<"id">>, V}) ->
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.27
+%% id - defines the current URI of this schem
+%% @end
+%%--------------------------------------------------------------------
+validate({_, _, _}, {_, <<"id">>, _}) ->
     %trace(schema, {<<"id">>, V}),
     ?VALID;
-validate({_, _, _}, {_, <<"\$schema">>, V}) ->
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.28
+%% $ref - defines a URI of a schema that contains the full
+%%        representation of this schema
+%% @end
+%%--------------------------------------------------------------------
+validate({_, _, _}, {_, <<"\$ref">>, _}) ->
+    %trace(schema, {<<"\$ref">>, V}),
+    ?VALID;
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.29
+%% $schema - defines a URI of a JSON Schema that is the schema of
+%%           the current schema
+%% @end
+%%--------------------------------------------------------------------
+validate({_, _, _}, {_, <<"\$schema">>, _}) ->
     %trace(schema, {<<"\$schema">>, V}),
     ?VALID;
-validate({_, _, _}, {_, <<"description">>, D}) ->
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.21
+%% title - This attribute is a string that provides a short
+%%         description of the instance property.
+%% @end
+%%--------------------------------------------------------------------
+validate({_, _, _}, {_, <<"description">>, _}) ->
     %trace(schema, {<<"description">>, D}),
     ?VALID;
 
+%% PROPERTIES
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.2
+%% properties - This attribute is an object with property definitions
+%%              that define the valid values of instance object property
+%%              values.
+%% @end
+%%--------------------------------------------------------------------
+% apply schema on instance
+validate({Instance}, {{struct, Definition}=Schema}) ->
+    trace(instance, {<<"instance">>, <<"jobj()">>}),
+    trace(schema, {<<"schema">>, <<"jobj()">>}),
+    ?O(" >>> ~p~n", [Definition]),
+    [validate({Instance, SAttName, val(SAttName, Instance)}, {Schema, SAttName, SAttValue}) || {SAttName, SAttValue} <- Definition];
 
-%% apply schema on instance
-validate({Instance, IAttName, IAttVal}, {{struct, Definition}=Schema}) ->
-    trace({IAttName, IAttVal}, {IAttName, <<"attributes()">>}),
-    [validate({Instance, IAttName, IAttVal}, {Schema, SAttName, SAttValue}) || {SAttName, SAttValue} <- Definition];
+validate({Instance, IAttName, IAttVal}, {Schema, <<"properties">>, {struct, Properties}}) ->
+    trace(schema, {<<"properties">>, Properties}),
+    ?O(" PROPERTIES :3 ~p", [Properties]),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"object">>}) of
+	?VALID -> [validate({val(AttName, Instance)}, {SAttSchema})  || {AttName, SAttSchema} <- Properties];
+	_ -> ?INVALID
+    end;
 
-%% properties define an object
-validate({Instance, _, _}, {Schema, <<"properties">>, {struct, Properties}}) ->
-    trace(schema, {<<"properties">>, <<"properties_list()">>}),
-    [validate(
-       {val(AttName, Instance), AttName, val(AttName, Instance)},
-       {val([<<"properties">>, AttName], Schema)})
-     || {AttName, SAttValue} <- Properties];
+
 
 %% INSTANCE TYPE
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.1
+%% type - This attribute defines what the primitive type or the schema
+%%        of the instance MUST be in order to validate.
+%% @end
+%%--------------------------------------------------------------------
 %% string
 validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"string">>}) ->
     trace({IAttName, IAttVal}, {<<"type">>, <<"string">>}),
@@ -176,7 +202,7 @@ validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"null">>}) ->
     end;
 
 %% object
-validate({_, IAttName, {struct, _}=IAttVal}, {_, <<"type">>, <<"object">>}) ->
+validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"object">>}) ->
     trace({IAttName, IAttVal}, {<<"type">>, <<"object">>}),
     ?VALID;
 
@@ -188,11 +214,11 @@ validate({_, IAttName, IAttVal}, {_, <<"type">>, <<"any">>}) ->
 %% schema as a type
 validate({_, IAttName, IAttVal}, {_, <<"type">>, [{struct, _}=Schema]}) ->
     trace({IAttName, IAttVal}, {<<"type">>, struct}),
-    ?INVALID(IAttName, <<"types not supported">>);
+    ?INVALID(IAttName, <<"type not supported">>);
 
 validate({_, IAttName, IAttVal}, {_, <<"type">>, [{struct, _}=Schema|T]}) ->
     trace({IAttName, IAttVal}, {<<"type">>, struct_list}),
-    ?INVALID(IAttName, <<"types not supported">>);
+    ?INVALID(IAttName, <<"type not supported">>);
     %case lists:all(?VALIDATION_FUN, validate(Instance, Property, Schema)) of
 %	true -> ?VALID;
 %	false -> ?INVALID(Property, <<"type ", T/binary, " is invalid">>)
@@ -219,18 +245,21 @@ validate({_, IAttName, IAttVal}, {_, <<"type">>, _}) ->
     trace({IAttName, IAttVal}, {<<"any type">>, IAttVal}),
     ?VALID;
 
-
-
 %% ARRAY ITEMS
-%% items schema (does not support tuple typing!)
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.5
+%% items - This attribute defines the allowed items in an instance array,
+%%         and MUST be a schema or an array of schemas.
+%% does not support tuple typing!
+%% @end
+%%--------------------------------------------------------------------
 validate({Instance, IAttName, IAttVal}, {Schema, <<"items">>, ItemSchema}) ->
     trace({IAttName, IAttVal}, {<<"items">>, <<"items()">>}),
     case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"array">>}) of
 	?VALID -> [validate({Instance, IAttName, AttVal}, {ItemSchema}) || AttVal <- IAttVal];
 	_ -> ?INVALID(IAttVal, <<"must be an array to define items">>)
     end;
-
-
 
 %% UNDEFINED ATTR
 %% attribute defined in the schema that doesn't exist in the instance
@@ -242,128 +271,248 @@ validate({_, IAttName, undefined}, {Schema, SAttName, SAttVal}) ->
     end;
 
 %% REQUIRED
-%% all proprs are required by default, see UNDEFINED ATTR
-validate({Instance, IAttName, IAttVal}, {Schema, <<"required">>, Boolean}) ->
-    trace({IAttName, IAttVal}, {<<"required">>, Boolean}),
-    ?VALID;
-
-%% catch all
-validate({_Instance, IAttName, IAttVal}, {_Schema, SAttName, SAttVal}) ->
-    trace({IAttName, IAttVal}, {SAttName, SAttVal}),
-    ?INVALID(IAttName, <<" : unexpected error with value">>, IAttVal).
-
 %%--------------------------------------------------------------------
 %% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.7
 %% required - This attribute indicates if the instance must have a
 %%            value, and not be undefined.
+%% all props are required by default, see UNDEFINED ATTR
 %% @end
 %%--------------------------------------------------------------------
-
-%%--------------------------------------------------------------------
-%% @doc
-%% No other functions should run if the Instance is undefined
-%% @end
-%%--------------------------------------------------------------------
-
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.1
-%% type - This attribute defines what the primitive type or the schema
-%%        of the instance MUST be in order to validate.
-%% @end
-%%--------------------------------------------------------------------
-validate(Instance, Property, {<<"type">>, <<"null">>}) ->
-    trace_validate(Property,<<"type">>, <<"null">>),
-    case val(Property, Instance) of
-        <<"null">> -> ?VALID;
-        null       -> ?VALID;
-        _          -> ?INVALID(Instance, <<"must be null">>)
-    end;
-
-validate(Instance, Property, {<<"type">>, <<"string">>}) ->
-    trace_validate(Property, <<"type">>, <<"string">>),
-    case val(Property, Instance) of
-        Str when is_atom(Str); is_binary(Str) ->
-	    case validate(Instance, Property, {<<"type">>, <<"null">>}) =/= ?VALID
-                andalso validate(Instance, Property, {<<"type">>, <<"boolean">>}) =/= ?VALID of
-		true  ->
-		    ?VALID;
-		false ->
-		    ?INVALID(Property, <<"must be of type string">>)
-	    end;
-        _ -> ?INVALID(Property, <<"must be of type string">>)
-    end;
-validate(Instance, Property, {<<"type">>, <<"number">>}) ->
-    trace_validate(Property, <<"type">>, <<"number">>),
-    case is_number(val(Property, Instance)) of
-	false -> ?INVALID(Property, <<"must be of type number">>);
-	true  -> ?VALID
-    end;
-validate(Instance, Property, {<<"type">>, <<"integer">>}) ->
-    trace_validate(Instance, Property, <<"type">>, <<"integer">>),
-    case is_integer(val(Property, Instance)) of
-	false -> ?INVALID(Property, <<"must be of type integer">>);
-	true  -> ?VALID
-    end;
-validate(Instance, Property, {<<"type">>, <<"boolean">>}) ->
-    trace_validate(Property, <<"type">>, <<"boolean">>),
-    V = wh_json:get_value(Property, Instance),
-    case wh_util:is_true(V) orelse wh_util:is_false(V) of
-        true -> ?VALID;
-        _ -> ?INVALID(Property, <<"must be of type boolean">>)
-    end;
-validate(Instance, Property, {<<"type">>, <<"array">>}) ->
-    trace_validate(Property, <<"type">>, <<"array">>),
-    case val(Property, Instance) of
-	[_|_] -> ?VALID;
-	[] -> ?VALID;
-	_ -> ?INVALID(Property, <<"must be an array">>)
-    end;
-
-validate(_Instance, Property, {<<"type">>, <<"any">>}) ->
-    trace_validate(Property, <<"type">>, <<"any">>),
+validate({Instance, IAttName, IAttVal}, {Schema, <<"required">>, Boolean}) ->
+    trace({IAttName, IAttVal}, {<<"required">>, Boolean}),
     ?VALID;
 
-validate(Instance, Property, {<<"type">>, [{struct, _}=Schema]}) ->
-    trace_validate(Property, <<"type">>, struct),
-    validate(Instance, Property, Schema);
-
-validate(Instance, Property, {<<"type">>, [{struct, _}=Schema|T]}) ->
-    trace_validate(Instance, <<"type">>, struct_list),
-    case lists:all(?VALIDATION_FUN, validate(Instance, Property, Schema)) of
-	true -> ?VALID;
-	false -> ?INVALID(Property, <<"type ", T/binary, " is invalid">>)
-    end;
-
-validate(Instance, Property, {<<"type">>, [H]}) ->
-    trace_validate(Property, <<"type">>, H),
-    case validate(Instance, Property, {<<"type">>, H}) of
-	true -> ?VALID;
-	_ -> ?INVALID(Property, <<"type ", H, " is invalid">>)
-    end;
-
-validate(Instance, Property, {<<"type">>, [H|T]}) ->
-    trace_validate(Property, <<"type">>, H),
-    case validate(Instance, Property, {<<"type">>, H}) of
-        true ->  ?VALID;
-        _ -> validate(Instance, Property, { <<"type">>, T})
-    end;
-
-
-%% any type is valid
-validate(_Instance, Property, {<<"type">>, Type}) ->
-    trace_validate(Property, <<"type">>, Type),
-    ?VALID;
+%% MINIMUM
 %%--------------------------------------------------------------------
 %% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.2
-%% properties - This attribute is an object with property definitions
-%%              that define the valid values of instance object property
-%%              values.
+%% Implementation of draft-zyp-json-schema-03 section 5.9
+%% minimum - This attribute defines the minimum value of the instance
+%%           property when the type of the instance value is a number.
 %% @end
 %%--------------------------------------------------------------------
+validate({Instance, IAttName, IAttVal}, {Schema, <<"minimum">>, Minimum}) ->
+    trace({IAttName, IAttVal}, {<<"minimum">>, Minimum}),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"number">>}) of
+	?VALID -> case IAttVal >= Minimum of
+		      true -> ?VALID;
+		      _ -> ?INVALID(IAttName, <<"is lower than">>, Minimum)
+		  end;
+	_ -> ?INVALID(IAttName, <<"must be an integer to have a minimum">>)
+    end;
+
+%% EXCLUSIVE MINIMUM
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.11
+%% exclusiveMinimum - his attribute indicates if the value of the
+%%                    instance (if the instance is a number) can not
+%%                    equal the number defined by the "minimum" attribute.
+%% @end
+%%--------------------------------------------------------------------
+validate({Instance, IAttName, IAttVal}, {Schema, <<"exclusiveMinimum">>, Boolean}) when is_boolean(Boolean) ->
+    trace({IAttName, IAttVal}, {<<"exclusiveMinimum">>, Boolean}),
+    SMinimum = val(<<"minimum">>, Schema),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"minimum">>, SMinimum}) of
+	?VALID -> case IAttVal == SMinimum and Boolean of
+		      true ->?INVALID(IAttName, <<"cannot equal minimum since it's exclusive">>);
+		      _ ->  ?VALID
+		  end;
+
+	_ -> ?INVALID(IAttName,  <<"cannot equal minimum since it's exclusive">>)
+    end;
+
+%% MAXIMUM
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.10
+%% maximum - This attribute defines the maximum value of the instance
+%%           property when the type of the instance value is a number.
+%% @end
+%%--------------------------------------------------------------------
+validate({Instance, IAttName, IAttVal}, {Schema, <<"maximum">>, Maximum}) ->
+    trace({IAttName, IAttVal}, {<<"maximum">>, Maximum}),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"number">>}) of
+	?VALID -> case IAttVal >= Maximum of
+		      ?VALID -> ?VALID;
+		      _ -> ?INVALID(IAttName, <<"is greater than">>, Maximum)
+		  end;
+	_ -> ?INVALID(IAttName, <<"must be an integer to have a minimum">>)
+    end;
+
+%% EXCLUSIVE MAXIMUM
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.12
+%% exclusiveMaximum - This attribute indicates if the value of the
+%%                    instance (if the instance is a number) can not
+%%                    equal the number defined by the "maximum" attribute.
+%% @end
+%%--------------------------------------------------------------------
+validate({Instance, IAttName, IAttVal}, {Schema, <<"exclusiveMaximum">>, Boolean}) when is_boolean(Boolean) ->
+    trace({IAttName, IAttVal}, {<<"exclusiveMaximum">>, Boolean}),
+    SMax = val(<<"maximum">>, Schema),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"minimum">>, SMax}) of
+	?VALID -> case IAttVal == SMax and Boolean of
+		      true ->?INVALID(IAttName, <<"cannot equal minimum since it's exclusive">>);
+		      _ ->  ?VALID
+		  end;
+
+	_ -> ?INVALID(IAttName,  <<"cannot equal maximum since it's exclusive">>)
+    end;
+
+%% MINITEMS
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.13
+%% minItems - This attribute defines the minimum number of values in
+%%            an array when the array is the instance value.
+%% @end
+%%--------------------------------------------------------------------
+validate({Instance, IAttName, IAttVal}, {Schema, <<"minItems">>, MinItems})  ->
+    trace({IAttName, IAttVal}, {<<"minItems">>, MinItems}),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"array">>}) of
+	?VALID -> case length(Instance) >= MinItems of
+		      true -> ?VALID;
+		      false -> ?INVALID(IAttName, <<"has less items than minItems in array">>)
+		  end;
+	_ -> ?INVALID(IAttName, <<"must be an array to define minItems">>)
+    end;
+
+%% MAXITEMS
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.14
+%% maxItems - This attribute defines the maximum number of values in
+%%            an array when the array is the instance value.
+%% @end
+%%--------------------------------------------------------------------
+validate({Instance, IAttName, IAttVal}, {Schema, <<"maxItems">>, MinItems})  ->
+    trace({IAttName, IAttVal}, {<<"maxItems">>, MinItems}),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"array">>}) of
+	?VALID -> case length(Instance) =< MinItems of
+		      true -> ?VALID;
+		      false -> ?INVALID(IAttName, <<"has more items than minItems in array">>)
+		  end;
+	_ -> ?INVALID(IAttName, <<"must be an array to define maxItems">>)
+    end;
+
+%% UNIQUE ITEMS
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.15
+%% uniqueItems - This attribute indicates that all items in an array
+%%               instance MUST be unique (contains no two identical values).
+%% @end
+%%--------------------------------------------------------------------
+validate({Instance, IAttName, IAttVal}, {Schema, <<"uniqueItems">>, Boolean})  when is_boolean(Boolean) ->
+    trace({IAttName, IAttVal}, {<<"uniqueItems">>, Boolean}),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"array">>}) of
+        ?VALID -> case length(IAttVal) =:= length(lists:usort(IAttVal)) of
+		      true ->  ?VALID;
+		      false ->  ?INVALID(IAttName, "items are not unique")
+		  end;
+	_ -> ?INVALID(IAttName, <<"items in array must be unique">>)
+    end;
+
+%% MIN_LENGTH
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.17
+%% minLength - When the instance value is a string, this defines the
+%%             minimum length of the string.
+%% @end
+%%--------------------------------------------------------------------
+validate({Instance, IAttName, IAttVal}, {Schema, <<"minLength">>, MinLength})  ->
+    trace({IAttName, IAttVal}, {<<"minLength">>, MinLength}),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"string">>}) of
+        ?VALID -> case length(wh_util:to_list(IAttVal)) >= MinLength of
+		      true -> ?VALID;
+		      false -> ?INVALID(IAttName, <<"is too short, min. characters allowed:">>, MinLength)
+		  end;
+	_ -> ?INVALID(IAttName, <<"must be a string to define a minimum length">>)
+    end;
+
+%% MAX_LENGTH
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.18
+%% maxLength -  When the instance value is a string, this defines
+%%              the maximum length of the string.
+%% @end
+%%--------------------------------------------------------------------
+validate({Instance, IAttName, IAttVal}, {Schema, <<"maxLength">>, MinLength})  ->
+    trace({IAttName, IAttVal}, {<<"maxLength">>, MinLength}),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"string">>}) of
+        ?VALID -> case length(wh_util:to_list(IAttVal)) =< MinLength of
+		      true -> ?VALID;
+		      false -> ?INVALID(IAttName, <<"is too short, min. characters allowed:">>, MinLength)
+		  end;
+	_ -> ?INVALID(IAttName, <<"must be a string to define a minimum length">>)
+    end;
+
+%% ENUM
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.19
+%% enum - This provides an enumeration of all possible values that are
+%%        valid for the instance property.
+%% @end
+%%--------------------------------------------------------------------
+validate({Instance, IAttName, IAttVal}, {Schema, <<"enum">>, Enum})  ->
+    trace({IAttName, IAttVal}, {<<"enum">>, Enum}),
+    case lists:foldl(fun(E, Acc) -> lists:member(IAttVal, E) and Acc end, true, IAttVal) of
+	true -> ?VALID;
+	false -> ?INVALID(IAttName, <<"must contain value from enum: ">>, Enum)
+    end;
+
+%% DIVISIBLE BY
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.24
+%% divisibleBy - This attribute defines what value the number instance
+%%                must be divisible by with no remainder.
+%% @end
+%%--------------------------------------------------------------------
+validate({Instance, IAttName, IAttVal}, {Schema, <<"divisibleBy">>, DivisibleBy})  ->
+    trace({IAttName, IAttVal}, {<<"divisibleBy">>, DivisibleBy}),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, <<"number">>}) of
+        ?VALID -> case {IAttVal, DivisibleBy} of
+		      {_, 0} -> ?INVALID(IAttVal, <<"Division by 0">>);
+		      {0, _} -> ?VALID;
+		      {I, A} -> case trunc(I/A) == I/A of
+				    true -> ?VALID;
+				    false -> ?INVALID(IAttName, <<" is not divisible by ">>, DivisibleBy)
+				end
+		  end;
+	_ -> ?INVALID(IAttName, <<"must be a number to define a divisibleBy schema">>)
+    end;
+
+%% DISALLOW
+%%--------------------------------------------------------------------
+%% @doc
+%% Implementation of draft-zyp-json-schema-03 section 5.25
+%% disallow - This attribute takes the same values as the "type"
+%%            attribute, however if the instance matches the type or if
+%%            this value is an array and the instance matches any type
+%%            or schema in the array, then this instance is not valid.
+%% @end
+%%--------------------------------------------------------------------
+validate({Instance, IAttName, IAttVal}, {Schema, <<"disallow">>, Disallow})  ->
+    trace({IAttName, IAttVal}, {<<"disallow">>, Disallow}),
+    case validate({Instance, IAttName, IAttVal}, {Schema, <<"type">>, Disallow}) of
+	?VALID -> ?INVALID(IAttName, <<"type is not allowed">>);
+	_ -> ?VALID
+    end;
+
+
+validate({_Instance, IAttName, IAttVal}, {_Schema, SAttName, SAttVal}) ->
+    trace({IAttName, IAttVal}, {SAttName, SAttVal}),
+    ?INVALID(IAttName, <<" : unexpected error with value">>, IAttVal).
+
+
+
+
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -385,20 +534,6 @@ validate(_Instance, Property, {<<"type">>, Type}) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.5
-%% items - This attribute defines the allowed items in an instance array,
-%%         and MUST be a schema or an array of schemas.
-%% @end
-%%--------------------------------------------------------------------
-validate(Instance, Property, {<<"items">>, {struct, _} = Schema}) ->
-    trace_validate(Property, <<"items">>, items),
-    case validate(Instance, Property, {<<"type">>, <<"array">>}) of
-	?VALID -> validate(val(Property, Instance), Property , Schema);
-	_ -> ?INVALID(Property, <<"must be an array to define items">>)
-    end;
-
-%%--------------------------------------------------------------------
-%% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.6
 %% additionalItems - This provides a definition for additional items in
 %%                   an array instance when tuple definitions of the
@@ -406,7 +541,6 @@ validate(Instance, Property, {<<"items">>, {struct, _} = Schema}) ->
 %% @end
 %%--------------------------------------------------------------------
 
-%% NOTE: Moved section 5.7 to top of function for programatic reasons
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -415,118 +549,6 @@ validate(Instance, Property, {<<"items">>, {struct, _} = Schema}) ->
 %%                requirements of a property on an instance object.
 %% @end
 %%--------------------------------------------------------------------
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.9
-%% minimum - This attribute defines the minimum value of the instance
-%%           property when the type of the instance value is a number.
-%% @end
-%%--------------------------------------------------------------------
-validate(Instance, Property, {<<"minimum">>, Minimum})->
-    case validate(Instance, Property, {<<"type">>, <<"number">>}) of
-	?VALID -> case val(Property, Instance) >= Minimum of
-		      ?VALID -> ?VALID;
-		      _ -> ?INVALID(Property, <<"is lower than">>, Minimum)
-		  end;
-	_ -> ?INVALID(Property, <<"must be an integer to have a minimum">>)
-    end;
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.10
-%% maximum - This attribute defines the maximum value of the instance
-%%           property when the type of the instance value is a number.
-%% @end
-%%--------------------------------------------------------------------
-validate(Instance, Property, {<<"maximum">>, Maximum}) ->
-    case validate(Instance, Property, {<<"type">>, <<"number">>}) of
-	?VALID -> case val(Property, Instance) =< Maximum of
-		      ?VALID -> ?VALID;
-		      _ -> ?INVALID(Property, <<"is greater than">>, Maximum)
-		  end;
-	_ -> ?INVALID(Property, <<"must be an integer to have a maximum">>)
-    end;
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.11
-%% exclusiveMinimum - his attribute indicates if the value of the
-%%                    instance (if the instance is a number) can not
-%%                    equal the number defined by the "minimum" attribute.
-%% @end
-%%--------------------------------------------------------------------
-validate(_Instance, _Property, {<<"exclusiveMinimum">>, _Bool}) ->
-%    case validate(Instance, Property, {<<"type">>, <<"number">>}) of
-%	?VALID -> case val(Property, Instance) >  of
-%		      ?VALID -> ?VALID;
-%		      _ -> ?INVALID(Property, <<"is not strictly greater than">>, ExclusiveMinimum)
-%		  end;
-%	_ -> ?INVALID(Property, <<"must be an integer to have a minimum">>)
-%    end;
-    ?VALID;
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.12
-%% exclusiveMaximum - This attribute indicates if the value of the
-%%                    instance (if the instance is a number) can not
-%%                    equal the number defined by the "maximum" attribute.
-%% @end
-%%--------------------------------------------------------------------
-validate(_Instance, _Property, {<<"exclusiveMaximum">>, _Bool}) ->
-%    case validate(Instance, Property, {<<"type">>, <<"number">>}) of
-%	?VALID -> case val(Property, Instance) < ExclusiveMaximum of
-%		      ?VALID -> ?VALID;
-%		      _ -> ?INVALID(Property, <<"is not strictly lower than">>, ExclusiveMaximum)
-%		  end;
-%	_ -> ?INVALID(Property, <<"must be an integer to have a maximum">>)
-%    end;
-    ?VALID;
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.13
-%% minItems - This attribute defines the minimum number of values in
-%%            an array when the array is the instance value.
-%% @end
-%%--------------------------------------------------------------------
-%validate_instance(Instance, <<"minItems">>, Attribute) ->
-%    trace_validate(Instance, <<"minItems">>, Attribute),
-%    case not validate_instance(Instance, <<"type">>, <<"array">>)
-%        orelse length(Instance) >= Attribute of
-%	true -> ?VALID;
-%	false -> ?INVALID(Instance, <<"must be an array to have minItems and/or there are less items than minItems in array">>)
-%    end;
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.14
-%% maxItems - This attribute defines the maximum number of values in
-%%            an array when the array is the instance value.
-%% @end
-%%--------------------------------------------------------------------
-%validate_instance(Instance, <<"maxItems">>, Attribute) ->
-%    trace_validate(Instance, <<"maxItems">>, Attribute),
-%    case not validate_instance(Instance, <<"type">>, <<"array">>)
-%        orelse length(Instance) =< Attribute of
-%	true -> ?VALID;
-%	false -> ?INVALID(Instance, <<"must be an array to have maxItems and/or there are more items than maxItems in array">>)
-%    end;
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.15
-%% uniqueItems - This attribute indicates that all items in an array
-%%               instance MUST be unique (contains no two identical values).
-%% @end
-%%--------------------------------------------------------------------
-%validate_instance(Instance, <<"uniqueItems">>, _) ->
-%    trace_validate(Instance, <<"uniqueItems">>, none),
-%    case not validate_instance(Instance, <<"type">>, <<"array">>)
-%        orelse length(Instance) =:= length(lists:usort(Instance)) of
-%	true -> ?VALID;
-%	false -> ?INVALID(Instance, <<"items in array must be unique">>)
-%    end;
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -539,65 +561,13 @@ validate(_Instance, _Property, {<<"exclusiveMaximum">>, _Bool}) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.17
-%% minLength - When the instance value is a string, this defines the
-%%             minimum length of the string.
-%% @end
-%%--------------------------------------------------------------------
-%validate_instance(Instance, <<"minLength">>, Attribute) ->
-%    trace_validate(Instance, <<"minLength">>, Attribute),
-%    case not validate_instance(Instance, <<"type">>, <<"string">>)
-%        orelse length(wh_util:to_list(Instance)) >= Attribute of
-%	true -> ?VALID;
-%	false -> ?INVALID(Instance, <<"is too short, min. characters allowed:">>, Attribute)
-%    end;
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.18
-%% maxLength -  When the instance value is a string, this defines
-%%              the maximum length of the string.
-%% @end
-%%--------------------------------------------------------------------
-%validate_instance(Instance, <<"maxLength">>, Attribute) ->
-%    trace_validate(Instance, <<"maxLength">>, Attribute),
-%    case not validate_instance(Instance, <<"type">>, <<"string">>)
-%        orelse length(wh_util:to_list(Instance)) =< Attribute of
-%	true -> ?VALID;
-%	false -> ?INVALID(Instance, <<"is too long, max. characters allowed:">>, Attribute)
-%    end;
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.19
-%% enum - This provides an enumeration of all possible values that are
-%%        valid for the instance property.
-%% @end
-%%--------------------------------------------------------------------
-%validate_instance(Instance, <<"enum">>, Attribute) ->
-%    trace_validate(Instance, <<"enum">>, Attribute),
-%    case lists:member(Instance, Attribute) of
-%	true -> ?VALID;
-%	false -> ?INVALID(Instance, <<"must be member of the array">>)
-%    end;
-
-%%--------------------------------------------------------------------
-%% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.20
 %% default - This attribute defines the default value of the
 %%           instance when the instance is undefined.
 %% @end
 %%--------------------------------------------------------------------
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.21
-%% title - This attribute is a string that provides a short
-%%         description of the instance property.
-%% @end
-%%--------------------------------------------------------------------
-validate(_Instance, Property, {<<"description">>, AttrValue}) ->
-    trace_validate(Property, <<"description">>, AttrValue),
-    ?VALID;
+
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -617,101 +587,60 @@ validate(_Instance, Property, {<<"description">>, AttrValue}) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.24
-%% divisibleBy - This attribute defines what value the number instance
-%%                must be divisible by with no remainder.
-%% @end
-%%--------------------------------------------------------------------
-%validate_instance(Instance, <<"divisibleBy">>, Attribute) ->
-%    trace_validate(Instance, <<"divisibleBy">>, Attribute),
-%    case validate_instance(Instance, <<"type">>, <<"number">>) =/= true
-%        orelse case {Instance, Attribute} of
-%                   {_, 0} -> ?INVALID(division_0, <<"Division by 0">>);
-%                   {0, _} -> ?VALID;
-%                   {I, A} -> case trunc(I/A) == I/A of
-%				 true -> ?VALID;
-%				 false -> ?INVALID(error, <<"Not divisible">>)
-%			     end
-%	       end of
-%	true -> ?VALID;
-%	Error -> Error
-%    end;%
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.25
-%% disallow - This attribute takes the same values as the "type"
-%%            attribute, however if the instance matches the type or if
-%%            this value is an array and the instance matches any type
-%%            or schema in the array, then this instance is not valid.
-%% @end
-%%--------------------------------------------------------------------
-%validate_instance(Instance, <<"disallow">>, Attribute) ->
-%    trace_validate(Instance, <<"disallow">>, Attribute),
-%    case not validate_instance(Instance, <<"type">>, Attribute) of
-%	true -> ?VALID;
-%	_ -> ?INVALID(Instance, <<"this type is not allowed">>)
-%    end;
-
-%%--------------------------------------------------------------------
-%% @doc
 %% Implementation of draft-zyp-json-schema-03 section 5.26
 %% extends - another schema which will provide a base schema which
 %%           the current schema will inherit from
 %% @end
 %%--------------------------------------------------------------------
 
-
 %%--------------------------------------------------------------------
 %% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.27
-%% id - defines the current URI of this schem
-%% @end
-%%--------------------------------------------------------------------
-validate(_Instance, Property, {<<"id">>, AttrValue}) ->
-    trace_validate(Property, <<"id">>, AttrValue),
-    ?VALID;
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.28
-%% $ref - defines a URI of a schema that contains the full
-%%        representation of this schema
+%% End of validate
 %% @end
 %%--------------------------------------------------------------------
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Implementation of draft-zyp-json-schema-03 section 5.29
-%% $schema - defines a URI of a JSON Schema that is the schema of
-%%           the current schema
-%% @end
-%%--------------------------------------------------------------------
-validate(_Instance, Property, {<<"\$schema">>, AttrValue}) ->
-    trace_validate(Property, <<"\$schema">>, AttrValue),
-    ?VALID;
+%% quick alias for wh_json:get_value
+-spec val/2 :: (Property, JObj) -> binary() | json_object() when
+      Property :: binary(),
+      JObj :: json_object().
+val(Property, JObj) ->
+    wh_json:get_value(Property, JObj, undefined).
 
 %%--------------------------------------------------------------------
 %% @doc
-%% Ignore CouchDB document properties
+%% Logging utilities
 %% @end
 %%--------------------------------------------------------------------
-validate(_, _, {<<"_id">>, _}) ->
-    ?VALID;
-validate(_, _, {<<"_rev">>, _}) ->
-    ?VALID;
-validate(_, _, {<<"name">>, _}) ->
-    ?VALID;
+-spec trace/2 :: ({InstanceKey, InstanceValue}, {SchemaKey, SchemaValue})  -> 'ok' | 'false' when
+      InstanceKey :: attribute_name(),
+      InstanceValue :: attribute_value(),
+      SchemaKey :: attribute_name(),
+      SchemaValue :: attribute_value();
+		 (schema, {SchemaKey, SchemaValue}) ->  'ok' | 'false' when
+      SchemaKey :: attribute_name(),
+      SchemaValue :: attribute_value();
+		 (instance, {InstanceKey, InstanceValue}) -> 'ok' | 'false' when
+      InstanceKey :: attribute_name(),
+      InstanceValue :: attribute_value().
+trace({IK, IV}, {SK, SV}) ->
+    ?TRACE andalso begin
+			?O("[TRACE] instance { ~p : ~p } || schema { ~p : ~p }~n", [IK,IV,SK,SV])
+		    end;
+trace(schema, {SK, SV}) ->
+    ?TRACE andalso begin
+		       ?O("[TRACE] schema { ~p : ~p }~n", [SK,SV])
+		   end;
+trace(instance, {IK, IV}) ->
+    ?TRACE andalso begin
+		       ?O("[TRACE] instance { ~p : ~p }~n", [IK,IV])
+		   end.
+
 
 %%--------------------------------------------------------------------
 %% @doc
-%% End of validate_instance
+%% Formats a validation error message
 %% @end
 %%--------------------------------------------------------------------
-validate(_,P,{K,V}) ->
-    trace_validate(P, K, V),
-    ?INVALID(P, <<"something wrong happened on our side">>).
-
 -spec validation_error/2 :: (Instance, Message) -> validation_result() when
       Instance :: term(),
       Message :: binary().
@@ -727,8 +656,14 @@ validation_error(Instance, Msg) ->
       Attribute :: term().
 validation_error(Instance, Msg, Attribute) ->
     {error, <<(wh_util:to_binary(Instance))/binary,
-			     " ", (wh_util:to_binary(Msg))/binary,
-                             " ", (wh_util:to_binary(Attribute))/binary>>}.
+			     " ", (wh_util:to_binary(Msg))/binary >>}.
+                             %" ", (wh_util:to_binary(Attribute))/binary>>}.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Unit testing  \o/
+%% @end
+%%--------------------------------------------------------------------
 %% EUNIT TESTING
 -ifdef(TEST).
 
