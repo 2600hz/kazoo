@@ -9,7 +9,9 @@
 -module(hotornot).
 
 -author('James Aimonetti <james@2600hz.org>').
--export([start/0, start_link/0, stop/0]).
+-export([start/0, start_link/0, stop/0, add_binding_to_q/2, rm_binding_from_q/1]).
+
+-include("hotornot.hrl").
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
@@ -25,20 +27,23 @@ start() ->
 
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    ensure_started(sasl), % logging
-    ensure_started(crypto), % random
-    ensure_started(whistle_amqp), % amqp wrapper
-    ensure_started(whistle_couch). % couch wrapper
+    wh_util:ensure_started(sasl), % logging
+    wh_util:ensure_started(crypto), % random
+    wh_util:ensure_started(whistle_amqp), % amqp wrapper
+    wh_util:ensure_started(whistle_couch). % couch wrapper
 
 %% @spec stop() -> ok
 %% @doc Stop the basicapp server.
 stop() ->
     ok = application:stop(hotornot).
 
-ensure_started(App) ->
-    case application:start(App) of
-	ok ->
-	    ok;
-	{error, {already_started, App}} ->
-	    ok
-    end.
+-spec add_binding_to_q/2 :: (Q, Props) -> 'ok' when
+      Q :: binary(),
+      Props :: proplist().
+add_binding_to_q(Q, _Props) ->
+    amqp_util:callmgr_exchange(),
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_RATING_REQ),
+    ok.
+
+rm_binding_from_q(Q) ->
+    amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATING_REQ).
