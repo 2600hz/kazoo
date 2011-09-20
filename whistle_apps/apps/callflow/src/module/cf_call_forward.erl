@@ -13,14 +13,12 @@
 -export([handle/2]).
 
 -record(prompts, {
-           has_been_enabled = <<"/system_media/custom-your_calls_are_now_forwarded_to">>
-          ,has_been_disabled = <<"/system_media/custom-call_forwarding_is_now_disabled">>
-          ,feature_not_avaliable = <<"/system_media/custom-feature_not_avaliable_on_this_line">>
-          ,enter_forwarding_number = <<"/system_media/custom-enter_the_number_to_forward_to">>
-          ,main_menu = <<"/system_media/custom-call_forwarding_menu">>
-          ,to_enable_cf = <<"/system_media/custom-to_enable_cf_press">>
-          ,to_disable_cf = <<"/system_media/custom-to_disable_cf_press">>
-          ,to_change_number = <<"/system_media/custom-to_change_the_number_to_forward_to">>
+           has_been_enabled = <<"/system_media/cf-now_forwarded_to">>
+          ,has_been_disabled = <<"/system_media/cf-disabled">>
+          ,feature_not_avaliable = <<"/system_media/cf-not_available">>
+          ,enter_forwarding_number = <<"/system_media/cf-enter_number">>
+          ,main_menu_enabled = <<"/system_media/cf-enabled_menu">>
+          ,main_menu_disabled = <<"/system_media/cf-disabled_menu">>
          }).
 
 -record(keys, {
@@ -73,34 +71,19 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(cf_menu/2 :: (CF :: #callfwd{}, Call :: #cf_call{}) -> no_return()).
-cf_menu(#callfwd{prompts=#prompts{main_menu=MainMenu, to_enable_cf=ToEnableCF, to_disable_cf=ToDisableCF, to_change_number=ToChangeNum}
-                  ,keys=#keys{menu_toggle_cf=Toggle, menu_change_number=ChangeNum}}=CF, Call) ->
+cf_menu(#callfwd{prompts=#prompts{main_menu_enabled=EnabledMenu, main_menu_disabled=DisabledMenu}}=CF, Call) ->
     ?LOG("playing call forwarding menu"),
-    TogglePrompt = case CF#callfwd.enabled of
-                       true -> ToDisableCF;
-                       false -> ToEnableCF
-                   end,
-    cf_call_command:audio_macro([
-                                  {play, MainMenu}
-
-                                 ,{play, TogglePrompt}
-                                 ,{say,  Toggle}
-
-                                 ,{play, ToChangeNum}
-                                 ,{say,  ChangeNum}
-                                ], Call),
-    {ok, Digit} = cf_call_command:wait_for_dtmf(30000),
-    _ = cf_call_command:b_flush(Call),
-    case Digit of
-	Toggle ->
+    b_flush(Call),
+    case b_play_and_collect_digit(TogglePrompt, Call) of
+	{ok, Toggle} ->
             CF1 = cf_toggle(CF, Call),
             {ok, _} = update_callfwd(CF1, Call),
             cf_menu(CF1, Call);
-        ChangeNum ->
+        {ok, ChangeNum} ->
             CF1 = cf_update_number(CF, Call),
             {ok, _} = update_callfwd(CF1, Call),
 	    cf_menu(CF1, Call);
-	_ ->
+	{ok, _} ->
 	    cf_menu(CF, Call)
     end.
 
