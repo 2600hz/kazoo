@@ -1,4 +1,4 @@
-%% -*- tab-width: 4;erlang-indent-level: 4;indent-tabs-mode: nil -*-
+%% -*- erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %% ex: ts=4 sw=4 et
 %% -------------------------------------------------------------------
 %%
@@ -29,6 +29,15 @@
 %% <ul>
 %%   <li>eunit - runs eunit tests</li>
 %%   <li>clean - remove .eunit directory</li>
+%%   <li>reset_after_eunit::boolean() - default = true.
+%%       If true, try to "reset" VM state to approximate state prior to
+%%       running the EUnit tests:
+%%       <ul>
+%%          <li> Stop net_kernel if it was started </li>
+%%          <li> Stop OTP applications not running before EUnit tests were run </li>
+%%          <li> Kill processes not running before EUnit tests were run </li>
+%%          <li> Reset OTP application environment variables  </li>
+%%       </ul> </li>
 %% </ul>
 %% The following Global options are supported:
 %% <ul>
@@ -36,15 +45,15 @@
 %%   <li>suite="foo"" - runs test/foo_tests.erl</li>
 %% </ul>
 %% Additionally, for projects that have separate folders for the core
-%% implementation, and for the unit tests, then the following <code>rebar.config</code>
-%% option can be provided: <code>{eunit_compile_opts, [{src_dirs, ["dir"]}]}.</code>.
+%% implementation, and for the unit tests, then the following
+%% <code>rebar.config</code> option can be provided:
+%% <code>{eunit_compile_opts, [{src_dirs, ["dir"]}]}.</code>.
 %% @copyright 2009, 2010 Dave Smith
 %% -------------------------------------------------------------------
 -module(rebar_eunit).
 
--export([eunit/2]).
-
--compile([export_all]).
+-export([eunit/2,
+         clean/2]).
 
 -include("rebar.hrl").
 
@@ -59,9 +68,23 @@ eunit(Config, AppFile) ->
     %% of apps on which we want to run eunit
     case rebar_config:get_global(app, undefined) of
         undefined ->
-            %% No app parameter specified, run everything..
-            ok;
-
+            %% No app parameter specified, check the skip list..
+            case rebar_config:get_global(skip_app, undefined) of
+                undefined ->
+                    %% no skip list, run everything..
+                    ok;
+                SkipApps ->
+                    TargetApps = [list_to_atom(A) ||
+                                     A <- string:tokens(SkipApps, ",")],
+                    ThisApp = rebar_app_utils:app_name(AppFile),
+                    case lists:member(ThisApp, TargetApps) of
+                        false ->
+                            ok;
+                        true ->
+                            ?DEBUG("Skipping eunit on app: ~p\n", [ThisApp]),
+                            throw(ok)
+                    end
+            end;
         Apps ->
             TargetApps = [list_to_atom(A) || A <- string:tokens(Apps, ",")],
             ThisApp = rebar_app_utils:app_name(AppFile),
@@ -78,16 +101,17 @@ eunit(Config, AppFile) ->
     ok = filelib:ensure_dir(eunit_dir() ++ "/foo"),
     ok = filelib:ensure_dir(ebin_dir() ++ "/foo"),
 
-    %% Setup code path prior to compilation so that parse_transforms and the like
-    %% work properly. Also, be sure to add ebin_dir() to the END of the code path
-    %% so that we don't have to jump through hoops to access the .app file
+    %% Setup code path prior to compilation so that parse_transforms
+    %% and the like work properly. Also, be sure to add ebin_dir()
+    %% to the END of the code path so that we don't have to jump
+    %% through hoops to access the .app file
     CodePath = code:get_path(),
     true = code:add_patha(eunit_dir()),
     true = code:add_pathz(ebin_dir()),
 
     %% Obtain all the test modules for inclusion in the compile stage.
-    %% Notice: this could also be achieved with the following rebar.config option:
-    %% {eunit_compile_opts, [{src_dirs, ["test"]}]}
+    %% Notice: this could also be achieved with the following
+    %% rebar.config option: {eunit_compile_opts, [{src_dirs, ["test"]}]}
     TestErls = rebar_utils:find_files("test", ".*\\.erl\$"),
 
     %% Copy source files to eunit dir for cover in case they are not directly
@@ -99,22 +123,42 @@ eunit(Config, AppFile) ->
     %% Compile erlang code to ?EUNIT_DIR, using a tweaked config
     %% with appropriate defines for eunit, and include all the test modules
     %% as well.
-    rebar_erlc_compiler:doterl_compile(eunit_config(Config), ?EUNIT_DIR, TestErls),
+    rebar_erlc_compiler:doterl_compile(eunit_config(Config),
+                                       ?EUNIT_DIR, TestErls),
 
-    %% Build a list of all the .beams in ?EUNIT_DIR -- use this for cover
-    %% and eunit testing. Normally you can just tell cover and/or eunit to
-    %% scan the directory for you, but eunit does a code:purge in conjunction
-    %% with that scan and causes any cover compilation info to be lost.
-    %% Filter out "*_tests" modules so eunit won't doubly run them and
-    %% so cover only calculates coverage on production code.
-    BeamFiles = [N || N <- rebar_utils:beams(?EUNIT_DIR),
-                      string:str(N, "_tests.beam") =:= 0],
-    Modules = [rebar_utils:beam_to_mod(?EUNIT_DIR, N) || N <- BeamFiles],
+    %% Build a list of all the .beams in ?EUNIT_DIR -- use this for
+    %% cover and eunit testing. Normally you can just tell cover
+    %% and/or eunit to scan the directory for you, but eunit does a
+    %% code:purge in conjunction with that scan and causes any cover
+    %% compilation info to be lost.  Filter out "*_tests" modules so
+    %% eunit won't doubly run them and so cover only calculates
+    %% coverage on production code.  However, keep "*_tests" modules
+    %% that are not automatically included by eunit.
+    AllBeamFiles = rebar_utils:beams(?EUNIT_DIR),
+    {BeamFiles, TestBeamFiles} =
+        lists:partition(fun(N) -> string:str(N, "_tests.beam") =:= 0 end,
+                        AllBeamFiles),
+    OtherBeamFiles = TestBeamFiles --
+        [filename:rootname(N) ++ "_tests.beam" || N <- AllBeamFiles],
+    ModuleBeamFiles = BeamFiles ++ OtherBeamFiles,
+    Modules = [rebar_utils:beam_to_mod(?EUNIT_DIR, N) || N <- ModuleBeamFiles],
     SrcModules = [rebar_utils:erl_to_mod(M) || M <- SrcErls],
-    
-    cover_init(Config, BeamFiles),
+
+    {ok, CoverLog} = cover_init(Config, ModuleBeamFiles),
+
+    StatusBefore = status_before_eunit(),
     EunitResult = perform_eunit(Config, Modules),
     perform_cover(Config, Modules, SrcModules),
+
+    cover_close(CoverLog),
+
+    case proplists:get_value(reset_after_eunit, get_eunit_opts(Config),
+                             true) of
+        true ->
+            reset_after_eunit(StatusBefore);
+        false ->
+            ok
+    end,
 
     case EunitResult of
         ok ->
@@ -142,7 +186,7 @@ ebin_dir() ->
 
 perform_eunit(Config, Modules) ->
     %% suite defined, so only specify the module that relates to the
-    %% suite (if any)
+    %% suite (if any). Suite can be a comma seperated list of modules to run.
     Suite = rebar_config:get_global(suite, undefined),
     EunitOpts = get_eunit_opts(Config),
 
@@ -160,8 +204,9 @@ perform_eunit(Config, Modules) ->
 
 perform_eunit(EunitOpts, Modules, undefined) ->
     (catch eunit:test(Modules, EunitOpts));
-perform_eunit(EunitOpts, _Modules, Suite) ->
-    (catch eunit:test(list_to_atom(Suite), EunitOpts)).
+perform_eunit(EunitOpts, _Modules, Suites) ->
+    (catch eunit:test([list_to_atom(Suite) ||
+                          Suite <- string:tokens(Suites, ",")], EunitOpts)).
 
 get_eunit_opts(Config) ->
     %% Enable verbose in eunit if so requested..
@@ -175,37 +220,48 @@ get_eunit_opts(Config) ->
     BaseOpts ++ rebar_config:get_list(Config, eunit_opts, []).
 
 eunit_config(Config) ->
-    EqcOpts = case is_quickcheck_avail() of
-                  true ->
-                      [{d, 'EQC'}];
-                  false ->
-                      []
-              end,
+    EqcOpts = eqc_opts(),
+    PropErOpts = proper_opts(),
 
     ErlOpts = rebar_config:get_list(Config, erl_opts, []),
     EunitOpts = rebar_config:get_list(Config, eunit_compile_opts, []),
-    Opts = [{d, 'TEST'}, debug_info] ++
-        ErlOpts ++ EunitOpts ++ EqcOpts,
-    rebar_config:set(Config, erl_opts, Opts).
+    Opts0 = [{d, 'TEST'}] ++
+        ErlOpts ++ EunitOpts ++ EqcOpts ++ PropErOpts,
+    Opts = [O || O <- Opts0, O =/= no_debug_info],
+    Config1 = rebar_config:set(Config, erl_opts, Opts),
 
-is_quickcheck_avail() ->
-    case erlang:get(is_quickcheck_avail) of
+    FirstErls = rebar_config:get_list(Config1, eunit_first_files, []),
+    rebar_config:set(Config1, erl_first_files, FirstErls).
+
+eqc_opts() ->
+    define_if('EQC', is_lib_avail(is_eqc_avail, eqc,
+                                  "eqc.hrl", "QuickCheck")).
+
+proper_opts() ->
+    define_if('PROPER', is_lib_avail(is_proper_avail, proper,
+                                     "proper.hrl", "PropEr")).
+
+define_if(Def, true) -> [{d, Def}];
+define_if(_Def, false) -> [].
+
+is_lib_avail(DictKey, Mod, Hrl, Name) ->
+    case erlang:get(DictKey) of
         undefined ->
-            case code:lib_dir(eqc, include) of
-                {error, bad_name} ->
-                    IsAvail = false;
-                Dir ->
-                    IsAvail = filelib:is_file(filename:join(Dir, "eqc.hrl"))
-            end,
-            erlang:put(is_quickcheck_avail, IsAvail),
-            ?DEBUG("Quickcheck availability: ~p\n", [IsAvail]),
+            IsAvail = case code:lib_dir(Mod, include) of
+                          {error, bad_name} ->
+                              false;
+                          Dir ->
+                              filelib:is_regular(filename:join(Dir, Hrl))
+                      end,
+            erlang:put(DictKey, IsAvail),
+            ?DEBUG("~s availability: ~p\n", [Name, IsAvail]),
             IsAvail;
         IsAvail ->
             IsAvail
     end.
 
 perform_cover(Config, BeamFiles, SrcModules) ->
-    perform_cover(rebar_config:get(Config, cover_enabled, false), 
+    perform_cover(rebar_config:get(Config, cover_enabled, false),
                   Config, BeamFiles, SrcModules).
 
 perform_cover(false, _Config, _BeamFiles, _SrcModules) ->
@@ -216,8 +272,13 @@ perform_cover(true, Config, BeamFiles, SrcModules) ->
 cover_analyze(_Config, [], _SrcModules) ->
     ok;
 cover_analyze(Config, Modules, SrcModules) ->
-    Suite = list_to_atom(rebar_config:get_global(suite, "")),
-    FilteredModules = [M || M <- Modules, M =/= Suite],
+    %% suite can be a comma seperated list of modules to test
+    Suite = [list_to_atom(S) ||
+                S <- string:tokens(rebar_config:get_global(suite, ""), ",")],
+    FilteredModules = case Suite of
+                          [] -> Modules;
+                          _  -> [M || M <- Modules, lists:member(M, Suite)]
+                      end,
 
     %% Generate coverage info for all the cover-compiled modules
     Coverage = [cover_analyze_mod(M) || M <- FilteredModules],
@@ -227,7 +288,8 @@ cover_analyze(Config, Modules, SrcModules) ->
 
     %% Write coverage details for each file
     lists:foreach(fun({M, _, _}) ->
-                          {ok, _} = cover:analyze_to_file(M, cover_file(M), [html])
+                          {ok, _} = cover:analyze_to_file(M, cover_file(M),
+                                                          [html])
                   end, Coverage),
 
     Index = filename:join([rebar_utils:get_cwd(), ?EUNIT_DIR, "index.html"]),
@@ -241,9 +303,33 @@ cover_analyze(Config, Modules, SrcModules) ->
             ok
     end.
 
-cover_init(false, _BeamFiles) ->
+cover_close(not_enabled) ->
     ok;
+cover_close(F) ->
+    ok = file:close(F).
+
+cover_init(false, _BeamFiles) ->
+    {ok, not_enabled};
 cover_init(true, BeamFiles) ->
+    %% Attempt to start the cover server, then set it's group leader to
+    %% .eunit/cover.log, so all cover log messages will go there instead of
+    %% to stdout. If the cover server is already started we'll reuse that
+    %% pid.
+    {ok, CoverPid} = case cover:start() of
+                         {ok, _P} = OkStart ->
+                             OkStart;
+                         {error,{already_started, P}} ->
+                             {ok, P};
+                         {error, _Reason} = ErrorStart ->
+                             ErrorStart
+                     end,
+
+    {ok, F} = OkOpen = file:open(
+                         filename:join([?EUNIT_DIR, "cover.log"]),
+                         [write]),
+
+    group_leader(F, CoverPid),
+
     %% Make sure any previous runs of cover don't unduly influence
     cover:reset(),
 
@@ -260,8 +346,13 @@ cover_init(true, BeamFiles) ->
 
             %% It's not an error for cover compilation to fail partially,
             %% but we do want to warn about them
-            _ = [?CONSOLE("Cover compilation warning for ~p: ~p", [Beam, Desc]) || {Beam, {error, Desc}} <- Compiled],
-            ok
+            PrintWarning =
+                fun(Beam, Desc) ->
+                        ?CONSOLE("Cover compilation warning for ~p: ~p",
+                                 [Beam, Desc])
+                end,
+            _ = [PrintWarning(Beam, Desc) || {Beam, {error, Desc}} <- Compiled],
+            OkOpen
     end;
 cover_init(Config, BeamFiles) ->
     cover_init(rebar_config:get(Config, cover_enabled, false), BeamFiles).
@@ -287,18 +378,19 @@ is_eunitized(Mod) ->
 
 has_eunit_test_fun(Mod) ->
     [F || {exports, Funs} <- Mod:module_info(),
-	  {F, 0} <- Funs, F =:= test] =/= [].
+          {F, 0} <- Funs, F =:= test] =/= [].
 
 has_header(Mod, Header) ->
-    Mod1 = case code:which(Mod) of 
-               cover_compiled -> 
+    Mod1 = case code:which(Mod) of
+               cover_compiled ->
                    {file, File} = cover:is_compiled(Mod),
                    File;
                non_existing -> Mod;
                preloaded -> Mod;
                L -> L
            end,
-    {ok, {_, [{abstract_code, {_, AC}}]}} = beam_lib:chunks(Mod1, [abstract_code]),
+    {ok, {_, [{abstract_code, {_, AC}}]}} = beam_lib:chunks(Mod1,
+                                                            [abstract_code]),
     [F || {attribute, 1, file, {F, 1}} <- AC,
           string:str(F, Header) =/= 0] =/= [].
 
@@ -310,7 +402,7 @@ align_notcovered_count(Module, Covered, NotCovered, true) ->
 cover_write_index(Coverage, SrcModules) ->
     {ok, F} = file:open(filename:join([?EUNIT_DIR, "index.html"]), [write]),
     ok = file:write(F, "<html><head><title>Coverage Summary</title></head>\n"),
-    IsSrcCoverage = fun({Mod,_C,_N}) -> lists:member(Mod, SrcModules) end, 
+    IsSrcCoverage = fun({Mod,_C,_N}) -> lists:member(Mod, SrcModules) end,
     {SrcCoverage, TestCoverage} = lists:partition(IsSrcCoverage, Coverage),
     cover_write_index_section(F, "Source", SrcCoverage),
     cover_write_index_section(F, "Test", TestCoverage),
@@ -331,9 +423,13 @@ cover_write_index_section(F, SectionName, Coverage) ->
     ok = file:write(F, ?FMT("<h3>Total: ~s</h3>\n", [TotalCoverage])),
     ok = file:write(F, "<table><tr><th>Module</th><th>Coverage %</th></tr>\n"),
 
+    FmtLink =
+        fun(Module, Cov, NotCov) ->
+                ?FMT("<tr><td><a href='~s.COVER.html'>~s</a></td><td>~s</td>\n",
+                     [Module, Module, percentage(Cov, NotCov)])
+        end,
     lists:foreach(fun({Module, Cov, NotCov}) ->
-                          ok = file:write(F, ?FMT("<tr><td><a href='~s.COVER.html'>~s</a></td><td>~s</td>\n",
-                                                  [Module, Module, percentage(Cov, NotCov)]))
+                          ok = file:write(F, FmtLink(Module, Cov, NotCov))
                   end, Coverage),
     ok = file:write(F, "</table>\n").
 
@@ -345,13 +441,13 @@ cover_print_coverage(Coverage) ->
 
     %% Determine the longest module name for right-padding
     Width = lists:foldl(fun({Mod, _, _}, Acc) ->
-                case length(atom_to_list(Mod)) of
-                    N when N > Acc ->
-                        N;
-                    _ ->
-                        Acc
-                end
-        end, 0, Coverage) * -1,
+                                case length(atom_to_list(Mod)) of
+                                    N when N > Acc ->
+                                        N;
+                                    _ ->
+                                        Acc
+                                end
+                        end, 0, Coverage) * -1,
 
     %% Print the output the console
     ?CONSOLE("~nCode Coverage:~n", []),
@@ -368,3 +464,133 @@ percentage(0, 0) ->
     "not executed";
 percentage(Cov, NotCov) ->
     integer_to_list(trunc((Cov / (Cov + NotCov)) * 100)) ++ "%".
+
+get_app_names() ->
+    [AppName || {AppName, _, _} <- application:loaded_applications()].
+
+status_before_eunit() ->
+    Apps = get_app_names(),
+    AppEnvs = [{App, application:get_all_env(App)} || App <- Apps],
+    {erlang:processes(), erlang:is_alive(), AppEnvs, ets:tab2list(ac_tab)}.
+
+reset_after_eunit({OldProcesses, WasAlive, OldAppEnvs, _OldACs}) ->
+    IsAlive = erlang:is_alive(),
+    if not WasAlive andalso IsAlive ->
+            ?DEBUG("Stopping net kernel....\n", []),
+            erl_epmd:stop(),
+            _ = net_kernel:stop(),
+            pause_until_net_kernel_stopped();
+       true ->
+            ok
+    end,
+
+    Processes = erlang:processes(),
+    _ = kill_extras(Processes -- OldProcesses),
+
+    OldApps = [App || {App, _} <- OldAppEnvs],
+    Apps = get_app_names(),
+    _ = [begin
+             _ = case lists:member(App, OldApps) of
+                     true  -> ok;
+                     false -> application:stop(App)
+                 end,
+             ok = application:unset_env(App, K)
+         end || App <- Apps, App /= rebar,
+                {K, _V} <- application:get_all_env(App)],
+
+    reconstruct_app_env_vars(Apps),
+    ok.
+
+kill_extras(Pids) ->
+    %% Killing any of the procs below will either:
+    %% 1. Interfere with stuff that we don't want interfered with, or
+    %% 2. May/will force the 'kernel' app to shutdown, which *will*
+    %%    interfere with rebar's ability To Do Useful Stuff(tm).
+    %% This list may require changes as OTP versions and/or
+    %% rebar use cases change.
+    KeepProcs = [cover_server, eunit_server,
+                 eqc, eqc_license, eqc_locked],
+    Killed = [begin
+                  Info = case erlang:process_info(Pid) of
+                             undefined -> [];
+                             Else      -> Else
+                         end,
+                  Keep1 = case proplists:get_value(registered_name, Info) of
+                              undefined ->
+                                  false;
+                              Name ->
+                                  lists:member(Name, KeepProcs)
+                          end,
+                  Keep2 = case proplists:get_value(dictionary, Info) of
+                              undefined ->
+                                  false;
+                              Ds ->
+                                  case proplists:get_value('$ancestors', Ds) of
+                                      undefined ->
+                                          false;
+                                      As ->
+                                          lists:member(kernel_sup, As)
+                                  end
+                          end,
+                  if Keep1 orelse Keep2 ->
+                          ok;
+                     true ->
+                          ?DEBUG("Kill ~p ~p\n", [Pid, Info]),
+                          exit(Pid, kill),
+                          Pid
+                  end
+              end || Pid <- Pids],
+    case lists:usort(Killed) -- [ok] of
+        [] ->
+            ?DEBUG("No processes to kill\n", []),
+            [];
+        Else ->
+            lists:foreach(fun(Pid) -> wait_until_dead(Pid) end, Else),
+            Else
+    end.
+
+reconstruct_app_env_vars([App|Apps]) ->
+    CmdLine0 = proplists:get_value(App, init:get_arguments(), []),
+    CmdVars = [{list_to_atom(K), list_to_atom(V)} || {K, V} <- CmdLine0],
+    AppFile = (catch filename:join([code:lib_dir(App),
+                                    "ebin",
+                                    atom_to_list(App) ++ ".app"])),
+    AppVars = case file:consult(AppFile) of
+                  {ok, [{application, App, Ps}]} ->
+                      proplists:get_value(env, Ps, []);
+                  _ ->
+                      []
+              end,
+    AllVars = CmdVars ++ AppVars,
+    ?DEBUG("Reconstruct ~p ~p\n", [App, AllVars]),
+    lists:foreach(fun({K, V}) -> application:set_env(App, K, V) end, AllVars),
+    reconstruct_app_env_vars(Apps);
+reconstruct_app_env_vars([]) ->
+    ok.
+
+wait_until_dead(Pid) when is_pid(Pid) ->
+    Ref = erlang:monitor(process, Pid),
+    receive
+        {'DOWN', Ref, process, _Obj, Info} ->
+            Info
+    after 10*1000 ->
+            exit({timeout_waiting_for, Pid})
+    end;
+wait_until_dead(_) ->
+    ok.
+
+pause_until_net_kernel_stopped() ->
+    pause_until_net_kernel_stopped(10).
+
+pause_until_net_kernel_stopped(0) ->
+    exit(net_kernel_stop_failed);
+pause_until_net_kernel_stopped(N) ->
+    try
+        _ = net_kernel:i(),
+        timer:sleep(100),
+        pause_until_net_kernel_stopped(N - 1)
+    catch
+        error:badarg ->
+            ?DEBUG("Stopped net kernel.\n", []),
+            ok
+    end.

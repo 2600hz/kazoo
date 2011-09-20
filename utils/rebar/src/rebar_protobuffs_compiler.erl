@@ -1,4 +1,4 @@
-%% -*- tab-width: 4;erlang-indent-level: 4;indent-tabs-mode: nil -*-
+%% -*- erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %% ex: ts=4 sw=4 et
 %% -------------------------------------------------------------------
 %%
@@ -36,12 +36,12 @@
 %% ===================================================================
 
 compile(_Config, _AppFile) ->
-    case filelib:wildcard("src/*.proto") of
+    case rebar_utils:find_files("src", ".*\\.proto$") of
         [] ->
             ok;
         FoundFiles ->
-            %% Check for protobuffs library -- if it's not present, fail since we have
-            %% .proto files that need building
+            %% Check for protobuffs library -- if it's not present, fail
+            %% since we have.proto files that need building
             case protobuffs_is_present() of
                 true ->
                     %% Build a list of output files - { Proto, Beam, Hrl }
@@ -51,7 +51,8 @@ compile(_Config, _AppFile) ->
                     %% Compile each proto file
                     compile_each(Targets);
                 false ->
-                    ?ERROR("Protobuffs library not present in code path!\n", []),
+                    ?ERROR("Protobuffs library not present in code path!\n",
+                           []),
                     ?FAIL
             end
     end.
@@ -59,8 +60,10 @@ compile(_Config, _AppFile) ->
 
 clean(_Config, _AppFile) ->
     %% Get a list of generated .beam and .hrl files and then delete them
-    Protos = filelib:wildcard("src/*.proto"),
-    Targets = [fq_beam_file(F) || F <- Protos] ++ [fq_hrl_file(F) || F <- Protos],
+    Protos = rebar_utils:find_files("src", ".*\\.proto$"),
+    BeamFiles = [fq_beam_file(F) || F <- Protos],
+    HrlFiles = [fq_hrl_file(F) || F <- Protos],
+    Targets = BeamFiles ++ HrlFiles,
     case Targets of
         [] ->
             ok;
@@ -100,15 +103,18 @@ compile_each([{Proto, Beam, Hrl} | Rest]) ->
             ?CONSOLE("Compiling ~s\n", [Proto]),
             case protobuffs_compile:scan_file(Proto) of
                 ok ->
-                    %% Compilation worked, but we need to move the .beam and .hrl file
-                    %% into the ebin/ and include/ directories respectively
-                    %% TODO: Protobuffs really needs to be better about this...sigh.
-                    [] = os:cmd(?FMT("mv ~s ebin", [Beam])),
+                    %% Compilation worked, but we need to move the
+                    %% beam and .hrl file into the ebin/ and include/
+                    %% directories respectively
+                    %% TODO: Protobuffs really needs to be better about this
+                    ok = filelib:ensure_dir(filename:join("ebin","dummy")),
+                    ok = rebar_file_utils:mv(Beam, "ebin"),
                     ok = filelib:ensure_dir(filename:join("include", Hrl)),
-                    [] = os:cmd(?FMT("mv ~s include", [Hrl])),
+                    ok = rebar_file_utils:mv(Hrl, "include"),
                     ok;
                 Other ->
-                    ?ERROR("Protobuff compile of ~s failed: ~p\n", [Proto, Other]),
+                    ?ERROR("Protobuff compile of ~s failed: ~p\n",
+                           [Proto, Other]),
                     ?FAIL
             end;
         false ->
