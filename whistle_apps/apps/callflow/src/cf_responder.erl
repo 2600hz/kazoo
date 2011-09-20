@@ -208,7 +208,9 @@ start_amqp() ->
 process_req({<<"configuration">>, <<"doc_edited">>}, JObj, _) ->
     Id = wh_json:get_value(<<"ID">>, JObj),
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-    Doc = wh_json:set_value(<<"_id">>, Id, wh_json:get_value(<<"Doc">>, JObj, ?EMPTY_JSON_OBJECT)),
+    Generators = [fun(J) -> wh_json:set_value(<<"_id">>, Id, J) end,
+                  fun(J) -> wh_json:set_value(<<"pvt_account_id">>, AccountId, J) end],
+    Doc = lists:foldr(fun(Fun, J) -> Fun(J) end, wh_json:get_value(<<"Doc">>, JObj, ?EMPTY_JSON_OBJECT), Generators),
     Cached = wh_cache:filter(fun({cf_flow, _, AccntId}, V) when AccntId =:= AccountId ->
                                        Id =:= wh_json:get_value(<<"_id">>, V);
                                (_, _) ->
@@ -313,7 +315,8 @@ fulfill_call_request(Call, JObj) ->
     case lookup_callflow(Call) of
         {ok, Flow, NoMatch} ->
             FlowId = wh_json:get_value(<<"_id">>, Flow),
-            ?LOG("callflow ~s satisfies request", [FlowId]),
+            AccountId = wh_json:get_value(<<"pvt_account_id">>, Flow),
+            ?LOG("callflow ~s in ~s satisfies request", [FlowId, AccountId]),
             wh_cache:store({cf_call, get(callid)}, Call#cf_call{flow_id = FlowId, no_match = NoMatch}, 5),
             _ = send_route_response(Call, JObj);
         {error, R} ->
