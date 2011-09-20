@@ -253,7 +253,7 @@ fetch_sub_key(Key, JObj) ->
       Expires :: non_neg_integer(),
       Call :: #cf_call{}.
 fetch_attributes(Attribute, Expires, #cf_call{account_db=Db}) ->
-    case wh_cache:peak({cf_attribute, Db, Attribute}) of
+    case wh_cache:peek({cf_attribute, Db, Attribute}) of
         {ok, Attributes} ->
             Attributes;
         {error, not_found} ->
