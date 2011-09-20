@@ -1,4 +1,4 @@
-%% -*- tab-width: 4;erlang-indent-level: 4;indent-tabs-mode: nil -*-
+%% -*- erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %% ex: ts=4 sw=4 et
 %% -------------------------------------------------------------------
 %%
@@ -51,13 +51,13 @@ eunit_test_() ->
      fun(RebarOut) ->
              [{"Tests in 'test' directory are found and run",
                ?_assert(string:str(RebarOut, "myapp_mymod_tests:") =/= 0)},
-              
+
               {"Tests in 'src' directory are found and run",
                ?_assert(string:str(RebarOut, "myapp_mymod:") =/= 0)},
-              
+
               {"Tests are only run once",
                ?_assert(string:str(RebarOut, "All 2 tests passed") =/= 0)}]
-     end}. 
+     end}.
 
 cover_test_() ->
     {"Ensure Cover runs with tests in a test dir and no defined suite",
@@ -67,7 +67,7 @@ cover_test_() ->
      [{"All cover reports are generated",
        assert_files_in("the temporary eunit directory",
                        expected_cover_generated_files())},
-      
+
       {"Only production modules get coverage reports",
        assert_files_not_in("the temporary eunit directory",
                            [".eunit/myapp_mymod_tests.COVER.html"])}]}.
@@ -115,11 +115,11 @@ environment_test_() ->
     {"Sanity check the testing environment",
      setup, fun make_tmp_dir/0, fun remove_tmp_dir/1,
 
-     [{"Ensure a test project can be created", 
+     [{"Ensure a test project can be created",
        ?_assert(filelib:is_dir(?TMP_DIR))},
 
       {"Ensure the rebar script can be found, copied, and run",
-       [?_assert(filelib:is_file(?REBAR_SCRIPT)),
+       [?_assert(filelib:is_regular(?REBAR_SCRIPT)),
         fun assert_rebar_runs/0]}]}.
 
 assert_rebar_runs() ->
@@ -134,21 +134,22 @@ basic_setup_test_() ->
      %% Test the setup function
      assert_dirs_in("Basic Project",
                     ["src", "ebin", "test"]) ++
-     assert_files_in("Basic Project",
-                     ["test/myapp_mymod_tests.erl", "src/myapp_mymod.erl"])}.
+         assert_files_in("Basic Project",
+                         ["test/myapp_mymod_tests.erl",
+                          "src/myapp_mymod.erl"])}.
 
 %% ====================================================================
 %% Setup and Teardown
 %% ====================================================================
 
--define(myapp_mymod, 
+-define(myapp_mymod,
         ["-module(myapp_mymod).\n",
          "-export([myfunc/0]).\n",
          "-include_lib(\"eunit/include/eunit.hrl\").\n",
          "myfunc() -> ok.\n",
          "myprivate_test() -> ?assert(true).\n"]).
 
--define(myapp_mymod_tests, 
+-define(myapp_mymod_tests,
         ["-module(myapp_mymod_tests).\n",
          "-compile([export_all]).\n",
          "-include_lib(\"eunit/include/eunit.hrl\").\n",
@@ -160,63 +161,58 @@ basic_setup_test_() ->
          "-include_lib(\"eunit/include/eunit.hrl\").\n",
          "all_test_() -> [myapp_mymod_defined_in_mysuite_tests].\n"]).
 
--define(myapp_mymod_defined_in_mysuite_tests, 
+-define(myapp_mymod_defined_in_mysuite_tests,
         ["-module(myapp_mymod_defined_in_mysuite_tests).\n",
          "-compile([export_all]).\n",
          "-include_lib(\"eunit/include/eunit.hrl\").\n",
          "myfunc_test() -> ?assertMatch(ok, myapp_mymod:myfunc()).\n"]).
 
 make_tmp_dir() ->
-    file:make_dir(?TMP_DIR).
+    ok = file:make_dir(?TMP_DIR).
 
 setup_environment() ->
-    make_tmp_dir(),
+    ok = make_tmp_dir(),
     prepare_rebar_script(),
-    file:set_cwd(?TMP_DIR).
+    ok = file:set_cwd(?TMP_DIR).
 
 setup_basic_project() ->
     setup_environment(),
     rebar("create-app appid=myapp"),
-    file:make_dir("ebin"),
-    file:make_dir("test"),
-    file:write_file("test/myapp_mymod_tests.erl", ?myapp_mymod_tests),
-    file:write_file("src/myapp_mymod.erl", ?myapp_mymod).
+    ok = file:make_dir("ebin"),
+    ok = file:make_dir("test"),
+    ok = file:write_file("test/myapp_mymod_tests.erl", ?myapp_mymod_tests),
+    ok = file:write_file("src/myapp_mymod.erl", ?myapp_mymod).
 
 setup_cover_project() ->
     setup_basic_project(),
-    file:write_file("rebar.config", "{cover_enabled, true}.\n").
+    ok = file:write_file("rebar.config", "{cover_enabled, true}.\n").
 
 setup_cover_project_with_suite() ->
     setup_cover_project(),
-    file:write_file("test/mysuite.erl", ?mysuite),
-    file:write_file("test/myapp_mymod_defined_in_mysuite_tests.erl",
-                    ?myapp_mymod_defined_in_mysuite_tests).
+    ok = file:write_file("test/mysuite.erl", ?mysuite),
+    ok = file:write_file("test/myapp_mymod_defined_in_mysuite_tests.erl",
+                         ?myapp_mymod_defined_in_mysuite_tests).
 
 teardown(_) ->
-    file:set_cwd(".."),
-    remove_tmp_dir(),
-    ok.
+    ok = file:set_cwd(".."),
+    ok = remove_tmp_dir().
 
 remove_tmp_dir() ->
     remove_tmp_dir(arg_for_eunit).
 
-remove_tmp_dir(_) ->    
-    case os:type() of
-        {unix, _} ->
-            os:cmd("rm -rf " ++ ?TMP_DIR ++ " 2>/dev/null");
-        {win32, _} ->
-            os:cmd("rmdir /S /Q " ++ filename:nativename(?TMP_DIR))
-    end.
+remove_tmp_dir(_) ->
+    ok = rebar_file_utils:rm_rf(?TMP_DIR).
 
 %% ====================================================================
 %% Helper Functions
 %% ====================================================================
 
 prepare_rebar_script() ->
-    {ok, _} = file:copy(?REBAR_SCRIPT, ?TMP_DIR ++ "rebar"),
+    Rebar = ?TMP_DIR ++ "rebar",
+    {ok, _} = file:copy(?REBAR_SCRIPT, Rebar),
     case os:type() of
         {unix, _} ->
-            [] = os:cmd("chmod u+x " ++ ?TMP_DIR ++ "rebar");
+            [] = os:cmd("chmod u+x " ++ Rebar);
         {win32, _} ->
             {ok, _} = file:copy(?REBAR_SCRIPT ++ ".bat",
                                 ?TMP_DIR ++ "rebar.bat")
@@ -227,22 +223,22 @@ rebar() ->
 
 rebar(Args) when is_list(Args) ->
     Out = os:cmd(filename:nativename("./rebar") ++ " " ++ Args),
-    %?debugMsg("**** Begin"), ?debugMsg(Out), ?debugMsg("**** End"),
+    %% ?debugMsg("**** Begin"), ?debugMsg(Out), ?debugMsg("**** End"),
     Out.
 
 assert_dirs_in(Name, [Dir|T]) ->
     [{Name ++ " has directory: " ++ Dir, ?_assert(filelib:is_dir(Dir))} |
-     assert_dirs_in(Name, T)];                                                                         
+     assert_dirs_in(Name, T)];
 assert_dirs_in(_, []) -> [].
 
 assert_files_in(Name, [File|T]) ->
-    [{Name ++ " has file: " ++ File, ?_assert(filelib:is_file(File))} |
-     assert_files_in(Name, T)];   
+    [{Name ++ " has file: " ++ File, ?_assert(filelib:is_regular(File))} |
+     assert_files_in(Name, T)];
 assert_files_in(_, []) -> [].
 
 assert_files_not_in(Name, [File|T]) ->
-    [{Name ++ " does not have file: " ++ File, ?_assertNot(filelib:is_file(File))} |
-     assert_files_not_in(Name, T)];   
+    [{Name ++ " does not have file: " ++ File,
+      ?_assertNot(filelib:is_regular(File))} | assert_files_not_in(Name, T)];
 assert_files_not_in(_, []) -> [].
 
 assert_full_coverage(Mod) ->
@@ -251,6 +247,6 @@ assert_full_coverage(Mod) ->
             Result = [X || X <- string:tokens(binary_to_list(F), "\n"),
                            string:str(X, Mod) =/= 0,
                            string:str(X, "100%") =/= 0],
-            file:close(F),
-            ?assert(length(Result) == 1)
+            ok = file:close(F),
+            ?assert(length(Result) =:= 1)
     end.

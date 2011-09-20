@@ -1,4 +1,4 @@
-%% -*- tab-width: 4;erlang-indent-level: 4;indent-tabs-mode: nil -*-
+%% -*- erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %% ex: ts=4 sw=4 et
 %% -------------------------------------------------------------------
 %%
@@ -45,18 +45,26 @@ is_app_dir() ->
     is_app_dir(rebar_utils:get_cwd()).
 
 is_app_dir(Dir) ->
-    AppSrc = filename:join(Dir, "src/*.app.src"),
+    SrcDir = filename:join([Dir, "src"]),
+    AppSrc = filename:join([SrcDir, "*.app.src"]),
     case filelib:wildcard(AppSrc) of
         [AppSrcFile] ->
             {true, AppSrcFile};
-        _ ->
-            App = filename:join([Dir, "ebin/*.app"]),
+        [] ->
+            EbinDir = filename:join([Dir, "ebin"]),
+            App = filename:join([EbinDir, "*.app"]),
             case filelib:wildcard(App) of
                 [AppFile] ->
                     {true, AppFile};
+                [] ->
+                    false;
                 _ ->
+                    ?ERROR("More than one .app file in ~s~n", [EbinDir]),
                     false
-            end
+            end;
+        _ ->
+            ?ERROR("More than one .app.src file in ~s~n", [SrcDir]),
+            false
     end.
 
 
@@ -80,7 +88,7 @@ app_name(AppFile) ->
 app_applications(AppFile) ->
     case load_app_file(AppFile) of
         {ok, _, AppInfo} ->
-            proplists:get_value(applications, AppInfo);
+            get_value(applications, AppInfo, AppFile);
         {error, Reason} ->
             ?ABORT("Failed to extract applications from ~s: ~p\n",
                    [AppFile, Reason])
@@ -89,7 +97,8 @@ app_applications(AppFile) ->
 app_vsn(AppFile) ->
     case load_app_file(AppFile) of
         {ok, _, AppInfo} ->
-            proplists:get_value(vsn, AppInfo);
+            AppDir = filename:dirname(filename:dirname(AppFile)),
+            vcs_vsn(get_value(vsn, AppInfo, AppFile), AppDir);
         {error, Reason} ->
             ?ABORT("Failed to extract vsn from ~s: ~p\n",
                    [AppFile, Reason])
@@ -116,3 +125,56 @@ load_app_file(Filename) ->
         {AppName, AppData} ->
             {ok, AppName, AppData}
     end.
+
+get_value(Key, AppInfo, AppFile) ->
+    case proplists:get_value(Key, AppInfo) of
+        undefined ->
+            ?ABORT("Failed to get app value '~p' from '~s'~n", [Key, AppFile]);
+        Value ->
+            Value
+    end.
+
+vcs_vsn(Vcs, Dir) ->
+    case vcs_vsn_cmd(Vcs) of
+        {unknown, VsnString} ->
+            ?DEBUG("vcs_vsn: Unknown VCS atom in vsn field: ~p\n", [Vcs]),
+            VsnString;
+        Cmd ->
+            %% If there is a valid VCS directory in the application directory,
+            %% use that version info
+            Extension = lists:concat([".", Vcs]),
+            case filelib:is_dir(filename:join(Dir, Extension)) of
+                true ->
+                    ?DEBUG("vcs_vsn: Primary vcs used for ~s\n", [Dir]),
+                    vcs_vsn_invoke(Cmd, Dir);
+                false ->
+                    %% No VCS directory found for the app. Depending on source
+                    %% tree structure, there may be one higher up, but that can
+                    %% yield unexpected results when used with deps. So, we
+                    %% fallback to searching for a priv/vsn.Vcs file.
+                    VsnFile = filename:join([Dir, "priv", "vsn" ++ Extension]),
+                    case file:read_file(VsnFile) of
+                        {ok, VsnBin} ->
+                            ?DEBUG("vcs_vsn: Read ~s from priv/vsn.~p\n",
+                                   [VsnBin, Vcs]),
+                            string:strip(binary_to_list(VsnBin), right, $\n);
+                        {error, enoent} ->
+                            ?DEBUG("vcs_vsn: Fallback to vcs for ~s\n", [Dir]),
+                            vcs_vsn_invoke(Cmd, Dir)
+                    end
+            end
+    end.
+
+vcs_vsn_cmd(git) ->
+    %% Explicitly git-describe a committish to accommodate for projects
+    %% in subdirs which don't have a GIT_DIR. In that case we will
+    %% get a description of the last commit that touched the subdir.
+    "git describe --always --tags `git log -n 1 --pretty=format:%h .`";
+vcs_vsn_cmd(hg)  -> "hg identify -i";
+vcs_vsn_cmd(bzr) -> "bzr revno";
+vcs_vsn_cmd(svn) -> "svnversion";
+vcs_vsn_cmd(Version) -> {unknown, Version}.
+
+vcs_vsn_invoke(Cmd, Dir) ->
+    {ok, VsnString} = rebar_utils:sh(Cmd, [{cd, Dir}, {use_stdout, false}]),
+    string:strip(VsnString, right, $\n).
