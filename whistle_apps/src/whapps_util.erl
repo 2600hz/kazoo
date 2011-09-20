@@ -194,7 +194,7 @@ get_account_by_realm(Realm) ->
 -spec get_event_type/1 :: (JObj) -> {binary(), binary()} when
       JObj :: json_object().
 get_event_type(JObj) ->
-    { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
+    wh_util:get_event_type(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -206,7 +206,7 @@ get_event_type(JObj) ->
 -spec put_callid/1 :: (JObj) -> binary() | 'undefined' when
       JObj :: json_object().
 put_callid(JObj) ->
-    erlang:put(callid, wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
+    wh_util:put_callid(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
