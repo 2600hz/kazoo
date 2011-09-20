@@ -12,15 +12,16 @@
 
 -export([handle/2]).
 
+-import(cf_call_command, [b_play_and_collect_digit/2, b_flush/1]).
+
 -record(prompts, {
-           has_been_enabled = <<"/system_media/custom-your_calls_are_now_forwarded_to">>
-          ,has_been_disabled = <<"/system_media/custom-call_forwarding_is_now_disabled">>
-          ,feature_not_avaliable = <<"/system_media/custom-feature_not_avaliable_on_this_line">>
-          ,enter_forwarding_number = <<"/system_media/custom-enter_the_number_to_forward_to">>
-          ,main_menu = <<"/system_media/custom-call_forwarding_menu">>
-          ,to_enable_cf = <<"/system_media/custom-to_enable_cf_press">>
-          ,to_disable_cf = <<"/system_media/custom-to_disable_cf_press">>
-          ,to_change_number = <<"/system_media/custom-to_change_the_number_to_forward_to">>
+           has_been_enabled = <<"/system_media/cf-now_forwarded_to">>
+          ,has_been_disabled = <<"/system_media/cf-disabled">>
+          ,feature_not_avaliable = <<"/system_media/cf-not_available">>
+          ,enter_forwarding_number = <<"/system_media/cf-enter_number">>
+          ,main_menu_enabled = <<"/system_media/cf-enabled_menu">>
+          ,main_menu_disabled = <<"/system_media/cf-disabled_menu">>
+          ,saved = <<"/system_media/vm-saved">>
          }).
 
 -record(keys, {
@@ -73,34 +74,24 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(cf_menu/2 :: (CF :: #callfwd{}, Call :: #cf_call{}) -> no_return()).
-cf_menu(#callfwd{prompts=#prompts{main_menu=MainMenu, to_enable_cf=ToEnableCF, to_disable_cf=ToDisableCF, to_change_number=ToChangeNum}
-                  ,keys=#keys{menu_toggle_cf=Toggle, menu_change_number=ChangeNum}}=CF, Call) ->
+cf_menu(#callfwd{prompts=#prompts{main_menu_enabled=EnabledMenu, main_menu_disabled=DisabledMenu}
+                 ,keys=#keys{menu_toggle_cf=Toggle, menu_change_number=ChangeNum}}=CF, Call) ->
     ?LOG("playing call forwarding menu"),
-    TogglePrompt = case CF#callfwd.enabled of
-                       true -> ToDisableCF;
-                       false -> ToEnableCF
-                   end,
-    cf_call_command:audio_macro([
-                                  {play, MainMenu}
-
-                                 ,{play, TogglePrompt}
-                                 ,{say,  Toggle}
-
-                                 ,{play, ToChangeNum}
-                                 ,{say,  ChangeNum}
-                                ], Call),
-    {ok, Digit} = cf_call_command:wait_for_dtmf(30000),
-    _ = cf_call_command:b_flush(Call),
-    case Digit of
-	Toggle ->
+    Prompt = case CF#callfwd.enabled of
+                 true -> EnabledMenu;
+                 false -> DisabledMenu
+             end,
+    b_flush(Call),
+    case b_play_and_collect_digit(Prompt, Call) of
+	{ok, Toggle} ->
             CF1 = cf_toggle(CF, Call),
             {ok, _} = update_callfwd(CF1, Call),
             cf_menu(CF1, Call);
-        ChangeNum ->
+        {ok, ChangeNum} ->
             CF1 = cf_update_number(CF, Call),
             {ok, _} = update_callfwd(CF1, Call),
 	    cf_menu(CF1, Call);
-	_ ->
+	{ok, _} ->
 	    cf_menu(CF, Call)
     end.
 
@@ -129,7 +120,7 @@ cf_activate(#callfwd{number = <<>>}=CF, Call) ->
     cf_activate(cf_update_number(CF, Call), Call);
 cf_activate(#callfwd{number=Number, prompts=Prompts}=CF, Call) ->
     ?LOG("activating call forwarding"),
-    cf_call_command:play(Prompts#prompts.has_been_enabled, Call),
+    cf_call_command:b_play(Prompts#prompts.has_been_enabled, Call),
     cf_call_command:b_say(Number, Call),
     CF#callfwd{enabled=true}.
 
@@ -154,8 +145,9 @@ cf_deactivate(#callfwd{prompts=Prompts}=CF, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(cf_update_number/2 :: (CF :: #callfwd{}, Call :: #cf_call{}) -> #callfwd{}).
-cf_update_number(#callfwd{prompts=Prompts}=CF, Call) ->
-    {ok, Number} = cf_call_command:b_play_and_collect_digits(<<"3">>, <<"20">>, Prompts#prompts.enter_forwarding_number, <<"1">>, <<"8000">>, Call),
+cf_update_number(#callfwd{prompts=#prompts{saved=Saved, enter_forwarding_number=EnterNumber}}=CF, Call) ->
+    {ok, Number} = cf_call_command:b_play_and_collect_digits(<<"3">>, <<"20">>, EnterNumber, <<"1">>, <<"8000">>, Call),
+    cf_call_command:b_play(Saved, Call),
     ?LOG("update call forwarding number with ~s", [Number]),
     CF#callfwd{number=Number}.
 

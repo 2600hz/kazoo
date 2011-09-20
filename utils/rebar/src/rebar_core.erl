@@ -1,4 +1,4 @@
-%% -*- tab-width: 4;erlang-indent-level: 4;indent-tabs-mode: nil -*-
+%% -*- erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %% ex: ts=4 sw=4 et
 %% -------------------------------------------------------------------
 %%
@@ -26,7 +26,7 @@
 %% -------------------------------------------------------------------
 -module(rebar_core).
 
--export([run/1,
+-export([process_commands/2,
          skip_dir/1,
          is_skip_dir/1,
          skip_dirs/0]).
@@ -34,56 +34,9 @@
 -include("rebar.hrl").
 
 
--ifndef(BUILD_TIME).
--define(BUILD_TIME, "undefined").
--endif.
-
--ifndef(VCS_INFO).
--define(VCS_INFO, "undefined").
--endif.
-
 %% ===================================================================
 %% Public API
 %% ===================================================================
-
-run(["help"]) ->
-    help(),
-    ok;
-run(["version"]) ->
-    %% Load application spec and display vsn and build time info
-    ok = application:load(rebar),
-    version(),
-    ok;
-run(RawArgs) ->
-    %% Pre-load the rebar app so that we get default configuration
-    ok = application:load(rebar),
-
-    %% Parse out command line arguments -- what's left is a list of commands to
-    %% run
-    Commands = parse_args(RawArgs),
-
-    %% Make sure crypto is running
-    ok = crypto:start(),
-
-    %% Initialize logging system
-    rebar_log:init(),
-
-    %% Convert command strings to atoms
-    CommandAtoms = [list_to_atom(C) || C <- Commands],
-
-    %% Determine the location of the rebar executable; important for pulling
-    %% resources out of the escript
-    rebar_config:set_global(escript, filename:absname(escript:script_name())),
-    ?DEBUG("Rebar location: ~p\n", [rebar_config:get_global(escript, undefined)]),
-
-    %% Note the top-level directory for reference
-    rebar_config:set_global(base_dir, filename:absname(rebar_utils:get_cwd())),
-
-    %% Keep track of how many operations we do, so we can detect bad commands
-    erlang:put(operations, 0),
-
-    %% Process each command, resetting any state between each one
-    process_commands(CommandAtoms).
 
 skip_dir(Dir) ->
     SkipDir = {skip_dir, Dir},
@@ -97,10 +50,10 @@ skip_dir(Dir) ->
 
 is_skip_dir(Dir) ->
     case erlang:get({skip_dir, Dir}) of
-	undefined ->
-	    false;
-	true ->
-	    true
+        undefined ->
+            false;
+        true ->
+            true
     end.
 
 skip_dirs() ->
@@ -110,183 +63,7 @@ skip_dirs() ->
 %% Internal functions
 %% ===================================================================
 
-%%
-%% Parse command line arguments using getopt and also filtering out any
-%% key=value pairs. What's left is the list of commands to run
-%%
-parse_args(Args) ->
-    %% Parse getopt options
-    OptSpecList = option_spec_list(),
-    case getopt:parse(OptSpecList, Args) of
-        {ok, {Options, NonOptArgs}} ->
-            %% Check options and maybe halt execution
-            {ok, continue} = show_info_maybe_halt(Options, NonOptArgs),
-
-            %% Set global variables based on getopt options
-            set_global_flag(Options, verbose),
-            set_global_flag(Options, force),
-	    set_global_flag(Options, eval_exprs),
-            DefJobs = rebar_config:get_jobs(),
-            case proplists:get_value(jobs, Options, DefJobs) of
-                DefJobs ->
-                    ok;
-                Jobs ->
-                    rebar_config:set_global(jobs, Jobs)
-            end,
-
-            %% Set the rebar config to use
-            case proplists:get_value(config, Options) of
-                undefined -> ok;
-                Conf -> rebar_config:set_global(config, Conf)
-            end,
-
-            %% Filter all the flags (i.e. strings of form key=value) from the
-            %% command line arguments. What's left will be the commands to run.
-            filter_flags(NonOptArgs, []);
-
-        {error, {Reason, Data}} ->
-            ?ERROR("Error: ~s ~p~n~n", [Reason, Data]),
-            help(),
-            halt(1)
-    end.
-
-%%
-%% set global flag based on getopt option boolean value
-%%
-set_global_flag(Options, Flag) ->
-    Value = case proplists:get_bool(Flag, Options) of
-                true ->
-                    "1";
-                false ->
-                    "0"
-            end,
-    rebar_config:set_global(Flag, Value).
-
-%%
-%% show info and maybe halt execution
-%%
-show_info_maybe_halt(Opts, NonOptArgs) ->
-    case proplists:get_bool(help, Opts) of
-        true ->
-            help(),
-            halt(0);
-        false ->
-            case proplists:get_bool(commands, Opts) of
-                true ->
-                    commands(),
-                    halt(0);
-                false ->
-                    case proplists:get_bool(version, Opts) of
-                        true ->
-                            version(),
-                            halt(0);
-                        false ->
-                            case NonOptArgs of
-                                [] ->
-                                    ?CONSOLE("No command to run specified!~n",[]),
-                                    help(),
-                                    halt(1);
-                                _ ->
-                                    {ok, continue}
-                            end
-                    end
-            end
-    end.
-
-%%
-%% print help/usage string
-%%
-help() ->
-    OptSpecList = option_spec_list(),
-    getopt:usage(OptSpecList, "rebar",
-                 "[var=value,...] <command,...>",
-                 [{"var=value", "rebar global variables (e.g. force=1)"},
-                  {"command", "Command to run (e.g. compile)"}]).
-
-%%
-%% print known commands
-%%
-commands() ->
-    S = <<"
-dialyze                              Analyze with Dialyzer
-build-plt                            Build Dialyzer PLT
-check-plt                            Check Dialyzer PLT
-
-clean                                Clean
-compile                              Compile sources
-
-create      template= [var=foo,...]  Create skel based on template and vars
-create-app  [appid=myapp]            Create simple app skel
-create-node [nodeid=mynode]          Create simple node skel
-list-templates                       List available templates
-
-doc                                  Generate Erlang program documentation
-
-check-deps                           Display to be fetched dependencies
-get-deps                             Fetch dependencies
-delete-deps                          Delete fetched dependencies
-
-generate    [dump_spec=0/1]          Build release with reltool
-
-eunit       [suite=foo]              Run eunit [test/foo_tests.erl] tests
-ct          [suite=] [case=]         Run common_test suites in ./test
-
-xref                                 Run cross reference analysis
-
-help                                 Show the program options
-version                              Show version information
-">>,
-    io:put_chars(S),
-    %% workaround to delay exit until all output is written
-    timer:sleep(300).
-
-%%
-%% show version information and halt
-%%
-version() ->
-    {ok, Vsn} = application:get_key(rebar, vsn),
-    ?CONSOLE("rebar version: ~s date: ~s vcs: ~s\n", [Vsn, ?BUILD_TIME, ?VCS_INFO]).
-
-%%
-%% options accepted via getopt
-%%
-option_spec_list() ->
-    Jobs = rebar_config:get_jobs(),
-    JobsHelp = io_lib:format(
-        "Number of concurrent workers a command may use. Default: ~B",
-        [Jobs]),
-    [
-     %% {Name, ShortOpt, LongOpt, ArgSpec, HelpMsg}
-     {help,     $h, "help",       undefined, "Show the program options"},
-     {commands, $c, "commands",   undefined, "Show available commands"},
-     {verbose,  $v, "verbose",    undefined, "Be verbose about what gets done"},
-     {version,  $V, "version",    undefined, "Show version information"},
-     {force,    $f, "force",      undefined, "Force"},
-     {eval_exprs, $e, "eval_exprs", undefined, "Evaluate expressions in template files"},
-     {jobs,     $j, "jobs",       integer,   JobsHelp},
-     {config,   $C, "config",     string,    "Rebar config file to use"}
-    ].
-
-%%
-%% Seperate all commands (single-words) from flags (key=value) and store
-%% values into the rebar_config global storage.
-%%
-filter_flags([], Commands) ->
-    lists:reverse(Commands);
-filter_flags([Item | Rest], Commands) ->
-    case string:tokens(Item, "=") of
-        [Command] ->
-            filter_flags(Rest, [Command | Commands]);
-        [KeyStr, Value] ->
-            Key = list_to_atom(KeyStr),
-            rebar_config:set_global(Key, Value),
-            filter_flags(Rest, Commands);
-        Other ->
-            ?CONSOLE("Ignoring command line argument: ~p\n", [Other]),
-            filter_flags(Rest, Commands)
-    end.
-
-process_commands([]) ->
+process_commands([], _ParentConfig) ->
     case erlang:get(operations) of
         0 ->
             %% none of the commands had an effect
@@ -294,20 +71,26 @@ process_commands([]) ->
         _ ->
             ok
     end;
-process_commands([Command | Rest]) ->
+process_commands([Command | Rest], ParentConfig) ->
     %% Reset skip dirs
     lists:foreach(fun (D) -> erlang:erase({skip_dir, D}) end, skip_dirs()),
     Operations = erlang:get(operations),
 
-    _ = process_dir(rebar_utils:get_cwd(), rebar_config:new(), Command, sets:new()),
+    %% Convert the code path so that all the entries are absolute paths.
+    %% If not, code:set_path() may choke on invalid relative paths when trying
+    %% to restore the code path from inside a subdirectory.
+    true = rebar_utils:expand_code_path(),
+    _ = process_dir(rebar_utils:get_cwd(), ParentConfig,
+                    Command, sets:new()),
     case erlang:get(operations) of
         Operations ->
             %% This command didn't do anything
-            ?CONSOLE("Command '~p' not understood\n", [Command]);
+            ?CONSOLE("Command '~p' not understood or not applicable~n",
+                     [Command]);
         _ ->
             ok
     end,
-    process_commands(Rest).
+    process_commands(Rest, ParentConfig).
 
 
 process_dir(Dir, ParentConfig, Command, DirSet) ->
@@ -331,7 +114,8 @@ process_dir(Dir, ParentConfig, Command, DirSet) ->
             %% CWD to see if it's a fit -- if it is, use that set of modules
             %% to process this dir.
             {ok, AvailModuleSets} = application:get_env(rebar, modules),
-            {DirModules, ModuleSetFile} = choose_module_set(AvailModuleSets, Dir),
+            {DirModules, ModuleSetFile} = choose_module_set(AvailModuleSets,
+                                                            Dir),
 
             %% Get the list of modules for "any dir". This is a catch-all list
             %% of modules that are processed in addition to modules associated
@@ -345,7 +129,8 @@ process_dir(Dir, ParentConfig, Command, DirSet) ->
             %% directories that should be processed _before_ the current one.
             Predirs = acc_modules(Modules, preprocess, Config, ModuleSetFile),
             ?DEBUG("Predirs: ~p\n", [Predirs]),
-            DirSet2 = process_each(Predirs, Command, Config, ModuleSetFile, DirSet),
+            DirSet2 = process_each(Predirs, Command, Config,
+                                   ModuleSetFile, DirSet),
 
             %% Make sure the CWD is reset properly; processing the dirs may have
             %% caused it to change
@@ -354,27 +139,38 @@ process_dir(Dir, ParentConfig, Command, DirSet) ->
             %% Check that this directory is not on the skip list
             case is_skip_dir(Dir) of
                 true ->
-                    %% Do not execute the command on the directory, as some module
-                    %% as requested a skip on it.
+                    %% Do not execute the command on the directory, as some
+                    %% module as requested a skip on it.
                     ?INFO("Skipping ~s in ~s\n", [Command, Dir]);
 
                 false ->
-                    %% Get the list of plug-in modules from rebar.config. These modules are
-                    %% processed LAST and do not participate in preprocess.
+                    %% Get the list of plug-in modules from rebar.config. These
+                    %% modules are processed LAST and do not participate
+                    %% in preprocess.
                     {ok, PluginModules} = plugin_modules(Config),
 
+                    %% Execute any before_command plugins on this directory
+                    execute_pre(Command, PluginModules,
+                                Config, ModuleSetFile),
+
                     %% Execute the current command on this directory
-                    execute(Command, Modules ++ PluginModules, Config, ModuleSetFile)
+                    execute(Command, Modules ++ PluginModules,
+                            Config, ModuleSetFile),
+
+                    %% Execute any after_command plugins on this directory
+                    execute_post(Command, PluginModules,
+                                 Config, ModuleSetFile)
             end,
 
             %% Mark the current directory as processed
             DirSet3 = sets:add_element(Dir, DirSet2),
 
-            %% Invoke 'postprocess' on the modules -- this yields a list of other
+            %% Invoke 'postprocess' on the modules. This yields a list of other
             %% directories that should be processed _after_ the current one.
             Postdirs = acc_modules(Modules, postprocess, Config, ModuleSetFile),
             ?DEBUG("Postdirs: ~p\n", [Postdirs]),
-            DirSet4 = process_each(Postdirs, Command, Config, ModuleSetFile, DirSet3),
+            DirSet4 = process_each(Postdirs, Command, Config,
+                                   ModuleSetFile, DirSet3),
 
             %% Make sure the CWD is reset properly; processing the dirs may have
             %% caused it to change
@@ -428,6 +224,17 @@ is_dir_type(rel_dir, Dir) ->
 is_dir_type(_, _) ->
     false.
 
+execute_pre(Command, Modules, Config, ModuleFile) ->
+    execute_plugin_hook("pre_", Command, Modules,
+                        Config, ModuleFile).
+
+execute_post(Command, Modules, Config, ModuleFile) ->
+    execute_plugin_hook("post_", Command, Modules,
+                        Config, ModuleFile).
+
+execute_plugin_hook(Hook, Command, Modules, Config, ModuleFile) ->
+    HookFunction = list_to_atom(Hook ++ atom_to_list(Command)),
+    execute(HookFunction, Modules, Config, ModuleFile).
 
 %%
 %% Execute a command across all applicable modules
@@ -435,29 +242,44 @@ is_dir_type(_, _) ->
 execute(Command, Modules, Config, ModuleFile) ->
     case select_modules(Modules, Command, []) of
         [] ->
-            ?WARN("'~p' command does not apply to directory ~s\n",
-                     [Command, rebar_utils:get_cwd()]);
+            Cmd = atom_to_list(Command),
+            case lists:prefix("pre_", Cmd)
+                orelse lists:prefix("post_", Cmd) of
+                true ->
+                    ok;
+                false ->
+                    ?WARN("'~p' command does not apply to directory ~s\n",
+                          [Command, rebar_utils:get_cwd()])
+            end;
 
         TargetModules ->
             %% Provide some info on where we are
             Dir = rebar_utils:get_cwd(),
             ?CONSOLE("==> ~s (~s)\n", [filename:basename(Dir), Command]),
 
-            %% Increment the count of operations, since some module responds to this command
+            %% Increment the count of operations, since some module
+            %% responds to this command
             erlang:put(operations, erlang:get(operations) + 1),
 
+            %% Check for and get command specific environments
+            Env = setup_envs(Config, Modules),
+
             %% Run the available modules
-            case catch(run_modules(TargetModules, Command, Config, ModuleFile)) of
+            apply_hooks(pre_hooks, Config, Command, Env),
+            case catch(run_modules(TargetModules, Command,
+                                   Config, ModuleFile)) of
                 ok ->
+                    apply_hooks(post_hooks, Config, Command, Env),
                     ok;
                 {error, failed} ->
                     ?FAIL;
                 {Module, {error, _} = Other} ->
                     ?ABORT("~p failed while processing ~s in module ~s: ~s\n",
-                           [Command, Dir, Module, io_lib:print(Other, 1,80,-1)]);
+                           [Command, Dir, Module,
+                            io_lib:print(Other, 1, 80, -1)]);
                 Other ->
                     ?ABORT("~p failed while processing ~s: ~s\n",
-                           [Command, Dir, io_lib:print(Other, 1,80,-1)])
+                           [Command, Dir, io_lib:print(Other, 1, 80, -1)])
             end
     end.
 
@@ -476,8 +298,8 @@ update_code_path(Config) ->
 restore_code_path(no_change) ->
     ok;
 restore_code_path({old, Path}) ->
-    %% Verify that all of the paths still exist -- some dynamically add paths
-    %% can get blown away during clean.
+    %% Verify that all of the paths still exist -- some dynamically
+    %% added paths can get blown away during clean.
     true = code:set_path([F || F <- Path, filelib:is_file(F)]),
     ok.
 
@@ -494,8 +316,8 @@ expand_lib_dirs([Dir | Rest], Root, Acc) ->
 select_modules([], _Command, Acc) ->
     lists:reverse(Acc);
 select_modules([Module | Rest], Command, Acc) ->
-    Exports = Module:module_info(exports),
-    case lists:member({Command, 2}, Exports) of
+    {module, Module} = code:ensure_loaded(Module),
+    case erlang:function_exported(Module, Command, 2) of
         true ->
             select_modules(Rest, Command, [Module | Acc]);
         false ->
@@ -512,6 +334,19 @@ run_modules([Module | Rest], Command, Config, File) ->
             {Module, Error}
     end.
 
+apply_hooks(Mode, Config, Command, Env) ->
+    Hooks = rebar_config:get_local(Config, Mode, []),
+    lists:foreach(fun apply_hook/1,
+                  [{Env, Hook} || Hook <- Hooks, element(1, Hook) =:= Command]).
+
+apply_hook({Env, {Command, Hook}}) ->
+    Msg = lists:flatten(io_lib:format("Command [~p] failed!~n", [Command])),
+    rebar_utils:sh(Hook, [{env, Env}, {abort_on_error, Msg}]).
+
+setup_envs(Config, Modules) ->
+    lists:flatten([M:setup_env(Config) ||
+                      M <- Modules,
+                      erlang:function_exported(M, setup_env, 1)]).
 
 acc_modules(Modules, Command, Config, File) ->
     acc_modules(select_modules(Modules, Command, []),
@@ -527,7 +362,7 @@ acc_modules([Module | Rest], Command, Config, File, Acc) ->
 %% Return a flat list of rebar plugin modules.
 %%
 plugin_modules(Config) ->
-    Modules = lists:flatten(rebar_config:get_all(Config, rebar_plugins)),
+    Modules = lists:flatten(rebar_config:get_all(Config, plugins)),
     plugin_modules(Config, ulist(Modules)).
 
 ulist(L) ->
@@ -545,13 +380,67 @@ ulist([H | T], Acc) ->
 
 plugin_modules(_Config, []) ->
     {ok, []};
-plugin_modules(_Config, Modules) ->
+plugin_modules(Config, Modules) ->
     FoundModules = [M || M <- Modules, code:which(M) =/= non_existing],
-    case (Modules =:= FoundModules) of
+    plugin_modules(Config, FoundModules, Modules -- FoundModules).
+
+plugin_modules(_Config, FoundModules, []) ->
+    {ok, FoundModules};
+plugin_modules(Config, FoundModules, MissingModules) ->
+    {Loaded, NotLoaded} = load_plugin_modules(Config, MissingModules),
+    AllViablePlugins = FoundModules ++ Loaded,
+    case NotLoaded =/= [] of
         true ->
-            ok;
+            %% NB: we continue to ignore this situation, as did the original code
+            ?WARN("Missing plugins: ~p\n", [NotLoaded]);
         false ->
-            ?WARN("Missing plugins: ~p\n", [Modules -- FoundModules]),
+            ?DEBUG("Loaded plugins: ~p~n", [AllViablePlugins]),
             ok
     end,
-    {ok, FoundModules}.
+    {ok, AllViablePlugins}.
+
+load_plugin_modules(Config, Modules) ->
+    PluginDir = case rebar_config:get_local(Config, plugin_dir, undefined) of
+                    undefined ->
+                        filename:join(rebar_utils:get_cwd(), "plugins");
+                    Dir ->
+                        Dir
+                end,
+
+    %% Find relevant sources in base_dir and plugin_dir
+    Erls = string:join([atom_to_list(M)++"\\.erl" || M <- Modules], "|"),
+    RE = "^" ++ Erls ++ "\$",
+    BaseDir = rebar_config:get_global(base_dir, []),
+    %% If a plugin is found in base_dir and plugin_dir the clash
+    %% will provoke an error and we'll abort.
+    Sources = rebar_utils:find_files(PluginDir, RE, false)
+        ++ rebar_utils:find_files(BaseDir, RE, false),
+
+    %% Compile and load plugins
+    Loaded = [load_plugin(Src) || Src <- Sources],
+    FilterMissing = is_missing_plugin(Loaded),
+    NotLoaded = [V || V <- Modules, FilterMissing(V)],
+    {Loaded, NotLoaded}.
+
+is_missing_plugin(Loaded) ->
+    fun(Mod) -> not lists:member(Mod, Loaded) end.
+
+load_plugin(Src) ->
+    case compile:file(Src, [binary, return_errors]) of
+        {ok, Mod, Bin} ->
+            load_plugin_module(Mod, Bin, Src);
+        {error, Errors, _Warnings} ->
+            ?ABORT("Plugin ~s contains compilation errors: ~p~n",
+                   [Src, Errors])
+    end.
+
+load_plugin_module(Mod, Bin, Src) ->
+    case code:is_loaded(Mod) of
+        {file, Loaded} ->
+            ?ABORT("Plugin ~p clashes with previously loaded module ~p~n",
+                   [Mod, Loaded]);
+        false ->
+            ?INFO("Loading plugin ~p from ~s~n", [Mod, Src]),
+            {module, Mod} = code:load_binary(Mod, Src, Bin),
+            Mod
+    end.
