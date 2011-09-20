@@ -202,7 +202,10 @@ invite_format(_, _) ->
 sip_headers([]) ->
     undefined;
 sip_headers(L) when is_list(L) ->
-    [ Headers || Headers <- L, wh_json:is_json_object(Headers)].
+    case [ Headers || Headers <- L, wh_json:is_json_object(Headers)] of
+	[Res] -> Res;
+	_ -> undefined
+    end.
 
 -spec failover/1 :: (L) -> json_object() when
       L :: [json_object() | binary(),...].

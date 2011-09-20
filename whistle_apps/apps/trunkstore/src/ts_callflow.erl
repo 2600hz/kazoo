@@ -73,10 +73,10 @@ send_park(#state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
 
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
     _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
-    amqp_util:basic_consume(Q), %% need to verify if this step is needed
+    amqp_util:basic_consume(Q, [{exclusive, false}]), %% need to verify if this step is needed
     State.
 
--spec wait_for_win/1 :: (State) -> tuple(won | lost, #state{}) when
+-spec wait_for_win/1 :: (State) -> {'won' | 'lost', #state{}} when
       State :: #state{}.
 wait_for_win(#state{aleg_callid=CallID}=State) ->
     receive
