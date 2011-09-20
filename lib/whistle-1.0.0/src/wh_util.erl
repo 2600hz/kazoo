@@ -7,7 +7,7 @@
 -export([a1hash/3, floor/1, ceiling/1]).
 -export([current_tstamp/0, ensure_started/1]).
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1]).
--export([microseconds_to_seconds/1]).
+-export([microseconds_to_seconds/1, put_callid/1, get_event_type/1]).
 -export([whistle_version/0, write_pid/1]).
 -export([is_ipv4/1, is_ipv6/1]).
 
@@ -65,6 +65,30 @@ call_response1(CallId, CtrlQ, Commands) ->
                | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
     {ok, Payload} = wh_api:queue_req(Command),
     amqp_util:callctl_publish(CtrlQ, Payload).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given an JSON Object extracts the Call-ID into the processes
+%% dictionary, failing that the Msg-ID and finally a generic
+%% @end
+%%--------------------------------------------------------------------
+-spec put_callid/1 :: (JObj) -> binary() | 'undefined' when
+      JObj :: json_object().
+put_callid(JObj) ->
+    erlang:put(callid, wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given an API JSON object extract the category and name into a
+%% tuple for easy processing
+%% @end
+%%--------------------------------------------------------------------
+-spec get_event_type/1 :: (JObj) -> {binary(), binary()} when
+      JObj :: json_object().
+get_event_type(JObj) ->
+    { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
 
 %% must be a term that can be changed to a list
 -spec to_hex/1 :: (S) -> string() when
