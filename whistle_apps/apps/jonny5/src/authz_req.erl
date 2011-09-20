@@ -22,7 +22,11 @@ init() ->
 
 handle_req(JObj, Props) ->
     CPid = props:get_value(cache, Props),
-    true = wh_api:authz_req_v(JObj),
+    case wh_api:authz_req_v(JObj) of
+	false -> throw({failed_api_validation, JObj});
+	true -> ?LOG("Valid authz_req")
+    end,
+
     put(callid, wh_json:get_value(<<"Call-ID">>, JObj)),
 
     ?LOG("Authorize ~s can make the call to ~s", [wh_json:get_value(<<"From">>, JObj), wh_json:get_value(<<"To">>, JObj)]),

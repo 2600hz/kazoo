@@ -161,9 +161,15 @@ handle_info({'DOWN', MRef, process, Cache, _Reason}, #state{cache=Cache}=State) 
 handle_info({'DOWN', PRef, process, _PPid, _Reason}, #state{bl_provider_ref=PRef, bl_provider_mod=PMod}=State) ->
     ?LOG_SYS("blacklist provider ~s down: ~p", [PMod, _Reason]),
     try
-	PPid1 = find_bl_provider_pid(PMod),
-	PRef1 = erlang:monitor(process, PPid1),
-	{noreply, State#state{bl_provider_ref=PRef1, bl_provider_pid=PPid1}}
+    case find_bl_provider_pid(PMod) of
+	PPid1 when is_pid(PPid1) ->
+	    PRef1 = erlang:monitor(process, PPid1),
+	    {noreply, State#state{bl_provider_ref=PRef1, bl_provider_pid=PPid1}};
+	ignore ->
+	    {noreply, State};
+	undefined ->
+	    {noreply, State}
+    end
     catch
 	_:_ ->
 	    {noreply, State#state{bl_provider_pid=undefined}}
@@ -171,9 +177,15 @@ handle_info({'DOWN', PRef, process, _PPid, _Reason}, #state{bl_provider_ref=PRef
 
 handle_info(timeout, #state{bl_provider_mod=PMod, bl_provider_pid=undefined}=State) ->
     ?LOG_SYS("blacklist provider ~s unknown, starting", [PMod]),
-    PPid1 = find_bl_provider_pid(PMod),
-    PRef1 = erlang:monitor(process, PPid1),
-    {noreply, State#state{bl_provider_ref=PRef1, bl_provider_pid=PPid1}};
+    case find_bl_provider_pid(PMod) of
+	PPid1 when is_pid(PPid1) ->
+	    PRef1 = erlang:monitor(process, PPid1),
+	    {noreply, State#state{bl_provider_ref=PRef1, bl_provider_pid=PPid1}};
+	ignore ->
+	    {noreply, State};
+	undefined ->
+	    {noreply, State}
+    end;
 
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
@@ -188,6 +200,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{cache=Cache}) ->
+    ?LOG("Event received"),
     {reply, [{cache, Cache}]}.
 
 %%--------------------------------------------------------------------
@@ -216,7 +229,7 @@ terminate(_Reason, _) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
--spec find_bl_provider_pid/1 :: (PMod) -> pid() when
+-spec find_bl_provider_pid/1 :: (PMod) -> pid() | 'ignore' when
       PMod :: atom().
 find_bl_provider_pid(PMod) ->
     ?LOG_SYS("trying to start ~s" , [PMod]),
@@ -227,9 +240,7 @@ find_bl_provider_pid(PMod) ->
 	{ok, Pid, _Info} -> ?LOG("started with ~p", [_Info]), Pid;
 	{error, already_present} ->
 	    ?LOG_SYS("already present"),
-	    %% supervisor has the child but it isn't running
-	    timer:sleep(100),
-	    find_bl_provider_pid(PMod);
+	    ignore;
 	{error, {already_started, Pid}} ->
 	    ?LOG("already started"),
 	    Pid
