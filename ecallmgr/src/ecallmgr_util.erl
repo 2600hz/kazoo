@@ -11,7 +11,7 @@
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
--export([fs_log/3]).
+-export([fs_log/3, put_callid/1]).
 
 -include("ecallmgr.hrl").
 
@@ -135,3 +135,11 @@ fs_log(Node, Format, Args) ->
                   Else
           end,
     _ = freeswitch:api(Node, log, lists:flatten(Log)).
+
+-spec put_callid/1 :: (JObj) -> 'undefined' | term() when
+      JObj :: json_object().
+put_callid(JObj) ->
+    case props:get_value(<<"Call-ID">>, JObj) of
+	undefined -> put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>));
+	CallID -> put(callid, CallID)
+    end.

@@ -256,8 +256,10 @@ lookup_user(Node, ID, Data) ->
                                  ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml]),
                                  freeswitch:fetch_reply(Node, ID, Xml)
                              catch
-                                 _:_ ->
-                                     ?LOG("auth request lookup failed")
+                                 throw:_T ->
+                                     ?LOG("auth request lookup failed: thrown ~w", [_T]);
+				 error:_E ->
+				     ?LOG("auth request lookup failed: error ~w", [_E])
                              end
 		     end),
     {ok, Pid}.

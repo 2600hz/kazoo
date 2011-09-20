@@ -35,6 +35,7 @@ init([]) ->
 	 ,?CHILD(ecallmgr_fs_auth_sup, supervisor)
 	 ,?CHILD(resource_mgr, worker) % handles resource requests / resource availability
          ,?CHILD(ecallmgr_registrar, worker) % local cache for registrations
+	 ,?CHILD(ecallmgr_amqp_pool_worker_sup, supervisor)
 	 ,?CHILD(ecallmgr_amqp_pool, worker) % pool of queues for sending msgs
 	 ,?CHILD(ecallmgr_fs_handler, worker) % handles starting FreeSWITCH handlers for a given FS node
 	 ,?CHILD(ecallmgr_media_registry, worker) % handles tracking media names and files per-call
