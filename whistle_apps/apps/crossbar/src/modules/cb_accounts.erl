@@ -30,7 +30,7 @@
 -define(AGG_VIEW_PARENT, <<"accounts/listing_by_parent">>).
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
--define(AGG_GROUP_BY_REALM, <<"accounts/group_by_realm">>).
+-define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
 -define(AGG_FILTER, <<"account/export">>).
 
 %%%===================================================================
@@ -279,7 +279,7 @@ bind_to_crossbar() ->
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
-    {true, ['GET', 'POST', 'DELETE']};
+    {true, ['GET', 'PUT', 'POST', 'DELETE']};
 allowed_methods([_, <<"parent">>]) ->
     {true, ['GET', 'POST', 'DELETE']};
 allowed_methods([_, Path]) ->
@@ -322,6 +322,8 @@ validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account_summary([], Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create_account(Context);
+validate([ParrentId], #cb_context{req_verb = <<"put">>}=Context) ->
+    create_account(Context, ParrentId);
 validate([AccountId], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account(AccountId, Context);
 validate([AccountId], #cb_context{req_verb = <<"post">>}=Context) ->
@@ -365,8 +367,16 @@ load_account_summary(AccountId, Context) ->
 %% Create a new account document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_account(#cb_context{req_data=JObj}=Context) ->
+-spec create_account/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
+-spec create_account/2 :: (Context, Parrent) -> #cb_context{} when
+      Context :: #cb_context{},
+      Parrent :: undefined | binary().
+
+create_account(Context) ->
+    create_account(Context, undefined).
+
+create_account(#cb_context{req_data=JObj}=Context, ParrentId) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
 	    ?LOG_SYS("Invalid JSON failed on fields ~p", [Fields]),
@@ -377,7 +387,7 @@ create_account(#cb_context{req_data=JObj}=Context) ->
                 true ->
 		    ?LOG_SYS("Realm ~s is valid and unique", [wh_json:get_value(<<"realm">>, JObj)]),
                     Context#cb_context{
-                      doc=set_private_fields(JObj, Context)
+                      doc=set_private_fields(JObj, Context, ParrentId)
                       ,resp_status=success
                      };
                 false ->
@@ -599,11 +609,28 @@ update_doc_tree(_ParentTree, _Object, Acc) ->
 %% document
 %% @end
 %%--------------------------------------------------------------------
--spec(set_private_fields/2 :: (JObj :: json_object(), Context :: #cb_context{}) -> json_object()).
-set_private_fields(JObj0, Context) ->
+-spec set_private_fields/3 :: (JObj, Context, ParrentId) -> json_object() when
+      JObj :: json_object(),
+      Context :: #cb_context{},
+      ParrentId :: undefined | binary().
+
+set_private_fields(JObj0, Context, undefined) ->
     lists:foldl(fun(Fun, JObj1) ->
                         Fun(JObj1, Context)
-                end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, fun add_pvt_tree/2]).
+                end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, fun add_pvt_tree/2]);
+set_private_fields(JObj0, Context, ParrentId) ->
+    case is_binary(ParrentId) andalso couch_mgr:open_doc(whapps_util:get_db_name(ParrentId, encoded), ParrentId) of
+        {ok, ParrentJObj} ->
+            Tree = wh_json:get_value(<<"pvt_tree">>, ParrentJObj, []) ++ [ParrentId],
+            AddPvtTree = fun(JObj, _) -> wh_json:set_value(<<"pvt_tree">>, Tree, JObj) end,
+            lists:foldl(fun(Fun, JObj1) ->
+                                Fun(JObj1, Context)
+                        end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, AddPvtTree]);
+        false ->
+            set_private_fields(JObj0, Context, undefined);
+        _ ->
+            set_private_fields(JObj0, Context, undefined)
+    end.
 
 add_pvt_type(JObj, _) ->
     wh_json:set_value(<<"pvt_type">>, <<"account">>, JObj).
@@ -693,32 +720,23 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
 -spec(is_unique_realm/2 :: (AccountId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).
 is_unique_realm(AccountId, #cb_context{req_data=JObj}=Context) ->
     is_unique_realm(AccountId, Context, wh_json:get_value(<<"realm">>, JObj)).
-
 is_unique_realm(_, _, undefined) -> false;
-is_unique_realm(undefined, Context, Realm) ->
-    V = case crossbar_doc:load_view(?AGG_GROUP_BY_REALM, [{<<"key">>, Realm}
-							  ,{<<"reduce">>, <<"true">>}
-							 ]
-				    ,Context#cb_context{db_name=?AGG_DB}) of
-	    #cb_context{resp_status=success, doc=[J]} -> wh_json:get_value(<<"value">>, J, []);
-	    #cb_context{resp_status=success, doc=[]} -> []
-	end,
-    ?LOG_SYS("Is unique realm: ~s AcctID: undefined V: ~p", [Realm, V]),
-    is_unique_realm1(Realm, V);
-is_unique_realm(AccountId, Context, Realm) ->
-    V = case crossbar_doc:load_view(?AGG_GROUP_BY_REALM, [{<<"key">>, Realm}
-							  ,{<<"reduce">>, <<"true">>}
-							 ]
-				    ,Context#cb_context{db_name=?AGG_DB}) of
-	    #cb_context{resp_status=success, doc=[J]} -> wh_json:get_value(<<"value">>, J, []);
-	    #cb_context{resp_status=success, doc=[]} -> []
-	end,
-    ?LOG_SYS("Is unique realm: ~s AcctID: ~s V: ~p", [Realm, AccountId, V]),
-    is_unique_realm1(Realm, V).
 
-is_unique_realm1(undefined, [_]) -> false;
-is_unique_realm1(undefined, []) -> false;
-is_unique_realm1(_, []) -> true;
-is_unique_realm1(Realm, [Realm]) -> true;
-is_unique_realm1(_, [_]) -> true;
-is_unique_realm1(_, _) -> false.
+is_unique_realm(undefined, _, Realm) ->
+    %% unique if Realm doesn't exist in agg DB
+    case couch_mgr:get_results(?AGG_DB, ?AGG_VIEW_REALM, [{<<"key">>, Realm}]) of
+	{ok, []} -> true;
+	{ok, [_|_]} -> false
+    end;
+
+is_unique_realm(AccountId, Context, Realm) ->
+    {ok, Doc} = couch_mgr:open_doc(?AGG_DB, AccountId),
+    %% Unique if, for this account, request and account's realm are same
+    %% or request Realm doesn't exist in DB (cf is_unique_realm(undefined ...)
+    case wh_json:get_value(<<"realm">>, Doc) of
+	Realm -> true;
+	_ -> is_unique_realm(undefined, Context, Realm)
+    end.
+
+%% for testing purpose, don't forget to export !
+%% is_unique_realm({AccountId, Realm}) -> is_unique_realm(AccountId, #cb_context{}, Realm).

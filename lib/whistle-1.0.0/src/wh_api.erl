@@ -44,11 +44,14 @@
 %% Maintenance API calls
 -export([mwi_update/1]).
 
-% Conference Members
+%% Conference Members
 -export([conference_participants_req/1, conference_participants_resp/1, conference_play_req/1, conference_deaf_req/1,
          conference_undeaf_req/1, conference_mute_req/1, conference_unmute_req/1, conference_kick_req/1,
          conference_move_req/1, conference_discovery_req/1
 	]).
+
+%% Configuration
+-export([document_change/1, document_change_v/1]).
 
 %% Validation functions
 -export([authn_req_v/1, authn_resp_v/1, authz_req_v/1, authz_resp_v/1]).
@@ -581,6 +584,28 @@ error_resp_v({struct, Prop}) ->
     error_resp_v(Prop);
 error_resp_v(Prop) ->
     validate(Prop, ?ERROR_RESP_HEADERS, ?ERROR_RESP_VALUES, ?ERROR_RESP_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Format a call event from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec document_change/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+    Prop :: proplist() | json_object().
+document_change({struct, Prop}) ->
+    document_change(Prop);
+document_change(Prop) ->
+    case document_change_v(Prop) of
+	true -> build_message(Prop, ?CONF_DOC_UPDATE_HEADERS, ?OPTIONAL_CONF_DOC_UPDATE_HEADERS);
+	false -> {error, "Proplist failed validation for document_change"}
+    end.
+
+-spec document_change_v/1 :: (Prop) -> boolean() when
+    Prop :: proplist() | json_object().
+document_change_v({struct, Prop}) ->
+    document_change_v(Prop);
+document_change_v(Prop) ->
+    validate(Prop, ?CONF_DOC_UPDATE_HEADERS, ?CONF_DOC_UPDATE_VALUES, ?CONF_DOC_UPDATE_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Format a Dialplan:store API call

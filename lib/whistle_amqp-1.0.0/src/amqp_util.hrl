@@ -60,5 +60,6 @@
 %%   in the binding to receive the messages.
 %% -  publishes to the exchange with a routing key; consumers bind their queue with the
 %%   routing keys they want messages for.
+%% doc_update.accountaXXXXX.callflow.id
 -define(EXCHANGE_CONFIGURATION, <<"configuration">>).
 -define(TYPE_CONFIGURATION, <<"topic">>).

@@ -19,10 +19,6 @@
         },
         "listing_by_realm": {
             "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.realm, {'account_id': doc._id, 'account_db': doc.pvt_account_db}); }"
-        },
-        "group_by_realm": {
-          "map": "function(doc) { if(doc.pvt_type != 'account' || doc.pvt_deleted) return; emit( doc.realm, doc._id ); }",
-          "reduce": "function(key, values, rereduce) { if (rereduce) return values; else return values[0]; }"        
         }
     }
     ,"filters": {

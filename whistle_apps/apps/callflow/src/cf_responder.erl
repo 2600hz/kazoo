@@ -185,6 +185,7 @@ start_amqp() ->
         Q = amqp_util:new_callmgr_queue(<<>>),
         amqp_util:bind_q_to_callmgr(Q, ?KEY_ROUTE_REQ),
         amqp_util:bind_q_to_targeted(Q),
+        amqp_util:bind_q_to_configuration(Q, <<"*.*.callflow.*">>),
         amqp_util:basic_consume(Q),
         ?LOG_SYS("connected to AMQP"),
         {ok, Q}
@@ -204,6 +205,31 @@ start_amqp() ->
       MsgType :: tuple(binary(), binary()),
       JObj :: json_object(),
       State :: #state{}.
+process_req({<<"configuration">>, <<"doc_edited">>}, JObj, _) ->
+    Id = wh_json:get_value(<<"ID">>, JObj),
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    Doc = wh_json:set_value(<<"_id">>, Id, wh_json:get_value(<<"Doc">>, JObj, ?EMPTY_JSON_OBJECT)),
+    Cached = wh_cache:filter(fun({cf_flow, _, AccntId}, V) when AccntId =:= AccountId ->
+                                       Id =:= wh_json:get_value(<<"_id">>, V);
+                               (_, _) ->
+                                    false
+                            end),
+    [begin
+         ?LOG("callflow ~s in ~s has been updated, refreshing number '~s' in cache", [Id, AccountId, Number]),
+         wh_cache:store(K, Doc)
+     end|| {{cf_flow, Number, _}=K, _} <- Cached];
+process_req({<<"configuration">>, <<"doc_deleted">>}, JObj, _) ->
+    Id = wh_json:get_value(<<"ID">>, JObj),
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    Cached = wh_cache:filter(fun({cf_flow, _, AccntId}, V) when AccntId =:= AccountId ->
+                                       Id =:= wh_json:get_value(<<"_id">>, V);
+                               (_, _) ->
+                                    false
+                            end),
+    [begin
+         ?LOG("callflow ~s in ~s has been removed, flushing number '~s' from cache", [Id, AccountId, Number]),
+         wh_cache:erase(K)
+     end|| {{cf_flow, Number, _}=K, _} <- Cached];
 process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
     case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
         undefined ->
