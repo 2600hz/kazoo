@@ -1,4 +1,4 @@
-%% -*- tab-width: 4;erlang-indent-level: 4;indent-tabs-mode: nil -*-
+%% -*- erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %% ex: ts=4 sw=4 et
 %% -------------------------------------------------------------------
 %%
@@ -41,7 +41,6 @@ compile(Config, _AppFile) ->
     rebar_base_compiler:run(Config, FirstFiles, "src", ".lfe", "ebin", ".beam",
                             fun compile_lfe/3).
 
-
 %% ===================================================================
 %% Internal functions
 %% ===================================================================
@@ -49,18 +48,25 @@ compile(Config, _AppFile) ->
 compile_lfe(Source, _Target, Config) ->
     case code:which(lfe_comp) of
         non_existing ->
-            ?CONSOLE("~n===============================================~n" ++
-                     " You need to install LFE to compile LFE source~n" ++
-                     "Download the latest tarball release from github~n" ++
-                     "   http://github.com/rvirding/lfe/downloads~n" ++
-                     "  and install it into your erlang library dir~n" ++
-                     "===============================================~n~n", []),
+            ?CONSOLE(<<
+                       "~n"
+                       "*** MISSING LFE COMPILER ***~n"
+                       "  You must do one of the following:~n"
+                       "    a) Install LFE globally in your erl libs~n"
+                       "    b) Add LFE as a dep for your project, eg:~n"
+                       "       {lfe, \"0.6.1\",~n"
+                       "        {git, \"git://github.com/rvirding/lfe\",~n"
+                       "         {tag, \"v0.6.1\"}}}~n"
+                       "~n"
+                     >>, []),
             ?FAIL;
         _ ->
-            Opts = [{i, "include"}, {outdir, "ebin"}, report, return] ++
-                rebar_config:get_list(Config, lfe_opts, []),
-            case lfe_comp:file(Source,Opts) of
-                {ok, _, []} -> ok;
-                _ -> ?FAIL
+            Opts = [{i, "include"}, {outdir, "ebin"}, report]
+                ++ rebar_config:get_list(Config, erl_opts, []),
+            case lfe_comp:file(Source, Opts) of
+                {ok, _} ->
+                    ok;
+                _ ->
+                    ?FAIL
             end
     end.

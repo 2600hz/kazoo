@@ -38,3 +38,25 @@ temporal-marked_closed: Your office is now marked as closed. The system will con
 temporal-marked_opened: Your office is now marked as open. The system will continue routing calls as though the office is open, until you manually resume normal operation.
 temporal-reset_rules: Call routing returned to normal operation. Calls will be routed based on the schedule defined when your system was configured.
 temporal-menu: Time based call routing. To mark the office as open, press 1. To mark the office as closed, press 2. To resume normal operation, press 3.
+
+conf-welcome: Welcome to the conference.
+conf-enter_conf_number: Please enter the conference number, followed by the pound key.
+conf-enter_conf_pin: Please enter the conference pin number, followed by the pound key.
+conf-bad_pin: Invalid pin number.
+conf-bad_conf: Invalid conference number.
+conf-to_many_attempts: I'm sorry; there have been to many attempts to access the conference..
+conf-alone: You are currently the only person in this conference.
+conf-single: There is only one other participant in this conference.
+conf-there_are: There are
+conf-other_participants: other participants in this conference.
+conf-muted: mic muted
+conf-unmuted: mic unmuted
+conf-deaf: speaker muted
+conf-undeaf: speaker unmuted
+
+cf-now_forwarded_to: Calls are now forwarded to
+cf-disabled: Call forwarding is now disabled.
+cf-not_available: Call forwarding is not available on this line.
+cf-enter_number: Enter the number to forward to, followed by the pound key.
+cf-enabled_menu: To disable call forwarding press 1, to change the number press 2.
+cf-disabled_menu: To enable call forwarding press 1, to change the number press 2.
