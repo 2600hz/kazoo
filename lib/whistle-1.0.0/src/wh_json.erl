@@ -13,7 +13,7 @@
 -export([get_integer_value/2, get_integer_value/3]).
 -export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
--export([is_true/2, is_false/2]).
+-export([is_true/2, is_true/3, is_false/2, is_false/3]).
 
 -export([get_value/2, get_value/3]).
 -export([get_keys/1, get_keys/2]).
@@ -160,11 +160,23 @@ get_float_value(Key, JObj, Default) when is_float(Default) ->
 is_false(Key, JObj) ->
     wh_util:is_false(wh_json:get_value(Key, JObj)).
 
+is_false(Key, JObj, Default) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> Default;
+        V -> wh_util:is_false(V)
+    end.
+
 -spec is_true/2 :: (Key, JObj) -> boolean() when
       Key :: term(),
       JObj :: json_object() | json_objects().
 is_true(Key, JObj) ->
     wh_util:is_true(wh_json:get_value(Key, JObj)).
+
+is_true(Key, JObj, Default) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> Default;
+        V -> wh_util:is_true(V)
+    end.
 
 -spec get_binary_boolean/2 :: (Key, JObj) -> 'undefined' | binary() when
       Key :: term(),
