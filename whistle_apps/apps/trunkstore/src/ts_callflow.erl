@@ -73,10 +73,10 @@ send_park(#state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
 
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
     _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
-    amqp_util:basic_consume(Q), %% need to verify if this step is needed
+    amqp_util:basic_consume(Q, [{exclusive, false}]), %% need to verify if this step is needed
     State.
 
--spec wait_for_win/1 :: (State) -> tuple(won | lost, #state{}) when
+-spec wait_for_win/1 :: (State) -> {'won' | 'lost', #state{}} when
       State :: #state{}.
 wait_for_win(#state{aleg_callid=CallID}=State) ->
     receive
@@ -149,17 +149,6 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
 	    amqp_util:basic_consume(Q),
 	    {bridged, State#state{bleg_callid=BLeg}};
 
-	{ <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
-	    ?LOG("Bridge event received"),
-	    case wh_json:get_value(<<"Application-Response">>, JObj) of
-		<<"SUCCESS">> ->
-		    ?LOG("Bridge event successful, waiting for CHANNEL_BRIDGE"),
-		    ignore;
-		Cause ->
-		    ?LOG("Failed to bridge: ~s", [Cause]),
-		    {error, State}
-	    end;
-
 	{ _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
 	    ?LOG("Channel hungup before bridge"),
 	    {hangup, State};
@@ -167,6 +156,17 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
 	{ _, _, <<"error">> } ->
 	    ?LOG("Execution failed"),
 	    {error, State};
+
+	{ <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>} ->
+	    case wh_json:get_value(<<"Application-Response">>, JObj) of
+		<<"SUCCESS">> ->
+		    ?LOG("Bridge event finished without bridging"),
+                    {error, State}; %% may need to failover
+		Cause ->
+                    ?LOG("Failed to bridge: ~s", [Cause]),
+                    {error, State} %% may need to failover
+	    end;
+
 
 	{ _, <<"resource_error">>, <<"resource">> } ->
 	    Code = wh_json:get_value(<<"Failure-Code">>, JObj, <<"486">>),
@@ -198,7 +198,10 @@ wait_for_cdr(State, Timeout) ->
 	    JObj = mochijson2:decode(Payload),
 	    case process_event_for_cdr(State, JObj) of
 		{cdr, _, _, _}=CDR -> CDR;
-		{hangup, State1} -> wait_for_cdr(State1, ?WAIT_FOR_CDR_TIMEOUT);
+		{hangup, State1} ->
+                    send_hangup(State1),
+                    wait_for_cdr(State1, ?WAIT_FOR_CDR_TIMEOUT);
+		{error, _}=Error -> Error;
 		ignore -> wait_for_cdr(State, Timeout)
 	    end
     after Timeout ->
@@ -206,8 +209,7 @@ wait_for_cdr(State, Timeout) ->
     end.
 
 process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
-    case { wh_json:get_value(<<"Event-Category">>, JObj)
-	   ,wh_json:get_value(<<"Event-Name">>, JObj) } of
+    case wh_util:get_event_type(JObj) of
 	{ <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
 	    ?LOG("Hangup received, waiting on CDR"),
 	    {hangup, State};
@@ -219,6 +221,19 @@ process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
 	{ <<"error">>, _ } ->
 	    ?LOG("Error received, waiting on CDR"),
 	    {hangup, State};
+
+	{ <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
+	    case {wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Response">>, JObj)} of
+		{<<"bridge">>, <<"SUCCESS">>} ->
+		    ?LOG("Bridge event finished successfully, sending hangup"),
+                    send_hangup(State),
+                    ignore;
+		{<<"bridge">>, Cause} ->
+		    ?LOG("Failed to bridge: ~s", [Cause]),
+		    {error, State};
+                {_,_} ->
+                    ignore
+	    end;
 
 	{ <<"call_detail">>, <<"cdr">> } ->
 	    true = wh_api:call_cdr_v(JObj),
@@ -241,11 +256,10 @@ process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
 	    ignore
     end.
 
-finish_leg(State, undefined) ->
-    send_hangup(State);
-finish_leg(#state{acctid=AcctID, call_cost=Cost}=State, Leg) ->
-    ok = ts_acctmgr:release_trunk(AcctID, Leg, Cost),
-    send_hangup(State).
+finish_leg(_State, undefined) ->
+    ok;
+finish_leg(#state{acctid=AcctID, call_cost=Cost}, Leg) ->
+    ok = ts_acctmgr:release_trunk(AcctID, Leg, Cost).
 
 -spec send_hangup/1 :: (State) -> ok when
       State :: #state{}.
@@ -255,11 +269,12 @@ send_hangup(#state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
     Command = [
 	       {<<"Application-Name">>, <<"hangup">>}
 	       ,{<<"Call-ID">>, CallID}
+               ,{<<"Insert-At">>, <<"now">>}
 	       | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
     {ok, JSON} = wh_api:hangup_req(Command),
     ?LOG("Sending hangup to ~s: ~s", [CtlQ, JSON]),
-    amqp_util:targeted_publish(CtlQ, JSON, <<"application/json">>).
+    amqp_util:callctl_publish(CtlQ, JSON, <<"application/json">>).
 
 %%%-----------------------------------------------------------------------------
 %%% Data access functions

@@ -26,8 +26,11 @@ This is the source for PropEr's overview page.
 
 @title PropEr: A QuickCheck-inspired property-based testing tool for Erlang
 
-@doc This is PropEr's reference manual. The bulk of the PropEr API is contained
-in the documentation for the following modules:
+@doc This is PropEr's Reference Manual. If you are new to PropEr, you should
+first read the User Guide (available online at
+<a href="http://proper.softlab.ntua.gr/" target="_top">PropEr's website</a>,
+and also in PropEr's README file). The bulk of the PropEr API is contained in
+the documentation for the following modules:
 
 <dl>
 <dt>{@link proper}</dt>

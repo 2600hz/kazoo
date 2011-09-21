@@ -14,6 +14,8 @@
 -export([start_link/0, start_link/1, route_req/1, route_req/2, reg_query/1, reg_query/2, media_req/1, media_req/2]).
 -export([authn_req/1, authn_req/2, authz_req/1, authz_req/2]).
 
+-export([worker_free/2]).
+
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
@@ -90,6 +92,9 @@ media_req(Prop, Timeout) ->
 			      ,fun(JSON) -> amqp_util:callevt_publish(JSON) end
 			     }, Timeout).
 
+worker_free(Srv, Worker) ->
+    gen_server:cast(Srv, {worker_free, Worker}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -128,12 +133,14 @@ handle_call({request, {struct, Prop}, ApiFun, PubFun}, From, State) ->
 handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W, worker_count=WC, requests_per=RP}=State) ->
     case queue:out(W) of
 	{{value, Worker}, W1} ->
-	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
+	    ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, PubFun, From, self()),
+	    %% Worker ! {request, Prop, ApiFun, PubFun, From, self()},
 	    {noreply, State#state{workers=W1, requests_per=RP+1}, hibernate};
 	{empty, _} ->
 	    Worker = start_worker(),
 	    ?LOG("starting additional worker ~p", [Worker]),
-	    Worker ! {request, Prop, ApiFun, PubFun, From, self()},
+	    ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, PubFun, From, self()),
+	    %% Worker ! {request, Prop, ApiFun, PubFun, From, self()},
 	    {noreply, State#state{worker_count=WC+1, requests_per=RP+1}, hibernate}
     end.
 
@@ -147,8 +154,8 @@ handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W, worker_coun
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast({worker_free, _Worker}=Req, State) ->
+    handle_info(Req, State).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -277,7 +284,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 start_worker() ->
-    spawn_link(fun() -> worker_init() end).
+    {ok, Pid} = ecallmgr_amqp_pool_worker_sup:start_child(),
+    link(Pid),
+    Pid.
+
+    %% spawn_link(fun() -> worker_init() end).
 
 worker_init() ->
     put(callid, <<"0000000000">>),
@@ -301,7 +312,7 @@ worker_free(Q) ->
 	    Prop1 = [ {<<"Server-ID">>, Q} | lists:keydelete(<<"Server-ID">>, 1, Prop)],
 	    case ApiFun(Prop1) of
 		{ok, JSON} ->
-                    put_callid(Prop1),
+                    ecallmgr_util:put_callid(Prop1),
 		    Ref = erlang:monitor(process, Pid),
 		    PubFun(JSON),
 		    ?LOG("worker recieved task from ~w", [Pid]),
@@ -345,9 +356,3 @@ worker_busy(Q, From, Ref, Parent) ->
 
     put(callid, <<"0000000000">>),
     worker_free(Q).
-
-put_callid(Props) ->
-    case props:get_value(<<"Call-ID">>, Props) of
-	undefined -> put(callid, props:get_value(<<"Msg-ID">>, Props, <<"0000000000">>));
-	CallID -> put(callid, CallID)
-    end.

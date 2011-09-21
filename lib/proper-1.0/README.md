@@ -77,7 +77,7 @@ Quickstart guide
 
 *   Obtain a copy of PropEr's sources.
 *   Compile PropEr: run `make` (or `make all`, if you also want to build the
-    documentation; in that case, you are going to need the syntax_tools
+    documentation; in that case, you are going to need the `syntax_tools`
     application and a recent version of `EDoc`).
 *   Add PropEr's base directory to your Erlang library path, using one of the
     following methods:

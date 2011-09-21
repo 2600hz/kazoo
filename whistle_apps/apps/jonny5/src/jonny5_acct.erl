@@ -223,7 +223,7 @@ send_resp(JObj, {AuthzResp, CCV}) ->
 preload_accounts() ->
     {ok, Accts} = couch_mgr:get_results(<<"accounts">>, <<"accounts/listing_by_id">>, []),
     ?LOG_SYS("Preloading ~b accounts", [length(Accts)]),
-    _ = [ jonny5_acct_sup:start_proc(wh_json:get_value(<<"id">>, AcctJObj)) || AcctJObj <- Accts],
+    _ = [ jonny5_acct_sup:start_proc(wh_json:get_value(<<"id">>, AcctJObj, <<"no_id">>)) || AcctJObj <- Accts],
     {ok, TSAccts} = couch_mgr:get_results(<<"ts">>, <<"LookUpDID/DIDsByAcct">>, []), %% crappy way, make new view
     ?LOG_SYS("Preloading ~b trunkstore accounts", [length(TSAccts)]),
     [ jonny5_acct_sup:start_proc(wh_json:get_value(<<"id">>, TSAcctJObj)) || TSAcctJObj <- TSAccts].

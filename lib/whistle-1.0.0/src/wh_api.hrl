@@ -253,6 +253,7 @@
                                      ]).
 -define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS, [<<"Timeout">>, <<"Ignore-Early-Media">>, <<"Flags">>, <<"Media">>
                                                ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+                                               ,<<"Emergency-Caller-ID-Name">>, <<"Emergency-Caller-ID-Number">>
                                                ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
                                               ]).
 -define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}

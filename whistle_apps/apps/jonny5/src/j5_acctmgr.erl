@@ -294,7 +294,7 @@ code_change(_OldVsn, State, _Extra) ->
       AcctID :: binary(),
       Type :: account | ts.
 get_trunks_available(AcctID, account) ->
-    case couch_mgr:open_doc(whapps_util:get_db_name(AcctID), AcctID) of
+    case couch_mgr:open_doc(whapps_util:get_db_name(AcctID, encoded), AcctID) of
 	{error, not_found} ->
 	    ?LOG_SYS("Account ~s not found, trying ts", [AcctID]),
 	    get_trunks_available(AcctID, ts);
@@ -393,7 +393,7 @@ monitor_call(Q, CallID) ->
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
     _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
     ?LOG(CallID, "Monitoring with ~s", [Q]),
-    amqp_util:basic_consume(Q).
+    amqp_util:basic_consume(Q, [{exclusive, false}]).
 
 -spec unmonitor_call/2 :: (Q, CallID) -> ok when
       Q :: binary(),

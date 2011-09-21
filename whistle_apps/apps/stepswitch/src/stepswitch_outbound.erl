@@ -46,6 +46,7 @@
           ,flags = []
           ,rules = []
           ,gateways = []
+          ,is_emergency = true
          }).
 
 -record(state, {
@@ -309,14 +310,14 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                                       R2 = evaluate_flags(Flags, R1),
                                       evaluate_number(Number, R2)
                               end,
+			?LOG("Found ~b endpoints", [length(EPs)]),
                         build_bridge_request(JObj, EPs, Q)
                 end,
 
     case length(wh_json:get_value(<<"Endpoints">>, BridgeReq, [])) of
         0 ->
             ?LOG_END("no offnet resources found for request, sending failure response"),
-            respond_resource_failed({struct, [
-                                               {<<"Hangup-Cause">>, <<"NO_RESOURCES">>}
+            respond_resource_failed({struct, [{<<"Hangup-Cause">>, <<"NO_RESOURCES">>}
                                               ,{<<"Hangup-Code">>, <<"sip:404">>}
                                              ]}, 0, JObj);
         Attempts ->
@@ -328,14 +329,12 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                     ?LOG_END("offnet resource request resulted in a successful bridge"),
                     respond_bridged_to_resource(BridgeResp, JObj);
                 {fail, BridgeResp} ->
-                    ?LOG_END("offnet resource failed, ~s:~s", [
-                                                               wh_json:get_value(<<"Hangup-Code">>, BridgeResp)
+                    ?LOG_END("offnet resource failed, ~s:~s", [wh_json:get_value(<<"Hangup-Code">>, BridgeResp)
                                                                ,wh_json:get_value(<<"Application-Response">>, BridgeResp)
                                                               ]),
                     respond_resource_failed(BridgeResp, Attempts, JObj);
                 {hungup, HangupResp} ->
-                    ?LOG_END("requesting leg hungup, ~s:~s", [
-                                                               wh_json:get_value(<<"Hangup-Code">>, HangupResp)
+                    ?LOG_END("requesting leg hungup, ~s:~s", [wh_json:get_value(<<"Hangup-Code">>, HangupResp)
                                                               ,wh_json:get_value(<<"Hangup-Cause">>, HangupResp)
                                                              ]);
                 {error, timeout} ->
@@ -416,7 +415,7 @@ create_resrc(JObj) ->
            ,weight_cost =
                constrain_weight(wh_json:get_value(<<"weight_cost">>, JObj, Default#resrc.weight_cost))
            ,grace_period =
-               wh_util:to_integer(wh_json:get_value(<<"grace_period">>, JObj, Default#resrc.grace_period))
+               wh_json:get_integer_value(<<"grace_period">>, JObj, Default#resrc.grace_period)
            ,flags =
                wh_json:get_value(<<"flags">>, JObj, Default#resrc.flags)
            ,rules =
@@ -424,7 +423,10 @@ create_resrc(JObj) ->
                           ,(R2 = compile_rule(R1, Id)) =/= error]
            ,gateways =
                [create_gateway(G, Id) || G <- wh_json:get_value(<<"gateways">>, JObj, []),
-                                         wh_util:is_true(wh_json:get_value(<<"enabled">>, G, true))]
+                                         wh_json:is_true(<<"enabled">>, G, true)]
+           ,is_emergency =
+               wh_json:is_true(<<"emergency">>, JObj)
+               orelse (wh_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>)
           }.
 
 %%--------------------------------------------------------------------
@@ -537,7 +539,7 @@ evaluate_number(Number, Resrcs) ->
 -spec sort_endpoints/1 :: (Endpoints) -> endpoints() when
       Endpoints :: endpoints().
 sort_endpoints(Endpoints) ->
-    lists:sort(fun({W1, _, _, _}, {W2, _, _, _}) ->
+    lists:sort(fun({W1, _, _, _, _}, {W2, _, _, _, _}) ->
                        W1 =< W2
                end, Endpoints).
 
@@ -562,10 +564,10 @@ get_endpoints(Number, Resrcs) ->
 -spec get_endpoint/2 :: (Number, Resrc) -> endpoint() | no_match when
       Number :: binary(),
       Resrc :: #resrc{}.
-get_endpoint(Number, #resrc{weight_cost=WC, gateways=Gtws, rules=Rules, grace_period=GP}) ->
+get_endpoint(Number, #resrc{weight_cost=WC, gateways=Gtws, rules=Rules, grace_period=GP, is_emergency=IsEmergency}) ->
     case evaluate_rules(Rules, Number) of
         {ok, DestNum} ->
-            {WC, GP, DestNum, Gtws};
+            {WC, GP, DestNum, Gtws, IsEmergency};
         {error, no_match} ->
             no_match
     end.
@@ -609,12 +611,13 @@ evaluate_rules([Regex|T], Number) ->
       Number :: binary(),
       Q :: binary().
 build_loopback_request(JObj, Number, Q) ->
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Endpoints = [{struct, [{<<"Invite-Format">>, <<"route">>}
                            ,{<<"Route">>, <<"loopback/", (Number)/binary>>}
                            ,{<<"Custom-Channel-Vars">>, {struct,[{<<"Offnet-Loopback-Number">>, Number}
-                                                                 ,{<<"Offnet-Loopback-Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj)}
+                                                                 ,{<<"Offnet-Loopback-Account-ID">>, AccountId}
                                                                 ]}}
-                         ]}],
+                          ]}],
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
@@ -648,13 +651,25 @@ build_loopback_request(JObj, Number, Q) ->
 build_bridge_request(JObj, Endpoints, Q) ->
     CCVs = wh_json:set_value(<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)
                              ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
+    {CIDNum, CIDName} = case contains_emergency_endpoint(Endpoints) of
+                            true ->
+                                ?LOG("outbound call is using an emergency route, attempting to set CID accordingly"),
+                                {wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj,
+                                                   wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
+                                 wh_json:get_value(<<"Emergency-Caller-ID-Name">>, JObj,
+                                                   wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj))};
+                            false  ->
+                                {wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj),
+                                 wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
+                        end,
+    ?LOG("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, build_endpoints(Endpoints, 0, [])}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
                ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
-               ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
-               ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)}
+               ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+               ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                %% TODO: Do not enable this feature until WHISTLE-408 is completed
                %% ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
@@ -670,6 +685,27 @@ build_bridge_request(JObj, Endpoints, Q) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Digs through all the given resources and determines if any of them
+%% are for emergency services
+%% @end
+%%--------------------------------------------------------------------
+-spec contains_emergency_endpoint/1 :: (Endpoints) -> boolean() when
+      Endpoints :: endpoints().
+-spec contains_emergency_endpoint/2 :: (Endpoints, UseEmergency) -> boolean() when
+      Endpoints :: endpoints(),
+      UseEmergency :: boolean().
+
+contains_emergency_endpoint(Endpoints) ->
+    contains_emergency_endpoint(Endpoints, false).
+
+contains_emergency_endpoint([], UseEmergency) ->
+    UseEmergency;
+contains_emergency_endpoint([{_, _, _, _, IsEmergency}|T], UseEmergency) ->
+    contains_emergency_endpoint(T, IsEmergency or UseEmergency).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Builds the proplist for a whistle API bridge request from the
 %% off-net request, endpoints, and our AMQP Q
 %% @end
@@ -680,9 +716,9 @@ build_bridge_request(JObj, Endpoints, Q) ->
       Acc :: proplist().
 build_endpoints([], _, Acc) ->
     lists:reverse(Acc);
-build_endpoints([{_, GracePeriod, Number, [Gateway]}|T], Delay, Acc0) ->
+build_endpoints([{_, GracePeriod, Number, [Gateway], _}|T], Delay, Acc0) ->
     build_endpoints(T, Delay + GracePeriod, [build_endpoint(Number, Gateway, Delay)|Acc0]);
-build_endpoints([{_, GracePeriod, Number, Gateways}|T], Delay, Acc0) ->
+build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], Delay, Acc0) ->
     {D2, Acc1} = lists:foldl(fun(Gateway, {0, AccIn}) ->
                                      {2, [build_endpoint(Number, Gateway, 0)|AccIn]};
                                  (Gateway, {D0, AccIn}) ->
@@ -703,8 +739,7 @@ build_endpoints([{_, GracePeriod, Number, Gateways}|T], Delay, Acc0) ->
 build_endpoint(Number, Gateway, Delay) ->
     Route = get_dialstring(Gateway, Number),
     ?LOG("using ~s on ~s delayed by ~b sec", [Route, Gateway#gateway.resource_id, Delay]),
-    Prop = [
-             {<<"Invite-Format">>, <<"route">>}
+    Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"Route">>, get_dialstring(Gateway, Number)}
             ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
             ,{<<"Caller-ID-Type">>, Gateway#gateway.caller_id_type}
@@ -732,9 +767,9 @@ build_endpoint(Number, Gateway, Delay) ->
       Acc :: list().
 print_endpoints([], _, Acc) ->
     lists:reverse(Acc);
-print_endpoints([{_, GracePeriod, Number, [Gateway]}|T], Delay, Acc0) ->
+print_endpoints([{_, GracePeriod, Number, [Gateway], _}|T], Delay, Acc0) ->
     print_endpoints(T, Delay + GracePeriod, [print_endpoint(Number, Gateway, Delay)|Acc0]);
-print_endpoints([{_, GracePeriod, Number, Gateways}|T], Delay, Acc0) ->
+print_endpoints([{_, GracePeriod, Number, Gateways, _}|T], Delay, Acc0) ->
     {D2, Acc1} = lists:foldl(fun(Gateway, {0, AccIn}) ->
                                      {2, [print_endpoint(Number, Gateway, 0)|AccIn]};
                                  (Gateway, {D0, AccIn}) ->
@@ -826,8 +861,7 @@ wait_for_bridge(Timeout) ->
       JObj :: json_object().
 respond_bridged_to_resource(BridgeResp, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, BridgeResp),
-    Response = [
-                 {<<"Call-ID">>, wh_json:get_value(<<"Other-Leg-Unique-ID">>, BridgeResp)}
+    Response = [{<<"Call-ID">>, wh_json:get_value(<<"Other-Leg-Unique-ID">>, BridgeResp)}
                 ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                 ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, JObj)}
                 ,{<<"To">>, wh_json:get_value(<<"Other-Leg-Destination-Number">>, BridgeResp)}
@@ -854,8 +888,7 @@ respond_bridged_to_resource(BridgeResp, JObj) ->
       JObj :: json_object().
 respond_resource_failed(BridgeResp, Attempts, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, BridgeResp, <<>>),
-    Response = [
-                 {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+    Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                 ,{<<"Failed-Attempts">>, wh_util:to_binary(Attempts)}
                 ,{<<"Failure-Message">>,
                   wh_json:get_value(<<"Application-Response">>, BridgeResp, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp))}
@@ -879,8 +912,7 @@ respond_resource_failed(BridgeResp, Attempts, JObj) ->
       JObj :: json_object().
 respond_erroneously(ErrorResp, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, ErrorResp, <<>>),
-    Response = [
-                 {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+    Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                 ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, ErrorResp)}
                | wh_api:default_headers(Q, <<"error">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
             ],

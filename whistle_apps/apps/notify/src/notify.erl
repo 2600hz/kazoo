@@ -8,10 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(notify).
 
--include_lib("whistle/include/wh_types.hrl").
-
 -author('James Aimonetti <james@2600hz.org>').
--export([start/0, start_link/0, stop/0]).
+-export([start/0, start_link/0, stop/0, add_binding_to_q/2, rm_binding_from_q/1]).
+
+-include("notify.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -58,3 +58,10 @@ start_deps() ->
     wh_util:ensure_started(crypto), % random
     wh_util:ensure_started(whistle_amqp), % amqp wrapper
     wh_util:ensure_started(whistle_couch). % couch wrapper
+
+add_binding_to_q(Q, _Props) ->
+    amqp_util:bind_q_to_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other),
+    ok.
+
+rm_binding_from_q(Q) ->
+    amqp_util:unbind_q_from_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other).
