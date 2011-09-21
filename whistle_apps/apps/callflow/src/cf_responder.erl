@@ -273,21 +273,31 @@ process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
 
 process_req({_, <<"route_win">>}, JObj, #state{self=Self}) ->
     ?LOG_START("received route win"),
+    {ok, #cf_call{account_id=AccountId}=Call} = wh_cache:fetch({cf_call, get(callid)}),
+    ?LOG("fetched call record from cache"),
+    case lookup_callflow(Call) of
+        {ok, Flow, _} ->
+            C = Call#cf_call{cf_responder = Self
+                             ,ctrl_q = wh_json:get_value(<<"Control-Queue">>, JObj)
+                             ,account_db = whapps_util:get_db_name(AccountId, encoded)
+                             ,capture_group = wh_json:get_value(<<"capture_group">>, Flow)
+                            },
+            execute_call_flow(Flow, C);
+        {error, R} ->
+            ?LOG_END("unable to find callflow during second lookup (HUH?) ~p", [R])
+    end;
 
-    {ok, #cf_call{request_user=Number, account_id=AccountId, no_match=NoMatch, authorizing_id=AuthId}=C1}
-        = wh_cache:fetch({cf_call, get(callid)}),
-    {ok, Flow} = case NoMatch of
-                     true -> wh_cache:fetch({cf_flow, ?NO_MATCH_CF, AccountId});
-                     false -> wh_cache:fetch({cf_flow, Number, AccountId})
-                 end,
-    ?LOG("fetched call record and flow from cache"),
+process_req({_, _}, _, _) ->
+    {error, invalid_event}.
 
-    C2 = C1#cf_call{cf_responder = Self
-                    ,ctrl_q = wh_json:get_value(<<"Control-Queue">>, JObj)
-                    ,account_db = whapps_util:get_db_name(AccountId, encoded)
-                    ,capture_group = wh_json:get_value(<<"capture_group">>, Flow)
-                   },
-    ?LOG_END("imported custom channel vars, starting callflow"),
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% executes the found call flow by starting a new cf_exe process under the
+%% cf_exe_sup tree.
+%% @end
+%%-----------------------------------------------------------------------------
+execute_call_flow(Flow, #cf_call{authorizing_id=AuthId}=Call) ->
     case AuthId of
         undefined ->
             ok;
@@ -295,12 +305,10 @@ process_req({_, <<"route_win">>}, JObj, #state{self=Self}) ->
             ?LOG("set transfer fallback to ~s", [AuthId]),
             cf_call_command:set(undefined
                                 ,{struct, [{<<"Transfer-Fallback">>, AuthId}]}
-                                ,C2)
+                                ,Call)
     end,
-    cf_exe_sup:start_proc(C2, wh_json:get_value(<<"flow">>, Flow));
-
-process_req({_, _}, _, _) ->
-    {error, invalid_event}.
+    ?LOG("call has been setup, passing control to callflow executer"),
+    cf_exe_sup:start_proc(Call, wh_json:get_value(<<"flow">>, Flow)).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -318,9 +326,10 @@ fulfill_call_request(Call, JObj) ->
             AccountId = wh_json:get_value(<<"pvt_account_id">>, Flow),
             ?LOG("callflow ~s in ~s satisfies request", [FlowId, AccountId]),
             wh_cache:store({cf_call, get(callid)}, Call#cf_call{flow_id = FlowId, no_match = NoMatch}, 5),
+            ?LOG("stored call record in cache"),
             _ = send_route_response(Call, JObj);
         {error, R} ->
-            ?LOG_END("unable to find callflow ~w", [R])
+            ?LOG_END("unable to find callflow ~p", [R])
     end.
 
 %%-----------------------------------------------------------------------------
@@ -333,10 +342,10 @@ fulfill_call_request(Call, JObj) ->
       Call :: #cf_call{}.
 lookup_callflow(#cf_call{request_user=Number, account_id=AccountId}=Call) ->
     ?LOG("lookup callflow for ~s in account ~s", [Number, AccountId]),
-    case wh_cache:fetch({cf_flow, Number, AccountId}) of
-	{ok, Flow} ->
-	    {ok, Flow, Number =:= ?NO_MATCH_CF};
-	{error, not_found} ->
+%%    case wh_cache:fetch({cf_flow, Number, AccountId}) of
+%%	{ok, Flow} ->
+%%	    {ok, Flow, Number =:= ?NO_MATCH_CF};
+%%	{error, not_found} ->
             Options = [{<<"key">>, Number}, {<<"include_docs">>, true}],
             Db = whapps_util:get_db_name(AccountId, encoded),
 	    case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
@@ -362,8 +371,8 @@ lookup_callflow(#cf_call{request_user=Number, account_id=AccountId}=Call) ->
 		    {ok, Flow, Number =:= ?NO_MATCH_CF};
                 {error, _}=E ->
 		    E
-	    end
-    end.
+	    end.
+%%    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
