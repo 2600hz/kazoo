@@ -19,7 +19,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(CROSSBAR_SCHEMA_DB, <<"crossbar%2Fschemas">>).
--define(TRACE, false). %% trace through the validation steps
+-define(TRACE, true). %% trace through the validation steps
 
 -define(VALIDATION_FUN, fun({error, _}) -> false; (?VALID) -> true end).
 
@@ -48,7 +48,7 @@
 do_validate(JObj, SchemaName) ->
     {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, wh_util:to_binary(SchemaName)),
     R = validate({JObj}, {Schema}),
-    case [E || {error, _}=E <- lists:flatten(R)] of
+    case [M || {error, M} <- lists:flatten(R)] of
 	[] -> {ok, []};
 	[_|_]=Errors -> {error, Errors}
     end.
@@ -64,6 +64,15 @@ do_validate(JObj, SchemaName) ->
       Schema :: json_object(),
       SAttName :: attribute_name(),
       SAttVal :: attribute_value().
+
+%% undefined property is required if required in schema
+validate({InstanceName, undefined}, {Schema}) ->
+    trace({testing_undef, property}, {InstanceName, Schema}),
+    case wh_json:get_binary_boolean(<<"required">>, Schema) == <<"true">>
+	orelse val(<<"type">>, Schema) == <<"object">> of
+	false -> ?VALID;
+	true -> ?INVALID(InstanceName, <<"is undefined">>)
+    end;
 
 %% unfold schema definition until finding property
 validate({JObj},  {{struct, Definitions}=Schema}) ->
@@ -126,13 +135,7 @@ validate(_, {_, <<"description">>, _D}) ->
 validate({_, {struct, _}}, {_, <<"type">>, <<"object">>}) ->
     ?VALID;
 
-%% undefined property is required if required in schema
-validate({InstanceName, undefined}, {Schema}) ->
-    case val(<<"required">>, Schema) == true
-	orelse val(<<"type">>, Schema) == <<"object">> of
-	false -> ?VALID;
-	true -> ?INVALID(InstanceName, <<"is undefined">>)
-    end;
+
 
 
 
