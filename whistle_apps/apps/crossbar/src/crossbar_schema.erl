@@ -1,8 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @author Edouard Swiac <edouard@2600hx.com>
 %%%
-%%% @copyright (C) 2011, Karl Anderson
+%%% @copyright (C) 2011, Edouard Swiac
 %%% @doc
 %%%
 %%% Implementation of JSON Schema spec
@@ -10,7 +9,6 @@
 %%% http://nico.vahlas.eu/2010/04/23/json-schema-specifying-and-validating-json-data-structures/
 %%%
 %%% @end
-%%% Created : 18 Feb 2011 by Karl Anderson <karl@2600hz.org>
 %%% 28 July 2011 - remove dust & refresh code, json schema still v0.3
 %%%-------------------------------------------------------------------
 -module(crossbar_schema).
