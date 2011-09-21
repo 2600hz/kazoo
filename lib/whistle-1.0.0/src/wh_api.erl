@@ -869,8 +869,16 @@ record_req_v(Prop) ->
 bridge_req({struct, Prop}) ->
     bridge_req(Prop);
 bridge_req(Prop) ->
-    case bridge_req_v(Prop) of
-	true -> build_message(Prop, ?BRIDGE_REQ_HEADERS, ?OPTIONAL_BRIDGE_REQ_HEADERS);
+    EPs = [begin
+	       {ok, EPProps} = bridge_req_endpoint_headers(EP),
+	       wh_json:from_list(EPProps)
+	   end
+	   || EP <- props:get_value(<<"Endpoints">>, Prop, []),
+	      bridge_req_endpoint_v(EP)
+	  ],
+    Prop1 = [ {<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
+    case bridge_req_v(Prop1) of
+	true -> build_message(Prop1, ?BRIDGE_REQ_HEADERS, ?OPTIONAL_BRIDGE_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for bridge_req"}
     end.
 
@@ -895,6 +903,13 @@ bridge_req_endpoint(Prop) ->
 	true -> build_message_specific(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
 	false -> {error, "Proplist failed validation for bridge_req_endpoint"}
     end.
+
+-spec bridge_req_endpoint_headers/1 :: (Prop) -> {ok, proplist()} | {error, string()} when
+      Prop :: proplist() | json_object().
+bridge_req_endpoint_headers({struct, Prop}) ->
+    bridge_req_endpoint_headers(Prop);
+bridge_req_endpoint_headers(Prop) ->
+    build_message_specific_headers(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS).
 
 -spec bridge_req_endpoint_v/1 :: (Prop) -> boolean() when
       Prop :: proplist() | json_object().
@@ -1507,8 +1522,27 @@ build_message(Prop, ReqH, OptH) ->
 	    io:format("Build Error: ~p~nDefHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
 	    Error;
 	HeadAndProp ->
-	    build_message_specific(HeadAndProp, ReqH, OptH)
+	    case build_message_specific_headers(HeadAndProp, ReqH, OptH) of
+		{ok, FinalHeaders} -> headers_to_json(FinalHeaders);
+		Err -> Err
+	    end
     end.
+
+-spec build_message_specific_headers/3 :: (Msg, ReqHeaders, OptHeaders) -> {ok, proplist()} | {error, string()} when
+      Msg :: proplist() | {[binary(),...] | [], proplist()},
+      ReqHeaders :: [binary(),...],
+      OptHeaders :: [binary(),...] | [].
+build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
+    case update_required_headers(Prop, ReqH, Headers) of
+	{error, _Reason} = Error ->
+	    io:format("Build Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ReqH, Prop]),
+	    Error;
+	{Headers1, Prop1} ->
+	    {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
+	    {ok, Headers2}
+    end;
+build_message_specific_headers(Prop, ReqH, OptH) ->
+    build_message_specific_headers({[], Prop}, ReqH, OptH).
 
 -spec build_message_specific/3 :: (Msg, ReqHeaders, OptHeaders) -> {ok, iolist()} | {error, string()} when
       Msg :: proplist() | {[binary(),...] | [], proplist()},

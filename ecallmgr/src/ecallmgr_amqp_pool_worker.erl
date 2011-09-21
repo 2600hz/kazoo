@@ -1,48 +1,43 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, VoIP INC
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Trunk-Store responder waits for Auth and Route requests on the broadcast
-%%% Exchange, and delievers the requests to the corresponding handler.
-%%% TS responder also receives responses from the handlers and returns them
-%%% to the requester.
-%%% Each request received by TS_RESPONDER should be put into a new spawn()
-%%% to avoid blocking on each request.
+%%% Send/receive AMQP API calls
 %%% @end
-%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.org>
+%%% Created : 19 Sep 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(ts_responder).
+-module(ecallmgr_amqp_pool_worker).
 
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, start_responder/0, stop/1, transfer_auth/0]).
+-export([start_link/0, stop/1, start_req/6, handle_req/2]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
+	 terminate/2, code_change/3]).
 
--include("ts.hrl").
-
--define(RESPONDERS, [
-		     {route_req, [{<<"dialplan">>, <<"route_req">>}]}
-		    ]).
--define(BINDINGS, [
-		   {routing, []}
-		  ]).
+-include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
--define(ROUTE_QUEUE_NAME, <<"ts_responder.route.queue">>).
--define(ROUTE_QUEUE_OPTIONS, [{exclusive, false}]).
--define(ROUTE_CONSUME_OPTIONS, [{exclusive, false}]).
+-define(RESPONDERS, [
+		     {?MODULE, [{<<"*">>, <<"*">>}]}
+		    ]).
+-define(BINDINGS, [{self, []}]).
 
 -record(state, {
-	  is_amqp_up = false :: boolean()
+	  status = 'free' :: 'free' | 'busy'
+	 ,from = 'undefined' :: 'undefined' | {pid(), reference()}
+	 ,ref = 'undefined' :: 'undefined' | reference()
+	 ,parent = 'undefined' :: 'undefined' | pid() | atom()
+	 ,start = 'undefined' :: 'undefined' | wh_now()
 	 }).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+handle_req(JObj, Props) ->
+    gen_listener:cast(props:get_value(server, Props), {response_recv, JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -52,24 +47,35 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    spawn(fun() ->
-		  _ = transfer_auth(),
-		  [ ts_responder_sup:start_handler() || _ <- [1,2,3] ]
-	  end),
-    ignore.
-
-start_responder() ->
-    ?LOG("Starting responder"),
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
 				      ,{bindings, ?BINDINGS}
-				      ,{queue_name, ?ROUTE_QUEUE_NAME}
-				      ,{queue_options, ?ROUTE_QUEUE_OPTIONS}
-				      ,{consume_options, ?ROUTE_CONSUME_OPTIONS}
-				      ,{basic_qos, 1}
 				     ], []).
 
 stop(Srv) ->
     gen_listener:stop(Srv).
+
+-spec start_req/6 :: (Srv, Prop, ApiFun, PubFun, From, Parent) -> 'ok' when
+      Srv :: pid(),
+      Prop :: proplist(),
+      ApiFun :: fun(),
+      PubFun :: fun(),
+      From :: {pid(), reference()},
+      Parent :: pid() | atom().
+start_req(Srv, Prop, ApiFun, PubFun, From, Parent) ->
+    	%% {request, Prop, ApiFun, PubFun, {Pid, _}=From, Parent} ->
+    JObj = case wh_json:is_json_object(Prop) of
+	       true -> Prop;
+	       false -> wh_json:from_list(Prop)
+	   end,
+
+    JObj1 = wh_json:set_value(<<"Server-ID">>, gen_listener:queue_name(Srv), JObj),
+
+    case ApiFun(JObj1) of
+	{ok, JSON} ->
+	    gen_listener:cast(Srv, {employed, JObj, From, Parent, fun() -> ?LOG("Worker sending ~s", [JSON]), PubFun(JSON) end});
+	{error, _}=E ->
+	    gen_server:reply(From, E)
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -87,7 +93,7 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG("Started responder"),
+    ?LOG("AMQP pool worker started"),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -105,7 +111,8 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, ignored, State}.
+    Reply = ok,
+    {reply, Reply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -117,7 +124,22 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
+handle_cast({employed, JObj, {Pid, _}=From, Parent, PubFun}, #state{status=free}=State) ->
+    ?LOG("Employed by ~p via ~p", [Pid, Parent]),
+    ecallmgr_util:put_callid(JObj),
+    Ref = erlang:monitor(process, Pid),
+    PubFun(),
+    {noreply, State#state{status=busy, from=From, ref=Ref, parent=Parent, start=erlang:now()}};
+handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent, ref=Ref, start=Start}) ->
+    ?LOG("recieved response after ~b ms", [timer:now_diff(erlang:now(), Start) div 1000]),
+    erlang:demonitor(Ref, [flush]),
+    gen_server:reply(From, {ok, JObj}),
+    ecallmgr_amqp_pool:worker_free(Parent, self()),
+    {noreply, #state{}};
+handle_cast({response_recv, JObj}, State) ->
+    ?LOG("WTF, I'm free, yet receiving a response?"),
+    ?LOG("JObj:"),
+    [ ?LOG("~p", [KV]) || KV <- wh_json:to_proplist(JObj)],
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -130,13 +152,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_Unhandled, State) ->
-    ?LOG_SYS("Unknown message: ~p~n", [_Unhandled]),
-    {noreply, State, 1000}.
+handle_info({'DOWN', Ref, process, Pid, _Info}, #state{status=busy, ref=Ref, parent=Parent}) ->
+    ?LOG_END("requestor (~w) down, giving up on task", [Pid]),
+    erlang:demonitor(Ref, [flush]),
+    ecallmgr_amqp_pool:worker_free(Parent, self()),
+    {noreply, #state{}}.
 
-handle_event(JObj, _State) ->
-    ?LOG("Recv jobj"),
-    {reply, []}.
+handle_event(_JObj, _State) ->
+    {reply, [{server, self()}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -149,8 +172,8 @@ handle_event(JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _) ->
-    ?LOG_SYS("Terminating: ~p~n", [_Reason]).
+terminate(_Reason, _State) ->
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -161,48 +184,8 @@ terminate(_Reason, _) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    ?LOG_SYS("Code Change from ~p~n", [_OldVsn]),
     {ok, State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec transfer_auth/0 :: () -> ok.
-transfer_auth() ->
-    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTHREALM, []) of
-	{ok, AuthJObjs} ->
-	    ?LOG_SYS("Importing ~b accounts into sip_auth", [length(AuthJObjs)]),
-	    _ = [ transfer_auth(AuthJObj) || AuthJObj <- AuthJObjs],
-	    ok;
-	_E ->
-	    ok
-    end.
-
--spec transfer_auth/1 :: (AuthJObj) -> no_return() when
-      AuthJObj :: json_object().
-transfer_auth(AuthJObj) ->
-    ID = wh_json:get_value(<<"id">>, AuthJObj),
-    spawn(fun() -> ?LOG_SYS("del doc ~s: ~p", [ID, couch_mgr:del_doc(<<"sip_auth">>, ID)]) end), %% cleanup old imports
-
-    AuthData = {struct, AuthProps}
-        = wh_json:get_value(<<"value">>, AuthJObj, ?EMPTY_JSON_OBJECT),
-
-    DocID = <<ID/binary, (wh_json:get_binary_value(<<"server_id">>, AuthData, <<"0">>))/binary>>,
-
-    SipAuthDoc = {struct, [{<<"_id">>, DocID}
-			   ,{<<"sip">>, {struct, [
-						  {<<"realm">>, wh_json:get_value(<<"auth_realm">>, AuthData, <<"">>)}
-						  ,{<<"method">>, wh_json:get_value(<<"auth_method">>, AuthData, <<"">>)}
-						  ,{<<"username">>, wh_json:get_value(<<"auth_user">>, AuthData, <<"">>)}
-						  ,{<<"password">>, wh_json:get_value(<<"auth_password">>, AuthData, <<"">>)}
-					]}
-			    }]},
-    SAD1 = lists:foldl(fun({K, V}, JObj) ->
-                              wh_json:set_value(K, V, JObj)
-                      end, SipAuthDoc, [Pvt || {K, _}=Pvt <- AuthProps
-                                                   ,binary:match(K, <<"pvt_">>) =/= nomatch]),
-    %% trunkstore just has to be different, or are we all different and trunkstore normal...
-    %% after all it was first ;)
-    SAD2 = wh_json:set_value(<<"pvt_account_id">>, ID, SAD1),
-    couch_mgr:ensure_saved(<<"sip_auth">>, SAD2).

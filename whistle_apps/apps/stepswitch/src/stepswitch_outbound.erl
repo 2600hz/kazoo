@@ -310,6 +310,7 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                                       R2 = evaluate_flags(Flags, R1),
                                       evaluate_number(Number, R2)
                               end,
+			?LOG("Found ~b endpoints", [length(EPs)]),
                         build_bridge_request(JObj, EPs, Q)
                 end,
 

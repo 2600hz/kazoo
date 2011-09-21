@@ -199,23 +199,13 @@ invite_format(_, _) ->
 
 -spec sip_headers/1 :: (L) -> 'undefined' | json_object() when
       L :: ['undefined' | json_object(),...] | [].
--spec sip_headers/2 :: (L, Acc) -> 'undefined' | json_object() when
-      L :: ['undefined' | json_object(),...] | [],
-      Acc :: proplist().
-sip_headers(L) ->
-    sip_headers(L, []).
-sip_headers([undefined| T], Acc) ->
-    sip_headers(T, Acc);
-sip_headers([?EMPTY_JSON_OBJECT | T], Acc) ->
-    sip_headers(T, Acc);
-sip_headers([{struct, [_|_]=H}|T], Acc) ->
-    sip_headers(T, H ++ Acc);
-sip_headers([_|T], Acc) ->
-    sip_headers(T, Acc);
-sip_headers([], []) ->
+sip_headers([]) ->
     undefined;
-sip_headers([], Acc) ->
-    {struct, lists:reverse(Acc)}.
+sip_headers(L) when is_list(L) ->
+    case [ Headers || Headers <- L, wh_json:is_json_object(Headers)] of
+	[Res] -> Res;
+	_ -> undefined
+    end.
 
 -spec failover/1 :: (L) -> json_object() when
       L :: [json_object() | binary(),...].

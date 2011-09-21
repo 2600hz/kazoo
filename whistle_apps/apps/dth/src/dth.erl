@@ -9,7 +9,9 @@
 -module(dth).
 
 -author('James Aimonetti <james@2600hz.org>').
--export([start/0, start_link/0, stop/0]).
+-export([start/0, start_link/0, stop/0, add_binding_to_q/2, rm_binding_from_q/1]).
+
+-include("dth.hrl").
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
@@ -36,3 +38,10 @@ start_deps() ->
 %% @doc Stop the basicapp server.
 stop() ->
     application:stop(dth).
+
+add_binding_to_q(Q, _Props) ->
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_DTH_BLACKLIST_REQ),
+    ok.
+
+rm_binding_from_q(Q) ->
+    amqp_util:unbind_q_from_callmgr(Q, ?KEY_DTH_BLACKLIST_REQ).

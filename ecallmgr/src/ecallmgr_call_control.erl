@@ -101,7 +101,7 @@ start_link(Node, UUID, CtlQ) ->
 %%--------------------------------------------------------------------
 init([Node, UUID, CtlQueue]) ->
     put(callid, UUID),
-    ?LOG_START("starting new call control listener"),
+    ?LOG_START("starting new call control listener, listening on ~s", [CtlQueue]),
     {ok, #state{node=Node, uuid=UUID, command_q = queue:new()
 		,current_app = <<>>, amqp_q = CtlQueue, start_time = erlang:now()}, 0}.
 

@@ -55,8 +55,9 @@ endpoint_data(State) ->
     ?LOG("Endpoint loaded"),
 
     State1 = ts_callflow:set_failover(State, wh_json:get_value(<<"Failover">>, EP, ?EMPTY_JSON_OBJECT)),
+    State2 = ts_callflow:set_endpoint_data(State1, EP),
 
-    send_park(State1, Command).
+    send_park(State2, Command).
 
 send_park(State, Command) ->
     State1 = ts_callflow:send_park(State),
@@ -122,11 +123,18 @@ wait_for_cdr(State) ->
 	{timeout, State3} ->
 	    ?LOG("Timed out waiting for CDRs, cleaning up"),
 	    CallID = ts_callflow:get_aleg_id(State3),
-	    ts_callflow:finish_leg(State3, CallID)
+	    ts_callflow:finish_leg(State3, CallID);
+        {error, State4} ->
+            ?LOG("error waiting for CDRs, cleaning up"),
+	    CallID = ts_callflow:get_aleg_id(State4),
+	    ts_callflow:finish_leg(State4, CallID)
     end.
 
-wait_for_other_leg(State, WaitingOnLeg) ->
-    wait_for_other_leg(State, WaitingOnLeg, ts_callflow:wait_for_cdr(State)).
+wait_for_other_leg(State, aleg) ->
+    ts_callflow:send_hangup(State),
+    wait_for_other_leg(State, aleg, ts_callflow:wait_for_cdr(State));
+wait_for_other_leg(State, bleg) ->
+    wait_for_other_leg(State, bleg, ts_callflow:wait_for_cdr(State)).
 
 wait_for_other_leg(_State, aleg, {cdr, aleg, CDR, State1}) ->
     ALeg = ts_callflow:get_aleg_id(State1),
@@ -140,15 +148,20 @@ wait_for_other_leg(_State, Leg, {timeout, State1}) ->
     ?LOG("Timed out waiting for ~s CDR, cleaning up", [Leg]),
 
     ALeg = ts_callflow:get_bleg_id(State1),
-    ts_callflow:finish_leg(State1, ALeg).
+    ts_callflow:finish_leg(State1, ALeg);
+wait_for_other_leg(_State, Leg, {error, State1}) ->
+    ?LOG("Error while waiting for other leg, cleaning up"),
+    ts_callflow:finish_leg(State1, Leg).
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State), ts_callflow:get_failover(State)} of
 	{<<>>, _} ->
 	    ?LOG("No callctl for failover"),
+            ts_callflow:send_hangup(State),
 	    wait_for_cdr(State);
 	{_, ?EMPTY_JSON_OBJECT} ->
 	    ?LOG("No failover configured"),
+            ts_callflow:send_hangup(State),
 	    wait_for_cdr(State);
 	{_, Failover} ->
 	    ?LOG("Trying failover"),
@@ -166,10 +179,10 @@ try_failover_sip(State, SIPUri) ->
     CtlQ = ts_callflow:get_control_queue(State),
     Q = ts_callflow:get_my_queue(State),
 
-    EndPoint = {struct, [
-			 {<<"Invite-Format">>, <<"route">>}
-			 ,{<<"Route">>, SIPUri}
-			]},
+    EndPoint = wh_json:from_list([
+				  {<<"Invite-Format">>, <<"route">>}
+				  ,{<<"Route">>, SIPUri}
+				 ]),
 
     %% since we only route to one endpoint, we specify most options on the endpoint's leg
     Command = [
@@ -202,8 +215,7 @@ try_failover_e164(State, ToDID) ->
 	       ,{<<"Account-ID">>, AcctID}
 	       ,{<<"Control-Queue">>, CtlQ}
 	       ,{<<"Application-Name">>, <<"bridge">>}
-	       ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Inception">>, <<"off-net">>}
-						      | RateData]}}
+	       ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"off-net">>} | RateData])}
 	       ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
 	       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP)}
 	       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, EP)}
@@ -256,15 +268,14 @@ get_endpoint_data(JObj) ->
             InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
             Invite = ts_util:invite_format(wh_util:binary_to_lower(InFormat), ToDID) ++ RoutingData,
 
-            {endpoint, {struct, [{<<"Custom-Channel-Vars">>, {struct, [
-                                                                       {<<"Auth-User">>, AuthUser}
-                                                                       ,{<<"Auth-Realm">>, AuthRealm}
-                                                                       ,{<<"Direction">>, <<"inbound">>}
-                                                                       | RateData
-                                                                      ]}
-                                 }
-                                 | Invite ]
-                       }}
+            {endpoint, wh_json:from_list([{<<"Custom-Channel-Vars">>, wh_json:from_list([
+											 {<<"Auth-User">>, AuthUser}
+											 ,{<<"Auth-Realm">>, AuthRealm}
+											 ,{<<"Direction">>, <<"inbound">>}
+											 | RateData
+											])
+					  }
+					  | Invite ])}
     end.
 
 -spec routing_data/1 :: (ToDID) -> proplist() when

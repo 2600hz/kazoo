@@ -173,15 +173,33 @@
 %%% conditions. A parallel testcase ({@type parallel_testcase()}) consists of
 %%% a sequential and a parallel component. The sequential component is a
 %%% command sequence that is run first to put the system in a random state.
-%%% The parallel component is a list of command sequences that are executed in
-%%% parallel, each of them in a separate newly-spawned process. After running a
-%%% parallel testcase, PropEr uses the state machine specification to check if
-%%% the results observed could have been produced by a possible serialization
-%%% of the parallel component. If no such serialization is possible, then an
-%%% atomicity violation has been detected. In this case, the shrinking
-%%% mechanism attempts to produce a counterexample that is minimal in terms of
-%%% concurrent operations. Properties for parallel testing are very similar to
-%%% those used for sequential testing.
+%%% The parallel component is a list containing 2 command sequences to be
+%%% executed in parallel, each of them in a separate newly-spawned process.
+%%%
+%%% Generating parallel test cases involves the following actions. Initially,
+%%% we generate a command sequence deriving information from the abstract
+%%% state machine specification, as in the case of sequential statem testing.
+%%% Then, we parallelize a random suffix (up to 12 commands) of the initial
+%%% sequence by splitting it into 2 subsequences that will be executed
+%%% concurrently. Limitations arise from the fact that each subsequence should
+%%% be a <i>valid</i> command sequnece (i.e. all commands should satisfy
+%%% preconditions and use only symbolic variables bound to the results of
+%%% preceding calls in the same sequence). Furthermore, we apply an additional
+%%% check: we have to ensure that preconditions are satisfied in all possible
+%%% interleavings of the concurrent tasks. Otherwise, an exception might be
+%%% raised during parallel execution and lead to unexpected (and unwanted) test
+%%% failure. In case these constraints cannot be satisfied for a specific test
+%%% case, the test case will be executed sequentially. Then an `f' is printed
+%%% on screen to inform the user. This usually means that preconditions need
+%%% to become less strict for parallel testing to work.
+%%%
+%%% After running a parallel testcase, PropEr uses the state machine
+%%% specification to check if the results observed could have been produced by
+%%% a possible serialization of the parallel component. If no such serialization
+%%% is possible, then an atomicity violation has been detected. In this case,
+%%% the shrinking mechanism attempts to produce a counterexample that is minimal
+%%% in terms of concurrent operations. Properties for parallel testing are very
+%%% similar to those used for sequential testing.
 %%%
 %%% ```prop_parallel_testing() ->
 %%%        ?FORALL(Testcase, proper_statem:parallel_commands(?MODULE),
@@ -191,12 +209,7 @@
 %%%                    Result =:= ok
 %%%                end).'''
 %%%
-%%% Please note that, in case of strict preconditions, PropEr might not be
-%%% able to generate a suitable parallel component for each test. In this
-%%% case, an `"f"' is printed on screen to inform the user that a test case
-%%% will be executed sequentially.
-%%%
-%%% Also note that the actual interleaving of commands of the parallel
+%%% Please note that the actual interleaving of commands of the parallel
 %%% component depends on the Erlang scheduler, which is too deterministic.
 %%% For PropEr to be able to detect race conditions, the code of the system
 %%% under test should be instrumented with `erlang:yield/0' calls to the
@@ -641,7 +654,7 @@ pmap(F, L) ->
 		 [command_list()]) -> [pid()].
 spawn_jobs(F, L) ->
     Parent = self(),
-    [proper:spawn_link_migrate(fun() -> Parent ! {self(),catch {ok,F(X)}} end)
+    [spawn_link_cp(fun() -> Parent ! {self(),catch {ok,F(X)}} end)
      || X <- L].
 
 -spec await([pid()]) -> [parallel_history()].
@@ -959,3 +972,16 @@ get_slices(List) ->
 get_slices_tr([], _, _, Acc) -> Acc;
 get_slices_tr([_|Tail], List, N, Acc) ->
     get_slices_tr(Tail, List, N+1, [lists:sublist(List, N)|Acc]).
+
+-spec spawn_link_cp(fun(() -> _)) -> pid().
+spawn_link_cp(ActualFun) ->
+    PDictStuff = [Pair || {K,_V} = Pair <- get(),
+			  is_atom(K),
+			  re:run(atom_to_list(K), ["^[$]"],
+				 [{capture,none}]) =:= match],
+    Fun = fun() ->
+	      lists:foreach(fun({K,V}) -> put(K,V) end, PDictStuff),
+	      proper_arith:rand_reseed(),
+	      ActualFun()
+	  end,
+    spawn_link(Fun).

@@ -109,8 +109,8 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
     ?LOG_START(ID, "received fetch request for domain parameters (user creds) from ~s", [Node]),
-    case props:get_value(<<"Event-Name">>, Data) of
-	<<"REQUEST_PARAMS">> ->
+    case {props:get_value(<<"Event-Name">>, Data), props:get_value(<<"action">>, Data)} of
+	{<<"REQUEST_PARAMS">>, <<"sip_auth">>} ->
 	    {ok, LookupPid} = ecallmgr_fs_auth_sup:start_req(Node, ID, Data),
 	    erlang:monitor(process, LookupPid),
 
@@ -118,7 +118,7 @@ handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined 
 	    {noreply, State#state{lookups=[{LookupPid, ID, erlang:now()} | LUs], stats=Stats#handler_stats{lookups_requested=LookupsReq}}, hibernate};
 	_Other ->
 	    _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
-	    ?LOG_END("ignoring request for ~s", [Node, _Other]),
+	    ?LOG_END("ignoring request for ~p", [Node, _Other]),
 	    {noreply, State}
     end;
 
@@ -256,8 +256,10 @@ lookup_user(Node, ID, Data) ->
                                  ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml]),
                                  freeswitch:fetch_reply(Node, ID, Xml)
                              catch
-                                 _:_ ->
-                                     ?LOG("auth request lookup failed")
+                                 throw:_T ->
+                                     ?LOG("auth request lookup failed: thrown ~w", [_T]);
+				 error:_E ->
+				     ?LOG("auth request lookup failed: error ~w", [_E])
                              end
 		     end),
     {ok, Pid}.

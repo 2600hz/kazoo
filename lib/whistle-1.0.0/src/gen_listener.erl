@@ -339,14 +339,14 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
 		 {reply, Props} -> [{queue, Queue} | Props];
 		 {'EXIT', _Why} -> [{queue, Queue}]
 	     end,
-    spawn_link(fun() -> _ = whapps_util:put_callid(JObj), process_req(Props1, Responders, JObj) end).
+    spawn_link(fun() -> _ = wh_util:put_callid(JObj), process_req(Props1, Responders, JObj) end).
 
 -spec process_req/3 :: (Props, Responders, JObj) -> 'ok' when
       Props :: proplist(),
       Responders :: responders(),
       JObj :: json_object().
 process_req(Props, Responders, JObj) ->
-    Key = whapps_util:get_event_type(JObj),
+    Key = wh_util:get_event_type(JObj),
     Handlers = [spawn_monitor(fun() ->
 				      Responder:handle_req(JObj, Props)
 			      end) || {Evt, Responder} <- Responders,

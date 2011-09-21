@@ -603,6 +603,13 @@ arguments_not_defined() ->
      {[[[[42,{var,42}]]]], []},
      {[{43,41,{1,{var,42}}},why_not], []}].
 
+all_data() ->
+    [1, 42.0, "$hello", "world\n", [smelly, cat, {smells,bad}],
+     '$this_should_be_copied', '$this_one_too', 'but$ this$ not',
+     or_this].
+
+dollar_data() ->
+    ['$this_should_be_copied', '$this_one_too'].
 
 %%------------------------------------------------------------------------------
 %% Unit tests
@@ -1048,6 +1055,13 @@ can_generate_fsm_commands_test_() ->
 
 transition_target_test_() ->
     {timeout, 20, [?_assertEqual([], proper:module(numbers_fsm))]}.
+
+dollar_only_cp_test_() ->
+    ?_assertEqual(
+       dollar_data(),
+       [K || K <- all_data(),
+	     is_atom(K),
+	     re:run(atom_to_list(K), ["^[$]"], [{capture,none}]) =:= match]).
 
 
 %%------------------------------------------------------------------------------
