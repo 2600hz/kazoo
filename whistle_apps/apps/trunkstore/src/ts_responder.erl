@@ -16,7 +16,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, start_responder/0, stop/1]).
+-export([start_link/0, start_responder/0, stop/1, transfer_auth/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -87,6 +87,7 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    ?LOG("Started responder"),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -134,7 +135,8 @@ handle_info(_Unhandled, State) ->
     {noreply, State, 1000}.
 
 handle_event(JObj, _State) ->
-    {reply, JObj}.
+    ?LOG("Recv jobj"),
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private

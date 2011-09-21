@@ -123,11 +123,18 @@ wait_for_cdr(State) ->
 	{timeout, State3} ->
 	    ?LOG("Timed out waiting for CDRs, cleaning up"),
 	    CallID = ts_callflow:get_aleg_id(State3),
-	    ts_callflow:finish_leg(State3, CallID)
+	    ts_callflow:finish_leg(State3, CallID);
+        {error, State4} ->
+            ?LOG("error waiting for CDRs, cleaning up"),
+	    CallID = ts_callflow:get_aleg_id(State4),
+	    ts_callflow:finish_leg(State4, CallID)
     end.
 
-wait_for_other_leg(State, WaitingOnLeg) ->
-    wait_for_other_leg(State, WaitingOnLeg, ts_callflow:wait_for_cdr(State)).
+wait_for_other_leg(State, aleg) ->
+    ts_callflow:send_hangup(State),
+    wait_for_other_leg(State, aleg, ts_callflow:wait_for_cdr(State));
+wait_for_other_leg(State, bleg) ->
+    wait_for_other_leg(State, bleg, ts_callflow:wait_for_cdr(State)).
 
 wait_for_other_leg(_State, aleg, {cdr, aleg, CDR, State1}) ->
     ALeg = ts_callflow:get_aleg_id(State1),
@@ -141,15 +148,20 @@ wait_for_other_leg(_State, Leg, {timeout, State1}) ->
     ?LOG("Timed out waiting for ~s CDR, cleaning up", [Leg]),
 
     ALeg = ts_callflow:get_bleg_id(State1),
-    ts_callflow:finish_leg(State1, ALeg).
+    ts_callflow:finish_leg(State1, ALeg);
+wait_for_other_leg(_State, Leg, {error, State1}) ->
+    ?LOG("Error while waiting for other leg, cleaning up"),
+    ts_callflow:finish_leg(State1, Leg).
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State), ts_callflow:get_failover(State)} of
 	{<<>>, _} ->
 	    ?LOG("No callctl for failover"),
+            ts_callflow:send_hangup(State),
 	    wait_for_cdr(State);
 	{_, ?EMPTY_JSON_OBJECT} ->
 	    ?LOG("No failover configured"),
+            ts_callflow:send_hangup(State),
 	    wait_for_cdr(State);
 	{_, Failover} ->
 	    ?LOG("Trying failover"),
