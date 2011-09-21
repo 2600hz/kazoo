@@ -54,6 +54,13 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
+-spec start_req/6 :: (Srv, Prop, ApiFun, PubFun, From, Parent) -> 'ok' when
+      Srv :: pid(),
+      Prop :: proplist(),
+      ApiFun :: fun(),
+      PubFun :: fun(),
+      From :: {pid(), reference()},
+      Parent :: pid() | atom().
 start_req(Srv, Prop, ApiFun, PubFun, From, Parent) ->
     	%% {request, Prop, ApiFun, PubFun, {Pid, _}=From, Parent} ->
     JObj = case wh_json:is_json_object(Prop) of
@@ -128,7 +135,12 @@ handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent,
     erlang:demonitor(Ref, [flush]),
     gen_server:reply(From, {ok, JObj}),
     ecallmgr_amqp_pool:worker_free(Parent, self()),
-    {noreply, #state{}}.
+    {noreply, #state{}};
+handle_cast({response_recv, JObj}, State) ->
+    ?LOG("WTF, I'm free, yet receiving a response?"),
+    ?LOG("JObj:"),
+    [ ?LOG("~p", [KV]) || KV <- wh_json:to_proplist(JObj)],
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private

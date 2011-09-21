@@ -109,8 +109,8 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
     ?LOG_START(ID, "received fetch request for domain parameters (user creds) from ~s", [Node]),
-    case props:get_value(<<"Event-Name">>, Data) of
-	<<"REQUEST_PARAMS">> ->
+    case {props:get_value(<<"Event-Name">>, Data), props:get_value(<<"action">>, Data)} of
+	{<<"REQUEST_PARAMS">>, <<"sip_auth">>} ->
 	    {ok, LookupPid} = ecallmgr_fs_auth_sup:start_req(Node, ID, Data),
 	    erlang:monitor(process, LookupPid),
 
