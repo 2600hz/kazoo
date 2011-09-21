@@ -19,7 +19,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(CROSSBAR_SCHEMA_DB, <<"crossbar%2Fschemas">>).
--define(TRACE, true). %% trace through the validation steps
+-define(TRACE, false). %% trace through the validation steps
 
 -define(VALIDATION_FUN, fun({error, _}) -> false; (?VALID) -> true end).
 
@@ -67,7 +67,6 @@ do_validate(JObj, SchemaName) ->
 
 %% undefined property is required if required in schema
 validate({InstanceName, undefined}, {Schema}) ->
-    trace({testing_undef, property}, {InstanceName, Schema}),
     case wh_json:get_binary_boolean(<<"required">>, Schema) == <<"true">>
 	orelse val(<<"type">>, Schema) == <<"object">> of
 	false -> ?VALID;
