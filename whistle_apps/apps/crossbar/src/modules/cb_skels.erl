@@ -14,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, create_skel/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -23,7 +23,7 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
-
+-define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"skels/crossbar_listing">>).
 
 %%%===================================================================
@@ -191,7 +191,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  no_return()).
+-spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.skels">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.skels">>),
@@ -207,7 +207,8 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (Paths) -> tuple(boolean(), http_methods()) when
+      Paths :: list().
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
@@ -223,7 +224,8 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (Paths) -> tuple(boolean(), []) when
+      Paths :: list().
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -240,74 +242,80 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/2 :: (Params, Context) -> #cb_context{} when
+      Params :: list(),
+      Context :: #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    read_skel_summary(Context);
+    summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_skel(Context);
-validate([SkelId], #cb_context{req_verb = <<"get">>}=Context) ->
-    read_skel(SkelId, Context);
-validate([SkelId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_skel(SkelId, Context);
-validate([SkelId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    read_skel(SkelId, Context);
+    create(Context);
+validate([Id], #cb_context{req_verb = <<"get">>}=Context) ->
+    read(Id, Context);
+validate([Id], #cb_context{req_verb = <<"post">>}=Context) ->
+    update(Id, Context);
+validate([Id], #cb_context{req_verb = <<"delete">>}=Context) ->
+    read(Id, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new skel document with the data provided, if it is valid
+%% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create_skel/1 :: (Context) -> #cb_context{} when
+-spec create/1 :: (Context) -> #cb_context{} when
       Context :: #cb_context{}.
-create_skel(#cb_context{req_data=JObj}=Context) ->
+create(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"skel">>, JObj)
-                               ,resp_status=success
-                              }
+            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
+                                             {F(J, C), C}
+                                     end, {JObj, Context}, ?PVT_FUNS),
+            Context#cb_context{doc=JObj1, resp_status=success}
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load a skel document from the database
+%% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(read_skel/2 :: (SkelId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-read_skel(SkelId, Context) ->
-    crossbar_doc:load(SkelId, Context).
+-spec(read/2 :: (Id :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+read(Id, Context) ->
+    crossbar_doc:load(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing skel document with the data provided, if it is
+%% Update an existing instance with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_skel/2 :: (SkelId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-update_skel(SkelId, #cb_context{req_data=JObj}=Context) ->
+-spec(update/2 :: (Id :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+update(Id, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            crossbar_doc:load_merge(SkelId, JObj, Context)
+            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
+                                             {F(J, C), C}
+                                     end, {JObj, Context}, ?PVT_FUNS),
+            crossbar_doc:load_merge(Id, JObj1, Context)
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
-%% account summary.
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec read_skel_summary/1 :: (Context) -> #cb_context{} when
+-spec summary/1 :: (Context) -> #cb_context{} when
       Context :: #cb_context{}.
-read_skel_summary(Context) ->
+summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
@@ -316,7 +324,9 @@ read_skel_summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (Doc, Acc) -> json_objects() when
+      Doc :: json_object(),
+      Acc :: json_object().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -334,3 +344,17 @@ is_valid_doc(JObj) ->
 	undefined -> {false, [<<"default">>]};
 	_ -> {true, []}
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% These are the pvt funs that add the necessary pvt fields to every
+%% instance
+%% @end
+%%--------------------------------------------------------------------
+-spec add_pvt_type/2 :: (JObj, Context) -> json_object() when
+      JObj :: json_object(),
+      Context :: #cb_context{}.
+
+add_pvt_type(JObj, _) ->
+    wh_json:set_value(<<"pvt_type">>, <<"skel">>, JObj).
