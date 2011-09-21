@@ -292,9 +292,9 @@ load_device_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
 -spec(create_device/1 :: (Context :: #cb_context{}) -> #cb_context{}).
 create_device(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {error, Fields} ->
+	    crossbar_util:response_invalid_data(Fields, Context);
+        {ok, []} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
                 ,resp_status=success
@@ -321,9 +321,9 @@ load_device(DocId, Context) ->
 -spec(update_device/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 update_device(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {error, Fields} ->
+	    crossbar_util:response_invalid_data(Fields, Context);
+        {ok, []} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -369,5 +369,5 @@ normalize_view_results(JObj, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
-is_valid_doc(_JObj) ->
-    {true, []}.
+is_valid_doc(JObj) ->
+    crossbar_schema:do_validate(JObj, device).

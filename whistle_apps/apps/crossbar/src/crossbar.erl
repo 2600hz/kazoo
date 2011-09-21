@@ -21,6 +21,7 @@
 -define(SIP_AGG_DB, <<"sip_auth">>).
 -define(SIP_AGG_FILTER, <<"devices/export_sip">>).
 
+-define(SCHEMAS_DB, <<"crossbar/schemas">>).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -74,6 +75,8 @@ refresh() ->
     spawn(fun() ->
                   couch_mgr:db_create(?SIP_AGG_DB),
                   couch_mgr:db_create(?ACCOUNT_AGG_DB),
+		  couch_mgr:db_create(?SCHEMAS_DB),
+                  couch_mgr:revise_docs_from_folder(?SCHEMAS_DB, crossbar, "schemas"),
                   couch_mgr:revise_doc_from_file(?ACCOUNT_AGG_DB, crossbar, ?ACCOUNT_AGG_VIEW_FILE),
                   lists:foreach(fun(AccountDb) ->
                                         timer:sleep(2000),
