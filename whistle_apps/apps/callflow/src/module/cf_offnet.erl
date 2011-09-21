@@ -27,7 +27,9 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId,
                       ,ctrl_q=CtrlQ, amqp_q=AmqpQ, cf_pid=CFPid, owner_id=OwnerId, authorizing_id=AuthId, channel_vars=CCV}=Call) ->
     put(callid, CallId),
     {CIDNum, CIDName}
-        = cf_attributes:caller_id(wh_json:get_value(<<"caller_id_options">>, Data, <<"external">>), AuthId, OwnerId, Call),
+        = cf_attributes:caller_id(wh_json:get_value(<<"caller_id_type">>, Data, <<"external">>), AuthId, OwnerId, Call),
+    {ECIDNum, ECIDName}
+        = cf_attributes:caller_id(<<"emergency">>, AuthId, OwnerId, Call),
     Command = [{<<"Call-ID">>, CallId}
                ,{<<"Resource-Type">>, <<"audio">>}
                ,{<<"To-DID">>, ReqNum}
@@ -39,6 +41,8 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId,
                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, Data)}
                ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
                ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+               ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
+               ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
                ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
                | wh_api:default_headers(AmqpQ, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
             ],
