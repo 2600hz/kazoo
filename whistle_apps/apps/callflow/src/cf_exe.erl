@@ -206,10 +206,11 @@ init_amqp(#cf_call{call_id=CallId}) ->
 %%-----------------------------------------------------------------------------
 -spec call_info/1 :: (Call) -> ok when
       Call :: #cf_call{}.
-call_info(#cf_call{flow_id=FlowId, call_id=CallId, cid_name=CIDName, cid_number=CIDNumber
+call_info(#cf_call{account_id=AccountId, flow_id=FlowId, call_id=CallId, cid_name=CIDName, cid_number=CIDNumber
                ,request=Request, from=From, to=To, inception=Inception, authorizing_id=AuthorizingId }) ->
     put(callid, CallId),
     ?LOG_START("executing callflow ~s", [FlowId]),
+    ?LOG("account id ~s", [AccountId]),
     ?LOG("request ~s", [Request]),
     ?LOG("to ~s", [To]),
     ?LOG("from ~s", [From]),

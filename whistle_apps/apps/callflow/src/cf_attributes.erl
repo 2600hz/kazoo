@@ -14,6 +14,22 @@
 -export([callee_id/4]).
 -export([caller_id_options/4]).
 -export([owner_id/2, owned_by/2, owned_by/3]).
+-export([temporal_rules/1]).
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec temporal_rules/1 :: (Call) -> undefined | json_object() when
+      Call :: #cf_call{}.
+temporal_rules(#cf_call{account_db=Db}) ->
+    case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"temporal_rules">>}, [{<<"include_docs">>, true}]) of
+        {ok, JObj} ->
+            JObj;
+        {error, _} ->
+            []
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -64,6 +80,7 @@ caller_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, cid_number=
            || Id <- [DeviceId, OwnerId, AccountId], Id =/= undefined],
     case wh_util:is_true(wh_json:get_value(<<"Retain-CID">>, CCVs)) of
         true ->
+            ?LOG("retaining caller id ~s '~s'", [Num, Name]),
             {Num, Name};
         false ->
             Attributes = fetch_attributes(caller_id, 3600, Call),
@@ -72,7 +89,10 @@ caller_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, cid_number=
                           search_attributes(<<"default">>, [AccountId], Attributes);
                       Property -> Property
                   end,
-            {wh_json:get_value(<<"number">>, CID, Num), wh_json:get_value(<<"name">>, CID, <<>>)}
+            CIDNumber = wh_json:get_value(<<"number">>, CID, Num),
+            CIDName = wh_json:get_value(<<"name">>, CID, Num),
+            ?LOG("using caller id ~s '~s'", [CIDNumber, CIDName]),
+            {CIDNumber, CIDName}
     end.
 
 %%-----------------------------------------------------------------------------
@@ -94,7 +114,10 @@ callee_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, request_use
                   search_attributes(<<"default">>, [AccountId], Attributes);
               Property -> Property
           end,
-    {wh_json:get_value(<<"number">>, CID, Num), wh_json:get_value(<<"name">>, CID, Num)}.
+    CIDNumber = wh_json:get_value(<<"number">>, CID, Num),
+    CIDName = wh_json:get_value(<<"name">>, CID, Num),
+    ?LOG("using callee id ~s '~s'", [CIDNumber, CIDName]),
+    {CIDNumber, CIDName}.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -230,7 +253,7 @@ fetch_sub_key(Key, JObj) ->
       Expires :: non_neg_integer(),
       Call :: #cf_call{}.
 fetch_attributes(Attribute, Expires, #cf_call{account_db=Db}) ->
-    case wh_cache:fetch({cf_attribute, Db, Attribute}) of
+    case wh_cache:peek({cf_attribute, Db, Attribute}) of
         {ok, Attributes} ->
             Attributes;
         {error, not_found} ->

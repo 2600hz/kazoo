@@ -11,8 +11,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, start_link/1, store/2, store/3, fetch/1, erase/1, flush/0, fetch_keys/0, filter/1]).
--export([start_local_link/0, store_local/3, store_local/4, fetch_local/2,  erase_local/2
+-export([start_link/0, start_link/1, store/2, store/3, peek/1, fetch/1, erase/1, flush/0, fetch_keys/0, filter/1]).
+-export([start_local_link/0, store_local/3, store_local/4, peek_local/2, fetch_local/2,  erase_local/2
 	 ,flush_local/1, fetch_keys_local/1, filter_local/2]).
 
 %% gen_server callbacks
@@ -21,7 +21,7 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
 -define(EXPIRES, 3600). %% an hour
 
 %%%===================================================================
@@ -52,6 +52,10 @@ store(K, V) ->
 store(K, V, T) ->
     gen_server:cast(?SERVER, {store, K, V, T}).
 
+-spec(peek/1 :: (K :: term()) -> tuple(ok, term()) | tuple(error, not_found)).
+peek(K) ->
+    gen_server:call(?SERVER, {peek, K}).
+
 -spec(fetch/1 :: (K :: term()) -> tuple(ok, term()) | tuple(error, not_found)).
 fetch(K) ->
     gen_server:call(?SERVER, {fetch, K}).
@@ -79,6 +83,10 @@ store_local(Srv, K, V) when is_pid(Srv) ->
     store_local(Srv, K, V, ?EXPIRES).
 store_local(Srv, K, V, T) when is_pid(Srv) ->
     gen_server:cast(Srv, {store, K, V, T}).
+
+-spec(peek_local/2 :: (Srv :: pid(), K :: term()) -> tuple(ok, term()) | tuple(error, not_found)).
+peek_local(Srv, K) when is_pid(Srv) ->
+    gen_server:call(Srv, {peek, K}).
 
 -spec(fetch_local/2 :: (Srv :: pid(), K :: term()) -> tuple(ok, term()) | tuple(error, not_found)).
 fetch_local(Srv, K) when is_pid(Srv) ->
@@ -133,6 +141,11 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({peek, K}, _, Dict) ->
+    case dict:find(K, Dict) of
+	{ok, {_, V, _}} -> {reply, {ok, V}, Dict};
+	error -> {reply, {error, not_found}, Dict}
+    end;
 handle_call({fetch, K}, _, Dict) ->
     case dict:find(K, Dict) of
 	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {wh_util:current_tstamp()+T, V, T} end, Dict)};

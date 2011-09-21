@@ -139,6 +139,18 @@ handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
+handle_info({binding_fired, Pid, <<"v1_resource.content_types_provided.servers">>, {RD, Context, [_, <<"log">>]=Params}}, State) ->
+    spawn(fun() ->
+                  Pid ! {binding_result, true, {RD, content_types_provided(Context), Params}}
+          end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.content_types_provided.servers">>, {RD, Context, Params}}, State) ->
+    spawn(fun() ->
+                  Pid ! {binding_result, true, {RD, Context, Params}}
+          end),
+    {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.servers">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
@@ -289,12 +301,27 @@ code_change(_OldVsn, _State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.servers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.servers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.servers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.servers">>),
     crossbar_bindings:bind(<<"v1_resource.execute.#.servers">>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update the content type so users can pull down the deploy log as
+%% plain text
+%% @end
+%%--------------------------------------------------------------------
+-spec(content_types_provided/1 :: (Context :: #cb_context{}) ->
+                                        #cb_context{}).
+content_types_provided(#cb_context{req_verb = <<"get">>, content_types_provided=CTP}=Context) ->
+    Context#cb_context{content_types_provided=[{to_binary, ["text/plain"] ++ props:get_value(to_binary, CTP, [])}
+                                               | proplists:delete(to_binary,CTP)]};
+content_types_provided(Context) -> Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -313,6 +340,8 @@ allowed_methods([_]) ->
     {true, ['GET', 'POST', 'DELETE']};
 allowed_methods([_, <<"deployment">>]) ->
     {true, ['GET', 'POST', 'PUT']};
+allowed_methods([_, <<"log">>]) ->
+    {true, ['GET']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -330,6 +359,8 @@ resource_exists([]) ->
 resource_exists([_]) ->
     {true, []};
 resource_exists([_, <<"deployment">>]) ->
+    {true, []};
+resource_exists([_, <<"log">>]) ->
     {true, []};
 resource_exists(_) ->
     {false, []}.
@@ -380,6 +411,8 @@ validate([ServerId, <<"deployment">>], _, #cb_context{req_verb = <<"put">>}=Cont
         Else ->
             Else
     end;
+validate([ServerId, <<"log">>], _, #cb_context{req_verb = <<"get">>}=Context) ->
+    crossbar_doc:load_attachment(ServerId, <<"deployment.log">>, Context);
 validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -522,8 +555,11 @@ execute_deploy_command(#cb_context{db_name=Db, doc=JObj}=Context, State) ->
             spawn(fun() ->
                           ?LOG("executing deploy command ~s", [Cmd]),
                           Res = os:cmd(Cmd),
-                          ?LOG("deploy command execution completed: ~s", [Res]),
-                          {ok, _} = mark_deploy_complete(Db, ServerId)
+                          ?LOG("deploy command execution completed", []),
+                          {ok, _} = mark_deploy_complete(Db, ServerId),
+                          ?LOG("attempting to upload log ~s", [Res]),
+                          {ok, Log} = file:read_file(Res),
+                          couch_mgr:put_attachment(Db, ServerId, <<"deployment.log">>, Log)
                   end),
             crossbar_util:response([], Context);
         {error, _} ->
