@@ -14,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, lookup_reg/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -365,9 +365,55 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% Validates JObj against device schema
 %% @end
 %%--------------------------------------------------------------------
 -spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
 is_valid_doc(JObj) ->
     crossbar_schema:do_validate(JObj, device).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% For a given list of {Realm, Username}, check if devices are registered
+%% Returns a list of registered Device IDs
+%% @end
+%%--------------------------------------------------------------------
+-spec lookup_reg/1 :: ([{Realm, Username},...]) -> [binary(),...] when
+      Realm :: binary(),
+      Username :: binary().
+lookup_reg(RealmUserList) ->
+    {Realm, User} = hd(RealmUserList),
+
+    Q = amqp_util:new_queue(),
+    ok = amqp_util:bind_q_to_targeted(Q),
+    ok = amqp_util:basic_consume(Q),
+
+    ?LOG_SYS("Looking up registration information for ~s@~s", [User, Realm]),
+    RegProp = [{<<"Username">>, User}
+	       ,{<<"Realm">>, Realm}
+	       ,{<<"Fields">>, []}
+	       | wh_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"cb_devices">>, <<>>) ],
+    io:format(" >> ~p", [RegProp]),
+
+    try
+	case wh_api:reg_query(RegProp) of
+	    {ok, {struct, RegResp}} ->
+		true = wh_api:reg_query_resp_v(RegResp),
+
+		{struct, RegFields} = props:get_value(<<"Fields">>, RegResp, ?EMPTY_JSON_OBJECT),
+
+
+		?LOG_SYS("Received registration information"),
+		%lists:foldr(FilterFun, [], RegFields);
+		RegFields;
+	    timeout ->
+		?LOG_SYS("Looking up registration timed out"),
+		{error, timeout};
+	    {ok, RegResp} -> io:format(" >> error ~p", [wh_api:reg_query_resp_v(RegResp)])
+	end
+    catch
+	_:R ->
+	    ?LOG_SYS("Looking up registration threw exception ~p", [R]),
+	    {error, timeout}
+    end.
