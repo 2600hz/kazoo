@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author Edouard Swiac <edouard@2600hx.com>
+%%% @author Edouard Swiac <edouard@2600hz.com>
 %%%
 %%% @copyright (C) 2011, Edouard Swiac
 %%% @doc
