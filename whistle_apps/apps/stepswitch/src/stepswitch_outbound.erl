@@ -425,7 +425,7 @@ create_resrc(JObj) ->
                                          wh_json:is_true(<<"enabled">>, G, true)]
            ,is_emergency =
                wh_json:is_true(<<"emergency">>, JObj)
-               or wh_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>
+               orelse (wh_json:get_value([<<"caller_id_options">>, <<"type">>], JObj) =:= <<"emergency">>)
           }.
 
 %%--------------------------------------------------------------------
