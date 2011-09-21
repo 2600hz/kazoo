@@ -1,0 +1,24 @@
+{
+   "_id": "hotdesk",
+   "id": "http://json-schema.org/draft-03/schema#",
+   "type": "object",
+   "description": "",
+   "properties": {
+       "id": {
+           "type": "number",
+           "required": "true"
+       },
+       "pin": {
+           "type": "number",
+           "required": "true"
+       },
+       "require_pin": {
+           "type": "boolean",
+           "required": "true"
+       },
+       "keep_logged_in_elsewhere": {
+           "type": "boolean",
+           "required": "true"
+       }
+   }
+}

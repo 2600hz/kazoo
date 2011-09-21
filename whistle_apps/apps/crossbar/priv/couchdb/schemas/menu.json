@@ -1,0 +1,40 @@
+{
+   "_id": "menu",
+   "id": "http://json-schema.org/draft-03/schema#",
+   "type": "object",
+   "description": "",
+   "properties": {
+       "retries": {
+           "type": "number",
+           "minimum": 0
+       },
+       "timeout": {
+           "type": "number",
+           "minimum": 0
+       },
+       "hunt": {
+           "type": "boolean",
+           "required": true
+       },
+       "hunt_deny": {
+           "pattern": {
+               "type": "string",
+               "format": "regex"
+           },
+           "required": "true"
+       },
+       "hunt_allow": {
+           "pattern": {
+               "type": "string",
+               "format": "regex"
+           },
+           "required": "true"
+       },
+       "max_extension_length": {
+           "type": "number"
+       },
+       "record_pin": {
+           "type": "string"
+       }
+   }
+}

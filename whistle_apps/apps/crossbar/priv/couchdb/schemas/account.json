@@ -1,0 +1,57 @@
+{
+   "_id": "account",
+   "$schema": "http://json-schema.org/draft-03/schema#",
+   "id": "http://json-schema.org/draft-03/schema#",
+   "type": "object",
+   "description": "Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.",
+   "properties": {
+       "name": {
+           "description": "A friendly name for the account",
+           "required": "true",
+           "type": "string"
+       },
+       "realm": {
+           "description": "realm of the account, ie: 'account1.2600hz.com'",
+           "required": "true",
+           "type": "string"
+       },
+       "caller_id": {
+           "description": "The Caller ID Parameters",
+           "type": "object",
+           "properties": {
+               "name": {
+                   "description": "The name to provide as the caller id",
+                   "type": "string"
+               },
+               "number": {
+                   "description": "The number to provide as the caller id",
+                   "type": "string"
+               }
+           }
+       },
+       "caller_id_options": {
+           "description": "The Caller ID Option Parameters",
+           "type": "object",
+           "properties": {
+               "reformat": {
+                   "description": "A regular expression that if matched internal caller id numbers are replaced by",
+                   "type": "string"
+               }
+           }
+       },
+       "vm_to_email_template": {
+           "description": "The Voicemail To Email Template string",
+           "type": "string"
+       },
+       "trunks": {
+           "description": "How many two-way trunks the account has",
+           "type": "number",
+           "minimum": 0
+       },
+       "inbound_trunks": {
+           "description": "How many inbound-only trunks the account has",
+           "type": "number",
+           "minimum": 0
+       }
+   }
+}

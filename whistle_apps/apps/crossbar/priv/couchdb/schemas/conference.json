@@ -1,0 +1,43 @@
+{
+   "_id": "conference",
+   "id": "http://json-schema.org/draft-03/schema#",
+   "type": "object",
+   "description": "",
+   "properties": {
+       "name": {
+           "description": "",
+           "type": "string",
+           "required": "true"
+       },
+       "member_pins": {
+           "description": "",
+           "type": "array",
+           "required": "true"
+       },
+       "moderator_pins": {
+           "description": "",
+           "type": "array",
+           "required": "true"
+       },
+       "member_join_muted": {
+           "description": "",
+           "type": "boolean",
+           "required": "true"
+       },
+       "member_join_deaf": {
+           "description": "",
+           "type": "boolean",
+           "required": "true"
+       },
+       "moderator_join_muted": {
+           "description": "",
+           "type": "boolean",
+           "required": "true"
+       },
+       "moderator_join_deaf": {
+           "description": "",
+           "type": "boolean",
+           "required": "true"
+       }
+   }
+}

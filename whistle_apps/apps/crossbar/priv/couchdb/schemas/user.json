@@ -1,0 +1,57 @@
+{
+   "_id": "user",
+   "type": "object",
+   "description": "",
+   "properties": {
+       "first_name": {
+           "type": "string"
+       },
+       "last_name": {
+           "type": "string"
+       },
+       "email": {
+           "type": "string",
+           "pattern": "^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,4}$"
+       },
+       "username": {
+           "type": "string"
+       },
+       "password": {
+           "type": "string"
+       },
+       "verified": {
+           "type": "boolean"
+       },
+       "lang": {
+           "type": "string"
+       },
+       "timezone": {
+           "type": "string"
+       },
+       "caller_id": {
+           "type": "object",
+           "properties": {
+               "name": {
+                   "type": "string"
+               },
+               "number": {
+                   "type": "string"
+               }
+           }
+       },
+       "caller_id_options": {
+           "type": "object",
+           "properties": {
+               "reformat": {
+                   "type": "regex"
+               }
+           }
+       },
+       "call_forward": {
+           "type": "string"
+       },
+       "vm_to_email_enabled": {
+           "type": "boolean"
+       }
+   }
+}
