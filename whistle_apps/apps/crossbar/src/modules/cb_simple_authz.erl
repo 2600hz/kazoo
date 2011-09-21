@@ -24,10 +24,9 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
-
 -define(ACCOUNTS_DB, <<"accounts">>).
-
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
+-define(SYS_ADMIN_MODS, [<<"global_resources">>]).
 
 %%%===================================================================
 %%% API
@@ -108,32 +107,17 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
     Pid ! {binding_result, Verb =:= <<"put">>, {RD, Context}},
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
-                 ,{RD, #cb_context{auth_doc=AuthDoc, req_nouns=Nouns}=Context}}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, Context}}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  case props:get_value(<<"accounts">>, Nouns) of
-                      undefined ->
-                          Pid ! {binding_result, false, {RD, Context}};
-                      Params ->
-                          AuthAccountId = wh_json:get_value(<<"account_id">>, AuthDoc),
-                          ReqAccountId = hd(Params),
-                          case couch_mgr:get_results(?ACCOUNTS_DB, ?VIEW_SUMMARY, [{<<"startkey">>, [ReqAccountId]}
-                                                                                   ,{<<"endkey">>, [ReqAccountId, ?EMPTY_JSON_OBJECT ]}]) of
-                              {ok, []} ->
-                                  Pid ! {binding_result, false, {RD, Context}};
-                              {ok, [JObj]} ->
-                                  [_, Tree] = wh_json:get_value(<<"key">>, JObj),
-                                  case lists:member(AuthAccountId, Tree) of
-                                      true ->
-                                          ?LOG("authorizing request, account ~s has access to ~s", [AuthAccountId, ReqAccountId]),
-                                          Pid ! {binding_result, true, {RD, Context}};
-                                      false ->
-                                          Pid ! {binding_result, false, {RD, Context}}
-                                  end;
-                              {error, _} ->
-                                  Pid ! {binding_result, false, {RD, Context}}
-                          end
+                  case account_is_descendant(Context)
+                      andalso allowed_if_sys_admin_mod(Context) of
+                      true ->
+                          ?LOG("authorizing the request"),
+                          Pid ! {binding_result, true, {RD, Context}};
+                      false ->
+                          ?LOG("the request can not be authorized by this module"),
+                          Pid ! {binding_result, false, {RD, Context}}
                   end
           end),
     {noreply, State};
@@ -180,3 +164,87 @@ code_change(_OldVsn, State, _Extra) ->
 -spec bind_to_crossbar/0 :: () -> no_return().
 bind_to_crossbar() ->
     crossbar_bindings:bind(<<"v1_resource.authorize">>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns true if the requested account id is a decendant or the same
+%% as the account id that has been authorized to make the request.
+%% @end
+%%--------------------------------------------------------------------
+-spec account_is_descendant/1 :: (Context) -> boolean() when
+      Context :: #cb_context{}.
+account_is_descendant(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
+    %% get the accounts/.... component from the URL
+    case props:get_value(<<"accounts">>, Nouns) of
+        %% if the URL did not have the accounts noun then this module denies access
+        undefined ->
+            false;
+        Params ->
+            %% the request that this module process the first element of after 'accounts'
+            %% in the URL has to be the requested account id
+            ReqAccountId = hd(Params),
+            %% get the account id that corresponds to the auth token used
+            AuthAccountId = wh_json:get_value(<<"account_id">>, AuthDoc),
+            %% we will get the requested account definition from accounts using a view
+            %% with a complex key (whose alternate value is useful to use on retrieval)
+            ?LOG("checking if account ~s is a decendant of ~s", [ReqAccountId, AuthAccountId]),
+            Opts = [{<<"startkey">>, [ReqAccountId]}
+                    ,{<<"endkey">>, [ReqAccountId, ?EMPTY_JSON_OBJECT ]}],
+            case couch_mgr:get_results(?ACCOUNTS_DB, ?VIEW_SUMMARY, Opts) of
+                %% if the requested account doesnt exist, then decline the request
+                {ok, []} ->
+                    ?LOG("the requested account was not found, not authorizing"),
+                    false;
+                %% if the requested account exists, the second component of the key
+                %% is the parent tree, make sure the authorized account id is in that tree
+                {ok, [JObj]} ->
+                    [_, Tree] = wh_json:get_value(<<"key">>, JObj),
+                    lists:member(AuthAccountId, Tree);
+                %% anything else and they are not allowed
+                {error, R} ->
+                    ?LOG("error during lookup ~p, not authorizing", [R]),
+                    false
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns true the request is not for a system admin module (as defined
+%% by the list above) or if it is and the account is a superduper admin.
+%% @end
+%%--------------------------------------------------------------------
+-spec allowed_if_sys_admin_mod/1 :: (Context) -> boolean() when
+      Context :: #cb_context{}.
+allowed_if_sys_admin_mod(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
+    case is_sys_admin_mod(Nouns) of
+        %% if this is request is not made to a system admin module then this
+        %% function doesnt deny it
+        false ->
+            true;
+        %% if this request is to a system admin module then check if the
+        %% account has the 'pvt_superduper_admin'
+        true ->
+            ?LOG("the request contains a system administration module, checking if authorized"),
+            AccountId = wh_json:get_value(<<"account_id">>, AuthDoc),
+            case couch_mgr:open_doc(?ACCOUNTS_DB, AccountId) of
+                {ok, JObj} ->
+                    wh_json:is_true(<<"pvt_superduper_admin">>, JObj);
+                {error, R} ->
+                    ?LOG("error during lookup ~p, not authorizing", [R]),
+                    false
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns true if the request contains a system admin module.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_sys_admin_mod/1 :: (Nouns) -> boolean() when
+      Nouns :: proplist().
+is_sys_admin_mod(Nouns) ->
+    lists:any(fun(E) -> E end
+              ,[props:get_value(Mod, Nouns) =/= undefined || Mod <- ?SYS_ADMIN_MODS]).
