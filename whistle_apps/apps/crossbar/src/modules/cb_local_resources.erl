@@ -4,12 +4,12 @@
 %%% @doc
 %%%
 %%%
-%%% Handle client requests for skel documents
+%%% Handle client requests for local resource documents
 %%%
 %%% @end
 %%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cb_skels).
+-module(cb_local_resources).
 
 -behaviour(gen_server).
 
@@ -24,7 +24,7 @@
 
 -define(SERVER, ?MODULE).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
--define(CB_LIST, <<"skels/crossbar_listing">>).
+-define(CB_LIST, <<"local_resources/crossbar_listing">>).
 
 %%%===================================================================
 %%% API
@@ -99,21 +99,21 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.skels">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.local_resources">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.skels">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.local_resources">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.skels">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.local_resources">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
 		  Context1 = validate(Params, Context),
@@ -121,7 +121,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.skels">>, [RD, Context 
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.skels">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.local_resources">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
@@ -129,7 +129,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.skels">>, [RD, Cont
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.skels">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.local_resources">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
@@ -137,7 +137,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.skels">>, [RD, Conte
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.skels">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.local_resources">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
@@ -193,10 +193,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.skels">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.skels">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.local_resources">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.local_resources">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.local_resources">>),
+    crossbar_bindings:bind(<<"v1_resource.execute.#.local_resources">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -340,8 +340,8 @@ normalize_view_results(JObj, Acc) ->
 -spec is_valid_doc/1 :: (JObj) -> {boolean(), [binary(),...] | []} when
       JObj :: json_object().
 is_valid_doc(JObj) ->
-    case wh_json:get_value(<<"default">>, JObj) of
-	undefined -> {false, [<<"default">>]};
+    case wh_json:get_value(<<"gateways">>, JObj) of
+	undefined -> {false, [<<"gateways">>]};
 	_ -> {true, []}
     end.
 
@@ -357,4 +357,4 @@ is_valid_doc(JObj) ->
       Context :: #cb_context{}.
 
 add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, <<"skel">>, JObj).
+    wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj).

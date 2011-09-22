@@ -25,6 +25,9 @@
        },
        "temporal_rules": {
            "map": "function(doc) { if (doc.pvt_type != 'temporal_rule' || doc.pvt_deleted) return; emit(doc._id, null); }"
+       },
+       "active_resources_by_rules": {
+           "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; for (var i in doc.rules) emit([doc.weight_cost, doc.rules[i]], {'id': doc._id, 'gateways': doc.gateways, 'caller_id_options': doc.caller_id_options}); }"
        }
    }
 }

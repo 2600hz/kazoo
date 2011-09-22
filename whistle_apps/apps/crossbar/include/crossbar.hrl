@@ -7,26 +7,18 @@
 -define(APP_NAME, <<"crossbar">>).
 -define(APP_VSN, <<"0.8.0">>).
 
--define(CONTENT_PROVIDED, [
-                            {to_json, ["application/json","application/x-json"]}
-                           ,{to_xml, ["application/xml"]}
-			  ]).
+-define(CONTENT_PROVIDED, [{to_json, ["application/json","application/x-json"]}]).
 
--define(CONTENT_ACCEPTED, [
-                            {from_xml, ["application/xml"]}
-                           ,{from_json, ["application/json","application/x-json"]}
+-define(CONTENT_ACCEPTED, [{from_json, ["application/json","application/x-json"]}
 			   ,{from_form, ["application/x-www-form-urlencoded"]}
-			   ,{from_binary, []}
-			  ]).
+			   ,{from_binary, []}]).
 
--define(ALLOWED_METHODS, [
-			   'GET'
+-define(ALLOWED_METHODS, ['GET'
 			  ,'POST'
 			  ,'PUT'
 			  ,'DELETE'
                           ,'OPTIONS'
-                          ,'HEAD'
-			 ]).
+                          ,'HEAD']).
 
 -record(cb_context, {
            content_types_provided = ?CONTENT_PROVIDED :: [crossbar_content_handler(),...] | []

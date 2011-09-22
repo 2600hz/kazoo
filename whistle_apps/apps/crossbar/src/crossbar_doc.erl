@@ -527,19 +527,18 @@ is_private_key(_) -> false.
 -spec(rev_to_etag/1 :: (Json :: json_object()|json_objects()) -> undefined | automatic | string()).
 rev_to_etag([{struct, _}|_])->
     automatic;
-rev_to_etag({struct, Props}) ->
-    case props:get_value([<<"_rev">>], Props) of
-        Rev when is_list(Rev) ->
-	    rev_to_etag(Rev);
-        _Else ->
-            undefined
+rev_to_etag({struct, _}=JObj) ->
+    case wh_json:get_value(<<"_rev">>, JObj) of
+        undefined ->
+            undefined;
+        Rev ->
+	    rev_to_etag(Rev)
     end;
 rev_to_etag([]) -> undefined;
 rev_to_etag(Rev) when is_binary(Rev) ->
     rev_to_etag(wh_util:to_list(Rev));
-rev_to_etag(ETag) when is_list(ETag) ->
-    ?LOG("Etag in rev to etag: ~p", [ETag]),
-    string:sub_string(ETag, 1, 2) ++ string:sub_string(ETag, 4);
+rev_to_etag(Rev) when is_list(Rev) ->
+    Rev;
 rev_to_etag(_Json) ->
     ?LOG("Unhandled JSON format in rev to etag: ~p", [_Json]),
     undefined.

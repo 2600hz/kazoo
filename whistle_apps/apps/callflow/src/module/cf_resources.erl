@@ -14,7 +14,7 @@
 
 -import(cf_call_command, [b_bridge/7, find_failure_branch/2]).
 
--define(VIEW_BY_RULES, <<"resources/listing_active_by_rules">>).
+-define(VIEW_BY_RULES, <<"cf_attributes/active_resources_by_rules">>).
 
 -type endpoint() :: tuple(binary(), json_objects(), raw | binary()).
 -type endpoints() :: [] | [endpoint()].

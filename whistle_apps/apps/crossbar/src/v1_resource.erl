@@ -11,8 +11,8 @@
 -module(v1_resource).
 
 -export([init/1]).
--export([to_json/2, to_xml/2, to_binary/2]).
--export([from_json/2, from_xml/2, from_form/2, from_binary/2]).
+-export([to_json/2, to_binary/2]).
+-export([from_json/2, from_form/2, from_binary/2]).
 -export([encodings_provided/2, finish_request/2, forbidden/2, allowed_methods/2]).
 -export([malformed_request/2, content_types_provided/2, content_types_accepted/2, resource_exists/2]).
 -export([allow_missing_post/2, post_is_create/2, create_path/2, options/2]).
@@ -144,8 +144,8 @@ resource_exists(RD, Context) ->
             {RD1, Context1} = validate(RD, Context),
             case succeeded(Context1) of
                 true ->
-		    ?LOG("requested resource validated, executing"),
-                    execute_request(RD1, Context1);
+		    ?LOG("requested resource validated"),
+                    {Context1#cb_context.req_verb =/= <<"put">>, RD1, Context1};
                 false ->
                     Content = create_resp_content(RD, Context1),
                     RD2 = wrq:append_to_response_body(Content, RD1),
@@ -193,12 +193,15 @@ generate_etag(RD, Context) ->
     {RD1, Context1} = crossbar_bindings:fold(Event, {RD, Context}),
     case Context1#cb_context.resp_etag of
         automatic ->
-            RespContent = create_resp_content(RD, Context1),
-            {mochihex:to_hex(crypto:md5(RespContent)), RD, Context1};
+            Tag = mochihex:to_hex(crypto:md5(create_resp_content(RD1, Context1))),
+            ?LOG("using automatic etag ~s", [Tag]),
+            {Tag, RD1, Context1};
         undefined ->
+            ?LOG("no etag provided, skipping", []),
             {undefined, RD1, Context1};
         Tag when is_list(Tag) ->
-            {undefined, RD1, Context1}
+            ?LOG("using etag ~s", [Tag]),
+            {Tag, RD1, Context1}
     end.
 
 encodings_provided(RD, Context) ->
@@ -211,14 +214,24 @@ expires(RD, #cb_context{resp_expires=Expires}=Context) ->
     crossbar_bindings:fold(Event, {Expires, RD, Context}).
 
 process_post(RD, Context) ->
-    Event = <<"v1_resource.process_post">>,
-    _ = crossbar_bindings:map(Event, {RD, Context}),
-    create_push_response(RD, Context).
+    case execute_request(RD, Context) of
+        {true, RD1, Context1} ->
+            Event = <<"v1_resource.process_post">>,
+            _ = crossbar_bindings:map(Event, {RD1, Context1}),
+            create_push_response(RD1, Context1);
+        Else ->
+            Else
+    end.
 
 delete_resource(RD, Context) ->
-    Event = <<"v1_resource.delete_resource">>,
-    _ = crossbar_bindings:map(Event, {RD, Context}),
-    create_push_response(RD, Context).
+    case execute_request(RD, Context) of
+        {true, RD1, Context1} ->
+            Event = <<"v1_resource.delete_resource">>,
+            _ = crossbar_bindings:map(Event, {RD1, Context1}),
+            create_push_response(RD1, Context1);
+        Else ->
+            Else
+    end.
 
 finish_request(RD, #cb_context{start=T1}=Context) ->
     ?TIMER_TICK("v1.finish_request start"),
@@ -233,24 +246,34 @@ finish_request(RD, #cb_context{start=T1}=Context) ->
 %%% Content Acceptors
 %%%===================================================================
 from_json(RD, Context) ->
-    Event = <<"v1_resource.from_json">>,
-    _ = crossbar_bindings:map(Event, {RD, Context}),
-    create_push_response(RD, Context).
-
-from_xml(RD, Context) ->
-    Event = <<"v1_resource.from_xml">>,
-    _ = crossbar_bindings:map(Event, {RD, Context}),
-    create_push_response(RD, Context).
+    case execute_request(RD, Context) of
+        {true, RD1, Context1} ->
+            Event = <<"v1_resource.from_json">>,
+            _ = crossbar_bindings:map(Event, {RD1, Context1}),
+            create_push_response(RD1, Context1);
+        Else ->
+            Else
+    end.
 
 from_form(RD, Context) ->
-    Event = <<"v1_resource.from_form">>,
-    _ = crossbar_bindings:map(Event, {RD, Context}),
-    create_push_response(RD, Context).
+    case execute_request(RD, Context) of
+        {true, RD1, Context1} ->
+            Event = <<"v1_resource.from_form">>,
+            _ = crossbar_bindings:map(Event, {RD1, Context1}),
+            create_push_response(RD1, Context1);
+        Else ->
+            Else
+    end.
 
 from_binary(RD, Context) ->
-    Event = <<"v1_resource.from_binary">>,
-    _ = crossbar_bindings:map(Event, {RD, Context}),
-    create_push_response(RD, Context).
+    case execute_request(RD, Context) of
+        {true, RD1, Context1} ->
+            Event = <<"v1_resource.from_binary">>,
+            _ = crossbar_bindings:map(Event, {RD1, Context1}),
+            create_push_response(RD1, Context1);
+        Else ->
+            Else
+    end.
 
 %%%===================================================================
 %%% Content Providers
@@ -258,12 +281,6 @@ from_binary(RD, Context) ->
 -spec(to_json/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
 to_json(RD, Context) ->
     Event = <<"v1_resource.to_json">>,
-    _ = crossbar_bindings:map(Event, {RD, Context}),
-    create_pull_response(RD, Context).
-
--spec(to_xml/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
-to_xml(RD, Context) ->
-    Event = <<"v1_resource.to_xml">>,
     _ = crossbar_bindings:map(Event, {RD, Context}),
     create_pull_response(RD, Context).
 
@@ -628,7 +645,7 @@ execute_request_results(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Ve
         true ->
 	    ?TIMER_TICK("v1.execute_request verb=/=put end"),
 	    ?LOG("executed ~s request for ~s: ~p", [Verb, Mod, Params]),
-	    {Verb =/= <<"put">>, RD, Context}
+	    {true, RD, Context}
     end.
 
 %% If we're tunneling PUT through POST, we need to tell webmachine POST is allowed to create a non-existant resource
@@ -656,19 +673,16 @@ create_path(RD, Context) ->
 -spec(create_resp_content/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> iolist()).
 create_resp_content(RD, #cb_context{req_json=ReqJson}=Context) ->
     case get_resp_type(RD) of
-	xml ->
-	    Prop = create_resp_envelope(Context),
-            io_lib:format("<?xml version=\"1.0\"?><crossbar>~s</crossbar>", [encode_xml(lists:reverse(Prop), [])]);
-        json ->
+	binary ->
+	    Context#cb_context.resp_data;
+        _ ->
 	    Prop = create_resp_envelope(Context),
             JSON = mochijson2:encode({struct, Prop}),
 	    case wh_json:get_value(<<"jsonp">>, ReqJson) of
 		undefined -> JSON;
 		JsonFun when is_binary(JsonFun) ->
 		    [JsonFun, "(", JSON, ");"]
-	    end;
-	binary ->
-	    Context#cb_context.resp_data
+	    end
     end.
 
 %%--------------------------------------------------------------------
@@ -798,7 +812,8 @@ get_cors_headers(#cb_context{allow_methods=Allowed}) ->
     [
       {<<"Access-Control-Allow-Origin">>, <<"*">>}
      ,{<<"Access-Control-Allow-Methods">>, string:join([wh_util:to_list(A) || A <- Allowed], ", ")}
-     ,{<<"Access-Control-Allow-Headers">>, <<"Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token">>}
+     ,{<<"Access-Control-Allow-Headers">>, <<"Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token, If-Match">>}
+     ,{<<"Access-Control-Expose-Headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, Location, Etag, ETag">>}
      ,{<<"Access-Control-Max-Age">>, wh_util:to_binary(?SECONDS_IN_DAY)}
     ].
 
@@ -871,90 +886,8 @@ create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespSt
 -spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json|xml|binary).
 get_resp_type(RD) ->
     case wrq:get_resp_header("Content-Type", RD) of
-        "application/xml" -> xml;
         "application/json" -> json;
         "application/x-json" -> json;
 	undefined -> json;
         _Else -> binary
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is used to encode the response proplist in xml
-%% @end
-%%--------------------------------------------------------------------
--spec(encode_xml/2 :: (Prop :: proplist(), Xml :: iolist()) -> iolist()).
-encode_xml([], Xml) ->
-    Xml;
-encode_xml([{K, V}|T], Xml) ->
-    Xml1 =
-    if
-       is_atom(V) orelse is_binary(V) ->
-            case V of
-                <<"true">> -> xml_tag(K, "true", "boolean");
-                true -> xml_tag(K, "true", "boolean");
-                <<"false">> -> xml_tag(K, "false", "boolean");
-                false -> xml_tag(K, "true", "boolean");
-                _Else -> xml_tag(K, mochijson2:encode(V), "string")
-            end;
-       is_number(V) ->
-           xml_tag(K, mochijson2:encode(V), "number");
-       is_list(V) ->
-           xml_tag(K, list_to_xml(lists:reverse(V), []), "array");
-       true ->
-            case V of
-                {struct, Terms} ->
-                    xml_tag(K, encode_xml(Terms, ""), "object");
-                {json, IoList} ->
-                    xml_tag(K, encode_xml(IoList, ""), "json")
-           end
-    end,
-    encode_xml(T, Xml1 ++ Xml).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function loops over a list and creates the XML tags for each
-%% element
-%% @end
-%%--------------------------------------------------------------------
-
--spec list_to_xml/2 :: (Objs, Xml) -> iolist() when
-      Objs :: mochijson(),
-      Xml :: iolist().
-list_to_xml([], Xml) ->
-    Xml;
-list_to_xml([{struct, Terms}|T], Xml) ->
-    Xml1 = xml_tag(encode_xml(Terms, ""), "object"),
-    list_to_xml(T, Xml1 ++ Xml);
-list_to_xml([E|T], Xml) ->
-    Xml1 =
-    if
-        is_atom(E) orelse is_binary(E) ->
-            case E of
-                <<"true">> -> xml_tag("true", "boolean");
-                true -> xml_tag("true", "boolean");
-                <<"false">> -> xml_tag("false", "boolean");
-                false -> xml_tag("true", "boolean");
-                _Else -> xml_tag(mochijson2:encode(E), "string")
-            end;
-        is_number(E) -> xml_tag(mochijson2:encode(E), "number");
-        is_list(E) -> xml_tag(list_to_xml(lists:reverse(E), ""), "array")
-    end,
-    list_to_xml(T, Xml1 ++ Xml).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function creates a XML tag, optionaly with the name
-%% attribute if called as xml_tag/3
-%% @end
-%%--------------------------------------------------------------------
--spec xml_tag/2 :: (Value, Type) -> iolist() when
-      Value :: iolist(),
-      Type :: iolist().
-xml_tag(Value, Type) ->
-    io_lib:format("<~s>~s</~s>~n", [Type, Value, Type]).
-xml_tag(Key, Value, Type) ->
-    io_lib:format("<~s type=\"~s\">~s</~s>~n", [Key, Type, string:strip(Value, both, $"), Key]).
