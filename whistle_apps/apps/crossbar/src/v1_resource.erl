@@ -751,7 +751,7 @@ fix_header(RD, "Location"=H, Url) ->
 	       P -> [":", wh_util:to_list(P)]
 	   end,
 
-    Host = ["\"http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/\""],
+    Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
     ?LOG("host: ~s", [Host]),
 
     %% /v1/accounts/acct_id/module => [module, acct_id, accounts, v1]
@@ -812,7 +812,8 @@ get_cors_headers(#cb_context{allow_methods=Allowed}) ->
     [
       {<<"Access-Control-Allow-Origin">>, <<"*">>}
      ,{<<"Access-Control-Allow-Methods">>, string:join([wh_util:to_list(A) || A <- Allowed], ", ")}
-     ,{<<"Access-Control-Allow-Headers">>, <<"Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token">>}
+     ,{<<"Access-Control-Allow-Headers">>, <<"Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token, If-Match">>}
+     ,{<<"Access-Control-Expose-Headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, Location, Etag, ETag">>}
      ,{<<"Access-Control-Max-Age">>, wh_util:to_binary(?SECONDS_IN_DAY)}
     ].
 
