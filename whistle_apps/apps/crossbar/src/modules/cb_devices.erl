@@ -14,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, lookup_reg/1]).
+-export([start_link/0, lookup_regs/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -375,45 +375,52 @@ is_valid_doc(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% For a given list of {Realm, Username}, check if devices are registered
-%% Returns a list of registered Device IDs
+%% For a given [{Realm, Username}|...], returns  [{Realm, Username}|...]
+%% whose device is registered
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_reg/1 :: ([{Realm, Username},...]) -> [binary(),...] when
+-spec lookup_regs/1 :: ([{Realm, Username},...]) -> [{binary(), binary()},...] when
       Realm :: binary(),
       Username :: binary().
-lookup_reg(RealmUserList) ->
-    {Realm, User} = hd(RealmUserList),
-
+lookup_regs(RealmUserList) ->
     Q = amqp_util:new_queue(),
     ok = amqp_util:bind_q_to_targeted(Q),
     ok = amqp_util:basic_consume(Q),
+    [spawn(fun() -> lookup_registration({Realm, User}, Q) end) || {Realm, User} <- RealmUserList],
+    wait_for_reg_resp(length(RealmUserList), []). %% number of devices we're supposed to get an answer from
 
+lookup_registration({Realm, User}, Q) ->
     ?LOG_SYS("Looking up registration information for ~s@~s", [User, Realm]),
     RegProp = [{<<"Username">>, User}
 	       ,{<<"Realm">>, Realm}
 	       ,{<<"Fields">>, []}
 	       | wh_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"cb_devices">>, <<>>) ],
-    io:format(" >> ~p", [RegProp]),
+    {ok, JSON} = wh_api:reg_query(RegProp),
+    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_QUERY).
 
+wait_for_reg_resp(0, Acc) ->
+    Acc;
+wait_for_reg_resp(Len, Acc) ->
     try
-	case wh_api:reg_query(RegProp) of
-	    {ok, {struct, RegResp}} ->
-		true = wh_api:reg_query_resp_v(RegResp),
-
-		{struct, RegFields} = props:get_value(<<"Fields">>, RegResp, ?EMPTY_JSON_OBJECT),
-
-
-		?LOG_SYS("Received registration information"),
-		%lists:foldr(FilterFun, [], RegFields);
-		RegFields;
-	    timeout ->
-		?LOG_SYS("Looking up registration timed out"),
-		{error, timeout};
-	    {ok, RegResp} -> io:format(" >> error ~p", [wh_api:reg_query_resp_v(RegResp)])
+	receive
+	    {amqp_host_down, _} ->
+		?LOG("lost AMQP connection"),
+		exit(amqp_host_down);
+	    {amqp_lost_channel,no_connection} ->
+		?LOG("lost AMQP connection"),
+		exit(amqp_host_down);
+	    {_, #amqp_msg{payload = Payload}} ->
+		JRegResp = mochijson2:decode(Payload),
+		true = wh_api:reg_query_resp_v(JRegResp),
+		[{wh_json:get_value([<<"Fields">>, <<"Realm">>], JRegResp),
+		  wh_json:get_value([<<"Fields">>, <<"Username">>], JRegResp)} | Acc];
+	    #'basic.consume_ok'{} ->
+		wait_for_reg_resp(Len, Acc)
+	after
+	    500 ->
+		wait_for_reg_resp(Len-1, Acc)
 	end
     catch
-	_:R ->
-	    ?LOG_SYS("Looking up registration threw exception ~p", [R]),
-	    {error, timeout}
+	_:_ ->
+	    wait_for_reg_resp(Len-1, Acc)
     end.
