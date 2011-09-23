@@ -337,20 +337,21 @@ update_device(DocId, #cb_context{req_data=JObj}=Context) ->
 -spec load_device_status/1 :: (Context) -> #cb_context{} when
       Context :: #cb_context{}.
 load_device_status(#cb_context{db_name=Db}=Context) ->
-    %% RegisteredDevices = [[realm1, user1], [realmN, userN], ...], those are owners of currently  registered devices.
-    %% RegisteredDevices is reinjected as keys for devices/sip_credentials
-    RegisteredDevices = case couch_mgr:get_results(<<"registrations">>, <<"reg_doc/realm_and_username">>, []) of
-	    {ok, JObjs} -> lists:foldl(fun(JObj, Acc) -> [wh_json:get_value(<<"key">>, JObj) | Acc] end, [], JObjs)
-	end,
-
-    DevicesJObj = case couch_mgr:get_results(Db, <<"devices/sip_credentials">>, [{<<"keys">>, RegisteredDevices}]) of
-		      {ok, Devices} -> lists:foldl(fun(JObj, Acc) ->
-							   IsReg = lists:member(wh_json:get_value(<<"key">>, JObj), RegisteredDevices),
-							   RegDevice = wh_json:set_value(<<"device_id">>, wh_json:get_value([<<"value">>, <<"authorizing_id">>], JObj), ?EMPTY_JSON_OBJECT),
-							   [wh_json:set_value(<<"registered">>, IsReg, RegDevice)| Acc]
-						   end, [], Devices)
-		  end,
-    crossbar_util:response(DevicesJObj, Context).
+    %% RegDevices = [[realm1, user1], [realmN, userN], ...], those are owners of currently  registered devices.
+    %% RegDevices is reinjected as keys for devices/sip_credentials
+    {ok, JObjs} = couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]),
+    AccountDevices = lists:foldl(fun(JObj, Acc) -> [{wh_json:get_value([<<"doc">>, <<"sip">>, <<"realm">>], JObj),
+						     wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], JObj)} | Acc] end, [], JObjs),
+    RegDevices = lookup_regs(AccountDevices),
+    Result = case RegDevices of
+		 [] -> {struct, []};
+		 [_|_] -> {ok, Devices} = couch_mgr:get_results(Db, <<"devices/sip_credentials">>, [{<<"keys">>, RegDevices}]),
+			  lists:foldl(fun(JObj, Acc) ->
+					      RegDevice = wh_json:set_value(<<"device_id">>, wh_json:get_value(<<"id">>, JObj), ?EMPTY_JSON_OBJECT),
+					      [wh_json:set_value(<<"registered">>, true, RegDevice)| Acc]
+				      end, [], Devices)
+	     end,
+    crossbar_util:response(Result, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -375,8 +376,8 @@ is_valid_doc(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% For a given [{Realm, Username}|...], returns  [{Realm, Username}|...]
-%% whose device is registered
+%% For a given [{Realm, Username}|...], returns  [[Realm, Username]|...]
+%% whose device is registered, ready to be used in a view filter
 %% @end
 %%--------------------------------------------------------------------
 -spec lookup_regs/1 :: ([{Realm, Username},...]) -> [{binary(), binary()},...] when
@@ -412,13 +413,14 @@ wait_for_reg_resp(Len, Acc) ->
 	    {_, #amqp_msg{payload = Payload}} ->
 		JRegResp = mochijson2:decode(Payload),
 		true = wh_api:reg_query_resp_v(JRegResp),
-		[{wh_json:get_value([<<"Fields">>, <<"Realm">>], JRegResp),
-		  wh_json:get_value([<<"Fields">>, <<"Username">>], JRegResp)} | Acc];
+		[[wh_json:get_value([<<"Fields">>, <<"Realm">>], JRegResp),
+		  wh_json:get_value([<<"Fields">>, <<"Username">>], JRegResp)] | Acc];
 	    #'basic.consume_ok'{} ->
 		wait_for_reg_resp(Len, Acc)
 	after
-	    500 ->
-		wait_for_reg_resp(Len-1, Acc)
+	    1000 ->
+		?LOG("Timeout for registration query"),
+		Acc
 	end
     catch
 	_:_ ->
