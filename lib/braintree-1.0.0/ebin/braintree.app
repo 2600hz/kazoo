@@ -6,5 +6,6 @@
               {mod,{braintree_app,[]}},
               {env,[]},
               {modules,[braintree_address,braintree_app,braintree_card,
-                        braintree_customer,braintree_request,braintree_sup,
+                        braintree_customer,braintree_request,
+                        braintree_subscription,braintree_sup,
                         braintree_transaction,braintree_utils]}]}.

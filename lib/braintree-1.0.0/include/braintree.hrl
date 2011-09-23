@@ -92,48 +92,6 @@
                   ,billing_address = undefined :: undefined | #bt_address{}
                  }).
 
--record(bt_transaction, {id
-                         ,status
-                         ,type
-                         ,currency_code
-                         ,amount
-                         ,merchant_account_id
-                         ,order_id
-                         ,purchase_order
-                         ,created_at
-                         ,update_at
-                         ,refund_id
-                         ,refund_ids
-                         ,refunded_transaction
-                         ,settlement_batch
-                         ,avs_error_code
-                         ,avs_postal_response
-                         ,avs_street_response
-                         ,ccv_response_code
-                         ,gateway_rejection
-                         ,processor_authorization_code
-                         ,processor_response_code
-                         ,processor_response_text
-                         ,tax_amount
-                         ,tax_exempt = false
-                         ,billing_address = undefined
-                         ,shipping_address_id = undefined
-                         ,shipping_address = undefined
-                         ,customer_id = undefined
-                         ,customer = undefined
-                         ,payment_token = undefined
-                         ,card = undefined
-                         ,subscription_id = undefined
-                         ,add_ons = undefined
-                         ,discounts = undefined
-%%                         ,descriptor = undefined
-                         ,store_in_vault = false
-                         ,store_on_success = false
-                         ,settle = true
-                         ,change_billing_address = false
-                         ,store_shipping_address = false
-                        }).
-
 -record(bt_customer, {id = undefined :: undefined | string()
                       ,first_name = undefined :: undefined | string()
                       ,last_name = undefined :: undefined | string()
@@ -147,3 +105,79 @@
                       ,credit_cards = [] :: list(#bt_card{})
                       ,addresses = [] :: list(#bt_address{})
                      }).
+
+-record(bt_transaction, {id = undefined :: undefined | string()
+                         ,status = undefined :: undefined | string()
+                         ,type = undefined :: undefined | string()
+                         ,currency_code = undefined :: undefined | string()
+                         ,amount = undefined :: undefined | string()
+                         ,merchant_account_id = undefined :: undefined | string()
+                         ,order_id = undefined :: undefined | string()
+                         ,purchase_order = undefined :: undefined | string()
+                         ,created_at = undefined :: undefined | string()
+                         ,update_at = undefined :: undefined | string()
+                         ,refund_id = undefined :: undefined | string()
+                         ,refund_ids = undefined :: undefined | string()
+                         ,refunded_transaction = undefined :: undefined | string()
+                         ,settlement_batch = undefined :: undefined | string()
+                         ,avs_error_code = undefined :: undefined | string()
+                         ,avs_postal_response = undefined :: undefined | string()
+                         ,avs_street_response = undefined :: undefined | string()
+                         ,ccv_response_code = undefined :: undefined | string()
+                         ,gateway_rejection = undefined :: undefined | string()
+                         ,processor_authorization_code = undefined :: undefined | string()
+                         ,processor_response_code = undefined :: undefined | string()
+                         ,processor_response_text = undefined :: undefined | string()
+                         ,tax_amount = undefined :: undefined | string()
+                         ,tax_exempt = false :: boolean()
+                         ,billing_address = undefined :: undefined | #bt_address{}
+                         ,shipping_address_id = undefined :: undefined | string()
+                         ,shipping_address = undefined :: undefined | #bt_address{}
+                         ,customer_id = undefined :: undefined | string()
+                         ,customer = undefined :: undefined | #bt_customer{}
+                         ,payment_token = undefined :: undefined | string()
+                         ,card = undefined :: undefined | #bt_card{}
+                         ,subscription_id = undefined :: undefined | string()
+                         ,add_ons = undefined :: undefined | string()
+                         ,discounts = undefined :: undefined | string()
+                         ,descriptor = undefined :: undefined | string()
+                         ,store_in_vault = false :: boolean()
+                         ,store_on_success = false :: boolean()
+                         ,settle = true :: boolean()
+                         ,change_billing_address = false :: boolean()
+                         ,store_shipping_address = false :: boolean()
+                        }).
+
+-record(bt_subscription, {id = undefined :: undefined | string()
+                          ,balance = undefined :: undefined | string()
+                          ,billing_dom = undefined :: undefined | string()
+                          ,billing_first_date = undefined :: undefined | string()
+                          ,billing_end_date = undefined :: undefined | string()
+                          ,billing_start_date = undefined :: undefined | string()
+                          ,billing_cycle = undefined :: undefined | string()
+                          ,number_of_cycles = undefined :: undefined | string()
+                          ,days_past_due = undefined :: undefined | string()
+                          ,failure_count = undefined :: undefined | string()
+                          ,merchant_account_id = undefined :: undefined | string()
+                          ,never_expires = true :: boolean()
+                          ,next_bill_amount = undefined :: undefined | string()
+                          ,next_cycle_amount = undefined :: undefined | string()
+                          ,next_bill_date = undefined :: undefined | string()
+                          ,paid_through_date = undefined :: undefined | string()
+                          ,payment_token = undefined :: undefined | string()
+                          ,plan_id = undefined :: undefined | string()
+                          ,price = undefined :: undefined | string()
+                          ,status = undefined :: undefined | string()
+                          ,trial_duration = undefined :: undefined | string()
+                          ,trial_duration_unit = undefined :: undefined | string()
+                          ,trial_period = undefined :: undefined | string()
+                          ,add_ons = undefined :: undefined | string()
+                          ,discounts = undefined :: undefined | string()
+                          ,descriptor = undefined :: undefined | string()
+                          ,transactions = undefined :: undefined | string()
+                          ,do_not_inherit = false :: boolean()
+                          ,start_immediately = true :: boolean()
+                          ,prorate_charges = false :: boolean()
+                          ,revert_on_prorate_fail = false :: boolean()
+                          ,replace_add_ons = false :: boolean()
+                         }).

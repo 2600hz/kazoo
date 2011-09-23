@@ -22,7 +22,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Creates a new customer using the given record
+%% Creates a new transaction using the given record
 %% @end
 %%--------------------------------------------------------------------
 -spec create/1 :: (Transaction) -> bt_result() when
@@ -160,7 +160,7 @@ refund(Id, Amount) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Find a customer by id
+%% Find a transaction by id
 %% @end
 %%--------------------------------------------------------------------
 -spec find/1 :: (Id) -> bt_result() when
@@ -203,7 +203,7 @@ validate_id(Id, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Contert the given XML to a customer record
+%% Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record/1 :: (Xml) -> #bt_transaction{} when
@@ -239,7 +239,7 @@ xml_to_record(Xml) ->
                     ,shipping_address = braintree_address:xml_to_record(Xml, "/transaction/shipping")
                     ,customer = braintree_customer:xml_to_record(Xml, "/transaction/customer")
                     ,card = Card#bt_card{billing_address=BillingAddress}
-                    ,subscription_id = undefined = get_xml_value("/transaction/subscription-id/text()", Xml)}.
+                    ,subscription_id = get_xml_value("/transaction/subscription-id/text()", Xml)}.
 %%                    ,add_ons = undefined = get_xml_value("/transaction/id/text()", Xml)
 %%                    ,discounts = undefined = get_xml_value("/transaction/id/text()", Xml)
 %%                    ,descriptor = undefined = get_xml_value("/transaction/id/text()", Xml)}.
@@ -247,7 +247,7 @@ xml_to_record(Xml) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Contert the given XML to a customer record
+%% Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
 -spec record_to_xml/1 :: (Transaction) -> bt_xml() when
