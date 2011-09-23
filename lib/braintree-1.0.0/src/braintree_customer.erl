@@ -11,7 +11,10 @@
 -include("braintree.hrl").
 
 -export([create/1, update/1, delete/1]).
+%% -export([sale/2, credit/2]).
 -export([all/0, find/1]).
+
+-import(braintree_utils, [get_xml_value/2, make_doc_xml/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -23,7 +26,7 @@
       Customer :: #bt_customer{}.
 create(Customer) ->
     try
-        true = validate_id(Customer),
+        true = validate_id(Customer#bt_customer.id, true),
         Request = record_to_xml(Customer),
         case braintree_request:post("/customers", Request) of
             {ok, Xml} ->
@@ -46,7 +49,7 @@ create(Customer) ->
       Customer :: #bt_customer{}.
 update(Customer) ->
     try
-        true = validate_id(Customer),
+        true = validate_id(Customer#bt_customer.id),
         Request = record_to_xml(Customer),
         case braintree_request:put("/customers/" ++ wh_util:to_list(Customer#bt_customer.id), Request) of
             {ok, Xml} ->
@@ -66,7 +69,9 @@ update(Customer) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete/1 :: (CustomerId) -> bt_result() when
-      CustomerId :: binary() | string().
+      CustomerId :: #bt_customer{} | binary() | string().
+delete(#bt_customer{id=CustomerId}) ->
+    delete(CustomerId);
 delete(CustomerId) ->
     try
         true = validate_id(CustomerId),
@@ -92,7 +97,7 @@ all() ->
     case braintree_request:get("/customers/") of
         {ok, Xml} ->
             Customers = [xml_to_record(Customer)
-                         || Customer <- xmerl_xpath:string("//customers/customer", Xml)],
+                         || Customer <- xmerl_xpath:string("/customers/customer", Xml)],
             {ok, [Customers]};
         {error, _}=E ->
             E
@@ -123,17 +128,23 @@ find(CustomerId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%Verifies that a valid customer id is being used
+%% Verifies that the id being used is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_id/1 :: (Customer) -> boolean() when
-      Customer :: #bt_customer{} | string() | binary().
-validate_id(#bt_customer{id=Id}) ->
-    validate_id(Id);
+-spec validate_id/1 :: (Id) -> boolean() when
+      Id :: string() | binary().
+-spec validate_id/2 :: (Id, AllowUndefined) -> boolean() when
+      Id :: string() | binary(),
+      AllowUndefined :: boolean().
+
 validate_id(Id) ->
+    validate_id(Id, false).
+
+validate_id(undefined, false) ->
+    false;
+validate_id(Id, _) ->
     (Id =/= <<>> andalso Id =/= "")
-        andalso (re:run(Id, "^[0-9A-Za-z_-]+$") =/= nomatch)
-        andalso Id =/= undefined.
+        andalso (re:run(Id, "^[0-9A-Za-z_-]+$") =/= nomatch).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -144,16 +155,20 @@ validate_id(Id) ->
 -spec xml_to_record/1 :: (Xml) -> #bt_customer{} when
       Xml :: bt_xml().
 xml_to_record(Xml) ->
-    #bt_customer{id = braintree_utils:get_xml_value("//customer/id/text()", Xml)
-                 ,first_name = braintree_utils:get_xml_value("//customer/first-name/text()", Xml)
-                 ,last_name = braintree_utils:get_xml_value("//customer/last-name/text()", Xml)
-                 ,company = braintree_utils:get_xml_value("//customer/company/text()", Xml)
-                 ,email = braintree_utils:get_xml_value("//customer/email/text()", Xml)
-                 ,phone = braintree_utils:get_xml_value("//customer/phone/text()", Xml)
-                 ,fax = braintree_utils:get_xml_value("//customer/fax/text()", Xml)
-                 ,website = braintree_utils:get_xml_value("//customer/website/text()", Xml)
-                 ,created_at = braintree_utils:get_xml_value("//customer/created-at/text()", Xml)
-                 ,updated_at = braintree_utils:get_xml_value("//customer/updated-at/text()", Xml)}.
+    #bt_customer{id = get_xml_value("/customer/id/text()", Xml)
+                 ,first_name = get_xml_value("/customer/first-name/text()", Xml)
+                 ,last_name = get_xml_value("/customer/last-name/text()", Xml)
+                 ,company = get_xml_value("/customer/company/text()", Xml)
+                 ,email = get_xml_value("/customer/email/text()", Xml)
+                 ,phone = get_xml_value("/customer/phone/text()", Xml)
+                 ,fax = get_xml_value("/customer/fax/text()", Xml)
+                 ,website = get_xml_value("/customer/website/text()", Xml)
+                 ,created_at = get_xml_value("/customer/created-at/text()", Xml)
+                 ,updated_at = get_xml_value("/customer/updated-at/text()", Xml)
+                 ,credit_cards = [braintree_card:xml_to_record(Card)
+                                  || Card <- xmerl_xpath:string("/customer/credit-cards/credit-card", Xml)]
+                 ,addresses = [braintree_address:xml_to_record(Address)
+                                  || Address <- xmerl_xpath:string("/customer/addresses/address", Xml)]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -171,5 +186,7 @@ record_to_xml(Customer) ->
              ,{'email', Customer#bt_customer.email}
              ,{'phone', Customer#bt_customer.phone}
              ,{'fax', Customer#bt_customer.fax}
-             ,{'website', Customer#bt_customer.website}],
-    braintree_utils:make_doc_xml(Props).
+             ,{'website', Customer#bt_customer.website}
+             |[{'credit-card', braintree_card:record_to_xml(Card)}
+               || Card <- Customer#bt_customer.credit_cards]],
+    make_doc_xml(Props, customer).

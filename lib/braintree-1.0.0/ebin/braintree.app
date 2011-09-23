@@ -5,5 +5,6 @@
               {applications,[kernel,stdlib]},
               {mod,{braintree_app,[]}},
               {env,[]},
-              {modules,[braintree_app,braintree_customer,braintree_request,
-                        braintree_sup,braintree_utils]}]}.
+              {modules,[braintree_address,braintree_app,braintree_card,
+                        braintree_customer,braintree_request,braintree_sup,
+                        braintree_utils]}]}.

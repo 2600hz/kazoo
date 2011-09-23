@@ -70,6 +70,7 @@ delete(Path) ->
       Path :: string(),
       Body :: binary().
 do_request(Method, Path, Body) ->
+    io:format("~s ~s~n~s~n", [Method, Path, Body]),
     Config = #bt_config{},
     Url = ["https://"
            ,braintree_server_url(Config#bt_config.environment)
@@ -82,12 +83,28 @@ do_request(Method, Path, Body) ->
     HTTPOptions = [{ssl,[{verify,0}]}
                    ,{basic_auth, {Config#bt_config.public_key, Config#bt_config.private_key}}],
     case ibrowse:send_req(lists:flatten(Url), Headers, Method, Body, HTTPOptions) of
+        {ok, "401", _, _} ->
+            {error, authentication};
+        {ok, "403", _, Response} ->
+            {error, authorization};
         {ok, "404", _, _} ->
             {error, not_found};
+        {ok, "426", _, _} ->
+            {error, upgrade_required};
+        {ok, "500", _, _} ->
+            {error, server_error};
+        {ok, "503", _, _} ->
+            {error, maintenance};
         {ok, _, _, [$<,$?,$x,$m,$l|_]=Response} ->
+            file:write_file("/tmp/braintree.xml", Response),
+            {Xml, _} = xmerl_scan:string(Response),
+            verify_response(Xml);
+        {ok, _, _, [$<,$s,$e,$a,$r,$c,$h|_]=Response} ->
+            file:write_file("/tmp/braintree.xml", Response),
             {Xml, _} = xmerl_scan:string(Response),
             verify_response(Xml);
         {ok, _, _, Response} ->
+            file:write_file("/tmp/braintree.xml", Response),
             {ok, ?BT_EMPTY_XML};
         {error, _}=E ->
             E
@@ -117,9 +134,9 @@ verify_response(Xml) ->
         [] ->
             {ok, Xml};
         _ ->
-            Errors = [{braintree_utils:get_xml_value("//error/code/text()", Error)
-                       ,braintree_utils:get_xml_value("//error/message/text()", Error)
-                       ,braintree_utils:get_xml_value("//error/attribute/text()", Error)}
-                     || Error <- xmerl_xpath:string("//api-error-response/errors/*/errors/error", Xml)],
+            Errors = [{braintree_utils:get_xml_value("/error/code/text()", Error)
+                       ,braintree_utils:get_xml_value("/error/message/text()", Error)
+                       ,braintree_utils:get_xml_value("/error/attribute/text()", Error)}
+                     || Error <- xmerl_xpath:string("/api-error-response/errors/*/errors/error", Xml)],
             {error, Errors}
     end.

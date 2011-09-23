@@ -11,7 +11,7 @@
 -include_lib("xmerl/include/xmerl.hrl").
 -include("braintree.hrl").
 
--export([get_xml_value/2, make_doc_xml/1]).
+-export([get_xml_value/2, make_doc_xml/2]).
 
 get_xml_value(Path, Xml) ->
     try
@@ -22,13 +22,23 @@ get_xml_value(Path, Xml) ->
             undefined
     end.
 
-make_doc_xml(Fields) ->
-    Xml = xmerl:export_simple([doc_xml_simple(Fields)], xmerl_xml,
-                              [{prolog, ?BT_XML_PROLOG}]),
+make_doc_xml(Props, Root) ->
+    Xml = xmerl:export_simple([doc_xml_simple(Props, Root)], xmerl_xml
+                              ,[{prolog, ?BT_XML_PROLOG}]),
     unicode:characters_to_binary(Xml).
 
-doc_xml_simple(Fields) ->
-    {customer, fields_to_xml_simple(Fields)}.
+doc_xml_simple(Props, Root) ->
+    {Root, props_to_xml(Props, [])}.
 
-fields_to_xml_simple(Fields) ->
-    [ {K, [V]} || {K, V} <- Fields, V =/= undefined ].
+props_to_xml([], Xml) ->
+    Xml;
+props_to_xml([{_, undefined}|T], Xml) ->
+    props_to_xml(T, Xml);
+props_to_xml([{_, []}|T], Xml) ->
+    props_to_xml(T, Xml);
+props_to_xml([{K, [{_, _}|_]=V}|T], Xml) ->
+    props_to_xml(T, [{K, props_to_xml(V, [])}|Xml]);
+props_to_xml([{K, V}|T], Xml) when is_boolean(V) ->
+    props_to_xml(T, [{K, [{type, "boolean"}], [wh_util:to_list(V)]}|Xml]);
+props_to_xml([{K, V}|T], Xml) ->
+    props_to_xml(T, [{K, [wh_util:to_list(V)]}|Xml]).
