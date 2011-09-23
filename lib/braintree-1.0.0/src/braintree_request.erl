@@ -9,8 +9,9 @@
 -module(braintree_request).
 
 -include("braintree.hrl").
+-include_lib("xmerl/include/xmerl.hrl").
 
--export([get/1, post/2, put/3, delete/1]).
+-export([get/1, post/2, put/2, delete/1]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -20,14 +21,8 @@
 %%--------------------------------------------------------------------
 -spec get/1 :: (Path) -> bt_result() when
       Path :: string().
-
 get(Path) ->
-    case do_request(get, Path, <<>>) of
-        {ok, _, _, Body} ->
-            {ok, Body};
-        {error, _}=E ->
-            E
-    end.
+    do_request(get, Path, <<>>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -35,12 +30,11 @@ get(Path) ->
 %% Preform a post request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec post/2 :: (Path, Record) -> bt_result() when
+-spec post/2 :: (Path, Request) -> bt_result() when
       Path :: string(),
-      Record :: #bt_customer{}.
-
-post(Path, Record) ->
-    {error, not_implemented}.
+      Request :: #bt_customer{}.
+post(Path, Request) ->
+    do_request(post, Path, Request).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -48,12 +42,11 @@ post(Path, Record) ->
 %% Preform a put request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec put/2 :: (Path, Record) -> bt_result() when
+-spec put/2 :: (Path, Request) -> bt_result() when
       Path :: string(),
-      Record :: #bt_customer{}.
-
-put(Path, Record) ->
-    {error, not_implemented}.
+      Request :: #bt_customer{}.
+put(Path, Request) ->
+    do_request(put, Path, Request).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -63,10 +56,19 @@ put(Path, Record) ->
 %%--------------------------------------------------------------------
 -spec delete/1 :: (Path) -> bt_result() when
       Path :: string().
-
 delete(Path) ->
-    {error, not_implemented}.
+    do_request(delete, Path, <<>>).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Preform a request to the braintree service
+%% @end
+%%--------------------------------------------------------------------
+-spec do_request/3 :: (Method, Path, Body) -> term() when
+      Method :: atom(),
+      Path :: string(),
+      Body :: binary().
 do_request(Method, Path, Body) ->
     Config = #bt_config{},
     Url = ["https://"
@@ -79,8 +81,45 @@ do_request(Method, Path, Body) ->
                ,{"Content-Type", "application/xml"}],
     HTTPOptions = [{ssl,[{verify,0}]}
                    ,{basic_auth, {Config#bt_config.public_key, Config#bt_config.private_key}}],
-    Options = [],
-    ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions).
+    case ibrowse:send_req(lists:flatten(Url), Headers, Method, Body, HTTPOptions) of
+        {ok, "404", _, _} ->
+            {error, not_found};
+        {ok, _, _, [$<,$?,$x,$m,$l|_]=Response} ->
+            {Xml, _} = xmerl_scan:string(Response),
+            verify_response(Xml);
+        {ok, _, _, Response} ->
+            {ok, ?BT_EMPTY_XML};
+        {error, _}=E ->
+            E
+    end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Get the base URL for the braintree service
+%% @end
+%%--------------------------------------------------------------------
+-spec braintree_server_url/1 :: (Env) -> string() when
+      Env :: string().
 braintree_server_url(Env) ->
     proplists:get_value(Env, ?BT_SERVER_URL).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determine if the response was valid
+%% @end
+%%--------------------------------------------------------------------
+-spec verify_response/1 :: (Xml) -> tuple(ok, bt_xml()) | tuple(error, term()) when
+      Xml :: bt_xml().
+verify_response(Xml) ->
+    case xmerl_xpath:string("//api-error-response", Xml) of
+        [] ->
+            {ok, Xml};
+        _ ->
+            Errors = [{braintree_utils:get_xml_value("//error/code/text()", Error)
+                       ,braintree_utils:get_xml_value("//error/message/text()", Error)
+                       ,braintree_utils:get_xml_value("//error/attribute/text()", Error)}
+                     || Error <- xmerl_xpath:string("//api-error-response/errors/*/errors/error", Xml)],
+            {error, Errors}
+    end.
