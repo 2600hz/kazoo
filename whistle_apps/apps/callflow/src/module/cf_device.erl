@@ -47,7 +47,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
       Timeout :: binary(),
       Call :: #cf_call{}.
 bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid}=Call) ->
-    IgnoreEarlyMedia = ignore_early_media(Endpoints),
+    IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
     case b_bridge(Endpoints, Timeout, <<"internal">>, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
             ?LOG("completed successful bridge to the device"),
@@ -60,18 +60,3 @@ bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid}=Call) ->
             ?LOG("failed to bridge to endpoint ~p", [R]),
             CFPid ! { continue }
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Determine if we should ignore early media
-%% @end
-%%--------------------------------------------------------------------
--spec ignore_early_media/1 :: (Endpoints) -> binary() when
-      Endpoints :: json_objects().
-ignore_early_media(Endpoints) ->
-    Ignore = lists:foldr(fun(Endpoint, Acc) ->
-                                 wh_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
-                                     or Acc
-                         end, false, Endpoints),
-    wh_util:to_binary(Ignore).
