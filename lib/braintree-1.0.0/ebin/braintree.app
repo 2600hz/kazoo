@@ -7,4 +7,4 @@
               {env,[]},
               {modules,[braintree_address,braintree_app,braintree_card,
                         braintree_customer,braintree_request,braintree_sup,
-                        braintree_utils]}]}.
+                        braintree_transaction,braintree_utils]}]}.

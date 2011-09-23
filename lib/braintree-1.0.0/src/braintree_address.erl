@@ -96,8 +96,8 @@ delete(CustomerId, Id) ->
                                       ++ wh_util:to_list(CustomerId)
                                       ++ "/addresses/"
                                       ++ wh_util:to_list(Id)) of
-            {ok, Xml} ->
-                {ok, xml_to_record(Xml)};
+            {ok, _} ->
+                {ok, #bt_address{}};
             {error, _}=E ->
                 E
         end
@@ -202,12 +202,9 @@ record_to_xml(Address) ->
     record_to_xml(Address, false).
 
 record_to_xml(Address, ToString) ->
-    Props = [
-%%             {'customer-id', Address#bt_address.customer_id}
-%%             ,{'id', Address#bt_address.id}
-%%             ,{'first-name', Address#bt_address.first_name}
-%%             ,{'last-name', Address#bt_address.last_name}
-             {'company', Address#bt_address.company}
+    Props = [{'first-name', Address#bt_address.first_name}
+             ,{'last-name', Address#bt_address.last_name}
+             ,{'company', Address#bt_address.company}
              ,{'street-address', Address#bt_address.street_address}
              ,{'extended-address', Address#bt_address.extended_address}
              ,{'locality', Address#bt_address.locality}

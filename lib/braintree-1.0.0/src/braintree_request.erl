@@ -85,7 +85,7 @@ do_request(Method, Path, Body) ->
     case ibrowse:send_req(lists:flatten(Url), Headers, Method, Body, HTTPOptions) of
         {ok, "401", _, _} ->
             {error, authentication};
-        {ok, "403", _, Response} ->
+        {ok, "403", _, _} ->
             {error, authorization};
         {ok, "404", _, _} ->
             {error, not_found};

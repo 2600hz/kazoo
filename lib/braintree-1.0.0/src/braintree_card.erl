@@ -13,7 +13,7 @@
 -export([create/1, create/2, update/1, delete/1]).
 %% -export([sale/2, credit/2]).
 -export([find/1, expired/0, expiring/2]).
--export([xml_to_record/1, record_to_xml/1]).
+-export([xml_to_record/1, xml_to_record/2, record_to_xml/1]).
 
 -import(braintree_utils, [get_xml_value/2, make_doc_xml/2]).
 
@@ -84,8 +84,8 @@ delete(Token) ->
     try
         true = validate_id(Token),
         case braintree_request:delete("/payment_methods/" ++ wh_util:to_list(Token)) of
-            {ok, Xml} ->
-                {ok, xml_to_record(Xml)};
+            {ok, _} ->
+                {ok, #bt_card{}};
             {error, _}=E ->
                 E
         end
@@ -181,24 +181,32 @@ validate_id(Id, _) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (Xml) -> #bt_card{} when
+-spec xml_to_record/1 :: (Xml) -> #bt_address{} when
       Xml :: bt_xml().
+-spec xml_to_record/2 :: (Xml, Base) -> #bt_address{} when
+      Xml :: bt_xml(),
+      Base :: string().
+
 xml_to_record(Xml) ->
-    #bt_card{token = get_xml_value("/credit-card/token/text()", Xml)
-             ,bin = get_xml_value("/credit-card/bin/text()", Xml)
-             ,cardholder_name = get_xml_value("/credit-card/cardholder-name/text()", Xml)
-             ,card_type = get_xml_value("/credit-card/card-type/text()", Xml)
-             ,created_at = get_xml_value("/credit-card/created-at/text()", Xml)
-             ,updated_at = get_xml_value("/credit-card/updated-at/text()", Xml)
-             ,default = wh_util:is_true(get_xml_value("/credit-card/default/text()", Xml))
-             ,expiration_date = get_xml_value("/credit-card/expiration-date/text()", Xml)
-             ,expiration_month = get_xml_value("/credit-card/expiration-month/text()", Xml)
-             ,expiration_year = get_xml_value("/credit-card/expiration-year/text()", Xml)
-             ,expired = wh_util:is_true(get_xml_value("/credit-card/expired/text()", Xml))
-             ,customer_location = get_xml_value("/credit-card/customer-location/text()", Xml)
-             ,last_four = get_xml_value("/credit-card/last-4/text()", Xml)
-             ,customer_id = get_xml_value("/credit-card/customer-id/text()", Xml)
-             ,billing_address = braintree_address:xml_to_record(Xml, "/credit-card/billing-address")}.
+    xml_to_record(Xml, "/credit-card").
+
+xml_to_record(Xml, Base) ->
+    #bt_card{token = get_xml_value(Base ++ "/token/text()", Xml)
+             ,bin = get_xml_value(Base ++ "/bin/text()", Xml)
+             ,cardholder_name = get_xml_value(Base ++ "/cardholder-name/text()", Xml)
+             ,card_type = get_xml_value(Base ++ "/card-type/text()", Xml)
+             ,created_at = get_xml_value(Base ++ "/created-at/text()", Xml)
+             ,updated_at = get_xml_value(Base ++ "/updated-at/text()", Xml)
+             ,default = wh_util:is_true(get_xml_value(Base ++ "/default/text()", Xml))
+             ,expiration_date = get_xml_value(Base ++ "/expiration-date/text()", Xml)
+             ,expiration_month = get_xml_value(Base ++ "/expiration-month/text()", Xml)
+             ,expiration_year = get_xml_value(Base ++ "/expiration-year/text()", Xml)
+             ,expired = wh_util:is_true(get_xml_value(Base ++ "/expired/text()", Xml))
+             ,customer_location = get_xml_value(Base ++ "/customer-location/text()", Xml)
+             ,last_four = get_xml_value(Base ++ "/last-4/text()", Xml)
+             ,customer_id = get_xml_value(Base ++ "/customer-id/text()", Xml)
+             ,billing_address = braintree_address:xml_to_record(Xml, Base ++ "/billing-address")
+             ,billing_address_id = get_xml_value(Base ++ "/billing-address/id/text()", Xml)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -217,23 +225,49 @@ record_to_xml(Card) ->
 
 record_to_xml(Card, ToString) ->
     Props = [{'token', Card#bt_card.token}
-%%             ,{'bin', Card#bt_card.bin}
              ,{'cardholder-name', Card#bt_card.cardholder_name}
-%%             ,{'card-type', Card#bt_card.card_type}
-%%             ,{'default', Card#bt_card.default}
              ,{'expiration-date', Card#bt_card.expiration_date}
              ,{'expiration-month', Card#bt_card.expiration_month}
              ,{'expiration-year', Card#bt_card.expiration_year}
-%%             ,{'expired', Card#bt_card.expired}
-%%             ,{'customer-location', Card#bt_card.customer_location}
-%%             ,{'last-4', Card#bt_card.last_four}
              ,{'customer-id', Card#bt_card.customer_id}
              ,{'number', Card#bt_card.number}
-             ,{'cvv', Card#bt_card.cvv}],
-    Props1 = case Card#bt_card.make_default of
-                 true -> [{'options', [{'make-default', true}]}|Props];
-                 _ -> Props
-             end,
+             ,{'cvv', Card#bt_card.cvv}
+             ,{'billing-address-id', Card#bt_card.billing_address_id}],
+    Conditionals = [fun(#bt_card{billing_address=undefined}, P) ->
+                            P;
+                       (#bt_card{billing_address=BA}, P) ->
+                            [{'billing-address', braintree_address:record_to_xml(BA)}|P]
+                    end,
+                    fun(#bt_card{update_existing=true}, P) ->
+                            case proplists:get_value('options', P) of
+                                undefined ->
+                                    [{'options', [{'update-existing-token', Card#bt_card.token}]}
+                                     |proplists:delete('token', P)];
+                                Options ->
+                                    Options1 = [{'update-existing-token', Card#bt_card.token}|Options],
+                                    [{'options', Options1}
+                                     |proplists:delete('token', proplists:delete('options', P))]
+                            end;
+                       (_, P) ->
+                            P
+                    end,
+                    fun(#bt_card{verify=true}, P) ->
+                            case proplists:get_value('options', P) of
+                                undefined ->
+                                    [{'options', [{'verify-card', true}]}|P];
+                                Options ->
+                                    Options1 = [{'verify-card', true}|Options],
+                                    [{'options', Options1}|proplists:delete('options', P)]
+                            end;
+                       (_, P) ->
+                            P
+                    end,
+                    fun(#bt_card{make_default=true}, P) ->
+                            [{'options', [{'make-default', true}]}|P];
+                       (_, P) ->
+                            P
+                    end],
+    Props1 = lists:foldr(fun(F, P) -> F(Card, P) end, Props, Conditionals),
     case ToString of
         true -> make_doc_xml(Props1, 'credit-card');
         false -> Props1
