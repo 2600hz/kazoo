@@ -15,7 +15,7 @@
 -export([get_binary_value/2, get_binary_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3]).
 
--export([get_value/2, get_value/3]).
+-export([get_value/2, get_value/3, get_values/1]).
 -export([get_keys/1, get_keys/2]).
 -export([set_value/3, new/0]).
 -export([delete_key/2, delete_key/3]).
@@ -242,6 +242,14 @@ get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
     end;
 get_value1(_, _, Default) -> Default.
 
+%% split the json object into values and the corresponding keys
+-spec get_values/1 :: (JObj) -> {Values, Keys} when
+      JObj :: json_object(),
+      Values :: [json_term(),...] | [],
+      Keys :: [json_string(),...] | [].
+get_values(JObj) ->
+    lists:unzip([ {?MODULE:get_value(Key, JObj), Key} || Key <- ?MODULE:get_keys(JObj) ]).
+
 %% Figure out how to set the current key among a list of objects
 
 -spec set_value/3 :: (Key, Value, JObj) -> json_object() | json_objects() when
@@ -373,7 +381,7 @@ no_prune([K], {struct, Doc}) ->
 	[] -> ?EMPTY_JSON_OBJECT;
 	L -> {struct, L}
     end;
-no_prune([K|T], {struct, Doc}=JObj) -> 
+no_prune([K|T], {struct, Doc}=JObj) ->
    case props:get_value(K, Doc) of
 	undefined -> JObj;
 	V ->
@@ -689,4 +697,13 @@ set_value_normalizer_test() ->
     ?assertEqual(normalize_jobj(?T4R3), ?T4R3V),
 
     ?assertEqual(normalize_jobj(?T5R1), ?T5R1V).
+
+get_values_test() ->
+    ?assertEqual(true, are_all_there(?D1, ["d1v1", d1v2, ["d1v3.1", "d1v3.2", "d1v3.3"]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
+
+are_all_there(JObj, Vs, Ks) ->
+    {Values, Keys} = ?MODULE:get_values(JObj),
+    lists:all(fun(K) -> lists:member(K, Keys) end, Ks) andalso
+        lists:all(fun(V) -> lists:member(V, Values) end, Vs).
+
 -endif.
