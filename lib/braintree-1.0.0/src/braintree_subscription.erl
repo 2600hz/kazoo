@@ -129,40 +129,14 @@ find(Id) ->
       Quantity :: integer() | binary() | string().
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_list(Quantity) ->
     update_addon_quantity(Subscription, AddOnId, wh_util:to_list(Quantity));
-update_addon_quantity(#bt_subscription{add_ons=AddOns, id=Id}=Subscription, AddOnId, "0") ->
+update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Quantity) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         false ->
-            {ok, Subscription};
-        _ ->
-            Xml = [{'subscription', [{'add-ons', [{'remove', [{'type', "array"}], [{'item', [AddOnId]}]}]}]}],
-            Request = xmerl:export_simple(Xml, xmerl_xml, [{prolog, ?BT_XML_PROLOG}]),
-            case braintree_request:put("/subscriptions/" ++ wh_util:to_list(Id), unicode:characters_to_binary(Request)) of
-                {ok, Response} ->
-                    {ok, xml_to_record(Response)};
-                {error, _}=E ->
-                    E
-            end
-    end;
-update_addon_quantity(#bt_subscription{add_ons=AddOns, id=Id}=Subscription, AddOnId, Quantity) ->
-    Xml = case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
-              false ->
-                  AddOn = [{'inherited-from-id', [AddOnId]}, {'quantity', [Quantity]}],
-                  [{'subscription', [{'add-ons', [{'add', [{'type', "array"}], [{'item', AddOn}]}]}]}];
-              #bt_addon{quantity=Quantity} ->
-                  nochange;
-              _ ->
-                  AddOn = [{'existing-id', [AddOnId]}, {'quantity', [Quantity]}],
-                  [{'subscription', [{'add-ons', [{'update', [{'type', "array"}], [{'item', AddOn}]}]}]}]
-          end,
-    Request = (Xml =:= nochange) orelse xmerl:export_simple(Xml, xmerl_xml, [{prolog, ?BT_XML_PROLOG}]),
-    case (Xml =:= nochange) orelse
-        braintree_request:put("/subscriptions/" ++ wh_util:to_list(Id), unicode:characters_to_binary(Request)) of
-        true ->
-            {ok, Subscription};
-        {ok, Response} ->
-            {ok, xml_to_record(Response)};
-        {error, _}=E ->
-            E
+            AddOn = #bt_addon{inherited_from=AddOnId, quantity=Quantity},
+            {ok, Subscription#bt_subscription{add_ons=[AddOn|AddOns]}};
+        AddOn ->
+            AddOn1 = AddOn#bt_addon{existing_id=AddOnId, quantity=Quantity},
+            {ok, Subscription#bt_subscription{add_ons=[AddOn1|lists:keydelete(AddOnId, #bt_addon.id, AddOns)]}}
     end;
 update_addon_quantity(SubscriptionId, AddOnId, Quantity) ->
     case find(SubscriptionId) of
@@ -256,8 +230,6 @@ record_to_xml(Subscription) ->
 
 record_to_xml(Subscription, ToString) ->
     Props = [{'id', Subscription#bt_subscription.id}
-             ,{'billing-day-of-month', Subscription#bt_subscription.billing_dom}
-             ,{'first-billing-date', Subscription#bt_subscription.billing_first_date}
              ,{'merchant-account-id', Subscription#bt_subscription.merchant_account_id}
              ,{'never-expires', Subscription#bt_subscription.never_expires}
              ,{'number-of-billing-cycles', Subscription#bt_subscription.number_of_cycles}
@@ -266,7 +238,8 @@ record_to_xml(Subscription, ToString) ->
              ,{'price', Subscription#bt_subscription.price}
              ,{'trial-duration', Subscription#bt_subscription.trial_duration}
              ,{'trial-duration-unit', Subscription#bt_subscription.trial_duration_unit}
-             ,{'trial-period', Subscription#bt_subscription.trial_period}],
+             ,{'trial-period', Subscription#bt_subscription.trial_period}
+             ,{'add-ons', create_addon_changes(Subscription#bt_subscription.add_ons)}],
     Conditionals = [fun(#bt_subscription{do_not_inherit=true}, P) ->
                             case proplists:get_value('options', P) of
                                 undefined ->
@@ -320,4 +293,27 @@ record_to_xml(Subscription, ToString) ->
     case ToString of
         true -> make_doc_xml(Props1, 'subscription');
         false -> Props1
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determine the necessary steps to change the add ons
+%% @end
+%%--------------------------------------------------------------------
+-spec create_addon_changes/1 :: (AddOns) -> undefined | list() when
+      AddOns :: list().
+create_addon_changes(AddOns) ->
+    Remove = [{'item', Id}
+              || #bt_addon{id=Id, quantity=Q} <- AddOns, Q =:= "0"],
+    Add = [{'item', [{'inherited_from_id', IFId},{'quantity', Q}]}
+           || #bt_addon{quantity=Q, inherited_from=IFId} <- AddOns, IFId =/= undefined, Q =/= "0"],
+    Update = [{'item', [{'existing_id', EId},{'quantity', Q}]}
+              || #bt_addon{quantity=Q, existing_id=EId} <- AddOns, EId =/= undefined, Q =/= "0"],
+    Changes = [{'remove', [{'type', "array"}], Remove}
+               ,{'add', [{'type', "array"}], Add}
+               ,{'update', [{'type', "array"}], Update}],
+    case [Change || {_, _, V}=Change <- Changes, V =/= []] of
+        [] -> undefined;
+        Else -> Else
     end.

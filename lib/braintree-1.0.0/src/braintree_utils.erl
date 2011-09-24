@@ -36,9 +36,21 @@ props_to_xml([{_, undefined}|T], Xml) ->
     props_to_xml(T, Xml);
 props_to_xml([{_, []}|T], Xml) ->
     props_to_xml(T, Xml);
+
 props_to_xml([{K, [{_, _}|_]=V}|T], Xml) ->
+    props_to_xml(T, [{K, props_to_xml(V, [])}|Xml]);
+props_to_xml([{K, [{_, _, _}|_]=V}|T], Xml) ->
     props_to_xml(T, [{K, props_to_xml(V, [])}|Xml]);
 props_to_xml([{K, V}|T], Xml) when is_boolean(V) ->
     props_to_xml(T, [{K, [{type, "boolean"}], [wh_util:to_list(V)]}|Xml]);
 props_to_xml([{K, V}|T], Xml) ->
-    props_to_xml(T, [{K, [wh_util:to_list(V)]}|Xml]).
+    props_to_xml(T, [{K, [wh_util:to_list(V)]}|Xml]);
+
+props_to_xml([{K, Attr, [{_, _}|_]=V}|T], Xml) ->
+    props_to_xml(T, [{K, Attr, props_to_xml(V, [])}|Xml]);
+props_to_xml([{K, Attr, [{_, _, _}|_]=V}|T], Xml) ->
+    props_to_xml(T, [{K, Attr, props_to_xml(V, [])}|Xml]);
+props_to_xml([{K, Attr, V}|T], Xml) when is_boolean(V) ->
+    props_to_xml(T, [{K, [{type, "boolean"}|Attr], [wh_util:to_list(V)]}|Xml]);
+props_to_xml([{K, Attr, V}|T], Xml) ->
+    props_to_xml(T, [{K, Attr, [wh_util:to_list(V)]}|Xml]).

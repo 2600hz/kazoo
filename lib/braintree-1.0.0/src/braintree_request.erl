@@ -70,7 +70,7 @@ delete(Path) ->
       Path :: string(),
       Body :: binary().
 do_request(Method, Path, Body) ->
-    io:format("~s ~s~n~s~n", [Method, Path, Body]),
+%%    io:format("~s ~s~n~s~n", [Method, Path, Body]),
     Config = #bt_config{},
     Url = ["https://"
            ,braintree_server_url(Config#bt_config.environment)
@@ -96,15 +96,15 @@ do_request(Method, Path, Body) ->
         {ok, "503", _, _} ->
             {error, maintenance};
         {ok, _, _, [$<,$?,$x,$m,$l|_]=Response} ->
-            file:write_file("/tmp/braintree.xml", Response),
+%%            file:write_file("/tmp/braintree.xml", Response),
             {Xml, _} = xmerl_scan:string(Response),
             verify_response(Xml);
         {ok, _, _, [$<,$s,$e,$a,$r,$c,$h|_]=Response} ->
-            file:write_file("/tmp/braintree.xml", Response),
+%%            file:write_file("/tmp/braintree.xml", Response),
             {Xml, _} = xmerl_scan:string(Response),
             verify_response(Xml);
-        {ok, _, _, Response} ->
-            file:write_file("/tmp/braintree.xml", Response),
+        {ok, _, _, _Response} ->
+%%            file:write_file("/tmp/braintree.xml", _Response),
             {ok, ?BT_EMPTY_XML};
         {error, _}=E ->
             E
