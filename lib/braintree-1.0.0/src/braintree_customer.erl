@@ -148,7 +148,7 @@ validate_id(Id, _) ->
         andalso (re:run(Id, "^[0-9A-Za-z_-]+$") =/= nomatch).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Contert the given XML to a customer record
 %% @end
@@ -179,7 +179,7 @@ xml_to_record(Xml, Base) ->
                                   || Address <- xmerl_xpath:string(Base ++ "/addresses/address", Xml)]}.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Contert the given XML to a customer record
 %% @end

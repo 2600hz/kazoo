@@ -13,6 +13,7 @@
 -export([create/1, create/2, update/1, cancel/1]).
 -export([find/1]).
 -export([xml_to_record/1, xml_to_record/2, record_to_xml/1]).
+-export([update_addon_quantity/3]).
 
 -import(braintree_utils, [get_xml_value/2, make_doc_xml/2]).
 
@@ -116,6 +117,62 @@ find(Id) ->
         end.
 
 %%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Really ugly function to update a add on for a given subscription
+%% or subscription id
+%% @end
+%%--------------------------------------------------------------------
+-spec update_addon_quantity/3 :: (Subscription, AddOnId, Quantity) -> bt_result() when
+      Subscription :: #bt_subscription{} | binary() | string(),
+      AddOnId :: binary() | string(),
+      Quantity :: integer() | binary() | string().
+update_addon_quantity(Subscription, AddOnId, Quantity) when not is_list(Quantity) ->
+    update_addon_quantity(Subscription, AddOnId, wh_util:to_list(Quantity));
+update_addon_quantity(#bt_subscription{add_ons=AddOns, id=Id}=Subscription, AddOnId, "0") ->
+    case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
+        false ->
+            {ok, Subscription};
+        _ ->
+            Xml = [{'subscription', [{'add-ons', [{'remove', [{'type', "array"}], [{'item', [AddOnId]}]}]}]}],
+            Request = xmerl:export_simple(Xml, xmerl_xml, [{prolog, ?BT_XML_PROLOG}]),
+            case braintree_request:put("/subscriptions/" ++ wh_util:to_list(Id), unicode:characters_to_binary(Request)) of
+                {ok, Response} ->
+                    {ok, xml_to_record(Response)};
+                {error, _}=E ->
+                    E
+            end
+    end;
+update_addon_quantity(#bt_subscription{add_ons=AddOns, id=Id}=Subscription, AddOnId, Quantity) ->
+    Xml = case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
+              false ->
+                  AddOn = [{'inherited-from-id', [AddOnId]}, {'quantity', [Quantity]}],
+                  [{'subscription', [{'add-ons', [{'add', [{'type', "array"}], [{'item', AddOn}]}]}]}];
+              #bt_addon{quantity=Quantity} ->
+                  nochange;
+              _ ->
+                  AddOn = [{'existing-id', [AddOnId]}, {'quantity', [Quantity]}],
+                  [{'subscription', [{'add-ons', [{'update', [{'type', "array"}], [{'item', AddOn}]}]}]}]
+          end,
+    Request = (Xml =:= nochange) orelse xmerl:export_simple(Xml, xmerl_xml, [{prolog, ?BT_XML_PROLOG}]),
+    case (Xml =:= nochange) orelse
+        braintree_request:put("/subscriptions/" ++ wh_util:to_list(Id), unicode:characters_to_binary(Request)) of
+        true ->
+            {ok, Subscription};
+        {ok, Response} ->
+            {ok, xml_to_record(Response)};
+        {error, _}=E ->
+            E
+    end;
+update_addon_quantity(SubscriptionId, AddOnId, Quantity) ->
+    case find(SubscriptionId) of
+        {ok, Subscription} ->
+            update_addon_quantity(Subscription, AddOnId, Quantity);
+        {error, _}=E ->
+            E
+    end.
+
+%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Verifies that the id being used is valid
@@ -137,7 +194,7 @@ validate_id(Id, _) ->
         andalso (re:run(Id, "^[0-9A-Za-z_-]+$") =/= nomatch).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Contert the given XML to a subscription record
 %% @end
@@ -175,14 +232,15 @@ xml_to_record(Xml, Base) ->
                      ,trial_duration = get_xml_value(Base ++ "/trial-duration/text()", Xml)
                      ,trial_duration_unit = get_xml_value(Base ++ "/trial-duration-unit/text()", Xml)
                      ,trial_period = get_xml_value(Base ++ "/trial-period/text()", Xml)
-%%                     ,add_ons = get_xml_value(Base ++ "/token/text()", Xml)
+                     ,add_ons = [braintree_addon:xml_to_record(Addon)
+                                 || Addon <- xmerl_xpath:string(Base ++ "/add-ons/add-on", Xml)]
 %%                     ,discounts = get_xml_value(Base ++ "/token/text()", Xml)
 %%                     ,descriptor = get_xml_value(Base ++ "/token/text()", Xml)
-                     ,transactions = [braintree_transaction:xml_to_record(Card)
-                                      || Card <- xmerl_xpath:string(Base ++ "/transactions/transaction", Xml)]}.
+                     ,transactions = [braintree_transaction:xml_to_record(Trans)
+                                      || Trans <- xmerl_xpath:string(Base ++ "/transactions/transaction", Xml)]}.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Contert the given XML to a subscription record
 %% @end

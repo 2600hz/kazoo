@@ -15,7 +15,7 @@
 -export([credit/1, credit/2, quick_credit/2]).
 -export([void/1, refund/1, refund/2]).
 -export([find/1]).
--export([xml_to_record/1, record_to_xml/1]).
+-export([xml_to_record/1, xml_to_record/2, record_to_xml/1]).
 
 -import(braintree_utils, [get_xml_value/2, make_doc_xml/2]).
 
@@ -201,51 +201,59 @@ validate_id(Id, _) ->
         andalso (re:run(Id, "^[0-9A-Za-z_-]+$") =/= nomatch).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record/1 :: (Xml) -> #bt_transaction{} when
       Xml :: bt_xml().
+-spec xml_to_record/2 :: (Xml, Base) -> #bt_address{} when
+      Xml :: bt_xml(),
+      Base :: string().
+
 xml_to_record(Xml) ->
-    BillingAddress = braintree_address:xml_to_record(Xml, "/transaction/billing"),
-    Card = braintree_card:xml_to_record(Xml, "/transaction/credit-card"),
-    #bt_transaction{id = get_xml_value("/transaction/id/text()", Xml)
-                    ,status = get_xml_value("/transaction/status/text()", Xml)
-                    ,type = get_xml_value("/transaction/type/text()", Xml)
-                    ,currency_code = get_xml_value("/transaction/currency-iso-code/text()", Xml)
-                    ,amount = get_xml_value("/transaction/amount/text()", Xml)
-                    ,merchant_account_id = get_xml_value("/transaction/merchant-account-id/text()", Xml)
-                    ,order_id = get_xml_value("/transaction/order-id/text()", Xml)
-                    ,purchase_order = get_xml_value("/transaction/purchase-order-number/text()", Xml)
-                    ,created_at = get_xml_value("/transaction/created-at/text()", Xml)
-                    ,update_at = get_xml_value("/transaction/updated-at/text()", Xml)
-                    ,refund_id = get_xml_value("/transaction/refund-id/text()", Xml)
-%%                    ,refund_ids = get_xml_value("/transaction/id/text()", Xml)
-                    ,refunded_transaction = get_xml_value("/transaction/refunded-transaction-id /text()", Xml)
-                    ,settlement_batch = get_xml_value("/transaction/settlement-batch-id/text()", Xml)
-                    ,avs_error_code = get_xml_value("/transaction/avs-error-response-code/text()", Xml)
-                    ,avs_postal_response = get_xml_value("/transaction/avs-postal-code-response-code/text()", Xml)
-                    ,avs_street_response = get_xml_value("/transaction/avs-street-address-response-code/text()", Xml)
-                    ,ccv_response_code = get_xml_value("/transaction/cvv-response-code/text()", Xml)
-                    ,gateway_rejection = get_xml_value("/transaction/gateway-rejection-reason/text()", Xml)
-                    ,processor_authorization_code = get_xml_value("/transaction/processor-authorization-code/text()", Xml)
-                    ,processor_response_code = get_xml_value("/transaction/processor-response-code/text()", Xml)
-                    ,processor_response_text = get_xml_value("/transaction/processor-response-text/text()", Xml)
-                    ,tax_amount = get_xml_value("/transaction/tax-amount/text()", Xml)
-                    ,tax_exempt = wh_util:is_true(get_xml_value("/transaction/tax-exempt/text()", Xml))
+    xml_to_record(Xml, "/transaction").
+
+xml_to_record(Xml, Base) ->
+    BillingAddress = braintree_address:xml_to_record(Xml, Base ++ "/billing"),
+    Card = braintree_card:xml_to_record(Xml, Base ++ "/credit-card"),
+    #bt_transaction{id = get_xml_value(Base ++ "/id/text()", Xml)
+                    ,status = get_xml_value(Base ++ "/status/text()", Xml)
+                    ,type = get_xml_value(Base ++ "/type/text()", Xml)
+                    ,currency_code = get_xml_value(Base ++ "/currency-iso-code/text()", Xml)
+                    ,amount = get_xml_value(Base ++ "/amount/text()", Xml)
+                    ,merchant_account_id = get_xml_value(Base ++ "/merchant-account-id/text()", Xml)
+                    ,order_id = get_xml_value(Base ++ "/order-id/text()", Xml)
+                    ,purchase_order = get_xml_value(Base ++ "/purchase-order-number/text()", Xml)
+                    ,created_at = get_xml_value(Base ++ "/created-at/text()", Xml)
+                    ,update_at = get_xml_value(Base ++ "/updated-at/text()", Xml)
+                    ,refund_id = get_xml_value(Base ++ "/refund-id/text()", Xml)
+%%                    ,refund_ids = get_xml_value(Base ++ "/id/text()", Xml)
+                    ,refunded_transaction = get_xml_value(Base ++ "/refunded-transaction-id /text()", Xml)
+                    ,settlement_batch = get_xml_value(Base ++ "/settlement-batch-id/text()", Xml)
+                    ,avs_error_code = get_xml_value(Base ++ "/avs-error-response-code/text()", Xml)
+                    ,avs_postal_response = get_xml_value(Base ++ "/avs-postal-code-response-code/text()", Xml)
+                    ,avs_street_response = get_xml_value(Base ++ "/avs-street-address-response-code/text()", Xml)
+                    ,ccv_response_code = get_xml_value(Base ++ "/cvv-response-code/text()", Xml)
+                    ,gateway_rejection = get_xml_value(Base ++ "/gateway-rejection-reason/text()", Xml)
+                    ,processor_authorization_code = get_xml_value(Base ++ "/processor-authorization-code/text()", Xml)
+                    ,processor_response_code = get_xml_value(Base ++ "/processor-response-code/text()", Xml)
+                    ,processor_response_text = get_xml_value(Base ++ "/processor-response-text/text()", Xml)
+                    ,tax_amount = get_xml_value(Base ++ "/tax-amount/text()", Xml)
+                    ,tax_exempt = wh_util:is_true(get_xml_value(Base ++ "/tax-exempt/text()", Xml))
                     ,billing_address = BillingAddress
-                    ,shipping_address = braintree_address:xml_to_record(Xml, "/transaction/shipping")
-                    ,customer = braintree_customer:xml_to_record(Xml, "/transaction/customer")
+                    ,shipping_address = braintree_address:xml_to_record(Xml, Base ++ "/shipping")
+                    ,customer = braintree_customer:xml_to_record(Xml, Base ++ "/customer")
                     ,card = Card#bt_card{billing_address=BillingAddress}
-                    ,subscription_id = get_xml_value("/transaction/subscription-id/text()", Xml)}.
-%%                    ,add_ons = undefined = get_xml_value("/transaction/id/text()", Xml)
-%%                    ,discounts = undefined = get_xml_value("/transaction/id/text()", Xml)
-%%                    ,descriptor = undefined = get_xml_value("/transaction/id/text()", Xml)}.
+                    ,subscription_id = get_xml_value(Base ++ "/subscription-id/text()", Xml)
+                    ,add_ons = [braintree_addon:xml_to_record(Addon)
+                                || Addon <- xmerl_xpath:string(Base ++ "/add-ons/add-on", Xml)]}.
+%%                    ,discounts = undefined = get_xml_value(Base ++ "/id/text()", Xml)
+%%                    ,descriptor = undefined = get_xml_value(Base ++ "/id/text()", Xml)}.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Contert the given XML to a transaction record
 %% @end
