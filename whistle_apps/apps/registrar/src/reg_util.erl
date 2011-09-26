@@ -66,14 +66,14 @@ remove_old_regs(User, Realm, Cache) ->
 	    ID = wh_json:get_value(<<"id">>, OldDoc),
 	    wh_cache:erase_local(Cache, cache_reg_key(ID)),
 	    {'ok', Rev} = couch_mgr:lookup_doc_rev(?REG_DB, ID),
-	    couch_mgr:del_doc(?REG_DB, {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]});
+	    couch_mgr:del_doc(?REG_DB, wh_json:from_list([{<<"_id">>, ID}, {<<"_rev">>, Rev}]));
 	{'ok', OldDocs} ->
 	    spawn(fun() ->
 			  DelDocs = [ begin
 					  ID = wh_json:get_value(<<"id">>, Doc),
 					  wh_cache:erase_local(Cache, cache_reg_key(ID)),
 					  case couch_mgr:lookup_doc_rev(<<"registrations">>, ID) of
-					      {'ok', Rev} -> {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]};
+					      {'ok', Rev} -> wh_json:from_list([{<<"_id">>, ID}, {<<"_rev">>, Rev}]);
 					      _ -> ?EMPTY_JSON_OBJECT
 					  end
 				      end || Doc <- OldDocs ],
