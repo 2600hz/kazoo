@@ -1,3 +1,5 @@
+-ifndef(WHISTLE_LOG_INCLUDED).
+
 -define(LOG_SYSTEM_ID, "000000000000").
 
 -define(LOG_CALLID_FUN(FunCallID),
@@ -5,12 +7,12 @@
 
 -define(LOG_START(Format),
 	(fun() ->
-		 LogCallId = ?LOG_CALLID_FUN(get(callid)),
+		 LogCallId = ?LOG_CALLID_FUN(erlang:get(callid)),
 		 logger:info("~s|start|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self()])
 	 end)()).
 -define(LOG_START(Format, Data),
 	(fun() ->
-		 LogCallId = ?LOG_CALLID_FUN(get(callid)),
+		 LogCallId = ?LOG_CALLID_FUN(erlang:get(callid)),
 		 logger:info("~s|start|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self() | Data])
 	 end)()).
 -define(LOG_START(CallId, Format, Data),
@@ -19,12 +21,12 @@
 
 -define(LOG(Format),
 	(fun() ->
-		 LogCallId = ?LOG_CALLID_FUN(get(callid)),
+		 LogCallId = ?LOG_CALLID_FUN(erlang:get(callid)),
 		 logger:info("~s|log|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self()])
 	 end)()).
 -define(LOG(Format, Data),
 	(fun() ->
-		 LogCallId = ?LOG_CALLID_FUN(get(callid)),
+		 LogCallId = ?LOG_CALLID_FUN(erlang:get(callid)),
 		 logger:info("~s|log|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self() | Data])
 	 end)()).
 -define(LOG(CallId, Format, Data),
@@ -33,12 +35,12 @@
 
 -define(LOG_END(Format),
 	(fun() ->
-		 LogCallId = ?LOG_CALLID_FUN(get(callid)),
+		 LogCallId = ?LOG_CALLID_FUN(erlang:get(callid)),
 		 logger:info("~s|end|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self()])
 	 end)()).
 -define(LOG_END(Format, Data),
 	(fun() ->
-		 LogCallId = ?LOG_CALLID_FUN(get(callid)),
+		 LogCallId = ?LOG_CALLID_FUN(erlang:get(callid)),
 		 logger:info("~s|end|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self() | Data])
 	 end)()).
 -define(LOG_END(CallId, Format, Data),
@@ -47,13 +49,16 @@
 
 -define(LOG_SYS(Format),
 	(fun() ->
-		 LogCallId = ?LOG_CALLID_FUN(get(callid)),
+		 LogCallId = ?LOG_CALLID_FUN(erlang:get(callid)),
 		 logger:info("~s|sys|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self()])
 	end)()).
 -define(LOG_SYS(Format, Data),
 	(fun() ->
-		 LogCallId = ?LOG_CALLID_FUN(get(callid)),
+		 LogCallId = ?LOG_CALLID_FUN(erlang:get(callid)),
 		 logger:info("~s|sys|~p:~b (~w) " ++ Format, [LogCallId, ?MODULE, ?LINE, self() | Data])
 	end)()).
 -define(LOG_SYS(CallId, Format, Data),
 	logger:info("~s|sys|~p:~b (~w) " ++ Format, [CallId, ?MODULE, ?LINE, self() | Data])).
+
+-define(WHISTLE_LOG_INCLUDED, true).
+-endif.
