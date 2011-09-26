@@ -138,8 +138,6 @@ handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent,
     {noreply, #state{}};
 handle_cast({response_recv, JObj}, State) ->
     ?LOG("WTF, I'm free, yet receiving a response?"),
-    ?LOG("JObj:"),
-    [ ?LOG("~p", [KV]) || KV <- wh_json:to_proplist(JObj)],
     {noreply, State}.
 
 %%--------------------------------------------------------------------
