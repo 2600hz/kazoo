@@ -40,7 +40,7 @@
 -define(DTMF_NO_RESULT_CONTINUE, <<"1">>).
 -define(DTMF_NO_RESULT_START, <<"2">>).
 
--define(TIMEOUT_DTMF, 2000).
+-define(TIMEOUT_DTMF, 4000).
 -define(TIMEOUT_ENDPOINT, ?DEFAULT_TIMEOUT).
 
 -record(dbn_state, {
@@ -89,12 +89,12 @@
 -spec handle/2 :: (Data, Call) -> no_return() when
       Data :: json_object(),
       Call :: #cf_call{}.
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_db=AccountDB}=Call) ->
+handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
     put(callid, CallId),
 
     MinDTMF = wh_json:get_integer_value(<<"min_dtmf">>, Data, 3),
     DirName = wh_json:get_value(<<"name">>, Data),
-    SortBy = get_sort_by(wh_json:get_value(<<"sort_by">>, Data, <<"lastname">>)),
+    SortBy = get_sort_by(wh_json:get_value(<<"sort_by">>, Data, <<"last_name">>)),
     LookupTable = build_lookup_table(get_dir_docs(DirName, AccountDB)),
 
     ?LOG_START("Dial By Name: ~s", [DirName]),
@@ -136,10 +136,10 @@ collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF}=DbN, LookupTable,
     end.
 
 analyze_dtmf(Call
-             ,#prompts{no_more_results=NoMoreResults}=Prompts
+             ,Prompts
              ,#dbn_state{digits_collected=DTMFs, confirm_match=ConfirmMatch}=DbN
              ,LookupTable) ->
-    FilteredTable = orddict:filter(fun({_ID, {DialplanJObj, _}}) -> doc_matches(DialplanJObj, DTMFs) end, LookupTable),
+    FilteredTable = orddict:filter(fun(_ID, {DialplanJObj, _}) -> doc_matches(DialplanJObj, DTMFs) end, LookupTable),
 
     case orddict:size(FilteredTable) of
         0 ->
@@ -204,19 +204,19 @@ no_matches_menu(Call, Prompts) ->
       Call :: #cf_call{},
       Prompts :: #prompts{}.
 play_no_results_menu(Call, #prompts{no_results_menu=NoResultsMenu}) ->
-    cf_call_command:audio_macro([{play, NoResultsMenu}], Call).
+    play_and_wait([{play, NoResultsMenu}], Call).
 
 -spec play_no_more_results/2 :: (Call, Prompts) -> binary() when
       Call :: #cf_call{},
       Prompts :: #prompts{}.
 play_no_more_results(Call, #prompts{no_more_results=NoMoreResults}) ->
-    cf_call_command:audio_macro([{play, NoMoreResults}], Call).
+    play_and_wait([{play, NoMoreResults}], Call).
 
 -spec play_result_menu/2 :: (Call, Prompts) -> binary() when
       Call :: #cf_call{},
       Prompts :: #prompts{}.
 play_result_menu(Call, #prompts{result_menu=ResultMenu}) ->
-    cf_call_command:audio_macro([{play, ResultMenu}], Call).
+    play_and_wait([{play, ResultMenu}], Call).
 
 play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj) ->
     cf_call_caommnad:audio_macro([
@@ -283,44 +283,49 @@ confirm_match(Call, Prompts, true, JObj) ->
     end.
 
 play_invalid_key(Call, #prompts{invalid_key=InvalidKey}) ->
-    cf_call_command:audio_macro([
-                                 {play, InvalidKey}
-                                 ], Call).
+    play_and_wait([
+                   {play, InvalidKey}
+                  ], Call).
 
 -spec play_has_matches/3 :: (Call, Prompts, Matches) -> binary() when
       Call :: #cf_call{},
       Prompts :: #prompts{},
       Matches :: non_neg_integer().
 play_has_matches(Call, #prompts{result_match=ResultMatch}, Matches) ->
-    cf_call_command:audio_macro([
-                                 {say, wh_util:to_binary(Matches), <<"number">>}
-                                 ,{play, ResultMatch}
-                                ], Call).
+    play_and_wait([
+                   {say, wh_util:to_binary(Matches), <<"number">>}
+                   ,{play, ResultMatch, ?ANY_DIGIT}
+                  ], Call).
 
 play_confirm_match(Call, #prompts{confirm_menu=ConfirmMenu, found=Found}, JObj) ->
-    cf_call_command:audio_macro([
-                                 {play, Found}
-                                 ,{say, wh_json:get_value(<<"first_name">>, JObj)}
-                                 ,{say, wh_json:get_value(<<"last_name">>, JObj)}
-                                 ,{play, ConfirmMenu}
-                                 ]).
+    play_and_wait([
+                   {play, Found}
+                   ,{say, wh_json:get_value(<<"first_name">>, JObj), <<"name_phonetic">>}
+                   ,{say, wh_json:get_value(<<"last_name">>, JObj), <<"name_phonetic">>}
+                   ,{play, ConfirmMenu, ?ANY_DIGIT}
+                  ], Call).
 
 -spec play_no_results/2 :: (Call, Prompts) -> binary() when
       Call :: #cf_call{},
       Prompts :: #prompts{}.
 play_no_results(Call, #prompts{no_matching_results=NoMatchingResults}) ->
-    cf_call_command:audio_macro([{play, NoMatchingResults}], Call).
+    play_and_wait([{play, NoMatchingResults}], Call).
 
 -spec play_min_digits_needed/3 :: (Call, Prompts, MinDTMF) -> binary() when
       Call :: #cf_call{},
       Prompts :: #prompts{},
       MinDTMF :: non_neg_integer().
 play_min_digits_needed(Call, #prompts{specify_minimum=SpecifyMinimum, letters_of_name=LettersOfName}, MinDTMF) ->
-    cf_call_command:audio_macro([
-                                 {play, SpecifyMinimum}
-                                 ,{say, wh_util:to_binary(MinDTMF), <<"number">>}
-                                 ,{play, LettersOfName}
-                                ], Call).
+    play_and_wait([
+                   {play, SpecifyMinimum, ?ANY_DIGIT}
+                   ,{say, wh_util:to_binary(MinDTMF), <<"number">>}
+                   ,{play, LettersOfName, ?ANY_DIGIT}
+                  ], Call).
+
+play_and_wait(AudioMacro, Call) ->
+    NoopID = cf_call_command:audio_macro(AudioMacro, Call),
+    ?LOG("NoopID: ~s", [NoopID]),
+    ?LOG("Waiting returned: ~p", [cf_call_command:wait_for_noop(NoopID)]).
 
 %% collect DTMF digits individually until length of DTMFs is == MinDTMF
 -spec collect_min_digits/2 :: (MinDTMF, DTMFs) -> {'ok', binary()} | {'error', 'timeout', binary()} when
@@ -354,7 +359,7 @@ collect_next_dtmf(Call, Prompts, #dbn_state{digits_collected=DTMFs}=DbN, LookupT
       Call :: #cf_call{},
       Prompts :: #prompts{}.
 play_continue_prompt(Call, #prompts{please_continue=PleaseContinue}) ->
-    cf_call_command:audio_macro([{play, PleaseContinue}], Call).
+    play_and_wait([{play, PleaseContinue}], Call).
 
 -spec play_start_instructions/3 :: (Call, Prompts, SortBy) -> binary() when
       Call :: #cf_call{},
@@ -363,9 +368,9 @@ play_continue_prompt(Call, #prompts{please_continue=PleaseContinue}) ->
 play_start_instructions(Call, #prompts{enter_person=EnterPerson, firstname=FName, lastname=LName}, SortBy) ->
     NamePrompt = case SortBy of first -> FName; last -> LName end,
 
-    cf_call_command:audio_macro([{play, EnterPerson}
-                                 ,{play, NamePrompt}
-                                ], Call).
+    play_and_wait([{play, EnterPerson}
+                   ,{play, NamePrompt}
+                  ], Call).
 
 -spec build_lookup_table/1 :: (Docs) -> orddict:orddict() when
       Docs :: [{binary(), json_object()},...].
@@ -403,7 +408,7 @@ get_max_dtmf(Max, _) -> Max.
       DBName :: binary().
 get_dir_docs(DirName, DBName) ->
     {ok, Docs} = couch_mgr:get_results(DBName, ?DIR_DOCS_VIEW, [{<<"key">>, DirName}, {<<"include_docs">>, true}]),
-    [ {wh_json:get_value(<<"id">>, Doc), wh_json:get_value(<<"value">>, Doc)} || Doc <- Docs ].
+    [ {wh_json:get_value(<<"id">>, Doc), wh_json:get_value(<<"doc">>, Doc)} || Doc <- Docs ].
 
 -spec get_sort_by/1 :: (binary()) -> 'first' | 'last'.
 get_sort_by(<<"first", _/binary>>) -> first;
