@@ -43,6 +43,9 @@
 -define(TIMEOUT_DTMF, 4000).
 -define(TIMEOUT_ENDPOINT, ?DEFAULT_TIMEOUT).
 
+-type lookup_entry() :: {ID :: binary(), {DialpadJObj :: json_object(), JObj :: json_object()}}.
+-type lookup_table() :: [lookup_entry(),...] | [].
+
 -record(dbn_state, {
           dir_name = <<>> :: binary() %% which directory we're looking in
          ,sort_by = last :: first | last %% last_name field, or first_name field
@@ -50,7 +53,7 @@
          ,max_dtmf = 0 :: non_neg_integer() %% the most DTMF tones to collect; if max is reached, play choices. If max == 0, no limit
          ,confirm_match = false :: boolean() %% if false, once a match is made, connect the caller; if true, prompt for confirmation to connect
          ,digits_collected = <<>> :: binary() %% the digits collected from the caller so far
-         ,orig_lookup_table = orddict:new() :: orddict:orddict() %% the O.G.
+         ,orig_lookup_table = [] :: lookup_table() %% the O.G.
          }).
 
 -record(prompts, {
@@ -114,7 +117,7 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
       Call :: #cf_call{},
       Prompts :: #prompts{},
       State :: #dbn_state{},
-      LookupTable :: orddict:orddict().
+      LookupTable :: lookup_table().
 start_search(Call, Prompts, #dbn_state{sort_by=SortBy}=DbN, LookupTable) ->
     {ok, DTMFs} = play_start_instructions(Call, Prompts, SortBy),
     collect_min_digits(Call, Prompts, DbN, LookupTable, DTMFs).
@@ -123,7 +126,7 @@ start_search(Call, Prompts, #dbn_state{sort_by=SortBy}=DbN, LookupTable) ->
       Call :: #cf_call{},
       Prompts :: #prompts{},
       State :: #dbn_state{},
-      LookupTable :: orddict:orddict(),
+      LookupTable :: lookup_table(),
       Collected :: binary().
 collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF}=DbN, LookupTable, Collected) ->
     case collect_min_digits(MinDTMF - erlang:byte_size(Collected), Collected) of
@@ -135,18 +138,21 @@ collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF}=DbN, LookupTable,
             collect_min_digits(Call, Prompts, DbN, LookupTable, <<Collected/binary, DTMFs/binary, PromptDTMFs/binary>>)
     end.
 
+-spec analyze_dtmf/4 :: (Call, Prompts, DbN, LookupTable) -> no_return() when
+      Call :: #cf_call{},
+      Prompts :: #prompts{},
+      DbN :: #dbn_state{},
+      LookupTable :: lookup_table().
 analyze_dtmf(Call
              ,Prompts
              ,#dbn_state{digits_collected=DTMFs, confirm_match=ConfirmMatch}=DbN
              ,LookupTable) ->
-    FilteredTable = orddict:filter(fun(_ID, {DialplanJObj, _}) -> doc_matches(DialplanJObj, DTMFs) end, LookupTable),
-
-    case orddict:size(FilteredTable) of
-        0 ->
+?LOG("LOOKUP: ~p", [LookupTable]),
+    case lists:filter(fun(Entry) -> filter_table(Entry, DTMFs) end, LookupTable) of
+        [] ->
             play_no_results(Call, Prompts),
             start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table);
-        1 ->
-            [{ID, {_, JObj}}] = orddict:to_list(FilteredTable),
+        [{ID, {_, JObj}}] ->
             case confirm_match(Call, Prompts, ConfirmMatch, JObj) of
                 true ->
                     route_to_match(Call, ID);
@@ -154,26 +160,31 @@ analyze_dtmf(Call
                     start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
             end;
         Matches ->
-            play_has_matches(Call, Prompts, Matches),
-            case matches_menu(Call, Prompts, orddict:to_list(FilteredTable)) of
+%%             play_has_matches(Call, Prompts, length(Matches)),
+            case matches_menu(Call, Prompts, Matches) of
                 {route, ID} -> route_to_match(Call, ID);
-                continue -> collect_next_dtmf(Call, Prompts, DbN, FilteredTable);
+                continue -> collect_next_dtmf(Call, Prompts, DbN, Matches);
                 start_over -> start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
             end
     end.
+
+-spec filter_table/2 :: (Entry, DTMFs) -> boolean() when
+      Entry :: lookup_entry(),
+      DTMFs :: binary().
+filter_table({_, {DialplanJObj, _}}, DTMFs) -> doc_matches(DialplanJObj, DTMFs).
 
 %% Play instructions, then the prompts to scroll through messages
 -spec matches_menu/3 :: (Call, Prompts, LookupList) -> {'route', binary()} | 'continue' | 'start_over' when
       Call :: #cf_call{},
       Prompts :: #prompts{},
-      LookupList :: [{binary(), {json_object(), json_object()}},...] | [].
+      LookupList :: lookup_table().
 matches_menu(Call, Prompts, LookupList) ->
     matches_menu(Call, Prompts, LookupList, 1).
 
 -spec matches_menu/4 :: (Call, Prompts, LookupList, MatchNo) -> {'route', binary()} | 'continue' | 'start_over' when
       Call :: #cf_call{},
       Prompts :: #prompts{},
-      LookupList :: [{binary(), {json_object(), json_object()}},...] | [],
+      LookupList :: lookup_table(),
       MatchNo :: non_neg_integer().
 matches_menu(Call, Prompts, [{_,{_, JObj}}|_] = LookupList, MatchNo) ->
     play_result(Call, Prompts, MatchNo, JObj),
@@ -226,19 +237,18 @@ play_no_results_menu(Call, #prompts{no_results_menu=NoResultsMenu}) ->
 play_no_more_results(Call, #prompts{no_more_results=NoMoreResults}) ->
     play_and_wait([{play, NoMoreResults}], Call).
 
--spec play_result_menu/2 :: (Call, Prompts) -> binary() when
+-spec play_result_menu/2 :: (Call, Prompts) -> {'ok', binary()} when
       Call :: #cf_call{},
       Prompts :: #prompts{}.
 play_result_menu(Call, #prompts{result_menu=ResultMenu}) ->
-    play_and_wait([{play, ResultMenu}], Call).
+    play_and_collect([{play, ResultMenu}], Call).
 
 play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj) ->
-    cf_call_command:audio_macro([
-                                 {play, ResultNumber}
-                                 ,{say, wh_util:to_binary(MatchNo), <<"number">>}
-                                 ,{say, wh_json:get_binary_value(<<"first_name">>, JObj)}
-                                 ,{say, wh_json:get_binary_value(<<"last_name">>, JObj)}
-                                ], Call).
+    play_and_wait([
+                   {play, ResultNumber}
+                   ,{say, wh_util:to_binary(MatchNo), <<"number">>}
+                   ,{say, wh_json:get_binary_value(<<"full_name">>, JObj)}
+                  ], Call).
 
 %% Takes a user doc ID, creates the endpoint, and routes the call (ending the dialplan callflow as well)
 -spec route_to_match/2 :: (Call, UserID) -> no_return() when
@@ -377,7 +387,7 @@ collect_min_digits(_, DTMFs) ->
       Call :: #cf_call{},
       Prompts :: #prompts{},
       DbN :: #dbn_state{},
-      LookupTable :: orddict:orddict().
+      LookupTable :: lookup_table().
 collect_next_dtmf(Call, Prompts, #dbn_state{digits_collected=DTMFs}=DbN, LookupTable) ->
     case collect_min_digits(1, <<>>) of
         {ok, Digit} ->
@@ -404,16 +414,10 @@ play_start_instructions(Call, #prompts{enter_person=EnterPerson, firstname=FName
                       ,{play, NamePrompt}
                      ], Call).
 
--spec build_lookup_table/1 :: (Docs) -> orddict:orddict() when
+-spec build_lookup_table/1 :: (Docs) -> lookup_table() when
       Docs :: [{binary(), json_object()},...].
 build_lookup_table(Docs) ->
-    orddict:from_list(convert_docs(Docs)).
-
-%% returns a list of the converted fields and the ID it corresponds to
--spec convert_docs/1 :: (Docs) -> [{binary(), {json_object(), json_object()}},...] when
-      Docs :: [{binary(), json_object()},...].
-convert_docs(Docs) ->
-    [ {ID, convert_fields(DocData, ?FIELDS)} || {ID, DocData} <- Docs ].
+    orddict:to_list(orddict:from_list([ {ID, convert_fields(DocData, ?FIELDS)} || {ID, DocData} <- Docs ])).
 
 %% create a json object containing only fields in Fields, and the values converted
 %% to their dialpad equivalents
@@ -423,10 +427,12 @@ convert_docs(Docs) ->
       Doc :: json_object(),
       Fields :: [binary(),...].
 convert_fields(Doc, Fields) ->
-    lists:foldr(fun(Field, {DialpadJObj, JObj}) ->
-                        {wh_json:set_value(Field, cf_util:alpha_to_dialpad(wh_json:get_value(Field, Doc)), DialpadJObj)
-                        ,wh_json:set_value(Field, wh_json:get_value(Field, Doc), JObj)}
-                end, {wh_json:new(), wh_json:new()}, Fields).
+    {AlphaJObj, JObj} = lists:foldr(fun(Field, {DialpadJObj, JObj}) ->
+                                            {wh_json:set_value(Field, cf_util:alpha_to_dialpad(wh_json:get_value(Field, Doc)), DialpadJObj)
+                                             ,wh_json:set_value(Field, wh_json:get_value(Field, Doc), JObj)
+                                            }
+                                    end, {wh_json:new(), wh_json:new()}, Fields),
+    {AlphaJObj, wh_json:set_value(<<"full_name">>, <<(wh_json:get_value(<<"first_name">>, JObj))/binary, " ", (wh_json:get_value(<<"last_name">>, JObj))/binary>>, JObj)}.
 
 %% Max DTMFs recorded is either 0 or at least Min
 -spec get_max_dtmf/2 :: (Max, Min) -> integer() when
