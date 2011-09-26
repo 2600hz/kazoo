@@ -131,8 +131,8 @@ collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF}=DbN, LookupTable,
             analyze_dtmf(Call, Prompts, DbN#dbn_state{digits_collected=DTMFs}, LookupTable);
         {error, timeout, DTMFs} ->
             ?LOG("timed out"),
-            play_min_digits_needed(Call, Prompts, MinDTMF),
-            collect_min_digits(Call, Prompts, DbN, LookupTable, DTMFs)
+            {ok, PromptDTMFs} = play_min_digits_needed(Call, Prompts, MinDTMF),
+            collect_min_digits(Call, Prompts, DbN, LookupTable, <<Collected/binary, DTMFs/binary, PromptDTMFs/binary>>)
     end.
 
 analyze_dtmf(Call
@@ -328,12 +328,12 @@ play_confirm_match(Call, #prompts{confirm_menu=ConfirmMenu, found=Found}, JObj) 
 play_no_results(Call, #prompts{no_matching_results=NoMatchingResults}) ->
     play_and_wait([{play, NoMatchingResults}], Call).
 
--spec play_min_digits_needed/3 :: (Call, Prompts, MinDTMF) -> binary() when
+-spec play_min_digits_needed/3 :: (Call, Prompts, MinDTMF) -> {ok, binary()} when
       Call :: #cf_call{},
       Prompts :: #prompts{},
       MinDTMF :: non_neg_integer().
 play_min_digits_needed(Call, #prompts{specify_minimum=SpecifyMinimum, letters_of_name=LettersOfName}, MinDTMF) ->
-    play_and_wait([
+    play_and_collect([
                    {play, SpecifyMinimum, ?ANY_DIGIT}
                    ,{say, wh_util:to_binary(MinDTMF), <<"number">>}
                    ,{play, LettersOfName, ?ANY_DIGIT}
@@ -361,17 +361,17 @@ play_and_collect(AudioMacro, Call, NumDigits) ->
 
 %% collect DTMF digits individually until length of DTMFs is == MinDTMF
 -spec collect_min_digits/2 :: (MinDTMF, DTMFs) -> {'ok', binary()} | {'error', 'timeout', binary()} when
-      MinDTMF :: non_neg_integer(),
+      MinDTMF :: integer(),
       DTMFs :: binary().
-collect_min_digits(0, DTMFs) ->
-    {ok, DTMFs};
-collect_min_digits(MinDTMF, DTMFs) ->
+collect_min_digits(MinDTMF, DTMFs) when MinDTMF > 0 ->
     case cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
         {ok, <<>>} ->
             {error, timeout, DTMFs};
         {ok, DTMF} ->
             collect_min_digits(MinDTMF-1, <<DTMFs/binary, DTMF/binary>>)
-    end.
+    end;
+collect_min_digits(_, DTMFs) ->
+    {ok, DTMFs}.
 
 -spec collect_next_dtmf/4 :: (Call, Prompts, DbN, LookupTable) -> no_return() when
       Call :: #cf_call{},
