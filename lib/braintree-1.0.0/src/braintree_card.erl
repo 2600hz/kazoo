@@ -11,16 +11,16 @@
 -include("braintree.hrl").
 
 -export([create/1, create/2, update/1, delete/1]).
-%% -export([sale/2, credit/2]).
 -export([find/1, expired/0, expiring/2]).
--export([xml_to_record/1, xml_to_record/2, record_to_xml/1]).
+-export([xml_to_record/1, xml_to_record/2, record_to_xml/1, record_to_xml/2]).
+-export([json_to_record/1, record_to_json/1]).
 
--import(braintree_utils, [get_xml_value/2, make_doc_xml/2]).
+-import(braintree_util, [get_xml_value/2, make_doc_xml/2]).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Creates a new customer using the given record
+%% Creates a new credit card using the given record
 %% @end
 %%--------------------------------------------------------------------
 -spec create/1 :: (Card) -> bt_result() when
@@ -50,7 +50,7 @@ create(CustomerId, Card) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Updates a customer with the given record
+%% Updates a credit card with the given record
 %% @end
 %%--------------------------------------------------------------------
 -spec update/1 :: (Card) -> bt_result() when
@@ -73,7 +73,7 @@ update(#bt_card{token=Token}=Card) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Deletes a customer id from braintree's system
+%% Deletes a credit card id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
 -spec delete/1 :: (Token) -> bt_result() when
@@ -97,7 +97,7 @@ delete(Token) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Find a customer by id
+%% Find a credit card by id
 %% @end
 %%--------------------------------------------------------------------
 -spec find/1 :: (Token) -> bt_result() when
@@ -136,7 +136,7 @@ expired() ->
 %% @public
 %% @doc
 %% Finds the tokens of credit cards expiring between the given
-%% start and end dates.
+%% start and end dates. Dates are given as MMYYYY
 %% @end
 %%--------------------------------------------------------------------
 -spec expiring/2 :: (Start, End) -> tuple(ok, list()) | tuple(error, term()) when
@@ -178,7 +178,7 @@ validate_id(Id, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Contert the given XML to a customer record
+%% Convert the given XML to a record
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record/1 :: (Xml) -> #bt_address{} when
@@ -211,7 +211,7 @@ xml_to_record(Xml, Base) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Contert the given XML to a customer record
+%% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
 -spec record_to_xml/1 :: (Card) -> bt_xml() when
@@ -235,6 +235,8 @@ record_to_xml(Card, ToString) ->
              ,{'billing-address-id', Card#bt_card.billing_address_id}],
     Conditionals = [fun(#bt_card{billing_address=undefined}, P) ->
                             P;
+                       (#bt_card{billing_address=#bt_address{}}, P) ->
+                            P;
                        (#bt_card{billing_address=BA}, P) ->
                             [{'billing-address', braintree_address:record_to_xml(BA)}|P]
                     end,
@@ -251,7 +253,7 @@ record_to_xml(Card, ToString) ->
                        (_, P) ->
                             P
                     end,
-                    fun(#bt_card{verify=true}, P) ->
+                    fun(#bt_card{verify=true, number=Number}, P) when Number =/= undefined ->
                             case proplists:get_value('options', P) of
                                 undefined ->
                                     [{'options', [{'verify-card', true}]}|P];
@@ -271,4 +273,75 @@ record_to_xml(Card, ToString) ->
     case ToString of
         true -> make_doc_xml(Props1, 'credit-card');
         false -> Props1
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Convert a given json object into a record
+%% @end
+%%--------------------------------------------------------------------
+-spec json_to_record/1 :: (JObj) -> #bt_card{} when
+      JObj :: undefined | json_object().
+json_to_record(undefined) ->
+    #bt_card{};
+json_to_record(JObj) ->
+    #bt_card{token = create_or_get_json_id(JObj)
+             ,cardholder_name = wh_json:get_list_value(<<"cardholder_name">>, JObj)
+             ,expiration_date = wh_json:get_list_value(<<"expiration_date">>, JObj)
+             ,expiration_month = wh_json:get_list_value(<<"expiration_month">>, JObj)
+             ,expiration_year = wh_json:get_list_value(<<"expiration_year">>, JObj)
+             ,customer_id = wh_json:get_list_value(<<"customer_id">>, JObj)
+             ,number = wh_json:get_list_value(<<"number">>, JObj)
+             ,cvv = wh_json:get_list_value(<<"cvv">>, JObj)
+             ,billing_address_id = wh_json:get_list_value(<<"billing_address_id">>, JObj)
+             ,billing_address = braintree_address:json_to_record(wh_json:get_value(<<"billing_address">>, JObj))
+             ,update_existing = wh_json:is_true(<<"update_existing">>, JObj)
+             ,verify = wh_json:is_true(<<"verify">>, JObj, true)
+             ,make_default = wh_json:is_true(<<"make_default">>, JObj)}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Convert a given record into a json object
+%% @end
+%%--------------------------------------------------------------------
+-spec record_to_json/1 :: (Card) -> json_object() when
+      Card :: #bt_card{}.
+record_to_json(Card) ->
+    Props =[{<<"id">>, Card#bt_card.token}
+             ,{<<"bin">>, Card#bt_card.bin}
+             ,{<<"cardholder_name">>, Card#bt_card.cardholder_name}
+             ,{<<"card_type">>, Card#bt_card.card_type}
+             ,{<<"created_at">>, Card#bt_card.created_at}
+             ,{<<"updated_at">>, Card#bt_card.updated_at}
+             ,{<<"default">>, Card#bt_card.default}
+             ,{<<"expiration_date">>, Card#bt_card.expiration_date}
+             ,{<<"expiration_month">>, Card#bt_card.expiration_month}
+             ,{<<"expiration_year">>, Card#bt_card.expiration_year}
+             ,{<<"expired">>, Card#bt_card.expired}
+             ,{<<"customer_location">>, Card#bt_card.customer_location}
+             ,{<<"last_four">>, Card#bt_card.last_four}
+             ,{<<"customer_id">>, Card#bt_card.customer_id}
+             ,{<<"created_at">>, Card#bt_card.created_at}
+             ,{<<"updated_at">>, Card#bt_card.updated_at}
+             ,{<<"billing_address">>, braintree_address:record_to_json(Card#bt_card.billing_address)}
+             ,{<<"billing_address_id">>, Card#bt_card.billing_address_id}],
+    braintree_util:props_to_json(Props).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the object exists in but no id has been provided then generate
+%% a uuid to use during creation.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_or_get_json_id/1 :: (JObj) ->  undefined | string() when
+      JObj :: json_object().
+create_or_get_json_id(JObj) ->
+    case wh_json:get_value(<<"number">>, JObj) of
+        undefined ->
+            wh_json:get_value(<<"id">>, JObj);
+         _ ->
+            wh_json:get_value(<<"id">>, JObj, braintree_uuid:to_string())
     end.

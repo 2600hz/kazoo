@@ -13,9 +13,11 @@
 -export([create/1, update/1, delete/1]).
 %% -export([sale/2, credit/2]).
 -export([all/0, find/1]).
--export([xml_to_record/1, xml_to_record/2, record_to_xml/1]).
+-export([xml_to_record/1, xml_to_record/2, record_to_xml/1, record_to_xml/2]).
+-export([json_to_record/1, record_to_json/1]).
 
--import(braintree_utils, [get_xml_value/2, make_doc_xml/2]).
+
+-import(braintree_util, [get_xml_value/2, make_doc_xml/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -28,7 +30,7 @@
 create(Customer) ->
     try
         true = validate_id(Customer#bt_customer.id, true),
-        Request = record_to_xml(Customer),
+        Request = record_to_xml(Customer, true),
         case braintree_request:post("/customers", Request) of
             {ok, Xml} ->
                 {ok, xml_to_record(Xml)};
@@ -51,7 +53,7 @@ create(Customer) ->
 update(Customer) ->
     try
         true = validate_id(Customer#bt_customer.id),
-        Request = record_to_xml(Customer),
+        Request = record_to_xml(Customer, true),
         case braintree_request:put("/customers/" ++ wh_util:to_list(Customer#bt_customer.id), Request) of
             {ok, Xml} ->
                 {ok, xml_to_record(Xml)};
@@ -150,7 +152,7 @@ validate_id(Id, _) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Contert the given XML to a customer record
+%% Convert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record/1 :: (Xml) -> #bt_address{} when
@@ -181,12 +183,19 @@ xml_to_record(Xml, Base) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Contert the given XML to a customer record
+%% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
 -spec record_to_xml/1 :: (Customer) -> bt_xml() when
       Customer :: #bt_customer{}.
+-spec record_to_xml/2 :: (Customer, ToString) -> bt_xml() when
+      Customer :: #bt_customer{},
+      ToString :: boolean().
+
 record_to_xml(Customer) ->
+    record_to_xml(Customer, false).
+
+record_to_xml(Customer, ToString) ->
     Props = [{'id', Customer#bt_customer.id}
              ,{'first-name', Customer#bt_customer.first_name}
              ,{'last-name', Customer#bt_customer.last_name}
@@ -196,5 +205,55 @@ record_to_xml(Customer) ->
              ,{'fax', Customer#bt_customer.fax}
              ,{'website', Customer#bt_customer.website}
              |[{'credit-card', braintree_card:record_to_xml(Card)}
-               || Card <- Customer#bt_customer.credit_cards]],
-    make_doc_xml(Props, customer).
+               || Card <- Customer#bt_customer.credit_cards
+                      ,Card =/= #bt_card{}, Card =/= undefined]],
+    case ToString of
+        true -> make_doc_xml(Props, 'customer');
+        false -> Props
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Convert a given json object into a record
+%% @end
+%%--------------------------------------------------------------------
+-spec json_to_record/1 :: (JObj) -> #bt_customer{} when
+      JObj :: undefined | json_object().
+json_to_record(undefined) ->
+    #bt_customer{};
+json_to_record(JObj) ->
+    #bt_customer{id = wh_json:get_list_value(<<"id">>, JObj)
+                 ,first_name = wh_json:get_list_value(<<"first_name">>, JObj)
+                 ,last_name = wh_json:get_list_value(<<"last_name">>, JObj)
+                 ,company = wh_json:get_list_value(<<"company">>, JObj)
+                 ,email = wh_json:get_list_value(<<"email">>, JObj)
+                 ,phone = wh_json:get_list_value(<<"phone">>, JObj)
+                 ,fax = wh_json:get_list_value(<<"fax">>, JObj)
+                 ,website = wh_json:get_list_value(<<"website">>, JObj)
+                 ,credit_cards = [braintree_card:json_to_record(wh_json:get_value(<<"credit_card">>, JObj))]}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Convert a given record into a json object
+%% @end
+%%--------------------------------------------------------------------
+-spec record_to_json/1 :: (Customer) -> json_object() when
+      Customer :: #bt_customer{}.
+record_to_json(Customer) ->
+    Props = [{<<"id">>, Customer#bt_customer.id}
+             ,{<<"first_name">>, Customer#bt_customer.first_name}
+             ,{<<"last_name">>, Customer#bt_customer.last_name}
+             ,{<<"company">>, Customer#bt_customer.company}
+             ,{<<"email">>, Customer#bt_customer.email}
+             ,{<<"phone">>, Customer#bt_customer.phone}
+             ,{<<"fax">>, Customer#bt_customer.fax}
+             ,{<<"website">>, Customer#bt_customer.website}
+             ,{<<"created_at">>, Customer#bt_customer.created_at}
+             ,{<<"updated_at">>, Customer#bt_customer.updated_at}
+             ,{<<"credit_cards">>, [braintree_card:record_to_json(Card)
+                               || Card <- Customer#bt_customer.credit_cards]}
+             ,{<<"addresses">>, [braintree_address:record_to_json(Address)
+                             || Address <- Customer#bt_customer.addresses]}],
+    braintree_util:props_to_json(Props).

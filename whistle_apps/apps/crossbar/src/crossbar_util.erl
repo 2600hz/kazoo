@@ -20,6 +20,7 @@
 -export([response_db_fatal/1]).
 -export([binding_heartbeat/1, binding_heartbeat/2]).
 -export([put_reqid/1]).
+-export([store/3, fetch/2]).
 
 -include("../include/crossbar.hrl").
 
@@ -220,3 +221,9 @@ binding_heartbeat(BPid, Timeout) ->
 
 put_reqid(#cb_context{req_id=ReqId}) ->
     put(callid, ReqId).
+
+store(Key, Data, #cb_context{storage=Storage}=Context) ->
+    Context#cb_context{storage=[{Key, Data}|proplists:delete(Key, Storage)]}.
+
+fetch(Key, #cb_context{storage=Storage}) ->
+    proplists:get_value(Key, Storage).

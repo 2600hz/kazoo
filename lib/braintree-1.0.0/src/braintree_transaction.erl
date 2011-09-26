@@ -17,7 +17,7 @@
 -export([find/1]).
 -export([xml_to_record/1, xml_to_record/2, record_to_xml/1]).
 
--import(braintree_utils, [get_xml_value/2, make_doc_xml/2]).
+-import(braintree_util, [get_xml_value/2, make_doc_xml/2]).
 
 %%--------------------------------------------------------------------
 %% @public

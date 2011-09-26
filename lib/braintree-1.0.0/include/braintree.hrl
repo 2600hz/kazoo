@@ -1,3 +1,6 @@
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
+
 -type bt_result() :: tuple(ok|error, term()).
 -type bt_xml() :: term().
 
@@ -192,3 +195,23 @@
                    ,inherited_from
                    ,existing_id
                   }).
+
+-record(bt_error, {code = undefined :: undefined | string()
+                   ,message = undefined :: undefined | string()
+                   ,attribute = undefined :: undefined | string()
+                  }).
+
+-record(bt_verification, {verification_status = undefined :: undefined | string()
+                          ,processor_response_code = undefined :: undefined | string()
+                          ,processor_response_text = undefined :: undefined | string()
+                          ,cvv_response_code = undefined :: undefined | string()
+                          ,avs_response_code = undefined :: undefined | string()
+                          ,postal_response_code = undefined :: undefined | string()
+                          ,street_response_code = undefined :: undefined | string()
+                          ,gateway_rejection_reason = undefined :: undefined | string()
+                         }).
+
+-record(bt_api_error, {errors = [] :: list(#bt_error{})
+                       ,verification = undefined :: undefined | #bt_verification{}
+                       ,message= undefined :: undefined | string()
+                      }).

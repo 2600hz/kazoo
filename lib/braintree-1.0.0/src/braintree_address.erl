@@ -12,9 +12,10 @@
 
 -export([create/1, create/2, update/1, delete/1, delete/2]).
 -export([find/2]).
--export([xml_to_record/1, xml_to_record/2, record_to_xml/1]).
+-export([xml_to_record/1, xml_to_record/2, record_to_xml/1, record_to_xml/2]).
+-export([json_to_record/1, record_to_json/1]).
 
--import(braintree_utils, [get_xml_value/2, make_doc_xml/2]).
+-import(braintree_util, [get_xml_value/2, make_doc_xml/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -59,7 +60,7 @@ create(CustomerId, Address) ->
 update(#bt_address{id=Id, customer_id=CustomerId}=Address) ->
     try
         true = validate_id(Id),
-        Request = record_to_xml(Address, true),
+        Request = record_to_xml(Address#bt_address{id=undefined}, true),
         case braintree_request:put("/customers/"
                                    ++ wh_util:to_list(CustomerId)
                                    ++ "/addresses/"
@@ -204,6 +205,7 @@ record_to_xml(Address) ->
 record_to_xml(Address, ToString) ->
     Props = [{'first-name', Address#bt_address.first_name}
              ,{'last-name', Address#bt_address.last_name}
+%%             ,{'id', Address#bt_address.id}
              ,{'company', Address#bt_address.company}
              ,{'street-address', Address#bt_address.street_address}
              ,{'extended-address', Address#bt_address.extended_address}
@@ -221,4 +223,74 @@ record_to_xml(Address, ToString) ->
     case ToString of
         true -> make_doc_xml(Props1, 'address');
         false -> Props1
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Convert a given json object into a record
+%% @end
+%%--------------------------------------------------------------------
+-spec json_to_record/1 :: (JObj) -> #bt_address{} when
+      JObj :: undefined | json_object().
+json_to_record(undefined) ->
+    #bt_address{};
+json_to_record(JObj) ->
+    #bt_address{id = create_or_get_json_id(JObj)
+                ,first_name = wh_json:get_value(<<"first_name">>, JObj)
+                ,last_name = wh_json:get_value(<<"last_name">>, JObj)
+                ,company = wh_json:get_value(<<"company">>, JObj)
+                ,street_address = wh_json:get_value(<<"street_address">>, JObj)
+                ,extended_address = wh_json:get_value(<<"extended_address">>, JObj)
+                ,locality = wh_json:get_value(<<"locality">>, JObj)
+                ,region = wh_json:get_value(<<"region">>, JObj)
+                ,postal_code = wh_json:get_value(<<"postal_code">>, JObj)
+                ,country_code_two = wh_json:get_value(<<"country_code_two">>, JObj)
+                ,country_code_three = wh_json:get_value(<<"country_code_three">>, JObj)
+                ,country_code = wh_json:get_value(<<"country_code">>, JObj)
+                ,country_name = wh_json:get_value(<<"country_name">>, JObj)
+                ,update_existing = wh_json:is_true(<<"update_existing">>, JObj)}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Convert a given record into a json object
+%% @end
+%%--------------------------------------------------------------------
+-spec record_to_json/1 :: (Address) -> json_object() when
+      Address :: #bt_address{}.
+record_to_json(Address) ->
+    Props = [{<<"id">>, Address#bt_address.id}
+             ,{<<"customer_id">>, Address#bt_address.customer_id}
+             ,{<<"first_name">>, Address#bt_address.first_name}
+             ,{<<"last_name">>, Address#bt_address.last_name}
+             ,{<<"company">>, Address#bt_address.company}
+             ,{<<"street_address">>, Address#bt_address.street_address}
+             ,{<<"extended_address">>, Address#bt_address.extended_address}
+             ,{<<"locality">>, Address#bt_address.locality}
+             ,{<<"region">>, Address#bt_address.region}
+             ,{<<"postal_code">>, Address#bt_address.postal_code}
+             ,{<<"country_code_two">>, Address#bt_address.country_code_two}
+             ,{<<"country_code_three">>, Address#bt_address.country_code_three}
+             ,{<<"country_code">>, Address#bt_address.country_code}
+             ,{<<"country_name">>, Address#bt_address.country_name}
+             ,{<<"created_at">>, Address#bt_address.created_at}
+             ,{<<"updated_at">>, Address#bt_address.updated_at}],
+    braintree_util:props_to_json(Props).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the object exists in but no id has been provided then generate
+%% a uuid to use during creation.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_or_get_json_id/1 :: (JObj) ->  undefined | string() when
+      JObj :: json_object().
+create_or_get_json_id(JObj) ->
+    case wh_json:get_value(<<"street_address">>, JObj) of
+        undefined ->
+            wh_json:get_value(<<"id">>, JObj);
+         _ ->
+            wh_json:get_value(<<"id">>, JObj, braintree_uuid:to_string())
     end.
