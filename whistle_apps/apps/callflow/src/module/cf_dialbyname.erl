@@ -116,8 +116,8 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
       State :: #dbn_state{},
       LookupTable :: orddict:orddict().
 start_search(Call, Prompts, #dbn_state{sort_by=SortBy}=DbN, LookupTable) ->
-    play_start_instructions(Call, Prompts, SortBy),
-    collect_min_digits(Call, Prompts, DbN, LookupTable, <<>>).
+    {ok, DTMFs} = play_start_instructions(Call, Prompts, SortBy),
+    collect_min_digits(Call, Prompts, DbN, LookupTable, DTMFs).
 
 -spec collect_min_digits/5 :: (Call, Prompts, State, LookupTable, Collected) -> no_return() when
       Call :: #cf_call{},
@@ -151,7 +151,7 @@ analyze_dtmf(Call
                 true ->
                     route_to_match(Call, ID);
                 false ->
-                    collect_next_dtmf(Call, Prompts, DbN, FilteredTable)
+                    start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
             end;
         Matches ->
             play_has_matches(Call, Prompts, Matches),
@@ -272,15 +272,18 @@ bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid}=Call) ->
 confirm_match(_Call, _Prompts, false, _) ->
     true;
 confirm_match(Call, Prompts, true, JObj) ->
-    play_confirm_match(Call, Prompts, JObj),
-    case cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
-        {ok, <<>>} -> confirm_match(Call, Prompts, true, JObj);
-        {ok, ?DTMF_ACCEPT_MATCH} -> true;
-        {ok, ?DTMF_REJECT_MATCH} -> false;
-        {ok, _} ->
-            play_invalid_key(Call, Prompts),
-            confirm_match(Call, Prompts, true, JObj)
+    case play_confirm_match(Call, Prompts, JObj) of
+        {ok, <<>>} -> confirm_match_dtmf(Call, Prompts, JObj, cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF));
+        {ok, DTMF} -> confirm_match_dtmf(Call, Prompts, JObj, DTMF)
     end.
+
+confirm_match_dtmf(Call, Prompts, JObj, <<>>) ->
+    confirm_match(Call, Prompts, true, JObj);
+confirm_match_dtmf(_Call, _Prompts, _JObj, ?DTMF_ACCEPT_MATCH) -> true;
+confirm_match_dtmf(_Call, _Prompts, _JObj, ?DTMF_REJECT_MATCH) -> false;
+confirm_match_dtmf(Call, Prompts, JObj, _) ->
+    play_invalid_key(Call, Prompts),
+    confirm_match(Call, Prompts, true, JObj).
 
 play_invalid_key(Call, #prompts{invalid_key=InvalidKey}) ->
     play_and_wait([
@@ -298,12 +301,12 @@ play_has_matches(Call, #prompts{result_match=ResultMatch}, Matches) ->
                   ], Call).
 
 play_confirm_match(Call, #prompts{confirm_menu=ConfirmMenu, found=Found}, JObj) ->
-    play_and_wait([
-                   {play, Found}
-                   ,{say, wh_json:get_value(<<"first_name">>, JObj), <<"name_phonetic">>}
-                   ,{say, wh_json:get_value(<<"last_name">>, JObj), <<"name_phonetic">>}
-                   ,{play, ConfirmMenu, ?ANY_DIGIT}
-                  ], Call).
+    play_and_collect([
+                      {play, Found}
+                      ,{say, wh_json:get_value(<<"first_name">>, JObj), <<"name_spelled">>}
+                      ,{say, wh_json:get_value(<<"last_name">>, JObj), <<"name_spelled">>}
+                      ,{play, ConfirmMenu, ?ANY_DIGIT}
+                     ], Call, 1).
 
 -spec play_no_results/2 :: (Call, Prompts) -> binary() when
       Call :: #cf_call{},
@@ -325,7 +328,17 @@ play_min_digits_needed(Call, #prompts{specify_minimum=SpecifyMinimum, letters_of
 play_and_wait(AudioMacro, Call) ->
     NoopID = cf_call_command:audio_macro(AudioMacro, Call),
     ?LOG("NoopID: ~s", [NoopID]),
-    ?LOG("Waiting returned: ~p", [cf_call_command:wait_for_noop(NoopID)]).
+    {ok, JObj} = cf_call_command:wait_for_noop(NoopID),
+    [ ?LOG("~p", [KV]) || KV <- wh_json:to_proplist(JObj)].
+
+-spec play_and_collect/3 :: (AudioMacro, Call, NumDigits) -> {'ok', binary()} when
+      AudioMacro :: proplist(),
+      Call :: #cf_call{},
+      NumDigits :: non_neg_integer().
+play_and_collect(AudioMacro, Call, NumDigits) ->
+    NoopID = cf_call_command:audio_macro(AudioMacro, Call),
+    ?LOG("NoopID: ~s", [NoopID]),
+    cf_call_command:collect_digits(NumDigits, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, NoopID, Call).
 
 %% collect DTMF digits individually until length of DTMFs is == MinDTMF
 -spec collect_min_digits/2 :: (MinDTMF, DTMFs) -> {'ok', binary()} | {'error', 'timeout', binary()} when
@@ -361,16 +374,16 @@ collect_next_dtmf(Call, Prompts, #dbn_state{digits_collected=DTMFs}=DbN, LookupT
 play_continue_prompt(Call, #prompts{please_continue=PleaseContinue}) ->
     play_and_wait([{play, PleaseContinue}], Call).
 
--spec play_start_instructions/3 :: (Call, Prompts, SortBy) -> binary() when
+-spec play_start_instructions/3 :: (Call, Prompts, SortBy) -> {'ok', binary()} when
       Call :: #cf_call{},
       Prompts :: #prompts{},
       SortBy :: 'first' | 'last'.
 play_start_instructions(Call, #prompts{enter_person=EnterPerson, firstname=FName, lastname=LName}, SortBy) ->
     NamePrompt = case SortBy of first -> FName; last -> LName end,
 
-    play_and_wait([{play, EnterPerson}
-                   ,{play, NamePrompt}
-                  ], Call).
+    play_and_collect([{play, EnterPerson}
+                      ,{play, NamePrompt}
+                     ], Call, 1).
 
 -spec build_lookup_table/1 :: (Docs) -> orddict:orddict() when
       Docs :: [{binary(), json_object()},...].
