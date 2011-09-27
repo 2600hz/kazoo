@@ -24,6 +24,7 @@
 -include_lib("braintree/include/braintree.hrl").
 
 -define(SERVER, ?MODULE).
+-define(IS_TOLLFREE_RE, "^(\\+?1)?(8[1-4,9]\\d{8}|80[1-9]\\d{7}|85[1-4,6-9]\\d{7}|86[1-5,7-9]\\d{7}|87[1-6,8-9]\\d{7}|88[1-7,9]\\d{7}|([1-7,9]\\d{9}))$").
 
 %%%===================================================================
 %%% API
@@ -98,6 +99,20 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({binding_fired, Pid, <<"v1_resource.billing">>
+                 ,{RD, #cb_context{req_nouns=[{<<"ts_accounts">>, [AccountId]}]}=Context}}, State) ->
+    spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
+                  Context1 = try
+                                 authorize_trunkstore(AccountId, Context)
+                             catch
+                                 _:_ ->
+                                     crossbar_util:response(error, <<"error during billing validation">>, 500, Context)
+                             end,
+                  Pid ! {binding_result, true, {RD, Context1}}
+          end),
+    {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.braintree">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
@@ -301,6 +316,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.billing">>),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.braintree">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.braintree">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.braintree">>),
@@ -496,14 +512,184 @@ validate([<<"transactions">>, TransactionId], #cb_context{req_verb = <<"get">>}=
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Creates an empty customer in braintree
+%% @end
+%%--------------------------------------------------------------------
+-spec create_placeholder_account/1 :: (Context) -> #cb_context{} when
+      Context :: #cb_context{}.
 create_placeholder_account(#cb_context{account_id=AccountId}=Context) ->
     case braintree_customer:create(#bt_customer{id=AccountId}) of
         {ok, #bt_customer{}=C} ->
+            ?LOG("created new customer ~s", [AccountId]),
             Response = braintree_customer:record_to_json(C),
             crossbar_util:response(Response, Context);
+        {error, #bt_api_error{message=Msg}=ApiError} ->
+            ?LOG("failed to created new customer ~s", [Msg]),
+            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+        {error, _}=E ->
+            ?LOG("failed to created new customer ~p", [E]),
+            crossbar_util:response_db_fatal(Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function determines if the parameters and content are correct
+%% for this request
+%%
+%% Failure here returns 400
+%% @end
+%%--------------------------------------------------------------------
+-spec authorize_trunkstore/2 :: (AccountId, Context) -> #cb_context{} when
+      AccountId :: binary(),
+      Context :: #cb_context{}.
+authorize_trunkstore(AccountId, #cb_context{req_verb = <<"post">>, req_data=JObj}=Context) ->
+    Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
+               ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
+               ,{"tollfree_us", fun() -> ts_tollfree_us_quantity(JObj) end()}
+               ,{"e911", fun() -> ts_e911_quantity(JObj) end()}],
+    case ts_get_subscription(AccountId) of
+        {new, Subscription} ->
+            Subscription2 = lists:foldr(fun({AddOn, Quantity}, Sub) ->
+                                                {ok, Subscription1} =
+                                                    braintree_subscription:update_addon_quantity(Sub, AddOn, Quantity),
+                                                Subscription1
+                                        end, Subscription, Updates),
+            case braintree_subscription:create(Subscription2) of
+                {ok, Subscription} ->
+                    ?LOG("updated braintree subscription"),
+                    Context;
+                {error, #bt_api_error{message=Msg}=ApiError} ->
+                    ?LOG("failed to updated braintree subscription: ~s", [Msg]),
+                    Response = braintree_utils:bt_api_error_to_json(ApiError),
+                    crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+                {error, _}=E ->
+                    ?LOG("failed to updated braintree subscription: ~p", [E]),
+                    crossbar_util:response_db_fatal(Context)
+            end;
+        {ok, Subscription} ->
+            Subscription2 = lists:foldr(fun({AddOn, Quantity}, Sub) ->
+                                                {ok, Subscription1} =
+                                                    braintree_subscription:update_addon_quantity(Sub, AddOn, Quantity),
+                                                Subscription1
+                                        end, Subscription, Updates),
+            case braintree_subscription:update(Subscription2) of
+                {ok, Subscription} ->
+                    ?LOG("updated braintree subscription"),
+                    Context;
+                {error, #bt_api_error{message=Msg}=ApiError} ->
+                    ?LOG("failed to updated braintree subscription: ~s", [Msg]),
+                    Response = braintree_utils:bt_api_error_to_json(ApiError),
+                    crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+                {error, _}=E ->
+                    ?LOG("failed to updated braintree subscription: ~p", [E]),
+                    crossbar_util:response_db_fatal(Context)
+            end;
         {error, #bt_api_error{}=ApiError} ->
             Response = braintree_utils:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+        {error, no_card} ->
+            crossbar_util:response(error, <<"no credit card on file">>, 400, Context);
         {error, _} ->
             crossbar_util:response_db_fatal(Context)
+    end;
+authorize_trunkstore(AccountId, #cb_context{req_verb = <<"delete">>}=Context) ->
+    Context.
+
+ts_outbound_us_quantity(JObj) ->
+    wh_json:get_integer_value([<<"account">>, <<"trunks">>], JObj, 0).
+
+ts_did_us_quantity(JObj) ->
+    InUse = [wh_json:get_keys(wh_json:get_value(<<"DIDs">>, Server, []))
+             || Server <- wh_json:get_value(<<"servers">>, JObj, [])],
+    Unassigned = [wh_json:get_keys(wh_json:get_value(<<"DIDs_Unassigned">>, JObj, []))],
+    lists:foldr(ts_fold_did_fun(false), 0, lists:flatten([InUse|Unassigned])).
+
+ts_tollfree_us_quantity(JObj) ->
+    InUse = [wh_json:get_keys(wh_json:get_value(<<"DIDs">>, Server, []))
+             || Server <- wh_json:get_value(<<"servers">>, JObj, [])],
+    Unassigned = [wh_json:get_keys(wh_json:get_value(<<"DIDs_Unassigned">>, JObj, []))],
+    lists:foldr(ts_fold_did_fun(true), 0, lists:flatten([InUse|Unassigned])).
+
+ts_e911_quantity(JObj) ->
+    E911 = [wh_json:get_value(<<"e911_info">>, Server, [])
+             || Server <- wh_json:get_value(<<"servers">>, JObj, [])],
+    length(E911).
+
+ts_fold_did_fun(true) ->
+    fun(Number, Count) ->
+            case re:run(Number, ?IS_TOLLFREE_RE) of
+                nomatch -> Count + 1;
+                _ -> Count
+            end
+    end;
+ts_fold_did_fun(false) ->
+    fun(Number, Count) ->
+            case re:run(Number, ?IS_TOLLFREE_RE) of
+                nomatch -> Count;
+                _ -> Count + 1
+            end
+    end.
+
+ts_get_subscription(AccountId) when not is_list(AccountId) ->
+    ts_get_subscription(wh_util:to_list(AccountId));
+ts_get_subscription(AccountId) ->
+    SubscriptionId = AccountId ++ "_sip_services",
+    case braintree_subscription:find(SubscriptionId) of
+        {ok, #bt_subscription{}}=Ok ->
+            ?LOG("found trunkstore subscription ~s", [SubscriptionId]),
+            Ok;
+        {error, not_found} ->
+            Token = get_payment_token(AccountId),
+            create_subscription(Token, "SIP_Services", SubscriptionId);
+        {error, #bt_api_error{message=Msg}}=E ->
+            ?LOG("failed to find trunkstore subscription: ~s", [Msg]),
+            E;
+        {error, _}=E ->
+            ?LOG("failed to find trunkstore subscription: ~p", [E]),
+            E
+    end.
+
+create_subscription({error, _}=E, _, _) ->
+    E;
+create_subscription(Token, Plan, Id) ->
+    ?LOG("creating new subscription ~s with id ~s and token ~s", [Plan, Id, Token]),
+    {new, #bt_subscription{payment_token=Token, plan_id=Plan, id=Id, do_not_inherit=true}}.
+
+get_payment_token(AccountId) when not is_list(AccountId) ->
+    get_payment_token(wh_util:to_list(AccountId));
+get_payment_token(AccountId) ->
+    case braintree_customer:find(AccountId) of
+        {ok, #bt_customer{credit_cards=Cards}} ->
+            ?LOG("found braintree customer ~s", [AccountId]),
+            case [Card || #bt_card{default=Default}=Card <- Cards, Default] of
+                [#bt_card{token=Token}] ->
+                    ?LOG("braintree customer ~s default credit card token ~s", [AccountId, Token]),
+                    Token;
+                _ ->
+                    ?LOG("braintree customer ~s has no credit card on file", [AccountId]),
+                    {error, no_card}
+            end;
+        {error, not_found} ->
+            case  braintree_customer:create(#bt_customer{id=AccountId}) of
+                {ok, #bt_customer{}} ->
+                    ?LOG("braintree customer ~s has no credit card on file", [AccountId]),
+                    {error, no_card};
+                {error, #bt_api_error{message=Msg}}=E ->
+                    ?LOG("failed to create braintree customer: ~s", [Msg]),
+                    E;
+                {error, _}=E ->
+                    ?LOG("failed to create braintree customer: ~p", [E]),
+                    E
+            end;
+        {error, #bt_api_error{message=Msg}}=E ->
+            ?LOG("failed to find braintree customer: ~s", [Msg]),
+            E;
+        {error, _}=E ->
+            ?LOG("failed to find braintree customer: ~p", [E]),
+            E
     end.
