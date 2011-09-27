@@ -133,9 +133,12 @@ collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF}=DbN, LookupTable,
         {ok, DTMFs} ->
             analyze_dtmf(Call, Prompts, DbN#dbn_state{digits_collected=DTMFs}, LookupTable);
         {error, timeout, DTMFs} ->
-            ?LOG("timed out"),
             {ok, PromptDTMFs} = play_min_digits_needed(Call, Prompts, MinDTMF),
-            collect_min_digits(Call, Prompts, DbN, LookupTable, <<Collected/binary, DTMFs/binary, PromptDTMFs/binary>>)
+            ?LOG("DTMFs: ~s", [DTMFs]),
+            ?LOG("Prompt DTMFs: ~s", [PromptDTMFs]),
+            CurrDTMFs = <<DTMFs/binary, PromptDTMFs/binary>>,
+            ?LOG("Failed to collect ~b digits (currently have ~s)", [MinDTMF, CurrDTMFs]),
+            collect_min_digits(Call, Prompts, DbN, LookupTable, CurrDTMFs)
     end.
 
 -spec analyze_dtmf/4 :: (Call, Prompts, DbN, LookupTable) -> no_return() when
@@ -143,26 +146,29 @@ collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF}=DbN, LookupTable,
       Prompts :: #prompts{},
       DbN :: #dbn_state{},
       LookupTable :: lookup_table().
-analyze_dtmf(Call
+analyze_dtmf(#cf_call{account_db=DB}=Call
              ,Prompts
              ,#dbn_state{digits_collected=DTMFs, confirm_match=ConfirmMatch}=DbN
              ,LookupTable) ->
-?LOG("LOOKUP: ~p", [LookupTable]),
+    ?LOG("Analyze: ~s", [DTMFs]),
     case lists:filter(fun(Entry) -> filter_table(Entry, DTMFs) end, LookupTable) of
         [] ->
+            ?LOG("No results"),
             play_no_results(Call, Prompts),
             start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table);
         [{ID, {_, JObj}}] ->
+            ?LOG("Single result: ~s", [ID]),
             case confirm_match(Call, Prompts, ConfirmMatch, JObj) of
                 true ->
-                    route_to_match(Call, ID);
+                    route_to_match(Call, JObj);
                 false ->
                     start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
             end;
         Matches ->
-%%             play_has_matches(Call, Prompts, length(Matches)),
-            case matches_menu(Call, Prompts, Matches) of
-                {route, ID} -> route_to_match(Call, ID);
+            ?LOG("Has more than 1 match"),
+            play_has_matches(Call, Prompts, length(Matches)),
+            case matches_menu(Call, Prompts, Matches, DB) of
+                {route, JObj} -> route_to_match(Call, JObj);
                 continue -> collect_next_dtmf(Call, Prompts, DbN, Matches);
                 start_over -> start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
             end
@@ -174,40 +180,42 @@ analyze_dtmf(Call
 filter_table({_, {DialplanJObj, _}}, DTMFs) -> doc_matches(DialplanJObj, DTMFs).
 
 %% Play instructions, then the prompts to scroll through messages
--spec matches_menu/3 :: (Call, Prompts, LookupList) -> {'route', binary()} | 'continue' | 'start_over' when
-      Call :: #cf_call{},
-      Prompts :: #prompts{},
-      LookupList :: lookup_table().
-matches_menu(Call, Prompts, LookupList) ->
-    matches_menu(Call, Prompts, LookupList, 1).
-
--spec matches_menu/4 :: (Call, Prompts, LookupList, MatchNo) -> {'route', binary()} | 'continue' | 'start_over' when
+-spec matches_menu/4 :: (Call, Prompts, LookupList, DB) -> {'route', json_object()} | 'continue' | 'start_over' when
       Call :: #cf_call{},
       Prompts :: #prompts{},
       LookupList :: lookup_table(),
+      DB :: binary().
+matches_menu(Call, Prompts, LookupList, DB) ->
+    matches_menu(Call, Prompts, LookupList, DB, 1).
+
+-spec matches_menu/5 :: (Call, Prompts, LookupList, DB, MatchNo) -> {'route', json_object()} | 'continue' | 'start_over' when
+      Call :: #cf_call{},
+      Prompts :: #prompts{},
+      LookupList :: lookup_table(),
+      DB :: binary(),
       MatchNo :: non_neg_integer().
-matches_menu(Call, Prompts, [{_,{_, JObj}}|_] = LookupList, MatchNo) ->
-    play_result(Call, Prompts, MatchNo, JObj),
+matches_menu(Call, Prompts, [{_,{_, JObj}}|_] = LookupList, DB, MatchNo) ->
+    play_result(Call, Prompts, MatchNo, JObj, DB),
     case play_result_menu(Call, Prompts) of
-        {ok, <<>>} -> matches_menu_dtmf(Call, Prompts, LookupList, MatchNo, cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF));
-        {ok, _DTMF}=OK -> matches_menu_dtmf(Call, Prompts, LookupList, MatchNo, OK)
+        {ok, <<>>} -> matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF));
+        {ok, _DTMF}=OK -> matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, OK)
     end;
-matches_menu(Call, Prompts, [], _) ->
+matches_menu(Call, Prompts, [], _, _) ->
     play_no_more_results(Call, Prompts),
     no_matches_menu(Call, Prompts).
 
-matches_menu_dtmf(Call, Prompts, LookupList, MatchNo, {ok, <<>>}) ->
-    matches_menu(Call, Prompts, LookupList, MatchNo);
-matches_menu_dtmf(_Call, _Prompts, [{ID, _} | _], _MatchNo, {ok, ?DTMF_RESULT_CONNECT}) ->
-    ?LOG("Routing to ~s (match no ~b)", [ID, _MatchNo]),
-    {route, ID};
-matches_menu_dtmf(Call, Prompts, [_|RestList], MatchNo, {ok, ?DTMF_RESULT_NEXT}) ->
-    matches_menu(Call, Prompts, RestList, MatchNo+1);
-matches_menu_dtmf(_Call, _Prompts, _LookupList, _MatchNo, {ok, ?DTMF_RESULT_CONTINUE}) -> continue;
-matches_menu_dtmf(_Call, _Prompts, _LookupList, _MatchNo, {ok, ?DTMF_RESULT_START}) -> start_over;
-matches_menu_dtmf(Call, Prompts, LookupList, MatchNo, _) ->
+matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, {ok, <<>>}) ->
+    matches_menu(Call, Prompts, LookupList, DB, MatchNo);
+matches_menu_dtmf(_Call, _Prompts, [{_ID, {_, JObj}} | _], _DB, _MatchNo, {ok, ?DTMF_RESULT_CONNECT}) ->
+    ?LOG("Routing to ~s (match no ~b)", [_ID, _MatchNo]),
+    {route, JObj};
+matches_menu_dtmf(Call, Prompts, [_|RestList], DB, MatchNo, {ok, ?DTMF_RESULT_NEXT}) ->
+    matches_menu(Call, Prompts, RestList, DB, MatchNo+1);
+matches_menu_dtmf(_Call, _Prompts, _LookupList, _DB, _MatchNo, {ok, ?DTMF_RESULT_CONTINUE}) -> continue;
+matches_menu_dtmf(_Call, _Prompts, _LookupList, _DB, _MatchNo, {ok, ?DTMF_RESULT_START}) -> start_over;
+matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, _) ->
     play_invalid_key(Call, Prompts),
-    matches_menu(Call, Prompts, LookupList, MatchNo).
+    matches_menu(Call, Prompts, LookupList, DB, MatchNo).
 
 -spec no_matches_menu/2 :: (Call, Prompts) -> 'continue' | 'start_over' when
       Call :: #cf_call{},
@@ -243,49 +251,30 @@ play_no_more_results(Call, #prompts{no_more_results=NoMoreResults}) ->
 play_result_menu(Call, #prompts{result_menu=ResultMenu}) ->
     play_and_collect([{play, ResultMenu}], Call).
 
-play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj) ->
+play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj, DB) ->
+    Name = case wh_json:get_value(<<"media_name_id">>, JObj) of
+               undefined -> {say, <<$', (wh_json:get_binary_value(<<"full_name">>, JObj))/binary, $'>>};
+               MediaID -> {play, <<$/, DB/binary, $/, MediaID/binary>>}
+           end,
+
     play_and_wait([
                    {play, ResultNumber}
                    ,{say, wh_util:to_binary(MatchNo), <<"number">>}
-                   ,{say, wh_json:get_binary_value(<<"full_name">>, JObj)}
+                   ,Name
                   ], Call).
 
 %% Takes a user doc ID, creates the endpoint, and routes the call (ending the dialplan callflow as well)
 -spec route_to_match/2 :: (Call, UserID) -> no_return() when
       Call :: #cf_call{},
       UserID :: binary().
-route_to_match(#cf_call{cf_pid=CFPid}=Call, UserID) ->
-    case cf_endpoint:build(UserID, Call) of
-        {ok, Endpoints} ->
-            bridge_to_endpoints(Endpoints, ?TIMEOUT_ENDPOINT, Call);
-        {error, Reason} ->
-            ?LOG("no endpoints to bridge to, ~w", [Reason]),
-            CFPid ! { continue }
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempts to bridge to the endpoints created to reach this device
-%% @end
-%%--------------------------------------------------------------------
--spec bridge_to_endpoints/3 :: (Endpoints, Timeout, Call) -> cf_api_bridge_return() when
-      Endpoints :: json_objects(),
-      Timeout :: binary(),
-      Call :: #cf_call{}.
-bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid}=Call) ->
-    IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-    case cf_call_command:b_bridge(Endpoints, Timeout, <<"internal">>, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
-        {ok, _} ->
-            ?LOG("completed successful bridge to the device"),
-            CFPid ! { stop };
-        {fail, Reason} ->
-            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-            ?LOG("failed to bridge to endpoint ~s:~s", [Code, Cause]),
-            CFPid ! { continue };
-        {error, R} ->
-            ?LOG("failed to bridge to endpoint ~p", [R]),
-            CFPid ! { continue }
+route_to_match(#cf_call{cf_pid=CFPid, account_db=DB}, JObj) ->
+    case couch_mgr:open_doc(DB, wh_json:get_value(<<"callflow">>, JObj)) of
+        {ok, CallflowJObj} ->
+            ?LOG("Routing to Callflow: ~s", [wh_json:get_value(<<"_id">>, CallflowJObj)]),
+            CFPid ! {branch, wh_json:get_value(<<"flow">>, CallflowJObj)};
+        _ ->
+            ?LOG("Failed to find callflow: ~s", [wh_json:get_value(<<"callflow">>, JObj)]),
+            CFPid ! {continue}
     end.
 
 -spec confirm_match/4 :: (Call, Prompts, Match, UserJObj) -> boolean() when
@@ -351,9 +340,7 @@ play_min_digits_needed(Call, #prompts{specify_minimum=SpecifyMinimum, letters_of
 
 play_and_wait(AudioMacro, Call) ->
     NoopID = cf_call_command:audio_macro(AudioMacro, Call),
-    ?LOG("NoopID: ~s", [NoopID]),
-    {ok, JObj} = cf_call_command:wait_for_noop(NoopID),
-    [ ?LOG("~p", [KV]) || KV <- wh_json:to_proplist(JObj)].
+    {ok, _JObj} = cf_call_command:wait_for_noop(NoopID).
 
 -spec play_and_collect/2 :: (AudioMacro, Call) -> {'ok', binary()} when
       AudioMacro :: proplist(),
@@ -393,15 +380,18 @@ collect_next_dtmf(Call, Prompts, #dbn_state{digits_collected=DTMFs}=DbN, LookupT
         {ok, Digit} ->
             analyze_dtmf(Call, Prompts, DbN#dbn_state{digits_collected = <<DTMFs/binary, Digit/binary>>}, LookupTable);
         {error, timeout, _} ->
-            play_continue_prompt(Call, Prompts),
-            collect_next_dtmf(Call, Prompts, DbN, LookupTable)
+            case play_continue_prompt(Call, Prompts) of
+                {ok, <<>>} -> collect_next_dtmf(Call, Prompts, DbN, LookupTable);
+                {ok, Digit} ->
+                    analyze_dtmf(Call, Prompts, DbN#dbn_state{digits_collected = <<DTMFs/binary, Digit/binary>>}, LookupTable)
+            end
     end.
 
--spec play_continue_prompt/2 :: (Call, Prompts) -> binary() when
+-spec play_continue_prompt/2 :: (Call, Prompts) -> {'ok', binary()} when
       Call :: #cf_call{},
       Prompts :: #prompts{}.
 play_continue_prompt(Call, #prompts{please_continue=PleaseContinue}) ->
-    play_and_wait([{play, PleaseContinue}], Call).
+    play_and_collect([{play, PleaseContinue}], Call).
 
 -spec play_start_instructions/3 :: (Call, Prompts, SortBy) -> {'ok', binary()} when
       Call :: #cf_call{},
@@ -416,23 +406,36 @@ play_start_instructions(Call, #prompts{enter_person=EnterPerson, firstname=FName
 
 -spec build_lookup_table/1 :: (Docs) -> lookup_table() when
       Docs :: [{binary(), json_object()},...].
-build_lookup_table(Docs) ->
-    orddict:to_list(orddict:from_list([ {ID, convert_fields(DocData, ?FIELDS)} || {ID, DocData} <- Docs ])).
+build_lookup_table([_|_]=Docs) ->
+    orddict:to_list(orddict:from_list([ {ID, convert_fields(Callflow, DocData, ?FIELDS)} || {ID, Callflow, DocData} <- Docs ])).
 
 %% create a json object containing only fields in Fields, and the values converted
 %% to their dialpad equivalents
 %% as well as the json object without the dialpad encoding
 %% only convert the fields in Fields (and strip others out of the docs)
--spec convert_fields/2 :: (Doc, Fields) -> {json_object(), json_object()} when
+-spec convert_fields/3 :: (Callflow, Doc, Fields) -> {json_object(), json_object()} when
+      Callflow :: binary(),
       Doc :: json_object(),
       Fields :: [binary(),...].
-convert_fields(Doc, Fields) ->
+convert_fields(Callflow, Doc, Fields) ->
     {AlphaJObj, JObj} = lists:foldr(fun(Field, {DialpadJObj, JObj}) ->
                                             {wh_json:set_value(Field, cf_util:alpha_to_dialpad(wh_json:get_value(Field, Doc)), DialpadJObj)
                                              ,wh_json:set_value(Field, wh_json:get_value(Field, Doc), JObj)
                                             }
                                     end, {wh_json:new(), wh_json:new()}, Fields),
-    {AlphaJObj, wh_json:set_value(<<"full_name">>, <<(wh_json:get_value(<<"first_name">>, JObj))/binary, " ", (wh_json:get_value(<<"last_name">>, JObj))/binary>>, JObj)}.
+
+    Media = case wh_json:get_value([<<"media">>, <<"name">>], JObj) of
+                undefined -> [];
+                MediaID -> [{<<"media_name_id">>, MediaID}]
+            end,
+
+    JObj1 = wh_json:from_list([
+                               {<<"callflow">>, Callflow}
+                               ,{<<"full_name">>, <<(wh_json:get_value(<<"first_name">>, JObj))/binary, " ", (wh_json:get_value(<<"last_name">>, JObj))/binary>>}
+                               | Media
+                              ]),
+
+    {AlphaJObj, wh_json:merge_jobjs(JObj1, JObj)}.
 
 %% Max DTMFs recorded is either 0 or at least Min
 -spec get_max_dtmf/2 :: (Max, Min) -> integer() when
@@ -441,12 +444,12 @@ convert_fields(Doc, Fields) ->
 get_max_dtmf(Max, Min) when Min > Max -> 0;
 get_max_dtmf(Max, _) -> Max.
 
--spec get_dir_docs/2 :: (DirName, DBName) -> json_objects() when
+-spec get_dir_docs/2 :: (DirName, DBName) -> [{binary(), binary(), json_objects()},...] when
       DirName :: binary(),
       DBName :: binary().
 get_dir_docs(DirName, DBName) ->
     {ok, Docs} = couch_mgr:get_results(DBName, ?DIR_DOCS_VIEW, [{<<"key">>, DirName}, {<<"include_docs">>, true}]),
-    [ {wh_json:get_value(<<"id">>, Doc), wh_json:get_value(<<"doc">>, Doc)} || Doc <- Docs ].
+    [ {wh_json:get_value(<<"id">>, Doc), wh_json:get_value(<<"value">>, Doc), wh_json:get_value(<<"doc">>, Doc)} || Doc <- Docs ].
 
 -spec get_sort_by/1 :: (binary()) -> 'first' | 'last'.
 get_sort_by(<<"first", _/binary>>) -> first;

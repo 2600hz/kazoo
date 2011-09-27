@@ -172,7 +172,8 @@ owned_by(undefined, _) ->
     undefined;
 owned_by(OwnerId, #cf_call{account_db=Db})->
     Id = wh_util:to_binary(OwnerId),
-    case couch_mgr:get_results(Db, <<"cf_attributes/owned">>, [{<<"start_key">>, [Id, []]}, {<<"end_key">>, [Id, ?EMPTY_JSON_OBJECT]} ]) of
+
+    case couch_mgr:get_results(Db, <<"cf_attributes/owned">>, [{<<"start_key">>, [Id, false]}, {<<"end_key">>, [Id, ?EMPTY_JSON_OBJECT]} ]) of
         {ok, []} ->
             undefined;
         {ok, JObj} ->
@@ -196,6 +197,7 @@ owned_by(undefined, _, _) ->
 owned_by(OwnerId, #cf_call{account_db=Db}, Type)->
     Id = wh_util:to_binary(OwnerId),
     T = wh_util:to_binary(Type),
+
     case couch_mgr:get_results(Db, <<"cf_attributes/owned">>, [{<<"key">>, [Id, T]}]) of
         {ok, []} ->
             undefined;

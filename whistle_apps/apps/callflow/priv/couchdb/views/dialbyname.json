@@ -3,7 +3,7 @@
     ,"language": "javascript"
     ,"views": {
         "directory_docs_by_name": {
-            "map": "function(doc) { if (doc.pvt_deleted || typeof doc.directories == 'undefined') return; for(i in doc.directories) { emit(doc.directories[i].name, null); } }"
+            "map": "function(doc) { if (doc.pvt_deleted || typeof doc.directories == 'undefined') return; for(i in doc.directories) { emit(doc.directories[i].name, doc.directories[i].callflow); } }"
         },
     }
 }
