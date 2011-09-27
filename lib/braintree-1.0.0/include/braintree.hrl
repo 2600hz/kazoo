@@ -154,7 +154,6 @@
                         }).
 
 -record(bt_subscription, {id = undefined :: undefined | string()
-                          ,add_ons = undefined :: undefined | string()
                           ,balance = undefined :: undefined | string()
                           ,billing_dom = undefined :: undefined | string()
                           ,billing_first_date = undefined :: undefined | string()
@@ -177,7 +176,7 @@
                           ,trial_duration = undefined :: undefined | string()
                           ,trial_duration_unit = undefined :: undefined | string()
                           ,trial_period = undefined :: undefined | string()
-%%                          ,add_ons = undefined :: undefined | string()
+                          ,add_ons = undefined :: undefined | string()
                           ,discounts = undefined :: undefined | string()
                           ,descriptor = undefined :: undefined | string()
                           ,transactions = undefined :: undefined | string()

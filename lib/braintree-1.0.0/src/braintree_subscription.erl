@@ -129,6 +129,8 @@ find(Id) ->
       Quantity :: integer() | binary() | string().
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_list(Quantity) ->
     update_addon_quantity(Subscription, AddOnId, wh_util:to_list(Quantity));
+update_addon_quantity(#bt_subscription{add_ons=undefined}=Subscription, AddOnId, Quantity) ->
+    update_addon_quantity(Subscription#bt_subscription{add_ons=[]}, AddOnId, Quantity);
 update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Quantity) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         false ->
@@ -303,9 +305,11 @@ record_to_xml(Subscription, ToString) ->
 %%--------------------------------------------------------------------
 -spec create_addon_changes/1 :: (AddOns) -> undefined | list() when
       AddOns :: list().
+create_addon_changes(undefined) ->
+    undefined;
 create_addon_changes(AddOns) ->
     Remove = [{'item', Id}
-              || #bt_addon{id=Id, quantity=Q} <- AddOns, Q =:= "0"],
+              || #bt_addon{id=Id, quantity=Q} <- AddOns, Id =/= undefined, Q =:= "0"],
     Add = [{'item', [{'inherited_from_id', IFId},{'quantity', Q}]}
            || #bt_addon{quantity=Q, inherited_from=IFId} <- AddOns, IFId =/= undefined, Q =/= "0"],
     Update = [{'item', [{'existing_id', EId},{'quantity', Q}]}
