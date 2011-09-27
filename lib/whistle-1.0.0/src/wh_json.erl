@@ -47,7 +47,7 @@ is_json_object(MaybeJObj) ->
 
 -spec is_json_term/1 :: (V) -> boolean() when
       V :: json_term().
-is_json_term(undefined) -> false;
+is_json_term(undefined) -> throw({error, no_undefined_atom_in_jobj_please});
 is_json_term(V) when is_atom(V) -> true;
 is_json_term(V) when is_binary(V) -> true;
 is_json_term(V) when is_bitstring(V) -> true;
