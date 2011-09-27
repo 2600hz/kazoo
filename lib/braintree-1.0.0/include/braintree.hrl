@@ -182,8 +182,8 @@
                           ,transactions = undefined :: undefined | string()
                           ,do_not_inherit = false :: boolean()
                           ,start_immediately = true :: boolean()
-                          ,prorate_charges = false :: boolean()
-                          ,revert_on_prorate_fail = false :: boolean()
+                          ,prorate_charges = true :: boolean()
+                          ,revert_on_prorate_fail = true :: boolean()
                           ,replace_add_ons = false :: boolean()
                          }).
 
