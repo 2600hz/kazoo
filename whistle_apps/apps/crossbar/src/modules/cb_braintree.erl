@@ -196,6 +196,63 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD
 	  end),
     {noreply, State};
 
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, Context | [<<"addresses">>]=Params]}, State) ->
+    spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
+                  Address = crossbar_util:fetch(braintree, Context),
+                  Context1 = case braintree_address:create(Address) of
+                                 {ok, #bt_address{}=A} ->
+                                     Response = braintree_address:record_to_json(A),
+                                     crossbar_util:response(Response, Context);
+                                 {error, #bt_api_error{}=ApiError} ->
+                                     Response = braintree_utils:bt_api_error_to_json(ApiError),
+                                     crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+                                 {error, _} ->
+                                     crossbar_util:response_db_fatal(Context)
+                             end,
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, Context | [<<"addresses">>, AddressId]=Params]}, State) ->
+    spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
+                  Address = crossbar_util:fetch(braintree, Context),
+                  Context1 = case braintree_address:update(Address) of
+                                 {ok, #bt_address{}=A} ->
+                                     Response = braintree_address:record_to_json(A),
+                                     crossbar_util:response(Response, Context);
+                                 {error, #bt_api_error{}=ApiError} ->
+                                     Response = braintree_utils:bt_api_error_to_json(ApiError),
+                                     crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+                                 {error, not_found} ->
+                                     crossbar_util:response_bad_identifier(AddressId, Context);
+                                 {error, _} ->
+                                     crossbar_util:response_db_fatal(Context)
+                             end,
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD, Context | [<<"addresses">>, AddressId]=Params]}, State) ->
+    spawn(fun() ->
+                  crossbar_util:put_reqid(Context),
+                  Context1 = case braintree_address:delete(Context#cb_context.account_id, AddressId) of
+                                 {ok, #bt_address{}=A} ->
+                                     Response = braintree_card:record_to_json(A),
+                                     crossbar_util:response(Response, Context);
+                                 {error, #bt_api_error{}=ApiError} ->
+                                     Response = braintree_utils:bt_api_error_to_json(ApiError),
+                                     crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+                                 {error, not_found} ->
+                                     crossbar_util:response_bad_identifier(AddressId, Context);
+                                 {error, _} ->
+                                     crossbar_util:response_db_fatal(Context)
+                             end,
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+	  end),
+    {noreply, State};
+
 handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
@@ -268,6 +325,16 @@ allowed_methods([<<"cards">>]) ->
 allowed_methods([<<"cards">>, _]) ->
     {true, ['GET', 'POST', 'DELETE']};
 
+allowed_methods([<<"addresses">>]) ->
+    {true, ['GET', 'PUT']};
+allowed_methods([<<"addresses">>, _]) ->
+    {true, ['GET', 'POST', 'DELETE']};
+
+allowed_methods([<<"transactions">>]) ->
+    {true, ['GET', 'PUT']};
+allowed_methods([<<"transactions">>, _]) ->
+    {true, ['GET']};
+
 allowed_methods(_) ->
     {false, []}.
 
@@ -286,6 +353,14 @@ resource_exists([<<"customer">>]) ->
 resource_exists([<<"cards">>]) ->
     {true, []};
 resource_exists([<<"cards">>, _]) ->
+    {true, []};
+resource_exists([<<"addresses">>]) ->
+    {true, []};
+resource_exists([<<"addresses">>, _]) ->
+    {true, []};
+resource_exists([<<"transactions">>]) ->
+    {true, []};
+resource_exists([<<"transactions">>, _]) ->
     {true, []};
 resource_exists(_) ->
     {false, []}.
@@ -333,7 +408,6 @@ validate([<<"cards">>], #cb_context{req_verb = <<"get">>, account_id=AccountId}=
             crossbar_util:response_db_fatal(Context)
     end;
 validate([<<"cards">>], #cb_context{req_verb = <<"put">>, req_data=JObj, account_id=AccountId}=Context) ->
-    io:format("~p~n", [AccountId]),
     Card = (braintree_card:json_to_record(JObj))#bt_card{customer_id=wh_util:to_list(AccountId)},
     crossbar_util:response([], crossbar_util:store(braintree, Card, Context));
 validate([<<"cards">>, CardId], #cb_context{req_verb = <<"get">>, account_id=Account}=Context) ->
@@ -355,6 +429,69 @@ validate([<<"cards">>, CardId], #cb_context{req_verb = <<"post">>, req_data=JObj
     crossbar_util:response([], crossbar_util:store(braintree, Card, Context));
 validate([<<"cards">>, _], #cb_context{req_verb = <<"delete">>}=Context) ->
     crossbar_util:response([], Context);
+
+%% ADDRESS API
+validate([<<"addresses">>], #cb_context{req_verb = <<"get">>, account_id=AccountId}=Context) ->
+    case braintree_customer:find(AccountId) of
+        {ok, #bt_customer{addresses=Addresses}} ->
+            Response = [braintree_address:record_to_json(Address) || Address <- Addresses],
+            crossbar_util:response(Response, Context);
+        {error, #bt_api_error{}=ApiError} ->
+            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+        {error, _} ->
+            crossbar_util:response_db_fatal(Context)
+    end;
+validate([<<"addresses">>], #cb_context{req_verb = <<"put">>, req_data=JObj, account_id=AccountId}=Context) ->
+    Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=wh_util:to_list(AccountId)},
+    crossbar_util:response([], crossbar_util:store(braintree, Address, Context));
+validate([<<"addresses">>, AddressId], #cb_context{req_verb = <<"get">>, account_id=Account}=Context) ->
+    AccountId = wh_util:to_list(Account),
+    case braintree_address:find(AddressId) of
+        {ok, #bt_address{customer_id=AccountId}=C} ->
+            Response = braintree_address:record_to_json(C),
+            crossbar_util:response(Response, Context);
+        {error, #bt_api_error{}=ApiError} ->
+            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+        {error, not_found} ->
+            crossbar_util:response_bad_identifier(AddressId, Context);
+        {error, _} ->
+            crossbar_util:response_db_fatal(Context)
+    end;
+validate([<<"addresses">>, AddressId], #cb_context{req_verb = <<"post">>, req_data=JObj, account_id=AccountId}=Context) ->
+    Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=wh_util:to_list(AccountId), id=AddressId},
+    crossbar_util:response([], crossbar_util:store(braintree, Address, Context));
+validate([<<"addresses">>, _], #cb_context{req_verb = <<"delete">>}=Context) ->
+    crossbar_util:response([], Context);
+
+%% TRANSACTION API
+validate([<<"transactions">>], #cb_context{req_verb = <<"get">>, account_id=AccountId}=Context) ->
+    case braintree_transaction:find_by_customer(AccountId) of
+        {ok, Transactions} ->
+            Response = [braintree_transaction:record_to_json(Transaction) || Transaction <- Transactions],
+            crossbar_util:response(Response, Context);
+        {error, #bt_api_error{}=ApiError} ->
+            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+        {error, _} ->
+            crossbar_util:response_db_fatal(Context)
+    end;
+
+validate([<<"transactions">>, TransactionId], #cb_context{req_verb = <<"get">>}=Context) ->
+    case braintree_transaction:find(TransactionId) of
+        {ok, #bt_transaction{}=T} ->
+            Response = braintree_address:record_to_json(T),
+            crossbar_util:response(Response, Context);
+        {ok, Transactions} ->
+            Response = [braintree_transaction:record_to_json(Transaction) || Transaction <- Transactions],
+            crossbar_util:response(Response, Context);
+        {error, #bt_api_error{}=ApiError} ->
+            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+        {error, _} ->
+            crossbar_util:response_db_fatal(Context)
+    end;
 
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).

@@ -14,10 +14,11 @@
 -export([sale/1, sale/2, quick_sale/2, quick_sale/3]).
 -export([credit/1, credit/2, quick_credit/2]).
 -export([void/1, refund/1, refund/2]).
--export([find/1]).
+-export([find/1, find_by_customer/1]).
 -export([xml_to_record/1, xml_to_record/2, record_to_xml/1]).
+-export([record_to_json/1]).
 
--import(braintree_util, [get_xml_value/2, make_doc_xml/2]).
+-import(braintree_utils, [get_xml_value/2, make_doc_xml/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -178,6 +179,30 @@ find(Id) ->
             error:{badmatch, _} ->
                 {error, token_invalid}
         end.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Find transactions by customer id
+%% @end
+%%--------------------------------------------------------------------
+-spec find_by_customer/1 :: (CustomerId) -> bt_result() when
+      CustomerId :: binary() | string().
+find_by_customer(CustomerId) ->
+    try
+        true = validate_id(CustomerId),
+        Props = [{'customer_id', [{'is', CustomerId}]}],
+        Request = make_doc_xml(Props, 'search'),
+        case braintree_request:post("/transactions/advanced_search", Request) of
+            {ok, Xml} ->
+                {ok, [xml_to_record(Transaction)
+                     || Transaction <- xmerl_xpath:string("/credit-card-transactions/transaction", Xml)]};
+            {error, _}=E ->
+                E
+        end
+    catch
+        error:{badmatch, _} ->
+            {error, token_invalid}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -352,3 +377,47 @@ record_to_xml(Transaction, ToString) ->
         true -> make_doc_xml(Props1, 'transaction');
         false -> Props1
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Convert a given record into a json object
+%% @end
+%%--------------------------------------------------------------------
+-spec record_to_json/1 :: (Transaction) -> json_object() when
+      Transaction :: #bt_transaction{}.
+record_to_json(Transaction) ->
+    Props = [{<<"id">>, Transaction#bt_transaction.id}
+             ,{<<"status">>, Transaction#bt_transaction.status}
+             ,{<<"type">>, Transaction#bt_transaction.type}
+             ,{<<"currency_code">>, Transaction#bt_transaction.currency_code}
+             ,{<<"amount">>, Transaction#bt_transaction.amount}
+             ,{<<"merchant_account_id">>, Transaction#bt_transaction.merchant_account_id}
+             ,{<<"order_id">>, Transaction#bt_transaction.order_id}
+             ,{<<"purchase_order">>, Transaction#bt_transaction.purchase_order}
+             ,{<<"created_at">>, Transaction#bt_transaction.created_at}
+             ,{<<"update_at">>, Transaction#bt_transaction.update_at}
+             ,{<<"refund_id">>, Transaction#bt_transaction.refund_id}
+             ,{<<"refunded_transaction">>, Transaction#bt_transaction.refunded_transaction}
+             ,{<<"settlement_batch">>, Transaction#bt_transaction.settlement_batch}
+             ,{<<"avs_error_code">>, Transaction#bt_transaction.avs_error_code}
+             ,{<<"avs_postal_response">>, Transaction#bt_transaction.avs_postal_response}
+             ,{<<"avs_street_response">>, Transaction#bt_transaction.avs_street_response}
+             ,{<<"ccv_response_code">>, Transaction#bt_transaction.ccv_response_code}
+             ,{<<"gateway_rejection">>, Transaction#bt_transaction.gateway_rejection}
+             ,{<<"processor_authorization_code">>, Transaction#bt_transaction.processor_authorization_code}
+             ,{<<"processor_response_code">>, Transaction#bt_transaction.processor_response_code}
+             ,{<<"processor_response_text">>, Transaction#bt_transaction.processor_response_text}
+             ,{<<"tax_amount">>, Transaction#bt_transaction.tax_amount}
+             ,{<<"tax_exempt">>, Transaction#bt_transaction.tax_exempt}
+             ,{<<"billing_address">>, braintree_address:record_to_json(Transaction#bt_transaction.billing_address)}
+             ,{<<"shipping_address_id">>, Transaction#bt_transaction.shipping_address_id}
+             ,{<<"shipping_address">>, braintree_address:record_to_json(Transaction#bt_transaction.shipping_address)}
+             ,{<<"customer_id">>, Transaction#bt_transaction.customer_id}
+             ,{<<"customer">>, braintree_customer:record_to_json(Transaction#bt_transaction.customer)}
+             ,{<<"payment_token">>, Transaction#bt_transaction.payment_token}
+             ,{<<"card">>, braintree_card:record_to_json(Transaction#bt_transaction.card)}
+             ,{<<"subscription_id">>, Transaction#bt_transaction.subscription_id}
+             ,{<<"add_ons">>, [braintree_addon:record_to_json(Addon)
+                               || Addon <- Transaction#bt_transaction.add_ons]}],
+    braintree_util:props_to_json(Props).

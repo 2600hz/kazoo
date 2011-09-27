@@ -235,8 +235,6 @@ record_to_xml(Card, ToString) ->
              ,{'billing-address-id', Card#bt_card.billing_address_id}],
     Conditionals = [fun(#bt_card{billing_address=undefined}, P) ->
                             P;
-                       (#bt_card{billing_address=#bt_address{}}, P) ->
-                            P;
                        (#bt_card{billing_address=BA}, P) ->
                             [{'billing-address', braintree_address:record_to_xml(BA)}|P]
                     end,
@@ -284,7 +282,7 @@ record_to_xml(Card, ToString) ->
 -spec json_to_record/1 :: (JObj) -> #bt_card{} when
       JObj :: undefined | json_object().
 json_to_record(undefined) ->
-    #bt_card{};
+    undefined;
 json_to_record(JObj) ->
     #bt_card{token = create_or_get_json_id(JObj)
              ,cardholder_name = wh_json:get_list_value(<<"cardholder_name">>, JObj)

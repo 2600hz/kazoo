@@ -11,6 +11,7 @@
 -include("braintree.hrl").
 
 -export([xml_to_record/1, xml_to_record/2, record_to_xml/1]).
+-export([record_to_json/1]).
 
 -import(braintree_util, [get_xml_value/2, make_doc_xml/2]).
 
@@ -64,3 +65,17 @@ record_to_xml(Addon, ToString) ->
         true -> make_doc_xml(Props, 'add-on');
         false -> Props
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Convert a given record into a json object
+%% @end
+%%--------------------------------------------------------------------
+-spec record_to_json/1 :: (AddOn) -> json_object() when
+      AddOn :: #bt_addon{}.
+record_to_json(Addon) ->
+    Props = [{<<"id">>, Addon#bt_addon.id}
+             ,{<<"amount">>, Addon#bt_addon.amount}
+             ,{<<"quantity">>, Addon#bt_addon.quantity}],
+    braintree_util:props_to_json(Props).

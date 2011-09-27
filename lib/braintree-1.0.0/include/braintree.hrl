@@ -4,6 +4,8 @@
 -type bt_result() :: tuple(ok|error, term()).
 -type bt_xml() :: term().
 
+-define(BT_DEBUG, false).
+
 -define(BT_XML_PROLOG, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>").
 -define(BT_API_VERSION, 2).
 -define(BT_SERVER_URL, [{"prodcution", "www.braintreegateway.com"}

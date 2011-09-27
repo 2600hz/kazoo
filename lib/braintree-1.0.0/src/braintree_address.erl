@@ -234,7 +234,7 @@ record_to_xml(Address, ToString) ->
 -spec json_to_record/1 :: (JObj) -> #bt_address{} when
       JObj :: undefined | json_object().
 json_to_record(undefined) ->
-    #bt_address{};
+    undefined;
 json_to_record(JObj) ->
     #bt_address{id = create_or_get_json_id(JObj)
                 ,first_name = wh_json:get_value(<<"first_name">>, JObj)
