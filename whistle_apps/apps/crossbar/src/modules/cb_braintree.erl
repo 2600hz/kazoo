@@ -103,6 +103,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.billing">>
                  ,{RD, #cb_context{req_nouns=[{<<"ts_accounts">>, [AccountId]}]}=Context}}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
                   Context1 = try
                                  authorize_trunkstore(AccountId, Context)
                              catch
@@ -156,6 +157,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, Context | [<<"cards">>]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
                   Card = crossbar_util:fetch(braintree, Context),
                   io:format("~p~n", [Card]),
                   Context1 = case braintree_card:create(Card) of
@@ -175,6 +177,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, C
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, Context | [<<"cards">>, CardId]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
                   Card = crossbar_util:fetch(braintree, Context),
                   Context1 = case braintree_card:update(Card) of
                                  {ok, #bt_card{}=C} ->
@@ -195,6 +198,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD, Context | [<<"cards">>, CardId]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
                   Context1 = case braintree_card:delete(CardId) of
                                  {ok, #bt_card{}=C} ->
                                      Response = braintree_card:record_to_json(C),
@@ -214,6 +218,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, Context | [<<"addresses">>]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
                   Address = crossbar_util:fetch(braintree, Context),
                   Context1 = case braintree_address:create(Address) of
                                  {ok, #bt_address{}=A} ->
@@ -232,6 +237,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, C
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, Context | [<<"addresses">>, AddressId]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
                   Address = crossbar_util:fetch(braintree, Context),
                   Context1 = case braintree_address:update(Address) of
                                  {ok, #bt_address{}=A} ->
@@ -252,6 +258,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD, Context | [<<"addresses">>, AddressId]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
                   Context1 = case braintree_address:delete(Context#cb_context.account_id, AddressId) of
                                  {ok, #bt_address{}=A} ->
                                      Response = braintree_card:record_to_json(A),
@@ -547,6 +554,8 @@ create_placeholder_account(#cb_context{account_id=AccountId}=Context) ->
 -spec authorize_trunkstore/2 :: (AccountId, Context) -> #cb_context{} when
       AccountId :: binary(),
       Context :: #cb_context{}.
+authorize_trunkstore(_, #cb_context{req_verb = <<"get">>}=Context) ->
+    Context#cb_context{resp_status=success};
 authorize_trunkstore(AccountId, #cb_context{req_verb = <<"post">>, req_data=JObj}=Context) ->
     Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
                ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
@@ -560,15 +569,15 @@ authorize_trunkstore(AccountId, #cb_context{req_verb = <<"post">>, req_data=JObj
                                                 Subscription1
                                         end, Subscription, Updates),
             case braintree_subscription:create(Subscription2) of
-                {ok, Subscription} ->
+                {ok, #bt_subscription{}} ->
                     ?LOG("updated braintree subscription"),
                     Context;
                 {error, #bt_api_error{message=Msg}=ApiError} ->
                     ?LOG("failed to updated braintree subscription: ~s", [Msg]),
                     Response = braintree_utils:bt_api_error_to_json(ApiError),
                     crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
-                {error, _}=E ->
-                    ?LOG("failed to updated braintree subscription: ~p", [E]),
+                Error ->
+                    ?LOG("failed to updated braintree subscription: ~p", [Error]),
                     crossbar_util:response_db_fatal(Context)
             end;
         {ok, Subscription} ->
@@ -578,15 +587,15 @@ authorize_trunkstore(AccountId, #cb_context{req_verb = <<"post">>, req_data=JObj
                                                 Subscription1
                                         end, Subscription, Updates),
             case braintree_subscription:update(Subscription2) of
-                {ok, Subscription} ->
+                {ok, #bt_subscription{}} ->
                     ?LOG("updated braintree subscription"),
                     Context;
                 {error, #bt_api_error{message=Msg}=ApiError} ->
                     ?LOG("failed to updated braintree subscription: ~s", [Msg]),
                     Response = braintree_utils:bt_api_error_to_json(ApiError),
                     crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
-                {error, _}=E ->
-                    ?LOG("failed to updated braintree subscription: ~p", [E]),
+                Error ->
+                    ?LOG("failed to updated braintree subscription: ~p", [Error]),
                     crossbar_util:response_db_fatal(Context)
             end;
         {error, #bt_api_error{}=ApiError} ->
@@ -598,7 +607,21 @@ authorize_trunkstore(AccountId, #cb_context{req_verb = <<"post">>, req_data=JObj
             crossbar_util:response_db_fatal(Context)
     end;
 authorize_trunkstore(AccountId, #cb_context{req_verb = <<"delete">>}=Context) ->
-    Context.
+    SubscriptionId = wh_util:to_list(AccountId) ++ "_sip_services",
+    case braintree_subscription:cancel(SubscriptionId) of
+        {ok, #bt_subscription{}} ->
+            ?LOG("updated braintree subscription"),
+            Context;
+        {error, not_found} ->
+            Context;
+        {error, #bt_api_error{message=Msg}=ApiError} ->
+            ?LOG("failed to cancel braintree subscription: ~s", [Msg]),
+            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+        Error ->
+            ?LOG("failed to cancel braintree subscription: ~p", [Error]),
+            crossbar_util:response_db_fatal(Context)
+    end.
 
 ts_outbound_us_quantity(JObj) ->
     wh_json:get_integer_value([<<"account">>, <<"trunks">>], JObj, 0).
