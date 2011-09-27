@@ -37,7 +37,10 @@
 		       ,options = [] :: proplist()
 		      }).
 
--record(state, {fs_nodes = [] :: list(#node_handler{}) }).
+-record(state, {
+          fs_nodes = [] :: [#node_handler{},...] | []
+         ,node_reconnect_pids = [] :: [{atom(), pid()},...] | [] % kill watchers if rm_fs_node is called for Node
+         }).
 
 %%%===================================================================
 %%% API
@@ -47,9 +50,9 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% returns ok or {error, some_error_atom_explaining_more}
--spec add_fs_node/1 :: (Node) -> ok | tuple(error, no_connection) when
+-spec add_fs_node/1 :: (Node) -> 'ok' | {'error', 'no_connection'} when
       Node :: atom().
--spec add_fs_node/2 :: (Node, Opts) -> ok | tuple(error, no_connection) when
+-spec add_fs_node/2 :: (Node, Opts) -> 'ok' | {'error', 'no_connection'} when
       Node :: atom(),
       Opts :: proplist().
 add_fs_node(Node) -> add_fs_node(Node, []).
@@ -164,8 +167,9 @@ handle_call({diagnostics}, From, #state{fs_nodes=Nodes}=State) ->
 	  end),
     {noreply, State};
 handle_call({add_fs_node, Node, Options}, _From, State) ->
-	{Resp, State1} = add_fs_node(Node, check_options(Options), State),
-	{reply, Resp, State1, hibernate};
+    ?LOG("trying to add ~s", [Node]),
+    {Resp, State1} = add_fs_node(Node, check_options(Options), State),
+    {reply, Resp, State1, hibernate};
 handle_call({rm_fs_node, Node}, _From, State) ->
     {Resp, State1} = rm_fs_node(Node, State),
     {reply, Resp, State1, hibernate};
@@ -202,24 +206,28 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({nodedown, Node}, #state{fs_nodes=Nodes}=State) ->
+handle_info({nodedown, Node}, #state{fs_nodes=Nodes, node_reconnect_pids=ReconPids}=State) ->
     ?LOG_SYS("node ~p has gone down", [Node]),
-    spawn(fun() ->
-		  [#node_handler{node=Node, options=Opts}] = [N || #node_handler{node=Node1}=N <- Nodes, Node =:= Node1],
-		  erlang:monitor_node(Node, false),
-		  [ok,ok,ok] = ecallmgr_fs_sup:stop_handlers(Node),
-
-		  ?LOG_SYS("node watch starting for ~p", [Node]),
-		  watch_node_for_restart(Node, Opts)
-	  end),
-
-    {noreply, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}, hibernate};
+    WatcherPid = spawn_link(fun() ->
+                                    case [N || #node_handler{node=Node1}=N <- Nodes, Node =:= Node1] of
+                                        [#node_handler{node=Node, options=Opts}] ->
+                                            erlang:monitor_node(Node, false),
+                                            _ = ecallmgr_fs_sup:stop_handlers(Node),
+                                            ?LOG_SYS("node watch starting for ~p", [Node]),
+                                            watch_node_for_restart(Node, Opts);
+                                        [] ->
+                                            ?LOG_SYS("node watch starting for ~p", [Node]),
+                                            watch_node_for_restart(Node, [])
+                                    end
+                            end),
+    ?LOG("Started ~p to watch ~s", [WatcherPid, Node]),
+    {noreply, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes), node_reconnect_pids = [{Node, WatcherPid} | ReconPids]}, hibernate};
 handle_info(timeout, State) ->
     spawn(fun() ->
                   case file:consult(?STARTUP_FILE) of
 		      {ok, Startup} ->
 			  Nodes = props:get_value(fs_nodes, Startup, []),
-			  lists:foreach(fun(Node) -> 
+			  lists:foreach(fun(Node) ->
 						?MODULE:add_fs_node(wh_util:to_atom(Node, true))
 					end, Nodes);
 		      {error, enoent} ->
@@ -227,10 +235,11 @@ handle_info(timeout, State) ->
 		  end
           end),
     {noreply, State};
-handle_info({'EXIT', Pid, _Reason}, State) ->
-    ?LOG_SYS("Pid ~p exited: ~p", [self(), Pid, _Reason]),
-    {noreply, State};
+handle_info({'EXIT', Pid, _Reason}, #state{node_reconnect_pids=ReconPids}=State) ->
+    ?LOG_SYS("Pid ~p exited: ~p", [Pid, _Reason]),
+    {noreply, State#state{node_reconnect_pids=lists:keydelete(Pid, 2, ReconPids)}};
 handle_info(_Info, State) ->
+    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -262,13 +271,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec watch_node_for_restart/2 :: (Node, Opts) -> ok | tuple(error, no_connection) when
+-spec watch_node_for_restart/2 :: (Node, Opts) -> 'ok' | {'error', 'no_connection'} when
       Node :: atom(),
       Opts :: proplist().
 watch_node_for_restart(Node, Opts) ->
     watch_node_for_restart(Node, Opts, 250).
 
--spec watch_node_for_restart/3 :: (Node, Opts, Timeout) -> ok | tuple(error, no_connection) when
+-spec watch_node_for_restart/3 :: (Node, Opts, Timeout) -> 'ok' | {'error', 'no_connection'} when
       Node :: atom(),
       Opts :: proplist(),
       Timeout :: pos_integer().
@@ -279,23 +288,23 @@ watch_node_for_restart(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART) ->
 watch_node_for_restart(Node, Opts, Timeout) ->
     is_node_up(Node, Opts, Timeout * 2).
 
--spec is_node_up/3 :: (Node, Opts, Timeout) -> ok | tuple(error, no_connection) when
+-spec is_node_up/3 :: (Node, Opts, Timeout) -> 'ok' | {'error', 'no_connection'} when
       Node :: atom(),
       Opts :: proplist(),
       Timeout :: pos_integer().
 is_node_up(Node, Opts, Timeout) ->
     case net_adm:ping(Node) of
 	pong ->
-	    ?LOG_SYS("node ~p has risen", [Node]),
+	    ?LOG_SYS("node ~s has risen", [Node]),
 	    ?MODULE:add_fs_node(Node, Opts);
 	pang ->
-	    ?LOG_SYS("waiting ~p seconds to ping again", [Timeout div 1000]),
+	    ?LOG_SYS("waiting ~b seconds to ping again", [Timeout div 1000]),
 	    receive
 		shutdown ->
-		    ?LOG_SYS("watcher for ~p asked to go down", [Node])
+		    ?LOG_SYS("watcher for ~s asked to go down", [Node])
 	    after
 		Timeout ->
-		    ?LOG_SYS("Pinging ~p again", [Node]),
+		    ?LOG_SYS("Pinging ~s again", [Node]),
 		    watch_node_for_restart(Node, Opts, Timeout)
 	    end
     end.
@@ -332,7 +341,7 @@ diagnostics_query(Pid) when is_pid(Pid) ->
 diagnostics_query(X) ->
     {error, handler_down, X}.
 
--spec add_fs_node/3 :: (Node, Options, State) -> tuple(ok, #state{}) | tuple(tuple(error, no_connection), #state{}) when
+-spec add_fs_node/3 :: (Node, Options, State) -> {'ok', #state{}} | {{'error', 'no_connection'}, #state{}} when
       Node :: atom(),
       Options :: proplist(),
       State :: #state{}.
@@ -351,10 +360,12 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 			true ->
 			    {ok, State#state{fs_nodes=[#node_handler{node=Node, options=Options} | Nodes]}};
 			false ->
+                            self() ! {nodedown, Node},
 			    {{error, failed_starting_handlers}, State}
 		    end;
 		pang ->
 		    ?LOG_SYS("node ~p not responding, can't connect", [Node]),
+                    self() ! {nodedown, Node},
 		    {{error, no_connection}, State}
 	    end;
 	[#node_handler{node=Node}=N] ->
@@ -373,10 +384,11 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
 	    end
     end.
 
--spec rm_fs_node/2 :: (Node, State) -> {ok | tuple(error, no_node, atom()), #state{}} when
+-spec rm_fs_node/2 :: (Node, State) -> {'ok' | {'error', 'no_node', atom()}, #state{}} when
       Node :: atom(),
       State :: #state{}.
-rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
+rm_fs_node(Node, #state{fs_nodes=Nodes, node_reconnect_pids=ReconPids}=State) ->
+    kill_watchers(Node, ReconPids),
     case lists:keyfind(Node, 2, Nodes) of
 	false ->
 	    ?LOG_SYS("no handlers found for ~s", [Node]),
@@ -386,15 +398,26 @@ rm_fs_node(Node, #state{fs_nodes=Nodes}=State) ->
 	    {{ok, close_node(N)}, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
     end.
 
+-spec kill_watchers/2 :: (Node, Watchers) -> 'ok' when
+      Node :: atom(),
+      Watchers :: [{atom(), pid()},...] | [].
+kill_watchers(Node, [{Node, Pid}|Rest]) ->
+    Pid ! shutdown,
+    kill_watchers(Node, Rest);
+kill_watchers(Node, [_|Rest]) ->
+    kill_watchers(Node, Rest);
+kill_watchers(_, []) ->
+    ok.
+
 -spec close_node/1 :: (N) -> ['ok' | {'error', 'not_found' | 'running' | 'simple_one_for_one'},...] when
       N :: #node_handler{}.
 close_node(#node_handler{node=Node}) ->
     erlang:monitor_node(Node, false),
     ecallmgr_fs_sup:stop_handlers(Node).
 
--spec process_resource_request/3 :: (Type, Nodes, Options) -> list(proplist()) | [] when
+-spec process_resource_request/3 :: (Type, Nodes, Options) -> [proplist(),...] | [] when
       Type :: binary(),
-      Nodes :: list(#node_handler{}),
+      Nodes :: [#node_handler{},...],
       Options :: proplist().
 process_resource_request(<<"audio">> = Type, Nodes, Options) ->
     NodesResp = [begin
