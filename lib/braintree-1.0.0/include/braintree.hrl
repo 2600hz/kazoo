@@ -49,6 +49,13 @@
 -define(BT_TRANS_CVV, "cvv").
 -define(BT_TRANS_DUP, "duplicate").
 
+
+-define(BT_ACTIVE, "Active").
+-define(BT_CANCELED, "Canceled").
+-define(BT_EXPIRED, "Expired").
+-define(BT_PAST_DUE, "Past Due").
+-define(BT_PENDING, "Pending").
+
 -record(bt_config, {environment = "sandbox"
                     ,merchant_id = "jbz9b3njpjfq3x63"
                     ,public_key = "rknwd52wsvns7hx4"
