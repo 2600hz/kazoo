@@ -596,18 +596,47 @@ is_permitted(RD, Context)->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% This function will use event bindings to determine if the client is
+%% authorized for this request
+%% @end
+%%--------------------------------------------------------------------
+-spec(process_billing/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(true, #wm_reqdata{}, #cb_context{})).
+process_billing(RD, Context)->
+    case wrq:method(RD) of
+        %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
+        'OPTIONS' ->
+            {RD, Context};
+        _ ->
+            Event = <<"v1_resource.billing">>,
+            case crossbar_bindings:fold(Event, {RD, Context}) of
+                {RD1, Context1} ->
+                    {RD1, Context1};
+                _ ->
+                    RD, Context
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% This function gives each noun a chance to determine if
 %% it is valid and returns the status, and any errors
 %% @end
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(#wm_reqdata{}, #cb_context{})).
 validate(RD, #cb_context{req_nouns=Nouns}=Context) ->
-    lists:foldr(fun({Mod, Params}, {RD1, Context1}) ->
-			Event = <<"v1_resource.validate.", Mod/binary>>,
-                        Payload = [RD1, Context1] ++ Params,
-			[RD2, Context2 | _] = crossbar_bindings:fold(Event, Payload),
-			{RD2, Context2}
-                end, {RD, Context}, Nouns).
+    {RD1, Context1} = lists:foldr(fun({Mod, Params}, {RD1, Context1}) ->
+                                          Event = <<"v1_resource.validate.", Mod/binary>>,
+                                          Payload = [RD1, Context1] ++ Params,
+                                          [RD2, Context2 | _] = crossbar_bindings:fold(Event, Payload),
+                                          {RD2, Context2}
+                                  end, {RD, Context}, Nouns),
+    case succeeded(Context1) of
+        true ->
+            process_billing(RD1, Context1);
+        false ->
+            {RD1, Context1}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
