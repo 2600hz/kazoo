@@ -101,12 +101,18 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.billing">>
-                 ,{RD, #cb_context{req_nouns=[{<<"ts_accounts">>, [AccountId]}]}=Context}}, State) ->
+                 ,{RD, #cb_context{req_nouns=[{<<"ts_accounts">>, Params}]}=Context}}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = try
-                                 authorize_trunkstore(AccountId, Context)
+                                 case authorize_trunkstore(Params, Context) of
+                                     #cb_context{resp_status=success}=C ->
+                                         ?LOG("billing is satisfied, allowing request"),
+                                         C;
+                                     Else ->
+                                         Else
+                                 end
                              catch
                                  _:_ ->
                                      crossbar_util:response(error, <<"error during billing validation">>, 500, Context)
@@ -557,18 +563,31 @@ create_placeholder_account(#cb_context{account_id=AccountId}=Context) ->
       Context :: #cb_context{}.
 authorize_trunkstore(_, #cb_context{req_verb = <<"get">>}=Context) ->
     Context#cb_context{resp_status=success};
-authorize_trunkstore(AccountId, #cb_context{req_verb = <<"post">>, doc=JObj}=Context) ->
+authorize_trunkstore(_, #cb_context{req_verb = <<"put">>, doc=JObj}=Context) ->
     Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
                ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
                ,{"tollfree_us", fun() -> ts_tollfree_us_quantity(JObj) end()}
                ,{"e911", fun() -> ts_e911_quantity(JObj) end()}],
-    case ts_get_subscription(JObj, AccountId, Context) of
+    BillingAccount = wh_json:get_value(<<"billing_account_id">>, JObj),
+    case ts_get_subscription(JObj, BillingAccount, Context) of
         #cb_context{}=Error ->
             Error;
         {ok, Subscription} ->
             change_subscription(Updates, Subscription, Context)
     end;
-authorize_trunkstore(AccountId, #cb_context{req_verb = <<"delete">>, doc=JObj}=Context) ->
+authorize_trunkstore([AccountId], #cb_context{req_verb = <<"post">>, doc=JObj}=Context) ->
+    Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
+               ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
+               ,{"tollfree_us", fun() -> ts_tollfree_us_quantity(JObj) end()}
+               ,{"e911", fun() -> ts_e911_quantity(JObj) end()}],
+    BillingAccount = wh_json:get_value(<<"billing_account_id">>, JObj, AccountId),
+    case ts_get_subscription(JObj, BillingAccount, Context) of
+        #cb_context{}=Error ->
+            Error;
+        {ok, Subscription} ->
+            change_subscription(Updates, Subscription, Context)
+    end;
+authorize_trunkstore([AccountId], #cb_context{req_verb = <<"delete">>, doc=JObj}=Context) ->
     case ts_get_subscription(JObj, AccountId, Context) of
         #cb_context{}=Error ->
             Error;
@@ -624,19 +643,21 @@ ts_fold_did_fun(false) ->
             end
     end.
 
-ts_get_subscription(JObj, AccountId, Context) ->
+ts_get_subscription(_, undefined, Context) ->
+    crossbar_util:response(error, <<"billing account id unspecified">>, 400, Context);
+ts_get_subscription(JObj, BillingAccount, Context) ->
     SubscriptionId = wh_json:get_list_value([<<"pvt_braintree">>, <<"trunkstore_subscription_id">>], JObj),
     case SubscriptionId =/= undefined andalso braintree_subscription:find(SubscriptionId) of
         false ->
             ?LOG("no trunkstore subscription id found"),
-            Token = get_payment_token(AccountId, Context),
+            Token = get_payment_token(BillingAccount, Context),
             create_subscription(Token, "SIP_Services");
         {ok, #bt_subscription{status=?BT_ACTIVE}}=Ok ->
             ?LOG("found active trunkstore subscription ~s", [SubscriptionId]),
             Ok;
         {error, not_found} ->
             ?LOG("trunkstore subscription id is not valid"),
-            Token = get_payment_token(AccountId, Context),
+            Token = get_payment_token(BillingAccount, Context),
             create_subscription(Token, "SIP_Services");
         {ok, #bt_subscription{status=Status}} ->
             ?LOG("found trunkstore subscription ~s", [SubscriptionId]),
@@ -703,24 +724,24 @@ create_subscription(Token, Plan) ->
     ?LOG("creating new subscription ~s with token ~s", [Plan, Token]),
     {ok, #bt_subscription{payment_token=Token, plan_id=Plan, do_not_inherit=true}}.
 
-get_payment_token(AccountId, Context) when not is_list(AccountId) ->
-    get_payment_token(wh_util:to_list(AccountId), Context);
-get_payment_token(AccountId, Context) ->
-    case braintree_customer:find(AccountId) of
+get_payment_token(BillingAccount, Context) when not is_list(BillingAccount) ->
+    get_payment_token(wh_util:to_list(BillingAccount), Context);
+get_payment_token(BillingAccount, Context) ->
+    case braintree_customer:find(BillingAccount) of
         {ok, #bt_customer{credit_cards=Cards}} ->
-            ?LOG("found braintree customer ~s", [AccountId]),
+            ?LOG("found braintree customer ~s", [BillingAccount]),
             case [Card || #bt_card{default=Default}=Card <- Cards, Default] of
                 [#bt_card{token=Token}] ->
-                    ?LOG("braintree customer ~s default credit card token ~s", [AccountId, Token]),
+                    ?LOG("braintree customer ~s default credit card token ~s", [BillingAccount, Token]),
                     Token;
                 _ ->
-                    ?LOG("braintree customer ~s has no credit card on file", [AccountId]),
+                    ?LOG("braintree customer ~s has no credit card on file", [BillingAccount]),
                     crossbar_util:response(error, <<"no credit card on file">>, 400, Context)
             end;
         {error, not_found} ->
-            case  braintree_customer:create(#bt_customer{id=AccountId}) of
+            case  braintree_customer:create(#bt_customer{id=BillingAccount}) of
                 {ok, #bt_customer{}} ->
-                    ?LOG("braintree customer ~s has no credit card on file", [AccountId]),
+                    ?LOG("braintree customer ~s has no credit card on file", [BillingAccount]),
                     crossbar_util:response(error, <<"no credit card on file">>, 400, Context);
                 {error, #bt_api_error{}=ApiError} ->
                     Response = braintree_utils:bt_api_error_to_json(ApiError),
