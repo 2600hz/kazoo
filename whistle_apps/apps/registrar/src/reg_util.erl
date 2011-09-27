@@ -41,13 +41,13 @@ lookup_registrations(Realm, Cache) ->
 %% store a sucessful registration in the database
 %% @end
 %%-----------------------------------------------------------------------------
--spec store_reg/3 :: (JObj, Id, Contact) -> {'ok', json_object()} when
+-spec store_reg/3 :: (JObj, Id, Contact) -> {'ok', json_object()} | {'error', 'timeout'} when
       JObj :: json_object(),
       Id :: binary(),
       Contact :: binary().
 store_reg(JObj, Id, Contact) ->
     RegDoc = wh_json:set_value(<<"_id">>, Id, wh_json:set_value(<<"Contact">>, Contact, JObj)),
-    {'ok', {struct, _}} = couch_mgr:ensure_saved(?REG_DB, RegDoc).
+    couch_mgr:ensure_saved(?REG_DB, RegDoc).
 
 %%-----------------------------------------------------------------------------
 %% @private
