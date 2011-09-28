@@ -205,7 +205,7 @@ record_to_xml(Customer, ToString) ->
              ,{'fax', Customer#bt_customer.fax}
              ,{'website', Customer#bt_customer.website}
              |[{'credit-card', braintree_card:record_to_xml(Card)}
-               || Card <- Customer#bt_customer.credit_cards]],
+               || Card <- Customer#bt_customer.credit_cards, Card =/= undefined]],
     case ToString of
         true -> make_doc_xml(Props, 'customer');
         false -> Props

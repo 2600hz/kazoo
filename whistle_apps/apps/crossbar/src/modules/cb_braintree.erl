@@ -152,7 +152,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
                                      Response = braintree_customer:record_to_json(C),
                                      crossbar_util:response(Response, Context);
                                  {error, #bt_api_error{}=ApiError} ->
-                                     Response = braintree_utils:bt_api_error_to_json(ApiError),
+                                     Response = braintree_util:bt_api_error_to_json(ApiError),
                                      crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
                                  {error, _} ->
                                      crossbar_util:response_db_fatal(Context)
@@ -172,7 +172,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, C
                                      Response = braintree_card:record_to_json(C),
                                      crossbar_util:response(Response, Context);
                                  {error, #bt_api_error{}=ApiError} ->
-                                     Response = braintree_utils:bt_api_error_to_json(ApiError),
+                                     Response = braintree_util:bt_api_error_to_json(ApiError),
                                      crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
                                  {error, _} ->
                                      crossbar_util:response_db_fatal(Context)
@@ -191,7 +191,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
                                      Response = braintree_card:record_to_json(C),
                                      crossbar_util:response(Response, Context);
                                  {error, #bt_api_error{}=ApiError} ->
-                                     Response = braintree_utils:bt_api_error_to_json(ApiError),
+                                     Response = braintree_util:bt_api_error_to_json(ApiError),
                                      crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
                                  {error, not_found} ->
                                      crossbar_util:response_bad_identifier(CardId, Context);
@@ -211,7 +211,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD
                                      Response = braintree_card:record_to_json(C),
                                      crossbar_util:response(Response, Context);
                                  {error, #bt_api_error{}=ApiError} ->
-                                     Response = braintree_utils:bt_api_error_to_json(ApiError),
+                                     Response = braintree_util:bt_api_error_to_json(ApiError),
                                      crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
                                  {error, not_found} ->
                                      crossbar_util:response_bad_identifier(CardId, Context);
@@ -232,7 +232,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, C
                                      Response = braintree_address:record_to_json(A),
                                      crossbar_util:response(Response, Context);
                                  {error, #bt_api_error{}=ApiError} ->
-                                     Response = braintree_utils:bt_api_error_to_json(ApiError),
+                                     Response = braintree_util:bt_api_error_to_json(ApiError),
                                      crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
                                  {error, _} ->
                                      crossbar_util:response_db_fatal(Context)
@@ -251,7 +251,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
                                      Response = braintree_address:record_to_json(A),
                                      crossbar_util:response(Response, Context);
                                  {error, #bt_api_error{}=ApiError} ->
-                                     Response = braintree_utils:bt_api_error_to_json(ApiError),
+                                     Response = braintree_util:bt_api_error_to_json(ApiError),
                                      crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
                                  {error, not_found} ->
                                      crossbar_util:response_bad_identifier(AddressId, Context);
@@ -271,7 +271,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD
                                      Response = braintree_card:record_to_json(A),
                                      crossbar_util:response(Response, Context);
                                  {error, #bt_api_error{}=ApiError} ->
-                                     Response = braintree_utils:bt_api_error_to_json(ApiError),
+                                     Response = braintree_util:bt_api_error_to_json(ApiError),
                                      crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
                                  {error, not_found} ->
                                      crossbar_util:response_bad_identifier(AddressId, Context);
@@ -414,7 +414,7 @@ validate([<<"customer">>], #cb_context{req_verb = <<"get">>, account_id=AccountI
             Response = braintree_customer:record_to_json(C),
             crossbar_util:response(Response, Context);
         {error, #bt_api_error{}=ApiError} ->
-            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         {error, not_found} ->
             create_placeholder_account(Context);
@@ -432,7 +432,7 @@ validate([<<"cards">>], #cb_context{req_verb = <<"get">>, account_id=AccountId}=
             Response = [braintree_card:record_to_json(Card) || Card <- Cards],
             crossbar_util:response(Response, Context);
         {error, #bt_api_error{}=ApiError} ->
-            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         {error, _} ->
             crossbar_util:response_db_fatal(Context)
@@ -447,7 +447,7 @@ validate([<<"cards">>, CardId], #cb_context{req_verb = <<"get">>, account_id=Acc
             Response = braintree_card:record_to_json(C),
             crossbar_util:response(Response, Context);
         {error, #bt_api_error{}=ApiError} ->
-            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         {error, not_found} ->
             crossbar_util:response_bad_identifier(CardId, Context);
@@ -467,7 +467,7 @@ validate([<<"addresses">>], #cb_context{req_verb = <<"get">>, account_id=Account
             Response = [braintree_address:record_to_json(Address) || Address <- Addresses],
             crossbar_util:response(Response, Context);
         {error, #bt_api_error{}=ApiError} ->
-            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         {error, _} ->
             crossbar_util:response_db_fatal(Context)
@@ -482,7 +482,7 @@ validate([<<"addresses">>, AddressId], #cb_context{req_verb = <<"get">>, account
             Response = braintree_address:record_to_json(C),
             crossbar_util:response(Response, Context);
         {error, #bt_api_error{}=ApiError} ->
-            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         {error, not_found} ->
             crossbar_util:response_bad_identifier(AddressId, Context);
@@ -502,7 +502,7 @@ validate([<<"transactions">>], #cb_context{req_verb = <<"get">>, account_id=Acco
             Response = [braintree_transaction:record_to_json(Transaction) || Transaction <- Transactions],
             crossbar_util:response(Response, Context);
         {error, #bt_api_error{}=ApiError} ->
-            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         {error, _} ->
             crossbar_util:response_db_fatal(Context)
@@ -517,7 +517,7 @@ validate([<<"transactions">>, TransactionId], #cb_context{req_verb = <<"get">>}=
             Response = [braintree_transaction:record_to_json(Transaction) || Transaction <- Transactions],
             crossbar_util:response(Response, Context);
         {error, #bt_api_error{}=ApiError} ->
-            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         {error, _} ->
             crossbar_util:response_db_fatal(Context)
@@ -542,7 +542,7 @@ create_placeholder_account(#cb_context{account_id=AccountId}=Context) ->
             crossbar_util:response(Response, Context);
         {error, #bt_api_error{message=Msg}=ApiError} ->
             ?LOG("failed to created new customer ~s", [Msg]),
-            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         {error, _}=E ->
             ?LOG("failed to created new customer ~p", [E]),
@@ -600,7 +600,7 @@ authorize_trunkstore([AccountId], #cb_context{req_verb = <<"delete">>, doc=JObj}
                     Context#cb_context{resp_status=success};
                 {error, #bt_api_error{message=Msg}=ApiError} ->
                     ?LOG("failed to cancel braintree subscription: ~s", [Msg]),
-                    Response = braintree_utils:bt_api_error_to_json(ApiError),
+                    Response = braintree_util:bt_api_error_to_json(ApiError),
                     crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
                 Error ->
                     ?LOG("failed to cancel braintree subscription: ~p", [Error]),
@@ -665,7 +665,7 @@ ts_get_subscription(JObj, BillingAccount, Context) ->
                                    ,{struct, [{<<"current_account_status">>, wh_util:to_binary(Status)}]}
                                    ,Context);
         {error, #bt_api_error{}=ApiError} ->
-            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         {error, no_card} ->
             crossbar_util:response(error, <<"no credit card on file">>, 400, Context);
@@ -689,7 +689,7 @@ change_subscription(Updates, #bt_subscription{id=undefined}=Subscription, #cb_co
                                ,resp_status=success};
         {error, #bt_api_error{message=Msg}=ApiError} ->
             ?LOG("failed to create braintree subscription: ~s", [Msg]),
-            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         Error ->
             ?LOG("failed to create braintree subscription: ~p", [Error]),
@@ -711,7 +711,7 @@ change_subscription(Updates, Subscription, #cb_context{doc=JObj}=Context) ->
                                ,resp_status=success};
         {error, #bt_api_error{message=Msg}=ApiError} ->
             ?LOG("failed to updated braintree subscription: ~s", [Msg]),
-            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         Error ->
             ?LOG("failed to updated braintree subscription: ~p", [Error]),
@@ -744,14 +744,14 @@ get_payment_token(BillingAccount, Context) ->
                     ?LOG("braintree customer ~s has no credit card on file", [BillingAccount]),
                     crossbar_util:response(error, <<"no credit card on file">>, 400, Context);
                 {error, #bt_api_error{}=ApiError} ->
-                    Response = braintree_utils:bt_api_error_to_json(ApiError),
+                    Response = braintree_util:bt_api_error_to_json(ApiError),
                     crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
                 _Else ->
                     crossbar_util:response_db_fatal(Context)
             end;
         {error, #bt_api_error{message=Msg}=ApiError} ->
             ?LOG("failed to find braintree customer: ~s", [Msg]),
-            Response = braintree_utils:bt_api_error_to_json(ApiError),
+            Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         _Else ->
             ?LOG("failed to find braintree customer: ~p", [_Else]),

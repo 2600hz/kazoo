@@ -238,7 +238,19 @@ record_to_xml(Card, ToString) ->
                        (#bt_card{billing_address=BA}, P) ->
                             [{'billing-address', braintree_address:record_to_xml(BA)}|P]
                     end,
-                    fun(#bt_card{update_existing=true}, P) ->
+                    fun(#bt_card{update_existing=false}, P) ->
+                            P;
+                       (#bt_card{update_existing=Token}, P) when is_list(Token) ->
+                            case proplists:get_value('options', P) of
+                                undefined ->
+                                    [{'options', [{'update-existing-token', Token}]}
+                                     |proplists:delete('token', P)];
+                                Options ->
+                                    Options1 = [{'update-existing-token', Token}|Options],
+                                    [{'options', Options1}
+                                     |proplists:delete('token', proplists:delete('options', P))]
+                            end;
+                       (#bt_card{update_existing=true}, P) ->
                             case proplists:get_value('options', P) of
                                 undefined ->
                                     [{'options', [{'update-existing-token', Card#bt_card.token}]}
@@ -294,7 +306,7 @@ json_to_record(JObj) ->
              ,cvv = wh_json:get_list_value(<<"cvv">>, JObj)
              ,billing_address_id = wh_json:get_list_value(<<"billing_address_id">>, JObj)
              ,billing_address = braintree_address:json_to_record(wh_json:get_value(<<"billing_address">>, JObj))
-             ,update_existing = wh_json:is_true(<<"update_existing">>, JObj)
+             ,update_existing = wh_json:get_list_value(<<"update_existing">>, JObj)
              ,verify = wh_json:is_true(<<"verify">>, JObj, true)
              ,make_default = wh_json:is_true(<<"make_default">>, JObj)}.
 
