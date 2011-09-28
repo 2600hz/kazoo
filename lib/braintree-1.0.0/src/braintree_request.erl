@@ -143,6 +143,7 @@ do_request(Method, Path, Body) ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                               ,io_lib:format("Response:~nerror~n~p~n", [E])
                                               ,[append]),
+            ?LOG("braintree request error: ~p", [E]),
             E
     end.
 
