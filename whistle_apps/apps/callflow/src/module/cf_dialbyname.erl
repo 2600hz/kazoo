@@ -47,8 +47,7 @@
 -type lookup_table() :: [lookup_entry(),...] | [].
 
 -record(dbn_state, {
-          dir_name = <<>> :: binary() %% which directory we're looking in
-         ,sort_by = last :: first | last %% last_name field, or first_name field
+	 sort_by = last :: first | last %% last_name field, or first_name field
          ,min_dtmf = 3 :: pos_integer() %% how many DTMF tones to collect before lookups start
          ,max_dtmf = 0 :: non_neg_integer() %% the most DTMF tones to collect; if max is reached, play choices. If max == 0, no limit
          ,confirm_match = false :: boolean() %% if false, once a match is made, connect the caller; if true, prompt for confirmation to connect
@@ -95,17 +94,18 @@
 handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
     put(callid, CallId),
 
-    MinDTMF = wh_json:get_integer_value(<<"min_dtmf">>, Data, 3),
-    DirName = wh_json:get_value(<<"name">>, Data),
-    SortBy = get_sort_by(wh_json:get_value(<<"sort_by">>, Data, <<"last_name">>)),
-    LookupTable = build_lookup_table(get_dir_docs(DirName, AccountDB)),
+    DirID = wh_json:get_value(<<"directory_id">>, Data),
+    {ok, DirJObj} = couch_mgr:open_doc(AccountDB, DirID),
 
-    ?LOG_START("Dial By Name: ~s", [DirName]),
+    MinDTMF = wh_json:get_integer_value(<<"min_dtmf">>, DirJObj, 3),
+    SortBy = get_sort_by(wh_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>)),
+    LookupTable = build_lookup_table(get_dir_docs(DirID, AccountDB)),
+
+    ?LOG_START("Dial By Name: ~s", [wh_json:get_value(<<"name">>, DirJObj)]),
     ?LOG("SortBy: ~s", [SortBy]),
 
     DbN = #dbn_state{
-      dir_name = DirName
-      ,sort_by = SortBy
+      sort_by = SortBy
       ,min_dtmf = MinDTMF
       ,max_dtmf = get_max_dtmf(wh_json:get_integer_value(<<"max_dtmf">>, Data, 0), MinDTMF)
       ,confirm_match = wh_json:is_true(<<"confirm_match">>, Data, false)
@@ -134,8 +134,6 @@ collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF}=DbN, LookupTable,
             analyze_dtmf(Call, Prompts, DbN#dbn_state{digits_collected=DTMFs}, LookupTable);
         {error, timeout, DTMFs} ->
             {ok, PromptDTMFs} = play_min_digits_needed(Call, Prompts, MinDTMF),
-            ?LOG("DTMFs: ~s", [DTMFs]),
-            ?LOG("Prompt DTMFs: ~s", [PromptDTMFs]),
             CurrDTMFs = <<DTMFs/binary, PromptDTMFs/binary>>,
             ?LOG("Failed to collect ~b digits (currently have ~s)", [MinDTMF, CurrDTMFs]),
             collect_min_digits(Call, Prompts, DbN, LookupTable, CurrDTMFs)
@@ -195,15 +193,27 @@ matches_menu(Call, Prompts, LookupList, DB) ->
       DB :: binary(),
       MatchNo :: non_neg_integer().
 matches_menu(Call, Prompts, [{_,{_, JObj}}|_] = LookupList, DB, MatchNo) ->
-    play_result(Call, Prompts, MatchNo, JObj, DB),
-    case play_result_menu(Call, Prompts) of
-        {ok, <<>>} -> matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF));
-        {ok, _DTMF}=OK -> matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, OK)
+    case play_result(Call, Prompts, MatchNo, JObj, DB) of
+	{ok, <<>>} ->
+	    case play_result_menu(Call, Prompts) of
+		{ok, <<>>} -> matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF));
+		{ok, _DTMF}=OK -> matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, OK)
+	    end;
+	{ok, _DTMF}=OK -> matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, OK)
     end;
 matches_menu(Call, Prompts, [], _, _) ->
-    play_no_more_results(Call, Prompts),
-    no_matches_menu(Call, Prompts).
+    case play_no_more_results(Call, Prompts) of
+	{ok, <<>>} -> no_matches_menu(Call, Prompts);
+	{ok, _DTMF}=OK -> no_matches_dtmf(Call, Prompts, OK)
+    end.
 
+-spec matches_menu_dtmf/6 :: (Call, Prompts, LookupList, DB, MatchNo, CollectedDTMF) -> {'route', json_object()} | 'continue' | 'start_over' when
+      Call :: #cf_call{},
+      Prompts :: #prompts{},
+      LookupList :: lookup_table(),
+      DB :: binary(),
+      MatchNo :: integer(),
+      CollectedDTMF :: {'ok', binary()}.
 matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, {ok, <<>>}) ->
     matches_menu(Call, Prompts, LookupList, DB, MatchNo);
 matches_menu_dtmf(_Call, _Prompts, [{_ID, {_, JObj}} | _], _DB, _MatchNo, {ok, ?DTMF_RESULT_CONNECT}) ->
@@ -214,8 +224,10 @@ matches_menu_dtmf(Call, Prompts, [_|RestList], DB, MatchNo, {ok, ?DTMF_RESULT_NE
 matches_menu_dtmf(_Call, _Prompts, _LookupList, _DB, _MatchNo, {ok, ?DTMF_RESULT_CONTINUE}) -> continue;
 matches_menu_dtmf(_Call, _Prompts, _LookupList, _DB, _MatchNo, {ok, ?DTMF_RESULT_START}) -> start_over;
 matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, _) ->
-    play_invalid_key(Call, Prompts),
-    matches_menu(Call, Prompts, LookupList, DB, MatchNo).
+    case play_invalid_key(Call, Prompts) of
+	{ok, <<>>} -> matches_menu(Call, Prompts, LookupList, DB, MatchNo);
+	{ok, _DTMF}=OK -> matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, OK)
+    end.
 
 -spec no_matches_menu/2 :: (Call, Prompts) -> 'continue' | 'start_over' when
       Call :: #cf_call{},
@@ -230,8 +242,10 @@ no_matches_dtmf(Call, Prompts, {ok, <<>>}) -> no_matches_menu(Call, Prompts);
 no_matches_dtmf(_Call, _Prompts, {ok, ?DTMF_NO_RESULT_CONTINUE}) -> continue;
 no_matches_dtmf(_Call, _Prompts, {ok, ?DTMF_NO_RESULT_START}) -> start_over;
 no_matches_dtmf(Call, Prompts, _) ->
-    play_invalid_key(Call, Prompts),
-    no_matches_menu(Call, Prompts).
+    case play_invalid_key(Call, Prompts) of
+	{ok, <<>>} -> no_matches_menu(Call, Prompts);
+	{ok, _DTMF}=OK -> no_matches_dtmf(Call, Prompts, OK)
+    end.
 
 -spec play_no_results_menu/2 :: (Call, Prompts) -> binary() when
       Call :: #cf_call{},
@@ -239,11 +253,11 @@ no_matches_dtmf(Call, Prompts, _) ->
 play_no_results_menu(Call, #prompts{no_results_menu=NoResultsMenu}) ->
     play_and_collect([{play, NoResultsMenu}], Call).
 
--spec play_no_more_results/2 :: (Call, Prompts) -> binary() when
+-spec play_no_more_results/2 :: (Call, Prompts) -> {'ok', binary()} when
       Call :: #cf_call{},
       Prompts :: #prompts{}.
 play_no_more_results(Call, #prompts{no_more_results=NoMoreResults}) ->
-    play_and_wait([{play, NoMoreResults}], Call).
+    play_and_collect([{play, NoMoreResults}], Call).
 
 -spec play_result_menu/2 :: (Call, Prompts) -> {'ok', binary()} when
       Call :: #cf_call{},
@@ -251,17 +265,23 @@ play_no_more_results(Call, #prompts{no_more_results=NoMoreResults}) ->
 play_result_menu(Call, #prompts{result_menu=ResultMenu}) ->
     play_and_collect([{play, ResultMenu}], Call).
 
+-spec play_result/5 :: (Call, Prompts, MatchNo, JObj, DB) -> {'ok', binary()} when
+      Call :: #cf_call{},
+      Prompts :: #prompts{},
+      MatchNo :: integer(),
+      JObj :: json_object(),
+      DB :: binary().
 play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj, DB) ->
     Name = case wh_json:get_value(<<"media_name_id">>, JObj) of
                undefined -> {say, <<$', (wh_json:get_binary_value(<<"full_name">>, JObj))/binary, $'>>};
                MediaID -> {play, <<$/, DB/binary, $/, MediaID/binary>>}
            end,
 
-    play_and_wait([
-                   {play, ResultNumber}
-                   ,{say, wh_util:to_binary(MatchNo), <<"number">>}
-                   ,Name
-                  ], Call).
+    play_and_collect([
+		      {play, ResultNumber}
+		      ,{say, wh_util:to_binary(MatchNo), <<"number">>}
+		      ,Name
+		     ], Call).
 
 %% Takes a user doc ID, creates the endpoint, and routes the call (ending the dialplan callflow as well)
 -spec route_to_match/2 :: (Call, UserID) -> no_return() when
@@ -295,13 +315,18 @@ confirm_match_dtmf(Call, Prompts, JObj, {ok, <<>>}) ->
 confirm_match_dtmf(_Call, _Prompts, _JObj, {ok, ?DTMF_ACCEPT_MATCH}) -> true;
 confirm_match_dtmf(_Call, _Prompts, _JObj, {ok, ?DTMF_REJECT_MATCH}) -> false;
 confirm_match_dtmf(Call, Prompts, JObj, _) ->
-    play_invalid_key(Call, Prompts),
-    confirm_match(Call, Prompts, true, JObj).
+    case play_invalid_key(Call, Prompts) of
+	{ok, <<>>} -> confirm_match(Call, Prompts, true, JObj);
+	{ok, _DTMF}=OK -> confirm_match_dtmf(Call, Prompts, JObj, OK)
+    end.
 
+-spec play_invalid_key/2 :: (Call, Prompts) -> {'ok', binary()} when
+      Call :: #cf_call{},
+      Prompts :: #prompts{}.
 play_invalid_key(Call, #prompts{invalid_key=InvalidKey}) ->
-    play_and_wait([
-                   {play, InvalidKey}
-                  ], Call).
+    play_and_collect([
+		      {play, InvalidKey}
+		     ], Call).
 
 -spec play_has_matches/3 :: (Call, Prompts, Matches) -> binary() when
       Call :: #cf_call{},
@@ -338,6 +363,9 @@ play_min_digits_needed(Call, #prompts{specify_minimum=SpecifyMinimum, letters_of
                    ,{play, LettersOfName, ?ANY_DIGIT}
                   ], Call).
 
+-spec play_and_wait/2 :: (AudioMacro, Call) -> binary() when
+      AudioMacro :: proplist(),
+      Call :: #cf_call{}.
 play_and_wait(AudioMacro, Call) ->
     NoopID = cf_call_command:audio_macro(AudioMacro, Call),
     {ok, _JObj} = cf_call_command:wait_for_noop(NoopID).
