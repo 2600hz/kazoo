@@ -76,7 +76,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 						{error, _} -> Acc
 					    end
 				    end, [], Devices),
-	    case bridge_to_endpoints(Endpoints, 2000, Call) of
+	    case bridge_to_endpoints(Endpoints, <<"2000">>, Call) of
 		{ok, _} ->
 		    wait_for_unbridge(),
 		    CFPid ! {stop};

@@ -107,8 +107,8 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
     DbN = #dbn_state{
       sort_by = SortBy
       ,min_dtmf = MinDTMF
-      ,max_dtmf = get_max_dtmf(wh_json:get_integer_value(<<"max_dtmf">>, Data, 0), MinDTMF)
-      ,confirm_match = wh_json:is_true(<<"confirm_match">>, Data, false)
+      ,max_dtmf = get_max_dtmf(wh_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0), MinDTMF)
+      ,confirm_match = wh_json:is_true(<<"confirm_match">>, DirJObj, false)
       ,orig_lookup_table = LookupTable
      },
     start_search(Call, #prompts{}, DbN, LookupTable).
@@ -135,7 +135,7 @@ collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF}=DbN, LookupTable,
         {error, timeout, DTMFs} ->
             {ok, PromptDTMFs} = play_min_digits_needed(Call, Prompts, MinDTMF),
             CurrDTMFs = <<DTMFs/binary, PromptDTMFs/binary>>,
-            ?LOG("Failed to collect ~b digits (currently have ~s)", [MinDTMF, CurrDTMFs]),
+            %% ?LOG("Failed to collect ~b digits (currently have ~s)", [MinDTMF, CurrDTMFs]),
             collect_min_digits(Call, Prompts, DbN, LookupTable, CurrDTMFs)
     end.
 
@@ -152,10 +152,10 @@ analyze_dtmf(#cf_call{account_db=DB}=Call
     case lists:filter(fun(Entry) -> filter_table(Entry, DTMFs) end, LookupTable) of
         [] ->
             ?LOG("No results"),
-            play_no_results(Call, Prompts),
+            ok = play_no_results(Call, Prompts),
             start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table);
-        [{ID, {_, JObj}}] ->
-            ?LOG("Single result: ~s", [ID]),
+        [{_ID, {_, JObj}}] ->
+            ?LOG("Single result: ~s", [_ID]),
             case confirm_match(Call, Prompts, ConfirmMatch, JObj) of
                 true ->
                     route_to_match(Call, JObj);
@@ -164,7 +164,7 @@ analyze_dtmf(#cf_call{account_db=DB}=Call
             end;
         Matches ->
             ?LOG("Has more than 1 match"),
-            play_has_matches(Call, Prompts, length(Matches)),
+            ok = play_has_matches(Call, Prompts, length(Matches)),
             case matches_menu(Call, Prompts, Matches, DB) of
                 {route, JObj} -> route_to_match(Call, JObj);
                 continue -> collect_next_dtmf(Call, Prompts, DbN, Matches);
@@ -217,7 +217,7 @@ matches_menu(Call, Prompts, [], _, _) ->
 matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, {ok, <<>>}) ->
     matches_menu(Call, Prompts, LookupList, DB, MatchNo);
 matches_menu_dtmf(_Call, _Prompts, [{_ID, {_, JObj}} | _], _DB, _MatchNo, {ok, ?DTMF_RESULT_CONNECT}) ->
-    ?LOG("Routing to ~s (match no ~b)", [_ID, _MatchNo]),
+    %% ?LOG("Routing to ~s (match no ~b)", [_ID, _MatchNo]),
     {route, JObj};
 matches_menu_dtmf(Call, Prompts, [_|RestList], DB, MatchNo, {ok, ?DTMF_RESULT_NEXT}) ->
     matches_menu(Call, Prompts, RestList, DB, MatchNo+1);
@@ -247,7 +247,7 @@ no_matches_dtmf(Call, Prompts, _) ->
 	{ok, _DTMF}=OK -> no_matches_dtmf(Call, Prompts, OK)
     end.
 
--spec play_no_results_menu/2 :: (Call, Prompts) -> binary() when
+-spec play_no_results_menu/2 :: (Call, Prompts) -> {'ok', binary()} when
       Call :: #cf_call{},
       Prompts :: #prompts{}.
 play_no_results_menu(Call, #prompts{no_results_menu=NoResultsMenu}) ->
@@ -284,9 +284,9 @@ play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj, DB) ->
 		     ], Call).
 
 %% Takes a user doc ID, creates the endpoint, and routes the call (ending the dialplan callflow as well)
--spec route_to_match/2 :: (Call, UserID) -> no_return() when
+-spec route_to_match/2 :: (Call, JObj) -> {'branch', json_object()} | {'continue'} when
       Call :: #cf_call{},
-      UserID :: binary().
+      JObj :: json_object().
 route_to_match(#cf_call{cf_pid=CFPid, account_db=DB}, JObj) ->
     case couch_mgr:open_doc(DB, wh_json:get_value(<<"callflow">>, JObj)) of
         {ok, CallflowJObj} ->
@@ -297,10 +297,10 @@ route_to_match(#cf_call{cf_pid=CFPid, account_db=DB}, JObj) ->
             CFPid ! {continue}
     end.
 
--spec confirm_match/4 :: (Call, Prompts, Match, UserJObj) -> boolean() when
+-spec confirm_match/4 :: (Call, Prompts, ConfirmMatch, UserJObj) -> boolean() when
       Call :: #cf_call{},
       Prompts :: #prompts{},
-      Match :: boolean(),
+      ConfirmMatch :: boolean(),
       UserJObj :: json_object().
 confirm_match(_Call, _Prompts, false, _) ->
     true;
@@ -310,6 +310,11 @@ confirm_match(Call, Prompts, true, JObj) ->
         {ok, _DTMF}=OK -> confirm_match_dtmf(Call, Prompts, JObj, OK)
     end.
 
+-spec confirm_match_dtmf/4 :: (Call, Prompts, JObj, DTMFCapture) -> boolean() when
+      Call :: #cf_call{},
+      Prompts :: #prompts{},
+      JObj :: json_object(),
+      DTMFCapture :: {'ok', binary()}.
 confirm_match_dtmf(Call, Prompts, JObj, {ok, <<>>}) ->
     confirm_match(Call, Prompts, true, JObj);
 confirm_match_dtmf(_Call, _Prompts, _JObj, {ok, ?DTMF_ACCEPT_MATCH}) -> true;
@@ -328,16 +333,20 @@ play_invalid_key(Call, #prompts{invalid_key=InvalidKey}) ->
 		      {play, InvalidKey}
 		     ], Call).
 
--spec play_has_matches/3 :: (Call, Prompts, Matches) -> binary() when
+-spec play_has_matches/3 :: (Call, Prompts, Matches) -> 'ok' when
       Call :: #cf_call{},
       Prompts :: #prompts{},
       Matches :: non_neg_integer().
 play_has_matches(Call, #prompts{result_match=ResultMatch}, Matches) ->
-    play_and_wait([
-                   {say, wh_util:to_binary(Matches), <<"number">>}
-                   ,{play, ResultMatch, ?ANY_DIGIT}
-                  ], Call).
+    ok = play_and_wait([
+			{say, wh_util:to_binary(Matches), <<"number">>}
+			,{play, ResultMatch, ?ANY_DIGIT}
+		       ], Call).
 
+-spec play_confirm_match/3 :: (Call, Prompts, JObj) -> {'ok', binary()} when
+      Call :: #cf_call{},
+      Prompts :: #prompts{},
+      JObj :: json_object().
 play_confirm_match(Call, #prompts{confirm_menu=ConfirmMenu, found=Found}, JObj) ->
     play_and_collect([
                       {play, Found}
@@ -346,35 +355,37 @@ play_confirm_match(Call, #prompts{confirm_menu=ConfirmMenu, found=Found}, JObj) 
                       ,{play, ConfirmMenu, ?ANY_DIGIT}
                      ], Call).
 
--spec play_no_results/2 :: (Call, Prompts) -> binary() when
+-spec play_no_results/2 :: (Call, Prompts) -> 'ok' when
       Call :: #cf_call{},
       Prompts :: #prompts{}.
 play_no_results(Call, #prompts{no_matching_results=NoMatchingResults}) ->
-    play_and_wait([{play, NoMatchingResults}], Call).
+    ok = play_and_wait([{play, NoMatchingResults}], Call).
 
--spec play_min_digits_needed/3 :: (Call, Prompts, MinDTMF) -> {ok, binary()} when
+-spec play_min_digits_needed/3 :: (Call, Prompts, MinDTMF) -> {'ok', binary()} when
       Call :: #cf_call{},
       Prompts :: #prompts{},
-      MinDTMF :: non_neg_integer().
+      MinDTMF :: pos_integer().
 play_min_digits_needed(Call, #prompts{specify_minimum=SpecifyMinimum, letters_of_name=LettersOfName}, MinDTMF) ->
     play_and_collect([
-                   {play, SpecifyMinimum, ?ANY_DIGIT}
-                   ,{say, wh_util:to_binary(MinDTMF), <<"number">>}
-                   ,{play, LettersOfName, ?ANY_DIGIT}
-                  ], Call).
+		      {play, SpecifyMinimum, ?ANY_DIGIT}
+		      ,{say, wh_util:to_binary(MinDTMF), <<"number">>}
+		      ,{play, LettersOfName, ?ANY_DIGIT}
+		     ], Call).
 
--spec play_and_wait/2 :: (AudioMacro, Call) -> binary() when
-      AudioMacro :: proplist(),
+-spec play_and_wait/2 :: (AudioMacro, Call) -> 'ok' when
+      AudioMacro :: [cf_call_command:audio_macro_prompt(),...],
       Call :: #cf_call{}.
 play_and_wait(AudioMacro, Call) ->
     NoopID = cf_call_command:audio_macro(AudioMacro, Call),
-    {ok, _JObj} = cf_call_command:wait_for_noop(NoopID).
+    {ok, _JObj} = cf_call_command:wait_for_noop(NoopID),
+    ok.
 
+%% {'ok', <<>>} usually indicates a timeout waiting for DTMF
 -spec play_and_collect/2 :: (AudioMacro, Call) -> {'ok', binary()} when
-      AudioMacro :: proplist(),
+      AudioMacro :: [cf_call_command:audio_macro_prompt(),...],
       Call :: #cf_call{}.
 -spec play_and_collect/3 :: (AudioMacro, Call, NumDigits) -> {'ok', binary()} when
-      AudioMacro :: proplist(),
+      AudioMacro :: [cf_call_command:audio_macro_prompt(),...],
       Call :: #cf_call{},
       NumDigits :: non_neg_integer().
 play_and_collect(AudioMacro, Call) ->
@@ -433,7 +444,7 @@ play_start_instructions(Call, #prompts{enter_person=EnterPerson, firstname=FName
                      ], Call).
 
 -spec build_lookup_table/1 :: (Docs) -> lookup_table() when
-      Docs :: [{binary(), json_object()},...].
+      Docs :: [{binary(), binary(), json_object()},...].
 build_lookup_table([_|_]=Docs) ->
     orddict:to_list(orddict:from_list([ {ID, convert_fields(Callflow, DocData, ?FIELDS)} || {ID, Callflow, DocData} <- Docs ])).
 
@@ -472,7 +483,7 @@ convert_fields(Callflow, Doc, Fields) ->
 get_max_dtmf(Max, Min) when Min > Max -> 0;
 get_max_dtmf(Max, _) -> Max.
 
--spec get_dir_docs/2 :: (DirName, DBName) -> [{binary(), binary(), json_objects()},...] when
+-spec get_dir_docs/2 :: (DirName, DBName) -> [{ID :: binary(), CallflowID :: binary(), Directory :: json_object()},...] when
       DirName :: binary(),
       DBName :: binary().
 get_dir_docs(DirName, DBName) ->

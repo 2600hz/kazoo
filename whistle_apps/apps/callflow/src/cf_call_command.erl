@@ -60,6 +60,7 @@
 			      {'say', binary()} | {'say', binary(), binary()} |
 			      {'say', binary(), binary(), binary()} | {'say', binary(), binary(), binary(), binary()} |
 			      {'tones', json_objects()}.
+-export_type([audio_macro_prompt/0]).
 
 -spec audio_macro/2 :: (Prompts, Call) -> binary() when
       Prompts :: [audio_macro_prompt(),...],
@@ -89,19 +90,19 @@ audio_macro([], #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call, Queue) ->
     send_callctrl(Payload, Call),
     NoopId;
 audio_macro([{play, MediaName}|T], Call, Queue) ->
-    audio_macro(T, Call, [{struct, play_command(MediaName, ?ANY_DIGIT, Call)}|Queue]);
+    audio_macro(T, Call, [play_command(MediaName, ?ANY_DIGIT, Call) | Queue]);
 audio_macro([{play, MediaName, Terminators}|T], Call, Queue) ->
-    audio_macro(T, Call, [{struct, play_command(MediaName, Terminators, Call)}|Queue]);
+    audio_macro(T, Call, [play_command(MediaName, Terminators, Call) | Queue]);
 audio_macro([{say, Say}|T], Call, Queue) ->
-    audio_macro(T, Call, [{struct, say_command(Say, <<"name_spelled">>, <<"pronounced">>, <<"en">>, Call)}|Queue]);
+    audio_macro(T, Call, [say_command(Say, <<"name_spelled">>, <<"pronounced">>, <<"en">>, Call) | Queue]);
 audio_macro([{say, Say, Type}|T], Call, Queue) ->
-    audio_macro(T, Call, [{struct, say_command(Say, Type, <<"pronounced">>, <<"en">>, Call)}|Queue]);
+    audio_macro(T, Call, [say_command(Say, Type, <<"pronounced">>, <<"en">>, Call) | Queue]);
 audio_macro([{say, Say, Type, Method}|T], Call, Queue) ->
-    audio_macro(T, Call, [{struct, say_command(Say, Type, Method, <<"en">>, Call)}|Queue]);
+    audio_macro(T, Call, [say_command(Say, Type, Method, <<"en">>, Call) | Queue]);
 audio_macro([{say, Say, Type, Method, Language}|T], Call, Queue) ->
-    audio_macro(T, Call, [{struct, say_command(Say, Type, Method, Language, Call)}|Queue]);
+    audio_macro(T, Call, [say_command(Say, Type, Method, Language, Call) | Queue]);
 audio_macro([{tones, Tones}|T], Call, Queue) ->
-    audio_macro(T, Call, [ tones_command(Tones, Call)|Queue]).
+    audio_macro(T, Call, [tones_command(Tones, Call) | Queue]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -347,16 +348,16 @@ b_play(Media, Terminators, Call) ->
     play(Media, Terminators, Call),
     wait_for_message(<<"play">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, infinity).
 
--spec play_command/3 :: (Media, Terminators, Call) -> proplist() when
+-spec play_command/3 :: (Media, Terminators, Call) -> json_object() when
       Media :: binary(),
       Terminators :: [binary(),...],
       Call :: #cf_call{}.
 play_command(Media, Terminators, #cf_call{call_id=CallId}) ->
-    [{<<"Application-Name">>, <<"play">>}
-     ,{<<"Media-Name">>, Media}
-     ,{<<"Terminators">>, Terminators}
-     ,{<<"Call-ID">>, CallId}
-    ].
+    wh_json:from_list([{<<"Application-Name">>, <<"play">>}
+		       ,{<<"Media-Name">>, Media}
+		       ,{<<"Terminators">>, Terminators}
+		       ,{<<"Call-ID">>, CallId}
+		      ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -498,10 +499,10 @@ tones(Tones, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
       Tones :: json_objects(),
       Call :: #cf_call{}.
 tones_command(Tones, #cf_call{call_id=CallId}) ->
-    {struct, [{<<"Application-Name">>, <<"tones">>}
-	      ,{<<"Tones">>, Tones}
-	      ,{<<"Call-ID">>, CallId}
-	     ]}.
+    wh_json:from_list([{<<"Application-Name">>, <<"tones">>}
+		       ,{<<"Tones">>, Tones}
+		       ,{<<"Call-ID">>, CallId}
+		      ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -751,14 +752,20 @@ say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
     {ok, Payload} = wh_api:say_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
+-spec say_command/5 :: (Say, Type, Method, Language, Call) -> json_object() when
+      Say :: binary(),
+      Type :: binary(),
+      Method :: binary(),
+      Language :: binary(),
+      Call :: #cf_call{}.
 say_command(Say, Type, Method, Language, #cf_call{call_id=CallId}) ->
-    [{<<"Application-Name">>, <<"say">>}
-     ,{<<"Say-Text">>, Say}
-     ,{<<"Type">>, Type}
-     ,{<<"Method">>, Method}
-     ,{<<"Language">>, Language}
-     ,{<<"Call-ID">>, CallId}
-    ].
+    wh_json:from_list([{<<"Application-Name">>, <<"say">>}
+		       ,{<<"Say-Text">>, Say}
+		       ,{<<"Type">>, Type}
+		       ,{<<"Method">>, Method}
+		       ,{<<"Language">>, Language}
+		       ,{<<"Call-ID">>, CallId}
+		      ]).
 
 b_say(Say, Call) ->
     b_say(Say, <<"name_spelled">>, Call).
