@@ -21,14 +21,12 @@
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec temporal_rules/1 :: (Call) -> undefined | json_object() when
+-spec temporal_rules/1 :: (Call) -> 'undefined' | json_objects() when
       Call :: #cf_call{}.
 temporal_rules(#cf_call{account_db=Db}) ->
     case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"temporal_rules">>}, [{<<"include_docs">>, true}]) of
-        {ok, JObj} ->
-            JObj;
-        {error, _} ->
-            []
+        {ok, JObj} -> JObj;
+        {error, _} -> []
     end.
 
 %%-----------------------------------------------------------------------------
