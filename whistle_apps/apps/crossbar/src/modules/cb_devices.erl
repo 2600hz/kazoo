@@ -366,12 +366,13 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Validates JObj against device schema
+%% Validates JObj against their schema
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
+-spec is_valid_doc/1 :: (JObj :: json_object()) -> tuple(error, json_objects());
+			(JObj :: json_object()) -> tuple(ok, []).
 is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, device).
+     crossbar_schema:do_validate(JObj, device).
 
 %%--------------------------------------------------------------------
 %% @private
