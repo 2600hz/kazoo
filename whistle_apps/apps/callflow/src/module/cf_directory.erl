@@ -288,13 +288,12 @@ play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj, DB) ->
       Call :: #cf_call{},
       JObj :: json_object().
 route_to_match(#cf_call{cf_pid=CFPid, account_db=DB}, JObj) ->
-    ?LOG("Callflow: ~s", [wh_json:get_value(<<"callflow">>, JObj)]),
-    case couch_mgr:open_doc(DB, wh_json:get_value(<<"callflow">>, JObj)) of
+    case couch_mgr:open_doc(DB, wh_json:get_value(<<"callflow_id">>, JObj)) of
         {ok, CallflowJObj} ->
             ?LOG("Routing to Callflow: ~s", [wh_json:get_value(<<"_id">>, CallflowJObj)]),
             CFPid ! {branch, wh_json:get_value(<<"flow">>, CallflowJObj)};
         _ ->
-            ?LOG("Failed to find callflow: ~s", [wh_json:get_value(<<"callflow">>, JObj)]),
+            ?LOG("Failed to find callflow: ~s", [wh_json:get_value(<<"callflow_id">>, JObj)]),
             CFPid ! {continue}
     end.
 
