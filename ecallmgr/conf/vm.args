@@ -5,7 +5,7 @@
 # Inter-node communication requires each node to have the same cookie
 # Comment this line out if you use ~/.erlang.cookie to manage your cookie
 # file
--setcookie change_me
+-setcookie W41stl3@mqP
 
 # Tell SASL not to log progress reports, and log SASL errors to a file
 -sasl errlog_type error

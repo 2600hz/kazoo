@@ -1,0 +1,9 @@
+{
+    "_id": "_design/dialbyname"
+    ,"language": "javascript"
+    ,"views": {
+        "directory_docs_by_name": {
+            "map": "function(doc) { if (doc.pvt_deleted || typeof doc.directories == 'undefined') return; for(i in doc.directories) { emit(doc.directories[i].directory_id, doc.directories[i].callflow); } }"
+        },
+    }
+}

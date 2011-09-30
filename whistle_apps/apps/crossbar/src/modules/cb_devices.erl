@@ -294,7 +294,7 @@ create_device(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {error, Fields} ->
 	    crossbar_util:response_invalid_data(Fields, Context);
-        {ok, []} ->
+        {ok, _} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
                 ,resp_status=success
@@ -323,7 +323,7 @@ update_device(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {error, Fields} ->
 	    crossbar_util:response_invalid_data(Fields, Context);
-        {ok, []} ->
+        {ok, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 

@@ -17,6 +17,12 @@ start() ->
 
 start_deps() ->
     ecallmgr_deps:ensure(),
+
+    case application:get_env(reloader) of
+	{ok, true} -> reloader:start();
+	_ -> ok
+    end,
+
     logger:start_link(),
     wh_util:ensure_started(sasl),
     wh_util:ensure_started(crypto),

@@ -24,26 +24,23 @@ start() ->
 
 start_deps() ->
     whistle_apps_deps:ensure(),
-    reloader:start(),
+
+    case application:get_env(reloader) of
+	{ok, true} -> reloader:start();
+	_ -> ok
+    end,
+
     logger:start_link(),
 
-    ensure_started(sasl),
-    ensure_started(crypto),
-    ensure_started(ibrowse),
-    ensure_started(riak_err),
-    ensure_started(couchbeam),
-    ensure_started(whistle_amqp),
-    ensure_started(whistle_couch).
+    wh_util:ensure_started(sasl),
+    wh_util:ensure_started(crypto),
+    wh_util:ensure_started(ibrowse),
+    wh_util:ensure_started(riak_err),
+    wh_util:ensure_started(couchbeam),
+    wh_util:ensure_started(whistle_amqp),
+    wh_util:ensure_started(whistle_couch).
 
 %% @spec stop() -> ok
 %% @doc Stop the whistle_apps server.
 stop() ->
     application:stop(whistle_apps).
-
-ensure_started(App) ->
-    case application:start(App) of
-	ok ->
-	    ok;
-	{error, {already_started, App}} ->
-	    ok
-    end.
