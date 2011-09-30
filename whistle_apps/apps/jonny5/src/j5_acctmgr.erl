@@ -168,9 +168,18 @@ handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->
 %% pull from inbound, then two_way, then prepay
 handle_call({authz, JObj, inbound}, _From, #state{}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    ?LOG_START(CallID, "Authorizing call...", []),
+    ?LOG_START(CallID, "Authorizing inbound call...", []),
 
-    {Resp, State1} = case is_us48(JObj) of
+    ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
+		[<<"nouser">>, _] ->
+		    [RUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>),
+		    wh_util:to_e164(RUser);
+		[ToUser, _] -> wh_util:to_e164(ToUser)
+	    end,
+
+    ?LOG("ToDID: ~s", [ToDID]),
+
+    {Resp, State1} = case is_us48(ToDID) of
 			 true -> try_inbound_then_twoway(CallID, State);
 			 false -> try_prepay(CallID, State)
 		     end,
@@ -178,12 +187,17 @@ handle_call({authz, JObj, inbound}, _From, #state{}=State) ->
 
 handle_call({authz, JObj, outbound}, _From, State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    ?LOG_START(CallID, "Authorizing outbound call...", []),
+
     ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
 		[<<"nouser">>, _] ->
 		    [RUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>),
 		    wh_util:to_e164(RUser);
 		[ToUser, _] -> wh_util:to_e164(ToUser)
 	    end,
+
+    ?LOG("ToDID: ~s", [ToDID]),
+
     {Resp, State1} = case is_us48(ToDID) of
 			 true -> try_twoway(CallID, State);
 			 false -> try_prepay(CallID, State)
@@ -457,4 +471,6 @@ release_trunk(CallID, Dict) ->
 
 %% Match +1XXXYYYZZZZ as US-48; all others are not
 is_us48(<<"+1", Rest/binary>>) when erlang:byte_size(Rest) =:= 10 -> true;
+%% extension dialing
+is_us48(Bin) when erlang:byte_size(Bin) < 7 -> true;
 is_us48(_) -> false.
