@@ -32,20 +32,20 @@
 			 ]).
 
 %% Channel, ChannelRef, Ticket[, FromRef]
--type channel_data() :: tuple(pid(), reference(), integer()).
--type consumer_data() :: tuple(pid(), reference(), integer(), reference()).
+-type channel_data() :: {pid(), reference(), integer()}.
+-type consumer_data() :: {pid(), reference(), integer(), reference()}.
 
 -type consume_records() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{} | #'queue.delete'{} |
 			   #'basic.consume'{} | #'basic.cancel'{}.
 
 -record(state, {
-	  connection = undefined :: undefined | tuple(pid(), reference())
-          ,publish_channel = undefined :: undefined | channel_data()
-          ,misc_channel = undefined :: undefined | channel_data()
+	  connection = 'undefined' :: 'undefined' | {pid(), reference()}
+          ,publish_channel = 'undefined' :: 'undefined' | channel_data()
+          ,misc_channel = 'undefined' :: 'undefined' | channel_data()
           ,consumers = dict:new() :: amqp_host:dict(pid(), consumer_data())
           ,return_handlers = dict:new() %% ref, pid() - list of PIDs that are interested in returned messages
-          ,manager = undefined :: undefined | pid()
-          ,amqp_h = undefined :: undefined | binary()
+          ,manager = 'undefined' :: 'undefined' | pid()
+          ,amqp_h = 'undefined' :: 'undefined' | binary()
 	 }).
 
 %%%===================================================================
@@ -382,9 +382,9 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-handle_info({'DOWN', Ref, process, _Pid, Reason}, #state{connection={_, Ref}, return_handlers=RHDict}=State) ->
+handle_info({'DOWN', Ref, process, ConnPid, Reason}, #state{connection={ConnPid, Ref}, return_handlers=RHDict}=State) ->
     ?LOG_SYS("recieved notification our connection to the amqp broker died: ~p", [Reason]),
-    {stop, Reason, State#state{return_handlers=dict:erase(Ref, RHDict)}, hibernate};
+    {stop, Reason, State#state{return_handlers=dict:erase(Ref, RHDict)}};
 
 handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{return_handlers=RHDict}=State) ->
     ?LOG_SYS("recieved notification monitored process ~p  died ~p, searching for reference", [_Pid, _Reason]),
@@ -435,11 +435,11 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (Reason, State) -> ok when
+-spec terminate/2 :: (Reason, State) -> 'ok' when
       Reason :: term(),
       State :: #state{}.
 terminate(_Reason, #state{consumers=Consumers, amqp_h=Host}) ->
-    notify_consumers({amqp_host_down, Host}, Consumers),
+    spawn(fun() -> notify_consumers({amqp_host_down, Host}, Consumers) end),
     ?LOG_SYS("amqp host for ~s terminated ~p", [Host, _Reason]).
 
 %%--------------------------------------------------------------------
@@ -456,8 +456,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec start_channel/1 :: (Connection) -> channel_data() | tuple(error, no_connection) | closing when
-      Connection :: undefined | {pid(), reference()} | pid().
+-spec start_channel/1 :: (Connection) -> channel_data() | {'error', 'no_connection'} | 'closing' when
+      Connection :: 'undefined' | {pid(), reference()} | pid().
 start_channel(undefined) ->
     {error, no_connection};
 start_channel({Connection, _}) ->
@@ -521,7 +521,7 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
 	       }.
 
 -spec notify_consumers/2 :: (Msg, Dict) -> ok when
-      Msg :: {'amqp_host_down', 'undefined' | binary()},
+      Msg :: {'amqp_host_down', binary()},
       Dict :: dict().
 notify_consumers(Msg, Dict) ->
     lists:foreach(fun({Pid,_}) -> Pid ! Msg end, dict:to_list(Dict)).
