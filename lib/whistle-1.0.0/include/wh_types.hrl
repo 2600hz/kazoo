@@ -11,7 +11,10 @@
            (_) -> false
         end).
 
--type proplist_key() :: nonempty_string() | binary() | atom().
+%% non-empty binary
+-type ne_binary() :: <<_:8,_:_*8>>.
+
+-type proplist_key() :: nonempty_string() | ne_binary() | atom().
 -type proplist() :: [{proplist_key(), term()} | atom(),...] | [].
 
 %% for setting types on dicts
@@ -19,9 +22,9 @@
 
 -define(EMPTY_JSON_OBJECT, {'struct', []}).
 
--type wh_proplist() :: [{binary() | atom(), binary() | atom() | integer() | float() | string()} | atom(),...] | [].
+-type wh_proplist() :: [{ne_binary() | atom(), binary() | atom() | integer() | float() | string()} | atom(),...] | [].
 
--type json_string() :: atom() | binary().
+-type json_string() :: atom() | ne_binary().
 -type json_number() :: integer() | float().
 -type json_array() :: [json_term(),...] | [].
 -type json_proplist() :: [{json_string(), json_term()},...] | [].
