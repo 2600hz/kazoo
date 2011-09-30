@@ -18,7 +18,7 @@
 -include("crossbar.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--define(CROSSBAR_SCHEMA_DB, <<"crossbar%2Fschemas">>).
+-define(CROSSBAR_SCHEMA_DB, <<"crossbar_schemas">>).
 -define(TRACE, false). %% trace through the validation steps
 
 -define(VALIDATION_FUN, fun({error, _}) -> false; (?VALID) -> true end).
@@ -46,12 +46,17 @@
       File :: string() | json_object(),
       SchemaName :: atom().
 do_validate(JObj, SchemaName) ->
-    {ok, Schema} = couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, wh_util:to_binary(SchemaName)),
-    R = validate({JObj}, {Schema}),
-    case [M || {error, M} <- lists:flatten(R)] of
-	[] -> {ok, []};
-	[_|_]=Errors -> {error, Errors}
+    case  couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, wh_util:to_binary(SchemaName)) of
+	{ok, Schema} ->
+	    R = validate({JObj}, {Schema}),
+	    case [M || {error, M} <- lists:flatten(R)] of
+		[] -> {ok, []};
+		[_|_]=Errors -> {error, Errors}
+	    end;
+	{error, _} ->
+	    {ok, []}
     end.
+
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -67,10 +72,9 @@ do_validate(JObj, SchemaName) ->
 
 %% undefined property is required if required in schema
 validate({InstanceName, undefined}, {Schema}) ->
-    case wh_json:get_binary_boolean(<<"required">>, Schema) == <<"true">>
-	orelse val(<<"type">>, Schema) == <<"object">> of
-	false -> ?VALID;
-	true -> ?INVALID(InstanceName, <<"is undefined">>)
+    case wh_json:get_binary_boolean(<<"required">>, Schema) == <<"true">> of
+	true -> ?INVALID(InstanceName, <<"is undefined">>);
+	_ -> ?VALID
     end;
 
 %% unfold schema definition until finding property
@@ -284,25 +288,23 @@ validate({IAttName, IAttVal}, {Schema, <<"items">>, ItemSchema}) ->
 %% all props are required by default, see UNDEFINED ATTR
 %% @end
 %%--------------------------------------------------------------------
-validate({IAttName, undefined}, {_, <<"required">>, true}) ->
-    trace({IAttName, undefined}, {<<"required">>, true}),
-    ?INVALID(IAttName, <<"is undefined">>);
-
-validate({IAttName, IAttValue}, {_, <<"required">>, true}) ->
-    trace({IAttName, IAttValue}, {<<"required">>, true}),
-    ?VALID;
-
-validate({IAttName, IAttVal}, {_, <<"required">>, false}) ->
-    trace({IAttName, IAttVal}, {<<"required">>, false}),
+validate({IAttName, undefined}, {_, <<"required">>, Val}) ->
+    trace({IAttName, undefined}, {<<"required">>, Val}),
+    case wh_util:to_boolean(Val) of
+	true -> ?INVALID(IAttName, <<"is undefined">>);
+	false -> ?VALID
+    end;
+validate({IAttName, IAttValue}, {_, <<"required">>, Val}) ->
+    trace({IAttName, IAttValue}, {<<"required">>, Val}),
     ?VALID;
 
 %% attribute defined in the schema that doesn't exist in the instance
-validate({IAttName, undefined}, {Schema}) ->
-    %trace({IAttName, is_undefined}, {SAttName, SAttVal}),
-    case val(<<"required">>, Schema) of
-	false -> ?VALID;
-        _ -> ?INVALID(IAttName, <<"is undefined">>)
-    end;
+%validate({IAttName, undefined}, {Schema}) ->
+%    %trace({IAttName, is_undefined}, {SAttName, SAttVal}),
+%    case val(<<"required">>, Schema) of
+%	false -> ?VALID;
+%        _ -> ?INVALID(IAttName, <<"is undefined">>)
+%    end;
 
 %% MINIMUM
 %%--------------------------------------------------------------------
