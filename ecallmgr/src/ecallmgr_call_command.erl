@@ -116,7 +116,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>=App) ->
 	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
             Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
 
-	    _ = set(Node, UUID, "enable_file_write_buffering=false"), % disable buffering to see if we get all the media
+	    _ = set(Node, UUID, <<"enable_file_write_buffering=false">>), % disable buffering to see if we get all the media
 
 	    RecArg = binary_to_list(list_to_binary([Media, " "
 						    ,wh_util:to_list(wh_json:get_value(<<"Time-Limit">>, JObj, "20")), " "
@@ -359,29 +359,31 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %% send the SendMsg proplist to the freeswitch node
 %% @end
 %%--------------------------------------------------------------------
--spec send_cmd/4 :: (Node, UUID, AppName, Args) -> 'ok' | 'timeout' | {'error', string()} when
+
+-type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
+-spec send_cmd/4 :: (Node, UUID, AppName, Args) -> send_cmd_ret() when
       Node :: atom(),
       UUID :: binary(),
       AppName :: binary() | string(),
       Args :: binary() | string() | proplist().
 send_cmd(Node, UUID, <<"hangup">>, _) ->
     ?LOG("terminate call on node ~s", [Node]),
-    ecallmgr_util:fs_log(Node, "whistle terminating call", []),
+    _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
     freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
 send_cmd(Node, UUID, <<"bridge">>, Args) ->
     Dialplan = Args ++ [{"application", "event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade,whistle_event_name=CHANNEL_EXECUTE_COMPLETE,whistle_application_name=bridge"}
                         ,{"application", "park  "}],
-    [begin
-         App = lists:takewhile(fun($ ) -> false; (_) -> true end, V),
-         Data = tl(lists:dropwhile(fun($ ) -> false; (_) -> true end, V)),
-         ecallmgr_util:fs_log(Node, "whistle queing command in 'xferext' extension: ~s ~s", [App, Data]),
-         ?LOG("building xferext on node ~s: ~s(~s)", [Node, App, Data])
-     end || {_, V} <- Dialplan],
-    freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ Dialplan),
+    _ = [begin
+	     App = lists:takewhile(fun($ ) -> false; (_) -> true end, V),
+	     Data = tl(lists:dropwhile(fun($ ) -> false; (_) -> true end, V)),
+	     _ = ecallmgr_util:fs_log(Node, "whistle queing command in 'xferext' extension: ~s ~s", [App, Data]),
+	     ?LOG("building xferext on node ~s: ~s(~s)", [Node, App, Data])
+	 end || {_, V} <- Dialplan],
+    'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ Dialplan),
     ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
 send_cmd(Node, UUID, AppName, Args) ->
     ?LOG("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
-    ecallmgr_util:fs_log(Node, "whistle executing ~s ~s", [AppName, Args]),
+    _ = ecallmgr_util:fs_log(Node, "whistle executing ~s ~s", [AppName, Args]),
     freeswitch:sendmsg(Node, UUID, [
 				    {"call-command", "execute"}
 				    ,{"execute-app-name", wh_util:to_list(AppName)}
@@ -417,7 +419,7 @@ get_bridge_endpoint(JObj) ->
       UUID :: binary().
 -spec media_path/3 :: (MediaName, Type, UUID) -> binary() when
       MediaName :: binary(),
-      Type :: extant | new,
+      Type :: 'extant' | 'new',
       UUID :: binary().
 
 media_path(MediaName, UUID) ->
@@ -566,14 +568,14 @@ stream_file({Iod, _File}=State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_terminators/3 :: (Node, UUID, Terminators) -> 'ok' | 'timeout' | {'error', string()} when
+-spec set_terminators/3 :: (Node, UUID, Terminators) -> 'ok' | fs_api_ret() when
       Node :: atom(),
       UUID :: binary(),
       Terminators :: undefined | binary().
 set_terminators(_Node, _UUID, undefined) ->
     'ok';
 set_terminators(Node, UUID, <<>>) ->
-    set(Node, UUID, "none");
+    set(Node, UUID, <<"none">>);
 set_terminators(Node, UUID, Ts) ->
     Terms = list_to_binary(["playback_terminators=", Ts]),
     set(Node, UUID, Terms).
@@ -583,19 +585,19 @@ set_terminators(Node, UUID, Ts) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set/3 :: (Node, UUID, Arg) -> 'ok' | 'timeout' | {'error', string()} when
+-spec set/3 :: (Node, UUID, Arg) -> send_cmd_ret() when
       Node :: atom(),
       UUID :: binary(),
-      Arg :: string() | binary().
+      Arg :: binary().
 set(Node, UUID, Arg) ->
-    send_cmd(Node, UUID, "set", wh_util:to_list(Arg)).
+    send_cmd(Node, UUID, "set", Arg).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec export/3 :: (Node, UUID, Arg) -> 'ok' | 'timeout' | {'error', string()} when
+-spec export/3 :: (Node, UUID, Arg) -> send_cmd_ret() when
       Node :: atom(),
       UUID :: binary(),
       Arg :: binary().
@@ -628,7 +630,7 @@ get_conference_flags(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_fetch_call_event/3 :: (Node, UUID, JObj) -> no_return() when
+-spec send_fetch_call_event/3 :: (Node, UUID, JObj) -> 'ok' when
       Node :: binary(),
       UUID :: binary(),
       JObj :: json_object().

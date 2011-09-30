@@ -5,6 +5,9 @@
 -include_lib("whistle/src/wh_api.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
+-type fs_api_ret() :: {'ok', binary()} | {'error', binary()} | 'timeout'.
+-type fs_sendmsg_ret() :: 'ok' | {'error', binary()} | 'timeout'.
+
 -record(handler_stats, {lookups_success = 0 :: integer()
 			,lookups_failed = 0 :: integer()
                         ,lookups_timeout = 0 :: integer()
@@ -32,3 +35,7 @@
 
 -define(STARTUP_FILE, [code:lib_dir(ecallmgr, priv), "/startup.config"]).
 -define(SETTINGS_FILE, [code:lib_dir(ecallmgr, priv), "/settings.config"]).
+
+-define(STARTUP_FILE_CONTENTS, <<"{'fs_nodes', []}.
+{'fs_cmds', [{'load', \"mod_sofia\"}, {'load', \"mod_shout\"}, {'load', \"mod_shell_stream\"}]}.
+">>).
