@@ -52,16 +52,16 @@ migrate_voicemail(Account) ->
 -spec migrate_vmboxes/2 :: (VMIds, Db) -> done when
       VMIds :: list(),
       Db :: binary().
-migrate_vmboxes([], _) ->
-    done;
 migrate_vmboxes([Id|T], Db) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
-            migrate_vmbox(JObj, Db),
+            {ok, _} = migrate_vmbox(JObj, Db), % better save, or we crash to alert the caller
             migrate_vmboxes(T, Db);
         {error, _E} ->
             migrate_vmboxes(T, Db)
-    end.
+    end;
+migrate_vmboxes([], _) ->
+    done.
 
 %%--------------------------------------------------------------------
 %% @private

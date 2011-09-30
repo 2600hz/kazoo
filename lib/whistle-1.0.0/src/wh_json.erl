@@ -59,6 +59,13 @@ is_json_term({json, IOList}) when is_list(IOList) -> true;
 is_json_term(MaybeJObj) ->
     is_json_object(MaybeJObj).
 
+%% converts top-level proplist to json object, but only if sub-proplists have been converted
+%% first.
+%% For example:
+%% [{a, b}, {c, [{d, e}]}]
+%% would be converted to json by
+%% wh_json:from_list([{a,b}, {c, wh_json:from_list([{d, e}])}]).
+%% the sub-proplist [{d,e}] needs converting before being passed to the next level
 -spec from_list/1 :: (L) -> json_object() when
       L :: wh_proplist().
 from_list(L) when is_list(L) ->

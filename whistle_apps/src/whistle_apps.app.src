@@ -26,5 +26,5 @@
                             ,whistle_couch
                            ]}
   ,{mod, {whistle_apps_app, []}}
-  ,{env, []}
+  ,{env, [{reloader, false}]} % set to true to enable reloader
  ]}.

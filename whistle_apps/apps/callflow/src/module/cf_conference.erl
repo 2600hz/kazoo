@@ -32,5 +32,5 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, ctrl_q=CtrlQ, account_id=Acc
               ],
     {ok, Payload} = wh_api:conference_discovery_req(Command),
     amqp_util:conference_publish(Payload, discovery),
-    cf_call_command:wait_for_hangup(),
+    {ok, _} = cf_call_command:wait_for_hangup(),
     CFPid ! {stop}.
