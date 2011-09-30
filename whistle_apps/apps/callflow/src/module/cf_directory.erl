@@ -288,6 +288,7 @@ play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj, DB) ->
       Call :: #cf_call{},
       JObj :: json_object().
 route_to_match(#cf_call{cf_pid=CFPid, account_db=DB}, JObj) ->
+    ?LOG("Callflow: ~s", [wh_json:get_value(<<"callflow">>, JObj)]),
     case couch_mgr:open_doc(DB, wh_json:get_value(<<"callflow">>, JObj)) of
         {ok, CallflowJObj} ->
             ?LOG("Routing to Callflow: ~s", [wh_json:get_value(<<"_id">>, CallflowJObj)]),
