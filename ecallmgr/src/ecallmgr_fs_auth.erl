@@ -131,7 +131,7 @@ handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}
 handle_info({nodedown, Node}, #state{node=Node}=State) ->
     ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
     freeswitch:close(Node),
-    {ok, _} = timer:send_after(0, self(), {is_node_up, 100}),
+    _Ref = erlang:send_after(0, self(), {is_node_up, 100}),
     {noreply, State};
 
 handle_info({is_node_up, Timeout}, State) when Timeout > ?FS_TIMEOUT ->
@@ -143,7 +143,7 @@ handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
 	    {noreply, State, 0};
 	false ->
 	    ?LOG_SYS("node ~s still down, retrying in ~b ms", [Node, Timeout]),
-	    {ok, _} = timer:send_after(Timeout, self(), {is_node_up, Timeout*2}),
+	    _Ref = erlang:send_after(Timeout, self(), {is_node_up, Timeout*2}),
 	    {noreply, State}
     end;
 

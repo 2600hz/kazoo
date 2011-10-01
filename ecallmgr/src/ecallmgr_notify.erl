@@ -113,7 +113,7 @@ handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     catch
         _:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
-            {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+            _Ref = erlang:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, self(), {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
             {noreply, State}
     end;
 
@@ -126,18 +126,18 @@ handle_info({amqp_reconnect, T}, State) ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
-                    {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
+                    _Ref = erlang:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, self(), {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
-                Timeout ->
+		Timeout ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
-                    {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
+                    _Ref = erlang:send_after(Timeout, self(), {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
     end;
 
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
+    _Ref = erlang:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, self(), {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, State#state{amqp_q = <<>>}, hibernate};
 
 handle_info({#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}}, State) when
