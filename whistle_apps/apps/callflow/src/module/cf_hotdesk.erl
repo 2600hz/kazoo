@@ -34,12 +34,12 @@
 -define(CF_HOTDESK_VIEW, <<"cf_attributes/hotdesk_id">>).
 
 -record(hotdesk, {
-          hotdesk_id = undefined :: undefined | binary()
-	  ,pin = undefined :: binary()
+          hotdesk_id = undefined :: 'undefined' | binary()
+	  ,pin = undefined :: 'undefined' | binary()
 	  ,login_attempts = 1 :: non_neg_integer()
 	  ,require_pin = false :: boolean()
-	  ,keep_logged_in_elsewhere = false :: boolean()
-	  ,owner_id = undefined :: binary()
+	  ,keep_logged_in_elsewhere = 'false' :: boolean()
+	  ,owner_id = undefined :: 'undefined' | binary()
           ,prompts = #prompts{}
 	 }).
 %%--------------------------------------------------------------------
@@ -76,9 +76,9 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 						{error, _} -> Acc
 					    end
 				    end, [], Devices),
-	    case bridge_to_endpoints(Endpoints, 2000, Call) of
+	    case bridge_to_endpoints(Endpoints, <<"2000">>, Call) of
 		{ok, _} ->
-		    wait_for_unbridge(),
+		    {ok, _} = wait_for_unbridge(),
 		    CFPid ! {stop};
 		{fail, Reason} ->
 		    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
@@ -146,7 +146,7 @@ login(Devices, #hotdesk{hotdesk_id=HId, require_pin=true, pin=Pin, prompts=#prom
     catch
         _:_ ->
             ?LOG("invalid hotdesk PIN ~p", [Pin]),
-            b_play(InvalidLogin, Call),
+            {ok, _} = b_play(InvalidLogin, Call),
             login(Devices, H, Call, Loop+1)
     end;
 login(Devices, #hotdesk{hotdesk_id=HId, require_pin=false}=H, Call, _)
@@ -163,20 +163,20 @@ login(Devices, #hotdesk{hotdesk_id=HId, require_pin=false}=H, Call, _)
 %% 3) Infrom the user
 %% @end
 %%--------------------------------------------------------------------
--spec do_login/3 :: (Devices, H, Call) -> no_return() when
+-spec do_login/3 :: (Devices, H, Call) -> cf_api_std_return() when
       Devices :: list(),
       H :: #hotdesk{},
       Call :: #cf_call{}.
 do_login(_, #hotdesk{keep_logged_in_elsewhere=true, owner_id=OwnerId,prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
     %% keep logged in elsewhere, so we update only the device used to call
-    set_device_owner(Db, AId, OwnerId),
-    b_play(HotdeskLogin, Call),
+    {ok, _} = set_device_owner(Db, AId, OwnerId),
+    {ok, _} = b_play(HotdeskLogin, Call),
     b_play(Bye, Call);
 do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId, prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
     %% log out from owned devices , since we don't want to keep logged in elsewhere, then log unto the device currently used
     logout_from_elsewhere(Db, Devices),
     set_device_owner(Db, AId, OwnerId),
-    b_play(HotdeskLogin, Call),
+    {ok, _} = b_play(HotdeskLogin, Call),
     b_play(Bye, Call).
 
 %%--------------------------------------------------------------------
@@ -192,18 +192,18 @@ do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId, pro
 %% 3) Infrom the user
 %% @end
 %%--------------------------------------------------------------------
--spec logout/3 :: (Devices, H, Call) -> no_return() when
+-spec logout/3 :: (Devices, H, Call) -> cf_api_std_return() when
       Devices :: list(),
       H :: #hotdesk{},
       Call :: #cf_call{}.
 logout(_, #hotdesk{keep_logged_in_elsewhere=true, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
-    set_device_owner(Db, AId, <<>>),
-    b_play(HotdeskLogout, Call),
+    {ok, _} = set_device_owner(Db, AId, <<>>),
+    {ok, _} = b_play(HotdeskLogout, Call),
     b_play(Bye, Call);
 logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, #cf_call{authorizing_id=AId, account_db=Db}=Call) ->
     logout_from_elsewhere(Db, Devices),
     set_device_owner(Db, AId, <<>>),
-    b_play(HotdeskLogout, Call),
+    {ok, _} = b_play(HotdeskLogout, Call),
     b_play(Bye, Call).
 
 %%--------------------------------------------------------------------

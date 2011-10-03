@@ -513,8 +513,11 @@ event_specific(<<"RECORD_STOP">>, _, Prop) ->
 event_specific(<<"DETECTED_TONE">>, _, Prop) ->
     [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Prop, <<>>)}];
 event_specific(<<"DTMF">>, _, Prop) ->
-    [{<<"DTMF-Digit">>, props:get_value(<<"DTMF-Digit">>, Prop, <<>>)}
-     ,{<<"DTMF-Duration">>, props:get_value(<<"DTMF-Duration">>, Prop, <<>>)}
+    Pressed = props:get_value(<<"DTMF-Digit">>, Prop, <<>>),
+    Duration = props:get_value(<<"DTMF-Duration">>, Prop, <<>>),
+    ?LOG("DTMF: ~s (~s)", [Pressed, Duration]),
+    [{<<"DTMF-Digit">>, Pressed}
+     ,{<<"DTMF-Duration">>, Duration}
     ];
 event_specific(_Evt, _App, _Prop) ->
     [].
