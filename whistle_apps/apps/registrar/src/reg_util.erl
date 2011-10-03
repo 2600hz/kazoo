@@ -22,7 +22,7 @@ cache_user_key(Realm, User) -> {?MODULE, sip_credentials, Realm, User}.
       Username :: binary(),
       Cache :: pid().
 lookup_registration(Realm, Username, Cache) ->
-    {'ok', RegKey} = wh_cache:fetch_local(Cache, cache_user_to_reg_key(Realm, Username)),
+    {'ok', RegKey} = wh_cache:peek_local(Cache, cache_user_to_reg_key(Realm, Username)),
     wh_cache:fetch_local(Cache, RegKey).
 
 -spec lookup_registrations/2 :: (Realm, Cache) -> {'ok', json_objects()} when
@@ -32,7 +32,7 @@ lookup_registrations(Realm, Cache) ->
     Users = wh_cache:filter_local(Cache, fun({?MODULE, registration, Realm1, _}, _) when Realm =:= Realm1 -> true;
 					    (_K, _V) -> false
 					 end),
-    {'ok', [ begin {'ok', RegDoc} = wh_cache:fetch_local(Cache, RegKey), RegDoc end
+    {'ok', [ begin {'ok', RegDoc} = wh_cache:peek_local(Cache, RegKey), RegDoc end
 	   || {_RealmKey, RegKey} <- Users]}.
 
 %%-----------------------------------------------------------------------------
@@ -82,7 +82,7 @@ del_doc(Cache, Doc) ->
 	_ -> ok
     end.
 
--spec prime_cache/2 :: (Pid, ViewResult) -> no_return() when
+-spec prime_cache/2 :: (Pid, ViewResult) -> 'ok' when
       Pid :: pid(),
       ViewResult :: json_object().
 prime_cache(Pid, ViewResult) ->
@@ -90,10 +90,16 @@ prime_cache(Pid, ViewResult) ->
     {'ok', JObj} = couch_mgr:open_doc(?REG_DB, DocId),
     Expires = wh_util:current_tstamp() + wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
     CacheRegKey = cache_reg_key(DocId),
+
+    ?LOG("Primed with cache key ~s", [DocId]),
+
     wh_cache:store_local(Pid, CacheRegKey, JObj, Expires),
 
     User = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
+
+    ?LOG("Primed with user ~s @ ~s", [User, Realm]),
+
     wh_cache:store_local(Pid, cache_user_to_reg_key(Realm, User), CacheRegKey, Expires).
 
 %%-----------------------------------------------------------------------------
