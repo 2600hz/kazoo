@@ -7,6 +7,6 @@
                   kernel,
                   stdlib
                  ]},
-  {mod, { erlsyslog_app, []}},
+  {mod, { syslog_app, []}},
   {env, []}
  ]}.
