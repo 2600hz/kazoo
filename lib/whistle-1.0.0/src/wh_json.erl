@@ -13,6 +13,7 @@
 -export([get_integer_value/2, get_integer_value/3]).
 -export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
+-export([get_list_value/2, get_list_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3]).
 
 -export([get_value/2, get_value/3, get_values/1]).
@@ -103,6 +104,25 @@ to_proplist(MaybeJObj) ->
 %% convert everything starting at a specific key
 to_proplist(Key, JObj) ->
     to_proplist(get_value(Key, JObj, ?EMPTY_JSON_OBJECT)).
+
+-spec get_list_value/2 :: (Key, JObj) -> 'undefined' | list() when
+      Key :: term(),
+      JObj :: json_object() | json_objects().
+get_list_value(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> wh_util:to_list(Value)
+    end.
+
+-spec get_list_value/3 :: (Key, JObj, Default) -> list() when
+      Key :: term(),
+      JObj :: json_object() | json_objects(),
+      Default :: list().
+get_list_value(Key, JObj, Default) when is_list(Default) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> Default;
+        Value -> wh_util:to_list(Value)
+    end.
 
 -spec get_binary_value/2 :: (Key, JObj) -> 'undefined' | binary() when
       Key :: term(),

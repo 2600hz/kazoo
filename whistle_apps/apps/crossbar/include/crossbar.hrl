@@ -44,6 +44,7 @@
 	  ,resp_headers = [] :: proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
 	  ,start = erlang:now() :: wh_now()
           ,req_id = <<"000000000000">> :: binary()
+          ,storage = []
 	 }).
 
 -ifdef(PROFILE).
