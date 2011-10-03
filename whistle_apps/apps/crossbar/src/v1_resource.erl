@@ -195,13 +195,13 @@ generate_etag(RD, Context) ->
         automatic ->
             Tag = mochihex:to_hex(crypto:md5(create_resp_content(RD1, Context1))),
             ?LOG("using automatic etag ~s", [Tag]),
-            {Tag, RD1, Context1};
+            {Tag, RD1, Context1#cb_context{resp_etag=Tag}};
         undefined ->
             ?LOG("no etag provided, skipping", []),
-            {undefined, RD1, Context1};
+            {undefined, RD1, Context1#cb_context{resp_etag=undefined}};
         Tag when is_list(Tag) ->
             ?LOG("using etag ~s", [Tag]),
-            {Tag, RD1, Context1}
+            {Tag, RD1, Context1#cb_context{resp_etag=Tag}}
     end.
 
 encodings_provided(RD, Context) ->
@@ -865,11 +865,18 @@ is_cors_preflight(RD) ->
 %%--------------------------------------------------------------------
 -spec create_resp_envelope/1 :: (Context) -> [{binary(), binary() | atom() | json_object() | json_objects()},...] when
       Context :: #cb_context{}.
-create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken}) ->
+create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=undefined}) ->
     ?LOG("generating sucessfull response"),
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, success}
      ,{<<"data">>, RespData}
+    ];
+create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=Etag}) ->
+    ?LOG("generating sucessfull response"),
+    [{<<"auth_token">>, AuthToken}
+     ,{<<"status">>, success}
+     ,{<<"data">>, RespData}
+     ,{<<"revision">>, wh_util:to_binary(Etag)}
     ];
 create_resp_envelope(#cb_context{auth_token=AuthToken, resp_data=RespData, resp_status=RespStatus
 				 ,resp_error_code=undefined, resp_error_msg=RespErrorMsg}) ->
