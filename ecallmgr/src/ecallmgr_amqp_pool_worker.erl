@@ -62,7 +62,6 @@ stop(Srv) ->
       From :: {pid(), reference()},
       Parent :: pid() | atom().
 start_req(Srv, Prop, ApiFun, PubFun, From, Parent) ->
-    	%% {request, Prop, ApiFun, PubFun, {Pid, _}=From, Parent} ->
     JObj = case wh_json:is_json_object(Prop) of
 	       true -> Prop;
 	       false -> wh_json:from_list(Prop)
@@ -131,10 +130,13 @@ handle_cast({employed, JObj, {Pid, _}=From, Parent, PubFun}, #state{status=free}
     PubFun(),
     {noreply, State#state{status=busy, from=From, ref=Ref, parent=Parent, start=erlang:now()}};
 handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent, ref=Ref, start=Start}) ->
-    ?LOG("recieved response after ~b ms", [timer:now_diff(erlang:now(), Start) div 1000]),
+    Elapsed = timer:now_diff(erlang:now(), Start),
+    ?LOG("recieved response after ~b ms", [Elapsed div 1000]),
     erlang:demonitor(Ref, [flush]),
     gen_server:reply(From, {ok, JObj}),
-    ecallmgr_amqp_pool:worker_free(Parent, self()),
+
+    ?LOG("Returning to pool of ~p", [Parent]),
+    ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
     {noreply, #state{}};
 handle_cast({response_recv, JObj}, State) ->
     ?LOG("WTF, I'm free, yet receiving a response?"),
@@ -156,7 +158,7 @@ handle_cast({response_recv, JObj}, State) ->
 handle_info({'DOWN', Ref, process, Pid, _Info}, #state{status=busy, ref=Ref, parent=Parent}) ->
     ?LOG_END("requestor (~w) down, giving up on task", [Pid]),
     erlang:demonitor(Ref, [flush]),
-    ecallmgr_amqp_pool:worker_free(Parent, self()),
+    ecallmgr_amqp_pool:worker_free(Parent, self(), 0),
     {noreply, #state{}}.
 
 handle_event(_JObj, _State) ->

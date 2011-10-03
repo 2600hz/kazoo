@@ -42,7 +42,7 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE,
-			    [ {responders, ?RESPONDERS}
+			    [{responders, ?RESPONDERS}
 			     ,{bindings, ?BINDINGS}
 			     ,{basic_qos, 1}
 			    ], []).
@@ -94,7 +94,7 @@ send_mwi(User, Realm, New, Saved) ->
 			      ,{<<"Notify-Realm">>, wh_util:to_binary(Realm)}
 			      ,{<<"Messages-New">>, wh_util:to_binary(New)}
 			      ,{<<"Messages-Saved">>, wh_util:to_binary(Saved)}
-			      | wh_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
+			      | wh_api:default_headers(<<>>, <<"notification">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
 			     ]),
     handle_req(JObj, []).
 
