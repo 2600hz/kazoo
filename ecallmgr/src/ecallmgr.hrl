@@ -27,11 +27,12 @@
 -define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>]). %% list of dialplan Application-Names that can execute after a call has hung up
 
 -define(APP_NAME, <<"ecallmgr">>).
--define(APP_VERSION, <<"0.7.2">>).
+-define(APP_VERSION, <<"0.8.0">>).
 
 -define(WHISTLE_CONTEXT, <<"context_2">>).
 
 -define(SIP_INTERFACE, "sofia/sipinterface_1/").
+-define(DEFAULT_FS_PROFILE, "sipinterface_1").
 
 -define(STARTUP_FILE, [code:lib_dir(ecallmgr, priv), "/startup.config"]).
 -define(SETTINGS_FILE, [code:lib_dir(ecallmgr, priv), "/settings.config"]).
