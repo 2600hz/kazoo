@@ -62,9 +62,9 @@
 start_link(Host, Conn) ->
     gen_server:start_link(?MODULE, [Host, Conn], []).
 
--spec publish/4 :: (Srv, From, BasicPub, AmqpMsg) -> ok when
+-spec publish/4 :: (Srv, From, BasicPub, AmqpMsg) -> 'ok' when
       Srv :: pid(),
-      From :: tuple(pid(), reference()),
+      From :: {pid(), reference()},
       BasicPub :: #'basic.publish'{},
       AmqpMsg :: binary() | iolist().
 publish(Srv, From, BasicPub, AmqpMsg) ->
@@ -74,35 +74,35 @@ publish(Srv, From, BasicPub, AmqpMsg) ->
 %% and calling process can link. This means if a channel dies, the process
 %% will receive the exit signal and vice-versa.
 %% Should help get unused Channels to die
--spec consume/3 :: (Srv, From, Msg) -> ok when
+-spec consume/3 :: (Srv, From, Msg) -> 'ok' when
       Srv :: pid(),
-      From :: tuple(pid(), reference()),
+      From :: {pid(), reference()},
       Msg :: consume_records().
 consume(Srv, From, Msg) ->
     gen_server:cast(Srv, {consume, From, Msg}).
 
--spec misc_req/3 :: (Srv, From, Req) -> ok when
+-spec misc_req/3 :: (Srv, From, Req) -> 'ok' when
       Srv :: pid() | atom(),
-      From :: tuple(pid(), reference()),
+      From :: {pid(), reference()},
       Req :: tuple().
 misc_req(Srv, From, Req) ->
     gen_server:cast(Srv, {misc_req, From, Req}).
 
--spec misc_req/4 :: (Srv, From, Req1, Req2) -> ok when
+-spec misc_req/4 :: (Srv, From, Req1, Req2) -> 'ok' when
       Srv :: pid() | atom(),
-      From :: tuple(pid(), reference()),
+      From :: {pid(), reference()},
       Req1 :: tuple(),
       Req2 :: tuple().
 misc_req(Srv, From, Req1, Req2) ->
     gen_server:cast(Srv, {misc_req, From, Req1, Req2}).
 
--spec register_return_handler/2 :: (Srv, From) -> ok when
+-spec register_return_handler/2 :: (Srv, From) -> 'ok' when
       Srv :: pid(),
-      From :: tuple(pid(), reference()).
+      From :: {pid(), reference()}.
 register_return_handler(Srv, From) ->
     gen_server:cast(Srv, {register_return_handler, From}).
 
--spec stop/1 :: (Srv) -> ok | {error, you_are_not_my_boss} when
+-spec stop/1 :: (Srv) -> 'ok' | {'error', 'you_are_not_my_boss'} when
       Srv :: pid().
 stop(Srv) ->
     gen_server:call(Srv, stop).
@@ -382,9 +382,9 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-handle_info({'DOWN', Ref, process, ConnPid, Reason}, #state{connection={ConnPid, Ref}, return_handlers=RHDict}=State) ->
+handle_info({'DOWN', Ref, process, ConnPid, Reason}, #state{connection={ConnPid, Ref}}=State) ->
     ?LOG_SYS("recieved notification our connection to the amqp broker died: ~p", [Reason]),
-    {stop, Reason, State#state{return_handlers=dict:erase(Ref, RHDict)}};
+    {stop, normal, State};
 
 handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{return_handlers=RHDict}=State) ->
     ?LOG_SYS("recieved notification monitored process ~p  died ~p, searching for reference", [_Pid, _Reason]),
