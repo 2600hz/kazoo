@@ -817,7 +817,7 @@
 %% Notify MWI request
 -define(MWI_REQ_HEADERS, [<<"Notify-User">>, <<"Notify-Realm">>, <<"Messages-New">>, <<"Messages-Saved">>]).
 -define(OPTIONAL_MWI_REQ_HEADERS, [<<"Messages-Urgent">>, <<"Messages-Urgent-Saved">>]).
--define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"notify">>}
+-define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"notification">>}
 			 ,{<<"Event-Name">>, <<"mwi">>}
                         ]).
 -define(MWI_REQ_TYPES, [{<<"Messages-New">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
