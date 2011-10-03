@@ -10,7 +10,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    erlang_syslog_sup:start_link().
+    syslog_sup:start_link().
 
 stop(_State) ->
     ok.
