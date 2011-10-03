@@ -276,13 +276,13 @@ validate([], #cb_context{req_verb = <<"get">>}=Context) ->
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create_ts_account(Context);
 validate([TSAccountId], #cb_context{req_verb = <<"get">>}=Context) ->
-    read_ts_account(TSAccountId, Context);
+    read_ts_account(TSAccountId, Context#cb_context{account_id=TSAccountId});
 validate([TSAccountId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_ts_account(TSAccountId, Context);
+    update_ts_account(TSAccountId, Context#cb_context{account_id=TSAccountId});
 validate([TSAccountId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    read_ts_account(TSAccountId, Context);
+    read_ts_account(TSAccountId, Context#cb_context{account_id=TSAccountId});
 validate([TSAccountId], #cb_context{req_verb = <<"head">>}=Context) ->
-    check_ts_account(TSAccountId, Context);
+    check_ts_account(TSAccountId, Context#cb_context{account_id=TSAccountId});
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
