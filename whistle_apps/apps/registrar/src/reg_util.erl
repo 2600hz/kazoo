@@ -41,13 +41,13 @@ lookup_registrations(Realm, Cache) ->
 %% store a sucessful registration in the database
 %% @end
 %%-----------------------------------------------------------------------------
--spec store_reg/3 :: (JObj, Id, Contact) -> {'ok', json_object()} when
+-spec store_reg/3 :: (JObj, Id, Contact) -> {'ok', json_object()} | {'error', 'timeout'} when
       JObj :: json_object(),
       Id :: binary(),
       Contact :: binary().
 store_reg(JObj, Id, Contact) ->
     RegDoc = wh_json:set_value(<<"_id">>, Id, wh_json:set_value(<<"Contact">>, Contact, JObj)),
-    {'ok', {struct, _}} = couch_mgr:ensure_saved(?REG_DB, RegDoc).
+    couch_mgr:ensure_saved(?REG_DB, RegDoc).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -66,14 +66,14 @@ remove_old_regs(User, Realm, Cache) ->
 	    ID = wh_json:get_value(<<"id">>, OldDoc),
 	    wh_cache:erase_local(Cache, cache_reg_key(ID)),
 	    {'ok', Rev} = couch_mgr:lookup_doc_rev(?REG_DB, ID),
-	    couch_mgr:del_doc(?REG_DB, {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]});
+	    couch_mgr:del_doc(?REG_DB, wh_json:from_list([{<<"_id">>, ID}, {<<"_rev">>, Rev}]));
 	{'ok', OldDocs} ->
 	    spawn(fun() ->
 			  DelDocs = [ begin
 					  ID = wh_json:get_value(<<"id">>, Doc),
 					  wh_cache:erase_local(Cache, cache_reg_key(ID)),
 					  case couch_mgr:lookup_doc_rev(<<"registrations">>, ID) of
-					      {'ok', Rev} -> {struct, [{<<"_id">>, ID}, {<<"_rev">>, Rev}]};
+					      {'ok', Rev} -> wh_json:from_list([{<<"_id">>, ID}, {<<"_rev">>, Rev}]);
 					      _ -> ?EMPTY_JSON_OBJECT
 					  end
 				      end || Doc <- OldDocs ],

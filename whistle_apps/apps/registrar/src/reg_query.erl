@@ -35,9 +35,9 @@ handle_req(ApiJObj, Props) ->
 		     [] ->
 			 wh_json:delete_key(<<"_id">>, wh_json:delete_key(<<"_rev">>, RegJObj));
 		     Fields ->
-			 {struct, lists:foldl(fun(F, Acc) ->
-						      [ {F, wh_json:get_value(F, RegJObj)} | Acc]
-					      end, [], Fields)}
+			 wh_json:from_list(lists:foldl(fun(F, Acc) ->
+                                                               [ {F, wh_json:get_value(F, RegJObj)} | Acc]
+                                                       end, [], Fields))
 		 end,
 
     {ok, Payload} = wh_api:reg_query_resp([ {<<"Fields">>, RespFields}

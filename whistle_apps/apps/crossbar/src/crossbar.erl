@@ -21,7 +21,7 @@
 -define(SIP_AGG_DB, <<"sip_auth">>).
 -define(SIP_AGG_FILTER, <<"devices/export_sip">>).
 
--define(SCHEMAS_DB, <<"crossbar/schemas">>).
+-define(SCHEMAS_DB, <<"crossbar_schemas">>).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

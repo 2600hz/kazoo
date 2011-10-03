@@ -22,7 +22,9 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
+-spec handle/2 :: (Data, Call) -> {'stop' | 'continue'} when
+      Data :: json_object(),
+      Call :: #cf_call{}.
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
     Endpoints = get_endpoints(Data, Call),
@@ -42,7 +44,6 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
             CFPid ! { continue }
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -50,11 +51,13 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
--spec(get_endpoints/2 :: (Data :: json_object(), Call :: #cf_call{}) -> json_objects()).
+-spec get_endpoints/2 :: (Data, Call) -> json_objects() when
+      Data :: json_object(),
+      Call :: #cf_call{}.
 get_endpoints(Data, Call) ->
     lists:foldr(fun(Member, Acc) ->
                         EndpointId = wh_json:get_value(<<"id">>, Member),
-                        case cf_endpoint:build(EndpointId, Member, Call) of
+                        case cf_endpoint:build(EndpointId, Call, Member) of
                             {ok, Endpoint} -> Endpoint ++ Acc;
                             {error, _} -> Acc
                         end

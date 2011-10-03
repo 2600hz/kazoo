@@ -16,7 +16,7 @@
 -export([get_list_value/2, get_list_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3]).
 
--export([get_value/2, get_value/3]).
+-export([get_value/2, get_value/3, get_values/1]).
 -export([get_keys/1, get_keys/2]).
 -export([set_value/3, new/0]).
 -export([delete_key/2, delete_key/3]).
@@ -48,7 +48,7 @@ is_json_object(MaybeJObj) ->
 
 -spec is_json_term/1 :: (V) -> boolean() when
       V :: json_term().
-is_json_term(undefined) -> false;
+is_json_term(undefined) -> throw({error, no_undefined_atom_in_jobj_please});
 is_json_term(V) when is_atom(V) -> true;
 is_json_term(V) when is_binary(V) -> true;
 is_json_term(V) when is_bitstring(V) -> true;
@@ -60,6 +60,13 @@ is_json_term({json, IOList}) when is_list(IOList) -> true;
 is_json_term(MaybeJObj) ->
     is_json_object(MaybeJObj).
 
+%% converts top-level proplist to json object, but only if sub-proplists have been converted
+%% first.
+%% For example:
+%% [{a, b}, {c, [{d, e}]}]
+%% would be converted to json by
+%% wh_json:from_list([{a,b}, {c, wh_json:from_list([{d, e}])}]).
+%% the sub-proplist [{d,e}] needs converting before being passed to the next level
 -spec from_list/1 :: (L) -> json_object() when
       L :: wh_proplist().
 from_list(L) when is_list(L) ->
@@ -261,6 +268,14 @@ get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
 	JObj1 -> get_value1(Ks, JObj1, Default)
     end;
 get_value1(_, _, Default) -> Default.
+
+%% split the json object into values and the corresponding keys
+-spec get_values/1 :: (JObj) -> {Values, Keys} when
+      JObj :: json_object(),
+      Values :: [json_term(),...] | [],
+      Keys :: [json_string(),...] | [].
+get_values(JObj) ->
+    lists:unzip([ {?MODULE:get_value(Key, JObj), Key} || Key <- ?MODULE:get_keys(JObj) ]).
 
 %% Figure out how to set the current key among a list of objects
 
@@ -709,4 +724,13 @@ set_value_normalizer_test() ->
     ?assertEqual(normalize_jobj(?T4R3), ?T4R3V),
 
     ?assertEqual(normalize_jobj(?T5R1), ?T5R1V).
+
+get_values_test() ->
+    ?assertEqual(true, are_all_there(?D1, ["d1v1", d1v2, ["d1v3.1", "d1v3.2", "d1v3.3"]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
+
+are_all_there(JObj, Vs, Ks) ->
+    {Values, Keys} = ?MODULE:get_values(JObj),
+    lists:all(fun(K) -> lists:member(K, Keys) end, Ks) andalso
+        lists:all(fun(V) -> lists:member(V, Values) end, Vs).
+
 -endif.

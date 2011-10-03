@@ -86,10 +86,7 @@ init([]) ->
                          ,{log_dir,  props:get_value(log_dir, Configuration, ?LOG_DIR)}
                          ,{dispatch, Dispatch}
                          ,{ssl, true}
-                         ,{ssl_opts, [
-                                       {certfile, props:get_value("certfile", Configuration, "server_cert.pem")}
-                                      ,{keyfile, props:get_value("keyfile", Configuration, "server_key.pem")}
-                                     ]}];
+                         ,{ssl_opts, props:get_value(ssl_opts, Configuration, [])}];
                     false ->
                         [{ip, props:get_value(ip, Configuration, "0.0.0.0")},
                          {port, props:get_value(port, Configuration, "8000")},
