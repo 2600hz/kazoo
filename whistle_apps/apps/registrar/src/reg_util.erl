@@ -55,7 +55,7 @@ store_reg(JObj, Id, Contact) ->
 %% periodically remove expired registrations
 %% @end
 %%-----------------------------------------------------------------------------
--spec remove_old_regs/3 :: (User, Realm, Cache) -> ok when
+-spec remove_old_regs/3 :: (User, Realm, Cache) -> 'ok' when
       User :: binary(),
       Realm :: binary(),
       Cache :: pid().
@@ -63,22 +63,22 @@ remove_old_regs(User, Realm, Cache) ->
     case couch_mgr:get_results(<<"registrations">>, <<"registrations/newest">>,
 			       [{<<"startkey">>, [Realm, User, 0]}, {<<"endkey">>, [Realm, User, ?EMPTY_JSON_OBJECT]}]) of
 	{'ok', [OldDoc]} ->
-	    ID = wh_json:get_value(<<"id">>, OldDoc),
-	    wh_cache:erase_local(Cache, cache_reg_key(ID)),
-	    {'ok', Rev} = couch_mgr:lookup_doc_rev(?REG_DB, ID),
-	    couch_mgr:del_doc(?REG_DB, wh_json:from_list([{<<"_id">>, ID}, {<<"_rev">>, Rev}]));
+	    del_doc(Cache, OldDoc);
 	{'ok', OldDocs} ->
 	    spawn(fun() ->
-			  DelDocs = [ begin
-					  ID = wh_json:get_value(<<"id">>, Doc),
-					  wh_cache:erase_local(Cache, cache_reg_key(ID)),
-					  case couch_mgr:lookup_doc_rev(<<"registrations">>, ID) of
-					      {'ok', Rev} -> wh_json:from_list([{<<"_id">>, ID}, {<<"_rev">>, Rev}]);
-					      _ -> ?EMPTY_JSON_OBJECT
-					  end
-				      end || Doc <- OldDocs ],
+			  DelDocs = [ del_doc(Cache, Doc) || Doc <- OldDocs ],
 			  couch_mgr:del_docs(<<"registrations">>, DelDocs)
 		  end), ok;
+	_ -> ok
+    end.
+
+-spec del_doc/2 :: (pid(), json_object()) -> 'ok' | json_object().
+del_doc(Cache, Doc) ->
+    ID = wh_json:get_value(<<"id">>, Doc),
+    wh_cache:erase_local(Cache, cache_reg_key(ID)),
+    case couch_mgr:lookup_doc_rev(?REG_DB, ID) of
+	{'ok', Rev} ->
+	    couch_mgr:del_doc(?REG_DB, wh_json:from_list([{<<"_id">>, ID}, {<<"_rev">>, Rev}]));
 	_ -> ok
     end.
 
