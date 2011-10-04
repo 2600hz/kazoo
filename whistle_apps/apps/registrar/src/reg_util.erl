@@ -62,25 +62,25 @@ store_reg(JObj, Id, Contact) ->
 remove_old_regs(User, Realm, Cache) ->
     case couch_mgr:get_results(<<"registrations">>, <<"registrations/newest">>,
 			       [{<<"startkey">>, [Realm, User, 0]}, {<<"endkey">>, [Realm, User, ?EMPTY_JSON_OBJECT]}]) of
-	{'ok', [OldDoc]} ->
-	    del_doc(Cache, OldDoc);
 	{'ok', OldDocs} ->
-	    spawn(fun() ->
-			  DelDocs = [ del_doc(Cache, Doc) || Doc <- OldDocs ],
-			  couch_mgr:del_docs(<<"registrations">>, DelDocs)
-		  end), ok;
+	    _ = del_docs(Cache, OldDocs), ok;
 	_ -> ok
     end.
 
--spec del_doc/2 :: (pid(), json_object()) -> 'ok' | json_object().
-del_doc(Cache, Doc) ->
-    ID = wh_json:get_value(<<"id">>, Doc),
-    wh_cache:erase_local(Cache, cache_reg_key(ID)),
-    case couch_mgr:lookup_doc_rev(?REG_DB, ID) of
-	{'ok', Rev} ->
-	    couch_mgr:del_doc(?REG_DB, wh_json:from_list([{<<"_id">>, ID}, {<<"_rev">>, Rev}]));
-	_ -> ok
-    end.
+-spec del_docs/2 :: (pid(), json_objects()) -> 'ok' | json_objects().
+del_docs(Cache, Docs) ->
+    Docs1 = [ begin
+		  ID = wh_json:get_value(<<"id">>, Doc),
+		  wh_cache:erase_local(Cache, cache_reg_key(ID)),
+		  Rev = case wh_json:get_value(<<"_rev">>, Doc) of
+			    undefined ->
+				{'ok', R} = couch_mgr:lookup_doc_rev(?REG_DB, ID),
+				R;
+			    R -> R
+			end,
+		  wh_json:from_list([{<<"_id">>, ID}, {<<"_rev">>, Rev}])
+	      end || Doc <- Docs],
+    couch_mgr:del_docs(?REG_DB, Docs1).
 
 -spec prime_cache/2 :: (Pid, ViewResult) -> 'ok' when
       Pid :: pid(),
