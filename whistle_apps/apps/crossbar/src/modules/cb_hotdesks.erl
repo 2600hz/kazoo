@@ -9,7 +9,7 @@
 %%% @end
 %%% Created : 20 Aug 2011 by Edouard Swiac <edouard@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cb_hotdesk).
+-module(cb_hotdesks).
 
 -behaviour(gen_server).
 
@@ -240,15 +240,14 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(),  Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_hotdesk(Context);
+    crossbar_doc:load_view(<<"devices/crossbar_listing">>, [], Context, fun normalize_view_results/2);
 validate([], #cb_context{req_verb = <<"post">>}=Context) ->
     set_hotdesk(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     set_hotdesk(Context);
 validate([], #cb_context{req_verb = <<"delete">>}=Context) ->
     delete_hotdesk(Context);
-validate(_Booya, Context) ->
-    %?LOG("+++++++++++, ~p", [Context#cb_context.req_nouns]),
+validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
@@ -259,8 +258,8 @@ validate(_Booya, Context) ->
 %%--------------------------------------------------------------------
 -spec load_hotdesk/1 :: (Context) -> #cb_context{} when
       Context :: #cb_context{}.
-load_hotdesk(#cb_context{auth_doc=AuthDoc}=Context) ->
-    UserId = wh_json:get_value(<<"owner_id">>, AuthDoc),
+load_hotdesk(#cb_context{doc=UserDoc}=Context) ->
+    UserId = wh_json:get_value(<<"owner_id">>, UserDoc),
     crossbar_doc:load_view(?CB_LIST, [{<<"key">>, UserId}], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
@@ -271,7 +270,7 @@ load_hotdesk(#cb_context{auth_doc=AuthDoc}=Context) ->
 %%--------------------------------------------------------------------
 -spec set_hotdesk/1 :: (Context) -> #cb_context{} when
       Context :: #cb_context{}.
-set_hotdesk(#cb_context{auth_doc=AuthDoc, req_data=JObj, db_name=Db}=Context) ->
+set_hotdesk(#cb_context{doc=AuthDoc, req_data=JObj, db_name=Db}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>,AuthDoc),
 
     case is_valid_doc(JObj) of
@@ -295,7 +294,7 @@ set_hotdesk(#cb_context{auth_doc=AuthDoc, req_data=JObj, db_name=Db}=Context) ->
 %%--------------------------------------------------------------------
 -spec delete_hotdesk/1 :: (Context) -> #cb_context{} when
       Context :: #cb_context{}.
-delete_hotdesk(#cb_context{auth_doc=AuthDoc, db_name=Db}=Context) ->
+delete_hotdesk(#cb_context{doc=AuthDoc, db_name=Db}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>,AuthDoc),
     case couch_mgr:open_doc(Db, UserId) of
 	{ok, Doc} ->
