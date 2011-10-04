@@ -1,4 +1,3 @@
-
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010, VoIP INC
 %%% @doc
