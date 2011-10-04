@@ -330,9 +330,14 @@ get_fs_app(_Node, _UUID, JObj, <<"respond">>=App) ->
     case wh_api:respond_req_v(JObj) of
         false -> {'error', <<"respond failed to execute as JObj did not validate">>};
         true ->
-            Response = <<(wh_json:get_value(<<"Response-Code">>, JObj, <<>>))/binary
-                         ," ", (wh_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary>>,
-            {App, Response}
+            case wh_json:get_value(<<"Response-Code">>, JObj, <<"488">>) of
+                <<"302">> ->
+                    {<<"redirect">>, wh_json:get_value(<<"Response-Message">>, JObj, <<>>)};
+                Code ->
+                    Response = <<Code/binary ," "
+                                 ,(wh_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary>>,
+                    {App, Response}
+            end
     end;
 
 get_fs_app(Node, UUID, JObj, <<"fetch">>=App) ->
