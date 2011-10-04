@@ -73,7 +73,7 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
 	ok ->
 	    Res = run_start_cmds(Node),
 	    ?LOG_SYS("Start cmd results:"),
-	    [ ?LOG("~p", [ApiRes]) || ApiRes <- Res],
+	    _ = [ ?LOG("~p", [ApiRes]) || ApiRes <- Res],
 
 	    NodeData = extract_node_data(Node),
 	    Active = get_active_channels(Node),

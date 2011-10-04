@@ -4,18 +4,18 @@
 
 -include("ecallmgr.hrl").
 
--spec load_config/1 :: (string() | binary()) -> 'ok' | {'error', 'enoent'}.
+-spec load_config/1 :: (file:name()) -> 'ok' | {'error', 'enoent'}.
 load_config(Path) ->
     case file:consult(Path) of
 	{ok, Startup} ->
 	    Cache = ecallmgr_sup:cache_proc(),
-	    [wh_cache:store_local(Cache, K, V) || {K,V} <- Startup],
+	    _ = [wh_cache:store_local(Cache, K, V) || {K,V} <- Startup],
 	    ok;
 	{error, enoent} ->
 	    {error, enoent}
     end.
 
--spec write_config/2 :: (string() | binary(), binary()) -> 'ok' | {'error', _}.
+-spec write_config/2 :: (file:name(), iodata()) -> 'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 write_config(Path, Contents) ->
     file:write_file(Path, Contents).
 

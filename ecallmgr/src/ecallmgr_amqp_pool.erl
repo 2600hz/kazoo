@@ -116,7 +116,7 @@ worker_count() ->
 init([Count]) ->
     process_flag(trap_exit, true),
 
-    ecallmgr_amqp_pool_worker_sup:release_all(),
+    'ok' = ecallmgr_amqp_pool_worker_sup:release_all(),
 
     erlang:send_after(?BACKOFF_PERIOD, self(), reduce_labor_force),
 
