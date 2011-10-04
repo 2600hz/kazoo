@@ -38,5 +38,7 @@
 -define(SETTINGS_FILE, [code:lib_dir(ecallmgr, priv), "/settings.config"]).
 
 -define(STARTUP_FILE_CONTENTS, <<"{'fs_nodes', []}.
-{'fs_cmds', [{'load', \"mod_sofia\"}, {'load', \"mod_shout\"}, {'load', \"mod_shell_stream\"}]}.
-">>).
+{'fs_cmds', [{'load', \"mod_sofia\"}
+             ,{'load', \"mod_shout\"}
+             ,{'load', \"mod_shell_stream\"}
+]}.">>).
