@@ -111,15 +111,14 @@ init([]) ->
     ?LOG_SYS("starting new fs handler"),
     process_flag(trap_exit, true),
 
-    case ecallmgr_config:load_config(?STARTUP_FILE) of
-	ok -> ?LOG("Configs loaded from ~s", [?STARTUP_FILE]);
-	{error, enoent} ->
-	    'ok' = ecallmgr_config:write_config(?STARTUP_FILE, ?STARTUP_FILE_CONTENTS),
-	    ?LOG("Wrote config file at ~s", [?STARTUP_FILE]),
-	    ecallmgr_config:load_config(?STARTUP_FILE)
-    end,
-
     spawn(fun() ->
+		  'ok' = case ecallmgr_config:load_config(?STARTUP_FILE) of
+			     ok -> ?LOG("Configs loaded from ~s", [?STARTUP_FILE]);
+			     {error, enoent} ->
+				 'ok' = ecallmgr_config:write_config(?STARTUP_FILE, ?STARTUP_FILE_CONTENTS),
+				 ?LOG("Wrote config file at ~s", [?STARTUP_FILE]),
+				 ecallmgr_config:load_config(?STARTUP_FILE)
+			 end,
 		  [?MODULE:add_fs_node(wh_util:to_atom(N, true)) || N <- ecallmgr_config:fetch(fs_nodes, [])]
 	  end),
 
