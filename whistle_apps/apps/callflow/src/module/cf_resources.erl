@@ -51,11 +51,14 @@ handle(Data, #cf_call{call_id=CallId}=Call) ->
 bridge_to_resources([{DestNum, Rsc, CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, #cf_call{cf_pid=CFPid
                                                                                                     ,inception_during_transfer=IDT
                                                                                                     ,channel_vars=CCV}=Call) ->
-    FaxEnabled = wh_json:is_true(<<"fax_enabled">>, Rsc),
+    CCVs1 = case wh_json:is_true(<<"fax_enabled">>, Rsc) of
+		true -> wh_json:set_value(<<"Fax-Enabled">>, true, CCV);
+		false -> CCV
+	    end,
 
     case b_bridge([create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)]
                   ,Timeout, CIDType, <<"single">>, IgnoreEarlyMedia, Ringback
-		  ,Call#cf_call{channel_vars=wh_json:set_value(<<"Fax-Enabled">>, FaxEnabled, CCV)}
+		  ,Call#cf_call{channel_vars=CCVs1}
 		 ) of
         {ok, _} ->
             ?LOG("completed successful bridge to resource"),
