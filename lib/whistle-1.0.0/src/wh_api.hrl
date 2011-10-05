@@ -334,10 +334,12 @@
 
 %% Call Status Response
 -define(CALL_STATUS_RESP_HEADERS, [<<"Call-ID">>, <<"Status">>]).
--define(OPTIONAL_CALL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>, <<"Node">>]).
+-define(OPTIONAL_CALL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>, <<"Node">>
+                                                ,<<"Application-Name">>, <<"Application-Response">>]).
 -define(CALL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
 				  ,{<<"Event-Name">>, <<"status_resp">>}
 				  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
+                                  ,{<<"Application-Name">>, <<"status">>}
 				 ]).
 -define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
