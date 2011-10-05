@@ -41,6 +41,10 @@ echo "Compiling utils"
 cd $WDIR/utils/diagnostics
 $REBAR clean compile
 
+echo "Compiling erlydtl"
+cd $WDIR/lib/erlydtl*
+$REBAR clean compile
+
 echo "Compiling Whistle LIBS"
 for WLIB in $WDIR/lib/whistle*
 do 

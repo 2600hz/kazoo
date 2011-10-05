@@ -200,7 +200,11 @@ init([Module, Params, InitArgs]) ->
 		,params=lists:keydelete(responders, 1, lists:keydelete(bindings, 1, Params))}
      ,hibernate}.
 
--spec handle_call/3 :: (Request, From, State) -> handle_call_ret() when
+-type gen_l_handle_call_ret() :: {'reply', term(), #state{}, gen_server_timeout()} |
+				 {'noreply', #state{}, gen_server_timeout()} |
+				 {'stop', term(), #state{}} | {'stop', term(), term(), #state{}}.
+
+-spec handle_call/3 :: (Request, From, State) -> gen_l_handle_call_ret() when
       Request :: term(),
       From :: {pid(), reference()},
       State :: #state{}.
@@ -283,16 +287,32 @@ handle_info({'EXIT', Pid, _Reason}=Message, #state{active_responders=ARs}=State)
 	false -> handle_callback_info(Message, State)
     end;
 
-handle_info({amqp_host_down, _}=Down, #state{bindings=Bindings, params=Params}=State) ->
+handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=State) ->
     try
-	{ok, Q} = start_amqp(Bindings, Params),
-	{noreply, State#state{queue=Q}, hibernate}
+	case amqp_util:is_host_available() of
+	    true ->
+		{ok, Q} = start_amqp(Bindings, Params),
+		{noreply, State#state{queue=Q}, hibernate};
+	    false ->
+		?LOG("No AMQP host ready, waiting another second"),
+		erlang:send_after(1000, self(), Down),
+		{noreply, State#state{queue = <<>>}, hibernate}
+	end
     catch
-	_:_Why ->
-	    ?LOG("exception: ~p", [_Why]),
+	throw:_Why ->
+	    ?LOG("throw: ~p", [_Why]),
+	    erlang:send_after(1000, self(), Down),
+	    {noreply, State#state{queue = <<>>}, hibernate};
+	error:_Why ->
+	    ?LOG("error: ~p", [_Why]),
 	    erlang:send_after(1000, self(), Down),
 	    {noreply, State#state{queue = <<>>}, hibernate}
     end;
+
+handle_info({amqp_lost_channel, no_connection}, State) ->
+    ?LOG("Lost our channel, checking every second for a host to come back up"),
+    _Ref = erlang:send_after(1000, self(), {amqp_host_down, ok}),
+    {noreply, State#state{queue = <<>>}, hibernate};
 
 handle_info({'basic.consume_ok', _}, S) ->
     {noreply, S};

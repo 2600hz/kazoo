@@ -15,5 +15,5 @@
                              ,whistle_amqp
                             ]}
    ,{mod, {ecallmgr_app, []}}
-   ,{env, []}
+   ,{env, [{reloader, false}]}
  ]}.

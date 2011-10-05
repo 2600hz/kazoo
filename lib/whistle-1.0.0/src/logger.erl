@@ -17,7 +17,7 @@ start_link(Facility) ->
       Facility :: atom(),
       Opts :: [cons | perror | pid | odelay | ndelay,...].
 start_link(Facility, Opts) ->
-    Resp = syslog:start_linked(),
+    Resp = syslog:start_link(),
     syslog:open(atom_to_list(node()), Opts, Facility),
     Resp.
 
@@ -62,8 +62,8 @@ format_log(error, Format, Data) ->
 
 format_log(Type, Format, Data) ->
     try
-	Str = io_lib:format(Format, Data),
-	syslog:log(Type, binary_to_list(list_to_binary(Str)))
+    	Str = io_lib:format(Format, Data),
+    	syslog:log(Type, binary_to_list(list_to_binary(Str)))
     catch
-	A:B -> io:format("Logger error ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]), ok
+    	A:B -> io:format("Logger error ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]), ok
     end.

@@ -20,6 +20,7 @@
 -export([response_db_fatal/1]).
 -export([binding_heartbeat/1, binding_heartbeat/2]).
 -export([put_reqid/1]).
+-export([store/3, fetch/2]).
 
 -include("../include/crossbar.hrl").
 
@@ -218,5 +219,40 @@ binding_heartbeat(BPid, Timeout) ->
 		  timer:cancel(Tref)
 	  end).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function extracts the request ID and sets it as 'callid' in
+%% the process dictionary, where the logger expects it.
+%% @end
+%%--------------------------------------------------------------------
+-spec put_reqid/1 :: (Context) -> no_return() when
+      Context :: #cb_context{}.
 put_reqid(#cb_context{req_id=ReqId}) ->
     put(callid, ReqId).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Sets a value in the crossbar context for later retrieval during
+%% this request.
+%% @end
+%%--------------------------------------------------------------------
+-spec store/3 :: (Key, Data, Context) -> #cb_context{} when
+      Key :: term(),
+      Data :: term(),
+      Context :: #cb_context{}.
+store(Key, Data, #cb_context{storage=Storage}=Context) ->
+    Context#cb_context{storage=[{Key, Data}|proplists:delete(Key, Storage)]}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Fetches a previously stored value from the current request.
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch/2 :: (Key, Context) -> term() when
+      Key :: term(),
+      Context :: #cb_context{}.
+fetch(Key, #cb_context{storage=Storage}) ->
+    proplists:get_value(Key, Storage).

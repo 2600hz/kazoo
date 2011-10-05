@@ -24,14 +24,13 @@ start() ->
 
 start_deps() ->
     whistle_couch_deps:ensure(?MODULE),
-    reloader:start(),
     logger:start_link(),
 
-    ensure_started(sasl),
-    ensure_started(crypto),
-    ensure_started(riak_err),
-    ensure_started(ibrowse),
-    ensure_started(couchbeam).
+    wh_util:ensure_started(sasl),
+    wh_util:ensure_started(crypto),
+    wh_util:ensure_started(riak_err),
+    wh_util:ensure_started(ibrowse),
+    wh_util:ensure_started(couchbeam).
 
 %% @spec stop() -> ok
 %% @doc Stop the couch server.
@@ -40,11 +39,3 @@ stop() ->
 
 stop(_) ->
     ok.
-
-ensure_started(App) ->
-    case application:start(App) of
-	ok ->
-	    ok;
-	{error, {already_started, App}} ->
-	    ok	    
-    end.

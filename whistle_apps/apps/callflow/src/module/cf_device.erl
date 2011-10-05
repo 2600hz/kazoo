@@ -23,16 +23,17 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
+-spec handle/2 :: (Data, Call) -> {'stop' | 'continue'} when
+      Data :: json_object(),
+      Call :: #cf_call{}.
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
-    EndpointId = wh_json:get_value(<<"id">>, Data),
-    case cf_endpoint:build(EndpointId, Data, Call) of
+    case cf_endpoint:build(wh_json:get_value(<<"id">>, Data), Call, Data) of
         {ok, Endpoints} ->
             Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
             bridge_to_endpoints(Endpoints, Timeout, Call);
-        {error, Reason} ->
-            ?LOG("no endpoints to bridge to, ~w", [Reason]),
+        {error, _Reason} ->
+            ?LOG("no endpoints to bridge to, ~p", [_Reason]),
             CFPid ! { continue }
     end.
 
@@ -42,12 +43,12 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %% Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints/3 :: (Endpoints, Timeout, Call) -> cf_api_bridge_return() when
+-spec bridge_to_endpoints/3 :: (Endpoints, Timeout, Call) -> {'stop' | 'continue'} when
       Endpoints :: json_objects(),
       Timeout :: binary(),
       Call :: #cf_call{}.
 bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid}=Call) ->
-    IgnoreEarlyMedia = ignore_early_media(Endpoints),
+    IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
     case b_bridge(Endpoints, Timeout, <<"internal">>, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
             ?LOG("completed successful bridge to the device"),
@@ -60,18 +61,3 @@ bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid}=Call) ->
             ?LOG("failed to bridge to endpoint ~p", [R]),
             CFPid ! { continue }
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Determine if we should ignore early media
-%% @end
-%%--------------------------------------------------------------------
--spec ignore_early_media/1 :: (Endpoints) -> binary() when
-      Endpoints :: json_objects().
-ignore_early_media(Endpoints) ->
-    Ignore = lists:foldr(fun(Endpoint, Acc) ->
-                                 wh_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
-                                     or Acc
-                         end, false, Endpoints),
-    wh_util:to_binary(Ignore).

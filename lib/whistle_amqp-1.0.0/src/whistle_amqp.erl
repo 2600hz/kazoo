@@ -24,12 +24,11 @@ start() ->
 
 start_deps() ->
     whistle_amqp_deps:ensure(?MODULE),
-    reloader:start(),
     logger:start_link(),
 
-    ensure_started(sasl),
-    ensure_started(riak_err),
-    ensure_started(amqp_client).
+    wh_util:ensure_started(sasl),
+    wh_util:ensure_started(riak_err),
+    wh_util:ensure_started(amqp_client).
 
 %% @spec stop() -> ok
 %% @doc Stop the amqp server.
@@ -38,11 +37,3 @@ stop() ->
 
 stop(_) ->
     ok.
-
-ensure_started(App) ->
-    case application:start(App) of
-	ok ->
-	    ok;
-	{error, {already_started, App}} ->
-	    ok	    
-    end.

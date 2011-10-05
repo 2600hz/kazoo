@@ -175,7 +175,7 @@ handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid}=State) ->
 handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
     ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
     erlang:monitor_node(Node, false),
-    {'ok', _} = timer:send_after(0, self(), {is_node_up, 100}),
+    _Ref = erlang:send_after(0, self(), {is_node_up, 100}),
     {'noreply', State#state{is_node_up=false}, hibernate};
 
 handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false, failed_node_checks=FNC}=State) ->
@@ -193,19 +193,19 @@ handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false
 			    {'noreply', State};
 			false ->
 			    ?LOG("node ~p still not up after ~p checks, trying again", [Node, FNC]),
-			    {'ok', _} = timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART}),
+			    _Ref = erlang:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART}),
 			    {'noreply', State#state{is_node_up=false, failed_node_checks=FNC+1}, hibernate}
 		    end;
 		false ->
 		    ?LOG("node ~s still not up, waiting ~p seconds to test again", [Node, Timeout]),
-		    {'ok', _} = timer:send_after(Timeout, self(), {is_node_up, Timeout*2}),
+		    _Ref = erlang:send_after(Timeout, self(), {is_node_up, Timeout*2}),
 		    {'noreply', State}
 	    end
     end;
 
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    {'ok', _} = timer:send_after(1000, self(), is_amqp_up),
+    _Ref = erlang:send_after(1000, self(), is_amqp_up),
     {'noreply', State#state{amqp_q={'error', amqp_host_down}, is_amqp_up=false}, hibernate};
 
 handle_info(is_amqp_up, #state{uuid=UUID, amqp_q={'error', _}, queued_events=Evts, node=Node}=State) ->
@@ -215,7 +215,7 @@ handle_info(is_amqp_up, #state{uuid=UUID, amqp_q={'error', _}, queued_events=Evt
 	    spawn(fun() -> put(callid, UUID), send_queued(Node, UUID, Evts) end),
 	    {'noreply', State#state{amqp_q = Q1, is_amqp_up = true, queued_events=[]}, hibernate};
 	false ->
-	    {'ok', _} = timer:send_after(1000, self(), is_amqp_up),
+	    _Ref = erlang:send_after(1000, self(), is_amqp_up),
 	    {'noreply', State}
     end;
 
@@ -236,7 +236,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
 		    {'stop', 'normal', State};
 		false ->
 		    ?LOG(UUID, "node ~s appears down, and we've checked ~b times now; will check again", [Node, FNC]),
-		    {'ok', _} = timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART}),
+		    _Ref = erlang:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART}),
 		    {'noreply', State#state{is_node_up=IsUp, failed_node_checks=FNC+1}, hibernate}
 	    end
     end;
@@ -513,8 +513,11 @@ event_specific(<<"RECORD_STOP">>, _, Prop) ->
 event_specific(<<"DETECTED_TONE">>, _, Prop) ->
     [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Prop, <<>>)}];
 event_specific(<<"DTMF">>, _, Prop) ->
-    [{<<"DTMF-Digit">>, props:get_value(<<"DTMF-Digit">>, Prop, <<>>)}
-     ,{<<"DTMF-Duration">>, props:get_value(<<"DTMF-Duration">>, Prop, <<>>)}
+    Pressed = props:get_value(<<"DTMF-Digit">>, Prop, <<>>),
+    Duration = props:get_value(<<"DTMF-Duration">>, Prop, <<>>),
+    ?LOG("DTMF: ~s (~s)", [Pressed, Duration]),
+    [{<<"DTMF-Digit">>, Pressed}
+     ,{<<"DTMF-Duration">>, Duration}
     ];
 event_specific(_Evt, _App, _Prop) ->
     [].

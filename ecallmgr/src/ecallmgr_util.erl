@@ -123,8 +123,8 @@ is_node_up(Node, UUID) ->
 	_ -> false
     end.
 
--spec fs_log/3 :: (Node, Format, Args) -> ok when
-      Node :: binary(),
+-spec fs_log/3 :: (Node, Format, Args) -> fs_api_ret() when
+      Node :: atom(),
       Format :: string(),
       Args :: list().
 fs_log(Node, Format, Args) ->
@@ -134,7 +134,7 @@ fs_log(Node, Format, Args) ->
               Else  ->
                   Else
           end,
-    _ = freeswitch:api(Node, log, lists:flatten(Log)).
+    freeswitch:api(Node, log, lists:flatten(Log)).
 
 -spec put_callid/1 :: (JObj) -> 'undefined' | term() when
       JObj :: json_object().

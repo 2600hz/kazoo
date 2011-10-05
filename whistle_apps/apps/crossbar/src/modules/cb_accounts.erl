@@ -378,10 +378,10 @@ create_account(Context) ->
 
 create_account(#cb_context{req_data=JObj}=Context, ParrentId) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {error, Fields} ->
 	    ?LOG_SYS("Invalid JSON failed on fields ~p", [Fields]),
             crossbar_util:response_invalid_data(Fields, Context);
-        {true, _} ->
+        {ok, _} ->
 	    ?LOG_SYS("JSON is valid"),
             case is_unique_realm(undefined, Context) of
                 true ->
@@ -542,12 +542,13 @@ is_valid_parent(_JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% Validates JObj against their schema
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
+-spec is_valid_doc/1 :: (JObj :: json_object()) -> tuple(error, json_objects());
+			(JObj :: json_object()) -> tuple(ok, []).
 is_valid_doc(JObj) ->
-    {(wh_json:get_value(<<"realm">>, JObj) =/= undefined), [<<"realm">>]}.
+     crossbar_schema:do_validate(JObj, account).
 
 %%--------------------------------------------------------------------
 %% @private

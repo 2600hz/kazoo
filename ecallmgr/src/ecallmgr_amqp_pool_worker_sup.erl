@@ -11,7 +11,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_child/0]).
+-export([start_link/0, start_child/0, worker_count/0, release_all/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -34,6 +34,16 @@ start_link() ->
 
 start_child() ->
     supervisor:start_child(?SERVER, []).
+
+-spec worker_count/0 :: () -> non_neg_integer().
+worker_count() ->
+    Info = supervisor:count_children(?SERVER),
+    props:get_value(workers, Info).
+
+-spec release_all/0 :: () -> 'ok'.
+release_all() ->
+    _ = [ ecallmgr_amqp_pool_worker:stop(P) || {_, P, _, _} <- supervisor:which_children(?SERVER)],
+    ok.
 
 %%%===================================================================
 %%% Supervisor callbacks

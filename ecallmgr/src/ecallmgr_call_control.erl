@@ -67,7 +67,7 @@
          ,amqp_q = <<>> :: binary()
 	 ,start_time = erlang:now() :: tuple()
 	 ,is_node_up = true :: boolean()
-         ,keep_alive_ref = undefined :: undefined | timer:tref()
+         ,keep_alive_ref = undefined :: undefined | reference()
 	 }).
 
 %%%===================================================================
@@ -187,7 +187,7 @@ handle_info({execute_complete, UUID, EvtName}, #state{uuid=UUID, command_q=CmdQ,
 handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
     ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
     erlang:monitor_node(Node, false),
-    {ok, _} = timer:send_after(0, self(), {is_node_up, 100}),
+    _Ref = erlang:send_after(0, self(), {is_node_up, 100}),
     {noreply, State#state{is_node_up=false}, hibernate};
 
 handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
@@ -197,13 +197,13 @@ handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
             ?LOG("reconnected to node ~s", [Node]),
 	    {noreply, State#state{is_node_up=true}, hibernate};
 	false ->
-	    {ok, _} = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
+	    _Ref = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
 			  true ->
 			      ?LOG("node ~p down, waiting ~p to check again", [Node, ?MAX_TIMEOUT_FOR_NODE_RESTART]),
-			      timer:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
+			      erlang:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
 			  false ->
 			      ?LOG("node ~p down, waiting ~p to check again", [Node, Timeout]),
-			      timer:send_after(Timeout, self(), {is_node_up, Timeout*2})
+			      erlang:send_after(Timeout, self(), {is_node_up, Timeout*2})
 		      end,
 	    {noreply, State}
     end;
@@ -226,7 +226,7 @@ handle_info({force_queue_advance, UUID}, #state{uuid=UUID, command_q=CmdQ, is_no
 handle_info({hangup, _EvtPid, UUID}, #state{uuid=UUID, command_q=CmdQ}=State) ->
     ?LOG("recieved hangup notification"),
     lists:foreach(fun(Cmd) -> execute_control_request(Cmd, State) end, post_hangup_commands(CmdQ)),
-    {ok, TRef} = timer:send_after(?KEEP_ALIVE, keep_alive_expired),
+    TRef = erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired),
     {noreply, State#state{keep_alive_ref=TRef}, hibernate};
 
 handle_info(keep_alive_expired, #state{start_time=StartTime}=State) ->
@@ -237,13 +237,13 @@ handle_info(is_amqp_up, #state{amqp_q=Q}=State) ->
     case restart_amqp_queue(Q) of
 	ok -> {noreply, State};
 	{error, _} ->
-	    {ok, _} = timer:send_after(1000, self(), is_amqp_up),
+	    _Ref = erlang:send_after(1000, self(), is_amqp_up),
 	    {noreply, State}
     end;
 
 handle_info({amqp_host_down, _}, State) ->
     ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    {ok, _} = timer:send_after(1000, self(), is_amqp_up),
+    _Ref = erlang:send_after(1000, self(), is_amqp_up),
     {noreply, State};
 
 handle_info(timeout, #state{node=N, amqp_q=Q}=State) ->
@@ -436,15 +436,14 @@ send_error_resp(UUID, Cmd, Msg) ->
     {ok, Payload} = wh_api:error_resp(Resp),
     amqp_util:callevt_publish(UUID, Payload, event).
 
--spec get_keep_alive_ref/1 :: (TRef) -> 'undefined' | timer:tref() when
-      TRef :: 'undefined' | timer:tref().
+-spec get_keep_alive_ref/1 :: (TRef) -> 'undefined' | reference() when
+      TRef :: 'undefined' | reference().
 get_keep_alive_ref(undefined) -> undefined;
 get_keep_alive_ref(TRef) ->
-    _ = case timer:cancel(TRef) of
-	    {ok, cancel} -> %% flush the receive buffer of expiration messages
+    _ = case erlang:cancel_timer(TRef) of
+	    false -> ok;
+	    _ -> %% flush the receive buffer of expiration messages
 		receive keep_alive_expired -> ok
-		after 0 -> ok end;
-	    _ -> ok
+		after 0 -> ok end
 	end,
-    {ok, NewTRef} = timer:send_after(?KEEP_ALIVE, keep_alive_expired),
-    NewTRef.
+    erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired).

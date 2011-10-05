@@ -33,7 +33,8 @@
 -export([new_conference_queue/1, new_conference_queue/2]).
 
 -export([new_queue/0, new_queue/1, new_queue/2, basic_consume/1, basic_consume/2
-	 ,basic_publish/3, basic_publish/4, basic_cancel/1, queue_delete/1, queue_delete/2]).
+	 ,basic_publish/3, basic_publish/4, basic_cancel/1, queue_delete/1, queue_delete/2
+	 ,new_exchange/2, new_exchange/3]).
 
 -export([access_request/0, access_request/1, basic_ack/1, basic_nack/1, basic_qos/1]).
 
@@ -46,66 +47,62 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec targeted_publish/2 :: (Queue, Payload) -> 'ok' when
-      Queue :: binary(),
+      Queue :: ne_binary(),
       Payload :: iolist().
 -spec targeted_publish/3 :: (Queue, Payload, ContentType) -> 'ok' when
-      Queue :: binary(),
+      Queue :: ne_binary(),
       Payload :: iolist(),
-      ContentType :: binary().
+      ContentType :: ne_binary().
 targeted_publish(Queue, Payload) ->
-    targeted_publish(Queue, Payload, <<"application/json">>).
+    targeted_publish(Queue, Payload, ?DEFAULT_CONTENT_TYPE).
 targeted_publish(Queue, Payload, ContentType) ->
     basic_publish(?EXCHANGE_TARGETED, Queue, Payload, ContentType).
 
 -spec callmgr_publish/3 :: (Payload, ContentType, RoutingKey) -> 'ok' when
       Payload :: iolist(),
-      ContentType :: binary(),
-      RoutingKey :: binary().
+      ContentType :: ne_binary(),
+      RoutingKey :: ne_binary().
 %% TODO: The routing key on this function should be the first argument for consistency
 callmgr_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
 
 
 -spec configuration_publish/2 :: (RoutingKey, Payload) -> 'ok' when
-      RoutingKey :: binary(),
+      RoutingKey :: ne_binary(),
       Payload :: iolist().
 -spec configuration_publish/3 :: (RoutingKey, Payload, ContentType) -> 'ok' when
-      RoutingKey :: binary(),
+      RoutingKey :: ne_binary(),
       Payload :: iolist(),
-      ContentType :: binary().
+      ContentType :: ne_binary().
 configuration_publish(RoutingKey, Payload) ->
-    configuration_publish(RoutingKey, Payload, <<"application/json">>).
+    configuration_publish(RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 configuration_publish(RoutingKey, Payload, ContentType) ->
     basic_publish(?EXCHANGE_CONFIGURATION, RoutingKey, Payload, ContentType).
 
-
 -spec document_change_publish/5 :: (Action, Db, Type, Id, Payload) -> 'ok' when
-      Action :: binary(), %% edited | created | deleted
-      Db :: binary(),
-      Type :: binary(),
-      Id :: binary(),
+      Action :: ne_binary(), %% edited | created | deleted
+      Db :: ne_binary(),
+      Type :: ne_binary(),
+      Id :: ne_binary(),
       Payload :: iolist().
 document_change_publish(Action, Db, Type, Id, Payload) ->
-    RoutingKey = <<"doc_", Action/binary
-                   ,".", Db/binary
-                   ,".", Type/binary
-                   ,".", Id/binary>>,
+    RoutingKey = list_to_binary(["doc_", Action, ".", Db, ".", Type, ".", Id]),
     configuration_publish(RoutingKey, Payload).
 
 -spec callctl_publish/2 :: (CallID, Payload) -> 'ok' when
-      CallID :: binary(),
+      CallID :: ne_binary(),
       Payload :: iolist().
 -spec callctl_publish/3 :: (CallID, Payload, ContentType) -> 'ok' when
-      CallID :: binary(),
+      CallID :: ne_binary(),
       Payload :: iolist(),
-      ContentType :: binary().
+      ContentType :: ne_binary().
 -spec callctl_publish/4 :: (CallID, Payload, ContentType, Props) -> 'ok' when
-      CallID :: binary(),
+      CallID :: ne_binary(),
       Payload :: iolist(),
-      ContentType :: binary(),
+      ContentType :: ne_binary(),
       Props :: proplist().
 callctl_publish(CallID, Payload) ->
-    callctl_publish(CallID, Payload, <<"application/json">>).
+    callctl_publish(CallID, Payload, ?DEFAULT_CONTENT_TYPE).
 callctl_publish(CallID, Payload, ContentType) ->
     callctl_publish(CallID, Payload, ContentType, []).
 callctl_publish(CallID, Payload, ContentType, Props) ->
@@ -114,28 +111,28 @@ callctl_publish(CallID, Payload, ContentType, Props) ->
 -spec callevt_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().
 -spec callevt_publish/3 :: (CallID, Payload, Type) -> 'ok' when
-      CallID :: binary(),
+      CallID :: ne_binary(),
       Payload :: iolist(),
-      Type :: event | status_req | cdr | binary().
+      Type :: event | status_req | cdr | ne_binary().
 callevt_publish(Payload) ->
-    basic_publish(?EXCHANGE_CALLEVT, ?KEY_CALL_MEDIA_REQ, Payload, <<"application/json">>).
+    basic_publish(?EXCHANGE_CALLEVT, ?KEY_CALL_MEDIA_REQ, Payload, ?DEFAULT_CONTENT_TYPE).
 
 callevt_publish(CallID, Payload, event) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallID/binary>>, Payload, <<"application/json">>);
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 callevt_publish(CallID, Payload, status_req) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, <<"application/json">>);
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 callevt_publish(CallID, Payload, cdr) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallID/binary>>, Payload, <<"application/json">>);
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
-    basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, <<"application/json">>).
+    basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 
 -spec resource_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().
 -spec resource_publish/2 :: (Payload, ContentType) -> 'ok' when
       Payload :: iolist(),
-      ContentType :: binary().
+      ContentType :: ne_binary().
 resource_publish(Payload) ->
-    resource_publish(Payload, <<"application/json">>).
+    resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
 resource_publish(Payload, ContentType) ->
     basic_publish(?EXCHANGE_RESOURCE, ?KEY_RESOURCE_REQ, Payload, ContentType).
 
@@ -143,9 +140,9 @@ resource_publish(Payload, ContentType) ->
       Payload :: iolist().
 -spec originate_resource_publish/2 :: (Payload, ContentType) -> 'ok' when
       Payload :: iolist(),
-      ContentType :: binary().
+      ContentType :: ne_binary().
 originate_resource_publish(Payload) ->
-    originate_resource_publish(Payload, <<"application/json">>).
+    originate_resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
 originate_resource_publish(Payload, ContentType) ->
    basic_publish(?EXCHANGE_RESOURCE, ?KEY_ORGN_RESOURCE_REQ, Payload, ContentType).
 
@@ -153,17 +150,17 @@ originate_resource_publish(Payload, ContentType) ->
       Payload :: iolist().
 -spec offnet_resource_publish/2 :: (Payload, ContentType) -> 'ok' when
       Payload :: iolist(),
-      ContentType :: binary().
+      ContentType :: ne_binary().
 offnet_resource_publish(Payload) ->
-    offnet_resource_publish(Payload, <<"application/json">>).
+    offnet_resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
 offnet_resource_publish(Payload, ContentType) ->
     basic_publish(?EXCHANGE_RESOURCE, ?KEY_OFFNET_RESOURCE_REQ, Payload, ContentType).
 
 %% monitor
 -spec monitor_publish/3 :: (Payload, ContentType, RoutingKey) -> 'ok' when
       Payload :: iolist(),
-      ContentType :: binary(),
-      RoutingKey :: binary().
+      ContentType :: ne_binary(),
+      RoutingKey :: ne_binary().
 monitor_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_MONITOR, RoutingKey, Payload, ContentType).
 
@@ -173,11 +170,11 @@ monitor_publish(Payload, ContentType, RoutingKey) ->
 -spec conference_publish/3 :: (Payload, Queue, ConfId) -> 'ok' when
       Payload :: iolist(),
       Queue :: events | service,
-      ConfId :: binary().
+      ConfId :: ne_binary().
 -spec conference_publish/4 :: (Payload, Queue, ConfId, Options) -> 'ok' when
       Payload :: iolist(),
       Queue :: discovery | events | service,
-      ConfId :: undefined | binary(),
+      ConfId :: undefined | ne_binary(),
       Options :: proplist().
 conference_publish(Payload, discovery) ->
     conference_publish(Payload, discovery, undefined, []);
@@ -192,31 +189,31 @@ conference_publish(Payload, service, ConfId) ->
     conference_publish(Payload, events, ConfId, []).
 
 conference_publish(Payload, discovery, _, Options) ->
-    basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONF_DISCOVERY_REQ, Payload, <<"application/json">>, Options);
+    basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONF_DISCOVERY_REQ, Payload, ?DEFAULT_CONTENT_TYPE, Options);
 conference_publish(Payload, events, ConfId, Options) ->
-    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, Payload, <<"application/json">>, Options);
+    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, Payload, ?DEFAULT_CONTENT_TYPE, Options);
 conference_publish(Payload, service, ConfId, Options) ->
-    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Payload, <<"application/json">>, Options).
+    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Payload, ?DEFAULT_CONTENT_TYPE, Options).
 
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
 -spec basic_publish/3 :: (Exchange, Queue, Payload) -> 'ok' when
-      Exchange :: binary(),
-      Queue :: binary(),
+      Exchange :: ne_binary(),
+      Queue :: ne_binary(),
       Payload :: iolist().
 -spec basic_publish/4 :: (Exchange, Queue, Payload, ContentType) -> 'ok' when
-      Exchange :: binary(),
-      Queue :: binary(),
+      Exchange :: ne_binary(),
+      Queue :: ne_binary(),
       Payload :: iolist(),
-      ContentType :: binary().
+      ContentType :: ne_binary().
 -spec basic_publish/5 :: (Exchange, Queue, Payload, ContentType, Prop) -> 'ok' when
-      Exchange :: binary(),
-      Queue :: binary(),
-      Payload :: iolist() | binary(),
-      ContentType :: binary(),
+      Exchange :: ne_binary(),
+      Queue :: ne_binary(),
+      Payload :: iolist() | ne_binary(),
+      ContentType :: ne_binary(),
       Prop :: proplist().
 basic_publish(Exchange, Queue, Payload) ->
-    basic_publish(Exchange, Queue, Payload, <<"application/json">>).
+    basic_publish(Exchange, Queue, Payload, ?DEFAULT_CONTENT_TYPE).
 basic_publish(Exchange, Queue, Payload, ContentType) ->
     basic_publish(Exchange, Queue, Payload, ContentType, []).
 
@@ -237,7 +234,6 @@ basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_binary(Payloa
      },
 
     amqp_mgr:publish(BP, AM).
-
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -279,11 +275,11 @@ conference_exchange() ->
 
 %% A generic Exchange maker
 -spec new_exchange/2 :: (Exchange, Type) -> 'ok' when
-      Exchange :: binary(),
-      Type :: binary().
+      Exchange :: ne_binary(),
+      Type :: ne_binary().
 -spec new_exchange/3 :: (Exchange, Type, Options) -> 'ok' when
-      Exchange :: binary(),
-      Type :: binary(),
+      Exchange :: ne_binary(),
+      Type :: ne_binary(),
       Options :: proplist().
 new_exchange(Exchange, Type) ->
     new_exchange(Exchange, Type, []).
@@ -682,7 +678,7 @@ access_request(Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 is_json(Props) ->
-    Props#'P_basic'.content_type == <<"application/json">>.
+    Props#'P_basic'.content_type == ?DEFAULT_CONTENT_TYPE.
 
 %%------------------------------------------------------------------------------
 %% @public
