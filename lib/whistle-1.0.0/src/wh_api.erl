@@ -27,7 +27,9 @@
 -export([reg_query/1, reg_query_resp/1, authz_req/1, authz_resp/1]).
 
 %% Resources
--export([offnet_resource_req/1, resource_req/1, resource_resp/1, resource_error/1]).
+-export([offnet_resource_req/1, resource_req/1, resource_resp/1, resource_error/1
+	 ,channel_query_req/1, channel_query_resp/1
+	]).
 
 %% In-Call
 -export([call_event/1, error_resp/1, call_cdr/1, call_status_req/1, call_status_resp/1]).
@@ -57,7 +59,8 @@
 -export([authn_req_v/1, authn_resp_v/1, authz_req_v/1, authz_resp_v/1]).
 -export([reg_success_v/1, reg_query_v/1, reg_query_resp_v/1]).
 
--export([offnet_resource_req_v/1, resource_req_v/1, resource_resp_v/1, resource_error_v/1]).
+-export([offnet_resource_req_v/1, resource_req_v/1, resource_resp_v/1, resource_error_v/1
+	,channel_query_req_v/1, channel_query_resp_v/1]).
 
 -export([call_event_v/1, error_resp_v/1, call_cdr_v/1, call_status_req_v/1, call_status_resp_v/1]).
 -export([play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1, store_http_resp_v/1
@@ -129,7 +132,7 @@ extract_defaults(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec authn_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec authn_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
       Prop :: proplist() | json_object().
 authn_req({struct, Prop}) ->
     authn_req(Prop);
@@ -151,7 +154,7 @@ authn_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec authn_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec authn_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
       Prop :: proplist() | json_object().
 authn_resp({struct, Prop}) ->
     authn_resp(Prop);
@@ -173,7 +176,7 @@ authn_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec reg_success/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec reg_success/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 reg_success({struct, Prop}) ->
     reg_success(Prop);
@@ -195,7 +198,7 @@ reg_success_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec reg_query/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec reg_query/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 reg_query({struct, Prop}) ->
     reg_query(Prop);
@@ -217,7 +220,7 @@ reg_query_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec reg_query_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec reg_query_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 reg_query_resp({struct, Prop}) ->
     reg_query_resp(Prop);
@@ -259,7 +262,7 @@ dialplan_req_v(Prop, AppName) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec route_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec route_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 route_req({struct, Prop}) ->
     route_req(Prop);
@@ -281,7 +284,7 @@ route_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec route_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec route_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 route_resp({struct, Prop}) ->
     route_resp(Prop);
@@ -304,7 +307,7 @@ route_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec route_resp_route/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec route_resp_route/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 route_resp_route({struct, Prop}) ->
     route_resp_route(Prop);
@@ -326,7 +329,7 @@ route_resp_route_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec authz_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec authz_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 authz_req({struct, Prop}) ->
     authz_req(Prop);
@@ -348,7 +351,7 @@ authz_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec authz_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec authz_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 authz_resp({struct, Prop}) ->
     authz_resp(Prop);
@@ -370,7 +373,7 @@ authz_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec route_win/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec route_win/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 route_win({struct, Prop}) ->
     route_win(Prop);
@@ -392,7 +395,7 @@ route_win_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec offnet_resource_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec offnet_resource_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 offnet_resource_req({struct, Prop}) ->
     offnet_resource_req(Prop);
@@ -414,7 +417,7 @@ offnet_resource_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resource_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec resource_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 resource_req({struct, Prop}) ->
     resource_req(Prop);
@@ -436,7 +439,7 @@ resource_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resource_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec resource_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 resource_resp({struct, Prop}) ->
     resource_resp(Prop);
@@ -458,7 +461,7 @@ resource_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resource_error/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec resource_error/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 resource_error({struct, Prop}) ->
     resource_error(Prop);
@@ -476,11 +479,56 @@ resource_error_v(Prop) ->
     validate(Prop, ?RESOURCE_ERROR_HEADERS, ?RESOURCE_ERROR_VALUES, ?RESOURCE_ERROR_TYPES).
 
 %%--------------------------------------------------------------------
+%% @doc Resource Request - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec channel_query_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
+    Prop :: proplist() | json_object().
+channel_query_req([_|_]=Prop) ->
+    case channel_query_req_v(Prop) of
+	true -> build_message(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for channel_query_req"}
+    end;
+channel_query_req(JObj) ->
+    channel_query_req(wh_json:to_proplist(JObj)).
+
+-spec channel_query_req_v/1 :: (Prop) -> boolean() when
+    Prop :: proplist() | json_object().
+channel_query_req_v([_|_]=Prop) ->
+    validate(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?CHANNEL_QUERY_REQ_VALUES, ?CHANNEL_QUERY_REQ_TYPES);
+channel_query_req_v(JObj) ->
+    channel_query_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Resource Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec channel_query_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
+    Prop :: proplist() | json_object().
+channel_query_resp([_|_]=Prop) ->
+    case channel_query_resp_v(Prop) of
+	true -> build_message(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?OPTIONAL_CHANNEL_QUERY_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for resource_resp"}
+    end;
+channel_query_resp(JObj) ->
+    channel_query_resp(wh_json:to_proplist(JObj)).
+
+-spec channel_query_resp_v/1 :: (Prop) -> boolean() when
+    Prop :: proplist() | json_object().
+channel_query_resp_v([_|_]=Prop) ->
+    validate(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?CHANNEL_QUERY_RESP_VALUES, ?CHANNEL_QUERY_RESP_TYPES);
+channel_query_resp_v(JObj) ->
+    channel_query_resp_v(wh_json:to_proplist(JObj)).
+
+
+%%--------------------------------------------------------------------
 %% @doc Format a call event from the switch for the listener
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec call_event/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec call_event/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 call_event({struct, Prop}) ->
     call_event(Prop);
@@ -502,7 +550,7 @@ call_event_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec call_status_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec call_status_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 call_status_req({struct, Prop}) ->
     call_status_req(Prop);
@@ -524,7 +572,7 @@ call_status_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec call_status_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec call_status_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 call_status_resp({struct, Prop}) ->
     call_status_resp(Prop);
@@ -546,7 +594,7 @@ call_status_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec call_cdr/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec call_cdr/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 call_cdr({struct, Prop}) ->
     call_cdr(Prop);
@@ -568,7 +616,7 @@ call_cdr_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec error_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec error_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 error_resp({struct, Prop}) ->
     error_resp(Prop);
@@ -590,7 +638,7 @@ error_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec document_change/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec document_change/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 document_change({struct, Prop}) ->
     document_change(Prop);
@@ -612,7 +660,7 @@ document_change_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec store_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec store_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
       Prop :: proplist().
 store_req({struct, Prop}) ->
     store_req(Prop);
@@ -634,7 +682,7 @@ store_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec store_amqp_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec store_amqp_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 store_amqp_resp({struct, Prop}) ->
     store_amqp_resp(Prop);
@@ -656,7 +704,7 @@ store_amqp_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec store_http_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec store_http_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 store_http_resp({struct, Prop}) ->
     store_http_resp(Prop);
@@ -678,7 +726,7 @@ store_http_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec tones_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec tones_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 tones_req({struct, Prop}) ->
     tones_req(Prop);
@@ -700,7 +748,7 @@ tones_req_v(Prop) ->
 %% Takes proplist and returns a proplist
 %% @end
 %%--------------------------------------------------------------------
--spec tones_req_tone/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec tones_req_tone/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 tones_req_tone({struct, Prop}) ->
     tones_req_tone(Prop);
@@ -722,7 +770,7 @@ tones_req_tone_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec tone_detect_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec tone_detect_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 tone_detect_req({struct, Prop}) ->
     tone_detect_req(Prop);
@@ -744,7 +792,7 @@ tone_detect_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec queue_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec queue_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 queue_req({struct, Prop}) ->
     queue_req(Prop);
@@ -766,7 +814,7 @@ queue_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec play_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec play_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 play_req({struct, Prop}) ->
     play_req(Prop);
@@ -842,7 +890,7 @@ media_error_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec record_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec record_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 record_req({struct, Prop}) ->
     record_req(Prop);
@@ -864,7 +912,7 @@ record_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec bridge_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
       Prop :: proplist() | json_object().
 bridge_req({struct, Prop}) ->
     bridge_req(Prop);
@@ -894,7 +942,7 @@ bridge_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_req_endpoint/1 :: (Prop) -> {ok, proplist()} | {error, string()} when
+-spec bridge_req_endpoint/1 :: (Prop) -> {'ok', proplist()} | {'error', string()} when
       Prop :: proplist() | json_object().
 bridge_req_endpoint({struct, Prop}) ->
     bridge_req_endpoint(Prop);
@@ -904,7 +952,7 @@ bridge_req_endpoint(Prop) ->
 	false -> {error, "Proplist failed validation for bridge_req_endpoint"}
     end.
 
--spec bridge_req_endpoint_headers/1 :: (Prop) -> {ok, proplist()} | {error, string()} when
+-spec bridge_req_endpoint_headers/1 :: (Prop) -> {ok, proplist()} | {'error', string()} when
       Prop :: proplist() | json_object().
 bridge_req_endpoint_headers({struct, Prop}) ->
     bridge_req_endpoint_headers(Prop);
@@ -923,7 +971,7 @@ bridge_req_endpoint_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec answer_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec answer_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 answer_req({struct, Prop}) ->
     answer_req(Prop);
@@ -945,7 +993,7 @@ answer_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec progress_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec progress_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 progress_req({struct, Prop}) ->
     progress_req(Prop);
@@ -967,7 +1015,7 @@ progress_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec hangup_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec hangup_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 hangup_req({struct, Prop}) ->
     hangup_req(Prop);
@@ -989,7 +1037,7 @@ hangup_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec park_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec park_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 park_req({struct, Prop}) ->
     park_req(Prop);
@@ -1011,7 +1059,7 @@ park_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec set_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec set_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 set_req({struct, Prop}) ->
     set_req(Prop);
@@ -1033,7 +1081,7 @@ set_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec fetch_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 fetch_req({struct, Prop}) ->
     fetch_req(Prop);
@@ -1055,7 +1103,7 @@ fetch_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec play_collect_digits_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec play_collect_digits_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 play_collect_digits_req({struct, Prop}) ->
     play_collect_digits_req(Prop);
@@ -1077,7 +1125,7 @@ play_collect_digits_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec call_pickup_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec call_pickup_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 call_pickup_req({struct, Prop}) ->
     call_pickup_req(Prop);
@@ -1099,7 +1147,7 @@ call_pickup_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec say_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec say_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 say_req({struct, Prop}) ->
     say_req(Prop);
@@ -1121,7 +1169,7 @@ say_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec respond_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec respond_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 respond_req({struct, Prop}) ->
     respond_req(Prop);
@@ -1143,7 +1191,7 @@ respond_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec sleep_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec sleep_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
       Prop :: proplist() | json_object().
 sleep_req({struct, Prop}) ->
     sleep_req(Prop);
@@ -1165,7 +1213,7 @@ sleep_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec noop_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec noop_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
       Prop :: proplist() | json_object().
 noop_req({struct, Prop}) ->
     noop_req(Prop);
@@ -1187,7 +1235,7 @@ noop_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec mwi_update/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec mwi_update/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
       Prop :: proplist() | json_object().
 mwi_update({struct, Prop}) ->
     mwi_update(Prop);
@@ -1209,7 +1257,7 @@ mwi_update_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec conference_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
       Prop :: proplist() | json_object().
 conference_req({struct, Prop}) ->
     conference_req(Prop);
@@ -1232,7 +1280,7 @@ conference_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_discovery_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec conference_discovery_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 conference_discovery_req({struct, Prop}) ->
     conference_discovery_req(Prop);
@@ -1255,7 +1303,7 @@ conference_discovery_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_participants_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec conference_participants_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 conference_participants_req({struct, Prop}) ->
     conference_participants_req(Prop);
@@ -1277,7 +1325,7 @@ conference_participants_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_participants_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec conference_participants_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 conference_participants_resp({struct, Prop}) ->
     conference_participants_resp(Prop);
@@ -1300,7 +1348,7 @@ conference_participants_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_play_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec conference_play_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 conference_play_req({struct, Prop}) ->
     conference_play_req(Prop);
@@ -1322,7 +1370,7 @@ conference_play_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_deaf_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec conference_deaf_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 conference_deaf_req({struct, Prop}) ->
     conference_deaf_req(Prop);
@@ -1345,7 +1393,7 @@ conference_deaf_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_undeaf_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec conference_undeaf_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 conference_undeaf_req({struct, Prop}) ->
     conference_undeaf_req(Prop);
@@ -1368,7 +1416,7 @@ conference_undeaf_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_mute_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec conference_mute_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 conference_mute_req({struct, Prop}) ->
     conference_mute_req(Prop);
@@ -1391,7 +1439,7 @@ conference_mute_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_unmute_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec conference_unmute_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 conference_unmute_req({struct, Prop}) ->
     conference_unmute_req(Prop);
@@ -1413,7 +1461,7 @@ conference_unmute_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_kick_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec conference_kick_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 conference_kick_req({struct, Prop}) ->
     conference_kick_req(Prop);
@@ -1436,7 +1484,7 @@ conference_kick_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_move_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec conference_move_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 conference_move_req({struct, Prop}) ->
     conference_move_req(Prop);
@@ -1459,7 +1507,7 @@ conference_move_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec fs_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+-spec fs_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
     Prop :: proplist() | json_object().
 fs_req({struct, Prop}) ->
     fs_req(Prop);
@@ -1495,7 +1543,7 @@ convert_whistle_app_name(App) ->
 %%%===================================================================
 -spec validate/4 :: (Prop, ReqHeaders, DefValues, DefTypes) -> boolean() when
       Prop :: proplist(),
-      ReqHeaders :: [binary(),...],
+      ReqHeaders :: [binary(),...] | [],
       DefValues :: proplist(),
       DefTypes :: proplist().
 validate(Prop, ReqH, Vals, Types) ->
@@ -1504,7 +1552,7 @@ validate(Prop, ReqH, Vals, Types) ->
 
 -spec validate_message/4 :: (Prop, ReqHeaders, DefValues, DefTypes) -> boolean() when
       Prop :: proplist(),
-      ReqHeaders :: [binary(),...],
+      ReqHeaders :: [binary(),...] | [],
       DefValues :: proplist(),
       DefTypes :: proplist().
 validate_message(Prop, ReqH, Vals, Types) ->
@@ -1512,9 +1560,9 @@ validate_message(Prop, ReqH, Vals, Types) ->
 	values_check(Prop, Vals) andalso
 	type_check(Prop, Types).
 
--spec build_message/3 :: (Prop, ReqHeaders, OptHeaders) -> {ok, iolist()} | {error, string()} when
+-spec build_message/3 :: (Prop, ReqHeaders, OptHeaders) -> {'ok', iolist()} | {'error', string()} when
       Prop :: proplist(),
-      ReqHeaders :: [binary(),...],
+      ReqHeaders :: [binary(),...] | [],
       OptHeaders:: [binary(),...] | [].
 build_message(Prop, ReqH, OptH) ->
     case defaults(Prop) of
@@ -1528,9 +1576,9 @@ build_message(Prop, ReqH, OptH) ->
 	    end
     end.
 
--spec build_message_specific_headers/3 :: (Msg, ReqHeaders, OptHeaders) -> {ok, proplist()} | {error, string()} when
+-spec build_message_specific_headers/3 :: (Msg, ReqHeaders, OptHeaders) -> {'ok', proplist()} | {'error', string()} when
       Msg :: proplist() | {[binary(),...] | [], proplist()},
-      ReqHeaders :: [binary(),...],
+      ReqHeaders :: [binary(),...] | [],
       OptHeaders :: [binary(),...] | [].
 build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
@@ -1544,9 +1592,9 @@ build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
 build_message_specific_headers(Prop, ReqH, OptH) ->
     build_message_specific_headers({[], Prop}, ReqH, OptH).
 
--spec build_message_specific/3 :: (Msg, ReqHeaders, OptHeaders) -> {ok, iolist()} | {error, string()} when
+-spec build_message_specific/3 :: (Msg, ReqHeaders, OptHeaders) -> {'ok', iolist()} | {'error', string()} when
       Msg :: proplist() | {[binary(),...] | [], proplist()},
-      ReqHeaders :: [binary(),...],
+      ReqHeaders :: [binary(),...] | [],
       OptHeaders :: [binary(),...] | [].
 build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
@@ -1560,7 +1608,7 @@ build_message_specific({Headers, Prop}, ReqH, OptH) ->
 build_message_specific(Prop, ReqH, OptH) ->
     build_message_specific({[], Prop}, ReqH, OptH).
 
--spec headers_to_json/1 :: (HeadersProp) -> {ok, iolist()} | {error, string()} when
+-spec headers_to_json/1 :: (HeadersProp) -> {'ok', iolist()} | {'error', string()} when
       HeadersProp :: proplist().
 headers_to_json(HeadersProp) ->
     try
@@ -1571,7 +1619,7 @@ headers_to_json(HeadersProp) ->
 
 %% Checks Prop for all default headers, throws error if one is missing
 %% defaults(PassedProps) -> { Headers, NewPropList } | {error, Reason}
--spec defaults/1 :: (Prop) -> {proplist(), proplist()} | {error, string()} when
+-spec defaults/1 :: (Prop) -> {proplist(), proplist()} | {'error', string()} when
       Prop :: proplist() | json_object().
 defaults(Prop) ->
     defaults(Prop, []).
@@ -1583,9 +1631,9 @@ defaults(Prop, Headers) ->
 	    update_optional_headers(Prop1, ?OPTIONAL_DEFAULT_HEADERS, Headers1)
     end.
 
--spec update_required_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} | {error, string()} when
+-spec update_required_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} | {'error', string()} when
       Prop :: proplist(),
-      Fields :: [binary(),...],
+      Fields :: [binary(),...] | [],
       Headers :: proplist().
 update_required_headers(Prop, Fields, Headers) ->
     case has_all(Prop, Fields) of
@@ -1610,7 +1658,7 @@ update_optional_headers(Prop, Fields, Headers) ->
 %% add [Header] from Prop to HeadProp
 -spec add_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} when
       Prop :: proplist(),
-      Fields :: [binary(),...],
+      Fields :: [binary(),...] | [],
       Headers :: proplist().
 add_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
