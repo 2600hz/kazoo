@@ -11,7 +11,7 @@
 -include("callflow.hrl").
 
 -export([audio_macro/2]).
--export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
+-export([answer/1, hangup/1, set/3, fetch/1, fetch/2, status/1]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
@@ -25,7 +25,7 @@
 -export([noop/1]).
 -export([flush/1, flush_dtmf/1]).
 
--export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2]).
+-export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2, b_status/1]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
 -export([b_play/2, b_play/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
@@ -234,6 +234,31 @@ hangup(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
 b_hangup(Call) ->
     hangup(Call),
     wait_for_hangup().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level wh_api request to get the channel status.
+%% This request will execute immediately
+%% @end
+%%--------------------------------------------------------------------
+-spec status/1 :: (Call) -> 'ok' when
+      Call :: #cf_call{}.
+-spec b_status/1 :: (Call) -> {'ok', 'channel_hungup'} when
+      Call :: #cf_call{}.
+
+status(#cf_call{call_id=CallId, amqp_q=AmqpQ}) ->
+    Command = [{<<"Call-ID">>, CallId}
+               ,{<<"Insert-At">>, <<"now">>}
+               | wh_api:default_headers(AmqpQ, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    {ok, Payload} = wh_api:call_status_req({struct, Command}),
+    amqp_util:callevt_publish(CallId, Payload, status_req).
+
+b_status(Call) ->
+    status(Call),
+    wait_for_message(<<"status">>, <<"status_resp">>, <<"call_event">>, 5000).
+
 
 %%--------------------------------------------------------------------
 %% @public
