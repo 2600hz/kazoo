@@ -11,6 +11,7 @@
 %%%   {bindings, [ {atom(), proplist()}, ...]} -> the type of bindings, with optional properties to pass along
 %%%   {responders, [ {responder, [ {<<"event-category">>, <<"event-name">>}, ...]} ]
 %%%      responder is the module name to call handle_req/2 on for those category/name combos
+%%%      responder can also be {module, function}, to call module:function/2 instead of handle_req/2
 %%%   {queue_name, <<"some name">>} -> optional, if you want a named queue
 %%%   {queue_options, [{key, value}]} -> optional, if the queue requires different params
 %%%   {consume_options, [{key, value}]} -> optional, if the consumption requires special params
@@ -32,7 +33,7 @@
 
 -export([start_link/3, stop/1]).
 
--export([queue_name/1]).
+-export([queue_name/1, responders/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2
@@ -85,6 +86,9 @@ behaviour_info(_) ->
 queue_name(Srv) ->
     gen_server:call(Srv, queue_name).
 
+responders(Srv) ->
+    gen_server:call(Srv, responders).
+
 %% API functions that mirror gen_server:call,cast,reply
 -spec call/2 :: (Name, Request) -> term() when
       Name :: atom() | pid(),
@@ -128,7 +132,7 @@ stop(Srv) when is_pid(Srv) ->
 
 -spec add_responder/3 :: (Srv, Responder, Key) -> 'ok' when
       Srv :: atom() | pid(),
-      Responder :: atom(),
+      Responder :: atom() | {atom(), atom()},
       Key :: {binary(), binary()} | [{binary(), binary()},...].
 add_responder(Srv, Responder, Key) when not is_list(Key) ->
     add_responder(Srv, Responder, [Key]);
@@ -137,7 +141,7 @@ add_responder(Srv, Responder, [{_,_}|_] = Keys) ->
 
 -spec rm_responder/2 :: (Srv, Responder) -> 'ok' when
       Srv :: atom() | pid(),
-      Responder :: atom().
+      Responder :: atom() | {atom(), atom()}.
 -spec rm_responder/3 :: (Srv, Responder, Key) -> 'ok' when
       Srv :: atom() | pid(),
       Responder :: atom(),
@@ -210,6 +214,8 @@ init([Module, Params, InitArgs]) ->
       State :: #state{}.
 handle_call(queue_name, _From, #state{queue=Q}=State) ->
     {reply, Q, State};
+handle_call(responders, _From, #state{responders=Rs}=State) ->
+    {reply, Rs, State};
 handle_call(Request, From, #state{module=Module, module_state=ModState}=State) ->
     case catch Module:handle_call(Request, From, ModState) of
 	{reply, Reply, ModState1} ->
@@ -273,6 +279,7 @@ handle_cast(Message, #state{module=Module, module_state=ModState}=State) ->
       Request :: term(),
       State :: #state{}.
 handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, #state{active_responders=ARs}=State) ->
+    ?LOG_SYS("Handling AMQP payload"),
     case catch handle_event(Payload, CT, State) of
 	Pid when is_pid(Pid) ->
 	    {noreply, State#state{active_responders=[Pid | ARs]}, hibernate};
@@ -356,7 +363,7 @@ handle_event(Payload, <<"application/erlang">>, State) ->
       JObj :: json_object().
 process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj) ->
     Props1 = case catch Module:handle_event(JObj, ModState) of
-		 {reply, Props} -> [{queue, Queue} | Props];
+		 {reply, Props} when is_list(Props) -> [{queue, Queue} | Props];
 		 {'EXIT', _Why} -> [{queue, Queue}]
 	     end,
     spawn_link(fun() -> _ = wh_util:put_callid(JObj), process_req(Props1, Responders, JObj) end).
@@ -368,8 +375,10 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
 process_req(Props, Responders, JObj) ->
     Key = wh_util:get_event_type(JObj),
     Handlers = [spawn_monitor(fun() ->
-				      Responder:handle_req(JObj, Props)
-			      end) || {Evt, Responder} <- Responders,
+				      wh_util:put_callid(JObj),
+				      ?LOG("handling with ~s:~s", [Responder, Fun]),
+				      Responder:Fun(JObj, Props)
+			      end) || {Evt, {Responder, Fun}} <- Responders,
 				      maybe_event_matches_key(Key, Evt)
 	       ],
     wait_for_handlers(Handlers).
@@ -424,3 +433,13 @@ stop_amqp(Q, Bindings) ->
       N :: undefined | non_neg_integer().
 set_qos(undefined) -> ok;
 set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
+
+%% {undef,[
+%% 	{authn_req,handle_req,
+%% 	 [{struct,[{<<6 bytes>>,<<8 bytes>>},{<<10 bytes>>,<<25 bytes>>},{<<9 bytes>>,<<7 bytes>>},{<<7 bytes>>,<<12 bytes>>},{<<4 bytes>>,<<33 bytes>>},{<<2 bytes>>,<<33 bytes>>},{<<6 bytes>>,<<36 bytes>>},{<<11 bytes>>,<<5 bytes>>},{<<8 bytes>>,<<8 bytes>>},{<<10 bytes>>,<<9 bytes>>},{<<14 bytes>>,<<9 bytes>>},{<<9 bytes>>,<<32 bytes>>}]}
+%% 	  ,[{queue,<<15 bytes>>},{cache,<0.122.0>}]
+%% 	  ,{authn_req,handle_req}
+%% 	 ]
+%% 	}
+%%        ]
+%% }

@@ -25,6 +25,7 @@
 		      'call_events' |
 		      'self' |
 		      'notifications' |
+		      'switch_lookups' | 
 		      'authorization'.
 -export_type([bind_types/0]).
 
@@ -32,7 +33,7 @@
 known_bind_types() ->
     ['authentication', 'registrations', 'rating', 'routing'
      ,'cdrs', 'dth', 'call_events', 'self', 'notifications'
-     ,'authorization'
+     ,'switch_lookups', 'authorization'
     ].
 
 -spec add_binding_to_q/3 :: (Q, Type, Props) -> 'ok' when
@@ -68,6 +69,10 @@ add_binding_to_q(Q, registrations, _Props) ->
     amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
     amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
     ok;
+add_binding_to_q(Q, switch_lookups, _Props) ->
+    amqp_util:resource_exchange(),
+    amqp_util:bind_q_to_resource(Q, ?KEY_CHANNEL_QUERY),
+    ok;
 add_binding_to_q(Q, rating, Props) ->
     hotornot:add_binding_to_q(Q, Props);
 add_binding_to_q(Q, dth, Props) ->
@@ -93,6 +98,8 @@ rm_binding_from_q(Q, call_events) ->
 rm_binding_from_q(Q, registrations) ->
     amqp_util:unbind_q_from_callmgr(Q, ?KEY_REG_SUCCESS),
     amqp_util:unbind_q_from_callmgr(Q, ?KEY_REG_QUERY);
+rm_binding_from_q(Q, switch_lookups) ->
+    amqp_util:unbind_q_from_resource(Q, ?KEY_CHANNEL_QUERY);
 rm_binding_from_q(Q, rating) ->
     hotornot:rm_binding_from_q(Q);
 rm_binding_from_q(Q, dth) ->
