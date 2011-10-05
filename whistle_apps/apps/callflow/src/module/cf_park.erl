@@ -104,7 +104,7 @@ update_call_id(Replaces, ParkedCalls, #cf_call{call_id=CallId, account_db=Db}=Ca
 %% Attempts to but the current call into next avaliable slot
 %% @end
 %%--------------------------------------------------------------------
--spec park_aleg/2 :: (Node, ParkedCalls, Call) -> integer() when
+-spec park_aleg/3 :: (Node, ParkedCalls, Call) -> integer() when
       Node :: binary(),
       ParkedCalls :: json_object(),
       Call :: #cf_call{}.
