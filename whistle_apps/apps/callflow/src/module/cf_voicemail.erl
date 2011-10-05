@@ -181,17 +181,15 @@ check_mailbox(#mailbox{prompts=Prompts, pin = <<>>, exists=true}, Call, _) ->
     b_play(Prompts#prompts.no_access, Call);
 check_mailbox(#mailbox{prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}
 		       ,pin=Pin}=Box, Call, Loop) ->
-    {ok, _} = try
-		  %% Request the pin number from the caller but crash if it doesnt match the mailbox
-		  ?LOG("requesting pin number to check mailbox"),
-		  {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call)
-	      catch
-		  _:R ->
-		      ?LOG("invalid mailbox login ~w", [R]),
-		      {ok, _} = b_play(InvalidLogin, Call),
-		      check_mailbox(Box#mailbox{exists=false}, Call, Loop+1)
-	      end,
-    main_menu(Box, Call).
+    ?LOG("requesting pin number to check mailbox"),
+    case b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call) of
+        {ok, Pin} ->
+            main_menu(Box, Call);
+        {ok, _} ->
+            ?LOG("invalid mailbox login"),
+            b_play(InvalidLogin, Call),
+            check_mailbox(Box#mailbox{exists=false}, Call, Loop+1)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

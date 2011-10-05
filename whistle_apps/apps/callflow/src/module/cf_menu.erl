@@ -97,7 +97,6 @@ menu_loop(#menu{retries=Retries, prompts=Prompts}, #cf_call{cf_pid=CFPid} = Call
     CFPid ! { continue }; %% too many retries, we're out
 menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_pin=RecordPin, prompts=Prompts}=Menu, Call) ->
     try
-        _ = flush_dtmf(Call),
 	case b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu, Call), <<"1">>, Timeout, Call) of
 	    {ok, <<>>} ->
 		throw(no_digits_collected);
