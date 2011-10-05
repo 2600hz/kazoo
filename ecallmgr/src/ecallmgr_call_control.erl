@@ -300,60 +300,60 @@ restart_amqp_queue(Queue) ->
       State :: #state{},
       InsertAt :: binary(),
       JObj :: json_object().
-insert_command(State, <<"now">>, JObj) ->
+insert_command(#state{node=Node, uuid=UUID, command_q=CommandQ, is_node_up=IsNodeUp}=State, <<"now">>, JObj) ->
     AName = wh_json:get_value(<<"Application-Name">>, JObj),
-    case State#state.is_node_up andalso AName of
+    case IsNodeUp andalso AName of
 	false ->
             ?LOG("node ~s is not avaliable"),
-            ?LOG("sending execution error for command ~s", [State#state.node, AName]),
+            ?LOG("sending execution error for command ~s", [Node, AName]),
 	    {Mega,Sec,Micro} = erlang:now(),
 	    Prop = [ {<<"Event-Name">>, <<"CHANNEL_EXECUTE_ERROR">>}
 		     ,{<<"Event-Date-Timestamp">>, ( (Mega * 1000000 + Sec) * 1000000 + Micro )}
-		     ,{<<"Call-ID">>, State#state.uuid}
+		     ,{<<"Call-ID">>, UUID}
 		     ,{<<"Channel-Call-State">>, <<"ERROR">>}
 		     ,{<<"Custom-Channel-Vars">>, JObj}
 		   ],
-	    ecallmgr_call_events:publish_msg(State#state.node, State#state.uuid, Prop),
-	    State#state.command_q;
+	    ecallmgr_call_events:publish_msg(Node, UUID, Prop),
+	    CommandQ;
 	<<"queue">> ->
 	    true = wh_api:queue_req_v(JObj),
-	    DefProp = wh_api:extract_defaults(JObj), %% each command lacks the default headers
+	    DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)), %% each command lacks the default headers
 	    lists:foreach(fun(?EMPTY_JSON_OBJECT) -> ok;
-			     ({struct, Cmd}) ->
-				  AppCmd = {struct, DefProp ++ Cmd},
+			     (CmdJObj) ->
+				  AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
 				  true = wh_api:dialplan_req_v(AppCmd),
-                                  execute_control_request(Cmd, State)
+                                  execute_control_request(CmdJObj, State)
 			  end, wh_json:get_value(<<"Commands">>, JObj)),
-	    State#state.command_q;
+	    CommandQ;
 	AppName ->
 	    ?LOG("executing command ~s immediately, bypassing queue", [AppName]),
             execute_control_request(JObj, State),
-	    State#state.command_q
+	    CommandQ
     end;
 insert_command(_State, <<"flush">>, JObj) ->
     ?LOG("flushing queue"),
     insert_command_into_queue(queue:new(), fun queue:in/2, JObj);
-insert_command(State, <<"head">>, JObj) ->
+insert_command(#state{command_q=CommandQ}, <<"head">>, JObj) ->
     case wh_json:get_value(<<"Application-Name">>, JObj) of
 	<<"queue">> ->
 	    Commands = wh_json:get_value(<<"Commands">>, JObj),
 	    JObj2 = wh_json:set_value(<<"Commands">>, lists:reverse(Commands), JObj),
             ?LOG("inserting queued commands at head of queue"),
-	    insert_command_into_queue(State#state.command_q, fun queue:in_r/2, JObj2);
+	    insert_command_into_queue(CommandQ, fun queue:in_r/2, JObj2);
 	AppName ->
             ?LOG("inserting command ~s at head of queue", [AppName]),
-	    insert_command_into_queue(State#state.command_q, fun queue:in_r/2, JObj)
+	    insert_command_into_queue(CommandQ, fun queue:in_r/2, JObj)
     end;
-insert_command(State, <<"tail">>, JObj) ->
+insert_command(#state{command_q=CommandQ}, <<"tail">>, JObj) ->
     case wh_json:get_value(<<"Application-Name">>, JObj) of
 	<<"queue">> ->
 	    Commands = wh_json:get_value(<<"Commands">>, JObj),
 	    JObj2 = wh_json:set_value(<<"Commands">>, lists:reverse(Commands), JObj),
             ?LOG("inserting queued commands at tail of queue"),
-	    insert_command_into_queue(State#state.command_q, fun queue:in/2, JObj2);
+	    insert_command_into_queue(CommandQ, fun queue:in/2, JObj2);
         AppName ->
             ?LOG("inserting command ~s at tail of queue", [AppName]),
-	    insert_command_into_queue(State#state.command_q, fun queue:in/2, JObj)
+	    insert_command_into_queue(CommandQ, fun queue:in/2, JObj)
     end.
 
 -spec insert_command_into_queue/3 :: (Q, InsertFun, JObj) -> queue() when
@@ -364,10 +364,10 @@ insert_command_into_queue(Q, InsertFun, JObj) ->
     case wh_json:get_value(<<"Application-Name">>, JObj) of
 	<<"queue">> -> %% list of commands that need to be added
 	    true = wh_api:queue_req_v(JObj),
-	    DefProp = wh_api:extract_defaults(JObj), %% each command lacks the default headers
+	    DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)), %% each command lacks the default headers
 	    lists:foldl(fun(?EMPTY_JSON_OBJECT, TmpQ) -> TmpQ;
-			   ({struct, Cmd}, TmpQ) ->
-				AppCmd = {struct, DefProp ++ Cmd},
+			   (CmdJObj, TmpQ) ->
+				AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
 				true = wh_api:dialplan_req_v(AppCmd),
 				?LOG("inserting queued command ~s into queue", [wh_json:get_value(<<"Application-Name">>, AppCmd)]),
 				InsertFun(AppCmd, TmpQ)

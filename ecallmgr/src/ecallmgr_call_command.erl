@@ -538,7 +538,7 @@ stream_over_http(Node, UUID, File, Verb, JObj) ->
             stream_over_http(Node, UUID, File, Verb, JObj);
 	{ok, StatusCode, RespHeaders, RespBody} ->
             MediaTransResults = wh_json:from_list([{<<"Status-Code">>, StatusCode}
-						   ,{<<"Headers">>, {struct, [ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- RespHeaders ]}}
+						   ,{<<"Headers">>, wh_json:from_list([ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- RespHeaders ])}
 						   ,{<<"Body">>, wh_util:to_binary(RespBody)}
 						  ]),
             send_store_call_event(Node, UUID, MediaTransResults),
