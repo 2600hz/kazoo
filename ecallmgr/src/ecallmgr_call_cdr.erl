@@ -66,13 +66,15 @@ create_cdr(EvtProp) ->
       ChannelProp :: proplist().
 add_values(Mappings, BaseProp, ChannelProp) ->
     lists:foldl(fun({<<"ecallmgr">>, <<"Custom-Channel-Vars">>=WK}, WApi) ->
-                        [{WK, {struct, ecallmgr_util:custom_channel_vars(ChannelProp)}} | WApi];
+                        [{WK, wh_json:from_list(ecallmgr_util:custom_channel_vars(ChannelProp))} | WApi];
+
                    ({<<"Event-Date-Timestamp">>=FSKey, WK}, WApi) ->
                         case props:get_value(FSKey, ChannelProp) of
                             undefined -> WApi;
                             V -> VUnix =  wh_util:unix_seconds_to_gregorian_seconds(wh_util:microseconds_to_seconds(V)),
                                  [{WK, wh_util:to_binary(VUnix)} | WApi]
                         end;
+
                    ({FSKey, WK}, WApi) ->
                         case props:get_value(FSKey, ChannelProp) of
                             undefined -> WApi;

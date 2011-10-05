@@ -389,7 +389,7 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
 	    EvtProp1 = EvtProp0 ++ wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
 			   [] -> EvtProp1;
-			   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
+			   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
 		       end,
 	    {'ok', JSON} = wh_api:call_event(EvtProp2),
 	    amqp_util:callevt_publish(UUID, JSON, event);
