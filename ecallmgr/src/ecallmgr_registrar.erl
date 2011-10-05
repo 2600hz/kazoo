@@ -177,8 +177,7 @@ lookup_reg(Realm, User, Fields) ->
 			    false -> Acc
 			end
 		end,
-
-    case wh_cache:fetch(cache_key(Realm, User)) of
+    case wh_cache:fetch_local(Cache, cache_key(Realm, User)) of
 	{error, not_found} ->
 	    ?LOG_SYS("Valid cached registration not found, querying whapps"),
 	    RegProp = [{<<"Username">>, User}
