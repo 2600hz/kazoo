@@ -200,9 +200,9 @@ init([Module, Params, InitArgs]) ->
 		,params=lists:keydelete(responders, 1, lists:keydelete(bindings, 1, Params))}
      ,hibernate}.
 
--type gen_l_handle_call_ret() :: {'reply', term(), term()} | {'reply', term(), term(), gen_server_timeout()} |
-				 {'noreply', term(), gen_server_timeout()} |
-				 {'stop', term(), term()} | {'stop', term(), term(), term()}.
+-type gen_l_handle_call_ret() :: {'reply', term(), #state{}, gen_server_timeout()} |
+				 {'noreply', #state{}, gen_server_timeout()} |
+				 {'stop', term(), #state{}} | {'stop', term(), term(), #state{}}.
 
 -spec handle_call/3 :: (Request, From, State) -> gen_l_handle_call_ret() when
       Request :: term(),

@@ -51,6 +51,7 @@ handle_req(JObj, Props) ->
 
 	    wh_cache:store_local(Cache, CacheKey, JObj1, Expires),
 	    wh_cache:store_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username), CacheKey),
+	    ?LOG_END("new contact hash ~s cached for ~p seconds", [Id, Expires]),
 
 	    {ok, _} = reg_util:store_reg(JObj1, Id, Contact1),
 	    ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);

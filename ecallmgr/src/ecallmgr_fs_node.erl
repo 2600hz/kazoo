@@ -71,11 +71,12 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
     {foo, Node} ! register_event_handler,
     receive
 	ok ->
+	    Res = run_start_cmds(Node),
+	    ?LOG_SYS("Start cmd results:"),
+	    _ = [ ?LOG("~p", [ApiRes]) || ApiRes <- Res],
+
 	    NodeData = extract_node_data(Node),
-	    {ok, Chans} = freeswitch:api(Node, show, "channels"),
-	    {ok, R} = re:compile("([\\d+])"),
-	    {match, Match} = re:run(Chans, R, [{capture, [1], list}]),
-	    Active = wh_util:to_integer(lists:flatten(Match)),
+	    Active = get_active_channels(Node),
 
 	    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
 					 ,'CUSTOM', 'sofia::register'
@@ -323,3 +324,18 @@ get_originate_action(<<"bridge">>, Data) ->
     end;
 get_originate_action(_, _) ->
     <<"park">>.
+
+-spec run_start_cmds/1 :: (atom()) -> [fs_api_ret(),...].
+run_start_cmds(Node) ->
+    [freeswitch:api(Node, wh_util:to_atom(ApiCmd, true), wh_util:to_list(ApiArg)) || {ApiCmd, ApiArg} <- ecallmgr_config:fetch(fs_cmds, [])].
+
+-spec get_active_channels/1 :: (atom()) -> integer().
+get_active_channels(Node) ->
+    case freeswitch:api(Node, show, "channels") of
+	{ok, Chans} ->
+	    {ok, R} = re:compile("([\\d+])"),
+	    {match, Match} = re:run(Chans, R, [{capture, [1], list}]),
+	    wh_util:to_integer(lists:flatten(Match));
+	_ ->
+	    0
+    end.

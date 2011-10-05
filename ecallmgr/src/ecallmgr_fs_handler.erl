@@ -110,7 +110,19 @@ request_node(Type) ->
 init([]) ->
     ?LOG_SYS("starting new fs handler"),
     process_flag(trap_exit, true),
-    {ok, #state{}, 0}.
+
+    spawn(fun() ->
+		  'ok' = case ecallmgr_config:load_config(?STARTUP_FILE) of
+			     ok -> ?LOG("Configs loaded from ~s", [?STARTUP_FILE]);
+			     {error, enoent} ->
+				 'ok' = ecallmgr_config:write_config(?STARTUP_FILE, ?STARTUP_FILE_CONTENTS),
+				 ?LOG("Wrote config file at ~s", [?STARTUP_FILE]),
+				 ecallmgr_config:load_config(?STARTUP_FILE)
+			 end,
+		  [?MODULE:add_fs_node(wh_util:to_atom(N, true)) || N <- ecallmgr_config:fetch(fs_nodes, [])]
+	  end),
+
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -221,9 +233,6 @@ handle_info({nodedown, Node}, #state{fs_nodes=Nodes, node_reconnect_pids=ReconPi
                             end),
     ?LOG("Started ~p to watch ~s", [WatcherPid, Node]),
     {noreply, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes), node_reconnect_pids = [{Node, WatcherPid} | ReconPids]}, hibernate};
-handle_info(timeout, State) ->
-    spawn(fun() -> load_configs() end),
-    {noreply, State};
 handle_info({'EXIT', Pid, _Reason}, #state{node_reconnect_pids=ReconPids}=State) ->
     ?LOG_SYS("Pid ~p exited: ~p", [Pid, _Reason]),
     {noreply, State#state{node_reconnect_pids=lists:keydelete(Pid, 2, ReconPids)}};
@@ -420,16 +429,3 @@ process_resource_request(<<"audio">> = Type, Nodes, Options) ->
 process_resource_request(Type, _Nodes, _Options) ->
     ?LOG_SYS("unhandled resource request type ~p", [Type]),
     [].
-
-load_configs() ->
-    case file:consult(?STARTUP_FILE) of
-	{ok, Startup} ->
-	    Nodes = props:get_value(fs_nodes, Startup, []),
-	    wh_cache:store({ecallmgr_config, fs_cmds}, props:get_value(fs_cmds, Startup, [])),
-	    lists:foreach(fun(Node) ->
-				  ?MODULE:add_fs_node(wh_util:to_atom(Node, true))
-			  end, Nodes);
-	{error, enoent} ->
-	    'ok' = file:write_file(?STARTUP_FILE, ?STARTUP_FILE_CONTENTS),
-	    load_configs()
-    end.
