@@ -248,12 +248,13 @@ validate([], #cb_context{req_verb = <<"get">>}=Context) ->
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create_user(Context);
 validate([UserId], #cb_context{req_verb = <<"get">>}=Context) ->
+    io:format("UserId=~p", [UserId]),
     load_user(UserId, Context);
 validate([UserId], #cb_context{req_verb = <<"post">>}=Context) ->
     update_user(UserId, Context);
 validate([UserId], #cb_context{req_verb = <<"delete">>}=Context) ->
     load_user(UserId, Context);
-validate(_, Context) ->
+validate(_UserId, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------

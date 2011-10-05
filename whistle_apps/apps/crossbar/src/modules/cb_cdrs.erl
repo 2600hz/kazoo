@@ -2,14 +2,14 @@
 %%% @author Edouard Swiac <edouard@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Hotdesks module
 %%%
-%%% Handle client requests for hotdesks management
+%%% CDR
+%%% Read only access to CDR docs
 %%%
 %%% @end
-%%% Created : 20 Aug 2011 by Edouard Swiac <edouard@2600hz.org>
+%%% Created : 30 Jun 2011 Edouard Swiac <edouard@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cb_hotdesk).
+-module(cb_cdrs).
 
 -behaviour(gen_server).
 
@@ -21,11 +21,10 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
-
--define(VIEW_FILE, <<"views/hotdesks.json">>).
--define(CB_LIST, <<"hotdesks/crossbar_listing">>).
+-define(CB_LIST_BY_USER, <<"cdr/listing_by_owner">>).
 
 %%%===================================================================
 %%% API
@@ -74,8 +73,7 @@ init(_) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -100,53 +98,35 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.hotdesks">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.cdr">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.hotdesks">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.cdr">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.hotdesks">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.cdr">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  Context1 = validate(Params, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.hotdesks">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+		  Context1 = validate(Params, RD, Context),
+		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.hotdesks">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.get.cdr">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+		  Pid ! {binding_result, true, [RD, Context, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.hotdesks">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context), %% save because only user.hotdesk change, not the whole doc
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, _, Payload}, State) ->
+handle_info({binding_fired, Pid, _B, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
@@ -192,26 +172,27 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.hotdesks">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.hotdesks">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.hotdesks">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.hotdesks">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.cdr">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.cdr">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.cdr">>),
+    crossbar_bindings:bind(<<"v1_resource.execute.get.cdr">>).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%% given Nouns.  IE: '/cdr/' can only accept GET
 %%
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
 -spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
 allowed_methods([]) ->
-    {true, ['GET', 'PUT', 'POST', 'DELETE']};
+    {true, ['GET']};
+allowed_methods([_]) ->
+    {true, ['GET']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -226,6 +207,8 @@ allowed_methods(_) ->
 -spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
 resource_exists([]) ->
     {true, []};
+resource_exists([_]) ->
+    {true, []};
 resource_exists(_) ->
     {false, []}.
 
@@ -238,90 +221,35 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(),  Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_hotdesk(Context);
-validate([], #cb_context{req_verb = <<"post">>}=Context) ->
-    set_hotdesk(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    set_hotdesk(Context);
-validate([], #cb_context{req_verb = <<"delete">>}=Context) ->
-    delete_hotdesk(Context);
-validate(_Booya, Context) ->
-    %?LOG("+++++++++++, ~p", [Context#cb_context.req_nouns]),
+-spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
+    load_cdr_summary(Context, QueryString);
+validate([CDRId], _, #cb_context{req_verb = <<"get">>}=Context) ->
+    load_cdr(CDRId, Context);
+validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attemp to load the hotdesk profile associated with the authenticated user
+%% Attempt to load list of CDR, each summarized.
 %% @end
 %%--------------------------------------------------------------------
--spec load_hotdesk/1 :: (Context) -> #cb_context{} when
+-spec load_cdr_summary/2 :: (Context, QueryParams) -> #cb_context{} when
+      Context :: #cb_context{},
+      QueryParams :: proplist().
+load_cdr_summary(#cb_context{db_name=DbName, doc=JObj}=Context, QueryParams) ->
+    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"key">>, wh_json:get_value(<<"_id">>, JObj, <<>>)}]),
+    Context#cb_context{resp_data=Result, resp_status=success}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load a CDR document from the database
+%% @end
+%%--------------------------------------------------------------------
+-spec load_cdr/2 :: (CdrId, Context) -> #cb_context{} when
+      CdrId :: binary(),
       Context :: #cb_context{}.
-load_hotdesk(#cb_context{auth_doc=AuthDoc}=Context) ->
-    UserId = wh_json:get_value(<<"owner_id">>, AuthDoc),
-    crossbar_doc:load_view(?CB_LIST, [{<<"key">>, UserId}], Context, fun normalize_view_results/2).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Set a new hotdesk to a document, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec set_hotdesk/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
-set_hotdesk(#cb_context{auth_doc=AuthDoc, req_data=JObj, db_name=Db}=Context) ->
-    UserId = wh_json:get_value(<<"owner_id">>,AuthDoc),
-
-    case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
-	    case couch_mgr:open_doc(Db, UserId) of
-		{ok, Doc} ->
-		    N = wh_json:set_value(<<"hotdesk">>, JObj,Doc),
-		    Context#cb_context{doc=N};
-		{error, _} -> crossbar_util:response_bad_identifier(UserId, Context)
-	    end
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Remove a hotdesk profile from a doc, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec delete_hotdesk/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
-delete_hotdesk(#cb_context{auth_doc=AuthDoc, db_name=Db}=Context) ->
-    UserId = wh_json:get_value(<<"owner_id">>,AuthDoc),
-    case couch_mgr:open_doc(Db, UserId) of
-	{ok, Doc} ->
-	    Context#cb_context{doc=wh_json:delete_key(<<"hotdesk">>, Doc)};
-	{error, _} -> crossbar_util:response_bad_identifier(UserId, Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (JObj) -> tuple(true, json_objects()) when
-      JObj :: json_object().
-is_valid_doc(_JObj) ->
-    {true, []}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the resuts of a view
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (JObj, Acc) -> json_objects() when
-      JObj :: json_object(),
-      Acc :: json_objects().
-normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+load_cdr(CdrId, Context) ->
+    crossbar_doc:load(CdrId, Context).
