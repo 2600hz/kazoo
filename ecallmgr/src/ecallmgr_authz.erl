@@ -94,5 +94,5 @@ request(FSID, CallID, FSData) ->
      ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
      ,{<<"Call-ID">>, CallID}
-     ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
+     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
      | wh_api:default_headers(<<>>, <<"dialplan">>, <<"authz_req">>, ?APP_NAME, ?APP_VERSION)].
