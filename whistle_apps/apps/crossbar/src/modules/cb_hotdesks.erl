@@ -215,7 +215,7 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(validate/2 :: (Params :: list(),  Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>, doc=Doc}=Context) ->
+validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
