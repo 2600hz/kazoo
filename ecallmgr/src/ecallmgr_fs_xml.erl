@@ -143,87 +143,31 @@ get_channel_vars([_|_]=Prop) ->
     ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
 get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
--spec get_channel_vars/2 :: (Pair :: {binary(), term()}, Vars :: [binary(),...] | []) -> [binary(),...] | [].
-get_channel_vars({<<"Outgoing-Caller-ID-Name">>, V}, Vars) ->
-    [ list_to_binary(["origination_caller_id_name='", V, "'"]) | Vars];
-get_channel_vars({<<"Outgoing-Caller-ID-Number">>, V}, Vars) ->
-    [ list_to_binary(["origination_caller_id_number='", V, "'"]) | Vars];
-get_channel_vars({<<"Outgoing-Callee-ID-Name">>, V}, Vars) ->
-    [ list_to_binary(["origination_callee_id_name='", V, "'"]) | Vars];
-get_channel_vars({<<"Outgoing-Callee-ID-Number">>, V}, Vars) ->
-    [ list_to_binary(["origination_callee_id_number='", V, "'"]) | Vars];
-get_channel_vars({<<"Auth-User">>, V}, Vars) ->
-    [ list_to_binary(["sip_auth_username='", V, "'"]) | Vars];
-get_channel_vars({<<"Auth-Password">>, V}, Vars) ->
-    [ list_to_binary(["sip_auth_password='", V, "'"]) | Vars];
-get_channel_vars({<<"Caller-ID-Name">>, V}, Vars) ->
-    [ list_to_binary(["effective_caller_id_name='", V, "'"]) | Vars];
-get_channel_vars({<<"Caller-ID-Number">>, V}, Vars) ->
-    [ list_to_binary(["effective_caller_id_number='", V, "'"]) | Vars];
-get_channel_vars({<<"Callee-ID-Name">>, V}, Vars) ->
-    [ list_to_binary(["effective_callee_id_name='", V, "'"]) | Vars];
-get_channel_vars({<<"Callee-ID-Number">>, V}, Vars) ->
-    [ list_to_binary(["effective_callee_id_number='", V, "'"]) | Vars];
+-spec get_channel_vars/2 :: ({binary(), binary() | json_object()}, [binary(),...] | []) -> [binary(),...] | [].
+get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
+    Custom = wh_json:to_proplist(JObj),
+    lists:foldl(fun(KV, Vars0) -> get_channel_vars(KV, Vars0) end, Vars, Custom);
+
+get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
+    SIPHeaders = wh_json:to_proplist(SIPJObj),
+    lists:foldl(fun({K,V}, Vars0) ->
+			[ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
+		end, Vars, SIPHeaders);
+
 get_channel_vars({<<"Caller-ID-Type">>, <<"from">>}, Vars) ->
     [ <<"sip_cid_type=none">> | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
     [ <<"sip_cid_type=rpid">> | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
     [ <<"sip_cid_type=pid">> | Vars];
+
 get_channel_vars({<<"Codecs">>, []}, Vars) ->
     Vars;
 get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
     Codecs = [ binary_to_list(C) || C <- Cs ],
     CodecStr = string:join(Codecs, ","),
     [ list_to_binary(["codec_string='", CodecStr, "'"]) | Vars];
-get_channel_vars({<<"Progress-Timeout">>, V}, Vars) ->
-    [ list_to_binary([<<"progress_timeout=">>, V]) | Vars];
-get_channel_vars({<<"Rate">>, V}, Vars) ->
-    [ list_to_binary([<<"rate=">>, wh_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Rate-Increment">>, V}, Vars) ->
-    [ list_to_binary([<<"rate_increment=">>, wh_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Rate-Minimum">>, V}, Vars) ->
-    [ list_to_binary([<<"rate_minimum=">>, wh_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Surcharge">>, V}, Vars) ->
-    [ list_to_binary([<<"surcharge=">>, wh_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Ignore-Early-Media">>, V}, Vars) ->
-    [ list_to_binary([<<"ignore_early_media=">>, wh_util:to_list(V)]) | Vars];
-%%get_channel_vars({<<"Bypass-Media">>, V}, Vars) ->
-%%    [ list_to_binary([<<"bypass_media_after_bridge=">>, wh_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Continue-On-Fail">>, V}, Vars) ->
-    [ list_to_binary([<<"continue_on_fail=">>, wh_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Endpoint-Timeout">>, V}, Vars) ->
-    [ list_to_binary([<<"leg_timeout=">>, wh_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Endpoint-Progress-Timeout">>, V}, Vars) ->
-    [ list_to_binary([<<"leg_progress_timeout=">>, wh_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Endpoint-Delay">>, V}, Vars) ->
-    [ list_to_binary([<<"leg_delay_start=">>, wh_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Endpoint-Ignore-Forward">>, V}, Vars) ->
-    [ list_to_binary([<<"outbound_redirect_fatal=">>, wh_util:to_list(V)]) | Vars];
-get_channel_vars({<<"Overwrite-Channel-Vars">>, V}, Vars) ->
-    [ list_to_binary([<<"local_var_clobber=">>, wh_util:to_list(V)]) | Vars];
-%% SPECIAL CASE: Custom Channel Vars
-get_channel_vars({<<"Custom-Channel-Vars">>, CustomJObj}, Vars) ->
-    Custom = wh_json:to_proplist(CustomJObj),
-    lists:foldl(fun
-                    %% These are a temporary abstraction leak until we can locate a call via the API, originate
-                    %% on the located server only and transfer to an existing UUID...
-                    ({<<"Confirm-File">>, V}, Vars0) ->
-                        [ list_to_binary([<<"group_confirm_file=">>, wh_util:to_list(V)]) | Vars0];
-                    ({<<"Confirm-Key">>, V}, Vars0) ->
-                       [ list_to_binary([<<"group_confirm_key=">>, wh_util:to_list(V)]) | Vars0];
-                    ({<<"Confirm-Cancel-Timeout">>, V}, Vars0) ->
-                       [ list_to_binary([<<"group_confirm_cancel_timeout=">>, wh_util:to_list(V)]) | Vars0];
-                    %% end of leak
-                    ({K,V}, Vars0) ->
-                       [ list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K), "=", wh_util:to_list(V)]) | Vars0]
-               end, Vars, Custom);
-%% SPECIAL CASE: SIP Headers
-get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
-    SIPHeaders = wh_json:to_proplist(SIPJObj),
-    lists:foldl(fun({K,V}, Vars0) ->
-			[ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
-		end, Vars, SIPHeaders);
+
 %% SPECIAL CASE: Timeout must be larger than zero
 get_channel_vars({<<"Timeout">>, V}, Vars) ->
     case wh_util:to_integer(V) of
@@ -232,8 +176,12 @@ get_channel_vars({<<"Timeout">>, V}, Vars) ->
         _Else ->
             Vars
     end;
-get_channel_vars(_, Vars) ->
-    Vars.
+
+get_channel_vars({AMQPHeader, V}, Vars) ->
+    case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
+	false -> [list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(AMQPHeader), "='", wh_util:to_list(V), "'"]) | Vars];
+	{_, Prefix} -> [list_to_binary([Prefix, "='", wh_util:to_list(V), "'"]) | Vars]
+    end.
 
 get_channel_params(JObj) ->
     CV0 = case wh_json:get_value(<<"Tenant-ID">>, JObj) of

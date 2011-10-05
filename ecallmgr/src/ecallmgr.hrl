@@ -49,6 +49,31 @@
 -define(SPECIAL_CHANNEL_VARS, [
 			       {<<"Auto-Answer">>, <<"sip_auto_answer">>}
 			       ,{<<"Eavesdrop-Group">>, <<"eavesdrop_group">>}
+			       ,{<<"Outgoing-Caller-ID-Name">>, <<"origination_caller_id_name">>}
+			       ,{<<"Outgoing-Caller-ID-Number">>,<<"origination_caller_id_number">>}
+			       ,{<<"Outgoing-Callee-ID-Name">>, <<"origination_callee_id_name">>}
+			       ,{<<"Outgoing-Callee-ID-Number">>, <<"origination_callee_id_number">>}
+			       ,{<<"Auth-User">>, <<"sip_auth_username">>}
+			       ,{<<"Auth-Password">>, <<"sip_auth_password">>}
+			       ,{<<"Caller-ID-Name">>, <<"effective_caller_id_name">>}
+			       ,{<<"Caller-ID-Number">>, <<"effective_caller_id_number">>}
+			       ,{<<"Callee-ID-Name">>, <<"effective_callee_id_name">>}
+			       ,{<<"Callee-ID-Number">>, <<"effective_callee_id_number">>}
+			       ,{<<"Progress-Timeout">>, <<"progress_timeout">>}
+			       ,{<<"Rate">>, <<"rate">>}
+			       ,{<<"Rate-Increment">>, <<"rate_increment">>}
+			       ,{<<"Rate-Minimum">>, <<"rate_minimum">>}
+			       ,{<<"Surcharge">>, <<"surcharge">>}
+			       ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}
+			       ,{<<"Continue-On-Fail">>, <<"continue_on_fail">>}
+			       ,{<<"Endpoint-Timeout">>, <<"leg_timeout">>}
+			       ,{<<"Endpoint-Progress-Timeout">>, <<"leg_progress_timeout">>}
+			       ,{<<"Endpoint-Delay">>, <<"leg_delay_start">>}
+			       ,{<<"Endpoint-Ignore-Forward">>, <<"outbound_redirect_fatal">>}
+			       ,{<<"Overwrite-Channel-Vars">>, <<"local_var_clobber">>}
+			       ,{<<"Confirm-File">>, <<"group_confirm_file">>}
+			       ,{<<"Confirm-Key">>, <<"group_confirm_key">>}
+			       ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
 			      ]).
 
 -define(DEFAULT_RESPONSE_CODE, <<"488">>).
