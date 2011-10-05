@@ -530,7 +530,7 @@ handle_amqp_prop(<<"status_req">>, JObj, Node, IsNodeUp) ->
 	true = wh_api:call_status_req_v(JObj),
 	?LOG_START("call status request received"),
 
-	{Status, ErrMsg} = case IsNodeUp of
+	{Status, AddProps} = case IsNodeUp of
 			       true -> query_call(Node, CallID);
 			       false -> {<<"tmpdown">>, {<<"Error-Msg">>, <<"Handling switch is currently not responding">>}}
 			   end,
@@ -539,8 +539,10 @@ handle_amqp_prop(<<"status_req">>, JObj, Node, IsNodeUp) ->
 	RespJObj = [{<<"Call-ID">>, CallID}
 		    ,{<<"Status">>, Status}
 		    ,{<<"Node">>, Node}
+		    ,{<<"Application-Name">>, <<"status">>}
+		    ,{<<"Application-Response">>, <<"">>}
 		    | wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION) ],
-	{'ok', Payload} = wh_api:call_status_resp([ ErrMsg | RespJObj ]),
+	{'ok', Payload} = wh_api:call_status_resp([ AddProps | RespJObj ]),
 	amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
     catch
 	E:R ->
@@ -549,12 +551,12 @@ handle_amqp_prop(<<"status_req">>, JObj, Node, IsNodeUp) ->
     end.
 
 query_call(Node, CallID) ->
-    case freeswitch:api(Node, uuid_exists, wh_util:to_list(CallID)) of
+    case freeswitch:api(Node, uuid_dump, wh_util:to_list(CallID)) of
 	{'ok', Result} ->
-	    case wh_util:is_true(Result) of
-		true -> {<<"active">>, {ignore, me}};
-		false -> {<<"down">>, {<<"Error-Msg">>, <<"Call is no longer active">>}}
-	    end;
+            Props = ecallmgr_util:eventstr_to_proplist(Result),
+            {<<"active">>, {<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(Props)}}};
+        {error, <<"-ERR No Such Channel", _/binary>>} ->
+            {<<"down">>, {<<"Error-Msg">>, <<"Call is no longer active">>}};
 	_ ->
 	    {<<"tmpdown">>, {<<"Error-Msg">>, <<"Switch did not respond to query">>}}
     end.
