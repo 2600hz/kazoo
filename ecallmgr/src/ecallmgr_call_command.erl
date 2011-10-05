@@ -643,7 +643,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
     try
         Prop = case wh_util:is_true(wh_json:get_value(<<"From-Other-Leg">>, JObj)) of
                    true ->
-                       {ok, OtherUUID} = freeswitch:api(Node, uuid_getvar, wh_util:to_list(<<UUID/binary, " signal_bond">>)),
+                       {ok, OtherUUID} = freeswitch:api(Node, uuid_getvar, wh_util:to_list(<<UUID/binary, " bridge_uuid">>)),
                        {ok, Dump} = freeswitch:api(Node, uuid_dump, wh_util:to_list(OtherUUID)),
                        ecallmgr_util:eventstr_to_proplist(Dump);
                    false ->
