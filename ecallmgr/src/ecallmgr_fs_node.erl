@@ -19,7 +19,7 @@
 
 -include("ecallmgr.hrl").
 
--record(state, {node = undefined :: atom()
+-record(state, {node = 'undefined' :: atom()
 	       ,stats = #node_stats{} :: #node_stats{}
 	       ,options = [] :: proplist()
 	       }).
@@ -35,20 +35,22 @@
 
 -define(FS_TIMEOUT, 5000).
 
--spec(resource_consume/3 :: (FsNodePid :: pid(), Route :: binary(), JObj :: json_object()) ->
-				 tuple(resource_consumed, binary(), binary(), integer())
-				     | tuple(resource_error, binary() | error)).
+-spec resource_consume/3 :: (FsNodePid, Route, JObj) -> {'resource_consumed', binary(), binary(), integer()} |
+							{'resource_error', binary() | 'error'} when
+      FsNodePid :: pid(),
+      Route :: binary(),
+      JObj :: json_object().
 resource_consume(FsNodePid, Route, JObj) ->
     FsNodePid ! {resource_consume, self(), Route, JObj},
     receive Resp -> Resp
     after   10000 -> {resource_error, timeout}
     end.
 
--spec(start_link/1 :: (Node :: atom()) -> tuple(ok, pid()) | {error, term()}).
+-spec start_link/1 :: (Node :: atom()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node) ->
     gen_server:start_link(?SERVER, [Node, []], []).
 
--spec(start_link/2 :: (Node :: atom(), Options :: proplist()) -> tuple(ok, pid()) | {error, term()}).
+-spec start_link/2 :: (Node :: atom(), Options :: proplist()) -> {'ok', pid()} | {error, term()}.
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
@@ -66,8 +68,7 @@ handle_cast(_Req, State) ->
 handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
     erlang:monitor_node(Node, true),
 
-    Type = register_event_handler,
-    {foo, Node} ! Type,
+    {foo, Node} ! register_event_handler,
     receive
 	ok ->
 	    NodeData = extract_node_data(Node),
@@ -83,7 +84,7 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
 	    {noreply, State#state{stats=(Stats#node_stats{
 					   created_channels = Active
 					   ,fs_uptime = props:get_value(uptime, NodeData, 0)
-					  })}};
+					  })}, hibernate};
 	{error, Reason} ->
 	    {stop, Reason, State};
 	timeout ->
@@ -130,16 +131,16 @@ handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr
 		    {noreply, State#state{stats=Stats#node_stats{destroyed_channels=De+1}}, hibernate}
 	    end;
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
-	    {noreply, State, hibernate};
+	    {noreply, State};
 	<<"CUSTOM">> ->
 	    spawn(fun() ->
                           put(callid, props:get_value(<<"call-id">>, Data)),
                           ?LOG("custom event received ~s", [EvtName]),
                           process_custom_data(Data, ?APP_VERSION)
                   end),
-	    {noreply, State, hibernate};
+	    {noreply, State};
 	_ ->
-	    {noreply, State, hibernate}
+	    {noreply, State}
     end;
 handle_info({resource_request, Pid, <<"audio">>, ChanOptions}
 	    ,#state{options=Opts, stats=#node_stats{created_channels=Cr, destroyed_channels=De}}=State) ->
@@ -161,7 +162,7 @@ handle_info({resource_consume, Pid, Route, JObj}, #state{node=Node, options=Opts
     {noreply, State};
 
 handle_info({update_options, NewOptions}, State) ->
-    {noreply, State#state{options=NewOptions}};
+    {noreply, State#state{options=NewOptions}, hibernate};
 
 handle_info({diagnostics, Pid}, #state{stats=Stats}=State) ->
     spawn(fun() -> diagnostics(Pid, Stats) end),
@@ -177,7 +178,12 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
--spec(originate_channel/5 :: (Node :: atom(), Pid :: pid(), Route :: binary() | list(), AvailChan :: integer(), JObj :: json_object()) -> no_return()).
+-spec originate_channel/5 :: (Node, Pid, Route, AvailChan, JObj) -> no_return() when
+      Node :: atom(),
+      Pid :: pid(),
+      Route :: binary() | list(),
+      AvailChan :: integer(),
+      JObj :: json_object().
 originate_channel(Node, Pid, Route, AvailChan, JObj) ->
     Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Data">>, JObj)),
     OrigStr = binary_to_list(list_to_binary([Route, " &", Action])),
@@ -209,7 +215,7 @@ originate_channel(Node, Pid, Route, AvailChan, JObj) ->
 	    Pid ! {resource_error, timeout}
     end.
 
--spec(start_call_handling/2 :: (Node :: atom(), UUID :: binary()) -> CtlQueue :: binary() | tuple(error, amqp_error)).
+-spec start_call_handling/2 :: (Node :: atom(), UUID :: binary()) -> CtlQueue :: binary() | {'error', 'amqp_error'}.
 start_call_handling(Node, UUID) ->
     try
 	true = is_binary(CtlQueue = amqp_util:new_callctl_queue(<<>>)),
@@ -222,7 +228,7 @@ start_call_handling(Node, UUID) ->
 	_:_ -> {error, amqp_error}
     end.
 
--spec(diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return()).
+-spec diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return().
 diagnostics(Pid, Stats) ->
     Resp = ecallmgr_diagnostics:get_diagnostics(Stats),
     Pid ! Resp.

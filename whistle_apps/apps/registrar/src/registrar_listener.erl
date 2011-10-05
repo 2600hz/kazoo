@@ -218,7 +218,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% load the registrar cache with the contents from the registrar db
 %% @end
 %%-----------------------------------------------------------------------------
--spec prime_cache/1 :: (Pid) -> ok when
+-spec prime_cache/1 :: (Pid) -> 'ok' when
       Pid :: pid().
 prime_cache(Pid) when is_pid(Pid) ->
     ?LOG_SYS("priming registrar cache"),

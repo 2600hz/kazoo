@@ -64,6 +64,7 @@ misc_req(Req) ->
 misc_req(Req1, Req2) ->
     gen_server:call(?SERVER, {misc_req, Req1, Req2}).
 
+-spec is_available/0 :: () -> boolean().
 is_available() ->
     gen_server:call(?SERVER, is_available).
 
@@ -81,7 +82,7 @@ register_return_handler() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
--spec init/1 :: ([]) -> {ok, #state{}, 0}.
+-spec init/1 :: ([]) -> {'ok', #state{}, 0}.
 init([]) ->
     %% Start a connection to the AMQP broker server
     ?LOG_SYS("starting amqp manager server"),
@@ -107,14 +108,21 @@ handle_call({set_host, Host}, _, #state{host=OldHost}=State) ->
 	{error, _}=E -> {reply, E, State, 0}
     end;
 
+handle_call(is_available, _, #state{handler_pid=undefined}=State) ->
+    {reply, false, State};
 handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
-    {reply, erlang:is_pid(HPid) andalso erlang:is_process_alive(HPid), State};
-
-handle_call(_, _, #state{handler_pid = undefined}=State) ->
-    {reply, {error, amqp_down}, State, 0};
+    case erlang:is_pid(HPid) andalso erlang:is_process_alive(HPid) of
+	true -> {reply, true, State};
+	false ->
+	    stop_amqp_host(State),
+	    {reply, false, State#state{handler_pid=undefined, handler_ref=undefined}, 0}
+    end;
 
 handle_call(get_host, _, #state{host=Host}=State) ->
     {reply, Host, State};
+
+handle_call(_, _, #state{handler_pid = undefined}=State) ->
+    {reply, {error, amqp_down}, State, 0};
 
 handle_call({publish, BP, AM}, From, #state{handler_pid=HPid}=State) ->
     spawn(fun() -> amqp_host:publish(HPid, From, BP, AM) end),
@@ -154,6 +162,46 @@ handle_cast(_Req, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
+handle_info({reconnect, T}, #state{host={Host,Port}=Settings, handler_pid=undefined}=State) ->
+    ?LOG_SYS("attempting to reconnect to ~s on port ~b", [Host, Port]),
+    case start_amqp_host(Settings, State) of
+	{ok, State1} ->
+            {noreply, State1, hibernate};
+	{error, _} ->
+            case T * 2 of
+                Timeout when Timeout > ?MAX_TIMEOUT ->
+                    ?LOG_SYS("attempting to reconnect again in ~b ms", [?MAX_TIMEOUT]),
+                    _Ref = erlang:send_after(?MAX_TIMEOUT, self(), {reconnect, ?MAX_TIMEOUT}),
+                    {noreply, State};
+                Timeout ->
+                    ?LOG_SYS("attempting to reconnect again in ~b ms", [Timeout]),
+                    _Ref = erlang:send_after(Timeout, self(), {reconnect, Timeout}),
+                    {noreply, State}
+            end
+    end;
+
+handle_info({reconnect, T}, #state{host=Host, handler_pid=undefined}=State) ->
+    ?LOG_SYS("attempting to reconnect to ~s", [Host]),
+    case start_amqp_host(Host, State) of
+	{ok, State1} ->
+            {noreply, State1, hibernate};
+	{error, _} ->
+            case T * 2 of
+                Timeout when Timeout > ?MAX_TIMEOUT ->
+                    ?LOG_SYS("attempting to reconnect again in ~b ms", [?MAX_TIMEOUT]),
+                    _Ref = erlang:send_after(?MAX_TIMEOUT, self(), {reconnect, ?MAX_TIMEOUT}),
+                    {noreply, State};
+                Timeout ->
+                    ?LOG_SYS("attempting to reconnect again in ~b ms", [Timeout]),
+                    _Ref = erlang:send_after(Timeout, self(), {reconnect, Timeout}),
+                    {noreply, State}
+            end
+    end;
+
+handle_info({reconnect, _T}, #state{host=Host}=State) ->
+    ?LOG_SYS("Reconnected to host ~s, ignoring reconnect message", [Host]),
+    {noreply, State};
+
 handle_info(timeout, #state{host={Host,Port}=Settings, handler_pid=undefined}=State) ->
     ?LOG_SYS("attempting to connect to ~s on port ~b", [Host, Port]),
     case start_amqp_host(Settings, State) of
@@ -162,7 +210,7 @@ handle_info(timeout, #state{host={Host,Port}=Settings, handler_pid=undefined}=St
             {noreply, State1, hibernate};
 	{error, R} ->
             ?LOG_SYS("attempting to connect again(~w) in ~b ms", [R, ?START_TIMEOUT]),
-            {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
+            _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
             {noreply, State}
     end;
 
@@ -174,50 +222,14 @@ handle_info(timeout, #state{host=Host, handler_pid=undefined}=State) ->
             {noreply, State1, hibernate};
 	{error, R} ->
             ?LOG_SYS("attempting to connect again(~w) in ~b ms", [R, ?START_TIMEOUT]),
-            {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
+            _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
             {noreply, State}
-    end;
-
-handle_info({reconnect, T}, #state{host={Host,Port}=Settings}=State) ->
-    ?LOG_SYS("attempting to reconnect to ~s on port ~b", [Host, Port]),
-    case start_amqp_host(Settings, State) of
-	{ok, State1} ->
-            {noreply, State1, hibernate};
-	{error, _} ->
-            case T * 2 of
-                Timeout when Timeout > ?MAX_TIMEOUT ->
-                    ?LOG_SYS("attempting to reconnect again in ~b ms", [?MAX_TIMEOUT]),
-                    {ok, _} = timer:send_after(?MAX_TIMEOUT, {reconnect, ?MAX_TIMEOUT}),
-                    {noreply, State};
-                Timeout ->
-                    ?LOG_SYS("attempting to reconnect again in ~b ms", [Timeout]),
-                    {ok, _} = timer:send_after(Timeout, {reconnect, Timeout}),
-                    {noreply, State}
-            end
-    end;
-
-handle_info({reconnect, T}, #state{host=Host}=State) ->
-    ?LOG_SYS("attempting to reconnect to ~s", [Host]),
-    case start_amqp_host(Host, State) of
-	{ok, State1} ->
-            {noreply, State1, hibernate};
-	{error, _} ->
-            case T * 2 of
-                Timeout when Timeout > ?MAX_TIMEOUT ->
-                    ?LOG_SYS("attempting to reconnect again in ~b ms", [?MAX_TIMEOUT]),
-                    {ok, _} = timer:send_after(?MAX_TIMEOUT, {reconnect, ?MAX_TIMEOUT}),
-                    {noreply, State};
-                Timeout ->
-                    ?LOG_SYS("attempting to reconnect again in ~b ms", [Timeout]),
-                    {ok, _} = timer:send_after(Timeout, {reconnect, Timeout}),
-                    {noreply, State}
-            end
     end;
 
 handle_info({'DOWN', Ref, process, _, _Reason}, #state{handler_ref=Ref}=State) ->
     ?LOG_SYS("amqp host process went down, ~w", [_Reason]),
     erlang:demonitor(Ref, [flush]),
-    {ok, _} = timer:send_after(?START_TIMEOUT, {reconnect, ?START_TIMEOUT}),
+    _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
     {noreply, State#state{handler_pid=undefined, handler_ref=undefined}, hibernate};
 
 handle_info({nodedown, RabbitNode}, #state{conn_params=#'amqp_params'{node=RabbitNode}}=State) ->

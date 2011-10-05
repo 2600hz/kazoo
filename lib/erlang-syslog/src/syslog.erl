@@ -31,7 +31,7 @@
 % API
 -export([
 	start/0,
-	start_linked/0,
+	start_link/0,
 	open/3,
 	log/2
 ]).
@@ -55,7 +55,7 @@
 start() ->
 	gen_server:start({local, ?MODULE}, ?MODULE, [], []).
 
-start_linked() ->
+start_link() ->
 	gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 open(Ident, Logopt, Facility) ->

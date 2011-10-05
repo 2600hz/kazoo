@@ -59,9 +59,22 @@ start_deps() ->
     wh_util:ensure_started(whistle_amqp), % amqp wrapper
     wh_util:ensure_started(whistle_couch). % couch wrapper
 
-add_binding_to_q(Q, _Props) ->
-    amqp_util:bind_q_to_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other),
+add_binding_to_q(Q, Props) ->
+    Keys = case props:get_value(keys, Props) of
+	       undefined ->
+		   [?NOTIFY_VOICEMAIL_NEW];
+	       Ks -> Ks
+	   end,
+    [ bind_q_to_key(Q, Key) || Key <- Keys ],
     ok.
+
+-spec bind_q_to_key/2 :: (Q, Key) -> ok when
+      Q :: binary(),
+      Key :: binary().
+bind_q_to_key(Q, ?NOTIFY_VOICEMAIL_NEW) ->
+    amqp_util:bind_q_to_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other);
+bind_q_to_key(Q, Key) ->
+    amqp_util:bind_q_to_callmgr(Q, Key).
 
 rm_binding_from_q(Q) ->
     amqp_util:unbind_q_from_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other).

@@ -148,7 +148,7 @@ handle_call({peek, K}, _, Dict) ->
     end;
 handle_call({fetch, K}, _, Dict) ->
     case dict:find(K, Dict) of
-	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {wh_util:current_tstamp()+T, V, T} end, Dict)};
+	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {wh_util:current_tstamp()+T, V, T} end, Dict), hibernate};
 	error -> {reply, {error, not_found}, Dict}
     end;
 handle_call(fetch_keys, _, Dict) ->
