@@ -10,7 +10,7 @@
 
 %% API
 -export([start_link/1, start_link/2]).
--export([resource_consume/3]).
+-export([resource_consume/3, show_channels/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -34,6 +34,10 @@
 
 -define(FS_TIMEOUT, 5000).
 
+%% keep in sync with wh_api.hrl OPTIONAL_CHANNEL_QUERY_REQ_HEADERS
+-define(CALL_STATUS_HEADERS, [<<"direction">>, <<"cid_name">>, <<"cid_num">>, <<"ip_addr">>, <<"dest">>, <<"application">>, <<"hostname">>]).
+-define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS)).
+
 -spec resource_consume/3 :: (FsNodePid, Route, JObj) -> {'resource_consumed', binary(), binary(), integer()} |
 							{'resource_error', binary() | 'error'} when
       FsNodePid :: pid(),
@@ -44,6 +48,9 @@ resource_consume(FsNodePid, Route, JObj) ->
     receive Resp -> Resp
     after   10000 -> {resource_error, timeout}
     end.
+
+show_channels(Srv) ->
+    gen_server:call(Srv, show_channels).
 
 -spec start_link/1 :: (Node :: atom()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node) ->
@@ -58,8 +65,13 @@ init([Node, Options]) ->
     Stats = #node_stats{started = erlang:now()},
     {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
 
-handle_call(_Req, _From, State) ->
-    {reply, ok, State}.
+handle_call(show_channels, _From, #state{node=Node}=State) ->
+    case freeswitch:api(Node, show, "channels") of
+	{ok, Rows} ->
+	    {reply, convert_rows(Rows), State};
+	_ -> {reply, [], State}
+    end.
+
 
 handle_cast(_Req, State) ->
     {noreply, State}.
@@ -338,3 +350,32 @@ get_active_channels(Node) ->
 	_ ->
 	    0
     end.
+
+-spec convert_rows/1 :: (binary()) -> proplist().
+convert_rows(<<"\n0 total.\n">>) ->
+    [];
+convert_rows(RowsBin) ->
+    [HeaderBin|Rows] = binary:split(RowsBin, <<"\n">>, [global]),
+    Headers = binary:split(HeaderBin, <<",">>, [global]),
+
+    return_rows(Headers, Rows, []).
+
+-spec return_rows/3 :: ([binary(),...], [binary(),...] | [], proplist()) -> proplist().
+return_rows(Headers, [<<>>|Rs], Acc) ->
+    return_rows(Headers, Rs, Acc);
+return_rows(Headers, [R|Rs], Acc) ->
+    case binary:split(R, <<",">>, [global]) of
+	[_Total] ->
+	    ?LOG("Total: ~s", [_Total]),
+	    return_rows(Headers, Rs, Acc);
+	RowData ->
+	    return_rows(Headers, Rs, [ lists:zipwith(fun fs_to_amqp_headers/2, Headers, RowData) | Acc ])
+    end;
+return_rows(_Headers, [], Acc) -> Acc.
+
+-spec fs_to_amqp_headers/2 :: (binary(), Val) -> {binary(), Val} when
+      Val :: binary().
+fs_to_amqp_headers(FSHead, Val) ->
+    AMQPHead = props:get_value(FSHead, ?CALL_STATUS_MAPPING),
+    true = (AMQPHead =/= undefined),
+    {AMQPHead, Val}.
