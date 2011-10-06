@@ -17,7 +17,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
 
 -include("ecallmgr.hrl").
 
@@ -109,7 +109,8 @@ handle_cast(_Msg, State) ->
 
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
     ?LOG_SYS("Storing registration information for ~s@~s", [User, Realm]),
-    wh_cache:store({ecall_registrar, Realm, User}, RegFields
+    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    wh_cache:store_local(Cache, {ecall_registrar, Realm, User}, RegFields
 		   ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
 		  ),
     {noreply, State, hibernate};
@@ -120,7 +121,8 @@ handle_info({_, #amqp_msg{payload=Payload}}, State) ->
 		  User = wh_json:get_value(<<"Username">>, JObj),
 		  Realm = wh_json:get_value(<<"Realm">>, JObj),
 		  ?LOG_SYS("Received successful reg for ~s@~s, erasing cache", [User, Realm]),
-		  wh_cache:erase({ecall_registrar, Realm, User})
+                  {ok, Cache} = ecallmgr_sup:cache_proc(),
+		  wh_cache:erase_local(Cache, {ecall_registrar, Realm, User})
 	  end),
 
     {noreply, State, hibernate};
@@ -175,13 +177,14 @@ code_change(_OldVsn, State, _Extra) ->
       Fields :: [binary(),...].
 lookup_reg(Realm, User, Fields) ->
     ?LOG_SYS("Looking up registration information for ~s@~s", [User, Realm]),
+    {ok, Cache} = ecallmgr_sup:cache_proc(),
     FilterFun = fun({K, _}=V, Acc) ->
 			case lists:member(K, Fields) of
 			    true -> [V | Acc];
 			    false -> Acc
 			end
 		end,
-    case wh_cache:fetch({ecall_registrar, Realm, User}) of
+    case wh_cache:fetch_local(Cache, {ecall_registrar, Realm, User}) of
 	{error, not_found} ->
 	    ?LOG_SYS("Valid cached registration not found, querying whapps"),
 	    RegProp = [{<<"Username">>, User}
