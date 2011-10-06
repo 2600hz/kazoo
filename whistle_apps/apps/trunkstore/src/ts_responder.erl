@@ -134,8 +134,7 @@ handle_info(_Unhandled, State) ->
     ?LOG_SYS("Unknown message: ~p~n", [_Unhandled]),
     {noreply, State, 1000}.
 
-handle_event(JObj, _State) ->
-    ?LOG("Recv jobj"),
+handle_event(_JObj, _State) ->
     {reply, []}.
 
 %%--------------------------------------------------------------------
