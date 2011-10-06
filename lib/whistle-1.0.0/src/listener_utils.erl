@@ -46,16 +46,12 @@ rm_responder(Responders, Responder, Keys) ->
 
 -spec is_responder_known/2 :: (Responders, Responder) -> boolean() when
       Responders :: [responder(),...] | [],
-      Responder :: atom() | {atom(), atom()}.
-is_responder_known(Responders, Responder) when is_atom(Responder) ->
+      Responder :: {atom(), atom()}.
+is_responder_known(Responders, {Responder,_}=Callback) ->
     _ = maybe_load_responder(Responder),
-    erlang:function_exported(Responder, init, 0) andalso wh_util:is_false(lists:keyfind(Responder, 2, Responders));
-is_responder_known(Responders, {Responder, _Fun}) when is_atom(Responder) ->
-    is_responder_known(Responders, Responder).
+    erlang:function_exported(Responder, init, 0) andalso wh_util:is_false(lists:keyfind(Callback, 2, Responders)).
 
-maybe_load_responder({Responder, _Fun}) ->
-    maybe_load_responder(Responder);
-maybe_load_responder(Responder) when is_atom(Responder) ->
+maybe_load_responder(Responder) ->
     case erlang:module_loaded(Responder) of
 	true -> ok;
 	false -> {module, Responder} = code:ensure_loaded(Responder)
@@ -71,10 +67,8 @@ maybe_add_mapping(Mapping, Acc) ->
     end.
 
 -spec maybe_init_responder/2 :: (Responder, DoInit) -> 'ok' when
-      Responder :: atom() | {atom(), atom()},
+      Responder :: {atom(), atom()},
       DoInit :: boolean().
-maybe_init_responder(Responder, true) when is_atom(Responder) ->
-    catch(Responder:init()), ok;
 maybe_init_responder({Responder, _Fun}, true) when is_atom(Responder) ->
     catch(Responder:init()), ok;
 maybe_init_responder(_,_) ->

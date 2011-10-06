@@ -375,7 +375,7 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
 process_req(Props, Responders, JObj) ->
     Key = wh_util:get_event_type(JObj),
     Handlers = [spawn_monitor(fun() ->
-				      wh_util:put_callid(JObj),
+				      _ = wh_util:put_callid(JObj),
 				      ?LOG("handling with ~s:~s", [Responder, Fun]),
 				      Responder:Fun(JObj, Props)
 			      end) || {Evt, {Responder, Fun}} <- Responders,
