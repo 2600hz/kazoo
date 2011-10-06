@@ -94,16 +94,17 @@ varstr_to_proplist(VarStr) ->
 get_setting(Setting) ->
     get_setting(Setting, undefined).
 get_setting(Setting, Default) ->
-    case wh_cache:fetch({ecallmgr_setting, Setting}) of
+    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    case wh_cache:fetch_local(Cache, {ecallmgr_setting, Setting}) of
         {ok, _}=Success -> Success;
         {error, _} ->
             case file:consult(?SETTINGS_FILE) of
                 {ok, Settings} ->
                     Value = props:get_value(Setting, Settings, Default),
-                    wh_cache:store({ecallmgr_setting, Setting}, Value),
+                    wh_cache:store_local(Cache, {ecallmgr_setting, Setting}, Value),
                     {ok, Value};
                 {error, _} ->
-                    wh_cache:store({ecallmgr_setting, Setting}, Default),
+                    wh_cache:store_local(Cache, {ecallmgr_setting, Setting}, Default),
                     {ok, Default}
             end
     end.
