@@ -118,10 +118,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
     ?LOG_SYS("Storing registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),
+
     wh_cache:store_local(Cache, cache_key(Realm, User), RegFields
 			 ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
 			),
@@ -169,13 +169,15 @@ code_change(_OldVsn, State, _Extra) ->
       Fields :: [binary(),...].
 lookup_reg(Realm, User, Fields) ->
     ?LOG_SYS("Looking up registration information for ~s@~s", [User, Realm]),
+    {ok, Cache} = ecallmgr_sup:cache_proc(),
     FilterFun = fun({K, _}=V, Acc) ->
 			case lists:member(K, Fields) of
 			    true -> [V | Acc];
 			    false -> Acc
 			end
 		end,
-    case wh_cache:fetch(cache_key(Realm, User)) of
+
+    case wh_cache:fetch(Cache, cache_key(Realm, User)) of
 	{error, not_found} ->
 	    ?LOG_SYS("Valid cached registration not found, querying whapps"),
 	    RegProp = [{<<"Username">>, User}

@@ -243,21 +243,22 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
 
 handle_info(startup, #state{node=Node, uuid=UUID}=State) ->
     erlang:monitor_node(Node, true),
+    ?LOG("starting handler on ~s for ~s", [Node, UUID]),
     case freeswitch:handlecall(Node, UUID) of
-	ok ->
-	    ?LOG("handling call events for ~s", [Node]),
-	    Q = add_amqp_listener(UUID),
-	    {'noreply', State#state{amqp_q = Q, is_amqp_up = is_binary(Q)}, hibernate};
-	timeout ->
-	    ?LOG("timed out trying to handle events for ~s, trying again", [Node]),
-	    self() ! startup,
-	    {'noreply', State};
-	{'error', badsession} ->
-	    ?LOG("bad session received when handling events for ~s", [Node]),
-	    {'stop', 'normal', State};
-	_E ->
-	    ?LOG("failed to handle call events for ~s: ~p", [Node, _E]),
-	    {'stop', 'normal', State}
+        ok ->
+            Q = add_amqp_listener(UUID),
+            ?LOG("call event handler setup complete"),
+            {'noreply', State#state{amqp_q = Q, is_amqp_up = is_binary(Q)}, hibernate};
+        timeout ->
+            ?LOG("timed out trying to handle events for ~s, trying again", [Node]),
+            self() ! startup,
+            {'noreply', State};
+        {'error', badsession} ->
+            ?LOG("bad session received when handling events for ~s", [Node]),
+            {'stop', 'normal', State};
+        _E ->
+            ?LOG("failed to handle call events for ~s: ~p", [Node, _E]),
+            {'stop', 'normal', State}
     end;
 
 handle_info(#'basic.consume_ok'{}, State) ->
