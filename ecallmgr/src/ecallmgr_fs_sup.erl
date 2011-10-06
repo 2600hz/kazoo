@@ -20,8 +20,8 @@
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
--define(CHILD(Name, Type), {Name, {Name, start_link, []}, temporary, 5000, Type, [Name]}).
--define(CHILD(Name, Mod, Args), {Name, {Mod, start_link, Args}, temporary, 5000, worker, [Mod]}).
+-define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
+-define(CHILD(Name, Mod, Args), {Name, {Mod, start_link, Args}, transient, 5000, worker, [Mod]}).
 
 %%%===================================================================
 %%% API functions

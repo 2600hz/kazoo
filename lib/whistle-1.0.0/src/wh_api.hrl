@@ -344,8 +344,7 @@
 %% Channel Query Request
 -define(CHANNEL_QUERY_REQ_HEADERS, []).
 -define(OPTIONAL_CHANNEL_QUERY_REQ_HEADERS, [<<"Call-Direction">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-						 ,<<"IP-Address">>, <<"Destination-Number">>, <<"Current-Application">>
-						 ,<<"Hostname">>
+						 ,<<"IP-Address">>, <<"Destination-Number">>, <<"Hostname">>
 					    ]).
 -define(CHANNEL_QUERY_REQ_VALUES, [{<<"Event-Category">>, <<"locate">>}
 				   ,{<<"Event-Name">>, <<"channel_req">>}
@@ -354,8 +353,8 @@
 -define(CHANNEL_QUERY_REQ_TYPES, []).
 
 %% Channel Query Response
--define(CHANNEL_QUERY_RESP_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_CHANNEL_QUERY_RESP_HEADERS, [<<"Switch-Hostname">>]).
+-define(CHANNEL_QUERY_RESP_HEADERS, [<<"Active-Calls">>]).
+-define(OPTIONAL_CHANNEL_QUERY_RESP_HEADERS, []).
 -define(CHANNEL_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"locate">>}
 				    ,{<<"Event-Name">>, <<"channel_resp">>}
 				   ]).

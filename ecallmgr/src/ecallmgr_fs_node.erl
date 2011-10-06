@@ -10,7 +10,7 @@
 
 %% API
 -export([start_link/1, start_link/2]).
--export([resource_consume/3, show_channels/1]).
+-export([resource_consume/3, show_channels/1, fs_node/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -35,8 +35,10 @@
 -define(FS_TIMEOUT, 5000).
 
 %% keep in sync with wh_api.hrl OPTIONAL_CHANNEL_QUERY_REQ_HEADERS
--define(CALL_STATUS_HEADERS, [<<"direction">>, <<"cid_name">>, <<"cid_num">>, <<"ip_addr">>, <<"dest">>, <<"application">>, <<"hostname">>]).
--define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS)).
+-define(CALL_STATUS_HEADERS, [<<"Unique-ID">>, <<"Call-Direction">>, <<"Caller-Caller-ID-Name">>, <<"Caller-Caller-ID-Number">>
+				  ,<<"Caller-Network-Addr">>, <<"Caller-Destination-Number">>, <<"FreeSWITCH-Hostname">>
+			     ]).
+-define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, [<<"Call-ID">> | ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS])).
 
 -spec resource_consume/3 :: (FsNodePid, Route, JObj) -> {'resource_consumed', binary(), binary(), integer()} |
 							{'resource_error', binary() | 'error'} when
@@ -49,8 +51,13 @@ resource_consume(FsNodePid, Route, JObj) ->
     after   10000 -> {resource_error, timeout}
     end.
 
+-spec show_channels/1 :: (pid()) -> [proplist(),...] | [].
 show_channels(Srv) ->
     gen_server:call(Srv, show_channels).
+
+-spec fs_node/1 :: (pid()) -> atom().
+fs_node(Srv) ->
+    gen_server:call(Srv, fs_node).
 
 -spec start_link/1 :: (Node :: atom()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node) ->
@@ -65,12 +72,17 @@ init([Node, Options]) ->
     Stats = #node_stats{started = erlang:now()},
     {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
 
-handle_call(show_channels, _From, #state{node=Node}=State) ->
-    case freeswitch:api(Node, show, "channels") of
-	{ok, Rows} ->
-	    {reply, convert_rows(Rows), State};
-	_ -> {reply, [], State}
-    end.
+handle_call(fs_node, _From, #state{node=Node}=State) ->
+    {reply, Node, State};
+handle_call(show_channels, From, #state{node=Node}=State) ->
+    spawn(fun() ->
+		  case freeswitch:api(Node, show, "channels") of
+		      {ok, Rows} -> gen_server:reply(From, convert_rows(Node, Rows));
+		      _ -> gen_server:reply(From, [])
+		  end
+	  end),
+    {noreply, State}.
+
 
 
 handle_cast(_Req, State) ->
@@ -351,31 +363,30 @@ get_active_channels(Node) ->
 	    0
     end.
 
--spec convert_rows/1 :: (binary()) -> proplist().
-convert_rows(<<"\n0 total.\n">>) ->
+-spec convert_rows/2 :: (atom(), binary()) -> [proplist(),...] | [].
+convert_rows(_, <<"\n0 total.\n">>) ->
+    ?LOG("No channels up"),
     [];
-convert_rows(RowsBin) ->
-    [HeaderBin|Rows] = binary:split(RowsBin, <<"\n">>, [global]),
-    Headers = binary:split(HeaderBin, <<",">>, [global]),
+convert_rows(Node, RowsBin) ->
+    [_|Rows] = binary:split(RowsBin, <<"\n">>, [global]),
+    return_rows(Node, Rows, []).
 
-    return_rows(Headers, Rows, []).
-
--spec return_rows/3 :: ([binary(),...], [binary(),...] | [], proplist()) -> proplist().
-return_rows(Headers, [<<>>|Rs], Acc) ->
-    return_rows(Headers, Rs, Acc);
-return_rows(Headers, [R|Rs], Acc) ->
-    case binary:split(R, <<",">>, [global]) of
+-spec return_rows/3 :: (atom(), [binary(),...] | [], [proplist(),...] | []) -> [proplist(),...] | [].
+return_rows(Node, [<<>>|Rs], Acc) ->
+    return_rows(Node, Rs, Acc);
+return_rows(Node, [R|Rs], Acc) ->
+    ?LOG("R: ~s", [R]),
+    case binary:split(R, <<",">>) of
 	[_Total] ->
 	    ?LOG("Total: ~s", [_Total]),
-	    return_rows(Headers, Rs, Acc);
-	RowData ->
-	    return_rows(Headers, Rs, [ lists:zipwith(fun fs_to_amqp_headers/2, Headers, RowData) | Acc ])
-    end;
-return_rows(_Headers, [], Acc) -> Acc.
+	    return_rows(Node, Rs, Acc);
+	[UUID|_] ->
+	    ?LOG("UUID: ~s", [UUID]),
+	    {ok, Dump} = freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)),
+	    DumpProp = ecallmgr_util:eventstr_to_proplist(Dump),
 
--spec fs_to_amqp_headers/2 :: (binary(), Val) -> {binary(), Val} when
-      Val :: binary().
-fs_to_amqp_headers(FSHead, Val) ->
-    AMQPHead = props:get_value(FSHead, ?CALL_STATUS_MAPPING),
-    true = (AMQPHead =/= undefined),
-    {AMQPHead, Val}.
+	    %% Pull wanted data from the converted DUMP proplist
+	    Prop = [{AMQPKey, props:get_value(FSKey, DumpProp)} || {FSKey, AMQPKey} <- ?CALL_STATUS_MAPPING],
+	    return_rows(Node, Rs, [ Prop | Acc ])
+    end;
+return_rows(_Node, [], Acc) -> Acc.

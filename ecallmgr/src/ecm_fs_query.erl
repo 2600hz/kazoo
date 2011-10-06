@@ -17,6 +17,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
 	 terminate/2, code_change/3]).
 
+-include("ecallmgr.hrl").
+
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [
@@ -44,9 +46,23 @@ start_link() ->
 			    ], []).
 
 handle_channel_query(JObj, _Props) ->
-    NodePids = ecallmgr_fs_sup:node_handlers(),
-    
-    JObj.
+    ListOfChannels = [ecallmgr_fs_node:show_channels(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()],
+
+    SearchParams = lists:foldl(fun(Field, Acc) ->
+				       case wh_json:get_value(Field, JObj) of
+					   undefined -> Acc;
+					   Value -> [{Field, Value} | Acc]
+				       end
+			       end, [], ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS),
+
+    case lists:foldl(fun(NodeChannels, Acc) ->
+			     filter_for_matching_uuids(SearchParams, NodeChannels, Acc)
+		     end, [], ListOfChannels) of
+	[] -> ok;
+	Matching ->
+	    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+	    send_channel_query_resp(RespQ, Matching)
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -141,3 +157,39 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec filter_for_matching_uuids/3 :: (json_object(), [proplist(),...], [json_object(),...] | []) -> [json_object(),...] | [].
+filter_for_matching_uuids(_, [], UUIDs) -> UUIDs;
+filter_for_matching_uuids(SearchParams, [C|Cs], UUIDs) ->
+    UUIDs1 = case lists:any(fun({<<"Call-ID">>,_}) -> false;
+			       ({Key, FSValue}) ->
+				    case wh_json:get_value(Key, SearchParams) of
+					FSValue -> true;
+					_ -> false
+				    end
+			    end, C) of
+		 true ->
+		     try
+			 [ make_jobj(C) | UUIDs]
+		     catch
+			 throw:_E ->
+			     ?LOG("Throw making jobj: ~p", [_E]),
+			     UUIDs;
+			 error:_E ->
+			     ?LOG("Error making jobj: ~p", [_E]),
+			     UUIDs
+		     end;
+		 false -> UUIDs
+	     end,
+    filter_for_matching_uuids(SearchParams, Cs, UUIDs1).
+
+-spec make_jobj/1 :: (proplist()) -> json_object().
+make_jobj(C) ->
+    wh_json:from_list([{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, C)}
+		       ,{<<"Switch-Hostname">>, wh_json:get_value(<<"Hostname">>, C)}
+		      ]).
+
+send_channel_query_resp(RespQ, UUIDs) ->
+    {ok, JSON} = wh_api:channel_query_resp([{<<"Active-Calls">>, UUIDs}
+					    | wh_api:default_headers(<<>>, <<"locate">>, <<"channel_resp">>, ?APP_NAME, ?APP_VERSION)]),
+    amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
