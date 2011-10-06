@@ -1,9 +1,9 @@
 {
-   "_id": "_design/cdr",
+   "_id": "_design/cdrs",
    "language": "javascript",
    "views": {
        "crossbar_listing": {
-           "map": "function(doc) { if(doc.pvt_deleted || doc.pvt_type != 'cdr') return; emit(doc._id, {'id':doc._id, 'caller_id_name': doc.caller_id_name, 'caller_id_number': doc.caller_id_number, 'callee_id_name': doc.callee_id_name, 'callee_id_number': doc.callee_id_number, 'duration_seconds': doc.duration_seconds, 'billing_seconds': doc.billing_seconds, 'timestamp': doc.timestamp, 'hangup_cause':doc.hangup_cause, 'other_leg_call_id':doc.other_leg_call_id})}"
+           "map": "function(doc) { if(doc.pvt_deleted || doc.pvt_type != 'cdr') return; emit(doc._id, {'id':doc._id, 'caller_id_name': doc.caller_id_name, 'caller_id_number': doc.caller_id_number, 'callee_id_name': doc.callee_id_name, 'callee_id_number': doc.callee_id_number, 'duration_seconds': doc.duration_seconds, 'billing_seconds': doc.billing_seconds, 'timestamp': doc.timestamp, 'hangup_cause':doc.hangup_cause, 'other_leg_call_id':doc.other_leg_call_id, 'owner_id':doc.custom_channel_vars.owner_id})}"
        },
        "listing_by_owner" : {
        	   "map": "function(doc) { if(doc.pvt_deleted || doc.pvt_type != 'cdr') return; emit(doc.custom_channel_vars.owner_id, {'id':doc._id, 'caller_id_name': doc.caller_id_name, 'caller_id_number': doc.caller_id_number, 'callee_id_name': doc.callee_id_name, 'callee_id_number': doc.callee_id_number, 'duration_seconds': doc.duration_seconds, 'timestamp': doc.timestamp, 'hangup_cause':doc.hangup_cause, 'other_leg_call_id':doc.other_leg_call_id})}" 

@@ -24,7 +24,8 @@
 -include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
--define(CB_LIST_BY_USER, <<"cdr/listing_by_owner">>).
+-define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
+-define(CB_LIST, <<"cdrs/crossbar_listing">>).
 
 %%%===================================================================
 %%% API
@@ -98,21 +99,21 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.cdr">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.cdrs">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.cdr">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.cdrs">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.cdr">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.cdrs">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
 		  Context1 = validate(Params, RD, Context),
@@ -120,7 +121,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.cdr">>, [RD, Context | 
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.get.cdr">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.get.cdrs">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
 		  Pid ! {binding_result, true, [RD, Context, Params]}
 	  end),
@@ -174,10 +175,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec(bind_to_crossbar/0 :: () ->  no_return()).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.cdr">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.cdr">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.cdr">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.get.cdr">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.cdrs">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.cdrs">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.cdrs">>),
+    crossbar_bindings:bind(<<"v1_resource.execute.get.cdrs">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -238,9 +239,19 @@ validate(_, _, Context) ->
 -spec load_cdr_summary/2 :: (Context, QueryParams) -> #cb_context{} when
       Context :: #cb_context{},
       QueryParams :: proplist().
-load_cdr_summary(#cb_context{db_name=DbName, doc=JObj}=Context, QueryParams) ->
-    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"key">>, wh_json:get_value(<<"_id">>, JObj, <<>>)}]),
-    Context#cb_context{resp_data=Result, resp_status=success}.
+load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
+    Nouns = Context#cb_context.req_nouns,
+    LastNoun  = lists:nth(2, Nouns), %%st is {cdr, _}
+    case LastNoun of
+	{<<"accounts">>, _} ->
+	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams, []),
+	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
+	{<<"users">>, [UserId]} ->
+	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"key">>, UserId}]),
+	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
+	_ ->
+	    crossbar_util:response_faulty_request(Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
