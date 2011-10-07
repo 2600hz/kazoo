@@ -10,7 +10,9 @@
 
 %% API
 -export([start_link/1, start_link/2]).
--export([resource_consume/3, show_channels/1, fs_node/1]).
+-export([resource_consume/3, show_channels/1, fs_node/1, uuid_exists/2
+	 ,hostname/1
+	]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -55,9 +57,17 @@ resource_consume(FsNodePid, Route, JObj) ->
 show_channels(Srv) ->
     gen_server:call(Srv, show_channels).
 
+-spec hostname/1 :: (pid()) -> fs_api_ret().
+hostname(Srv) ->
+    gen_server:call(Srv, hostname).
+
 -spec fs_node/1 :: (pid()) -> atom().
 fs_node(Srv) ->
     gen_server:call(Srv, fs_node).
+
+-spec uuid_exists/2 :: (pid(), binary()) -> boolean().
+uuid_exists(Srv, UUID) ->
+    gen_server:call(Srv, {uuid_exists, UUID}).
 
 -spec start_link/1 :: (Node :: atom()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node) ->
@@ -72,6 +82,17 @@ init([Node, Options]) ->
     Stats = #node_stats{started = erlang:now()},
     {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
 
+handle_call(hostname, From, #state{node=Node}=State) ->
+    spawn(fun() -> gen_server:reply(From, freeswitch:api(Node, hostname, "")) end),
+    {noreply, State};
+handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
+    spawn(fun() ->
+		  case freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
+		      {'ok', Result} -> gen_server:reply(From, wh_util:is_true(Result));
+		      _ -> gen_server:reply(From, false)
+		  end
+	  end),
+    {noreply, State};
 handle_call(fs_node, _From, #state{node=Node}=State) ->
     {reply, Node, State};
 handle_call(show_channels, From, #state{node=Node}=State) ->

@@ -22,9 +22,13 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [
-		     {{?MODULE, handle_channel_query}, [{<<"lookup">>, <<"channel_req">>}]}
+		     {{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"status_req">>}]}
+		     ,{{?MODULE, handle_channel_query}, [{<<"lookup">>, <<"channel_req">>}]}
 		    ]).
--define(BINDINGS, [{switch_lookups, []}]).
+-define(BINDINGS, [
+		   {switch_lookups, []}
+		   ,{call_status, []}
+		  ]).
 
 -record(state, {}).
 
@@ -44,6 +48,43 @@ start_link() ->
 			    [{responders, ?RESPONDERS}
 			     ,{bindings, ?BINDINGS}
 			    ], []).
+
+handle_channel_status(JObj, _Props) ->
+    true = wh_api:call_status_req_v(JObj),
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    put(callid, CallID),
+
+    ?LOG_START("call status request received"),
+
+    case [ecallmgr_fs_node:hostname(NH) || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
+	[] -> ?LOG("No node found having call");
+	[{ok, Hostname}] ->
+	    ?LOG("Call is on ~s", [Hostname]),
+	    RespProp = [{<<"Call-ID">>, CallID}
+			,{<<"Status">>, <<"active">>}
+			,{<<"Switch-Hostname">>, Hostname}
+			| wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION)
+		       ],
+	    {'ok', Payload} = wh_api:call_status_resp(RespProp),
+	    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
+	[{error, Err}] ->
+	    ?LOG("Hostname lookup failed, but call is active"),
+	    RespProp = [{<<"Call-ID">>, CallID}
+			,{<<"Status">>, <<"active">>}
+			,{<<"Error-Msg">>, wh_util:to_binary(Err)}
+			| wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION)
+		       ],
+	    {'ok', Payload} = wh_api:call_status_resp(RespProp),
+	    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
+	[timeout] ->
+	    RespProp = [{<<"Call-ID">>, CallID}
+			,{<<"Status">>, <<"active">>}
+			,{<<"Error-Msg">>, <<"switch timeout">>}
+			| wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION)
+		       ],
+	    {'ok', Payload} = wh_api:call_status_resp(RespProp),
+	    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
+    end.
 
 handle_channel_query(JObj, _Props) ->
     ListOfChannels = [ecallmgr_fs_node:show_channels(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()],
