@@ -20,10 +20,11 @@
 
 -include("ecallmgr.hrl").
 
--record(state, {node = 'undefined' :: atom()
-	       ,stats = #node_stats{} :: #node_stats{}
-	       ,options = [] :: proplist()
-	       }).
+-record(state, {
+	  node = 'undefined' :: atom()
+	  ,stats = #node_stats{} :: #node_stats{}
+	  ,options = [] :: proplist()
+	 }).
 
 -define(SERVER, ?MODULE).
 
@@ -82,6 +83,7 @@ init([Node, Options]) ->
     Stats = #node_stats{started = erlang:now()},
     {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
 
+-spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> {'noreply', #state{}} | {'reply', atom(), #state{}}.
 handle_call(hostname, From, #state{node=Node}=State) ->
     spawn(fun() -> gen_server:reply(From, freeswitch:api(Node, hostname, "")) end),
     {noreply, State};
@@ -103,8 +105,6 @@ handle_call(show_channels, From, #state{node=Node}=State) ->
 		  end
 	  end),
     {noreply, State}.
-
-
 
 handle_cast(_Req, State) ->
     {noreply, State}.

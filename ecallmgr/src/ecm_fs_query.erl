@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, handle_channel_query/2]).
+-export([start_link/0, handle_channel_query/2, handle_channel_status/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -49,6 +49,7 @@ start_link() ->
 			     ,{bindings, ?BINDINGS}
 			    ], []).
 
+-spec handle_channel_status/2 :: (json_object(), proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
     true = wh_api:call_status_req_v(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
