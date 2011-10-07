@@ -38,7 +38,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                 {AppName, noop} ->
                     ControlPID ! {execute_complete, UUID, AppName};
 		{<<"answer">> = AppName, AppData} ->
-                    send_cmd(Node, UUID, AppName, AppData),
+                    _ = send_cmd(Node, UUID, AppName, AppData),
                     %% 22:55 pyite_mac  can you sleep 0.5 seconds before continuing
                     timer:sleep(500),
                     ControlPID ! {execute_complete, UUID, AppName};
