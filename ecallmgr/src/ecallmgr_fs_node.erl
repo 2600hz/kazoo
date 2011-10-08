@@ -79,7 +79,8 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
 	    Active = get_active_channels(Node),
 
 	    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
-					 ,'CUSTOM', 'sofia::register'
+                                         ,'PRESENCE_IN'
+					 ,'CUSTOM', 'sofia::register', 'sofia_presence::subscribe'
 					]),
 
 	    {noreply, State#state{stats=(Stats#node_stats{
@@ -133,10 +134,16 @@ handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr
 	    end;
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
 	    {noreply, State};
+        <<"PRESENCE_IN">> ->
+            spawn(fun() ->
+                          put(callid, props:get_value(<<"call-id">>, Data)),
+                          ecallmgr_notify:presence_in(Data)
+                  end),
+	    {noreply, State};
 	<<"CUSTOM">> ->
 	    spawn(fun() ->
                           put(callid, props:get_value(<<"call-id">>, Data)),
-                          ?LOG("custom event received ~s", [EvtName]),
+                          ?LOG("custom event ~s received", [EvtName]),
                           process_custom_data(Data, ?APP_VERSION)
                   end),
 	    {noreply, State};
@@ -285,6 +292,7 @@ process_custom_data(Data, AppVsn) ->
     case props:get_value(<<"Event-Subclass">>, Data) of
 	undefined -> ok;
 	<<"sofia::register">> -> publish_register_event(Data, AppVsn);
+	<<"sofia_presence::subscribe">> -> publish_presence_subscription(Data, AppVsn);
 	_ -> ok
     end.
 
@@ -307,6 +315,30 @@ publish_register_event(Data, AppVsn) ->
             ?LOG("failed API message creation: ~p", [E]);
 	{ok, JSON} ->
 	    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_SUCCESS)
+    end.
+
+publish_presence_subscription(Data, _AppVsn) ->
+    Subscription = [{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
+                    ,{<<"From-User">>, props:get_value(<<"sip_from_user">>, Data)}
+                    ,{<<"From-Host">>, props:get_value(<<"sip_from_host">>, Data)}
+                    ,{<<"Contact">>, props:get_value(<<"sip_contact">>, Data)}
+                    ,{<<"Call-ID">>, props:get_value(<<"sip_call_id">>, Data)}
+                    ,{<<"Expires">>, props:get_value(<<"presence_expires">>, Data)}
+                    ,{<<"To-User">>, props:get_value(<<"sip_to_user">>, Data)}
+                    ,{<<"To-Host">>, props:get_value(<<"sip_to_host">>, Data)}
+                    ,{<<"From-Tag">>, props:get_value(<<"sip_from_tag">>, Data)}
+                    ,{<<"To-Tag">>, props:get_value(<<"sip_to_tag">>, Data)}
+                    ,{<<"Accept">>, props:get_value(<<"sip_accept">>, Data)}
+                    ,{<<"Agent">>, props:get_value(<<"sip_full_agent">>, Data)}
+                    ,{<<"Event">>, props:get_value(<<"presence_proto_specific_event">>, Data)}
+                    | wh_api:default_headers(<<>>, <<"presence">>, <<"subscribe">>, ?APP_NAME, ?APP_VERSION)
+                   ],
+    ?LOG("sending successful presence subscription"),
+    case wh_api:presence_subscr([ KV || {_, V}=KV <- Subscription, V =/= undefined ]) of
+	{error, E} ->
+            ?LOG("failed API message creation: ~p", [E]);
+	{ok, Payload} ->
+            amqp_util:callmgr_publish(Payload, <<"application/json">>, ?KEY_PRESENCE_IN)
     end.
 
 get_originate_action(<<"transfer">>, Data) ->

@@ -13,14 +13,15 @@
 -include_lib("whistle/include/wh_types.hrl").
 
 %% API
--export([start_link/0]).
+-export([start_link/0, cache_proc/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
--define(CHILDREN, [{notify_listener, worker}]). %% amqp listener
+-define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
+-define(CHILDREN, [{notify_listener, worker}]).
 
 %% ===================================================================
 %% API functions
@@ -35,6 +36,12 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+-spec cache_proc/0 :: () -> {'ok', pid()}.
+cache_proc() ->
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+		Mod =:= notify_cache],
+    {ok, P}.
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -57,6 +64,7 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
+    Children = [?CACHE(notify_cache)
+                | [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN]],
 
     {ok, {SupFlags, Children}}.

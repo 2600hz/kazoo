@@ -24,6 +24,7 @@
 -define(KEY_REG_QUERY, <<"registration.query">>).
 
 -define(KEY_SIP_NOTIFY, <<"sip.notify">>).
+-define(KEY_PRESENCE_IN, <<"presence.in">>).
 
 -define(KEY_CONF_DISCOVERY_REQ, <<"conference.discovery">>).
 -define(KEY_CONF_SERVICE_REQ, <<"conference.service.">>).

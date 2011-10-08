@@ -60,13 +60,16 @@ start_deps() ->
     wh_util:ensure_started(whistle_couch). % couch wrapper
 
 add_binding_to_q(Q, Props) ->
+    io:format("~p ~p~n", [Q, Props]),
     Keys = case props:get_value(keys, Props) of
 	       undefined ->
-		   [?NOTIFY_VOICEMAIL_NEW];
+		   [?NOTIFY_VOICEMAIL_NEW, ?KEY_PRESENCE_IN];
 	       Ks -> Ks
 	   end,
-    [ bind_q_to_key(Q, Key) || Key <- Keys ],
-    ok.
+    io:format("~p~n", [Keys]),
+    [ begin
+          io:format("~p ~p~n", [Q, Key]),
+          bind_q_to_key(Q, Key) end || Key <- Keys ].
 
 -spec bind_q_to_key/2 :: (Q, Key) -> ok when
       Q :: binary(),
