@@ -17,7 +17,7 @@ start_link(Facility) ->
       Facility :: atom(),
       Opts :: [cons | perror | pid | odelay | ndelay,...].
 start_link(Facility, Opts) ->
-    Resp = syslog:start_linked(),
+    Resp = syslog:start_link(),
     syslog:open(atom_to_list(node()), Opts, Facility),
     Resp.
 
