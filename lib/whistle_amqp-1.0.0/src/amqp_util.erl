@@ -13,7 +13,7 @@
 -export([monitor_exchange/0, monitor_publish/3]).
 -export([conference_exchange/0, conference_publish/2, conference_publish/3, conference_publish/4]).
 
--export([bind_q_to_targeted/1, bind_q_to_targeted/2, unbind_q_from_targeted/1]).
+-export([bind_q_to_targeted/1, bind_q_to_targeted/2, bind_q_to_targeted/3, unbind_q_from_targeted/1]).
 -export([bind_q_to_callctl/1, bind_q_to_callctl/2, unbind_q_from_callctl/1]).
 -export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2, unbind_q_from_callevt/3]).
 -export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
@@ -37,7 +37,7 @@
 	 ,new_exchange/2, new_exchange/3]).
 
 -export([access_request/0, access_request/1, basic_ack/1, basic_nack/1, basic_qos/1]).
-
+-export([basic_get/1, basic_get/2]).
 -export([is_json/1, is_host_available/0, register_return_handler/0]).
 
 %%------------------------------------------------------------------------------
@@ -375,7 +375,7 @@ new_conference_queue(ConfId, Options) ->
 -spec new_queue/0 :: () -> binary() | {'error', 'amqp_error'}.
 -spec new_queue/1 :: (Queue) -> binary() | {'error', 'amqp_error'} when
       Queue :: binary().
--spec new_queue/2 :: (Queue, Options) -> binary() | {'error', 'amqp_error'} when
+-spec new_queue/2 :: (Queue, Options) -> binary() | {'error', term()} when
       Queue :: binary(),
       Options :: proplist().
 new_queue() ->
@@ -395,6 +395,7 @@ new_queue(Queue, Options) when is_binary(Queue) ->
     case amqp_mgr:consume(QD) of
 	'ok' -> Queue;
 	#'queue.declare_ok'{queue=Q} -> Q;
+        {error, _}=E -> E;
 	_Other ->
 	    {'error', 'amqp_error'}
     end.
@@ -448,6 +449,8 @@ bind_q_to_targeted(Queue) ->
     bind_q_to_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
 bind_q_to_targeted(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TARGETED).
+bind_q_to_targeted(Queue, Routing, Options) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TARGETED, Options).
 
 -spec bind_q_to_callctl/1 :: (Queue) -> 'ok' | {'error', term()} when
       Queue :: binary().
@@ -638,6 +641,38 @@ basic_consume(Queue, Options) ->
             ok;
         {_, Error} -> Error;
         Else -> Else
+    end.
+
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%------------------------------------------------------------------------------
+basic_get(Queue) ->
+    basic_get(Queue, []).
+basic_get(Queue, Options) ->
+    BG = #'basic.get'{
+      queue = Queue
+      ,no_ack = props:get_value(no_ack, Options, true)
+     },
+    ExtenResult = props:get_value(exten_result, Options, false),
+    case amqp_mgr:consume(BG) of
+        {#'basic.get_ok'{}=Rec, Content} when ExtenResult ->
+            Props = lists:zip(record_info(fields, 'basic.get_ok')
+                              ,tl(tuple_to_list(Rec))),
+            {ok, Content, Props};
+        {#'basic.get_ok'{}, Content} ->
+            {ok, Content};
+        {#'basic.get_empty'{}, _} ->
+            {error, empty};
+        {'basic.get_empty', _} ->
+            {error, empty};
+        {error, _}=E ->
+            E;
+        _E ->
+            io:format("~p~n", [_E]),
+            {'error', 'amqp_error'}
     end.
 
 %%------------------------------------------------------------------------------
