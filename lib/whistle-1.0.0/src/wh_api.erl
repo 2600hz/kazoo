@@ -53,6 +53,9 @@
 %% Configuration
 -export([document_change/1, document_change_v/1]).
 
+%% Presence
+-export([presence_subscr/1, presence_subscrs_query/1, presence_subscrs_query_resp/1]).
+
 %% Validation functions
 -export([authn_req_v/1, authn_resp_v/1, authz_req_v/1, authz_resp_v/1]).
 -export([reg_success_v/1, reg_query_v/1, reg_query_resp_v/1]).
@@ -75,6 +78,8 @@
 	]).
 
 -export([route_req_v/1, route_resp_v/1, route_resp_route_v/1, route_win_v/1]).
+
+-export([presence_subscr_v/1, presence_subscrs_query_v/1, presence_subscrs_query_resp_v/1]).
 
 %% Other AMQP API validators can use these helpers
 -export([build_message/3, validate/4]).
@@ -562,6 +567,72 @@ call_cdr_v({struct, Prop}) ->
     call_cdr_v(Prop);
 call_cdr_v(Prop) ->
     validate(Prop, ?CALL_CDR_HEADERS, ?CALL_CDR_VALUES, ?CALL_CDR_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Format an subscription event
+%% Takes proplist, creates JSON string or subscription
+%% @end
+%%--------------------------------------------------------------------
+-spec presence_subscr/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+    Prop :: proplist() | json_object().
+presence_subscr({struct, Prop}) ->
+    presence_subscr(Prop);
+presence_subscr(Prop) ->
+    case presence_subscr_v(Prop) of
+	true -> build_message(Prop, ?PRESENCE_SUBSCRIBE_HEADERS, ?OPTIONAL_PRESENCE_SUBSCRIBE_HEADERS);
+	false -> {subscription, "Proplist failed validation for presence_subscr"}
+    end.
+
+-spec presence_subscr_v/1 :: (Prop) -> boolean() when
+    Prop :: proplist() | json_object().
+presence_subscr_v({struct, Prop}) ->
+    presence_subscr_v(Prop);
+presence_subscr_v(Prop) ->
+    validate(Prop, ?PRESENCE_SUBSCRIBE_HEADERS, ?PRESENCE_SUBSCRIBE_VALUES, ?PRESENCE_SUBSCRIBE_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Presence_Subscribers Query - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec presence_subscrs_query/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+    Prop :: proplist() | json_object().
+presence_subscrs_query({struct, Prop}) ->
+    presence_subscrs_query(Prop);
+presence_subscrs_query(Prop) ->
+    case presence_subscrs_query_v(Prop) of
+	true -> build_message(Prop, ?SUBSCRS_QUERY_HEADERS, ?OPTIONAL_SUBSCRS_QUERY_HEADERS);
+	false -> {error, "Proplist failed validation for presence_subscrs_query"}
+    end.
+
+-spec presence_subscrs_query_v/1 :: (Prop) -> boolean() when
+    Prop :: proplist() | json_object().
+presence_subscrs_query_v({struct, Prop}) ->
+    presence_subscrs_query_v(Prop);
+presence_subscrs_query_v(Prop) ->
+    validate(Prop, ?SUBSCRS_QUERY_HEADERS, ?SUBSCRS_QUERY_VALUES, ?SUBSCRS_QUERY_TYPES).
+
+%%--------------------------------------------------------------------
+%% @doc Presence_Subscrsistration Query Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec presence_subscrs_query_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
+    Prop :: proplist() | json_object().
+presence_subscrs_query_resp({struct, Prop}) ->
+    presence_subscrs_query_resp(Prop);
+presence_subscrs_query_resp(Prop) ->
+    case presence_subscrs_query_resp_v(Prop) of
+	true -> build_message(Prop, ?SUBSCRS_QUERY_RESP_HEADERS, ?OPTIONAL_SUBSCRS_QUERY_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for presence_subscrs_query_resp"}
+    end.
+
+-spec presence_subscrs_query_resp_v/1 :: (Prop) -> boolean() when
+    Prop :: proplist() | json_object().
+presence_subscrs_query_resp_v({struct, Prop}) ->
+    presence_subscrs_query_resp_v(Prop);
+presence_subscrs_query_resp_v(Prop) ->
+    validate(Prop, ?SUBSCRS_QUERY_RESP_HEADERS, ?SUBSCRS_QUERY_RESP_VALUES, ?SUBSCRS_QUERY_RESP_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Format an error event

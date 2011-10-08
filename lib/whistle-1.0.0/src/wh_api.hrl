@@ -359,6 +359,42 @@
 			 ]).
 -define(CALL_CDR_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
+
+%% Presence Subscribe
+-define(PRESENCE_SUBSCRIBE_HEADERS, [<<"Event-Timestamp">>, <<"From-User">>, <<"From-Host">>, <<"Contact">>, <<"Call-ID">>
+                                         ,<<"Expires">>, <<"To-User">>, <<"To-Host">>
+                                    ]).
+-define(OPTIONAL_PRESENCE_SUBSCRIBE_HEADERS, [<<"To-Tag">>, <<"From-Tag">>, <<"Profile-Name">>, <<"Presence-Hosts">>
+                                                  ,<<"Accept">>, <<"Agent">>, <<"Event">>
+                                             ]).
+-define(PRESENCE_SUBSCRIBE_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                                    ,{<<"Event-Name">>, <<"subscribe">>}
+                                   ]).
+-define(PRESENCE_SUBSCRIBE_TYPES, []).
+
+%% Query Subscribers
+-define(SUBSCRS_QUERY_HEADERS, [<<"User">>, <<"Realm">>, <<"Fields">>]).
+-define(OPTIONAL_SUBSCRS_QUERY_HEADERS, [<<"Event">>]).
+-define(SUBSCRS_QUERY_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                               ,{<<"Event-Name">>, <<"subscribers_query">>}
+                              ]).
+-define(SUBSCRS_QUERY_TYPES, [{<<"Fields">>, fun(Fs) when is_list(Fs) ->
+                                                     Allowed = ?PRESENCE_SUBSCRIBE_HEADERS ++ ?OPTIONAL_PRESENCE_SUBSCRIBE_HEADERS,
+                                                     lists:foldl(fun(F, true) -> lists:member(F, Allowed);
+                                                                    (_, false) -> false
+                                                                 end, true, Fs);
+                                                (_) -> false
+                                             end}
+                             ]).
+
+%% Subscribers Query Response
+-define(SUBSCRS_QUERY_RESP_HEADERS, [<<"Subscribers">>]).
+-define(OPTIONAL_SUBSCRS_QUERY_RESP_HEADERS, [<<"Event">>]).
+-define(SUBSCRS_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"presence">>}
+                                    ,{<<"Event-Name">>, <<"subscribers_query_resp">>}
+                                   ]).
+-define(SUBSCRS_QUERY_RESP_TYPES, []).
+
 %% Error Responses
 -define(ERROR_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>]).
 -define(OPTIONAL_ERROR_RESP_HEADERS, []).
