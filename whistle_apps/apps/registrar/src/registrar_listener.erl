@@ -193,7 +193,7 @@ handle_event(_JObj, #state{cache=Cache}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), #state{}) -> ok.
+-spec terminate/2 :: (term(), #state{}) -> 'ok'.
 terminate(_Reason, _) ->
     ?LOG_SYS("registrar server ~p termination", [_Reason]).
 
