@@ -72,6 +72,7 @@ behaviour_info(_) ->
 
 -record(state, {
 	  queue = <<>> :: binary()
+         ,is_consuming = false :: boolean()
 	 ,responders = [] :: responders() %% { {EvtCat, EvtName}, Module }
          ,bindings = [] :: bindings() %% authentication | {authentication, [{key, value},...]}
          ,params = [] :: proplist()
@@ -79,6 +80,8 @@ behaviour_info(_) ->
          ,module_state = 'undefined' :: term()
          ,active_responders = [] :: [pid(),...] | [] %% list of pids processing requests
 	 }).
+
+-define(TIMEOUT_RETRY_CONN, 1000).
 
 %% API functions for requesting data from the gen_listener
 -spec queue_name/1 :: (Srv) -> {'ok', binary()} | {'error', atom()} when
@@ -195,6 +198,7 @@ init([Module, Params, InitArgs]) ->
     Bindings = props:get_value(bindings, Params, []),
 
     {ok, Q} = start_amqp(Bindings, Params),
+    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
 
     Self = self(),
     spawn(fun() -> [add_responder(Self, Mod, Evts) || {Mod, Evts} <- Responders] end),
@@ -279,7 +283,6 @@ handle_cast(Message, #state{module=Module, module_state=ModState}=State) ->
       Request :: term(),
       State :: #state{}.
 handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, #state{active_responders=ARs}=State) ->
-    ?LOG_SYS("Handling AMQP payload"),
     case catch handle_event(Payload, CT, State) of
 	Pid when is_pid(Pid) ->
 	    {noreply, State#state{active_responders=[Pid | ARs]}, hibernate};
@@ -295,34 +298,40 @@ handle_info({'EXIT', Pid, _Reason}=Message, #state{active_responders=ARs}=State)
     end;
 
 handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=State) ->
-    try
-	case amqp_util:is_host_available() of
-	    true ->
-		{ok, Q} = start_amqp(Bindings, Params),
-		{noreply, State#state{queue=Q}, hibernate};
-	    false ->
-		?LOG("No AMQP host ready, waiting another second"),
-		erlang:send_after(1000, self(), Down),
-		{noreply, State#state{queue = <<>>}, hibernate}
-	end
-    catch
-	throw:_Why ->
-	    ?LOG("throw: ~p", [_Why]),
-	    erlang:send_after(1000, self(), Down),
-	    {noreply, State#state{queue = <<>>}, hibernate};
-	error:_Why ->
-	    ?LOG("error: ~p", [_Why]),
-	    erlang:send_after(1000, self(), Down),
-	    {noreply, State#state{queue = <<>>}, hibernate}
+    ?LOG("amqp host down msg: ~p", [_H]),
+    case amqp_util:is_host_available() of
+	true ->
+	    ?LOG("Host is available, let's try wiring up"),
+	    case start_amqp(Bindings, Params) of
+		{ok, Q} ->
+		    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
+		    {noreply, State#state{queue=Q, is_consuming=false}, hibernate};
+		{error, _} ->
+		    ?LOG("Failed to start amqp, waiting another second"),
+		    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
+		    {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
+	    end;
+	false ->
+	    ?LOG("No AMQP host ready, waiting another second"),
+	    erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
+	    {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
     end;
 
 handle_info({amqp_lost_channel, no_connection}, State) ->
     ?LOG("Lost our channel, checking every second for a host to come back up"),
-    _Ref = erlang:send_after(1000, self(), {amqp_host_down, ok}),
-    {noreply, State#state{queue = <<>>}, hibernate};
+    _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
+    {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
 
 handle_info({'basic.consume_ok', _}, S) ->
-    {noreply, S};
+    {noreply, S#state{is_consuming=true}};
+
+handle_info(is_consuming, #state{is_consuming=false, queue=Q}=State) ->
+    ?LOG("WTF, we're not consuming. Queue: ~p", [Q]),
+    _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
+    {noreply, State};
+
+handle_info(is_consuming, State) ->
+    {noreply, State};
 
 handle_info(Message, State) ->
     handle_callback_info(Message, State).
@@ -352,7 +361,6 @@ terminate(Reason, #state{module=Module, module_state=ModState}) ->
       ContentType :: binary(),
       State :: #state{}.
 handle_event(Payload, <<"application/json">>, State) ->
-    ?LOG("AMQP: ~s", [Payload]),
     JObj = mochijson2:decode(Payload),
     process_req(State, JObj);
 handle_event(Payload, <<"application/erlang">>, State) ->
@@ -375,10 +383,9 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
       JObj :: json_object().
 process_req(Props, Responders, JObj) ->
     Key = wh_util:get_event_type(JObj),
-    ?LOG("Key: ~p", [Key]),
+
     Handlers = [spawn_monitor(fun() ->
 				      _ = wh_util:put_callid(JObj),
-				      ?LOG("handling with ~s:~s", [Responder, Fun]),
 				      Responder:Fun(JObj, Props)
 			      end) || {Evt, {Responder, Fun}} <- Responders,
 				      maybe_event_matches_key(Key, Evt)
@@ -406,21 +413,29 @@ wait_for_handlers([{Pid, Ref} | Hs]) ->
     end;
 wait_for_handlers([]) -> ok.
 
--spec start_amqp/2 :: (Bindings, Props) -> {ok, binary()} when
-      Bindings :: bindings(),
-      Props :: proplist().
+-spec start_amqp/2 :: (bindings(), proplist()) -> {'ok', binary()} | {'error', 'amqp_error'}.
 start_amqp(Bindings, Props) ->
     QueueProps = props:get_value(queue_options, Props, []),
     QueueName = props:get_value(queue_name, Props, <<>>),
-    Q = amqp_util:new_queue(QueueName, QueueProps),
+    case catch amqp_util:new_queue(QueueName, QueueProps) of
+	{error, amqp_error}=E -> ?LOG("Failed to start new queue"), E;
+	{'EXIT', _Why} -> ?LOG("Exit: ~p", [_Why]), {error, amqp_error};
+	Queue -> start_amqp(Bindings, Props, Queue)
+    end.
+
+-spec start_amqp/3 :: (bindings(), proplist(), binary()) -> {'ok', binary()}.
+start_amqp(Bindings, Props, Q) ->
+    ?LOG("New queue: ~s", [Q]),
 
     ConsumeProps = props:get_value(consume_options, Props, []),
 
     set_qos(props:get_value(basic_qos, Props)),
 
     _ = [ queue_bindings:add_binding_to_q(Q, Type, BindProps) || {Type, BindProps} <- Bindings ],
+    ?LOG("Binding complete for ~s", [Q]),
 
     amqp_util:basic_consume(Q, ConsumeProps),
+    ?LOG("Consuming on ~s", [Q]),
     {ok, Q}.
 
 -spec stop_amqp/2 :: (Q, Bindings) -> ok when
