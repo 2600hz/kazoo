@@ -53,7 +53,6 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting CDR listener"),
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
@@ -193,45 +192,24 @@ start_amqp() ->
       Payload :: binary().
 handle_cdr(Payload) ->
     JObj = mochijson2:decode(Payload),
+    true  = wh_api:call_cdr_v(JObj),
+
     AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
 
     Db = case couch_mgr:db_exists(AccountDb) of
-        true -> AccountDb;
-        false -> ?ANONYMOUS_CDR_DB
-    end,
+	     true -> AccountDb;
+	     false -> ?ANONYMOUS_CDR_DB
+	 end,
 
     NormDoc = wh_json:normalize_jobj(JObj),
     DocOpts = [{type, cdr}, {crossbar_doc_vsn, 1}],
     JObj1 = wh_doc:update_pvt_parameters(NormDoc, Db, DocOpts),
+
     Id = wh_json:get_value(<<"call_id">>, NormDoc, couch_mgr:get_uuid()),
     NewDoc = wh_json:set_value(<<"_id">>, Id, JObj1),
 
-    case couch_mgr:save_doc(Db, NewDoc) of
-        {ok, _} ->
-            ?LOG("CDR for Call-ID:~p stored", [Id]),
-            stored;
-        {error, _} ->
-            ?LOG("___+++ Error, Cannot save Doc. Trying to find existing doc with ID ~p", [Id]),
-            case couch_mgr:open_doc(Db, Id) of
-                {ok, ExistingDoc} ->
-                    ?LOG("___+++ CDR Doc ~p Found! Figuring out if CDR is related to that CDR...", [wh_json:get_value(<<"_id">>, ExistingDoc)]),
-		    NewOtherLegCallId = wh_json:get_value(<<"other_leg_call_id">>, NewDoc),
-		    RelatedCdrs = wh_json:get_value(<<"related_cdrs">>, ExistingDoc, []),
-                    case wh_json:get_value(<<"other_leg_call_id">>, ExistingDoc) == NewOtherLegCallId
-                        orelse lists:any(fun(Doc) -> (wh_json:get_value(<<"other_leg_call_id">>, Doc) == NewOtherLegCallId) end, RelatedCdrs) of
-                        true ->
-                            ?LOG("___+++ other_leg_call_id are equals, ignoring that Doc"),
-                            ignore;
-                        false ->
-                            ?LOG("___+++ other_leg_call_id are not  equals, appending ..."),
-                            DocToSave = append_cdr_to_doc(ExistingDoc, NewDoc),
-                            couch_mgr:save_doc(Db, wh_doc:update_pvt_modified(DocToSave)),
-                            ?LOG("New CDR for Call-ID:~p appended", [Id])
-                    end;
-                {error, _} ->
-                    ignore
-            end
-    end.
+    couch_mgr:save_doc(Db, NewDoc).
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -247,30 +225,3 @@ create_anonymous_cdr_db(DB) ->
 	{ok, _} -> ok;
 	{error, _} -> couch_mgr:update_doc_from_file(DB, cdr, <<"cdr.json">>)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Append the CDR to the list of CDR of the doc, or create that
-%% list from the existing CDR
-%% @end
-%%--------------------------------------------------------------------
--spec append_cdr_to_doc/2 :: (ExistingDoc, NewDoc) -> json_object() when
-      ExistingDoc :: json_object(),
-      NewDoc :: json_object().
-append_cdr_to_doc(ExistingDoc, NewDoc) ->
-    DocFinal = case wh_json:get_value(<<"related_cdrs">>, ExistingDoc) of
-                   undefined ->
-                       ?LOG("___+++ related_cdrs field doesnt exist, creating list of existing doc and new doc ..."),
-                       PublicFields = [{struct, wh_doc:jobj_to_list(wh_doc:public_fields(NewDoc))} | [{struct, wh_doc:jobj_to_list(wh_doc:public_fields(ExistingDoc))}]],
-                       JObj = wh_json:set_value(<<"related_cdrs">>, PublicFields, {struct, []}),
-
-                       ?LOG("___+++ Appending previously existing pvt fields ..."),
-                       PvtFields = wh_doc:jobj_to_list(wh_doc:private_fields(ExistingDoc)),
-                       lists:foldl(fun({Key, Val}, JObj1) -> wh_json:set_value(Key, Val, JObj1)  end, JObj, PvtFields);
-                   CdrList ->
-                       ?LOG("___+++ related_cdrs field exists, appending ..."),
-                       wh_json:set_value(<<"related_cdrs">>, lists:append(CdrList, [{struct, wh_doc:jobj_to_list(wh_doc:public_fields(NewDoc))}]), ExistingDoc)
-               end,
-    DocFinal.
-
