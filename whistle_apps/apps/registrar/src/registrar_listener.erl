@@ -35,8 +35,7 @@
 -define(REG_CONSUME_OPTIONS, [{exclusive, false}]).
 
 -record(state, {
-	   amqp_q = <<>> :: binary()
-	  ,cache = undefined :: undefined | pid()
+	  cache = undefined :: undefined | pid()
 	 }).
 
 %%%===================================================================
@@ -180,6 +179,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{cache=Cache}) ->
+    ?LOG("handle_event called"),
     {reply, [{cache, Cache}]}.
 
 %%--------------------------------------------------------------------

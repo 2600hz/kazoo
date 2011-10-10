@@ -108,6 +108,8 @@ prime_cache(Pid, ViewResult) ->
 %% send a payload to a targeted queue
 %% @end
 %%-----------------------------------------------------------------------------
+-spec send_resp/2 :: (iolist(), binary()) -> 'ok'.
+-spec send_resp/3 :: (iolist(), ne_binary(), ne_binary()) -> 'ok'.
 send_resp(Payload, RespQ) ->
     send_resp(Payload, RespQ, <<"application/json">>).
 
