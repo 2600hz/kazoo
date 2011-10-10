@@ -187,7 +187,7 @@ check_mailbox(#mailbox{prompts=#prompts{enter_password=EnterPass, invalid_login=
             main_menu(Box, Call);
         {ok, _} ->
             ?LOG("invalid mailbox login"),
-            b_play(InvalidLogin, Call),
+            _ = b_play(InvalidLogin, Call),
             check_mailbox(Box#mailbox{exists=false}, Call, Loop+1)
     end.
 
