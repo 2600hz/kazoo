@@ -122,7 +122,8 @@ callevt_publish(CallID, Payload, event) ->
 callevt_publish(CallID, Payload, status_req) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 callevt_publish(CallID, Payload, cdr) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
+    Key = encode_key(CallID),
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, Key/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 
@@ -737,3 +738,20 @@ basic_qos(PreFetch) when is_integer(PreFetch) ->
 -spec register_return_handler/0 :: () -> 'ok'.
 register_return_handler() ->
     amqp_mgr:register_return_handler().
+
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc
+%% Encode/decode a key so characters like dot won't interfere with routing separator
+%% @end
+%%------------------------------------------------------------------------------
+-spec encode_key/1 :: (RoutingKey) -> RoutingKeyEncoded :: binary() when
+      RoutingKey :: binary().
+encode_key(RoutingKey) ->
+    %Encoded = edoc_util:escape_uri(binary_to_list(RoutingKey)),
+    re:replace(RoutingKey, "\\.", "%2E", [global, {return, binary}]).
+
+-spec decode_key/1 :: (RoutingKey) -> RoutingKeyDecoded :: binary() when
+      RoutingKey :: binary().
+decode_key(RoutingKey) ->
+    re:replace(RoutingKey, "%2E", "\\.", [global, {return, binary}]).
