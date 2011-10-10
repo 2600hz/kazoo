@@ -25,7 +25,7 @@
 
 -define(KEY_SIP_NOTIFY, <<"sip.notify">>).
 
--define(KEY_CHANNEL_QUERY, <<"lookup.channel_req">>).
+-define(KEY_CHANNEL_QUERY, <<"locate.channel_req">>).
 
 -define(KEY_CONF_DISCOVERY_REQ, <<"conference.discovery">>).
 -define(KEY_CONF_SERVICE_REQ, <<"conference.service.">>).

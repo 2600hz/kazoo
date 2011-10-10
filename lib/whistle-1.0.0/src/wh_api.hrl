@@ -344,7 +344,7 @@
 %% Channel Query Request
 -define(CHANNEL_QUERY_REQ_HEADERS, []).
 -define(OPTIONAL_CHANNEL_QUERY_REQ_HEADERS, [<<"Call-Direction">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-						 ,<<"IP-Address">>, <<"Destination-Number">>, <<"Hostname">>
+						 ,<<"IP-Address">>, <<"Destination-Number">>, <<"Switch-Hostname">>
 					    ]).
 -define(CHANNEL_QUERY_REQ_VALUES, [{<<"Event-Category">>, <<"locate">>}
 				   ,{<<"Event-Name">>, <<"channel_req">>}

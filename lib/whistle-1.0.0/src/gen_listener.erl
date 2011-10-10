@@ -352,6 +352,7 @@ terminate(Reason, #state{module=Module, module_state=ModState}) ->
       ContentType :: binary(),
       State :: #state{}.
 handle_event(Payload, <<"application/json">>, State) ->
+    ?LOG("AMQP: ~s", [Payload]),
     JObj = mochijson2:decode(Payload),
     process_req(State, JObj);
 handle_event(Payload, <<"application/erlang">>, State) ->
@@ -374,6 +375,7 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
       JObj :: json_object().
 process_req(Props, Responders, JObj) ->
     Key = wh_util:get_event_type(JObj),
+    ?LOG("Key: ~p", [Key]),
     Handlers = [spawn_monitor(fun() ->
 				      _ = wh_util:put_callid(JObj),
 				      ?LOG("handling with ~s:~s", [Responder, Fun]),
@@ -433,13 +435,3 @@ stop_amqp(Q, Bindings) ->
       N :: undefined | non_neg_integer().
 set_qos(undefined) -> ok;
 set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
-
-%% {undef,[
-%% 	{authn_req,handle_req,
-%% 	 [{struct,[{<<6 bytes>>,<<8 bytes>>},{<<10 bytes>>,<<25 bytes>>},{<<9 bytes>>,<<7 bytes>>},{<<7 bytes>>,<<12 bytes>>},{<<4 bytes>>,<<33 bytes>>},{<<2 bytes>>,<<33 bytes>>},{<<6 bytes>>,<<36 bytes>>},{<<11 bytes>>,<<5 bytes>>},{<<8 bytes>>,<<8 bytes>>},{<<10 bytes>>,<<9 bytes>>},{<<14 bytes>>,<<9 bytes>>},{<<9 bytes>>,<<32 bytes>>}]}
-%% 	  ,[{queue,<<15 bytes>>},{cache,<0.122.0>}]
-%% 	  ,{authn_req,handle_req}
-%% 	 ]
-%% 	}
-%%        ]
-%% }
