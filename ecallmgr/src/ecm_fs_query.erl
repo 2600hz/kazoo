@@ -23,7 +23,7 @@
 
 -define(RESPONDERS, [
 		     {{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"status_req">>}]}
-		     ,{{?MODULE, handle_channel_query}, [{<<"lookup">>, <<"channel_req">>}]}
+		     ,{{?MODULE, handle_channel_query}, [{<<"locate">>, <<"channel_req">>}]}
 		    ]).
 -define(BINDINGS, [
 		   {switch_lookups, []}
@@ -52,10 +52,10 @@ start_link() ->
 -spec handle_channel_status/2 :: (json_object(), proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
     true = wh_api:call_status_req_v(JObj),
+    wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    put(callid, CallID),
 
-    ?LOG_START("call status request received"),
+    ?LOG_START("channel status request received"),
 
     case [ecallmgr_fs_node:hostname(NH) || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
 	[] -> ?LOG("No node found having call");
@@ -88,6 +88,11 @@ handle_channel_status(JObj, _Props) ->
     end.
 
 handle_channel_query(JObj, _Props) ->
+    true = wh_api:channel_query_req_v(JObj),
+    wh_util:put_callid(JObj),
+
+    ?LOG("Channel query received"),
+
     ListOfChannels = [ecallmgr_fs_node:show_channels(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()],
 
     SearchParams = lists:foldl(fun(Field, Acc) ->
@@ -100,7 +105,9 @@ handle_channel_query(JObj, _Props) ->
     case lists:foldl(fun(NodeChannels, Acc) ->
 			     filter_for_matching_uuids(SearchParams, NodeChannels, Acc)
 		     end, [], ListOfChannels) of
-	[] -> ok;
+	[] ->
+	    ?LOG("No channels found that meet search parameters"),
+	    ok;
 	Matching ->
 	    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
 	    send_channel_query_resp(RespQ, Matching)

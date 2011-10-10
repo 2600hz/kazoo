@@ -90,8 +90,8 @@ handle_call(hostname, From, #state{node=Node}=State) ->
 handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
     spawn(fun() ->
 		  case freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
-		      {'ok', Result} -> gen_server:reply(From, wh_util:is_true(Result));
-		      _ -> gen_server:reply(From, false)
+		      {'ok', Result} -> ?LOG(UUID, "Result of uuid_exists: ~s", [Result]), gen_server:reply(From, wh_util:is_true(Result));
+		      _ -> ?LOG(UUID, "Failed to get result from uuid_exists", []), gen_server:reply(From, false)
 		  end
 	  end),
     {noreply, State};
