@@ -1,0 +1,12 @@
+{application, voxeo,
+ [
+  {description, "Voxeo Intregration Whapp"},
+  {vsn, "0.0.1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { voxeo_app, []} },
+  {env, []}
+ ]}.
