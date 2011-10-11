@@ -753,10 +753,14 @@ decode_key(RoutingKey) ->
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 encode_key_test() ->
+    ?assertEqual(<<"key">>, encode_key(<<"key">>)),
     ?assertEqual(<<"routing%2Ekey">>, encode_key(<<"routing.key">>)),
+    ?assertEqual(<<"long%2Erouting%2Ekey">>, encode_key(<<"long.routing.key">>)),
     ok.
 
 decode_key_test() ->
+    ?assertEqual(<<"key">>, decode_key(<<"key">>)),
     ?assertEqual(<<"routing.key">>, decode_key(<<"routing%2Ekey">>)),
+    ?assertEqual(<<"long.routing.key">>, decode_key(<<"long%2Erouting%2Ekey">>)),
     ok.
 -endif.
