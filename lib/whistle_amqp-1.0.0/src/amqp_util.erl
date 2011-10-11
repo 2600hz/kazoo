@@ -742,10 +742,21 @@ register_return_handler() ->
 -spec encode_key/1 :: (RoutingKey) -> RoutingKeyEncoded :: binary() when
       RoutingKey :: binary().
 encode_key(RoutingKey) ->
-    %Encoded = edoc_util:escape_uri(binary_to_list(RoutingKey)),
-    re:replace(RoutingKey, "\\.", "%2E", [global, {return, binary}]).
+    binary:replace(RoutingKey, <<".">>, <<"%2E">>, [global]).
 
 -spec decode_key/1 :: (RoutingKey) -> RoutingKeyDecoded :: binary() when
       RoutingKey :: binary().
 decode_key(RoutingKey) ->
-    re:replace(RoutingKey, "%2E", "\\.", [global, {return, binary}]).
+    binary:replace(RoutingKey, <<"%2E">>, <<".">>, [global]).
+
+
+-include_lib("eunit/include/eunit.hrl").
+-ifdef(TEST).
+encode_key_test() ->
+    ?assertEqual(<<"routing%2Ekey">>, encode_key(<<"routing.key">>)),
+    ok.
+
+decode_key_test() ->
+    ?assertEqual(<<"routing.key">>, decode_key(<<"routing%2Ekey">>)),
+    ok.
+-endif.
