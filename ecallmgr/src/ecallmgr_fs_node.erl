@@ -79,8 +79,7 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
 	    Active = get_active_channels(Node),
 
 	    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
-                                         ,'PRESENCE_IN'
-					 ,'CUSTOM', 'sofia::register', 'sofia_presence::subscribe'
+                                         ,'CHANNEL_ANSWER', 'CUSTOM', 'sofia::register', 'sofia_presence::subscribe'
 					]),
 
 	    {noreply, State#state{stats=(Stats#node_stats{
@@ -121,8 +120,14 @@ handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr
     case EvtName of
 	<<"CHANNEL_CREATE">> ->
 	    ?LOG(UUID, "received channel create event", []),
+            spawn(fun() ->
+                          ecallmgr_notify:callstate_change(Data)
+                  end),
 	    {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}, hibernate};
 	<<"CHANNEL_DESTROY">> ->
+            spawn(fun() ->
+                          ecallmgr_notify:callstate_change(Data)
+                  end),
 	    ChanState = props:get_value(<<"Channel-State">>, Data),
 	    case ChanState of
 		<<"CS_NEW">> -> % ignore
@@ -134,10 +139,9 @@ handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr
 	    end;
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
 	    {noreply, State};
-        <<"PRESENCE_IN">> ->
+        <<"CHANNEL_ANSWER">> ->
             spawn(fun() ->
-                          put(callid, props:get_value(<<"call-id">>, Data)),
-                          ecallmgr_notify:presence_in(Data)
+                          ecallmgr_notify:callstate_change(Data)
                   end),
 	    {noreply, State};
 	<<"CUSTOM">> ->
