@@ -216,8 +216,8 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(),  Context :: #cb_context{}) -> #cb_context{}).
-validate([],  #cb_context{req_verb = <<"get">>}=Context) ->
+-spec validate/2 :: ([], #cb_context{}) -> #cb_context{}.
+validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     display_version(Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -229,8 +229,7 @@ validate(_, Context) ->
 %% Display the current version of whistle
 %% @end
 %%--------------------------------------------------------------------
--spec(display_version/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec display_version/1 :: (#cb_context{}) -> #cb_context{}.
 display_version(Context) ->
-    WhVsn = wh_json:set_value(<<"whistle_version">>, wh_util:whistle_version(), ?EMPTY_JSON_OBJECT),
-
+    WhVsn = wh_json:set_value(<<"whistle_version">>, wh_util:whistle_version(), wh_json:new()),
     crossbar_util:response(WhVsn, Context).

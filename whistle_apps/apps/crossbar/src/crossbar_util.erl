@@ -202,7 +202,7 @@ binding_heartbeat(BPid) ->
 
 -spec binding_heartbeat/2 :: (BPid, Timeout) -> pid() when
       BPid :: pid(),
-      Timeout :: non_neg_integer() | infinity.
+      Timeout :: non_neg_integer() | 'infinity'.
 binding_heartbeat(BPid, Timeout) ->
     PPid = self(),
     spawn(fun() ->
