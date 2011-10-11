@@ -25,22 +25,22 @@ filter_subscriber(Subscriber, Fields) ->
                                           end
                                   end, [], Fields)).
 
-lookup_subscribers(User, Realm) ->
+lookup_subscribers(User, Account) ->
     {ok, Cache} = notify_sup:cache_proc(),
-    case wh_cache:fetch_local(Cache, {notify_presentity, User, Realm}) of
+    case wh_cache:fetch_local(Cache, {notify_presentity, User, Account}) of
         {error, not_found} ->
             [];
         {ok, Watchers} ->
             {Subscribers, NewWatchers} =
-                lists:foldr(fun({U, R}, {SAcc, WAcc}=Acc) ->
-                                case wh_cache:peek_local(Cache, {notify_watcher, U, R}) of
+                lists:foldr(fun({U, A}, {SAcc, WAcc}=Acc) ->
+                                case wh_cache:peek_local(Cache, {notify_watcher, U, A}) of
                                     {ok, Subscriber} ->
-                                        {[Subscriber|SAcc], [{U, R}|WAcc]};
+                                        {[Subscriber|SAcc], [{U, A}|WAcc]};
                                     {error, not_found} ->
-                                        ?LOG("removing ~s@~s from watchers for ~s@~s", [U, R, User, Realm]),
+                                        ?LOG("removing ~s@~s from watchers for ~s ~s", [U, A, User, Account]),
                                         Acc
                                 end
                         end, {[], []}, Watchers),
-            wh_cache:store_local(Cache, {notify_presentity, User, Realm}, NewWatchers),
+            wh_cache:store_local(Cache, {notify_presentity, User, Account}, NewWatchers),
             Subscribers
     end.

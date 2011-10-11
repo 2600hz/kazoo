@@ -24,10 +24,10 @@ handle_req(JObj, _Props) ->
     true = wh_api:presence_subscrs_query_v(JObj),
 
     User = wh_json:get_value(<<"User">>, JObj),
-    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    Account = wh_json:get_value(<<"Account-ID">>, JObj),
     Fields = wh_json:get_value(<<"Fields">>, JObj),
 
-    case notify_util:lookup_subscribers(User, Realm) of
+    case notify_util:lookup_subscribers(User, Account) of
         [] ->
             ok;
         Subscribers when is_list(Fields), Fields =/= [] ->

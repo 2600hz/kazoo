@@ -373,7 +373,7 @@
 -define(PRESENCE_SUBSCRIBE_TYPES, []).
 
 %% Query Subscribers
--define(SUBSCRS_QUERY_HEADERS, [<<"User">>, <<"Realm">>, <<"Fields">>]).
+-define(SUBSCRS_QUERY_HEADERS, [<<"User">>, <<"Account-ID">>, <<"Fields">>]).
 -define(OPTIONAL_SUBSCRS_QUERY_HEADERS, [<<"Event">>]).
 -define(SUBSCRS_QUERY_VALUES, [{<<"Event-Category">>, <<"presence">>}
                                ,{<<"Event-Name">>, <<"subscribers_query">>}
