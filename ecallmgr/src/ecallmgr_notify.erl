@@ -13,7 +13,7 @@
 %% API
 -export([start_link/0]).
 -export([mwi_notification/2, send_mwi/4]).
--export([presence_in/1, presence_out/2]).
+-export([subscribe/2, callstate_change/1, presence_out/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -21,11 +21,11 @@
 
 -define(SERVER, ?MODULE).
 -define(MWI_BODY, "Messages-Waiting: ~s~nVoice-Message: ~b/~b (~b/~b)~nMessage-Account: ~s~n").
--define(PRESENCE_DIALOG, "<?xml version=\"1.0\"?><dialog-info xmlns=\"urn:ietf:params:xml:ns:dialog-info\" version=\"~p\" state=\"partial\" entity=\"~s\"><dialog id=\"as7d900as8\" call-id=\"~s\" direction=\"~s\"><state>~s</state></dialog></dialog-info>").
 -define(RESPONDERS, [{{ecallmgr_notify, mwi_notification}
                       ,[{<<"notification">>, <<"mwi">>}]}
 		     ,{{ecallmgr_notify, presence_out}
                       ,[{<<"presence">>, <<"subscribers_query_resp">>}]}
+		     ,{{ecallmgr_notify, subscribe}, [{<<"presence">>, <<"subscribe">>}]}
 		    ]).
 
 -define(BINDINGS, [{notifications, []}]).
@@ -49,22 +49,28 @@ start_link() ->
 %%			     ,{basic_qos, 1}
 			    ], []).
 
-presence_in(Data) ->
-    PresenceId = wh_json:get_value(<<"Channel-Presence-ID">>, Data),
-    [User, Realm] = binary:split(PresenceId, <<"@">>),
+callstate_change(Data) ->
+    User = case wh_json:get_value(<<"Presence-Call-Direction">>, Data) of
+               <<"outbound">> ->
+                   wh_json:get_value(<<"Caller-Destination-Number">>, Data);
+               _ ->
+                   wh_json:get_value(<<"Caller-Username">>, Data)
+           end,
     Request = [{<<"User">>, User}
-               ,{<<"Realm">>, Realm}
+               ,{<<"Account-ID">>, wh_json:get_value(<<"variable_ecallmgr_Account-ID">>, Data)}
                ,{<<"Fields">>, [<<"From-User">>, <<"From-Host">>, <<"From-Tag">>
                                     ,<<"To-User">>, <<"To-Host">>, <<"To-Tag">>
                                     ,<<"Call-ID">>, <<"Accept">>, <<"Agent">>
                                ]}
-               ,{<<"Event">>, {struct, [{<<"From">>, wh_json:get_value(<<"from">>, Data)}
-                                        ,{<<"RPID">>, wh_json:get_value(<<"rpid">>, Data)}
-                                        ,{<<"Status">>, wh_json:get_value(<<"status">>, Data)}
-                                        ,{<<"Event-Type">>, wh_json:get_value(<<"event_type">>, Data)}
-                                        ,{<<"Alt-Event-Type">>, wh_json:get_value(<<"alt_event_type">>, Data)}
-                                        ,{<<"Call-ID">>, wh_json:get_value(<<"Channel-Call-UUID">>, Data)}
-                                        ,{<<"Call-Direction">>, wh_json:get_value(<<"presence-call-direction">>, Data)}]}}
+               ,{<<"Event">>, {struct, [{<<"Call-ID">>, wh_json:get_value(<<"Channel-Call-UUID">>, Data)}
+                                        ,{<<"Call-State">>, wh_json:get_value(<<"Channel-Call-State">>, Data)}
+                                        ,{<<"Presence-ID">>, wh_json:get_value(<<"Channel-Presence-ID">>, Data)}
+                                        ,{<<"Presence-Direction">>, wh_json:get_value(<<"Presence-Call-Direction">>, Data)}
+                                        ,{<<"Caller-ID-Name">>, wh_json:get_value(<<"Caller-Caller-ID-Name">>, Data)}
+                                        ,{<<"Caller-ID-Number">>, wh_json:get_value(<<"Caller-Caller-ID-Number">>, Data)}
+                                        ,{<<"Callee-ID-Name">>, wh_json:get_value(<<"Other-Leg-Caller-ID-Name">>, Data)}
+                                        ,{<<"Callee-ID-Number">>, wh_json:get_value(<<"Other-Leg-Caller-ID-Number">>, Data)}
+                                       ]}}
                | wh_api:default_headers(<<>>, <<"presence">>, <<"subscribers_query">>, ?APP_NAME, ?APP_VERSION)
               ],
     {ok, Payload} = wh_api:presence_subscrs_query([ KV || {_, V}=KV <- Request, V =/= undefined ]),
@@ -222,7 +228,7 @@ mwi_notification(JObj, _Props) ->
             Headers = [{"profile", ?DEFAULT_FS_PROFILE}
                        ,{"to-uri", Endpoint}
                        ,{"from-uri", "sip:2600hz@2600hz.com"}
-                       ,{"event-str", "message-summary"}
+                       ,{"event-string", "message-summary"}
                        ,{"content-type", "application/simple-message-summary"}
                        ,{"content-length", wh_util:to_list(length(Body))}
                        ,{"body", lists:flatten(Body)}
@@ -231,6 +237,12 @@ mwi_notification(JObj, _Props) ->
             Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
             ?LOG("sending of MWI update to ~s resulted in: ~p", [Node, Resp])
     end.
+
+subscribe(_JObj, _Props) ->
+    ok.
+%%    true = wh_api:presence_subscr_v(JObj),
+%%    timer:sleep(500),
+%%    send_presence_dialog(JObj, {struct, [<<"Alt-Event-Type">>, <<"dialog">>]}).
 
 presence_out(JObj, _Props) ->
     true = wh_api:presence_subscrs_query_resp_v(JObj),
@@ -250,55 +262,113 @@ send_presence_dialog(Subscriber, Event) ->
     FromHost = wh_json:get_value(<<"To-Host">>, Subscriber),
     FromTag = wh_json:get_value(<<"To-Tag">>, Subscriber),
 
-    NotifyEvent = wh_json:get_value(<<"Alt-Event-Type">>, Event, <<"presence">>),
+    NotifyEvent = wh_json:get_value(<<"Alt-Event-Type">>, Event, <<"dialog">>),
     CallId = wh_json:get_value(<<"Call-ID">>, Subscriber),
     Accept = wh_json:get_value(<<"Accepts">>, Subscriber, <<"application/dialog-info+xml">>),
 
-    Entity = io_lib:format("sip:~s@~s", [FromUser, FromHost]),
-    Direction = wh_json:get_value(<<"Call-Direction">>, Event),
-    Status = wh_json:get_value(<<"Status">>, Event),
-    Dialog = wh_json:get_value(<<"Call-ID">>, Event),
+    Entity = lists:flatten(io_lib:format("sip:~s@~s", [FromUser, FromHost])),
 
     case get_endpoint(ToUser, ToHost) of
         {error, timeout} ->
-            io:format("TIMEOUT!~n", []),
             ok;
         Endpoint ->
-            Body = build_presence_body(Status, Dialog, Entity, Direction, Accept),
+            Body = build_presence_body(Entity, Event, <<"application/dialog-info+xml">>),
             Headers = [{"profile", ?DEFAULT_FS_PROFILE}
                        ,{"route-uri", wh_util:to_list(Endpoint)}
                        ,{"to-uri", lists:flatten(io_lib:format("sip:~s@~s;tag=~s", [ToUser, ToHost, ToTag]))}
                        ,{"from-uri", lists:flatten(io_lib:format("sip:~s@~s;tag=~s", [FromUser, FromHost, FromTag]))}
+                       ,{"contact", Entity}
                        ,{"call-id", wh_util:to_list(CallId)}
-                       ,{"event-str", wh_util:to_list(NotifyEvent)}
-                       ,{"subscription-state", "active;expires=3600"}
+                       ,{"event-string", wh_util:to_list(NotifyEvent)}
+                       ,{"subscription-state", "active;expires=60"}
                        ,{"content-type", wh_util:to_list(Accept)}
-                       ,{"content-length", wh_util:to_list(length(Body))}
                        ,{"body", lists:flatten(Body)}
                       ],
-            io:format("~p~n", [wh_util:to_list(length(Body))]),
             {ok, Node} = ecallmgr_fs_handler:request_node(<<"audio">>),
-            io:format("~p~n", [Node]),
-            R = freeswitch:sendevent(Node, 'NOTIFY', Headers),
-            io:format("Result ~p~n", [R])
+            freeswitch:sendevent(Node, 'NOTIFY', Headers)
     end.
 
-build_presence_body(Status, Dialog, Entity, CallDirection, <<"application/dialog-info+xml">>) ->
-    {ok, Cache} = ecallmgr_sup:cache_proc(),
-    Version = case wh_cache:fetch_local(Cache, {presence_version, Entity}) of
-                  {ok, V} ->
-                      wh_cache:store_local(Cache, {presence_version, Entity}, V + 1),
-                      V;
-                  _ ->
-                      wh_cache:store_local(Cache, {presence_version, Entity}, 0),
-                      0
-              end,
-    Direction = case CallDirection of
-                    <<"outbound">> -> "recipient";
-                    _ -> "initiator"
+build_presence_body(Entity, Event, <<"application/dialog-info+xml">>) ->
+    EventCallId = wh_json:get_value(<<"Call-ID">>, Event),
+
+    Dialog = build_presence_dialog(EventCallId, Event),
+    Props = [{'dialog-info', [{'xmlns', "urn:ietf:params:xml:ns:dialog-info"}
+                              ,{'version', round(wh_util:current_tstamp())}
+                              ,{'state', "partial"}
+                              ,{'entity', Entity}], Dialog}],
+    wh_util:to_list(make_doc_xml(Props, undefined)).
+
+
+build_presence_dialog(undefined, _) ->
+    [{'whistle', ["rocks"]}];
+build_presence_dialog(CallId, Event) ->
+    Direction = case wh_json:get_value(<<"Presence-Direction">>, Event) of
+                    <<"inbound">> -> "initiator";
+                    <<"outbound">> -> "recipient"
                 end,
-    State = case Status of
-                <<"CS_HANGUP">> -> "terminated";
-                _ -> "confirmed"
+    State = case wh_json:get_value(<<"Call-State">>, Event) of
+                <<"DOWN">> when Direction =:= "recipient" ->
+                    "early";
+                <<"DOWN">> ->
+                    "confirmed";
+                <<"DIALING">> when Direction =:= "recipient" ->
+                    "early";
+                <<"DIALING">> ->
+                    "confirmed";
+                <<"RINGING">> when Direction =:= "recipient" ->
+                    "early";
+                <<"RINGING">> ->
+                    "confirmed";
+                <<"EARLY">> when Direction =:= "recipient" ->
+                    "early";
+                <<"EARLY">> ->
+                    "confirmed";
+                <<"ACTIVE">> ->
+                    "confirmed";
+                <<"HELD">> ->
+                    "early";
+                <<"HANGUP">> ->
+                    "terminated"
             end,
-    io_lib:format(?PRESENCE_DIALOG, [Version, Entity, Dialog, Direction, State]).
+    [{'dialog', [{'id', wh_util:to_list(CallId)}
+                 ,{'direction', Direction}]
+      ,[{'state', State}]}].
+
+make_doc_xml(Props, undefined) ->
+    XMerL = props_to_xml(Props, []),
+    Xml = xmerl:export_simple(XMerL, xmerl_xml),
+    unicode:characters_to_binary(Xml);
+make_doc_xml(Props, Root) ->
+    XMerL = doc_xml_simple(Props, Root),
+    Xml = xmerl:export_simple(XMerL, xmerl_xml),
+    unicode:characters_to_binary(Xml).
+
+doc_xml_simple(Props, Root) ->
+    {Root, props_to_xml(Props, [])}.
+
+props_to_xml([], Xml) ->
+    Xml;
+props_to_xml([{_, undefined}|T], Xml) ->
+    props_to_xml(T, Xml);
+props_to_xml([{_, []}=V|T], Xml) ->
+    props_to_xml(T, [V|Xml]);
+props_to_xml([{_, _, []}=V|T], Xml) ->
+    props_to_xml(T, [V|Xml]);
+
+props_to_xml([{K, [{_, _, _}|_]=V}|T], Xml) ->
+    props_to_xml(T, [{K, props_to_xml(V, [])}|Xml]);
+props_to_xml([{K, Attr, [{_, _}|_]=V}|T], Xml) ->
+    props_to_xml(T, [{K, Attr, props_to_xml(V, [])}|Xml]);
+props_to_xml([{K, Attr, [{_, _, _}|_]=V}|T], Xml) ->
+    props_to_xml(T, [{K, Attr, props_to_xml(V, [])}|Xml]);
+props_to_xml([{K, Attr, V}|T], Xml) when is_boolean(V) ->
+    props_to_xml(T, [{K, [{type, "boolean"}|Attr], [wh_util:to_list(V)]}|Xml]);
+props_to_xml([{K, Attr, V}|T], Xml) ->
+    props_to_xml(T, [{K, Attr, [wh_util:to_list(V)]}|Xml]);
+
+props_to_xml([{K, [{_, _}|_]=V}|T], Xml) ->
+    props_to_xml(T, [{K, props_to_xml(V, [])}|Xml]);
+props_to_xml([{K, V}|T], Xml) when is_boolean(V) ->
+    props_to_xml(T, [{K, [{type, "boolean"}], [wh_util:to_list(V)]}|Xml]);
+props_to_xml([{K, V}|T], Xml) ->
+    props_to_xml(T, [{K, [wh_util:to_list(V)]}|Xml]).
