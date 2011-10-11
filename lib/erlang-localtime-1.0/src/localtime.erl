@@ -35,12 +35,13 @@
 %  Timezone = String()
 %  LocalDateTime = DateTime()
 %  ErrDescr = atom(), unknown_tz
--spec utc_to_local/2 :: (calendar:t_datetime(), binary() | list()) -> calendar:t_datetime() | {'error', 'unknown_tz'} | {'stdname', {string(), string()}}.
+-spec utc_to_local/2 :: (calendar:t_datetime(), binary() | list()) -> calendar:t_datetime() | {'error', 'unknown_tz'}.
 utc_to_local(UtcDateTime, TZ) when is_list(TZ) ->
     case get_timezone(TZ) of
 	{shift, Shift} -> adjust_datetime(UtcDateTime, Shift);
 	{tzrule, TzRule} -> process_tz_rule(UtcDateTime, TzRule);
-	E -> E
+	{stdname, _} -> {error, unknown_tz};
+	{error, _}=E -> E
     end;
 utc_to_local(UtcDateTime, TZ) when is_binary(TZ) ->
     utc_to_local(UtcDateTime, binary_to_list(TZ)).
