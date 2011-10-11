@@ -482,7 +482,7 @@
                                                     ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>
                                                     ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
                                                     ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>
-                                                    ,<<"Custom-Channel-Vars">>
+                                                    ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
 					      ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}
