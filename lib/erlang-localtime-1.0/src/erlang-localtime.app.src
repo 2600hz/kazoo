@@ -1,7 +1,11 @@
 {application, 'erlang-localtime',
  [
-  {description, ""},
+  {description, "Timezone conversion routines"},
   {vsn, "1.0"},
   {registered, []},
+  {applications, [
+                   kernel
+                   ,stdlib
+                  ]},
   {env, []}
  ]}.

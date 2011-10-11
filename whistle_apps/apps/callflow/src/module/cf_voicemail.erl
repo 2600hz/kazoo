@@ -1115,13 +1115,13 @@ new_timestamp() ->
 %% encoded Unix epoch in the provided timezone
 %% @end
 %%--------------------------------------------------------------------
--spec get_unix_epoch/2 :: (Epoch, Timezone) -> binary() when
-      Epoch :: binary(),
-      Timezone :: binary().
+-spec get_unix_epoch/2 :: (Epoch, Timezone) -> ne_binary() when
+      Epoch :: ne_binary(),
+      Timezone :: ne_binary().
 get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(Epoch)),
     LocalDateTime = localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)),
-    wh_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - 62167219200).
+    wh_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
 
 %%--------------------------------------------------------------------
 %% @private

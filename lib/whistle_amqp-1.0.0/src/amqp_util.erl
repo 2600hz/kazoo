@@ -739,13 +739,13 @@ register_return_handler() ->
 %% Encode/decode a key so characters like dot won't interfere with routing separator
 %% @end
 %%------------------------------------------------------------------------------
--spec encode_key/1 :: (RoutingKey) -> RoutingKeyEncoded :: binary() when
-      RoutingKey :: binary().
+-spec encode_key/1 :: (RoutingKey) -> RoutingKeyEncoded :: ne_binary() when
+      RoutingKey :: ne_binary().
 encode_key(RoutingKey) ->
     binary:replace(RoutingKey, <<".">>, <<"%2E">>, [global]).
 
--spec decode_key/1 :: (RoutingKey) -> RoutingKeyDecoded :: binary() when
-      RoutingKey :: binary().
+-spec decode_key/1 :: (RoutingKey) -> RoutingKeyDecoded :: ne_binary() when
+      RoutingKey :: ne_binary().
 decode_key(RoutingKey) ->
     binary:replace(RoutingKey, <<"%2E">>, <<".">>, [global]).
 
