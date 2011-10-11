@@ -33,6 +33,20 @@
 %   {Hour, Min} - time of transition to std.
 % }
 
+-type dow() :: 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat'.
+-type moy() :: 'jan' | 'feb' | 'mar' | 'apr' | 'may' | 'jun' | 'jul' | 'aug' | 'sep' | 'oct' | 'nov' | 'dec'.
+
+-type stdname() :: {string(), string()}.
+-type dstname() :: 'undef' | {string(), string()}.
+-type shift() :: integer().
+-type dstshift() :: shift().
+-type dstrule() :: 'undef' | {integer(), dow(), moy()}.
+-type dsttime() :: {integer(), integer()}.
+
+
+%% TzName, StdName, DstName, Shift, DstShift, DstStartRule, DstStartTime, DstEndRule, DstEndTime
+-type tz_db_row() :: {string(), stdname(), dstname(), shift(), dstshift(), dstrule(), dsttime(), dstrule(), dsttime()}.
+
 -define(tz_database,
    [
       {"Africa/Abidjan",{"GMT","GMT"},undef,0,0,undef,{0,0},undef,{0,0}},
