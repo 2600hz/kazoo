@@ -15,6 +15,8 @@
 -define(FOLDER_NEW, <<"new">>).
 -define(FOLDER_SAVED, <<"saved">>).
 -define(FOLDER_DELETED, <<"deleted">>).
+-define(MAILBOX_DEFAULT_SIZE, 0).
+-define(MAILBOX_DEFAULT_MSG_MAX_LENGTH, 0).
 
 -import(cf_call_command, [answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
                           ,b_store/3, b_play_and_collect_digits/5, b_play_and_collect_digit/2
@@ -113,6 +115,8 @@
           ,check_if_owner = true :: boolean()
           ,owner_id = <<>> :: binary()
           ,is_setup = false :: boolean()
+	  ,size = 0 :: non_neg_integer()
+	  ,message_max_length = 0 :: non_neg_integer()
           ,keys = #keys{}
           ,prompts = #prompts{}
          }).
@@ -781,6 +785,10 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                          wh_json:get_value(<<"owner_id">>, JObj)
                      ,is_setup =
                          wh_json:is_true(<<"is_setup">>, JObj, false)
+		     ,size =
+			 wh_json:get_integer_value(<<"size">>, JObj, ?MAILBOX_DEFAULT_SIZE)
+		     ,message_max_length =
+			 wh_json:get_integer_value(<<"message_max_length">>, JObj, ?MAILBOX_DEFAULT_MSG_MAX_LENGTH)
                      ,exists = true
                     };
         {error, R} ->
