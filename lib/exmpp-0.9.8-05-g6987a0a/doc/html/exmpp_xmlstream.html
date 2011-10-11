@@ -1,0 +1,193 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_xmlstream</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_xmlstream</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_xmlstream</strong> sends events to a specified
+  process or function based on elements and trees returned by the
+  parser <code>exmpp_xml</code>.
+
+<p><b>Authors:</b> Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2><p>
+  The module <strong>exmpp_xmlstream</strong> sends events to a specified
+  process or function based on elements and trees returned by the
+  parser <code>exmpp_xml</code>.</p>
+ 
+  <p>
+  It also provides a high-level function to parse an XML document
+  without the overhead of parser initialization.
+  </p>
+ 
+  <p><strong>The API isn't stabilized yet</strong>.
+  What's left to be done:</p>
+  <ul>
+  <li>rework API (function names with more sense especially)</li>
+  </ul>
+<h2><a name="types">Data Types</a></h2>
+
+<h3 class="typedecl"><a name="type-callback">callback()</a></h3>
+<p><tt>callback() = Gen_Fsm | Process | Function | No_Callback | Log</tt>
+<ul class="definitions"><li><tt>Gen_Fsm = {gen_fsm, Pid_or_Name}</tt></li><li><tt>Pid_or_Name = pid() | atom()</tt></li><li><tt>Process = {process, pid()} | pid()</tt></li><li><tt>Function = {apply, {Mod, Func, Extra}}</tt></li><li><tt>Mod = atom()</tt></li><li><tt>Func = atom()</tt></li><li><tt>Extra = term()</tt></li><li><tt>No_Callback = no_callback</tt></li><li><tt>Log = term()</tt></li></ul></p>
+<p><p>Represents the recipient of each event.</p>
+ 
+  In case of a <code>Gen_Fsm</code>, the call will be:
+  <pre>  gen_fsm:send_event(Pid_or_Name, Event)</pre><p>
+  See <a href="gen_fsm.html"><code>gen_fsm</code></a> documentation for more informations.</p>
+ 
+  <p>In case of a <code>Process</code>, the event is sent using the Erlang <code>!</code> operator.</p>
+ 
+  In case of a <code>Function</code>, the call will be:
+  <pre>  Mod:Func(Event, Extra)</pre><p>  
+So this function must have an arity of 2.</p>
+ 
+  <p>In case of <code>No_Callback</code>, events are accumulated and returned to
+  <a href="#parse-2"><code>parse/2</code></a> caller.</p>
+ 
+  <p>For <code>Function</code>, it must return <code>{error, Reason}</code> if an error occured  
+or anything else if the event is accepted.</p>
+ 
+  If the callback() doesn't match any of these specifications
+  (the <code>Log</code> case), the event will be logged with
+  <a href="error_logger.html#info_msg-2"><code>error_logger:info_msg/2</code></a>.</p>
+
+<h3 class="typedecl"><a name="type-xmlstream">xmlstream()</a></h3>
+<p><b>abstract datatype</b>: <tt>xmlstream()</tt></p>
+<p>Handler for the opened stream, initialized with a call to <a href="#start-0"><code>start/0</code></a> or <a href="#start-1"><code>start/1</code></a>.</p>
+
+<h3 class="typedecl"><a name="type-xmlstreamevent">xmlstreamevent()</a></h3>
+<p><tt>xmlstreamevent() = Stream_Start | Stream_Element | Stream_End | Error</tt>
+<ul class="definitions"><li><tt>Stream_Start = {xmlstreamstart, XML_Element} | {xmlstreamstart, Name, Attrs}</tt></li><li><tt>Stream_Element = {xmlstreamelement, XML_Element}</tt></li><li><tt>Stream_End = {xmlstreamend, XML_End_Tag}</tt></li><li><tt>XML_Element = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_xml.html#type-xmlel_old">exmpp_xml:xmlel_old()</a></tt></li><li><tt>XML_End_Tag = <a href="exmpp_xml.html#type-xmlendtag">exmpp_xml:xmlendtag()</a></tt></li><li><tt>Name = atom() | string()</tt></li><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr_old">exmpp_xml:xmlattr_old()</a> | <a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>Stream_Error = {xmlstreamerror, Reason}</tt></li></ul></p>
+<p>Records representing an event sent by the <a href="#parse-2"><code>parse/2</code></a> function.</p>
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#change_callback-2">change_callback/2</a></td><td>Change callback of the stream.</td></tr>
+<tr><td valign="top"><a href="#get_parser-1">get_parser/1</a></td><td>Return the XML parser used.</td></tr>
+<tr><td valign="top"><a href="#parse-2">parse/2</a></td><td>Parse a chunk of XML data and send events to the callback  
+process or function, or return them to the caller.</td></tr>
+<tr><td valign="top"><a href="#parse_element-1">parse_element/1</a></td><td>Parse the given data.</td></tr>
+<tr><td valign="top"><a href="#parse_element-2">parse_element/2</a></td><td>Parse the given data.</td></tr>
+<tr><td valign="top"><a href="#reset-1">reset/1</a></td><td>Reset stream and the underlying XML parser.</td></tr>
+<tr><td valign="top"><a href="#send_events-2">send_events/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#set_wrapper_tagnames-2">set_wrapper_tagnames/2</a></td><td>Reset stream and the underlying XML parser.</td></tr>
+<tr><td valign="top"><a href="#start-2">start/2</a></td><td>Start a new stream handler.</td></tr>
+<tr><td valign="top"><a href="#start-3">start/3</a></td><td>Start a new stream handler.</td></tr>
+<tr><td valign="top"><a href="#stop-1">stop/1</a></td><td>Close a stream handler.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="change_callback-2">change_callback/2</a></h3>
+<div class="spec">
+<p><tt>change_callback(Stream, CallBack) -&gt; NewStream</tt>
+<ul class="definitions"><li><tt>Stream = <a href="#type-xmlstream">xmlstream()</a></tt></li><li><tt>CallBack = <a href="#type-callback">callback()</a></tt></li><li><tt>NewStream = <a href="#type-xmlstream">xmlstream()</a></tt></li></ul></p>
+</div><p>Change callback of the stream.</p>
+
+<h3 class="function"><a name="get_parser-1">get_parser/1</a></h3>
+<div class="spec">
+<p><tt>get_parser(Xml_stream::Stream) -&gt; Parser</tt>
+<ul class="definitions"><li><tt>Stream = <a href="#type-xmlstream">xmlstream()</a></tt></li><li><tt>Parser = <a href="exmpp_xml.html#type-xmlparser">exmpp_xml:xmlparser()</a></tt></li></ul></p>
+</div><p>Return the XML parser used.</p>
+
+<h3 class="function"><a name="parse-2">parse/2</a></h3>
+<div class="spec">
+<p><tt>parse(Xml_stream::Stream, Data) -&gt; {ok, New_Stream} | {ok, New_Stream, Events} | {error, Reason}</tt>
+<ul class="definitions"><li><tt>Stream = <a href="#type-xmlstream">xmlstream()</a></tt></li><li><tt>Data = string() | binary()</tt></li><li><tt>New_Stream = <a href="#type-xmlstream">xmlstream()</a></tt></li><li><tt>Events = [<a href="#type-xmlstreamevent">xmlstreamevent()</a>]</tt></li></ul></p>
+</div><p><p>Parse a chunk of XML data and send events to the callback  
+process or function, or return them to the caller.</p>
+ 
+  <p>If <code>Data</code> doesn't contain one or more complete XML elements, this  
+function may not send any event.</p>
+ 
+  Potential events are described by the <a href="#type-xmlstreamevent"><code>xmlstreamevent()</code></a> type.</p>
+
+<h3 class="function"><a name="parse_element-1">parse_element/1</a></h3>
+<div class="spec">
+<p><tt>parse_element(Data) -&gt; [XML_Element]</tt>
+<ul class="definitions"><li><tt>Data = string() | binary()</tt></li><li><tt>XML_Element = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_xml.html#type-xmlel_old">exmpp_xml:xmlel_old()</a> | <a href="exmpp_xml.html#type-xmlcdata">exmpp_xml:xmlcdata()</a></tt></li></ul></p>
+</div><p><p>Parse the given data.</p>
+ 
+  The XML parser is created with default options.
+ </p>
+<p><b>See also:</b> <a href="exmpp_xml.html#parse_document-1">exmpp_xml:parse_document/1</a>, <a href="exmpp_xml.html#start_parser-0">exmpp_xml:start_parser/0</a>.</p>
+
+<h3 class="function"><a name="parse_element-2">parse_element/2</a></h3>
+<div class="spec">
+<p><tt>parse_element(Data, Parser_Options) -&gt; [XML_Element]</tt>
+<ul class="definitions"><li><tt>Data = string() | binary()</tt></li><li><tt>Parser_Options = [<a href="exmpp_xml.html#type-xmlparseroption">exmpp_xml:xmlparseroption()</a>]</tt></li><li><tt>XML_Element = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_xml.html#type-xmlel_old">exmpp_xml:xmlel_old()</a> | <a href="exmpp_xml.html#type-xmlcdata">exmpp_xml:xmlcdata()</a></tt></li></ul></p>
+</div><p><p>Parse the given data.</p>
+ 
+  The XML parser is created with given <code>Parser_Options</code> options.
+ </p>
+<p><b>See also:</b> <a href="exmpp_xml.html#parse_document-2">exmpp_xml:parse_document/2</a>, <a href="exmpp_xml.html#start_parser-1">exmpp_xml:start_parser/1</a>.</p>
+
+<h3 class="function"><a name="reset-1">reset/1</a></h3>
+<div class="spec">
+<p><tt>reset(Xml_stream::Stream) -&gt; New_Stream</tt>
+<ul class="definitions"><li><tt>Stream = <a href="#type-xmlstream">xmlstream()</a></tt></li><li><tt>New_Stream = <a href="#type-xmlstream">xmlstream()</a></tt></li></ul></p>
+</div><p>Reset stream and the underlying XML parser.</p>
+
+<h3 class="function"><a name="send_events-2">send_events/2</a></h3>
+<div class="spec">
+<p><tt>send_events(Xml_stream, Rest) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="set_wrapper_tagnames-2">set_wrapper_tagnames/2</a></h3>
+<div class="spec">
+<p><tt>set_wrapper_tagnames(Stream, TagNames) -&gt; New_Stream</tt>
+<ul class="definitions"><li><tt>Stream = <a href="#type-xmlstream">xmlstream()</a></tt></li><li><tt>TagNames = [atom() | string()]</tt></li><li><tt>New_Stream = <a href="#type-xmlstream">xmlstream()</a></tt></li></ul></p>
+</div><p>Reset stream and the underlying XML parser.</p>
+
+<h3 class="function"><a name="start-2">start/2</a></h3>
+<div class="spec">
+<p><tt>start(Callback, Parser) -&gt; Stream</tt>
+<ul class="definitions"><li><tt>Callback = <a href="#type-callback">callback()</a></tt></li><li><tt>Stream = <a href="#type-xmlstream">xmlstream()</a></tt></li><li><tt>Parser = <a href="exmpp_xml.html#type-xmlparser">exmpp_xml:xmlparser()</a></tt></li></ul></p>
+</div><p><p>Start a new stream handler.</p>
+ 
+  <p>The XML parser is reset and options <code>{root_depth, 1}</code> and <code>emit_endtag</code>  
+are set.</p>
+ 
+  The stream will use the old xmlstreamstart tuple.
+ </p>
+<p><b>See also:</b> <a href="exmpp_xml.html#reset_parser-2">exmpp_xml:reset_parser/2</a>, <a href="exmpp_xml.html#start_parser-1">exmpp_xml:start_parser/1</a>.</p>
+
+<h3 class="function"><a name="start-3">start/3</a></h3>
+<div class="spec">
+<p><tt>start(Callback, Parser, Stream_Options) -&gt; Stream</tt>
+<ul class="definitions"><li><tt>Callback = <a href="#type-callback">callback()</a></tt></li><li><tt>Stream = <a href="#type-xmlstream">xmlstream()</a></tt></li><li><tt>Parser = <a href="exmpp_xml.html#type-xmlparser">exmpp_xml:xmlparser()</a></tt></li><li><tt>Stream_Options = [Stream_Option]</tt></li><li><tt>Stream_Option = {xmlstreamstart, old | new}</tt></li></ul></p>
+</div><p><p>Start a new stream handler.</p>
+ 
+  <p>The XML parser is reset and options <code>{root_depth, 1}</code> and <code>emit_endtag</code>  
+are set.</p>
+ 
+  The stream will use the old xmlstreamstart tuple by default.
+ </p>
+<p><b>See also:</b> <a href="exmpp_xml.html#reset_parser-2">exmpp_xml:reset_parser/2</a>, <a href="exmpp_xml.html#start_parser-1">exmpp_xml:start_parser/1</a>.</p>
+
+<h3 class="function"><a name="stop-1">stop/1</a></h3>
+<div class="spec">
+<p><tt>stop(Stream) -&gt; ok | {error, Reason}</tt>
+<ul class="definitions"><li><tt>Stream = <a href="#type-xmlstream">xmlstream()</a></tt></li></ul></p>
+</div><p><p>Close a stream handler.</p>
+ 
+  <p>This must be called when <code>Stream</code> (returned by <a href="#start-2"><code>start/2</code></a> or
+  <a href="#start-3"><code>start/3</code></a> isn't necessary anymore.</p>
+ 
+  <p>Currently this is a NOOP.</p>
+ 
+  The caller is responsible to terminate the parser.
+ </p>
+<p><b>See also:</b> <a href="#get_parser-1">get_parser/1</a>.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:39.</i></p>
+</body>
+</html>

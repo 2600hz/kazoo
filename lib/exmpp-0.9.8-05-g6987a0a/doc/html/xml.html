@@ -1,0 +1,169 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module xml</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module xml</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  This <strong>xml</strong> module is for compatibility with ejabberd.
+
+
+<h2><a name="description">Description</a></h2><p>
+  This <strong>xml</strong> module is for compatibility with ejabberd.</p>
+ 
+  Some replacements to make in ejabberd source code to work with exmpp:
+  <pre>  - {xmlelement, _, _, SubEls} = Stanza
+  + SubEls = exmpp_xml:get_child_elements(Stanza)</pre>
+  <pre>  - {xmlelement, "presence", [{"type", "unavailable"}], []}
+  + exmpp_presence:unavailable()</pre>
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#append_subtags-2">append_subtags/2</a></td><td>Deprecated for <a href="exmpp_xml.html#append_children-1"><code>exmpp_xml:append_children/1</code></a>.</td></tr>
+<tr><td valign="top"><a href="#crypt-1">crypt/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#element_to_string-1">element_to_string/1</a></td><td>Deprecated for <a href="exmpp_xml.html#document_to_list-1"><code>exmpp_xml:document_to_list/1</code></a>.</td></tr>
+<tr><td valign="top"><a href="#get_attr-2">get_attr/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_attr_s-2">get_attr_s/2</a></td><td>Deprecated for <a href="exmpp_xml.html#get_attribute_from_list_as_list-3"><code>exmpp_xml:get_attribute_from_list_as_list/3</code></a>.</td></tr>
+<tr><td valign="top"><a href="#get_cdata-1">get_cdata/1</a></td><td>Deprecated for <a href="exmpp_xml.html#get_cdata_from_list_as_list-1"><code>exmpp_xml:get_cdata_from_list_as_list/1</code></a>,
+  <a href="exmpp_xml.html#get_cdata_as_list-1"><code>exmpp_xml:get_cdata_as_list/1</code></a>.</td></tr>
+<tr><td valign="top"><a href="#get_path_s-2">get_path_s/2</a></td><td>Deprecated for <a href="exmpp_presence.html#get_show-1"><code>exmpp_presence:get_show/1</code></a>.</td></tr>
+<tr><td valign="top"><a href="#get_subtag-2">get_subtag/2</a></td><td>Deprecated for <a href="exmpp_xml.html#get_element-2"><code>exmpp_xml:get_element/2</code></a>.</td></tr>
+<tr><td valign="top"><a href="#get_subtag_cdata-2">get_subtag_cdata/2</a></td><td>Deprecated for <a href="exmpp_xml.html#get_cdata-1"><code>exmpp_xml:get_cdata/1</code></a>,
+  <a href="exmpp_xml.html#get_cdata_as_list-1"><code>exmpp_xml:get_cdata_as_list/1</code></a>.</td></tr>
+<tr><td valign="top"><a href="#get_tag_attr-2">get_tag_attr/2</a></td><td>Deprecated for <a href="exmpp_xml.html#get_attribute_as_binary-3"><code>exmpp_xml:get_attribute_as_binary/3</code></a>.</td></tr>
+<tr><td valign="top"><a href="#get_tag_attr_s-2">get_tag_attr_s/2</a></td><td>Deprecated for <a href="exmpp_xml.html#get_attribute_as_list-3"><code>exmpp_xml:get_attribute_as_list/3</code></a>.</td></tr>
+<tr><td valign="top"><a href="#get_tag_cdata-1">get_tag_cdata/1</a></td><td>Deprecated for <a href="exmpp_xml.html#get_cdata-1"><code>exmpp_xml:get_cdata/1</code></a>.</td></tr>
+<tr><td valign="top"><a href="#make_text_node-1">make_text_node/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#remove_cdata-1">remove_cdata/1</a></td><td>Deprecated for <a href="exmpp_xml.html#get_child_elements-1"><code>exmpp_xml:get_child_elements/1</code></a>.</td></tr>
+<tr><td valign="top"><a href="#replace_tag_attr-3">replace_tag_attr/3</a></td><td>Deprecated for <a href="exmpp_stanza.html#set_lang-2"><code>exmpp_stanza:set_lang/2</code></a> and others.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="append_subtags-2">append_subtags/2</a></h3>
+<div class="spec">
+<p><tt>append_subtags(Stanza, SubEls) -&gt; any()</tt></p>
+</div><p>Deprecated for <a href="exmpp_xml.html#append_children-1"><code>exmpp_xml:append_children/1</code></a>.
+  <pre>  - xml:append_subtags(Stanza, SubEls)
+  + exmpp_xml:append_children(Stanza, SubEls)</pre></p>
+
+<h3 class="function"><a name="crypt-1">crypt/1</a></h3>
+<div class="spec">
+<p><tt>crypt(S) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="element_to_string-1">element_to_string/1</a></h3>
+<div class="spec">
+<p><tt>element_to_string(El) -&gt; any()</tt></p>
+</div><p>Deprecated for <a href="exmpp_xml.html#document_to_list-1"><code>exmpp_xml:document_to_list/1</code></a>.
+  <pre>  - xml:element_to_string(El)
+  + exmpp_xml:document_to_list(El)</pre></p>
+
+<h3 class="function"><a name="get_attr-2">get_attr/2</a></h3>
+<div class="spec">
+<p><tt>get_attr(AttrName, Attrs) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="get_attr_s-2">get_attr_s/2</a></h3>
+<div class="spec">
+<p><tt>get_attr_s(AttrName, Attrs) -&gt; any()</tt></p>
+</div><p>Deprecated for <a href="exmpp_xml.html#get_attribute_from_list_as_list-3"><code>exmpp_xml:get_attribute_from_list_as_list/3</code></a>.
+  <pre>  - get_attr_s(AttrName, Attrs)
+  + exmpp_xml:get_attribute_from_list_as_list(Attrs, AttrName, "")</pre>
+  <pre>  - xml:get_attr_s("to", Attrs)
+  + exmpp_stanza:get_recipient(Stanza)</pre>
+  Deprecated for <a href="proplists.html#get_value-3"><code>proplists:get_value/3</code></a>.
+  <pre>  - xml:get_attr_s("username", KeyVals)
+  + proplists:get_value("username", KeyVals, "")</pre>
+  Deprecated for <a href="exmpp_stream.html#get_lang-1"><code>exmpp_stream:get_lang/1</code></a>.
+  <pre>  - xml:get_attr_s("xml:lang", Attrs)
+  + exmpp_stream:get_lang(Stanza)</pre>
+  Deprecated for <a href="exmpp_stream.html#get_version-1"><code>exmpp_stream:get_version/1</code></a>.
+  <pre>  - xml:get_attr_s("version", Attrs) of
+  + exmpp_stream:get_version(Stanza)</pre>
+  Deprecated for <a href="exmpp_stanza.html#get_id_from_attrs-1"><code>exmpp_stanza:get_id_from_attrs/1</code></a>.
+  <pre>  - xml:get_attr_s("id", Attrs)
+  + exmpp_stanza:get_id_from_attrs(Attrs)</pre></p>
+
+<h3 class="function"><a name="get_cdata-1">get_cdata/1</a></h3>
+<div class="spec">
+<p><tt>get_cdata(L) -&gt; any()</tt></p>
+</div><p>Deprecated for <a href="exmpp_xml.html#get_cdata_from_list_as_list-1"><code>exmpp_xml:get_cdata_from_list_as_list/1</code></a>,
+  <a href="exmpp_xml.html#get_cdata_as_list-1"><code>exmpp_xml:get_cdata_as_list/1</code></a>.
+  <pre>  - xml:get_cdata(Els)
+  + exmpp_xml:get_cdata_from_list_as_list(Els)</pre>
+  <pre>  - xml:get_cdata(Els)
+  + exmpp_xml:get_cdata_as_list(El)</pre></p>
+
+<h3 class="function"><a name="get_path_s-2">get_path_s/2</a></h3>
+<div class="spec">
+<p><tt>get_path_s(El, Path) -&gt; any()</tt></p>
+</div><p>Deprecated for <a href="exmpp_presence.html#get_show-1"><code>exmpp_presence:get_show/1</code></a>.
+  <pre>  - xml:get_path_s(Stanza, [{elem, "show"}, cdata])
+  + exmpp_presence:get_show(Stanza)</pre></p>
+
+<h3 class="function"><a name="get_subtag-2">get_subtag/2</a></h3>
+<div class="spec">
+<p><tt>get_subtag(El, Name) -&gt; any()</tt></p>
+</div><p>Deprecated for <a href="exmpp_xml.html#get_element-2"><code>exmpp_xml:get_element/2</code></a>.
+  <pre>  - xml:get_subtag(El, "x")
+  + exmpp_xml:get_element(El, x)</pre>
+  <pre>  - xml:get_subtag(Packet, "status")
+  + exmpp_presence:get_status(Packet)</pre></p>
+
+<h3 class="function"><a name="get_subtag_cdata-2">get_subtag_cdata/2</a></h3>
+<div class="spec">
+<p><tt>get_subtag_cdata(Tag, Name) -&gt; any()</tt></p>
+</div><p>Deprecated for <a href="exmpp_xml.html#get_cdata-1"><code>exmpp_xml:get_cdata/1</code></a>,
+  <a href="exmpp_xml.html#get_cdata_as_list-1"><code>exmpp_xml:get_cdata_as_list/1</code></a>.
+  <pre>  - xml:get_subtag_cdata(Packet, "body")
+  + exmpp_xml:get_cdata_as_list(exmpp_xml:get_element(Packet, 'body'))</pre></p>
+
+<h3 class="function"><a name="get_tag_attr-2">get_tag_attr/2</a></h3>
+<div class="spec">
+<p><tt>get_tag_attr(AttrName, Xmlel) -&gt; any()</tt></p>
+</div><p>Deprecated for <a href="exmpp_xml.html#get_attribute_as_binary-3"><code>exmpp_xml:get_attribute_as_binary/3</code></a>.
+  <pre>  - xml:get_tag_attr("affiliation", Item)
+  + exmpp_xml:get_attribute_as_binary(Item, 'affiliation', false)</pre></p>
+
+<h3 class="function"><a name="get_tag_attr_s-2">get_tag_attr_s/2</a></h3>
+<div class="spec">
+<p><tt>get_tag_attr_s(AttrName, El) -&gt; any()</tt></p>
+</div><p>Deprecated for <a href="exmpp_xml.html#get_attribute_as_list-3"><code>exmpp_xml:get_attribute_as_list/3</code></a>.
+  <pre>  - xml:get_tag_attr_s("node", SubEl)
+  + exmpp_xml:get_attribute_as_list(SubEl, 'node', "")</pre></p>
+
+<h3 class="function"><a name="get_tag_cdata-1">get_tag_cdata/1</a></h3>
+<div class="spec">
+<p><tt>get_tag_cdata(X1) -&gt; any()</tt></p>
+</div><p>Deprecated for <a href="exmpp_xml.html#get_cdata-1"><code>exmpp_xml:get_cdata/1</code></a>.
+  <pre>  - xml:get_tag_cdata(El)
+  + exmpp_xml:get_cdata(El)</pre></p>
+
+<h3 class="function"><a name="make_text_node-1">make_text_node/1</a></h3>
+<div class="spec">
+<p><tt>make_text_node(CData) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="remove_cdata-1">remove_cdata/1</a></h3>
+<div class="spec">
+<p><tt>remove_cdata(L) -&gt; any()</tt></p>
+</div><p>Deprecated for <a href="exmpp_xml.html#get_child_elements-1"><code>exmpp_xml:get_child_elements/1</code></a>.
+  <pre>  - xml:remove_cdata(Els)
+  + exmpp_xml:get_child_elements(SubEl)</pre></p>
+
+<h3 class="function"><a name="replace_tag_attr-3">replace_tag_attr/3</a></h3>
+<div class="spec">
+<p><tt>replace_tag_attr(Attr, Value, El) -&gt; any()</tt></p>
+</div><p>Deprecated for <a href="exmpp_stanza.html#set_lang-2"><code>exmpp_stanza:set_lang/2</code></a> and others.
+  <pre>  - xml:replace_tag_attr("xml:lang", Lang, El)
+  + exmpp_stanza:set_lang(El, Lang)</pre></p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:41.</i></p>
+</body>
+</html>

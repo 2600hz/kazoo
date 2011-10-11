@@ -1,0 +1,44 @@
+body {
+  color: #000;
+  background-color: #fff;
+}
+
+h1 {
+  border-bottom: solid 1px #000;
+}
+
+h2 {
+  border-bottom: dashed 1px #bbb;
+}
+
+pre {
+  color: #461b7e;
+  margin-left: 1em;
+}
+
+code {
+  color: #007a00;
+}
+
+a code {
+  color: inherit;
+}
+
+caption {
+  font-style: italic;
+  color: #009;
+  margin-left: 20px;
+}
+
+table[border="1"], table.illustration {
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+
+table[border="1"] td, table.illustration td {
+  border: 1px solid #ddd;
+}
+
+table.illustration td {
+  padding: 4px;
+}

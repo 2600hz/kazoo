@@ -1,0 +1,239 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_client_legacy_auth</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_client_legacy_auth</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_client_legacy_auth</strong> implements the initiating  
+entity side of legacy authentication found in Jabber, before XMPP  
+1.0.
+
+<p><b>Authors:</b> Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+<p><b>References</b><ul><li><a href="http://www.xmpp.org/extensions/xep-0078.html">XEP-0078: Non-SASL Authentication</a></li></ul></p>
+
+<h2><a name="description">Description</a></h2><p>
+  The module <strong>exmpp_client_legacy_auth</strong> implements the initiating  
+entity side of legacy authentication found in Jabber, before XMPP  
+1.0.</p>
+ 
+  <p>
+  This table presents a successful legacy authentication.
+  </p>
+  <table class="illustration">
+  <tr>
+  <th>Client-side</th>
+  <th>Server-side</th>
+  </tr>
+  <tr>
+  <td>
+  <p>
+  Once a stream is opened, the client call <code>exmpp_client_legacy_auth</code>:
+  </p>
+  <pre>Request = exmpp_client_legacy_auth:request("jabber.example.com").</pre>
+  <p>
+  After serialization, this produces this XML message:
+  </p>
+  <pre>&lt;iq type="get" to="jabber.example.com" id="auth-1905181425"&gt;
+    &lt;query xmlns="jabber:iq:auth"/&gt;<br>&lt;/iq&gt;</pre>
+  </td>
+  <td></td>
+  </tr>
+  <tr>
+  <td></td>
+  <td>
+  <p>
+  The server answer with the available fields:
+  </p>
+  <pre>Fields = exmpp_server_legacy_auth:fields(Request).</pre>
+  <p>
+  After serialization, this produces this XML message:
+  </p>
+  <pre>&lt;iq xmlns="jabber:client" type="result" id="auth-1905181425"&gt;
+        &lt;query xmlns="jabber:iq:auth"&gt;
+                &lt;username/&gt;
+                &lt;password/&gt;
+                &lt;digest/&gt;
+                &lt;resource/&gt;
+        &lt;/query&gt;<br>&lt;/iq&gt;</pre>
+  </td>
+  </tr>
+  <tr>
+  <td>
+  <p>
+  The client can send its credentials:
+  </p>
+  <pre>Password = exmpp_client_legacy_auth:password(
+    Fields,
+    "johndoe",
+    "foobar!",
+    "home"<br>).</pre>
+  <p>
+  The best method is chosen automatically (here, <code>&lt;digest/&gt;</code>).
+  </p>
+  <p>
+  After serialization, this produces this XML message:
+  </p>
+  <pre>&lt;q xmlns="jabber:client" type="set" id="auth-3105434037"&gt;
+        &lt;query xmlns="jabber:iq:auth"&gt;
+                &lt;username&gt;johndoe&lt;/username&gt;
+                &lt;digest&gt;
+                        93fdad2a795c59c73a6acf68a4dbdd3ddb366239
+                &lt;/digest&gt;
+                &lt;resource&gt;home&lt;/resource&gt;
+        &lt;/query&gt;<br>&lt;/iq&gt;</pre>
+  </td>
+  <td></td>
+  </tr>
+  <tr>
+  <td></td>
+  <td>
+  <p>
+  If the password is correct, the server notify the client:
+  </p>
+  <pre>Success = exmpp_server_legacy_auth:success(Password).</pre>
+  <p>
+  After serialization, this produces this XML message:
+  </p>
+  <pre>&lt;iq xmlns="jabber:client" type="result" id="auth-3105434037"/&gt;</pre>
+  </td>
+  </tr>
+  </table>
+ 
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#digest-2">digest/2</a></td><td>Produce a password digest for legacy auth, according to XEP-0078.</td></tr>
+<tr><td valign="top"><a href="#get_fields-1">get_fields/1</a></td><td>Return the list of fields supported by the server.</td></tr>
+<tr><td valign="top"><a href="#get_prefered_auth-1">get_prefered_auth/1</a></td><td>Return the prefered authentication method.</td></tr>
+<tr><td valign="top"><a href="#hex-1">hex/1</a></td><td>Encode list to a hexadecimal string.</td></tr>
+<tr><td valign="top"><a href="#is_success-1">is_success/1</a></td><td>Tell if the authentication succeeded.</td></tr>
+<tr><td valign="top"><a href="#password-4">password/4</a></td><td>Make an <code>&lt;iq/&gt;</code> to send authentication informations.</td></tr>
+<tr><td valign="top"><a href="#password-5">password/5</a></td><td>Make an <code>&lt;iq/&gt;</code> to send authentication informations.</td></tr>
+<tr><td valign="top"><a href="#password_digest-3">password_digest/3</a></td><td>Make an <code>&lt;iq&gt;</code> to send authentication informations.</td></tr>
+<tr><td valign="top"><a href="#password_digest-4">password_digest/4</a></td><td>Make an <code>&lt;iq&gt;</code> to send authentication informations.</td></tr>
+<tr><td valign="top"><a href="#password_plain-3">password_plain/3</a></td><td>Make an <code>&lt;iq&gt;</code> to send authentication informations.</td></tr>
+<tr><td valign="top"><a href="#password_plain-4">password_plain/4</a></td><td>Make an <code>&lt;iq&gt;</code> to send authentication informations.</td></tr>
+<tr><td valign="top"><a href="#request-1">request/1</a></td><td>Make an <code>&lt;iq&gt;</code> for requesting legacy authentication.</td></tr>
+<tr><td valign="top"><a href="#request-2">request/2</a></td><td>Make an <code>&lt;iq&gt;</code> for requesting legacy authentication.</td></tr>
+<tr><td valign="top"><a href="#request_with_user-2">request_with_user/2</a></td><td>Make an <code>&lt;iq&gt;</code> for requesting legacy authentication.</td></tr>
+<tr><td valign="top"><a href="#request_with_user-3">request_with_user/3</a></td><td>Make an <code>&lt;iq&gt;</code> for requesting legacy authentication.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="digest-2">digest/2</a></h3>
+<div class="spec">
+<p><tt>digest(ID, Passwd) -&gt; Digest</tt>
+<ul class="definitions"><li><tt>ID = string()</tt></li><li><tt>Passwd = string()</tt></li><li><tt>Digest = string()</tt></li></ul></p>
+</div><p>Produce a password digest for legacy auth, according to XEP-0078.</p>
+
+<h3 class="function"><a name="get_fields-1">get_fields/1</a></h3>
+<div class="spec">
+<p><tt>get_fields(Fields_IQ) -&gt; Fields</tt>
+<ul class="definitions"><li><tt>Fields_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Fields = [atom()]</tt></li></ul></p>
+</div><p>throws <tt>{legacy_auth, get_fields, invalid_iq, Fields_IQ} | {legacy_auth, get_fields, invalid_field, Field}</tt></p>
+<p>Return the list of fields supported by the server.</p>
+
+<h3 class="function"><a name="get_prefered_auth-1">get_prefered_auth/1</a></h3>
+<div class="spec">
+<p><tt>get_prefered_auth(IQ::Fields_IQ) -&gt; Auth</tt>
+<ul class="definitions"><li><tt>Fields_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Auth = digest | password</tt></li></ul></p>
+</div><p>Return the prefered authentication method.</p>
+
+<h3 class="function"><a name="hex-1">hex/1</a></h3>
+<div class="spec">
+<p><tt>hex(Plain) -&gt; Hex</tt>
+<ul class="definitions"><li><tt>Plain = string()</tt></li><li><tt>Hex = string()</tt></li></ul></p>
+</div><p>Encode list to a hexadecimal string.</p>
+
+<h3 class="function"><a name="is_success-1">is_success/1</a></h3>
+<div class="spec">
+<p><tt>is_success(IQ) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Tell if the authentication succeeded.</p>
+
+<h3 class="function"><a name="password-4">password/4</a></h3>
+<div class="spec">
+<p><tt>password(Fields_IQ, Username, Password, Resource) -&gt; Password_IQ</tt>
+<ul class="definitions"><li><tt>Fields_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Username = string()</tt></li><li><tt>Password = string() | []</tt></li><li><tt>Resource = string()</tt></li><li><tt>Password_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq/&gt;</code> to send authentication informations.</p>
+ 
+  The stanza ID is generated automatically.</p>
+
+<h3 class="function"><a name="password-5">password/5</a></h3>
+<div class="spec">
+<p><tt>password(Fields_IQ, Username, Password, Resource, ID) -&gt; Password_IQ</tt>
+<ul class="definitions"><li><tt>Fields_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Username = string()</tt></li><li><tt>Password = string() | []</tt></li><li><tt>Resource = string()</tt></li><li><tt>ID = string()</tt></li><li><tt>Password_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq/&gt;</code> to send authentication informations.</p>
+
+<h3 class="function"><a name="password_digest-3">password_digest/3</a></h3>
+<div class="spec">
+<p><tt>password_digest(Username, Password, Resource) -&gt; Password_IQ</tt>
+<ul class="definitions"><li><tt>Username = string()</tt></li><li><tt>Password = string()</tt></li><li><tt>Resource = string()</tt></li><li><tt>Password_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> to send authentication informations.</p>
+ 
+  The stanza ID is generated automatically.</p>
+
+<h3 class="function"><a name="password_digest-4">password_digest/4</a></h3>
+<div class="spec">
+<p><tt>password_digest(Username, Password, Resource, ID) -&gt; Password_IQ</tt>
+<ul class="definitions"><li><tt>Username = string()</tt></li><li><tt>Password = string()</tt></li><li><tt>Resource = string()</tt></li><li><tt>ID = string()</tt></li><li><tt>Password_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> to send authentication informations.</p>
+ 
+  <code>Password</code> is encoded as specified in XEP-0078.</p>
+
+<h3 class="function"><a name="password_plain-3">password_plain/3</a></h3>
+<div class="spec">
+<p><tt>password_plain(Username, Password, Resource) -&gt; Password_IQ</tt>
+<ul class="definitions"><li><tt>Username = string()</tt></li><li><tt>Password = string() | []</tt></li><li><tt>Resource = string()</tt></li><li><tt>Password_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> to send authentication informations.</p>
+ 
+  The stanza ID is generated automatically.</p>
+
+<h3 class="function"><a name="password_plain-4">password_plain/4</a></h3>
+<div class="spec">
+<p><tt>password_plain(Username, Password, Resource, ID) -&gt; Password_IQ</tt>
+<ul class="definitions"><li><tt>Username = string()</tt></li><li><tt>Password = string() | []</tt></li><li><tt>Resource = string()</tt></li><li><tt>ID = string()</tt></li><li><tt>Password_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> to send authentication informations.</p>
+ 
+  <p><code>Password</code> is in clear plain text in the stanza.</p>
+ 
+  For an anonymous authentication, <code>Password</code> may be the empty string.</p>
+
+<h3 class="function"><a name="request-1">request/1</a></h3>
+<div class="spec">
+<p><tt>request(To) -&gt; Request_IQ</tt>
+<ul class="definitions"><li><tt>To = string()</tt></li><li><tt>Request_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for requesting legacy authentication.</p>
+ 
+  The stanza ID is generated automatically.</p>
+
+<h3 class="function"><a name="request-2">request/2</a></h3>
+<div class="spec">
+<p><tt>request(To, ID) -&gt; Request_IQ</tt>
+<ul class="definitions"><li><tt>To = string()</tt></li><li><tt>ID = string()</tt></li><li><tt>Request_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for requesting legacy authentication.</p>
+
+<h3 class="function"><a name="request_with_user-2">request_with_user/2</a></h3>
+<div class="spec">
+<p><tt>request_with_user(To, Username) -&gt; Request_IQ</tt>
+<ul class="definitions"><li><tt>To = string()</tt></li><li><tt>Username = string()</tt></li><li><tt>Request_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make an <code>&lt;iq&gt;</code> for requesting legacy authentication.</p>
+ 
+  The stanza ID is generated automatically.</p>
+
+<h3 class="function"><a name="request_with_user-3">request_with_user/3</a></h3>
+<div class="spec">
+<p><tt>request_with_user(To, Username, ID) -&gt; Request_IQ</tt>
+<ul class="definitions"><li><tt>To = string()</tt></li><li><tt>Username = string()</tt></li><li><tt>ID = string()</tt></li><li><tt>Response_IQ = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make an <code>&lt;iq&gt;</code> for requesting legacy authentication.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:40.</i></p>
+</body>
+</html>

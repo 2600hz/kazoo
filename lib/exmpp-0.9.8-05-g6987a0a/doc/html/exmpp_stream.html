@@ -1,0 +1,380 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_stream</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_stream</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_stream</strong> provides utilities to open and  
+close an XMPP stream, negotiate features and handle stream errors.
+
+<p><b>Authors:</b> Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2><p>
+  The module <strong>exmpp_stream</strong> provides utilities to open and  
+close an XMPP stream, negotiate features and handle stream errors.</p>
+ 
+  <p><a href="exmpp_client_stream.html"><code>exmpp_client_stream</code></a> and <a href="exmpp_server_stream.html"><code>exmpp_server_stream</code></a> should be  
+prefered to exmpp_stream because they'll set some defaults values for  
+the caller.</p>
+ 
+  <h3>Stream handling</h3>
+ 
+  <p>
+  It covers these basic functions:
+  </p>
+  <ul>
+  <li>Open a stream to an XMPP server</li>
+  <li>Open a stream in reply to initiating entity</li>
+  <li>Close a stream (regardless who has initiated the stream)</li>
+  </ul>
+ 
+  <p>
+  This table illustrates stream opening and closing.
+  </p>
+  <table class="illustration">
+  <tr>
+  <th>Client-side</th>
+  <th>Server-side</th>
+  </tr>
+  <tr>
+  <td>
+  <p>
+  The client call <code>exmpp_stream</code>:
+  </p>
+  <pre>Opening = exmpp_stream:opening(
+    "jabber.example.com",
+    ?NS_JABBER_CLIENT,
+    "1.0"<br>).</pre>
+  <p>
+  After serialization, this produces this XML message:
+  </p>
+  <pre>&lt;stream:stream xmlns:stream="http://etherx.jabber.org/streams"
+    xmlns="jabber:client" to="jabber.example.org" version="1.0"&gt;</pre>
+  </td>
+  <td></td>
+  </tr>
+  <tr>
+  <td></td>
+  <td>
+  <p>
+  If the server accepts the client stream opening, it'll call:
+  </p>
+  <pre>Opening_Reply = exmpp_stream:opening_reply(
+    Opening,
+    random<br>).</pre>
+  <p>
+  After serialization, this produces this XML message:
+  </p>
+  <pre>&lt;stream:stream xmlns:stream="http://etherx.jabber.org/streams"
+    xmlns="jabber:client" version="1.0" from="jabber.example.org"
+    id="stream-396429316"&gt;</pre>
+  <p>
+  Note that <code>exmpp_stream</code> generated an ID automatically; you may override
+  this.
+  </p>
+  </td>
+  </tr>
+  <tr>
+  <td>
+  <p>
+  At the end of the communication, the client close its stream:
+  </p>
+  <pre>Client_Closing = exmpp_stream:closing().</pre>
+  <p>
+  After serialization, this produces this XML message:
+  </p>
+  <pre>&lt;/stream:stream&gt;</pre>
+  </td>
+  <td></td>
+  </tr>
+  <tr>
+  <td></td>
+  <td>
+  <p>
+  The server do the same:
+  </p>
+  <pre>Server_Closing = exmpp_stream:closing(Client_Closing).</pre>
+  <p>
+  After serialization, this produces this XML message:
+  </p>
+  <pre>&lt;/stream:stream&gt;</pre>
+  <p>
+  The server may use the same function clause than the client but here,
+  it gives the client closing to the function. This is to be sure to
+  use the same XML prefix.
+  </p>
+  </td>
+  </tr>
+  </table>
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#closing-0">closing/0</a></td><td>Make a <code>&lt;/stream&gt;</code> closing tag.</td></tr>
+<tr><td valign="top"><a href="#closing-1">closing/1</a></td><td>Make a <code>&lt;/stream&gt;</code> closing tag for the given <code>Opening</code> tag.</td></tr>
+<tr><td valign="top"><a href="#error-1">error/1</a></td><td>Make a standard <code>&lt;stream:error&gt;</code> element based on the given
+  <code>Condition</code>.</td></tr>
+<tr><td valign="top"><a href="#error-2">error/2</a></td><td>Make a standard <code>&lt;stream:error&gt;</code> element based on the given
+  <code>Condition</code> with Text child element.</td></tr>
+<tr><td valign="top"><a href="#features-1">features/1</a></td><td>Make the features annoucement element.</td></tr>
+<tr><td valign="top"><a href="#get_condition-1">get_condition/1</a></td><td>Return the child element name corresponding to the stanza error
+  condition.</td></tr>
+<tr><td valign="top"><a href="#get_default_ns-1">get_default_ns/1</a></td><td>Return the default namespace.</td></tr>
+<tr><td valign="top"><a href="#get_id-1">get_id/1</a></td><td>Return the stream ID.</td></tr>
+<tr><td valign="top"><a href="#get_initiating_entity-1">get_initiating_entity/1</a></td><td>Return the initiating entity hostname.</td></tr>
+<tr><td valign="top"><a href="#get_lang-1">get_lang/1</a></td><td>Return the language of the stream.</td></tr>
+<tr><td valign="top"><a href="#get_receiving_entity-1">get_receiving_entity/1</a></td><td>Return the receiving entity hostname.</td></tr>
+<tr><td valign="top"><a href="#get_text-1">get_text/1</a></td><td>Return the text that describes the error.</td></tr>
+<tr><td valign="top"><a href="#get_version-1">get_version/1</a></td><td>Return the version of the stream.</td></tr>
+<tr><td valign="top"><a href="#is_error-1">is_error/1</a></td><td>Tell if this element is a stream error.</td></tr>
+<tr><td valign="top"><a href="#opening-3">opening/3</a></td><td>Make a <code>&lt;stream&gt;</code> opening tag.</td></tr>
+<tr><td valign="top"><a href="#opening-4">opening/4</a></td><td>Make a <code>&lt;stream&gt;</code> opening tag.</td></tr>
+<tr><td valign="top"><a href="#opening_reply-2">opening_reply/2</a></td><td>Make a <code>&lt;stream&gt;</code> opening reply tag for the given <code>Opening</code> tag.</td></tr>
+<tr><td valign="top"><a href="#opening_reply-3">opening_reply/3</a></td><td>Make a <code>&lt;stream&gt;</code> opening reply tag for the given <code>Opening</code> tag.</td></tr>
+<tr><td valign="top"><a href="#opening_reply-4">opening_reply/4</a></td><td>Make a <code>&lt;stream&gt;</code> opening reply tag.</td></tr>
+<tr><td valign="top"><a href="#opening_reply-5">opening_reply/5</a></td><td>Make a <code>&lt;stream&gt;</code> opening reply tag.</td></tr>
+<tr><td valign="top"><a href="#parse_version-1">parse_version/1</a></td><td>Parse the stream version in <code>String</code>.</td></tr>
+<tr><td valign="top"><a href="#serialize_version-1">serialize_version/1</a></td><td>Make a binary() for the <code>version</code> attribute of a stream element.</td></tr>
+<tr><td valign="top"><a href="#set_default_ns-2">set_default_ns/2</a></td><td>Set the default namespace.</td></tr>
+<tr><td valign="top"><a href="#set_dialback_support-1">set_dialback_support/1</a></td><td>Declare server diablack support.</td></tr>
+<tr><td valign="top"><a href="#set_id-2">set_id/2</a></td><td>Set the stream ID.</td></tr>
+<tr><td valign="top"><a href="#set_initiating_entity-2">set_initiating_entity/2</a></td><td>Set the initiating entity in the <code>from</code> attribute.</td></tr>
+<tr><td valign="top"><a href="#set_lang-2">set_lang/2</a></td><td>Set the default language.</td></tr>
+<tr><td valign="top"><a href="#set_receiving_entity-2">set_receiving_entity/2</a></td><td>Set the receiving entity in the <code>to</code> attribute.</td></tr>
+<tr><td valign="top"><a href="#set_version-2">set_version/2</a></td><td>Set the protocol version.</td></tr>
+<tr><td valign="top"><a href="#to_binary-1">to_binary/1</a></td><td>Serialize a stream opening/closing.</td></tr>
+<tr><td valign="top"><a href="#to_iolist-1">to_iolist/1</a></td><td>Serialize a stream opening/closing.</td></tr>
+<tr><td valign="top"><a href="#to_list-1">to_list/1</a></td><td>Serialize a stream opening/closing.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="closing-0">closing/0</a></h3>
+<div class="spec">
+<p><tt>closing() -&gt; Closing</tt>
+<ul class="definitions"><li><tt>Closing = <a href="exmpp_xml.html#type-xmlendtag">exmpp_xml:xmlendtag()</a></tt></li></ul></p>
+</div><p>Make a <code>&lt;/stream&gt;</code> closing tag.</p>
+
+<h3 class="function"><a name="closing-1">closing/1</a></h3>
+<div class="spec">
+<p><tt>closing(Xmlel::Opening) -&gt; Closing</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Closing = <a href="exmpp_xml.html#type-xmlendtag">exmpp_xml:xmlendtag()</a></tt></li></ul></p>
+</div><p>Make a <code>&lt;/stream&gt;</code> closing tag for the given <code>Opening</code> tag.</p>
+
+<h3 class="function"><a name="error-1">error/1</a></h3>
+<div class="spec">
+<p><tt>error(Condition) -&gt; Stream_Error</tt>
+<ul class="definitions"><li><tt>Condition = atom()</tt></li><li><tt>Stream_Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make a standard <code>&lt;stream:error&gt;</code> element based on the given
+  <code>Condition</code>.</p>
+
+<h3 class="function"><a name="error-2">error/2</a></h3>
+<div class="spec">
+<p><tt>error(Condition, X2::{Lang, Text}) -&gt; Stream_Error</tt>
+<ul class="definitions"><li><tt>Condition = atom()</tt></li><li><tt>Stream_Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Lang = binary() | string() | undefined</tt></li><li><tt>Text = binary() | string() | undefined</tt></li></ul></p>
+</div><p>Make a standard <code>&lt;stream:error&gt;</code> element based on the given
+  <code>Condition</code> with Text child element.</p>
+
+<h3 class="function"><a name="features-1">features/1</a></h3>
+<div class="spec">
+<p><tt>features(Features) -&gt; Features_Announcement</tt>
+<ul class="definitions"><li><tt>Features = [<a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a>]</tt></li><li><tt>Features_Announcement = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make the features annoucement element.</p>
+
+<h3 class="function"><a name="get_condition-1">get_condition/1</a></h3>
+<div class="spec">
+<p><tt>get_condition(Xmlel::Stream_Error) -&gt; Condition | undefined</tt>
+<ul class="definitions"><li><tt>Stream_Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Condition = atom()</tt></li></ul></p>
+</div><p>Return the child element name corresponding to the stanza error
+  condition.</p>
+
+<h3 class="function"><a name="get_default_ns-1">get_default_ns/1</a></h3>
+<div class="spec">
+<p><tt>get_default_ns(Xmlel::Opening) -&gt; Default_NS | undefined</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Default_NS = atom() | string()</tt></li></ul></p>
+</div><p><p>Return the default namespace.</p>
+ 
+  XMPP-IM defines <code>jabber:client</code> and <code>jabber:server</code>.</p>
+
+<h3 class="function"><a name="get_id-1">get_id/1</a></h3>
+<div class="spec">
+<p><tt>get_id(Opening) -&gt; ID | undefined</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>ID = binary()</tt></li></ul></p>
+</div><p>Return the stream ID.</p>
+
+<h3 class="function"><a name="get_initiating_entity-1">get_initiating_entity/1</a></h3>
+<div class="spec">
+<p><tt>get_initiating_entity(Opening) -&gt; Hostname | undefined</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Hostname = binary()</tt></li></ul></p>
+</div><p>Return the initiating entity hostname.</p>
+
+<h3 class="function"><a name="get_lang-1">get_lang/1</a></h3>
+<div class="spec">
+<p><tt>get_lang(Opening) -&gt; Lang | undefined</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Lang = binary()</tt></li></ul></p>
+</div><p>Return the language of the stream.</p>
+
+<h3 class="function"><a name="get_receiving_entity-1">get_receiving_entity/1</a></h3>
+<div class="spec">
+<p><tt>get_receiving_entity(Opening) -&gt; Hostname | undefined</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Hostname = binary()</tt></li></ul></p>
+</div><p>Return the receiving entity hostname.</p>
+
+<h3 class="function"><a name="get_text-1">get_text/1</a></h3>
+<div class="spec">
+<p><tt>get_text(Xmlel::Stream_Error) -&gt; Text | undefined</tt>
+<ul class="definitions"><li><tt>Stream_Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Text = binary()</tt></li></ul></p>
+</div><p>Return the text that describes the error.</p>
+
+<h3 class="function"><a name="get_version-1">get_version/1</a></h3>
+<div class="spec">
+<p><tt>get_version(Opening) -&gt; Version</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Version = {Major, Minor}</tt></li><li><tt>Major = integer()</tt></li><li><tt>Minor = integer()</tt></li></ul></p>
+</div><p>Return the version of the stream.</p>
+
+<h3 class="function"><a name="is_error-1">is_error/1</a></h3>
+<div class="spec">
+<p><tt>is_error(Xmlel::XML_El) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>XML_El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Tell if this element is a stream error.</p>
+
+<h3 class="function"><a name="opening-3">opening/3</a></h3>
+<div class="spec">
+<p><tt>opening(To, Default_NS, Version) -&gt; Opening</tt>
+<ul class="definitions"><li><tt>To = binary() | string() | undefined</tt></li><li><tt>Default_NS = atom() | string()</tt></li><li><tt>Version = binary() | string() | {Major, Minor}</tt></li><li><tt>Major = integer()</tt></li><li><tt>Minor = integer()</tt></li><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make a <code>&lt;stream&gt;</code> opening tag.
+ </p>
+<p><b>See also:</b> <a href="#opening-4">opening/4</a>.</p>
+
+<h3 class="function"><a name="opening-4">opening/4</a></h3>
+<div class="spec">
+<p><tt>opening(To, Default_NS, Version, Lang) -&gt; Opening</tt>
+<ul class="definitions"><li><tt>To = binary() | string() | undefined</tt></li><li><tt>Default_NS = atom() | string()</tt></li><li><tt>Version = binary() | string() | {Major, Minor}</tt></li><li><tt>Major = integer()</tt></li><li><tt>Minor = integer()</tt></li><li><tt>Lang = binary() | string() | undefined</tt></li><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make a <code>&lt;stream&gt;</code> opening tag.</p>
+ 
+  This element is supposed to be sent by the initiating entity
+  to the receiving entity (for the other way around, see <a href="#opening_reply-1"><code>opening_reply/1</code></a>).</p>
+
+<h3 class="function"><a name="opening_reply-2">opening_reply/2</a></h3>
+<div class="spec">
+<p><tt>opening_reply(Xmlel::Opening, ID) -&gt; Opening_Reply</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>ID = binary() | string() | random</tt></li><li><tt>Opening_Reply = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make a <code>&lt;stream&gt;</code> opening reply tag for the given <code>Opening</code> tag.</p>
+ 
+  <p>This element is supposed to be sent by the receiving entity in reply
+  to the initiating entity (for the other way around, see <a href="#opening-1"><code>opening/1</code></a>).</p>
+ 
+  If <code>ID</code> is <code>random</code>, one will be generated automatically.</p>
+
+<h3 class="function"><a name="opening_reply-3">opening_reply/3</a></h3>
+<div class="spec">
+<p><tt>opening_reply(Xmlel::Opening, ID, Lang) -&gt; Opening_Reply</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>ID = binary() | string() | random</tt></li><li><tt>Lang = binary() | string() | undefined</tt></li><li><tt>Opening_Reply = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make a <code>&lt;stream&gt;</code> opening reply tag for the given <code>Opening</code> tag.</p>
+ 
+  <p>This element is supposed to be sent by the receiving entity in reply
+  to the initiating entity (for the other way around, see <a href="#opening-1"><code>opening/1</code></a>).</p>
+ 
+  If <code>ID</code> is <code>random</code>, one will be generated automatically.</p>
+
+<h3 class="function"><a name="opening_reply-4">opening_reply/4</a></h3>
+<div class="spec">
+<p><tt>opening_reply(From, Default_NS, Version, ID) -&gt; Opening_Reply</tt>
+<ul class="definitions"><li><tt>From = binary() | string() | undefined</tt></li><li><tt>Default_NS = atom() | string()</tt></li><li><tt>Version = binary() | string() | {Major, Minor}</tt></li><li><tt>Major = integer()</tt></li><li><tt>Minor = integer()</tt></li><li><tt>ID = binary() | string() | undefined</tt></li><li><tt>Opening_Reply = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Make a <code>&lt;stream&gt;</code> opening reply tag.
+ </p>
+<p><b>See also:</b> <a href="#opening_reply-5">opening_reply/5</a>.</p>
+
+<h3 class="function"><a name="opening_reply-5">opening_reply/5</a></h3>
+<div class="spec">
+<p><tt>opening_reply(From, Default_NS, Version, ID, Lang) -&gt; Opening_Reply</tt>
+<ul class="definitions"><li><tt>From = binary() | string() | undefined</tt></li><li><tt>Default_NS = atom() | string()</tt></li><li><tt>Version = binary() | string() | {Major, Minor}</tt></li><li><tt>Major = integer()</tt></li><li><tt>Minor = integer()</tt></li><li><tt>ID = binary() | string() | random</tt></li><li><tt>Lang = binary() | string() | undefined</tt></li><li><tt>Opening_Reply = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Make a <code>&lt;stream&gt;</code> opening reply tag.</p>
+ 
+  <p>This element is supposed to be sent by the receiving entity in reply
+  to the initiating entity (for the other way around, see <a href="#opening-1"><code>opening/1</code></a>).</p>
+ 
+  If <code>ID</code> is <code>random</code>, one will be generated automatically.</p>
+
+<h3 class="function"><a name="parse_version-1">parse_version/1</a></h3>
+<div class="spec">
+<p><tt>parse_version(String) -&gt; Version</tt>
+<ul class="definitions"><li><tt>String = binary() | string() | undefined</tt></li><li><tt>Version = {Major, Minor}</tt></li><li><tt>Major = integer()</tt></li><li><tt>Minor = integer()</tt></li></ul></p>
+</div><p>Parse the stream version in <code>String</code>.</p>
+
+<h3 class="function"><a name="serialize_version-1">serialize_version/1</a></h3>
+<div class="spec">
+<p><tt>serialize_version(X1::Version) -&gt; Binary</tt>
+<ul class="definitions"><li><tt>Version = {Major, Minor}</tt></li><li><tt>Major = integer()</tt></li><li><tt>Minor = integer()</tt></li><li><tt>Binary = binary()</tt></li></ul></p>
+</div><p>Make a binary() for the <code>version</code> attribute of a stream element.</p>
+
+<h3 class="function"><a name="set_default_ns-2">set_default_ns/2</a></h3>
+<div class="spec">
+<p><tt>set_default_ns(Xmlel::Opening, NS) -&gt; New_Opening</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>New_Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Set the default namespace.</p>
+ 
+  XMPP-IM defines <code>jabber:client</code> and <code>jabber:server</code>.</p>
+
+<h3 class="function"><a name="set_dialback_support-1">set_dialback_support/1</a></h3>
+<div class="spec">
+<p><tt>set_dialback_support(Opening) -&gt; New_Opening</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>New_Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Declare server diablack support.</p>
+
+<h3 class="function"><a name="set_id-2">set_id/2</a></h3>
+<div class="spec">
+<p><tt>set_id(Xmlel::Opening, ID) -&gt; New_Opening</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>ID = binary() | string() | random</tt></li><li><tt>New_Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Set the stream ID.</p>
+
+<h3 class="function"><a name="set_initiating_entity-2">set_initiating_entity/2</a></h3>
+<div class="spec">
+<p><tt>set_initiating_entity(Xmlel::Opening, Hostname) -&gt; New_Opening</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Hostname = binary() | string()</tt></li><li><tt>New_Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Set the initiating entity in the <code>from</code> attribute.</p>
+
+<h3 class="function"><a name="set_lang-2">set_lang/2</a></h3>
+<div class="spec">
+<p><tt>set_lang(Xmlel::Opening, Lang) -&gt; New_Opening</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Lang = binary() | string()</tt></li><li><tt>New_Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Set the default language.</p>
+
+<h3 class="function"><a name="set_receiving_entity-2">set_receiving_entity/2</a></h3>
+<div class="spec">
+<p><tt>set_receiving_entity(Xmlel::Opening, Hostname) -&gt; New_Opening</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Hostname = binary() | string()</tt></li><li><tt>New_Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Set the receiving entity in the <code>to</code> attribute.</p>
+
+<h3 class="function"><a name="set_version-2">set_version/2</a></h3>
+<div class="spec">
+<p><tt>set_version(Xmlel::Opening, Version) -&gt; New_Opening</tt>
+<ul class="definitions"><li><tt>Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Version = binary() | string() | {Major, Minor} | undefined</tt></li><li><tt>Major = integer()</tt></li><li><tt>Minor = integer()</tt></li><li><tt>New_Opening = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Set the protocol version.</p>
+
+<h3 class="function"><a name="to_binary-1">to_binary/1</a></h3>
+<div class="spec">
+<p><tt>to_binary(El) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | list()</tt></li><li><tt>XML_Text = binary()</tt></li></ul></p>
+</div><p>Serialize a stream opening/closing.</p>
+
+<h3 class="function"><a name="to_iolist-1">to_iolist/1</a></h3>
+<div class="spec">
+<p><tt>to_iolist(El) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | list()</tt></li><li><tt>XML_Text = iolist()</tt></li></ul></p>
+</div><p>Serialize a stream opening/closing.</p>
+
+<h3 class="function"><a name="to_list-1">to_list/1</a></h3>
+<div class="spec">
+<p><tt>to_list(El) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | list()</tt></li><li><tt>XML_Text = string()</tt></li></ul></p>
+</div><p>Serialize a stream opening/closing.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:39.</i></p>
+</body>
+</html>

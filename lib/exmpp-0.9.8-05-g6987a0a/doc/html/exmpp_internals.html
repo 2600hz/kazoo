@@ -1,0 +1,151 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_internals</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_internals</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_internals</strong> provides internal functions for
+  other modules.
+
+<p><b>Authors:</b> Jean-Sebastien Pedron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2>
+  The module <strong>exmpp_internals</strong> provides internal functions for
+  other modules.
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#close_port-1">close_port/1</a></td><td>Close a previously spawned port.</td></tr>
+<tr><td valign="top"><a href="#driver_dirs-0">driver_dirs/0</a></td><td>Return a list of directories to search port drivers in.</td></tr>
+<tr><td valign="top"><a href="#gen_close-1">gen_close/1</a></td><td>Wrapper to abstract the <code>close</code> function of multiple communication
+  modules.</td></tr>
+<tr><td valign="top"><a href="#gen_controlling_process-2">gen_controlling_process/2</a></td><td>Wrapper to abstract the <code>controlling_process</code> function of
+  multiple communication modules.</td></tr>
+<tr><td valign="top"><a href="#gen_getopts-2">gen_getopts/2</a></td><td>Wrapper to abstract the <code>getopts</code> function of multiple communication
+  modules.</td></tr>
+<tr><td valign="top"><a href="#gen_peername-1">gen_peername/1</a></td><td>Wrapper to abstract the <code>peername</code> function of multiple communication
+  modules.</td></tr>
+<tr><td valign="top"><a href="#gen_recv-2">gen_recv/2</a></td><td>Wrapper to abstract the <code>recv</code> function of multiple communication
+  modules.</td></tr>
+<tr><td valign="top"><a href="#gen_send-2">gen_send/2</a></td><td>Wrapper to abstract the <code>send</code> function of multiple communication
+  modules.</td></tr>
+<tr><td valign="top"><a href="#gen_setopts-2">gen_setopts/2</a></td><td>Wrapper to abstract the <code>setopts</code> function of multiple communication
+  modules.</td></tr>
+<tr><td valign="top"><a href="#gen_sockname-1">gen_sockname/1</a></td><td>Wrapper to abstract the <code>sockname</code> function of multiple communication
+  modules.</td></tr>
+<tr><td valign="top"><a href="#load_driver-1">load_driver/1</a></td><td>Load the port driver <code>Driver_Name</code>.</td></tr>
+<tr><td valign="top"><a href="#load_driver-2">load_driver/2</a></td><td>Load the port driver <code>Driver_Name</code>.</td></tr>
+<tr><td valign="top"><a href="#open_port-1">open_port/1</a></td><td>Spawn a new port driver instance.</td></tr>
+<tr><td valign="top"><a href="#unload_driver-1">unload_driver/1</a></td><td>Unload the port driver <code>Driver_Name</code>.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="close_port-1">close_port/1</a></h3>
+<div class="spec">
+<p><tt>close_port(Port) -&gt; true</tt>
+<ul class="definitions"><li><tt>Port = port()</tt></li></ul></p>
+</div><p><p>Close a previously spawned port.</p>
+ 
+  <code>Port</code> was obtained with <a href="#open_port-1"><code>open_port/1</code></a>.</p>
+
+<h3 class="function"><a name="driver_dirs-0">driver_dirs/0</a></h3>
+<div class="spec">
+<p><tt>driver_dirs() -&gt; Dirs | []</tt>
+<ul class="definitions"><li><tt>Dirs = [string()]</tt></li></ul></p>
+</div><p>Return a list of directories to search port drivers in.</p>
+
+<h3 class="function"><a name="gen_close-1">gen_close/1</a></h3>
+<div class="spec">
+<p><tt>gen_close(X1::Socket_Desc) -&gt; ok | {error, <a href="#type-posix">posix()</a>}</tt>
+<ul class="definitions"><li><tt>Socket_Desc = {Mod, Socket}</tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li></ul></p>
+</div><p>Wrapper to abstract the <code>close</code> function of multiple communication
+  modules.</p>
+
+<h3 class="function"><a name="gen_controlling_process-2">gen_controlling_process/2</a></h3>
+<div class="spec">
+<p><tt>gen_controlling_process(X1::Socket_Desc, Pid) -&gt; ok | {error, Reason}</tt>
+<ul class="definitions"><li><tt>Socket_Desc = {Mod, Socket}</tt></li><li><tt>Pid = pid()</tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Reason = close | not_owner | <a href="#type-posix">posix()</a></tt></li></ul></p>
+</div><p>Wrapper to abstract the <code>controlling_process</code> function of
+  multiple communication modules.</p>
+
+<h3 class="function"><a name="gen_getopts-2">gen_getopts/2</a></h3>
+<div class="spec">
+<p><tt>gen_getopts(X1::Socket_Desc, Options) -&gt; Option_Values | {error, <a href="#type-posix">posix()</a>}</tt>
+<ul class="definitions"><li><tt>Socket_Desc = {Mod, Socket}</tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Options = list()</tt></li><li><tt>Option_Values = {ok, list()}</tt></li></ul></p>
+</div><p>Wrapper to abstract the <code>getopts</code> function of multiple communication
+  modules.</p>
+
+<h3 class="function"><a name="gen_peername-1">gen_peername/1</a></h3>
+<div class="spec">
+<p><tt>gen_peername(X1::Socket_Desc) -&gt; {ok, {Address, Port}} | {error, <a href="#type-posix">posix()</a>}</tt>
+<ul class="definitions"><li><tt>Socket_Desc = {Mod, Socket}</tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Address = <a href="#type-ip_address">ip_address()</a></tt></li><li><tt>Port = integer()</tt></li></ul></p>
+</div><p>Wrapper to abstract the <code>peername</code> function of multiple communication
+  modules.</p>
+
+<h3 class="function"><a name="gen_recv-2">gen_recv/2</a></h3>
+<div class="spec">
+<p><tt>gen_recv(X1::Socket_Desc, Timeout) -&gt; {ok, Packet} | {error, Reason}</tt>
+<ul class="definitions"><li><tt>Socket_Desc = {Mod, Socket}</tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Timeout = integer() | infinity</tt></li><li><tt>Packet = [char()] | binary()</tt></li><li><tt>Reason = closed | <a href="#type-posix">posix()</a></tt></li></ul></p>
+</div><p>Wrapper to abstract the <code>recv</code> function of multiple communication
+  modules.</p>
+
+<h3 class="function"><a name="gen_send-2">gen_send/2</a></h3>
+<div class="spec">
+<p><tt>gen_send(X1::Socket_Desc, Packet) -&gt; ok | {error, Reason}</tt>
+<ul class="definitions"><li><tt>Socket_Desc = {Mod, Socket}</tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Packet = [char()] | binary()</tt></li><li><tt>Reason = closed | <a href="#type-posix">posix()</a></tt></li></ul></p>
+</div><p>Wrapper to abstract the <code>send</code> function of multiple communication
+  modules.</p>
+
+<h3 class="function"><a name="gen_setopts-2">gen_setopts/2</a></h3>
+<div class="spec">
+<p><tt>gen_setopts(X1::Socket_Desc, Options) -&gt; ok | {error, <a href="#type-posix">posix()</a>}</tt>
+<ul class="definitions"><li><tt>Socket_Desc = {Mod, Socket}</tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Options = list()</tt></li></ul></p>
+</div><p>Wrapper to abstract the <code>setopts</code> function of multiple communication
+  modules.</p>
+
+<h3 class="function"><a name="gen_sockname-1">gen_sockname/1</a></h3>
+<div class="spec">
+<p><tt>gen_sockname(X1::Socket_Desc) -&gt; {ok, {Address, Port}} | {error, <a href="#type-posix">posix()</a>}</tt>
+<ul class="definitions"><li><tt>Socket_Desc = {Mod, Socket}</tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Address = <a href="#type-ip_address">ip_address()</a></tt></li><li><tt>Port = integer()</tt></li></ul></p>
+</div><p>Wrapper to abstract the <code>sockname</code> function of multiple communication
+  modules.</p>
+
+<h3 class="function"><a name="load_driver-1">load_driver/1</a></h3>
+<div class="spec">
+<p><tt>load_driver(Driver_Name) -&gt; ok</tt>
+<ul class="definitions"><li><tt>Driver_Name = atom()</tt></li></ul></p>
+</div><p>throws <tt>{port_driver, load, Reason, Driver_Name}</tt></p>
+<p>Load the port driver <code>Driver_Name</code>.</p>
+
+<h3 class="function"><a name="load_driver-2">load_driver/2</a></h3>
+<div class="spec">
+<p><tt>load_driver(Driver_Name, Dirs) -&gt; ok</tt>
+<ul class="definitions"><li><tt>Driver_Name = atom()</tt></li><li><tt>Dirs = [string()]</tt></li></ul></p>
+</div><p>throws <tt>{port_driver, load, Reason, Driver_Name}</tt></p>
+<p><p>Load the port driver <code>Driver_Name</code>.</p>
+ 
+  The driver is search in <code>Dirs</code>.</p>
+
+<h3 class="function"><a name="open_port-1">open_port/1</a></h3>
+<div class="spec">
+<p><tt>open_port(Driver_Name) -&gt; Port</tt>
+<ul class="definitions"><li><tt>Driver_Name = atom()</tt></li><li><tt>Port = port()</tt></li></ul></p>
+</div><p>throws <tt>{port_driver, open, {posix, Posix_Code}, Driver_Name}</tt></p>
+<p>Spawn a new port driver instance.</p>
+
+<h3 class="function"><a name="unload_driver-1">unload_driver/1</a></h3>
+<div class="spec">
+<p><tt>unload_driver(Driver_Name) -&gt; ok</tt>
+<ul class="definitions"><li><tt>Driver_Name = atom()</tt></li></ul></p>
+</div><p>Unload the port driver <code>Driver_Name</code>.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:40.</i></p>
+</body>
+</html>

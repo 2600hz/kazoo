@@ -1,0 +1,488 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_stanza</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_stanza</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_stanza</strong> provides helpers to manipulate
+  standard stanza.
+
+<p><b>Authors:</b> Mickael Remond (<a href="mailto:mickael.remond@process-one.net"><tt>mickael.remond@process-one.net</tt></a>), Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2>
+  The module <strong>exmpp_stanza</strong> provides helpers to manipulate
+  standard stanza.
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#error-2">error/2</a></td><td>Create an <code>&lt;error/&gt;</code> element based on the given <code>Condition</code>.</td></tr>
+<tr><td valign="top"><a href="#error-3">error/3</a></td><td>Create an <code>&lt;error/&gt;</code> element based on the given <code>Condition</code>.</td></tr>
+<tr><td valign="top"><a href="#get_condition-1">get_condition/1</a></td><td>Return the child element name corresponding to the stanza error  
+condition.</td></tr>
+<tr><td valign="top"><a href="#get_error-1">get_error/1</a></td><td>Return the error element from <code>Stanza</code>.</td></tr>
+<tr><td valign="top"><a href="#get_error_type-1">get_error_type/1</a></td><td>Return the type of the error element.</td></tr>
+<tr><td valign="top"><a href="#get_id-1">get_id/1</a></td><td>Return the stanza ID.</td></tr>
+<tr><td valign="top"><a href="#get_id_from_attrs-1">get_id_from_attrs/1</a></td><td>Return the stanza ID.</td></tr>
+<tr><td valign="top"><a href="#get_lang-1">get_lang/1</a></td><td>Return the language of the stanza.</td></tr>
+<tr><td valign="top"><a href="#get_lang_from_attrs-1">get_lang_from_attrs/1</a></td><td>Return the language of the stanza.</td></tr>
+<tr><td valign="top"><a href="#get_recipient-1">get_recipient/1</a></td><td>Return the recipient.</td></tr>
+<tr><td valign="top"><a href="#get_recipient_from_attrs-1">get_recipient_from_attrs/1</a></td><td>Return the recipient.</td></tr>
+<tr><td valign="top"><a href="#get_sender-1">get_sender/1</a></td><td>Return the sender.</td></tr>
+<tr><td valign="top"><a href="#get_sender_from_attrs-1">get_sender_from_attrs/1</a></td><td>Return the sender.</td></tr>
+<tr><td valign="top"><a href="#get_text-1">get_text/1</a></td><td>Return the text that describes the error.</td></tr>
+<tr><td valign="top"><a href="#get_type-1">get_type/1</a></td><td>Return the type of the stanza.</td></tr>
+<tr><td valign="top"><a href="#get_type_from_attrs-1">get_type_from_attrs/1</a></td><td>Return the type of the stanza.</td></tr>
+<tr><td valign="top"><a href="#is_stanza_error-1">is_stanza_error/1</a></td><td>Tell if the stanza transports an error.</td></tr>
+<tr><td valign="top"><a href="#remove_recipient-1">remove_recipient/1</a></td><td>Remove the recipient.</td></tr>
+<tr><td valign="top"><a href="#remove_recipient_in_attrs-1">remove_recipient_in_attrs/1</a></td><td>Remove the recipient.</td></tr>
+<tr><td valign="top"><a href="#remove_sender-1">remove_sender/1</a></td><td>Remove the sender.</td></tr>
+<tr><td valign="top"><a href="#remove_sender_in_attrs-1">remove_sender_in_attrs/1</a></td><td>Remove the sender.</td></tr>
+<tr><td valign="top"><a href="#reply-1">reply/1</a></td><td>Prepare a reply to <code>Stanza</code>.</td></tr>
+<tr><td valign="top"><a href="#reply_from_attrs-1">reply_from_attrs/1</a></td><td>Handles <code>to</code> and <code>from</code> attributes to prepare a reply stanza.</td></tr>
+<tr><td valign="top"><a href="#reply_with_error-2">reply_with_error/2</a></td><td>Prepare an error reply to <code>Stanza</code>.</td></tr>
+<tr><td valign="top"><a href="#reply_without_content-1">reply_without_content/1</a></td><td>Prepare a reply to <code>Stanza</code> with children removed.</td></tr>
+<tr><td valign="top"><a href="#set_error_type-2">set_error_type/2</a></td><td>Set the type of the error element.</td></tr>
+<tr><td valign="top"><a href="#set_error_type_from_condition-2">set_error_type_from_condition/2</a></td><td>Set the type of the error element, based on the given condition.</td></tr>
+<tr><td valign="top"><a href="#set_id-2">set_id/2</a></td><td>Set the ID.</td></tr>
+<tr><td valign="top"><a href="#set_id_in_attrs-2">set_id_in_attrs/2</a></td><td>Set the ID.</td></tr>
+<tr><td valign="top"><a href="#set_jids-3">set_jids/3</a></td><td>Set the sender and the recipient at the same time.</td></tr>
+<tr><td valign="top"><a href="#set_jids_in_attrs-3">set_jids_in_attrs/3</a></td><td>Set the sender and the recipient at the same time.</td></tr>
+<tr><td valign="top"><a href="#set_lang-2">set_lang/2</a></td><td>Set the lang.</td></tr>
+<tr><td valign="top"><a href="#set_lang_in_attrs-2">set_lang_in_attrs/2</a></td><td>Set the lang.</td></tr>
+<tr><td valign="top"><a href="#set_recipient-2">set_recipient/2</a></td><td>Set the recipient.</td></tr>
+<tr><td valign="top"><a href="#set_recipient_in_attrs-2">set_recipient_in_attrs/2</a></td><td>Set the recipient.</td></tr>
+<tr><td valign="top"><a href="#set_sender-2">set_sender/2</a></td><td>Set the sender.</td></tr>
+<tr><td valign="top"><a href="#set_sender_in_attrs-2">set_sender_in_attrs/2</a></td><td>Set the sender.</td></tr>
+<tr><td valign="top"><a href="#set_type-2">set_type/2</a></td><td>Set the type of the stanza.</td></tr>
+<tr><td valign="top"><a href="#set_type_in_attrs-2">set_type_in_attrs/2</a></td><td>Set the type of the stanza.</td></tr>
+<tr><td valign="top"><a href="#stanza_error-2">stanza_error/2</a></td><td>Transform <code>Stanza</code> in a stanza error.</td></tr>
+<tr><td valign="top"><a href="#stanza_error_without_original-2">stanza_error_without_original/2</a></td><td>Transform <code>Stanza</code> in a stanza error.</td></tr>
+<tr><td valign="top"><a href="#to_binary-1">to_binary/1</a></td><td>Serialize a stanza using common XMPP default namespaces.</td></tr>
+<tr><td valign="top"><a href="#to_binary-2">to_binary/2</a></td><td>Serialize a stanza using the given default namespace.</td></tr>
+<tr><td valign="top"><a href="#to_binary-3">to_binary/3</a></td><td>Serialize a stanza using the given namespaces.</td></tr>
+<tr><td valign="top"><a href="#to_iolist-1">to_iolist/1</a></td><td>Serialize a stanza using common XMPP default namespaces.</td></tr>
+<tr><td valign="top"><a href="#to_iolist-2">to_iolist/2</a></td><td>Serialize a stanza using the given default namespace.</td></tr>
+<tr><td valign="top"><a href="#to_iolist-3">to_iolist/3</a></td><td>Serialize a stanza using the given namespaces.</td></tr>
+<tr><td valign="top"><a href="#to_list-1">to_list/1</a></td><td>Serialize a stanza using common XMPP default namespaces.</td></tr>
+<tr><td valign="top"><a href="#to_list-2">to_list/2</a></td><td>Serialize a stanza using the given default namespace.</td></tr>
+<tr><td valign="top"><a href="#to_list-3">to_list/3</a></td><td>Serialize a stanza using the given namespaces.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="error-2">error/2</a></h3>
+<div class="spec">
+<p><tt>error(NS, Condition) -&gt; Stanza_Error</tt>
+<ul class="definitions"><li><tt>NS = atom() | string()</tt></li><li><tt>Condition = atom()</tt></li><li><tt>Stanza_Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Create an <code>&lt;error/&gt;</code> element based on the given <code>Condition</code>.</p>
+ 
+  A default type is set by <a href="#set_error_type-2"><code>set_error_type/2</code></a> if <code>NS</code> is
+  <code>jabber:client</code> or <code>jabber:server</code>. This does not contain any text
+  element.</p>
+
+<h3 class="function"><a name="error-3">error/3</a></h3>
+<div class="spec">
+<p><tt>error(NS, Condition, Text::Text_Spec) -&gt; Stanza_Error</tt>
+<ul class="definitions"><li><tt>NS = atom() | string()</tt></li><li><tt>Condition = atom()</tt></li><li><tt>Text_Spec = {Lang, Text} | Text | undefined</tt></li><li><tt>Lang = binary() | string() | undefined</tt></li><li><tt>Text = binary() | string() | undefined</tt></li><li><tt>Stanza_Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Create an <code>&lt;error/&gt;</code> element based on the given <code>Condition</code>.</p>
+ 
+  A default type is set by <a href="#set_error_type-2"><code>set_error_type/2</code></a> if <code>NS</code> is
+  <code>jabber:client</code> or <code>jabber:server</code>. This does not contain any text
+  element.</p>
+
+<h3 class="function"><a name="get_condition-1">get_condition/1</a></h3>
+<div class="spec">
+<p><tt>get_condition(Stanza) -&gt; Condition | undefined</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Condition = atom()</tt></li></ul></p>
+</div><p>throws <tt>{stanza_error, condition, no_error_element_found, Stanza} | {stanza_error, condition, no_condition_found, Error}</tt></p>
+<p><p>Return the child element name corresponding to the stanza error  
+condition.</p>
+ 
+  If the namespace isn't neither <code>jabber:client</code> nor <code>jabber:server</code>,
+  the name of the first child is returned.</p>
+
+<h3 class="function"><a name="get_error-1">get_error/1</a></h3>
+<div class="spec">
+<p><tt>get_error(Xmlel::Stanza) -&gt; Error | undefined</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="#type-iq">iq()</a></tt></li><li><tt>Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Return the error element from <code>Stanza</code>.</p>
+ 
+  The error element is supposed to have the name <code>error</code> and the same
+  namespace as the stanza.</p>
+
+<h3 class="function"><a name="get_error_type-1">get_error_type/1</a></h3>
+<div class="spec">
+<p><tt>get_error_type(Stanza) -&gt; Type</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Type = binary()</tt></li></ul></p>
+</div><p>throws <tt>{stanza_error, error_type, no_error_element_found, Stanza}</tt></p>
+<p>Return the type of the error element.</p>
+
+<h3 class="function"><a name="get_id-1">get_id/1</a></h3>
+<div class="spec">
+<p><tt>get_id(Xmlel::Stanza) -&gt; ID | undefined</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a></tt></li><li><tt>ID = binary()</tt></li></ul></p>
+</div><p>Return the stanza ID.</p>
+
+<h3 class="function"><a name="get_id_from_attrs-1">get_id_from_attrs/1</a></h3>
+<div class="spec">
+<p><tt>get_id_from_attrs(Attrs) -&gt; ID | undefined</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>ID = binary()</tt></li></ul></p>
+</div><p>Return the stanza ID.</p>
+
+<h3 class="function"><a name="get_lang-1">get_lang/1</a></h3>
+<div class="spec">
+<p><tt>get_lang(Xmlel::Stanza) -&gt; Lang | undefined</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a></tt></li><li><tt>Lang = binary()</tt></li></ul></p>
+</div><p>Return the language of the stanza.</p>
+
+<h3 class="function"><a name="get_lang_from_attrs-1">get_lang_from_attrs/1</a></h3>
+<div class="spec">
+<p><tt>get_lang_from_attrs(Attrs) -&gt; Lang | undefined</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>Lang = binary()</tt></li></ul></p>
+</div><p>Return the language of the stanza.</p>
+
+<h3 class="function"><a name="get_recipient-1">get_recipient/1</a></h3>
+<div class="spec">
+<p><tt>get_recipient(Xmlel::Stanza) -&gt; Recipient | undefined</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Recipient = binary()</tt></li></ul></p>
+</div><p><p>Return the recipient.</p>
+ 
+  The return value should be a JID and may be parsed with
+  <a href="exmpp_jid.html#parse-1"><code>exmpp_jid:parse/1</code></a>.</p>
+
+<h3 class="function"><a name="get_recipient_from_attrs-1">get_recipient_from_attrs/1</a></h3>
+<div class="spec">
+<p><tt>get_recipient_from_attrs(Attrs) -&gt; Recipient | undefined</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>Recipient = binary()</tt></li></ul></p>
+</div><p><p>Return the recipient.</p>
+ 
+  The return value should be a JID and may be parsed with
+  <a href="exmpp_jid.html#parse-1"><code>exmpp_jid:parse/1</code></a>.</p>
+
+<h3 class="function"><a name="get_sender-1">get_sender/1</a></h3>
+<div class="spec">
+<p><tt>get_sender(Xmlel::Stanza) -&gt; Sender | undefined</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Sender = binary()</tt></li></ul></p>
+</div><p><p>Return the sender.</p>
+ 
+  The return value should be a JID and may be parsed with
+  <a href="exmpp_jid.html#parse-1"><code>exmpp_jid:parse/1</code></a>.</p>
+
+<h3 class="function"><a name="get_sender_from_attrs-1">get_sender_from_attrs/1</a></h3>
+<div class="spec">
+<p><tt>get_sender_from_attrs(Attrs) -&gt; Sender | undefined</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>Sender = binary()</tt></li></ul></p>
+</div><p><p>Return the sender.</p>
+ 
+  The return value should be a JID and may be parsed with
+  <a href="exmpp_jid.html#parse-1"><code>exmpp_jid:parse/1</code></a>.</p>
+
+<h3 class="function"><a name="get_text-1">get_text/1</a></h3>
+<div class="spec">
+<p><tt>get_text(Stanza) -&gt; Text | undefined</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Text = binary()</tt></li></ul></p>
+</div><p>throws <tt>{stanza_error, text, no_error_element_found, Stanza}</tt></p>
+<p><p>Return the text that describes the error.</p>
+ 
+  If there is no <code>&lt;text/&gt;</code> element, an empty string is returned.</p>
+
+<h3 class="function"><a name="get_type-1">get_type/1</a></h3>
+<div class="spec">
+<p><tt>get_type(Xmlel::Stanza) -&gt; Type | undefined</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a></tt></li><li><tt>Type = binary()</tt></li></ul></p>
+</div><p>Return the type of the stanza.</p>
+
+<h3 class="function"><a name="get_type_from_attrs-1">get_type_from_attrs/1</a></h3>
+<div class="spec">
+<p><tt>get_type_from_attrs(Attrs) -&gt; Type | undefined</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>Type = binary()</tt></li></ul></p>
+</div><p>Return the type of the stanza.</p>
+
+<h3 class="function"><a name="is_stanza_error-1">is_stanza_error/1</a></h3>
+<div class="spec">
+<p><tt>is_stanza_error(Stanza) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Tell if the stanza transports an error.</p>
+
+<h3 class="function"><a name="remove_recipient-1">remove_recipient/1</a></h3>
+<div class="spec">
+<p><tt>remove_recipient(Xmlel::Stanza) -&gt; New_Stanza</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>New_Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Remove the recipient.</p>
+
+<h3 class="function"><a name="remove_recipient_in_attrs-1">remove_recipient_in_attrs/1</a></h3>
+<div class="spec">
+<p><tt>remove_recipient_in_attrs(Attrs) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>New_Attrs = [<a href="exmpp_xml.html#type-xmlnattribute">exmpp_xml:xmlnattribute()</a>]</tt></li></ul></p>
+</div><p>Remove the recipient.</p>
+
+<h3 class="function"><a name="remove_sender-1">remove_sender/1</a></h3>
+<div class="spec">
+<p><tt>remove_sender(Xmlel::Stanza) -&gt; New_Stanza</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>New_Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Remove the sender.</p>
+
+<h3 class="function"><a name="remove_sender_in_attrs-1">remove_sender_in_attrs/1</a></h3>
+<div class="spec">
+<p><tt>remove_sender_in_attrs(Attrs) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>New_Attrs = [<a href="exmpp_xml.html#type-xmlnattribute">exmpp_xml:xmlnattribute()</a>]</tt></li></ul></p>
+</div><p>Remove the sender.</p>
+
+<h3 class="function"><a name="reply-1">reply/1</a></h3>
+<div class="spec">
+<p><tt>reply(Xmlel::Stanza) -&gt; Stanza_Reply</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Stanza_Reply = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare a reply to <code>Stanza</code>.
+ </p>
+<p><b>See also:</b> <a href="#reply_from_attrs-1">reply_from_attrs/1</a>.</p>
+
+<h3 class="function"><a name="reply_from_attrs-1">reply_from_attrs/1</a></h3>
+<div class="spec">
+<p><tt>reply_from_attrs(Attrs) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>New_Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li></ul></p>
+</div><p>Handles <code>to</code> and <code>from</code> attributes to prepare a reply stanza.</p>
+
+<h3 class="function"><a name="reply_with_error-2">reply_with_error/2</a></h3>
+<div class="spec">
+<p><tt>reply_with_error(Stanza, Condition::Error) -&gt; Stanza_Reply</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | atom()</tt></li><li><tt>Stanza_Reply = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Prepare an error reply to <code>Stanza</code>.</p>
+ 
+  If <code>Error</code> is an atom, it must be a standard condition defined by
+  XMPP Core.</p>
+
+<h3 class="function"><a name="reply_without_content-1">reply_without_content/1</a></h3>
+<div class="spec">
+<p><tt>reply_without_content(Xmlel::Stanza) -&gt; Stanza_Reply</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Stanza_Reply = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare a reply to <code>Stanza</code> with children removed.
+ </p>
+<p><b>See also:</b> <a href="#reply_from_attrs-1">reply_from_attrs/1</a>.</p>
+
+<h3 class="function"><a name="set_error_type-2">set_error_type/2</a></h3>
+<div class="spec">
+<p><tt>set_error_type(Stanza, Type) -&gt; New_Stanza</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Type = binary() | string()</tt></li><li><tt>New_Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>throws <tt>{stanza_error, error_type, no_error_element_found, Stanza}</tt></p>
+<p>Set the type of the error element.</p>
+
+<h3 class="function"><a name="set_error_type_from_condition-2">set_error_type_from_condition/2</a></h3>
+<div class="spec">
+<p><tt>set_error_type_from_condition(Stanza, Condition) -&gt; New_Stanza</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Condition = atom()</tt></li><li><tt>New_Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>throws <tt>{stanza_error, error_type, no_error_element_found, Stanza} | {stanza_error, error_type, invalid_condition, {NS, Condition}}</tt></p>
+<p><p>Set the type of the error element, based on the given condition.</p>
+ 
+  If the condition is <code>undefined-condition</code>, the type is unchanged.</p>
+
+<h3 class="function"><a name="set_id-2">set_id/2</a></h3>
+<div class="spec">
+<p><tt>set_id(Xmlel::Stanza, ID) -&gt; New_Stanza</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a></tt></li><li><tt>ID = binary() | string() | random | undefined</tt></li><li><tt>New_Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a></tt></li></ul></p>
+</div><p><p>Set the ID.</p>
+ 
+  If <code>ID</code> is <code>undefined</code> or empty, it's removed. If <code>ID</code> is <code>random</code>, a
+  random value is set.</p>
+
+<h3 class="function"><a name="set_id_in_attrs-2">set_id_in_attrs/2</a></h3>
+<div class="spec">
+<p><tt>set_id_in_attrs(Attrs, ID) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>ID = binary() | string() | random | undefined</tt></li><li><tt>New_Attrs = [<a href="exmpp_xml.html#type-xmlnattribute">exmpp_xml:xmlnattribute()</a>]</tt></li></ul></p>
+</div><p><p>Set the ID.</p>
+ 
+  If <code>ID</code> is <code>undefined</code> or empty, it's removed. If <code>ID</code> is <code>random</code>, a
+  random value is set.</p>
+
+<h3 class="function"><a name="set_jids-3">set_jids/3</a></h3>
+<div class="spec">
+<p><tt>set_jids(Stanza, From::Sender, To::Recipient) -&gt; New_Stanza</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Sender = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | binary() | string() | undefined</tt></li><li><tt>Recipient = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | binary() | string() | undefined</tt></li><li><tt>New_Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Set the sender and the recipient at the same time.</p>
+ 
+  If <code>Sender</code> is set to <code>undefined</code>, the sender is removed. If
+  <code>Recipient</code> is set to <code>undefined</code>, the recipient is removed.</p>
+
+<h3 class="function"><a name="set_jids_in_attrs-3">set_jids_in_attrs/3</a></h3>
+<div class="spec">
+<p><tt>set_jids_in_attrs(Attrs, From::Sender, To::Recipient) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>Sender = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | binary() | string() | undefined</tt></li><li><tt>Recipient = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | binary() | string() | undefined</tt></li><li><tt>New_Attrs = [<a href="exmpp_xml.html#type-xmlnattribute">exmpp_xml:xmlnattribute()</a>]</tt></li></ul></p>
+</div><p><p>Set the sender and the recipient at the same time.</p>
+ 
+  If <code>Sender</code> is set to <code>undefined</code>, the sender is removed. If
+  <code>Recipient</code> is set to <code>undefined</code>, the recipient is removed.</p>
+
+<h3 class="function"><a name="set_lang-2">set_lang/2</a></h3>
+<div class="spec">
+<p><tt>set_lang(Xmlel::Stanza, Lang) -&gt; New_Stanza</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a></tt></li><li><tt>Lang = binary() | string() | undefined</tt></li><li><tt>New_Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a></tt></li></ul></p>
+</div><p><p>Set the lang.</p>
+ 
+  If <code>Lang</code> is <code>undefined</code> or empty, it's removed.</p>
+
+<h3 class="function"><a name="set_lang_in_attrs-2">set_lang_in_attrs/2</a></h3>
+<div class="spec">
+<p><tt>set_lang_in_attrs(Attrs, Lang) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>Lang = binary() | string() | undefined</tt></li><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li></ul></p>
+</div><p><p>Set the lang.</p>
+ 
+  If <code>Lang</code> is <code>undefined</code> or empty, it's removed.</p>
+
+<h3 class="function"><a name="set_recipient-2">set_recipient/2</a></h3>
+<div class="spec">
+<p><tt>set_recipient(Xmlel::Stanza, Recipient) -&gt; New_Stanza</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Recipient = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | binary() | string() | undefined</tt></li><li><tt>New_Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Set the recipient.</p>
+ 
+  If <code>Recipient</code> is set to <code>undefined</code>, the recipient is removed.</p>
+
+<h3 class="function"><a name="set_recipient_in_attrs-2">set_recipient_in_attrs/2</a></h3>
+<div class="spec">
+<p><tt>set_recipient_in_attrs(Attrs, Recipient) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>Recipient = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | binary() | string() | undefined</tt></li><li><tt>New_Attrs = [<a href="exmpp_xml.html#type-xmlnattribute">exmpp_xml:xmlnattribute()</a>]</tt></li></ul></p>
+</div><p><p>Set the recipient.</p>
+ 
+  If <code>Recipient</code> is set to <code>undefined</code>, the recipient is removed.</p>
+
+<h3 class="function"><a name="set_sender-2">set_sender/2</a></h3>
+<div class="spec">
+<p><tt>set_sender(Xmlel::Stanza, Sender) -&gt; New_Stanza</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Sender = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | binary() | string() | undefined</tt></li><li><tt>New_Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Set the sender.</p>
+ 
+  If <code>Sender</code> is set to <code>undefined</code>, the sender is removed.</p>
+
+<h3 class="function"><a name="set_sender_in_attrs-2">set_sender_in_attrs/2</a></h3>
+<div class="spec">
+<p><tt>set_sender_in_attrs(Attrs, Sender) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>Sender = <a href="exmpp_jid.html#type-jid">exmpp_jid:jid()</a> | binary() | string() | undefined</tt></li><li><tt>New_Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li></ul></p>
+</div><p><p>Set the sender.</p>
+ 
+  If <code>Sender</code> is set to <code>undefined</code>, the sender is removed.</p>
+
+<h3 class="function"><a name="set_type-2">set_type/2</a></h3>
+<div class="spec">
+<p><tt>set_type(Xmlel::Stanza, Type) -&gt; New_Stanza</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a></tt></li><li><tt>Type = atom() | binary() | string()</tt></li><li><tt>New_Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a></tt></li></ul></p>
+</div><p>Set the type of the stanza.</p>
+
+<h3 class="function"><a name="set_type_in_attrs-2">set_type_in_attrs/2</a></h3>
+<div class="spec">
+<p><tt>set_type_in_attrs(Attrs, Type) -&gt; New_Attrs</tt>
+<ul class="definitions"><li><tt>Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li><li><tt>Type = atom() | binary() | string()</tt></li><li><tt>New_Attrs = [<a href="exmpp_xml.html#type-xmlattr">exmpp_xml:xmlattr()</a>]</tt></li></ul></p>
+</div><p>Set the type of the stanza.</p>
+
+<h3 class="function"><a name="stanza_error-2">stanza_error/2</a></h3>
+<div class="spec">
+<p><tt>stanza_error(Stanza, Error) -&gt; Stanza_Error</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Stanza_Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Transform <code>Stanza</code> in a stanza error.</p>
+ 
+  The <code>type</code> attribute is set and an error condition is added. The
+  caller is still responsible to set or modify the <code>to</code> attribute
+  correctly.
+ </p>
+<p><b>See also:</b> <a href="#error-2">error/2</a>, <a href="#error-3">error/3</a>.</p>
+
+<h3 class="function"><a name="stanza_error_without_original-2">stanza_error_without_original/2</a></h3>
+<div class="spec">
+<p><tt>stanza_error_without_original(Stanza, Error) -&gt; Stanza_Error</tt>
+<ul class="definitions"><li><tt>Stanza = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Stanza_Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Transform <code>Stanza</code> in a stanza error.</p>
+ 
+  Previous child elements from <code>Stanza</code> are not kept.
+ </p>
+<p><b>See also:</b> <a href="#stanza_error-2">stanza_error/2</a>.</p>
+
+<h3 class="function"><a name="to_binary-1">to_binary/1</a></h3>
+<div class="spec">
+<p><tt>to_binary(El) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a> | list()</tt></li><li><tt>XML_Text = binary()</tt></li></ul></p>
+</div><p><p>Serialize a stanza using common XMPP default namespaces.</p>
+ 
+  This function calls <a href="#to_binary-2"><code>to_binary/2</code></a> with <code>Default_NS</code> set to
+  <code>[?NS_JABBER_CLIENT, ?NS_JABBER_SERVER, ?NS_COMPONENT_ACCEPT,
+  ?NS_COMPONENT_CONNECT]</code>.</p>
+
+<h3 class="function"><a name="to_binary-2">to_binary/2</a></h3>
+<div class="spec">
+<p><tt>to_binary(El, Default_NS) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a> | list()</tt></li><li><tt>Default_NS = NS | Equivalent_NSs</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Equivalent_NSs = [NS]</tt></li><li><tt>XML_Text = binary()</tt></li></ul></p>
+</div><p><p>Serialize a stanza using the given default namespace.</p>
+ 
+  The XMPP namespace <code>http://etherx.jabber.org/streams</code> and the
+  Server Dialback <code>jabber:server:dialback</code> are included as a prefixed
+  namespace, with the <code>stream</code> prefix.</p>
+
+<h3 class="function"><a name="to_binary-3">to_binary/3</a></h3>
+<div class="spec">
+<p><tt>to_binary(Iq::El, Default_NS, Prefixed_NS::Prefix) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a> | list()</tt></li><li><tt>Default_NS = [NS]</tt></li><li><tt>Prefixed_NS = [{NS, Prefix}]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Prefix = string()</tt></li><li><tt>XML_Text = binary()</tt></li></ul></p>
+</div><p><p>Serialize a stanza using the given namespaces.</p>
+ 
+  To understand <code>Default_NS</code>, see <a href="exmpp_xml.html#xmlel_to_xmlelement-3"><code>exmpp_xml:xmlel_to_xmlelement/3</code></a>.</p>
+
+<h3 class="function"><a name="to_iolist-1">to_iolist/1</a></h3>
+<div class="spec">
+<p><tt>to_iolist(El) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a> | list()</tt></li><li><tt>XML_Text = iolist()</tt></li></ul></p>
+</div><p><p>Serialize a stanza using common XMPP default namespaces.</p>
+ 
+  This function calls <a href="#to_iolist-2"><code>to_iolist/2</code></a> with <code>Default_NS</code> set to
+  <code>[?NS_JABBER_CLIENT, ?NS_JABBER_SERVER, ?NS_COMPONENT_ACCEPT,
+  ?NS_COMPONENT_CONNECT]</code>.</p>
+
+<h3 class="function"><a name="to_iolist-2">to_iolist/2</a></h3>
+<div class="spec">
+<p><tt>to_iolist(El, Default_NS) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a> | list()</tt></li><li><tt>Default_NS = NS | Equivalent_NSs</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Equivalent_NSs = [NS]</tt></li><li><tt>XML_Text = iolist()</tt></li></ul></p>
+</div><p><p>Serialize a stanza using the given default namespace.</p>
+ 
+  The XMPP namespace <code>http://etherx.jabber.org/streams</code> and the
+  Server Dialback <code>jabber:server:dialback</code> are included as a prefixed
+  namespace, with the <code>stream</code> prefix.</p>
+
+<h3 class="function"><a name="to_iolist-3">to_iolist/3</a></h3>
+<div class="spec">
+<p><tt>to_iolist(Iq::El, Default_NS, Prefixed_NS::Prefix) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a> | list()</tt></li><li><tt>Default_NS = [NS]</tt></li><li><tt>Prefixed_NS = [{NS, Prefix}]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Prefix = string()</tt></li><li><tt>XML_Text = iolist()</tt></li></ul></p>
+</div><p><p>Serialize a stanza using the given namespaces.</p>
+ 
+  To understand <code>Default_NS</code>, see <a href="exmpp_xml.html#xmlel_to_xmlelement-3"><code>exmpp_xml:xmlel_to_xmlelement/3</code></a>.</p>
+
+<h3 class="function"><a name="to_list-1">to_list/1</a></h3>
+<div class="spec">
+<p><tt>to_list(El) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a> | list()</tt></li><li><tt>XML_Text = string()</tt></li></ul></p>
+</div><p><p>Serialize a stanza using common XMPP default namespaces.</p>
+ 
+  This function calls <a href="#to_list-2"><code>to_list/2</code></a> with <code>Default_NS</code> set to
+  <code>[?NS_JABBER_CLIENT, ?NS_JABBER_SERVER, ?NS_COMPONENT_ACCEPT,
+  ?NS_COMPONENT_CONNECT]</code>.</p>
+
+<h3 class="function"><a name="to_list-2">to_list/2</a></h3>
+<div class="spec">
+<p><tt>to_list(El, Default_NS) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a> | list()</tt></li><li><tt>Default_NS = NS | Equivalent_NSs</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Equivalent_NSs = [NS]</tt></li><li><tt>XML_Text = string()</tt></li></ul></p>
+</div><p><p>Serialize a stanza using the given default namespace.</p>
+ 
+  The XMPP namespace <code>http://etherx.jabber.org/streams</code> and the
+  Server Dialback <code>jabber:server:dialback</code> are included as a prefixed
+  namespace, with the <code>stream</code> prefix.</p>
+
+<h3 class="function"><a name="to_list-3">to_list/3</a></h3>
+<div class="spec">
+<p><tt>to_list(Iq::El, Default_NS, Prefixed_NS::Prefix) -&gt; XML_Text</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | <a href="exmpp_iq.html#type-iq">exmpp_iq:iq()</a> | list()</tt></li><li><tt>Default_NS = [NS]</tt></li><li><tt>Prefixed_NS = [{NS, Prefix}]</tt></li><li><tt>NS = atom() | string()</tt></li><li><tt>Prefix = string()</tt></li><li><tt>XML_Text = string()</tt></li></ul></p>
+</div><p><p>Serialize a stanza using the given namespaces.</p>
+ 
+  To understand <code>Default_NS</code>, see <a href="exmpp_xml.html#xmlel_to_xmlelement-3"><code>exmpp_xml:xmlel_to_xmlelement/3</code></a>.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:39.</i></p>
+</body>
+</html>
