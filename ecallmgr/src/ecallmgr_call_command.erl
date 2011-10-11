@@ -38,7 +38,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                 {AppName, noop} ->
                     ControlPID ! {execute_complete, UUID, AppName};
 		{<<"answer">> = AppName, AppData} ->
-                    send_cmd(Node, UUID, AppName, AppData),
+                    _ = send_cmd(Node, UUID, AppName, AppData),
                     %% 22:55 pyite_mac  can you sleep 0.5 seconds before continuing
                     timer:sleep(500),
                     ControlPID ! {execute_complete, UUID, AppName};
@@ -314,20 +314,12 @@ get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
     case wh_api:set_req_v(JObj) of
         false -> {'error', <<"set failed to execute as JObj did not validate">>};
         true ->
-            {struct, ChannelVars} = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
-            lists:foreach(fun({<<"Auto-Answer">>,V}) ->
-                                  set(Node, UUID, list_to_binary(["sip_auto_answer=", wh_util:to_list(V)]));
-                             ({K,V}) ->
-                                  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K), "=", wh_util:to_list(V)]),
-                                  set(Node, UUID, Arg)
-                          end, ChannelVars),
-            {struct, CallVars} = wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT),
-            lists:foreach(fun({<<"Auto-Answer">>,V}) ->
-                                  export(Node, UUID, list_to_binary(["sip_auto_answer=", wh_util:to_list(V)]));
-                              ({K,V}) ->
-                                  Arg = list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K), "=", wh_util:to_list(V)]),
-                                  export(Node, UUID, Arg)
-                          end, CallVars),
+            ChannelVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
+	    _ = [ set(Node, UUID, get_fs_kv(K, V)) || {K, V} <- ChannelVars],
+
+            CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
+	    _ = [ export(Node, UUID, get_fs_kv(K, V)) || {K, V} <- CallVars],
+
             {App, noop}
     end;
 
@@ -335,7 +327,7 @@ get_fs_app(_Node, _UUID, JObj, <<"respond">>=App) ->
     case wh_api:respond_req_v(JObj) of
         false -> {'error', <<"respond failed to execute as JObj did not validate">>};
         true ->
-            case wh_json:get_value(<<"Response-Code">>, JObj, <<"488">>) of
+            case wh_json:get_value(<<"Response-Code">>, JObj, ?DEFAULT_RESPONSE_CODE) of
                 <<"302">> ->
                     {<<"redirect">>, wh_json:get_value(<<"Response-Message">>, JObj, <<>>)};
                 Code ->
@@ -362,6 +354,21 @@ get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
 get_fs_app(_Node, _UUID, _JObj, _App) ->
     ?LOG("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% set channel and call variables in FreeSWITCH
+%% @end
+%%--------------------------------------------------------------------
+-spec get_fs_kv/2 :: (binary(), binary()) -> binary().
+get_fs_kv(Key, Val) ->
+    case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
+	false ->
+	    list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "=", wh_util:to_list(Val)]);
+	{_, Prefix} ->
+	    list_to_binary([Prefix, "=", wh_util:to_list(Val)])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

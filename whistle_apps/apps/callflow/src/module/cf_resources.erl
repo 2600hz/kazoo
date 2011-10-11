@@ -16,7 +16,7 @@
 
 -define(VIEW_BY_RULES, <<"cf_attributes/active_resources_by_rules">>).
 
--type endpoint() :: tuple(binary(), json_objects(), raw | binary()).
+-type endpoint() :: {binary(), json_objects(), 'raw' | binary()}.
 -type endpoints() :: [] | [endpoint()].
 
 %%--------------------------------------------------------------------
@@ -25,7 +25,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
+-spec handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> {'continue'} | {'branch', json_object()} | boolean().
 handle(Data, #cf_call{call_id=CallId}=Call) ->
     put(callid, CallId),
     {ok, Endpoints} = find_endpoints(Call),
@@ -45,14 +45,21 @@ handle(Data, #cf_call{call_id=CallId}=Call) ->
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
--spec(bridge_to_resources/5 :: (Endpoints :: endpoints(), Timeout :: cf_api_binary()
+-spec bridge_to_resources/5 :: (Endpoints :: endpoints(), Timeout :: cf_api_binary()
                                 ,IngoreEarlyMeida :: cf_api_binary(), Ringback :: cf_api_binary()
-                                ,Call :: #cf_call{}) -> no_return()).
-bridge_to_resources([{DestNum, Gateways, CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, #cf_call{cf_pid=CFPid
+                                ,Call :: #cf_call{}) -> {'continue'} | {'branch', json_object()} | 'true'.
+bridge_to_resources([{DestNum, Rsc, CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, #cf_call{cf_pid=CFPid
                                                                                                     ,inception_during_transfer=IDT
                                                                                                     ,channel_vars=CCV}=Call) ->
-    case b_bridge([create_endpoint(DestNum, Gtw) || Gtw <- Gateways]
-                  ,Timeout, CIDType, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
+    CCVs1 = case wh_json:is_true(<<"fax_enabled">>, Rsc) of
+		true -> wh_json:set_value(<<"Fax-Enabled">>, true, CCV);
+		false -> CCV
+	    end,
+
+    case b_bridge([create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)]
+                  ,Timeout, CIDType, <<"single">>, IgnoreEarlyMedia, Ringback
+		  ,Call#cf_call{channel_vars=CCVs1}
+		 ) of
         {ok, _} ->
             ?LOG("completed successful bridge to resource"),
             CFPid ! { stop };
@@ -94,7 +101,7 @@ bridge_to_resources([], _, _, _, #cf_call{cf_pid=CFPid}) ->
 %% for use with the whistle bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec(create_endpoint/2 :: (DestNum :: binary(), Gateway :: json_object()) -> json_object()).
+-spec create_endpoint/2 :: (DestNum :: binary(), Gateway :: json_object()) -> json_object().
 create_endpoint(DestNum, JObj) ->
     Rule = <<"sip:"
               ,(wh_json:get_value(<<"prefix">>, JObj, <<>>))/binary
@@ -102,6 +109,7 @@ create_endpoint(DestNum, JObj) ->
               ,(wh_json:get_value(<<"suffix">>, JObj, <<>>))/binary
               ,$@ ,(wh_json:get_value(<<"server">>, JObj))/binary>>,
     ?LOG("attempting resource ~s", [Rule]),
+
     Endpoint = [{<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>, Rule}
                 ,{<<"Auth-User">>, wh_json:get_value(<<"username">>, JObj)}
@@ -110,7 +118,7 @@ create_endpoint(DestNum, JObj) ->
                 ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
                ],
-    {struct, [ KV || {_, V}=KV <- Endpoint, V =/= undefined ]}.
+    wh_json:from_list([ KV || {_, V}=KV <- Endpoint, V =/= undefined ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -120,14 +128,14 @@ create_endpoint(DestNum, JObj) ->
 %% number as formated by that rule (ie: capture group or full number).
 %% @end
 %%--------------------------------------------------------------------
--spec(find_endpoints/1 :: (Call :: #cf_call{}) -> {ok, endpoints()} | tuple(error, atom())).
+-spec find_endpoints/1 :: (#cf_call{}) -> {'ok', endpoints()} | {'error', atom()}.
 find_endpoints(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
     ?LOG("searching for resource endpoints"),
     case couch_mgr:get_results(Db, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
             ?LOG("found resources, filtering by rules"),
             {ok, [{Number
-                   ,wh_json:get_value([<<"value">>, <<"gateways">>], Resource, [])
+                   ,wh_json:get_value([<<"value">>], Resource, [])
                    ,get_caller_id_type(Resource, Call)}
                   || Resource <- Resources
 			 ,Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), ReqNum)

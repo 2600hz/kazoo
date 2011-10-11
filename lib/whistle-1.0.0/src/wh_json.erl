@@ -14,7 +14,7 @@
 -export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
 -export([get_list_value/2, get_list_value/3]).
--export([is_true/2, is_true/3, is_false/2, is_false/3]).
+-export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
 -export([get_value/2, get_value/3, get_values/1]).
 -export([get_keys/1, get_keys/2]).
@@ -34,6 +34,10 @@
 -spec new/0 :: () -> ?EMPTY_JSON_OBJECT.
 new() ->
     ?EMPTY_JSON_OBJECT.
+
+-spec is_empty/1 :: (term()) -> boolean().
+is_empty(MaybeJObj) ->
+    MaybeJObj =:= ?EMPTY_JSON_OBJECT.
 
 -spec is_json_object/1 :: (MaybeJObj) -> boolean() when
       MaybeJObj :: term().

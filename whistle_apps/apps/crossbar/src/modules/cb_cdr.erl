@@ -24,7 +24,8 @@
 -include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
--define(CB_LIST_BY_USER, <<"cdr/listing_by_owner">>).
+-define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
+-define(CB_LIST, <<"cdrs/crossbar_listing">>).
 
 %%%===================================================================
 %%% API
@@ -238,9 +239,19 @@ validate(_, _, Context) ->
 -spec load_cdr_summary/2 :: (Context, QueryParams) -> #cb_context{} when
       Context :: #cb_context{},
       QueryParams :: proplist().
-load_cdr_summary(#cb_context{db_name=DbName, doc=JObj}=Context, QueryParams) ->
-    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"key">>, wh_json:get_value(<<"_id">>, JObj, <<>>)}]),
-    Context#cb_context{resp_data=Result, resp_status=success}.
+load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
+    Nouns = Context#cb_context.req_nouns,
+    LastNoun  = lists:nth(2, Nouns), %%st is {cdr, _}
+    case LastNoun of
+	{<<"accounts">>, _} ->
+	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams, []),
+	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
+	{<<"users">>, [UserId]} ->
+	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"key">>, UserId}]),
+	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
+	_ ->
+	    crossbar_util:response_faulty_request(Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

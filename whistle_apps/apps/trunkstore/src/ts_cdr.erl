@@ -93,8 +93,6 @@ fetch_cdr(CallID, DB) ->
     case couch_mgr:open_doc(DB, CallID) of
 	{error, _} ->
 	    {error, not_found};
-	{ok, ?EMPTY_JSON_OBJECT} ->
-	    {error, not_found};
 	{ok, _}=Resp ->
 	    Resp
     end.

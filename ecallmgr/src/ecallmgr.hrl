@@ -42,3 +42,14 @@
              ,{'load', \"mod_shout\"}
              ,{'load', \"mod_shell_stream\"}
 ]}.">>).
+
+%% Call and Channel Vars that have a special prefix instead of the standard CHANNEL_VAR_PREFIX prefix
+%% [{AMQP-Header, FS-var-name}]
+%% so FS-var-name of "foo_var" would become "foo_var=foo_val" in the channel/call string
+-define(SPECIAL_CHANNEL_VARS, [
+			       {<<"Auto-Answer">>, <<"sip_auto_answer">>}
+			       ,{<<"Eavesdrop-Group">>, <<"eavesdrop_group">>}
+			       ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
+			      ]).
+
+-define(DEFAULT_RESPONSE_CODE, <<"488">>).

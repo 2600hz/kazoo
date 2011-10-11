@@ -22,6 +22,7 @@ init(Parent, RouteReqJObj) ->
     start_amqp(ts_callflow:init(RouteReqJObj)).
 
 start_amqp(State) ->
+    true = ts_util:is_valid_ts_account(ts_callflow:get_account_id(State)),
     endpoint_data(ts_callflow:start_amqp(State)).
 
 endpoint_data(State) ->
@@ -123,11 +124,7 @@ wait_for_cdr(State) ->
 	{timeout, State3} ->
 	    ?LOG("Timed out waiting for CDRs, cleaning up"),
 	    CallID = ts_callflow:get_aleg_id(State3),
-	    ts_callflow:finish_leg(State3, CallID);
-        {error, State4} ->
-            ?LOG("error waiting for CDRs, cleaning up"),
-	    CallID = ts_callflow:get_aleg_id(State4),
-	    ts_callflow:finish_leg(State4, CallID)
+	    ts_callflow:finish_leg(State3, CallID)
     end.
 
 wait_for_other_leg(State, aleg) ->
@@ -148,10 +145,7 @@ wait_for_other_leg(_State, Leg, {timeout, State1}) ->
     ?LOG("Timed out waiting for ~s CDR, cleaning up", [Leg]),
 
     ALeg = ts_callflow:get_bleg_id(State1),
-    ts_callflow:finish_leg(State1, ALeg);
-wait_for_other_leg(_State, Leg, {error, State1}) ->
-    ?LOG("Error while waiting for other leg, cleaning up"),
-    ts_callflow:finish_leg(State1, Leg).
+    ts_callflow:finish_leg(State1, ALeg).
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State), ts_callflow:get_failover(State)} of
@@ -386,11 +380,15 @@ routing_data(ToDID) ->
 
 callee_id([]) -> {undefined, undefined};
 callee_id([undefined | T]) -> callee_id(T);
-callee_id([?EMPTY_JSON_OBJECT | T]) -> callee_id(T);
 callee_id([<<>> | T]) -> callee_id(T);
-callee_id([{struct, [_|_]}=JObj | T]) ->
-    case {wh_json:get_value(<<"cid_name">>, JObj), wh_json:get_value(<<"cid_number">>, JObj)} of
-        {undefined, undefined} ->
-            callee_id(T);
-        CalleeID -> CalleeID
+callee_id([JObj | T]) ->
+    case wh_json:is_json_object(JObj) andalso (not wh_json:is_empty(JObj)) of
+	true ->
+	    case {wh_json:get_value(<<"cid_name">>, JObj), wh_json:get_value(<<"cid_number">>, JObj)} of
+		{undefined, undefined} ->
+		    callee_id(T);
+		CalleeID -> CalleeID
+	    end;
+	false ->
+	    callee_id(T)
     end.

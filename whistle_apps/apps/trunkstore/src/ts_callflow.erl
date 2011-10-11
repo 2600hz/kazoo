@@ -201,13 +201,14 @@ wait_for_cdr(State, Timeout) ->
 		{hangup, State1} ->
                     send_hangup(State1),
                     wait_for_cdr(State1, ?WAIT_FOR_CDR_TIMEOUT);
-		{error, _}=Error -> Error;
 		ignore -> wait_for_cdr(State, Timeout)
 	    end
     after Timeout ->
 	    {timeout, State}
     end.
 
+-spec process_event_for_cdr/2 :: (#state{}, json_object()) -> {'hangup', #state{}} | 'ignore' |
+							      {'cdr', 'aleg' | 'bleg', json_object(), #state{}}.
 process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
     case wh_util:get_event_type(JObj) of
 	{ <<"call_event">>, <<"CHANNEL_HANGUP">> } ->

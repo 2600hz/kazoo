@@ -297,15 +297,17 @@ process_req({_, _}, _, _) ->
 %% cf_exe_sup tree.
 %% @end
 %%-----------------------------------------------------------------------------
-execute_call_flow(Flow, #cf_call{authorizing_id=AuthId}=Call) ->
+execute_call_flow(Flow, #cf_call{authorizing_id=AuthId, channel_vars=CCVs}=Call) ->
     case AuthId of
         undefined ->
-            ok;
+            cf_call_command:set(CCVs	
+                                ,undefined
+                                ,Call);
         _ ->
             ?LOG("set transfer fallback to ~s", [AuthId]),
-            cf_call_command:set(undefined
+            cf_call_command:set(CCVs	
                                 ,{struct, [{<<"Transfer-Fallback">>, AuthId}]}
-                                ,Call)
+                                ,Call)	
     end,
     ?LOG("call has been setup, passing control to callflow executer"),
     cf_exe_sup:start_proc(Call, wh_json:get_value(<<"flow">>, Flow)).
