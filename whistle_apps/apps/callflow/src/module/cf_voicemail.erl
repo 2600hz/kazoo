@@ -115,7 +115,8 @@
           ,check_if_owner = true :: boolean()
           ,owner_id = <<>> :: binary()
           ,is_setup = false :: boolean()
-	  ,size = 0 :: non_neg_integer()
+	  ,message_count = 0 :: non_neg_integer()
+          ,max_message_count = 0 :: non_neg_integer()
 	  ,message_max_length = 0 :: non_neg_integer()
           ,keys = #keys{}
           ,prompts = #prompts{}
@@ -243,6 +244,10 @@ compose_voicemail(#mailbox{check_if_owner=true, owner_id=OwnerId}=Box, #cf_call{
 compose_voicemail(#mailbox{exists=false, prompts=#prompts{no_mailbox=NoMailbox}}, Call) ->
     ?LOG("attempted to compose voicemail for missing mailbox"),
     b_play(NoMailbox, Call);
+compose_voicemail(#mailbox{max_message_count=Count, message_count=Count,
+			   prompts=#prompts{mailbox_full=MailboxFull}}, Call) when Count /= 0->
+    ?LOG("voicemail box is full, cannot hold more messages"),
+    b_play(MailboxFull, Call);
 compose_voicemail(#mailbox{skip_greeting=SkipGreeting, skip_instructions=SkipInstructions
 			   ,prompts=#prompts{record_instructions=RecordInstructions}
 			   ,keys=#keys{login=Login}}=Box, Call) ->
@@ -785,8 +790,10 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                          wh_json:get_value(<<"owner_id">>, JObj)
                      ,is_setup =
                          wh_json:is_true(<<"is_setup">>, JObj, false)
-		     ,size =
-			 wh_json:get_integer_value(<<"size">>, JObj, ?MAILBOX_DEFAULT_SIZE)
+		     ,max_message_count =
+			 wh_json:get_integer_value(<<"max_message_count">>, JObj, ?MAILBOX_DEFAULT_SIZE)
+		     ,message_count =
+			 length(wh_json:get_value(<<"messages">>, JObj, []))
 		     ,message_max_length =
 			 wh_json:get_integer_value(<<"message_max_length">>, JObj, ?MAILBOX_DEFAULT_MSG_MAX_LENGTH)
                      ,exists = true
