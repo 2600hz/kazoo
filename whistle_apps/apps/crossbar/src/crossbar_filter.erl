@@ -62,7 +62,7 @@ filter_doc(Doc, Props) ->
       Key :: binary(),
       Val :: term().
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
-    wh_json:get_value(Key, Doc) == Val;
+    wh_json:get_value(binary:split(Key, <<".">>), Doc) == Val;
 filter_prop(Doc, <<"created_from">>, Val) ->
     wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) >= wh_util:to_integer(Val);
 filter_prop(Doc, <<"created_to">>, Val) ->
