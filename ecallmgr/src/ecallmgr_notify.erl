@@ -73,6 +73,7 @@ callstate_change(Data) ->
                                        ]}}
                | wh_api:default_headers(<<>>, <<"presence">>, <<"subscribers_query">>, ?APP_NAME, ?APP_VERSION)
               ],
+    ?LOG("sending channel state change notification"),
     {ok, Payload} = wh_api:presence_subscrs_query([ KV || {_, V}=KV <- Request, V =/= undefined ]),
     amqp_util:callmgr_publish(Payload, <<"application/json">>, ?KEY_PRESENCE_IN).
 
@@ -149,7 +150,16 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 handle_event(_JObj, _State) ->
-    {reply, []}.
+    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    CSeq = case wh_cache:fetch_local(Cache, {notify_cseq}) of
+               {ok, Seq} ->
+                   wh_cache:store_local(Cache, {notify_cseq}, Seq + 1),
+                   Seq;
+               {error, not_found} ->
+                   wh_cache:store_local(Cache, {notify_cseq}, 42),
+                   42
+           end,
+    {reply, [{cseq, CSeq}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -244,16 +254,19 @@ subscribe(_JObj, _Props) ->
 %%    timer:sleep(500),
 %%    send_presence_dialog(JObj, {struct, [<<"Alt-Event-Type">>, <<"dialog">>]}).
 
-presence_out(JObj, _Props) ->
+presence_out(JObj, Props) ->
     true = wh_api:presence_subscrs_query_resp_v(JObj),
+    ?LOG("received presence event, forwarding to subscribers"),
+
+    CSeq = props:get_value(cseq, Props, 42),
 
     Event = wh_json:get_value(<<"Event">>, JObj, ?EMPTY_JSON_OBJECT),
     Subscribers = wh_json:get_value(<<"Subscribers">>, JObj, []),
 
-    [send_presence_dialog(Subscriber, Event) || Subscriber <- Subscribers].
+    [send_presence_dialog(Subscriber, Event, CSeq) || Subscriber <- Subscribers].
 
 
-send_presence_dialog(Subscriber, Event) ->
+send_presence_dialog(Subscriber, Event, CSeq) ->
     ToUser = wh_json:get_value(<<"From-User">>, Subscriber),
     ToHost = wh_json:get_value(<<"From-Host">>, Subscriber),
     ToTag = wh_json:get_value(<<"From-Tag">>, Subscriber),
@@ -266,10 +279,14 @@ send_presence_dialog(Subscriber, Event) ->
     CallId = wh_json:get_value(<<"Call-ID">>, Subscriber),
     Accept = wh_json:get_value(<<"Accepts">>, Subscriber, <<"application/dialog-info+xml">>),
 
+    put(callid, wh_json:get_value(<<"Call-ID">>, Subscriber, <<"000000000000">>)),
+    ?LOG_START("sending presence update for ~s@~s to ~s@~s", [FromUser, FromHost, ToUser, ToHost]),
+
     Entity = lists:flatten(io_lib:format("sip:~s@~s", [FromUser, FromHost])),
 
     case get_endpoint(ToUser, ToHost) of
         {error, timeout} ->
+            ?LOG_END("failed to find registration of ~s@~s for presence update", [ToUser, ToHost]),
             ok;
         Endpoint ->
             Body = build_presence_body(Entity, Event, <<"application/dialog-info+xml">>),
@@ -280,11 +297,13 @@ send_presence_dialog(Subscriber, Event) ->
                        ,{"contact", Entity}
                        ,{"call-id", wh_util:to_list(CallId)}
                        ,{"event-string", wh_util:to_list(NotifyEvent)}
-                       ,{"subscription-state", "active;expires=60"}
+                       ,{"cseq", wh_util:to_list(CSeq) ++ " NOTIFY"}
+                       ,{"subscription-state", "active;expires=3600"}
                        ,{"content-type", wh_util:to_list(Accept)}
                        ,{"body", lists:flatten(Body)}
                       ],
             {ok, Node} = ecallmgr_fs_handler:request_node(<<"audio">>),
+            ?LOG_END("sent presence ~p notify via ~s", [CSeq, Node]),
             freeswitch:sendevent(Node, 'NOTIFY', Headers)
     end.
 
@@ -294,13 +313,13 @@ build_presence_body(Entity, Event, <<"application/dialog-info+xml">>) ->
     Dialog = build_presence_dialog(EventCallId, Event),
     Props = [{'dialog-info', [{'xmlns', "urn:ietf:params:xml:ns:dialog-info"}
                               ,{'version', round(wh_util:current_tstamp())}
-                              ,{'state', "partial"}
+                              ,{'state', "full"}
                               ,{'entity', Entity}], Dialog}],
     wh_util:to_list(make_doc_xml(Props, undefined)).
 
 
 build_presence_dialog(undefined, _) ->
-    [{'whistle', ["rocks"]}];
+    [];
 build_presence_dialog(CallId, Event) ->
     Direction = case wh_json:get_value(<<"Presence-Direction">>, Event) of
                     <<"inbound">> -> "initiator";
@@ -330,6 +349,7 @@ build_presence_dialog(CallId, Event) ->
                 <<"HANGUP">> ->
                     "terminated"
             end,
+    ?LOG("created presence dialog for ~s with state ~s", [CallId, State]),
     [{'dialog', [{'id', wh_util:to_list(CallId)}
                  ,{'direction', Direction}]
       ,[{'state', State}]}].
