@@ -105,7 +105,7 @@ handle_info({event, [undefined | Data]}, #state{stats=Stats}=State) ->
 	    {noreply, State#state{stats=Stats#node_stats{last_heartbeat=erlang:now()}}, hibernate};
 	<<"CUSTOM">> ->
 	    spawn(fun() ->
-                          put(callid, props:get_value(<<"call-id">>, Data)),
+                          put(callid, wh_json:get_value(<<"Channel-Call-UUID">>, Data, <<"000000000000">>)),
                           ?LOG("custom event received ~s", [EvtName]),
                           process_custom_data(Data, ?APP_VERSION)
                   end),
@@ -120,11 +120,13 @@ handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr
 	<<"CHANNEL_CREATE">> ->
 	    ?LOG(UUID, "received channel create event", []),
             spawn(fun() ->
+                          put(callid, UUID),
                           ecallmgr_notify:callstate_change(Data)
                   end),
 	    {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}, hibernate};
 	<<"CHANNEL_DESTROY">> ->
             spawn(fun() ->
+                          put(callid, UUID),
                           ecallmgr_notify:callstate_change(Data)
                   end),
 	    ChanState = props:get_value(<<"Channel-State">>, Data),
@@ -140,12 +142,13 @@ handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr
 	    {noreply, State};
         <<"CHANNEL_ANSWER">> ->
             spawn(fun() ->
+                          put(callid, UUID),
                           ecallmgr_notify:callstate_change(Data)
                   end),
 	    {noreply, State};
 	<<"CUSTOM">> ->
 	    spawn(fun() ->
-                          put(callid, props:get_value(<<"call-id">>, Data)),
+                          put(callid, UUID),
                           ?LOG("custom event ~s received", [EvtName]),
                           process_custom_data(Data, ?APP_VERSION)
                   end),
