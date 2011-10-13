@@ -22,6 +22,7 @@ init() ->
       Props :: proplist().
 handle_req(JObj, _Props) ->
     true = wh_api:presence_subscr_v(JObj),
+    put(callid, wh_json:get_value(<<"Call-ID">>, JObj, <<"000000000000">>)),
     ?LOG_START("received presence subscription"),
 
     PUser = wh_json:get_value(<<"To-User">>, JObj),
@@ -32,6 +33,7 @@ handle_req(JObj, _Props) ->
 
     case whapps_util:get_account_by_realm(WRealm) of
         {error, _} ->
+            ?LOG_END("failed to find subscription account for realm ~s", [WRealm]),
             ok;
         {ok, WADb} when WRealm =:= PRealm->
             AccountId = whapps_util:get_db_name(WADb, raw),
@@ -40,6 +42,7 @@ handle_req(JObj, _Props) ->
             WAId = whapps_util:get_db_name(WADb, raw),
             case whapps_util:get_account_by_realm(PRealm) of
                 {error, _} ->
+                    ?LOG_END("failed to find presentity account for realm ~s", [PRealm]),
                     ok;
                 {ok, PADb} ->
                     PAId = whapps_util:get_db_name(PADb, raw),
@@ -53,15 +56,16 @@ store_and_send(WUser, WAccount, PUser, PAccount, JObj) ->
     Expiry = wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
     Expires = round(Expiry * 1.25),
 
+    ?LOG_END("storing subscription ~s(~s) in cache, expires in ~p", [WUser, WAccount, Expires]),
     wh_cache:store_local(Cache, {notify_watcher, WUser, WAccount}, JObj, Expires),
 
     case wh_cache:fetch_local(Cache, {notify_presentity, PUser, PAccount}) of
 	{error, not_found} ->
             wh_cache:store_local(Cache, {notify_presentity, PUser, PAccount}
                                  ,[{WUser, WAccount}]),
-	    ?LOG_END("adding presentity ~s@~s to cache", [PUser, PAccount]);
+	    ?LOG_END("adding presentity ~s(~s) to cache", [PUser, PAccount]);
 	{ok, Watchers} ->
             NewWatchers = [{WUser, WAccount}|[W || W <- Watchers, W =/= {WUser, WAccount}]],
             wh_cache:store_local(Cache, {notify_presentity, PUser, PAccount}, NewWatchers),
-	    ?LOG_END("updated presentity ~s@~s in cache", [PUser, PAccount])
+	    ?LOG_END("updated presentity ~s(~s) in cache", [PUser, PAccount])
     end.

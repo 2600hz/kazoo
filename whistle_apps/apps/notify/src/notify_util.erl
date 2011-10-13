@@ -37,7 +37,7 @@ lookup_subscribers(User, Account) ->
                                     {ok, Subscriber} ->
                                         {[Subscriber|SAcc], [{U, A}|WAcc]};
                                     {error, not_found} ->
-                                        ?LOG("removing ~s@~s from watchers for ~s ~s", [U, A, User, Account]),
+                                        ?LOG("removing expired subscriber ~s(~s)", [U, A, User, Account]),
                                         Acc
                                 end
                         end, {[], []}, Watchers),

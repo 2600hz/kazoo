@@ -22,6 +22,8 @@ init() ->
       Props :: proplist().
 handle_req(JObj, _Props) ->
     true = wh_api:presence_subscrs_query_v(JObj),
+    put(callid, wh_json:get_value([<<"Event">>, <<"Call-ID">>], JObj, <<"000000000000">>)),
+    ?LOG_START("received presence subscription query"),
 
     User = wh_json:get_value(<<"User">>, JObj),
     Account = wh_json:get_value(<<"Account-ID">>, JObj),
@@ -29,10 +31,13 @@ handle_req(JObj, _Props) ->
 
     case notify_util:lookup_subscribers(User, Account) of
         [] ->
+            ?LOG_END("no presence subscribers for ~s(~s)", [User, Account]),
             ok;
         Subscribers when is_list(Fields), Fields =/= [] ->
+            ?LOG_END("found ~p subscribers for ~s(~s), sending filered list", [length(Subscribers), User, Account]),
             send_response(notify_util:filter_subscribers(Subscribers, Fields), JObj);
         Subscribers ->
+            ?LOG_END("found ~p subscribers for ~s(~s), sending complete list", [length(Subscribers), User, Account]),
             send_response(Subscribers, JObj)
     end.
 
