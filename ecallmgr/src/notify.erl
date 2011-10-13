@@ -19,7 +19,7 @@ add_binding_to_q(Q, Props) ->
 		   [?KEY_SIP_NOTIFY];
 	       Ks -> Ks
 	   end,
-    [ bind_q_to_key(Q, Key) || Key <- Keys ],
+    _ = [ bind_q_to_key(Q, Key) || Key <- Keys ],
     ok.
 
 -spec bind_q_to_key/2 :: (Q, Key) -> ok when

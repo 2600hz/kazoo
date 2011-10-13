@@ -19,7 +19,7 @@
 -export([get_rate_factors/1, get_call_duration/1, lookup_user_flags/2, lookup_did/1]).
 -export([invite_format/2]).
 
--export([is_flat_rate_eligible/1, load_flat_rate_regexes/0]).
+-export([is_flat_rate_eligible/1, load_flat_rate_regexes/0, is_valid_ts_account/1]).
 
 %% Cascading settings
 -export([sip_headers/1, failover/1, progress_timeout/1, bypass_media/1, delay/1
@@ -74,8 +74,8 @@ filter_active_calls(CallID, ActiveCalls) ->
 		    (CallID1) when CallID =:= CallID1 -> false;
 		    (_) -> true end, ActiveCalls).
 
--spec get_media_handling/1 :: (L) -> binary() when
-      L :: ['undefined' | json_object() | binary(),...].
+-spec get_media_handling/1 :: (L) -> ne_binary() when
+      L :: ['undefined' | json_object() | ne_binary(),...].
 get_media_handling(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"process">>;
@@ -222,7 +222,7 @@ failover(L) ->
       L :: ['undefined' | json_object() | binary(),...].
 progress_timeout(L) -> simple_extract(L).
 
--spec bypass_media/1 :: (L) -> binary() when
+-spec bypass_media/1 :: (L) -> ne_binary() when
       L :: ['undefined' | json_object() | binary(),...].
 bypass_media(L) ->
     case simple_extract(L) of
@@ -242,18 +242,20 @@ ignore_early_media(L) -> simple_extract(L).
       L :: ['undefined' | json_object() | binary(),...].
 ep_timeout(L) -> simple_extract(L).
 
--spec simple_extract/1 :: (L) -> 'undefined' | json_object() | binary() when
-      L :: ['undefined' | json_object() | binary(),...].
+-spec simple_extract/1 :: (L) -> 'undefined' | json_object() | ne_binary() when
+      L :: ['undefined' | json_object() | ne_binary(),...].
 simple_extract([undefined|T]) ->
     simple_extract(T);
-simple_extract([?EMPTY_JSON_OBJECT | T]) ->
-    simple_extract(T);
-simple_extract([{struct, _}=F | _]) ->
-    F;
-simple_extract([B | _]) when is_binary(B) andalso B =/= <<>> ->
-    B;
-simple_extract([_ | T]) ->
-    simple_extract(T);
+simple_extract([B | T]) when is_binary(B) ->
+    case B of
+	<<>> -> simple_extract(T);
+	B -> B
+    end;
+simple_extract([JObj | T]) ->
+    case wh_json:is_json_object(JObj) andalso (not wh_json:is_empty(JObj)) of
+	true -> JObj;
+	false -> simple_extract(T)
+    end;
 simple_extract([]) ->
     undefined.
 
@@ -295,4 +297,11 @@ load_flat_rate_regexes() ->
 		 },
 	    wh_cache:store({?MODULE, flat_rate_regexes}, BW),
 	    BW
+    end.
+
+-spec is_valid_ts_account/1 :: (binary()) -> boolean().
+is_valid_ts_account(Account) ->
+    case couch_mgr:get_results(?TS_DB, <<"accounts/list">>, [{<<"key">>, Account}]) of
+	{ok, _AcctJObj} -> true;
+	_ -> false
     end.

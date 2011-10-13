@@ -22,6 +22,7 @@
 -define(SERVER, ?MODULE).
 -define(CONTENT_TYPE_MP3, <<"audio/mpeg">>).
 -define(CONTENT_TYPE_WAV, <<"audio/x-wav">>).
+-define(MAX_FETCH_RETRIES, 5).
 
 -record(state, {
 	  media_file = #media_file{} :: #media_file{}
@@ -135,7 +136,7 @@ handle_cast(stop, State) ->
 handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=MediaName, content_type=CType
 			    ,lsocket=LSocket, send_to=SendTo, stream_type=StreamType}=S) ->
     {ok, PortNo} = inet:port(LSocket),
-    {ok, Content} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
+    {ok, Content} = fetch_attachment(Db, Doc, Attachment),
 
     Size = byte_size(Content),
     ChunkSize = case ?CHUNKSIZE > Size of
@@ -347,3 +348,22 @@ get_http_response_headers(CT, CL) ->
      ,"Content-Type: ", wh_util:to_list(CT), "\r\n"
      ,"Content-Disposition: identity\r\n"
      ,"Content-Length: ", wh_util:to_list(CL), "\r\n\r\n"].
+
+-spec fetch_attachment/3 :: (binary(), binary(), binary()) -> {'ok', binary()} | {'error', 'timeout'}.
+fetch_attachment(Db, Doc, Attachment) ->
+    fetch_attachment(Db, Doc, Attachment, 0).
+
+fetch_attachment(_DB, _Doc, _A, ?MAX_FETCH_RETRIES) ->
+    ?LOG_SYS("Failed to retrieve attachment"),
+    ?LOG_SYS("DB: ~s", [_DB]),
+    ?LOG_SYS("Doc: ~s", [_Doc]),
+    ?LOG_SYS("Attachment: ~s", [_A]),
+    {error, timeout};
+fetch_attachment(Db, Doc, Attachment, Retries) ->
+    case couch_mgr:fetch_attachment(Db, Doc, Attachment) of
+	{ok, _Content}=OK -> OK;
+	{error, _Err} ->
+	    ?LOG_SYS("Error getting attachment: ~s", [_Err]),
+	    timer:sleep(100 * Retries),
+	    fetch_attachment(Db, Doc, Attachment, Retries+1)
+    end.

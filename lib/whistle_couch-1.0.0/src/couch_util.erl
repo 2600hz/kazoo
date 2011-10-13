@@ -63,7 +63,7 @@ get_new_conn(Host, Port, Opts) ->
     is_binary(BigCouchVersion) andalso ?LOG_SYS("BigCouch: ~s", [BigCouchVersion]),
     Conn.
 
--spec server_url/1 :: (Conn) -> binary() when
+-spec server_url/1 :: (Conn) -> ne_binary() when
       Conn :: #server{}.
 server_url(#server{host=Host, port=Port, options=Options}) ->
     UserPass = case props:get_value(basic_auth, Options) of
@@ -75,15 +75,16 @@ server_url(#server{host=Host, port=Port, options=Options}) ->
 		   true -> <<"https">>
 	       end,
     
-    <<Protocol/binary, "://", UserPass/binary
-      ,$@, (wh_util:to_binary(Host))/binary, $:, (wh_util:to_binary(Port))/binary, $/>>.
+    binary:list_to_bin([Protocol, <<"://">>, UserPass, <<"@">>
+			    ,wh_util:to_binary(Host), <<":">>
+			    ,wh_util:to_binary(Port), "/"]).
 
--spec db_url/2 :: (Conn, DbName) -> binary() when
+-spec db_url/2 :: (Conn, DbName) -> ne_binary() when
       Conn :: #server{},
       DbName :: binary().
 db_url(#server{}=Conn, DbName) ->
     Server = server_url(Conn),
-    <<Server/binary, DbName/binary>>.
+    binary:list_to_bin([Server, DbName]).
 
 %%% DB-related functions ---------------------------------------------
 -spec db_compact/2 :: (Conn, DbName) -> boolean() when
@@ -121,10 +122,10 @@ db_delete(#server{}=Conn, DbName) ->
 -spec db_replicate/2 :: (Conn, JSON) -> {'ok', json_object()} | {'error', term()} when
       Conn :: #server{},
       JSON :: json_object() | proplist().
-db_replicate(#server{}=Conn, {struct, _}=JSON) ->
-    couchbeam:replicate(Conn, JSON);
 db_replicate(#server{}=Conn, [_|_]=Prop) ->
-    couchbeam:replicate(Conn, {struct, Prop}).
+    couchbeam:replicate(Conn, wh_json:from_list(Prop));
+db_replicate(#server{}=Conn, JObj) ->
+    couchbeam:replicate(Conn, JObj).
 
 -spec db_view_cleanup/2 :: (Conn, DbName) -> boolean() when
       Conn :: #server{},
@@ -273,7 +274,7 @@ del_doc(#server{}=Conn, DbName, DocId) when is_binary(DocId) ->
     case lookup_doc_rev(Conn, DbName, DocId) of
 	{'error', _}=Err -> Err;
 	{'ok', Rev} ->
-	    del_doc(Conn, DbName, {struct, [{<<"_id">>, DocId}, {<<"_rev">>, Rev}]})
+	    del_doc(Conn, DbName, wh_json:from_list([{<<"_id">>, DocId}, {<<"_rev">>, Rev}]))
     end;
 del_doc(#server{}=Conn, DbName, Doc) ->
     Db = get_db(Conn, DbName),
@@ -293,13 +294,16 @@ del_docs(#server{}=Conn, DbName, Doc) ->
       Db :: #db{},
       Doc :: json_object().
 do_delete_doc(#db{}=Db, Doc) ->
-    retry504s(fun() -> couchbeam:delete_doc(Db, Doc) end).
+    case do_delete_docs(Db, [Doc]) of
+	{'ok', [JObj]} -> {'ok', JObj};
+	E -> E
+    end.
 
 -spec do_delete_docs/2 :: (Db, Docs) -> {'ok', json_objects()} | {'error', atom()} when
       Db :: #db{},
       Docs :: json_objects().
 do_delete_docs(#db{}=Db, Docs) ->
-    retry504s(fun() -> couchbeam:delete_docs(Db, Docs) end).
+    retry504s(fun() -> couchbeam:save_docs(Db, [wh_json:set_value(<<"_deleted">>, true, Doc) || Doc <- Docs]) end).
 
 -spec do_ensure_saved/3 :: (Db, Doc, Opts) -> {'ok', json_object()} | {'error', atom()} when
       Db :: #db{},
@@ -468,7 +472,10 @@ get_view(#db{}=Db, DesignDoc, ViewOptions) ->
 %% until 3 failed retries occur.
 %% @end
 %%------------------------------------------------------------------------------
--type retry504_ret() :: {'ok', json_object() | json_objects() | binary() | [binary(),...] | boolean()} | {'error', atom()} | 'ok'.
+-type retry504_ret() :: 'ok' |
+			{'ok', json_object() | json_objects() |
+			 binary() | [binary(),...] | boolean()} |
+			{'error', 'timeout' | atom()}.
 
 -spec retry504s/1 :: (Fun) -> retry504_ret() when
       Fun :: fun(() -> retry504_ret()).
@@ -479,11 +486,11 @@ retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
 retry504s(_Fun, 3) ->
     ?LOG_SYS("504 retry failed"),
-    {'error', timeout};
+    {'error', 'timeout'};
 retry504s(Fun, Cnt) ->
     case Fun() of
 	{'error', {'ok', "504", _, _}} ->
-	    timer:sleep(100),
+	    timer:sleep(100 * (Cnt+1)),
 	    retry504s(Fun, Cnt+1);
 	{'error', _}=E -> E;
 	{'ok', _}=OK -> OK;

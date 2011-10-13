@@ -25,6 +25,7 @@ init(Parent, RouteReqJObj) ->
     start_amqp(ts_callflow:init(RouteReqJObj)).
 
 start_amqp(State) ->
+    true = ts_util:is_valid_ts_account(ts_callflow:get_account_id(State)),
     onnet_data(ts_callflow:start_amqp(State)).
 
 onnet_data(State) ->

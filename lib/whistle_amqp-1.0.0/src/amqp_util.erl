@@ -122,7 +122,8 @@ callevt_publish(CallID, Payload, event) ->
 callevt_publish(CallID, Payload, status_req) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 callevt_publish(CallID, Payload, cdr) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
+    Key = encode_key(CallID),
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, Key/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 
@@ -731,3 +732,35 @@ basic_qos(PreFetch) when is_integer(PreFetch) ->
 -spec register_return_handler/0 :: () -> 'ok'.
 register_return_handler() ->
     amqp_mgr:register_return_handler().
+
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc
+%% Encode/decode a key so characters like dot won't interfere with routing separator
+%% @end
+%%------------------------------------------------------------------------------
+-spec encode_key/1 :: (RoutingKey) -> RoutingKeyEncoded :: ne_binary() when
+      RoutingKey :: ne_binary().
+encode_key(RoutingKey) ->
+    binary:replace(RoutingKey, <<".">>, <<"%2E">>, [global]).
+
+-spec decode_key/1 :: (RoutingKey) -> RoutingKeyDecoded :: ne_binary() when
+      RoutingKey :: ne_binary().
+decode_key(RoutingKey) ->
+    binary:replace(RoutingKey, <<"%2E">>, <<".">>, [global]).
+
+
+-include_lib("eunit/include/eunit.hrl").
+-ifdef(TEST).
+encode_key_test() ->
+    ?assertEqual(<<"key">>, encode_key(<<"key">>)),
+    ?assertEqual(<<"routing%2Ekey">>, encode_key(<<"routing.key">>)),
+    ?assertEqual(<<"long%2Erouting%2Ekey">>, encode_key(<<"long.routing.key">>)),
+    ok.
+
+decode_key_test() ->
+    ?assertEqual(<<"key">>, decode_key(<<"key">>)),
+    ?assertEqual(<<"routing.key">>, decode_key(<<"routing%2Ekey">>)),
+    ?assertEqual(<<"long.routing.key">>, decode_key(<<"long%2Erouting%2Ekey">>)),
+    ok.
+-endif.

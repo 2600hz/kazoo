@@ -600,7 +600,7 @@ is_permitted(RD, Context)->
 %% authorized for this request
 %% @end
 %%--------------------------------------------------------------------
--spec(process_billing/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(true, #wm_reqdata{}, #cb_context{})).
+-spec process_billing/2 :: (#wm_reqdata{}, #cb_context{}) -> {#wm_reqdata{}, #cb_context{}}.
 process_billing(RD, Context)->
     case wrq:method(RD) of
         %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
@@ -612,7 +612,7 @@ process_billing(RD, Context)->
                 {RD1, Context1} ->
                     {RD1, Context1};
                 _ ->
-                    RD, Context
+                    {RD, Context}
             end
     end.
 
@@ -623,7 +623,7 @@ process_billing(RD, Context)->
 %% it is valid and returns the status, and any errors
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(#wm_reqdata{}, #cb_context{})).
+-spec validate/2 :: (#wm_reqdata{}, #cb_context{}) -> {#wm_reqdata{}, #cb_context{}}.
 validate(RD, #cb_context{req_nouns=Nouns}=Context) ->
     {RD1, Context1} = lists:foldr(fun({Mod, Params}, {RD1, Context1}) ->
                                           Event = <<"v1_resource.validate.", Mod/binary>>,
@@ -632,10 +632,8 @@ validate(RD, #cb_context{req_nouns=Nouns}=Context) ->
                                           {RD2, Context2}
                                   end, {RD, Context}, Nouns),
     case succeeded(Context1) of
-        true ->
-            process_billing(RD1, Context1);
-        false ->
-            {RD1, Context1}
+        true -> process_billing(RD1, Context1);
+        false -> {RD1, Context1}
     end.
 
 %%--------------------------------------------------------------------
@@ -644,7 +642,7 @@ validate(RD, #cb_context{req_nouns=Nouns}=Context) ->
 %% This function will execute the request
 %% @end
 %%--------------------------------------------------------------------
--spec(execute_request/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(true|tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
+-spec execute_request/2 :: (#wm_reqdata{}, #cb_context{}) -> {boolean() | {'halt', 500}, #wm_reqdata{}, #cb_context{}}.
 execute_request(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
     ?TIMER_TICK("v1.execute_request start"),
     Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
@@ -679,17 +677,20 @@ execute_request_results(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Ve
 
 %% If we're tunneling PUT through POST, we need to tell webmachine POST is allowed to create a non-existant resource
 %% AKA, 201 Created header set
+-spec allow_missing_post/2 :: (#wm_reqdata{}, #cb_context{}) -> {boolean(), #wm_reqdata{}, #cb_context{}}.
 allow_missing_post(RD, Context) ->
     {wrq:method(RD) =:= 'POST', RD, Context}.
 
 %% If allow_missing_post returned true (cause it was a POST) and PUT has been tunnelled,
 %% POST is a create
+-spec post_is_create/2 :: (#wm_reqdata{}, #cb_context{}) -> {boolean(), #wm_reqdata{}, #cb_context{}}.
 post_is_create(RD, #cb_context{req_verb = <<"put">>}=Context) ->
     {true, RD, Context};
 post_is_create(RD, Context) ->
     {false, RD, Context}.
 
 %% whatever (for now)
+-spec create_path/2 :: (#wm_reqdata{}, #cb_context{}) -> {[], #wm_reqdata{}, #cb_context{}}.
 create_path(RD, Context) ->
     {[], RD, Context}.
 
@@ -699,14 +700,13 @@ create_path(RD, Context) ->
 %% This function will create the content for the response body
 %% @end
 %%--------------------------------------------------------------------
--spec(create_resp_content/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> iolist()).
-create_resp_content(RD, #cb_context{req_json=ReqJson}=Context) ->
+-spec create_resp_content/2 :: (#wm_reqdata{}, #cb_context{}) -> iolist().
+create_resp_content(RD, #cb_context{req_json=ReqJson, resp_data=RespData}=Context) ->
     case get_resp_type(RD) of
 	binary ->
-	    Context#cb_context.resp_data;
+	    RespData;
         _ ->
-	    Prop = create_resp_envelope(Context),
-            JSON = mochijson2:encode({struct, Prop}),
+            JSON = mochijson2:encode(wh_json:from_list(create_resp_envelope(Context))),
 	    case wh_json:get_value(<<"jsonp">>, ReqJson) of
 		undefined -> JSON;
 		JsonFun when is_binary(JsonFun) ->
@@ -721,7 +721,7 @@ create_resp_content(RD, #cb_context{req_json=ReqJson}=Context) ->
 %% is pushing data (like PUT)
 %% @end
 %%--------------------------------------------------------------------
--spec(create_push_response/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(boolean(), #wm_reqdata{}, #cb_context{})).
+-spec create_push_response/2 :: (#wm_reqdata{}, #cb_context{}) -> {boolean(), #wm_reqdata{}, #cb_context{}}.
 create_push_response(RD, Context) ->
     Content = create_resp_content(RD, Context),
     RD1 = set_resp_headers(RD, Context),
@@ -734,7 +734,7 @@ create_push_response(RD, Context) ->
 %% is pulling data (like GET)
 %% @end
 %%--------------------------------------------------------------------
--spec(create_pull_response/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(iolist() | tuple(halt, 500), #wm_reqdata{}, #cb_context{})).
+-spec create_pull_response/2 :: (#wm_reqdata{}, #cb_context{}) -> {iolist() | {'halt', 500}, #wm_reqdata{}, #cb_context{}}.
 create_pull_response(RD, Context) ->
     Content = create_resp_content(RD, Context),
     RD1 = set_resp_headers(RD, Context),
@@ -751,11 +751,9 @@ create_pull_response(RD, Context) ->
 %% This function determines if the response is of type success
 %% @end
 %%--------------------------------------------------------------------
--spec(succeeded/1 :: (Context :: #cb_context{}) -> boolean()).
-succeeded(#cb_context{resp_status=success}) ->
-    true;
-succeeded(_) ->
-    false.
+-spec succeeded/1 :: (#cb_context{}) -> boolean().
+succeeded(#cb_context{resp_status=success}) -> true;
+succeeded(_) -> false.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -763,7 +761,7 @@ succeeded(_) ->
 %% Iterate through #cb_context.resp_headers, setting the headers specified
 %% @end
 %%--------------------------------------------------------------------
--spec(set_resp_headers/2 :: (RD0 :: #wm_reqdata{}, Context :: #cb_context{}) -> #wm_reqdata{}).
+-spec set_resp_headers/2 :: (#wm_reqdata{}, #cb_context{}) -> #wm_reqdata{}.
 set_resp_headers(RD0, #cb_context{resp_headers=[]}) -> RD0;
 set_resp_headers(RD0, #cb_context{resp_headers=Headers}) ->
     lists:foldl(fun({Header, Value}, RD) ->
@@ -772,7 +770,7 @@ set_resp_headers(RD0, #cb_context{resp_headers=Headers}) ->
 			wrq:set_resp_header(H, V, wrq:remove_resp_header(H, RD))
 		end, RD0, Headers).
 
--spec(fix_header/3 :: (RD :: #wm_reqdata{}, Header :: string(), Value :: string() | binary()) -> tuple(string(), string())).
+-spec fix_header/3 :: (#wm_reqdata{}, string(), string() | binary()) -> {string(), string()}.
 fix_header(RD, "Location"=H, Url) ->
     %% http://some.host.com:port/"
     Port = case wrq:port(RD) of
@@ -808,7 +806,7 @@ fix_header(_, H, V) ->
 %% request
 %% @end
 %%--------------------------------------------------------------------
--spec(is_cors_request/1 :: (RD :: #wm_reqdata{}) -> boolean()).
+-spec is_cors_request/1 :: (#wm_reqdata{}) -> boolean().
 is_cors_request(RD) ->
     wrq:get_req_header("Origin", RD) =/= 'undefined'
         orelse wrq:get_req_header("Access-Control-Request-Method", RD) =/= 'undefined'
@@ -819,7 +817,7 @@ is_cors_request(RD) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(add_cors_headers/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #wm_reqdata{}).
+-spec add_cors_headers/2 :: (#wm_reqdata{}, #cb_context{}) -> #wm_reqdata{}.
 add_cors_headers(RD, Context) ->
     case is_cors_request(RD) of
         true ->
@@ -834,8 +832,7 @@ add_cors_headers(RD, Context) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_cors_headers/1 :: (Context) -> [{binary(), binary() | string()},...] when
-      Context :: #cb_context{}.
+-spec get_cors_headers/1 :: (#cb_context{}) -> [{binary(), binary() | string()},...].
 get_cors_headers(#cb_context{allow_methods=Allowed}) ->
     ?LOG("adding CORS headers to response"),
     [
@@ -853,7 +850,7 @@ get_cors_headers(#cb_context{allow_methods=Allowed}) ->
 %% request
 %% @end
 %%--------------------------------------------------------------------
--spec(is_cors_preflight/1 :: (RD :: #wm_reqdata{}) -> boolean()).
+-spec is_cors_preflight/1 :: (#wm_reqdata{}) -> boolean().
 is_cors_preflight(RD) ->
     is_cors_request(RD) andalso wrq:method(RD) =:= 'OPTIONS'.
 
@@ -863,8 +860,7 @@ is_cors_preflight(RD) ->
 %% This function extracts the reponse fields and puts them in a proplist
 %% @end
 %%--------------------------------------------------------------------
--spec create_resp_envelope/1 :: (Context) -> [{binary(), binary() | atom() | json_object() | json_objects()},...] when
-      Context :: #cb_context{}.
+-spec create_resp_envelope/1 :: (#cb_context{}) -> [{binary(), binary() | atom() | json_object() | json_objects()},...].
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=undefined}) ->
     ?LOG("generating sucessfull response"),
     [{<<"auth_token">>, AuthToken}
@@ -919,7 +915,7 @@ create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespSt
 %% based on the request....
 %% @end
 %%--------------------------------------------------------------------
--spec(get_resp_type/1 :: (RD :: #wm_reqdata{}) -> json|xml|binary).
+-spec get_resp_type/1 :: (#wm_reqdata{}) -> 'json' | 'binary'.
 get_resp_type(RD) ->
     case wrq:get_resp_header("Content-Type", RD) of
         "application/json" -> json;

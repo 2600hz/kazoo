@@ -52,6 +52,14 @@
            "description": "How many inbound-only trunks the account has",
            "type": "number",
            "minimum": 0
+       },
+       "external_api_keys" : {
+       	   "type" : "object",
+           "properties" : {
+	         "amazon" : {"type":"string"},
+                 "linode" : {"type":"string"},
+		 "rackspace" : {"type":"string"}
+ 	   }
        }
    }
 }

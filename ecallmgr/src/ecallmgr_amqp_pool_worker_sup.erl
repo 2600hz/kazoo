@@ -40,8 +40,10 @@ worker_count() ->
     Info = supervisor:count_children(?SERVER),
     props:get_value(workers, Info).
 
+-spec release_all/0 :: () -> 'ok'.
 release_all() ->
-    [ ecallmgr_amqp_pool_worker:stop(P) || {_, P, _, _} <- supervisor:which_children(?SERVER)].
+    _ = [ ecallmgr_amqp_pool_worker:stop(P) || {_, P, _, _} <- supervisor:which_children(?SERVER)],
+    ok.
 
 %%%===================================================================
 %%% Supervisor callbacks

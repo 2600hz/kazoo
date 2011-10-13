@@ -2,12 +2,14 @@
 %%% @author Edouard Swiac <edouard@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Display various informations
+%%% Hotdesks module
+%%%
+%%% Handle client requests for hotdesks management
 %%%
 %%% @end
-%%% Created : 30 Jul 2011 Edouard Swiac <edouard@2600hz.org>
+%%% Created : 20 Aug 2011 by Edouard Swiac <edouard@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cb_about).
+-module(cb_hotdesks).
 
 -behaviour(gen_server).
 
@@ -18,8 +20,12 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--include_lib("crossbar.hrl").
+-include("../../include/crossbar.hrl").
+
 -define(SERVER, ?MODULE).
+
+-define(VIEW_FILE, <<"views/hotdesks.json">>).
+-define(CB_LIST, <<"hotdesks/crossbar_listing">>).
 
 %%%===================================================================
 %%% API
@@ -68,7 +74,8 @@ init(_) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    Reply = ok,
+    {reply, Reply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -93,39 +100,29 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.about">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.hotdesks">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.about">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.hotdesks">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.about">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.hotdesks">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-		  Context1 = validate(Params, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+	 end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.get.about">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-		  Pid ! {binding_result, true, [RD, Context, Params]}
-	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, []},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, _B, Payload}, State) ->
+handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
@@ -171,18 +168,19 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  no_return()).
+-spec(bind_to_crossbar/0 :: () -> no_return()).
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.about">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.about">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.about">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.about">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.hotdesks">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.hotdesks">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.hotdesks">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.hotdesks">>),
     crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% This function determines the verbs that are appropriate for the
+%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405
 %% @end
@@ -216,20 +214,20 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: ([], #cb_context{}) -> #cb_context{}.
+-spec(validate/2 :: (Params :: list(),  Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    display_version(Context);
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
-%% Display the current version of whistle
+%% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec display_version/1 :: (#cb_context{}) -> #cb_context{}.
-display_version(Context) ->
-    WhVsn = wh_json:set_value(<<"whistle_version">>, wh_util:whistle_version(), wh_json:new()),
-    crossbar_util:response(WhVsn, Context).
+-spec normalize_view_results/2 :: (JObj, Acc) -> json_objects() when
+      JObj :: json_object(),
+      Acc :: json_objects().
+normalize_view_results(JObj, Acc) ->
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
