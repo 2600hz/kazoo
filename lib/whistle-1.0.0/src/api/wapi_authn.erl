@@ -26,6 +26,20 @@
 			  ,{<<"Auth-Realm">>, fun is_binary/1}
 			 ]).
 
+%% Authentication Responses
+-define(AUTHN_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Password">>]).
+-define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
+-define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
+			   ,{<<"Event-Name">>, <<"authn_resp">>}
+			   ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>, <<"a1-hash">>, <<"error">>]}
+			 ]).
+-define(AUTHN_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+			  ,{<<"Auth-Password">>, fun is_binary/1}
+			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+			  ,{<<"Access-Group">>, fun is_binary/1}
+			  ,{<<"Tenant-ID">>, fun is_binary/1}
+			 ]).
+
 -spec req/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
         case req_v(Prop) of
@@ -41,11 +55,25 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
 
-resp(_) ->
-    ok.
+%%--------------------------------------------------------------------
+%% @doc Authentication Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec resp/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+resp(Prop) when is_list(Prop) ->
+    case resp_v(Prop) of
+	true -> wh_api:build_message(Prop, ?AUTHN_RESP_HEADERS, ?OPTIONAL_AUTHN_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for authn_resp"}
+    end;
+resp(JObj) ->
+    resp(wh_json:to_proplist(JObj)).
 
-resp_v(_) ->
-    ok.
+-spec resp_v/1 :: (proplist() | json_object()) -> boolean().
+resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?AUTHN_RESP_HEADERS, ?AUTHN_RESP_VALUES, ?AUTHN_RESP_TYPES);
+resp_v(JObj) ->
+    resp_v(wh_json:to_proplist(JObj)).
 
 bind_q(_,_) ->
     ok.
