@@ -479,7 +479,7 @@ delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 public_fields([_|_]=JObjs)->
     lists:map(fun public_fields/1, JObjs);
 public_fields(JObj) ->
-    PubJObj = wh_json:from_list([ KV || {K, _}=KV <- wh_json:to_proplist(JObj), not is_private_key(K)]),
+    PubJObj = wh_json:filter(fun({K, _}) -> not is_private_key(K) end, JObj),
     case wh_json:get_value(<<"_id">>, JObj) of
         undefined -> PubJObj;
         Id -> wh_json:set_value(<<"id">>, Id, PubJObj)
@@ -496,7 +496,7 @@ public_fields(JObj) ->
 private_fields([_|_]=JObjs)->
     lists:map(fun public_fields/1, JObjs);
 private_fields(JObj) ->
-    wh_json:from_list([ KV || {K,_}=KV <- wh_json:to_proplist(JObj), is_private_key(K)]).
+    wh_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
