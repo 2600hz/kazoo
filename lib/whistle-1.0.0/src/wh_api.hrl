@@ -1,5 +1,6 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
--include("wh_types.hrl").
+-include_lib("whistle/include/wh_amqp.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 -endif.
 
 %% We pass Application custom channel variables with our own prefix

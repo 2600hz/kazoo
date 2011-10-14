@@ -40,6 +40,11 @@
 			  ,{<<"Tenant-ID">>, fun is_binary/1}
 			 ]).
 
+%%--------------------------------------------------------------------
+%% @doc Authentication Request - see wiki
+%% Takes proplist, creates JSON iolist or error
+%% @end
+%%--------------------------------------------------------------------
 -spec req/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
         case req_v(Prop) of
@@ -57,7 +62,7 @@ req_v(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc Authentication Response - see wiki
-%% Takes proplist, creates JSON string or error
+%% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
 -spec resp/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
@@ -75,8 +80,10 @@ resp_v(Prop) when is_list(Prop) ->
 resp_v(JObj) ->
     resp_v(wh_json:to_proplist(JObj)).
 
-bind_q(_,_) ->
+bind_q(Q, _Props) ->
+    amqp_util:callmgr_exchange(),
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHN_REQ),
     ok.
 
-unbind_q(_) ->
-    ok.
+unbind_q(Q) ->
+    amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHN_REQ).
