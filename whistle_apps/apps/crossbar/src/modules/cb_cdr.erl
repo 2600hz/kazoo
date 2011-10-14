@@ -24,7 +24,7 @@
 -include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
--define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
+-define(CB_LIST_BY_USER, <<"cdrs/listing_by_user">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 
 %%%===================================================================
@@ -247,7 +247,12 @@ load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
 	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams, []),
 	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
 	{<<"users">>, [UserId]} ->
-	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"key">>, UserId}]),
+	    {ok, SipCredsFromDevices} = couch_mgr:get_results(DbName, <<"devices/listing_by_owner">>, [{<<"key">>, UserId}, {<<"include_docs">>, true}]),
+	    SipCredsKeys = lists:foldl(fun(SipCred, Acc) ->
+					       [[wh_json:get_value([<<"doc">>, <<"sip">>, <<"realm">>], SipCred),
+						wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], SipCred)]|Acc]
+				       end, [], SipCredsFromDevices),
+	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"keys">>, SipCredsKeys}]),
 	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
 	_ ->
 	    crossbar_util:response_faulty_request(Context)
