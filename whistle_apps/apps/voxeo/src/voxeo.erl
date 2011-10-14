@@ -25,7 +25,9 @@ start() ->
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     wh_util:ensure_started(sasl), % logging
-    wh_util:ensure_started(crypto), % random
+    wh_util:ensure_started(crypto), % random and for the SSL application
+    wh_util:ensure_started(public_key), %% needed by SSL application
+    wh_util:ensure_started(ssl), %% for auth with XMPP
     wh_util:ensure_started(exmpp), % XMPP service
     wh_util:ensure_started(whistle_amqp), % amqp wrapper
     wh_util:ensure_started(whistle_couch). % couch wrapper

@@ -61,6 +61,7 @@ init([]) ->
     {ok, {SupFlags, [
 		     ?CACHE(voxeo_cache)
 		     ,?CHILD(voxeo_listener, worker)
+		     ,?CHILD(vx_xmpp, worker)
 		    ]
 	 }}.
 
