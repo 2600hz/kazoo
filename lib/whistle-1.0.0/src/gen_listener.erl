@@ -194,7 +194,7 @@ init([Module, Params, InitArgs]) ->
 
     Self = self(),
     spawn(fun() -> [add_responder(Self, Mod, Evts) || {Mod, Evts} <- Responders] end),
-    spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
+    spawn(fun() -> [add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings] end),
 
     {ok, #state{queue=Q, module=Module, module_state=ModState
 		,responders=[], bindings=Bindings
@@ -260,7 +260,8 @@ handle_cast({add_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
 	    ?LOG_SYS("Atom ~s not found", [Wapi]),
 	    case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
 		non_existing ->
-		    ?LOG_SYS("beam file not found for ~s", [Wapi]),
+		    ?LOG_SYS("beam file not found for ~s, trying old method", [Wapi]),
+		    queue_bindings:add_binding_to_q(Q, Binding, Props),
 		    {noreply, State};
 		_Path ->
 		    ?LOG_SYS("beam file found: ~s", [_Path]),
@@ -380,6 +381,7 @@ code_change(_OldVersion, State, _Extra) ->
     {ok, State}.
 
 terminate(Reason, #state{module=Module, module_state=ModState}) ->
+    ?LOG_SYS("terminating with ~p", [Reason]),
     Module:terminate(Reason, ModState),
     ok.
 
