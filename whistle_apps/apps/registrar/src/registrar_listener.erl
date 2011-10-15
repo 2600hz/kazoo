@@ -25,7 +25,7 @@
 		     ,{reg_query, [{<<"directory">>, <<"reg_query">>}]}
 		    ]).
 -define(BINDINGS, [
-		   {authentication, []}
+		   {authn, []}
 		   ,{registrations, []}
 		  ]).
 
@@ -100,10 +100,10 @@ init([]) ->
 			  try
 			      {ok, _} = couch_mgr:update_doc_from_file(DB, registrar, File)
 			  catch
-			      _:_ ->
-				  couch_mgr:load_doc_from_file(DB, registrar, File)
+			      _:_ -> couch_mgr:load_doc_from_file(DB, registrar, File)
 			  end
 		  end, ?JSON_FILES),
+    ?LOG("registrar_listener started"),
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
