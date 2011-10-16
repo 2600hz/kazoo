@@ -26,7 +26,7 @@
 		    ]).
 -define(BINDINGS, [
 		   {authn, []}
-		   ,{registrations, []}
+		   ,{registration, []}
 		  ]).
 
 -define(SERVER, ?MODULE).

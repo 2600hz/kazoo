@@ -22,7 +22,7 @@
 -define(RESPONDERS, [
 		     {?MODULE, [{<<"directory">>, <<"reg_success">>}]}
 		    ]).
--define(BINDINGS, [{registrations, []}]).
+-define(BINDINGS, [{registration, []}]).
 
 -include("ecallmgr.hrl").
 

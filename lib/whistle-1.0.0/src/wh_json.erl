@@ -102,7 +102,7 @@ to_proplist(Objects) when is_list(Objects)->
     [to_proplist(O) || O <- Objects];
 to_proplist(MaybeJObj) ->
     case is_json_object(MaybeJObj) of
-	true -> [ {K, to_proplist(K, MaybeJObj)} || K <- ?MODULE:get_keys(MaybeJObj)];
+	true -> [ {K, get_value(K, MaybeJObj)} || K <- ?MODULE:get_keys(MaybeJObj)];
 	false -> MaybeJObj
     end.
 

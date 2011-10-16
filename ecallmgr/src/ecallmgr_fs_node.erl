@@ -304,7 +304,7 @@ publish_register_event(Data, AppVsn) ->
 	{error, E} ->
             ?LOG("failed API message creation: ~p", [E]);
 	{ok, JSON} ->
-	    wapi_regisgtration:publish_success(JSON)
+	    wapi_registration:publish_success(JSON)
     end.
 
 get_originate_action(<<"transfer">>, Data) ->
