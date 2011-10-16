@@ -16,9 +16,7 @@
 %% -include("whistle_apps/dth/include/dth_amqp.hrl").
 %% -include("whistle_apps/callflow/include/cf_amqp.hrl").
 
--type bind_types() :: 'authentication' |
-		      'registrations' |
-		      'rating' |
+-type bind_types() :: 'rating' |
 		      'routing' |
 		      'cdrs' |
 		      'dth' |
@@ -30,7 +28,7 @@
 
 -spec known_bind_types/0 :: () -> [bind_types(),...].
 known_bind_types() ->
-    ['authentication', 'registrations', 'rating', 'routing'
+    ['rating', 'routing'
      ,'cdrs', 'dth', 'call_events', 'self', 'notifications'
      ,'authorization'
     ].
@@ -63,11 +61,6 @@ add_binding_to_q(Q, call_events, Props) ->
     CallID = get_callid(Props),
     amqp_util:bind_q_to_callevt(Q, CallID, events),
     ok;
-add_binding_to_q(Q, registrations, _Props) ->
-    amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
-    ok;
 add_binding_to_q(Q, rating, Props) ->
     hotornot:add_binding_to_q(Q, Props);
 add_binding_to_q(Q, dth, Props) ->
@@ -90,9 +83,6 @@ rm_binding_from_q(Q, cdrs) ->
     rm_binding_from_q(Q, cdrs, []);
 rm_binding_from_q(Q, call_events) ->
     rm_binding_from_q(Q, call_events, []);
-rm_binding_from_q(Q, registrations) ->
-    amqp_util:unbind_q_from_callmgr(Q, ?KEY_REG_SUCCESS),
-    amqp_util:unbind_q_from_callmgr(Q, ?KEY_REG_QUERY);
 rm_binding_from_q(Q, rating) ->
     hotornot:rm_binding_from_q(Q);
 rm_binding_from_q(Q, dth) ->

@@ -22,7 +22,7 @@ init() ->
 
 handle_req(JObj, Props) ->
     CPid = props:get_value(cache, Props),
-    case wh_api:authz_req_v(JObj) of
+    case wapi_authz:req_v(JObj) of
 	false -> throw({failed_api_validation, JObj});
 	true -> ?LOG("Valid authz_req")
     end,
@@ -57,12 +57,12 @@ send_resp(JObj, {AuthzResp, CCV}) ->
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
 
     Prop = [{<<"Is-Authorized">>, wh_util:to_binary(AuthzResp)}
-	     ,{<<"Custom-Channel-Vars">>, {struct, CCV}}
+	     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCV)}
 	     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
 	     ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
 	     | wh_api:default_headers(<<>>, <<"dialplan">>, <<"authz_resp">>, ?APP_NAME, ?APP_VSN)
 	    ],
 
-    {ok, JSON} = wh_api:authz_resp(Prop),
+    {ok, JSON} = wapi_authz:resp(Prop),
     ?LOG_END("Sending authz resp: ~s", [JSON]),
-    amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
+    wapi_authz:publish_resp(RespQ, JSON).

@@ -70,7 +70,7 @@ handle_req(JObj, Props) ->
 
     {ok, Payload} = authn_response(wh_json:get_value(<<"value">>, AuthJObj), Defaults),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    reg_util:send_resp(Payload, RespQ).
+    wapi_authn:publish_resp(RespQ, Payload).
 
 %%-----------------------------------------------------------------------------
 %% @private

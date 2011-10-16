@@ -58,15 +58,15 @@ start_link(WorkerCount) ->
 authn_req(Prop) ->
     authn_req(Prop, ?DEFAULT_TIMEOUT).
 authn_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun wh_api:authn_req/1
-			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_AUTHN_REQ) end
+    gen_server:call(?SERVER, {request, Prop, fun wapi_authn:req/1
+			      ,fun(JSON) -> wapi_authn:publish_req(JSON) end
 			      }, Timeout).
 
 authz_req(Prop) ->
     authz_req(Prop, ?DEFAULT_TIMEOUT).
 authz_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun wh_api:authz_req/1
-			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_AUTHZ_REQ) end
+    gen_server:call(?SERVER, {request, Prop, fun wapi_authz:req/1
+			      ,fun(JSON) -> wapi_authz:publish_req(JSON) end
 			     }, Timeout).
 
 route_req(Prop) ->
@@ -80,8 +80,8 @@ reg_query(Prop) ->
     reg_query(Prop, ?DEFAULT_TIMEOUT).
 
 reg_query(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun wh_api:reg_query/1
-			      ,fun(JSON) -> amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_QUERY) end
+    gen_server:call(?SERVER, {request, Prop, fun wapi_registration:query_req/1
+			      ,fun(JSON) -> wapi_registration:publish_query_req(JSON) end
 			     }, Timeout).
 
 media_req(Prop) ->

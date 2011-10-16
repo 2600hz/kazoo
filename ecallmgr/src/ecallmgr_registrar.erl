@@ -187,7 +187,7 @@ lookup_reg(Realm, User, Fields) ->
 	    try
 		case ecallmgr_amqp_pool:reg_query(RegProp, 1000) of
 		    {ok, RegJObj} ->
-			true = wh_api:reg_query_resp_v(RegJObj),
+			true = wapi_registration:query_resp_v(RegJObj),
 
 			RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RegJObj, wh_json:new())),
 			?SERVER ! {cache_registrations, Realm, User, RegFields},
