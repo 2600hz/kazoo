@@ -408,34 +408,6 @@
 			 ]).
 -define(PLAY_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
-%% Media Request - when streaming is needed
--define(MEDIA_REQ_HEADERS, [<<"Media-Name">>]).
--define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>]).
--define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
-			   ,{<<"Event-Name">>, <<"media_req">>}
-			   ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
-			  ]).
--define(MEDIA_REQ_TYPES, []).
-
-%% Media Response
--define(MEDIA_RESP_HEADERS, [<<"Media-Name">>, <<"Stream-URL">>]).
--define(OPTIONAL_MEDIA_RESP_HEADERS, []).
--define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, <<"media">>}
-			   ,{<<"Event-Name">>, <<"media_resp">>}
-			  ]).
--define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true;
-                                                 (<<"http://", _/binary>>) -> true;
-                                                 (_) -> false end}]).
-
-%% Media Error
--define(MEDIA_ERROR_HEADERS, [<<"Media-Name">>, <<"Error-Code">>]).
--define(OPTIONAL_MEDIA_ERROR_HEADERS, [<<"Error-Msg">>]).
--define(MEDIA_ERROR_VALUES, [{<<"Event-Category">>, <<"media">>}
-			     ,{<<"Event-Name">>, <<"media_error">>}
-			     ,{<<"Error-Code">>, [<<"not_found">>, <<"no_data">>, <<"other">>]}
-			     ]).
--define(MEDIA_ERROR_TYPES, []).
-
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Terminators">>, <<"Time-Limit">>, <<"Silence-Threshold">>

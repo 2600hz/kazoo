@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010, VoIP INC
 %%% @doc
 %%% Whistle API Helpers
 %%%
@@ -13,7 +13,6 @@
 %%% This will parse the proplist and return a boolean()if the proplist is valid
 %%% for creating a JSON message.
 %%%
-%%% See http://corp.switchfreedom.com/mediawiki/index.php/API_Definition
 %%% @end
 %%% Created : 19 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -30,7 +29,7 @@
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
-	 ,sleep_req/1, tone_detect_req/1, set_req/1, media_req/1, media_resp/1, media_error/1
+	 ,sleep_req/1, tone_detect_req/1, set_req/1
          ,conference_req/1, noop_req/1, fetch_req/1, respond_req/1, progress_req/1
         ]).
 
@@ -60,7 +59,7 @@
          ,progress_req_v/1
         ]).
 
--export([media_req_v/1, media_resp_v/1, media_error_v/1, conference_req_v/1]).
+-export([conference_req_v/1]).
 
 -export([conference_participants_req_v/1, conference_participants_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1
          ,conference_undeaf_req_v/1, conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1
@@ -531,60 +530,6 @@ play_req_v({struct, Prop}) ->
     play_req_v(Prop);
 play_req_v(Prop) ->
     validate(Prop, ?PLAY_REQ_HEADERS, ?PLAY_REQ_VALUES, ?PLAY_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Request media - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
-media_req({struct, Prop}) ->
-    media_req(Prop);
-media_req(Prop) ->
-    case media_req_v(Prop) of
-	true -> build_message(Prop, ?MEDIA_REQ_HEADERS, ?OPTIONAL_MEDIA_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for media_req"}
-    end.
-
-media_req_v({struct, Prop}) ->
-    media_req_v(Prop);
-media_req_v(Prop) ->
-    validate(Prop, ?MEDIA_REQ_HEADERS, ?MEDIA_REQ_VALUES, ?MEDIA_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Response with media - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
-media_resp({struct, Prop}) ->
-    media_resp(Prop);
-media_resp(Prop) ->
-    case media_resp_v(Prop) of
-	true -> build_message(Prop, ?MEDIA_RESP_HEADERS, ?OPTIONAL_MEDIA_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for media_resp"}
-    end.
-
-media_resp_v({struct, Prop}) ->
-    media_resp_v(Prop);
-media_resp_v(Prop) ->
-    validate(Prop, ?MEDIA_RESP_HEADERS, ?MEDIA_RESP_VALUES, ?MEDIA_RESP_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Media error - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
-media_error({struct, Prop}) ->
-    media_error(Prop);
-media_error(Prop) ->
-    case media_error_v(Prop) of
-	true -> build_message(Prop, ?MEDIA_ERROR_HEADERS, ?OPTIONAL_MEDIA_ERROR_HEADERS);
-	false -> {error, "Proplist failed validation for media_error"}
-    end.
-
-media_error_v({struct, Prop}) ->
-    media_error_v(Prop);
-media_error_v(Prop) ->
-    validate(Prop, ?MEDIA_ERROR_HEADERS, ?MEDIA_ERROR_VALUES, ?MEDIA_ERROR_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Record media - see wiki
