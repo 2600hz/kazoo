@@ -17,7 +17,7 @@ init() ->
     ?LOG_SYS("Ensured ~s is created", [?TS_DB]).
 
 handle_req(ApiJObj, _Options) ->
-    true = wh_api:route_req_v(ApiJObj),
+    true = wapi_route:req_v(ApiJObj),
     CallID = wh_json:get_value(<<"Call-ID">>, ApiJObj),
     case {wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], ApiJObj), wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)} of
 	{AcctID, undefined} when is_binary(AcctID) ->

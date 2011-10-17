@@ -307,7 +307,7 @@ route(Node, FSID, CallID, DefProp, AuthZPid) ->
       RouteCCV :: json_object().
 authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->
     ?LOG("No authz available, validating route_resp"),
-    true = wh_api:route_resp_v(RespJObj),
+    true = wapi_route:resp_v(RespJObj),
     reply(Node, FSID, CallID, RespJObj, RouteCCV);
 authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
     ?LOG("Checking authz_resp"),
@@ -317,7 +317,7 @@ authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
 	    reply_forbidden(Node, FSID);
 	{true, {struct, CCV}} ->
 	    ?LOG("Authz is true"),
-	    true = wh_api:route_resp_v(RespJObj),
+	    true = wapi_route:resp_v(RespJObj),
 	    ?LOG("Valid route resp"),
 	    RouteCCV1 = lists:foldl(fun({K,V}, RouteCCV0) -> wh_json:set_value(K, V, RouteCCV0) end, RouteCCV, CCV),
 
@@ -391,10 +391,10 @@ start_control_and_events(Node, CallID, SendTo, CCVs) ->
       SendTo :: binary(),
       CtlProp :: proplist().
 send_control_queue(SendTo, CtlProp) ->
-    case wh_api:route_win(CtlProp) of
+    case wapi_route:win(CtlProp) of
 	{ok, JSON} ->
 	    ?LOG_END("sending route_win to ~s", [SendTo]),
-	    amqp_util:targeted_publish(SendTo, JSON, <<"application/json">>);
+	    wapi_route:publish_win(SendTo, JSON);
 	{error, _Msg} ->
 	    ?LOG_END("sending route_win to ~s failed, ~p", [SendTo, _Msg])
     end.

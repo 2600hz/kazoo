@@ -618,19 +618,19 @@ bind_to_exchange(<<"events.", CallID/binary>>, Q) ->
 bind_to_exchange(<<"cdr.", CallID/binary>>, Q) ->
     amqp_util:bind_q_to_callevt(Q, CallID, cdr).
 
--spec(validate_amqp/3 :: (Category :: binary(), Name :: binary(), Prop :: json_object()) -> boolean()).
-validate_amqp(<<"directory">>, <<"authn_req">>, Prop) ->
-    wh_api:authn_req_v(Prop);
-validate_amqp(<<"dialplan">>, <<"route_req">>, Prop) ->
-    wh_api:route_req_v(Prop);
-validate_amqp(<<"call_event">>, _, Prop) ->
-    wh_api:call_event_v(Prop);
-validate_amqp(_Cat, _Name, _Prop) ->
+-spec validate_amqp/3 :: (ne_binary(), ne_binary(), json_object()) -> boolean().
+validate_amqp(<<"directory">>, <<"authn_req">>, JObj) ->
+    wapi_authn:req_v(JObj);
+validate_amqp(<<"dialplan">>, <<"route_req">>, JObj) ->
+    wapi_route:req_v(JObj);
+validate_amqp(<<"call_event">>, _, JObj) ->
+    wh_api:call_event_v(JObj);
+validate_amqp(_Cat, _Name, _JObj) ->
     false.
 
--spec(constrain_max_events/1 :: (MaxEvents :: binary() | integer()) -> integer()).
+-spec constrain_max_events/1 :: (binary() | integer()) -> integer().
 constrain_max_events(X) when not is_integer(X) ->
     constrain_max_events(wh_util:to_integer(X));
 constrain_max_events(Max) when Max > ?MAX_STREAM_EVENTS -> ?MAX_STREAM_EVENTS;
 constrain_max_events(Min) when Min < 1 -> 1;
-constrain_max_events(Okay) -> wh_util:to_integer(Okay).
+constrain_max_events(Okay) -> Okay.

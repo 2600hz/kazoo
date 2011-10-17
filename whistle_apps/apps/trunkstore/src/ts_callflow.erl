@@ -61,15 +61,14 @@ start_amqp(#state{}=State) ->
 -spec send_park/1 :: (State) -> #state{} when
       State :: #state{}.
 send_park(#state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
-    JObj1 = {struct, [ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                       ,{<<"Routes">>, []}
-                       ,{<<"Method">>, <<"park">>}
-		       | wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ]
-	    },
+    JObj1 = wh_json:from_list([ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+				,{<<"Routes">>, []}
+				,{<<"Method">>, <<"park">>}
+				| wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)]),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    {ok, JSON} = wh_api:route_resp(JObj1),
+    {ok, JSON} = wapi_route:resp(JObj1),
     ?LOG("Sending park to ~s: ~s", [RespQ, JSON]),
-    amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>),
+    wapi_route:publish_resp(RespQ, JSON),
 
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
     _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
@@ -85,7 +84,7 @@ wait_for_win(#state{aleg_callid=CallID}=State) ->
 	%% call events come from callevt exchange, ignore for now
 	{#'basic.deliver'{exchange = <<"targeted">>}, #amqp_msg{payload=Payload}} ->
 	    WinJObj = mochijson2:decode(Payload),
-	    true = wh_api:route_win_v(WinJObj),
+	    true = wapi_route:win_v(WinJObj),
 	    CallID = wh_json:get_value(<<"Call-ID">>, WinJObj),
 
 	    CallctlQ = wh_json:get_value(<<"Control-Queue">>, WinJObj),

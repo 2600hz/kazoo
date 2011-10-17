@@ -177,36 +177,39 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(get_current_carriers/0 :: () -> tuple(ok, list(tuple(binary(), proplist()))) | tuple(error, binary())).
+-spec get_current_carriers/0 :: () -> {'ok', [{binary(), proplist()},...]} | {'error', binary()}.
 get_current_carriers() ->
     case couch_mgr:open_doc(?TS_DB, ?TS_CARRIERS_DOC) of
 	{error, not_found} ->
 	    {error, <<"No matching carriers">>};
 	{error, db_not_reachable} ->
 	    {error, <<"DB not accessible">>};
-	{ok, {struct, Carriers}} when is_list(Carriers) ->
+	{ok, Carriers} ->
 	    couch_mgr:add_change_handler(?TS_DB, ?TS_CARRIERS_DOC),
-	    {ok, lists:map(fun process_carriers/1, lists:filter(fun active_carriers/1, Carriers))}
+	    {ok, [process_carriers(C) || C <- wh_json:to_proplist(Carriers), active_carriers(C)]}
     end.
 
 active_carriers({<<"_id">>, _}) ->
     true;
 active_carriers({<<"_rev">>, _}) ->
     true;
-active_carriers({_CarrierName, {struct, CarrierOptions}}) ->
-   props:get_value(<<"enabled">>, CarrierOptions) =:= <<"1">>.
+active_carriers({_CarrierName, CarrierOptions}) ->
+   wh_json:get_value(<<"enabled">>, CarrierOptions) =:= <<"1">>.
 
 process_carriers({<<"_id">>, _}=ID) -> ID;
 process_carriers({<<"_rev">>, _}=Rev) -> Rev;
-process_carriers({CarrierName, {struct, CarrierOptions}}) ->
-    RoutesRegexStrs =props:get_value(<<"routes">>, CarrierOptions, []),
+process_carriers({CarrierName, CarrierOptions}) ->
+    RoutesRegexStrs = wh_json:get_value(<<"routes">>, CarrierOptions, []),
     RouteRegexs = lists:map(fun(Str) -> {ok, R} = re:compile(Str), R end, RoutesRegexStrs),
-    Gateways =props:get_value(<<"gateways">>, CarrierOptions, []),
+    Gateways = wh_json:get_value(<<"gateways">>, CarrierOptions, []),
 
-    COs1 = proplists:delete(<<"gateways">>, CarrierOptions),
+    COs1 = wh_json:delete(<<"gateways">>, CarrierOptions),
+    COs2 = wh_json:delete(<<"routes">>, COs1),
+
     {CarrierName, [{<<"routes">>, RouteRegexs}
-		   ,{<<"options">>, lists:map(fun({struct, Gateway}) -> Gateway end, Gateways)}
-		   | proplists:delete(<<"routes">>, COs1)]}.
+		   ,{<<"options">>, [wh_json:to_proplist(G) || G <- Gateways]}
+		   | wh_json:to_proplist(COs2)
+		  ]}.
 
 -spec(get_routes/2 :: (Flags :: #route_flags{}, Carriers :: proplist()) -> {ok, routes()} | {error, string()}).
 get_routes(#route_flags{callid=CallID, to_user=User}=Flags, Carriers) ->
@@ -296,10 +299,10 @@ gateway_to_route(Gateway, {CRs, Regexed, BaseRouteData, ChannelVars}=Acc) ->
 		 ,{<<"Auth-Password">>,props:get_value(<<"password">>, Gateway)}
 		 ,{<<"Codecs">>,props:get_value(<<"codecs">>, Gateway, [])}
 		 ,{<<"Progress-Timeout">>,props:get_value(<<"progress_timeout">>, Gateway, ?DEFAULT_PROGRESS_TIMEOUT)}
-		 ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Carrier-Route">>, Dialstring} | ChannelVars]}}
+		 ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Carrier-Route">>, Dialstring} | ChannelVars])}
 		 | BaseRouteData ],
-	    case wh_api:route_resp_route_v(R) of
-		true -> {[{struct, R} | CRs], Regexed, BaseRouteData, ChannelVars};
+	    case wapi_route:resp_route_v(R) of
+		true -> {[wh_json:from_list(R) | CRs], Regexed, BaseRouteData, ChannelVars};
 		false -> Acc
 	    end;
 	_ -> Acc
