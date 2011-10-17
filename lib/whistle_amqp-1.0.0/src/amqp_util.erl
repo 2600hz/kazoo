@@ -113,7 +113,7 @@ callctl_publish(CallID, Payload, ContentType, Props) ->
 -spec callevt_publish/3 :: (CallID, Payload, Type) -> 'ok' when
       CallID :: ne_binary() | iolist(),
       Payload :: iolist() | ne_binary(),
-      Type :: media_req | event | status_req | cdr | ne_binary().
+      Type :: 'media_req' | 'event' | 'status_req' | 'cdr' | ne_binary().
 callevt_publish(Payload) ->
     callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, media_req).
 
@@ -173,15 +173,15 @@ monitor_publish(Payload, ContentType, RoutingKey) ->
 
 -spec conference_publish/2 :: (Payload, Queue) -> 'ok' when
       Payload :: iolist(),
-      Queue :: discovery | events | service.
+      Queue :: 'discovery' | 'events' | 'service'.
 -spec conference_publish/3 :: (Payload, Queue, ConfId) -> 'ok' when
       Payload :: iolist(),
-      Queue :: events | service,
+      Queue :: 'events' | 'service',
       ConfId :: ne_binary().
 -spec conference_publish/4 :: (Payload, Queue, ConfId, Options) -> 'ok' when
       Payload :: iolist(),
-      Queue :: discovery | events | service,
-      ConfId :: undefined | ne_binary(),
+      Queue :: 'discovery' | 'events' | 'service',
+      ConfId :: 'undefined' | ne_binary(),
       Options :: proplist().
 conference_publish(Payload, discovery) ->
     conference_publish(Payload, discovery, undefined, []);
