@@ -33,9 +33,6 @@
          ,conference_req/1, noop_req/1, fetch_req/1, respond_req/1, progress_req/1
         ]).
 
-%% FS command
--export([fs_req/1, fs_req_v/1]).
-
 %% Maintenance API calls
 -export([mwi_update/1]).
 
@@ -1146,29 +1143,6 @@ conference_move_req_v({struct, Prop}) ->
     conference_move_req_v(Prop);
 conference_move_req_v(Prop) ->
     validate(Prop, ?CONF_MOVE_REQ_HEADERS, ?CONF_MOVE_REQ_VALUES, ?CONF_MOVE_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc FS Request
-%%     Pass-through of FS dialplan commands
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec fs_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-    Prop :: proplist() | json_object().
-fs_req({struct, Prop}) ->
-    fs_req(Prop);
-fs_req(Prop) ->
-    case fs_req_v(Prop) of
-	true -> build_message(Prop, ?FS_REQ_HEADERS, ?OPTIONAL_FS_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for fs_req"}
-    end.
-
--spec fs_req_v/1 :: (Prop) -> boolean() when
-      Prop :: proplist() | json_object().
-fs_req_v({struct, Prop}) ->
-    fs_req_v(Prop);
-fs_req_v(Prop) ->
-    validate(Prop, ?FS_REQ_HEADERS, ?FS_REQ_VALUES, ?FS_REQ_TYPES).
 
 %% given a proplist of a FS event, return the Whistle-equivalent app name(s).
 %% a FS event could have multiple Whistle equivalents
