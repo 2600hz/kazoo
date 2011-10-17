@@ -111,8 +111,8 @@ callctl_publish(CallID, Payload, ContentType, Props) ->
 -spec callevt_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().
 -spec callevt_publish/3 :: (CallID, Payload, Type) -> 'ok' when
-      CallID :: ne_binary(),
-      Payload :: iolist(),
+      CallID :: ne_binary() | iolist(),
+      Payload :: iolist() | ne_binary(),
       Type :: media_req | event | status_req | cdr | ne_binary().
 callevt_publish(Payload) ->
     callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, media_req).
