@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(reg_util).
 
--export([lookup_auth_user/3, send_resp/2, send_resp/3, prime_cache/2]).
+-export([lookup_auth_user/3, prime_cache/2]).
 -export([cache_reg_key/1, cache_user_to_reg_key/2, cache_user_key/2]).
 -export([remove_old_regs/3, store_reg/3, lookup_registration/3, lookup_registrations/2]).
 -include("reg.hrl").
@@ -101,18 +101,6 @@ prime_cache(Pid, ViewResult) ->
     ?LOG("Primed with user ~s @ ~s", [User, Realm]),
 
     wh_cache:store_local(Pid, cache_user_to_reg_key(Realm, User), CacheRegKey, Expires).
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% send a payload to a targeted queue
-%% @end
-%%-----------------------------------------------------------------------------
-send_resp(Payload, RespQ) ->
-    send_resp(Payload, RespQ, <<"application/json">>).
-
-send_resp(Payload, RespQ, ContentType) ->
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%-----------------------------------------------------------------------------
 %% @private

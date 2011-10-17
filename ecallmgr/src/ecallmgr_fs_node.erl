@@ -288,7 +288,6 @@ process_custom_data(Data, AppVsn) ->
     end.
 
 publish_register_event(Data, AppVsn) ->
-    Keys = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
     DefProp = wh_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, wh_util:to_binary(?MODULE), AppVsn),
     ApiProp = lists:foldl(fun(K, Api) ->
 				  case props:get_value(wh_util:binary_to_lower(K), Data) of
@@ -299,13 +298,13 @@ publish_register_event(Data, AppVsn) ->
 					  end;
 				      V -> [{K, V} | Api]
 				  end
-			  end, [{<<"Event-Timestamp">>, round(wh_util:current_tstamp())} | DefProp], Keys),
+			  end, [{<<"Event-Timestamp">>, round(wh_util:current_tstamp())} | DefProp], wapi_registration:success_keys()),
     ?LOG("sending successful registration"),
-    case wh_api:reg_success(ApiProp) of
+    case wapi_registration:success(ApiProp) of
 	{error, E} ->
             ?LOG("failed API message creation: ~p", [E]);
 	{ok, JSON} ->
-	    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_SUCCESS)
+	    wapi_registration:publish_success(JSON)
     end.
 
 get_originate_action(<<"transfer">>, Data) ->

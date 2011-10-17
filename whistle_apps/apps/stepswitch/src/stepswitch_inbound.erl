@@ -341,9 +341,8 @@ custom_channel_vars(AccountId, AuthId, JObj) ->
 %% relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
--spec relay_route_req/1 :: (JObj) -> no_return() when
-      JObj :: json_object().
+-spec relay_route_req/1 :: (json_object()) -> 'ok'.
 relay_route_req(JObj) ->
-    {ok, Payload} = wh_api:route_req(JObj),
-    amqp_util:callmgr_publish(Payload, <<"application/json">>, ?KEY_ROUTE_REQ),
+    {ok, JSON} = wapi_route:req(JObj),
+    wapi_route:publish_req(JSON),
     ?LOG_END("relayed route request").

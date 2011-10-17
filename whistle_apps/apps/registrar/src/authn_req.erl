@@ -58,17 +58,19 @@ handle_req(JObj, Props) ->
                                  ],
 		   V =/= undefined],
 
-    Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-		,{<<"Custom-Channel-Vars">>, {struct, CCVs}}
-		| wh_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
-					      ,wh_json:get_value(<<"Event-Category">>, JObj)
-					      ,<<"authn_resp">>
-					      ,?APP_NAME
-					      ,?APP_VERSION)],
+    Defaults = wh_json:from_list(
+		 [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+		  ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+		  | wh_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
+					   ,wh_json:get_value(<<"Event-Category">>, JObj)
+					   ,<<"authn_resp">>
+					   ,?APP_NAME
+					   ,?APP_VERSION)
+		 ]),
 
     {ok, Payload} = authn_response(wh_json:get_value(<<"value">>, AuthJObj), Defaults),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    reg_util:send_resp(Payload, RespQ).
+    wapi_authn:publish_resp(RespQ, Payload).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -76,16 +78,13 @@ handle_req(JObj, Props) ->
 %% determine if the user was known and send a reply if so
 %% @end
 %%-----------------------------------------------------------------------------
--spec authn_response/2 :: (AuthnResp, Prop) -> {ok, iolist()} | {error, string()} when
-      AuthnResp :: json_object() | integer(),
-      Prop :: proplist().
+-spec authn_response/2 :: (json_object(), json_object()) -> {'ok', iolist()} | {'error', string()}.
 authn_response(?EMPTY_JSON_OBJECT, _) ->
     ?LOG_END("user is unknown");
-authn_response(AuthInfo, Prop) ->
-    Data = lists:umerge(auth_specific_response(AuthInfo), Prop),
+authn_response(AuthInfo, JObj) ->
+    DataJObj = wh_json:merge_jobjs(auth_specific_response(AuthInfo), JObj),
     ?LOG_END("sending SIP authentication reply, with credentials"),
-    wh_api:authn_resp(Data).
-
+    wapi_authn:resp(DataJObj).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -93,14 +92,13 @@ authn_response(AuthInfo, Prop) ->
 %% create a auth response proplist to send back when the user is known
 %% @end
 %%-----------------------------------------------------------------------------
--spec auth_specific_response/1 :: (AuthInfo) -> proplist() when
-      AuthInfo :: json_object() | integer().
+-spec auth_specific_response/1 :: (json_object()) -> json_object().
 auth_specific_response(AuthInfo) ->
     Method = list_to_binary(string:to_lower(binary_to_list(wh_json:get_value(<<"method">>, AuthInfo, <<"password">>)))),
-    [{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthInfo)}
-     ,{<<"Auth-Method">>, Method}
-     ,{<<"Event-Name">>, <<"authn_resp">>}
-     ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthInfo, <<"ignore">>)}
-     ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthInfo, <<"ignore">>)}
-    ].
+    wh_json:from_list([{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthInfo)}
+		       ,{<<"Auth-Method">>, Method}
+		       ,{<<"Event-Name">>, <<"authn_resp">>}
+		       ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthInfo, <<"ignore">>)}
+		       ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthInfo, <<"ignore">>)}
+		      ]).
 

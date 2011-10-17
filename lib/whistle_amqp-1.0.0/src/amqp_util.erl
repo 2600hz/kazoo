@@ -111,19 +111,25 @@ callctl_publish(CallID, Payload, ContentType, Props) ->
 -spec callevt_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().
 -spec callevt_publish/3 :: (CallID, Payload, Type) -> 'ok' when
-      CallID :: ne_binary(),
-      Payload :: iolist(),
-      Type :: event | status_req | cdr | ne_binary().
+      CallID :: ne_binary() | iolist(),
+      Payload :: iolist() | ne_binary(),
+      Type :: 'media_req' | 'event' | 'status_req' | 'cdr' | ne_binary().
 callevt_publish(Payload) ->
-    basic_publish(?EXCHANGE_CALLEVT, ?KEY_CALL_MEDIA_REQ, Payload, ?DEFAULT_CONTENT_TYPE).
+    callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, media_req).
+
+callevt_publish(Payload, ContentType, media_req) ->
+    basic_publish(?EXCHANGE_CALLEVT, ?KEY_CALL_MEDIA_REQ, Payload, ContentType);
 
 callevt_publish(CallID, Payload, event) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
+
 callevt_publish(CallID, Payload, status_req) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
+
 callevt_publish(CallID, Payload, cdr) ->
     Key = encode_key(CallID),
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, Key/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
+
 callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 
@@ -167,15 +173,15 @@ monitor_publish(Payload, ContentType, RoutingKey) ->
 
 -spec conference_publish/2 :: (Payload, Queue) -> 'ok' when
       Payload :: iolist(),
-      Queue :: discovery | events | service.
+      Queue :: 'discovery' | 'events' | 'service'.
 -spec conference_publish/3 :: (Payload, Queue, ConfId) -> 'ok' when
       Payload :: iolist(),
-      Queue :: events | service,
+      Queue :: 'events' | 'service',
       ConfId :: ne_binary().
 -spec conference_publish/4 :: (Payload, Queue, ConfId, Options) -> 'ok' when
       Payload :: iolist(),
-      Queue :: discovery | events | service,
-      ConfId :: undefined | ne_binary(),
+      Queue :: 'discovery' | 'events' | 'service',
+      ConfId :: 'undefined' | ne_binary(),
       Options :: proplist().
 conference_publish(Payload, discovery) ->
     conference_publish(Payload, discovery, undefined, []);

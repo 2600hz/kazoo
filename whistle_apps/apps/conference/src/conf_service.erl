@@ -864,9 +864,7 @@ remove_participant_event(CallId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %% Send a response for a route request
 %% @end
 %%--------------------------------------------------------------------
--spec send_route_response/2 :: (JObj, Q) -> no_return() when
-      JObj :: json_object(),
-      Q :: binary().
+-spec send_route_response/2 :: (json_object(), ne_binary()) -> 'ok'.
 send_route_response(JObj, Q) ->
     ?LOG("sending route response"),
     Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
@@ -875,8 +873,8 @@ send_route_response(JObj, Q) ->
                 ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)}
                 | wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
                ],
-    {ok, Payload} = wh_api:route_resp(Response),
-    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+    {ok, JSON} = wapi_route:resp(Response),
+    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), JSON).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -884,7 +882,7 @@ send_route_response(JObj, Q) ->
 %% Send a response to an auth request
 %% @end
 %%--------------------------------------------------------------------
--spec send_auth_response/5 :: (JObj, ConfId, AuthUser, AuthPwd, Q) -> no_return() when
+-spec send_auth_response/5 :: (JObj, ConfId, AuthUser, AuthPwd, Q) -> 'ok' when
       JObj :: json_object(),
       ConfId :: binary(),
       AuthUser :: binary(),
@@ -895,11 +893,11 @@ send_auth_response(JObj, ConfId, AuthUser, AuthPwd, Q) ->
     Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                 ,{<<"Auth-Password">>, AuthPwd}
                 ,{<<"Auth-Method">>, <<"password">>}
-                ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Username">>, AuthUser}
+                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Username">>, AuthUser}
                                                        ,{<<"Realm">>, wh_json:get_value(<<"Auth-Realm">>, JObj)}
                                                        ,{<<"Authorizing-ID">>, ConfId}
-                                                       ,{<<"Conference-ID">>, ConfId}]}}
+                                                       ,{<<"Conference-ID">>, ConfId}])}
                 | wh_api:default_headers(Q, <<"directory">>, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
                ],
-    {ok, Payload} = wh_api:authn_resp(Response),
-    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+    {ok, JSON} = wapi_authn:resp(Response),
+    wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), JSON).

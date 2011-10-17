@@ -247,7 +247,7 @@ lookup_user(Node, ID, Data) ->
                              try
                                  {ok, AuthResp} = ecallmgr_amqp_pool:authn_req(AuthReq),
 
-                                 true = wh_api:authn_resp_v(AuthResp),
+                                 true = wapi_authn:resp_v(AuthResp),
                                  ?LOG(ID, "received authn_resp", []),
                                  {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
 					       wh_json:set_value(<<"Auth-Realm">>, AuthRealm

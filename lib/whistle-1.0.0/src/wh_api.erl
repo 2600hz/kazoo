@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010, VoIP INC
 %%% @doc
 %%% Whistle API Helpers
 %%%
@@ -13,7 +13,6 @@
 %%% This will parse the proplist and return a boolean()if the proplist is valid
 %%% for creating a JSON message.
 %%%
-%%% See http://corp.switchfreedom.com/mediawiki/index.php/API_Definition
 %%% @end
 %%% Created : 19 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -21,10 +20,6 @@
 
 %% API
 -export([default_headers/5, extract_defaults/1]).
-
-%% Authentication and Routing
--export([authn_req/1, authn_resp/1, reg_success/1, route_req/1, route_resp/1, route_resp_route/1, route_win/1]).
--export([reg_query/1, reg_query_resp/1, authz_req/1, authz_resp/1]).
 
 %% Resources
 -export([offnet_resource_req/1, resource_req/1, resource_resp/1, resource_error/1]).
@@ -34,12 +29,9 @@
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
 	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
-	 ,sleep_req/1, tone_detect_req/1, set_req/1, media_req/1, media_resp/1, media_error/1
+	 ,sleep_req/1, tone_detect_req/1, set_req/1
          ,conference_req/1, noop_req/1, fetch_req/1, respond_req/1, progress_req/1
         ]).
-
-%% FS command
--export([fs_req/1, fs_req_v/1]).
 
 %% Maintenance API calls
 -export([mwi_update/1]).
@@ -54,9 +46,6 @@
 -export([document_change/1, document_change_v/1]).
 
 %% Validation functions
--export([authn_req_v/1, authn_resp_v/1, authz_req_v/1, authz_resp_v/1]).
--export([reg_success_v/1, reg_query_v/1, reg_query_resp_v/1]).
-
 -export([offnet_resource_req_v/1, resource_req_v/1, resource_resp_v/1, resource_error_v/1]).
 
 -export([call_event_v/1, error_resp_v/1, call_cdr_v/1, call_status_req_v/1, call_status_resp_v/1]).
@@ -67,17 +56,16 @@
          ,progress_req_v/1
         ]).
 
--export([media_req_v/1, media_resp_v/1, media_error_v/1, conference_req_v/1]).
+-export([conference_req_v/1]).
 
 -export([conference_participants_req_v/1, conference_participants_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1
          ,conference_undeaf_req_v/1, conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1
          ,conference_move_req_v/1, conference_discovery_req_v/1, noop_req_v/1, fetch_req_v/1, mwi_update_v/1
 	]).
 
--export([route_req_v/1, route_resp_v/1, route_resp_route_v/1, route_win_v/1]).
-
 %% Other AMQP API validators can use these helpers
--export([build_message/3, validate/4]).
+-export([build_message/3, build_message_specific/3
+	 ,validate/4, validate_message/4]).
 
 %% FS-specific routines
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
@@ -125,116 +113,6 @@ extract_defaults(Prop) ->
 		end, [], ?DEFAULT_HEADERS ++ ?OPTIONAL_DEFAULT_HEADERS).
 
 %%--------------------------------------------------------------------
-%% @doc Authentication Request - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec authn_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-      Prop :: proplist() | json_object().
-authn_req({struct, Prop}) ->
-    authn_req(Prop);
-authn_req(Prop) ->
-    case authn_req_v(Prop) of
-	true -> build_message(Prop, ?AUTHN_REQ_HEADERS, ?OPTIONAL_AUTHN_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for authn_req"}
-    end.
-
--spec authn_req_v/1 :: (Prop) -> boolean() when
-      Prop :: proplist() | json_object().
-authn_req_v({struct, Prop}) ->
-    authn_req_v(Prop);
-authn_req_v(Prop) ->
-    validate(Prop, ?AUTHN_REQ_HEADERS, ?AUTHN_REQ_VALUES, ?AUTHN_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Authentication Response - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec authn_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-      Prop :: proplist() | json_object().
-authn_resp({struct, Prop}) ->
-    authn_resp(Prop);
-authn_resp(Prop) ->
-    case authn_resp_v(Prop) of
-	true -> build_message(Prop, ?AUTHN_RESP_HEADERS, ?OPTIONAL_AUTHN_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for authn_resp"}
-    end.
-
--spec authn_resp_v/1 :: (Prop) -> boolean() when
-      Prop :: proplist() | json_object().
-authn_resp_v({struct, Prop}) ->
-    authn_resp_v(Prop);
-authn_resp_v(Prop) ->
-    validate(Prop, ?AUTHN_RESP_HEADERS, ?AUTHN_RESP_VALUES, ?AUTHN_RESP_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Registration Success - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec reg_success/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-    Prop :: proplist() | json_object().
-reg_success({struct, Prop}) ->
-    reg_success(Prop);
-reg_success(Prop) ->
-    case reg_success_v(Prop) of
-	true -> build_message(Prop, ?REG_SUCCESS_HEADERS, ?OPTIONAL_REG_SUCCESS_HEADERS);
-	false -> {error, "Proplist failed validation for reg_success"}
-    end.
-
--spec reg_success_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-reg_success_v({struct, Prop}) ->
-    reg_success_v(Prop);
-reg_success_v(Prop) ->
-    validate(Prop, ?REG_SUCCESS_HEADERS, ?REG_SUCCESS_VALUES, ?REG_SUCCESS_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Registration Query - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec reg_query/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-    Prop :: proplist() | json_object().
-reg_query({struct, Prop}) ->
-    reg_query(Prop);
-reg_query(Prop) ->
-    case reg_query_v(Prop) of
-	true -> build_message(Prop, ?REG_QUERY_HEADERS, ?OPTIONAL_REG_QUERY_HEADERS);
-	false -> {error, "Proplist failed validation for reg_query"}
-    end.
-
--spec reg_query_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-reg_query_v({struct, Prop}) ->
-    reg_query_v(Prop);
-reg_query_v(Prop) ->
-    validate(Prop, ?REG_QUERY_HEADERS, ?REG_QUERY_VALUES, ?REG_QUERY_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Registration Query Response - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec reg_query_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-    Prop :: proplist() | json_object().
-reg_query_resp({struct, Prop}) ->
-    reg_query_resp(Prop);
-reg_query_resp(Prop) ->
-    case reg_query_resp_v(Prop) of
-	true -> build_message(Prop, ?REG_QUERY_RESP_HEADERS, ?OPTIONAL_REG_QUERY_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for reg_query_resp"}
-    end.
-
--spec reg_query_resp_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-reg_query_resp_v({struct, Prop}) ->
-    reg_query_resp_v(Prop);
-reg_query_resp_v(Prop) ->
-    validate(Prop, ?REG_QUERY_RESP_HEADERS, ?REG_QUERY_RESP_VALUES, ?REG_QUERY_RESP_TYPES).
-
-%%--------------------------------------------------------------------
 %% @doc Dialplan Request Validation
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -253,139 +131,6 @@ dialplan_req_v(Prop, AppName) ->
 	{_, VFun} ->
 	    VFun(Prop)
     end.
-
-%%--------------------------------------------------------------------
-%% @doc Dialplan Route Request - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec route_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-    Prop :: proplist() | json_object().
-route_req({struct, Prop}) ->
-    route_req(Prop);
-route_req(Prop) ->
-    case route_req_v(Prop) of
-	true -> build_message(Prop, ?ROUTE_REQ_HEADERS, ?OPTIONAL_ROUTE_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for route_req"}
-    end.
-
--spec route_req_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-route_req_v({struct, Prop}) ->
-    route_req_v(Prop);
-route_req_v(Prop) ->
-    validate(Prop, ?ROUTE_REQ_HEADERS, ?ROUTE_REQ_VALUES, ?ROUTE_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Dialplan Route Response - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec route_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-    Prop :: proplist() | json_object().
-route_resp({struct, Prop}) ->
-    route_resp(Prop);
-route_resp(Prop) ->
-    case route_resp_v(Prop) of
-	true -> build_message(Prop, ?ROUTE_RESP_HEADERS, ?OPTIONAL_ROUTE_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for route_resp"}
-    end.
-
--spec route_resp_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-route_resp_v({struct, Prop}) ->
-    route_resp_v(Prop);
-route_resp_v(Prop) ->
-    validate(Prop, ?ROUTE_RESP_HEADERS, ?ROUTE_RESP_VALUES, ?ROUTE_RESP_TYPES)
-	andalso lists:all(fun({struct, R}) -> route_resp_route_v(R) end, props:get_value(<<"Routes">>, Prop)).
-
-%%--------------------------------------------------------------------
-%% @doc Route within a Dialplan Route Response - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec route_resp_route/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-    Prop :: proplist() | json_object().
-route_resp_route({struct, Prop}) ->
-    route_resp_route(Prop);
-route_resp_route(Prop) ->
-    case route_resp_route_v(Prop) of
-	true -> build_message_specific(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
-	false -> {error, "Proplist failed validation for route_resp_route"}
-    end.
-
--spec route_resp_route_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-route_resp_route_v({struct, Prop}) ->
-    route_resp_route_v(Prop);
-route_resp_route_v(Prop) ->
-    validate_message(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?ROUTE_RESP_ROUTE_VALUES, ?ROUTE_RESP_ROUTE_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Authorization Request - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec authz_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-    Prop :: proplist() | json_object().
-authz_req({struct, Prop}) ->
-    authz_req(Prop);
-authz_req(Prop) ->
-    case authz_req_v(Prop) of
-	true -> build_message(Prop, ?AUTHZ_REQ_HEADERS, ?OPTIONAL_AUTHZ_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for authz_req"}
-    end.
-
--spec authz_req_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-authz_req_v({struct, Prop}) ->
-    authz_req_v(Prop);
-authz_req_v(Prop) ->
-    validate(Prop, ?AUTHZ_REQ_HEADERS, ?AUTHZ_REQ_VALUES, ?AUTHZ_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Authentication Response - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec authz_resp/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-    Prop :: proplist() | json_object().
-authz_resp({struct, Prop}) ->
-    authz_resp(Prop);
-authz_resp(Prop) ->
-    case authz_resp_v(Prop) of
-	true -> build_message(Prop, ?AUTHZ_RESP_HEADERS, ?OPTIONAL_AUTHZ_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for authz_resp"}
-    end.
-
--spec authz_resp_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-authz_resp_v({struct, Prop}) ->
-    authz_resp_v(Prop);
-authz_resp_v(Prop) ->
-    validate(Prop, ?AUTHZ_RESP_HEADERS, ?AUTHZ_RESP_VALUES, ?AUTHZ_RESP_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Winning Responder Message - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec route_win/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-    Prop :: proplist() | json_object().
-route_win({struct, Prop}) ->
-    route_win(Prop);
-route_win(Prop) ->
-    case route_win_v(Prop) of
-	true -> build_message(Prop, ?ROUTE_WIN_HEADERS, ?OPTIONAL_ROUTE_WIN_HEADERS);
-	false -> {error, "Proplist failed validation for route_win"}
-    end.
-
--spec route_win_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-route_win_v({struct, Prop}) ->
-    route_win_v(Prop);
-route_win_v(Prop) ->
-    validate(Prop, ?ROUTE_WIN_HEADERS, ?ROUTE_WIN_VALUES, ?ROUTE_WIN_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Offnet resource request - see wiki
@@ -782,60 +527,6 @@ play_req_v({struct, Prop}) ->
     play_req_v(Prop);
 play_req_v(Prop) ->
     validate(Prop, ?PLAY_REQ_HEADERS, ?PLAY_REQ_VALUES, ?PLAY_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Request media - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
-media_req({struct, Prop}) ->
-    media_req(Prop);
-media_req(Prop) ->
-    case media_req_v(Prop) of
-	true -> build_message(Prop, ?MEDIA_REQ_HEADERS, ?OPTIONAL_MEDIA_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for media_req"}
-    end.
-
-media_req_v({struct, Prop}) ->
-    media_req_v(Prop);
-media_req_v(Prop) ->
-    validate(Prop, ?MEDIA_REQ_HEADERS, ?MEDIA_REQ_VALUES, ?MEDIA_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Response with media - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
-media_resp({struct, Prop}) ->
-    media_resp(Prop);
-media_resp(Prop) ->
-    case media_resp_v(Prop) of
-	true -> build_message(Prop, ?MEDIA_RESP_HEADERS, ?OPTIONAL_MEDIA_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for media_resp"}
-    end.
-
-media_resp_v({struct, Prop}) ->
-    media_resp_v(Prop);
-media_resp_v(Prop) ->
-    validate(Prop, ?MEDIA_RESP_HEADERS, ?MEDIA_RESP_VALUES, ?MEDIA_RESP_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Media error - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
-media_error({struct, Prop}) ->
-    media_error(Prop);
-media_error(Prop) ->
-    case media_error_v(Prop) of
-	true -> build_message(Prop, ?MEDIA_ERROR_HEADERS, ?OPTIONAL_MEDIA_ERROR_HEADERS);
-	false -> {error, "Proplist failed validation for media_error"}
-    end.
-
-media_error_v({struct, Prop}) ->
-    media_error_v(Prop);
-media_error_v(Prop) ->
-    validate(Prop, ?MEDIA_ERROR_HEADERS, ?MEDIA_ERROR_VALUES, ?MEDIA_ERROR_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Record media - see wiki
@@ -1453,29 +1144,6 @@ conference_move_req_v({struct, Prop}) ->
 conference_move_req_v(Prop) ->
     validate(Prop, ?CONF_MOVE_REQ_HEADERS, ?CONF_MOVE_REQ_VALUES, ?CONF_MOVE_REQ_TYPES).
 
-%%--------------------------------------------------------------------
-%% @doc FS Request
-%%     Pass-through of FS dialplan commands
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec fs_req/1 :: (Prop) -> {ok, iolist()} | {error, string()} when
-    Prop :: proplist() | json_object().
-fs_req({struct, Prop}) ->
-    fs_req(Prop);
-fs_req(Prop) ->
-    case fs_req_v(Prop) of
-	true -> build_message(Prop, ?FS_REQ_HEADERS, ?OPTIONAL_FS_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for fs_req"}
-    end.
-
--spec fs_req_v/1 :: (Prop) -> boolean() when
-      Prop :: proplist() | json_object().
-fs_req_v({struct, Prop}) ->
-    fs_req_v(Prop);
-fs_req_v(Prop) ->
-    validate(Prop, ?FS_REQ_HEADERS, ?FS_REQ_VALUES, ?FS_REQ_TYPES).
-
 %% given a proplist of a FS event, return the Whistle-equivalent app name(s).
 %% a FS event could have multiple Whistle equivalents
 -spec convert_fs_evt_name/1 :: (EvtName) -> [binary(),...] | [] when
@@ -1528,7 +1196,7 @@ build_message(Prop, ReqH, OptH) ->
 	    end
     end.
 
--spec build_message_specific_headers/3 :: (Msg, ReqHeaders, OptHeaders) -> {ok, proplist()} | {error, string()} when
+-spec build_message_specific_headers/3 :: (Msg, ReqHeaders, OptHeaders) -> {'ok', proplist()} | {'error', string()} when
       Msg :: proplist() | {[binary(),...] | [], proplist()},
       ReqHeaders :: [binary(),...],
       OptHeaders :: [binary(),...] | [].
@@ -1544,7 +1212,7 @@ build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
 build_message_specific_headers(Prop, ReqH, OptH) ->
     build_message_specific_headers({[], Prop}, ReqH, OptH).
 
--spec build_message_specific/3 :: (Msg, ReqHeaders, OptHeaders) -> {ok, iolist()} | {error, string()} when
+-spec build_message_specific/3 :: (Msg, ReqHeaders, OptHeaders) -> {'ok', iolist()} | {'error', string()} when
       Msg :: proplist() | {[binary(),...] | [], proplist()},
       ReqHeaders :: [binary(),...],
       OptHeaders :: [binary(),...] | [].
@@ -1560,7 +1228,7 @@ build_message_specific({Headers, Prop}, ReqH, OptH) ->
 build_message_specific(Prop, ReqH, OptH) ->
     build_message_specific({[], Prop}, ReqH, OptH).
 
--spec headers_to_json/1 :: (HeadersProp) -> {ok, iolist()} | {error, string()} when
+-spec headers_to_json/1 :: (HeadersProp) -> {'ok', iolist()} | {'error', string()} when
       HeadersProp :: proplist().
 headers_to_json(HeadersProp) ->
     try
@@ -1571,7 +1239,7 @@ headers_to_json(HeadersProp) ->
 
 %% Checks Prop for all default headers, throws error if one is missing
 %% defaults(PassedProps) -> { Headers, NewPropList } | {error, Reason}
--spec defaults/1 :: (Prop) -> {proplist(), proplist()} | {error, string()} when
+-spec defaults/1 :: (Prop) -> {proplist(), proplist()} | {'error', string()} when
       Prop :: proplist() | json_object().
 defaults(Prop) ->
     defaults(Prop, []).
@@ -1583,7 +1251,7 @@ defaults(Prop, Headers) ->
 	    update_optional_headers(Prop1, ?OPTIONAL_DEFAULT_HEADERS, Headers1)
     end.
 
--spec update_required_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} | {error, string()} when
+-spec update_required_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} | {'error', string()} when
       Prop :: proplist(),
       Fields :: [binary(),...],
       Headers :: proplist().

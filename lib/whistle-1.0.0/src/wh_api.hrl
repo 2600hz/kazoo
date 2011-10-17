@@ -1,5 +1,6 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
--include("wh_types.hrl").
+-include_lib("whistle/include/wh_amqp.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 -endif.
 
 %% We pass Application custom channel variables with our own prefix
@@ -67,21 +68,6 @@
 			,{<<"Tenant-ID">>, fun is_binary/1}
 			]).
 
-%% Authentication Requests
--define(AUTHN_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
-			       , <<"Auth-User">>, <<"Auth-Realm">>]).
--define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>]).
--define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, <<"directory">>}
-			  ,{<<"Event-Name">>, <<"authn_req">>}
-			 ]).
--define(AUTHN_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-			 ,{<<"To">>, fun is_binary/1}
-			 ,{<<"From">>, fun is_binary/1}
-			 ,{<<"Orig-IP">>, fun is_binary/1}
-			 ,{<<"Auth-User">>, fun is_binary/1}
-			 ,{<<"Auth-Realm">>, fun is_binary/1}
-			]).
-
 %% Configuration Document Update
 -define(CONF_DOC_UPDATE_HEADERS, [<<"ID">>, <<"Rev">>, <<"Doc">>]).
 -define(OPTIONAL_CONF_DOC_UPDATE_HEADERS, [<<"Account-DB">>, <<"Account-ID">>
@@ -91,161 +77,6 @@
                                  ,{<<"Event-Name">>, [<<"doc_edited">>, <<"doc_created">>, <<"doc_deleted">>]}]).
 -define(CONF_DOC_UPDATE_TYPES, [{<<"ID">>, fun is_binary/1}
                                 ,{<<"Rev">>, fun is_binary/1}]).
-
-%% Authentication Responses
--define(AUTHN_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Password">>]).
--define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
--define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
-			   ,{<<"Event-Name">>, <<"authn_resp">>}
-			   ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>, <<"a1-hash">>, <<"error">>]}
-			 ]).
--define(AUTHN_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-			  ,{<<"Auth-Password">>, fun is_binary/1}
-			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-			  ,{<<"Access-Group">>, fun is_binary/1}
-			  ,{<<"Tenant-ID">>, fun is_binary/1}
-			 ]).
-
-%% Registration Success
--define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"From-User">>, <<"From-Host">>, <<"Contact">>, <<"RPid">>
-				 ,<<"Expires">>, <<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
-				 , <<"Username">>, <<"Realm">>
-			    ]).
--define(OPTIONAL_REG_SUCCESS_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
-					   ,<<"FreeSWITCH-Hostname">>
-				      ]).
--define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
-			    ,{<<"Event-Name">>, <<"reg_success">>}
-			   ]).
--define(REG_SUCCESS_TYPES, []).
-
-%% Query Registrations
--define(REG_QUERY_HEADERS, [<<"Username">>, <<"Realm">>, <<"Fields">>]).
--define(OPTIONAL_REG_QUERY_HEADERS, []).
--define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
-			   ,{<<"Event-Name">>, <<"reg_query">>}
-			  ]).
--define(REG_QUERY_TYPES, [{<<"Fields">>, fun(Fs) when is_list(Fs) ->
-						 Allowed = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
-						 lists:foldl(fun(F, true) -> lists:member(F, Allowed);
-								(_, false) -> false
-							     end, true, Fs);
-					    (_) -> false
-					 end}
-			 ]).
-
-%% Registration Query Response
--define(REG_QUERY_RESP_HEADERS, [<<"Fields">>]).
--define(OPTIONAL_REG_QUERY_RESP_HEADERS, []).
--define(REG_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
-				,{<<"Event-Name">>, <<"reg_query_resp">>}
-			       ]).
--define(REG_QUERY_RESP_TYPES, []).
-
-%% Authorization Requests
--define(AUTHZ_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
-				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-			   ]).
--define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Request">>]).
--define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-			   ,{<<"Event-Name">>, <<"authz_req">>}
-			  ]).
--define(AUTHZ_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-			  ,{<<"To">>, fun is_binary/1}
-			  ,{<<"From">>, fun is_binary/1}
-			  ,{<<"Call-ID">>, fun is_binary/1}
-			  ,{<<"Caller-ID-Name">>, fun is_binary/1}
-			  ,{<<"Caller-ID-Number">>, fun is_binary/1}
-			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-			 ]).
-
-%% Authorization Responses
--define(AUTHZ_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Is-Authorized">>]).
--define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Custom-Channel-Vars">>]).
--define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-			    ,{<<"Event-Name">>, <<"authz_resp">>}
-			    ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
-			   ]).
--define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
-
-%% Route Requests
--define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
-				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-			   ]).
--define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
-					 ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
-					 ,<<"Resource-Type">>, <<"Cost-Parameters">>
-				    ]).
--define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-			   ,{<<"Event-Name">>, <<"route_req">>}
-			   ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>, <<"audio">>, <<"video">>, <<"chat">>]}
-			   ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
-			  ]).
--define(ROUTE_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-			  ,{<<"To">>, fun is_binary/1}
-			  ,{<<"From">>, fun is_binary/1}
-			  ,{<<"Request">>, fun is_binary/1}
-			  ,{<<"Call-ID">>, fun is_binary/1}
-			  ,{<<"Event-Queue">>, fun is_binary/1}
-			  ,{<<"Caller-ID-Name">>, fun is_binary/1}
-			  ,{<<"Caller-ID-Number">>, fun is_binary/1}
-			  ,{<<"Cost-Parameters">>, fun({struct, L}) when is_list(L) ->
-							   lists:all(fun({K, _V}) ->
-									     lists:member(K, ?ROUTE_REQ_COST_PARAMS)
-								     end, L);
-						      (_) -> false
-						   end}
-			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-			 ]).
--define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
-				    ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
-			       ]).
-
-%% Route Responses
--define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
--define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
-						 ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
-						 ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
-						 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
-						 ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
-						 ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
-					   ]).
--define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
-				  ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
-				  ,?INVITE_FORMAT_TUPLE
-				 ]).
--define(ROUTE_RESP_ROUTE_TYPES, [ {<<"Codecs">>, fun is_list/1}
-				  ,{<<"Route">>, fun is_binary/1}
-				  ,{<<"To-User">>, fun is_binary/1}
-				  ,{<<"To-Realm">>, fun is_binary/1}
-				  ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
-                                  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-				]).
-
-%% Route Responses
--define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
--define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>,
-                                      <<"Route-Error-Code">>, <<"Route-Error-Message">>]).
--define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-			    ,{<<"Event-Name">>, <<"route_resp">>}
-			    ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
-			   ]).
--define(ROUTE_RESP_TYPES, [{<<"Route-Error-Code">>, fun is_binary/1}
-			   ,{<<"Route-Error-Message">>, fun is_binary/1}
-			   ,{<<"Routes">>, fun(L) when is_list(L) -> true;
-					      (_) -> false
-					   end}
-                           ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-			  ]).
-
-%% Route Winner
--define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
--define(OPTIONAL_ROUTE_WIN_HEADERS, [<<"Custom-Channel-Vars">>]).
--define(ROUTE_WIN_VALUES, [{<<"Event-Name">>, <<"route_win">>}]).
--define(ROUTE_WIN_TYPES, [{<<"Call-ID">>, fun is_binary/1}
-			  ,{<<"Control-Queue">>, fun is_binary/1}
-			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-			 ]).
 
 %% Offnet Resource Request
 -define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Call-ID">>, <<"Resource-Type">>, <<"To-DID">>
@@ -577,34 +408,6 @@
 			 ]).
 -define(PLAY_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
-%% Media Request - when streaming is needed
--define(MEDIA_REQ_HEADERS, [<<"Media-Name">>]).
--define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>]).
--define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
-			   ,{<<"Event-Name">>, <<"media_req">>}
-			   ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
-			  ]).
--define(MEDIA_REQ_TYPES, []).
-
-%% Media Response
--define(MEDIA_RESP_HEADERS, [<<"Media-Name">>, <<"Stream-URL">>]).
--define(OPTIONAL_MEDIA_RESP_HEADERS, []).
--define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, <<"media">>}
-			   ,{<<"Event-Name">>, <<"media_resp">>}
-			  ]).
--define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true;
-                                                 (<<"http://", _/binary>>) -> true;
-                                                 (_) -> false end}]).
-
-%% Media Error
--define(MEDIA_ERROR_HEADERS, [<<"Media-Name">>, <<"Error-Code">>]).
--define(OPTIONAL_MEDIA_ERROR_HEADERS, [<<"Error-Msg">>]).
--define(MEDIA_ERROR_VALUES, [{<<"Event-Category">>, <<"media">>}
-			     ,{<<"Event-Name">>, <<"media_error">>}
-			     ,{<<"Error-Code">>, [<<"not_found">>, <<"no_data">>, <<"other">>]}
-			     ]).
--define(MEDIA_ERROR_TYPES, []).
-
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Terminators">>, <<"Time-Limit">>, <<"Silence-Threshold">>
@@ -828,14 +631,6 @@
 
 %% The AMQP passthrough of FS commands - whitelist commands allowed (exluding any prefixed by uuid_ which are auto-allowed)
 -define(FS_COMMAND_WHITELIST, [<<"set">>, <<"hangup">>, <<"bridge">>]).
-
--define(FS_REQ_HEADERS, [<<"Application-Name">>, <<"Args">>]).
--define(OPTIONAL_FS_REQ_HEADERS, [<<"Insert-At">>]).
--define(FS_REQ_VALUES, [{<<"Event-Category">>, <<"fs">>}
-			,{<<"Event-Name">>, <<"command">>}
-		       ]).
--define(FS_REQ_TYPES, [{<<"Application-Name">>, fun(<<"uuid_", _/binary>>) -> true; (App) -> lists:member(App, ?FS_COMMAND_WHITELIST) end}]).
-
 
 %% [{FreeSWITCH-Flage-Name, Whistle-Flag-Name}]
 %% Conference-related entry flags
