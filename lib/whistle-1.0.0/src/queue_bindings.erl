@@ -17,7 +17,6 @@
 %% -include("whistle_apps/callflow/include/cf_amqp.hrl").
 
 -type bind_types() :: 'rating' |
-		      'routing' |
 		      'cdrs' |
 		      'dth' |
 		      'call_events' |
@@ -27,19 +26,14 @@
 
 -spec known_bind_types/0 :: () -> [bind_types(),...].
 known_bind_types() ->
-    ['rating', 'routing'
+    ['routing'
      ,'cdrs', 'dth', 'call_events', 'notifications'
-     ,'authorization'
     ].
 
 -spec add_binding_to_q/3 :: (Q, Type, Props) -> 'ok' when
       Q :: binary(),
       Type :: bind_types(),
       Props :: proplist().
-add_binding_to_q(Q, routing, _Props) ->
-    amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_ROUTE_REQ),
-    ok;
 add_binding_to_q(Q, cdrs, Props) ->
     CallID = get_callid(Props),
     amqp_util:bind_q_to_callevt(Q, CallID, cdr),
@@ -58,8 +52,6 @@ add_binding_to_q(Q, notifications, Props) ->
 -spec rm_binding_from_q/2 :: (Q, Type) -> 'ok' when
       Q :: binary(),
       Type :: bind_types().
-rm_binding_from_q(Q, routing) ->
-    amqp_util:unbind_q_from_callmgr(Q, ?KEY_ROUTE_REQ);
 rm_binding_from_q(Q, cdrs) ->
     rm_binding_from_q(Q, cdrs, []);
 rm_binding_from_q(Q, call_events) ->
