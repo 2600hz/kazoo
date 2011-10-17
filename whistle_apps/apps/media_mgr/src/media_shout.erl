@@ -259,9 +259,9 @@ send_media_resp(MediaName, Url, To) ->
 	    ,{<<"Stream-URL">>, Url}
 	    | wh_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?APP_NAME, ?APP_VERSION)],
 
-    {ok, JSON} = wh_api:media_resp(Prop),
+    {ok, JSON} = wapi_media:resp(Prop),
     ?LOG("notifying requestor that ~s as available at ~s", [MediaName, Url]),
-    amqp_util:targeted_publish(To, JSON).
+    wapi_media:publish_resp(To, JSON).
 
 start_shout_acceptor(Parent, LSock) ->
     {ok, PortNo} = inet:port(LSock),
