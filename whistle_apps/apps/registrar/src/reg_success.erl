@@ -22,7 +22,7 @@ handle_req(JObj, Props) ->
     Cache = props:get_value(cache, Props),
 
     ?LOG_START("received registration success"),
-    true = wh_api:reg_success_v(JObj),
+    true = wapi_registration:success_v(JObj),
 
     [User, AfterAt] = binary:split(wh_json:get_value(<<"Contact">>, JObj), <<"@">>), % only one @ allowed
 
