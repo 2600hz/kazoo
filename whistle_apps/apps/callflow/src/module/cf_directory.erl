@@ -17,6 +17,21 @@
 %%%  b) if continue, go into next_dtmf wait loop
 %%%  c) else go to play_matches
 %%% 5) play_matches: play hd(matches), options to hear more or connect or continue pressing keys
+%%%
+%%% If the flag "ast_enabled" is set, send the ast AMQP request, wait for the AST response, and use
+%%% that for finding matches. Its more an all-or-nothing situation.
+%%%
+%%% The ast_provider key has the following properties:
+%%%   "p_endpoint": "user_or_did@ast-server.com" %% The endpoint to bridge to
+%%%   "p_account_id":"you@ast-server.com" %% the client's account id for receiving the text back
+%%%   "p_account_pass":"secret" %% optional, password for the client's account
+%%%   "p_lang":"us-EN" %% the language code for the AST provider, defaults to "us-EN"
+%%%
+%%% So, the process becomes:
+%%% 1) Prompt "Please say the name of the person you'd like to be connected to"
+%%% 2) Send AST request with CallID, ControlQ, and a response Q
+%%% 3) Wait for AST response with text of what was said
+%%% 4) Find matches and iterate through the list, or go back to 1.
 %%% @end
 %%% Created : 20 Sep 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -52,6 +67,10 @@
          ,max_dtmf = 0 :: non_neg_integer() %% the most DTMF tones to collect; if max is reached, play choices. If max == 0, no limit
          ,confirm_match = false :: boolean() %% if false, once a match is made, connect the caller; if true, prompt for confirmation to connect
          ,digits_collected = <<>> :: binary() %% the digits collected from the caller so far
+         ,ast_endpoint = 'undefined' :: 'undefined' | binary() %% where to send a call for AST
+	 ,ast_account_id = 'undefined' :: 'undefined' | binary() %% client's ID (for receiving text version back) (via XMPP, AMQP, or someother provider-specific way)
+         ,ast_account_pass = 'undefined' :: 'undefined' | binary() %% password for the client's account
+         ,ast_lang = <<"us-EN">> :: binary() %% language of the speaker
          ,orig_lookup_table = [] :: lookup_table() %% the O.G.
          }).
 
@@ -78,6 +97,7 @@
          ,invalid_key = <<"system_media/dir-invalid_key">> %% invalid key pressed
          ,result_menu = <<"system_media/dir-result_menu">> %% press one to connect. press two for the next result. press three to continue searching. press four to start over.
          ,no_results_menu = <<"system_media/dir-no_results_menu">> %% press one to continue searching. press two to start over.
+	 ,ast_instructions = <<"system_media/dir-ast_instructions">>, %% Please say the name of the party you would like to call
          }).
 
 %%--------------------------------------------------------------------
@@ -97,6 +117,18 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
     DirID = wh_json:get_value(<<"id">>, Data),
     {ok, DirJObj} = couch_mgr:open_doc(AccountDB, DirID),
 
+    DbN0 = case wh_json:get_boolean_value(<<"ast_enabled">>, DirJObj, false) of
+	       true ->
+		   AST = wh_json:get_value(<<"ast_provider">>, DirJObj, wh_json:new()),
+		   ?LOG("Setting AST data for directory lookup"),
+		   #dbn_state{
+			       ast_endpoint = wh_json:get_value(<<"p_endpoint">>, AST)
+			       ,ast_account_id = wh_json:get_value(<<"p_account_id">>, AST)
+			       ,ast_account_pass = wh_json:get_value(<<"p_account_pass">>, AST)
+			     };
+	       false -> #dbn_state{}
+	   end,
+
     MinDTMF = wh_json:get_integer_value(<<"min_dtmf">>, DirJObj, 3),
     SortBy = get_sort_by(wh_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>)),
     LookupTable = build_lookup_table(get_dir_docs(DirID, AccountDB)),
@@ -104,13 +136,13 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
     ?LOG_START("Dial By Name: ~s", [wh_json:get_value(<<"name">>, DirJObj)]),
     ?LOG("SortBy: ~s", [SortBy]),
 
-    DbN = #dbn_state{
-      sort_by = SortBy
-      ,min_dtmf = MinDTMF
-      ,max_dtmf = get_max_dtmf(wh_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0), MinDTMF)
-      ,confirm_match = wh_json:is_true(<<"confirm_match">>, DirJObj, false)
-      ,orig_lookup_table = LookupTable
-     },
+    DbN = DbN0#dbn_state{
+	    sort_by = SortBy
+	    ,min_dtmf = MinDTMF
+	    ,max_dtmf = get_max_dtmf(wh_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0), MinDTMF)
+	    ,confirm_match = wh_json:is_true(<<"confirm_match">>, DirJObj, false)
+	    ,orig_lookup_table = LookupTable
+	   },
     start_search(Call, #prompts{}, DbN, LookupTable).
 
 -spec start_search/4 :: (Call, Prompts, State, LookupTable) -> no_return() when
@@ -118,9 +150,19 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
       Prompts :: #prompts{},
       State :: #dbn_state{},
       LookupTable :: lookup_table().
-start_search(Call, Prompts, #dbn_state{sort_by=SortBy}=DbN, LookupTable) ->
+start_search(Call, Prompts, #dbn_state{ast_endpoint=undefined, sort_by=SortBy}=DbN, LookupTable) ->
     {ok, DTMFs} = play_start_instructions(Call, Prompts, SortBy),
-    collect_min_digits(Call, Prompts, DbN, LookupTable, DTMFs).
+    collect_min_digits(Call, Prompts, DbN, LookupTable, DTMFs);
+start_search(Call, Prompts, DbN, LookupTable) ->
+    _ = play_ast_instructions(Call, Prompts),
+    send_ast_info(Call, DbN),
+    case ast_response() of
+	{ok, Text} ->
+	    analyze_text(Call, Prompts, DbN, LookupTable);
+	{error, Msg} ->
+	    ?LOG("Error with AST, reverting to old school DBN"),
+	    start_search(Call, Prompts, DbN#dbn_state{ast_endpoint=undefined}, LookupTable)
+    end.
 
 -spec collect_min_digits/5 :: (Call, Prompts, State, LookupTable, Collected) -> no_return() when
       Call :: #cf_call{},
@@ -252,6 +294,10 @@ no_matches_dtmf(Call, Prompts, _) ->
       Prompts :: #prompts{}.
 play_no_results_menu(Call, #prompts{no_results_menu=NoResultsMenu}) ->
     play_and_collect([{play, NoResultsMenu}], Call).
+
+-spec play_ast_instructions/2 :: (#cf_call{}, #cf_prompts{}) -> 'ok'.
+play_ast_instructions(Call, #prompts{ast_instructions=AstInstructions}) ->
+    play_and_wait([{play, AstInstructions}]).
 
 -spec play_no_more_results/2 :: (Call, Prompts) -> {'ok', binary()} when
       Call :: #cf_call{},
