@@ -88,8 +88,8 @@ media_req(Prop) ->
     media_req(Prop, ?DEFAULT_TIMEOUT).
 
 media_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun wh_api:media_req/1
-			      ,fun(JSON) -> amqp_util:callevt_publish(JSON) end
+    gen_server:call(?SERVER, {request, Prop, fun wapi_media:req/1
+			      ,fun wapi_media:publish_req/1
 			     }, Timeout).
 
 worker_free(Srv, Worker, Elapsed) ->
