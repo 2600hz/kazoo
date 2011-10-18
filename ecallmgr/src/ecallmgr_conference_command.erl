@@ -106,14 +106,14 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %%% Internal helper functions
 %%%===================================================================
 %% send the SendMsg proplist to the freeswitch node
--spec(api/3 :: (Node :: atom(), AppName :: binary() | string(), Args :: binary() | string()) -> tuple(ok, binary()) | timeout | {error, string()}).
+-spec api/3 :: (Node :: atom(), AppName :: binary() | string(), Args :: binary() | string()) -> {'ok', binary()} | 'timeout' | {'error', string()}.
 api(Node, AppName, Args) ->
     App = wh_util:to_atom(AppName, true),
     Arg = wh_util:to_list(Args),
     ?LOG_SYS("FS-API -> Node: ~p Api: ~s ~s", [Node, App, Arg]),
     freeswitch:api(Node, App, Arg, 5000).
 
--spec(media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> binary()).
+-spec media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> binary().
 media_path(MediaName, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
         {error, _} ->
@@ -122,7 +122,7 @@ media_path(MediaName, UUID) ->
             get_fs_playback(Url)
     end.
 
--spec(get_fs_playback/1 :: (Url :: binary()) -> binary()).
+-spec get_fs_playback/1 :: (Url :: binary()) -> binary().
 get_fs_playback(Url) when byte_size(Url) >= 4 ->
     case binary:part(Url, 0, 4) of
         <<"http">> ->
@@ -135,7 +135,7 @@ get_fs_playback(Url) when byte_size(Url) >= 4 ->
 get_fs_playback(Url) ->
     Url.
 
--spec(participants_response/4 :: (Participants :: binary(), ConfName :: binary(), CallId :: binary(), ServerId :: binary()) -> no_return()).
+-spec participants_response/4 :: (Participants :: binary(), ConfName :: binary(), CallId :: binary(), ServerId :: binary()) -> no_return().
 participants_response(Participants, ConfName, CallId, ServerId) ->
     ParticipantList = try parse_participants(Participants) catch _:_ -> [] end,
     Response = [
@@ -151,7 +151,7 @@ participants_response(Participants, ConfName, CallId, ServerId) ->
 parse_participants(Participants) ->
     CSV = wh_util:to_list(Participants),
     lists:foldr(fun(Line, Acc) ->
-                        [{struct, parse_participant(Line)}|Acc]
+                        [wh_json:from_list(parse_participant(Line))|Acc]
                 end, [], string:tokens(CSV, "\n")).
 
 parse_participant(Line) ->

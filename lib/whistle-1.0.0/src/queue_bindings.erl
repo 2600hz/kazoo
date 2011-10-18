@@ -20,14 +20,19 @@
 		      'cdrs' |
 		      'dth' |
 		      'call_events' |
+		      'call_status' |
+		      'self' |
 		      'notifications' |
+		      'switch_lookups' | 
 		      'authorization'.
 -export_type([bind_types/0]).
 
 -spec known_bind_types/0 :: () -> [bind_types(),...].
 known_bind_types() ->
-    ['routing'
-     ,'cdrs', 'dth', 'call_events', 'notifications'
+    ['cdrs', 'dth', 'call_events', 'notifications'
+     ,'rating'
+     ,'cdrs', 'dth', 'call_events', 'self', 'notifications'
+     ,'switch_lookups', 'authorization'
     ].
 
 -spec add_binding_to_q/3 :: (Q, Type, Props) -> 'ok' when
@@ -41,6 +46,14 @@ add_binding_to_q(Q, cdrs, Props) ->
 add_binding_to_q(Q, call_events, Props) ->
     CallID = get_callid(Props),
     amqp_util:bind_q_to_callevt(Q, CallID, events),
+    ok;
+add_binding_to_q(Q, call_status, Props) ->
+    CallID = get_callid(Props),
+    amqp_util:bind_q_to_callevt(Q, CallID, status_req),
+    ok;
+add_binding_to_q(Q, switch_lookups, _Props) ->
+    amqp_util:resource_exchange(),
+    amqp_util:bind_q_to_resource(Q, ?KEY_CHANNEL_QUERY),
     ok;
 add_binding_to_q(Q, rating, Props) ->
     hotornot:add_binding_to_q(Q, Props);
@@ -56,6 +69,10 @@ rm_binding_from_q(Q, cdrs) ->
     rm_binding_from_q(Q, cdrs, []);
 rm_binding_from_q(Q, call_events) ->
     rm_binding_from_q(Q, call_events, []);
+rm_binding_from_q(Q, call_status) ->
+    rm_binding_from_q(Q, call_status, []);
+rm_binding_from_q(Q, switch_lookups) ->
+    amqp_util:unbind_q_from_resource(Q, ?KEY_CHANNEL_QUERY);
 rm_binding_from_q(Q, rating) ->
     hotornot:rm_binding_from_q(Q);
 rm_binding_from_q(Q, dth) ->
@@ -70,6 +87,9 @@ rm_binding_from_q(Q, notifications) ->
 rm_binding_from_q(Q, call_events, Props) ->
     CallID = get_callid(Props),
     amqp_util:unbind_q_from_callevt(Q, CallID, events);
+rm_binding_from_q(Q, call_status, Props) ->
+    CallID = get_callid(Props),
+    amqp_util:unbind_q_from_callevt(Q, CallID, status_req);
 rm_binding_from_q(Q, cdrs, Props) ->
     CallID = get_callid(Props),
     amqp_util:unbind_q_from_callevt(Q, CallID, cdr).

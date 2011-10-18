@@ -12,6 +12,7 @@
 
 %% API
 -export([start_link/0, start_handlers/2, stop_handlers/1, get_handler_pids/1]).
+-export([node_handlers/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -19,7 +20,8 @@
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
--define(CHILD(Name, Mod, Args), {Name, {Mod, start_link, Args}, temporary, 5000, worker, [Mod]}).
+-define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
+-define(CHILD(Name, Mod, Args), {Name, {Mod, start_link, Args}, transient, 5000, worker, [Mod]}).
 
 %%%===================================================================
 %%% API functions
@@ -58,7 +60,11 @@ stop_handlers(Node) when is_atom(Node) ->
       end || {Name, _, _, [_]} <- supervisor:which_children(?SERVER)
 		 ,node_matches(NodeB, wh_util:to_binary(Name))
     ].
-    
+
+-spec node_handlers/0 :: () -> [pid(),...] | [].
+node_handlers() ->
+    [ Pid || {_, Pid, worker, [HandlerMod]} <- supervisor:which_children(?SERVER),
+	     HandlerMod =:= ecallmgr_fs_node].
 
 -spec get_handler_pids/1 :: (Node) -> {pid() | 'error', pid() | 'error', pid() | 'error'} when
       Node :: atom().
@@ -96,7 +102,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, []}}.
+    {ok, {SupFlags, [?CHILD(ecm_fs_query, worker)]}}.
 
 %%%===================================================================
 %%% Internal functions

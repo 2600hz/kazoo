@@ -118,7 +118,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
     ?LOG_SYS("Storing registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),
@@ -176,6 +175,7 @@ lookup_reg(Realm, User, Fields) ->
 			    false -> Acc
 			end
 		end,
+
     case wh_cache:fetch_local(Cache, cache_key(Realm, User)) of
 	{error, not_found} ->
 	    ?LOG_SYS("Valid cached registration not found, querying whapps"),

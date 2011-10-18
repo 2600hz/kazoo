@@ -35,8 +35,7 @@
 -define(REG_CONSUME_OPTIONS, [{exclusive, false}]).
 
 -record(state, {
-	   amqp_q = <<>> :: binary()
-	  ,cache = undefined :: undefined | pid()
+	  cache = undefined :: undefined | pid()
 	 }).
 
 %%%===================================================================
@@ -180,6 +179,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{cache=Cache}) ->
+    ?LOG("handle_event called"),
     {reply, [{cache, Cache}]}.
 
 %%--------------------------------------------------------------------
@@ -193,7 +193,7 @@ handle_event(_JObj, #state{cache=Cache}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), #state{}) -> ok.
+-spec terminate/2 :: (term(), #state{}) -> 'ok'.
 terminate(_Reason, _) ->
     ?LOG_SYS("registrar server ~p termination", [_Reason]).
 

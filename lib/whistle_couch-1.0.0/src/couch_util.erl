@@ -143,7 +143,7 @@ db_info(#server{}=Conn) ->
       Conn :: #server{},
       DbName :: binary().
 db_info(#server{}=Conn, DbName) ->
-    couchbeam:db_info(get_db(Conn, DbName)).
+    retry504s(fun() -> couchbeam:db_info(get_db(Conn, DbName)) end).
 
 -spec db_exists/2 :: (Conn, DbName) -> boolean() when
       Conn :: #server{},
