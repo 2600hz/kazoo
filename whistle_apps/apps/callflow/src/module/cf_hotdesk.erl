@@ -34,7 +34,8 @@
 -define(CF_HOTDESK_VIEW, <<"cf_attributes/hotdesk_id">>).
 
 -record(hotdesk, {
-          hotdesk_id = undefined :: 'undefined' | binary()
+	  enabled = false :: boolean()
+          ,hotdesk_id = undefined :: 'undefined' | binary()
 	  ,pin = undefined :: 'undefined' | binary()
 	  ,login_attempts = 1 :: non_neg_integer()
 	  ,require_pin = false :: boolean()
@@ -67,25 +68,30 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 	end,
 
     Devices = cf_attributes:owned_by(H#hotdesk.owner_id, Call, device),
-    ?LOG(">>>> Devices are ~p", [Devices]),
     case wh_json:get_value(<<"action">>, Data) of
 	<<"bridge">> ->
-	    Endpoints = lists:foldl(fun(Device, Acc) ->
-					    case cf_endpoint:build(Device, Call) of
-						{ok, Endpoint} -> Endpoint ++ Acc;
-						{error, _} -> Acc
-					    end
-				    end, [], Devices),
-	    case bridge_to_endpoints(Endpoints, <<"2000">>, Call) of
-		{ok, _} ->
-		    {ok, _} = wait_for_unbridge(),
-		    CFPid ! {stop};
-		{fail, Reason} ->
-		    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-		    ?LOG("failed to bridge to hotdesk user ~p:~p", [Code, Cause]),
-		    CFPid ! {continue};
-		{error, R} ->
-		    ?LOG("failed to bridge to hotdesk user ~p, error : ~p", [H#hotdesk.owner_id, R]),
+	    %% bridge only if hotdesk is enabled
+	    case H#hotdesk.enabled of
+		<<"true">> ->
+		    Endpoints = lists:foldl(fun(Device, Acc) ->
+						    case cf_endpoint:build(Device, Call) of
+							{ok, Endpoint} -> Endpoint ++ Acc;
+							{error, _} -> Acc
+						    end
+					    end, [], Devices),
+		    case bridge_to_endpoints(Endpoints, <<"2000">>, Call) of
+			{ok, _} ->
+			    {ok, _} = wait_for_unbridge(),
+			    CFPid ! {stop};
+			{fail, Reason} ->
+			    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+			    ?LOG("failed to bridge to hotdesk user ~p:~p", [Code, Cause]),
+			    CFPid ! {continue};
+			{error, R} ->
+			    ?LOG("failed to bridge to hotdesk user ~p, error : ~p", [H#hotdesk.owner_id, R]),
+			    CFPid ! {continue}
+		    end;
+		<<"false">> ->
 		    CFPid ! {continue}
 	    end;
         <<"login">> ->
@@ -140,7 +146,6 @@ login(Devices, #hotdesk{hotdesk_id=HId, require_pin=true, pin=Pin, prompts=#prom
   when HId =/= undefined orelse HId =/= <<>> ->
     try
         %% Request the pin number from the caller but crash if it doesnt match
-	?LOG(" >>> the pin should be ~p, try is ~p", [Pin, Loop]),
         {ok, Pin} = b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call),
         do_login(Devices, H, Call)
     catch
@@ -221,9 +226,9 @@ get_hotdesk_profile({_, undefined}, _) ->
 get_hotdesk_profile({user_id, Id}, #cf_call{account_db=Db}) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
-	    ?LOG(">>> Loading hotdesking profile for user_id ~p", [Id]),
             #hotdesk{
                      hotdesk_id = wh_json:get_value([<<"hotdesk">>, <<"id">>], JObj)
+                     ,enabled = wh_json:get_binary_boolean([<<"hotdesk">>, <<"enabled">>], JObj)
                      ,pin = wh_json:get_value([<<"hotdesk">>, <<"pin">>], JObj)
                      ,require_pin = wh_json:get_value([<<"hotdesk">>, <<"require_pin">>], JObj)
                      ,owner_id = Id
@@ -235,13 +240,11 @@ get_hotdesk_profile({user_id, Id}, #cf_call{account_db=Db}) ->
     end;
 get_hotdesk_profile({hotdesk_id, HId}, #cf_call{account_db=Db}=Call) ->
     %% get user id from hotdesk id
-    ?LOG(">>> getting user_id from hotdesk_id ~p in DB ~p", [HId, Db]),
 
     case couch_mgr:get_results(Db, <<"cf_attributes/hotdesk_id">>, [{<<"key">>, HId}]) of
 	{ok, Doc} ->
 	    case Doc of
 		[JObj] ->
-		    ?LOG(">>> +++++ owner_id is ~p", [wh_json:get_value([<<"value">>, <<"owner_id">>], JObj)]),
 		    get_hotdesk_profile({user_id, wh_json:get_value([<<"value">>, <<"owner_id">>], JObj)}, Call);
 		_ ->
 		    %% set incorrect credentials so that the user dont know this hotdesk_id doesnt exist, avoid brute force

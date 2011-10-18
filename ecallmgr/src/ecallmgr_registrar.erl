@@ -15,15 +15,15 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
 
 -include("ecallmgr.hrl").
 
 -record(state, {
-	  is_amqp_up = true :: boolean()
-	 }).
+          is_amqp_up = true :: boolean()
+         }).
 
 %%%===================================================================
 %%% API
@@ -109,19 +109,21 @@ handle_cast(_Msg, State) ->
 
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
     ?LOG_SYS("Storing registration information for ~s@~s", [User, Realm]),
-    wh_cache:store({ecall_registrar, Realm, User}, RegFields
-		   ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
-		  ),
+    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    wh_cache:store_local(Cache, {ecall_registrar, Realm, User}, RegFields
+                   ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
+                  ),
     {noreply, State, hibernate};
 
 handle_info({_, #amqp_msg{payload=Payload}}, State) ->
     spawn(fun() ->
-		  JObj = mochijson2:decode(Payload),
-		  User = wh_json:get_value(<<"Username">>, JObj),
-		  Realm = wh_json:get_value(<<"Realm">>, JObj),
-		  ?LOG_SYS("Received successful reg for ~s@~s, erasing cache", [User, Realm]),
-		  wh_cache:erase({ecall_registrar, Realm, User})
-	  end),
+                  JObj = mochijson2:decode(Payload),
+                  User = wh_json:get_value(<<"Username">>, JObj),
+                  Realm = wh_json:get_value(<<"Realm">>, JObj),
+                  ?LOG_SYS("Received successful reg for ~s@~s, erasing cache", [User, Realm]),
+                  {ok, Cache} = ecallmgr_sup:cache_proc(),
+                  wh_cache:erase_local(Cache, {ecall_registrar, Realm, User})
+          end),
 
     {noreply, State, hibernate};
 
@@ -175,55 +177,56 @@ code_change(_OldVsn, State, _Extra) ->
       Fields :: [binary(),...].
 lookup_reg(Realm, User, Fields) ->
     ?LOG_SYS("Looking up registration information for ~s@~s", [User, Realm]),
+    {ok, Cache} = ecallmgr_sup:cache_proc(),
     FilterFun = fun({K, _}=V, Acc) ->
-			case lists:member(K, Fields) of
-			    true -> [V | Acc];
-			    false -> Acc
-			end
-		end,
-    case wh_cache:fetch({ecall_registrar, Realm, User}) of
-	{error, not_found} ->
-	    ?LOG_SYS("Valid cached registration not found, querying whapps"),
-	    RegProp = [{<<"Username">>, User}
-		       ,{<<"Realm">>, Realm}
-		       ,{<<"Fields">>, []}
-		       | wh_api:default_headers(<<>>, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
-	    try
-		case ecallmgr_amqp_pool:reg_query(RegProp, 1000) of
-		    {ok, {struct, RegResp}} ->
-			true = wh_api:reg_query_resp_v(RegResp),
+                        case lists:member(K, Fields) of
+                            true -> [V | Acc];
+                            false -> Acc
+                        end
+                end,
+    case wh_cache:fetch_local(Cache, {ecall_registrar, Realm, User}) of
+        {error, not_found} ->
+            ?LOG_SYS("Valid cached registration not found, querying whapps"),
+            RegProp = [{<<"Username">>, User}
+                       ,{<<"Realm">>, Realm}
+                       ,{<<"Fields">>, []}
+                       | wh_api:default_headers(<<>>, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
+            try
+                case ecallmgr_amqp_pool:reg_query(RegProp, 1000) of
+                    {ok, {struct, RegResp}} ->
+                        true = wh_api:reg_query_resp_v(RegResp),
 
-			{struct, RegFields} = props:get_value(<<"Fields">>, RegResp, ?EMPTY_JSON_OBJECT),
-			?SERVER ! {cache_registrations, Realm, User, RegFields},
+                        {struct, RegFields} = props:get_value(<<"Fields">>, RegResp, ?EMPTY_JSON_OBJECT),
+                        ?SERVER ! {cache_registrations, Realm, User, RegFields},
 
-			?LOG_SYS("Received registration information"),
-			lists:foldr(FilterFun, [], RegFields);
-		    timeout ->
-			?LOG_SYS("Looking up registration timed out"),
-			{error, timeout}
-		end
-	    catch
-		_:_ ->
-		    ?LOG_SYS("Looking up registration threw exception"),
-		    {error, timeout}
-	    end;
-	{ok, RegFields} ->
-	    ?LOG_SYS("Found cached registration information"),
-	    lists:foldr(FilterFun, [], RegFields)
+                        ?LOG_SYS("Received registration information"),
+                        lists:foldr(FilterFun, [], RegFields);
+                    timeout ->
+                        ?LOG_SYS("Looking up registration timed out"),
+                        {error, timeout}
+                end
+            catch
+                _:_ ->
+                    ?LOG_SYS("Looking up registration threw exception"),
+                    {error, timeout}
+            end;
+        {ok, RegFields} ->
+            ?LOG_SYS("Found cached registration information"),
+            lists:foldr(FilterFun, [], RegFields)
     end.
 
 -spec start_amqp/0 :: () -> binary() | {error, amqp_host_down}.
 start_amqp() ->
     case amqp_util:is_host_available() of
-	true ->
-	    try
-		Q = amqp_util:new_queue(),
-		ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
-		ok = amqp_util:basic_consume(Q),
-		Q
-	    catch
-		_:_ -> {error, amqp_host_down}
-	    end;
-	false ->
-	    {error, amqp_host_down}
+        true ->
+            try
+                Q = amqp_util:new_queue(),
+                ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
+                ok = amqp_util:basic_consume(Q),
+                Q
+            catch
+                _:_ -> {error, amqp_host_down}
+            end;
+        false ->
+            {error, amqp_host_down}
     end.

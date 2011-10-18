@@ -94,16 +94,17 @@ varstr_to_proplist(VarStr) ->
 get_setting(Setting) ->
     get_setting(Setting, undefined).
 get_setting(Setting, Default) ->
-    case wh_cache:fetch({ecallmgr_setting, Setting}) of
+    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    case wh_cache:fetch_local(Cache, {ecallmgr_setting, Setting}) of
         {ok, _}=Success -> Success;
         {error, _} ->
             case file:consult(?SETTINGS_FILE) of
                 {ok, Settings} ->
                     Value = props:get_value(Setting, Settings, Default),
-                    wh_cache:store({ecallmgr_setting, Setting}, Value),
+                    wh_cache:store_local(Cache, {ecallmgr_setting, Setting}, Value),
                     {ok, Value};
                 {error, _} ->
-                    wh_cache:store({ecallmgr_setting, Setting}, Default),
+                    wh_cache:store_local(Cache, {ecallmgr_setting, Setting}, Default),
                     {ok, Default}
             end
     end.
@@ -123,8 +124,8 @@ is_node_up(Node, UUID) ->
 	_ -> false
     end.
 
--spec fs_log/3 :: (Node, Format, Args) -> ok when
-      Node :: binary(),
+-spec fs_log/3 :: (Node, Format, Args) -> fs_api_ret() when
+      Node :: atom(),
       Format :: string(),
       Args :: list().
 fs_log(Node, Format, Args) ->
@@ -134,7 +135,7 @@ fs_log(Node, Format, Args) ->
               Else  ->
                   Else
           end,
-    _ = freeswitch:api(Node, log, lists:flatten(Log)).
+    freeswitch:api(Node, log, lists:flatten(Log)).
 
 -spec put_callid/1 :: (JObj) -> 'undefined' | term() when
       JObj :: json_object().

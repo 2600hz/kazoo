@@ -167,17 +167,16 @@ handle_call({has_flatrates, AcctId}, From, #state{current_read_db=RDB}=S) ->
     spawn(fun() -> gen_server:reply(From, has_flatrates(RDB, AcctId)) end),
     {noreply, S};
 
-handle_call({reserve_trunk, AcctId, [CallID, Amt, FRE]}, From, #state{current_write_db=WDB}=S) ->
+handle_call({reserve_trunk, AcctId, [CallID, Amt, false]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     ?LOG(CallID, "Try to reserve a trunk for ~s (against $~p if needed)", [AcctId, Amt]),
     spawn(fun() ->
-		  case wh_util:is_true(FRE) of
-		      true ->
-			  _ = couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)),
-			  ?LOG(CallID, "Flat-rate reserved for ~s", [AcctId]),
-			  gen_server:reply(From, {ok, flat_rate});
-		      false ->
-			  ?LOG(CallID, "Failed to reserve a per-minute trunk for ~s", [AcctId]),
-			  gen_server:reply(From, {error, no_funds})
+		  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, true}]) of
+		      {ok, [Acct] } ->
+			  Funds = wh_json:get_value(<<"value">>, Acct),
+			  Resp = reserve_per_min(Amt, wh_json:get_value(<<"credit">>, Funds, 0), WDB, reserve_doc(AcctId, CallID, per_min)),
+			  gen_server:reply(From, Resp);
+		      _ ->
+			  gen_server:reply(From, {error, no_results})
 		  end
 	  end),
     {noreply, S};
@@ -195,23 +194,16 @@ handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_w
 		      {ok, []} ->
 			  ?LOG(CallID, "No view results for ~s, no_results", [AcctId]),
 			  gen_server:reply(From, {error, no_results});
-		      {ok, [{struct, [{<<"key">>, _}, {<<"value">>, Funds}] }] } ->
+		      {ok, [Acct] } ->
+			  Funds = wh_json:get_value(<<"value">>, Acct),
 			  case wh_json:get_value(<<"trunks">>, Funds, 0) > 0 of
 			      true ->
 				  spawn(fun() -> _ = couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)), build_view(WDB, AcctId) end),
 				  ?LOG(CallID, "Flat-rate reserved for ~s", [AcctId]),
 				  gen_server:reply(From, {ok, flat_rate});
 			      false ->
-				  AvailableCredit = wh_json:get_value(<<"credit">>, Funds, 0),
-				  case AvailableCredit > Amt of
-				      true ->
-					  spawn(fun() -> _ = couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, per_min)), build_view(WDB, AcctId) end),
-					  ?LOG(CallID, "Per-minute reserved for ~s", [AcctId]),
-					  gen_server:reply(From, {ok, per_min});
-				      false ->
-					  ?LOG(CallID, "Insufficient credit (~p) for this call for ~s", [AvailableCredit, AcctId]),
-					  gen_server:reply(From, {error, no_funds})
-				  end
+				  Resp = reserve_per_min(Amt, wh_json:get_value(<<"credit">>, Funds, 0), WDB, reserve_doc(AcctId, CallID, per_min)),
+				  gen_server:reply(From, Resp)
 			  end
 		  end
 	  end),
@@ -647,3 +639,12 @@ release_trunk_error(AcctId, CallID, DB) ->
 		  end,
 	    couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, per_min, Amt))
     end.
+
+-spec reserve_per_min/4 :: (float(), float(), binary(), proplist()) -> {'ok', 'per_min'} | {'error', 'no_funds'}.
+reserve_per_min(Amt, Avail, WDB, ReserveDoc) when Amt < Avail ->
+    spawn(fun() -> couch_mgr:save_doc(WDB, ReserveDoc) end),
+    ?LOG("Per-minute trunk reserved"),
+    {ok, per_min};
+reserve_per_min(_Amt, _Avail, _, _) ->
+    ?LOG("Insufficient credit (~p) for this call (~p)", [_Avail, _Amt]),
+    {error, no_funds}.

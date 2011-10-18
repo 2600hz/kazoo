@@ -36,7 +36,7 @@
 -define(SERVER, ?MODULE).
 
 -define(TOKEN_DB, <<"token_auth">>).
-
+-define(AGG_DB, <<"accounts">>).
 -define(SHARED_AUTH_CONF, list_to_binary([code:lib_dir(crossbar, priv), "/shared_auth/shared_auth.conf"])).
 
 -record(state, {xbar_url=undefined :: undefined | string()}).
@@ -430,6 +430,13 @@ import_missing_account(AccountId, Account) ->
     case couch_mgr:db_exists(Db) of
         true ->
             ?LOG("remote account ~s alread exists locally", [AccountId]),
+            case couch_mgr:lookup_doc_rev(?AGG_DB, AccountId) of
+                {error, not_found} ->
+                    ?LOG("faild to locate account definition, forcing ~p creation", [AccountId]),
+                    couch_mgr:ensure_saved(?AGG_DB, Account);
+                _ ->
+                    ok
+            end,
             true;
         false ->
             Event = <<"v1_resource.execute.put.accounts">>,

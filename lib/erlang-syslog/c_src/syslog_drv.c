@@ -143,6 +143,7 @@ static void syslogdrv_output(ErlDrvData handle, char *buff, int bufflen)
 
 done:
 	driver_output(d->port, result.buff, result.index);
+	ei_x_free(&result);
 }
 
 /*
