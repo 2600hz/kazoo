@@ -302,6 +302,6 @@ load_flat_rate_regexes() ->
 -spec is_valid_ts_account/1 :: (binary()) -> boolean().
 is_valid_ts_account(Account) ->
     case couch_mgr:get_results(?TS_DB, <<"accounts/list">>, [{<<"key">>, Account}]) of
-	{ok, _AcctJObj} -> true;
+	{ok, [_AcctJObj|_]} -> true;
 	_ -> false
     end.
