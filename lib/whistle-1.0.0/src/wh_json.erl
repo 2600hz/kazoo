@@ -76,6 +76,11 @@ is_json_term(MaybeJObj) ->
       L :: wh_proplist().
 from_list(L) when is_list(L) ->
     {struct, L}.
+%%    lists:foldr(fun({K,V}, Acc) ->
+%%                        true = is_json_term(V), % crash if invalid
+%%                        set_value([K], V, Acc); % set all other Values normally
+%%                   (A, Acc) when is_atom(A) -> set_value([A], true, Acc)
+%%                end, ?EMPTY_JSON_OBJECT, L).
 
 %% only a top-level merge
 %% merges JObj1 into JObj2
