@@ -67,9 +67,15 @@ start_link(AsrReq) ->
 %%--------------------------------------------------------------------
 init([AsrReq]) ->
     self() ! authenticate,
+
+    wh_util:put_callid(AsrReq),
+
     ?LOG("Starting up vx_xmpp"),
 
     JID = exmpp_jid:parse(wh_util:to_list(wh_json:get_value(<<"ASR-Account-ID">>, AsrReq))),
+
+    ?LOG("AsrReq:"),
+    [?LOG("~p", [KV]) || KV <- wh_json:to_proplist(AsrReq)],
 
     {ok, #state{
        xmpp_session = exmpp_session:start_link()
