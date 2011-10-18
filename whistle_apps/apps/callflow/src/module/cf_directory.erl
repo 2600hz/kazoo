@@ -23,7 +23,7 @@
 %%%
 %%% The asr_provider key has the following properties:
 %%%   "p_endpoint": "user_or_did@asr-server.com" %% The endpoint to bridge to
-%%%   "p_account_id":"you@asr-server.com" %% the client's account id for receiving the text back
+%%%   "p_account_id":"you@xmpp-server.com" %% the client's account id for receiving the text back
 %%%   "p_account_pass":"secret" %% optional, password for the client's account
 %%%   "p_lang":"us-EN" %% the language code for the ASR provider, defaults to "us-EN"
 %%%
@@ -155,10 +155,14 @@ start_search(Call, Prompts, #dbn_state{asr_endpoint=undefined, sort_by=SortBy}=D
     {ok, DTMFs} = play_start_instructions(Call, Prompts, SortBy),
     collect_min_digits(Call, Prompts, DbN, LookupTable, DTMFs);
 start_search(Call, Prompts, DbN, LookupTable) ->
+    ?LOG("Playing ASR instructions"),
     _ = play_asr_instructions(Call, Prompts),
+    ?LOG("Send asr amqp"),
     send_asr_info(Call, DbN),
+    ?LOG("Wait for asr response"),
     case asr_response() of
 	{ok, Text} ->
+	    ?LOG("ASR responded with ~s", [Text]),
 	    analyze_text(Call, Prompts, DbN, LookupTable, Text);
 	{error, Msg} ->
 	    ?LOG("Error with ASR, reverting to old school DBN: ~p", [Msg]),
@@ -217,7 +221,7 @@ send_asr_info(#cf_call{amqp_q=OurQ, ctrl_q=CtrlQ, call_id=CallID}
 	     ,{<<"Control-Queue">>, CtrlQ}
 	     ,{<<"Language">>, Lang}
 	     ,{<<"Stream-Response">>, false}
-	     | wh_api:default_headers(OurQ, <<"asr">>, <<"asr_req">>, ?APP_NAME, ?APP_VERSION)],
+	     | wh_api:default_headers(OurQ, <<"asr">>, <<"req">>, ?APP_NAME, ?APP_VERSION)],
     {ok, JSON} = wapi_asr:req(Prop),
     wapi_asr:publish_req(JSON).
 
