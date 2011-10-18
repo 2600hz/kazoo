@@ -179,7 +179,6 @@ create_call_fwd_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Ince
                               end,
 
     SIP = wh_json:get_value(<<"sip">>, Endpoint, ?EMPTY_JSON_OBJECT),
-    Media = wh_json:get_value(<<"media">>, Endpoint, ?EMPTY_JSON_OBJECT),
 
     CCV1 = case wh_util:is_true(wh_json:get_value(<<"keep_caller_id">>, CallFwd)) of
                true ->
@@ -200,7 +199,7 @@ create_call_fwd_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Ince
                     ,{<<"Confirm-File">>, ?CONFIRM_FILE}] ++ CCV1;
                false ->
                    IgnoreEarlyMedia
-                       = wh_json:get_binary_boolean(<<"ignore_early_media">>, Media),
+                       = wh_json:get_binary_boolean(<<"ignore_early_media">>, CallFwd),
                    CCV1
            end,
 
