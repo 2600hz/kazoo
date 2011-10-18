@@ -4,21 +4,19 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 11 Oct 2011 by James Aimonetti <james@2600hz.org>
+%%% Created : 18 Oct 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(voxeo_sup).
+-module(vx_xmpp_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, start_child/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 -define(SERVER, ?MODULE).
--define(CHILD(I, Type), {I, {I, start_link, []}, transient, 5000, Type, [I]}).
--define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
 
 %%%===================================================================
 %%% API functions
@@ -33,6 +31,9 @@
 %%--------------------------------------------------------------------
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+
+start_child(JObj) ->
+    supervisor:start_child(?SERVER, [JObj]).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -52,18 +53,20 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    RestartStrategy = one_for_one,
-    MaxRestarts = 2,
-    MaxSecondsBetweenRestarts = 5,
+    RestartStrategy = simple_one_for_one,
+    MaxRestarts = 1,
+    MaxSecondsBetweenRestarts = 3,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [
-		     ?CHILD(vx_xmpp_sup, supervisor)
-		     ,?CACHE(voxeo_cache)
-		     ,?CHILD(voxeo_listener, worker)
-		    ]
-	 }}.
+    Restart = temporary,
+    Shutdown = 2000,
+    Type = worker,
+
+    AChild = {vx_xmpp, {vx_xmpp, start_link, []},
+	      Restart, Shutdown, Type, [vx_xmpp]},
+
+    {ok, {SupFlags, [AChild]}}.
 
 %%%===================================================================
 %%% Internal functions

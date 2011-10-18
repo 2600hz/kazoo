@@ -11,15 +11,17 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, handle_req/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
 	 terminate/2, code_change/3]).
 
+-include("voxeo.hrl").
+
 -define(SERVER, ?MODULE).
--define(RESPONDERS, []).
--define(BINDINGS, []).
+-define(RESPONDERS, [{?MODULE, [{<<"asr">>, <<"req">>}]} ]).
+-define(BINDINGS, [{asr, []}]).
 
 -record(state, {}).
 
@@ -38,6 +40,11 @@ start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
 				      ,{bindings, ?BINDINGS}
 				     ], []).
+
+-spec handle_req/2 :: (json_object(), proplist()) -> no_return().
+handle_req(JObj, _Props) ->
+    true = wapi_asr:req_v(JObj),
+    vx_xmpp_sup:start_child(JObj).
 
 %%%===================================================================
 %%% gen_server callbacks

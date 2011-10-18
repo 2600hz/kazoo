@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -23,12 +23,17 @@
 -define(STARTUP_CONFIG, [code:priv_dir(voxeo), "/startup.config"]).
 
 -record(state, {
-	  xmpp_session = undefined :: pid() | 'undefined'
+	  xmpp_session = 'undefined' :: pid() | 'undefined'
 	  ,xmpp_server = "" :: string()
 	  ,xmpp_port = ?DEFAULT_XMPP_PORT :: integer()
 	  ,xmpp_use_ssl = 'true' :: boolean()
-	  ,rayo_jid = #jid{} :: #jid{}
-	  ,rayo_password = "" :: string()
+	  ,xmpp_jid = #jid{} :: #jid{}
+	  ,xmpp_password = "" :: string()
+	  ,rayo_sip_user = 'undefined' :: ne_binary() | 'undefined'
+          ,rayo_lang = "us-EN" :: string()
+          ,stream_response = 'false' :: boolean()
+	  ,aleg_callid = 'undefined' :: ne_binary() | 'undefined'
+          ,aleg_ctl_q = 'undefined' :: ne_binary() | 'undefined'
 	 }).
 
 %%%===================================================================
@@ -42,8 +47,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(AsrReq) ->
+    gen_server:start_link(?MODULE, [AsrReq], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -60,22 +65,23 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    case file:consult(?STARTUP_CONFIG) of
-	{ok, Configs} ->
-	    self() ! authenticate,
-	    ?LOG("Starting up vx_xmpp"),
-	    {ok, #state{
-	       xmpp_session = exmpp_session:start_link()
-	       ,rayo_jid = exmpp_jid:parse(wh_util:to_list(props:get_value(rayo_jid, Configs)))
-	       ,rayo_password = wh_util:to_list(props:get_value(rayo_password, Configs))
-	       ,xmpp_server = wh_util:to_list(props:get_value(xmpp_server, Configs))
-	       ,xmpp_port = wh_util:to_integer(props:get_value(xmpp_port, Configs, ?DEFAULT_XMPP_PORT))
-	      }};
-	_ ->
-	    ?LOG("Failed to load ~s", [?STARTUP_CONFIG]),
-	    {stop, normal}
-    end.
+init([AsrReq]) ->
+    self() ! authenticate,
+    ?LOG("Starting up vx_xmpp"),
+
+    JID = exmpp_jid:parse(wh_util:to_list(wh_json:get_value(<<"ASR-Account-ID">>, AsrReq))),
+
+    {ok, #state{
+       xmpp_session = exmpp_session:start_link()
+       ,xmpp_jid = JID
+       ,xmpp_password = wh_util:to_list(wh_json:get_value(<<"ASR-Account-Password">>, AsrReq))
+       ,xmpp_server = exmpp_jid:domain_as_list(JID)
+       ,rayo_sip_user = wh_json:get_value(<<"ASR-Endpoint">>, AsrReq)
+       ,rayo_lang = wh_util:to_list(wh_json:get_value(<<"Language">>, AsrReq, "us-EN"))
+       ,stream_response = wh_util:is_true(<<"Stream-Response">>, AsrReq, false)
+       ,aleg_callid = wh_json:get_value(<<"Call-ID">>, AsrReq)
+       ,aleg_ctl_q = wh_json:get_value(<<"Control-Queue">>, AsrReq)
+      }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -124,7 +130,7 @@ handle_info(#received_packet{}=Packet, #state{xmpp_session=Session}=State) ->
     {noreply, State};
 
 handle_info(authenticate, #state{xmpp_session=Session, xmpp_server=Server, xmpp_port=Port
-				 ,rayo_jid=JID, rayo_password=Pass}=State) ->
+				 ,xmpp_jid=JID, xmpp_password=Pass}=State) ->
     try
 	?LOG("Auth with session ~p", [Session]),
 	?LOG("JID: ~p", [JID]),
