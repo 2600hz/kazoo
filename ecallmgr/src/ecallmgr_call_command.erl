@@ -323,12 +323,18 @@ get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
             {App, noop}
     end;
 
-get_fs_app(_Node, _UUID, JObj, <<"respond">>=App) ->
+get_fs_app(Node, UUID, JObj, <<"respond">>=App) ->
     case wh_api:respond_req_v(JObj) of
         false -> {'error', <<"respond failed to execute as JObj did not validate">>};
         true ->
             case wh_json:get_value(<<"Response-Code">>, JObj, ?DEFAULT_RESPONSE_CODE) of
                 <<"302">> ->
+                    case wh_json:get_value(<<"Redirect-Server">>, JObj) of
+                        undefined ->
+                            ok;
+                        Server ->
+                            set(Node, UUID, <<"sip_rh_X-Redirect-Server=", Server/binary>>)
+                    end,
                     {<<"redirect">>, wh_json:get_value(<<"Response-Message">>, JObj, <<>>)};
                 Code ->
                     Response = <<Code/binary ," "
