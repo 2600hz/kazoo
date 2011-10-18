@@ -194,6 +194,8 @@ init([Module, Params, InitArgs]) ->
 		       throw(Err)
 	       end,
 
+    put(callid, wh_util:to_binary(Module)), %% identify the client module for this gen_listener
+
     Responders = props:get_value(responders, Params, []),
     Bindings = props:get_value(bindings, Params, []),
 
