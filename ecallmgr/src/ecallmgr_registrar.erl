@@ -201,7 +201,7 @@ lookup_reg(Realm, User, Fields) ->
 		    {ok, RegJObj} ->
 			true = wapi_registration:query_resp_v(RegJObj),
 
-                        {struct, RegFields} = wh_json:get_value(<<"Fields">>, RegJObj, ?EMPTY_JSON_OBJECT),
+                        RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RegJObj, ?EMPTY_JSON_OBJECT)),
                         ?SERVER ! {cache_registrations, Realm, User, RegFields},
 
                         ?LOG_SYS("Received registration information"),
