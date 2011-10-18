@@ -25,7 +25,7 @@
 			 ]).
 -define(OPTIONAL_ASR_REQ_HEADERS, [<<"Language">>, <<"Stream-Response">>]).
 -define(ASR_REQ_VALUES, [{<<"Event-Category">>, <<"asr">>}
-			 ,{<<"Event-Name">>, <<"asr_req">>}
+			 ,{<<"Event-Name">>, <<"req">>}
 			]).
 -define(ASR_REQ_TYPES, [{<<"Stream-Response">>, fun(V) -> is_boolean(wh_util:to_boolean(V)) end}
 		       ]).
@@ -34,7 +34,7 @@
 -define(ASR_RESP_HEADERS, [<<"Response-Text">>]).
 -define(OPTIONAL_ASR_RESP_HEADERS, []).
 -define(ASR_RESP_VALUES, [{<<"Event-Category">>, <<"asr">>}
-			  ,{<<"Event-Name">>, <<"asr_resp">>}
+			  ,{<<"Event-Name">>, <<"resp">>}
 			 ]).
 -define(ASR_RESP_TYPES, []).
 
@@ -42,7 +42,7 @@
 -define(ASR_ERROR_HEADERS, [<<"Error-Code">>, <<"Error-Msg">>]).
 -define(OPTIONAL_ASR_ERROR_HEADERS, []).
 -define(ASR_ERROR_VALUES, [{<<"Event-Category">>, <<"asr">>}
-			   ,{<<"Event-Name">>, <<"asr_error">>}
+			   ,{<<"Event-Name">>, <<"error">>}
 			  ]).
 -define(ASR_ERROR_TYPES, []).
 
@@ -109,7 +109,7 @@ error_v(JObj) ->
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:callctl_exchange(),
-    amqp_util:bind_q_to_callctl(Queue),
+    amqp_util:bind_q_to_callctl(Queue, ?KEY_ASR_REQ),
     ok.
 
 -spec unbind_q/1 :: (binary()) -> 'ok'.
@@ -121,7 +121,7 @@ unbind_q(Queue) ->
 publish_req(JSON) ->
     publish_req(JSON, ?DEFAULT_CONTENT_TYPE).
 publish_req(Payload, ContentType) ->
-    amqp_util:callctl_publish(Payload, ContentType).
+    amqp_util:callctl_publish(?KEY_ASR_REQ, Payload, ContentType).
 
 -spec publish_resp/2 :: (ne_binary(), iolist()) -> 'ok'.
 -spec publish_resp/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
