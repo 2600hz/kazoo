@@ -14,7 +14,7 @@
 
 -export([bind_q/2, unbind_q/1]).
 
--export([publish_req/2, publish_req/3, publish_resp/2, publish_resp/3
+-export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
 	 ,publish_error/2, publish_error/3]).
 
 -include("../wh_api.hrl").
@@ -116,12 +116,12 @@ bind_q(Queue, _Props) ->
 unbind_q(Queue) ->
     amqp_util:unbind_q_from_callctk(Queue).
 
--spec publish_req/2 :: (binary(), iolist()) -> 'ok'.
--spec publish_req/3 :: (binary(), iolist(), ne_binary()) -> 'ok'.
-publish_req(Queue, JSON) ->
-    publish_req(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_req(Queue, Payload, ContentType) ->
-    amqp_util:callctl_publish(Queue, Payload, ContentType).
+-spec publish_req/1 :: (iolist()) -> 'ok'.
+-spec publish_req/2 :: (iolist(), ne_binary()) -> 'ok'.
+publish_req(JSON) ->
+    publish_req(JSON, ?DEFAULT_CONTENT_TYPE).
+publish_req(Payload, ContentType) ->
+    amqp_util:callctl_publish(Payload, ContentType).
 
 -spec publish_resp/2 :: (ne_binary(), iolist()) -> 'ok'.
 -spec publish_resp/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.

@@ -97,7 +97,7 @@
          ,invalid_key = <<"system_media/dir-invalid_key">> %% invalid key pressed
          ,result_menu = <<"system_media/dir-result_menu">> %% press one to connect. press two for the next result. press three to continue searching. press four to start over.
          ,no_results_menu = <<"system_media/dir-no_results_menu">> %% press one to continue searching. press two to start over.
-	 ,ast_instructions = <<"system_media/dir-ast_instructions">>, %% Please say the name of the party you would like to call
+	 ,ast_instructions = <<"system_media/dir-ast_instructions">> %% Please say the name of the party you would like to call
          }).
 
 %%--------------------------------------------------------------------
@@ -158,11 +158,67 @@ start_search(Call, Prompts, DbN, LookupTable) ->
     send_ast_info(Call, DbN),
     case ast_response() of
 	{ok, Text} ->
-	    analyze_text(Call, Prompts, DbN, LookupTable);
+	    analyze_text(Call, Prompts, DbN, LookupTable, Text);
 	{error, Msg} ->
-	    ?LOG("Error with AST, reverting to old school DBN"),
+	    ?LOG("Error with AST, reverting to old school DBN: ~p", [Msg]),
 	    start_search(Call, Prompts, DbN#dbn_state{ast_endpoint=undefined}, LookupTable)
     end.
+
+analyze_text(#cf_call{account_db=DB}=Call, Prompts, #dbn_state{confirm_match=ConfirmMatch}=DbN, LookupTable, Text) ->
+    case analyze_dtmf(Text, LookupTable) of
+	no_results ->
+	    ok = play_no_results(Call, Prompts),
+	    start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table);
+	{one_result, JObj} ->
+	    case confirm_match(Call, Prompts, ConfirmMatch, JObj) of
+		true ->
+		    route_to_match(Call, JObj);
+		false ->
+		    start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
+	    end;
+	{many_results, Matches} ->
+	    ok = play_has_matches(Call, Prompts, length(Matches)),
+	    case matches_menu(Call, Prompts, Matches, DB) of
+		{route, JObj} -> route_to_match(Call, JObj);
+		continue -> collect_next_dtmf(Call, Prompts, DbN, Matches);
+		start_over -> start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
+	    end
+    end.
+
+ast_response() ->
+    ?LOG("Waiting for AST response"),
+    receive
+        {amqp_msg, {struct, _}=JObj} ->
+            case wh_util:get_event_type(JObj) of
+                { <<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+                    ?LOG("channel was destroyed while waiting for bridge"),
+                    {error, hangup};
+                { <<"call_event">>, <<"CHANNEL_HANGUP">>} ->
+                    ?LOG("channel was hungup while waiting for bridge"),
+                    {error, hangup};
+                { <<"error">>, _} ->
+                    ?LOG("channel execution error while waiting for bridge"),
+                    {error, execution_failure};
+		{ <<"ast">>, <<"ast_resp">>} ->
+		    {ok, wh_json:get_value(<<"Response-Text">>, JObj)};
+		{_,_} ->
+		    ast_response()
+	    end
+    end.
+
+send_ast_info(#cf_call{amqp_q=OurQ, ctrl_q=CtrlQ, call_id=CallID}
+	      ,#dbn_state{ast_endpoint=EP, ast_account_id=AID, ast_account_pass=Pass
+			 ,ast_lang=Lang}) ->
+    Prop = [ {<<"AST-Endpoint">>, EP}
+	     ,{<<"AST-Account-ID">>, AID}
+	     ,{<<"AST-Account-Password">>, Pass}
+	     ,{<<"Call-ID">>, CallID}
+	     ,{<<"Control-Queue">>, CtrlQ}
+	     ,{<<"Language">>, Lang}
+	     ,{<<"Stream-Response">>, false}
+	     | wh_api:default_headers(OurQ, <<"ast">>, <<"ast_req">>, ?APP_NAME, ?APP_VERSION)],
+    {ok, JSON} = wapi_ast:req(Prop),
+    wapi_ast:publish_req(JSON).
 
 -spec collect_min_digits/5 :: (Call, Prompts, State, LookupTable, Collected) -> no_return() when
       Call :: #cf_call{},
@@ -170,10 +226,28 @@ start_search(Call, Prompts, DbN, LookupTable) ->
       State :: #dbn_state{},
       LookupTable :: lookup_table(),
       Collected :: binary().
-collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF}=DbN, LookupTable, Collected) ->
+collect_min_digits(#cf_call{account_db=DB}=Call, Prompts, #dbn_state{min_dtmf=MinDTMF, confirm_match=ConfirmMatch}=DbN, LookupTable, Collected) ->
     case collect_min_digits(MinDTMF - erlang:byte_size(Collected), Collected) of
         {ok, DTMFs} ->
-            analyze_dtmf(Call, Prompts, DbN#dbn_state{digits_collected=DTMFs}, LookupTable);
+            case analyze_dtmf(DTMFs, LookupTable) of
+		no_results ->
+		    ok = play_no_results(Call, Prompts),
+		    start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table);
+		{one_result, JObj} ->
+		    case confirm_match(Call, Prompts, ConfirmMatch, JObj) of
+			true ->
+			    route_to_match(Call, JObj);
+			false ->
+			    start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
+		    end;
+		{many_results, Matches} ->
+		    ok = play_has_matches(Call, Prompts, length(Matches)),
+		    case matches_menu(Call, Prompts, Matches, DB) of
+			{route, JObj} -> route_to_match(Call, JObj);
+			continue -> collect_next_dtmf(Call, Prompts, DbN, Matches);
+			start_over -> start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
+		    end
+	    end;
         {error, timeout, DTMFs} ->
             {ok, PromptDTMFs} = play_min_digits_needed(Call, Prompts, MinDTMF),
             CurrDTMFs = <<DTMFs/binary, PromptDTMFs/binary>>,
@@ -181,37 +255,19 @@ collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF}=DbN, LookupTable,
             collect_min_digits(Call, Prompts, DbN, LookupTable, CurrDTMFs)
     end.
 
--spec analyze_dtmf/4 :: (Call, Prompts, DbN, LookupTable) -> no_return() when
-      Call :: #cf_call{},
-      Prompts :: #prompts{},
-      DbN :: #dbn_state{},
-      LookupTable :: lookup_table().
-analyze_dtmf(#cf_call{account_db=DB}=Call
-             ,Prompts
-             ,#dbn_state{digits_collected=DTMFs, confirm_match=ConfirmMatch}=DbN
-             ,LookupTable) ->
+-spec analyze_dtmf/2 :: (binary(), lookup_table()) -> 'no_results' | {'one_result', json_object()} | {'many_matches', json_objects()}.
+analyze_dtmf(DTMFs, LookupTable) ->
     ?LOG("Analyze: ~s", [DTMFs]),
     case lists:filter(fun(Entry) -> filter_table(Entry, DTMFs) end, LookupTable) of
         [] ->
             ?LOG("No results"),
-            ok = play_no_results(Call, Prompts),
-            start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table);
+	    no_results;
         [{_ID, {_, JObj}}] ->
             ?LOG("Single result: ~s", [_ID]),
-            case confirm_match(Call, Prompts, ConfirmMatch, JObj) of
-                true ->
-                    route_to_match(Call, JObj);
-                false ->
-                    start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
-            end;
+	    {one_result, JObj};
         Matches ->
             ?LOG("Has more than 1 match"),
-            ok = play_has_matches(Call, Prompts, length(Matches)),
-            case matches_menu(Call, Prompts, Matches, DB) of
-                {route, JObj} -> route_to_match(Call, JObj);
-                continue -> collect_next_dtmf(Call, Prompts, DbN, Matches);
-                start_over -> start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
-            end
+	    {many_matches, Matches}
     end.
 
 -spec filter_table/2 :: (Entry, DTMFs) -> boolean() when
@@ -295,9 +351,9 @@ no_matches_dtmf(Call, Prompts, _) ->
 play_no_results_menu(Call, #prompts{no_results_menu=NoResultsMenu}) ->
     play_and_collect([{play, NoResultsMenu}], Call).
 
--spec play_ast_instructions/2 :: (#cf_call{}, #cf_prompts{}) -> 'ok'.
+-spec play_ast_instructions/2 :: (#cf_call{}, #prompts{}) -> 'ok'.
 play_ast_instructions(Call, #prompts{ast_instructions=AstInstructions}) ->
-    play_and_wait([{play, AstInstructions}]).
+    play_and_wait([{play, AstInstructions}], Call).
 
 -spec play_no_more_results/2 :: (Call, Prompts) -> {'ok', binary()} when
       Call :: #cf_call{},
@@ -463,12 +519,12 @@ collect_min_digits(_, DTMFs) ->
 collect_next_dtmf(Call, Prompts, #dbn_state{digits_collected=DTMFs}=DbN, LookupTable) ->
     case collect_min_digits(1, <<>>) of
         {ok, Digit} ->
-            analyze_dtmf(Call, Prompts, DbN#dbn_state{digits_collected = <<DTMFs/binary, Digit/binary>>}, LookupTable);
+            analyze_dtmf(<<DTMFs/binary, Digit/binary>>, LookupTable);
         {error, timeout, _} ->
             case play_continue_prompt(Call, Prompts) of
                 {ok, <<>>} -> collect_next_dtmf(Call, Prompts, DbN, LookupTable);
                 {ok, Digit} ->
-                    analyze_dtmf(Call, Prompts, DbN#dbn_state{digits_collected = <<DTMFs/binary, Digit/binary>>}, LookupTable)
+                    analyze_dtmf(<<DTMFs/binary, Digit/binary>>, LookupTable)
             end
     end.
 
