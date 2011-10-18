@@ -8,14 +8,14 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_registrar).
 
--behaviour(gen_server).
+-behaviour(gen_listener).
 
 %% API
--export([start_link/0, lookup/3]).
+-export([start_link/0, lookup/3, handle_req/2]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
+         ,terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
 
@@ -25,10 +25,6 @@
 -define(BINDINGS, [{registration, []}]).
 
 -include("ecallmgr.hrl").
-
--record(state, {
-          is_amqp_up = true :: boolean()
-         }).
 
 %%%===================================================================
 %%% API
@@ -42,14 +38,25 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
+				     ,{bindings, ?BINDINGS}
+				     ], []).
 
--spec lookup/3 :: (Realm, User, Fields) -> proplist() | {error, timeout} when
+-spec lookup/3 :: (Realm, User, Fields) -> proplist() | {'error', 'timeout'} when
       Realm :: binary(),
       User :: binary(),
       Fields :: [binary(),...].
 lookup(Realm, User, Fields) ->
-    gen_server:call(?SERVER, {lookup, Realm, User, Fields}).
+    {ok, Srv} = ecallmgr_sup:register_proc(),
+    gen_server:call(Srv, {lookup, Realm, User, Fields}).
+
+-spec handle_req/2 :: (json_object(), proplist()) -> no_return().
+handle_req(JObj, _Props) ->
+    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    User = wh_json:get_value(<<"Username">>, JObj),
+    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    ?LOG_SYS("Received successful reg for ~s@~s, erasing cache", [User, Realm]),
+    wh_cache:erase_local(Cache, cache_key(Realm, User)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -67,8 +74,8 @@ lookup(Realm, User, Fields) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    Q = start_amqp(),
-    {ok, #state{is_amqp_up=is_binary(Q)}}.
+    ?LOG("Starting up"),
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -115,37 +122,17 @@ handle_cast(_Msg, State) ->
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
     ?LOG_SYS("Storing registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),
-    wh_cache:store_local(Cache, {ecall_registrar, Realm, User}, RegFields
-                   ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
-                  ),
+    wh_cache:store_local(Cache, cache_key(Realm, User), RegFields
+			 ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
+			),
     {noreply, State, hibernate};
-
-handle_info({_, #amqp_msg{payload=Payload}}, State) ->
-    spawn(fun() ->
-                  JObj = mochijson2:decode(Payload),
-                  User = wh_json:get_value(<<"Username">>, JObj),
-                  Realm = wh_json:get_value(<<"Realm">>, JObj),
-                  ?LOG_SYS("Received successful reg for ~s@~s, erasing cache", [User, Realm]),
-                  {ok, Cache} = ecallmgr_sup:cache_proc(),
-                  wh_cache:erase_local(Cache, {ecall_registrar, Realm, User})
-          end),
-
-    {noreply, State, hibernate};
-
-handle_info(timeout, #state{is_amqp_up=false}=State) ->
-    ?LOG_SYS("AMQP is down, trying"),
-    {noreply, State#state{is_amqp_up=is_binary(start_amqp())}, 1000};
-handle_info(timeout, #state{is_amqp_up=true}=State) ->
-    ?LOG_SYS("AMQP is up, back to good"),
-    {noreply, State};
-
-handle_info({amqp_host_down, _H}, State) ->
-    ?LOG_SYS("AMQP Host ~s down", [_H]),
-    {noreply, State#state{is_amqp_up=false}, 0};
 
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
+
+handle_event(_,_) ->
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -201,7 +188,7 @@ lookup_reg(Realm, User, Fields) ->
 		    {ok, RegJObj} ->
 			true = wapi_registration:query_resp_v(RegJObj),
 
-                        RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RegJObj, ?EMPTY_JSON_OBJECT)),
+                        RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RegJObj, wh_json:new())),
                         ?SERVER ! {cache_registrations, Realm, User, RegFields},
 
                         ?LOG_SYS("Received registration information"),
@@ -218,22 +205,6 @@ lookup_reg(Realm, User, Fields) ->
         {ok, RegFields} ->
             ?LOG_SYS("Found cached registration information"),
             lists:foldr(FilterFun, [], RegFields)
-    end.
-
--spec start_amqp/0 :: () -> binary() | {error, amqp_host_down}.
-start_amqp() ->
-    case amqp_util:is_host_available() of
-        true ->
-            try
-                Q = amqp_util:new_queue(),
-                ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
-                ok = amqp_util:basic_consume(Q),
-                Q
-            catch
-                _:_ -> {error, amqp_host_down}
-            end;
-        false ->
-            {error, amqp_host_down}
     end.
 
 cache_key(Realm, User) ->
