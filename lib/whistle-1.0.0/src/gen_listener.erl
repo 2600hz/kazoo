@@ -459,7 +459,7 @@ wait_for_handlers([{Pid, Ref} | Hs]) ->
     end;
 wait_for_handlers([]) -> ok.
 
--spec start_amqp/1 :: (proplist()) -> {'ok', binary()}.
+-spec start_amqp/1 :: (proplist()) -> {'ok', binary()} | {'error', 'amqp_error'}.
 start_amqp(Props) ->
     QueueProps = props:get_value(queue_options, Props, []),
     QueueName = props:get_value(queue_name, Props, <<>>),
@@ -476,15 +476,13 @@ start_amqp(Props) ->
 	    {ok, Queue}
     end.
 
--spec stop_amqp/2 :: (Q, Bindings) -> ok when
-      Q :: binary(),
-      Bindings :: bindings().
+-spec stop_amqp/2 :: (binary(), bindings()) -> 'ok'.
 stop_amqp(<<>>, _) -> ok;
 stop_amqp(Q, Bindings) ->
-    _ = [ queue_bindings:rm_binding_from_q(Q, Type) || {Type, _} <- Bindings],
+    Self = self(),
+    spawn(fun() -> [ gen_listener:rm_binding(Self, Type) || {Type, _} <- Bindings] end),
     amqp_util:queue_delete(Q).
 
--spec set_qos/1 :: (N) -> ok when
-      N :: undefined | non_neg_integer().
+-spec set_qos/1 :: (undefined | non_neg_integer()) -> 'ok'.
 set_qos(undefined) -> ok;
 set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).

@@ -47,7 +47,7 @@ start_link() ->
       User :: binary(),
       Fields :: [binary(),...].
 lookup(Realm, User, Fields) ->
-    {ok, Srv} = ecallmgr_sup:register_proc(),
+    {ok, Srv} = ecallmgr_sup:registrar_proc(),
     gen_server:call(Srv, {lookup, Realm, User, Fields}).
 
 -spec handle_req/2 :: (json_object(), proplist()) -> no_return().
