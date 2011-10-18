@@ -1141,8 +1141,8 @@ update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, #cf_call{account_db=Db}) ->
 				  Realm = wh_json:get_value([<<"value">>, <<"sip_realm">>], Device),
 				  Command = wh_json:from_list([{<<"Notify-User">>, User}
 							       ,{<<"Notify-Realm">>, Realm}
-							       ,{<<"Messages-New">>, wh_util:to_binary(New)}
-							       ,{<<"Messages-Saved">>, wh_util:to_binary(Saved)}
+							       ,{<<"Messages-New">>, wh_util:to_integer(New)}
+							       ,{<<"Messages-Saved">>, wh_util:to_integer(Saved)}
 							       | wh_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
 							      ]),
 				  ?LOG("sending mwi update to ~s@~s ~p:~p", [User, Realm, New, Saved]),
