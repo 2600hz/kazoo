@@ -20,15 +20,20 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, ctrl_q=CtrlQ}=Call) ->
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
     ParkedCalls = get_parked_calls(Call),
+    SlotNumber = get_slot_number(ParkedCalls, Call),
+
+    {ok, Status} = cf_call_command:b_status(Call),
+
     case wh_json:get_value(<<"action">>, Data, <<"park">>) of
         <<"park">> ->
-            cf_call_command:b_answer(Call),
-            park_call(ParkedCalls, Call);
+            park_call(SlotNumber, ParkedCalls, Call);
         <<"retrieve">> ->
-            retrieve(ParkedCalls, Call)
+            retrieve(SlotNumber, ParkedCalls, hangup, Call);
+        <<"auto">> ->
+            retrieve(SlotNumber, ParkedCalls, park, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -37,11 +42,40 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, ctrl_q=CtrlQ}=Call) ->
 %% Determine the appropriate action to retrieve a parked call
 %% @end
 %%--------------------------------------------------------------------
--spec retrieve/2 :: (ParkedCalls, Call) -> no_return() when
+-spec retrieve/4 :: (SlotNumber, ParkedCalls, MissingAction, Call) -> no_return() when
+      SlotNumber :: binary(),
       ParkedCalls :: json_object(),
-      Call :: json_object().
-retrieve(ParkedCalls, Call) ->
-    ok.
+      MissingAction :: park | hangup,
+      Call :: #cf_call{}.
+retrieve(SlotNumber, ParkedCalls, MissingAction, #cf_call{to=To}=Call) ->
+    case wh_json:get_value([<<"slots">>, SlotNumber], ParkedCalls) of
+        undefined when MissingAction =:= park ->
+            io:format("PARK IN SLOT ~p~n", [SlotNumber]);
+        undefined ->
+            io:format("They hungup?~n", []);
+        Slot ->
+            {ok, Status} = cf_call_command:b_status(Call),
+            Node = wh_json:get_value(<<"Node">>, Status, <<"unknown">>),
+            case wh_json:get_value(<<"Node">>, Slot) of
+                undefined ->
+                    io:format("THEY HUNGUP!~n", []);
+                Node ->
+                    ParkedCall = wh_json:get_value(<<"Call-ID">>, Slot),
+                    io:format("Bridge to callid ~p~n", [ParkedCall]);
+                OtherNode ->
+                    IP = get_node_ip(OtherNode),
+                    redirect(To, <<"sip:", IP/binary, ":5060">>, Call)
+            end
+    end.
+
+get_node_ip(Node) ->
+    [_, Server] = binary:split(Node, <<"@">>),
+    {ok, Addresses} = inet:getaddrs(wh_util:to_list(Server), inet),
+    {A, B, C, D} = hd(Addresses),
+    <<(wh_util:to_binary(A))/binary, "."
+      ,(wh_util:to_binary(B))/binary, "."
+      ,(wh_util:to_binary(C))/binary, "."
+      ,(wh_util:to_binary(D))/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -49,23 +83,86 @@ retrieve(ParkedCalls, Call) ->
 %% Determine the appropriate action to park the current call scenario
 %% @end
 %%--------------------------------------------------------------------
--spec park_call/2 :: (ParkedCalls, Call) -> ok | integer() when
+-spec park_call/3 :: (SlotNumber, ParkedCalls, Call) -> ok | integer() when
+      SlotNumber :: binary(),
       ParkedCalls :: json_object(),
       Call :: #cf_call{}.
-park_call(ParkedCalls, Call) ->
+park_call(SlotNumber, ParkedCalls, Call) ->
     {ok, Status} = cf_call_command:b_status(Call),
     ReferredTo = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-To">>], Status, <<>>),
     case re:run(ReferredTo, "Replaces=([^;]*)", [{capture, [1], binary}]) of
-        {match, [Replaces]} ->
-            ?LOG("request to park call was the result of an attended-transfer completion"),
-            update_call_id(Replaces, ParkedCalls, Call);
         nomatch when ReferredTo =:= <<>> ->
             ?LOG("request to park call was the result of a direct dial"),
-            SlotNumber = park_aleg(wh_json:get_value(<<"Node">>, Status), ParkedCalls, Call),
+            Slot = create_slot(Status, Call),
+            save_slot(SlotNumber, Slot, ParkedCalls, Call),
+            cf_call_command:b_answer(Call),
             cf_call_command:b_say(wh_util:to_binary(SlotNumber), Call);
         nomatch ->
             ?LOG("request to park call was the result of a blind transfer"),
-            park_aleg(wh_json:get_value(<<"Node">>, Status), ParkedCalls, Call)
+            Slot = create_slot(Status, Call),
+            save_slot(SlotNumber, Slot, ParkedCalls, Call);
+        {match, [Replaces]} ->
+            ?LOG("request to park call was the result of an attended-transfer completion"),
+            update_call_id(Replaces, ParkedCalls, Call)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Builds the json object representing the call in the parking slot
+%% @end
+%%--------------------------------------------------------------------
+-spec create_slot/2 :: (Status, Call) -> integer() when
+      Status :: json_object(),
+      Call :: #cf_call{}.
+create_slot(Status, #cf_call{call_id=CallId}) ->
+    Node = wh_json:get_value(<<"Node">>, Status),
+    wh_json:from_list([{<<"Call-ID">>, CallId}
+                       ,{<<"Node">>, Node}]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns the provided slot number or the next avaliable if none
+%% was provided
+%% @end
+%%--------------------------------------------------------------------
+-spec get_slot_number/2 :: (ParkedCalls, Call) -> binary() when
+      ParkedCalls :: json_object(),
+      Call :: #cf_call{}.
+get_slot_number(_, #cf_call{capture_group=CG}) when is_binary(CG) andalso size(CG) > 0 ->
+    CG;
+get_slot_number(ParkedCalls, _) ->
+    Slots = wh_json:get_value(<<"slots">>, ParkedCalls, []),
+    Next = case [wh_util:to_integer(Key) || Key <- wh_json:get_keys(Slots)] of
+               [] -> 1;
+               Keys ->
+                   hd(lists:dropwhile(fun(E) ->
+                                              lists:member(E, Keys)
+                                      end, lists:seq(100, lists:max(Keys) + 1)))
+           end,
+    wh_util:to_binary(Next).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Save the slot data in the parked calls object at the slot number.
+%% If, on save, it conflicts then it gets the new instance
+%% and tries again, determining the new slot.
+%% @end
+%%--------------------------------------------------------------------
+-spec save_slot/4 :: (SlotNumber, Slot, ParkedCalls, Call) -> integer() when
+      SlotNumber :: binary(),
+      Slot :: json_object(),
+      ParkedCalls :: json_object(),
+      Call :: #cf_call{}.
+save_slot(SlotNumber, Slot, ParkedCalls, #cf_call{account_db=Db}=Call) ->
+    case couch_mgr:save_doc(Db, wh_json:set_value([<<"slots">>, SlotNumber], Slot, ParkedCalls)) of
+        {ok, Parked} ->
+            ?LOG("successfully stored call parking data in slot ~p", [SlotNumber]),
+            Parked;
+        {error, conflict} ->
+            save_slot(SlotNumber, Slot, get_parked_calls(Call), Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -101,50 +198,6 @@ update_call_id(Replaces, ParkedCalls, #cf_call{call_id=CallId, account_db=Db}=Ca
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempts to but the current call into next avaliable slot
-%% @end
-%%--------------------------------------------------------------------
--spec park_aleg/3 :: (Node, ParkedCalls, Call) -> integer() when
-      Node :: binary(),
-      ParkedCalls :: json_object(),
-      Call :: #cf_call{}.
-park_aleg(Node, ParkedCalls, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
-    JObj = wh_json:from_list([{<<"call_id">>, CallId}
-                              ,{<<"node">>, Node}]),
-    set_next_slot(JObj, ParkedCalls, Call).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Determines the next available parking slot and places the call
-%% data there.  If, on save, it conflicts then it gets the new instance
-%% and tries again, determining the new slot.
-%% @end
-%%--------------------------------------------------------------------
--spec set_next_slot/3 :: (JObj, ParkedCalls, Call) -> integer() when
-      JObj :: json_object(),
-      ParkedCalls :: json_object(),
-      Call :: #cf_call{}.
-set_next_slot(JObj, ParkedCalls, #cf_call{account_db=Db}=Call) ->
-    Slots = wh_json:get_value(<<"slots">>, ParkedCalls, []),
-    Next = case [wh_util:to_integer(Key) || Key <- wh_json:get_keys(Slots)] of
-               [] -> 1;
-               Keys ->
-                   hd(lists:dropwhile(fun(E) ->
-                                              lists:member(E, Keys)
-                                      end, lists:seq(1, lists:max(Keys) + 1)))
-           end,
-    case couch_mgr:save_doc(Db, wh_json:set_value([<<"slots">>, Next], JObj, ParkedCalls)) of
-        {ok, _} ->
-            ?LOG("successfully stored call parking data in slot ~p", [Next]),
-            Next;
-        {error, conflict} ->
-            set_next_slot(JObj, get_parked_calls(Call), Call)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Attempts to retrieve the parked calls list from the datastore, if
 %% the list does not exist then it returns an new empty instance
 %% @end
@@ -167,3 +220,14 @@ get_parked_calls(#cf_call{account_db=Db, account_id=Id}) ->
         {ok, JObj} ->
             JObj
     end.
+
+redirect(Contact, Server, #cf_call{call_id=CallId, ctrl_q=CtrlQ}) ->
+    Command = [{<<"Application-Name">>, <<"respond">>}
+               ,{<<"Response-Code">>, <<"302">>}
+               ,{<<"Response-Message">>, Contact}
+               ,{<<"Redirect-Server">>, Server}
+               ,{<<"Call-ID">>, CallId}
+               | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
+    io:format("Redirect: ~p~n", [Command]),
+    {ok, Payload} = wh_api:respond_req(Command),
+    amqp_util:callctl_publish(CtrlQ, Payload).
