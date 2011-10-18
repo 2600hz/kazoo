@@ -84,7 +84,7 @@ init([AsrReq]) ->
        ,xmpp_server = exmpp_jid:domain_as_list(JID)
        ,rayo_sip_user = wh_json:get_value(<<"ASR-Endpoint">>, AsrReq)
        ,rayo_lang = wh_util:to_list(wh_json:get_value(<<"Language">>, AsrReq, "us-EN"))
-       ,stream_response = wh_util:is_true(<<"Stream-Response">>, AsrReq, false)
+       ,stream_response = wh_json:is_true(<<"Stream-Response">>, AsrReq, false)
        ,aleg_callid = wh_json:get_value(<<"Call-ID">>, AsrReq)
        ,aleg_ctl_q = wh_json:get_value(<<"Control-Queue">>, AsrReq)
       }}.
@@ -153,6 +153,9 @@ handle_info(authenticate, #state{xmpp_session=Session, xmpp_server=Server, xmpp_
 
 	exmpp_session:send_packet(Session, exmpp_presence:set_status(exmpp_presence:available(), "VX Whapp Ready")),
 	?LOG("Sent presence"),
+
+	self() ! bridge,
+
 	{noreply, State}
     catch
 	_:{auth_error, 'not-authorized'} ->
@@ -163,6 +166,10 @@ handle_info(authenticate, #state{xmpp_session=Session, xmpp_server=Server, xmpp_
 	    [?LOG("ST: ~p", [ST]) || ST <- erlang:get_stacktrace()],
 	    {stop, normal, State}
     end;
+
+handle_info(bridge, #state{}=State) ->
+    ?LOG("Bridge to ASR"),
+    {noreply, State};
 
 handle_info(_Info, State) ->
     ?LOG("Unhandled message: ~p", [_Info]),
