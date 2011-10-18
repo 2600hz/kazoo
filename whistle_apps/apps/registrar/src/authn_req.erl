@@ -19,7 +19,7 @@ init() ->
       JObj :: json_object(),
       Props :: proplist().
 handle_req(JObj, Props) ->
-    true = wh_api:authn_req_v(JObj),
+    true = wapi_authn:req_v(JObj),
 
     Cache = props:get_value(cache, Props),
     Queue = props:get_value(queue, Props),
