@@ -117,7 +117,7 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
     DirID = wh_json:get_value(<<"id">>, Data),
     {ok, DirJObj} = couch_mgr:open_doc(AccountDB, DirID),
 
-    DbN0 = case wh_json:get_boolean_value(<<"ast_enabled">>, DirJObj, false) of
+    DbN0 = case wh_json:is_true(<<"ast_enabled">>, DirJObj, false) of
 	       true ->
 		   AST = wh_json:get_value(<<"ast_provider">>, DirJObj, wh_json:new()),
 		   ?LOG("Setting AST data for directory lookup"),
