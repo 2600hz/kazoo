@@ -387,9 +387,7 @@ play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj, DB) ->
 		     ], Call).
 
 %% Takes a user doc ID, creates the endpoint, and routes the call (ending the dialplan callflow as well)
--spec route_to_match/2 :: (Call, JObj) -> {'branch', json_object()} | {'continue'} when
-      Call :: #cf_call{},
-      JObj :: json_object().
+-spec route_to_match/2 :: (#cf_call{}, json_object()) -> {'branch', json_object()} | {'continue'}.
 route_to_match(#cf_call{cf_pid=CFPid, account_db=DB}, JObj) ->
     case couch_mgr:open_doc(DB, wh_json:get_value(<<"callflow_id">>, JObj)) of
         {ok, CallflowJObj} ->
@@ -572,7 +570,7 @@ convert_fields(Callflow, Doc, Fields) ->
             end,
 
     JObj1 = wh_json:from_list([
-                               {<<"callflow">>, Callflow}
+                               {<<"callflow_id">>, Callflow}
                                ,{<<"full_name">>, <<(wh_json:get_value(<<"first_name">>, JObj))/binary, " ", (wh_json:get_value(<<"last_name">>, JObj))/binary>>}
                                | Media
                               ]),
