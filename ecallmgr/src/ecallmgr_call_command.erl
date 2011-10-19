@@ -39,8 +39,8 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                     ControlPID ! {execute_complete, UUID, AppName};
 		{<<"answer">> = AppName, AppData} ->
                     _ = send_cmd(Node, UUID, AppName, AppData),
-                    %% 22:55 pyite_mac  can you sleep 0.5 seconds before continuing
-                    timer:sleep(500),
+                    %% 22:55 pyite_mac  can you sleep 0.75 seconds before continuing
+                    timer:sleep(750),
                     ControlPID ! {execute_complete, UUID, AppName};
 		{AppName, AppData} ->
                     send_cmd(Node, UUID, AppName, AppData)
@@ -284,16 +284,41 @@ get_fs_app(_Node, UUID, JObj, <<"bridge">>=App) ->
             {App, Dialplan}
     end;
 
-get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>=App) ->
+get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
     case wh_api:call_pickup_req_v(JObj) of
 	false -> {'error', <<"intercept failed to execute as JObj did not validate">>};
 	true ->
-            Param = case wh_json:is_true(<<"Other-Leg">>, JObj) of
-                        true -> <<"-bleg ">>;
-                        false -> <<>>
-                    end,
-            Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
-            {<<"intercept">>, <<Param/binary, Target/binary>>}
+            Generators = [fun(DP) ->
+                                  case wh_json:is_true(<<"Unbridged-Only">>, JObj) of
+                                      false ->
+                                          DP;
+                                      true ->
+                                          [{"application", "set intercept_unbridged_only=true"}|DP]
+                                  end
+                          end,
+                          fun(DP) ->
+                                  case wh_json:is_true(<<"Unanswered-Only">>, JObj) of
+                                      false ->
+                                          DP;
+                                      true ->
+                                          [{"application", "set intercept_unanswered_only=true"}|DP]
+                                  end
+                          end,
+                          fun(DP) ->
+                                  [{"application", "export failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
+                                   ,{"application", "export uuid_bridge_continue_on_cancel=true"}
+                                   ,{"application", "export continue_on_fail=true"}|DP]
+                          end,
+                          fun(DP) ->
+                                  Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
+                                  Arg = case wh_json:is_true(<<"Other-Leg">>, JObj) of
+                                            true -> <<"-bleg ", Target/binary>>;
+                                            false -> Target
+                                        end,
+                                  [{"application", "intercept " ++ wh_util:to_list(Arg)}|DP]
+                          end],
+            Dialplan = lists:foldr(fun(F, DP) -> F(DP) end, [], Generators),
+            {<<"intercept">>, Dialplan}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
@@ -405,6 +430,17 @@ send_cmd(Node, UUID, <<"hangup">>, _) ->
     ?LOG("terminate call on node ~s", [Node]),
     _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
     freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
+send_cmd(Node, UUID, <<"intercept">>, Args) ->
+    Dialplan = Args ++ [{"application", "event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade,whistle_event_name=CHANNEL_EXECUTE_COMPLETE,whistle_application_name=intercept"}
+                        ,{"application", "park  "}],
+    _ = [begin
+	     App = lists:takewhile(fun($ ) -> false; (_) -> true end, V),
+	     Data = tl(lists:dropwhile(fun($ ) -> false; (_) -> true end, V)),
+	     _ = ecallmgr_util:fs_log(Node, "whistle queing command in 'xferext' extension: ~s ~s", [App, Data]),
+	     ?LOG("building xferext on node ~s: ~s(~s)", [Node, App, Data])
+	 end || {_, V} <- Dialplan],
+    'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ Dialplan),
+    ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
 send_cmd(Node, UUID, <<"bridge">>, Args) ->
     Dialplan = Args ++ [{"application", "event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade,whistle_event_name=CHANNEL_EXECUTE_COMPLETE,whistle_application_name=bridge"}
                         ,{"application", "park  "}],

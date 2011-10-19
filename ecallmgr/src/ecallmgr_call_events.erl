@@ -396,7 +396,6 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
 	    amqp_util:callevt_publish(UUID, JSON, event);
 	_ ->
             ok
-%%	    ?LOG("skipped event ~s ~s", [FSEvtName, FSAppName])
     end.
 
 -spec get_channel_state/1 :: (Prop) -> binary() when
@@ -608,6 +607,8 @@ get_fs_var(Node, UUID, Var, Default) ->
       FSAppName :: binary(),
       EvtName :: binary().
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, _) ->
+    false;
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, _) ->
     false;
 should_publish(_, <<"event">>, _) ->
     false;
