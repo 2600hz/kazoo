@@ -227,7 +227,7 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
     end;
 
 get_fs_app(_Node, UUID, JObj, <<"bridge">>=App) ->
-    case wh_api:bridge_req_v(JObj) of
+    case wapi_dialplan:bridge_v(JObj) of
 	false -> {'error', <<"bridge failed to execute as JObj did not validate">>};
 	true ->
             Generators = [fun(DP) ->
