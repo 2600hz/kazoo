@@ -224,9 +224,19 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
 validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
-    load_cdr_summary(Context, QueryString);
+    try
+        load_cdr_summary(Context, QueryString)
+    catch
+        _:_ ->
+            crossbar_util:response_db_fatal(Context)
+    end;
 validate([CDRId], _, #cb_context{req_verb = <<"get">>}=Context) ->
-    load_cdr(CDRId, Context);
+    try
+        load_cdr(CDRId, Context)
+    catch
+        _:_ ->
+            crossbar_util:response_db_fatal(Context)
+    end;
 validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
 
