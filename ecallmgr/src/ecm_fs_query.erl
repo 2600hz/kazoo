@@ -88,7 +88,7 @@ handle_channel_status(JObj, _Props) ->
     end.
 
 handle_channel_query(JObj, _Props) ->
-    true = wh_api:channel_query_req_v(JObj),
+    true = wapi_channel_query:req_v(JObj),
     wh_util:put_callid(JObj),
 
     ?LOG("Channel query received"),
@@ -100,7 +100,7 @@ handle_channel_query(JObj, _Props) ->
 					   undefined -> Acc;
 					   Value -> [{Field, Value} | Acc]
 				       end
-			       end, [], ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS),
+			       end, [], wapi_channel_query:optional_headers()),
 
     case lists:foldl(fun(NodeChannels, Acc) ->
 			     filter_for_matching_uuids(SearchParams, NodeChannels, Acc)
@@ -239,6 +239,6 @@ make_jobj(C) ->
 		      ]).
 
 send_channel_query_resp(RespQ, UUIDs) ->
-    {ok, JSON} = wh_api:channel_query_resp([{<<"Active-Calls">>, UUIDs}
-					    | wh_api:default_headers(<<>>, <<"locate">>, <<"channel_resp">>, ?APP_NAME, ?APP_VERSION)]),
-    amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
+    {ok, JSON} = wapi_channel_query:resp([{<<"Active-Calls">>, UUIDs}
+					  | wh_api:default_headers(<<>>, <<"locate">>, <<"channel_resp">>, ?APP_NAME, ?APP_VERSION)]),
+    wapi_channel_query:publish_resp(RespQ, JSON).
