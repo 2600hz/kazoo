@@ -22,8 +22,7 @@
 -export([default_headers/5, extract_defaults/1]).
 
 %% Resources
--export([resource_req/1, resource_resp/1, resource_error/1
-	 ,channel_query_req/1, channel_query_resp/1
+-export([channel_query_req/1, channel_query_resp/1
 	]).
 
 %% In-Call
@@ -48,8 +47,7 @@
 -export([document_change/1, document_change_v/1]).
 
 %% Validation functions
--export([resource_req_v/1, resource_resp_v/1, resource_error_v/1
-	,channel_query_req_v/1, channel_query_resp_v/1]).
+-export([channel_query_req_v/1, channel_query_resp_v/1]).
 
 -export([call_event_v/1, error_resp_v/1, call_cdr_v/1, call_status_req_v/1, call_status_resp_v/1]).
 -export([play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1, store_http_resp_v/1
@@ -134,72 +132,6 @@ dialplan_req_v(Prop, AppName) ->
 	{_, VFun} ->
 	    VFun(Prop)
     end.
-
-%%--------------------------------------------------------------------
-%% @doc Resource Request - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec resource_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-    Prop :: proplist() | json_object().
-resource_req({struct, Prop}) ->
-    resource_req(Prop);
-resource_req(Prop) ->
-    case resource_req_v(Prop) of
-	true -> build_message(Prop, ?RESOURCE_REQ_HEADERS, ?OPTIONAL_RESOURCE_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for resource_req"}
-    end.
-
--spec resource_req_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-resource_req_v({struct, Prop}) ->
-    resource_req_v(Prop);
-resource_req_v(Prop) ->
-    validate(Prop, ?RESOURCE_REQ_HEADERS, ?RESOURCE_REQ_VALUES, ?RESOURCE_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Resource Response - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec resource_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-    Prop :: proplist() | json_object().
-resource_resp({struct, Prop}) ->
-    resource_resp(Prop);
-resource_resp(Prop) ->
-    case resource_resp_v(Prop) of
-	true -> build_message(Prop, ?RESOURCE_RESP_HEADERS, ?OPTIONAL_RESOURCE_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for resource_resp"}
-    end.
-
--spec resource_resp_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-resource_resp_v({struct, Prop}) ->
-    resource_resp_v(Prop);
-resource_resp_v(Prop) ->
-    validate(Prop, ?RESOURCE_RESP_HEADERS, ?RESOURCE_RESP_VALUES, ?RESOURCE_RESP_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Resource Error - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec resource_error/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-    Prop :: proplist() | json_object().
-resource_error({struct, Prop}) ->
-    resource_error(Prop);
-resource_error(Prop) ->
-    case resource_error_v(Prop) of
-	true -> build_message(Prop, ?RESOURCE_ERROR_HEADERS, ?OPTIONAL_RESOURCE_ERROR_HEADERS);
-	false -> {error, "Proplist failed validation for resource_error"}
-    end.
-
--spec resource_error_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-resource_error_v({struct, Prop}) ->
-    resource_error_v(Prop);
-resource_error_v(Prop) ->
-    validate(Prop, ?RESOURCE_ERROR_HEADERS, ?RESOURCE_ERROR_VALUES, ?RESOURCE_ERROR_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Resource Request - see wiki

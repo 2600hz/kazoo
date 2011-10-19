@@ -1,14 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 19 Oct 2011 by James Aimonetti <>
+%%% Created : 19 Oct 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(wapi_offnet_resource).
 
--export([req/1, req_v/1, publish_req/1, bind_q/2, unbind_q/1]).
+-export([req/1, req_v/1, publish_req/1, publish_req/2, bind_q/2, unbind_q/1]).
 
 -include("../wh_api.hrl").
 
