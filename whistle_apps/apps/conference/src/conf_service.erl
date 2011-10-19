@@ -621,8 +621,8 @@ bridge_to_conference(CallId, CtrlQ, #conf{amqp_q=Q, route=Route, auth_pwd=AuthPw
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = wh_api:bridge_req(Command),
-    amqp_util:callctl_publish(CtrlQ, Payload).
+    {ok, Payload} = wapi_dialplan:bridge(Command),
+    wapi_dialplan:publish_action(CtrlQ, Payload).
 
 %%--------------------------------------------------------------------
 %% @private

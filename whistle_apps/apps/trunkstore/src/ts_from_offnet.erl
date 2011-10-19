@@ -32,7 +32,7 @@ endpoint_data(State) ->
     CallID = ts_callflow:get_aleg_id(State),
     Q = ts_callflow:get_my_queue(State),
 
-    true = wh_api:bridge_req_endpoint_v(EP),
+    true = wapi_dialplan:bridge_endpoint_v(EP),
     ?LOG("Valid endpoint"),
 
     MediaHandling = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Offnet-Loopback-Number">>], JObj) of
@@ -75,7 +75,7 @@ wait_for_win(State, Command) ->
     end.
 
 send_onnet(State, Command) ->
-    {ok, Payload} = wh_api:bridge_req(Command),
+    {ok, Payload} = wapi_dialplan:bridge(Command),
     ?LOG("Sending onnet command: ~s", [Payload]),
 
     CtlQ = ts_callflow:get_control_queue(State),
@@ -186,7 +186,7 @@ try_failover_sip(State, SIPUri) ->
 	       | wh_api:default_headers(Q, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
 
-    {ok, Payload} = wh_api:bridge_req(Command),
+    {ok, Payload} = wapi_dialplan:bridge(Command),
 
     ?LOG("Sending SIP failover for ~s: ~s", [SIPUri, Payload]),
 

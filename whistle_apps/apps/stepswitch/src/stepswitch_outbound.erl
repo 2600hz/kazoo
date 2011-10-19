@@ -321,8 +321,8 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                                               ,{<<"Hangup-Code">>, <<"sip:404">>}
                                              ]}, 0, JObj);
         Attempts ->
-            {ok, Payload} = wh_api:bridge_req({struct, BridgeReq}),
-            amqp_util:callctl_publish(wh_json:get_value(<<"Control-Queue">>, JObj), Payload),
+            {ok, Payload} = wapi_dialplan:bridge(BridgeReq),
+	    wapi_dialplan:publish_action(wh_json:get_value(<<"Control-Queue">>, JObj), Payload),
 
             case wait_for_bridge(60000) of
                 {ok, BridgeResp} ->

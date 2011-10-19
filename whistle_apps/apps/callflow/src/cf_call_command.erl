@@ -283,7 +283,7 @@ bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = wh_api:bridge_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wapi_dialplan:bridge([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_bridge(Endpoints, Call) ->
@@ -1381,7 +1381,7 @@ get_event_type(JObj) ->
       Payload :: binary(),
       Call :: #cf_call{}.
 send_callctrl(Payload, #cf_call{ctrl_q=CtrlQ}) ->
-    amqp_util:callctl_publish(CtrlQ, Payload).
+    wapi_dialplan:publish_action(CtrlQ, Payload).
 
 %%--------------------------------------------------------------------
 %% @public
