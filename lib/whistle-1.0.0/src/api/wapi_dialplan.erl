@@ -23,7 +23,7 @@
 -spec bridge/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
 bridge(Prop) when is_list(Prop) ->
     EPs = [begin
-	       {ok, EPProps} = req_endpoint_headers(EP),
+	       {ok, EPProps} = bridge_endpoint_headers(EP),
 	       wh_json:from_list(EPProps)
 	   end
 	   || EP <- props:get_value(<<"Endpoints">>, Prop, []),
@@ -57,7 +57,7 @@ bridge_endpoint(Prop) when is_list(Prop) ->
 bridge_endpoint(JObj) ->
     bridge_endpoint(wh_json:to_proplist(JObj)).
 
--spec req_endpoint_headers/1 :: (proplist() | json_object()) -> {'ok', proplist()} | {'error', string()}.
+-spec bridge_endpoint_headers/1 :: (proplist() | json_object()) -> {'ok', proplist()} | {'error', string()}.
 bridge_endpoint_headers(Prop) when is_list(Prop) ->
     wh_api:build_message_specific_headers(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
 bridge_endpoint_headers(JObj) ->
@@ -72,4 +72,4 @@ bridge_endpoint_v(JObj) ->
 publish_action(Queue, JSON) ->
     publish_action(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
 publish_action(Queue, Payload, ContentType) ->
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
+    amqp_util:callctl_publish(Queue, Payload, ContentType).
