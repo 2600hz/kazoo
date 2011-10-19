@@ -29,7 +29,7 @@
 %% In-Call
 -export([call_event/1, error_resp/1, call_cdr/1, call_status_req/1, call_status_resp/1]).
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
-	 ,tones_req_tone/1, queue_req/1, bridge_req/1, bridge_req_endpoint/1, answer_req/1
+	 ,tones_req_tone/1, queue_req/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
 	 ,sleep_req/1, tone_detect_req/1, set_req/1
          ,conference_req/1, noop_req/1, fetch_req/1, respond_req/1, progress_req/1
@@ -53,7 +53,7 @@
 
 -export([call_event_v/1, error_resp_v/1, call_cdr_v/1, call_status_req_v/1, call_status_resp_v/1]).
 -export([play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1, store_http_resp_v/1
-         ,tones_req_v/1, tones_req_tone_v/1, queue_req_v/1, bridge_req_v/1, bridge_req_endpoint_v/1
+         ,tones_req_v/1, tones_req_tone_v/1, queue_req_v/1
          ,answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1, call_pickup_req_v/1, hangup_req_v/1
          ,say_req_v/1, sleep_req_v/1, tone_detect_req_v/1, set_req_v/1, dialplan_req_v/1, respond_req_v/1
          ,progress_req_v/1
@@ -67,7 +67,7 @@
 	]).
 
 %% Other AMQP API validators can use these helpers
--export([build_message/3, build_message_specific/3
+-export([build_message/3, build_message_specific/3, build_message_specific_headers/3
 	 ,validate/4, validate_message/4]).
 
 %% FS-specific routines
@@ -598,65 +598,6 @@ record_req_v({struct, Prop}) ->
     record_req_v(Prop);
 record_req_v(Prop) ->
     validate(Prop, ?RECORD_REQ_HEADERS, ?RECORD_REQ_VALUES, ?RECORD_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Bridge a call - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec bridge_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-      Prop :: proplist() | json_object().
-bridge_req({struct, Prop}) ->
-    bridge_req(Prop);
-bridge_req(Prop) ->
-    EPs = [begin
-	       {ok, EPProps} = bridge_req_endpoint_headers(EP),
-	       wh_json:from_list(EPProps)
-	   end
-	   || EP <- props:get_value(<<"Endpoints">>, Prop, []),
-	      bridge_req_endpoint_v(EP)
-	  ],
-    Prop1 = [ {<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
-    case bridge_req_v(Prop1) of
-	true -> build_message(Prop1, ?BRIDGE_REQ_HEADERS, ?OPTIONAL_BRIDGE_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for bridge_req"}
-    end.
-
--spec bridge_req_v/1 :: (Prop) -> boolean() when
-      Prop :: proplist() | json_object().
-bridge_req_v({struct, Prop}) ->
-    bridge_req_v(Prop);
-bridge_req_v(Prop) ->
-    validate(Prop, ?BRIDGE_REQ_HEADERS, ?BRIDGE_REQ_VALUES, ?BRIDGE_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Endpoints for bridging a call - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec bridge_req_endpoint/1 :: (Prop) -> {'ok', proplist()} | {'error', string()} when
-      Prop :: proplist() | json_object().
-bridge_req_endpoint({struct, Prop}) ->
-    bridge_req_endpoint(Prop);
-bridge_req_endpoint(Prop) ->
-    case bridge_req_endpoint_v(Prop) of
-	true -> build_message_specific(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
-	false -> {error, "Proplist failed validation for bridge_req_endpoint"}
-    end.
-
--spec bridge_req_endpoint_headers/1 :: (Prop) -> {ok, proplist()} | {'error', string()} when
-      Prop :: proplist() | json_object().
-bridge_req_endpoint_headers({struct, Prop}) ->
-    bridge_req_endpoint_headers(Prop);
-bridge_req_endpoint_headers(Prop) ->
-    build_message_specific_headers(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS).
-
--spec bridge_req_endpoint_v/1 :: (Prop) -> boolean() when
-      Prop :: proplist() | json_object().
-bridge_req_endpoint_v({struct, Prop}) ->
-    bridge_req_endpoint_v(Prop);
-bridge_req_endpoint_v(Prop) ->
-    validate_message(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?BRIDGE_REQ_ENDPOINT_VALUES, ?BRIDGE_REQ_ENDPOINT_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Answer a session - see wiki
