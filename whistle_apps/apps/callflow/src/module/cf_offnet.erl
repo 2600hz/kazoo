@@ -46,8 +46,8 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId,
                ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
                | wh_api:default_headers(AmqpQ, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = wh_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
-    amqp_util:offnet_resource_publish(Payload),
+    {ok, Payload} = wapi_offnet_resource:req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    wapi_offnet_resource:publish_req(Payload),
     case wait_for_offnet(60000, Call) of
         {ok, _} ->
             ?LOG("completed successful offnet bridge"),

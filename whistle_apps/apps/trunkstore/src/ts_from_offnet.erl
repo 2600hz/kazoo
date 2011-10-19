@@ -218,11 +218,12 @@ try_failover_e164(State, ToDID) ->
 	       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
 	       | wh_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
 	      ],
-    {ok, Payload} = wh_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined, V =/= <<>> ]),
+    {ok, Payload} = wapi_offnet_resource:req([ KV || {_, V}=KV <- Command, V =/= undefined, V =/= <<>> ]),
 
     ?LOG("Sending E.164 failover: ~s", [Payload]),
 
-    amqp_util:offnet_resource_publish(Payload),
+    wapi_offnet_resource:publish_req(Payload),
+
     wait_for_bridge(ts_callflow:set_failover(State, ?EMPTY_JSON_OBJECT)).
 
 %%--------------------------------------------------------------------

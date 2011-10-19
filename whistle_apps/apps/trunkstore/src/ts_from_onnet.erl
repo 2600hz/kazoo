@@ -114,9 +114,10 @@ wait_for_win(State, Command) ->
 
 send_offnet(State, Command) ->
     CtlQ = ts_callflow:get_control_queue(State),
-    {ok, Payload} = wh_api:offnet_resource_req({struct, [ KV || {_, V}=KV <- [{<<"Control-Queue">>, CtlQ} | Command], V =/= undefined ]}),
-    ?LOG("Sending offnet: ~s", [Payload]),
-    amqp_util:offnet_resource_publish(Payload),
+
+    {ok, JSON} = wapi_offnet_resource:req([ KV || {_, V}=KV <- [{<<"Control-Queue">>, CtlQ} | Command], V =/= undefined ]),
+    ?LOG("Sending offnet: ~s", [JSON]),
+    wapi_offnet_resource:publish_req(JSON),
     wait_for_bridge(State).
 
 wait_for_bridge(State) ->
