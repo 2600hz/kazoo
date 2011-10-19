@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(queue_bindings).
 
--export([add_binding_to_q/3, rm_binding_from_q/2]).
+-export([add_binding_to_q/3, rm_binding_from_q/2, rm_binding_from_q/3]).
 
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
