@@ -9,23 +9,21 @@
 %%%-------------------------------------------------------------------
 -module(resource_mgr).
 
--behaviour(gen_server).
+-behaviour(gen_listener).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, handle_req/2]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
-
--import(props, [get_value/2, get_value/3]).
--import(logger, [format_log/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
+	 ,terminate/2, code_change/3]).
 
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
 
--record(state, {callmgr_q = <<>> :: binary()}).
+-define(RESPONDERS, [{?MODULE, [{<<"resource">>, <<"originate_req">>}]}]).
+-define(BINDINGS, [{resource, []}]).
 
 %%%===================================================================
 %%% API
@@ -39,7 +37,28 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
+				     ,{bindings, ?BINDINGS}
+				     ], []).
+
+-spec handle_req/2 :: (json_object(), proplist()) -> 'ok' | 'fail'.
+handle_req(JObj, _Prop) ->
+    true = wapi_resource:req_v(JObj),
+
+    Options = get_request_options(JObj),
+    Nodes = get_resources(request_type(JObj), Options),
+
+    Min = wh_util:to_integer(props:get_value(min_channels_requested, Options)),
+    Max = wh_util:to_integer(props:get_value(max_channels_requested, Options)),
+
+    Route = ecallmgr_fs_xml:build_route(wh_json:set_value(<<"Realm">>, ?DEFAULT_DOMAIN, JObj), wh_json:get_value(<<"Invite-Format">>, JObj)),
+
+    case start_channels(Nodes, JObj, Route, Min, Max-Min) of
+	{error, failed_starting, Failed} ->
+	    send_failed_req(JObj, Failed),
+	    fail;
+	ok -> ok
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -58,11 +77,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting new resource manager"),
-    try
-	{ok, #state{callmgr_q=start_amqp()}}
-    catch
-	_:_ -> {ok, #state{}}
-    end.
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -104,13 +119,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">> }
-					   ,payload = Payload}}, State) ->
-    spawn(fun() -> handle_resource_req(Payload) end),
-    {noreply, State};
-
 handle_info(_Info, State) ->
+    ?LOG("Unhandled message: ~p", [_Info]),
     {noreply, State}.
+
+handle_event(_,_) ->
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -123,9 +137,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{callmgr_q=Q}) ->
-    ?LOG_SYS("resource manager ~p termination", [_Reason]),
-    amqp_util:queue_delete(Q).
+terminate(_Reason, _State) ->
+    ?LOG_SYS("resource manager ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -141,44 +154,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_amqp/0 :: () -> binary() | tuple(error, amqp_error)).
-start_amqp() ->
-    try
-	true = is_binary(Q = amqp_util:new_callmgr_queue(<<>>)),
-	_ = amqp_util:bind_q_to_callmgr(Q, ?KEY_RESOURCE_REQ),
-	_ = amqp_util:basic_consume(Q),
-        ?LOG_SYS("connected to AMQP"),
-	Q
-    catch
-	_:R ->
-            ?LOG_SYS("failed to connect to AMQP ~p", [R]),
-            {error, amqp_error}
-    end.
-
--spec(handle_resource_req/1 :: (Payload :: binary()) -> no_return()).
-handle_resource_req(Payload) ->
-    JObj = mochijson2:decode(binary_to_list(Payload)),
-    case wh_api:resource_req_v(JObj) of
-	true ->
-	    Options = get_request_options(JObj),
-	    Nodes = get_resources(request_type(JObj), Options),
-
-	    Min = wh_util:to_integer(props:get_value(min_channels_requested, Options)),
-	    Max = wh_util:to_integer(props:get_value(max_channels_requested, Options)),
-
-	    Route = ecallmgr_fs_xml:build_route(wh_json:set_value(<<"Realm">>, ?DEFAULT_DOMAIN, JObj), wh_json:get_value(<<"Invite-Format">>, JObj)),
-
-	    case start_channels(Nodes, JObj, Route, Min, Max-Min) of
-		{error, failed_starting, Failed} ->
-		    send_failed_req(JObj, Failed),
-		    fail;
-		ok -> ok
-	    end;
-	false ->
-            ?LOG("failed to validate ~s", [Payload])
-    end.
-
--spec(get_resources/2 :: (tuple(binary(), binary(), binary()), Options :: proplist()) -> list(proplist()) | []).
+-spec get_resources/2 :: ({binary(), binary(), binary()}, proplist()) -> [proplist(),...] | [].
 get_resources({<<"resource">>, <<"originate_req">>, <<"audio">>=Type}, Options) ->
     ?LOG("request to originate new ~s resource", [Type]),
     %% merge other switch results into this list as well (eventually)
@@ -187,18 +163,18 @@ get_resources({<<"resource">>, <<"originate_req">>, <<"audio">>=Type}, Options) 
 get_resources(_Type, _Options) ->
     [].
 
--spec(request_type/1 :: (JObj :: json_object()) -> tuple(binary(), binary(), binary())).
+-spec request_type/1 :: (json_object()) -> {binary(), binary(), binary()}.
 request_type(JObj) ->
     {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Resource-Type">>, JObj)}.
 
--spec(get_request_options/1 :: (JObj :: json_object()) -> proplist()).
+-spec get_request_options/1 :: (json_object()) -> proplist().
 get_request_options(JObj) ->
     Min = wh_util:to_integer(wh_json:get_value(<<"Resource-Minimum">>, JObj, 1)),
     [{min_channels_requested, Min}
      ,{max_channels_requested, wh_util:to_integer(wh_json:get_value(<<"Resource-Maximum">>, JObj, Min))}
     ].
 
--spec(start_channels/5 :: (Nodes :: list(), JObj :: json_object(), Route :: binary() | list(), Min :: integer(), Max :: integer()) -> tuple(error, failed_starting, integer()) | ok).
+-spec start_channels/5 :: ([proplist(),...] | [], json_object(), binary() | list(), integer(), integer()) -> {'error', 'failed_starting', integer()} | 'ok'.
 start_channels(_Ns, _JObj, _Route, 0, 0) -> ok; %% started all channels requested
 start_channels([], _JObj, _Route, 0, _) -> ok; %% started at least the minimum channels, but ran out of servers with available resources
 start_channels([], _JObj, _Route, M, _) -> {error, failed_starting, M}; %% failed to start the minimum channels before server resources ran out
@@ -215,20 +191,20 @@ start_channels([N | Ns]=Nodes, JObj, Route, Min, Max) -> %% start the minimum ch
 	{error, _} -> start_channels(Ns, JObj, Route, Min, Max)
     end.
 
--spec(start_channel/3 :: (N :: proplist(), Route :: binary() | list(), JObj :: json_object()) -> tuple(ok, integer()) | tuple(error, timeout | binary())).
+-spec start_channel/3 :: (proplist(), binary() | list(), json_object()) -> {'ok', integer()} | {'error', 'timeout' | binary()}.
 start_channel(N, Route, JObj) ->
-    Pid = get_value(node, N),
+    Pid = props:get_value(node, N),
     case ecallmgr_fs_node:resource_consume(Pid, Route, JObj) of
 	{resource_consumed, UUID, CtlQ, AvailableChan} ->
 	    spawn(fun() -> send_uuid_to_app(JObj, UUID, CtlQ) end),
 	    {ok, AvailableChan};
 	{resource_error, E} ->
-	    format_log(error, "RSCMGR.st_ch(~p): Error starting channel on ~p: ~p~n", [self(), Pid, E]),
+	    ?LOG("Error starting channel on ~p: ~p", [Pid, E]),
 	    spawn(fun() -> send_failed_consume(Route, JObj, E) end),
 	    {error, E}
     end.
 
--spec(send_uuid_to_app/3 :: (JObj :: json_object(), UUID :: binary(), CtlQ :: binary()) -> no_return()).
+-spec send_uuid_to_app/3 :: (json_object(), binary(), binary()) -> 'ok'.
 send_uuid_to_app(JObj, UUID, CtlQ) ->
     Msg = wh_json:get_value(<<"Msg-ID">>, JObj),
     AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
@@ -237,11 +213,11 @@ send_uuid_to_app(JObj, UUID, CtlQ) ->
 	       ,{<<"Call-ID">>, UUID}
 	       ,{<<"Control-Queue">>, CtlQ}
 		| wh_api:default_headers(CtlQ, <<"resource">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, JSON} = wh_api:resource_resp(RespProp),
+    {ok, JSON} = wapi_resource:resp(RespProp),
     ?LOG("sending ~s", [JSON]),
-    amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
+    wapi_resource:publish_resp(AppQ, JSON).
 
--spec(send_failed_req/2 :: (JObj :: json_object(), Failed :: integer()) -> no_return()).
+-spec send_failed_req/2 :: (json_object(), integer()) -> 'ok'.
 send_failed_req(JObj, Failed) ->
     Msg = wh_json:get_value(<<"Msg-ID">>, JObj),
     AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
@@ -249,11 +225,11 @@ send_failed_req(JObj, Failed) ->
     RespProp = [{<<"Msg-ID">>, Msg}
 		,{<<"Failed-Attempts">>, Failed}
 		| wh_api:default_headers(<<>>, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, JSON} = wh_api:resource_error(RespProp),
+    {ok, JSON} = wapi_resource:error(RespProp),
     ?LOG("sending resource error ~s", [JSON]),
-    amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
+    wapi_resource:publish_error(AppQ, JSON).
 
--spec(send_failed_consume/3 :: (Route :: binary() | list(), JObj :: json_object(), E :: binary()) -> no_return()).
+-spec send_failed_consume/3 :: (binary() | list(), json_object(), binary()) -> 'ok'.
 send_failed_consume(Route, JObj, E) ->
     Msg = wh_json:get_value(<<"Msg-ID">>, JObj),
     AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
@@ -262,9 +238,9 @@ send_failed_consume(Route, JObj, E) ->
 		,{<<"Failed-Route">>, Route}
 		,{<<"Failure-Message">>, wh_util:to_binary(E)}
 		| wh_api:default_headers(<<>>, <<"resource">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, JSON} = wh_api:resource_error(RespProp),
+    {ok, JSON} = wapi_resource:error(RespProp),
     ?LOG("sending originate error ~s", [JSON]),
-    amqp_util:targeted_publish(AppQ, JSON, <<"application/json">>).
+    wapi_resource:publish_error(AppQ, JSON).
 
 %% sort first by percentage utilized (less utilized first), then by bias (larger goes first), then by available channels (more available first)
 %% [
@@ -275,16 +251,16 @@ send_failed_consume(Route, JObj, E) ->
 %% ] ==>
 %% [ [{node, 4}], [{node, 2}], [{node, 3}], [{node, 1}] ]
 %%    least util,  more chan    most chan    most util
--spec(sort_resources/2 :: (PropA :: proplist(), PropB :: proplist()) -> boolean()).
+-spec sort_resources/2 :: (proplist(), proplist()) -> boolean().
 sort_resources(PropA, PropB) ->
-    UtilB = get_value(percent_utilized, PropB),
-    case get_value(percent_utilized, PropA) of
+    UtilB = props:get_value(percent_utilized, PropB),
+    case props:get_value(percent_utilized, PropA) of
         UtilB ->                   % same utilization, use node with more available channels
-	    BiasB = get_value(bias, PropB, 1),
-	    case get_value(bias, PropA, 1) of
+	    BiasB = props:get_value(bias, PropB, 1),
+	    case props:get_value(bias, PropA, 1) of
 		BiasB -> %% same bias, use node with more available channels
-		    ACB = get_value(available_channels, PropB),
-		    case get_value(available_channels, PropA) of
+		    ACB = props:get_value(available_channels, PropB),
+		    case props:get_value(available_channels, PropA) of
 			C when C >= ACB -> true;
 			_ -> false
 		    end;
