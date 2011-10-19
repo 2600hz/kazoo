@@ -46,7 +46,7 @@
 %% gen_listener API
 -export([add_responder/3, rm_responder/2, rm_responder/3]).
 
--export([add_binding/2, add_binding/3, rm_binding/2]).
+-export([add_binding/2, add_binding/3, rm_binding/2, rm_binding/3]).
 
 behaviour_info(callbacks) ->
     [{init, 1}
@@ -174,6 +174,15 @@ add_binding(Srv, Binding, Props) ->
       Binding :: atom().
 rm_binding(Srv, Binding) ->
     gen_server:cast(Srv, {rm_binding, Binding}).
+
+-spec rm_binding/3 :: (Srv, Binding, Props) -> 'ok' when
+      Srv :: atom() | pid(),
+      Binding :: atom(),
+      Props :: proplist().
+rm_binding(Srv, Binding, []) ->
+    gen_server:cast(Srv, {rm_binding, Binding});
+rm_binding(Srv, Binding, Props) ->
+    gen_server:cast(Srv, {rm_binding, Binding, Props}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -308,6 +317,29 @@ handle_cast({rm_binding, Binding}=Req, #state{queue=Q}=State) ->
 	error:undef ->
 	    ?LOG_SYS("Module ~s doesn't exist or unbind_q/1 isn't exported", [Wapi]),
 	    queue_bindings:rm_binding_from_q(Q, Binding),
+	    {noreply, State}
+    end;
+
+handle_cast({rm_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
+    Wapi = <<"wapi_", (wh_util:to_binary(Binding))/binary>>,
+    try
+	ApiMod = wh_util:to_atom(Wapi),
+	ApiMod:ubind_q(Q, Props),
+	{noreply, State}
+    catch
+	error:badarg ->
+	    ?LOG_SYS("Atom ~s not found", [Wapi]),
+	    case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
+		non_existing ->
+		    {noreply, State};
+		_Path ->
+		    ?LOG_SYS("beam file found: ~s", [_Path]),
+		    wh_util:to_atom(Wapi, true),
+		    handle_cast(Req, State)
+	    end;
+	error:undef ->
+	    ?LOG_SYS("Module ~s doesn't exist or unbind_q/2 isn't exported", [Wapi]),
+	    queue_bindings:rm_binding_from_q(Q, Binding, Props),
 	    {noreply, State}
     end;
 
@@ -482,7 +514,7 @@ start_amqp(Props) ->
 stop_amqp(<<>>, _) -> ok;
 stop_amqp(Q, Bindings) ->
     Self = self(),
-    spawn(fun() -> [ gen_listener:rm_binding(Self, Type) || {Type, _} <- Bindings] end),
+    spawn(fun() -> [ gen_listener:rm_binding(Self, Type, Prop) || {Type, Prop} <- Bindings] end),
     amqp_util:queue_delete(Q).
 
 -spec set_qos/1 :: (undefined | non_neg_integer()) -> 'ok'.

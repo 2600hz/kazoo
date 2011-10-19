@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(queue_bindings).
 
--export([known_bind_types/0, add_binding_to_q/3, rm_binding_from_q/2]).
+-export([add_binding_to_q/3, rm_binding_from_q/2]).
 
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
@@ -27,14 +27,6 @@
 		      'authorization'.
 -export_type([bind_types/0]).
 
--spec known_bind_types/0 :: () -> [bind_types(),...].
-known_bind_types() ->
-    ['cdrs', 'dth', 'call_events', 'notifications'
-     ,'rating'
-     ,'cdrs', 'dth', 'call_events', 'self', 'notifications'
-     ,'switch_lookups', 'authorization'
-    ].
-
 -spec add_binding_to_q/3 :: (Q, Type, Props) -> 'ok' when
       Q :: binary(),
       Type :: bind_types(),
@@ -46,10 +38,6 @@ add_binding_to_q(Q, cdrs, Props) ->
 add_binding_to_q(Q, call_events, Props) ->
     CallID = get_callid(Props),
     amqp_util:bind_q_to_callevt(Q, CallID, events),
-    ok;
-add_binding_to_q(Q, call_status, Props) ->
-    CallID = get_callid(Props),
-    amqp_util:bind_q_to_callevt(Q, CallID, status_req),
     ok;
 add_binding_to_q(Q, switch_lookups, _Props) ->
     amqp_util:resource_exchange(),

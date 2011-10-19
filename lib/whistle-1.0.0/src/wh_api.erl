@@ -21,10 +21,6 @@
 %% API
 -export([default_headers/5, extract_defaults/1]).
 
-%% Resources
--export([channel_query_req/1, channel_query_resp/1
-	]).
-
 %% In-Call
 -export([call_event/1, error_resp/1, call_cdr/1, call_status_req/1, call_status_resp/1]).
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
@@ -45,9 +41,6 @@
 
 %% Configuration
 -export([document_change/1, document_change_v/1]).
-
-%% Validation functions
--export([channel_query_req_v/1, channel_query_resp_v/1]).
 
 -export([call_event_v/1, error_resp_v/1, call_cdr_v/1, call_status_req_v/1, call_status_resp_v/1]).
 -export([play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1, store_http_resp_v/1
@@ -132,51 +125,6 @@ dialplan_req_v(Prop, AppName) ->
 	{_, VFun} ->
 	    VFun(Prop)
     end.
-
-%%--------------------------------------------------------------------
-%% @doc Resource Request - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec channel_query_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-    Prop :: proplist() | json_object().
-channel_query_req([_|_]=Prop) ->
-    case channel_query_req_v(Prop) of
-	true -> build_message(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for channel_query_req"}
-    end;
-channel_query_req(JObj) ->
-    channel_query_req(wh_json:to_proplist(JObj)).
-
--spec channel_query_req_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-channel_query_req_v([_|_]=Prop) ->
-    validate(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?CHANNEL_QUERY_REQ_VALUES, ?CHANNEL_QUERY_REQ_TYPES);
-channel_query_req_v(JObj) ->
-    channel_query_req_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
-%% @doc Resource Response - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec channel_query_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-    Prop :: proplist() | json_object().
-channel_query_resp([_|_]=Prop) ->
-    case channel_query_resp_v(Prop) of
-	true -> build_message(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?OPTIONAL_CHANNEL_QUERY_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for resource_resp"}
-    end;
-channel_query_resp(JObj) ->
-    channel_query_resp(wh_json:to_proplist(JObj)).
-
--spec channel_query_resp_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-channel_query_resp_v([_|_]=Prop) ->
-    validate(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?CHANNEL_QUERY_RESP_VALUES, ?CHANNEL_QUERY_RESP_TYPES);
-channel_query_resp_v(JObj) ->
-    channel_query_resp_v(wh_json:to_proplist(JObj)).
-
 
 %%--------------------------------------------------------------------
 %% @doc Format a call event from the switch for the listener

@@ -107,25 +107,6 @@
 				 ]).
 -define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
-%% Channel Query Request
--define(CHANNEL_QUERY_REQ_HEADERS, []).
--define(OPTIONAL_CHANNEL_QUERY_REQ_HEADERS, [<<"Call-Direction">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-						 ,<<"IP-Address">>, <<"Destination-Number">>, <<"Switch-Hostname">>
-					    ]).
--define(CHANNEL_QUERY_REQ_VALUES, [{<<"Event-Category">>, <<"locate">>}
-				   ,{<<"Event-Name">>, <<"channel_req">>}
-				   ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
-				  ]).
--define(CHANNEL_QUERY_REQ_TYPES, []).
-
-%% Channel Query Response
--define(CHANNEL_QUERY_RESP_HEADERS, [<<"Active-Calls">>]).
--define(OPTIONAL_CHANNEL_QUERY_RESP_HEADERS, []).
--define(CHANNEL_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"locate">>}
-				    ,{<<"Event-Name">>, <<"channel_resp">>}
-				   ]).
--define(CHANNEL_QUERY_RESP_TYPES, []).
-
 %% Call CDR
 -define(CALL_CDR_HEADERS, [ <<"Call-ID">>]).
 -define(OPTIONAL_CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Custom-Channel-Vars">>
