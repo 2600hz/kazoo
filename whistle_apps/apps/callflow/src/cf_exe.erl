@@ -150,6 +150,8 @@ wait(#cf_call{amqp_q=Q, call_id=CallId}=Call, Flow, Pid, CallStatus) ->
         {stop} ->
             ?LOG_END("execution has been stopped"),
             cf_call_command:hangup(Call);
+        {transfer} ->
+            ?LOG_END("execution control has been transferred");
         {#'basic.deliver'{}, #amqp_msg{props = Props, payload = Payload}} when
               Props#'P_basic'.content_type == <<"application/json">> ->
             JObj = mochijson2:decode(Payload),
