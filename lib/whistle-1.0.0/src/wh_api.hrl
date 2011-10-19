@@ -78,30 +78,6 @@
 -define(CONF_DOC_UPDATE_TYPES, [{<<"ID">>, fun is_binary/1}
                                 ,{<<"Rev">>, fun is_binary/1}]).
 
-%% Offnet Resource Request
--define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Call-ID">>, <<"Resource-Type">>, <<"To-DID">>
-                                      ,<<"Account-ID">>, <<"Control-Queue">>, <<"Application-Name">>
-                                     ]).
--define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS, [<<"Timeout">>, <<"Ignore-Early-Media">>, <<"Flags">>, <<"Media">>
-                                               ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
-                                               ,<<"Emergency-Caller-ID-Name">>, <<"Emergency-Caller-ID-Number">>
-                                               ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
-                                              ]).
--define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
-                                     ,{<<"Event-Name">>, <<"offnet_req">>}
-                                     ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
-                                     ,{<<"Application-Name">>, [<<"bridge">>]}
-                                     ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
-                                    ]).
--define(OFFNET_RESOURCE_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
-                                    ,{<<"Account-ID">>, fun is_binary/1}
-                                    ,{<<"Control-Queue">>, fun is_binary/1}
-                                    ,{<<"To-DID">>, fun is_binary/1}
-                                    ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
-                                    ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-                                    ,{<<"Flags">>, fun is_list/1}
-                                   ]).
-
 %% Resource Request
 -define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Invite-Format">>]).
 -define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>

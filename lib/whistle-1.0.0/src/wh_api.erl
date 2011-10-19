@@ -22,7 +22,7 @@
 -export([default_headers/5, extract_defaults/1]).
 
 %% Resources
--export([offnet_resource_req/1, resource_req/1, resource_resp/1, resource_error/1
+-export([resource_req/1, resource_resp/1, resource_error/1
 	 ,channel_query_req/1, channel_query_resp/1
 	]).
 
@@ -48,7 +48,7 @@
 -export([document_change/1, document_change_v/1]).
 
 %% Validation functions
--export([offnet_resource_req_v/1, resource_req_v/1, resource_resp_v/1, resource_error_v/1
+-export([resource_req_v/1, resource_resp_v/1, resource_error_v/1
 	,channel_query_req_v/1, channel_query_resp_v/1]).
 
 -export([call_event_v/1, error_resp_v/1, call_cdr_v/1, call_status_req_v/1, call_status_resp_v/1]).
@@ -116,7 +116,6 @@ extract_defaults(Prop) ->
 		end, [], ?DEFAULT_HEADERS ++ ?OPTIONAL_DEFAULT_HEADERS).
 
 %%--------------------------------------------------------------------
-
 %% @doc Dialplan Request Validation
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -135,28 +134,6 @@ dialplan_req_v(Prop, AppName) ->
 	{_, VFun} ->
 	    VFun(Prop)
     end.
-
-%%--------------------------------------------------------------------
-%% @doc Offnet resource request - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec offnet_resource_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-    Prop :: proplist() | json_object().
-offnet_resource_req({struct, Prop}) ->
-    offnet_resource_req(Prop);
-offnet_resource_req(Prop) ->
-    case offnet_resource_req_v(Prop) of
-	true -> build_message(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for offnet_resource_req"}
-    end.
-
--spec offnet_resource_req_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-offnet_resource_req_v({struct, Prop}) ->
-    offnet_resource_req_v(Prop);
-offnet_resource_req_v(Prop) ->
-    validate(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OFFNET_RESOURCE_REQ_VALUES, ?OFFNET_RESOURCE_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Resource Request - see wiki
