@@ -5,3 +5,5 @@
 -include_lib("exmpp/include/exmpp_nss.hrl").
 
 -define(DEFAULT_XMPP_PORT, 5222).
+-define(APP_NAME, <<"voxeo">>).
+-define(APP_VERSION, <<"0.1.0">>).

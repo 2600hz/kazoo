@@ -23,7 +23,8 @@
 -define(STARTUP_CONFIG, [code:priv_dir(voxeo), "/startup.config"]).
 
 -record(state, {
-	  xmpp_session = 'undefined' :: pid() | 'undefined'
+	  my_q = 'undefined' :: 'undefined' | ne_binary()
+	  ,xmpp_session = 'undefined' :: pid() | 'undefined'
 	  ,xmpp_server = "" :: string()
 	  ,xmpp_port = ?DEFAULT_XMPP_PORT :: integer()
 	  ,xmpp_use_ssl = 'true' :: boolean()
@@ -167,8 +168,23 @@ handle_info(authenticate, #state{xmpp_session=Session, xmpp_server=Server, xmpp_
 	    {stop, normal, State}
     end;
 
-handle_info(bridge, #state{}=State) ->
+handle_info(bridge, #state{my_q=Q
+			   ,rayo_sip_user=SIP
+			   ,rayo_lang=Lang
+			   ,stream_response=StreamIt
+			   ,aleg_callid=CallID
+			   ,aleg_ctl_q=CtrlQ}=State) ->
     ?LOG("Bridge to ASR"),
+
+    Command = [{<<"Application-Name">>, <<"bridge">>}
+               ,{<<"Endpoints">>, make_endpoint(SIP)}
+               ,{<<"Timeout">>, 1000}
+               ,{<<"Call-ID">>, CallID}
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+	      ],
+    {ok, Payload} = wapi_dialplan:bridge([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    wapi_dialplan:publish_action(CtrlQ, Payload),
+
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -204,6 +220,18 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec make_endpoint/1 :: (ne_binary()) -> json_objects().
+make_endpoint(<<"sip:", _/binary>>=SIP) -> make_ep(SIP);
+make_endpoint(EP) -> make_ep(<<"sip:", EP/binary>>).
+
+-spec make_ep/1 :: (ne_binary()) -> json_objects().
+make_ep(SIP) ->
+    [wh_json:from_list([
+			{<<"Invite-Format">>, <<"route">>}
+			,{<<"Route">>, SIP}
+		       ])
+    ].
+
 handle_packet(Session, #received_packet{packet_type='iq', type_attr=Type, raw_packet=IQ}) ->
     ?LOG("IQ packet of type ~p", [Type]),
     ?LOG("Sender: ~p", [exmpp_stanza:get_sender(IQ)]),
