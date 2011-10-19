@@ -284,6 +284,18 @@ get_fs_app(_Node, UUID, JObj, <<"bridge">>=App) ->
             {App, Dialplan}
     end;
 
+get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>=App) ->
+    case wh_api:call_pickup_req_v(JObj) of
+	false -> {'error', <<"intercept failed to execute as JObj did not validate">>};
+	true ->
+            Param = case wh_json:is_true(<<"Other-Leg">>, JObj) of
+                        true -> <<"-bleg ">>;
+                        false -> <<>>
+                    end,
+            Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
+            {<<"intercept">>, <<Param/binary, Target/binary>>}
+    end;
+
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
     case wh_api:tone_detect_req_v(JObj) of
 	false -> {'error', <<"tone detect failed to execute as JObj did not validate">>};

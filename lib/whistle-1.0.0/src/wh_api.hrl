@@ -559,8 +559,9 @@
                          ]).
 
 %% Call Pickup
--define(CALL_PICKUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, [<<"Insert-At">>]).
+-define(CALL_PICKUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Target-Call-ID">>]).
+-define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, [<<"Insert-At">>, <<"Other-Leg">>
+                                               ,<<"Unbridged-Only">>, <<"Unanswered-Only">>]).
 -define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 				 ,{<<"Event-Name">>, <<"command">>}
 				 ,{<<"Application-Name">>, <<"call_pickup">>}
@@ -868,6 +869,7 @@
 				 ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
 				 ,{<<"respond">>, <<"respond">>}
 				 ,{<<"conference">>, <<"conference">>}
+				 ,{<<"intercept">>, <<"call_pickup">>}
 				 ,{<<"noop">>, <<"noop">>}
 				]).
 
