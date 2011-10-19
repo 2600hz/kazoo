@@ -22,18 +22,33 @@
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
+    {ok, Status} = cf_call_command:b_status(Call),
     ParkedCalls = get_parked_calls(Call),
     SlotNumber = get_slot_number(ParkedCalls, Call),
-
-    {ok, Status} = cf_call_command:b_status(Call),
-
-    case wh_json:get_value(<<"action">>, Data, <<"park">>) of
-        <<"park">> ->
-            park_call(SlotNumber, ParkedCalls, Call);
-        <<"retrieve">> ->
-            retrieve(SlotNumber, ParkedCalls, hangup, Call);
-        <<"auto">> ->
-            retrieve(SlotNumber, ParkedCalls, park, Call)
+    ReferredTo = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-To">>], Status, <<>>),
+    case re:run(ReferredTo, "Replaces=([^;]*)", [{capture, [1], binary}]) of
+        nomatch when ReferredTo =:= <<>> ->
+            ?LOG("call was the result of a direct dial"),
+            case wh_json:get_value(<<"action">>, Data, <<"park">>) of
+                <<"park">> ->
+                    park_call(SlotNumber, ParkedCalls, Status, Call),
+                    CFPid ! {transfer};
+                <<"retrieve">> ->
+                    retrieve(SlotNumber, ParkedCalls, Status, Call),
+                    CFPid ! {hangup};
+                <<"auto">> ->
+                    retrieve(SlotNumber, ParkedCalls, Status, Call)
+                        orelse park_call(SlotNumber, ParkedCalls, Status, Call),
+                    CFPid ! {transfer}
+            end;
+        nomatch ->
+            ?LOG("call was the result of a blind transfer, assuming intention was to park"),
+            park_call(SlotNumber, ParkedCalls, Status, Call),
+            CFPid ! {transfer};
+        {match, [Replaces]} ->
+            ?LOG("call was the result of an attended-transfer completion, updating call id"),
+            update_call_id(Replaces, ParkedCalls, Call),
+            CFPid ! {transfer}
     end.
 
 %%--------------------------------------------------------------------
@@ -42,32 +57,54 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %% Determine the appropriate action to retrieve a parked call
 %% @end
 %%--------------------------------------------------------------------
--spec retrieve/4 :: (SlotNumber, ParkedCalls, MissingAction, Call) -> no_return() when
+-spec retrieve/4 :: (SlotNumber, ParkedCalls, Status, Call) -> boolean() when
       SlotNumber :: binary(),
       ParkedCalls :: json_object(),
-      MissingAction :: park | hangup,
+      Status :: json_object(),
       Call :: #cf_call{}.
-retrieve(SlotNumber, ParkedCalls, MissingAction, #cf_call{to=To}=Call) ->
+retrieve(SlotNumber, ParkedCalls, Status, #cf_call{to_user=ToUser, to_realm=ToRealm, call_id=CallId}=Call) ->
     case wh_json:get_value([<<"slots">>, SlotNumber], ParkedCalls) of
-        undefined when MissingAction =:= park ->
-            io:format("PARK IN SLOT ~p~n", [SlotNumber]);
         undefined ->
-            io:format("They hungup?~n", []);
+            ?LOG("They hungup? play back nobody here message", []),
+            false;
         Slot ->
-            {ok, Status} = cf_call_command:b_status(Call),
             Node = wh_json:get_value(<<"Node">>, Status, <<"unknown">>),
             case wh_json:get_value(<<"Node">>, Slot) of
                 undefined ->
-                    io:format("THEY HUNGUP!~n", []);
+                    ?LOG("THEY HUNGUP! playback nobody here and clean up", []),
+                    false;
                 Node ->
                     ParkedCall = wh_json:get_value(<<"Call-ID">>, Slot),
-                    io:format("Bridge to callid ~p~n", [ParkedCall]);
+                    ?LOG("pickup call id ~s", [ParkedCall]),
+                    Command = [{<<"Application-Name">>, <<"call_pickup">>}
+                               ,{<<"Target-Call-ID">>, ParkedCall}
+                               ,{<<"Call-ID">>, CallId}
+                               | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                              ],
+                    {ok, Payload} = wh_api:call_pickup_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+                    cf_call_command:send_callctrl(Payload, Call),
+                    true;
                 OtherNode ->
                     IP = get_node_ip(OtherNode),
-                    redirect(To, <<"sip:", IP/binary, ":5060">>, Call)
+                    Contact = <<"sip:", ToUser/binary, "@", ToRealm/binary>>,
+                    Server = <<"sip:", IP/binary, ":5060">>,
+                    redirect(Contact, Server, Call),
+                    true
             end
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Given a freeswitch node name try to determine the IP address,
+%% assumes that
+%% a) the hostname is resolvable by at least this server
+%% b) the IP is routable by the phone
+%% c) and above, that the port is 5060
+%% @end
+%%--------------------------------------------------------------------
+-spec get_node_ip/1 :: (Node) -> binary() when
+      Node :: binary().
 get_node_ip(Node) ->
     [_, Server] = binary:split(Node, <<"@">>),
     {ok, Addresses} = inet:getaddrs(wh_util:to_list(Server), inet),
@@ -83,27 +120,22 @@ get_node_ip(Node) ->
 %% Determine the appropriate action to park the current call scenario
 %% @end
 %%--------------------------------------------------------------------
--spec park_call/3 :: (SlotNumber, ParkedCalls, Call) -> ok | integer() when
+-spec park_call/4 :: (SlotNumber, ParkedCalls, Status, Call) -> ok | integer() when
       SlotNumber :: binary(),
       ParkedCalls :: json_object(),
+      Status :: json_object(),
       Call :: #cf_call{}.
-park_call(SlotNumber, ParkedCalls, Call) ->
-    {ok, Status} = cf_call_command:b_status(Call),
-    ReferredTo = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-To">>], Status, <<>>),
-    case re:run(ReferredTo, "Replaces=([^;]*)", [{capture, [1], binary}]) of
-        nomatch when ReferredTo =:= <<>> ->
-            ?LOG("request to park call was the result of a direct dial"),
-            Slot = create_slot(Status, Call),
-            save_slot(SlotNumber, Slot, ParkedCalls, Call),
+park_call(SlotNumber, ParkedCalls, Status, Call) ->
+    ?LOG("attempting to park call in slot ~p", [SlotNumber]),
+    Slot = create_slot(Status, Call),
+    save_slot(SlotNumber, Slot, ParkedCalls, Call),
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-To">>], Status) of
+        undefined ->
+            ?LOG("playback slot number to caller"),
             cf_call_command:b_answer(Call),
             cf_call_command:b_say(wh_util:to_binary(SlotNumber), Call);
-        nomatch ->
-            ?LOG("request to park call was the result of a blind transfer"),
-            Slot = create_slot(Status, Call),
-            save_slot(SlotNumber, Slot, ParkedCalls, Call);
-        {match, [Replaces]} ->
-            ?LOG("request to park call was the result of an attended-transfer completion"),
-            update_call_id(Replaces, ParkedCalls, Call)
+        _ ->
+            ok
     end.
 
 %%--------------------------------------------------------------------
@@ -135,7 +167,7 @@ get_slot_number(_, #cf_call{capture_group=CG}) when is_binary(CG) andalso size(C
 get_slot_number(ParkedCalls, _) ->
     Slots = wh_json:get_value(<<"slots">>, ParkedCalls, []),
     Next = case [wh_util:to_integer(Key) || Key <- wh_json:get_keys(Slots)] of
-               [] -> 1;
+               [] -> 100;
                Keys ->
                    hd(lists:dropwhile(fun(E) ->
                                               lists:member(E, Keys)
@@ -180,10 +212,10 @@ save_slot(SlotNumber, Slot, ParkedCalls, #cf_call{account_db=Db}=Call) ->
 update_call_id(Replaces, ParkedCalls, #cf_call{call_id=CallId, account_db=Db}=Call) ->
     {struct, Slots} = wh_json:get_value(<<"slots">>, ParkedCalls, ?EMPTY_JSON_OBJECT),
     Updated = lists:map(fun({Number, Props}=Slot) ->
-                                case wh_json:get_value(<<"call_id">>, Props) of
+                                case wh_json:get_value(<<"Call-ID">>, Props) of
                                     Replaces ->
-                                        ?LOG("update the call id ~s in slot ~p with ~s~n", [Replaces, Number, CallId]),
-                                        {Number, wh_json:set_value(<<"call_id">>, CallId, Props)};
+                                        ?LOG("update the call id ~s in slot ~p with ~s", [Replaces, Number, CallId]),
+                                        {Number, wh_json:set_value(<<"Call-ID">>, CallId, Props)};
                                     _ ->
                                         Slot
                                 end
@@ -221,13 +253,25 @@ get_parked_calls(#cf_call{account_db=Db, account_id=Id}) ->
             JObj
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Create a redirect request to the Contact on Server
+%% @end
+%%--------------------------------------------------------------------
+-spec redirect/3 :: (Contact, Server, Call) -> ok when
+      Contact :: binary(),
+      Server :: binary(),
+      Call :: #cf_call{}.
 redirect(Contact, Server, #cf_call{call_id=CallId, ctrl_q=CtrlQ}) ->
+    ?LOG("redirect to ~s on ~s", [Contact, Server]),
+    RedirectParam = <<";rcid=", (couch_mgr:get_uuid())/binary>>,
     Command = [{<<"Application-Name">>, <<"respond">>}
                ,{<<"Response-Code">>, <<"302">>}
-               ,{<<"Response-Message">>, Contact}
-               ,{<<"Redirect-Server">>, Server}
+               ,{<<"Response-Message">>, <<Contact/binary, RedirectParam/binary>>}
+               ,{<<"Redirect-Server">>, <<Server/binary, RedirectParam/binary>>}
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
-    io:format("Redirect: ~p~n", [Command]),
     {ok, Payload} = wh_api:respond_req(Command),
-    amqp_util:callctl_publish(CtrlQ, Payload).
+    amqp_util:callctl_publish(CtrlQ, Payload),
+    timer:sleep(2000).
