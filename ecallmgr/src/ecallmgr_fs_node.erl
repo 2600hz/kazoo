@@ -10,7 +10,9 @@
 
 %% API
 -export([start_link/1, start_link/2]).
--export([resource_consume/3]).
+-export([resource_consume/3, show_channels/1, fs_node/1, uuid_exists/2
+	 ,hostname/1
+	]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -18,10 +20,11 @@
 
 -include("ecallmgr.hrl").
 
--record(state, {node = 'undefined' :: atom()
-	       ,stats = #node_stats{} :: #node_stats{}
-	       ,options = [] :: proplist()
-	       }).
+-record(state, {
+	  node = 'undefined' :: atom()
+	  ,stats = #node_stats{} :: #node_stats{}
+	  ,options = [] :: proplist()
+	 }).
 
 -define(SERVER, ?MODULE).
 
@@ -34,6 +37,12 @@
 
 -define(FS_TIMEOUT, 5000).
 
+%% keep in sync with wh_api.hrl OPTIONAL_CHANNEL_QUERY_REQ_HEADERS
+-define(CALL_STATUS_HEADERS, [<<"Unique-ID">>, <<"Call-Direction">>, <<"Caller-Caller-ID-Name">>, <<"Caller-Caller-ID-Number">>
+				  ,<<"Caller-Network-Addr">>, <<"Caller-Destination-Number">>, <<"FreeSWITCH-Hostname">>
+			     ]).
+-define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, [<<"Call-ID">> | ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS])).
+
 -spec resource_consume/3 :: (FsNodePid, Route, JObj) -> {'resource_consumed', binary(), binary(), integer()} |
 							{'resource_error', binary() | 'error'} when
       FsNodePid :: pid(),
@@ -44,6 +53,22 @@ resource_consume(FsNodePid, Route, JObj) ->
     receive Resp -> Resp
     after   10000 -> {resource_error, timeout}
     end.
+
+-spec show_channels/1 :: (pid()) -> [proplist(),...] | [].
+show_channels(Srv) ->
+    gen_server:call(Srv, show_channels).
+
+-spec hostname/1 :: (pid()) -> fs_api_ret().
+hostname(Srv) ->
+    gen_server:call(Srv, hostname).
+
+-spec fs_node/1 :: (pid()) -> atom().
+fs_node(Srv) ->
+    gen_server:call(Srv, fs_node).
+
+-spec uuid_exists/2 :: (pid(), binary()) -> boolean().
+uuid_exists(Srv, UUID) ->
+    gen_server:call(Srv, {uuid_exists, UUID}).
 
 -spec start_link/1 :: (Node :: atom()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node) ->
@@ -58,8 +83,28 @@ init([Node, Options]) ->
     Stats = #node_stats{started = erlang:now()},
     {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
 
-handle_call(_Req, _From, State) ->
-    {reply, ok, State}.
+-spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> {'noreply', #state{}} | {'reply', atom(), #state{}}.
+handle_call(hostname, From, #state{node=Node}=State) ->
+    spawn(fun() -> gen_server:reply(From, freeswitch:api(Node, hostname, "")) end),
+    {noreply, State};
+handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
+    spawn(fun() ->
+		  case freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
+		      {'ok', Result} -> ?LOG(UUID, "Result of uuid_exists: ~s", [Result]), gen_server:reply(From, wh_util:is_true(Result));
+		      _ -> ?LOG(UUID, "Failed to get result from uuid_exists", []), gen_server:reply(From, false)
+		  end
+	  end),
+    {noreply, State};
+handle_call(fs_node, _From, #state{node=Node}=State) ->
+    {reply, Node, State};
+handle_call(show_channels, From, #state{node=Node}=State) ->
+    spawn(fun() ->
+		  case freeswitch:api(Node, show, "channels") of
+		      {ok, Rows} -> gen_server:reply(From, convert_rows(Node, Rows));
+		      _ -> gen_server:reply(From, [])
+		  end
+	  end),
+    {noreply, State}.
 
 handle_cast(_Req, State) ->
     {noreply, State}.
@@ -338,3 +383,31 @@ get_active_channels(Node) ->
 	_ ->
 	    0
     end.
+
+-spec convert_rows/2 :: (atom(), binary()) -> [proplist(),...] | [].
+convert_rows(_, <<"\n0 total.\n">>) ->
+    ?LOG("No channels up"),
+    [];
+convert_rows(Node, RowsBin) ->
+    [_|Rows] = binary:split(RowsBin, <<"\n">>, [global]),
+    return_rows(Node, Rows, []).
+
+-spec return_rows/3 :: (atom(), [binary(),...] | [], [proplist(),...] | []) -> [proplist(),...] | [].
+return_rows(Node, [<<>>|Rs], Acc) ->
+    return_rows(Node, Rs, Acc);
+return_rows(Node, [R|Rs], Acc) ->
+    ?LOG("R: ~s", [R]),
+    case binary:split(R, <<",">>) of
+	[_Total] ->
+	    ?LOG("Total: ~s", [_Total]),
+	    return_rows(Node, Rs, Acc);
+	[UUID|_] ->
+	    ?LOG("UUID: ~s", [UUID]),
+	    {ok, Dump} = freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)),
+	    DumpProp = ecallmgr_util:eventstr_to_proplist(Dump),
+
+	    %% Pull wanted data from the converted DUMP proplist
+	    Prop = [{AMQPKey, props:get_value(FSKey, DumpProp)} || {FSKey, AMQPKey} <- ?CALL_STATUS_MAPPING],
+	    return_rows(Node, Rs, [ Prop | Acc ])
+    end;
+return_rows(_Node, [], Acc) -> Acc.

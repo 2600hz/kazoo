@@ -5,7 +5,7 @@
 -export([targeted_exchange/0, targeted_publish/2, targeted_publish/3]).
 -export([callctl_exchange/0, callctl_publish/2, callctl_publish/3, callctl_publish/4]).
 -export([callevt_exchange/0, callevt_publish/1, callevt_publish/3]).
--export([resource_exchange/0, resource_publish/1, resource_publish/2]).
+-export([resource_exchange/0, resource_publish/1, resource_publish/2, resource_publish/3]).
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
 -export([callmgr_exchange/0, callmgr_publish/3]).
@@ -132,10 +132,16 @@ callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
 -spec resource_publish/2 :: (Payload, ContentType) -> 'ok' when
       Payload :: iolist(),
       ContentType :: ne_binary().
+-spec resource_publish/3 :: (Payload, RoutingKey, ContentType) -> 'ok' when
+      Payload :: iolist(),
+      RoutingKey :: ne_binary(),
+      ContentType :: ne_binary().
 resource_publish(Payload) ->
     resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
 resource_publish(Payload, ContentType) ->
-    basic_publish(?EXCHANGE_RESOURCE, ?KEY_RESOURCE_REQ, Payload, ContentType).
+    resource_publish(Payload, ?KEY_RESOURCE_REQ, ContentType).
+resource_publish(Payload, RoutingKey, ContentType) ->
+    basic_publish(?EXCHANGE_RESOURCE, RoutingKey, Payload, ContentType).
 
 -spec originate_resource_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().

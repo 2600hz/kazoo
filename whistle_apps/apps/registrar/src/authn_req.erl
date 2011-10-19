@@ -15,10 +15,12 @@
 init() ->
     ok.
 
--spec handle_req/2 :: (JObj, Props) -> no_return() when
+-spec handle_req/2 :: (JObj, Props) -> 'ok' when
       JObj :: json_object(),
       Props :: proplist().
 handle_req(JObj, Props) ->
+    true = wh_api:authn_req_v(JObj),
+
     Cache = props:get_value(cache, Props),
     Queue = props:get_value(queue, Props),
 

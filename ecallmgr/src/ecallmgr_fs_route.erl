@@ -265,7 +265,7 @@ process_route_req(Node, FSID, CallID, FSData) ->
 	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
 	       ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
 	       ,{<<"Call-ID">>, CallID}
-	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
+	       ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
 	       | wh_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
     %% Server-ID will be over-written by the pool worker
 
@@ -315,7 +315,8 @@ authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
 	{false, _} ->
 	    ?LOG("Authz is false"),
 	    reply_forbidden(Node, FSID);
-	{true, {struct, CCV}} ->
+	{true, CCVJObj} ->
+	    CCV = wh_json:to_proplist(CCVJObj),
 	    ?LOG("Authz is true"),
 	    true = wh_api:route_resp_v(RespJObj),
 	    ?LOG("Valid route resp"),

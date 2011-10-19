@@ -83,15 +83,20 @@ compact_shard(AdminConn, Shard, DesignDocs) ->
       AdminConn :: #server{},
       Shard :: binary().
 wait_for_compaction(AdminConn, Shard) ->
-    {ok, ShardData} = couch_util:db_info(AdminConn, Shard),
-    case wh_json:is_true(<<"compact_running">>, ShardData, false) of
-	true ->
-	    ?LOG("Compaction running for shard"),
+    case couch_util:db_info(AdminConn, Shard) of
+	{ok, ShardData} ->
+	    case wh_json:is_true(<<"compact_running">>, ShardData, false) of
+		true ->
+		    ?LOG("Compaction running for shard"),
+		    ok = timer:sleep(?SLEEP_BETWEEN_POLL),
+		    wait_for_compaction(AdminConn, Shard);
+		false ->
+		    ?LOG("Compaction is not running for shard"),
+		    ok
+	    end;
+	_ ->
 	    ok = timer:sleep(?SLEEP_BETWEEN_POLL),
-	    wait_for_compaction(AdminConn, Shard);
-	false ->
-	    ?LOG("Compaction is not running for shard"),
-	    ok
+	    wait_for_compaction(AdminConn, Shard)
     end.
 
 -spec get_db_design_docs/2 :: (Conn, DB) -> [binary(),...] | [] when

@@ -337,7 +337,7 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
 
 	    SuccessJObj = case wh_json:get_value(<<"On-Success">>, JObj, []) of
 			      [] -> [{<<"Application-Name">>, <<"park">>} | wh_api:extract_defaults(JObj)]; % default to parking the call
-			      AppJObj -> {struct, AppJObj ++ wh_api:extract_defaults(JObj)}
+			      AppJObj -> wh_json:from_list(AppJObj ++ wh_api:extract_defaults(JObj))
 			  end,
 	    {SuccessApp, SuccessAppData} = case get_fs_app(Node, UUID, SuccessJObj, wh_json:get_value(<<"Application-Name">>, SuccessJObj)) of
 					       {'error', _Str} -> {<<"park">>, <<>>}; % default to park if passed app isn't right
@@ -586,7 +586,7 @@ amqp_stream(DestQ, F, State, Headers, Seq) ->
 stream_over_http(Node, UUID, File, Verb, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     ?LOG("streaming via HTTP(~s) to ~s", [Verb, Url]),
-    {struct, AddHeaders} = wh_json:get_value(<<"Additional-Headers">>, JObj, ?EMPTY_JSON_OBJECT),
+    AddHeaders = wh_json:to_proplist(wh_json:get_value(<<"Additional-Headers">>, JObj, ?EMPTY_JSON_OBJECT)),
     Headers = [{"Content-Length", filelib:file_size(File)}
 	       | [ {wh_util:to_list(K), V} || {K,V} <- AddHeaders] ],
     Method = wh_util:to_atom(Verb, true),
@@ -596,10 +596,10 @@ stream_over_http(Node, UUID, File, Verb, JObj) ->
 	{ok, "504", _, _} ->
             stream_over_http(Node, UUID, File, Verb, JObj);
 	{ok, StatusCode, RespHeaders, RespBody} ->
-            MediaTransResults = {struct, [{<<"Status-Code">>, StatusCode}
-                                          ,{<<"Headers">>, {struct, [ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- RespHeaders ]}}
-                                          ,{<<"Body">>, wh_util:to_binary(RespBody)}
-                                         ]},
+            MediaTransResults = wh_json:from_list([{<<"Status-Code">>, StatusCode}
+						   ,{<<"Headers">>, wh_json:from_list([ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- RespHeaders ])}
+						   ,{<<"Body">>, wh_util:to_binary(RespBody)}
+						  ]),
             send_store_call_event(Node, UUID, MediaTransResults),
 	    case wh_api:store_http_resp(wh_json:set_value(<<"Media-Transfer-Results">>, MediaTransResults, JObj)) of
 		{ok, Payload} ->
@@ -728,7 +728,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
                    ],
         EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
                        [] -> EvtProp1;
-                       CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
+                       CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
                    end,
         {ok, P1} = wh_api:call_event(EvtProp2),
         amqp_util:callevt_publish(UUID, P1, event)
@@ -801,7 +801,7 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
 	       ],
     EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
 		   [] -> EvtProp1;
-		   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
+		   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
 	       end,
     {ok, P1} = wh_api:call_event(EvtProp2),
     amqp_util:callevt_publish(UUID, P1, event).
