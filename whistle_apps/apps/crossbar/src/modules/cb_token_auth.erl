@@ -107,9 +107,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_contex
                   crossbar_util:binding_heartbeat(Pid),
                   case couch_mgr:open_doc(?TOKEN_DB, AuthToken) of
                       {ok, JObj} ->
-                          ?LOG("authenticating request"),
+                          ?LOG("token auth is valid, authenticating"),
                           Pid ! {binding_result, true, {RD, Context#cb_context{auth_doc=JObj}}};
-                      {error, _} ->
+                      {error, R} ->
+                          ?LOG("failed to authenticate token auth, ~p", [R]),
                           Pid ! {binding_result, false, {RD, Context}}
                   end
           end),
