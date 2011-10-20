@@ -156,9 +156,8 @@ start_search(Call, Prompts, #dbn_state{asr_endpoint=undefined, sort_by=SortBy}=D
     collect_min_digits(Call, Prompts, DbN, LookupTable, DTMFs);
 start_search(Call, Prompts, DbN, LookupTable) ->
     ?LOG("Playing ASR instructions"),
-    _ = play_asr_instructions(Call, Prompts),
-    ?LOG("Send asr amqp"),
-    send_asr_info(Call, DbN),
+    _ = play_asr_instructions(Call, Prompts, DbN),
+
     ?LOG("Wait for asr response"),
     case asr_response() of
 	{ok, Text} ->
@@ -356,9 +355,16 @@ no_matches_dtmf(Call, Prompts, _) ->
 play_no_results_menu(Call, #prompts{no_results_menu=NoResultsMenu}) ->
     play_and_collect([{play, NoResultsMenu}], Call).
 
--spec play_asr_instructions/2 :: (#cf_call{}, #prompts{}) -> 'ok'.
-play_asr_instructions(Call, #prompts{asr_instructions=AsrInstructions}) ->
-    play_and_wait([{play, AsrInstructions}], Call).
+-spec play_asr_instructions/3 :: (#cf_call{}, #prompts{}, #dbn_state{}) -> 'ok'.
+play_asr_instructions(Call, #prompts{asr_instructions=AsrInstructions}, DbN) ->
+    NoopID = cf_call_command:audio_macro([{play, AsrInstructions}], Call),
+
+    ?LOG("Send asr amqp"),
+    send_asr_info(Call, DbN),
+
+    ?LOG("Waiting for prompt to finish"),
+    {ok, _JObj} = cf_call_command:wait_for_noop(NoopID),
+    ok.
 
 -spec play_no_more_results/2 :: (Call, Prompts) -> {'ok', binary()} when
       Call :: #cf_call{},
