@@ -159,13 +159,30 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [AccountId]=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, #cb_context{doc=Doc}=Context | [AccountId]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = crossbar_doc:save(Context#cb_context{db_name=whapps_util:get_db_name(AccountId, encoded)}),
-		  whapps_util:replicate_from_account(whapps_util:get_db_name(AccountId, unencoded), ?AGG_DB, ?AGG_FILTER),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  %% this just got messy
+                  %% since we are not replicating, the accounts rev and the account rev on
+                  %% this doc can drift.... so set it to account save, then set it to
+                  %% accounts for the final operation... good times
+                  AccountDb = whapps_util:get_db_name(AccountId, encoded),
+                  AccountsRev = wh_json:get_value(<<"_rev">>, Doc, <<>>),
+                  case couch_mgr:lookup_doc_rev(AccountDb, AccountId) of
+                      {ok, Rev} ->
+                          case crossbar_doc:save(Context#cb_context{db_name=AccountDb
+                                                                    ,doc=wh_json:set_value(<<"_rev">>, Rev, Doc)
+                                                                   }) of
+                              #cb_context{resp_status=success, doc=Doc1}=Context1 ->
+                                  couch_mgr:ensure_saved(?AGG_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
+                                  Pid ! {binding_result, true, [RD, Context1, Params]};
+                              Else ->
+                                  Pid ! {binding_result, true, [RD, Else, Params]}
+                          end;
+                      _ ->
+                          Pid ! {binding_result, true, [RD, crossbar_util:response_conflicting_docs(Context), Params]}
+                  end
           end),
     {noreply, State};
 
@@ -703,7 +720,8 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
                 #cb_context{resp_status=success}=Context1 ->
                     _ = crossbar_bindings:map(<<"account.created">>, Db),
                     couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
-                    whapps_util:replicate_from_account(whapps_util:get_db_name(Db, unencoded), ?AGG_DB, ?AGG_FILTER),
+                    couch_mgr:revise_doc_from_file(Db, crossbar, ?MAINTENANCE_VIEW_FILE),
+                    couch_mgr:ensure_saved(?AGG_DB, Context1#cb_context.doc),
                     Context1;
                 Else ->
 		    ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),

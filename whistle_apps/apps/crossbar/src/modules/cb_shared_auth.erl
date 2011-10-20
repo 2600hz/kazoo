@@ -319,10 +319,12 @@ validate([], #cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context, _) ->
                     Context#cb_context{resp_status=success
                                        ,resp_data={struct, [{<<"account">>, Account}
                                                             ,{<<"user">>, User}]}};
-                {error, _} ->
+                {error, R} ->
+                    ?LOG("failed to get user for response ~p", [R]),
                     crossbar_util:response_db_fatal(Context)
             end;
-        {error, _} ->
+        {error, R} ->
+            ?LOG("failed to get account for response ~p", [R]),
             crossbar_util:response_db_fatal(Context)
     end;
 validate(_, Context, _) ->
@@ -423,32 +425,50 @@ import_missing_data(RemoteData) ->
       AccountId :: undefined | binary(),
       Account :: undefined | json_object().
 import_missing_account(undefined, _) ->
+    ?LOG("shared auth reply did not define an account id"),
     false;
 import_missing_account(_, undefined) ->
+    ?LOG("shared auth reply did not define an account definition"),
     false;
 import_missing_account(AccountId, Account) ->
+    %% check if the acount datbase exists
     Db = whapps_util:get_db_name(AccountId, encoded),
     case couch_mgr:db_exists(Db) of
+        %% if the account database exists make sure it has the account
+        %% definition, because when couch is acting up it can skip this
         true ->
-            ?LOG("remote account ~s alread exists locally", [AccountId]),
-            case couch_mgr:lookup_doc_rev(?AGG_DB, AccountId) of
-                {error, not_found} ->
-                    ?LOG("failed to locate account definition, forcing ~p creation", [AccountId]),
-                    whapps_util:replicate_from_account(whapps_util:get_db_name(AccountId, unencoded), ?AGG_DB, ?AGG_FILTER);
+            ?LOG("remote account db ~s alread exists locally", [AccountId]),
+            %% make sure the account definition is in the account, if not
+            %% use the one we got from shared auth
+            Event = <<"v1_resource.execute.post.accounts">>,
+            Doc = case couch_mgr:open_doc(Db, AccountId) of
+                      {error, not_found} ->
+                          ?LOG("missing local account definition, creating from shared auth response"),
+                          wh_json:delete_key(<<"_rev">>, Account);
+                      {ok, JObj} ->
+                          ?LOG("account definition exists locally"),
+                          JObj
+                  end,
+            Payload = [undefined, #cb_context{doc=Doc, db_name=Db}, AccountId],
+            case crossbar_bindings:fold(Event, Payload) of
+                [_, #cb_context{resp_status=success} | _] ->
+                    ?LOG("udpated account definition"),
+                    true;
                 _ ->
-                    ok
-            end,
-            true;
+                    ?LOG("could not update account definition"),
+                    false
+            end;
         false ->
+            ?LOG("remote account db ~s does not exist locally, creating", [AccountId]),
             Event = <<"v1_resource.execute.put.accounts">>,
             Doc = wh_json:delete_key(<<"_rev">>, Account),
             Payload = [undefined, #cb_context{doc=Doc}, [[]]],
             case crossbar_bindings:fold(Event, Payload) of
                 [_, #cb_context{resp_status=success} | _] ->
-                    ?LOG("imported account ~s", [AccountId]),
+                    ?LOG("imported account"),
                     true;
                 _ ->
-                    ?LOG("could not import account ~s", [AccountId]),
+                    ?LOG("could not import account"),
                     false
             end
     end.
@@ -465,8 +485,10 @@ import_missing_account(AccountId, Account) ->
       UserId :: undefined | binary(),
       User :: undefined | json_object().
 import_missing_user(_, undefined, _) ->
+    ?LOG("shared auth reply did not define an user id"),
     false;
 import_missing_user(_, _, undefined) ->
+    ?LOG("shared auth reply did not define an user object"),
     false;
 import_missing_user(AccountId, UserId, User) ->
     Db = whapps_util:get_db_name(AccountId, encoded),

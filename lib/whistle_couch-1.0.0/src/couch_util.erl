@@ -74,7 +74,7 @@ server_url(#server{host=Host, port=Port, options=Options}) ->
 		   false -> <<"http">>;
 		   true -> <<"https">>
 	       end,
-    
+
     binary:list_to_bin([Protocol, <<"://">>, UserPass, <<"@">>
 			    ,wh_util:to_binary(Host), <<":">>
 			    ,wh_util:to_binary(Port), "/"]).
@@ -206,7 +206,7 @@ all_docs(#server{}=Conn, DbName, Options) ->
       DbName :: binary(),
       DesignDoc :: binary(),
       ViewOptions :: proplist().
-get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->    
+get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = get_db(Conn, DbName),
     View = get_view(Db, DesignDoc, ViewOptions),
     do_fetch_results(View).
@@ -314,8 +314,12 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
 	{'ok', _}=Saved -> Saved;
 	{'error', conflict} ->
 	    Id = wh_json:get_value(<<"_id">>, Doc, <<>>),
-	    {'ok', Rev} = do_fetch_rev(Db, Id),
-	    do_ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, Doc), Opts);
+            case do_fetch_rev(Db, Id) of
+                {'ok', Rev} ->
+                    do_ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, Doc), Opts);
+                {'error', not_found} ->
+                    do_ensure_saved(Db, wh_json:delete_key(<<"_rev">>, Doc), Opts)
+            end;
 	{'error', _}=E -> E
     end.
 
