@@ -277,6 +277,7 @@ get_fs_app(_Node, UUID, JObj, <<"bridge">>=App) ->
                                                ],
                                  BridgeCmd = lists:flatten(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)])
                                      ++ string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
+				 ?LOG("Bridge Cmd: ~s", [BridgeCmd]),
                                  [{"application", BridgeCmd}|DP]
                          end],
             Dialplan = lists:foldr(fun(F, DP) -> F(DP) end, [], Generators),
@@ -422,7 +423,9 @@ get_bridge_endpoint(JObj) ->
 	{'error', 'timeout'} ->
             "";
 	EndPoint ->
+	    ?LOG("EP: ~s", [EndPoint]),
 	    CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
+	    ?LOG("CVs: ~s", [CVs]),
 	    wh_util:to_list(list_to_binary([CVs, EndPoint]))
     end.
 

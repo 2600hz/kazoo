@@ -255,6 +255,7 @@ handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
 
 handle_info(_Msg, State) ->
+    ?LOG("Unhandled msg: ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -320,6 +321,7 @@ insert_command(#state{node=Node, uuid=UUID, command_q=CommandQ, is_node_up=IsNod
 	    DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)), %% each command lacks the default headers
 	    lists:foreach(fun(?EMPTY_JSON_OBJECT) -> ok;
 			     (CmdJObj) ->
+				  put(callid, UUID),
 				  AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
 				  true = wh_api:dialplan_req_v(AppCmd),
                                   execute_control_request(CmdJObj, State)
@@ -389,6 +391,8 @@ post_hangup_commands(CmdQ) ->
       Cmd :: json_object(),
       State :: #state{}.
 execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
+    put(callid, UUID),
+
     try
         ?LOG("executing application ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)]),
         Mod = wh_util:to_atom(<<"ecallmgr_"

@@ -27,7 +27,7 @@
 		    ]).
 -define(BINDINGS, [
 		   {switch_lookups, []}
-		   ,{call_status, []}
+		   ,{channel_query, []}
 		  ]).
 
 -record(state, {}).
