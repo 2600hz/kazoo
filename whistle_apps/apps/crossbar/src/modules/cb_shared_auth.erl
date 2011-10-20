@@ -449,7 +449,7 @@ import_missing_account(AccountId, Account) ->
                           ?LOG("account definition exists locally"),
                           JObj
                   end,
-            Payload = [undefined, #cb_context{doc=Doc, db_name=Db}, [[AccountId]]],
+            Payload = [undefined, #cb_context{doc=Doc, db_name=Db}, AccountId],
             case crossbar_bindings:fold(Event, Payload) of
                 [_, #cb_context{resp_status=success} | _] ->
                     ?LOG("udpated account definition"),
