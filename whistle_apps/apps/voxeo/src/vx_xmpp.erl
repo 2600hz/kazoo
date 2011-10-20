@@ -8,19 +8,22 @@
 %%%-------------------------------------------------------------------
 -module(vx_xmpp).
 
--behaviour(gen_server).
+-behaviour(gen_listener).
 
 %% API
--export([start_link/1]).
+-export([start_link/1, handle_amqp/2]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
+	 ,terminate/2, code_change/3]).
 
 -include("voxeo.hrl").
 
 -define(SERVER, ?MODULE).
 -define(STARTUP_CONFIG, [code:priv_dir(voxeo), "/startup.config"]).
+
+-define(RESPONDERS, [{{?MODULE, handle_amqp}, [{<<"*">>, <<"*">>}]}]).
+-define(BINDINGS, [{self, []}]).
 
 -record(state, {
 	  my_q = 'undefined' :: 'undefined' | ne_binary()
@@ -49,7 +52,16 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(AsrReq) ->
-    gen_server:start_link(?MODULE, [AsrReq], []).
+    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
+				      ,{bindings, ?BINDINGS}
+				     ], [AsrReq]).
+
+-spec handle_amqp/2 :: (json_object(), proplist()) -> no_return().
+handle_amqp(JObj, _Props) ->
+    wh_util:put_callid(JObj),
+    ?LOG("AMQP Recv: ~p", [wh_util:get_event_type(JObj)]),
+    ?LOG("App: ~s", [wh_json:get_value(<<"Application-Name">>, JObj)]),
+    ?LOG("Other UUID: ~s", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -67,28 +79,31 @@ start_link(AsrReq) ->
 %% @end
 %%--------------------------------------------------------------------
 init([AsrReq]) ->
-    self() ! authenticate,
-
     wh_util:put_callid(AsrReq),
 
     ?LOG("Starting up vx_xmpp"),
 
     JID = exmpp_jid:parse(wh_util:to_list(wh_json:get_value(<<"ASR-Account-ID">>, AsrReq))),
+    CallID = wh_json:get_value(<<"Call-ID">>, AsrReq),
 
-    ?LOG("AsrReq:"),
-    [?LOG("~p", [KV]) || KV <- wh_json:to_proplist(AsrReq)],
+    gen_listener:add_binding(self(), call_events, [{callid, CallID}]),
+    ?LOG("Adding binding for call events"),
 
-    {ok, #state{
-       xmpp_session = exmpp_session:start_link()
-       ,xmpp_jid = JID
-       ,xmpp_password = wh_util:to_list(wh_json:get_value(<<"ASR-Account-Password">>, AsrReq))
-       ,xmpp_server = exmpp_jid:domain_as_list(JID)
-       ,rayo_sip_user = wh_json:get_value(<<"ASR-Endpoint">>, AsrReq)
-       ,rayo_lang = wh_util:to_list(wh_json:get_value(<<"Language">>, AsrReq, "us-EN"))
-       ,stream_response = wh_json:is_true(<<"Stream-Response">>, AsrReq, false)
-       ,aleg_callid = wh_json:get_value(<<"Call-ID">>, AsrReq)
-       ,aleg_ctl_q = wh_json:get_value(<<"Control-Queue">>, AsrReq)
-      }}.
+    Self = self(),
+    State = #state{
+      xmpp_session = exmpp_session:start_link()
+      ,xmpp_jid = JID
+      ,xmpp_password = wh_util:to_list(wh_json:get_value(<<"ASR-Account-Password">>, AsrReq))
+      ,xmpp_server = exmpp_jid:domain_as_list(JID)
+      ,rayo_sip_user = wh_json:get_value(<<"ASR-Endpoint">>, AsrReq)
+      ,rayo_lang = wh_util:to_list(wh_json:get_value(<<"Language">>, AsrReq, "us-EN"))
+      ,stream_response = wh_json:is_true(<<"Stream-Response">>, AsrReq, false)
+      ,aleg_callid = CallID
+      ,aleg_ctl_q = wh_json:get_value(<<"Control-Queue">>, AsrReq)
+     },
+
+    spawn_monitor(fun() -> put(callid, CallID), authenticate(Self, State) end),
+    {ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -131,65 +146,23 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
-handle_info(#received_packet{}=Packet, #state{xmpp_session=Session}=State) ->
-    spawn(fun() -> handle_packet(Session, Packet) end),
+handle_info(#received_packet{}=Packet, #state{aleg_callid=CallID, xmpp_session=Session}=State) ->
+    spawn(fun() -> put(callid, CallID), handle_packet(Session, Packet) end),
     {noreply, State};
 
-handle_info(authenticate, #state{xmpp_session=Session, xmpp_server=Server, xmpp_port=Port
-				 ,xmpp_jid=JID, xmpp_password=Pass}=State) ->
-    try
-	?LOG("Auth with session ~p", [Session]),
-	?LOG("JID: ~p", [JID]),
-	?LOG("Pass: ~p", [Pass]),
+handle_info({'DOWN', _Ref, process, _Pid, Reason}, State) ->
+    ?LOG("~p when down: ~p", [_Pid, Reason]),
+    {noreply, State, 5000};
 
-	ok = exmpp_session:auth(Session, JID, Pass, password),
-
-	{ok, _StreamId} = exmpp_session:connect_TCP(Session, Server, Port),
-
-	?LOG("Server: ~p:~p", [Server, Port]),
-	?LOG("StreamID: ~p", [_StreamId]),
-
-	{ok, _JID} = exmpp_session:login(Session),
-
-	exmpp_session:send_packet(Session, exmpp_presence:set_status(exmpp_presence:available(), "VX Whapp Ready")),
-	?LOG("Sent presence"),
-
-	self() ! bridge,
-
-	{noreply, State}
-    catch
-	_:{auth_error, 'not-authorized'} ->
-	    ?LOG("Unauthorized login with the given credentials"),
-	    {stop, normal, State};
-	_T:_R ->
-	    ?LOG("failed to login: ~p:~p", [_T, _R]),
-	    [?LOG("ST: ~p", [ST]) || ST <- erlang:get_stacktrace()],
-	    {stop, normal, State}
-    end;
-
-handle_info(bridge, #state{my_q=Q
-			   ,rayo_sip_user=SIP
-			   ,rayo_lang=Lang
-			   ,stream_response=StreamIt
-			   ,aleg_callid=CallID
-			   ,aleg_ctl_q=CtrlQ}=State) ->
-    ?LOG("Bridge to ASR"),
-
-    Command = [{<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, make_endpoint(SIP)}
-               ,{<<"Timeout">>, 1000}
-               ,{<<"Call-ID">>, CallID}
-               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-	      ],
-    {ok, Payload} = wapi_dialplan:bridge([ KV || {_, V}=KV <- Command, V =/= undefined ]),
-    wapi_dialplan:publish_action(CtrlQ, Payload),
-
-    {noreply, State};
+handle_info(timeout, State) ->
+    {stop, timeout, State};
 
 handle_info(_Info, State) ->
     ?LOG("Unhandled message: ~p", [_Info]),
     {noreply, State}.
+
+handle_event(_JObj, _State) ->
+    {reply, [{self, self()}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -275,3 +248,56 @@ process_iq(Session, _Type, NS, IQ) ->
     ?LOG("Req: ~p", [exmpp_iq:get_request(IQ)]),
     ?LOG("Res: ~p", [exmpp_iq:is_result(IQ) andalso exmpp_iq:get_result(IQ)]),
     ?LOG("Payload: ~p", [exmpp_iq:get_payload(IQ)]).
+
+
+authenticate(Srv, #state{xmpp_session=Session, xmpp_server=Server, xmpp_port=Port
+			 ,xmpp_jid=JID, xmpp_password=Pass}=State) ->
+    try
+	AmqpQ = gen_listener:queue_name(Srv),
+
+	?LOG("Auth with session ~p", [Session]),
+	?LOG("JID: ~p", [JID]),
+	?LOG("Pass: ~p", [Pass]),
+
+	ok = exmpp_session:auth(Session, JID, Pass, password),
+
+	{ok, _StreamId} = exmpp_session:connect_TCP(Session, Server, Port),
+
+	?LOG("Server: ~p:~p", [Server, Port]),
+	?LOG("StreamID: ~p", [_StreamId]),
+
+	{ok, _JID} = exmpp_session:login(Session),
+
+	exmpp_session:send_packet(Session, exmpp_presence:set_status(exmpp_presence:available(), "VX Whapp Ready")),
+	?LOG("Sent presence"),
+
+	bridge(Srv, State#state{my_q=AmqpQ})
+    catch
+	_:{auth_error, 'not-authorized'} ->
+	    ?LOG("Unauthorized login with the given credentials"),
+	    unauthed;
+	_T:R ->
+	    ?LOG("failed to login: ~p:~p", [_T, R]),
+	    [?LOG("ST: ~p", [ST]) || ST <- erlang:get_stacktrace()],
+	    R
+    end.
+
+bridge(Srv, #state{my_q=Q
+		   ,rayo_sip_user=SIP
+		   ,rayo_lang=Lang
+		   ,stream_response=StreamIt
+		   ,aleg_callid=CallID
+		   ,aleg_ctl_q=CtrlQ}=State) ->
+    ?LOG("Bridge to ASR"),
+
+    Command = [{<<"Application-Name">>, <<"bridge">>}
+               ,{<<"Endpoints">>, make_endpoint(SIP)}
+               ,{<<"Timeout">>, 1000}
+               ,{<<"Call-ID">>, CallID}
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+	      ],
+
+    {ok, Payload} = wapi_dialplan:bridge([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    ?LOG("Sending ~s", [Payload]),
+    wapi_dialplan:publish_action(CtrlQ, Payload).
+    
