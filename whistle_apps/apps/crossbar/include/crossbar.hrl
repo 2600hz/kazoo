@@ -4,6 +4,8 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include("crossbar_types.hrl").
 
+-define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
+
 -define(APP_NAME, <<"crossbar">>).
 -define(APP_VSN, <<"0.8.0">>).
 
