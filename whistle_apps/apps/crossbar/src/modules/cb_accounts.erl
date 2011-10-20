@@ -24,14 +24,12 @@
 
 -define(SERVER, ?MODULE).
 
--define(AGG_DB, <<"accounts">>).
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 -define(AGG_VIEW_PARENT, <<"accounts/listing_by_parent">>).
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 -define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
--define(AGG_FILTER, <<"account/export">>).
 
 %%%===================================================================
 %%% API
@@ -133,7 +131,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_c
                   crossbar_util:binding_heartbeat(Pid),
                   %% Do all of our prep-work out of the agg db
                   %% later we will switch to save to the client db
-                  Context1 = validate(Params, Context#cb_context{db_name=?AGG_DB}),
+                  Context1 = validate(Params, Context#cb_context{db_name=?ACCOUNTS_AGG_DB}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
@@ -159,13 +157,30 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [AccountId]=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, #cb_context{doc=Doc}=Context | [AccountId]=Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = crossbar_doc:save(Context#cb_context{db_name=whapps_util:get_db_name(AccountId, encoded)}),
-		  whapps_util:replicate_from_account(whapps_util:get_db_name(AccountId, unencoded), ?AGG_DB, ?AGG_FILTER),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  %% this just got messy
+                  %% since we are not replicating, the accounts rev and the account rev on
+                  %% this doc can drift.... so set it to account save, then set it to
+                  %% accounts for the final operation... good times
+                  AccountDb = whapps_util:get_db_name(AccountId, encoded),
+                  AccountsRev = wh_json:get_value(<<"_rev">>, Doc, <<>>),
+                  case couch_mgr:lookup_doc_rev(AccountDb, AccountId) of
+                      {ok, Rev} ->
+                          case crossbar_doc:save(Context#cb_context{db_name=AccountDb
+                                                                    ,doc=wh_json:set_value(<<"_rev">>, Rev, Doc)
+                                                                   }) of
+                              #cb_context{resp_status=success, doc=Doc1}=Context1 ->
+                                  couch_mgr:ensure_saved(?ACCOUNTS_AGG_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
+                                  Pid ! {binding_result, true, [RD, Context1, Params]};
+                              Else ->
+                                  Pid ! {binding_result, true, [RD, Else, Params]}
+                          end;
+                      _ ->
+                          Pid ! {binding_result, true, [RD, crossbar_util:response_conflicting_docs(Context), Params]}
+                  end
           end),
     {noreply, State};
 
@@ -181,7 +196,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Co
 %handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, #cb_context{doc=Doc}=Context | [_, <<"parent">>]=Params]}, State) ->
 %    %%spawn(fun() ->
 %                  Doc1 = crossbar_util:set_json_values(<<"pvt_tree">>, [], Doc),
-%                  Context1 = crossbar_doc:save(Context#cb_context{db_name=?AGG_DB, doc=Doc1}),
+%                  Context1 = crossbar_doc:save(Context#cb_context{db_name=?ACCOUNTS_AGG_DB, doc=Doc1}),
 %                  Pid ! {binding_result, true, [RD, Context1, Params]},
 %       %%  end),
 %    {noreply, State};
@@ -588,7 +603,7 @@ update_tree(AccountId, ParentId, Context) ->
 update_doc_tree(ParentTree, {struct, Prop}, Acc) ->
     AccountId = props:get_value(<<"id">>, Prop),
     ParentId = lists:last(ParentTree),
-    case crossbar_doc:load(AccountId, #cb_context{db_name=?AGG_DB}) of
+    case crossbar_doc:load(AccountId, #cb_context{db_name=?ACCOUNTS_AGG_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
             Tree = wh_json:get_value(<<"pvt_tree">>, Doc),
             SubTree =
@@ -703,7 +718,8 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
                 #cb_context{resp_status=success}=Context1 ->
                     _ = crossbar_bindings:map(<<"account.created">>, Db),
                     couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
-                    whapps_util:replicate_from_account(whapps_util:get_db_name(Db, unencoded), ?AGG_DB, ?AGG_FILTER),
+                    couch_mgr:revise_doc_from_file(Db, crossbar, ?MAINTENANCE_VIEW_FILE),
+                    couch_mgr:ensure_saved(?ACCOUNTS_AGG_DB, Context1#cb_context.doc),
                     Context1;
                 Else ->
 		    ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
@@ -725,13 +741,13 @@ is_unique_realm(_, _, undefined) -> false;
 
 is_unique_realm(undefined, _, Realm) ->
     %% unique if Realm doesn't exist in agg DB
-    case couch_mgr:get_results(?AGG_DB, ?AGG_VIEW_REALM, [{<<"key">>, Realm}]) of
+    case couch_mgr:get_results(?ACCOUNTS_AGG_DB, ?AGG_VIEW_REALM, [{<<"key">>, Realm}]) of
 	{ok, []} -> true;
 	{ok, [_|_]} -> false
     end;
 
 is_unique_realm(AccountId, Context, Realm) ->
-    {ok, Doc} = couch_mgr:open_doc(?AGG_DB, AccountId),
+    {ok, Doc} = couch_mgr:open_doc(?ACCOUNTS_AGG_DB, AccountId),
     %% Unique if, for this account, request and account's realm are same
     %% or request Realm doesn't exist in DB (cf is_unique_realm(undefined ...)
     case wh_json:get_value(<<"realm">>, Doc) of

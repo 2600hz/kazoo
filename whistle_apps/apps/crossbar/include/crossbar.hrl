@@ -4,6 +4,15 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include("crossbar_types.hrl").
 
+-define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
+
+-define(SIP_AGG_DB, <<"sip_auth">>).
+
+-define(ACCOUNTS_AGG_DB, <<"accounts">>).
+-define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
+
+-define(SCHEMAS_DB, <<"crossbar_schemas">>).
+
 -define(APP_NAME, <<"crossbar">>).
 -define(APP_VSN, <<"0.8.0">>).
 

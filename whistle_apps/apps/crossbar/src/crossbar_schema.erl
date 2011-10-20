@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%%-------------------------------------------------------------------
 %%% @author Edouard Swiac <edouard@2600hz.com>
 %%%
 %%% @copyright (C) 2011, Edouard Swiac
@@ -15,14 +15,12 @@
 
 -export([do_validate/2]).
 
--include("crossbar.hrl").
+-include("../include/crossbar.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--define(CROSSBAR_SCHEMA_DB, <<"crossbar_schemas">>).
 -define(TRACE, false). %% trace through the validation steps
 
 -define(VALIDATION_FUN, fun({error, _}) -> false; (?VALID) -> true end).
-
 
 %% macroing to increase readability
 -define(VALID, true).
@@ -46,7 +44,7 @@
       File :: string() | json_object(),
       SchemaName :: atom().
 do_validate(JObj, SchemaName) ->
-    case  couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, wh_util:to_binary(SchemaName)) of
+    case  couch_mgr:open_doc(?SCHEMAS_DB, wh_util:to_binary(SchemaName)) of
 	{ok, Schema} ->
 	    R = validate({JObj}, {Schema}),
 	    case [M || {error, M} <- lists:flatten(R)] of
