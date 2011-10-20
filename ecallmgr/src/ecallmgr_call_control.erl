@@ -150,8 +150,9 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>
 	    ,#state{keep_alive_ref=Ref, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
     JObj = mochijson2:decode(binary_to_list(Payload)),
 
+    ?LOG("Current App: ~s", [CurrApp]),
     NewCmdQ = try insert_command(State, wh_json:get_value(<<"Insert-At">>, JObj, <<"tail">>), JObj)
-	      catch _:_ -> CmdQ end,
+	      catch _T:_R -> ?LOG("Faile inserting command: ~p:~p", [_T, _R]), CmdQ end,
 
     case INU andalso (not queue:is_empty(NewCmdQ)) andalso CurrApp =:= <<>> of
 	true ->
@@ -165,6 +166,10 @@ handle_info({_, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>
     end;
 
 handle_info({execute_complete, UUID, EvtName}, #state{uuid=UUID, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
+    ?LOG("CurrApp: ~s", [CurrApp]),
+    ?LOG("EvtName: ~s", [EvtName]),
+    ?LOG("CurrAppAsEvt: ~s", [wh_api:convert_whistle_app_name(CurrApp)]),
+
     case lists:member(EvtName, wh_api:convert_whistle_app_name(CurrApp)) of
         false ->
             {noreply, State};
@@ -323,7 +328,7 @@ insert_command(#state{node=Node, uuid=UUID, command_q=CommandQ, is_node_up=IsNod
 			     (CmdJObj) ->
 				  put(callid, UUID),
 				  AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
-				  true = wh_api:dialplan_req_v(AppCmd),
+				  true = wh_api:dialplan_req_v(AppCmd) orelse wapi_dialplan:v(AppCmd),
                                   execute_control_request(CmdJObj, State)
 			  end, wh_json:get_value(<<"Commands">>, JObj)),
 	    CommandQ;
@@ -338,10 +343,8 @@ insert_command(_State, <<"flush">>, JObj) ->
 insert_command(#state{command_q=CommandQ}, <<"head">>, JObj) ->
     case wh_json:get_value(<<"Application-Name">>, JObj) of
 	<<"queue">> ->
-	    Commands = wh_json:get_value(<<"Commands">>, JObj),
-	    JObj2 = wh_json:set_value(<<"Commands">>, lists:reverse(Commands), JObj),
             ?LOG("inserting queued commands at head of queue"),
-	    insert_command_into_queue(CommandQ, fun queue:in_r/2, JObj2);
+	    insert_command_into_queue(CommandQ, fun queue:in_r/2, JObj);
 	AppName ->
             ?LOG("inserting command ~s at head of queue", [AppName]),
 	    insert_command_into_queue(CommandQ, fun queue:in_r/2, JObj)
@@ -349,12 +352,11 @@ insert_command(#state{command_q=CommandQ}, <<"head">>, JObj) ->
 insert_command(#state{command_q=CommandQ}, <<"tail">>, JObj) ->
     case wh_json:get_value(<<"Application-Name">>, JObj) of
 	<<"queue">> ->
-	    Commands = wh_json:get_value(<<"Commands">>, JObj),
-	    JObj2 = wh_json:set_value(<<"Commands">>, lists:reverse(Commands), JObj),
             ?LOG("inserting queued commands at tail of queue"),
-	    insert_command_into_queue(CommandQ, fun queue:in/2, JObj2);
+	    insert_command_into_queue(CommandQ, fun queue:in/2, JObj);
         AppName ->
             ?LOG("inserting command ~s at tail of queue", [AppName]),
+	    ?LOG("queue len prior: ~b", [queue:len(CommandQ)]),
 	    insert_command_into_queue(CommandQ, fun queue:in/2, JObj)
     end.
 
@@ -367,15 +369,15 @@ insert_command_into_queue(Q, InsertFun, JObj) ->
 	<<"queue">> -> %% list of commands that need to be added
 	    true = wh_api:queue_req_v(JObj),
 	    DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)), %% each command lacks the default headers
-	    lists:foldl(fun(?EMPTY_JSON_OBJECT, TmpQ) -> TmpQ;
+	    lists:foldr(fun(?EMPTY_JSON_OBJECT, TmpQ) -> TmpQ;
 			   (CmdJObj, TmpQ) ->
 				AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
-				true = wh_api:dialplan_req_v(AppCmd),
+				true = wh_api:dialplan_req_v(AppCmd) orelse wapi_dialplan:v(AppCmd),
 				?LOG("inserting queued command ~s into queue", [wh_json:get_value(<<"Application-Name">>, AppCmd)]),
 				InsertFun(AppCmd, TmpQ)
 			end, Q, wh_json:get_value(<<"Commands">>, JObj));
 	_AppName ->
-	    true = wh_api:dialplan_req_v(JObj),
+	    true = wh_api:dialplan_req_v(JObj) orelse wapi_dialplan:v(JObj),
 	    InsertFun(JObj, Q)
     end.
 
