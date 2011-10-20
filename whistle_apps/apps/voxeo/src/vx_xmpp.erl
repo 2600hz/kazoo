@@ -58,10 +58,10 @@ start_link(AsrReq) ->
 
 -spec handle_amqp/2 :: (json_object(), proplist()) -> no_return().
 handle_amqp(JObj, _Props) ->
-    wh_util:put_callid(JObj),
-    ?LOG("AMQP Recv: ~p", [wh_util:get_event_type(JObj)]),
-    ?LOG("App: ~s", [wh_json:get_value(<<"Application-Name">>, JObj)]),
-    ?LOG("Other UUID: ~s", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]).
+    wh_util:put_callid(JObj).
+    %% ?LOG("AMQP Recv: ~p", [wh_util:get_event_type(JObj)]),
+    %% ?LOG("App: ~s", [wh_json:get_value(<<"Application-Name">>, JObj)]),
+    %% ?LOG("Other UUID: ~s", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -150,6 +150,10 @@ handle_info(#received_packet{}=Packet, #state{aleg_callid=CallID, xmpp_session=S
     spawn(fun() -> put(callid, CallID), handle_packet(Session, Packet) end),
     {noreply, State};
 
+handle_info({'DOWN', _Ref, process, _Pid, normal}, State) ->
+    ?LOG("~p when down normally", [_Pid]),
+    {noreply, State};
+
 handle_info({'DOWN', _Ref, process, _Pid, Reason}, State) ->
     ?LOG("~p when down: ~p", [_Pid, Reason]),
     {noreply, State, 5000};
@@ -211,18 +215,66 @@ handle_packet(Session, #received_packet{packet_type='iq', type_attr=Type, raw_pa
     ?LOG("Recv: ~p", [exmpp_stanza:get_recipient(IQ)]),
     process_iq(Session, Type, exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)), IQ);
 handle_packet(Session, #received_packet{packet_type='presence', type_attr=Type, raw_packet=P}) ->
-    ?LOG("Presense packet of type ~p", [Type]),
+    ?LOG("Presence packet of type ~p", [Type]),
     ?LOG("Sender: ~p", [exmpp_stanza:get_sender(P)]),
     ?LOG("Recv: ~p", [exmpp_stanza:get_recipient(P)]),
     process_presence(Session, Type, P);
-handle_packet(Session, Packet) ->
+handle_packet(_Session, Packet) ->
     ?LOG("Unhandled packet ~p", [Packet]).
 
 process_presence(Session, Type, Presence) ->
-    ?LOG("Type: ~p(~p)", [exmpp_presence:get_type(Presence), Type]),
-    ?LOG("Show: ~p", [exmpp_presence:get_show(Presence)]),
-    ?LOG("Status: ~p", [exmpp_presence:get_status(Presence)]),
-    ?LOG("Priority: ~p", [exmpp_presence:get_priority(Presence)]).
+    case exmpp_xml:get_element(Presence, offer) of
+	undefined ->
+	    ?LOG("Ignoring");
+	Offer ->
+	    ?LOG("Is Offer"),
+	    process_offer(Session, Presence, Offer)
+    end.
+
+process_offer(Session, Presence, Offer) ->
+    Sender = exmpp_stanza:get_sender(Presence),
+    Recipient = exmpp_stanza:get_recipient(Presence),
+
+    [CallID] = [exmpp_xml:get_attribute(H, <<"value">>, undefined)
+		|| H <- exmpp_xml:get_elements(Offer, header),
+		   exmpp_xml:get_attribute(H, <<"name">>, undefined) =:= <<"Call-ID">>
+	       ],
+    ?LOG("B-LEG: ~s", [CallID]),
+
+    answer(Session, Sender, Recipient).
+
+answer(Session, From, To) ->
+    IQ = exmpp_stanza:set_type(
+	   exmpp_xml:element('undefined', iq, [
+					       exmpp_xml:attribute(<<"from">>, To)
+					       ,exmpp_xml:attribute(<<"to">>, From)
+					      ]
+			     ,[exmpp_xml:element('urn:xmpp:rayo:1', answer, [], [
+										 exmpp_xml:element('urn:xmpp:rayo:1', header, [exmpp_xml:attribute(<<"value">>, <<"2600hz">>)
+															       ,exmpp_xml:attribute(<<"name">>, <<"x-test-header">>)
+															      ], [])])
+			      ]
+			    )
+	   , set),
+    ?LOG("IQ: ~s", [exmpp_stanza:to_binary(IQ)]),
+    exmpp_session:send_packet(Session, IQ).
+
+%% Create this XML structure next:
+%% <iq type='set' to='9f00061@call.rayo.net/1' from='16577@app.rayo.net/1'>
+%%   <input xmlns='urn:xmpp:rayo:input:1'
+%%       mode='any|dtmf|speech'
+%%       terminator='#'
+%%       recognizer='en-US'
+%%       initial-timeout='2000'
+%%       inter-digit-timeout='2000'
+%%       sensitivity='0.5'
+%%       min-confidence='0.5'>
+%%     <grammar url="http://grammarserver.com/digits?min=1&amp;max=10" />
+%%     <grammar content-type='application/grammar+voxeo'>
+%%       [4 DIGITS]
+%%     </grammar>
+%%   </input>
+%% </iq>
 
 process_iq(Session, "get", ?NS_TIME, IQ) ->
     ?LOG("NS_TIME from"),
@@ -275,11 +327,10 @@ authenticate(Srv, #state{xmpp_session=Session, xmpp_server=Server, xmpp_port=Por
     catch
 	_:{auth_error, 'not-authorized'} ->
 	    ?LOG("Unauthorized login with the given credentials"),
-	    unauthed;
+	    exit(unauthed);
 	_T:R ->
 	    ?LOG("failed to login: ~p:~p", [_T, R]),
-	    [?LOG("ST: ~p", [ST]) || ST <- erlang:get_stacktrace()],
-	    R
+	    exit(R)
     end.
 
 bridge(Srv, #state{my_q=Q
@@ -299,5 +350,6 @@ bridge(Srv, #state{my_q=Q
 
     {ok, Payload} = wapi_dialplan:bridge([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     ?LOG("Sending ~s", [Payload]),
-    wapi_dialplan:publish_action(CtrlQ, Payload).
+    wapi_dialplan:publish_action(CtrlQ, Payload),
+    gen_server:cast(Srv, bridge_sent).
     
