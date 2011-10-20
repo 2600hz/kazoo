@@ -567,7 +567,6 @@
 %% List of tuples: {dialplan application-name, validation_fun}
 -define(DIALPLAN_APPLICATIONS, [
 				{<<"queue">>, fun wh_api:queue_req_v/1}
-				,{<<"bridge">>, fun wh_api:bridge_req_v/1}
 				,{<<"answer">>, fun wh_api:answer_req_v/1}
 				,{<<"play">>, fun wh_api:play_req_v/1}
 				,{<<"record">>, fun wh_api:record_req_v/1}

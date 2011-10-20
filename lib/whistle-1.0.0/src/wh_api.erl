@@ -121,7 +121,7 @@ dialplan_req_v(Prop) ->
 dialplan_req_v(Prop, AppName) ->
     case lists:keyfind(AppName, 1, ?DIALPLAN_APPLICATIONS) of
 	false ->
-	    throw({invalid_dialplan_object, Prop});
+	    false;
 	{_, VFun} ->
 	    VFun(Prop)
     end.

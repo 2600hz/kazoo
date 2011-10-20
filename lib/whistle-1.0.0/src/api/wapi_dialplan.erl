@@ -8,12 +8,33 @@
 %%%-------------------------------------------------------------------
 -module(wapi_dialplan).
 
--export([bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1]).
+-export([v/1, bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1]).
 
 -export([publish_action/2, publish_action/3]).
 
 -include("wapi_dialplan.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
+-spec v/1 :: (proplist() | json_object()) -> boolean().
+v(Prop) when is_list(Prop) ->
+    v(Prop, props:get_value(<<"Application-Name">>, Prop));
+v(JObj) ->
+    v(wh_json:to_proplist(JObj)).
+
+-spec v/2 :: (proplist() | json_object(), binary()) -> boolean().
+v(Prop, DPApp) ->
+    try
+	VFun = wh_util:to_atom(<<DPApp/binary, "_v">>),
+	?LOG("vfun: ~s", [VFun]),
+	?LOG("keyfind: ~p", [lists:keyfind(VFun, 1, ?MODULE:module_info(exports))]),
+	case lists:keyfind(VFun, 1, ?MODULE:module_info(exports)) of
+	    false -> throw({invalid_dialplan_object, Prop});
+	    {_, 1} -> ?MODULE:VFun(Prop)
+	end
+    catch
+	_:R ->
+	    throw({R, Prop})
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Bridge a call - see wiki
