@@ -36,8 +36,6 @@
 -define(SERVER, ?MODULE).
 
 -define(TOKEN_DB, <<"token_auth">>).
--define(AGG_DB, <<"accounts">>).
--define(AGG_FILTER, <<"account/export">>).
 -define(SHARED_AUTH_CONF, list_to_binary([code:lib_dir(crossbar, priv), "/shared_auth/shared_auth.conf"])).
 
 -record(state, {xbar_url=undefined :: undefined | string()}).
