@@ -9,7 +9,8 @@
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
 -export([callmgr_exchange/0, callmgr_publish/3]).
--export([configuration_exchange/0, configuration_publish/2, configuration_publish/3, document_change_publish/5]).
+-export([configuration_exchange/0, configuration_publish/2, configuration_publish/3, document_change_publish/5, document_change_publish/6]).
+-export([document_routing_key/0, document_routing_key/1, document_routing_key/2, document_routing_key/3, document_routing_key/4]).
 -export([monitor_exchange/0, monitor_publish/3]).
 -export([conference_exchange/0, conference_publish/2, conference_publish/3, conference_publish/4]).
 
@@ -80,14 +81,32 @@ configuration_publish(RoutingKey, Payload, ContentType) ->
     basic_publish(?EXCHANGE_CONFIGURATION, RoutingKey, Payload, ContentType).
 
 -spec document_change_publish/5 :: (Action, Db, Type, Id, Payload) -> 'ok' when
-      Action :: ne_binary(), %% edited | created | deleted
+      Action :: atom(), %% edited | created | deleted
       Db :: ne_binary(),
       Type :: ne_binary(),
       Id :: ne_binary(),
       Payload :: iolist().
-document_change_publish(Action, Db, Type, Id, Payload) ->
-    RoutingKey = list_to_binary(["doc_", Action, ".", Db, ".", Type, ".", Id]),
-    configuration_publish(RoutingKey, Payload).
+document_change_publish(Action, Db, Type, Id, JSON) ->
+    document_change_publish(Action, Db, Type, Id, JSON, ?DEFAULT_CONTENT_TYPE).
+document_change_publish(Action, Db, Type, Id, Payload, ContentType) ->
+    RoutingKey = document_routing_key(Action, Db, Type, Id),
+    configuration_publish(RoutingKey, Payload, ContentType).
+
+-spec document_routing_key/0 :: () -> ne_binary().
+-spec document_routing_key/1 :: (atom() | binary()) -> ne_binary().
+-spec document_routing_key/2 :: (atom() | binary(), ne_binary()) -> ne_binary().
+-spec document_routing_key/3 :: (atom() | binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec document_routing_key/4 :: (atom() | binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+document_routing_key() ->
+    document_routing_key("*").
+document_routing_key(Action) ->
+    document_routing_key(Action, "*").
+document_routing_key(Action, Db) ->
+    document_routing_key(Action, Db, "*").
+document_routing_key(Action, Db, Type) ->
+    document_routing_key(Action, Db, Type, "*").
+document_routing_key(Action, Db, Type, Id) ->
+    list_to_binary(["doc_", wh_util:to_list(Action), ".", Db, ".", Type, ".", Id]).
 
 -spec callctl_publish/2 :: (CallID, Payload) -> 'ok' when
       CallID :: ne_binary(),
