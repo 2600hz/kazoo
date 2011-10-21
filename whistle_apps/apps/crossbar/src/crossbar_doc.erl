@@ -167,7 +167,10 @@ load_view(View, Options, #cb_context{db_name=DB}=Context) ->
 load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
     case load_view(View, Options, Context) of
         #cb_context{resp_status=success, doc=Doc} = Context1 ->
-            Context1#cb_context{resp_data=lists:foldr(Filter, [], Doc)};
+            Context1#cb_context{resp_data=
+                                    lists:filter(fun(undefined) -> false;
+                                                    (_) -> true
+                                                 end, lists:foldr(Filter, [], Doc))};
         Else ->
             Else
     end.
