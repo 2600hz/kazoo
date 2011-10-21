@@ -423,9 +423,7 @@ get_bridge_endpoint(JObj) ->
 	{'error', 'timeout'} ->
             "";
 	EndPoint ->
-	    ?LOG("EP: ~s", [EndPoint]),
 	    CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
-	    ?LOG("CVs: ~s", [CVs]),
 	    wh_util:to_list(list_to_binary([CVs, EndPoint]))
     end.
 
