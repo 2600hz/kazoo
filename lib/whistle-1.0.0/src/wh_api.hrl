@@ -68,16 +68,6 @@
 			,{<<"Tenant-ID">>, fun is_binary/1}
 			]).
 
-%% Configuration Document Update
--define(CONF_DOC_UPDATE_HEADERS, [<<"ID">>, <<"Rev">>, <<"Doc">>]).
--define(OPTIONAL_CONF_DOC_UPDATE_HEADERS, [<<"Account-DB">>, <<"Account-ID">>
-                                               ,<<"Date-Modified">>, <<"Date-Created">>
-                                               ,<<"Type">>, <<"Version">>]).
--define(CONF_DOC_UPDATE_VALUES, [{<<"Event-Category">>, <<"configuration">>}
-                                 ,{<<"Event-Name">>, [<<"doc_edited">>, <<"doc_created">>, <<"doc_deleted">>]}]).
--define(CONF_DOC_UPDATE_TYPES, [{<<"ID">>, fun is_binary/1}
-                                ,{<<"Rev">>, fun is_binary/1}]).
-
 %% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>, <<"Custom-Channel-Vars">>
