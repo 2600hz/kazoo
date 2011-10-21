@@ -9,10 +9,10 @@
 %%%-------------------------------------------------------------------
 -module(wapi_conf).
 
--export([update/1, update_v/1
+-export([doc_update/1, doc_update_v/1
 	 ,bind_q/2, unbind_q/2
-	 ,publish_update/5, publish_update/6
-	 ]).
+	 ,publish_doc_update/5, publish_doc_update/6
+	]).
 
 -include("../wh_api.hrl").
 
@@ -32,20 +32,20 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
-update(Prop) when is_list(Prop) ->
-    case update_v(Prop) of
+-spec doc_update/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+doc_update(Prop) when is_list(Prop) ->
+    case doc_update_v(Prop) of
 	true -> wh_api:build_message(Prop, ?CONF_DOC_UPDATE_HEADERS, ?OPTIONAL_CONF_DOC_UPDATE_HEADERS);
 	false -> {error, "Proplist failed validation for document_change"}
     end;
-update(JObj) ->
-    update(wh_json:to_proplist(JObj)).
+doc_update(JObj) ->
+    doc_update(wh_json:to_proplist(JObj)).
 
--spec update_v/1 :: (proplist() | json_object()) -> boolean().
-update_v(Prop) when is_list(Prop) ->
+-spec doc_update_v/1 :: (proplist() | json_object()) -> boolean().
+doc_update_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CONF_DOC_UPDATE_HEADERS, ?CONF_DOC_UPDATE_VALUES, ?CONF_DOC_UPDATE_TYPES);
-update_v(JObj) ->
-    update_v(wh_json:to_proplist(JObj)).
+doc_update_v(JObj) ->
+    doc_update_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Q, Props) ->
@@ -68,9 +68,9 @@ get_routing_key(Props) ->
 
 -type conf_action() :: created | edited | deleted.
 
--spec publish_update/5 :: (conf_action(), binary(), binary(), binary(), iolist()) -> 'ok'.
--spec publish_update/6 :: (conf_action(), binary(), binary(), binary(), iolist(), binary()) -> 'ok'.
-publish_update(Action, Db, Type, Id, JSON) ->
-    publish_update(Action, Db, Type, Id, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_update(Action, Db, Type, Id, Payload, ContentType) ->
+-spec publish_doc_update/5 :: (conf_action(), binary(), binary(), binary(), iolist()) -> 'ok'.
+-spec publish_doc_update/6 :: (conf_action(), binary(), binary(), binary(), iolist(), binary()) -> 'ok'.
+publish_doc_update(Action, Db, Type, Id, JSON) ->
+    publish_doc_update(Action, Db, Type, Id, JSON, ?DEFAULT_CONTENT_TYPE).
+publish_doc_update(Action, Db, Type, Id, Payload, ContentType) ->
     amqp_util:document_change_publish(Action, Db, Type, Id, Payload, ContentType).

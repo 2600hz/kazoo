@@ -320,8 +320,8 @@ send_document_change(Action, Db, Doc) ->
 			    | wh_api:default_headers(<<>>, <<"configuration">>, <<"doc_", Action/binary>>, ?APP_NAME, ?APP_VSN)
 			   ],
 		  ?LOG("publishing configuration document_change event for ~s, type: ~s", [Id, Type]),
-		  {ok, Payload} = wapi_conf:update(Change),
-		  wapi_conf:publish_update(Action, Db, Type, Id, Payload)
+		  {ok, Payload} = wapi_conf:doc_update(Change),
+		  wapi_conf:publish_doc_update(Action, Db, Type, Id, Payload)
 	  end).
 %%--------------------------------------------------------------------
 %% @public
