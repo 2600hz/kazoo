@@ -316,7 +316,6 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"ap
     spawn(fun() ->
                   put(callid, ConfId),
                   JObj = mochijson2:decode(Payload),
-                  io:format("~p~n", [JObj]),
                   _ = process_req(whapps_util:get_event_type(JObj), JObj, Conf)
           end),
     {noreply, Conf};
