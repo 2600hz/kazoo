@@ -236,7 +236,7 @@ process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
 	    end;
 
 	{ <<"call_detail">>, <<"cdr">> } ->
-	    true = wh_api:call_cdr_v(JObj),
+	    true = wapi_call:cdr_v(JObj),
 	    Leg = wh_json:get_value(<<"Call-ID">>, JObj),
 	    Duration = ts_util:get_call_duration(JObj),
 
