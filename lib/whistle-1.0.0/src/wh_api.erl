@@ -22,7 +22,7 @@
 -export([default_headers/5, extract_defaults/1]).
 
 %% In-Call
--export([call_event/1, error_resp/1, call_cdr/1, call_status_req/1, call_status_resp/1]).
+-export([error_resp/1]).
 -export([play_req/1, record_req/1, store_req/1, store_amqp_resp/1, store_http_resp/1, tones_req/1
 	 ,tones_req_tone/1, queue_req/1, answer_req/1
 	 ,park_req/1, play_collect_digits_req/1, call_pickup_req/1, hangup_req/1, say_req/1
@@ -39,7 +39,7 @@
          conference_move_req/1, conference_discovery_req/1
 	]).
 
--export([call_event_v/1, error_resp_v/1, call_cdr_v/1, call_status_req_v/1, call_status_resp_v/1]).
+-export([error_resp_v/1]).
 -export([play_req_v/1, record_req_v/1, store_req_v/1, store_amqp_resp_v/1, store_http_resp_v/1
          ,tones_req_v/1, tones_req_tone_v/1, queue_req_v/1
          ,answer_req_v/1, park_req_v/1, play_collect_digits_req_v/1, call_pickup_req_v/1, hangup_req_v/1
@@ -122,94 +122,6 @@ dialplan_req_v(Prop, AppName) ->
 	{_, VFun} ->
 	    VFun(Prop)
     end.
-
-%%--------------------------------------------------------------------
-%% @doc Format a call event from the switch for the listener
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec call_event/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-    Prop :: proplist() | json_object().
-call_event({struct, Prop}) ->
-    call_event(Prop);
-call_event(Prop) ->
-    case call_event_v(Prop) of
-	true -> build_message(Prop, ?CALL_EVENT_HEADERS, ?OPTIONAL_CALL_EVENT_HEADERS);
-	false -> {error, "Proplist failed validation for call_event"}
-    end.
-
--spec call_event_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-call_event_v({struct, Prop}) ->
-    call_event_v(Prop);
-call_event_v(Prop) ->
-    validate(Prop, ?CALL_EVENT_HEADERS, ?CALL_EVENT_VALUES, ?CALL_EVENT_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Inquire into the status of a call
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec call_status_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-    Prop :: proplist() | json_object().
-call_status_req({struct, Prop}) ->
-    call_status_req(Prop);
-call_status_req(Prop) ->
-    case call_status_req_v(Prop) of
-	true -> build_message(Prop, ?CALL_STATUS_REQ_HEADERS, ?OPTIONAL_CALL_STATUS_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for call_status req"}
-    end.
-
--spec call_status_req_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-call_status_req_v({struct, Prop}) ->
-    call_status_req_v(Prop);
-call_status_req_v(Prop) ->
-    validate(Prop, ?CALL_STATUS_REQ_HEADERS, ?CALL_STATUS_REQ_VALUES, ?CALL_STATUS_REQ_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Respond with status of a call, either active or non-existant
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec call_status_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-    Prop :: proplist() | json_object().
-call_status_resp({struct, Prop}) ->
-    call_status_resp(Prop);
-call_status_resp(Prop) ->
-    case call_status_resp_v(Prop) of
-	true -> build_message(Prop, ?CALL_STATUS_RESP_HEADERS, ?OPTIONAL_CALL_STATUS_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for call_status_resp"}
-    end.
-
--spec call_status_resp_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-call_status_resp_v({struct, Prop}) ->
-    call_status_resp_v(Prop);
-call_status_resp_v(Prop) ->
-    validate(Prop, ?CALL_STATUS_RESP_HEADERS, ?CALL_STATUS_RESP_VALUES, ?CALL_STATUS_RESP_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc Format a CDR for a call
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec call_cdr/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-    Prop :: proplist() | json_object().
-call_cdr({struct, Prop}) ->
-    call_cdr(Prop);
-call_cdr(Prop) ->
-    case call_cdr_v(Prop) of
-	true -> build_message(Prop, ?CALL_CDR_HEADERS, ?OPTIONAL_CALL_CDR_HEADERS);
-	false -> {error, "Proplist failed validation for call_cdr"}
-    end.
-
--spec call_cdr_v/1 :: (Prop) -> boolean() when
-    Prop :: proplist() | json_object().
-call_cdr_v({struct, Prop}) ->
-    call_cdr_v(Prop);
-call_cdr_v(Prop) ->
-    validate(Prop, ?CALL_CDR_HEADERS, ?CALL_CDR_VALUES, ?CALL_CDR_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Format an error event
