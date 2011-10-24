@@ -51,7 +51,7 @@ start_link() ->
 
 -spec handle_channel_status/2 :: (json_object(), proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
-    true = wh_api:call_status_req_v(JObj),
+    true = wapi_call:status_req_v(JObj),
     wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 
@@ -66,8 +66,8 @@ handle_channel_status(JObj, _Props) ->
 			,{<<"Switch-Hostname">>, Hostname}
 			| wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION)
 		       ],
-	    {'ok', Payload} = wh_api:call_status_resp(RespProp),
-	    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
+	    {'ok', Payload} = wapi_call:status_resp(RespProp),
+	    wapi_call:publish_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
 	[{error, Err}] ->
 	    ?LOG("Hostname lookup failed, but call is active"),
 	    RespProp = [{<<"Call-ID">>, CallID}
@@ -75,16 +75,16 @@ handle_channel_status(JObj, _Props) ->
 			,{<<"Error-Msg">>, wh_util:to_binary(Err)}
 			| wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION)
 		       ],
-	    {'ok', Payload} = wh_api:call_status_resp(RespProp),
-	    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
+	    {'ok', Payload} = wapi_call:status_resp(RespProp),
+	    wapi_call:publish_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
 	[timeout] ->
 	    RespProp = [{<<"Call-ID">>, CallID}
 			,{<<"Status">>, <<"active">>}
 			,{<<"Error-Msg">>, <<"switch timeout">>}
 			| wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION)
 		       ],
-	    {'ok', Payload} = wh_api:call_status_resp(RespProp),
-	    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
+	    {'ok', Payload} = wapi_call:status_resp(RespProp),
+	    wapi_call:publish_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
     end.
 
 handle_channel_query(JObj, _Props) ->

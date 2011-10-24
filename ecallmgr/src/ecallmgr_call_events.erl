@@ -348,8 +348,8 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
 			   [] -> EvtProp1;
 			   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
 		       end,
-	    {'ok', JSON} = wh_api:call_event(EvtProp2),
-	    amqp_util:callevt_publish(UUID, JSON, event);
+	    {'ok', JSON} = wapi_call:event(EvtProp2),
+	    wapi_call:publish_event(UUID, JSON);
 	_ ->
             ok
 %%	    ?LOG("skipped event ~s ~s", [FSEvtName, FSAppName])

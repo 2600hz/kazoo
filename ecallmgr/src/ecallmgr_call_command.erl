@@ -677,8 +677,8 @@ send_fetch_call_event(Node, UUID, JObj) ->
                        [] -> EvtProp1;
                        CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
                    end,
-        {ok, P1} = wh_api:call_event(EvtProp2),
-        amqp_util:callevt_publish(UUID, P1, event)
+        {ok, P1} = wapi_call:event(EvtProp2),
+	wapi_call:publish_event(UUID, P1)
     catch
         Type:_ ->
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -750,5 +750,5 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
 		   [] -> EvtProp1;
 		   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
 	       end,
-    {ok, P1} = wh_api:call_event(EvtProp2),
-    amqp_util:callevt_publish(UUID, P1, event).
+    {ok, P1} = wapi_call:event(EvtProp2),
+    wapi_call:publish_event(UUID, P1).

@@ -46,7 +46,7 @@
 new_cdr(UUID, EvtProp) ->
     CDRJson = create_cdr(EvtProp),
     ?LOG_SYS(UUID, "CDR to send: ~s", [CDRJson]),
-    amqp_util:callevt_publish(UUID, CDRJson, cdr).
+    wapi_call:publish_cdr(UUID, CDRJson).
 
 -spec create_cdr/1 :: (EvtProp) -> iolist() when
       EvtProp :: proplist().
@@ -57,7 +57,7 @@ create_cdr(EvtProp) ->
 		   <<"outbound">> -> add_values(?FS_TO_WHISTLE_OUTBOUND_MAP, ApiProp0, EvtProp);
 		   _ -> ApiProp0
 	       end,
-    {ok, JSON} = wh_api:call_cdr(ApiProp1),
+    {ok, JSON} = wapi_call:cdr(ApiProp1),
     JSON.
 
 -spec add_values/3 :: (Mappings, BaseProp, ChannelProp) -> proplist() when
