@@ -23,7 +23,7 @@ cache_user_key(Realm, User) -> {?MODULE, sip_credentials, Realm, User}.
       Cache :: pid().
 lookup_registration(Realm, Username, Cache) ->
     {'ok', RegKey} = wh_cache:peek_local(Cache, cache_user_to_reg_key(Realm, Username)),
-    wh_cache:fetch_local(Cache, RegKey).
+    wh_cache:peek_local(Cache, RegKey).
 
 -spec lookup_registrations/2 :: (Realm, Cache) -> {'ok', json_objects()} when
       Realm :: binary(),
