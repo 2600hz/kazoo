@@ -4,7 +4,7 @@
 
 -export([targeted_exchange/0, targeted_publish/2, targeted_publish/3]).
 -export([callctl_exchange/0, callctl_publish/2, callctl_publish/3, callctl_publish/4]).
--export([callevt_exchange/0, callevt_publish/1, callevt_publish/3]).
+-export([callevt_exchange/0, callevt_publish/1, callevt_publish/3, callevt_publish/4]).
 -export([resource_exchange/0, resource_publish/1, resource_publish/2, resource_publish/3]).
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
@@ -93,18 +93,18 @@ document_change_publish(Action, Db, Type, Id, Payload, ContentType) ->
     configuration_publish(RoutingKey, Payload, ContentType).
 
 -spec document_routing_key/0 :: () -> ne_binary().
--spec document_routing_key/1 :: (atom() | binary()) -> ne_binary().
--spec document_routing_key/2 :: (atom() | binary(), ne_binary()) -> ne_binary().
--spec document_routing_key/3 :: (atom() | binary(), ne_binary(), ne_binary()) -> ne_binary().
--spec document_routing_key/4 :: (atom() | binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec document_routing_key/1 :: (atom() | ne_binary()) -> ne_binary().
+-spec document_routing_key/2 :: (atom() | ne_binary(), ne_binary()) -> ne_binary().
+-spec document_routing_key/3 :: (atom() | ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec document_routing_key/4 :: (atom() | ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 document_routing_key() ->
-    document_routing_key("*").
+    document_routing_key(<<"*">>).
 document_routing_key(Action) ->
-    document_routing_key(Action, "*").
+    document_routing_key(Action, <<"*">>).
 document_routing_key(Action, Db) ->
-    document_routing_key(Action, Db, "*").
+    document_routing_key(Action, Db, <<"*">>).
 document_routing_key(Action, Db, Type) ->
-    document_routing_key(Action, Db, Type, "*").
+    document_routing_key(Action, Db, Type, <<"*">>).
 document_routing_key(Action, Db, Type, Id) ->
     list_to_binary(["doc_", wh_util:to_list(Action), ".", Db, ".", Type, ".", Id]).
 
@@ -133,6 +133,8 @@ callctl_publish(CallID, Payload, ContentType, Props) ->
       CallID :: ne_binary() | iolist(),
       Payload :: iolist() | ne_binary(),
       Type :: 'media_req' | 'event' | 'status_req' | 'cdr' | ne_binary().
+-spec callevt_publish/4 :: (ne_binary(), iolist(), Type, ne_binary()) -> 'ok' when
+      Type :: 'status_req' | 'event'.
 callevt_publish(Payload) ->
     callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, media_req).
 
@@ -151,6 +153,14 @@ callevt_publish(CallID, Payload, cdr) ->
 
 callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
+
+callevt_publish(CallID, Payload, status_req, ContentType) ->
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, ContentType);
+callevt_publish(CallID, Payload, event, ContentType) ->
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallID/binary>>, Payload, ContentType);
+callevt_publish(CallID, Payload, cdr, ContentType) ->
+    Key = encode_key(CallID),
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, Key/binary>>, Payload, ContentType).
 
 -spec resource_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().
