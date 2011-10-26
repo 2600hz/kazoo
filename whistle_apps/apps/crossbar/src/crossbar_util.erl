@@ -9,6 +9,7 @@
 -module(crossbar_util).
 
 -export([response/2, response/3, response/4, response/5]).
+-export([response_deprecated/1, response_deprecated_redirect/2, response_deprecated_redirect/3]).
 -export([response_faulty_request/1]).
 -export([response_bad_identifier/2]).
 -export([response_conflicting_docs/1]).
@@ -82,7 +83,7 @@ response(fatal, Msg, Code, JTerm, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec(create_response/5 :: (Status :: error|fatal|success, Msg :: json_string(), Code :: integer()|undefined, JTerm :: json_term(), Context :: #cb_context{}) -> #cb_context{}).
+-spec create_response/5 :: (error|fatal|success, json_string(), integer()|undefined, json_term(), #cb_context{}) -> #cb_context{}.
 create_response(Status, Msg, Code, JTerm, Context) ->
     Context#cb_context {
          resp_status = Status
@@ -99,9 +100,38 @@ create_response(Status, Msg, Code, JTerm, Context) ->
 %% processed, like nonsensical chains)
 %% @end
 %%--------------------------------------------------------------------
--spec(response_faulty_request/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec response_faulty_request/1 :: (#cb_context{}) -> #cb_context{}.
 response_faulty_request(Context) ->
     response(error, <<"faulty request">>, 400, Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% When a module is no longer valid, alert the client of the deprecated status
+%% by either sending a 410 Gone or a 301 Redirct (when using the arity
+%% 3 version.
+%%
+%% The RedirectUrl should be relative to the accessed URL. So, if the
+%% URL accessed that is deprecated is:
+%% /v1/account/{AID}/module/{MID}
+%% and that MID moved to module2, the RedirectURL should be:
+%% ../../module2/{MID}
+%%
+%% If redirecting from module1 to module2, RedirectURL should be:
+%% ../module2
+%% @end
+%%--------------------------------------------------------------------
+-spec response_deprecated(#cb_context{}) -> #cb_context{}.
+response_deprecated(Context) ->
+    create_response(error, <<"deprecated">>, 410, wh_json:new(), Context).
+
+-spec response_deprecated_redirect(#cb_context{}, json_string()) -> #cb_context{}.
+-spec response_deprecated_redirect(#cb_context{}, json_string(), json_object()) -> #cb_context{}.
+response_deprecated_redirect(Context, RedirectUrl) ->
+    response_deprecated_redirect(Context, RedirectUrl, wh_json:new()).
+response_deprecated_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj) ->
+    create_response(success, <<"deprecated">>, 301, JObj
+		    ,Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -205,6 +235,7 @@ binding_heartbeat(BPid) ->
       Timeout :: non_neg_integer() | 'infinity'.
 binding_heartbeat(BPid, Timeout) ->
     PPid = self(),
+    ?LOG("Starting binding heartbeat for ~p", [PPid]),
     spawn(fun() ->
 		  Ref = erlang:monitor(process, PPid),
 		  {ok, Tref} = timer:send_interval(250, BPid, heartbeat),
@@ -212,9 +243,12 @@ binding_heartbeat(BPid, Timeout) ->
 			   {'DOWN', Ref, process, _, normal} ->
 			       ok;
 			   {'DOWN', Ref, process, _, Reason} ->
+			       ?LOG("Bound client (~p) down for non-normal reason: ~p", [PPid, Reason]),
 			       BPid ! {binding_error, Reason};
 			   _ -> ok
-		       after Timeout -> ok
+		       after Timeout ->
+			       ?LOG("Bound client (~p) too slow, timed out after ~p", [PPid, Timeout]),
+			       ok
 		       end,
 		  timer:cancel(Tref)
 	  end).

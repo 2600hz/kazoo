@@ -116,15 +116,14 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.cdrs">>, Payload
 handle_info({binding_fired, Pid, <<"v1_resource.validate.cdrs">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
+		  _BPid = crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, RD, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.cdrs">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-		  Pid ! {binding_result, true, [RD, Context, Params]}
-	  end),
+    Pid ! {binding_result, true, [RD, Context, Params]},
     {noreply, State};
 
 handle_info({binding_fired, Pid, _B, Payload}, State) ->
@@ -222,19 +221,23 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
+-spec validate/3 :: ([binary(),...] | [], #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
+validate([], _RD, #cb_context{req_json=RJ, req_verb = <<"get">>}=Context) ->
     try
-        load_cdr_summary(Context, QueryString)
+        load_cdr_summary(Context, RJ)
     catch
-        _:_ ->
+        _T:_R ->
+	    ST = erlang:get_stacktrace(),
+	    ?LOG("Loading summary crashed: ~p: ~p", [_T, _R]),
+	    [?LOG("~p", [S]) || S <- ST],
             crossbar_util:response_db_fatal(Context)
     end;
 validate([CDRId], _, #cb_context{req_verb = <<"get">>}=Context) ->
     try
         load_cdr(CDRId, Context)
     catch
-        _:_ ->
+        _T:_R ->
+	    ?LOG("Loading cdr crashed: ~p: ~p", [_T, _R]),
             crossbar_util:response_db_fatal(Context)
     end;
 validate(_, _, Context) ->
@@ -246,23 +249,20 @@ validate(_, _, Context) ->
 %% Attempt to load list of CDR, each summarized.
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr_summary/2 :: (Context, QueryParams) -> #cb_context{} when
-      Context :: #cb_context{},
-      QueryParams :: proplist().
-load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
-    Nouns = Context#cb_context.req_nouns,
-    LastNoun  = lists:nth(2, Nouns), %%st is {cdr, _}
-    case LastNoun of
-	{<<"accounts">>, _} ->
-	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams, []),
+-spec load_cdr_summary/2 :: (#cb_context{}, json_object()) -> #cb_context{}.
+load_cdr_summary(#cb_context{req_nouns=Nouns, db_name=DbName}=Context, QueryParams) ->
+    case Nouns of
+	[_, {<<"accounts">>, _AID} | _] ->
+	    ?LOG("Loading cdrs for account(s): ~p", [_AID]),
+	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, wh_json:to_proplist(QueryParams), []),
 	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
-	{<<"users">>, [UserId]} ->
+	[_, {<<"users">>, [UserId] } | _] ->
 	    {ok, SipCredsFromDevices} = couch_mgr:get_results(DbName, <<"devices/listing_by_owner">>, [{<<"key">>, UserId}, {<<"include_docs">>, true}]),
 	    SipCredsKeys = lists:foldl(fun(SipCred, Acc) ->
 					       [[wh_json:get_value([<<"doc">>, <<"sip">>, <<"realm">>], SipCred),
 						wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], SipCred)]|Acc]
 				       end, [], SipCredsFromDevices),
-	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"keys">>, SipCredsKeys}]),
+	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, wh_json:to_proplist(QueryParams), [{<<"keys">>, SipCredsKeys}]),
 	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
 	_ ->
 	    crossbar_util:response_faulty_request(Context)
@@ -274,8 +274,6 @@ load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
 %% Load a CDR document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr/2 :: (CdrId, Context) -> #cb_context{} when
-      CdrId :: binary(),
-      Context :: #cb_context{}.
+-spec load_cdr/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_cdr(CdrId, Context) ->
     crossbar_doc:load(CdrId, Context).

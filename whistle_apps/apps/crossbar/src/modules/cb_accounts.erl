@@ -373,7 +373,7 @@ load_account_summary([], Context) ->
 load_account_summary(AccountId, Context) ->
     crossbar_doc:load_view(?AGG_VIEW_SUMMARY, [
          {<<"startkey">>, [AccountId]}
-        ,{<<"endkey">>, [AccountId, ?EMPTY_JSON_OBJECT]}
+        ,{<<"endkey">>, [AccountId, wh_json:new()]}
     ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
@@ -538,7 +538,7 @@ load_siblings(AccountId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 

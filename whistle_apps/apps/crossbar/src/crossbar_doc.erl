@@ -68,7 +68,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
             end;
         _Else ->
 	    ?LOG("Unexpected return from datastore: ~p", [_Else]),
-            Context#cb_context{doc=?EMPTY_JSON_OBJECT}
+            Context#cb_context{doc=wh_json:new()}
     end.
 
 %%--------------------------------------------------------------------
@@ -146,7 +146,7 @@ load_view(View, Options, #cb_context{db_name=DB}=Context) ->
 	     };
         _Else ->
 	    ?LOG("loading view ~s from ~s failed: unexpected ~p", [view_name_to_binary(View), DB, _Else]),
-            Context#cb_context{doc=?EMPTY_JSON_OBJECT}
+            Context#cb_context{doc=wh_json:new()}
     end.
 
 %%--------------------------------------------------------------------
@@ -408,7 +408,7 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
 	    ?LOG("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
 	    send_document_change(<<"deleted">>, DB, JObj1),
             Context#cb_context{
-	       doc = ?EMPTY_JSON_OBJECT
+	       doc = wh_json:new()
 	      ,resp_status=success
 	      ,resp_data=[]
 	     };
@@ -428,7 +428,7 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context, permanent) ->
 	{ok, _Doc} ->
 	    ?LOG("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
             Context#cb_context{
-	       doc = ?EMPTY_JSON_OBJECT
+	       doc = wh_json:new()
 	      ,resp_status=success
 	      ,resp_data=[]
 	     };

@@ -222,21 +222,11 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
-    try
-        load_cdr_summary(Context, QueryString)
-    catch
-        _:_ ->
-            crossbar_util:response_db_fatal(Context)
-    end;
+-spec validate/3 :: ([binary(),...] | [], #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
+validate([], _, #cb_context{req_verb = <<"get">>}=Context) ->
+    crossbar_util:response_deprecated(Context, <<"../cdrs">>);
 validate([CDRId], _, #cb_context{req_verb = <<"get">>}=Context) ->
-    try
-        load_cdr(CDRId, Context)
-    catch
-        _:_ ->
-            crossbar_util:response_db_fatal(Context)
-    end;
+    crossbar_util:response_deprecated(Context, list_to_binary(["../cdrs/", CDRId]));
 validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
 
