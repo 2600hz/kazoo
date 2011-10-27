@@ -223,10 +223,14 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate/3 :: ([binary(),...] | [], #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
-validate([], _, #cb_context{req_verb = <<"get">>}=Context) ->
-    crossbar_util:response_deprecated(Context, <<"../cdrs">>);
-validate([CDRId], _, #cb_context{req_verb = <<"get">>}=Context) ->
-    crossbar_util:response_deprecated(Context, list_to_binary(["../cdrs/", CDRId]));
+validate([], RD, #cb_context{req_verb = <<"get">>}=Context) ->
+    Relative = <<"../cdrs">>,
+    Location = crossbar_util:get_abs_url(RD, Relative),
+    crossbar_util:response_deprecated_redirect(Context, Relative, wh_json:from_list([{<<"Location">>, wh_util:to_binary(Location)}]));
+validate([CDRId], RD, #cb_context{req_verb = <<"get">>}=Context) ->
+    Relative = list_to_binary(["../../cdrs/", CDRId]),
+    Location = crossbar_util:get_abs_url(RD, Relative),
+    crossbar_util:response_deprecated_redirect(Context, Relative, wh_json:from_list([{<<"Location">>, wh_util:to_binary(Location)}]));
 validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
 

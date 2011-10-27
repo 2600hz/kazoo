@@ -21,9 +21,10 @@
 -export([response_db_fatal/1]).
 -export([binding_heartbeat/1, binding_heartbeat/2]).
 -export([put_reqid/1]).
--export([store/3, fetch/2]).
+-export([store/3, fetch/2, get_abs_url/2]).
 
 -include("../include/crossbar.hrl").
+-include_lib("webmachine/include/webmachine.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -130,7 +131,7 @@ response_deprecated(Context) ->
 response_deprecated_redirect(Context, RedirectUrl) ->
     response_deprecated_redirect(Context, RedirectUrl, wh_json:new()).
 response_deprecated_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj) ->
-    create_response(success, <<"deprecated">>, 301, JObj
+    create_response(error, <<"deprecated">>, 301, JObj
 		    ,Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 
 %%--------------------------------------------------------------------
@@ -290,3 +291,54 @@ store(Key, Data, #cb_context{storage=Storage}=Context) ->
       Context :: #cb_context{}.
 fetch(Key, #cb_context{storage=Storage}) ->
     proplists:get_value(Key, Storage).
+
+-spec get_abs_url/2 :: (#wm_reqdata{}, ne_binary()) -> string().
+get_abs_url(RD, Url) ->
+    %% http://some.host.com:port/"
+    Port = case wrq:port(RD) of
+	       80 -> "";
+	       P -> [":", wh_util:to_list(P)]
+	   end,
+
+    Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
+    ?LOG("host: ~s", [Host]),
+
+    PathTokensRev = lists:reverse(string:tokens(wrq:path(RD), "/")),
+    get_abs_url(Host, PathTokensRev, Url).
+
+%% Request: http[s]://some.host.com:port/v1/accounts/acct_id/module
+%%
+%% Host : http[s]://some.host.com:port/
+%% PathTokensRev: /v1/accounts/acct_id/module => [module, acct_id, accounts, v1]
+%% Url: ../other_mod
+%%
+%% Result: http[s]://some.host.com:port/v1/accounts/acct_id/other_mod
+-spec get_abs_url/3 :: (iolist(), [ne_binary(),...], ne_binary() | string()) -> string().
+get_abs_url(Host, PathTokensRev, Url) ->
+    UrlTokens = string:tokens(wh_util:to_list(Url), "/"),
+
+    ?LOG("path: ~p", [PathTokensRev]),
+    ?LOG("rel: ~p", [UrlTokens]),
+
+    Url1 = string:join(
+      lists:reverse(
+	lists:foldl(fun("..", []) -> [];
+		       ("..", [_ | PathTokens]) -> PathTokens;
+		       (".", PathTokens) -> PathTokens;
+		       (Segment, PathTokens) -> [Segment | PathTokens]
+		    end, PathTokensRev, UrlTokens)
+       ), "/"),
+    ?LOG("final url: ~p", [Url1]),
+    binary_to_list(list_to_binary([Host, Url1])).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+get_abs_url_test() ->
+    Host = ["http://", "some.host.com", ":8000", "/"],
+    PTs = ["module", "acct_id", "accounts", "v1"],
+    Url = "../other_mod",
+    ?assertEqual(get_abs_url(Host, PTs, Url), "http://some.host.com:8000/v1/accounts/acct_id/other_mod"),
+    ?assertEqual(get_abs_url(Host, ["mod_id" | PTs], "../../other_mod"++"/mod_id"), "http://some.host.com:8000/v1/accounts/acct_id/other_mod/mod_id").
+
+-endif.

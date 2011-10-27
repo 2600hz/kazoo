@@ -152,7 +152,7 @@ resource_exists(RD, Context) ->
                     ReturnCode = Context1#cb_context.resp_error_code,
 		    ?LOG("requested resource did not validate, returning ~w", [ReturnCode]),
 		    ?TIMER_TICK("v1.resource_exists halt end"),
-                    {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
+                    {{halt, ReturnCode}, set_resp_headers(wrq:remove_resp_header("Content-Encoding", RD2), Context1), Context1}
             end;
 	false ->
 	    ?TIMER_TICK("v1.resource_exists false end"),
@@ -781,30 +781,7 @@ set_resp_headers(RD0, #cb_context{resp_headers=Headers}) ->
 
 -spec fix_header/3 :: (#wm_reqdata{}, string(), string() | binary()) -> {string(), string()}.
 fix_header(RD, "Location"=H, Url) ->
-    %% http://some.host.com:port/"
-    Port = case wrq:port(RD) of
-	       80 -> "";
-	       P -> [":", wh_util:to_list(P)]
-	   end,
-
-    Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
-    ?LOG("host: ~s", [Host]),
-
-    %% /v1/accounts/acct_id/module => [module, acct_id, accounts, v1]
-    PathTokensRev = lists:reverse(string:tokens(wrq:path(RD), "/")),
-    UrlTokens = string:tokens(wh_util:to_list(Url), "/"),
-
-    Url1 =
-	string:join(
-	  lists:reverse(
-	    lists:foldl(fun("..", []) -> [];
-			   ("..", [_ | PathTokens]) -> PathTokens;
-			   (".", PathTokens) -> PathTokens;
-			   (Segment, PathTokens) -> [Segment | PathTokens]
-			end, PathTokensRev, UrlTokens)
-	   ), "/"),
-
-    {H, lists:concat([Host | [Url1]])};
+    {H, crossbar_util:get_abs_url(RD, Url)};
 fix_header(_, H, V) ->
     {wh_util:to_list(H), wh_util:to_list(V)}.
 
