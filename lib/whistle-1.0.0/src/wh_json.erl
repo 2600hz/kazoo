@@ -16,6 +16,7 @@
 -export([get_list_value/2, get_list_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
+-export([filter/2, filter/3]).
 -export([get_value/2, get_value/3, get_values/1]).
 -export([get_keys/1, get_keys/2]).
 -export([set_value/3, new/0]).
@@ -75,6 +76,11 @@ is_json_term(MaybeJObj) ->
       L :: wh_proplist().
 from_list(L) when is_list(L) ->
     {struct, L}.
+%%    lists:foldr(fun({K,V}, Acc) ->
+%%                        true = is_json_term(V), % crash if invalid
+%%                        set_value([K], V, Acc); % set all other Values normally
+%%                   (A, Acc) when is_atom(A) -> set_value([A], true, Acc)
+%%                end, ?EMPTY_JSON_OBJECT, L).
 
 %% only a top-level merge
 %% merges JObj1 into JObj2
@@ -113,6 +119,24 @@ get_list_value(Key, JObj) ->
         undefined -> undefined;
         Value -> wh_util:to_list(Value)
     end.
+
+-spec filter/3 :: (Pred, JObj, Keys) -> undefined | json_object() when
+      Pred :: fun( (Element) -> boolean() ),
+      Element :: json_term() | {json_term(), json_term()},
+      JObj :: json_object(),
+      Keys :: term().
+filter(Pred, JObj, Keys) ->
+    Value = ?MODULE:filter(Pred, ?MODULE:get_value(Keys, JObj)),
+    ?MODULE:set_value(Keys, Value, JObj).
+
+-spec filter/2 :: (Pred, JObj) -> undefined | json_object() when
+      Pred :: fun( (Element) -> boolean() ),
+      Element :: json_term() | {json_term(), json_term()},
+      JObj :: json_object().
+filter(_, undefined) ->
+    undefined;
+filter(Pred, {struct, Props}) when is_function(Pred, 1) ->
+    {struct, [ E || E <- Props, Pred(E) ]}.
 
 -spec get_list_value/3 :: (Key, JObj, Default) -> list() when
       Key :: term(),
@@ -570,6 +594,14 @@ is_false_test() ->
 is_true_test() ->
     ?assertEqual(false, wh_json:is_true(<<"d1k1">>, ?D1)),
     ?assertEqual(true, wh_json:is_true(<<"a_key">>, {struct, [{<<"a_key">>, true}]})).
+
+-define(D1_FILTERED, {struct, [{<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]}).
+-define(D2_FILTERED, {struct, [{<<"sub_d1">>, ?D1}]}).
+-define(D3_FILTERED, {struct, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?D1, ?D2_FILTERED]}]}).
+filter_test() ->
+    ?assertEqual(?D1_FILTERED, ?MODULE:filter(fun({<<"d1k1">>, _}) -> false; (_) -> true end, ?D1)),
+    ?assertEqual(?D2_FILTERED, ?MODULE:filter(fun({_, V}) when is_number(V) -> false; (_) -> true end, ?D2)),
+    ?assertEqual(?D3_FILTERED, ?MODULE:filter(fun({_, V}) when is_number(V) -> false; (_) -> true end, ?D3, [<<"sub_docs">>, 2])).
 
 new_test() ->
     ?EMPTY_JSON_OBJECT =:= ?MODULE:new().

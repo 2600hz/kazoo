@@ -266,7 +266,26 @@ validate(_, Context) ->
 -spec load_conference_summary/1 :: (Context) -> #cb_context{} when
       Context :: #cb_context{}.
 load_conference_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    Nouns = Context#cb_context.req_nouns,
+    LastNoun  = lists:nth(2, Nouns),
+    case LastNoun of
+	{<<"users">>, [UserId]} ->
+            crossbar_doc:load_view(?CB_LIST, [], Context, fun(JObj, Acc) ->
+                                                                  case wh_json:get_value([<<"value">>, <<"owner_id">>], JObj) of
+                                                                      undefined ->
+                                                                          normalize_view_results(JObj, Acc);
+                                                                      UserId ->
+                                                                          normalize_view_results(JObj, Acc);
+                                                                      _ ->
+                                                                          [undefined|Acc]
+                                                                  end
+                                                          end);
+        {<<"accounts">>, _} ->
+            crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+        _ ->
+            crossbar_util:response_faulty_request(Context)
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

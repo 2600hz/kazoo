@@ -35,30 +35,29 @@ handle_req(JObj, Props) ->
     CacheKey = reg_util:cache_reg_key(Id),
     Expiry = wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
     Fudge = round(Expiry * 0.25),
-    Expires = Expiry + Fudge,
+    Expires = Expiry + Fudge + 60, %% increased, yealinks dont even try till ten seconds after the fact...
 
     Username = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
 
-    case wh_cache:fetch_local(Cache, CacheKey) of
+    case wh_cache:peek_local(Cache, CacheKey) of
 	{error, not_found} ->
-	    ?LOG("contact for ~s@~s not in cache", [Username, Realm]),
+	    ?LOG("Cache miss, rm old and save new ~s@~s for ~p seconds", [Username, Realm, Expires]),
+
+            %% do the cache work first so requests dont have to wait till after the db work
+            %% for the latest greatest, plus if the db crashes we still want to keep the memory going
+	    wh_cache:store_local(Cache, CacheKey, JObj1, Expires),
+	    wh_cache:store_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username), CacheKey, Expires),
+	    ?LOG("new registration contact ~p hashed as ~s", [Contact1, Id]),
 
 	    reg_util:remove_old_regs(Username, Realm, Cache),
-	    ?LOG("flushed users registrations"),
-
-	    ?LOG("Cache miss, rm old and save new ~s for ~p seconds", [Id, Expires]),
-
-	    wh_cache:store_local(Cache, CacheKey, JObj1, Expires),
-	    wh_cache:store_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username), CacheKey),
-	    ?LOG_END("new contact hash ~s cached for ~p seconds", [Id, Expires]),
-
 	    {ok, _} = reg_util:store_reg(JObj1, Id, Contact1),
-	    ?LOG_END("new contact hash ~s stored for ~p seconds", [Id, Expires]);
+
+	    ?LOG_END("updated datastore registrations");
 	{ok, _} ->
 	    ?LOG("contact for ~s@~s found in cache", [Username, Realm]),
 	    wh_cache:store_local(Cache, CacheKey, JObj1, Expires),
-	    wh_cache:store_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username), CacheKey),
+	    wh_cache:store_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username), CacheKey, Expires),
 
-	    ?LOG_END("not verifying with DB, assuming cached JSON is valid")
+	    ?LOG_END("update cache expiration timer for ~s", [Id])
     end.

@@ -68,7 +68,7 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
     ?LOG_SYS("Attachment doc: ~s", [AttachmentId]),
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
-    Email = {<<"multipart">>, <<"mixed">> %% Content Type / Sub Type
+    Email = {<<"multipart">>, <<"alternative">> %% Content Type / Sub Type
 		 ,[ %% Headers
 		    {<<"From">>, From},
 		    {<<"To">>, To},

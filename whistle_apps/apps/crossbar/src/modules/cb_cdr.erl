@@ -222,21 +222,15 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
-    try
-        load_cdr_summary(Context, QueryString)
-    catch
-        _:_ ->
-            crossbar_util:response_db_fatal(Context)
-    end;
-validate([CDRId], _, #cb_context{req_verb = <<"get">>}=Context) ->
-    try
-        load_cdr(CDRId, Context)
-    catch
-        _:_ ->
-            crossbar_util:response_db_fatal(Context)
-    end;
+-spec validate/3 :: ([binary(),...] | [], #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
+validate([], RD, #cb_context{req_verb = <<"get">>}=Context) ->
+    Relative = <<"../cdrs">>,
+    Location = crossbar_util:get_abs_url(RD, Relative),
+    crossbar_util:response_deprecated_redirect(Context, Relative, wh_json:from_list([{<<"Location">>, wh_util:to_binary(Location)}]));
+validate([CDRId], RD, #cb_context{req_verb = <<"get">>}=Context) ->
+    Relative = list_to_binary(["../../cdrs/", CDRId]),
+    Location = crossbar_util:get_abs_url(RD, Relative),
+    crossbar_util:response_deprecated_redirect(Context, Relative, wh_json:from_list([{<<"Location">>, wh_util:to_binary(Location)}]));
 validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
 
