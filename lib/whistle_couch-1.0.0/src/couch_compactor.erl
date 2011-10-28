@@ -105,7 +105,7 @@ compact_db(NodeBin, DB, ConflictStrategy, F) ->
     ok = compact_node_db(NodeBin, DB, Conn, AdminConn),
     done.
 
-%% Internal Functions
+%% Internal Functions ----------------------------------------------------------
 -spec compact_node_db/4 :: (ne_binary(), ne_binary(), #server{}, #server{}) -> 'ok'.
 compact_node_db(NodeBin, DB, Conn, AdminConn) ->
     DBEncoded = binary:replace(DB, <<"/">>, <<"%2f">>, [global]),
