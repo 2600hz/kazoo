@@ -8,21 +8,37 @@
 %%%-------------------------------------------------------------------
 -module(couch_compactor).
 
--export([compact_db/2, compact_node/1, compact_all/0]).
+-export([compact_all/0, compact_node/1, compact_db/2]).
+%% Conflict resolution-enabled API
+-export([compact_all/1, compact_all/2, compact_node/2, compact_node/3
+	 ,compact_db/3, compact_db/4]).
 
 -include("wh_couch.hrl").
 -define(SLEEP_BETWEEN_COMPACTION, 60000). %% sleep 60 seconds between shard compactions
 -define(SLEEP_BETWEEN_POLL, 5000). %% sleep 5 seconds before polling the shard for compaction status
 
 -spec compact_all/0 :: () -> 'done'.
+-spec compact_all/1 :: (couch_conflict:resolution_strategy()) -> 'done'.
+-spec compact_all/2 :: (couch_conflict:resolution_strategy(), couch_conflict:merge_fun()) -> 'done'.
 compact_all() ->
     ?LOG_SYS("Compacting all nodes"),
     {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
     _ = [ compact_node(wh_json:get_value(<<"id">>, Node)) || Node <- Nodes],
     done.
+compact_all(ConflictStrategy) ->
+    ?LOG_SYS("Compacting all nodes"),
+    {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
+    _ = [ compact_node(wh_json:get_value(<<"id">>, Node), ConflictStrategy) || Node <- Nodes],
+    done.
+compact_all(ConflictStrategy, F) ->
+    ?LOG_SYS("Compacting all nodes"),
+    {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
+    _ = [ compact_node(wh_json:get_value(<<"id">>, Node), ConflictStrategy, F) || Node <- Nodes],
+    done.
 
--spec compact_node/1 :: (Node) -> 'done' when
-      Node :: atom() | binary().
+-spec compact_node/1 :: (ne_binary() | atom()) -> 'done'.
+-spec compact_node/2 :: (ne_binary() | atom(), couch_conflict:resolution_strategy()) -> 'done'.
+-spec compact_node/3 :: (ne_binary() | atom(), couch_conflict:resolution_strategy(), couch_conflict:merge_fun()) -> 'done'.
 compact_node(Node) when is_atom(Node) ->
     compact_node(wh_util:to_binary(Node));
 compact_node(NodeBin) ->
@@ -32,26 +48,66 @@ compact_node(NodeBin) ->
     {Conn, AdminConn} = get_node_connections(NodeBin),
     {ok, DBs} = couch_util:db_info(Conn),
     ?LOG("Found ~b DBs to compact", [length(DBs)]),
-    _ = [ compact_db(NodeBin, DB, Conn, AdminConn) || DB <- DBs ],
+    _ = [ compact_node_db(NodeBin, DB, Conn, AdminConn) || DB <- DBs ],
+    done.
+compact_node(Node, ConflictStrategy) when is_atom(Node) ->
+    compact_node(wh_util:to_binary(Node), ConflictStrategy);
+compact_node(NodeBin, ConflictStrategy) ->
+    put(callid, NodeBin),
+    ?LOG("Compacting node"),
+
+    {Conn, _AdminConn} = get_node_connections(NodeBin),
+    {ok, DBs} = couch_util:db_info(Conn),
+    ?LOG("Found ~b DBs to compact", [length(DBs)]),
+
+    _ = [ compact_db(NodeBin, DB, ConflictStrategy) || DB <- DBs ],
+    done.
+compact_node(Node, ConflictStrategy, F) when is_atom(Node) ->
+    compact_node(wh_util:to_binary(Node), ConflictStrategy, F);
+compact_node(NodeBin, ConflictStrategy, F) ->
+    put(callid, NodeBin),
+    ?LOG("Compacting node"),
+
+    {Conn, _AdminConn} = get_node_connections(NodeBin),
+    {ok, DBs} = couch_util:db_info(Conn),
+    ?LOG("Found ~b DBs to compact", [length(DBs)]),
+
+    _ = [ compact_db(NodeBin, DB, ConflictStrategy, F) || DB <- DBs ],
     done.
 
--spec compact_db/2 :: (Node, DB) -> 'done' when
-      Node :: atom() | binary(),
-      DB :: binary().
+-spec compact_db/2 :: (ne_binary() | atom(), ne_binary()) -> 'done'.
+-spec compact_db/3 :: (ne_binary() | atom(), ne_binary(), couch_conflict:resolution_strategy()) -> 'done'.
+-spec compact_db/4 :: (ne_binary() | atom(), ne_binary(), couch_conflict:resolution_strategy(), couch_conflict:merge_fun()) -> 'done'.
 compact_db(Node, DB) when is_atom(Node) ->
     compact_db(wh_util:to_binary(Node), DB);
 compact_db(NodeBin, DB) ->
     {Conn, AdminConn} = get_node_connections(NodeBin),
-    ok = compact_db(NodeBin, DB, Conn, AdminConn),
+    ok = compact_node_db(NodeBin, DB, Conn, AdminConn),
+    done.
+
+compact_db(Node, DB, ConflictStrategy) when is_atom(Node) ->
+    compact_db(wh_util:to_binary(Node), DB, ConflictStrategy);
+compact_db(NodeBin, DB, ConflictStrategy) ->
+    {Conn, AdminConn} = get_node_connections(NodeBin),
+
+    _ = couch_conflict:resolve(Conn, DB, couch_conflict:default_view(), ConflictStrategy),
+
+    ok = compact_node_db(NodeBin, DB, Conn, AdminConn),
+    done.
+
+compact_db(Node, DB, ConflictStrategy, F) when is_atom(Node) ->
+    compact_db(wh_util:to_binary(Node), DB, ConflictStrategy, F);
+compact_db(NodeBin, DB, ConflictStrategy, F) ->
+    {Conn, AdminConn} = get_node_connections(NodeBin),
+
+    _ = couch_conflict:resolve(Conn, DB, couch_conflict:default_view(), ConflictStrategy, F),
+
+    ok = compact_node_db(NodeBin, DB, Conn, AdminConn),
     done.
 
 %% Internal Functions
--spec compact_db/4 :: (NodeBin, DB, Conn, AdminConn) -> 'ok' when
-      NodeBin :: binary(),
-      DB :: binary(),
-      Conn :: #server{},
-      AdminConn :: #server{}.
-compact_db(NodeBin, DB, Conn, AdminConn) ->
+-spec compact_node_db/4 :: (ne_binary(), ne_binary(), #server{}, #server{}) -> 'ok'.
+compact_node_db(NodeBin, DB, Conn, AdminConn) ->
     DBEncoded = binary:replace(DB, <<"/">>, <<"%2f">>, [global]),
     put(callid, <<NodeBin/binary, "-", DBEncoded/binary>>),
     ?LOG("Starting DB compaction"),
