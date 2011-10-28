@@ -120,7 +120,7 @@ get_list_value(Key, JObj) ->
         Value -> wh_util:to_list(Value)
     end.
 
--spec filter/3 :: (Pred, JObj, Keys) -> undefined | json_object() when
+-spec filter/3 :: (Pred, JObj, Keys) -> json_object() when
       Pred :: fun( (Element) -> boolean() ),
       Element :: json_term() | {json_term(), json_term()},
       JObj :: json_object(),
@@ -129,12 +129,10 @@ filter(Pred, JObj, Keys) ->
     Value = ?MODULE:filter(Pred, ?MODULE:get_value(Keys, JObj)),
     ?MODULE:set_value(Keys, Value, JObj).
 
--spec filter/2 :: (Pred, JObj) -> undefined | json_object() when
+-spec filter/2 :: (Pred, JObj) -> json_object() when
       Pred :: fun( (Element) -> boolean() ),
       Element :: json_term() | {json_term(), json_term()},
       JObj :: json_object().
-filter(_, undefined) ->
-    undefined;
 filter(Pred, {struct, Props}) when is_function(Pred, 1) ->
     {struct, [ E || E <- Props, Pred(E) ]}.
 
