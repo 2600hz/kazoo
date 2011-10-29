@@ -42,7 +42,6 @@
 -include("wh_couch.hrl").
 
 -define(SERVER, ?MODULE).
--define(STARTUP_FILE, [code:lib_dir(whistle_couch, priv), "/startup.config"]).
 
 %% Host = IP Address or FQDN
 %% Connection = {Host, #server{}}
@@ -53,7 +52,6 @@
 	  ,admin_connection = #server{} :: #server{}
 	  ,creds = {"", ""} :: tuple(string(), string()) % {User, Pass}
 	  ,change_handlers = dict:new() :: dict()
-	  ,cache = undefined :: undefined | pid()
 	 }).
 
 %%%===================================================================
@@ -630,15 +628,12 @@ get_uuids(Count) ->
 
 -spec get_node_cookie/0 :: () -> atom().
 get_node_cookie() ->
-    case wh_cache:fetch_local(get_cache_pid(), bigcouch_cookie) of
-	{ok, Cookie} -> Cookie;
-	{error, not_found} -> set_node_cookie(monster), monster
-    end.
+    couch_config:fetch(bigcouch_cookie, monster).
 
 -spec set_node_cookie/1 :: (Cookie) -> ok when
       Cookie :: atom().
 set_node_cookie(Cookie) when is_atom(Cookie) ->
-    wh_cache:store_local(get_cache_pid(), bigcouch_cookie, Cookie, 24 * 3600).
+    couch_config:store(bigcouch_cookie, Cookie, infinity).
 
 -spec get_url/0 :: () -> binary().
 get_url() ->
@@ -667,10 +662,6 @@ get_admin_url() ->
               ,$@, H/binary
               ,":", (wh_util:to_binary(P))/binary, $/>>
     end.
-
--spec get_cache_pid/0 :: () -> pid() | undefined.
-get_cache_pid() ->
-    gen_server:call(?SERVER, get_cache_pid).
 
 add_change_handler(DBName, DocID) ->
     ?LOG_SYS("Add change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
@@ -718,9 +709,6 @@ init(_) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(get_cache_pid, _From, #state{cache=C}=State) ->
-    {reply, C, State};
-
 handle_call(get_host, _From, #state{host={H,_,_}}=State) ->
     {reply, H, State};
 
@@ -734,7 +722,10 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={O
     ?LOG_SYS("Updating host from ~p to ~p", [OldHost, Host]),
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
-    spawn(fun() -> save_config(Host, Port, User, Pass, AdminPort) end),
+
+    couch_config:store(couch_config, {couch_config, Host, Port, User, Pass, AdminPort}, infinity),
+
+    spawn(fun() -> save_config() end),
 
     {reply, ok, State#state{host={Host, Port, AdminPort}
 			    ,connection=Conn
@@ -747,7 +738,10 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
     ?LOG_SYS("Setting host for the first time to ~p", [Host]),
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
-    spawn(fun() -> save_config(Host, Port, User, Pass, AdminPort) end),
+
+    couch_config:store(couch_config, {couch_config, Host, Port, User, Pass, AdminPort}, infinity),
+
+    spawn(fun() -> save_config() end),
 
     {reply, ok, State#state{host={Host,Port,AdminPort}
 			    ,connection=Conn
@@ -852,70 +846,49 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(init_state/0 :: () -> #state{}).
+-spec init_state/0 :: () -> #state{}.
 init_state() ->
-    Pid = whereis(wh_couch_cache),
-    case get_startup_config() of
-	{ok, Ts} ->
-	    {_, Host, NormalPort, User, Password, AdminPort} = case lists:keyfind(couch_host, 1, Ts) of
-								   false ->
-								       case lists:keyfind(default_couch_host, 1, Ts) of
-									   false -> {ok, net_adm:localhost(), ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT};
-									   {default_couch_host,H} -> {ok, H, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT};
-									   {default_couch_host,H,U,P} -> {ok, H, ?DEFAULT_PORT, U, P, ?DEFAULT_ADMIN_PORT};
-									   {default_couch_host,H,Port,U,Pass} -> {ok, H, Port, U, Pass, ?DEFAULT_ADMIN_PORT};
-									   {default_couch_host,H,Port,U,Pass,AdminP} -> {ok, H, Port, U, Pass, AdminP}
-								       end;
-								   {couch_host,H} -> {ok, H, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT};
-								   {couch_host,H,U,P} -> {ok, H, ?DEFAULT_PORT, U, P, ?DEFAULT_ADMIN_PORT};
-								   {couch_host,H,Port,U,Pass} -> {ok, H, Port, U, Pass, ?DEFAULT_ADMIN_PORT};
-								   {couch_host,H,Port,U,Pass,AdminP} -> {ok, H, Port, U, Pass, AdminP}
-							       end,
-	    Conn = couch_util:get_new_connection(Host, wh_util:to_integer(NormalPort), User, Password),
-	    AdminConn = couch_util:get_new_connection(Host, wh_util:to_integer(AdminPort), User, Password),
+    ok = couch_config:load_config(?CONFIG_FILE_PATH),
 
-	    Cookie = case lists:keyfind(bigcouch_cookie, 1, Ts) of
-			 false -> monster;
-			 {_, C} -> C
-		     end,
-	    wh_cache:store_local(Pid, bigcouch_cookie, Cookie, 24*3600), % store for a day
+    Cookie = case couch_config:fetch(bigcouch_cookie) of
+		 undefined -> monster;
+		 C -> C
+	     end,
+    couch_config:store(bigcouch_cookie, Cookie, infinity),
 
-	    #state{connection=Conn
-		   ,admin_connection=AdminConn
-		   ,host={Host, wh_util:to_integer(NormalPort), wh_util:to_integer(AdminPort)}
-		   ,creds={User, Password}
-		   ,cache=Pid
-		  };
-	_ -> #state{}
+    case couch_config:fetch(couch_host) of
+	undefined -> init_state_from_config(couch_config:fetch(default_couch_host));
+	HostData -> init_state_from_config(HostData)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec(get_startup_config/0 :: () -> tuple(ok, list(tuple())) | tuple(error, atom() | tuple())).
-get_startup_config() ->
-    file:consult(?STARTUP_FILE).
+init_state_from_config({T, H}) ->
+    init_state_from_config({T, H, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT});
+init_state_from_config({T, H, Port}) ->
+    init_state_from_config({T, H, Port, "", "", ?DEFAULT_ADMIN_PORT});
+init_state_from_config({T, H, User, Pass}) ->
+    init_state_from_config({T, H, ?DEFAULT_PORT, User, Pass, ?DEFAULT_ADMIN_PORT});
+init_state_from_config({T, H, Port, User, Pass}) ->
+    init_state_from_config({T, H, Port, User, Pass, ?DEFAULT_ADMIN_PORT});
+init_state_from_config({_, H, Port, User, Pass, AdminPort}) ->
+    Conn = couch_util:get_new_connection(H, wh_util:to_integer(Port), User, Pass),
+    AdminConn = couch_util:get_new_connection(H, wh_util:to_integer(AdminPort), User, Pass),
+
+    #state{connection=Conn
+	   ,admin_connection=AdminConn
+	   ,host={H, wh_util:to_integer(Port), wh_util:to_integer(AdminPort)}
+	   ,creds={User, Pass}
+	  }.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(save_config/5 :: (H :: string(), Port :: integer(), U :: string(), P :: string(), AdminPort :: integer()) -> no_return()).
-save_config(H, Port, U, P, AdminPort) ->
-    {ok, Config} = get_startup_config(),
-    {ok, Cookie} = wh_cache:fetch_local(whereis(wh_couch_cache), bigcouch_cookie),
-    file:write_file(?STARTUP_FILE
-		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end
-				 , "", [{bigcouch_cookie, Cookie}
-					,{couch_host, H, Port, U, P, AdminPort}
-					| lists:keydelete(couch_host, 1, Config)
-				       ])
-		   ).
+-spec save_config/0 :: () -> 'ok'.
+save_config() ->
+    couch_config:write_config(?CONFIG_FILE_PATH).
 
--spec(remove_ref/2 :: (Ref :: reference(), CH :: dict()) -> dict()).
+-spec remove_ref/2 :: (Ref :: reference(), CH :: dict()) -> dict().
 remove_ref(Ref, CH) ->
     dict:filter(fun(_, {_, Ref1}) when Ref1 =:= Ref -> false;
 		   (_, _) -> true end, CH).

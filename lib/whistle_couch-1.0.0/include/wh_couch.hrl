@@ -30,3 +30,5 @@
 -define(DEFAULT_PORT, 5984).
 -define(DEFAULT_ADMIN_PORT, 5986).
 -define(IBROWSE_OPTS, [{max_sessions, 1024}, {max_pipeline_size, 10}]).
+
+-define(CONFIG_FILE_PATH, [code:priv_dir(whistle_couch), "/startup.config"]).
