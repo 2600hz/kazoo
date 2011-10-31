@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(couch_compactor).
 
+-export([start_link/0, init/1]).
+
 -export([compact_all/0, compact_node/1, compact_db/2]).
 %% Conflict resolution-enabled API
 -export([compact_all/1, compact_all/2, compact_node/2, compact_node/3
@@ -16,6 +18,33 @@
 -include("wh_couch.hrl").
 -define(SLEEP_BETWEEN_COMPACTION, 60000). %% sleep 60 seconds between shard compactions
 -define(SLEEP_BETWEEN_POLL, 5000). %% sleep 5 seconds before polling the shard for compaction status
+
+start_link() ->
+    proc_lib:start_link(?MODULE, init, [self()], infinity, [{fullsweep_after, 0}]).
+
+init(Parent) ->
+    ?LOG_SYS("Acking"),
+    proc_lib:init_ack(Parent, {ok, self()}),
+    ?LOG_SYS("Compactor loop starting up"),
+    self() ! start_compaction,
+    compact_loop().
+
+compact_loop() ->
+    receive
+	shutdown ->
+	    ?LOG_SYS("Shutting down");
+	start_compaction ->
+	    {_P, _R} = spawn_monitor(fun compact_all/0),
+	    ?LOG_SYS("Compacting in ~p", [_P]),
+	    compact_loop();
+	{'DOWN', _Ref, process, _Pid, _Reason} ->
+	    ?LOG_SYS("Compacting process ~p down: ~p", [_Pid, _Reason]),
+	    self() ! start_compaction,
+	    compact_loop();
+	_Msg ->
+	    ?LOG_SYS("Unhandled message: ~p", [_Msg]),
+	    compact_loop()
+    end.
 
 -spec compact_all/0 :: () -> 'done'.
 -spec compact_all/1 :: (couch_conflict:resolution_strategy()) -> 'done'.
@@ -192,7 +221,7 @@ get_node_connections(NodeBin) ->
       Node :: atom(),
       Ping :: 'pong' | 'pang'.
 get_ports(Node) ->
-    Cookie = couch_mgr:get_node_cookie(),
+    Cookie = couch_config:fetch(bigcouch_cookie),
     ?LOG_SYS("Using cookie ~s on node ~s", [Cookie, Node]),
     try
 	erlang:set_cookie(Node, Cookie),

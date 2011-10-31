@@ -34,5 +34,6 @@ init([]) ->
 				  ?CACHE(wh_couch_cache)
 				  ,?CHILD(couch_mgr, worker)
 				  ,?CHILD(change_mgr_sup, supervisor)
+				  ,?CHILD(couch_compactor, worker)
 				 ]} }.
 

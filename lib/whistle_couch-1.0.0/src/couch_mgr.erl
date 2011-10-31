@@ -571,29 +571,28 @@ get_keys(JObj) ->
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> {ok, pid()} | ignore | {error, term()}.
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [whereis(wh_couch_cache)], []).
 
 %% set the host to connect to
--spec set_host/1 :: (HostName) -> ok | {error, term()} when
-      HostName :: string().
+-spec set_host/1 :: (string()) -> 'ok' | {'error', term()}.
 set_host(HostName) ->
     set_host(HostName, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT).
 
--spec(set_host/2 :: (HostName :: string(), Port :: integer()) -> ok | tuple(error, term())).
+-spec set_host/2 :: (string(), non_neg_integer()) -> 'ok' | {'error', term()}.
 set_host(HostName, Port) ->
     set_host(HostName, Port, "", "", ?DEFAULT_ADMIN_PORT).
 
--spec(set_host/3 :: (HostName :: string(), UserName :: string(), Password :: string()) -> ok | tuple(error, term())).
+-spec set_host/3 :: (string(), string(), string()) -> 'ok' | {'error', term()}.
 set_host(HostName, UserName, Password) ->
     set_host(HostName, ?DEFAULT_PORT, UserName, Password, ?DEFAULT_ADMIN_PORT).
 
--spec(set_host/4 :: (HostName :: string(), Port :: integer(), UserName :: string(), Password :: string()) -> ok | tuple(error, term())).
+-spec set_host/4 :: (string(), non_neg_integer(), string(), string()) -> 'ok' | {'error', term()}.
 set_host(HostName, Port, UserName, Password) ->
     set_host(HostName, Port, UserName, Password, ?DEFAULT_ADMIN_PORT).
 
--spec(set_host/5 :: (HostName :: string(), Port :: integer(), UserName :: string(), Password :: string(), AdminPort :: integer()) -> ok | tuple(error, term())).
+-spec set_host/5 :: (string(), non_neg_integer(), string(), string(), non_neg_integer()) -> 'ok' | {'error', term()}.
 set_host(HostName, Port, UserName, Password, AdminPort) ->
     gen_server:call(?SERVER, {set_host, HostName, Port, UserName, Password, AdminPort}, infinity).
 
@@ -690,10 +689,10 @@ rm_change_handler(DBName, DocID) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec(init/1 :: (Args :: list()) -> tuple(ok, tuple())).
-init(_) ->
+-spec init/1 :: ([pid()]) -> {'ok', #state{}}.
+init([CachePid]) ->
     process_flag(trap_exit, true),
-    {ok, init_state()}.
+    {ok, init_state(CachePid)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -846,19 +845,25 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec init_state/0 :: () -> #state{}.
-init_state() ->
-    ok = couch_config:load_config(?CONFIG_FILE_PATH),
+-spec init_state/1 :: (pid()) -> #state{}.
+init_state(CachePid) ->
+    ok = couch_config:load_config(?CONFIG_FILE_PATH, CachePid),
+    ?LOG("Loaded config"),
 
-    Cookie = case couch_config:fetch(bigcouch_cookie) of
+    Cookie = case couch_config:fetch(bigcouch_cookie, CachePid) of
 		 undefined -> monster;
 		 C -> C
 	     end,
-    couch_config:store(bigcouch_cookie, Cookie, infinity),
+    ?LOG("bigcouch cookie: ~s", [Cookie]),
+    couch_config:store(bigcouch_cookie, Cookie, infinity, CachePid),
 
-    case couch_config:fetch(couch_host) of
-	undefined -> init_state_from_config(couch_config:fetch(default_couch_host));
-	HostData -> init_state_from_config(HostData)
+    case couch_config:fetch(couch_host, CachePid) of
+	undefined ->
+	    ?LOG("Starting conns with default_couch_host"),
+	    init_state_from_config(couch_config:fetch(default_couch_host, CachePid));
+	HostData ->
+	    ?LOG("Starting conns with couch_host"),
+	    init_state_from_config(HostData)
     end.
 
 init_state_from_config({T, H}) ->
