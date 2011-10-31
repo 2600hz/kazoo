@@ -689,7 +689,7 @@ rm_change_handler(DBName, DocID) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([pid()]) -> {'ok', #state{}, 0}.
+-spec init/1 :: ([pid(),...]) -> {'ok', #state{}, 0}.
 init([CachePid]) ->
     process_flag(trap_exit, true),
     {ok, init_state(CachePid), 0}.
