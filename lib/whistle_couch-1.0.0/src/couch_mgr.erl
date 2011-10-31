@@ -689,10 +689,10 @@ rm_change_handler(DBName, DocID) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([pid()]) -> {'ok', #state{}}.
+-spec init/1 :: ([pid()]) -> {'ok', #state{}, 0}.
 init([CachePid]) ->
     process_flag(trap_exit, true),
-    {ok, init_state(CachePid)}.
+    {ok, init_state(CachePid), 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -722,7 +722,7 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={O
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
 
-    couch_config:store(couch_config, {couch_config, Host, Port, User, Pass, AdminPort}, infinity),
+    couch_config:store(couch_config, {Host, Port, User, Pass, AdminPort}, infinity),
 
     spawn(fun() -> save_config() end),
 
@@ -738,7 +738,7 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
 
-    couch_config:store(couch_config, {couch_config, Host, Port, User, Pass, AdminPort}, infinity),
+    couch_config:store(couch_config, {Host, Port, User, Pass, AdminPort}, infinity),
 
     spawn(fun() -> save_config() end),
 
@@ -807,6 +807,9 @@ handle_info({'DOWN', Ref, process, Srv, {error,connection_closed}}, #state{chang
     ?LOG_SYS("Srv ~p down after conn closed", [Srv]),
     erlang:demonitor(Ref, [flush]),
     {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
+handle_info(timeout, State) ->
+    spawn(fun save_config/0),
+    {noreply, State};
 handle_info(_Info, State) ->
     ?LOG_SYS("Unexpected message ~p", [_Info]),
     {noreply, State}.
@@ -866,18 +869,21 @@ init_state(CachePid) ->
 	    init_state_from_config(HostData)
     end.
 
-init_state_from_config({T, H}) ->
-    init_state_from_config({T, H, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT});
-init_state_from_config({T, H, Port}) ->
-    init_state_from_config({T, H, Port, "", "", ?DEFAULT_ADMIN_PORT});
-init_state_from_config({T, H, User, Pass}) ->
-    init_state_from_config({T, H, ?DEFAULT_PORT, User, Pass, ?DEFAULT_ADMIN_PORT});
-init_state_from_config({T, H, Port, User, Pass}) ->
-    init_state_from_config({T, H, Port, User, Pass, ?DEFAULT_ADMIN_PORT});
-init_state_from_config({_, H, Port, User, Pass, AdminPort}) ->
+init_state_from_config(undefined) ->
+    init_state_from_config({"localhost", ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT});
+init_state_from_config(H) when not is_tuple(H) ->
+    init_state_from_config({H, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT});
+init_state_from_config({H, Port}) ->
+    init_state_from_config({H, Port, "", "", ?DEFAULT_ADMIN_PORT});
+init_state_from_config({H, User, Pass}) ->
+    init_state_from_config({H, ?DEFAULT_PORT, User, Pass, ?DEFAULT_ADMIN_PORT});
+init_state_from_config({H, Port, User, Pass}) ->
+    init_state_from_config({H, Port, User, Pass, ?DEFAULT_ADMIN_PORT});
+init_state_from_config({H, Port, User, Pass, AdminPort}) ->
     Conn = couch_util:get_new_connection(H, wh_util:to_integer(Port), User, Pass),
     AdminConn = couch_util:get_new_connection(H, wh_util:to_integer(AdminPort), User, Pass),
 
+    ?LOG_SYS("Returning state record"),
     #state{connection=Conn
 	   ,admin_connection=AdminConn
 	   ,host={H, wh_util:to_integer(Port), wh_util:to_integer(AdminPort)}

@@ -20,30 +20,26 @@
 -define(SLEEP_BETWEEN_POLL, 5000). %% sleep 5 seconds before polling the shard for compaction status
 
 start_link() ->
-    proc_lib:start_link(?MODULE, init, [self()], infinity, [{fullsweep_after, 0}]).
+    proc_lib:start_link(?MODULE, init, [self()], infinity, []).
 
 init(Parent) ->
-    ?LOG_SYS("Acking"),
-    proc_lib:init_ack(Parent, {ok, self()}),
-    ?LOG_SYS("Compactor loop starting up"),
-    self() ! start_compaction,
-    compact_loop().
-
-compact_loop() ->
-    receive
-	shutdown ->
-	    ?LOG_SYS("Shutting down");
-	start_compaction ->
-	    {_P, _R} = spawn_monitor(fun compact_all/0),
-	    ?LOG_SYS("Compacting in ~p", [_P]),
-	    compact_loop();
-	{'DOWN', _Ref, process, _Pid, _Reason} ->
-	    ?LOG_SYS("Compacting process ~p down: ~p", [_Pid, _Reason]),
-	    self() ! start_compaction,
-	    compact_loop();
-	_Msg ->
-	    ?LOG_SYS("Unhandled message: ~p", [_Msg]),
-	    compact_loop()
+    Cache = whereis(wh_couch_cache),
+    case {couch_config:fetch(compact_automatically, Cache), couch_config:fetch(conflict_strategy, Cache)} of
+	{true, undefined} ->
+	    ?LOG_SYS("Just compacting"),
+	    proc_lib:init_ack(Parent, {ok, self()}),
+	    compact_all();
+	{true, Strategy} ->
+	    ?LOG_SYS("Compacting and removing conflicts"),
+	    proc_lib:init_ack(Parent, {ok, self()}),
+	    compact_all(Strategy);
+	{false, _Strategy} ->
+	    ?LOG_SYS("Auto-compaction not enabled"),
+	    proc_lib:init_ack(Parent, ignore);
+	{undefined, _Strategy} ->
+	    ?LOG_SYS("Auto-compaction not enabled"),
+	    proc_lib:init_ack(Parent, ignore),
+	    couch_config:store(compact_automatically, false)
     end.
 
 -spec compact_all/0 :: () -> 'done'.

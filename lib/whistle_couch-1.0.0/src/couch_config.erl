@@ -30,12 +30,21 @@ load_config(Path, Cache) when is_pid(Cache) ->
     ?LOG("Loading ~s", [Path]),
     case file:consult(Path) of
 	{ok, Startup} ->
-	    _ = [wh_cache:store_local(Cache, cache_key(element(1,T)), T) || T <- Startup],
+	    _ = [cache_from_file(Cache, T) || T <- Startup],
 	    ok;
 	{error, enoent} ->
 	    ?LOG("No file"),
 	    {error, enoent}
     end.
+
+%% convert 3..n-tuples to 2 tuples with the value being (3..n)-1 tuples
+%% so {key, v1, v2, v3} becomes {key, {v1, v2, v3}}
+%% subsequent writes back to the file will store in the new format
+cache_from_file(Cache, {K, V}) ->
+    wh_cache:store_local(Cache, cache_key(K), V);
+cache_from_file(Cache, T) when is_tuple(T) ->
+    [K|V] = erlang:tuple_to_list(T),
+    wh_cache:store_local(Cache, cache_key(K), erlang:list_to_tuple(V)).
 
 -spec write_config/2 :: (file:name(), iodata()) -> 'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 write_config(Path, Contents) ->
@@ -43,10 +52,11 @@ write_config(Path, Contents) ->
 
 -spec write_config/1 :: (file:name()) -> 'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 write_config(Path) ->
+    ?LOG_SYS("writing cached config to ~s", [Path]),
     {ok, Cache} = whistle_couch_sup:cache_proc(),
-    KVs = wh_cache:filter_local(Cache, fun({?MODULE, _}, _) -> true; (_,_) -> false end),
+    KVs = wh_cache:filter_local(Cache, fun(K, _) -> is_cache_key(K) end),
     Contents = lists:foldl(fun(I, Acc) -> [io_lib:format("~p.~n", [I]) | Acc] end
-			   , "", [{K,V} || {{?MODULE, K}, V} <- KVs]),
+			   , "", [{get_key_from_cache_key(CK),V} || {CK, V} <- KVs]),
     file:write_file(Path, Contents).
 
 fetch(Key) ->
@@ -78,5 +88,16 @@ store(Key, Value, Timeout) ->
 store(Key, Value, Timeout, Cache) when is_pid(Cache) ->
     wh_cache:store_local(Cache, cache_key(Key), Value, Timeout).
 
+-spec cache_key/1 :: (K) -> {?MODULE, K}.
 cache_key(K) ->
     {?MODULE, K}.
+
+-spec is_cache_key/1 :: (term()) -> boolean().
+is_cache_key({?MODULE, _}) ->
+    true;
+is_cache_key(_) ->
+    false.
+
+-spec get_key_from_cache_key/1 :: ({?MODULE, K}) -> K.
+get_key_from_cache_key({?MODULE, K}) ->
+    K.
