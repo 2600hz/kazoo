@@ -15,6 +15,8 @@
 -define(FOLDER_NEW, <<"new">>).
 -define(FOLDER_SAVED, <<"saved">>).
 -define(FOLDER_DELETED, <<"deleted">>).
+-define(MAILBOX_DEFAULT_SIZE, 0).
+-define(MAILBOX_DEFAULT_MSG_MAX_LENGTH, 0).
 
 -import(cf_call_command, [answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
                           ,b_store/3, b_play_and_collect_digits/5, b_play_and_collect_digit/2
@@ -113,6 +115,9 @@
           ,check_if_owner = true :: boolean()
           ,owner_id = <<>> :: binary()
           ,is_setup = false :: boolean()
+	  ,message_count = 0 :: non_neg_integer()
+          ,max_message_count = 0 :: non_neg_integer()
+	  ,message_max_length = 0 :: non_neg_integer()
           ,keys = #keys{}
           ,prompts = #prompts{}
          }).
@@ -239,6 +244,10 @@ compose_voicemail(#mailbox{check_if_owner=true, owner_id=OwnerId}=Box, #cf_call{
 compose_voicemail(#mailbox{exists=false, prompts=#prompts{no_mailbox=NoMailbox}}, Call) ->
     ?LOG("attempted to compose voicemail for missing mailbox"),
     b_play(NoMailbox, Call);
+compose_voicemail(#mailbox{max_message_count=Count, message_count=Count,
+			   prompts=#prompts{mailbox_full=MailboxFull}}, Call) when Count /= 0->
+    ?LOG("voicemail box is full, cannot hold more messages"),
+    b_play(MailboxFull, Call);
 compose_voicemail(#mailbox{skip_greeting=SkipGreeting, skip_instructions=SkipInstructions
 			   ,prompts=#prompts{record_instructions=RecordInstructions}
 			   ,keys=#keys{login=Login}}=Box, Call) ->
@@ -781,6 +790,12 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                          wh_json:get_value(<<"owner_id">>, JObj)
                      ,is_setup =
                          wh_json:is_true(<<"is_setup">>, JObj, false)
+		     ,max_message_count =
+			 wh_json:get_integer_value(<<"max_message_count">>, JObj, ?MAILBOX_DEFAULT_SIZE)
+		     ,message_count =
+			 length(wh_json:get_value(<<"messages">>, JObj, []))
+		     ,message_max_length =
+			 wh_json:get_integer_value(<<"message_max_length">>, JObj, ?MAILBOX_DEFAULT_MSG_MAX_LENGTH)
                      ,exists = true
                     };
         {error, R} ->
@@ -1100,13 +1115,13 @@ new_timestamp() ->
 %% encoded Unix epoch in the provided timezone
 %% @end
 %%--------------------------------------------------------------------
--spec get_unix_epoch/2 :: (Epoch, Timezone) -> binary() when
-      Epoch :: binary(),
-      Timezone :: binary().
+-spec get_unix_epoch/2 :: (Epoch, Timezone) -> ne_binary() when
+      Epoch :: ne_binary(),
+      Timezone :: ne_binary().
 get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(Epoch)),
     LocalDateTime = localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)),
-    wh_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - 62167219200).
+    wh_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1141,9 +1156,9 @@ update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, #cf_call{account_db=Db}) ->
 				  Realm = wh_json:get_value([<<"value">>, <<"sip_realm">>], Device),
 				  Command = wh_json:from_list([{<<"Notify-User">>, User}
 							       ,{<<"Notify-Realm">>, Realm}
-							       ,{<<"Messages-New">>, wh_util:to_binary(New)}
-							       ,{<<"Messages-Saved">>, wh_util:to_binary(Saved)}
-							       | wh_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
+							       ,{<<"Messages-New">>, New}
+							       ,{<<"Messages-Saved">>, Saved}
+							       | wh_api:default_headers(<<>>, <<"notification">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
 							      ]),
 				  ?LOG("sending mwi update to ~s@~s ~p:~p", [User, Realm, New, Saved]),
 				  {ok, Payload} = wh_api:mwi_update(Command),

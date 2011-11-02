@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+%%%%-------------------------------------------------------------------
 %%% @author Edouard Swiac <edouard@2600hz.com>
 %%%
 %%% @copyright (C) 2011, Edouard Swiac
@@ -15,14 +15,12 @@
 
 -export([do_validate/2]).
 
--include("crossbar.hrl").
+-include("../include/crossbar.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--define(CROSSBAR_SCHEMA_DB, <<"crossbar_schemas">>).
 -define(TRACE, false). %% trace through the validation steps
 
 -define(VALIDATION_FUN, fun({error, _}) -> false; (?VALID) -> true end).
-
 
 %% macroing to increase readability
 -define(VALID, true).
@@ -46,7 +44,7 @@
       File :: string() | json_object(),
       SchemaName :: atom().
 do_validate(JObj, SchemaName) ->
-    case  couch_mgr:open_doc(?CROSSBAR_SCHEMA_DB, wh_util:to_binary(SchemaName)) of
+    case  couch_mgr:open_doc(?SCHEMAS_DB, wh_util:to_binary(SchemaName)) of
 	{ok, Schema} ->
 	    R = validate({JObj}, {Schema}),
 	    case [M || {error, M} <- lists:flatten(R)] of
@@ -337,9 +335,9 @@ validate({IAttName, IAttVal}, {Schema, <<"exclusiveMinimum">>, Boolean}) when is
     trace({IAttName, IAttVal}, {<<"exclusiveMinimum">>, Boolean}),
     SMinimum = val(<<"minimum">>, Schema),
     case validate({IAttName, IAttVal}, {Schema, <<"minimum">>, SMinimum}) of
-	?VALID -> case IAttVal == SMinimum and Boolean of
-		      true ->?INVALID(IAttName, <<"cannot equal minimum since it's exclusive">>);
-		      _ ->  ?VALID
+	?VALID -> case (IAttVal == SMinimum) andalso Boolean of
+		      true -> ?INVALID(IAttName, <<"cannot equal minimum since it's exclusive">>);
+		      false -> ?VALID
 		  end;
 
 	_ -> ?INVALID(IAttName,  <<"cannot equal minimum since it's exclusive">>)
@@ -376,7 +374,7 @@ validate({IAttName, IAttVal}, {Schema, <<"exclusiveMaximum">>, Boolean}) when is
     trace({IAttName, IAttVal}, {<<"exclusiveMaximum">>, Boolean}),
     SMax = val(<<"maximum">>, Schema),
     case validate({IAttName, IAttVal}, {Schema, <<"minimum">>, SMax}) of
-	?VALID -> case IAttVal == SMax and Boolean of
+	?VALID -> case (IAttVal == SMax) and Boolean of
 		      true ->?INVALID(IAttName, <<"cannot equal minimum since it's exclusive">>);
 		      _ ->  ?VALID
 		  end;
@@ -532,10 +530,6 @@ validate({IAttName, IAttVal}, {Schema, <<"disallow">>, Disallow})  ->
 validate({_Instance, IAttName, IAttVal}, {_Schema, SAttName, SAttVal}) ->
     trace({IAttName, IAttVal}, {SAttName, SAttVal}),
     ?INVALID(IAttName, <<" : unexpected error with value">>).
-
-
-
-
 
 %%--------------------------------------------------------------------
 %% @doc

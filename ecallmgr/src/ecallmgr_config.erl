@@ -1,3 +1,11 @@
+%%%-------------------------------------------------------------------
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2011, VoIP INC
+%%% @doc
+%%% 
+%%% @end
+%%% Created : 28 Oct 2011 by James Aimonetti <james@2600hz.org>
+%%%-------------------------------------------------------------------
 -module(ecallmgr_config).
 
 -export([load_config/1, write_config/1, write_config/2, fetch/1, fetch/2]).

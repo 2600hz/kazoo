@@ -1,6 +1,7 @@
 {application,'erlang-localtime',
-             [{description,[]},
+             [{description,"Timezone conversion routines"},
               {vsn,"1.0"},
               {registered,[]},
+              {applications,[kernel,stdlib]},
               {env,[]},
-              {modules,[localtime,localtime_dst,timezone_convert]}]}.
+              {modules,[ibuild,localtime,localtime_dst,timezone_convert]}]}.

@@ -68,7 +68,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
             end;
         _Else ->
 	    ?LOG("Unexpected return from datastore: ~p", [_Else]),
-            Context#cb_context{doc=?EMPTY_JSON_OBJECT}
+            Context#cb_context{doc=wh_json:new()}
     end.
 
 %%--------------------------------------------------------------------
@@ -99,12 +99,12 @@ load_from_file(Db, File) ->
 load_merge(_DocId, _Data, #cb_context{db_name = <<>>}=Context) ->
     ?LOG("db missing from #cb_context for doc ~s", [_DocId]),
     crossbar_util:response_db_missing(Context);
-load_merge(DocId, {struct, Data}, #cb_context{db_name=DBName}=Context) ->
+load_merge(DocId, DataJObj, #cb_context{db_name=DBName}=Context) ->
     case load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc}=Context1 ->
 	    ?LOG("loaded doc ~s from ~s, merging", [DocId, DBName]),
-	    {struct, PrivProp} = private_fields(Doc),
-            Doc1 = {struct, PrivProp ++ Data},
+	    PrivJObj = private_fields(Doc),
+            Doc1 = wh_json:merge_jobjs(PrivJObj, DataJObj),
             Context1#cb_context{
 	      doc=Doc1
 	      ,resp_status=success
@@ -146,7 +146,7 @@ load_view(View, Options, #cb_context{db_name=DB}=Context) ->
 	     };
         _Else ->
 	    ?LOG("loading view ~s from ~s failed: unexpected ~p", [view_name_to_binary(View), DB, _Else]),
-            Context#cb_context{doc=?EMPTY_JSON_OBJECT}
+            Context#cb_context{doc=wh_json:new()}
     end.
 
 %%--------------------------------------------------------------------
@@ -167,7 +167,10 @@ load_view(View, Options, #cb_context{db_name=DB}=Context) ->
 load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
     case load_view(View, Options, Context) of
         #cb_context{resp_status=success, doc=Doc} = Context1 ->
-            Context1#cb_context{resp_data=lists:foldr(Filter, [], Doc)};
+            Context1#cb_context{resp_data=
+                                    lists:filter(fun(undefined) -> false;
+                                                    (_) -> true
+                                                 end, lists:foldr(Filter, [], Doc))};
         Else ->
             Else
     end.
@@ -299,25 +302,26 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
             Context
     end.
 
--spec send_document_change/3 :: (Action, Db, Doc) -> 'ok' when
-      Action :: binary(), %% <<"created">> | <<"edited">> | <<"deleted">>
-      Db :: binary(),
+-spec send_document_change/3 :: (Action, Db, Doc) -> pid() when
+      Action :: ne_binary(), %% <<"created">> | <<"edited">> | <<"deleted">>
+      Db :: ne_binary(),
       Doc :: json_object().
 send_document_change(Action, Db, Doc) ->
     spawn(fun() ->
                   Id = wh_json:get_value(<<"_id">>, Doc),
                   Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
-		  Change = {struct, [{<<"ID">>, Id}
-                                     ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
-                                     ,{<<"Doc">>, public_fields(Doc)}
-                                     ,{<<"Type">>, Type}
-                                     ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
-                                     ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
-                                     ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
-                                     ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
-                                     ,{<<"Version">>, wh_json:get_binary_value(<<"pvt_vsn">>, Doc)}
-                                     | wh_api:default_headers(<<>>, <<"configuration">>, <<"doc_", Action/binary>>, ?APP_NAME, ?APP_VSN)
-                                    ]},
+		  Change = wh_json:from_list([
+					      {<<"ID">>, Id}
+					      ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
+					      ,{<<"Doc">>, public_fields(Doc)}
+					      ,{<<"Type">>, Type}
+					      ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
+					      ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
+					      ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
+					      ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
+					      ,{<<"Version">>, wh_json:get_binary_value(<<"pvt_vsn">>, Doc)}
+					      | wh_api:default_headers(<<>>, <<"configuration">>, <<"doc_", Action/binary>>, ?APP_NAME, ?APP_VSN)
+					     ]),
 		  ?LOG("publishing configuration document_change event for ~s, type: ~s", [Id, Type]),
 		  {ok, Payload} = wh_api:document_change(Change),
 		  amqp_util:document_change_publish(Action, Db, Type, Id, Payload)
@@ -404,7 +408,7 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
 	    ?LOG("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
 	    send_document_change(<<"deleted">>, DB, JObj1),
             Context#cb_context{
-	       doc = ?EMPTY_JSON_OBJECT
+	       doc = wh_json:new()
 	      ,resp_status=success
 	      ,resp_data=[]
 	     };
@@ -424,7 +428,7 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context, permanent) ->
 	{ok, _Doc} ->
 	    ?LOG("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
             Context#cb_context{
-	       doc = ?EMPTY_JSON_OBJECT
+	       doc = wh_json:new()
 	      ,resp_status=success
 	      ,resp_data=[]
 	     };
@@ -474,20 +478,15 @@ delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec(public_fields/1 :: (Json :: json_object()|json_objects()) -> json_object()|json_objects()).
-public_fields([{struct, _}|_]=Json)->
-    lists:map(fun public_fields/1, Json);
-public_fields({struct, Prop}) ->
-    PubJObj = {struct, [ Tuple || {K, _}=Tuple <- Prop, not is_private_key(K)]},
-    case props:get_value(<<"_id">>, Prop) of
-        undefined ->
-	    PubJObj;
-        Id ->
-	    wh_json:set_value(<<"id">>, Id, PubJObj)
-    end;
-public_fields(Json) ->
-    ?LOG("Unhandled JSON format in public_fields: ~p", [Json]),
-    Json.
+-spec public_fields/1 :: (json_object() | json_objects()) -> json_object() | json_objects().
+public_fields([_|_]=JObjs)->
+    lists:map(fun public_fields/1, JObjs);
+public_fields(JObj) ->
+    PubJObj = wh_json:filter(fun({K, _}) -> not is_private_key(K) end, JObj),
+    case wh_json:get_value(<<"_id">>, JObj) of
+        undefined -> PubJObj;
+        Id -> wh_json:set_value(<<"id">>, Id, PubJObj)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -496,14 +495,11 @@ public_fields(Json) ->
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec(private_fields/1 :: (Json :: json_object()|json_objects()) -> json_object()|json_objects()).
-private_fields([{struct, _}|_]=Json)->
-    lists:map(fun public_fields/1, Json);
-private_fields({struct, Prop}) ->
-    {struct, [ Tuple || {K,_}=Tuple <- Prop, is_private_key(K)]};
-private_fields(Json) ->
-    ?LOG("Unhandled JSON format in private fields: ~p", [Json]),
-    Json.
+-spec private_fields/1 :: (json_object() | json_objects()) -> json_object() | json_objects().
+private_fields([_|_]=JObjs)->
+    lists:map(fun public_fields/1, JObjs);
+private_fields(JObj) ->
+    wh_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -512,7 +508,7 @@ private_fields(Json) ->
 %% considered private; otherwise false
 %% @end
 %%--------------------------------------------------------------------
--spec(is_private_key/1 :: (Key :: binary()) -> boolean()).
+-spec is_private_key/1 :: (binary()) -> boolean().
 is_private_key(<<"_", _/binary>>) -> true;
 is_private_key(<<"pvt_", _/binary>>) -> true;
 is_private_key(_) -> false.
@@ -524,25 +520,14 @@ is_private_key(_) -> false.
 %% document into a usable ETag for the response
 %% @end
 %%--------------------------------------------------------------------
--spec(rev_to_etag/1 :: (Json :: json_object()|json_objects()) -> undefined | automatic | string()).
-rev_to_etag([{struct, _}|_])->
-    automatic;
-rev_to_etag({struct, _}=JObj) ->
-    case wh_json:get_value(<<"_rev">>, JObj) of
-        undefined ->
-            undefined;
-        Rev ->
-	    rev_to_etag(Rev)
-    end;
+-spec rev_to_etag/1 :: (json_object() | json_objects()) -> 'undefined' | 'automatic' | string().
+rev_to_etag([_|_])-> automatic;
 rev_to_etag([]) -> undefined;
-rev_to_etag(Rev) when is_binary(Rev) ->
-    rev_to_etag(wh_util:to_list(Rev));
-rev_to_etag(Rev) when is_list(Rev) ->
-    Rev;
-rev_to_etag(_Json) ->
-    ?LOG("Unhandled JSON format in rev to etag: ~p", [_Json]),
-    undefined.
-
+rev_to_etag(JObj) ->
+    case wh_json:get_value(<<"_rev">>, JObj) of
+        undefined -> undefined;
+        Rev -> wh_util:to_list(Rev)
+    end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -550,7 +535,7 @@ rev_to_etag(_Json) ->
 %% parameters on all crossbar documents
 %% @end
 %%--------------------------------------------------------------------
--spec(update_pvt_parameters/2 :: (JObj0 :: json_object(), Context :: #cb_context{}) -> json_object()).
+-spec update_pvt_parameters/2 :: (json_object(), #cb_context{}) -> json_object().
 update_pvt_parameters(JObj0, #cb_context{db_name=DBName}) ->
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName) end, JObj0, ?PVT_FUNS).
 
@@ -588,12 +573,9 @@ add_pvt_modified(JObj, _) ->
 %% logs
 %% @end
 %%--------------------------------------------------------------------
--spec(view_name_to_binary/1 :: (View :: tuple(binary() | string(), binary() | string()) | binary() | string()) -> binary()).
-view_name_to_binary({Cat, View}) ->
-    <<(wh_util:to_binary(Cat))/binary, "/", (wh_util:to_binary(View))/binary>>;
-view_name_to_binary(View) when is_binary(View) ->
-    View;
-view_name_to_binary(View) ->
-    wh_util:to_binary(View).
+-spec view_name_to_binary/1 :: ({binary() | string(), binary() | string()} | binary() | string()) -> binary().
+view_name_to_binary(View) when is_binary(View) -> View;
+view_name_to_binary({Cat, View}) -> list_to_binary([Cat, "/", View]);
+view_name_to_binary(View) -> wh_util:to_binary(View).
 
 %% ADD Unit Tests for private/public field filtering and merging

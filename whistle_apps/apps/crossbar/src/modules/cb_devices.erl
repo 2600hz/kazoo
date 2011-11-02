@@ -30,9 +30,6 @@
 
 -define(CB_LIST, <<"devices/crossbar_listing">>).
 
--define(AGG_DB, <<"sip_auth">>).
--define(AGG_FILTER, <<"devices/export_sip">>).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -132,26 +129,55 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Contex
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-		  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  crossbar_util:binding_heartbeat(Pid),
+                  case crossbar_doc:save(Context) of
+                      #cb_context{resp_status=success, doc=Doc1}=Context1 ->
+                          DeviceId = wh_json:get_value(<<"_id">>, Doc1),
+                          case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
+                              {ok, Rev} ->
+                                  couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1)),
+                                  Pid ! {binding_result, true, [RD, Context1, Params]};
+                              {error, not_found} ->
+                                  couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
+                                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                          end;
+                      Else ->
+                          Pid ! {binding_result, true, [RD, Else, Params]}
+                  end
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-		  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  crossbar_util:binding_heartbeat(Pid),
+                  case crossbar_doc:save(Context) of
+                      #cb_context{resp_status=success, doc=Doc1}=Context1 ->
+                          couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
+                          Pid ! {binding_result, true, [RD, Context1, Params]};
+                      Else ->
+                          Pid ! {binding_result, true, [RD, Else, Params]}
+                  end
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  crossbar_util:binding_heartbeat(Pid),
+                  case crossbar_doc:delete(Context) of
+                      #cb_context{resp_status=success}=Context1 ->
+                          DeviceId = wh_json:get_value(<<"_id">>, Doc),
+                          case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
+                              {ok, Rev} ->
+                                  couch_mgr:del_doc(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Doc));
+                              {error, not_found} ->
+                                  ok
+                          end,
+                          Pid ! {binding_result, true, [RD, Context1, Params]};
+                      Else ->
+                          Pid ! {binding_result, true, [RD, Else, Params]}
+                  end
 	  end),
     {noreply, State};
 
@@ -253,8 +279,8 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
-    load_device_summary(Context, QueryString);
+validate([], _, #cb_context{req_verb = <<"get">>, req_json=RJ}=Context) ->
+    load_device_summary(Context, RJ);
 validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
     create_device(Context);
 validate([<<"status">>], _, #cb_context{req_verb = <<"get">>}=Context) ->
@@ -275,13 +301,11 @@ validate(_, _, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_summary/2 :: (Context, QueryParams) -> #cb_context{} when
-      Context :: #cb_context{},
-      QueryParams :: proplist().
-load_device_summary(Context, []) ->
+-spec load_device_summary/2 :: (#cb_context{}, json_object()) -> #cb_context{}.
+load_device_summary(Context, ?EMPTY_JSON_OBJECT) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 load_device_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
-    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams),
+    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, wh_json:to_proplist(QueryParams)),
     Context#cb_context{resp_data=Result, resp_status=success}.
 %%--------------------------------------------------------------------
 %% @private
@@ -289,7 +313,7 @@ load_device_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
 %% Create a new device document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_device/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec create_device/1 :: (#cb_context{}) -> #cb_context{}.
 create_device(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {error, Fields} ->
@@ -307,7 +331,7 @@ create_device(#cb_context{req_data=JObj}=Context) ->
 %% Load a device document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_device/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_device/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_device(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
@@ -407,15 +431,21 @@ wait_for_reg_resp(Len, Acc) ->
 	receive
 	    {amqp_host_down, _} ->
 		?LOG("lost AMQP connection"),
-		exit(amqp_host_down);
+                Acc;
 	    {amqp_lost_channel,no_connection} ->
 		?LOG("lost AMQP connection"),
-		exit(amqp_host_down);
+                Acc;
 	    {_, #amqp_msg{payload = Payload}} ->
 		JRegResp = mochijson2:decode(Payload),
 		true = wh_api:reg_query_resp_v(JRegResp),
-		[[wh_json:get_value([<<"Fields">>, <<"Realm">>], JRegResp),
-		  wh_json:get_value([<<"Fields">>, <<"Username">>], JRegResp)] | Acc];
+                Realm = wh_json:get_value([<<"Fields">>, <<"Realm">>], JRegResp),
+                User = wh_json:get_value([<<"Fields">>, <<"Username">>], JRegResp),
+                case lists:member([Realm, User], Acc) of
+                    true ->
+                        wait_for_reg_resp(Len, Acc);
+                    false ->
+                        wait_for_reg_resp(Len - 1, [[Realm, User] | Acc])
+                end;
 	    #'basic.consume_ok'{} ->
 		wait_for_reg_resp(Len, Acc)
 	after
@@ -425,5 +455,5 @@ wait_for_reg_resp(Len, Acc) ->
 	end
     catch
 	_:_ ->
-	    wait_for_reg_resp(Len-1, Acc)
+	    wait_for_reg_resp(Len, Acc)
     end.

@@ -27,7 +27,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(SERVER_CONF, list_to_binary([code:lib_dir(crossbar, priv), "/servers/servers.conf"])).
+-define(SERVER_CONF, [code:lib_dir(crossbar, priv), "/servers/servers.conf"]).
 
 -define(CB_LIST, <<"servers/crossbar_listing">>).
 -define(VIEW_DEPLOY_ROLES, <<"servers/list_deployment_roles">>).
@@ -375,8 +375,8 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-validate([], RD, #cb_context{req_verb = <<"get">>}=Context) ->
-    load_server_summary(Context, wrq:req_qs(RD));
+validate([], _, #cb_context{req_verb = <<"get">>, req_json=RJ}=Context) ->
+    load_server_summary(Context, RJ);
 validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
     create_server(Context);
 validate([ServerId], _, #cb_context{req_verb = <<"get">>}=Context) ->
@@ -423,13 +423,11 @@ validate(_, _, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_server_summary/2 :: (Context, QueryParams) -> #cb_context{} when
-      Context :: #cb_context{},
-      QueryParams :: proplist().
+-spec load_server_summary/2 :: (#cb_context{}, json_object()) -> #cb_context{}.
 load_server_summary(Context, []) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 load_server_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
-    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams),
+    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, wh_json:to_proplist(QueryParams)),
     Context#cb_context{resp_data=Result, resp_status=success}.
 
 %%--------------------------------------------------------------------

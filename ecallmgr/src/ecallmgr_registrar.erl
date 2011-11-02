@@ -44,7 +44,7 @@ start_link() ->
       User :: binary(),
       Fields :: [binary(),...].
 lookup(Realm, User, Fields) ->
-    gen_server:call(?SERVER, {lookup, Realm, User, Fields}).
+    gen_server:call(?SERVER, {lookup, Realm, User, Fields, get(callid)}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -79,8 +79,11 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({lookup, Realm, User, Fields}, From, State) ->
-    spawn(fun() -> gen_server:reply(From, lookup_reg(Realm, User, Fields)) end),
+handle_call({lookup, Realm, User, Fields, CallId}, From, State) ->
+    spawn(fun() ->
+                  put(callid, CallId),
+                  gen_server:reply(From, lookup_reg(Realm, User, Fields))
+          end),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -108,7 +111,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
-    ?LOG_SYS("Storing registration information for ~s@~s", [User, Realm]),
+    ?LOG_SYS("storing registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),
     wh_cache:store_local(Cache, {ecall_registrar, Realm, User}, RegFields
                    ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
@@ -118,9 +121,10 @@ handle_info({cache_registrations, Realm, User, RegFields}, State) ->
 handle_info({_, #amqp_msg{payload=Payload}}, State) ->
     spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
+                  put(callid, wh_json:get_value(<<"Call-ID">>, JObj, <<"000000000000">>)),
                   User = wh_json:get_value(<<"Username">>, JObj),
                   Realm = wh_json:get_value(<<"Realm">>, JObj),
-                  ?LOG_SYS("Received successful reg for ~s@~s, erasing cache", [User, Realm]),
+                  ?LOG("received successful reg for ~s@~s, erasing cache", [User, Realm]),
                   {ok, Cache} = ecallmgr_sup:cache_proc(),
                   wh_cache:erase_local(Cache, {ecall_registrar, Realm, User})
           end),
@@ -176,7 +180,7 @@ code_change(_OldVsn, State, _Extra) ->
       User :: binary(),
       Fields :: [binary(),...].
 lookup_reg(Realm, User, Fields) ->
-    ?LOG_SYS("Looking up registration information for ~s@~s", [User, Realm]),
+    ?LOG("looking up registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),
     FilterFun = fun({K, _}=V, Acc) ->
                         case lists:member(K, Fields) of
@@ -186,7 +190,7 @@ lookup_reg(Realm, User, Fields) ->
                 end,
     case wh_cache:fetch_local(Cache, {ecall_registrar, Realm, User}) of
         {error, not_found} ->
-            ?LOG_SYS("Valid cached registration not found, querying whapps"),
+            ?LOG("valid cached registration not found, querying whapps"),
             RegProp = [{<<"Username">>, User}
                        ,{<<"Realm">>, Realm}
                        ,{<<"Fields">>, []}
@@ -199,19 +203,22 @@ lookup_reg(Realm, User, Fields) ->
                         {struct, RegFields} = props:get_value(<<"Fields">>, RegResp, ?EMPTY_JSON_OBJECT),
                         ?SERVER ! {cache_registrations, Realm, User, RegFields},
 
-                        ?LOG_SYS("Received registration information"),
+                        ?LOG("received registration information"),
                         lists:foldr(FilterFun, [], RegFields);
                     timeout ->
-                        ?LOG_SYS("Looking up registration timed out"),
+                        ?LOG("Looking up registration timed out"),
                         {error, timeout}
                 end
             catch
-                _:_ ->
-                    ?LOG_SYS("Looking up registration threw exception"),
+                _:{timeout, _} ->
+                    ?LOG("looking up registration threw exception: timeout", []),
+                    {error, timeout};
+                _:R ->
+                    ?LOG("looking up registration threw exception: ~p", [R]),
                     {error, timeout}
             end;
         {ok, RegFields} ->
-            ?LOG_SYS("Found cached registration information"),
+            ?LOG("found cached registration information"),
             lists:foldr(FilterFun, [], RegFields)
     end.
 

@@ -225,7 +225,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (list()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -242,7 +242,7 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/2 :: ([binary(),...] | [], #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_user_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
@@ -263,7 +263,7 @@ validate(_UserId, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_user_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec load_user_summary/1 :: (#cb_context{}) -> #cb_context{}.
 load_user_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -273,7 +273,7 @@ load_user_summary(Context) ->
 %% Create a new user document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_user/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec create_user/1 :: (#cb_context{}) -> #cb_context{}.
 create_user(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
@@ -313,7 +313,7 @@ load_user(UserId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_user/2 :: (UserId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_user/2 :: (binary(), #cb_context{}) -> #cb_context{}.
 update_user(UserId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
@@ -386,12 +386,12 @@ hash_password(#cb_context{doc=JObj}=Context) ->
 %% unique or belongs to the request being made
 %% @end
 %%--------------------------------------------------------------------
--spec(is_unique_username/2 :: (UserId :: binary()|undefined, Context :: #cb_context{}) -> boolean()).
-is_unique_username(UserId, Context) ->
-    Username = wh_json:get_value(<<"username">>, Context#cb_context.req_data),
+-spec is_unique_username/2 :: (binary() | 'undefined', #cb_context{}) -> boolean().
+is_unique_username(UserId, #cb_context{req_data=ReqData}=Context) ->
+    Username = wh_json:get_value(<<"username">>, ReqData),
     JObj = case crossbar_doc:load_view(?GROUP_BY_USERNAME, [{<<"key">>, Username}, {<<"reduce">>, <<"true">>}], Context) of
                #cb_context{resp_status=success, doc=[J]} -> J;
-               _ -> []
+               _ -> wh_json:new()
            end,
     Assignments = wh_json:get_value(<<"value">>, JObj, []),
     case UserId of

@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, stop/1, start_req/6, handle_req/2]).
+-export([start_link/0, stop/1, start_req/7, handle_req/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -54,25 +54,28 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
--spec start_req/6 :: (Srv, Prop, ApiFun, PubFun, From, Parent) -> 'ok' when
+-spec start_req/7 :: (Srv, Prop, ApiFun, CallId, PubFun, From, Parent) -> 'ok' when
       Srv :: pid(),
       Prop :: proplist(),
       ApiFun :: fun(),
+      CallId :: binary(),
       PubFun :: fun(),
       From :: {pid(), reference()},
       Parent :: pid() | atom().
-start_req(Srv, Prop, ApiFun, PubFun, From, Parent) ->
+start_req(Srv, Prop, ApiFun, CallId, PubFun, From, Parent) ->
     JObj = case wh_json:is_json_object(Prop) of
 	       true -> Prop;
 	       false -> wh_json:from_list(Prop)
 	   end,
 
-    JObj1 = wh_json:set_value(<<"Server-ID">>, gen_listener:queue_name(Srv), JObj),
+    JObj1 = wh_json:set_value(<<"Server-ID">>, gen_listener:queue_name(Srv)
+                              ,wh_json:set_value(<<"Call-ID">>, CallId, JObj)),
 
     case ApiFun(JObj1) of
 	{ok, JSON} ->
-	    gen_listener:cast(Srv, {employed, JObj, From, Parent, fun() -> ?LOG("Worker sending ~s", [JSON]), PubFun(JSON) end});
+	    gen_listener:cast(Srv, {employed, From, Parent, fun() -> ?LOG(CallId, "worker sending ~s", [JSON]), PubFun(JSON) end, CallId});
 	{error, _}=E ->
+            ?LOG(CallId, "API error: ~p", [E]),
 	    gen_server:reply(From, E)
     end.
 
@@ -123,19 +126,16 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({employed, JObj, {Pid, _}=From, Parent, PubFun}, #state{status=free}=State) ->
-    ?LOG("Employed by ~p via ~p", [Pid, Parent]),
-    ecallmgr_util:put_callid(JObj),
+handle_cast({employed, {Pid, _}=From, Parent, PubFun, CallId}, #state{status=free}=State) ->
+    ?LOG(CallId, "Employed by ~p via ~p", [Pid, Parent]),
     Ref = erlang:monitor(process, Pid),
     PubFun(),
     {noreply, State#state{status=busy, from=From, ref=Ref, parent=Parent, start=erlang:now()}};
 handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent, ref=Ref, start=Start}) ->
     Elapsed = timer:now_diff(erlang:now(), Start),
-    ?LOG("recieved response after ~b ms", [Elapsed div 1000]),
     erlang:demonitor(Ref, [flush]),
     gen_server:reply(From, {ok, JObj}),
-
-    ?LOG("Returning to pool of ~p", [Parent]),
+    ?LOG("received response after ~b ms, returning to pool ~p", [Elapsed div 1000, Parent]),
     ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
     {noreply, #state{}};
 handle_cast({response_recv, JObj}, State) ->

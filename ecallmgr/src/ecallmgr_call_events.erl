@@ -387,7 +387,7 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                         ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop1)}
                         ,{<<"Channel-State">>, get_channel_state(Prop1)}
 		       | event_specific(EvtName, AppName, Prop1) ],
-	    EvtProp1 = EvtProp0 ++ wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
+	    EvtProp1 = wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION) ++ EvtProp0,
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
 			   [] -> EvtProp1;
 			   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]

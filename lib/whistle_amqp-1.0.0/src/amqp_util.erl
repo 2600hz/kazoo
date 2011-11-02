@@ -739,13 +739,28 @@ register_return_handler() ->
 %% Encode/decode a key so characters like dot won't interfere with routing separator
 %% @end
 %%------------------------------------------------------------------------------
--spec encode_key/1 :: (RoutingKey) -> RoutingKeyEncoded :: binary() when
-      RoutingKey :: binary().
+-spec encode_key/1 :: (RoutingKey) -> RoutingKeyEncoded :: ne_binary() when
+      RoutingKey :: ne_binary().
 encode_key(RoutingKey) ->
-    %Encoded = edoc_util:escape_uri(binary_to_list(RoutingKey)),
-    re:replace(RoutingKey, "\\.", "%2E", [global, {return, binary}]).
+    binary:replace(RoutingKey, <<".">>, <<"%2E">>, [global]).
 
--spec decode_key/1 :: (RoutingKey) -> RoutingKeyDecoded :: binary() when
-      RoutingKey :: binary().
+-spec decode_key/1 :: (RoutingKey) -> RoutingKeyDecoded :: ne_binary() when
+      RoutingKey :: ne_binary().
 decode_key(RoutingKey) ->
-    re:replace(RoutingKey, "%2E", "\\.", [global, {return, binary}]).
+    binary:replace(RoutingKey, <<"%2E">>, <<".">>, [global]).
+
+
+-include_lib("eunit/include/eunit.hrl").
+-ifdef(TEST).
+encode_key_test() ->
+    ?assertEqual(<<"key">>, encode_key(<<"key">>)),
+    ?assertEqual(<<"routing%2Ekey">>, encode_key(<<"routing.key">>)),
+    ?assertEqual(<<"long%2Erouting%2Ekey">>, encode_key(<<"long.routing.key">>)),
+    ok.
+
+decode_key_test() ->
+    ?assertEqual(<<"key">>, decode_key(<<"key">>)),
+    ?assertEqual(<<"routing.key">>, decode_key(<<"routing%2Ekey">>)),
+    ?assertEqual(<<"long.routing.key">>, decode_key(<<"long%2Erouting%2Ekey">>)),
+    ok.
+-endif.
