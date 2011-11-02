@@ -15,21 +15,22 @@
 init() ->
     ok.
 
--spec handle_req/2 :: (JObj, Props) -> no_return() when
-      JObj :: json_object(),
+-spec handle_req/2 :: (ApiJObj, Props) -> no_return() when
+      ApiJObj :: json_object(),
       Props :: proplist().
-handle_req(JObj, Props) ->
-    Cache = props:get_value(cache, Props),
+handle_req(ApiJObj, Props) ->
     Queue = props:get_value(queue, Props),
+    MsgId = wh_json:get_value(<<"Msg-ID">>, ApiJObj, <<"000000000000">>),
+    put(callid, MsgId),
 
     ?LOG_START("received SIP authentication request"),
 
-    AuthU = wh_json:get_value(<<"Auth-User">>, JObj),
-    AuthR0 = wh_json:get_value(<<"Auth-Realm">>, JObj),
+    AuthU = wh_json:get_value(<<"Auth-User">>, ApiJObj),
+    AuthR0 = wh_json:get_value(<<"Auth-Realm">>, ApiJObj),
 
     AuthR = case wh_util:is_ipv4(AuthR0) orelse wh_util:is_ipv6(AuthR0) of
                 true ->
-                    [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
+                    [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, ApiJObj), <<"@">>),
                     ?LOG("auth-realm (~s) not a hostname, trying To-domain (~s)", [AuthR0, ToDomain]),
                     ToDomain;
                 false ->
@@ -37,7 +38,7 @@ handle_req(JObj, Props) ->
             end,
 
     %% crashes if not found, no return necessary
-    {ok, AuthJObj} = reg_util:lookup_auth_user(AuthU, AuthR, Cache),
+    {ok, AuthJObj} = reg_util:lookup_auth_user(AuthU, AuthR),
 
     AuthId = wh_json:get_value([<<"doc">>, <<"_id">>], AuthJObj),
 
@@ -58,16 +59,16 @@ handle_req(JObj, Props) ->
                                  ],
 		   V =/= undefined],
 
-    Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+    Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
 		,{<<"Custom-Channel-Vars">>, {struct, CCVs}}
 		| wh_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
-					      ,wh_json:get_value(<<"Event-Category">>, JObj)
+					      ,wh_json:get_value(<<"Event-Category">>, ApiJObj)
 					      ,<<"authn_resp">>
 					      ,?APP_NAME
 					      ,?APP_VERSION)],
 
     {ok, Payload} = authn_response(wh_json:get_value(<<"value">>, AuthJObj), Defaults),
-    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+    RespQ = wh_json:get_value(<<"Server-ID">>, ApiJObj),
     reg_util:send_resp(Payload, RespQ).
 
 %%-----------------------------------------------------------------------------
@@ -103,4 +104,3 @@ auth_specific_response(AuthInfo) ->
      ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthInfo, <<"ignore">>)}
      ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthInfo, <<"ignore">>)}
     ].
-
