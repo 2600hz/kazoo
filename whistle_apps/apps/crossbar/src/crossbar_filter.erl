@@ -40,11 +40,9 @@ filter_on_query_string(DbName, View, QueryParams, ViewOptions) ->
 %% Returns true if all of the requested props are found, false if one is not found
 %% @end
 %%--------------------------------------------------------------------
--spec filter_doc/2 :: (Doc, Props) -> boolean() when
-      Doc :: json_object(),
-      Props :: proplist().
+-spec filter_doc/2 :: (json_object(), proplist()) -> boolean().
 filter_doc(Doc, Props) ->
-    [] =/= [ok || {Key, Val} <- Props, filter_prop(Doc, Key, Val)].
+    lists:all(fun({K, V}) -> filter_prop(Doc, K, V) end, Props).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -52,10 +50,7 @@ filter_doc(Doc, Props) ->
 %% Returns true or false if the prop is found inside the doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_prop/3 :: (Doc, Key, Val) -> boolean() when
-      Doc :: json_object(),
-      Key :: binary(),
-      Val :: term().
+-spec filter_prop/3 :: (json_object(), ne_binary(), term()) -> boolean().
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
     wh_json:get_value(binary:split(Key, <<".">>), Doc) =:= Val;
 filter_prop(Doc, <<"created_from">>, Val) ->
