@@ -229,13 +229,23 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
 	    {App, Arg}
     end;
 
-get_fs_app(_Node, UUID, JObj, <<"bridge">>=App) ->
+get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
     Endpoints = wh_json:get_value(<<"Endpoints">>, JObj, []),
     case wh_api:bridge_req_v(JObj) of
 	false -> {'error', <<"bridge failed to execute as JObj did not validate">>};
         true when Endpoints =:= [] ->
             {'error', <<"bridge request had no endpoint">>};
 	true ->
+            %% if we are intending to ring multiple device simultaneously then
+            %% execute ring_ready so we dont leave the caller hanging with dead air.
+            %% this does not test how many are ACTUALLY dialed (registered)
+            %% since that is one of the things we want to be ringing during
+            case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
+                <<"simultaneous">> when length(Endpoints) > 1 ->
+                    send_cmd(Node, UUID, <<"ring_ready">>, "");
+                _Else ->
+                    ok
+            end,
             %% Taken from http://montsamu.blogspot.com/2007/02/erlang-parallel-map-and-parallel.html
             S = self(),
             DialStrings = [D || D <- [receive {Pid, DS} -> DS end
