@@ -1,3 +1,5 @@
+-ifndef(WHISTLE_LOG_MACROS).
+
 -define(LOG_SYSTEM_ID, "000000000000").
 
 -define(LOG_CALLID_FUN(FunCallID),
@@ -57,3 +59,6 @@
 	end)()).
 -define(LOG_SYS(CallId, Format__For__Log__, Data__For__Format__),
 	logger:info("~s|sys|~p:~b (~w) " ++ Format__For__Log__, [CallId, ?MODULE, ?LINE, self() | Data__For__Format__])).
+
+-define(WHISTLE_LOG_MACROS, true).
+-endif.
