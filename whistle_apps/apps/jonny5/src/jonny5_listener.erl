@@ -21,9 +21,7 @@
 -include("jonny5.hrl").
 
 -record(state, {
-	  cache = undefined :: 'undefined' | pid()
-         ,cache_ref = make_ref() :: reference()
-	 ,bl_provider_mod = 'default_blacklist' :: atom()
+	 bl_provider_mod = 'default_blacklist' :: atom()
          ,bl_provider_pid = 'undefined' :: 'undefined' | pid()
          ,bl_provider_ref = 'undefined' :: 'undefined' | reference()
 	 }).
@@ -94,9 +92,6 @@ is_blacklisted(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    CPid = whereis(j5_cache),
-    Ref = erlang:monitor(process, CPid),
-
     Provider = case file:consult(?SETTINGS_FILE) of
 		   {ok, Config} ->
 		       case props:get_value(blacklist_provider, Config) of
@@ -107,9 +102,7 @@ init([]) ->
 	       end,
     ?LOG_SYS("Blacklist provider: ~s", [Provider]),
 
-    {ok, #state{cache=CPid, cache_ref=Ref
-		,bl_provider_mod=Provider
-	       }, 0}.
+    {ok, #state{bl_provider_mod=Provider}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -153,11 +146,6 @@ handle_cast({set_blacklist_provider, Provider}, #state{bl_provider_mod=PMod, bl_
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', MRef, process, Cache, _Reason}, #state{cache=Cache}=State) ->
-    ?LOG_SYS("registrar cache process went down, attempting to reconnect"),
-    erlang:demonitor(MRef),
-    {noreply, State#state{cache=undefined}, 50};
-
 handle_info({'DOWN', PRef, process, _PPid, _Reason}, #state{bl_provider_ref=PRef, bl_provider_mod=PMod}=State) ->
     ?LOG_SYS("blacklist provider ~s down: ~p", [PMod, _Reason]),
     try
@@ -199,9 +187,9 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{cache=Cache}) ->
+handle_event(_JObj, _State) ->
     ?LOG("Event received"),
-    {reply, [{cache, Cache}]}.
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -214,7 +202,7 @@ handle_event(_JObj, #state{cache=Cache}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), #state{}) -> ok.
+-spec terminate/2 :: (term(), #state{}) -> 'ok'.
 terminate(_Reason, _) ->
     ?LOG_SYS("jonny5 server ~p termination", [_Reason]).
 
@@ -229,8 +217,7 @@ terminate(_Reason, _) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
--spec find_bl_provider_pid/1 :: (PMod) -> pid() | 'ignore' when
-      PMod :: atom().
+-spec find_bl_provider_pid/1 :: (atom()) -> pid() | 'ignore'.
 find_bl_provider_pid(PMod) ->
     ?LOG_SYS("trying to start ~s" , [PMod]),
     {module, PMod} = code:ensure_loaded(PMod),

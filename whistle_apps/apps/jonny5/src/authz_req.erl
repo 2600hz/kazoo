@@ -13,21 +13,16 @@
 -include("jonny5.hrl").
 
 init() ->
-    {ok, Accts} = couch_mgr:get_results(<<"accounts">>, <<"accounts/listing_by_id">>, []),
-    ?LOG_SYS("Preloading ~b accounts", [length(Accts)]),
-    _ = [ jonny5_acct_sup:start_proc(wh_json:get_value(<<"id">>, AcctJObj)) || AcctJObj <- Accts],
-    {ok, TSAccts} = couch_mgr:get_results(<<"ts">>, <<"LookUpDID/DIDsByAcct">>, []), %% crappy way, make new view
-    ?LOG_SYS("Preloading ~b trunkstore accounts", [length(TSAccts)]),
-    [ jonny5_acct_sup:start_proc(wh_json:get_value(<<"id">>, TSAcctJObj)) || TSAcctJObj <- TSAccts].
+    j5_util:preload_accounts(),
+    j5_util:preload_trunkstrore().
 
-handle_req(JObj, Props) ->
-    CPid = props:get_value(cache, Props),
+handle_req(JObj, _Props) ->
     case wh_api:authz_req_v(JObj) of
 	false -> throw({failed_api_validation, JObj});
 	true -> ?LOG("Valid authz_req")
     end,
 
-    put(callid, wh_json:get_value(<<"Call-ID">>, JObj)),
+    wh_util:put_callid(JObj),
 
     ?LOG("Authorize ~s can make the call to ~s", [wh_json:get_value(<<"From">>, JObj), wh_json:get_value(<<"To">>, JObj)]),
 
@@ -37,11 +32,11 @@ handle_req(JObj, Props) ->
 		    {AcctID, undefined} when is_binary(AcctID) ->
 			%% Coming from carrier (off-net)
 			?LOG("Authorize inbound call"),
-			j5_acctmgr:authz_trunk(AcctID, JObj, inbound, CPid);
+			j5_acctmgr:authz_trunk(AcctID, JObj, inbound);
 		    {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
 			%% Coming from PBX (on-net); authed by Registrar
 			?LOG("Authorize outbound call"),
-			j5_acctmgr:authz_trunk(AcctID, JObj, outbound, CPid);
+			j5_acctmgr:authz_trunk(AcctID, JObj, outbound);
 		    {_AcctID, _AuthID} ->
 			?LOG("Error in authorization: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID]),
 			undefined
