@@ -28,9 +28,11 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 	    App = wh_json:get_value(<<"Application-Name">>, JObj),
 	    case get_fs_app(Node, UUID, JObj, App) of
 		{'error', Msg} ->
+                    _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
                     send_error_response(App, Msg, UUID, JObj),
                     ControlPID ! {execute_complete, UUID, App};
 		{'error', AppName, Msg} ->
+                    _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
                     send_error_response(App, Msg, UUID, JObj),
                     ControlPID ! {execute_complete, UUID, AppName};
                 {return, Result} ->
@@ -140,7 +142,8 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
 	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
 	    case ecallmgr_media_registry:is_local(MediaName, UUID) of
 		{'error', not_local} ->
-		    ?LOG("failed to find media ~s for storing", [MediaName]);
+		    ?LOG("failed to find media ~s for storing", [MediaName]),
+                    {error, <<"failed to find media requested for storage">>};
 		{ok, Media} ->
 		    ?LOG("Streaming media ~s", [MediaName]),
 		    case filelib:is_regular(Media) andalso wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
@@ -227,9 +230,21 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
     end;
 
 get_fs_app(_Node, UUID, JObj, <<"bridge">>=App) ->
+    Endpoints = wh_json:get_value(<<"Endpoints">>, JObj, []),
     case wh_api:bridge_req_v(JObj) of
 	false -> {'error', <<"bridge failed to execute as JObj did not validate">>};
+        true when Endpoints =:= [] ->
+            {'error', <<"bridge request had no endpoint">>};
 	true ->
+            %% Taken from http://montsamu.blogspot.com/2007/02/erlang-parallel-map-and-parallel.html
+            S = self(),
+            DialStrings = [D || D <- [receive {Pid, DS} -> DS end
+                                      || Pid <- [spawn(fun() ->
+                                                               put(callid, UUID),
+                                                               S ! {self(), (catch get_bridge_endpoint(EP))}
+                                                       end)
+                                                 || EP <- Endpoints]
+                                     ], D =/= ""],
             Generators = [fun(DP) ->
                                   case wh_json:get_integer_value(<<"Timeout">>, JObj) of
                                       undefined ->
@@ -258,30 +273,35 @@ get_fs_app(_Node, UUID, JObj, <<"bridge">>=App) ->
                                           DP
                                   end
                           end,
-                         fun(DP) ->
-                                 [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
-                                  ,{"application", "set continue_on_fail=true"}|DP]
-                         end,
-                         fun(DP) ->
-                                 DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
-                                                     <<"simultaneous">> -> ",";
-                                                     <<"single">> -> "|"
-                                                 end,
-                                 %% Taken from http://montsamu.blogspot.com/2007/02/erlang-parallel-map-and-parallel.html
-                                 S = self(),
-                                 DialStrings = [ receive {Pid, DS} -> DS end
-                                                 || Pid <- [
-                                                            spawn(fun() -> S ! {self(), (catch get_bridge_endpoint(EP))} end)
-                                                            || EP <- wh_json:get_value(<<"Endpoints">>, JObj, [])
-                                                           ]
-                                               ],
-                                 BridgeCmd = lists:flatten(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)])
-                                     ++ string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
-                                 [{"application", BridgeCmd}|DP]
-                         end],
-            Dialplan = lists:foldr(fun(F, DP) -> F(DP) end, [], Generators),
-
-            {App, Dialplan}
+                          fun(DP) ->
+                                  case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
+                                      {struct, Props} ->
+                                          [{"application", wh_util:to_list(<<"set ", Var/binary, "=", (wh_util:to_binary(V))/binary>>)}
+                                            || {K, V} <- Props,
+                                               (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= undefined] ++ DP;
+                                      _ ->
+                                          DP
+                                  end
+                          end,
+                          fun(DP) ->
+                                  [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
+                                   ,{"application", "set continue_on_fail=true"}|DP]
+                          end,
+                          fun(DP) ->
+                                  DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
+                                                      <<"simultaneous">> -> ",";
+                                                      <<"single">> -> "|"
+                                                  end,
+                                  BridgeCmd = lists:flatten(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)])
+                                      ++ string:join(DialStrings, DialSeparator),
+                                  [{"application", BridgeCmd}|DP]
+                          end],
+            case DialStrings of
+                [] ->
+                    {error, <<"registrar returned no endpoints">>};
+                _ ->
+                    {App, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
+            end
     end;
 
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
@@ -420,6 +440,7 @@ send_cmd(Node, UUID, AppName, Args) ->
 get_bridge_endpoint(JObj) ->
     case ecallmgr_fs_xml:build_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
 	{'error', 'timeout'} ->
+            ?LOG("unable to build route to endpoint"),
             "";
 	EndPoint ->
 	    CVs = ecallmgr_fs_xml:get_leg_vars(JObj),

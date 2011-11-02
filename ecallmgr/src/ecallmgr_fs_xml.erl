@@ -92,10 +92,13 @@ build_route(Route, undefined) ->
 build_route({struct, RouteProp}, DIDFormat) ->
     build_route(RouteProp, DIDFormat);
 build_route(RouteProp, <<"route">>) ->
-    case props:get_value(<<"Route">>, RouteProp) of
-        <<"sip:", _/binary>> = R1 -> <<?SIP_INTERFACE, (R1)/binary>>;
-        R2 -> R2
-    end;
+    Route = case props:get_value(<<"Route">>, RouteProp) of
+                <<"sip:", _/binary>> = R1 -> <<?SIP_INTERFACE, (R1)/binary>>;
+                R2 -> R2
+            end,
+    ?LOG("using route ~s", [Route]),
+    Route;
+
 build_route(RouteProp, <<"username">>) ->
     User = props:get_value(<<"To-User">>, RouteProp),
     Realm = props:get_value(<<"To-Realm">>, RouteProp),
