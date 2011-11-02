@@ -121,17 +121,18 @@
 
 %% Query Registrations
 -define(REG_QUERY_HEADERS, [<<"Username">>, <<"Realm">>, <<"Fields">>]).
--define(OPTIONAL_REG_QUERY_HEADERS, []).
+-define(OPTIONAL_REG_QUERY_HEADERS, [<<"Call-ID">>]).
 -define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
 			   ,{<<"Event-Name">>, <<"reg_query">>}
 			  ]).
--define(REG_QUERY_TYPES, [{<<"Fields">>, fun(Fs) when is_list(Fs) ->
-						 Allowed = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
-						 lists:foldl(fun(F, true) -> lists:member(F, Allowed);
-								(_, false) -> false
-							     end, true, Fs);
-					    (_) -> false
-					 end}
+-define(REG_QUERY_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+                          ,{<<"Fields">>, fun(Fs) when is_list(Fs) ->
+                                                  Allowed = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
+                                                  lists:foldl(fun(F, true) -> lists:member(F, Allowed);
+                                                                 (_, false) -> false
+                                                              end, true, Fs);
+                                             (_) -> false
+                                          end}
 			 ]).
 
 %% Registration Query Response
