@@ -307,7 +307,9 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
       Db :: ne_binary(),
       Doc :: json_object().
 send_document_change(Action, Db, Doc) ->
+    CallID = get(callid),
     spawn(fun() ->
+                  put(callid, CallID),
                   Id = wh_json:get_value(<<"_id">>, Doc),
                   Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
 		  Change = wh_json:from_list([

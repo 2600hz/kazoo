@@ -123,6 +123,36 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.limits">>, [RD, Cont
     Pid ! {binding_result, true, [RD, Context, Params]},
     {noreply, State};
 
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.limits">>, [RD, Context | Params]}, State) ->
+    spawn_monitor(fun() ->
+                  crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  case crossbar_doc:save(Context) of
+                      #cb_context{resp_status=success, doc=Doc, resp_headers=RespHeaders}=Context1 ->
+                          ?LOG("Updated: ~p", [Doc]),
+                          LimitId = wh_json:get_value(<<"_id">>, Doc),
+                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_headers=[{"Location", LimitId} | props:delete("Location", RespHeaders)]}, Params]};
+                      Else ->
+                          Pid ! {binding_result, true, [RD, Else, Params]}
+                  end
+	  end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.limits">>, [RD, Context | Params]}, State) ->
+    spawn_monitor(fun() ->
+                  crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  case crossbar_doc:save(Context) of
+                      #cb_context{resp_status=success, doc=Doc, resp_headers=RespHeaders}=Context1 ->
+                          ?LOG("Created: ~p", [Doc]),
+                          LimitId = wh_json:get_value(<<"_id">>, Doc),
+                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_headers=[{"Location", LimitId} | props:delete("Location", RespHeaders)]}, Params]};
+                      Else ->
+                          Pid ! {binding_result, true, [RD, Else, Params]}
+                  end
+	  end),
+    {noreply, State};
+
 handle_info({binding_fired, Pid, _B, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
@@ -132,6 +162,7 @@ handle_info(timeout, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
+    ?LOG("Unhandled: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -174,7 +205,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.limits">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.limits">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.limits">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.get.limits">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.limits">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -187,9 +218,9 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 -spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
 allowed_methods([]) ->
-    {true, ['GET']};
+    {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
-    {true, ['GET']};
+    {true, ['GET', 'POST']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -229,6 +260,8 @@ validate([], _RD, #cb_context{req_verb = <<"get">>}=Context) ->
 	    [?LOG("~p", [S]) || S <- ST],
             crossbar_util:response_db_fatal(Context)
     end;
+validate([], RD, #cb_context{req_verb = <<"put">>}=Context) ->
+    create_limits(RD, Context);
 validate([LimitId], _, #cb_context{req_verb = <<"get">>}=Context) ->
     try
         load_limit(LimitId, Context)
@@ -237,6 +270,8 @@ validate([LimitId], _, #cb_context{req_verb = <<"get">>}=Context) ->
 	    ?LOG("Loading limit crashed: ~p: ~p", [_T, _R]),
             crossbar_util:response_db_fatal(Context)
     end;
+validate([LimitId], _, #cb_context{req_verb = <<"post">>}=Context) ->
+    update_limits(LimitId, Context);
 validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -259,3 +294,62 @@ load_limit_summary(Context) ->
 -spec load_limit/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_limit(LimitId, Context) ->
     crossbar_doc:load(LimitId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Create a new limits document with the data provided, if it is valid
+%% @end
+%%--------------------------------------------------------------------
+-spec create_limits/2 :: (#wm_reqdata{}, #cb_context{}) -> #cb_context{}.
+create_limits(RD, Context) ->
+    case load_limit_summary(Context) of
+        #cb_context{doc=[]} ->
+            ?LOG("No other limit doc exists, creating"),
+            validate_create(Context);
+        #cb_context{doc=[LimitDoc]} ->
+            DocId = wh_json:get_value(<<"id">>, LimitDoc),
+            Location = crossbar_util:get_abs_url(RD, DocId),
+
+            ?LOG("Limit doc ~s exists, redirecting to ~s", [DocId, Location]),
+
+            crossbar_util:response_redirect(Context, DocId, wh_json:from_list([{<<"Location">>, wh_util:to_binary(Location)}]))
+    end.
+
+-spec validate_create/1 :: (#cb_context{}) -> #cb_context{}.
+validate_create(#cb_context{req_data=JObj}=Context) ->
+    case is_valid_doc(JObj) of
+        {error, Fields} ->
+	    crossbar_util:response_invalid_data(Fields, Context);
+        {ok, _} ->
+            Context#cb_context{
+                 doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj)
+                ,resp_status=success
+            }
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update an existing device document with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec update_limits/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+update_limits(DocId, #cb_context{req_data=JObj}=Context) ->
+    case is_valid_doc(JObj) of
+        {error, Fields} ->
+	    crossbar_util:response_invalid_data(Fields, Context);
+        {ok, _} ->
+            crossbar_doc:load_merge(DocId, JObj, Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Validates JObj against their schema
+%% @end
+%%--------------------------------------------------------------------
+-spec is_valid_doc/1 :: (json_object()) -> {'error', json_objects()} | {'ok', []}.
+is_valid_doc(JObj) ->
+     crossbar_schema:do_validate(JObj, limits).
