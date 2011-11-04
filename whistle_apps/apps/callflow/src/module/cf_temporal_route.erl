@@ -10,7 +10,7 @@
 
 -include("../callflow.hrl").
 
--export([handle/2]).
+-export([handle/2, normalize_date/1]).
 
 -import(calendar, [gregorian_seconds_to_datetime/1, datetime_to_gregorian_seconds/1
                    ,date_to_gregorian_days/1, date_to_gregorian_days/3, universal_time/0
@@ -136,7 +136,8 @@ process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}}=T,
               [#rule{id=Id, name=Name, wtime_start=TStart, wtime_stop=TStop}=R|Rs]
               ,Call) ->
     ?LOG("processing temporal rule ~s (~s)", [Id, Name]),
-    BaseDate = next_rule_date(R, {Y, M, D - 1}),
+    PrevDay = normalize_date({Y, M, D - 1}),
+    BaseDate = next_rule_date(R, PrevDay),
     BastTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
     case {BastTime + TStart, BastTime + TStop} of
         {Start, _} when LSec < Start ->
@@ -588,10 +589,18 @@ next_rule_date(#rule{cycle = <<"yearly">>, interval=I0, ordinal=Ordinal
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_date/1 :: (Date :: improper_date()) -> wh_date().
-normalize_date({Y, M, D}) when M =:= 13 ->
+normalize_date({Y, 13, D}) ->
     normalize_date({Y + 1, 1, D});
+normalize_date({Y, 0, D}) ->
+    normalize_date({Y - 1, 12, D});
 normalize_date({Y, M, D}) when M > 12 ->
     normalize_date({Y + 1, M - 12, D});
+normalize_date({Y, M, D}) when M < 1 ->
+    normalize_date({Y - 1, M + 12, D});
+normalize_date({Y, M, D}) when D < 1 ->
+    {Y1, M1, _} = normalize_date({Y, M - 1, 1}),
+    D0 = last_day_of_the_month(Y1, M1),
+    normalize_date({Y1, M1, D + D0});
 normalize_date({Y, M, D}=Date) ->
     case last_day_of_the_month(Y, M) of
         Days when D > Days ->

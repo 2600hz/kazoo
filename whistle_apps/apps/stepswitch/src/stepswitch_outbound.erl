@@ -300,7 +300,7 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
     BridgeReq = try
                     {ok, AccountId, false} = gen_server:call(stepswitch_inbound, {lookup_number, Number}),
                     ?LOG("number belongs to another on-net account, loopback back to account ~s", [AccountId]),
-                    build_loopback_request(JObj, Number, Q)
+                    build_loopback_request(JObj, Number, AccountId, Q)
                 catch
                     _:_ ->
                         EPs = case wh_json:get_value(<<"Flags">>, JObj) of
@@ -606,16 +606,18 @@ evaluate_rules([Regex|T], Number) ->
 %% off-net request, endpoints, and our AMQP Q
 %% @end
 %%--------------------------------------------------------------------
--spec build_loopback_request/3 :: (JObj, Number, Q) -> proplist() when
+-spec build_loopback_request/4 :: (JObj, Number, LoopAccount, Q) -> proplist() when
       JObj :: json_object(),
       Number :: binary(),
+      LoopAccount :: binary(),
       Q :: binary().
-build_loopback_request(JObj, Number, Q) ->
+build_loopback_request(JObj, Number, LoopAccount, Q) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Endpoints = [{struct, [{<<"Invite-Format">>, <<"route">>}
                            ,{<<"Route">>, <<"loopback/", (Number)/binary>>}
                            ,{<<"Custom-Channel-Vars">>, {struct,[{<<"Offnet-Loopback-Number">>, Number}
                                                                  ,{<<"Offnet-Loopback-Account-ID">>, AccountId}
+                                                                 ,{<<"Account-ID">>, LoopAccount}
                                                                 ]}}
                           ]}],
     Command = [{<<"Application-Name">>, <<"bridge">>}

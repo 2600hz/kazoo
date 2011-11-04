@@ -91,8 +91,11 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({lookup, Realm, User, Fields}, From, State) ->
-    spawn(fun() -> gen_server:reply(From, lookup_reg(Realm, User, Fields)) end),
+handle_call({lookup, Realm, User, Fields, CallId}, From, State) ->
+    spawn(fun() ->
+                  put(callid, CallId),
+                  gen_server:reply(From, lookup_reg(Realm, User, Fields))
+          end),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -119,8 +122,9 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
-    ?LOG_SYS("Storing registration information for ~s@~s", [User, Realm]),
+    ?LOG_SYS("storing registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),
+
     wh_cache:store_local(Cache, cache_key(Realm, User), RegFields
 			 ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
 			),
@@ -167,7 +171,7 @@ code_change(_OldVsn, State, _Extra) ->
       User :: binary(),
       Fields :: [binary(),...].
 lookup_reg(Realm, User, Fields) ->
-    ?LOG_SYS("Looking up registration information for ~s@~s", [User, Realm]),
+    ?LOG("looking up registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),
     FilterFun = fun({K, _}=V, Acc) ->
 			case lists:member(K, Fields) of
@@ -189,21 +193,25 @@ lookup_reg(Realm, User, Fields) ->
 			true = wapi_registration:query_resp_v(RegJObj),
 
                         RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RegJObj, wh_json:new())),
+
                         ?SERVER ! {cache_registrations, Realm, User, RegFields},
 
-                        ?LOG_SYS("Received registration information"),
+                        ?LOG("received registration information"),
                         lists:foldr(FilterFun, [], RegFields);
                     timeout ->
-                        ?LOG_SYS("Looking up registration timed out"),
+                        ?LOG("Looking up registration timed out"),
                         {error, timeout}
                 end
             catch
-                _:_ ->
-                    ?LOG_SYS("Looking up registration threw exception"),
+                _:{timeout, _} ->
+                    ?LOG("looking up registration threw exception: timeout", []),
+                    {error, timeout};
+                _:R ->
+                    ?LOG("looking up registration threw exception: ~p", [R]),
                     {error, timeout}
             end;
         {ok, RegFields} ->
-            ?LOG_SYS("Found cached registration information"),
+            ?LOG("found cached registration information"),
             lists:foldr(FilterFun, [], RegFields)
     end.
 

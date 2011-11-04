@@ -120,10 +120,13 @@ create_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Inception}=Ca
                   ,wh_json:get_value(<<"custom_sip_headers">>, SIP))
     end,
 
-    FaxEnabled = case wh_json:is_true(<<"fax_enabled">>, Endpoint) of
-		     false -> [];
-		     true -> [{<<"Fax-Enabled">>, true}]
-		 end,
+    CCVs = case wh_json:is_true(<<"fax_enabled">>, Endpoint) of
+               false -> [{<<"Endpoint-ID">>, EndpointId}
+                         ,{<<"Owner-ID">>, OwnerId}];
+               true -> [{<<"Fax-Enabled">>, <<"true">>}
+                        ,{<<"Endpoint-ID">>, EndpointId}
+                        ,{<<"Owner-ID">>, OwnerId}]
+           end,
 
     Prop = [{<<"Invite-Format">>, wh_json:get_value(<<"invite_format">>, SIP, <<"username">>)}
             ,{<<"To-User">>, wh_json:get_value(<<"username">>, SIP)}
@@ -139,10 +142,7 @@ create_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Inception}=Ca
             ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
             ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Media)}
             ,{<<"SIP-Headers">>, SIPHeaders} % converted to json_object() in merge_headers/2
-            ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Endpoint-ID">>, EndpointId}
-							    ,{<<"Owner-ID">>, OwnerId}
-							    | FaxEnabled
-							   ])}
+            ,{<<"Custom-Channel-Vars">>, wh_json:from_list([ KV || {_, V}=KV <- CCVs, V =/= undefined ])}
            ],
     wh_json:from_list([ KV || {_, V}=KV <- Prop, V =/= undefined ]).
 

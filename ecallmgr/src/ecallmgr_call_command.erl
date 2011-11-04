@@ -28,9 +28,11 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 	    App = wh_json:get_value(<<"Application-Name">>, JObj),
 	    case get_fs_app(Node, UUID, JObj, App) of
 		{'error', Msg} ->
+                    _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
                     send_error_response(App, Msg, UUID, JObj),
                     ControlPID ! {execute_complete, UUID, App};
 		{'error', AppName, Msg} ->
+                    _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
                     send_error_response(App, Msg, UUID, JObj),
                     ControlPID ! {execute_complete, UUID, AppName};
                 {return, Result} ->
@@ -140,7 +142,8 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
 	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
 	    case ecallmgr_media_registry:is_local(MediaName, UUID) of
 		{'error', not_local} ->
-		    ?LOG("failed to find media ~s for storing", [MediaName]);
+		    ?LOG("failed to find media ~s for storing", [MediaName]),
+                    {error, <<"failed to find media requested for storage">>};
 		{ok, Media} ->
 		    ?LOG("Streaming media ~s", [MediaName]),
 		    case filelib:is_regular(Media) andalso wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
@@ -226,10 +229,32 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
 	    {App, Arg}
     end;
 
-get_fs_app(_Node, UUID, JObj, <<"bridge">>=App) ->
+get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
+    Endpoints = wh_json:get_value(<<"Endpoints">>, JObj, []),
+
     case wapi_dialplan:bridge_v(JObj) of
 	false -> {'error', <<"bridge failed to execute as JObj did not validate">>};
+	true when Endpoints =:= [] -> {'error', <<"bridge request had no endpoints">>};
 	true ->
+            %% if we are intending to ring multiple device simultaneously then
+            %% execute ring_ready so we dont leave the caller hanging with dead air.
+            %% this does not test how many are ACTUALLY dialed (registered)
+            %% since that is one of the things we want to be ringing during
+            'ok' = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
+		       <<"simultaneous">> when length(Endpoints) > 1 ->
+			   ?LOG("setting ring_ready to empty: ~p", [send_cmd(Node, UUID, <<"ring_ready">>, "")]);
+		       _Else ->
+			   'ok'
+		   end,
+
+            S = self(),
+            DialStrings = [D || D <- [receive {Pid, DS} -> DS end
+                                      || Pid <- [spawn(fun() ->
+                                                               put(callid, UUID),
+                                                               S ! {self(), (catch get_bridge_endpoint(EP))}
+                                                       end)
+                                                 || EP <- Endpoints]
+                                     ], D =/= ""],
             Generators = [fun(DP) ->
                                   case wh_json:get_integer_value(<<"Timeout">>, JObj) of
                                       undefined ->
@@ -258,6 +283,16 @@ get_fs_app(_Node, UUID, JObj, <<"bridge">>=App) ->
                                           DP
                                   end
                           end,
+                          fun(DP) ->
+                                  case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
+                                      {struct, Props} ->
+                                          [{"application", wh_util:to_list(<<"set ", Var/binary, "=", (wh_util:to_binary(V))/binary>>)}
+                                            || {K, V} <- Props,
+                                               (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= undefined] ++ DP;
+                                      _ ->
+                                          DP
+                                  end
+                          end,
                          fun(DP) ->
                                  [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
                                   ,{"application", "set continue_on_fail=true"}|DP]
@@ -280,9 +315,12 @@ get_fs_app(_Node, UUID, JObj, <<"bridge">>=App) ->
 				 ?LOG("Bridge Cmd: ~s", [BridgeCmd]),
                                  [{"application", BridgeCmd}|DP]
                          end],
-            Dialplan = lists:foldr(fun(F, DP) -> F(DP) end, [], Generators),
-
-            {App, Dialplan}
+            case DialStrings of
+                [] ->
+                    {error, <<"registrar returned no endpoints">>};
+                _ ->
+                    {App, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
+            end
     end;
 
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
@@ -421,6 +459,7 @@ send_cmd(Node, UUID, AppName, Args) ->
 get_bridge_endpoint(JObj) ->
     case ecallmgr_fs_xml:build_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
 	{'error', 'timeout'} ->
+            ?LOG("unable to build route to endpoint"),
             "";
 	EndPoint ->
 	    CVs = ecallmgr_fs_xml:get_leg_vars(JObj),

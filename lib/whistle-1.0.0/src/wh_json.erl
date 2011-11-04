@@ -134,8 +134,6 @@ filter(Pred, JObj, Keys) ->
       Pred :: fun( (Element) -> boolean() ),
       Element :: json_term() | {json_string(), json_term()},
       JObj :: json_object().
-filter(_, undefined) ->
-    undefined;
 filter(Pred, {struct, Props}) when is_function(Pred, 1) ->
     {struct, [ E || E <- Props, Pred(E) ]}.
 

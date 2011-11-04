@@ -68,6 +68,302 @@
 			,{<<"Tenant-ID">>, fun is_binary/1}
 			]).
 
+%% <<<<<<< HEAD
+%% =======
+%% %% Authentication Requests
+%% -define(AUTHN_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
+%% 			       , <<"Auth-User">>, <<"Auth-Realm">>]).
+%% -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>]).
+%% -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, <<"directory">>}
+%% 			  ,{<<"Event-Name">>, <<"authn_req">>}
+%% 			 ]).
+%% -define(AUTHN_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+%% 			 ,{<<"To">>, fun is_binary/1}
+%% 			 ,{<<"From">>, fun is_binary/1}
+%% 			 ,{<<"Orig-IP">>, fun is_binary/1}
+%% 			 ,{<<"Auth-User">>, fun is_binary/1}
+%% 			 ,{<<"Auth-Realm">>, fun is_binary/1}
+%% 			]).
+
+%% %% Configuration Document Update
+%% -define(CONF_DOC_UPDATE_HEADERS, [<<"ID">>, <<"Rev">>, <<"Doc">>]).
+%% -define(OPTIONAL_CONF_DOC_UPDATE_HEADERS, [<<"Account-DB">>, <<"Account-ID">>
+%%                                                ,<<"Date-Modified">>, <<"Date-Created">>
+%%                                                ,<<"Type">>, <<"Version">>]).
+%% -define(CONF_DOC_UPDATE_VALUES, [{<<"Event-Category">>, <<"configuration">>}
+%%                                  ,{<<"Event-Name">>, [<<"doc_edited">>, <<"doc_created">>, <<"doc_deleted">>]}]).
+%% -define(CONF_DOC_UPDATE_TYPES, [{<<"ID">>, fun is_binary/1}
+%%                                 ,{<<"Rev">>, fun is_binary/1}]).
+
+%% %% Authentication Responses
+%% -define(AUTHN_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Password">>]).
+%% -define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
+%% -define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
+%% 			   ,{<<"Event-Name">>, <<"authn_resp">>}
+%% 			   ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>, <<"a1-hash">>, <<"error">>]}
+%% 			 ]).
+%% -define(AUTHN_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+%% 			  ,{<<"Auth-Password">>, fun is_binary/1}
+%% 			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+%% 			  ,{<<"Access-Group">>, fun is_binary/1}
+%% 			  ,{<<"Tenant-ID">>, fun is_binary/1}
+%% 			 ]).
+
+%% %% Registration Success
+%% -define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"From-User">>, <<"From-Host">>, <<"Contact">>, <<"RPid">>
+%% 				 ,<<"Expires">>, <<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
+%% 				 , <<"Username">>, <<"Realm">>
+%% 			    ]).
+%% -define(OPTIONAL_REG_SUCCESS_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
+%% 					   ,<<"FreeSWITCH-Hostname">>
+%% 				      ]).
+%% -define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
+%% 			    ,{<<"Event-Name">>, <<"reg_success">>}
+%% 			   ]).
+%% -define(REG_SUCCESS_TYPES, []).
+
+%% %% Query Registrations
+%% -define(REG_QUERY_HEADERS, [<<"Username">>, <<"Realm">>, <<"Fields">>]).
+%% -define(OPTIONAL_REG_QUERY_HEADERS, [<<"Call-ID">>]).
+%% -define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
+%% 			   ,{<<"Event-Name">>, <<"reg_query">>}
+%% 			  ]).
+%% -define(REG_QUERY_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+%%                           ,{<<"Fields">>, fun(Fs) when is_list(Fs) ->
+%%                                                   Allowed = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
+%%                                                   lists:foldl(fun(F, true) -> lists:member(F, Allowed);
+%%                                                                  (_, false) -> false
+%%                                                               end, true, Fs);
+%%                                              (_) -> false
+%%                                           end}
+%% 			 ]).
+
+%% %% Registration Query Response
+%% -define(REG_QUERY_RESP_HEADERS, [<<"Fields">>]).
+%% -define(OPTIONAL_REG_QUERY_RESP_HEADERS, []).
+%% -define(REG_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
+%% 				,{<<"Event-Name">>, <<"reg_query_resp">>}
+%% 			       ]).
+%% -define(REG_QUERY_RESP_TYPES, []).
+
+%% %% Authorization Requests
+%% -define(AUTHZ_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
+%% 				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+%% 			   ]).
+%% -define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Request">>]).
+%% -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+%% 			   ,{<<"Event-Name">>, <<"authz_req">>}
+%% 			  ]).
+%% -define(AUTHZ_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+%% 			  ,{<<"To">>, fun is_binary/1}
+%% 			  ,{<<"From">>, fun is_binary/1}
+%% 			  ,{<<"Call-ID">>, fun is_binary/1}
+%% 			  ,{<<"Caller-ID-Name">>, fun is_binary/1}
+%% 			  ,{<<"Caller-ID-Number">>, fun is_binary/1}
+%% 			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+%% 			 ]).
+
+%% %% Authorization Responses
+%% -define(AUTHZ_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Is-Authorized">>]).
+%% -define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Custom-Channel-Vars">>]).
+%% -define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+%% 			    ,{<<"Event-Name">>, <<"authz_resp">>}
+%% 			    ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
+%% 			   ]).
+%% -define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+
+%% %% Route Requests
+%% -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
+%% 				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+%% 			   ]).
+%% -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
+%% 					 ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
+%% 					 ,<<"Resource-Type">>, <<"Cost-Parameters">>
+%% 				    ]).
+%% -define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+%% 			   ,{<<"Event-Name">>, <<"route_req">>}
+%% 			   ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>, <<"audio">>, <<"video">>, <<"chat">>]}
+%% 			   ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
+%% 			  ]).
+%% -define(ROUTE_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+%% 			  ,{<<"To">>, fun is_binary/1}
+%% 			  ,{<<"From">>, fun is_binary/1}
+%% 			  ,{<<"Request">>, fun is_binary/1}
+%% 			  ,{<<"Call-ID">>, fun is_binary/1}
+%% 			  ,{<<"Event-Queue">>, fun is_binary/1}
+%% 			  ,{<<"Caller-ID-Name">>, fun is_binary/1}
+%% 			  ,{<<"Caller-ID-Number">>, fun is_binary/1}
+%% 			  ,{<<"Cost-Parameters">>, fun({struct, L}) when is_list(L) ->
+%% 							   lists:all(fun({K, _V}) ->
+%% 									     lists:member(K, ?ROUTE_REQ_COST_PARAMS)
+%% 								     end, L);
+%% 						      (_) -> false
+%% 						   end}
+%% 			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+%% 			 ]).
+%% -define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
+%% 				    ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
+%% 			       ]).
+
+%% %% Route Responses
+%% -define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
+%% -define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
+%% 						 ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
+%% 						 ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
+%% 						 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
+%% 						 ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
+%% 						 ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+%% 					   ]).
+%% -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
+%% 				  ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
+%% 				  ,?INVITE_FORMAT_TUPLE
+%% 				 ]).
+%% -define(ROUTE_RESP_ROUTE_TYPES, [ {<<"Codecs">>, fun is_list/1}
+%% 				  ,{<<"Route">>, fun is_binary/1}
+%% 				  ,{<<"To-User">>, fun is_binary/1}
+%% 				  ,{<<"To-Realm">>, fun is_binary/1}
+%% 				  ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+%%                                   ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+%% 				]).
+
+%% %% Route Responses
+%% -define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
+%% -define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>,
+%%                                       <<"Route-Error-Code">>, <<"Route-Error-Message">>]).
+%% -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+%% 			    ,{<<"Event-Name">>, <<"route_resp">>}
+%% 			    ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
+%% 			   ]).
+%% -define(ROUTE_RESP_TYPES, [{<<"Route-Error-Code">>, fun is_binary/1}
+%% 			   ,{<<"Route-Error-Message">>, fun is_binary/1}
+%% 			   ,{<<"Routes">>, fun(L) when is_list(L) -> true;
+%% 					      (_) -> false
+%% 					   end}
+%%                            ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+%% 			  ]).
+
+%% %% Route Winner
+%% -define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
+%% -define(OPTIONAL_ROUTE_WIN_HEADERS, [<<"Custom-Channel-Vars">>]).
+%% -define(ROUTE_WIN_VALUES, [{<<"Event-Name">>, <<"route_win">>}]).
+%% -define(ROUTE_WIN_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+%% 			  ,{<<"Control-Queue">>, fun is_binary/1}
+%% 			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+%% 			 ]).
+
+%% %% Offnet Resource Request
+%% -define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Call-ID">>, <<"Resource-Type">>, <<"To-DID">>
+%%                                       ,<<"Account-ID">>, <<"Control-Queue">>, <<"Application-Name">>
+%%                                      ]).
+%% -define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS, [<<"Timeout">>, <<"Ignore-Early-Media">>, <<"Flags">>, <<"Media">>
+%%                                                ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+%%                                                ,<<"Emergency-Caller-ID-Name">>, <<"Emergency-Caller-ID-Number">>
+%%                                                ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+%%                                               ]).
+%% -define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
+%%                                      ,{<<"Event-Name">>, <<"offnet_req">>}
+%%                                      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
+%%                                      ,{<<"Application-Name">>, [<<"bridge">>]}
+%%                                      ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
+%%                                     ]).
+%% -define(OFFNET_RESOURCE_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
+%%                                     ,{<<"Account-ID">>, fun is_binary/1}
+%%                                     ,{<<"Control-Queue">>, fun is_binary/1}
+%%                                     ,{<<"To-DID">>, fun is_binary/1}
+%%                                     ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+%%                                     ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+%%                                     ,{<<"Flags">>, fun is_list/1}
+%%                                    ]).
+
+%% %% Resource Request
+%% -define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Invite-Format">>]).
+%% -define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>
+%%                                         ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
+%% 					,<<"Application-Name">>, <<"Application-Data">>, <<"SIP-Headers">>
+%%                                         ,<<"Custom-Channel-Vars">>
+%% 				       ]).
+%% -define(RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
+%% 			      ,{<<"Event-Name">>, <<"originate_req">>}
+%% 			      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
+%% 			      ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>]}
+%% 			      ,?INVITE_FORMAT_TUPLE
+%% 			     ]).
+%% -define(RESOURCE_REQ_TYPES, [{<<"Invite-Format">>, fun is_binary/1}
+%% 			     ,{<<"Route">>, fun is_binary/1}
+%% 			     ,{<<"To-User">>, fun is_binary/1}
+%% 			     ,{<<"To-Realm">>, fun is_binary/1}
+%% 			     ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+%%                              ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+%% 			    ]).
+
+%% %% Resource Response
+%% -define(RESOURCE_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
+%% -define(OPTIONAL_RESOURCE_RESP_HEADERS, [<<"To">>, <<"Timestamp">>, <<"Channel-Call-State">>
+%%                                              ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+%%                                              ,<<"Custom-Channel-Vars">>
+%%                                         ]).
+%% -define(RESOURCE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
+%% 			       ,{<<"Event-Name">>, [<<"offnet_resp">>, <<"originate_resp">>]}
+%% 			      ]).
+%% -define(RESOURCE_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+
+%% %% Resource Error
+%% -define(RESOURCE_ERROR_HEADERS, [<<"Msg-ID">>]).
+%% -define(OPTIONAL_RESOURCE_ERROR_HEADERS, [<<"Failed-Attempts">>, <<"Failed-Route">>, <<"Failure-Message">>
+%%                                               ,<<"Failure-Code">>, <<"Hangup-Cause">>, <<"Hangup-Code">>]).
+%% -define(RESOURCE_ERROR_VALUES, [{<<"Event-Category">>, <<"resource">>}
+%%                                 ,{<<"Event-Name">>, [<<"originate_error">>, <<"resource_error">>]}
+%%                                ]).
+%% -define(RESOURCE_ERROR_TYPES, []).
+
+%% %% Call Events
+%% -define(CALL_EVENT_HEADERS, [<<"Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
+%% -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>, <<"Custom-Channel-Vars">>
+%% 					  ,<<"Msg-ID">>, <<"Channel-State">>, <<"Call-Direction">>
+%% 					  ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>, <<"Other-Leg-Caller-ID-Number">> %% BRIDGE
+%% 					  ,<<"Other-Leg-Destination-Number">>,<<"Other-Leg-Unique-ID">> %% BRIDGE
+%% 					  ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
+%%                                           ,<<"Terminator">>, <<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
+%% 				     ]).
+%% -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
+%% -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+
+%% %% Call Status Request
+%% -define(CALL_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
+%% -define(OPTIONAL_CALL_STATUS_REQ_HEADERS, []).
+%% -define(CALL_STATUS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+%% 			     ,{<<"Event-Name">>, <<"status_req">>}
+%% 			    ]).
+%% -define(CALL_STATUS_REQ_TYPES, []).
+
+%% %% Call Status Response
+%% -define(CALL_STATUS_RESP_HEADERS, [<<"Call-ID">>, <<"Status">>]).
+%% -define(OPTIONAL_CALL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>, <<"Node">>]).
+%% -define(CALL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+%% 				  ,{<<"Event-Name">>, <<"status_resp">>}
+%% 				  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
+%% 				 ]).
+%% -define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+
+%% %% Call CDR
+%% -define(CALL_CDR_HEADERS, [ <<"Call-ID">>]).
+%% -define(OPTIONAL_CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Custom-Channel-Vars">>
+%%                                         ,<<"Remote-SDP">>, <<"Local-SDP">>, <<"Caller-ID-Name">>
+%% 					,<<"Caller-ID-Number">>, <<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+%% 					,<<"User-Agent">>, <<"Caller-ID-Type">>, <<"Other-Leg-Call-ID">>
+%%                                         ,<<"Timestamp">>
+%%                                         ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
+%%                                         ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
+%%                                         ,<<"Digits-Dialed">>
+%% 				   ]).
+%% -define(CALL_CDR_VALUES, [{<<"Event-Category">>, <<"call_detail">>}
+%% 			  ,{<<"Event-Name">>, <<"cdr">>}
+%% 			  ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
+%% 			  ,{<<"Caller-ID-Type">>, [<<"pid">>, <<"rpid">>, <<"from">>]}
+%% 			 ]).
+%% -define(CALL_CDR_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+
+%% >>>>>>> master
 %% Error Responses
 -define(ERROR_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>]).
 -define(OPTIONAL_ERROR_RESP_HEADERS, []).

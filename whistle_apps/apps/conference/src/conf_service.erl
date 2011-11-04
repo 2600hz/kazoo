@@ -536,8 +536,16 @@ process_req({_, <<"route_win">>}, JObj, #conf{service=Srv, amqp_q=Q}=Conf) ->
     add_bridge(Srv, CallId, BridgeId, CtrlQ),
     join_local_conference(BridgeId, CtrlQ, Conf);
 
-%% process_req({<<"conference">>, <<"participants">>}, JObj, Conf) ->
-%%    ok;
+%% <hack>
+process_req({<<"conference">>, <<"participants">>}, JObj, _Conf) ->
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    Payload = wh_util:to_binary(mochijson2:encode(JObj)),
+    amqp_util:targeted_publish(ServerId, Payload);
+
+process_req({<<"conference">>, <<"list_participants">>}, JObj, Conf) ->
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    conf_command:participants(ServerId, Conf);
+%% </hack>
 
 process_req(_, _, _) ->
     ok.

@@ -58,21 +58,21 @@ start_link(WorkerCount) ->
 authn_req(Prop) ->
     authn_req(Prop, ?DEFAULT_TIMEOUT).
 authn_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun wapi_authn:req/1
+    gen_server:call(?SERVER, {request, Prop, fun wapi_authn:req/1, get(callid)
 			      ,fun wapi_authn:publish_req/1
 			      }, Timeout).
 
 authz_req(Prop) ->
     authz_req(Prop, ?DEFAULT_TIMEOUT).
 authz_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun wapi_authz:req/1
+    gen_server:call(?SERVER, {request, Prop, fun wapi_authz:req/1, get(callid)
 			      ,fun wapi_authz:publish_req/1
 			     }, Timeout).
 
 route_req(Prop) ->
     route_req(Prop, ?DEFAULT_TIMEOUT).
 route_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun wapi_route:req/1
+    gen_server:call(?SERVER, {request, Prop, fun wapi_route:req/1, get(callid)
 			      ,fun wapi_route:publish_req/1
 			     }, Timeout).
 
@@ -80,7 +80,7 @@ reg_query(Prop) ->
     reg_query(Prop, ?DEFAULT_TIMEOUT).
 
 reg_query(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun wapi_registration:query_req/1
+    gen_server:call(?SERVER, {request, Prop, fun wapi_registration:query_req/1, get(callid)
 			      ,fun wapi_registration:publish_query_req/1
 			     }, Timeout).
 
@@ -88,7 +88,7 @@ media_req(Prop) ->
     media_req(Prop, ?DEFAULT_TIMEOUT).
 
 media_req(Prop, Timeout) ->
-    gen_server:call(?SERVER, {request, Prop, fun wapi_media:req/1
+    gen_server:call(?SERVER, {request, Prop, fun wapi_media:req/1, get(callid)
 			      ,fun wapi_media:publish_req/1
 			     }, Timeout).
 
@@ -138,15 +138,15 @@ init([Count]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({request, Prop, ApiFun, PubFun}, From, #state{workers=W, worker_count=WC, requests_per=RP}=State) ->
+handle_call({request, Prop, ApiFun, CallId, PubFun}, From, #state{workers=W, worker_count=WC, requests_per=RP}=State) ->
     case queue:out(W) of
 	{{value, Worker}, W1} ->
-	    ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, PubFun, From, self()),
+	    ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, CallId, PubFun, From, self()),
 	    {noreply, State#state{workers=W1, requests_per=RP+1}, hibernate};
 	{empty, _} ->
 	    Worker = start_worker(),
 	    ?LOG("starting additional worker ~p", [Worker]),
-	    ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, PubFun, From, self()),
+	    ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, CallId, PubFun, From, self()),
 	    {noreply, State#state{worker_count=WC+1, requests_per=RP+1}, hibernate}
     end.
 

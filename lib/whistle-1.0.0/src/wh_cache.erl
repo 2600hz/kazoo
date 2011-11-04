@@ -148,6 +148,7 @@ handle_call({peek, K}, _, Dict) ->
     end;
 handle_call({fetch, K}, _, Dict) ->
     case dict:find(K, Dict) of
+	{ok, {infinity=T, V, T}} -> {reply, {ok, V}, Dict};
 	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {wh_util:current_tstamp()+T, V, T} end, Dict), hibernate};
 	error -> {reply, {error, not_found}, Dict}
     end;
@@ -167,6 +168,8 @@ handle_call({filter, Pred}, _, Dict) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({store, K, V, infinity=T}, Dict) ->
+    {noreply, dict:store(K, {T, V, T}, Dict), hibernate};
 handle_cast({store, K, V, T}, Dict) ->
     {noreply, dict:store(K, {wh_util:current_tstamp()+T, V, T}, Dict), hibernate};
 handle_cast({erase, K}, Dict) ->
@@ -186,7 +189,9 @@ handle_cast({flush}, _) ->
 %%--------------------------------------------------------------------
 handle_info(flush, Dict) ->
     Now = wh_util:current_tstamp(),
-    {noreply, dict:filter(fun(_, {T, _, _}) -> Now < T end, Dict), hibernate};
+    {noreply, dict:filter(fun(_, {infinity,_,_}) -> true;
+			     (_, {T, _, _}) -> Now < T
+			  end, Dict), hibernate};
 handle_info(_Info, State) ->
     {noreply, State}.
 

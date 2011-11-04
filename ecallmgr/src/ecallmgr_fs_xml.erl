@@ -124,7 +124,7 @@ build_route(RouteJObj, DIDFormat) ->
 	    E
     end.
 
--spec format_did/2 :: (binary(), Format :: binary()) -> binary().
+-spec format_did/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 format_did(DID, <<"e164">>) ->
     wh_util:to_e164(DID);
 format_did(DID, <<"npan">>) ->

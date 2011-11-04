@@ -343,7 +343,8 @@ publish_register_event(Data, AppVsn) ->
 					  end;
 				      V -> [{K, V} | Api]
 				  end
-			  end, [{<<"Event-Timestamp">>, round(wh_util:current_tstamp())} | DefProp], wapi_registration:success_keys()),
+			  end, [{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
+                                ,{<<"Call-ID">>, get(callid)} | DefProp], wapi_registration:success_keys()),
     ?LOG("sending successful registration"),
     case wapi_registration:success(ApiProp) of
 	{error, E} ->

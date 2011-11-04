@@ -21,8 +21,8 @@ init() ->
 handle_req(JObj, Props) ->
     true = wapi_authn:req_v(JObj),
 
-    Cache = props:get_value(cache, Props),
     Queue = props:get_value(queue, Props),
+    put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, <<"000000000000">>)),
 
     ?LOG_START("received SIP authentication request"),
 
@@ -39,7 +39,7 @@ handle_req(JObj, Props) ->
             end,
 
     %% crashes if not found, no return necessary
-    {ok, AuthJObj} = reg_util:lookup_auth_user(AuthU, AuthR, Cache),
+    {ok, AuthJObj} = reg_util:lookup_auth_user(AuthU, AuthR),
 
     AuthId = wh_json:get_value([<<"doc">>, <<"_id">>], AuthJObj),
 
@@ -97,10 +97,10 @@ authn_response(AuthInfo, JObj) ->
 -spec auth_specific_response/1 :: (json_object()) -> json_object().
 auth_specific_response(AuthInfo) ->
     Method = list_to_binary(string:to_lower(binary_to_list(wh_json:get_value(<<"method">>, AuthInfo, <<"password">>)))),
+
     wh_json:from_list([{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthInfo)}
 		       ,{<<"Auth-Method">>, Method}
 		       ,{<<"Event-Name">>, <<"authn_resp">>}
 		       ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthInfo, <<"ignore">>)}
 		       ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthInfo, <<"ignore">>)}
 		      ]).
-

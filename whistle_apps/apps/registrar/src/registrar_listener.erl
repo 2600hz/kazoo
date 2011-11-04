@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, lookup/3, lookup/2, stop/1]).
+-export([start_link/0, stop/1]).
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -19,8 +19,7 @@
 
 -include("reg.hrl").
 
--define(RESPONDERS, [
-		     {authn_req, [{<<"directory">>, <<"authn_req">>}]}
+-define(RESPONDERS, [{authn_req, [{<<"directory">>, <<"authn_req">>}]}
 		     ,{reg_success, [{<<"directory">>, <<"reg_success">>}]}
 		     ,{reg_query, [{<<"directory">>, <<"reg_query">>}]}
 		    ]).
@@ -30,13 +29,9 @@
 		  ]).
 
 -define(SERVER, ?MODULE).
--define(REG_QUEUE_NAME, <<"registrar.queue">>).
--define(REG_QUEUE_OPTIONS, [{exclusive, false}]).
--define(REG_CONSUME_OPTIONS, [{exclusive, false}]).
-
--record(state, {
-	  cache = undefined :: undefined | pid()
-	 }).
+-define(REG_QUEUE_NAME, <<"">>).
+-define(REG_QUEUE_OPTIONS, []).
+-define(REG_CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -56,18 +51,6 @@ start_link() ->
 				      ,{queue_options, ?REG_QUEUE_OPTIONS}
 				      ,{consume_options, ?REG_CONSUME_OPTIONS}
 				     ], []).
-
--spec lookup/2 :: (Srv, Realm) -> {'ok', json_objects()} | {'error', 'not_found'} when
-      Srv :: pid() | atom(),
-      Realm :: binary().
--spec lookup/3 :: (Srv, Realm, Username) -> {'ok', json_object()} | {'error', 'not_found'} when
-      Srv :: pid() | atom(),
-      Realm :: binary(),
-      Username :: binary().
-lookup(Srv, Realm) when is_pid(Srv) orelse is_atom(Srv) ->
-    gen_listener:call(Srv, {lookup, Realm}).
-lookup(Srv, Realm, Username) when is_pid(Srv) orelse is_atom(Srv) ->
-    gen_listener:call(Srv, {lookup, Realm, Username}).
 
 stop(Srv) ->
     gen_listener:stop(Srv).
@@ -90,20 +73,7 @@ stop(Srv) ->
 init([]) ->
     process_flag(trap_exit, true),
     ?LOG_SYS("starting new registrar server"),
-    ?LOG_SYS("ensuring database ~s exists", [?REG_DB]),
-    couch_mgr:db_create(?REG_DB),
-    ?LOG_SYS("ensuring database ~s exists", [?AUTH_DB]),
-    couch_mgr:db_create(?AUTH_DB),
-    lists:foreach(fun({DB, File}) ->
-                          ?LOG_SYS("ensuring database ~s has view ~s", [DB, File]),
-			  try
-			      {ok, _} = couch_mgr:update_doc_from_file(DB, registrar, File)
-			  catch
-			      _:_ -> couch_mgr:load_doc_from_file(DB, registrar, File)
-			  end
-		  end, ?JSON_FILES),
-    ?LOG("registrar_listener started"),
-    {ok, #state{}, 0}.
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -119,11 +89,7 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({lookup, Realm}, From, #state{cache=Cache}=State) ->
-    spawn(fun() -> gen_listener:reply(From, reg_util:lookup_registrations(Realm, Cache)) end),
-    {noreply, State};
-handle_call({lookup, Realm, Username}, From, #state{cache=Cache}=State) ->
-    spawn(fun() -> gen_listener:reply(From, reg_util:lookup_registration(Realm, Username, Cache)) end),
+handle_call(_Msg, _From, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -149,23 +115,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, #state{cache=undefined}=State) ->
-    ?LOG("Looking up reg_cache"),
-    case whereis(reg_cache) of
-        Pid when is_pid(Pid) ->
-            _ = prime_cache(Pid),
-            erlang:monitor(process, Pid),
-            {noreply, State#state{cache=Pid}};
-        _ ->
-            ?LOG_SYS("could not locate cache, trying again in 1000 msec"),
-            {noreply, State, 1000}
-    end;
-
-handle_info({'DOWN', MRef, process, Cache, _Reason}, #state{cache=Cache}=State) ->
-    ?LOG_SYS("registrar cache process went down, attempting to reconnect"),
-    erlang:demonitor(MRef),
-    {noreply, State#state{cache=undefined}, 50};
-
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
@@ -178,9 +127,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{cache=Cache}) ->
-    ?LOG("handle_event called"),
-    {reply, [{cache, Cache}]}.
+handle_event(_JObj, _State) ->
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -193,7 +141,7 @@ handle_event(_JObj, #state{cache=Cache}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), #state{}) -> 'ok'.
+-spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
     ?LOG_SYS("registrar server ~p termination", [_Reason]).
 
@@ -211,17 +159,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% load the registrar cache with the contents from the registrar db
-%% @end
-%%-----------------------------------------------------------------------------
--spec prime_cache/1 :: (Pid) -> 'ok' when
-      Pid :: pid().
-prime_cache(Pid) when is_pid(Pid) ->
-    ?LOG_SYS("priming registrar cache"),
-    {ok, Docs} = couch_mgr:all_docs(?REG_DB),
-    _ = [ reg_util:prime_cache(Pid, View) || View <- Docs, binary:match(wh_json:get_value(<<"id">>, View), <<"_design/">>) =:= nomatch ],
-    ok.
