@@ -322,13 +322,13 @@ insert_command(#state{node=Node, uuid=UUID, command_q=CommandQ, is_node_up=IsNod
 	    ecallmgr_call_events:publish_msg(Node, UUID, Prop),
 	    CommandQ;
 	<<"queue">> ->
-	    true = wh_api:queue_req_v(JObj),
+	    true = wapi_dialplan:queue_v(JObj),
 	    DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)), %% each command lacks the default headers
 	    lists:foreach(fun(?EMPTY_JSON_OBJECT) -> ok;
 			     (CmdJObj) ->
 				  put(callid, UUID),
 				  AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
-				  true = wh_api:dialplan_req_v(AppCmd) orelse wapi_dialplan:v(AppCmd),
+				  true = wapi_dialplan:v(AppCmd),
                                   execute_control_request(CmdJObj, State)
 			  end, wh_json:get_value(<<"Commands">>, JObj)),
 	    CommandQ;
@@ -367,17 +367,17 @@ insert_command(#state{command_q=CommandQ}, <<"tail">>, JObj) ->
 insert_command_into_queue(Q, InsertFun, JObj) ->
     case wh_json:get_value(<<"Application-Name">>, JObj) of
 	<<"queue">> -> %% list of commands that need to be added
-	    true = wh_api:queue_req_v(JObj),
+	    true = wapi_dialplan:queue_v(JObj),
 	    DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)), %% each command lacks the default headers
 	    lists:foldr(fun(?EMPTY_JSON_OBJECT, TmpQ) -> TmpQ;
 			   (CmdJObj, TmpQ) ->
 				AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
-				true = wh_api:dialplan_req_v(AppCmd) orelse wapi_dialplan:v(AppCmd),
+				true = wapi_dialplan:v(AppCmd),
 				?LOG("inserting queued command ~s into queue", [wh_json:get_value(<<"Application-Name">>, AppCmd)]),
 				InsertFun(AppCmd, TmpQ)
 			end, Q, wh_json:get_value(<<"Commands">>, JObj));
 	_AppName ->
-	    true = wh_api:dialplan_req_v(JObj) orelse wapi_dialplan:v(JObj),
+	    true = wapi_dialplan:v(JObj),
 	    InsertFun(JObj, Q)
     end.
 
