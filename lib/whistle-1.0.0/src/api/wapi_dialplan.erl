@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(wapi_dialplan).
 
+-compile({no_auto_import, [error/1]}).
+
 -export([v/1, bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1]).
 -export([store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
 	 ,store_http_resp/1, store_http_resp_v/1]).
@@ -15,7 +17,7 @@
 -export([conference/1, noop/1, fetch/1, respond/1, progress/1]).
 -export([play/1, record/1, queue/1, answer/1, park/1, play_collect_digits/1
 	 ,call_pickup/1, hangup/1, say/1, sleep/1, tone_detect/1, set/1
-	 ,tones/1, tones_req_tone/1
+	 ,tones/1, tones_req_tone/1, error/1
 	]).
 
 -export([play_v/1, record_v/1, noop_v/1, tones_v/1, tones_req_tone_v/1, queue_v/1
@@ -23,7 +25,7 @@
          ,say_v/1, sleep_v/1, tone_detect_v/1, set_v/1, respond_v/1, progress_v/1
         ]).
 
--export([conference_v/1]).
+-export([conference_v/1, error_v/1]).
 
 -export([publish_action/2, publish_action/3]).
 
@@ -538,6 +540,26 @@ conference_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CONFERENCE_REQ_HEADERS, ?CONFERENCE_REQ_VALUES, ?CONFERENCE_REQ_TYPES);
 conference_v(JObj) ->
     conference_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Error - Sends error to Queue - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec error/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+error(Prop) when is_list(Prop) ->
+    case error_v(Prop) of
+	true -> wh_api:build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for error_req"}
+    end;
+error(JObj) ->
+    error(wh_json:to_proplist(JObj)).
+
+-spec error_v/1 :: (proplist() | json_object()) -> boolean().
+error_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?ERROR_RESP_HEADERS, [{<<"Event-Name">>, <<"dialplan">>} | ?ERROR_RESP_VALUES], ?ERROR_RESP_TYPES);
+error_v(JObj) ->
+    error_v(wh_json:to_proplist(JObj)).
 
 %% sending DP actions to CallControl Queue
 publish_action(Queue, JSON) ->
