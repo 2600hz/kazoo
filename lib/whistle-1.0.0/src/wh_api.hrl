@@ -507,17 +507,6 @@
                                 ,{<<"Participant-ID">>, fun is_binary/1}
                                 ,{<<"Correlate-ID">>, fun is_binary/1}
                                ]).
-
-%% NoOp Request
--define(NOOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Msg-ID">>, <<"Insert-At">>]).
--define(NOOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
-                          ,{<<"Event-Name">>, <<"command">>}
-                          ,{<<"Application-Name">>, <<"noop">>}
-                          ,?INSERT_AT_TUPLE
-                         ]).
--define(NOOP_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}]).
-
 %% Notify MWI request
 -define(MWI_REQ_HEADERS, [<<"Notify-User">>, <<"Notify-Realm">>, <<"Messages-New">>, <<"Messages-Saved">>]).
 -define(OPTIONAL_MWI_REQ_HEADERS, [<<"Messages-Urgent">>, <<"Messages-Urgent-Saved">>]).

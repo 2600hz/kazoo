@@ -29,6 +29,8 @@
 
 -export([publish_action/2, publish_action/3]).
 
+-export([bind_q/2, unbind_q/1]).
+
 -include("wapi_dialplan.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
@@ -566,3 +568,11 @@ publish_action(Queue, JSON) ->
     publish_action(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
 publish_action(Queue, Payload, ContentType) ->
     amqp_util:callctl_publish(Queue, Payload, ContentType).
+
+bind_q(Queue, _Prop) ->
+    _ = amqp_util:bind_q_to_callctl(Queue),
+    _ = amqp_util:basic_consume(Queue),
+    'ok'.
+
+unbind_q(Queue) ->
+    amqp_util:unbind_q_from_callctl(Queue).

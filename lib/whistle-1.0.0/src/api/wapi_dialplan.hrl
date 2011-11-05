@@ -271,3 +271,13 @@
 			   ,?INSERT_AT_TUPLE
 			  ]).
 -define(SLEEP_REQ_TYPES, []).
+
+%% NoOp Request
+-define(NOOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Msg-ID">>, <<"Insert-At">>]).
+-define(NOOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"noop">>}
+                          ,?INSERT_AT_TUPLE
+                         ]).
+-define(NOOP_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}]).
