@@ -371,10 +371,10 @@ reply(Node, FSID, CallID, RespJObj, CCVs) ->
       CCVs :: json_object().
 start_control_and_events(Node, CallID, SendTo, CCVs) ->
     try
-	true = is_binary(CtlQ = amqp_util:new_callctl_queue(<<>>)),
-	_ = amqp_util:bind_q_to_callctl(CtlQ),
-	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID, CtlQ),
+	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID),
 	{ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallID, CtlPid),
+
+	CtlQ = ecallmgr_call_control:amqp_queue(CtlPid),
 
 	CtlProp = [{<<"Msg-ID">>, CallID}
 		   ,{<<"Call-ID">>, CallID}

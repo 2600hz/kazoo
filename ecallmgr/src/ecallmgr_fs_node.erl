@@ -260,20 +260,18 @@ originate_channel(Node, Pid, Route, AvailChan, JObj) ->
 	    Pid ! {resource_error, timeout}
     end.
 
--spec start_call_handling/2 :: (Node :: atom(), UUID :: binary()) -> CtlQueue :: binary() | {'error', 'amqp_error'}.
+-spec start_call_handling/2 :: (atom(), ne_binary()) -> ne_binary() | {'error', 'amqp_error'}.
 start_call_handling(Node, UUID) ->
     try
-	true = is_binary(CtlQueue = amqp_util:new_callctl_queue(<<>>)),
-	_ = amqp_util:bind_q_to_callctl(CtlQueue),
-
-	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, CtlQueue),
+	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID),
 	{ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
-	CtlQueue
+
+	ecallmgr_call_control:amqp_queue(CtlPid)
     catch
 	_:_ -> {error, amqp_error}
     end.
 
--spec diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return().
+-spec diagnostics/2 :: (pid(), tuple()) -> proplist().
 diagnostics(Pid, Stats) ->
     Resp = ecallmgr_diagnostics:get_diagnostics(Stats),
     Pid ! Resp.
@@ -288,13 +286,12 @@ channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) ->
 							 ]}
     end.
 
--spec extract_node_data/1 :: (Node) -> [{'cpu',string()} |
+-spec extract_node_data/1 :: (atom()) -> [{'cpu',string()} |
 					{'sessions_max',integer()} |
 					{'sessions_per_thirty',integer()} |
 					{'sessions_since_startup',integer()} |
 					{'uptime',number()}
-					,...] when
-      Node :: atom().
+					,...].
 extract_node_data(Node) ->
     {ok, Status} = freeswitch:api(Node, status),
     Lines = string:tokens(wh_util:to_list(Status), [$\n]),

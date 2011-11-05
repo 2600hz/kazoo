@@ -253,9 +253,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec shutdown/2 :: (CtlPid, UUID) -> 'ok' when
-      CtlPid :: pid() | undefined,
-      UUID :: binary().
+-spec shutdown/2 :: (pid() | 'undefined', ne_binary()) -> 'ok'.
 shutdown(undefined, _) -> 'ok';
 shutdown(CtlPid, UUID) ->
     ?LOG("sending hangup for call ~s", [UUID]),
@@ -273,14 +271,12 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, Props) when is_pid(
     AppName = props:get_value(<<"Application">>, Props),
 
     ?LOG("sending execution completion to control queue"),
-    erlang:is_process_alive(CtlPid) andalso CtlPid ! {execute_complete, UUID, AppName},
-    'ok';
+    ecallmgr_call_control:event_execute_complete(CtlPid, UUID, AppName);
 send_ctl_event(CtlPid, UUID, <<"CUSTOM">>, Props) when is_pid(CtlPid) ->
     case props:get_value(<<"Event-Subclass">>, Props) of
 	<<"whistle::noop">> ->
 	    ?LOG("sending noop completion to control queue"),
-	    erlang:is_process_alive(CtlPid) andalso CtlPid ! {execute_complete, UUID, <<"noop">>},
-	    'ok';
+	    ecallmgr_call_control:event_execute_complete(CtlPid, UUID, <<"noop">>);
 	_ ->
 	    'ok'
     end;
