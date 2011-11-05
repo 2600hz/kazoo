@@ -322,7 +322,7 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                                              ]}, 0, JObj);
         Attempts ->
             {ok, Payload} = wapi_dialplan:bridge(BridgeReq),
-	    wapi_dialplan:publish_action(wh_json:get_value(<<"Control-Queue">>, JObj), Payload),
+	    wapi_dialplan:publish_action(wh_json:get_value(<<"Control-Queue">>, JObj), Payload, ?DEFAULT_CONTENT_TYPE),
 
             case wait_for_bridge(60000) of
                 {ok, BridgeResp} ->

@@ -272,9 +272,9 @@ send_hangup(#state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
                ,{<<"Insert-At">>, <<"now">>}
 	       | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
-    {ok, JSON} = wh_api:hangup_req(Command),
+    {ok, JSON} = wapi_dialplan:hangup(Command),
     ?LOG("Sending hangup to ~s: ~s", [CtlQ, JSON]),
-    amqp_util:callctl_publish(CtlQ, JSON, <<"application/json">>).
+    wapi_dialplan:publish_action(CtlQ, JSON, <<"application/json">>).
 
 %%%-----------------------------------------------------------------------------
 %%% Data access functions

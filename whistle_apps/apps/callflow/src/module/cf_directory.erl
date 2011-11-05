@@ -259,7 +259,8 @@ collect_min_digits(#cf_call{account_db=DB}=Call, Prompts, #dbn_state{min_dtmf=Mi
             collect_min_digits(Call, Prompts, DbN, LookupTable, CurrDTMFs)
     end.
 
--spec analyze_dtmf/2 :: (binary(), lookup_table()) -> 'no_results' | {'one_result', json_object()} | {'many_matches', json_objects()}.
+-spec analyze_dtmf/2 :: (binary(), lookup_table()) -> 'no_dtmf' | 'no_results' | {'one_result', json_object()} | {'many_matches', json_objects()}.
+analyze_dtmf(<<>>, _) -> 'no_dtmf';
 analyze_dtmf(DTMFs, LookupTable) ->
     ?LOG("Analyze: ~s", [DTMFs]),
     case lists:filter(fun(Entry) -> filter_table(Entry, DTMFs) end, LookupTable) of
@@ -269,14 +270,13 @@ analyze_dtmf(DTMFs, LookupTable) ->
         [{_ID, {_, JObj}}] ->
             ?LOG("Single result: ~s", [_ID]),
 	    {one_result, JObj};
-        Matches ->
+        MatchesTable ->
+	    Matches = [ JObj || {_ID, {_, JObj}} <- MatchesTable ],
             ?LOG("Has more than 1 match"),
 	    {many_matches, Matches}
     end.
 
--spec filter_table/2 :: (Entry, DTMFs) -> boolean() when
-      Entry :: lookup_entry(),
-      DTMFs :: binary().
+-spec filter_table/2 :: (lookup_entry(), ne_binary()) -> boolean().
 filter_table({_, {DialplanJObj, _}}, DTMFs) -> doc_matches(DialplanJObj, DTMFs).
 
 %% Play instructions, then the prompts to scroll through messages
@@ -507,9 +507,7 @@ play_and_collect(AudioMacro, Call, NumDigits) ->
     cf_call_command:collect_digits(NumDigits, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, NoopID, Call).
 
 %% collect DTMF digits individually until length of DTMFs is == MinDTMF
--spec collect_min_digits/2 :: (MinDTMF, DTMFs) -> {'ok', binary()} | {'error', 'timeout', binary()} when
-      MinDTMF :: integer(),
-      DTMFs :: binary().
+-spec collect_min_digits/2 :: (non_neg_integer(), binary()) -> {'ok', ne_binary()} | {'error', 'timeout', binary()}.
 collect_min_digits(MinDTMF, DTMFs) when MinDTMF > 0 ->
     case cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
         {ok, <<>>} ->
@@ -606,9 +604,7 @@ get_sort_by(<<"first", _/binary>>) -> first;
 get_sort_by(_) -> last.
 
 %% does the eneterd DTMFs match either the first/last combo or the last/first combo?
--spec doc_matches/2 :: (JObj, DTMFs) -> boolean() when
-      JObj :: json_object(),
-      DTMFs :: binary().
+-spec doc_matches/2 :: (json_object(), ne_binary()) -> boolean().
 doc_matches(JObj, DTMFs) ->
     FName = wh_json:get_value(<<"first_name">>, JObj),
     LName = wh_json:get_value(<<"last_name">>, JObj),
@@ -617,9 +613,7 @@ doc_matches(JObj, DTMFs) ->
         field_matches(<<LName/binary, FName/binary>>, DTMFs).
 
 %% does the enetered DTMFs match the field from the beginning?
--spec field_matches/2 :: (Field, DTMFs) -> boolean() when
-      Field :: binary(),
-      DTMFs :: binary().
+-spec field_matches/2 :: (ne_binary(), ne_binary()) -> boolean().
 field_matches(Field, DTMFs) ->
     case binary:match(Field, DTMFs) of
         {0, _} -> true;

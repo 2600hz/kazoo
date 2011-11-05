@@ -583,12 +583,12 @@ join_local_conference(CallId, CtrlQ, #conf{conf_id=ConfId, amqp_q=Q}) ->
                   | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                  ],
     Command = [{<<"Application-Name">>, <<"queue">>}
-               ,{<<"Commands">>, [{struct, Conference}, {struct, Answer}]}
+               ,{<<"Commands">>, [wh_json:from_list(Conference), wh_json:from_list(Answer)]}
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:queue_req(Command),
-    amqp_util:callctl_publish(CtrlQ, Payload).
+    {ok, Payload} = wapi_dialplan:queue(Command),
+    wapi_dialplan:publish_action(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE).
 
 %%--------------------------------------------------------------------
 %% @private

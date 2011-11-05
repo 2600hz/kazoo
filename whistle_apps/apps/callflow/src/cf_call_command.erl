@@ -77,16 +77,17 @@ audio_macro(Prompts, Call) ->
 
 audio_macro([], #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call, Queue) ->
     NoopId = couch_mgr:get_uuid(),
-    Prompts = [{struct, [{<<"Application-Name">>, <<"noop">>}
-                         ,{<<"Msg-ID">>, NoopId}
-                         ,{<<"Call-ID">>, CallId}]}
-                | Queue],
+    Prompts = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
+				  ,{<<"Msg-ID">>, NoopId}
+				  ,{<<"Call-ID">>, CallId}
+				 ])
+	       | Queue],
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, Prompts }
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:queue_req(Command),
+    {ok, Payload} = wapi_dialplan:queue(Command),
     send_callctrl(Payload, Call),
     NoopId;
 audio_macro([{play, MediaName}|T], Call, Queue) ->
@@ -109,8 +110,7 @@ audio_macro([{tones, Tones}|T], Call, Queue) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec flush_dtmf/1 :: (Call) -> 'ok' when
-      Call :: #cf_call{}.
+-spec flush_dtmf/1 :: (#cf_call{}) -> 'ok'.
 flush_dtmf(Call) ->
     play(<<"silence_stream://50">>, Call).
 
@@ -141,7 +141,7 @@ set(ChannelVars, CallVars, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:set_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wapi_dialplan:set([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 %%--------------------------------------------------------------------
@@ -173,7 +173,7 @@ fetch(FromOtherLeg, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:fetch_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wapi_dialplan:fetch([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_fetch(Call) ->
@@ -193,17 +193,15 @@ b_fetch(FromOtherLeg, Call) ->
 %% Produces the low level wh_api request to answer the channel
 %% @end
 %%--------------------------------------------------------------------
--spec answer/1 :: (Call) -> 'ok' when
-      Call :: #cf_call{}.
--spec b_answer/1 :: (Call) -> cf_api_error() | {'ok', json_object()} when
-      Call :: #cf_call{}.
+-spec answer/1 :: (#cf_call{}) -> 'ok'.
+-spec b_answer/1 :: (#cf_call{}) -> cf_api_error() | {'ok', json_object()}.
 
 answer(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [{<<"Application-Name">>, <<"answer">>}
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:answer_req(Command),
+    {ok, Payload} = wapi_dialplan:answer(Command),
     send_callctrl(Payload, Call).
 
 b_answer(Call) ->
@@ -217,10 +215,8 @@ b_answer(Call) ->
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec hangup/1 :: (Call) -> 'ok' when
-      Call :: #cf_call{}.
--spec b_hangup/1 :: (Call) -> {'ok', 'channel_hungup'} when
-      Call :: #cf_call{}.
+-spec hangup/1 :: (#cf_call{}) -> 'ok'.
+-spec b_hangup/1 :: (#cf_call{}) -> {'ok', 'channel_hungup'}.
 
 hangup(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
@@ -228,7 +224,7 @@ hangup(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:hangup_req(Command),
+    {ok, Payload} = wapi_dialplan:hangup(Command),
     send_callctrl(Payload, Call).
 
 b_hangup(Call) ->
@@ -282,7 +278,7 @@ bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback
                ,{<<"Custom-Channel-Vars">>, CCVs}
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-            ],
+	      ],
     {ok, Payload} = wapi_dialplan:bridge([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
@@ -314,21 +310,11 @@ b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback, Call
 %% can use to skip playback.
 %% @end
 %%--------------------------------------------------------------------
--spec play/2 :: (Media, Call) -> 'ok' when
-      Media :: binary(),
-      Call :: #cf_call{}.
--spec play/3 :: (Media, Terminators, Call) -> 'ok' when
-      Media :: binary(),
-      Terminators :: [binary(),...],
-      Call :: #cf_call{}.
+-spec play/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
+-spec play/3 :: (ne_binary(), [ne_binary(),...], #cf_call{}) -> 'ok'.
 
--spec b_play/2 :: (Media, Call) -> cf_api_std_return() when
-      Media :: binary(),
-      Call :: #cf_call{}.
--spec b_play/3 :: (Media, Terminators, Call) -> cf_api_std_return() when
-      Media :: binary(),
-      Terminators :: [binary(),...],
-      Call :: #cf_call{}.
+-spec b_play/2 :: (ne_binary(), #cf_call{}) -> cf_api_std_return().
+-spec b_play/3 :: (ne_binary(), [ne_binary(),...], #cf_call{}) -> cf_api_std_return().
 
 play(Media, Call) ->
     play(Media, ?ANY_DIGIT, Call).
@@ -339,7 +325,7 @@ play(Media, Terminators, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:play_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wapi_dialplan:play([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_play(Media, Call) ->
@@ -396,7 +382,7 @@ record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, #cf_cal
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:record_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wapi_dialplan:record([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_record(MediaName, Call) ->
@@ -465,7 +451,7 @@ store(MediaName, Transfer, Method, Headers, #cf_call{call_id=CallId, amqp_q=Amqp
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:store_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wapi_dialplan:store([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_store(MediaName, Transfer, Call) ->
@@ -492,7 +478,7 @@ tones(Tones, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:tones_req(Command),
+    {ok, Payload} = wapi_dialplan:tones(Command),
     send_callctrl(Payload, Call).
 
 -spec tones_command/2 :: (Tones, Call) -> json_object() when
@@ -636,7 +622,7 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvali
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:play_collect_digits_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wapi_dialplan:play_collect_digits([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_play_and_collect_digit(Media, Call) ->
@@ -659,22 +645,24 @@ b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, <<"0">>, _Timeout, Med
     {ok, <<>>};
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, #cf_call{call_id=CallId, amqp_q=Q}=Call) ->
     NoopId = couch_mgr:get_uuid(),
-    Commands = [{struct, [{<<"Application-Name">>, <<"noop">>}
-                          ,{<<"Call-ID">>, CallId}
-                          ,{<<"Msg-ID">>, NoopId}
-                          | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)]}
-                ,{struct, [{<<"Application-Name">>, <<"play">>}
-                           ,{<<"Media-Name">>, Media}
-                           ,{<<"Terminators">>, Terminators}
-                           ,{<<"Call-ID">>, CallId}
-                           | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)]}
+    Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
+				   ,{<<"Call-ID">>, CallId}
+				   ,{<<"Msg-ID">>, NoopId}
+				   | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+				  ])
+                ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
+				    ,{<<"Media-Name">>, Media}
+				    ,{<<"Terminators">>, Terminators}
+				    ,{<<"Call-ID">>, CallId}
+				    | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+				   ])
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, Commands}
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:queue_req(Command),
+    {ok, Payload} = wapi_dialplan:queue(Command),
     send_callctrl(Payload, Call),
     case collect_digits(MaxDigits, Timeout, <<"2000">>, NoopId, Call) of
         {ok, Digits} ->
@@ -749,7 +737,7 @@ say(Say, Type, Method, Language, #cf_call{call_id=CallId, amqp_q=AmqpQ}=Call) ->
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:say_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wapi_dialplan:say([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 -spec say_command/5 :: (Say, Type, Method, Language, Call) -> json_object() when
@@ -837,7 +825,7 @@ conference(ConfId, Mute, Deaf, Moderator, #cf_call{call_id=CallId, amqp_q=AmqpQ}
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:conference_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wapi_dialplan:conference([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_conference(ConfId, Call) ->
@@ -868,7 +856,7 @@ noop(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:noop_req(Command),
+    {ok, Payload} = wapi_dialplan:noop(Command),
     send_callctrl(Payload, Call),
     NoopId.
 
@@ -895,7 +883,7 @@ flush(#cf_call{call_id=CallId, amqp_q=AmqpQ} = Call) ->
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:noop_req(Command),
+    {ok, Payload} = wapi_dialplan:noop(Command),
     send_callctrl(Payload, Call),
     NoopId.
 
@@ -1377,11 +1365,9 @@ get_event_type(JObj) ->
 %% Sends call commands to the appropriate call control process
 %% @end
 %%--------------------------------------------------------------------
--spec send_callctrl/2 :: (Payload, Call) -> 'ok' when
-      Payload :: binary(),
-      Call :: #cf_call{}.
+-spec send_callctrl/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
 send_callctrl(Payload, #cf_call{ctrl_q=CtrlQ}) ->
-    wapi_dialplan:publish_action(CtrlQ, Payload).
+    wapi_dialplan:publish_action(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1435,7 +1421,7 @@ update_fallback(Bridge, Call) ->
         true ->
             io:format("set transfer fallback to ~s~n", [Fallback]),
             ?LOG("set transfer fallback to ~s", [Fallback]),
-            set(undefined, {struct, [{<<"Transfer-Fallback">>, Fallback}]}, Call),
+            set(undefined, wh_json:from_list([{<<"Transfer-Fallback">>, Fallback}]), Call),
             ok;
         false ->
             ok
