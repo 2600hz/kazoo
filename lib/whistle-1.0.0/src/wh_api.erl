@@ -59,12 +59,7 @@
 %% All fields are required general headers.
 %% @end
 %%--------------------------------------------------------------------
--spec default_headers/5 :: (ServerID, EvtCat, EvtName, AppName, AppVsn) -> proplist() when
-      ServerID :: binary(),
-      EvtCat :: binary(),
-      EvtName :: binary(),
-      AppName :: binary(),
-      AppVsn :: binary().
+-spec default_headers/5 :: (binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> proplist().
 default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
     [{<<"Server-ID">>, ServerID}
      ,{<<"Event-Category">>, EvtCat}
@@ -77,17 +72,14 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
 %% @doc Extract just the default headers from a message
 %% @end
 %%--------------------------------------------------------------------
--spec extract_defaults/1 :: (Prop) -> proplist() when
-      Prop :: proplist() | json_object().
-extract_defaults({struct, Prop}) ->
-    extract_defaults(Prop);
-extract_defaults(Prop) ->
-    lists:foldl(fun(H, Acc) ->
-			case props:get_value(H, Prop) of
-			    undefined -> Acc;
-			    V -> [{H, V} | Acc]
-			end
-		end, [], ?DEFAULT_HEADERS ++ ?OPTIONAL_DEFAULT_HEADERS).
+-spec extract_defaults/1 :: (proplist() | json_object()) -> proplist().
+extract_defaults(Prop) when is_list(Prop) ->
+    %% not measurable faster over the foldl, but cleaner (imo)
+    [ {H, V} || H <- ?DEFAULT_HEADERS ++ ?OPTIONAL_DEFAULT_HEADERS,
+		(V = props:get_value(H, Prop)) =/= undefined
+    ];
+extract_defaults(JObj) ->
+    extract_defaults(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Format an error event
