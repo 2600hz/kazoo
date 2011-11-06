@@ -176,8 +176,8 @@ wait(#cf_call{amqp_q=Q, call_id=CallId}=Call, Flow, Pid, CallStatus) ->
                     Command = [{<<"Call-ID">>, CallId}
                                | wh_api:default_headers(Q, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
                               ],
-                    {ok, Payload} = wh_api:call_status_req({struct, Command}),
-                    amqp_util:callevt_publish(CallId, Payload, status_req),
+                    {ok, Payload} = wapi_call:status_req(Command),
+		    wapi_call:publish_status_req(CallId, Payload),
                     wait(Call, Flow, Pid, undefined)
             end
     end.
@@ -204,8 +204,7 @@ init_amqp(#cf_call{call_id=CallId}) ->
 %% the call that is about to be processed
 %% @end
 %%-----------------------------------------------------------------------------
--spec call_info/1 :: (Call) -> ok when
-      Call :: #cf_call{}.
+-spec call_info/1 :: (#cf_call{}) -> 'ok'.
 call_info(#cf_call{account_id=AccountId, flow_id=FlowId, call_id=CallId, cid_name=CIDName, cid_number=CIDNumber
                ,request=Request, from=From, to=To, inception=Inception, authorizing_id=AuthorizingId }) ->
     put(callid, CallId),

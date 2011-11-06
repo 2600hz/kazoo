@@ -17,6 +17,21 @@
 %%%  b) if continue, go into next_dtmf wait loop
 %%%  c) else go to play_matches
 %%% 5) play_matches: play hd(matches), options to hear more or connect or continue pressing keys
+%%%
+%%% If the flag "asr_enabled" is set, send the asr AMQP request, wait for the ASR response, and use
+%%% that for finding matches. Its more an all-or-nothing situation.
+%%%
+%%% The asr_provider key has the following properties:
+%%%   "p_endpoint": "user_or_did@asr-server.com" %% The endpoint to bridge to
+%%%   "p_account_id":"you@xmpp-server.com" %% the client's account id for receiving the text back
+%%%   "p_account_pass":"secret" %% optional, password for the client's account
+%%%   "p_lang":"us-EN" %% the language code for the ASR provider, defaults to "us-EN"
+%%%
+%%% So, the process becomes:
+%%% 1) Prompt "Please say the name of the person you'd like to be connected to"
+%%% 2) Send ASR request with CallID, ControlQ, and a response Q
+%%% 3) Wait for ASR response with text of what was said
+%%% 4) Find matches and iterate through the list, or go back to 1.
 %%% @end
 %%% Created : 20 Sep 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -52,6 +67,10 @@
          ,max_dtmf = 0 :: non_neg_integer() %% the most DTMF tones to collect; if max is reached, play choices. If max == 0, no limit
          ,confirm_match = false :: boolean() %% if false, once a match is made, connect the caller; if true, prompt for confirmation to connect
          ,digits_collected = <<>> :: binary() %% the digits collected from the caller so far
+         ,asr_endpoint = 'undefined' :: 'undefined' | binary() %% where to send a call for ASR
+	 ,asr_account_id = 'undefined' :: 'undefined' | binary() %% client's ID (for receiving text version back) (via XMPP, AMQP, or someother provider-specific way)
+         ,asr_account_pass = 'undefined' :: 'undefined' | binary() %% password for the client's account
+         ,asr_lang = <<"us-EN">> :: binary() %% language of the speaker
          ,orig_lookup_table = [] :: lookup_table() %% the O.G.
          }).
 
@@ -78,6 +97,7 @@
          ,invalid_key = <<"system_media/dir-invalid_key">> %% invalid key pressed
          ,result_menu = <<"system_media/dir-result_menu">> %% press one to connect. press two for the next result. press three to continue searching. press four to start over.
          ,no_results_menu = <<"system_media/dir-no_results_menu">> %% press one to continue searching. press two to start over.
+	 ,asr_instructions = <<"system_media/dir-asr_instructions">> %% Please say the name of the party you would like to call
          }).
 
 %%--------------------------------------------------------------------
@@ -97,6 +117,19 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
     DirID = wh_json:get_value(<<"id">>, Data),
     {ok, DirJObj} = couch_mgr:open_doc(AccountDB, DirID),
 
+    %% probably move this to the account doc instead of on each directory doc
+    DbN0 = case wh_json:is_true(<<"asr_enabled">>, DirJObj, false) of
+	       true ->
+		   ASR = wh_json:get_value(<<"asr_provider">>, DirJObj, wh_json:new()),
+		   ?LOG("Setting ASR data for directory lookup"),
+		   #dbn_state{
+			       asr_endpoint = wh_json:get_value(<<"p_endpoint">>, ASR)
+			       ,asr_account_id = wh_json:get_value(<<"p_account_id">>, ASR)
+			       ,asr_account_pass = wh_json:get_value(<<"p_account_pass">>, ASR)
+			     };
+	       false -> #dbn_state{}
+	   end,
+
     MinDTMF = wh_json:get_integer_value(<<"min_dtmf">>, DirJObj, 3),
     SortBy = get_sort_by(wh_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>)),
     LookupTable = build_lookup_table(get_dir_docs(DirID, AccountDB)),
@@ -104,13 +137,13 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
     ?LOG_START("Dial By Name: ~s", [wh_json:get_value(<<"name">>, DirJObj)]),
     ?LOG("SortBy: ~s", [SortBy]),
 
-    DbN = #dbn_state{
-      sort_by = SortBy
-      ,min_dtmf = MinDTMF
-      ,max_dtmf = get_max_dtmf(wh_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0), MinDTMF)
-      ,confirm_match = wh_json:is_true(<<"confirm_match">>, DirJObj, false)
-      ,orig_lookup_table = LookupTable
-     },
+    DbN = DbN0#dbn_state{
+	    sort_by = SortBy
+	    ,min_dtmf = MinDTMF
+	    ,max_dtmf = get_max_dtmf(wh_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0), MinDTMF)
+	    ,confirm_match = wh_json:is_true(<<"confirm_match">>, DirJObj, false)
+	    ,orig_lookup_table = LookupTable
+	   },
     start_search(Call, #prompts{}, DbN, LookupTable).
 
 -spec start_search/4 :: (Call, Prompts, State, LookupTable) -> no_return() when
@@ -118,9 +151,78 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
       Prompts :: #prompts{},
       State :: #dbn_state{},
       LookupTable :: lookup_table().
-start_search(Call, Prompts, #dbn_state{sort_by=SortBy}=DbN, LookupTable) ->
+start_search(Call, Prompts, #dbn_state{asr_endpoint=undefined, sort_by=SortBy}=DbN, LookupTable) ->
     {ok, DTMFs} = play_start_instructions(Call, Prompts, SortBy),
-    collect_min_digits(Call, Prompts, DbN, LookupTable, DTMFs).
+    collect_min_digits(Call, Prompts, DbN, LookupTable, DTMFs);
+start_search(Call, Prompts, DbN, LookupTable) ->
+    ?LOG("Playing ASR instructions"),
+    _ = play_asr_instructions(Call, Prompts, DbN),
+
+    ?LOG("Wait for asr response"),
+    case asr_response() of
+	{ok, Text} ->
+	    ?LOG("ASR responded with ~s", [Text]),
+	    analyze_text(Call, Prompts, DbN, LookupTable, Text);
+	{error, Msg} ->
+	    ?LOG("Error with ASR, reverting to old school DBN: ~p", [Msg]),
+	    start_search(Call, Prompts, DbN#dbn_state{asr_endpoint=undefined}, LookupTable)
+    end.
+
+analyze_text(#cf_call{account_db=DB}=Call, Prompts, #dbn_state{confirm_match=ConfirmMatch}=DbN, LookupTable, Text) ->
+    case analyze_dtmf(Text, LookupTable) of
+	no_results ->
+	    ok = play_no_results(Call, Prompts),
+	    start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table);
+	{one_result, JObj} ->
+	    case confirm_match(Call, Prompts, ConfirmMatch, JObj) of
+		true ->
+		    route_to_match(Call, JObj);
+		false ->
+		    start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
+	    end;
+	{many_results, Matches} ->
+	    ok = play_has_matches(Call, Prompts, length(Matches)),
+	    case matches_menu(Call, Prompts, Matches, DB) of
+		{route, JObj} -> route_to_match(Call, JObj);
+		continue -> collect_next_dtmf(Call, Prompts, DbN, Matches);
+		start_over -> start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
+	    end
+    end.
+
+asr_response() ->
+    ?LOG("Waiting for ASR response"),
+    receive
+        {amqp_msg, {struct, _}=JObj} ->
+            case wh_util:get_event_type(JObj) of
+                { <<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+                    ?LOG("channel was destroyed while waiting for bridge"),
+                    {error, hangup};
+                { <<"call_event">>, <<"CHANNEL_HANGUP">>} ->
+                    ?LOG("channel was hungup while waiting for bridge"),
+                    {error, hangup};
+                { <<"error">>, _} ->
+                    ?LOG("channel execution error while waiting for bridge"),
+                    {error, execution_failure};
+		{ <<"asr">>, <<"asr_resp">>} ->
+		    {ok, wh_json:get_value(<<"Response-Text">>, JObj)};
+		{_,_} ->
+		    asr_response()
+	    end
+    end.
+
+send_asr_info(#cf_call{amqp_q=OurQ, ctrl_q=CtrlQ, call_id=CallID}
+	      ,#dbn_state{asr_endpoint=EP, asr_account_id=AID, asr_account_pass=Pass
+			 ,asr_lang=Lang}) ->
+    Prop = [ {<<"ASR-Endpoint">>, EP}
+	     ,{<<"ASR-Account-ID">>, AID}
+	     ,{<<"ASR-Account-Password">>, Pass}
+	     ,{<<"Call-ID">>, CallID}
+	     ,{<<"Control-Queue">>, CtrlQ}
+	     ,{<<"Language">>, Lang}
+	     ,{<<"Stream-Response">>, false}
+	     | wh_api:default_headers(OurQ, <<"asr">>, <<"req">>, ?APP_NAME, ?APP_VERSION)],
+    {ok, JSON} = wapi_asr:req(Prop),
+    wapi_asr:publish_req(JSON).
 
 -spec collect_min_digits/5 :: (Call, Prompts, State, LookupTable, Collected) -> no_return() when
       Call :: #cf_call{},
@@ -128,10 +230,28 @@ start_search(Call, Prompts, #dbn_state{sort_by=SortBy}=DbN, LookupTable) ->
       State :: #dbn_state{},
       LookupTable :: lookup_table(),
       Collected :: binary().
-collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF}=DbN, LookupTable, Collected) ->
+collect_min_digits(#cf_call{account_db=DB}=Call, Prompts, #dbn_state{min_dtmf=MinDTMF, confirm_match=ConfirmMatch}=DbN, LookupTable, Collected) ->
     case collect_min_digits(MinDTMF - erlang:byte_size(Collected), Collected) of
         {ok, DTMFs} ->
-            analyze_dtmf(Call, Prompts, DbN#dbn_state{digits_collected=DTMFs}, LookupTable);
+            case analyze_dtmf(DTMFs, LookupTable) of
+		no_results ->
+		    ok = play_no_results(Call, Prompts),
+		    start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table);
+		{one_result, JObj} ->
+		    case confirm_match(Call, Prompts, ConfirmMatch, JObj) of
+			true ->
+			    route_to_match(Call, JObj);
+			false ->
+			    start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
+		    end;
+		{many_results, Matches} ->
+		    ok = play_has_matches(Call, Prompts, length(Matches)),
+		    case matches_menu(Call, Prompts, Matches, DB) of
+			{route, JObj} -> route_to_match(Call, JObj);
+			continue -> collect_next_dtmf(Call, Prompts, DbN, Matches);
+			start_over -> start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
+		    end
+	    end;
         {error, timeout, DTMFs} ->
             {ok, PromptDTMFs} = play_min_digits_needed(Call, Prompts, MinDTMF),
             CurrDTMFs = <<DTMFs/binary, PromptDTMFs/binary>>,
@@ -139,42 +259,24 @@ collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF}=DbN, LookupTable,
             collect_min_digits(Call, Prompts, DbN, LookupTable, CurrDTMFs)
     end.
 
--spec analyze_dtmf/4 :: (Call, Prompts, DbN, LookupTable) -> no_return() when
-      Call :: #cf_call{},
-      Prompts :: #prompts{},
-      DbN :: #dbn_state{},
-      LookupTable :: lookup_table().
-analyze_dtmf(#cf_call{account_db=DB}=Call
-             ,Prompts
-             ,#dbn_state{digits_collected=DTMFs, confirm_match=ConfirmMatch}=DbN
-             ,LookupTable) ->
+-spec analyze_dtmf/2 :: (binary(), lookup_table()) -> 'no_dtmf' | 'no_results' | {'one_result', json_object()} | {'many_matches', json_objects()}.
+analyze_dtmf(<<>>, _) -> 'no_dtmf';
+analyze_dtmf(DTMFs, LookupTable) ->
     ?LOG("Analyze: ~s", [DTMFs]),
     case lists:filter(fun(Entry) -> filter_table(Entry, DTMFs) end, LookupTable) of
         [] ->
             ?LOG("No results"),
-            ok = play_no_results(Call, Prompts),
-            start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table);
+	    no_results;
         [{_ID, {_, JObj}}] ->
             ?LOG("Single result: ~s", [_ID]),
-            case confirm_match(Call, Prompts, ConfirmMatch, JObj) of
-                true ->
-                    route_to_match(Call, JObj);
-                false ->
-                    start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
-            end;
-        Matches ->
+	    {one_result, JObj};
+        MatchesTable ->
+	    Matches = [ JObj || {_ID, {_, JObj}} <- MatchesTable ],
             ?LOG("Has more than 1 match"),
-            ok = play_has_matches(Call, Prompts, length(Matches)),
-            case matches_menu(Call, Prompts, Matches, DB) of
-                {route, JObj} -> route_to_match(Call, JObj);
-                continue -> collect_next_dtmf(Call, Prompts, DbN, Matches);
-                start_over -> start_search(Call, Prompts, DbN#dbn_state{digits_collected = <<>>}, DbN#dbn_state.orig_lookup_table)
-            end
+	    {many_matches, Matches}
     end.
 
--spec filter_table/2 :: (Entry, DTMFs) -> boolean() when
-      Entry :: lookup_entry(),
-      DTMFs :: binary().
+-spec filter_table/2 :: (lookup_entry(), ne_binary()) -> boolean().
 filter_table({_, {DialplanJObj, _}}, DTMFs) -> doc_matches(DialplanJObj, DTMFs).
 
 %% Play instructions, then the prompts to scroll through messages
@@ -253,6 +355,17 @@ no_matches_dtmf(Call, Prompts, _) ->
 play_no_results_menu(Call, #prompts{no_results_menu=NoResultsMenu}) ->
     play_and_collect([{play, NoResultsMenu}], Call).
 
+-spec play_asr_instructions/3 :: (#cf_call{}, #prompts{}, #dbn_state{}) -> 'ok'.
+play_asr_instructions(Call, #prompts{asr_instructions=AsrInstructions}, DbN) ->
+    NoopID = cf_call_command:audio_macro([{play, AsrInstructions}], Call),
+
+    ?LOG("Send asr amqp"),
+    send_asr_info(Call, DbN),
+
+    ?LOG("Waiting for prompt to finish"),
+    {ok, _JObj} = cf_call_command:wait_for_noop(NoopID),
+    ok.
+
 -spec play_no_more_results/2 :: (Call, Prompts) -> {'ok', binary()} when
       Call :: #cf_call{},
       Prompts :: #prompts{}.
@@ -284,9 +397,7 @@ play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj, DB) ->
 		     ], Call).
 
 %% Takes a user doc ID, creates the endpoint, and routes the call (ending the dialplan callflow as well)
--spec route_to_match/2 :: (Call, JObj) -> {'branch', json_object()} | {'continue'} when
-      Call :: #cf_call{},
-      JObj :: json_object().
+-spec route_to_match/2 :: (#cf_call{}, json_object()) -> {'branch', json_object()} | {'continue'}.
 route_to_match(#cf_call{cf_pid=CFPid, account_db=DB}, JObj) ->
     case couch_mgr:open_doc(DB, wh_json:get_value(<<"callflow_id">>, JObj)) of
         {ok, CallflowJObj} ->
@@ -396,9 +507,7 @@ play_and_collect(AudioMacro, Call, NumDigits) ->
     cf_call_command:collect_digits(NumDigits, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, NoopID, Call).
 
 %% collect DTMF digits individually until length of DTMFs is == MinDTMF
--spec collect_min_digits/2 :: (MinDTMF, DTMFs) -> {'ok', binary()} | {'error', 'timeout', binary()} when
-      MinDTMF :: integer(),
-      DTMFs :: binary().
+-spec collect_min_digits/2 :: (non_neg_integer(), binary()) -> {'ok', ne_binary()} | {'error', 'timeout', binary()}.
 collect_min_digits(MinDTMF, DTMFs) when MinDTMF > 0 ->
     case cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
         {ok, <<>>} ->
@@ -417,12 +526,12 @@ collect_min_digits(_, DTMFs) ->
 collect_next_dtmf(Call, Prompts, #dbn_state{digits_collected=DTMFs}=DbN, LookupTable) ->
     case collect_min_digits(1, <<>>) of
         {ok, Digit} ->
-            analyze_dtmf(Call, Prompts, DbN#dbn_state{digits_collected = <<DTMFs/binary, Digit/binary>>}, LookupTable);
+            analyze_dtmf(<<DTMFs/binary, Digit/binary>>, LookupTable);
         {error, timeout, _} ->
             case play_continue_prompt(Call, Prompts) of
                 {ok, <<>>} -> collect_next_dtmf(Call, Prompts, DbN, LookupTable);
                 {ok, Digit} ->
-                    analyze_dtmf(Call, Prompts, DbN#dbn_state{digits_collected = <<DTMFs/binary, Digit/binary>>}, LookupTable)
+                    analyze_dtmf(<<DTMFs/binary, Digit/binary>>, LookupTable)
             end
     end.
 
@@ -469,7 +578,7 @@ convert_fields(Callflow, Doc, Fields) ->
             end,
 
     JObj1 = wh_json:from_list([
-                               {<<"callflow">>, Callflow}
+                               {<<"callflow_id">>, Callflow}
                                ,{<<"full_name">>, <<(wh_json:get_value(<<"first_name">>, JObj))/binary, " ", (wh_json:get_value(<<"last_name">>, JObj))/binary>>}
                                | Media
                               ]),
@@ -495,9 +604,7 @@ get_sort_by(<<"first", _/binary>>) -> first;
 get_sort_by(_) -> last.
 
 %% does the eneterd DTMFs match either the first/last combo or the last/first combo?
--spec doc_matches/2 :: (JObj, DTMFs) -> boolean() when
-      JObj :: json_object(),
-      DTMFs :: binary().
+-spec doc_matches/2 :: (json_object(), ne_binary()) -> boolean().
 doc_matches(JObj, DTMFs) ->
     FName = wh_json:get_value(<<"first_name">>, JObj),
     LName = wh_json:get_value(<<"last_name">>, JObj),
@@ -506,9 +613,7 @@ doc_matches(JObj, DTMFs) ->
         field_matches(<<LName/binary, FName/binary>>, DTMFs).
 
 %% does the enetered DTMFs match the field from the beginning?
--spec field_matches/2 :: (Field, DTMFs) -> boolean() when
-      Field :: binary(),
-      DTMFs :: binary().
+-spec field_matches/2 :: (ne_binary(), ne_binary()) -> boolean().
 field_matches(Field, DTMFs) ->
     case binary:match(Field, DTMFs) of
         {0, _} -> true;

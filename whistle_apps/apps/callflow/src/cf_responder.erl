@@ -444,9 +444,7 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_route_response/2 :: (Call, JObj) -> no_return() when
-      Call :: #cf_call{},
-      JObj :: json_object().
+-spec send_route_response/2 :: (#cf_call{}, json_object()) -> 'ok'.
 send_route_response(#cf_call{channel_vars=CVs, bdst_q=Q}, JObj) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
@@ -454,6 +452,6 @@ send_route_response(#cf_call{channel_vars=CVs, bdst_q=Q}, JObj) ->
             ,{<<"channel_vars">>, CVs}
             | wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
            ],
-    {ok, Payload} = wh_api:route_resp(Resp),
-    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload),
+    {ok, JSON} = wapi_route:resp(Resp),
+    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), JSON),
     ?LOG_END("replied to route request").

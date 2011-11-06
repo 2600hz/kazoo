@@ -1,0 +1,340 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_jid</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_jid</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_jid</strong> provides functions to handle
+  JID.
+
+<p><b>Authors:</b> Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2>
+  The module <strong>exmpp_jid</strong> provides functions to handle
+  JID.
+<h2><a name="types">Data Types</a></h2>
+
+<h3 class="typedecl"><a name="type-jid">jid()</a></h3>
+<p><tt>jid() = {jid, Orig_Jid, Prepd_Node, Prepd_Domain, Prepd_Resource}</tt>
+<ul class="definitions"><li><tt>Orig_Jid = binary() | undefined</tt></li><li><tt>Prepd_Node = binary() | undefined</tt></li><li><tt>Prepd_Domain = binary() | undefined</tt></li><li><tt>Prepd_Resource = binary() | undefined</tt></li></ul></p>
+<p><p>Represents a JID.</p>
+ 
+  <p><strong><code>jid()</code> is an internal type and the structure documented
+  herein may be changed without notice</strong>. Please use only the  
+accessors exported by this module to get each component of a JID.</p>
+ 
+  <p><code>Prepd_Node</code> is set to the value of <code>Node</code> passed through the  
+NODEPREP stringprep profile.</p>
+ 
+  <p><code>Prepd_Domain</code> is set to the value of <code>Domain</code> passed through the  
+NAMEPREP stringprep profile.</p>
+ 
+  <code>Prepd_Resource</code> is set to the value of <code>Resource</code> passed through the
+  RESOURCEPREP stringprep profile.</p>
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#bare-1">bare/1</a></td><td>Convert a full JID to its bare version.</td></tr>
+<tr><td valign="top"><a href="#bare_compare-2">bare_compare/2</a></td><td>Compare bare JIDs.</td></tr>
+<tr><td valign="top"><a href="#bare_to_binary-1">bare_to_binary/1</a></td><td>Stringify a bare JID.</td></tr>
+<tr><td valign="top"><a href="#bare_to_binary-2">bare_to_binary/2</a></td><td>Stringify a full JID.</td></tr>
+<tr><td valign="top"><a href="#bare_to_list-1">bare_to_list/1</a></td><td>Stringify a bare JID.</td></tr>
+<tr><td valign="top"><a href="#bare_to_list-2">bare_to_list/2</a></td><td>Stringify a full JID.</td></tr>
+<tr><td valign="top"><a href="#binary_split-2">binary_split/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#compare-2">compare/2</a></td><td>Compare full JIDs.</td></tr>
+<tr><td valign="top"><a href="#compare_domains-2">compare_domains/2</a></td><td>Compare JID's domain.</td></tr>
+<tr><td valign="top"><a href="#domain-1">domain/1</a></td><td>Return the domain part of a JID.</td></tr>
+<tr><td valign="top"><a href="#domain_as_list-1">domain_as_list/1</a></td><td>Return the domain part of a JID as a list.</td></tr>
+<tr><td valign="top"><a href="#full-2">full/2</a></td><td>Convert a bare JID to its full version.</td></tr>
+<tr><td valign="top"><a href="#full_compare-2">full_compare/2</a></td><td>Compare full JIDs.</td></tr>
+<tr><td valign="top"><a href="#is_jid-1">is_jid/1</a></td><td>Tell if the argument is a JID.</td></tr>
+<tr><td valign="top"><a href="#make-0">make/0</a></td><td>Create a blank JID.</td></tr>
+<tr><td valign="top"><a href="#make-1">make/1</a></td><td>Create a bare JID.</td></tr>
+<tr><td valign="top"><a href="#make-2">make/2</a></td><td>Create a bare JID.</td></tr>
+<tr><td valign="top"><a href="#make-3">make/3</a></td><td>Create a full JID.</td></tr>
+<tr><td valign="top"><a href="#node-1">node/1</a></td><td>Return the node part of a JID.</td></tr>
+<tr><td valign="top"><a href="#node_as_list-1">node_as_list/1</a></td><td>Return the node part of a JID as a list.</td></tr>
+<tr><td valign="top"><a href="#parse-1">parse/1</a></td><td>Parse a string and create a full JID.</td></tr>
+<tr><td valign="top"><a href="#prep_bare_to_binary-1">prep_bare_to_binary/1</a></td><td>Stringify a bare JID with STRINGPREP profiles applied.</td></tr>
+<tr><td valign="top"><a href="#prep_bare_to_list-1">prep_bare_to_list/1</a></td><td>Stringify a bare JID with STRINGPREP profiles applied.</td></tr>
+<tr><td valign="top"><a href="#prep_domain-1">prep_domain/1</a></td><td>Return the domain part of a JID with NAMEPREP profile applied.</td></tr>
+<tr><td valign="top"><a href="#prep_domain_as_list-1">prep_domain_as_list/1</a></td><td>Return the domain part of a JID as a list with NAMEPREP profile
+  applied.</td></tr>
+<tr><td valign="top"><a href="#prep_node-1">prep_node/1</a></td><td>Return the node part of a JID with NODEPREP profile applied.</td></tr>
+<tr><td valign="top"><a href="#prep_node_as_list-1">prep_node_as_list/1</a></td><td>Return the node part of a JID as a list with NODEPREP profile
+  applied.</td></tr>
+<tr><td valign="top"><a href="#prep_resource-1">prep_resource/1</a></td><td>Return the resource part of a JID with RESOURCEPREP profile applied.</td></tr>
+<tr><td valign="top"><a href="#prep_resource_as_list-1">prep_resource_as_list/1</a></td><td>Return the domain part of a JID as a list with RESOURCEPREP
+  profile applied.</td></tr>
+<tr><td valign="top"><a href="#prep_to_binary-1">prep_to_binary/1</a></td><td>Stringify a full JID with STRINGPREP profiles applied.</td></tr>
+<tr><td valign="top"><a href="#prep_to_list-1">prep_to_list/1</a></td><td>Stringify a full JID with STRINGPREP profiles applied.</td></tr>
+<tr><td valign="top"><a href="#resource-1">resource/1</a></td><td>Return the resource part of a JID.</td></tr>
+<tr><td valign="top"><a href="#resource_as_list-1">resource_as_list/1</a></td><td>Return the resource part of a JID as a list.</td></tr>
+<tr><td valign="top"><a href="#to_binary-1">to_binary/1</a></td><td>Stringify a full JID.</td></tr>
+<tr><td valign="top"><a href="#to_binary-2">to_binary/2</a></td><td>Stringify a bare JID.</td></tr>
+<tr><td valign="top"><a href="#to_binary-3">to_binary/3</a></td><td>Stringify a full JID.</td></tr>
+<tr><td valign="top"><a href="#to_list-1">to_list/1</a></td><td>Stringify a full JID.</td></tr>
+<tr><td valign="top"><a href="#to_list-2">to_list/2</a></td><td>Stringify a bare JID.</td></tr>
+<tr><td valign="top"><a href="#to_list-3">to_list/3</a></td><td>Stringify a full JID.</td></tr>
+<tr><td valign="top"><a href="#to_lower-1">to_lower/1</a></td><td></td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="bare-1">bare/1</a></h3>
+<div class="spec">
+<p><tt>bare(Jid) -&gt; Bare_Jid</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Bare_Jid = <a href="#type-jid">jid()</a></tt></li></ul></p>
+</div><p>Convert a full JID to its bare version.</p>
+
+<h3 class="function"><a name="bare_compare-2">bare_compare/2</a></h3>
+<div class="spec">
+<p><tt>bare_compare(Jid::Jid1, Jid2) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>Jid1 = <a href="#type-jid">jid()</a></tt></li><li><tt>Jid2 = <a href="#type-jid">jid()</a></tt></li></ul></p>
+</div><p>Compare bare JIDs.</p>
+
+<h3 class="function"><a name="bare_to_binary-1">bare_to_binary/1</a></h3>
+<div class="spec">
+<p><tt>bare_to_binary(Jid) -&gt; String</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>String = binary()</tt></li></ul></p>
+</div><p>Stringify a bare JID.</p>
+
+<h3 class="function"><a name="bare_to_binary-2">bare_to_binary/2</a></h3>
+<div class="spec">
+<p><tt>bare_to_binary(Node, Domain) -&gt; String</tt>
+<ul class="definitions"><li><tt>Node = binary() | string() | undefined</tt></li><li><tt>Domain = binary() | string()</tt></li><li><tt>String = binary()</tt></li></ul></p>
+</div><p>Stringify a full JID.</p>
+
+<h3 class="function"><a name="bare_to_list-1">bare_to_list/1</a></h3>
+<div class="spec">
+<p><tt>bare_to_list(Jid) -&gt; String</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>String = string()</tt></li></ul></p>
+</div><p>Stringify a bare JID.</p>
+
+<h3 class="function"><a name="bare_to_list-2">bare_to_list/2</a></h3>
+<div class="spec">
+<p><tt>bare_to_list(Node, Domain) -&gt; String</tt>
+<ul class="definitions"><li><tt>Node = binary() | string() | undefined</tt></li><li><tt>Domain = binary() | string()</tt></li><li><tt>String = string()</tt></li></ul></p>
+</div><p>Stringify a full JID.</p>
+
+<h3 class="function"><a name="binary_split-2">binary_split/2</a></h3>
+<div class="spec">
+<p><tt>binary_split(B::binary(), C::char()) -&gt; [binary()]</tt><br></p>
+</div>
+
+<h3 class="function"><a name="compare-2">compare/2</a></h3>
+<div class="spec">
+<p><tt>compare(Jid1, Jid2) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>Jid1 = <a href="#type-jid">jid()</a></tt></li><li><tt>Jid2 = <a href="#type-jid">jid()</a></tt></li></ul></p>
+</div><p>Compare full JIDs. This function is identical to full_compare/2.</p>
+
+<h3 class="function"><a name="compare_domains-2">compare_domains/2</a></h3>
+<div class="spec">
+<p><tt>compare_domains(Jid::Jid1, Jid2) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>Jid1 = <a href="#type-jid">jid()</a></tt></li><li><tt>Jid2 = <a href="#type-jid">jid()</a></tt></li></ul></p>
+</div><p>Compare JID's domain.</p>
+
+<h3 class="function"><a name="domain-1">domain/1</a></h3>
+<div class="spec">
+<p><tt>domain(Jid) -&gt; Domain | undefined</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Domain = binary()</tt></li></ul></p>
+</div><p>Return the domain part of a JID.</p>
+
+<h3 class="function"><a name="domain_as_list-1">domain_as_list/1</a></h3>
+<div class="spec">
+<p><tt>domain_as_list(Jid) -&gt; Domain | undefined</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Domain = string()</tt></li></ul></p>
+</div><p>Return the domain part of a JID as a list.</p>
+
+<h3 class="function"><a name="full-2">full/2</a></h3>
+<div class="spec">
+<p><tt>full(Jid::Bare_Jid, Resource) -&gt; Jid</tt>
+<ul class="definitions"><li><tt>Bare_Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Resource = binary() | string() | random</tt></li><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li></ul></p>
+</div><p>throws <tt>{jid, convert, too_long, {resource, Resource}} | {jid, convert, invalid, {resource, Resource}}</tt></p>
+<p>Convert a bare JID to its full version.</p>
+
+<h3 class="function"><a name="full_compare-2">full_compare/2</a></h3>
+<div class="spec">
+<p><tt>full_compare(Jid::Jid1, Jid2) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>Jid1 = <a href="#type-jid">jid()</a></tt></li><li><tt>Jid2 = <a href="#type-jid">jid()</a></tt></li></ul></p>
+</div><p>Compare full JIDs.</p>
+
+<h3 class="function"><a name="is_jid-1">is_jid/1</a></h3>
+<div class="spec">
+<p><tt>is_jid(Jid) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li></ul></p>
+</div><p><p>Tell if the argument is a JID.</p>
+ 
+  You should probably use the <code>IS_JID(Jid)</code> guard expression.</p>
+
+<h3 class="function"><a name="make-0">make/0</a></h3>
+<div class="spec">
+<p><tt>make() -&gt; Jid</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li></ul></p>
+</div><p>Create a blank JID.</p>
+
+<h3 class="function"><a name="make-1">make/1</a></h3>
+<div class="spec">
+<p><tt>make(Domain) -&gt; Bare_Jid</tt>
+<ul class="definitions"><li><tt>Domain = binary() | string()</tt></li><li><tt>Bare_Jid = <a href="#type-jid">jid()</a></tt></li></ul></p>
+</div><p>throws <tt>{jid, make, too_long, {domain, Domain}} | {jid, make, invalid, {domain, Domain}}</tt></p>
+<p>Create a bare JID.</p>
+
+<h3 class="function"><a name="make-2">make/2</a></h3>
+<div class="spec">
+<p><tt>make(Node, Domain) -&gt; Bare_Jid</tt>
+<ul class="definitions"><li><tt>Node = binary() | string() | undefined</tt></li><li><tt>Domain = binary() | string()</tt></li><li><tt>Bare_Jid = <a href="#type-jid">jid()</a></tt></li></ul></p>
+</div><p>throws <tt>{jid, make, too_long, {domain, Domain}} | {jid, make, invalid, {domain, Domain}} | {jid, make, too_long, {node, Node}} | {jid, make, invalid, {node, Node}}</tt></p>
+<p>Create a bare JID.</p>
+
+<h3 class="function"><a name="make-3">make/3</a></h3>
+<div class="spec">
+<p><tt>make(Node, Domain, Resource) -&gt; Jid</tt>
+<ul class="definitions"><li><tt>Node = binary() | string() | undefined</tt></li><li><tt>Domain = binary() | string()</tt></li><li><tt>Resource = binary() | string() | random | undefined</tt></li><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li></ul></p>
+</div><p>Create a full JID.</p>
+
+<h3 class="function"><a name="node-1">node/1</a></h3>
+<div class="spec">
+<p><tt>node(Jid) -&gt; Node | undefined</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Node = binary()</tt></li></ul></p>
+</div><p>Return the node part of a JID.</p>
+
+<h3 class="function"><a name="node_as_list-1">node_as_list/1</a></h3>
+<div class="spec">
+<p><tt>node_as_list(Jid) -&gt; Node | undefined</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Node = string()</tt></li></ul></p>
+</div><p>Return the node part of a JID as a list.</p>
+
+<h3 class="function"><a name="parse-1">parse/1</a></h3>
+<div class="spec">
+<p><tt>parse(String) -&gt; Jid</tt>
+<ul class="definitions"><li><tt>String = binary() | string()</tt></li><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li></ul></p>
+</div><p>throws <tt>{jid, parse, Reason, {jid, String}}</tt></p>
+<p>Parse a string and create a full JID.</p>
+
+<h3 class="function"><a name="prep_bare_to_binary-1">prep_bare_to_binary/1</a></h3>
+<div class="spec">
+<p><tt>prep_bare_to_binary(Jid) -&gt; String</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>String = binary()</tt></li></ul></p>
+</div><p>Stringify a bare JID with STRINGPREP profiles applied.</p>
+
+<h3 class="function"><a name="prep_bare_to_list-1">prep_bare_to_list/1</a></h3>
+<div class="spec">
+<p><tt>prep_bare_to_list(Jid) -&gt; String</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>String = string()</tt></li></ul></p>
+</div><p>Stringify a bare JID with STRINGPREP profiles applied.</p>
+
+<h3 class="function"><a name="prep_domain-1">prep_domain/1</a></h3>
+<div class="spec">
+<p><tt>prep_domain(Jid) -&gt; Domain | undefined</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Domain = binary()</tt></li></ul></p>
+</div><p>Return the domain part of a JID with NAMEPREP profile applied.</p>
+
+<h3 class="function"><a name="prep_domain_as_list-1">prep_domain_as_list/1</a></h3>
+<div class="spec">
+<p><tt>prep_domain_as_list(Jid) -&gt; Domain | undefined</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Domain = string()</tt></li></ul></p>
+</div><p>Return the domain part of a JID as a list with NAMEPREP profile
+  applied.</p>
+
+<h3 class="function"><a name="prep_node-1">prep_node/1</a></h3>
+<div class="spec">
+<p><tt>prep_node(Jid) -&gt; Node | undefined</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Node = binary()</tt></li></ul></p>
+</div><p>Return the node part of a JID with NODEPREP profile applied.</p>
+
+<h3 class="function"><a name="prep_node_as_list-1">prep_node_as_list/1</a></h3>
+<div class="spec">
+<p><tt>prep_node_as_list(Jid) -&gt; Node | undefined</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Node = string()</tt></li></ul></p>
+</div><p>Return the node part of a JID as a list with NODEPREP profile
+  applied.</p>
+
+<h3 class="function"><a name="prep_resource-1">prep_resource/1</a></h3>
+<div class="spec">
+<p><tt>prep_resource(Jid) -&gt; Resource | undefined</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Resource = binary()</tt></li></ul></p>
+</div><p>Return the resource part of a JID with RESOURCEPREP profile applied.</p>
+
+<h3 class="function"><a name="prep_resource_as_list-1">prep_resource_as_list/1</a></h3>
+<div class="spec">
+<p><tt>prep_resource_as_list(Jid) -&gt; Resource | undefined</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Resource = string()</tt></li></ul></p>
+</div><p>Return the domain part of a JID as a list with RESOURCEPREP
+  profile applied.</p>
+
+<h3 class="function"><a name="prep_to_binary-1">prep_to_binary/1</a></h3>
+<div class="spec">
+<p><tt>prep_to_binary(Jid) -&gt; String</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>String = binary()</tt></li></ul></p>
+</div><p>Stringify a full JID with STRINGPREP profiles applied.</p>
+
+<h3 class="function"><a name="prep_to_list-1">prep_to_list/1</a></h3>
+<div class="spec">
+<p><tt>prep_to_list(Jid) -&gt; String</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>String = string()</tt></li></ul></p>
+</div><p>Stringify a full JID with STRINGPREP profiles applied.</p>
+
+<h3 class="function"><a name="resource-1">resource/1</a></h3>
+<div class="spec">
+<p><tt>resource(Jid) -&gt; Resource | undefined</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Resource = binary()</tt></li></ul></p>
+</div><p>Return the resource part of a JID.</p>
+
+<h3 class="function"><a name="resource_as_list-1">resource_as_list/1</a></h3>
+<div class="spec">
+<p><tt>resource_as_list(Jid) -&gt; Resource | undefined</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>Resource = string()</tt></li></ul></p>
+</div><p>Return the resource part of a JID as a list.</p>
+
+<h3 class="function"><a name="to_binary-1">to_binary/1</a></h3>
+<div class="spec">
+<p><tt>to_binary(Jid) -&gt; String</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>String = binary()</tt></li></ul></p>
+</div><p>Stringify a full JID.</p>
+
+<h3 class="function"><a name="to_binary-2">to_binary/2</a></h3>
+<div class="spec">
+<p><tt>to_binary(Node, Domain) -&gt; String</tt>
+<ul class="definitions"><li><tt>Node = binary() | string() | undefined</tt></li><li><tt>Domain = binary() | string()</tt></li><li><tt>String = binary()</tt></li></ul></p>
+</div><p>Stringify a bare JID.</p>
+
+<h3 class="function"><a name="to_binary-3">to_binary/3</a></h3>
+<div class="spec">
+<p><tt>to_binary(Node, Domain, Resource) -&gt; String</tt>
+<ul class="definitions"><li><tt>Node = binary() | string() | undefined</tt></li><li><tt>Domain = binary() | string()</tt></li><li><tt>Resource = binary() | string() | undefined</tt></li><li><tt>String = binary()</tt></li></ul></p>
+</div><p>Stringify a full JID.</p>
+
+<h3 class="function"><a name="to_list-1">to_list/1</a></h3>
+<div class="spec">
+<p><tt>to_list(Jid) -&gt; String</tt>
+<ul class="definitions"><li><tt>Jid = <a href="#type-jid">jid()</a></tt></li><li><tt>String = string()</tt></li></ul></p>
+</div><p>Stringify a full JID.</p>
+
+<h3 class="function"><a name="to_list-2">to_list/2</a></h3>
+<div class="spec">
+<p><tt>to_list(Node, Domain) -&gt; String</tt>
+<ul class="definitions"><li><tt>Node = binary() | string() | undefined</tt></li><li><tt>Domain = binary() | string()</tt></li><li><tt>String = string()</tt></li></ul></p>
+</div><p>Stringify a bare JID.</p>
+
+<h3 class="function"><a name="to_list-3">to_list/3</a></h3>
+<div class="spec">
+<p><tt>to_list(Node, Domain, Resource) -&gt; String</tt>
+<ul class="definitions"><li><tt>Node = binary() | string() | undefined</tt></li><li><tt>Domain = binary() | string()</tt></li><li><tt>Resource = binary() | string() | undefined</tt></li><li><tt>String = string()</tt></li></ul></p>
+</div><p>Stringify a full JID.</p>
+
+<h3 class="function"><a name="to_lower-1">to_lower/1</a></h3>
+<div class="spec">
+<p><tt>to_lower(Jid::<a href="#type-jid">jid()</a>) -&gt; {Node::binary() | undefined, Domain::binary() | undefined, Resource::binary() | undefined}</tt><br></p>
+</div>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:39.</i></p>
+</body>
+</html>

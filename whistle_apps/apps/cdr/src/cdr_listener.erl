@@ -192,7 +192,7 @@ start_amqp() ->
       Payload :: binary().
 handle_cdr(Payload) ->
     JObj = mochijson2:decode(Payload),
-    true  = wh_api:call_cdr_v(JObj),
+    true  = wapi_call:cdr_v(JObj),
 
     AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
 

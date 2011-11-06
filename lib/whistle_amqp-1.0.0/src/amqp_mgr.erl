@@ -24,7 +24,7 @@
 
 -define(SERVER, ?MODULE).
 -define(START_TIMEOUT, 500).
--define(MAX_TIMEOUT, 5000).
+-define(MAX_TIMEOUT, 2000).
 -define(STARTUP_FILE, [code:lib_dir(whistle_amqp, priv), "/startup.config"]).
 
 -record(state, {
@@ -102,7 +102,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({set_host, Host}, _, #state{host=OldHost}=State) ->
     ?LOG_SYS("changing amqp host from ~s to ~s, all channels going down", [OldHost, Host]),
-    stop_amqp_host(State),
+    _ = stop_amqp_host(State),
     case start_amqp_host(Host, State) of
 	{ok, State1} -> {reply, ok, State1, hibernate};
 	{error, _}=E -> {reply, E, State, 0}
@@ -114,7 +114,7 @@ handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
     case erlang:is_pid(HPid) andalso erlang:is_process_alive(HPid) of
 	true -> {reply, true, State};
 	false ->
-	    stop_amqp_host(State),
+	    _ = stop_amqp_host(State),
 	    {reply, false, State#state{handler_pid=undefined, handler_ref=undefined}, 0}
     end;
 
@@ -125,27 +125,33 @@ handle_call(_, _, #state{handler_pid = undefined}=State) ->
     {reply, {error, amqp_down}, State, 0};
 
 handle_call({publish, BP, AM}, From, #state{handler_pid=HPid}=State) ->
-    spawn(fun() -> amqp_host:publish(HPid, From, BP, AM) end),
+    send_req(HPid, From, fun() -> catch amqp_host:publish(HPid, From, BP, AM) end),
     {noreply, State};
 
 handle_call({consume, Msg}, From, #state{handler_pid=HPid}=State) ->
-    spawn(fun() -> amqp_host:consume(HPid, From, Msg) end),
+    send_req(HPid, From, fun() -> catch amqp_host:consume(HPid, From, Msg) end),
     {noreply, State};
 
 handle_call({misc_req, Req}, From, #state{handler_pid=HPid}=State) ->
-    spawn(fun() -> amqp_host:misc_req(HPid, From, Req) end),
+    send_req(HPid, From, fun() -> catch amqp_host:misc_req(HPid, From, Req) end),
     {noreply, State};
 
 handle_call({misc_req, Req1, Req2}, From, #state{handler_pid=HPid}=State) ->
-    spawn(fun() -> amqp_host:misc_req(HPid, From, Req1, Req2) end),
+    send_req(HPid, From, fun() -> catch amqp_host:misc_req(HPid, From, Req1, Req2) end),
     {noreply, State};
 
 handle_call({register_return_handler}, From, #state{handler_pid=HPid}=State)->
-    spawn(fun() -> amqp_host:register_return_handler(HPid, From) end),
+    send_req(HPid, From, fun() -> catch amqp_host:register_return_handler(HPid, From) end),
     {noreply, State};
 
 handle_call(_, _, State) ->
     {noreply, State}.
+
+send_req(HPid, From, Fun) ->
+    case erlang:is_process_alive(HPid) of
+	true -> spawn(Fun);
+	false -> gen_server:reply(From, {error, amqp_host_missing})
+    end.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -234,7 +240,7 @@ handle_info({'DOWN', Ref, process, _, _Reason}, #state{handler_ref=Ref}=State) -
 
 handle_info({nodedown, RabbitNode}, #state{conn_params=#'amqp_params'{node=RabbitNode}}=State) ->
     ?LOG_SYS("received node down notification for amqp"),
-    stop_amqp_host(State),
+    _ = stop_amqp_host(State),
     {noreply, State#state{handler_pid=undefined, handler_ref=undefined}, hibernate};
 
 handle_info({nodeup, RabbitNode}, #state{host=Host, conn_params=#'amqp_params'{node=RabbitNode}=ConnParams, conn_type=ConnType}=State) ->
@@ -314,7 +320,7 @@ stop_amqp_host(#state{handler_pid=undefined}) ->
 stop_amqp_host(#state{handler_pid=HPid, handler_ref=HRef}) ->
     erlang:demonitor(HRef, [flush]),
     _ = net_kernel:monitor_nodes(false),
-    ok = amqp_host:stop(HPid).
+    amqp_host:stop(HPid).
 
 start_amqp_host("localhost", State) ->
     [_, Host] = string:tokens(wh_util:to_list(node()), "@"),

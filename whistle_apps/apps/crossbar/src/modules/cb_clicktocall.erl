@@ -388,7 +388,7 @@ originate_call(CallerNumber, CalleeExtension, C2CName, AccountId) ->
     amqp_util:bind_q_to_targeted(Amqp),
     amqp_util:basic_consume(Amqp),
 
-    %basic call info to display on phone's screen
+    %% basic call info to display on phone's screen
     CallInfo = << ",origination_caller_id_name=", CalleeExtension/binary,
 		  ",origination_caller_id_number=", CalleeExtension/binary,
 		  ",origination_callee_id_name='", C2CName/binary, "'",
@@ -396,19 +396,19 @@ originate_call(CallerNumber, CalleeExtension, C2CName, AccountId) ->
 
     OrigStringPart = <<"{ecallmgr_Account-ID=",AccountId/binary, CallInfo/binary, "}loopback/", CallerNumber/binary, "/context_2">>,
 
-    JObjReq = [
+    ReqProp = [
 	       {<<"Msg-ID">>, wh_util:current_tstamp()}
                ,{<<"Resource-Type">>, <<"audio">>}
                ,{<<"Invite-Format">>, <<"route">>}
 	       ,{<<"Route">>, OrigStringPart}
-	       ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Account-ID">>, AccountId}] } }
+	       ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, AccountId}])}
                ,{<<"Application-Name">>, <<"transfer">>}
-	       ,{<<"Application-Data">>, {struct, [{<<"Route">>, CalleeExtension}]} }
+	       ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, CalleeExtension}])}
                | wh_api:default_headers(Amqp, <<"resource">>, <<"originate_req">>, <<"clicktocall">>, <<"0.1">>)
               ],
 
-    {ok, Json} = wh_api:resource_req({struct, JObjReq}),
-    amqp_util:callmgr_publish(Json, <<"application/json">>, ?KEY_RESOURCE_REQ),
+    {ok, JSON} = wapi_resource:req(ReqProp),
+    wapi_resource:publish_req(JSON),
 
     receive
 	{_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->

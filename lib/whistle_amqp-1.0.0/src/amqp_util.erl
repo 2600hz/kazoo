@@ -4,12 +4,13 @@
 
 -export([targeted_exchange/0, targeted_publish/2, targeted_publish/3]).
 -export([callctl_exchange/0, callctl_publish/2, callctl_publish/3, callctl_publish/4]).
--export([callevt_exchange/0, callevt_publish/1, callevt_publish/3]).
--export([resource_exchange/0, resource_publish/1, resource_publish/2]).
+-export([callevt_exchange/0, callevt_publish/1, callevt_publish/3, callevt_publish/4]).
+-export([resource_exchange/0, resource_publish/1, resource_publish/2, resource_publish/3]).
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
 -export([callmgr_exchange/0, callmgr_publish/3]).
--export([configuration_exchange/0, configuration_publish/2, configuration_publish/3, document_change_publish/5]).
+-export([configuration_exchange/0, configuration_publish/2, configuration_publish/3, document_change_publish/5, document_change_publish/6]).
+-export([document_routing_key/0, document_routing_key/1, document_routing_key/2, document_routing_key/3, document_routing_key/4]).
 -export([monitor_exchange/0, monitor_publish/3]).
 -export([conference_exchange/0, conference_publish/2, conference_publish/3, conference_publish/4]).
 
@@ -80,14 +81,32 @@ configuration_publish(RoutingKey, Payload, ContentType) ->
     basic_publish(?EXCHANGE_CONFIGURATION, RoutingKey, Payload, ContentType).
 
 -spec document_change_publish/5 :: (Action, Db, Type, Id, Payload) -> 'ok' when
-      Action :: ne_binary(), %% edited | created | deleted
+      Action :: atom(), %% edited | created | deleted
       Db :: ne_binary(),
       Type :: ne_binary(),
       Id :: ne_binary(),
       Payload :: iolist().
-document_change_publish(Action, Db, Type, Id, Payload) ->
-    RoutingKey = list_to_binary(["doc_", Action, ".", Db, ".", Type, ".", Id]),
-    configuration_publish(RoutingKey, Payload).
+document_change_publish(Action, Db, Type, Id, JSON) ->
+    document_change_publish(Action, Db, Type, Id, JSON, ?DEFAULT_CONTENT_TYPE).
+document_change_publish(Action, Db, Type, Id, Payload, ContentType) ->
+    RoutingKey = document_routing_key(Action, Db, Type, Id),
+    configuration_publish(RoutingKey, Payload, ContentType).
+
+-spec document_routing_key/0 :: () -> ne_binary().
+-spec document_routing_key/1 :: (atom() | ne_binary()) -> ne_binary().
+-spec document_routing_key/2 :: (atom() | ne_binary(), ne_binary()) -> ne_binary().
+-spec document_routing_key/3 :: (atom() | ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec document_routing_key/4 :: (atom() | ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+document_routing_key() ->
+    document_routing_key(<<"*">>).
+document_routing_key(Action) ->
+    document_routing_key(Action, <<"*">>).
+document_routing_key(Action, Db) ->
+    document_routing_key(Action, Db, <<"*">>).
+document_routing_key(Action, Db, Type) ->
+    document_routing_key(Action, Db, Type, <<"*">>).
+document_routing_key(Action, Db, Type, Id) ->
+    list_to_binary(["doc_", wh_util:to_list(Action), ".", Db, ".", Type, ".", Id]).
 
 -spec callctl_publish/2 :: (CallID, Payload) -> 'ok' when
       CallID :: ne_binary(),
@@ -111,31 +130,53 @@ callctl_publish(CallID, Payload, ContentType, Props) ->
 -spec callevt_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().
 -spec callevt_publish/3 :: (CallID, Payload, Type) -> 'ok' when
-      CallID :: ne_binary(),
-      Payload :: iolist(),
-      Type :: event | status_req | cdr | ne_binary().
+      CallID :: ne_binary() | iolist(),
+      Payload :: iolist() | ne_binary(),
+      Type :: 'media_req' | 'event' | 'status_req' | 'cdr' | ne_binary().
+-spec callevt_publish/4 :: (ne_binary(), iolist(), Type, ne_binary()) -> 'ok' when
+      Type :: 'status_req' | 'event'.
 callevt_publish(Payload) ->
-    basic_publish(?EXCHANGE_CALLEVT, ?KEY_CALL_MEDIA_REQ, Payload, ?DEFAULT_CONTENT_TYPE).
+    callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, media_req).
+
+callevt_publish(Payload, ContentType, media_req) ->
+    basic_publish(?EXCHANGE_CALLEVT, ?KEY_CALL_MEDIA_REQ, Payload, ContentType);
 
 callevt_publish(CallID, Payload, event) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
+
 callevt_publish(CallID, Payload, status_req) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
+
 callevt_publish(CallID, Payload, cdr) ->
     Key = encode_key(CallID),
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, Key/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
+
 callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
+
+callevt_publish(CallID, Payload, status_req, ContentType) ->
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, ContentType);
+callevt_publish(CallID, Payload, event, ContentType) ->
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallID/binary>>, Payload, ContentType);
+callevt_publish(CallID, Payload, cdr, ContentType) ->
+    Key = encode_key(CallID),
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, Key/binary>>, Payload, ContentType).
 
 -spec resource_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().
 -spec resource_publish/2 :: (Payload, ContentType) -> 'ok' when
       Payload :: iolist(),
       ContentType :: ne_binary().
+-spec resource_publish/3 :: (Payload, RoutingKey, ContentType) -> 'ok' when
+      Payload :: iolist(),
+      RoutingKey :: ne_binary(),
+      ContentType :: ne_binary().
 resource_publish(Payload) ->
     resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
 resource_publish(Payload, ContentType) ->
-    basic_publish(?EXCHANGE_RESOURCE, ?KEY_RESOURCE_REQ, Payload, ContentType).
+    resource_publish(Payload, ?KEY_RESOURCE_REQ, ContentType).
+resource_publish(Payload, RoutingKey, ContentType) ->
+    basic_publish(?EXCHANGE_RESOURCE, RoutingKey, Payload, ContentType).
 
 -spec originate_resource_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().
@@ -167,15 +208,15 @@ monitor_publish(Payload, ContentType, RoutingKey) ->
 
 -spec conference_publish/2 :: (Payload, Queue) -> 'ok' when
       Payload :: iolist(),
-      Queue :: discovery | events | service.
+      Queue :: 'discovery' | 'events' | 'service'.
 -spec conference_publish/3 :: (Payload, Queue, ConfId) -> 'ok' when
       Payload :: iolist(),
-      Queue :: events | service,
+      Queue :: 'events' | 'service',
       ConfId :: ne_binary().
 -spec conference_publish/4 :: (Payload, Queue, ConfId, Options) -> 'ok' when
       Payload :: iolist(),
-      Queue :: discovery | events | service,
-      ConfId :: undefined | ne_binary(),
+      Queue :: 'discovery' | 'events' | 'service',
+      ConfId :: 'undefined' | ne_binary(),
       Options :: proplist().
 conference_publish(Payload, discovery) ->
     conference_publish(Payload, discovery, undefined, []);

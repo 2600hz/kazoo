@@ -98,12 +98,13 @@ merge_jobjs(JObj1, JObj2) ->
       Key :: term(),
       JObj :: json_object().
 
-%% Convert an array (possibly of json objects)
+%% Convert a json object to a proplist
+%% only top-level conversion is supported
 to_proplist(Objects) when is_list(Objects)->
     [to_proplist(O) || O <- Objects];
 to_proplist(MaybeJObj) ->
     case is_json_object(MaybeJObj) of
-	true -> [ {K, to_proplist(K, MaybeJObj)} || K <- ?MODULE:get_keys(MaybeJObj)];
+	true -> [ {K, get_value(K, MaybeJObj)} || K <- ?MODULE:get_keys(MaybeJObj)];
 	false -> MaybeJObj
     end.
 
@@ -122,16 +123,16 @@ get_list_value(Key, JObj) ->
 
 -spec filter/3 :: (Pred, JObj, Keys) -> json_object() when
       Pred :: fun( (Element) -> boolean() ),
-      Element :: json_term() | {json_term(), json_term()},
+      Element :: json_term() | {json_string(), json_term()},
       JObj :: json_object(),
-      Keys :: term().
+      Keys :: json_string() | [json_string(),...].
 filter(Pred, JObj, Keys) ->
     Value = ?MODULE:filter(Pred, ?MODULE:get_value(Keys, JObj)),
     ?MODULE:set_value(Keys, Value, JObj).
 
 -spec filter/2 :: (Pred, JObj) -> json_object() when
       Pred :: fun( (Element) -> boolean() ),
-      Element :: json_term() | {json_term(), json_term()},
+      Element :: json_term() | {json_string(), json_term()},
       JObj :: json_object().
 filter(Pred, {struct, Props}) when is_function(Pred, 1) ->
     {struct, [ E || E <- Props, Pred(E) ]}.
@@ -628,10 +629,10 @@ is_json_object_test() ->
 			    }).
 
 -define(P1, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]).
--define(P2, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?P1}]).
--define(P3, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?P1, ?P2]}]).
+-define(P2, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, {struct, ?P1}}]).
+-define(P3, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [{struct, ?P1}, {struct, ?P2}]}]).
 -define(P4, [?P1, ?P2, ?P3]).
--define(P6, [{<<"d2k1">>, 1},{<<"d2k2">>, 3.14},{<<"sub_d1">>, [{<<"d1k1">>, "d1v1"}]}]).
+-define(P6, [{<<"d2k1">>, 1},{<<"d2k2">>, 3.14},{<<"sub_d1">>, {struct, [{<<"d1k1">>, "d1v1"}]}}]).
 -define(P7, [{<<"d1k1">>, <<"d1v1">>}]).
 
 -spec get_keys_test/0 :: () -> no_return().

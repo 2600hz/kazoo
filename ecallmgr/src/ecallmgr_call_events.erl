@@ -28,7 +28,6 @@
 -record(state, {
 	  node = undefined :: atom()
           ,uuid = <<>> :: binary()
-          ,amqp_q = <<>> :: binary() | {'error', term()}
           ,ctlpid = undefined :: 'undefined' | pid()
 	  ,is_node_up = true :: boolean()
 	  ,is_amqp_up = true :: boolean()
@@ -203,52 +202,12 @@ handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false
 	    end
     end;
 
-handle_info({amqp_host_down, _}, State) ->
-    ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    _Ref = erlang:send_after(1000, self(), is_amqp_up),
-    {'noreply', State#state{amqp_q={'error', amqp_host_down}, is_amqp_up=false}, hibernate};
-
-handle_info(is_amqp_up, #state{uuid=UUID, amqp_q={'error', _}, queued_events=Evts, node=Node}=State) ->
-    Q1 = add_amqp_listener(UUID),
-    case is_binary(Q1) of
-	true ->
-	    spawn(fun() -> put(callid, UUID), send_queued(Node, UUID, Evts) end),
-	    {'noreply', State#state{amqp_q = Q1, is_amqp_up = true, queued_events=[]}, hibernate};
-	false ->
-	    _Ref = erlang:send_after(1000, self(), is_amqp_up),
-	    {'noreply', State}
-    end;
-
-handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}
-	    ,#state{node=Node, uuid=UUID, failed_node_checks=FNC}=State) ->
-    JObj = mochijson2:decode(Payload),
-    IsUp = ecallmgr_util:is_node_up(Node, UUID),
-
-    spawn(fun() -> put(callid, UUID), handle_amqp_prop(wh_json:get_value(<<"Event-Name">>, JObj), JObj, Node, IsUp) end),
-
-    case IsUp of
-	true ->
-	    {'noreply', State#state{is_node_up=IsUp, failed_node_checks=0}, hibernate};
-	false ->
-	    case FNC > ?MAX_FAILED_NODE_CHECKS of
-		true ->
-		    ?LOG(UUID, "node ~s appears down, and we've checked ~b times now; going down", [Node, FNC]),
-		    {'stop', 'normal', State};
-		false ->
-		    ?LOG(UUID, "node ~s appears down, and we've checked ~b times now; will check again", [Node, FNC]),
-		    _Ref = erlang:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART}),
-		    {'noreply', State#state{is_node_up=IsUp, failed_node_checks=FNC+1}, hibernate}
-	    end
-    end;
-
 handle_info(startup, #state{node=Node, uuid=UUID}=State) ->
     erlang:monitor_node(Node, true),
     ?LOG("starting handler on ~s for ~s", [Node, UUID]),
     case freeswitch:handlecall(Node, UUID) of
         ok ->
-            Q = add_amqp_listener(UUID),
-            ?LOG("call event handler setup complete"),
-            {'noreply', State#state{amqp_q = Q, is_amqp_up = is_binary(Q)}, hibernate};
+            {'noreply', State, hibernate};
         timeout ->
             ?LOG("timed out trying to handle events for ~s, trying again", [Node]),
             self() ! startup,
@@ -260,9 +219,6 @@ handle_info(startup, #state{node=Node, uuid=UUID}=State) ->
             ?LOG("failed to handle call events for ~s: ~p", [Node, _E]),
             {'stop', 'normal', State}
     end;
-
-handle_info(#'basic.consume_ok'{}, State) ->
-    {'noreply', State};
 
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -297,9 +253,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec shutdown/2 :: (CtlPid, UUID) -> 'ok' when
-      CtlPid :: pid() | undefined,
-      UUID :: binary().
+-spec shutdown/2 :: (pid() | 'undefined', ne_binary()) -> 'ok'.
 shutdown(undefined, _) -> 'ok';
 shutdown(CtlPid, UUID) ->
     ?LOG("sending hangup for call ~s", [UUID]),
@@ -317,14 +271,12 @@ send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, Props) when is_pid(
     AppName = props:get_value(<<"Application">>, Props),
 
     ?LOG("sending execution completion to control queue"),
-    erlang:is_process_alive(CtlPid) andalso CtlPid ! {execute_complete, UUID, AppName},
-    'ok';
+    ecallmgr_call_control:event_execute_complete(CtlPid, UUID, AppName);
 send_ctl_event(CtlPid, UUID, <<"CUSTOM">>, Props) when is_pid(CtlPid) ->
     case props:get_value(<<"Event-Subclass">>, Props) of
 	<<"whistle::noop">> ->
 	    ?LOG("sending noop completion to control queue"),
-	    erlang:is_process_alive(CtlPid) andalso CtlPid ! {execute_complete, UUID, <<"noop">>},
-	    'ok';
+	    ecallmgr_call_control:event_execute_complete(CtlPid, UUID, <<"noop">>);
 	_ ->
 	    'ok'
     end;
@@ -390,10 +342,10 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
 	    EvtProp1 = wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION) ++ EvtProp0,
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
 			   [] -> EvtProp1;
-			   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
+			   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
 		       end,
-	    {'ok', JSON} = wh_api:call_event(EvtProp2),
-	    amqp_util:callevt_publish(UUID, JSON, event);
+	    {'ok', JSON} = wapi_call:event(EvtProp2),
+	    wapi_call:publish_event(UUID, JSON);
 	_ ->
             ok
 %%	    ?LOG("skipped event ~s ~s", [FSEvtName, FSAppName])
@@ -405,18 +357,6 @@ get_channel_state(Prop) ->
     case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
         undefined -> <<"unknown">>;
         ChannelState -> ChannelState
-    end.
-
-%% Setup process to listen for call.status_req api calls and respond in the affirmative
--spec add_amqp_listener/1 :: (CallID) -> binary() | {'error', 'amqp_error'} when
-      CallID :: binary().
-add_amqp_listener(CallID) ->
-    case amqp_util:new_queue(<<>>) of
-	{'error', _} = E -> E;
-	Q ->
-	    _ = amqp_util:bind_q_to_callevt(Q, CallID, status_req),
-	    _ = amqp_util:basic_consume(Q),
-	    Q
     end.
 
 % gets the appropriate application response value for the type of application
@@ -522,43 +462,6 @@ event_specific(<<"DTMF">>, _, Prop) ->
     ];
 event_specific(_Evt, _App, _Prop) ->
     [].
-
-handle_amqp_prop(<<"status_req">>, JObj, Node, IsNodeUp) ->
-    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    put(callid, CallID),
-
-    try
-	true = wh_api:call_status_req_v(JObj),
-	?LOG_START("call status request received"),
-
-	{Status, ErrMsg} = case IsNodeUp of
-			       true -> query_call(Node, CallID);
-			       false -> {<<"tmpdown">>, {<<"Error-Msg">>, <<"Handling switch is currently not responding">>}}
-			   end,
-        ?LOG_END("call status of ~s is ~s", [CallID, Status]),
-
-	RespJObj = [{<<"Call-ID">>, CallID}
-		    ,{<<"Status">>, Status}
-		    ,{<<"Node">>, Node}
-		    | wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION) ],
-	{'ok', Payload} = wh_api:call_status_resp([ ErrMsg | RespJObj ]),
-	amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
-    catch
-	E:R ->
-	    ?LOG("Call Status exception: ~s:~w", [E, R]),
-	    ?LOG("Stackstrace: ~w", [erlang:get_stacktrace()])
-    end.
-
-query_call(Node, CallID) ->
-    case freeswitch:api(Node, uuid_exists, wh_util:to_list(CallID)) of
-	{'ok', Result} ->
-	    case wh_util:is_true(Result) of
-		true -> {<<"active">>, {ignore, me}};
-		false -> {<<"down">>, {<<"Error-Msg">>, <<"Call is no longer active">>}}
-	    end;
-	_ ->
-	    {<<"tmpdown">>, {<<"Error-Msg">>, <<"Switch did not respond to query">>}}
-    end.
 
 %% if the call went down but we had queued events to send, try for up to 10 seconds to send them
 

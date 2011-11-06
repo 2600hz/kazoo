@@ -321,8 +321,8 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                                               ,{<<"Hangup-Code">>, <<"sip:404">>}
                                              ]}, 0, JObj);
         Attempts ->
-            {ok, Payload} = wh_api:bridge_req({struct, BridgeReq}),
-            amqp_util:callctl_publish(wh_json:get_value(<<"Control-Queue">>, JObj), Payload),
+            {ok, Payload} = wapi_dialplan:bridge(BridgeReq),
+	    wapi_dialplan:publish_action(wh_json:get_value(<<"Control-Queue">>, JObj), Payload, ?DEFAULT_CONTENT_TYPE),
 
             case wait_for_bridge(60000) of
                 {ok, BridgeResp} ->
@@ -874,8 +874,8 @@ respond_bridged_to_resource(BridgeResp, JObj) ->
                 ,{<<"Channel-Call-State">>, wh_json:get_value(<<"Channel-Call-State">>, BridgeResp)}
                | wh_api:default_headers(Q, <<"resource">>, <<"offnet_resp">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = wh_api:resource_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
-    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+    {ok, Payload} = wapi_resource:resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
+    wapi_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -897,10 +897,11 @@ respond_resource_failed(BridgeResp, Attempts, JObj) ->
                 ,{<<"Failure-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
                 ,{<<"Hangup-Cause">>, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp)}
                 ,{<<"Hangup-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
-               | wh_api:default_headers(Q, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
-            ],
-    {ok, Payload} = wh_api:resource_error([ KV || {_, V}=KV <- Response, V =/= undefined ]),
-    _ = amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+		| wh_api:default_headers(Q, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
+	       ],
+
+    {ok, Payload} = wapi_resource:error([ KV || {_, V}=KV <- Response, V =/= undefined ]),
+    wapi_resource:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 %%--------------------------------------------------------------------
 %% @private

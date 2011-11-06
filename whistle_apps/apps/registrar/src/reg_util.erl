@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(reg_util).
 
--export([lookup_auth_user/2, send_resp/2, send_resp/3]).
+-export([lookup_auth_user/2]).
 -export([cache_reg_key/1, cache_user_to_reg_key/2, cache_user_key/2]).
 -export([hash_contact/1, get_expires/1]).
 -export([lookup_registrations/1, lookup_registration/2, fetch_all_registrations/0]).
@@ -86,18 +86,6 @@ get_expires(JObj) ->
       Contact :: binary().
 hash_contact(Contact) ->
     wh_util:to_binary(wh_util:to_hex(erlang:md5(Contact))).
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% send a payload to a targeted queue
-%% @end
-%%-----------------------------------------------------------------------------
-send_resp(Payload, RespQ) ->
-    send_resp(Payload, RespQ, <<"application/json">>).
-
-send_resp(Payload, RespQ, ContentType) ->
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%-----------------------------------------------------------------------------
 %% @private
