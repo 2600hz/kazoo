@@ -265,7 +265,7 @@ process_route_req(Node, FSID, CallID, FSData) ->
 	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
 	       ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
 	       ,{<<"Call-ID">>, CallID}
-	       ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
+	       ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
 	       | wh_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
     %% Server-ID will be over-written by the pool worker
 
@@ -307,7 +307,7 @@ route(Node, FSID, CallID, DefProp, AuthZPid) ->
       RouteCCV :: json_object().
 authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->
     ?LOG("No authz available, validating route_resp"),
-    true = wh_api:route_resp_v(RespJObj),
+    true = wapi_route:resp_v(RespJObj),
     reply(Node, FSID, CallID, RespJObj, RouteCCV);
 authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
     ?LOG("Checking authz_resp"),
@@ -315,9 +315,10 @@ authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
 	{false, _} ->
 	    ?LOG("Authz is false"),
 	    reply_forbidden(Node, FSID);
-	{true, {struct, CCV}} ->
+	{true, CCVJObj} ->
+	    CCV = wh_json:to_proplist(CCVJObj),
 	    ?LOG("Authz is true"),
-	    true = wh_api:route_resp_v(RespJObj),
+	    true = wapi_route:resp_v(RespJObj),
 	    ?LOG("Valid route resp"),
 	    RouteCCV1 = lists:foldl(fun({K,V}, RouteCCV0) -> wh_json:set_value(K, V, RouteCCV0) end, RouteCCV, CCV),
 
@@ -370,10 +371,10 @@ reply(Node, FSID, CallID, RespJObj, CCVs) ->
       CCVs :: json_object().
 start_control_and_events(Node, CallID, SendTo, CCVs) ->
     try
-	true = is_binary(CtlQ = amqp_util:new_callctl_queue(<<>>)),
-	_ = amqp_util:bind_q_to_callctl(CtlQ),
-	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID, CtlQ),
+	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID),
 	{ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallID, CtlPid),
+
+	CtlQ = ecallmgr_call_control:amqp_queue(CtlPid),
 
 	CtlProp = [{<<"Msg-ID">>, CallID}
 		   ,{<<"Call-ID">>, CallID}
@@ -391,10 +392,10 @@ start_control_and_events(Node, CallID, SendTo, CCVs) ->
       SendTo :: binary(),
       CtlProp :: proplist().
 send_control_queue(SendTo, CtlProp) ->
-    case wh_api:route_win(CtlProp) of
+    case wapi_route:win(CtlProp) of
 	{ok, JSON} ->
 	    ?LOG_END("sending route_win to ~s", [SendTo]),
-	    amqp_util:targeted_publish(SendTo, JSON, <<"application/json">>);
+	    wapi_route:publish_win(SendTo, JSON);
 	{error, _Msg} ->
 	    ?LOG_END("sending route_win to ~s failed, ~p", [SendTo, _Msg])
     end.

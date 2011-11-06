@@ -23,16 +23,15 @@
 		     ,{reg_success, [{<<"directory">>, <<"reg_success">>}]}
 		     ,{reg_query, [{<<"directory">>, <<"reg_query">>}]}
 		    ]).
--define(BINDINGS, [{authentication, []}
-		   ,{registrations, []}
+-define(BINDINGS, [
+		   {authn, []}
+		   ,{registration, []}
 		  ]).
 
 -define(SERVER, ?MODULE).
 -define(REG_QUEUE_NAME, <<"">>).
 -define(REG_QUEUE_OPTIONS, []).
 -define(REG_CONSUME_OPTIONS, []).
-
--record(state, {}).
 
 %%%===================================================================
 %%% API
@@ -74,7 +73,7 @@ stop(Srv) ->
 init([]) ->
     process_flag(trap_exit, true),
     ?LOG_SYS("starting new registrar server"),
-    {ok, #state{}}.
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -142,7 +141,7 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), #state{}) -> ok.
+-spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
     ?LOG_SYS("registrar server ~p termination", [_Reason]).
 

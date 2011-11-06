@@ -105,7 +105,10 @@ register_return_handler(Srv, From) ->
 -spec stop/1 :: (Srv) -> 'ok' | {'error', 'you_are_not_my_boss'} when
       Srv :: pid().
 stop(Srv) ->
-    gen_server:call(Srv, stop).
+    case erlang:is_process_alive(Srv) of
+	true -> gen_server:call(Srv, stop);
+	false -> ok
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -464,21 +467,22 @@ start_channel({Connection, _}) ->
     start_channel(Connection);
 start_channel(Connection) when is_pid(Connection) ->
     %% Open an AMQP channel to access our realm
-    case amqp_connection:open_channel(Connection) of
+    case erlang:is_process_alive(Connection) andalso amqp_connection:open_channel(Connection) of
 	{ok, Channel} ->
 	    #'access.request_ok'{ticket = Ticket} = amqp_channel:call(Channel, amqp_util:access_request()),
 	    ?LOG_SYS("Opened channel ~p with ticket ~b", [Channel, Ticket]),
 
 	    ChanMRef = erlang:monitor(process, Channel),
 	    {Channel, ChanMRef, Ticket};
+	false ->
+	    {error, no_connection};
 	E ->
 	    ?LOG_SYS("Error opening channel: ~p", [E]),
 	    E
     end.
 
--spec start_channel/2 :: (Connection, Pid) -> channel_data() | {error, no_connection} | closing when
-      Connection :: undefined | {pid(), reference()} | pid(),
-      Pid :: pid().
+-spec start_channel/2 :: (Connection, pid()) -> channel_data() | {'error', 'no_connection'} | 'closing' when
+      Connection :: 'undefined' | {pid(), reference()} | pid().
 start_channel(Connection, Pid) ->
     case start_channel(Connection) of
 	{C, _, T} = Channel ->
@@ -491,9 +495,7 @@ start_channel(Connection, Pid) ->
             E
     end.
 
--spec load_exchanges/2 :: (Channel, Ticket) -> ok when
-      Channel :: pid(),
-      Ticket :: integer().
+-spec load_exchanges/2 :: (pid(), integer()) -> 'ok'.
 load_exchanges(Channel, Ticket) ->
     lists:foreach(fun({Ex, Type}) ->
 			  ED = #'exchange.declare'{
@@ -504,9 +506,7 @@ load_exchanges(Channel, Ticket) ->
 			  #'exchange.declare_ok'{} = amqp_channel:call(Channel, ED)
 		  end, ?KNOWN_EXCHANGES).
 
--spec remove_ref/2 :: (Ref, State) -> #state{} when
-      Ref :: reference(),
-      State :: #state{}.
+-spec remove_ref/2 :: (reference(), #state{}) -> #state{}.
 remove_ref(Ref, #state{connection={Conn, _}, publish_channel={C,Ref,_}}=State) ->
     ?LOG_SYS("reference was for publish channel ~p, restarting", [C]),
     State#state{publish_channel=start_channel(Conn)};
@@ -520,7 +520,7 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
 		    dict:fold(fun(K, V, Acc) -> clean_consumers(K, V, Acc, Ref, Conn) end, Cs, Cs)
 	       }.
 
--spec notify_consumers/2 :: (Msg, Dict) -> ok when
+-spec notify_consumers/2 :: (Msg, Dict) -> 'ok' when
       Msg :: {'amqp_host_down', binary()},
       Dict :: dict().
 notify_consumers(Msg, Dict) ->

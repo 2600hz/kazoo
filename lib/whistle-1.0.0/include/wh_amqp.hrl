@@ -5,6 +5,8 @@
 %%% @end
 %%% Created :  3 Nov 2010 by James Aimonetti <james@2600hz.org>
 
+-define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
+
 %% routing keys to use in the callmgr exchange
 -define(KEY_AUTHN_REQ, <<"authn.req">>). %% corresponds to the authn_req/1 api call
 -define(KEY_AUTHZ_REQ, <<"authz.req">>). %% corresponds to the authz_req/1 api call
@@ -24,6 +26,10 @@
 -define(KEY_REG_QUERY, <<"registration.query">>).
 
 -define(KEY_SIP_NOTIFY, <<"sip.notify">>).
+
+-define(KEY_ASR_REQ, <<"asr.req">>).
+
+-define(KEY_CHANNEL_QUERY, <<"locate.channel_req">>).
 
 -define(KEY_CONF_DISCOVERY_REQ, <<"conference.discovery">>).
 -define(KEY_CONF_SERVICE_REQ, <<"conference.service.">>).

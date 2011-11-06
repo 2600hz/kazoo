@@ -32,7 +32,7 @@ endpoint_data(State) ->
     CallID = ts_callflow:get_aleg_id(State),
     Q = ts_callflow:get_my_queue(State),
 
-    true = wh_api:bridge_req_endpoint_v(EP),
+    true = wapi_dialplan:bridge_endpoint_v(EP),
     ?LOG("Valid endpoint"),
 
     MediaHandling = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Offnet-Loopback-Number">>], JObj) of
@@ -75,7 +75,7 @@ wait_for_win(State, Command) ->
     end.
 
 send_onnet(State, Command) ->
-    {ok, Payload} = wh_api:bridge_req(Command),
+    {ok, Payload} = wapi_dialplan:bridge(Command),
     ?LOG("Sending onnet command: ~s", [Payload]),
 
     CtlQ = ts_callflow:get_control_queue(State),
@@ -186,7 +186,7 @@ try_failover_sip(State, SIPUri) ->
 	       | wh_api:default_headers(Q, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
 
-    {ok, Payload} = wh_api:bridge_req(Command),
+    {ok, Payload} = wapi_dialplan:bridge(Command),
 
     ?LOG("Sending SIP failover for ~s: ~s", [SIPUri, Payload]),
 
@@ -218,11 +218,12 @@ try_failover_e164(State, ToDID) ->
 	       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
 	       | wh_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
 	      ],
-    {ok, Payload} = wh_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined, V =/= <<>> ]),
+    {ok, Payload} = wapi_offnet_resource:req([ KV || {_, V}=KV <- Command, V =/= undefined, V =/= <<>> ]),
 
     ?LOG("Sending E.164 failover: ~s", [Payload]),
 
-    amqp_util:offnet_resource_publish(Payload),
+    wapi_offnet_resource:publish_req(Payload),
+
     wait_for_bridge(ts_callflow:set_failover(State, ?EMPTY_JSON_OBJECT)).
 
 %%--------------------------------------------------------------------

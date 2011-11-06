@@ -61,15 +61,14 @@ start_amqp(#state{}=State) ->
 -spec send_park/1 :: (State) -> #state{} when
       State :: #state{}.
 send_park(#state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
-    JObj1 = {struct, [ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                       ,{<<"Routes">>, []}
-                       ,{<<"Method">>, <<"park">>}
-		       | wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION) ]
-	    },
+    JObj1 = wh_json:from_list([ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+				,{<<"Routes">>, []}
+				,{<<"Method">>, <<"park">>}
+				| wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)]),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    {ok, JSON} = wh_api:route_resp(JObj1),
+    {ok, JSON} = wapi_route:resp(JObj1),
     ?LOG("Sending park to ~s: ~s", [RespQ, JSON]),
-    amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>),
+    wapi_route:publish_resp(RespQ, JSON),
 
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
     _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
@@ -85,7 +84,7 @@ wait_for_win(#state{aleg_callid=CallID}=State) ->
 	%% call events come from callevt exchange, ignore for now
 	{#'basic.deliver'{exchange = <<"targeted">>}, #amqp_msg{payload=Payload}} ->
 	    WinJObj = mochijson2:decode(Payload),
-	    true = wh_api:route_win_v(WinJObj),
+	    true = wapi_route:win_v(WinJObj),
 	    CallID = wh_json:get_value(<<"Call-ID">>, WinJObj),
 
 	    CallctlQ = wh_json:get_value(<<"Control-Queue">>, WinJObj),
@@ -237,7 +236,7 @@ process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
 	    end;
 
 	{ <<"call_detail">>, <<"cdr">> } ->
-	    true = wh_api:call_cdr_v(JObj),
+	    true = wapi_call:cdr_v(JObj),
 	    Leg = wh_json:get_value(<<"Call-ID">>, JObj),
 	    Duration = ts_util:get_call_duration(JObj),
 
@@ -273,9 +272,9 @@ send_hangup(#state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
                ,{<<"Insert-At">>, <<"now">>}
 	       | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 	      ],
-    {ok, JSON} = wh_api:hangup_req(Command),
+    {ok, JSON} = wapi_dialplan:hangup(Command),
     ?LOG("Sending hangup to ~s: ~s", [CtlQ, JSON]),
-    amqp_util:callctl_publish(CtlQ, JSON, <<"application/json">>).
+    wapi_dialplan:publish_action(CtlQ, JSON, <<"application/json">>).
 
 %%%-----------------------------------------------------------------------------
 %%% Data access functions

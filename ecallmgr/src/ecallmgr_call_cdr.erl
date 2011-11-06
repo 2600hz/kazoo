@@ -46,7 +46,7 @@
 new_cdr(UUID, EvtProp) ->
     CDRJson = create_cdr(EvtProp),
     ?LOG_SYS(UUID, "CDR to send: ~s", [CDRJson]),
-    amqp_util:callevt_publish(UUID, CDRJson, cdr).
+    wapi_call:publish_cdr(UUID, CDRJson).
 
 -spec create_cdr/1 :: (EvtProp) -> iolist() when
       EvtProp :: proplist().
@@ -57,7 +57,7 @@ create_cdr(EvtProp) ->
 		   <<"outbound">> -> add_values(?FS_TO_WHISTLE_OUTBOUND_MAP, ApiProp0, EvtProp);
 		   _ -> ApiProp0
 	       end,
-    {ok, JSON} = wh_api:call_cdr(ApiProp1),
+    {ok, JSON} = wapi_call:cdr(ApiProp1),
     JSON.
 
 -spec add_values/3 :: (Mappings, BaseProp, ChannelProp) -> proplist() when
@@ -66,13 +66,15 @@ create_cdr(EvtProp) ->
       ChannelProp :: proplist().
 add_values(Mappings, BaseProp, ChannelProp) ->
     lists:foldl(fun({<<"ecallmgr">>, <<"Custom-Channel-Vars">>=WK}, WApi) ->
-                        [{WK, {struct, ecallmgr_util:custom_channel_vars(ChannelProp)}} | WApi];
+                        [{WK, wh_json:from_list(ecallmgr_util:custom_channel_vars(ChannelProp))} | WApi];
+
                    ({<<"Event-Date-Timestamp">>=FSKey, WK}, WApi) ->
                         case props:get_value(FSKey, ChannelProp) of
                             undefined -> WApi;
                             V -> VUnix =  wh_util:unix_seconds_to_gregorian_seconds(wh_util:microseconds_to_seconds(V)),
                                  [{WK, wh_util:to_binary(VUnix)} | WApi]
                         end;
+
                    ({FSKey, WK}, WApi) ->
                         case props:get_value(FSKey, ChannelProp) of
                             undefined -> WApi;

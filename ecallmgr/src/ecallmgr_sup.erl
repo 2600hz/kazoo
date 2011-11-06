@@ -4,7 +4,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, cache_proc/0]).
+-export([start_link/0, cache_proc/0, registrar_proc/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -22,9 +22,13 @@ start_link() ->
 
 -spec cache_proc/0 :: () -> {'ok', pid()}.
 cache_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-		Mod =:= ecallmgr_cache],
+    [P] = find_procs(ecallmgr_cache),
     {ok, P}.
+
+-spec registrar_proc/0 :: () -> {'ok', pid()}.
+registrar_proc() ->
+    [R] = find_procs(ecallmgr_registrar),
+    {ok, R}.
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -53,3 +57,6 @@ init([]) ->
 	]
       }
     }.
+
+find_procs(Mod) ->
+    [P || {M, P, _, _} <- supervisor:which_children(?MODULE), M =:= Mod].

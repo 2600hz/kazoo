@@ -236,7 +236,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
 	    crossbar_util:response_conflicting_docs(Context);
 	{ok, JObj1} when Verb =:= <<"put">> ->
 	    ?LOG("Saved a put request, setting location headers"),
-	    send_document_change(<<"created">>, DB, JObj1),
+	    send_document_change(created, DB, JObj1),
             Context#cb_context{
                  doc=JObj1
                 ,resp_status=success
@@ -246,7 +246,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
             };
 	{ok, JObj2} ->
 	    ?LOG("Saved json doc"),
-	    send_document_change(<<"edited">>, DB, JObj2),
+	    send_document_change(edited, DB, JObj2),
             Context#cb_context{
                  doc=JObj2
                 ,resp_status=success
@@ -280,7 +280,7 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
             crossbar_util:response_datastore_timeout(Context);
 	{ok, JObj1} when Verb =:= <<"put">> ->
 	    ?LOG("Saved a put request, setting location headers"),
-	    send_document_change(<<"created">>, DB, JObj1),
+	    send_document_change(created, DB, JObj1),
             Context#cb_context{
                  doc=JObj1
                 ,resp_status=success
@@ -290,7 +290,7 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
             };
 	{ok, JObj2} ->
 	    ?LOG("Saved json doc"),
-	    send_document_change(<<"edited">>, DB, JObj2),
+	    send_document_change(edited, DB, JObj2),
             Context#cb_context{
                  doc=JObj2
                 ,resp_status=success
@@ -303,7 +303,7 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
     end.
 
 -spec send_document_change/3 :: (Action, Db, Doc) -> pid() when
-      Action :: ne_binary(), %% <<"created">> | <<"edited">> | <<"deleted">>
+      Action :: wapi_conf:conf_action(),
       Db :: ne_binary(),
       Doc :: json_object().
 send_document_change(Action, Db, Doc) ->
@@ -312,21 +312,21 @@ send_document_change(Action, Db, Doc) ->
                   put(callid, CallID),
                   Id = wh_json:get_value(<<"_id">>, Doc),
                   Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
-		  Change = wh_json:from_list([
-					      {<<"ID">>, Id}
-					      ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
+		  Change = [
+			    {<<"ID">>, Id}
+			    ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
 					      ,{<<"Doc">>, public_fields(Doc)}
-					      ,{<<"Type">>, Type}
-					      ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
-					      ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
-					      ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
-					      ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
-					      ,{<<"Version">>, wh_json:get_binary_value(<<"pvt_vsn">>, Doc)}
-					      | wh_api:default_headers(<<>>, <<"configuration">>, <<"doc_", Action/binary>>, ?APP_NAME, ?APP_VSN)
-					     ]),
+			    ,{<<"Type">>, Type}
+			    ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
+			    ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
+			    ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
+			    ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
+			    ,{<<"Version">>, wh_json:get_binary_value(<<"pvt_vsn">>, Doc)}
+			    | wh_api:default_headers(<<>>, <<"configuration">>, <<"doc_", Action/binary>>, ?APP_NAME, ?APP_VSN)
+			   ],
 		  ?LOG("publishing configuration document_change event for ~s, type: ~s", [Id, Type]),
-		  {ok, Payload} = wh_api:document_change(Change),
-		  amqp_util:document_change_publish(Action, Db, Type, Id, Payload)
+		  {ok, Payload} = wapi_conf:doc_update(Change),
+		  wapi_conf:publish_doc_update(Action, Db, Type, Id, Payload)
 	  end).
 %%--------------------------------------------------------------------
 %% @public
@@ -408,7 +408,7 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
             crossbar_util:response_datastore_timeout(Context);
 	{ok, _Doc} ->
 	    ?LOG("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
-	    send_document_change(<<"deleted">>, DB, JObj1),
+	    send_document_change(deleted, DB, JObj1),
             Context#cb_context{
 	       doc = wh_json:new()
 	      ,resp_status=success

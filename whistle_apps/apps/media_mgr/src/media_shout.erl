@@ -18,6 +18,7 @@
 	 terminate/2, code_change/3]).
 
 -include("media.hrl").
+-include_lib("kernel/include/inet.hrl").
 
 -define(SERVER, ?MODULE).
 -define(CONTENT_TYPE_MP3, <<"audio/mpeg">>).
@@ -150,12 +151,15 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 		      _ -> CType
 		  end,
 
+    {ok, Host} = inet:gethostname(),
+    {ok, #hostent{h_name=Hostname}} = inet:gethostbyname(Host),
+
     CallID = get(callid),
     {Resp, Header, CT, StreamUrl} = case ContentType of
 					<<"mp3">> ->
 					    Self = self(),
 					    spawn(fun() -> put(callid, CallID), start_shout_acceptor(Self, LSocket) end),
-					    Url = list_to_binary(["shout://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.mp3"]),
+					    Url = list_to_binary(["shout://", Hostname, ":", integer_to_list(PortNo), "/stream.mp3"]),
 
 					    {
 					      wh_shout:get_shout_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, Url, ?CONTENT_TYPE_MP3)
@@ -170,7 +174,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 					      get_http_response_headers(?CONTENT_TYPE_WAV, Size)
 					      ,undefined
 					      ,?CONTENT_TYPE_WAV
-					      ,list_to_binary(["http://", net_adm:localhost(), ":", integer_to_list(PortNo), "/stream.wav"])
+					      ,list_to_binary(["http://", Hostname, ":", integer_to_list(PortNo), "/stream.wav"])
 					    }
 				    end,
 
@@ -259,9 +263,9 @@ send_media_resp(MediaName, Url, To) ->
 	    ,{<<"Stream-URL">>, Url}
 	    | wh_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?APP_NAME, ?APP_VERSION)],
 
-    {ok, JSON} = wh_api:media_resp(Prop),
+    {ok, JSON} = wapi_media:resp(Prop),
     ?LOG("notifying requestor that ~s as available at ~s", [MediaName, Url]),
-    amqp_util:targeted_publish(To, JSON).
+    wapi_media:publish_resp(To, JSON).
 
 start_shout_acceptor(Parent, LSock) ->
     {ok, PortNo} = inet:port(LSock),

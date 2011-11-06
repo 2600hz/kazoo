@@ -24,7 +24,7 @@ handle_req(ApiJObj, Props) ->
     put(callid, CallId),
 
     ?LOG_START("received registration query"),
-    true = wh_api:reg_query_v(ApiJObj),
+    true = wapi_registration:query_req_v(ApiJObj),
 
     Realm = wh_json:get_value(<<"Realm">>, ApiJObj),
     Username = wh_json:get_value(<<"Username">>, ApiJObj),
@@ -52,14 +52,14 @@ filter_and_send(ApiJObj, RegJObj, Queue) ->
                                                        end, [], Fields))
                  end,
 
-    {ok, Payload} = wh_api:reg_query_resp([ {<<"Fields">>, RespFields}
-                                            | wh_api:default_headers(Queue
-                                                                     ,<<"directory">>
-                                                                     ,<<"reg_query_resp">>
-                                                                     ,?APP_NAME
-                                                                     ,?APP_VERSION)
-                                          ]),
+    {ok, Payload} = wapi_registration:query_resp([ {<<"Fields">>, RespFields}
+						   | wh_api:default_headers(Queue
+									    ,<<"directory">>
+									    ,<<"reg_query_resp">>
+									    ,?APP_NAME
+									    ,?APP_VERSION)
+						 ]),
 
     RespServer = wh_json:get_value(<<"Server-ID">>, ApiJObj),
-    reg_util:send_resp(Payload, RespServer),
+    wapi_registration:publish_query_resp(RespServer, Payload),
     ?LOG_END("sent reply for AOR: ~s", [wh_json:get_value(<<"Contact">>, RegJObj)]).

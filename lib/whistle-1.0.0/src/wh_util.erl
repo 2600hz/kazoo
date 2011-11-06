@@ -63,7 +63,7 @@ call_response1(CallId, CtrlQ, Commands) ->
                ,{<<"Call-ID">>, CallId}
                ,{<<"Commands">>, Commands}
                | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
-    {ok, Payload} = wh_api:queue_req(Command),
+    {ok, Payload} = wapi_dialplan:queue(Command),
     amqp_util:callctl_publish(CtrlQ, Payload).
 
 %%--------------------------------------------------------------------

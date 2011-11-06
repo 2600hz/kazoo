@@ -59,11 +59,12 @@ init_authorize(Parent, FSID, CallID, FSData) ->
 
     {IsAuth, CCV} = try
 			{ok, RespJObj} = ecallmgr_amqp_pool:authz_req(ReqProp, 2000),
+			true = wapi_authz:resp_v(RespJObj),
 			{wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj))
 			 ,wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, [])}
 		    catch
 			_:_ ->
-			    ?LOG("Authz request un-answered"),
+			    ?LOG("Authz request un-answered or improper"),
 			    default()
 		    end,
 
@@ -94,5 +95,5 @@ request(FSID, CallID, FSData) ->
      ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
      ,{<<"Call-ID">>, CallID}
-     ,{<<"Custom-Channel-Vars">>, {struct, ecallmgr_util:custom_channel_vars(FSData)}}
+     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
      | wh_api:default_headers(<<>>, <<"dialplan">>, <<"authz_req">>, ?APP_NAME, ?APP_VERSION)].
