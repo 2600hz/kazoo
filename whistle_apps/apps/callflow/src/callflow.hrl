@@ -5,9 +5,9 @@
 -include_lib("cf_amqp.hrl").
 
 -type cf_exe_response() :: {'stop'} | {'continue'} | {'continue', integer()} | {'heartbeat'}.
--type cf_api_error() :: {'error', 'channel_hungup' | 'channel_unbridge' | 'execution_failure' | 'timeout'}.
+-type cf_api_error() :: {'error', 'channel_hungup' | 'channel_unbridge' | 'timeout' | json_object()}.
 -type cf_api_std_return() :: cf_api_error() | {'ok', json_object()}.
--type cf_api_bridge_return() :: {'error', 'execution_failure' | 'timeout'} | {'fail', json_object()} | {'ok', json_object()}.
+-type cf_api_bridge_return() :: {'error', 'timeout' | json_object()} | {'fail', json_object()} | {'ok', json_object()}.
 -type cf_api_binary() :: binary() | 'undefined'.
 
 -define(APP_NAME, <<"callflow">>).
