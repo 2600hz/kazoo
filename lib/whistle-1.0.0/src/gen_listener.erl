@@ -301,7 +301,7 @@ handle_cast({rm_binding, Binding}=Req, #state{queue=Q}=State) ->
     Wapi = <<"wapi_", (wh_util:to_binary(Binding))/binary>>,
     try
 	ApiMod = wh_util:to_atom(Wapi),
-	ApiMod:ubind_q(Q),
+	ApiMod:unbind_q(Q),
 	{noreply, State}
     catch
 	error:badarg ->
@@ -324,7 +324,7 @@ handle_cast({rm_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
     Wapi = <<"wapi_", (wh_util:to_binary(Binding))/binary>>,
     try
 	ApiMod = wh_util:to_atom(Wapi),
-	ApiMod:ubind_q(Q, Props),
+	ApiMod:unbind_q(Q, Props),
 	{noreply, State}
     catch
 	error:badarg ->
