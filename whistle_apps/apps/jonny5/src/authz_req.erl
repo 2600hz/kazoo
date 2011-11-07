@@ -31,14 +31,14 @@ handle_req(JObj, _Props) ->
 		     } of
 		    {AcctID, undefined} when is_binary(AcctID) ->
 			%% Coming from carrier (off-net)
-			?LOG("Authorize inbound call"),
+			?LOG("Trying to authorize inbound call"),
 			j5_acctmgr:authz_trunk(AcctID, JObj, inbound);
 		    {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
 			%% Coming from PBX (on-net); authed by Registrar
-			?LOG("Authorize outbound call"),
+			?LOG("Trying to authorize outbound call"),
 			j5_acctmgr:authz_trunk(AcctID, JObj, outbound);
 		    {_AcctID, _AuthID} ->
-			?LOG("Error in authorization: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID]),
+			?LOG("Error in finding authorization: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID]),
 			undefined
 		end,
     send_resp(JObj, AuthZResp).

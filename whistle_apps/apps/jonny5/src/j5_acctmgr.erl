@@ -9,25 +9,25 @@
 %%%-------------------------------------------------------------------
 -module(j5_acctmgr).
 
--behaviour(gen_server).
+-behaviour(gen_listener).
 
 %% API
 -export([start_link/1, authz_trunk/3, known_calls/1, status/1, refresh/1]).
 
+-export([handle_call_event/2]).
+
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
+	 ,terminate/2, code_change/3]).
 
 -include("jonny5.hrl").
 
 -define(SERVER, ?MODULE).
 
 -record(state, {
-	  my_q = undefined :: binary() | undefined
-	 ,is_amqp_up = true :: boolean()
-	 ,acct_id = <<>> :: binary()
+	 acct_id = <<>> :: binary()
          ,acct_rev = <<>> :: binary()
-	 ,acct_type = account :: account | ts
+	 ,acct_type = 'account' :: 'account' | 'ts'
 	 ,max_two_way = 0 :: non_neg_integer()
          ,max_inbound = 0 :: non_neg_integer()
 	 ,two_way = 0 :: non_neg_integer()
@@ -49,7 +49,11 @@
 %%--------------------------------------------------------------------
 -spec start_link/1 :: (ne_binary()) -> {'ok', pid()} | 'ignore' | {'error', term()}.
 start_link(AcctID) ->
-    gen_server:start_link(?MODULE, [AcctID], []).
+    gen_listener:start_link(?MODULE, [{bindings, [{self, []}]}
+				      ,{responders, [{ {?MODULE, handle_call_event}, [{<<"call_event">>, <<"*">>} % call events
+										      ,{<<"call_detail">>, <<"*">>} % and CDR
+										     ] }]}
+				     ], [AcctID]).
 
 -spec status/1 :: (pid()) -> json_object().
 status(Srv) ->
@@ -97,6 +101,10 @@ known_calls(AcctID) when is_binary(AcctID) ->
 	{ok, AcctPid} when is_pid(AcctPid) -> known_calls(AcctPid)
     end.
 
+handle_call_event(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    gen_listener:cast(Srv, {call_event, JObj}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -115,8 +123,6 @@ known_calls(AcctID) when is_binary(AcctID) ->
 init([AcctID]) ->
     j5_util:store_account_handler(AcctID, self()),
 
-    Q = amqp_util:new_queue(),
-
     case get_trunks_available(AcctID, account) of
 	{error, not_found} ->
 	    ?LOG_SYS("No account found for ~s", [AcctID]),
@@ -127,15 +133,13 @@ init([AcctID]) ->
 
 	    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"ts">>, AcctID),
 
-	    {ok, #state{my_q=Q, is_amqp_up=is_binary(Q)
-			,prepay=Prepay
+	    {ok, #state{prepay=Prepay
 			,two_way=TwoWay, inbound=Inbound
 			,max_two_way=TwoWay, max_inbound=Inbound
 			,acct_rev=Rev, acct_id=AcctID, acct_type=ts
 		       }};
 	{TwoWay, Inbound, Prepay, account} ->
-	    {ok, #state{my_q=Q, is_amqp_up=is_binary(Q)
-			,prepay=Prepay
+	    {ok, #state{prepay=Prepay
 			,two_way=TwoWay, inbound=Inbound
 			,max_two_way=TwoWay, max_inbound=Inbound
 			,acct_id=AcctID, acct_type=account
@@ -156,7 +160,6 @@ init([AcctID]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
 handle_call(status, _, #state{max_two_way=MaxTwo, max_inbound=MaxIn
 			      ,two_way=Two, inbound=In
 			      ,prepay=Prepay, acct_id=Acct}=State) ->
@@ -227,6 +230,26 @@ handle_cast(refresh, #state{acct_type=AcctType, acct_id=AcctID}=State) ->
 	_E ->
 	    ?LOG("Failed to refresh: ~p", [_E]),
 	    {noreply, State}
+    end;
+handle_cast({call_event, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Dict
+						    ,max_inbound=MaxIn, max_two_way=MaxTwo
+						   }=State) ->
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+
+    case process_call_event(CallID, JObj, Dict) of
+	{release, inbound, Dict1} ->
+	    ?LOG_END(CallID, "Releasing inbound trunk", []),
+	    unmonitor_call(CallID),
+	    NewIn = case (In+1) of I when I > MaxIn -> MaxIn; I -> I end,
+	    {noreply, State#state{inbound=NewIn, trunks_in_use=Dict1}, hibernate};
+	{release, twoway, Dict2} ->
+	    ?LOG_END(CallID, "Releasing two-way trunk", []),
+	    unmonitor_call(CallID),
+	    NewTwo = case (Two+1) of T when T > MaxTwo -> MaxTwo; T -> T end,
+	    {noreply, State#state{two_way=NewTwo, trunks_in_use=Dict2}, hibernate};
+	ignore ->
+	    ?LOG_END(CallID, "Ignoring event", []),
+	    {noreply, State}
     end.
 
 %%--------------------------------------------------------------------
@@ -239,29 +262,6 @@ handle_cast(refresh, #state{acct_type=AcctType, acct_id=AcctID}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({_, #amqp_msg{payload=Payload}}, #state{my_q=Q, two_way=Two, inbound=In, trunks_in_use=Dict
-						    ,max_inbound=MaxIn, max_two_way=MaxTwo
-						   }=State) ->
-    JObj = mochijson2:decode(Payload),
-    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    ?LOG(CallID, "Recv JSON payload: ~s", [Payload]),
-
-    case process_call_event(CallID, JObj, Dict) of
-	{release, inbound, Dict1} ->
-	    ?LOG_END(CallID, "Releasing inbound trunk", []),
-	    unmonitor_call(Q, CallID),
-	    NewIn = case (In+1) of I when I > MaxIn -> MaxIn; I -> I end,
-	    {noreply, State#state{inbound=NewIn, trunks_in_use=Dict1}, hibernate};
-	{release, twoway, Dict2} ->
-	    ?LOG_END(CallID, "Releasing two-way trunk", []),
-	    unmonitor_call(Q, CallID),
-	    NewTwo = case (Two+1) of T when T > MaxTwo -> MaxTwo; T -> T end,
-	    {noreply, State#state{two_way=NewTwo, trunks_in_use=Dict2}, hibernate};
-	ignore ->
-	    ?LOG_END(CallID, "Ignoring event", []),
-	    {noreply, State}
-    end;
-
 handle_info({document_changes, AcctID, Changes}, #state{acct_rev=Rev, acct_id=AcctID, acct_type=AcctType}=State) ->
     ?LOG_SYS("change to account ~s to be processed", [AcctID]),
     State1 = lists:foldl(fun(Prop, State0) ->
@@ -286,6 +286,9 @@ handle_info(#'basic.consume_ok'{}, State) ->
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
+
+handle_event(_JObj, _State) ->
+    {reply, [{server, self()}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -367,28 +370,24 @@ try_inbound_then_twoway(CallID, State) ->
 	    end
     end.
 
--spec try_twoway/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
-      CallID :: binary(),
-      State :: #state{}.
+-spec try_twoway/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
 try_twoway(_CallID, #state{two_way=T}=State) when T < 1 ->
     ?LOG_SYS(_CallID, "Failed to authz a two-way trunk", []),
     {{false, []}, State#state{two_way=0}};
-try_twoway(CallID, #state{my_q=Q, two_way=Two, trunks_in_use=Dict}=State) ->
+try_twoway(CallID, #state{two_way=Two, trunks_in_use=Dict}=State) ->
     ?LOG_SYS(CallID, "Authz a two-way trunk", []),
-    monitor_call(Q, CallID),
+    monitor_call(CallID),
     {{true, [{<<"Trunk-Type">>, <<"two_way">>}]}
      ,State#state{two_way=Two-1, trunks_in_use=dict:store(CallID, twoway, Dict)}
     }.
 
--spec try_inbound/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
-      CallID :: binary(),
-      State :: #state{}.
+-spec try_inbound/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
 try_inbound(_CallID, #state{inbound=I}=State) when I < 1 ->
     ?LOG_SYS(_CallID, "Failed to authz an inbound_only trunk", []),
     {{false, []}, State#state{inbound=0}};
-try_inbound(CallID, #state{my_q=Q, inbound=In, trunks_in_use=Dict}=State) ->
+try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict}=State) ->
     ?LOG_SYS(CallID, "Authz an inbound_only trunk", []),
-    monitor_call(Q, CallID),
+    monitor_call(CallID),
     {{true, [{<<"Trunk-Type">>, <<"inbound">>}]}
      ,State#state{inbound=In-1, trunks_in_use=dict:store(CallID, inbound, Dict)}
     }.
@@ -399,40 +398,28 @@ try_inbound(CallID, #state{my_q=Q, inbound=In, trunks_in_use=Dict}=State) ->
 try_prepay(_CallID, #state{prepay=Pre}=State) when Pre =< 0.0 ->
     ?LOG_SYS(_CallID, "Failed to authz a per_min trunk", []),
     {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State};
-try_prepay(CallID, #state{acct_id=AcctId, my_q=Q, prepay=_Pre, trunks_in_use=Dict}=State) ->
+try_prepay(CallID, #state{acct_id=AcctId, prepay=_Pre, trunks_in_use=Dict}=State) ->
     case jonny5_listener:is_blacklisted(AcctId) of
 	{true, Reason} ->
 	    ?LOG_SYS(CallID, "Authz false for per_min: ~s", [Reason]),
 	    {{false, [{<<"Error">>, Reason}]}, State};
 	false ->
 	    ?LOG_SYS(CallID, "Authz a per_min trunk with $~p prepay", [_Pre]),
-	    monitor_call(Q, CallID),
+	    monitor_call(CallID),
 	    {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
 	     ,State#state{trunks_in_use=dict:store(CallID, per_min, Dict)}
 	    }
     end.
 
--spec monitor_call/2 :: (Q, CallID) -> ok when
-      Q :: binary(),
-      CallID :: binary().
-monitor_call(Q, CallID) ->
-    _ = amqp_util:bind_q_to_callevt(Q, CallID),
-    _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
-    ?LOG(CallID, "Monitoring with ~s", [Q]),
-    amqp_util:basic_consume(Q, [{exclusive, false}]).
+-spec monitor_call/1 :: (ne_binary()) -> 'ok'.
+monitor_call(CallID) ->
+    gen_listener:add_binding(self(), call, [{callid, CallID}]).
 
--spec unmonitor_call/2 :: (Q, CallID) -> ok when
-      Q :: binary(),
-      CallID :: binary().
-unmonitor_call(Q, CallID) ->
-    amqp_util:unbind_q_from_callevt(Q, CallID),
-    amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
-    ?LOG(CallID, "Un-monitoring", []).
+-spec unmonitor_call/1 :: (ne_binary()) -> 'ok'.
+unmonitor_call(CallID) ->
+    gen_listener:rm_binding(self(), call, [{callid, CallID}]).
 
--spec process_call_event/3 :: (CallID, JObj, Dict) -> ignore | {release, twoway | inbound, dict()} when
-      CallID :: binary(),
-      JObj :: json_object(),
-      Dict :: dict().
+-spec process_call_event/3 :: (ne_binary(), json_object(), dict()) -> 'ignore' | {'release', 'twoway' | 'inbound', dict()}.
 process_call_event(CallID, JObj, Dict) ->
     case { wh_json:get_value(<<"Application-Name">>, JObj)
 	   ,wh_json:get_value(<<"Event-Name">>, JObj)
@@ -469,9 +456,7 @@ process_call_event(CallID, JObj, Dict) ->
 	    ignore
     end.
 
--spec release_trunk/2 :: (CallID, Dict) -> ignore | {release, twoway | inbound, dict()} when
-      CallID :: binary(),
-      Dict :: dict().
+-spec release_trunk/2 :: (ne_binary(), dict()) -> 'ignore' | {'release', 'twoway' | 'inbound', dict()}.
 release_trunk(CallID, Dict) ->
     case dict:find(CallID, Dict) of
 	error ->

@@ -27,7 +27,7 @@
 	 }).
 
 -define(RESPONDERS, [ {authz_req, [{<<"dialplan">>, <<"authz_req">>}]} ]).
--define(BINDINGS, [ {authorization, []} ]).
+-define(BINDINGS, [ {authz, []} ]).
 
 -define(SERVER, ?MODULE).
 -define(SETTINGS_FILE, [code:priv_dir(jonny5), "/settings.conf"]).
