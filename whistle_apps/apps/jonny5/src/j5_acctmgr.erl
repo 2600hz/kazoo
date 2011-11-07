@@ -3,7 +3,6 @@
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Handle serializing account access for crossbar accounts
-%%% TODO: convert to gen_listener
 %%% @end
 %%% Created : 16 Jul 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
