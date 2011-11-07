@@ -51,7 +51,8 @@ start_link(AcctID) ->
     gen_listener:start_link(?MODULE, [{bindings, [{self, []}]}
 				      ,{responders, [{ {?MODULE, handle_call_event}, [{<<"call_event">>, <<"*">>} % call events
 										      ,{<<"call_detail">>, <<"*">>} % and CDR
-										     ] }]}
+										     ] }
+						    ]}
 				     ], [AcctID]).
 
 -spec status/1 :: (pid()) -> json_object().
@@ -126,6 +127,13 @@ init([AcctID]) ->
 	{error, not_found} ->
 	    ?LOG_SYS("No account found for ~s", [AcctID]),
 	    {stop, no_account};
+	{TwoWay, Inbound, Prepay, account} ->
+	    ?LOG_SYS("Init for account ~s complete", [AcctID]),
+	    {ok, #state{prepay=Prepay
+			,two_way=TwoWay, inbound=Inbound
+			,max_two_way=TwoWay, max_inbound=Inbound
+			,acct_id=AcctID, acct_type=account
+		       }};
 	{TwoWay, Inbound, Prepay, ts} ->
 	    ?LOG_SYS("Init for ts ~s complete", [AcctID]),
 	    couch_mgr:add_change_handler(<<"ts">>, AcctID),
@@ -136,12 +144,6 @@ init([AcctID]) ->
 			,two_way=TwoWay, inbound=Inbound
 			,max_two_way=TwoWay, max_inbound=Inbound
 			,acct_rev=Rev, acct_id=AcctID, acct_type=ts
-		       }};
-	{TwoWay, Inbound, Prepay, account} ->
-	    {ok, #state{prepay=Prepay
-			,two_way=TwoWay, inbound=Inbound
-			,max_two_way=TwoWay, max_inbound=Inbound
-			,acct_id=AcctID, acct_type=account
 		       }}
     end.
 
@@ -221,10 +223,10 @@ handle_call({authz, JObj, outbound}, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(refresh, #state{acct_type=AcctType, acct_id=AcctID}=State) ->
+handle_cast(refresh, #state{acct_type=AcctType, acct_id=AcctID, max_two_way=_OldTwo, max_inbound=_OldIn}=State) ->
     case catch(get_trunks_available(AcctID, AcctType)) of
 	{MaxTwo, MaxIn, _Prepay, AcctType} ->
-	    ?LOG("Updating max two to ~b, max inbound to ~b", [MaxTwo, MaxIn]),
+	    ?LOG("Updating max two to ~b (from ~b), max inbound to ~b (from ~b)", [MaxTwo, _OldTwo, MaxIn, _OldIn]),
 	    {noreply, State#state{max_two_way=MaxTwo, max_inbound=MaxIn}};
 	_E ->
 	    ?LOG("Failed to refresh: ~p", [_E]),
@@ -322,17 +324,16 @@ code_change(_OldVsn, State, _Extra) ->
       AcctID :: binary(),
       Type :: account | ts.
 get_trunks_available(AcctID, account) ->
-    case couch_mgr:open_doc(whapps_util:get_db_name(AcctID, encoded), AcctID) of
+    case couch_mgr:get_results(whapps_util:get_db_name(AcctID, encoded), <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
+	{ok, []} ->
+	    ?LOG("No results from view, tring account doc"),
+	    get_trunks_available_from_account_doc(AcctID);
 	{error, not_found} ->
-	    ?LOG_SYS("Account ~s not found, trying ts", [AcctID]),
-	    get_trunks_available(AcctID, ts);
-	{ok, JObj} ->
-	    Trunks = wh_util:to_integer(wh_json:get_value(<<"trunks">>, JObj, 0)),
-	    InboundTrunks = wh_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, JObj, 0)),
-	    Prepay = wh_util:to_float(wh_json:get_value(<<"prepay">>, JObj, 0.0)),
-	    %% Balance = ?DOLLARS_TO_UNITS(),
-	    ?LOG_SYS("Found trunk levels for ~s: ~b two way, ~b inbound, and $ ~p prepay", [AcctID, Trunks, InboundTrunks, Prepay]),
-	    {Trunks, InboundTrunks, Prepay, account}
+	    ?LOG("Error loading view, tring account doc"),
+	    get_trunks_available_from_account_doc(AcctID);
+	{ok, [JObj|_]} ->
+	    ?LOG("View result retrieved"),
+	    get_account_values(JObj)
     end;
 get_trunks_available(AcctID, ts) ->
     case couch_mgr:open_doc(<<"ts">>, AcctID) of
@@ -350,6 +351,23 @@ get_trunks_available(AcctID, ts) ->
 	    ?LOG_SYS("Found trunk levels for ~s: ~b two way, ~b inbound, and $ ~p prepay", [AcctID, Trunks, InboundTrunks, Prepay]),
 	    {Trunks, InboundTrunks, Prepay, ts}
     end.
+
+get_trunks_available_from_account_doc(AcctID) ->
+    case couch_mgr:open_doc(whapps_util:get_db_name(AcctID, encoded), AcctID) of
+	{error, not_found} ->
+	    ?LOG_SYS("Account ~s not found, trying ts", [AcctID]),
+	    get_trunks_available(AcctID, ts);
+	{ok, JObj} ->
+	    get_account_values(JObj)
+    end.
+
+get_account_values(JObj) ->
+    Trunks = wh_util:to_integer(wh_json:get_value(<<"trunks">>, JObj, 0)),
+    InboundTrunks = wh_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, JObj, 0)),
+    Prepay = wh_util:to_float(wh_json:get_value(<<"prepay">>, JObj, 0.0)),
+    %% Balance = ?DOLLARS_TO_UNITS(),
+    ?LOG_SYS("Found trunk levels: ~b two way, ~b inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
+    {Trunks, InboundTrunks, Prepay, account}.
 
 -spec try_inbound_then_twoway/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
       CallID :: binary(),
