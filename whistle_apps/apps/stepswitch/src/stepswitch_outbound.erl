@@ -863,19 +863,17 @@ wait_for_bridge(Timeout) ->
       JObj :: json_object().
 respond_bridged_to_resource(BridgeResp, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, BridgeResp),
-    Response = [{<<"Call-ID">>, wh_json:get_value(<<"Other-Leg-Unique-ID">>, BridgeResp)}
-                ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-                ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, JObj)}
-                ,{<<"To">>, wh_json:get_value(<<"Other-Leg-Destination-Number">>, BridgeResp)}
-                ,{<<"Caller-ID-Name">>, wh_json:get_value(<<"Other-Leg-Caller-ID-Name">>, BridgeResp)}
-                ,{<<"Caller-ID-Number">>, wh_json:get_value(<<"Other-Leg-Caller-ID-Number">>, BridgeResp)}
-                ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, BridgeResp)}
-                ,{<<"Timestamp">>, wh_json:get_value(<<"Timestamp">>, BridgeResp)}
-                ,{<<"Channel-Call-State">>, wh_json:get_value(<<"Channel-Call-State">>, BridgeResp)}
-               | wh_api:default_headers(Q, <<"resource">>, <<"offnet_resp">>, ?APP_NAME, ?APP_VERSION)
-            ],
-    {ok, Payload} = wapi_resource:resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
-    wapi_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+    Resp = [{<<"Call-ID">>, wh_json:get_value(<<"Other-Leg-Unique-ID">>, BridgeResp)}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+            ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, JObj)}
+            ,{<<"To">>, wh_json:get_value(<<"Other-Leg-Destination-Number">>, BridgeResp)}
+            ,{<<"Caller-ID-Name">>, wh_json:get_value(<<"Other-Leg-Caller-ID-Name">>, BridgeResp)}
+            ,{<<"Caller-ID-Number">>, wh_json:get_value(<<"Other-Leg-Caller-ID-Number">>, BridgeResp)}
+            ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, BridgeResp)}
+            ,{<<"Timestamp">>, wh_json:get_value(<<"Timestamp">>, BridgeResp)}
+            ,{<<"Channel-Call-State">>, wh_json:get_value(<<"Channel-Call-State">>, BridgeResp)}
+            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+    wapi_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -890,18 +888,15 @@ respond_bridged_to_resource(BridgeResp, JObj) ->
       JObj :: json_object().
 respond_resource_failed(BridgeResp, Attempts, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, BridgeResp, <<>>),
-    Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-                ,{<<"Failed-Attempts">>, wh_util:to_binary(Attempts)}
-                ,{<<"Failure-Message">>,
-                  wh_json:get_value(<<"Application-Response">>, BridgeResp, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp))}
-                ,{<<"Failure-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
-                ,{<<"Hangup-Cause">>, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp)}
-                ,{<<"Hangup-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
-		| wh_api:default_headers(Q, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
-	       ],
-
-    {ok, Payload} = wapi_resource:error([ KV || {_, V}=KV <- Response, V =/= undefined ]),
-    wapi_resource:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+    Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+             ,{<<"Failed-Attempts">>, wh_util:to_binary(Attempts)}
+             ,{<<"Failure-Message">>,
+               wh_json:get_value(<<"Application-Response">>, BridgeResp, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp))}
+             ,{<<"Failure-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
+             ,{<<"Hangup-Cause">>, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp)}
+             ,{<<"Hangup-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
+             | wh_api:default_headers(Q, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
+    wapi_resource:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error).
 
 %%--------------------------------------------------------------------
 %% @private

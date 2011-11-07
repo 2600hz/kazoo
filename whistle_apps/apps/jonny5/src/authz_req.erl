@@ -51,18 +51,11 @@ handle_req(JObj, Props) ->
 send_resp(_JObj, undefined) ->
     ?LOG_END("No response for authz");
 send_resp(JObj, {AuthzResp, CCV}) ->
-    ?LOG_SYS("AuthzResp: ~s", [AuthzResp]),
+    ?LOG_SYS("sending authz response ~s", [AuthzResp]),
     ?LOG_SYS("CCVs: ~p", [CCV]),
-
-    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-
-    Prop = [{<<"Is-Authorized">>, wh_util:to_binary(AuthzResp)}
-	     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCV)}
-	     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-	     ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-	     | wh_api:default_headers(<<>>, <<"dialplan">>, <<"authz_resp">>, ?APP_NAME, ?APP_VSN)
-	    ],
-
-    {ok, JSON} = wapi_authz:resp(Prop),
-    ?LOG_END("Sending authz resp: ~s", [JSON]),
-    wapi_authz:publish_resp(RespQ, JSON).
+    Resp = [{<<"Is-Authorized">>, wh_util:to_binary(AuthzResp)}
+            ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCV)}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VSN)],
+    wapi_authz:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).

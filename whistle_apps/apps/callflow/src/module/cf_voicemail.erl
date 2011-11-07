@@ -97,7 +97,7 @@
           ,new_pin_saved = <<"/system_media/vm-pin_set">>
           ,new_pin_bad = <<"/system_media/vm-pin_invalid">>
 
-          ,tone_spec = [wh_json:from_list([{<<"Frequencies">>, [440]},{<<"Duration-ON">>, 500},{<<"Duration-OFF">>, 100}])]
+          ,tone_spec = [wh_json:from_list([{<<"Frequencies">>, [<<"440">>]},{<<"Duration-ON">>, <<"500">>},{<<"Duration-OFF">>, <<"100">>}])]
          }).
 
 -record(mailbox, {

@@ -34,8 +34,8 @@
 -define(REG_SUCCESS_TYPES, []).
 
 %% Query Registrations
--define(REG_QUERY_HEADERS, [<<"Username">>, <<"Realm">>, <<"Fields">>]).
--define(OPTIONAL_REG_QUERY_HEADERS, []).
+-define(REG_QUERY_HEADERS, [<<"Username">>, <<"Realm">>]).
+-define(OPTIONAL_REG_QUERY_HEADERS, [<<"Fields">>]).
 -define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
 			   ,{<<"Event-Name">>, <<"reg_query">>}
 			  ]).
@@ -61,7 +61,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec success/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec success/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 success(Prop) when is_list(Prop) ->
     case success_v(Prop) of
 	true -> wh_api:build_message(Prop, ?REG_SUCCESS_HEADERS, ?OPTIONAL_REG_SUCCESS_HEADERS);
@@ -81,7 +81,7 @@ success_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec query_req/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec query_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 query_req(Prop) when is_list(Prop) ->
     case query_req_v(Prop) of
 	true -> wh_api:build_message(Prop, ?REG_QUERY_HEADERS, ?OPTIONAL_REG_QUERY_HEADERS);
@@ -90,7 +90,7 @@ query_req(Prop) when is_list(Prop) ->
 query_req(JObj) ->
     query_req(wh_json:to_proplist(JObj)).
 
--spec query_req_v/1 :: (proplist() | json_object()) -> boolean().
+-spec query_req_v/1 :: (api_terms()) -> boolean().
 query_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?REG_QUERY_HEADERS, ?REG_QUERY_VALUES, ?REG_QUERY_TYPES);
 query_req_v(JObj) ->
@@ -101,7 +101,7 @@ query_req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec query_resp/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec query_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 query_resp(Prop) when is_list(Prop) ->
     case query_resp_v(Prop) of
 	true -> wh_api:build_message(Prop, ?REG_QUERY_RESP_HEADERS, ?OPTIONAL_REG_QUERY_RESP_HEADERS);
@@ -110,7 +110,7 @@ query_resp(Prop) when is_list(Prop) ->
 query_resp(JObj) ->
     query_resp(wh_json:to_proplist(JObj)).
 
--spec query_resp_v/1 :: (proplist() | json_object()) -> boolean().
+-spec query_resp_v/1 :: (api_terms()) -> boolean().
 query_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?REG_QUERY_RESP_HEADERS, ?REG_QUERY_RESP_VALUES, ?REG_QUERY_RESP_TYPES);
 query_resp_v(JObj) ->
@@ -135,25 +135,28 @@ unbind_q(Q) ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_success/1 :: (iolist()) -> 'ok'.
--spec publish_success/2 :: (iolist(), binary()) -> 'ok'.
-publish_success(JSON) ->
-    publish_success(JSON, ?DEFAULT_CONTENT_TYPE).
-publish_success(Payload, ContentType) ->
+-spec publish_success/1 :: (api_terms()) -> 'ok'.
+-spec publish_success/2 :: (api_terms(), binary()) -> 'ok'.
+publish_success(JObj) ->
+    publish_success(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_success(Success, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Success, ?REG_SUCCESS_VALUES, fun ?MODULE:success/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_REG_SUCCESS).
 
 -spec publish_query_req/1 :: (iolist()) -> 'ok'.
 -spec publish_query_req/2 :: (iolist(), binary()) -> 'ok'.
-publish_query_req(JSON) ->
-    publish_query_req(JSON, ?DEFAULT_CONTENT_TYPE).
-publish_query_req(Payload, ContentType) ->
+publish_query_req(JObj) ->
+    publish_query_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_query_req(Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?REG_QUERY_VALUES, fun ?MODULE:query_req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_REG_QUERY).
 
 -spec publish_query_resp/2 :: (ne_binary(), iolist()) -> 'ok'.
 -spec publish_query_resp/3 :: (ne_binary(), iolist(), binary()) -> 'ok'.
-publish_query_resp(Queue, JSON) ->
-    publish_query_resp(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_query_resp(Queue, Payload, ContentType) ->
+publish_query_resp(Queue, JObj) ->
+    publish_query_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_query_resp(Queue, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?REG_QUERY_RESP_VALUES, fun ?MODULE:query_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%--------------------------------------------------------------------

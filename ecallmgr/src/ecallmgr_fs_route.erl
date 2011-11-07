@@ -392,10 +392,5 @@ start_control_and_events(Node, CallID, SendTo, CCVs) ->
       SendTo :: binary(),
       CtlProp :: proplist().
 send_control_queue(SendTo, CtlProp) ->
-    case wapi_route:win(CtlProp) of
-	{ok, JSON} ->
-	    ?LOG_END("sending route_win to ~s", [SendTo]),
-	    wapi_route:publish_win(SendTo, JSON);
-	{error, _Msg} ->
-	    ?LOG_END("sending route_win to ~s failed, ~p", [SendTo, _Msg])
-    end.
+    ?LOG_END("sending route_win to ~s", [SendTo]),
+    wapi_route:publish_win(SendTo, CtlProp).

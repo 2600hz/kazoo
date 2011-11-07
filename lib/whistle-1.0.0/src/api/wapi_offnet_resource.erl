@@ -41,7 +41,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
 	true -> wh_api:build_message(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS);
@@ -50,7 +50,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
 
--spec req_v/1 :: (proplist() | json_object()) -> boolean().
+-spec req_v/1 :: (api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OFFNET_RESOURCE_REQ_VALUES, ?OFFNET_RESOURCE_REQ_TYPES);
 req_v(JObj) ->
@@ -66,9 +66,10 @@ bind_q(Queue, _Props) ->
 unbind_q(Queue) ->
     amqp_util:unbind_q_from_resource(Queue).
 
--spec publish_req/1 :: (iolist()) -> 'ok'.
--spec publish_req/2 :: (iolist(), ne_binary()) -> 'ok'.
-publish_req(JSON) ->
-    publish_req(JSON, ?DEFAULT_CONTENT_TYPE).
-publish_req(Payload, ContentType) ->
+-spec publish_req/1 :: (api_terms()) -> 'ok'.
+-spec publish_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_req(JObj) ->
+    publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_req(Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?OFFNET_RESOURCE_REQ_VALUES, fun ?MODULE:req/1),
     amqp_util:offnet_resource_publish(Payload, ContentType).

@@ -24,7 +24,7 @@
 
 -export([from_list/1, merge_jobjs/2]).
 
--export([normalize_jobj/1, is_json_object/1, is_json_term/1]).
+-export([normalize_jobj/1, is_json_object/1, is_valid_json_object/1, is_json_term/1]).
 
 %% not for public use
 -export([prune/2, no_prune/2]).
@@ -42,7 +42,12 @@ is_empty(MaybeJObj) ->
 
 -spec is_json_object/1 :: (MaybeJObj) -> boolean() when
       MaybeJObj :: term().
-is_json_object(MaybeJObj) ->
+is_json_object({struct, _}) -> true;
+is_json_object(_) -> false.
+
+-spec is_valid_json_object/1 :: (MaybeJObj) -> boolean() when
+      MaybeJObj :: term().
+is_valid_json_object(MaybeJObj) ->
     try
  	lists:all(fun(K) -> is_json_term(?MODULE:get_value([K], MaybeJObj)) end,
 		  ?MODULE:get_keys(MaybeJObj))

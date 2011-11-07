@@ -45,7 +45,7 @@ optional_headers() ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
 	true -> wh_api:build_message(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS);
@@ -54,7 +54,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
 
--spec req_v/1 :: (proplist() | json_object()) -> boolean().
+-spec req_v/1 :: (api_terms()) -> boolean().
 req_v([_|_]=Prop) ->
     wh_api:validate(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?CHANNEL_QUERY_REQ_VALUES, ?CHANNEL_QUERY_REQ_TYPES);
 req_v(JObj) ->
@@ -65,7 +65,7 @@ req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
 	true -> wh_api:build_message(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?OPTIONAL_CHANNEL_QUERY_RESP_HEADERS);
@@ -74,7 +74,7 @@ resp(Prop) when is_list(Prop) ->
 resp(JObj) ->
     resp(wh_json:to_proplist(JObj)).
 
--spec resp_v/1 :: (proplist() | json_object()) -> boolean().
+-spec resp_v/1 :: (api_terms()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?CHANNEL_QUERY_RESP_VALUES, ?CHANNEL_QUERY_RESP_TYPES);
 resp_v(JObj) ->
@@ -94,18 +94,20 @@ unbind_q(Queue, Props) ->
     CallID = get_callid(Props),
     amqp_util:unbind_q_from_callevt(Queue, CallID, status_req).
 
--spec publish_req/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_req/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
-publish_req(CallID, JSON) ->
-    publish_req(CallID, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_req(CallID, Payload, ContentType) ->
+-spec publish_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_req(CallID, JObj) ->
+    publish_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_req(CallID, Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?CHANNEL_QUERY_REQ_VALUES, fun ?MODULE:req/1),
     amqp_util:callevt_publish(CallID, Payload, ContentType).
 
--spec publish_resp/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_resp/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
-publish_resp(RespQ, JSON) ->
-    publish_resp(RespQ, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_resp(RespQ, Payload, ContentType) ->
+-spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_resp(RespQ, JObj) ->
+    publish_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_resp(RespQ, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?CHANNEL_QUERY_RESP_VALUES, fun ?MODULE:resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec get_callid/1 :: (proplist()) -> ne_binary().

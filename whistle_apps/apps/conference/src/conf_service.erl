@@ -818,11 +818,9 @@ find_conference_route(CallId, Q) ->
       Q :: binary().
 request_call_status(CallId, Q) ->
     ?LOG("requesting the status of participant ~s", [CallId]),
-    Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(Q, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
-              ],
-    {ok, Payload} = wapi_call:status_req(Command),
-    wapi_call:publish_status_req(CallId, Payload).
+    Req = [{<<"Call-ID">>, CallId}
+           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+    wapi_call:publish_status_req(CallId, Req).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -875,14 +873,12 @@ remove_participant_event(CallId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 -spec send_route_response/2 :: (json_object(), ne_binary()) -> 'ok'.
 send_route_response(JObj, Q) ->
     ?LOG("sending route response"),
-    Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-                ,{<<"Routes">>, []}
-                ,{<<"Method">>, <<"park">>}
-                ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)}
-                | wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
-               ],
-    {ok, JSON} = wapi_route:resp(Response),
-    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), JSON).
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+            ,{<<"Routes">>, []}
+            ,{<<"Method">>, <<"park">>}
+            ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)}
+            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -898,14 +894,12 @@ send_route_response(JObj, Q) ->
       Q :: binary().
 send_auth_response(JObj, ConfId, AuthUser, AuthPwd, Q) ->
     ?LOG("sending auth response for ~s to join ~s", [AuthUser, ConfId]),
-    Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                ,{<<"Auth-Password">>, AuthPwd}
-                ,{<<"Auth-Method">>, <<"password">>}
-                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Username">>, AuthUser}
-                                                       ,{<<"Realm">>, wh_json:get_value(<<"Auth-Realm">>, JObj)}
-                                                       ,{<<"Authorizing-ID">>, ConfId}
-                                                       ,{<<"Conference-ID">>, ConfId}])}
-                | wh_api:default_headers(Q, <<"directory">>, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)
-               ],
-    {ok, JSON} = wapi_authn:resp(Response),
-    wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), JSON).
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            ,{<<"Auth-Password">>, AuthPwd}
+            ,{<<"Auth-Method">>, <<"password">>}
+            ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Username">>, AuthUser}
+                                                            ,{<<"Realm">>, wh_json:get_value(<<"Auth-Realm">>, JObj)}
+                                                            ,{<<"Authorizing-ID">>, ConfId}
+                                                            ,{<<"Conference-ID">>, ConfId}])}
+            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+    wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).

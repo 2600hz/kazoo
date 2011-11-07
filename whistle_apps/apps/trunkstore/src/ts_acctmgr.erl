@@ -597,13 +597,9 @@ is_call_active(CallID) ->
     try
 	true = is_binary(Q = amqp_util:new_targeted_queue()),
 	_ = amqp_util:bind_q_to_targeted(Q),
-
 	Req = [{<<"Call-ID">>, CallID}
-	       | wh_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_acctmgr">>, <<>>)],
-
-	{ok, JSON} = wapi_call:status_req(Req),
-	wapi_call:publish_status_req(CallID, JSON),
-
+	       | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+	wapi_call:publish_status_req(CallID, Req),
 	is_call_active_loop()
     catch
 	Type:Reason ->

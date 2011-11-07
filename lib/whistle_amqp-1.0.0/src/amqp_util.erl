@@ -275,6 +275,8 @@ basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_binary(Payloa
       ,props=#'P_basic'{content_type=ContentType}
      },
 
+    ?AMQP_DEBUG andalso ?LOG("publish ~s ~s (~p): ~s", [Exchange, Queue, Prop, Payload]),
+
     amqp_mgr:publish(BP, AM).
 
 %%------------------------------------------------------------------------------
@@ -330,6 +332,7 @@ new_exchange(Exchange, Type, _Options) ->
       exchange = Exchange
       ,type = Type
      },
+    ?AMQP_DEBUG andalso ?LOG("create new ~s exchange: ~s", [Type, Exchange]),
     amqp_mgr:misc_req(ED).
 
 %%------------------------------------------------------------------------------
@@ -435,9 +438,14 @@ new_queue(Queue, Options) when is_binary(Queue) ->
       ,arguments = props:get_value(arguments, Options, [])
      },
     case amqp_mgr:consume(QD) of
-	'ok' -> Queue;
-	#'queue.declare_ok'{queue=Q} -> Q;
+	'ok' ->
+            ?AMQP_DEBUG andalso ?LOG("create queue(~p) ~s)", [Options, Queue]),
+            Queue;
+	#'queue.declare_ok'{queue=Q} ->
+            ?AMQP_DEBUG andalso ?LOG("create queue(~p) ~s", [Options, Q]),
+            Q;
 	_Other ->
+            ?AMQP_DEBUG andalso ?LOG("error creating queue(~p): ~p", [Options, _Other]),
 	    {'error', 'amqp_error'}
     end.
 
@@ -476,6 +484,7 @@ queue_delete(Queue, Prop) ->
       ,if_empty = props:get_value(if_empty, Prop, false)
       ,nowait = props:get_value(nowait, Prop, true)
      },
+    ?AMQP_DEBUG andalso ?LOG("delete queue ~s", [Queue]),
     amqp_mgr:consume(QD).
 
 %%------------------------------------------------------------------------------
@@ -595,8 +604,15 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
       ,arguments = []
      },
     case amqp_mgr:consume(QB) of
-        {'queue.bind_ok'} -> ok;
-        Else -> Else
+        {'queue.bind_ok'} ->
+            ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
+            ok;
+        ok ->
+            ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
+            ok;
+        Else ->
+            ?AMQP_DEBUG andalso ?LOG("failed to bind queue ~s: ~p", [Queue, Else]),
+            Else
     end.
 
 %%------------------------------------------------------------------------------
@@ -648,6 +664,7 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
       ,routing_key = Routing
       ,arguments = []
      },
+    ?AMQP_DEBUG andalso ?LOG("unbound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
     amqp_mgr:consume(QU).
 
 %%------------------------------------------------------------------------------
@@ -677,9 +694,14 @@ basic_consume(Queue, Options) ->
     case amqp_mgr:consume(BC) of
         {_Pid, {'basic.consume_ok', _}} ->
             %% link(C),
+            ?AMQP_DEBUG andalso ?LOG("started consume of queue(~p) ~s", [Options, Queue]),
             ok;
-        {_, Error} -> Error;
-        Else -> Else
+        {_, Error} ->
+            ?AMQP_DEBUG andalso ?LOG("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Error]),
+            Error;
+        Else ->
+            ?AMQP_DEBUG andalso ?LOG("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Else]),
+            Else
     end.
 
 %%------------------------------------------------------------------------------
@@ -693,6 +715,7 @@ basic_cancel(Queue) ->
     BC = #'basic.cancel'{
       consumer_tag = Queue
      },
+    ?AMQP_DEBUG andalso ?LOG("cancel consume for queue ~s", [Queue]),
     amqp_mgr:consume(BC).
 
 %%------------------------------------------------------------------------------
@@ -730,6 +753,7 @@ is_json(Props) ->
 %% @end
 %%------------------------------------------------------------------------------
 basic_ack(DTag) ->
+    ?AMQP_DEBUG andalso ?LOG("basic ack of ~s", [DTag]),
     amqp_mgr:consume(#'basic.ack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
@@ -740,6 +764,7 @@ basic_ack(DTag) ->
 %% @end
 %%------------------------------------------------------------------------------
 basic_nack(DTag) ->
+    ?AMQP_DEBUG andalso ?LOG("basic nack of ~s", [DTag]),
     amqp_mgr:consume(#'basic.nack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
@@ -761,6 +786,7 @@ is_host_available() ->
 -spec basic_qos/1 :: (PreFetch) -> 'ok' when
       PreFetch :: non_neg_integer().
 basic_qos(PreFetch) when is_integer(PreFetch) ->
+    ?AMQP_DEBUG andalso ?LOG("set basic qos prefetch to ~p", [PreFetch]),
     amqp_mgr:consume(#'basic.qos'{prefetch_count = PreFetch}).
 
 %%------------------------------------------------------------------------------
@@ -772,6 +798,7 @@ basic_qos(PreFetch) when is_integer(PreFetch) ->
 %%------------------------------------------------------------------------------
 -spec register_return_handler/0 :: () -> 'ok'.
 register_return_handler() ->
+    ?AMQP_DEBUG andalso ?LOG("registering retunr handler", []),
     amqp_mgr:register_return_handler().
 
 %%------------------------------------------------------------------------------

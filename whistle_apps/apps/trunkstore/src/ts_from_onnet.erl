@@ -113,11 +113,9 @@ wait_for_win(State, Command) ->
     end.
 
 send_offnet(State, Command) ->
+    ?LOG("sending offnet request"),
     CtlQ = ts_callflow:get_control_queue(State),
-
-    {ok, JSON} = wapi_offnet_resource:req([ KV || {_, V}=KV <- [{<<"Control-Queue">>, CtlQ} | Command], V =/= undefined ]),
-    ?LOG("Sending offnet: ~s", [JSON]),
-    wapi_offnet_resource:publish_req(JSON),
+    wapi_offnet_resource:publish_req([{<<"Control-Queue">>, CtlQ} | Command]),
     wait_for_bridge(State).
 
 wait_for_bridge(State) ->

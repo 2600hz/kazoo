@@ -342,7 +342,6 @@ custom_channel_vars(AccountId, AuthId, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec relay_route_req/1 :: (json_object()) -> 'ok'.
-relay_route_req(JObj) ->
-    {ok, JSON} = wapi_route:req(JObj),
-    wapi_route:publish_req(JSON),
+relay_route_req(Req) ->
+    wapi_route:publish_req(Req),
     ?LOG_END("relayed route request").

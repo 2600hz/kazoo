@@ -72,7 +72,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec event/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec event/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 event(Prop) when is_list(Prop) ->
     case event_v(Prop) of
 	true -> wh_api:build_message(Prop, ?CALL_EVENT_HEADERS, ?OPTIONAL_CALL_EVENT_HEADERS);
@@ -81,7 +81,7 @@ event(Prop) when is_list(Prop) ->
 event(JObj) ->
     event(wh_json:to_proplist(JObj)).
 
--spec event_v/1 :: (proplist() | json_object()) -> boolean().
+-spec event_v/1 :: (api_terms()) -> boolean().
 event_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_EVENT_HEADERS, ?CALL_EVENT_VALUES, ?CALL_EVENT_TYPES);
 event_v(JObj) ->
@@ -92,7 +92,7 @@ event_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec status_req/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec status_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 status_req(Prop) when is_list(Prop) ->
     case status_req_v(Prop) of
 	true -> wh_api:build_message(Prop, ?CALL_STATUS_REQ_HEADERS, ?OPTIONAL_CALL_STATUS_REQ_HEADERS);
@@ -101,7 +101,7 @@ status_req(Prop) when is_list(Prop) ->
 status_req(JObj) ->
     status_req(wh_json:to_proplist(JObj)).
 
--spec status_req_v/1 :: (proplist() | json_object()) -> boolean().
+-spec status_req_v/1 :: (api_terms()) -> boolean().
 status_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_STATUS_REQ_HEADERS, ?CALL_STATUS_REQ_VALUES, ?CALL_STATUS_REQ_TYPES);
 status_req_v(JObj) ->
@@ -112,7 +112,7 @@ status_req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec status_resp/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec status_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 status_resp(Prop) when is_list(Prop) ->
     case status_resp_v(Prop) of
 	true -> wh_api:build_message(Prop, ?CALL_STATUS_RESP_HEADERS, ?OPTIONAL_CALL_STATUS_RESP_HEADERS);
@@ -121,7 +121,7 @@ status_resp(Prop) when is_list(Prop) ->
 status_resp(JObj) ->
     status_resp(wh_json:to_proplist(JObj)).
 
--spec status_resp_v/1 :: (proplist() | json_object()) -> boolean().
+-spec status_resp_v/1 :: (api_terms()) -> boolean().
 status_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_STATUS_RESP_HEADERS, ?CALL_STATUS_RESP_VALUES, ?CALL_STATUS_RESP_TYPES);
 status_resp_v(JObj) ->
@@ -132,7 +132,7 @@ status_resp_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec cdr/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec cdr/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 cdr(Prop) when is_list(Prop) ->
     case cdr_v(Prop) of
 	true -> wh_api:build_message(Prop, ?CALL_CDR_HEADERS, ?OPTIONAL_CALL_CDR_HEADERS);
@@ -141,7 +141,7 @@ cdr(Prop) when is_list(Prop) ->
 cdr(JObj) ->
     cdr(wh_json:to_proplist(JObj)).
 
--spec cdr_v/1 :: (proplist() | json_object()) -> boolean().
+-spec cdr_v/1 :: (api_terms()) -> boolean().
 cdr_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_CDR_HEADERS, ?CALL_CDR_VALUES, ?CALL_CDR_TYPES);
 cdr_v(JObj) ->
@@ -160,28 +160,34 @@ unbind_q(Queue, Props) ->
     amqp_util:unbind_q_from_callevt(Queue, CallID),
     amqp_util:unbind_q_from_callevt(Queue, CallID, cdr).
 
-publish_event(CallID, JSON) ->
-    publish_event(CallID, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_event(CallID, Payload, ContentType) ->
+-spec publish_event/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_event/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_event(CallID, JObj) ->
+    publish_event(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_event(CallID, Event, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Event, ?CALL_EVENT_VALUES, fun ?MODULE:event/1),
     amqp_util:callevt_publish(CallID, Payload, event, ContentType).
 
--spec publish_status_req/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_status_req/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
-publish_status_req(CallID, JSON) ->
-    publish_status_req(CallID, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_status_req(CallID, Payload, ContentType) ->
+-spec publish_status_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_status_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_status_req(CallID, JObj) ->
+    publish_status_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_status_req(CallID, Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?CALL_STATUS_REQ_VALUES, fun ?MODULE:status_req/1),
     amqp_util:callevt_publish(CallID, Payload, status_req, ContentType).
 
--spec publish_status_resp/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_status_resp/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
-publish_status_resp(RespQ, JSON) ->
-    publish_status_resp(RespQ, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_status_resp(RespQ, Payload, ContentType) ->
+-spec publish_status_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_status_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_status_resp(RespQ, JObj) ->
+    publish_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_status_resp(RespQ, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?CALL_STATUS_RESP_VALUES, fun ?MODULE:status_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_cdr/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_cdr/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
-publish_cdr(CallID, JSON) ->
-    publish_cdr(CallID, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_cdr(CallID, Payload, ContentType) ->
+-spec publish_cdr/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_cdr/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_cdr(CallID, JObj) ->
+    publish_cdr(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_cdr(CallID, CDR, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(CDR, ?CALL_CDR_VALUES, fun ?MODULE:cdr/1),
     amqp_util:callevt_publish(CallID, Payload, cdr, ContentType).

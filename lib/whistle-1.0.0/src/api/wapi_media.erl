@@ -117,23 +117,26 @@ bind_q(Queue, _Props) ->
 unbind_q(Queue) ->
     amqp_util:unbind_q_from_callevt(Queue).
 
--spec publish_req/1 :: (iolist()) -> 'ok'.
--spec publish_req/2 :: (iolist(), ne_binary()) -> 'ok'.
-publish_req(JSON) ->
-    publish_req(JSON, ?DEFAULT_CONTENT_TYPE).
-publish_req(Payload, ContentType) ->
+-spec publish_req/1 :: (api_terms()) -> 'ok'.
+-spec publish_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_req(JObj) ->
+    publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_req(Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?MEDIA_REQ_VALUES, fun ?MODULE:req/1),
     amqp_util:callevt_publish(Payload, ContentType, media_req).
 
--spec publish_resp/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_resp/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
-publish_resp(Queue, JSON) ->
-    publish_resp(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_resp(Queue, Payload, ContentType) ->
+-spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_resp(Queue, JObj) ->
+    publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_resp(Queue, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?MEDIA_RESP_VALUES, fun ?MODULE:resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec publish_error/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_error/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
-publish_error(Queue, JSON) ->
-    publish_error(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_error(Queue, Payload, ContentType) ->
+-spec publish_error/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_error/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_error(Queue, JObj) ->
+    publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_error(Queue, Error, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Error, ?MEDIA_ERROR_VALUES, fun ?MODULE:error/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).

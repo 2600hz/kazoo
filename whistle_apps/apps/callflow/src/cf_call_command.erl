@@ -1419,7 +1419,6 @@ update_fallback(Bridge, Call) ->
                end,
     case Fallback =/= undefined of
         true ->
-            io:format("set transfer fallback to ~s~n", [Fallback]),
             ?LOG("set transfer fallback to ~s", [Fallback]),
             set(undefined, wh_json:from_list([{<<"Transfer-Fallback">>, Fallback}]), Call),
             ok;

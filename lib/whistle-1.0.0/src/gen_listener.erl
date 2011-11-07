@@ -272,14 +272,15 @@ handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State
     {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}, hibernate};
 
 handle_cast({add_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
+    ?LOG("adding binding ~s, ~p", [Binding, Props]),
     Wapi = <<"wapi_", (wh_util:to_binary(Binding))/binary>>,
     try
-	ApiMod = wh_util:to_atom(Wapi),
+        ApiMod = wh_util:to_atom(Wapi),
 	ApiMod:bind_q(Q, Props),
 	{noreply, State}
     catch
 	error:badarg ->
-	    ?LOG_SYS("Atom ~s not found", [Wapi]),
+	    ?LOG_SYS("api module ~s not found", [Wapi]),
 	    case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
 		non_existing ->
 		    ?LOG_SYS("beam file not found for ~s, trying old method", [Wapi]),
@@ -294,7 +295,10 @@ handle_cast({add_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
 	    ?LOG_SYS("Module ~s doesn't exist of bind_q/2 isn't exported", [Wapi]),
 	    ?LOG_SYS("Trying old school add_binding for ~s", [Binding]),
 	    queue_bindings:add_binding_to_q(Q, Binding, Props),
-	    {noreply, State}
+	    {noreply, State};
+        E:R ->
+            io:format("~p ~p~n", [E, R]),
+            {noreply, State}
     end;
 
 handle_cast({rm_binding, Binding}=Req, #state{queue=Q}=State) ->
@@ -480,7 +484,7 @@ maybe_event_matches_key(Evt, Evt) -> true;
 maybe_event_matches_key({_, Name}, {<<"*">>, Name}) -> true;
 maybe_event_matches_key({Cat, _}, {Cat, <<"*">>}) -> true;
 maybe_event_matches_key({_,_}, {<<"*">>, <<"*">>}) -> true;
-maybe_event_matches_key(_, _) -> false.
+maybe_event_matches_key(_A, _B) -> false.
 
 %% Collect the spawned handlers going down so the main process_req proc doesn't end until all
 %% handlers have completed (for graceful stopping).
@@ -504,7 +508,6 @@ start_amqp(Props) ->
 	    ConsumeProps = props:get_value(consume_options, Props, []),
 
 	    set_qos(props:get_value(basic_qos, Props)),
-
 	    amqp_util:basic_consume(Queue, ConsumeProps),
 	    ?LOG("Consuming on ~s", [Queue]),
 	    {ok, Queue}

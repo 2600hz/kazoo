@@ -47,7 +47,7 @@
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec req/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
         case req_v(Prop) of
 	    true -> wh_api:build_message(Prop, ?AUTHN_REQ_HEADERS, ?OPTIONAL_AUTHN_REQ_HEADERS);
@@ -56,7 +56,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
 
--spec req_v/1 :: (proplist() | json_object()) -> boolean().
+-spec req_v/1 :: (api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AUTHN_REQ_HEADERS, ?AUTHN_REQ_VALUES, ?AUTHN_REQ_TYPES);
 req_v(JObj) ->
@@ -67,7 +67,7 @@ req_v(JObj) ->
 %% Takes proplist, creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
 	true -> wh_api:build_message(Prop, ?AUTHN_RESP_HEADERS, ?OPTIONAL_AUTHN_RESP_HEADERS);
@@ -76,7 +76,7 @@ resp(Prop) when is_list(Prop) ->
 resp(JObj) ->
     resp(wh_json:to_proplist(JObj)).
 
--spec resp_v/1 :: (proplist() | json_object()) -> boolean().
+-spec resp_v/1 :: (api_terms()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AUTHN_RESP_HEADERS, ?AUTHN_RESP_VALUES, ?AUTHN_RESP_TYPES);
 resp_v(JObj) ->
@@ -100,17 +100,18 @@ unbind_q(Q) ->
 %% @doc Publish the JSON iolist() to the proper Exchange
 %% @end
 %%--------------------------------------------------------------------
--spec publish_req/1 :: (iolist()) -> 'ok'.
--spec publish_req/2 :: (iolist(), binary()) -> 'ok'.
-publish_req(JSON) ->
-    publish_req(JSON, ?DEFAULT_CONTENT_TYPE).
-publish_req(Payload, ContentType) ->
+-spec publish_req/1 :: (api_terms()) -> 'ok'.
+-spec publish_req/2 :: (api_terms(), binary()) -> 'ok'.
+publish_req(JObj) ->
+    publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_req(Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?AUTHN_REQ_VALUES, fun ?MODULE:req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHN_REQ).
 
--spec publish_resp/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_resp/3 :: (ne_binary(), iolist(), binary()) -> 'ok'.
-publish_resp(Queue, JSON) ->
-    publish_resp(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
-
-publish_resp(Queue, Payload, ContentType) ->
+-spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_resp/3 :: (ne_binary(), api_terms(), binary()) -> 'ok'.
+publish_resp(Queue, JObj) ->
+    publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_resp(Queue, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHN_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).

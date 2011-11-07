@@ -61,30 +61,24 @@ handle_channel_status(JObj, _Props) ->
 	[] -> ?LOG("No node found having call");
 	[{ok, Hostname}] ->
 	    ?LOG("Call is on ~s", [Hostname]),
-	    RespProp = [{<<"Call-ID">>, CallID}
-			,{<<"Status">>, <<"active">>}
-			,{<<"Switch-Hostname">>, Hostname}
-			| wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION)
-		       ],
-	    {'ok', Payload} = wapi_call:status_resp(RespProp),
-	    wapi_call:publish_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
+	    Resp = [{<<"Call-ID">>, CallID}
+                    ,{<<"Status">>, <<"active">>}
+                    ,{<<"Switch-Hostname">>, Hostname}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+	    wapi_call:publish_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
 	[{error, Err}] ->
 	    ?LOG("Hostname lookup failed, but call is active"),
-	    RespProp = [{<<"Call-ID">>, CallID}
-			,{<<"Status">>, <<"active">>}
-			,{<<"Error-Msg">>, wh_util:to_binary(Err)}
-			| wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION)
-		       ],
-	    {'ok', Payload} = wapi_call:status_resp(RespProp),
-	    wapi_call:publish_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
+	    Resp = [{<<"Call-ID">>, CallID}
+                    ,{<<"Status">>, <<"active">>}
+                    ,{<<"Error-Msg">>, wh_util:to_binary(Err)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+	    wapi_call:publish_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
 	[timeout] ->
-	    RespProp = [{<<"Call-ID">>, CallID}
-			,{<<"Status">>, <<"active">>}
-			,{<<"Error-Msg">>, <<"switch timeout">>}
-			| wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION)
-		       ],
-	    {'ok', Payload} = wapi_call:status_resp(RespProp),
-	    wapi_call:publish_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
+	    Resp = [{<<"Call-ID">>, CallID}
+                    ,{<<"Status">>, <<"active">>}
+                    ,{<<"Error-Msg">>, <<"switch timeout">>}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+	    wapi_call:publish_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
 handle_channel_query(JObj, _Props) ->
@@ -239,6 +233,6 @@ make_jobj(C) ->
 		      ]).
 
 send_channel_query_resp(RespQ, UUIDs) ->
-    {ok, JSON} = wapi_channel_query:resp([{<<"Active-Calls">>, UUIDs}
-					  | wh_api:default_headers(<<>>, <<"locate">>, <<"channel_resp">>, ?APP_NAME, ?APP_VERSION)]),
-    wapi_channel_query:publish_resp(RespQ, JSON).
+    Resp = [{<<"Active-Calls">>, UUIDs}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+    wapi_channel_query:publish_resp(RespQ, Resp).

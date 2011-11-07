@@ -71,7 +71,8 @@
          ,keep_alive_ref = 'undefined' :: 'undefined' | reference()
 	 }).
 
--define(RESPONDERS, [{?MODULE, [{<<"dialplan">>, <<"*">>}]}]).
+-define(RESPONDERS, [{?MODULE, [{<<"call">>, <<"command">>}]}
+                     ,{?MODULE, [{<<"conference">>, <<"command">>}]}]).
 -define(BINDINGS, [{dialplan, []}]).
 
 %%%===================================================================
@@ -86,9 +87,10 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Node, UUID) ->
+    ?LOG("new call control ~s ~s", [Node, UUID]),
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				     ], [Node, UUID]).
+				      ,{bindings, ?BINDINGS}]
+                            ,[Node, UUID]).
 
 handle_req(JObj, Props) ->
     Srv = props:get_value(server, Props),
@@ -154,9 +156,13 @@ handle_call(_Request, _From, State) ->
 handle_cast({dialplan, JObj}
 	    ,#state{keep_alive_ref=Ref, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
 
-    ?LOG("Current App: ~s", [CurrApp]),
-    NewCmdQ = try insert_command(State, wh_json:to_atom(wh_json:get_value(<<"Insert-At">>, JObj, 'tail')), JObj)
-	      catch _T:_R -> ?LOG("Faile inserting command: ~p:~p", [_T, _R]), CmdQ end,
+    ?LOG("current App: ~s", [CurrApp]),
+    NewCmdQ = try
+                  insert_command(State, wh_util:to_atom(wh_json:get_value(<<"Insert-At">>, JObj, 'tail')), JObj)
+	      catch _T:_R ->
+                      ?LOG("failed inserting command: ~p:~p", [_T, _R]),
+                      CmdQ
+              end,
 
     case INU andalso (not queue:is_empty(NewCmdQ)) andalso CurrApp =:= undefined of
 	true ->
@@ -340,7 +346,10 @@ insert_command(#state{command_q=CommandQ}, tail, JObj) ->
             ?LOG("inserting command ~s at tail of queue", [AppName]),
 	    ?LOG("queue len prior: ~b", [queue:len(CommandQ)]),
 	    insert_command_into_queue(CommandQ, fun queue:in/2, JObj)
-    end.
+    end;
+insert_command(_, Pos, _) ->
+    ?LOG("unknown position ~p", [Pos]).
+
 
 -spec insert_command_into_queue/3 :: (queue(), fun((json_object(), queue()) -> queue()), json_object()) -> queue().
 insert_command_into_queue(Q, InsertFun, JObj) ->
@@ -405,13 +414,12 @@ send_error_resp(UUID, Cmd) ->
 
 -spec send_error_resp/3 :: (ne_binary(), json_object(), ne_binary()) -> 'ok'.
 send_error_resp(UUID, Cmd, Msg) ->
-    Resp = [
-	    {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
 	    ,{<<"Error-Message">>, Msg}
 	    | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
 	   ],
     {ok, Payload} = wapi_dialplan:error(Resp),
-    wapi_call:publish_event(UUID, Payload, ?DEFAULT_CONTENT_TYPE).
+    wapi_dialplan:publish_event(UUID, Payload).
 
 -spec get_keep_alive_ref/1 :: ('undefined' | reference()) -> 'undefined' | reference().
 get_keep_alive_ref(undefined) -> undefined;

@@ -3,7 +3,8 @@
 -export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
--export([to_boolean/1, is_true/1, is_false/1, binary_to_lower/1, binary_to_upper/1]).
+-export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
+-export([binary_to_lower/1, binary_to_upper/1]).
 -export([a1hash/3, floor/1, ceiling/1]).
 -export([current_tstamp/0, ensure_started/1]).
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1]).
@@ -233,6 +234,29 @@ is_false(<<"false">>) -> true;
 is_false("false") -> true;
 is_false(false) -> true;
 is_false(_) -> false.
+
+-spec is_empty/1 :: (Term) -> boolean() when
+      Term :: term().
+is_empty(0) -> true;
+is_empty([]) -> true;
+is_empty("0") -> true;
+is_empty("false") -> true;
+is_empty("NULL") -> true;
+is_empty(<<>>) -> true;
+is_empty(<<"0">>) -> true;
+is_empty(<<"false">>) -> true;
+is_empty(<<"NULL">>) -> true;
+is_empty(false) -> true;
+is_empty(undefined) -> true;
+is_empty(?EMPTY_JSON_OBJECT) -> true;
+is_empty(_) -> false.
+
+-spec is_proplist/1 :: (Term) -> boolean() when
+      Term :: term().
+is_proplist(Term) when is_list(Term) ->
+    lists:all(fun({_,_}) -> true; (_) -> false end, Term);
+is_proplist(_) ->
+    false.
 
 -spec binary_to_lower/1 :: (B) -> binary() when
       B :: binary().

@@ -213,16 +213,15 @@ asr_response() ->
 send_asr_info(#cf_call{amqp_q=OurQ, ctrl_q=CtrlQ, call_id=CallID}
 	      ,#dbn_state{asr_endpoint=EP, asr_account_id=AID, asr_account_pass=Pass
 			 ,asr_lang=Lang}) ->
-    Prop = [ {<<"ASR-Endpoint">>, EP}
-	     ,{<<"ASR-Account-ID">>, AID}
-	     ,{<<"ASR-Account-Password">>, Pass}
-	     ,{<<"Call-ID">>, CallID}
-	     ,{<<"Control-Queue">>, CtrlQ}
-	     ,{<<"Language">>, Lang}
-	     ,{<<"Stream-Response">>, false}
-	     | wh_api:default_headers(OurQ, <<"asr">>, <<"req">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, JSON} = wapi_asr:req(Prop),
-    wapi_asr:publish_req(JSON).
+    Req = [{<<"ASR-Endpoint">>, EP}
+           ,{<<"ASR-Account-ID">>, AID}
+           ,{<<"ASR-Account-Password">>, Pass}
+           ,{<<"Call-ID">>, CallID}
+           ,{<<"Control-Queue">>, CtrlQ}
+           ,{<<"Language">>, Lang}
+           ,{<<"Stream-Response">>, false}
+           | wh_api:default_headers(OurQ, ?APP_NAME, ?APP_VERSION)],
+    wapi_asr:publish_req(Req).
 
 -spec collect_min_digits/5 :: (Call, Prompts, State, LookupTable, Collected) -> no_return() when
       Call :: #cf_call{},
