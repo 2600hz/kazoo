@@ -202,27 +202,22 @@ try_failover_e164(State, ToDID) ->
     Q = ts_callflow:get_my_queue(State),
 
     {ok, RateData} = ts_credit:reserve(ToDID, FailCallID, AcctID, outbound, wh_json:get_value(<<"Route-Options">>, EP)),
-    Command = [
-	       {<<"Call-ID">>, CallID}
-	       ,{<<"Resource-Type">>, <<"audio">>}
-	       ,{<<"To-DID">>, ToDID}
-	       ,{<<"Account-ID">>, AcctID}
-	       ,{<<"Control-Queue">>, CtlQ}
-	       ,{<<"Application-Name">>, <<"bridge">>}
-	       ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"off-net">>} | RateData])}
-	       ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
-	       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP)}
-	       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, EP)}
-	       ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
-	       ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
-	       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
-	       | wh_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
-	      ],
-    {ok, Payload} = wapi_offnet_resource:req([ KV || {_, V}=KV <- Command, V =/= undefined, V =/= <<>> ]),
-
-    ?LOG("Sending E.164 failover: ~s", [Payload]),
-
-    wapi_offnet_resource:publish_req(Payload),
+    Req = [{<<"Call-ID">>, CallID}
+           ,{<<"Resource-Type">>, <<"audio">>}
+           ,{<<"To-DID">>, ToDID}
+           ,{<<"Account-ID">>, AcctID}
+           ,{<<"Control-Queue">>, CtlQ}
+           ,{<<"Application-Name">>, <<"bridge">>}
+           ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"off-net">>} | RateData])}
+           ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
+           ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP)}
+           ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, EP)}
+           ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
+           ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
+           ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
+           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+    ?LOG("sending offnet request for DID ~s", [ToDID]),
+    wapi_offnet_resource:publish_req(Req),
 
     wait_for_bridge(ts_callflow:set_failover(State, ?EMPTY_JSON_OBJECT)).
 

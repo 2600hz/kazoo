@@ -259,13 +259,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 send_media_resp(MediaName, Url, To) ->
-    Prop = [{<<"Media-Name">>, MediaName}
+    Resp = [{<<"Media-Name">>, MediaName}
 	    ,{<<"Stream-URL">>, Url}
-	    | wh_api:default_headers(<<>>, <<"media">>, <<"media_resp">>, ?APP_NAME, ?APP_VERSION)],
-
-    {ok, JSON} = wapi_media:resp(Prop),
+	    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     ?LOG("notifying requestor that ~s as available at ~s", [MediaName, Url]),
-    wapi_media:publish_resp(To, JSON).
+    wapi_media:publish_resp(To, Resp).
 
 start_shout_acceptor(Parent, LSock) ->
     {ok, PortNo} = inet:port(LSock),

@@ -206,41 +206,29 @@ start_channel(N, Route, JObj) ->
 
 -spec send_uuid_to_app/3 :: (json_object(), binary(), binary()) -> 'ok'.
 send_uuid_to_app(JObj, UUID, CtlQ) ->
-    Msg = wh_json:get_value(<<"Msg-ID">>, JObj),
-    AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
-
-    RespProp = [{<<"Msg-ID">>, Msg}
-	       ,{<<"Call-ID">>, UUID}
-	       ,{<<"Control-Queue">>, CtlQ}
-		| wh_api:default_headers(CtlQ, <<"resource">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, JSON} = wapi_resource:resp(RespProp),
-    ?LOG("sending ~s", [JSON]),
-    wapi_resource:publish_resp(AppQ, JSON).
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            ,{<<"Call-ID">>, UUID}
+            ,{<<"Control-Queue">>, CtlQ}
+            | wh_api:default_headers(CtlQ, <<"resource">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)],
+    ?LOG("sending resource response for ~s", [UUID]),
+    wapi_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec send_failed_req/2 :: (json_object(), integer()) -> 'ok'.
 send_failed_req(JObj, Failed) ->
-    Msg = wh_json:get_value(<<"Msg-ID">>, JObj),
-    AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
-
-    RespProp = [{<<"Msg-ID">>, Msg}
-		,{<<"Failed-Attempts">>, Failed}
-		| wh_api:default_headers(<<>>, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, JSON} = wapi_resource:error(RespProp),
-    ?LOG("sending resource error ~s", [JSON]),
-    wapi_resource:publish_error(AppQ, JSON).
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            ,{<<"Failed-Attempts">>, Failed}
+            | wh_api:default_headers(<<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
+    ?LOG("sending resource error after ~p attempts", [Failed]),
+    wapi_resource:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec send_failed_consume/3 :: (binary() | list(), json_object(), binary()) -> 'ok'.
 send_failed_consume(Route, JObj, E) ->
-    Msg = wh_json:get_value(<<"Msg-ID">>, JObj),
-    AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
-
-    RespProp = [{<<"Msg-ID">>, Msg}
-		,{<<"Failed-Route">>, Route}
-		,{<<"Failure-Message">>, wh_util:to_binary(E)}
-		| wh_api:default_headers(<<>>, <<"resource">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, JSON} = wapi_resource:error(RespProp),
-    ?LOG("sending originate error ~s", [JSON]),
-    wapi_resource:publish_error(AppQ, JSON).
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            ,{<<"Failed-Route">>, Route}
+            ,{<<"Failure-Message">>, wh_util:to_binary(E)}
+            | wh_api:default_headers(<<"resource">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
+    ?LOG("sending originate error ~s", [E]),
+    wapi_resource:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 %% sort first by percentage utilized (less utilized first), then by bias (larger goes first), then by available channels (more available first)
 %% [

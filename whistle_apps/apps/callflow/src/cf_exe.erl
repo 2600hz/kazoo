@@ -173,11 +173,9 @@ wait(#cf_call{amqp_q=Q, call_id=CallId}=Call, Flow, Pid, CallStatus) ->
                     ?LOG_SYS("no call events or control and status is unknown, shuting down"),
                     cf_call_command:hangup(Call);
                 _ ->
-                    Command = [{<<"Call-ID">>, CallId}
-                               | wh_api:default_headers(Q, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
-                              ],
-                    {ok, Payload} = wapi_call:status_req(Command),
-		    wapi_call:publish_status_req(CallId, Payload),
+                    Req = [{<<"Call-ID">>, CallId}
+                           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+		    wapi_call:publish_status_req(CallId, Req),
                     wait(Call, Flow, Pid, undefined)
             end
     end.

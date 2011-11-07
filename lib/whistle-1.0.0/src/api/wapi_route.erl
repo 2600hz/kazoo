@@ -1,4 +1,4 @@
-%%%-------------------------------------------------------------------
+ %%%-------------------------------------------------------------------
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
@@ -73,9 +73,9 @@
 				]).
 
 %% Route Responses
--define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Routes">>, <<"Method">>]).
--define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>,
-                                      <<"Route-Error-Code">>, <<"Route-Error-Message">>]).
+-define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Method">>]).
+-define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Routes">>
+                                      ,<<"Route-Error-Code">>, <<"Route-Error-Message">>]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
 			    ,{<<"Event-Name">>, <<"route_resp">>}
 			    ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
@@ -102,7 +102,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
 	true -> wh_api:build_message(Prop, ?ROUTE_REQ_HEADERS, ?OPTIONAL_ROUTE_REQ_HEADERS);
@@ -111,7 +111,7 @@ req(Prop) when is_list(Prop) ->
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
 
--spec req_v/1 :: (proplist() | json_object()) -> boolean().
+-spec req_v/1 :: (api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ROUTE_REQ_HEADERS, ?ROUTE_REQ_VALUES, ?ROUTE_REQ_TYPES);
 req_v(JObj) ->
@@ -122,15 +122,18 @@ req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
-    Routes = [ begin
-		   {ok, RouteProp} = resp_route(Route),
-		   wh_json:from_list(RouteProp)
-	       end || Route <- props:get_value(<<"Routes">>, Prop)
-	     ],
-    Prop1 = [ {<<"Routes">>, Routes} | props:delete(<<"Routes">>, Prop)],
-
+    Prop1 = case props:get_value(<<"Method">>, Prop) of
+                <<"bridge">> ->
+                    Routes = [begin
+                                  {ok, RouteProp} = resp_route(Route),
+                                  wh_json:from_list(RouteProp)
+                              end || Route <- props:get_value(<<"Routes">>, Prop)],
+                    [{<<"Routes">>, Routes} | props:delete(<<"Routes">>, Prop)];
+                _ ->
+                    Prop
+            end,
     case resp_v(Prop1) of
 	true -> wh_api:build_message(Prop1, ?ROUTE_RESP_HEADERS, ?OPTIONAL_ROUTE_RESP_HEADERS);
 	false -> {error, "Proplist failed validation for route_resp"}
@@ -138,11 +141,16 @@ resp(Prop) when is_list(Prop) ->
 resp(JObj) ->
     resp(wh_json:to_proplist(JObj)).
 
--spec resp_v/1 :: (proplist() | json_object()) -> boolean().
+-spec resp_v/1 :: (api_terms()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?ROUTE_RESP_HEADERS, ?ROUTE_RESP_VALUES, ?ROUTE_RESP_TYPES)
-	andalso lists:all(fun(Route) -> resp_route_v(Route) end
-			  ,props:get_value(<<"Routes">>, Prop));
+    Valid = wh_api:validate(Prop, ?ROUTE_RESP_HEADERS, ?ROUTE_RESP_VALUES, ?ROUTE_RESP_TYPES),
+    case props:get_value(<<"Method">>, Prop) of
+        <<"bridge">> when Valid->
+            lists:all(fun(Route) -> resp_route_v(Route) end
+                      ,props:get_value(<<"Routes">>, Prop));
+        _ ->
+            Valid
+    end;
 resp_v(JObj) ->
     resp_v(wh_json:to_proplist(JObj)).
 
@@ -151,7 +159,7 @@ resp_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp_route/1 :: (proplist() | json_object()) -> {'ok', proplist()} | {'error', string()}.
+-spec resp_route/1 :: (api_terms()) -> {'ok', proplist()} | {'error', string()}.
 resp_route(Prop) when is_list(Prop) ->
     case resp_route_v(Prop) of
 	true -> wh_api:build_message_specific(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
@@ -160,7 +168,7 @@ resp_route(Prop) when is_list(Prop) ->
 resp_route(JObj) ->
     resp_route(wh_json:to_proplist(JObj)).
 
--spec resp_route_v/1 :: (proplist() | json_object()) -> boolean().
+-spec resp_route_v/1 :: (api_terms()) -> boolean().
 resp_route_v(Prop) when is_list(Prop) ->
     wh_api:validate_message(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?ROUTE_RESP_ROUTE_VALUES, ?ROUTE_RESP_ROUTE_TYPES);
 resp_route_v(JObj) ->
@@ -171,14 +179,14 @@ resp_route_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec win/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec win/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 win(Prop) when is_list(Prop) ->
     case win_v(Prop) of
 	true -> wh_api:build_message(Prop, ?ROUTE_WIN_HEADERS, ?OPTIONAL_ROUTE_WIN_HEADERS);
 	false -> {error, "Proplist failed validation for route_win"}
     end.
 
--spec win_v/1 :: (proplist() | json_object()) -> boolean().
+-spec win_v/1 :: (api_terms()) -> boolean().
 win_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ROUTE_WIN_HEADERS, ?ROUTE_WIN_VALUES, ?ROUTE_WIN_TYPES);
 win_v(JObj) ->
@@ -198,23 +206,26 @@ bind_q(Queue, _Props) ->
 unbind_q(Queue) ->
     amqp_util:unbind_q_from_callmgr(Queue, ?KEY_ROUTE_REQ).
 
--spec publish_req/1 :: (iolist()) -> 'ok'.
--spec publish_req/2 :: (iolist(), binary()) -> 'ok'.
-publish_req(JSON) ->
-    publish_req(JSON, ?DEFAULT_CONTENT_TYPE).
-publish_req(Payload, ContentType) ->
+-spec publish_req/1 :: (api_terms()) -> 'ok'.
+-spec publish_req/2 :: (api_terms(), binary()) -> 'ok'.
+publish_req(JObj) ->
+    publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_req(Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?ROUTE_REQ_VALUES, fun req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_ROUTE_REQ).
 
--spec publish_resp/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_resp/3 :: (ne_binary(), iolist(), binary()) -> 'ok'.
-publish_resp(RespQ, JSON) ->
-    publish_resp(RespQ, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_resp(RespQ, Payload, ContentType) ->
+-spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_resp/3 :: (ne_binary(), api_terms(), binary()) -> 'ok'.
+publish_resp(RespQ, JObj) ->
+    publish_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_resp(RespQ, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?ROUTE_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
--spec publish_win/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_win/3 :: (ne_binary(), iolist(), binary()) -> 'ok'.
-publish_win(RespQ, JSON) ->
-    publish_win(RespQ, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_win(RespQ, Payload, ContentType) ->
+-spec publish_win/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_win/3 :: (ne_binary(), api_terms(), binary()) -> 'ok'.
+publish_win(RespQ, JObj) ->
+    publish_win(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_win(RespQ, Win, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Win, ?ROUTE_WIN_VALUES, fun win/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).

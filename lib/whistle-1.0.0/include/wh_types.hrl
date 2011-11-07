@@ -11,6 +11,8 @@
            (_) -> false
         end).
 
+-type api_terms() :: json_object() | proplist().
+
 %% non-empty binary
 -type ne_binary() :: <<_:8,_:_*8>>.
 

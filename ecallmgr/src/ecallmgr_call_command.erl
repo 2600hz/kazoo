@@ -65,7 +65,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 									       | {'error', binary()}
 									       | {'error', binary(), binary()}.
 get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
-    case wapi_dialplay:noop_v(JObj) of
+    case wapi_dialplan:noop_v(JObj) of
 	false ->
             {'error', <<"noop">>, <<"noop failed to execute as JObj did not validate">>};
 	true ->
@@ -113,7 +113,7 @@ get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
 	    {<<"play_and_get_digits">>, Data}
     end;
 
-get_fs_app(Node, UUID, JObj, <<"record">>=App) ->
+get_fs_app(Node, UUID, JObj, <<"record">>) ->
     case wapi_dialplan:record_v(JObj) of
 	false -> {'error', <<"record failed to execute as JObj did not validate">>};
 	true ->
@@ -129,7 +129,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>=App) ->
 						   ])),
 	    'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 
-	    {App, RecArg}
+	    {<<"record">>, RecArg}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"store">>) ->
@@ -198,22 +198,22 @@ get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
 	    {<<"playback">>, Arg}
     end;
 
-get_fs_app(_Node, _UUID, _JObj, <<"answer">>=App) ->
-    {App, <<>>};
+get_fs_app(_Node, _UUID, _JObj, <<"answer">>) ->
+    {<<"answer">>, <<>>};
 
 get_fs_app(_Node, _UUID, _JObj, <<"progress">>) ->
     {<<"pre_answer">>, <<>>};
 
-get_fs_app(_Node, _UUID, _JObj, <<"park">>=App) ->
-    {App, <<>>};
+get_fs_app(_Node, _UUID, _JObj, <<"park">>) ->
+    {<<"park">>, <<>>};
 
-get_fs_app(_Node, _UUID, JObj, <<"sleep">>=App) ->
+get_fs_app(_Node, _UUID, JObj, <<"sleep">>) ->
     case wapi_dialplan:sleep_v(JObj) of
 	false -> {'error', <<"sleep failed to execute as JObj did not validate">>};
-	true -> {App, wh_util:to_binary(wh_json:get_value(<<"Time">>, JObj))}
+	true -> {<<"sleep">>, wh_json:get_binary_value(<<"Time">>, JObj, <<"50">>)}
     end;
 
-get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
+get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
     case wapi_dialplan:say_v(JObj) of
 	false -> {'error', <<"say failed to execute as JObj did not validate">>};
 	true ->
@@ -223,12 +223,11 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>=App) ->
 	    Txt = wh_json:get_value(<<"Say-Text">>, JObj),
 	    Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
 	    ?LOG("say command ~s", [Arg]),
-	    {App, Arg}
+	    {<<"say">>, Arg}
     end;
 
-get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
+get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
     Endpoints = wh_json:get_value(<<"Endpoints">>, JObj, []),
-
     case wapi_dialplan:bridge_v(JObj) of
 	false -> {'error', <<"bridge failed to execute as JObj did not validate">>};
 	true when Endpoints =:= [] -> {'error', <<"bridge request had no endpoints">>};
@@ -316,11 +315,11 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>=App) ->
                 [] ->
                     {error, <<"registrar returned no endpoints">>};
                 _ ->
-                    {App, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
+                    {<<"bridge">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
             end
     end;
 
-get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
+get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
     case wapi_dialplan:tone_detect_v(JObj) of
 	false -> {'error', <<"tone detect failed to execute as JObj did not validate">>};
 	true ->
@@ -343,10 +342,10 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>=App) ->
 					       {_, _}=Success -> Success
 					   end,
 	    Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessAppData, " ", HitsNeeded]),
-	    {App, Data}
+	    {<<"tone_detect">>, Data}
     end;
 
-get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
+get_fs_app(Node, UUID, JObj, <<"set">>) ->
     case wapi_dialplan:set_v(JObj) of
         false -> {'error', <<"set failed to execute as JObj did not validate">>};
         true ->
@@ -356,10 +355,10 @@ get_fs_app(Node, UUID, JObj, <<"set">>=App) ->
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
 	    _ = [ export(Node, UUID, get_fs_kv(K, V)) || {K, V} <- CallVars],
 
-            {App, noop}
+            {<<"set">>, noop}
     end;
 
-get_fs_app(_Node, _UUID, JObj, <<"respond">>=App) ->
+get_fs_app(_Node, _UUID, JObj, <<"respond">>) ->
     case wapi_dialplan:respond_v(JObj) of
         false -> {'error', <<"respond failed to execute as JObj did not validate">>};
         true ->
@@ -369,22 +368,22 @@ get_fs_app(_Node, _UUID, JObj, <<"respond">>=App) ->
                 Code ->
                     Response = <<Code/binary ," "
                                  ,(wh_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary>>,
-                    {App, Response}
+                    {<<"respond">>, Response}
             end
     end;
 
-get_fs_app(Node, UUID, JObj, <<"fetch">>=App) ->
+get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
     spawn(fun() ->
                   send_fetch_call_event(Node, UUID, JObj)
           end),
-    {App, noop};
+    {<<"fetch">>, noop};
 
-get_fs_app(_Node, _UUID, JObj, <<"conference">>=App) ->
+get_fs_app(_Node, _UUID, JObj, <<"conference">>) ->
     case wapi_dialplan:conference_v(JObj) of
 	false -> {'error', <<"conference failed to execute as JObj did not validate">>};
 	true ->
 	    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-	    {App, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}
+	    {<<"conference">>, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}
     end;
 
 get_fs_app(_Node, _UUID, _JObj, _App) ->
@@ -697,8 +696,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
                        [] -> EvtProp1;
                        CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
                    end,
-        {ok, P1} = wapi_call:event(EvtProp2),
-	wapi_call:publish_event(UUID, P1)
+	wapi_call:publish_event(UUID, EvtProp2)
     catch
         Type:_ ->
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -708,7 +706,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
                      ,{<<"Application-Response">>, <<>>}
                      | wh_api:default_headers(<<>>, <<"error">>, wh_util:to_binary(Type), ?APP_NAME, ?APP_VERSION)
                     ],
-            {ok, P2} = wapi_dialplan:error_resp(Error),
+            {ok, P2} = wapi_dialplan:error(Error),
             amqp_util:callevt_publish(UUID, P2, event)
     end.
 
@@ -731,7 +729,7 @@ send_error_response(App, Msg, UUID, JObj) ->
              ,{<<"Application-Response">>, <<>>}
              | wh_api:default_headers(<<>>, <<"error">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
             ],
-    {ok, Payload} = wapi_dialplan:error_resp(Error),
+    {ok, Payload} = wapi_dialplan:error(Error),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 
@@ -767,5 +765,4 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
 		   [] -> EvtProp1;
 		   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
 	       end,
-    {ok, P1} = wapi_call:event(EvtProp2),
-    wapi_call:publish_event(UUID, P1).
+    wapi_call:publish_event(UUID, EvtProp2).

@@ -149,11 +149,7 @@ handle_info({event, [undefined | Data]}, #state{stats=Stats}=State) ->
 	<<"HEARTBEAT">> ->
 	    {noreply, State#state{stats=Stats#node_stats{last_heartbeat=erlang:now()}}, hibernate};
 	<<"CUSTOM">> ->
-	    spawn(fun() ->
-                          put(callid, props:get_value(<<"call-id">>, Data)),
-                          ?LOG("custom event received ~s", [EvtName]),
-                          process_custom_data(Data, ?APP_VERSION)
-                  end),
+	    spawn(fun() -> process_custom_data(Data) end),
 	    {noreply, State, hibernate};
 	_ ->
 	    {noreply, State, hibernate}
@@ -178,11 +174,7 @@ handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
 	    {noreply, State};
 	<<"CUSTOM">> ->
-	    spawn(fun() ->
-                          put(callid, props:get_value(<<"call-id">>, Data)),
-                          ?LOG("custom event received ~s", [EvtName]),
-                          process_custom_data(Data, ?APP_VERSION)
-                  end),
+	    spawn(fun() -> process_custom_data(Data) end),
 	    {noreply, State};
 	_ ->
 	    {noreply, State}
@@ -322,15 +314,18 @@ process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->
      ,{cpu, lists:flatten(CPUNum)}
     ].
 
-process_custom_data(Data, AppVsn) ->
-    case props:get_value(<<"Event-Subclass">>, Data) of
-	undefined -> ok;
-	<<"sofia::register">> -> publish_register_event(Data, AppVsn);
-	_ -> ok
+process_custom_data(Data) ->
+    put(callid, props:get_value(<<"call-id">>, Data)),
+    Subclass = props:get_value(<<"Event-Subclass">>, Data),
+    ?LOG("custom event received ~s", [Subclass]),
+    case Subclass of
+	<<"sofia::register">> ->
+            publish_register_event(Data);
+	_ ->
+            ok
     end.
 
-publish_register_event(Data, AppVsn) ->
-    DefProp = wh_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, wh_util:to_binary(?MODULE), AppVsn),
+publish_register_event(Data) ->
     ApiProp = lists:foldl(fun(K, Api) ->
 				  case props:get_value(wh_util:binary_to_lower(K), Data) of
 				      undefined ->
@@ -340,15 +335,13 @@ publish_register_event(Data, AppVsn) ->
 					  end;
 				      V -> [{K, V} | Api]
 				  end
-			  end, [{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
-                                ,{<<"Call-ID">>, get(callid)} | DefProp], wapi_registration:success_keys()),
+			  end
+                          ,[{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
+                            ,{<<"Call-ID">>, get(callid)}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
+                          ,wapi_registration:success_keys()),
     ?LOG("sending successful registration"),
-    case wapi_registration:success(ApiProp) of
-	{error, E} ->
-            ?LOG("failed API message creation: ~p", [E]);
-	{ok, JSON} ->
-	    wapi_registration:publish_success(JSON)
-    end.
+    wapi_registration:publish_success(ApiProp).
 
 get_originate_action(<<"transfer">>, Data) ->
     case wh_json:get_value(<<"Route">>, Data) of

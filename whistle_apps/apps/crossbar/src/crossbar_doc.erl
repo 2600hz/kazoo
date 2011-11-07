@@ -306,27 +306,26 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
       Action :: wapi_conf:conf_action(),
       Db :: ne_binary(),
       Doc :: json_object().
+send_document_change(Action, Db, Doc) when not is_binary(Action) ->
+    send_document_change(wh_util:to_binary(Action), Db, Doc);
 send_document_change(Action, Db, Doc) ->
     CallID = get(callid),
     spawn(fun() ->
                   put(callid, CallID),
                   Id = wh_json:get_value(<<"_id">>, Doc),
                   Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
-		  Change = [
-			    {<<"ID">>, Id}
+		  Change = [{<<"ID">>, Id}
 			    ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
-					      ,{<<"Doc">>, public_fields(Doc)}
+                            ,{<<"Doc">>, public_fields(Doc)}
 			    ,{<<"Type">>, Type}
 			    ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
 			    ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
 			    ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
 			    ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
 			    ,{<<"Version">>, wh_json:get_binary_value(<<"pvt_vsn">>, Doc)}
-			    | wh_api:default_headers(<<>>, <<"configuration">>, <<"doc_", Action/binary>>, ?APP_NAME, ?APP_VSN)
-			   ],
+			    | wh_api:default_headers(<<"configuration">>, <<"doc_", Action/binary>>, ?APP_NAME, ?APP_VERSION)],
 		  ?LOG("publishing configuration document_change event for ~s, type: ~s", [Id, Type]),
-		  {ok, Payload} = wapi_conf:doc_update(Change),
-		  wapi_conf:publish_doc_update(Action, Db, Type, Id, Payload)
+		  wapi_conf:publish_doc_update(Action, Db, Type, Id, Change)
 	  end).
 %%--------------------------------------------------------------------
 %% @public

@@ -17,7 +17,7 @@
 -export([conference/1, noop/1, fetch/1, respond/1, progress/1]).
 -export([play/1, record/1, queue/1, answer/1, park/1, play_collect_digits/1
 	 ,call_pickup/1, hangup/1, say/1, sleep/1, tone_detect/1, set/1
-	 ,tones/1, tones_req_tone/1, error/1
+	 ,tones/1, tones_req_tone/1, tones_req_tone_headers/1, error/1
 	]).
 
 -export([play_v/1, record_v/1, noop_v/1, tones_v/1, tones_req_tone_v/1, queue_v/1
@@ -27,7 +27,7 @@
 
 -export([conference_v/1, error_v/1]).
 
--export([publish_action/2, publish_action/3]).
+-export([publish_action/2, publish_action/3, publish_event/2, publish_event/3]).
 
 -export([bind_q/2, unbind_q/1]).
 
@@ -68,8 +68,7 @@ bridge(Prop) when is_list(Prop) ->
 	       wh_json:from_list(EPProps)
 	   end
 	   || EP <- props:get_value(<<"Endpoints">>, Prop, []),
-	      bridge_endpoint_v(EP)
-	  ],
+	      bridge_endpoint_v(EP)],
     Prop1 = [ {<<"Endpoints">>, EPs} | props:delete(<<"Endpoints">>, Prop)],
     case bridge_v(Prop1) of
 	true -> wh_api:build_message(Prop1, ?BRIDGE_REQ_HEADERS, ?OPTIONAL_BRIDGE_REQ_HEADERS);
@@ -163,12 +162,11 @@ store_http_resp_v(JObj) ->
 -spec tones/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()} .
 tones(Prop) when is_list(Prop) ->
     Tones = [begin
-		 {ok, TonesProp} = tones_req_tone(Tone),
+		 {ok, TonesProp} = tones_req_tone_headers(Tone),
 		 wh_json:from_list(TonesProp)
 	     end
 	     || Tone <- props:get_value(<<"Tones">>, Prop, []),
-		tones_req_tone_v(Tone)
-	    ],
+		tones_req_tone_v(Tone)],
     Prop1 = [ {<<"Tones">>, Tones} | props:delete(<<"Tones">>, Prop)],
     case tones_v(Prop1) of
 	true -> wh_api:build_message(Prop1, ?TONES_REQ_HEADERS, ?OPTIONAL_TONES_REQ_HEADERS);
@@ -202,6 +200,12 @@ tones_req_tone_v(Prop) when is_list(Prop) ->
     wh_api:validate_message(Prop, ?TONES_REQ_TONE_HEADERS, ?TONES_REQ_TONE_VALUES, ?TONES_REQ_TONE_TYPES);
 tones_req_tone_v(JObj) ->
     tones_req_tone_v(wh_json:to_proplist(JObj)).
+
+-spec tones_req_tone_headers/1 :: (proplist() | json_object()) -> {'ok', proplist()} | {'error', string()}.
+tones_req_tone_headers(Prop) when is_list(Prop) ->
+    wh_api:build_message_specific_headers(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
+tones_req_tone_headers(JObj) ->
+    tones_req_tone_headers(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Detect tones on the line
@@ -569,9 +573,15 @@ publish_action(Queue, JSON) ->
 publish_action(Queue, Payload, ContentType) ->
     amqp_util:callctl_publish(Queue, Payload, ContentType).
 
+-spec publish_event/2 :: (ne_binary(), iolist()) -> 'ok'.
+-spec publish_event/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
+publish_event(CallID, JObj) ->
+    publish_event(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_event(CallID, Payload, ContentType) ->
+    amqp_util:callevt_publish(CallID, Payload, event, ContentType).
+
 bind_q(Queue, _Prop) ->
     _ = amqp_util:bind_q_to_callctl(Queue),
-    _ = amqp_util:basic_consume(Queue),
     'ok'.
 
 unbind_q(Queue) ->

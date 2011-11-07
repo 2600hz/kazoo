@@ -61,14 +61,12 @@ start_amqp(#state{}=State) ->
 -spec send_park/1 :: (State) -> #state{} when
       State :: #state{}.
 send_park(#state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
-    JObj1 = wh_json:from_list([ {<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-				,{<<"Routes">>, []}
-				,{<<"Method">>, <<"park">>}
-				| wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)]),
-    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    {ok, JSON} = wapi_route:resp(JObj1),
-    ?LOG("Sending park to ~s: ~s", [RespQ, JSON]),
-    wapi_route:publish_resp(RespQ, JSON),
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            ,{<<"Routes">>, []}
+            ,{<<"Method">>, <<"park">>}
+            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+    ?LOG("sending park route response"),
+    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp),
 
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
     _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),

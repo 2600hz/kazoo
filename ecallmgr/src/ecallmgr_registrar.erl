@@ -19,9 +19,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [
-		     {?MODULE, [{<<"directory">>, <<"reg_success">>}]}
-		    ]).
+-define(RESPONDERS, [{?MODULE, [{<<"directory">>, <<"reg_success">>}]}]).
 -define(BINDINGS, [{registration, []}]).
 
 -include("ecallmgr.hrl").
@@ -39,8 +37,8 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				     ,{bindings, ?BINDINGS}
-				     ], []).
+				     ,{bindings, ?BINDINGS}]
+                            ,[]).
 
 -spec lookup/3 :: (Realm, User, Fields) -> proplist() | {'error', 'timeout'} when
       Realm :: binary(),
@@ -48,7 +46,7 @@ start_link() ->
       Fields :: [binary(),...].
 lookup(Realm, User, Fields) ->
     {ok, Srv} = ecallmgr_sup:registrar_proc(),
-    gen_server:call(Srv, {lookup, Realm, User, Fields}).
+    gen_server:call(Srv, {lookup, Realm, User, Fields, get(callid)}).
 
 -spec handle_req/2 :: (json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
@@ -186,7 +184,7 @@ lookup_reg(Realm, User, Fields) ->
 	    RegProp = [{<<"Username">>, User}
 		       ,{<<"Realm">>, Realm}
 		       ,{<<"Fields">>, []}
-		       | wh_api:default_headers(<<>>, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
+		       | wh_api:default_headers(?APP_NAME, ?APP_VERSION) ],
 	    try
 		case ecallmgr_amqp_pool:reg_query(RegProp, 1000) of
 		    {ok, RegJObj} ->
@@ -194,7 +192,8 @@ lookup_reg(Realm, User, Fields) ->
 
                         RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RegJObj, wh_json:new())),
 
-                        ?SERVER ! {cache_registrations, Realm, User, RegFields},
+                        {ok, Srv} = ecallmgr_sup:registrar_proc(),
+                        Srv ! {cache_registrations, Realm, User, RegFields},
 
                         ?LOG("received registration information"),
                         lists:foldr(FilterFun, [], RegFields);

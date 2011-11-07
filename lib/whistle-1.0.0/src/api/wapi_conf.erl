@@ -32,7 +32,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec doc_update/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec doc_update/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 doc_update(Prop) when is_list(Prop) ->
     case doc_update_v(Prop) of
 	true -> wh_api:build_message(Prop, ?CONF_DOC_UPDATE_HEADERS, ?OPTIONAL_CONF_DOC_UPDATE_HEADERS);
@@ -41,7 +41,7 @@ doc_update(Prop) when is_list(Prop) ->
 doc_update(JObj) ->
     doc_update(wh_json:to_proplist(JObj)).
 
--spec doc_update_v/1 :: (proplist() | json_object()) -> boolean().
+-spec doc_update_v/1 :: (api_terms()) -> boolean().
 doc_update_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CONF_DOC_UPDATE_HEADERS, ?CONF_DOC_UPDATE_VALUES, ?CONF_DOC_UPDATE_TYPES);
 doc_update_v(JObj) ->
@@ -68,9 +68,10 @@ get_routing_key(Props) ->
 
 -type conf_action() :: created | edited | deleted.
 
--spec publish_doc_update/5 :: (conf_action(), binary(), binary(), binary(), iolist()) -> 'ok'.
--spec publish_doc_update/6 :: (conf_action(), binary(), binary(), binary(), iolist(), binary()) -> 'ok'.
-publish_doc_update(Action, Db, Type, Id, JSON) ->
-    publish_doc_update(Action, Db, Type, Id, JSON, ?DEFAULT_CONTENT_TYPE).
-publish_doc_update(Action, Db, Type, Id, Payload, ContentType) ->
+-spec publish_doc_update/5 :: (conf_action(), binary(), binary(), binary(), api_terms()) -> 'ok'.
+-spec publish_doc_update/6 :: (conf_action(), binary(), binary(), binary(), api_terms(), binary()) -> 'ok'.
+publish_doc_update(Action, Db, Type, Id, JObj) ->
+    publish_doc_update(Action, Db, Type, Id, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_doc_update(Action, Db, Type, Id, Change, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Change, ?CONF_DOC_UPDATE_VALUES, fun ?MODULE:doc_update/1),
     amqp_util:document_change_publish(Action, Db, Type, Id, Payload, ContentType).

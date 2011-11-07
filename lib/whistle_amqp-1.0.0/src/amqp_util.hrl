@@ -3,6 +3,8 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
+-define(AMQP_DEBUG, true).
+
 %% Targeted Exchange
 %% - Any process that needs a dedicated queue to be reached at creates one on this exchange
 %% - One consumer of the queue, many publishers of the queue.

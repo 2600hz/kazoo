@@ -300,14 +300,14 @@ process_req({_, _}, _, _) ->
 execute_call_flow(Flow, #cf_call{authorizing_id=AuthId, channel_vars=CCVs}=Call) ->
     case AuthId of
         undefined ->
-            cf_call_command:set(CCVs	
+            cf_call_command:set(CCVs
                                 ,undefined
                                 ,Call);
         _ ->
             ?LOG("set transfer fallback to ~s", [AuthId]),
-            cf_call_command:set(CCVs	
+            cf_call_command:set(CCVs
                                 ,{struct, [{<<"Transfer-Fallback">>, AuthId}]}
-                                ,Call)	
+                                ,Call)
     end,
     ?LOG("call has been setup, passing control to callflow executer"),
     cf_exe_sup:start_proc(Call, wh_json:get_value(<<"flow">>, Flow)).
@@ -450,8 +450,5 @@ send_route_response(#cf_call{channel_vars=CVs, bdst_q=Q}, JObj) ->
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
             ,{<<"channel_vars">>, CVs}
-            | wh_api:default_headers(Q, <<"dialplan">>, <<"route_resp">>, ?APP_NAME, ?APP_VERSION)
-           ],
-    {ok, JSON} = wapi_route:resp(Resp),
-    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), JSON),
-    ?LOG_END("replied to route request").
+            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+    wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
