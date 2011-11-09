@@ -77,7 +77,7 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
 		  ]
 	     ,[]
 	     ,[
-	       {<<"multipart">>, <<"alternative">>, []
+	       {<<"multipart">>, <<"alternative">>, [], []
 		,[
 		  {<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
 		  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
