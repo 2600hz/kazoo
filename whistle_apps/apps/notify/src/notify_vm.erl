@@ -68,23 +68,29 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
     ?LOG_SYS("Attachment doc: ~s", [AttachmentId]),
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
-    Email = {<<"multipart">>, <<"alternative">> %% Content Type / Sub Type
-		 ,[ %% Headers
+    %% ContentType, SubType, Headers, Parameters, Body
+    Email = {<<"multipart">>, <<"mixed">>
+		 ,[
 		    {<<"From">>, From},
 		    {<<"To">>, To},
 		    {<<"Subject">>, Subject}
 		  ]
-	     ,[] %% Parameters
-	     ,[ %% Body
-		{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)} %% Content Type, Subtype, Headers, Parameters, Body
-		,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)} %% Content Type, Subtype, Headers, Parameters, Body
-		,{<<"audio">>, <<"mpeg">>
-		      ,[
-			{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}
-			,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentId, "\""])}
-		       ]
-		  ,[], AttachmentBin
-		 }
+	     ,[]
+	     ,[
+	       {<<"multipart">>, <<"alternative">>, [], []
+		,[
+		  {<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
+		  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
+		 ]
+	       }
+	       ,{<<"audio">>, <<"mpeg">>
+		     ,[
+		       {<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}
+		       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentId, "\""])}
+		       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+		      ]
+		 ,[], AttachmentBin
+		}
 	      ]
 	    },
     Encoded = mimemail:encode(Email),
