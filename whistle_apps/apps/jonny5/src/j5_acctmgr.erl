@@ -51,7 +51,7 @@
 %%--------------------------------------------------------------------
 -spec start_link/1 :: (ne_binary()) -> {'ok', pid()} | 'ignore' | {'error', term()}.
 start_link(AcctID) ->
-    gen_listener:start_link(?MODULE, [{bindings, [{self, []}, {jonny5, []}]}
+    gen_listener:start_link(?MODULE, [{bindings, [{self, []}, {jonny5, [{account_id, AcctID}]}]}
 				      ,{responders, [{ {?MODULE, handle_call_event}, [{<<"call_event">>, <<"*">>} % call events
 										      ,{<<"call_detail">>, <<"*">>} % and CDR
 										     ]
@@ -252,25 +252,60 @@ handle_cast({j5_msg, <<"sync_req">>, JObj}, #state{two_way=Two, inbound=In, trun
 						   ,max_inbound=MaxIn, max_two_way=MaxTwo, start_time=StartTime
 						   ,prepay=Prepay
 						   }=State) ->
-    RespTo = wh_json:get_value(<<"Server-ID">>, JObj),
-    SyncResp = [{<<"Uptime">>, uptime(StartTime)}
-		,{<<"Account-ID">>, AcctID}
-		,{<<"Prepay">>, Prepay}
-		,{<<"Two-Way">>, Two}
-		,{<<"Inbound">>, In}
-		,{<<"Max-Two-Way">>, MaxTwo}
-		,{<<"Max-Inbound">>, MaxIn}
-		,{<<"Server-ID">>, <<>>}
-		,{<<"Trunks">>, [wh_json:from_list([{<<"Call-ID">>, CallID}, {<<"Type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
-		,{<<"App-Version">>, ?APP_VERSION}
-		,{<<"App-Name">>, ?APP_NAME}
-		,{<<"Event-Category">>, <<"jonny5">>}
-		,{<<"Event-Name">>, <<"sync_resp">>}
-	       ],
-    wapi_jonny5:publish_sync_response(RespTo, SyncResp),
+    spawn(fun() ->
+		  RespTo = wh_json:get_value(<<"Server-ID">>, JObj),
+		  SyncResp = [{<<"Uptime">>, uptime(StartTime)}
+			      ,{<<"Account-ID">>, AcctID}
+			      ,{<<"Prepay">>, Prepay}
+			      ,{<<"Two-Way">>, Two}
+			      ,{<<"Inbound">>, In}
+			      ,{<<"Max-Two-Way">>, MaxTwo}
+			      ,{<<"Max-Inbound">>, MaxIn}
+			      ,{<<"Server-ID">>, <<>>}
+			      ,{<<"Trunks">>, [wh_json:from_list([{<<"Call-ID">>, CallID}, {<<"Type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
+			      ,{<<"App-Version">>, ?APP_VERSION}
+			      ,{<<"App-Name">>, ?APP_NAME}
+			      %% ,{<<"Event-Category">>, <<"jonny5">>}
+			      %% ,{<<"Event-Name">>, <<"sync_resp">>}
+			     ],
+		  wapi_jonny5:publish_sync_resp(RespTo, SyncResp)
+	  end),
     {noreply, State};
+
+handle_cast({j5_msg, <<"sync_resp">>, JObj}, #state{acct_id=AcctID, max_inbound=MaxIn, max_two_way=MaxTwo
+						    ,start_time=StartTime, prepay=Prepay
+						   }=State) ->
+    try
+	true = wapi_jonny5:sync_resp_v(JObj),
+	AcctID = wh_json:get_value(<<"Account-ID">>, JObj),
+
+	case uptime(StartTime) < wh_json:get_integer_value(<<"Uptime">>, JObj) of
+	    true ->
+		NewMaxTwo = wh_json:get_integer_value(<<"Max-Two-Way">>, JObj, MaxTwo),
+		NewMaxIn = wh_json:get_integer_value(<<"Max-Inbound">>, JObj, MaxIn),
+		NewPrepay = wh_json:get_float_value(<<"Prepay">>, JObj, Prepay),
+
+		?LOG("Uptime is greater than ours, updating max values"),
+		?LOG("MaxTwoWay: from ~b to ~b", [MaxTwo, NewMaxTwo]),
+		?LOG("MaxIn: from ~b to ~b", [MaxIn, NewMaxIn]),
+		?LOG("Prepay: from ~p to ~p", [Prepay, NewPrepay]),
+
+		{noreply, State#state{
+			    max_two_way=NewMaxTwo
+			    ,max_inbound=NewMaxIn
+			    ,prepay=NewPrepay
+			   }};
+	    false ->
+		{noreply, State}
+	end
+    catch
+	_T:_R ->
+	    ?LOG("Failed to process sync_resp: ~p ~p", [_T, _R]),
+	    {noreply, State}
+    end;
+
 handle_cast({j5_msg, Evt, _JObj}, State) ->
-    ?LOG("Unhandled event ~p", [Evt]),
+    ?LOG("Unhandled j5 message ~p", [Evt]),
     {noreply, State};
 
 handle_cast({call_event, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Dict
@@ -317,7 +352,7 @@ handle_info({timeout, SyncRef, sync}, #state{start_time=StartTime, sync_ref=Sync
 			     ],
 		  wapi_jonny5:publish_sync_req(SyncProp)
 	  end),
-    {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER, Self, sync)}};
+    {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER, self(), sync)}};
 
 handle_info({document_changes, AcctID, Changes}, #state{acct_rev=Rev, acct_id=AcctID, acct_type=AcctType}=State) ->
     ?LOG_SYS("change to account ~s to be processed", [AcctID]),
@@ -547,4 +582,8 @@ is_us48(_) -> false.
 
 -spec uptime/1 :: (pos_integer()) -> pos_integer().
 uptime(StartTime) ->
-    wh_util:current_tstamp() - StartTime.
+    case wh_util:current_tstamp() - StartTime of
+	X when X =< 0 ->
+	    1;
+	X -> X
+    end.

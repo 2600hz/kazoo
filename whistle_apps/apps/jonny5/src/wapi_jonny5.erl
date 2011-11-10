@@ -75,7 +75,7 @@ status_req(JObj) ->
 
 -spec status_req_v/1 :: (proplist() | json_object()) -> boolean().
 status_req_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?STATUS_REQ_HEADERS, ?STATUS_REQ_TYPES, ?STATUS_REQ_VALUES);
+    wh_api:validate(Prop, ?STATUS_REQ_HEADERS, ?STATUS_REQ_VALUES, ?STATUS_REQ_TYPES);
 status_req_v(JObj) ->
     status_req_v(wh_json:to_proplist(JObj)).
 
@@ -91,7 +91,7 @@ status_resp(JObj) ->
 
 -spec status_resp_v/1 :: (proplist() | json_object()) -> boolean().
 status_resp_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?STATUS_RESP_HEADERS, ?STATUS_RESP_TYPES, ?STATUS_RESP_VALUES);
+    wh_api:validate(Prop, ?STATUS_RESP_HEADERS, ?STATUS_RESP_VALUES, ?STATUS_RESP_TYPES);
 status_resp_v(JObj) ->
     status_resp_v(wh_json:to_proplist(JObj)).
 
@@ -106,7 +106,7 @@ sync_req(JObj) ->
 
 -spec sync_req_v/1 :: (proplist() | json_object()) -> boolean().
 sync_req_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?SYNC_REQ_HEADERS, ?SYNC_REQ_TYPES, ?SYNC_REQ_VALUES);
+    wh_api:validate(Prop, ?SYNC_REQ_HEADERS, ?SYNC_REQ_VALUES, ?SYNC_REQ_TYPES);
 sync_req_v(JObj) ->
     sync_req_v(wh_json:to_proplist(JObj)).
 
@@ -122,26 +122,43 @@ sync_resp(JObj) ->
 
 -spec sync_resp_v/1 :: (proplist() | json_object()) -> boolean().
 sync_resp_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?SYNC_RESP_HEADERS, ?SYNC_RESP_TYPES, ?SYNC_RESP_VALUES);
+    wh_api:validate(Prop, ?SYNC_RESP_HEADERS, ?SYNC_RESP_VALUES, ?SYNC_RESP_TYPES);
 sync_resp_v(JObj) ->
     sync_resp_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
-bind_q(Queue, _Props) ->
+bind_q(Queue, Props) ->
+    AcctId = get_acct_id(Props),
+
     amqp_util:resource_exchange(),
-    _ = amqp_util:bind_q_to_resource(Queue, ?KEY_JONNY5_STATUS),
-    _ = amqp_util:bind_q_to_resource(Queue, ?KEY_JONNY5_SYNC),
+    _ = amqp_util:bind_q_to_resource(Queue, <<?KEY_JONNY5_STATUS/binary, ".", AcctId/binary>>),
+    _ = amqp_util:bind_q_to_resource(Queue, <<?KEY_JONNY5_SYNC/binary, ".", AcctId/binary>>),
     ok.
 
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
-unbind_q(Queue, _Props) ->
-    amqp_util:unbind_q_from_resource(Queue, ?KEY_JONNY5_STATUS),
-    amqp_util:unbind_q_from_resource(Queue, ?KEY_JONNY5_SYNC).
+unbind_q(Queue, Props) ->
+    AcctId = get_acct_id(Props),
+
+    amqp_util:unbind_q_from_resource(Queue, status_req_routing_key(AcctId)),
+    amqp_util:unbind_q_from_resource(Queue, sync_req_routing_key(AcctId)).
+
+-spec get_acct_id/1 :: (proplist()) -> ne_binary().
+get_acct_id(Prop) when is_list(Prop) ->
+    case props:get_value(account_id, Prop) of
+	undefined ->
+	    case props:get_value(<<"Account-ID">>, Prop) of
+		undefined -> <<"*">>;
+		AID -> AID
+	    end;
+	AID -> AID
+    end;
+get_acct_id(JObj) ->
+    wh_json:get_value(<<"Account-ID">>, JObj, <<>>).
 
 -spec publish_status_req/1 :: (api_terms()) -> 'ok'.
 publish_status_req(Req) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?STATUS_REQ_VALUES, fun ?MODULE:status_req/1),
-    amqp_util:resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
+    amqp_util:resource_publish(Payload, status_req_routing_key(get_acct_id(Req)), ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_status_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 publish_status_resp(Queue, Req) ->
@@ -151,9 +168,19 @@ publish_status_resp(Queue, Req) ->
 -spec publish_sync_req/1 :: (api_terms()) -> 'ok'.
 publish_sync_req(Req) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?SYNC_REQ_VALUES, fun ?MODULE:sync_req/1),
-    amqp_util:resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
+    amqp_util:resource_publish(Payload, sync_req_routing_key(get_acct_id(Req)), ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_sync_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 publish_sync_resp(Queue, Req) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?SYNC_RESP_VALUES, fun ?MODULE:sync_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ?DEFAULT_CONTENT_TYPE).
+
+status_req_routing_key(<<>>) ->
+    ?KEY_JONNY5_STATUS;
+status_req_routing_key(AcctId) when is_binary(AcctId) ->
+    <<?KEY_JONNY5_STATUS/binary, ".", AcctId/binary>>.
+
+sync_req_routing_key(<<>>) ->
+    ?KEY_JONNY5_SYNC;
+sync_req_routing_key(AcctId) when is_binary(AcctId) ->
+    <<?KEY_JONNY5_SYNC/binary, ".", AcctId/binary>>.
