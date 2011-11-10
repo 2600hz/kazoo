@@ -264,10 +264,12 @@ handle_cast({j5_msg, <<"sync_req">>, JObj}, #state{two_way=Two, inbound=In, trun
 		,{<<"Trunks">>, [wh_json:from_list([{<<"Call-ID">>, CallID}, {<<"Type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
 		,{<<"App-Version">>, ?APP_VERSION}
 		,{<<"App-Name">>, ?APP_NAME}
+		,{<<"Event-Category">>, <<"jonny5">>}
+		,{<<"Event-Name">>, <<"sync_resp">>}
 	       ],
     wapi_jonny5:publish_sync_response(RespTo, SyncResp),
     {noreply, State};
-handle_cast({j5_msg, Evt, JObj}, State) ->
+handle_cast({j5_msg, Evt, _JObj}, State) ->
     ?LOG("Unhandled event ~p", [Evt]),
     {noreply, State};
 
@@ -303,16 +305,19 @@ handle_cast({call_event, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Di
 %% @end
 %%--------------------------------------------------------------------
 handle_info({timeout, SyncRef, sync}, #state{start_time=StartTime, sync_ref=SyncRef, acct_id=AcctID}=State) ->
-    SyncProp = [{<<"Uptime">>, uptime(StartTime)}
-		,{<<"Account-ID">>, AcctID}
-		,{<<"Server-ID">>, gen_listener:queue_name(self())}
-		,{<<"App-Name">>, ?APP_NAME}
-		,{<<"App-Version">>, ?APP_VERSION}
-	       ],
-
-    wapi_jonny5:publish_sync_req(SyncProp),
-
-    {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER, self(), sync)}};
+    Self = self(),
+    spawn(fun() ->
+		  SyncProp = [{<<"Uptime">>, uptime(StartTime)}
+			      ,{<<"Account-ID">>, AcctID}
+			      ,{<<"Server-ID">>, gen_listener:queue_name(Self)}
+			      ,{<<"App-Name">>, ?APP_NAME}
+			      ,{<<"App-Version">>, ?APP_VERSION}
+			      ,{<<"Event-Category">>, <<"jonny5">>}
+			      ,{<<"Event-Name">>, <<"sync_req">>}
+			     ],
+		  wapi_jonny5:publish_sync_req(SyncProp)
+	  end),
+    {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER, Self, sync)}};
 
 handle_info({document_changes, AcctID, Changes}, #state{acct_rev=Rev, acct_id=AcctID, acct_type=AcctType}=State) ->
     ?LOG_SYS("change to account ~s to be processed", [AcctID]),
