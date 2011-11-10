@@ -7,13 +7,10 @@
 %%%-------------------------------------------------------------------
 -module(whapps_config).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
+-include("whistle_apps.hrl").
 
 -export([get/2, get/3, set/3, set_default/3]).
 -export([flush/0, import/1]).
-
--define(CONFIG_DB, <<"system_config">>).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -133,7 +130,7 @@ import(Category) ->
 fetch_category(Category, Cache) ->
     Lookups = [fun fetch_file_config/2
                ,fun fetch_db_config/2
-               ,fun(Cat, C) -> wh_cache:peek_local(C, {?MODULE, Cat}) end],
+               ,fun(Cat, C) -> ?LOG("Trying cache for ~s", [Cat]), wh_cache:peek_local(C, {?MODULE, Cat}) end],
     lists:foldr(fun(_, {ok, _}=Acc) -> Acc;
                    (F, _) -> F(Category, Cache)
                 end, {error, not_found}, Lookups).
@@ -149,12 +146,13 @@ fetch_category(Category, Cache) ->
       Category :: binary(),
       Cache :: pid().
 fetch_db_config(Category, Cache) ->
+    ?LOG("Trying DB for ~s", [Category]),
     case couch_mgr:open_doc(?CONFIG_DB, Category) of
         {ok, JObj}=Ok ->
             wh_cache:store_local(Cache, {?MODULE, Category}, JObj),
             Ok;
-        {error, _}=E ->
-            ?LOG("could not fetch config ~s from db: ~p", [Category, E]),
+        {error, _E} ->
+            ?LOG("could not fetch config ~s from db: ~p", [Category, _E]),
             {error, not_found}
     end.
 
@@ -170,6 +168,8 @@ fetch_db_config(Category, Cache) ->
       Cache :: pid().
 fetch_file_config(Category, Cache) ->
     File = category_to_file(Category),
+
+    ?LOG("Trying file ~s for ~s", [File, Category]),
     case file:consult(File) of
         {ok, Terms} ->
             JObj = config_terms_to_json(Terms),
@@ -251,7 +251,7 @@ update_category_node(Category, Node, UpdateFun , Cache) ->
 %% update the entire category in both the db and cache
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_category/3 :: (Category, JObj, Cache) -> {ok, json_object} when
+-spec update_category/3 :: (Category, JObj, Cache) -> {ok, json_object()} when
       Category :: binary(),
       JObj :: json_object(),
       Cache :: pid().
@@ -259,6 +259,7 @@ update_category(Category, JObj, Cache) ->
     ?LOG("updating configuration category ~s", [Category]),
     JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),
     {ok, SavedJObj} = couch_mgr:ensure_saved(?CONFIG_DB, JObj1),
+    ?LOG("Saved cat ~s to db ~s", [Category, ?CONFIG_DB]),
     wh_cache:store_local(Cache, {?MODULE, Category}, SavedJObj),
     {ok, SavedJObj}.
 

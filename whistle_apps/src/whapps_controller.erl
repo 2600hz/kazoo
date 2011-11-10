@@ -11,7 +11,7 @@
 %% API
 -export([start_link/0, start_app/1, stop_app/1, restart_app/1, running_apps/0]).
 
--include_lib("whistle/include/wh_log.hrl").
+-include("whistle_apps.hrl").
 
 %%%===================================================================
 %%% API
@@ -68,6 +68,7 @@ running_apps() ->
     [ App || {App, _, _, _} <- supervisor:which_children(whapps_sup) ].
 
 initialize_whapps() ->
+    couch_mgr:db_create(?CONFIG_DB),
     case whapps_config:get(?MODULE, <<"cookie">>) of
         undefined -> ok;
         Cookie ->
