@@ -5,5 +5,5 @@
 -include_lib("whistle/include/wh_log.hrl").
 
 -define(APP_NAME, <<"jonny5">>).
--define(APP_VSN, <<"0.1.0">>).
+-define(APP_VERSION, <<"0.2.0">>).
 -define(BLACKLIST_SERVER, blacklist_server).

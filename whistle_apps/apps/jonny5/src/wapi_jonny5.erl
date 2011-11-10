@@ -18,10 +18,8 @@
 
 -export([bind_q/2, unbind_q/2]).
 
--export([publish_status_req/1, publish_status_req/2]).
--export([publish_status_resp/2, publish_status_resp/3]).
--export([publish_sync_req/1, publish_sync_req/2]).
--export([publish_sync_resp/2, publish_sync_resp/3]).
+-export([publish_status_req/1, publish_status_resp/2]).
+-export([publish_sync_req/1, publish_sync_resp/2]).
 
 -include("jonny5.hrl").
 
@@ -30,7 +28,7 @@
 
 %% For remote status collection
 -define(STATUS_REQ_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_STATUS_REQ_HEADERS, []).
+-define(OPTIONAL_STATUS_REQ_HEADERS, [<<"Uptime">>]).
 -define(STATUS_REQ_VALUES, [
 			    {<<"Event-Category">>, <<"jonny5">>}
 			    ,{<<"Event-Name">>, <<"status_req">>}
@@ -39,7 +37,7 @@
 
 -define(STATUS_RESP_HEADERS, [<<"Account-ID">>, <<"Uptime">>]).
 -define(OPTIONAL_STATUS_RESP_HEADERS, [<<"Prepay">>, <<"Max-Two-Way">>, <<"Max-Inbound">>
-					   ,<<"Two-Way">>, <<"Inbound">>
+					   ,<<"Two-Way">>, <<"Inbound">>, <<"Trunks">>
 				      ]).
 -define(STATUS_RESP_VALUES, [
 			     {<<"Event-Category">>, <<"jonny5">>}
@@ -58,7 +56,7 @@
 
 -define(SYNC_RESP_HEADERS, [<<"Account-ID">>, <<"Uptime">>]).
 -define(OPTIONAL_SYNC_RESP_HEADERS, [<<"Prepay">>, <<"Max-Two-Way">>, <<"Max-Inbound">>
-					 ,<<"Two-Way">>, <<"Inbound">>
+					 ,<<"Two-Way">>, <<"Inbound">>, <<"Trunks">>
 				    ]).
 -define(SYNC_RESP_VALUES, [
 			   {<<"Event-Category">>, <<"jonny5">>}
@@ -140,30 +138,22 @@ unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_resource(Queue, ?KEY_JONNY5_STATUS),
     amqp_util:unbind_q_from_resource(Queue, ?KEY_JONNY5_SYNC).
 
--spec publish_status_req/1 :: (ne_binary()) -> 'ok'.
--spec publish_status_req/2 :: (ne_binary(), ne_binary()) -> 'ok'.
-publish_status_req(JSON) ->
-    publish_status_req(JSON, ?DEFAULT_CONTENT_TYPE).
-publish_status_req(Payload, ContentType) ->
-    amqp_util:resource_publish(Payload, ?KEY_JONNY5_STATUS, ContentType).
+-spec publish_status_req/1 :: (api_terms()) -> 'ok'.
+publish_status_req(Req) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?STATUS_REQ_VALUES, fun ?MODULE:status_req/1),
+    amqp_util:resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_status_resp/2 :: (ne_binary(), ne_binary()) -> 'ok'.
--spec publish_status_resp/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-publish_status_resp(Queue, JObj) ->
-    publish_status_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_status_resp(Queue, Payload, ContentType) ->
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
+-spec publish_status_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+publish_status_resp(Queue, Req) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?STATUS_RESP_VALUES, fun ?MODULE:status_resp/1),
+    amqp_util:targeted_publish(Queue, Payload, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_sync_req/1 :: (ne_binary()) -> 'ok'.
--spec publish_sync_req/2 :: (ne_binary(), ne_binary()) -> 'ok'.
-publish_sync_req(JSON) ->
-    publish_sync_req(JSON, ?DEFAULT_CONTENT_TYPE).
-publish_sync_req(Payload, ContentType) ->
-    amqp_util:resource_publish(Payload, ?KEY_JONNY5_SYNC, ContentType).
+-spec publish_sync_req/1 :: (api_terms()) -> 'ok'.
+publish_sync_req(Req) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?SYNC_REQ_VALUES, fun ?MODULE:sync_req/1),
+    amqp_util:resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
 
--spec publish_sync_resp/2 :: (ne_binary(), ne_binary()) -> 'ok'.
--spec publish_sync_resp/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-publish_sync_resp(Queue, JObj) ->
-    publish_sync_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_sync_resp(Queue, Payload, ContentType) ->
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
+-spec publish_sync_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+publish_sync_resp(Queue, Req) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?SYNC_RESP_VALUES, fun ?MODULE:sync_resp/1),
+    amqp_util:targeted_publish(Queue, Payload, ?DEFAULT_CONTENT_TYPE).

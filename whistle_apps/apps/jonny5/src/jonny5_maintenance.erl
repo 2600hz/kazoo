@@ -15,6 +15,9 @@
 -define(SUMMARY_ROW_FORMAT, "| ~35.s | ~13.s | ~13.s | ~13.s |~n").
 -define(SUMMARY_HEADER, io:format(?SUMMARY_ROW_FORMAT, [<<"ACCOUNT ID">>, <<"TWO WAY (MAX)">>, <<"INBOUND (MAX)">>, <<"PREPAY">>])).
 
+-define(TRUNKS_ROW_FORMAT, "| ~35.s | ~10.s |~n").
+-define(TRUNKS_HEADER, io:format(?TRUNKS_ROW_FORMAT, [<<"Call ID">>, <<"Trunk Type">>])).
+
 refresh() ->
     j5_util:refresh_all_accounts().
 
@@ -71,10 +74,19 @@ print_summary(AcctJObj) ->
 
     AcctName = wh_json:get_value(<<"account">>, AcctJObj),
 
+    Trunks = wh_json:get_value(<<"trunks">>, AcctJObj, []),
+
     Two = list_to_binary([TwoWayAvail, "(", TwoWayMax, ")"]),
     In = list_to_binary([InAvail, "(", InMax, ")"]),
 
-    io:format(?SUMMARY_ROW_FORMAT, [AcctName, Two, In, Prepay]).
+    io:format(?SUMMARY_ROW_FORMAT, [AcctName, Two, In, Prepay]),
+    case Trunks of
+	[] -> ok;
+	Ts ->
+	    ?TRUNKS_HEADER,
+	    [io:format(?TRUNKS_ROW_FORMAT, [wh_json:get_value(<<"callid">>, TObj), wh_json:get_value(<<"type">>, TObj)])
+	       || TObj <- Ts]
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private

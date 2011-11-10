@@ -13,7 +13,7 @@
 %% API
 -export([start_link/1, authz_trunk/3, known_calls/1, status/1, refresh/1]).
 
--export([handle_call_event/2]).
+-export([handle_call_event/2, handle_j5_msg/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -22,6 +22,7 @@
 -include("jonny5.hrl").
 
 -define(SERVER, ?MODULE).
+-define(SYNC_TIMER, 5000).
 
 -record(state, {
 	 acct_id = <<>> :: binary()
@@ -33,6 +34,8 @@
          ,inbound = 0 :: non_neg_integer()
          ,prepay = 0.0 :: float()
          ,trunks_in_use = dict:new() :: dict() %% {CallID, Type :: inbound | two_way}
+	 ,start_time = 0 :: wh_now()
+         ,sync_ref :: reference()
 	 }).
 
 %%%===================================================================
@@ -48,10 +51,12 @@
 %%--------------------------------------------------------------------
 -spec start_link/1 :: (ne_binary()) -> {'ok', pid()} | 'ignore' | {'error', term()}.
 start_link(AcctID) ->
-    gen_listener:start_link(?MODULE, [{bindings, [{self, []}]}
+    gen_listener:start_link(?MODULE, [{bindings, [{self, []}, {jonny5, []}]}
 				      ,{responders, [{ {?MODULE, handle_call_event}, [{<<"call_event">>, <<"*">>} % call events
 										      ,{<<"call_detail">>, <<"*">>} % and CDR
-										     ] }
+										     ]
+						     }
+						     ,{ {?MODULE, handle_j5_msg}, [{<<"jonny5">>, <<"*">>}]} % internal J5 sync/status
 						    ]}
 				     ], [AcctID]).
 
@@ -105,6 +110,10 @@ handle_call_event(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {call_event, JObj}).
 
+handle_j5_msg(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    gen_listener:cast(Srv, {j5_msg, wh_json:get_value(<<"Event-Name">>, JObj), JObj}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -121,7 +130,10 @@ handle_call_event(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([AcctID]) ->
+    SyncRef = erlang:start_timer(0, self(), sync), % want this to be the first message we get
     j5_util:store_account_handler(AcctID, self()),
+
+    StartTime = wh_util:current_tstamp(),
 
     case get_trunks_available(AcctID, account) of
 	{error, not_found} ->
@@ -133,6 +145,7 @@ init([AcctID]) ->
 			,two_way=TwoWay, inbound=Inbound
 			,max_two_way=TwoWay, max_inbound=Inbound
 			,acct_id=AcctID, acct_type=account
+			,start_time=StartTime, sync_ref=SyncRef
 		       }};
 	{TwoWay, Inbound, Prepay, ts} ->
 	    ?LOG_SYS("Init for ts ~s complete", [AcctID]),
@@ -144,6 +157,7 @@ init([AcctID]) ->
 			,two_way=TwoWay, inbound=Inbound
 			,max_two_way=TwoWay, max_inbound=Inbound
 			,acct_rev=Rev, acct_id=AcctID, acct_type=ts
+			,start_time=StartTime, sync_ref=SyncRef
 		       }}
     end.
 
@@ -162,7 +176,7 @@ init([AcctID]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(status, _, #state{max_two_way=MaxTwo, max_inbound=MaxIn
-			      ,two_way=Two, inbound=In
+			      ,two_way=Two, inbound=In, trunks_in_use=Dict
 			      ,prepay=Prepay, acct_id=Acct}=State) ->
     {reply, wh_json:from_list([{<<"max_two_way">>, MaxTwo}
 			       ,{<<"max_inbound">>, MaxIn}
@@ -170,6 +184,7 @@ handle_call(status, _, #state{max_two_way=MaxTwo, max_inbound=MaxIn
 			       ,{<<"inbound">>, In}
 			       ,{<<"prepay">>, Prepay}
 			       ,{<<"account">>, Acct}
+			       ,{<<"trunks">>, [wh_json:from_list([{<<"callid">>, CallID}, {<<"type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
 			      ]), State};
 handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->
     {reply, dict:to_list(Dict), State};
@@ -232,6 +247,30 @@ handle_cast(refresh, #state{acct_type=AcctType, acct_id=AcctID, max_two_way=_Old
 	    ?LOG("Failed to refresh: ~p", [_E]),
 	    {noreply, State}
     end;
+
+handle_cast({j5_msg, <<"sync_req">>, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Dict, acct_id=AcctID
+						   ,max_inbound=MaxIn, max_two_way=MaxTwo, start_time=StartTime
+						   ,prepay=Prepay
+						   }=State) ->
+    RespTo = wh_json:get_value(<<"Server-ID">>, JObj),
+    SyncResp = [{<<"Uptime">>, uptime(StartTime)}
+		,{<<"Account-ID">>, AcctID}
+		,{<<"Prepay">>, Prepay}
+		,{<<"Two-Way">>, Two}
+		,{<<"Inbound">>, In}
+		,{<<"Max-Two-Way">>, MaxTwo}
+		,{<<"Max-Inbound">>, MaxIn}
+		,{<<"Server-ID">>, <<>>}
+		,{<<"Trunks">>, [wh_json:from_list([{<<"Call-ID">>, CallID}, {<<"Type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
+		,{<<"App-Version">>, ?APP_VERSION}
+		,{<<"App-Name">>, ?APP_NAME}
+	       ],
+    wapi_jonny5:publish_sync_response(RespTo, SyncResp),
+    {noreply, State};
+handle_cast({j5_msg, Evt, JObj}, State) ->
+    ?LOG("Unhandled event ~p", [Evt]),
+    {noreply, State};
+
 handle_cast({call_event, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Dict
 						    ,max_inbound=MaxIn, max_two_way=MaxTwo
 						   }=State) ->
@@ -263,6 +302,18 @@ handle_cast({call_event, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Di
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({timeout, SyncRef, sync}, #state{start_time=StartTime, sync_ref=SyncRef, acct_id=AcctID}=State) ->
+    SyncProp = [{<<"Uptime">>, uptime(StartTime)}
+		,{<<"Account-ID">>, AcctID}
+		,{<<"Server-ID">>, gen_listener:queue_name(self())}
+		,{<<"App-Name">>, ?APP_NAME}
+		,{<<"App-Version">>, ?APP_VERSION}
+	       ],
+
+    wapi_jonny5:publish_sync_req(SyncProp),
+
+    {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER, self(), sync)}};
+
 handle_info({document_changes, AcctID, Changes}, #state{acct_rev=Rev, acct_id=AcctID, acct_type=AcctType}=State) ->
     ?LOG_SYS("change to account ~s to be processed", [AcctID]),
     State1 = lists:foldl(fun(Prop, State0) ->
@@ -488,3 +539,7 @@ is_us48(<<"+1", Rest/binary>>) when erlang:byte_size(Rest) =:= 10 -> true;
 %% extension dialing
 is_us48(Bin) when erlang:byte_size(Bin) < 7 -> true;
 is_us48(_) -> false.
+
+-spec uptime/1 :: (pos_integer()) -> pos_integer().
+uptime(StartTime) ->
+    wh_util:current_tstamp() - StartTime.

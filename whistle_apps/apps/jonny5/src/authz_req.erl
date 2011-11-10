@@ -52,5 +52,5 @@ send_resp(JObj, {AuthzResp, CCV}) ->
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCV)}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-            | wh_api:default_headers(?APP_NAME, ?APP_VSN)],
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     wapi_authz:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
