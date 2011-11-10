@@ -22,7 +22,7 @@
 -include("ts.hrl").
 
 -define(WAIT_FOR_WIN_TIMEOUT, 5000).
--define(WAIT_FOR_BRIDGE_TIMEOUT, 10000).
+-define(WAIT_FOR_BRIDGE_TIMEOUT, 30000).
 -define(WAIT_FOR_HANGUP_TIMEOUT, 1000 * 60 * 60 * 1). %% 1 hour
 -define(WAIT_FOR_CDR_TIMEOUT, 5000).
 

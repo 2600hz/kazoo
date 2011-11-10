@@ -74,7 +74,7 @@ fetch_all_registrations() ->
       JObj :: json_object().
 get_expires(JObj) ->
     Expiry = wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
-    round(Expiry * 1.25) + 60.
+    round(Expiry * 1.25) + 120.
 
 %%-----------------------------------------------------------------------------
 %% @public
