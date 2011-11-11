@@ -520,6 +520,6 @@ stop_amqp(Q, Bindings) ->
     spawn(fun() -> [ gen_listener:rm_binding(Self, Type, Prop) || {Type, Prop} <- Bindings] end),
     amqp_util:queue_delete(Q).
 
--spec set_qos/1 :: (undefined | non_neg_integer()) -> 'ok'.
+-spec set_qos/1 :: ('undefined' | non_neg_integer()) -> 'ok'.
 set_qos(undefined) -> ok;
 set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).

@@ -89,7 +89,7 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
 %% validation definitions and remove any empty values
 %% @end
 %%--------------------------------------------------------------------
--spec prepare_api_payload/3 :: (ApiTerm, HeaderValues, ValidateFun) -> iolist() when
+-spec prepare_api_payload/3 :: (ApiTerm, HeaderValues, ValidateFun) -> {'ok', iolist()} | {'error', string()} when
       ApiTerm :: api_terms(),
       HeaderValues :: proplist(),
       ValidateFun :: fun().
