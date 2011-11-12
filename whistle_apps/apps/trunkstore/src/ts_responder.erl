@@ -28,7 +28,7 @@
 		     {route_req, [{<<"dialplan">>, <<"route_req">>}]}
 		    ]).
 -define(BINDINGS, [
-		   {routing, []}
+		   {route, []}
 		  ]).
 
 -define(SERVER, ?MODULE).

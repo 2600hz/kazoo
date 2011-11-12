@@ -15,13 +15,13 @@
 	 ,store_http_resp/1, store_http_resp_v/1]).
 
 -export([conference/1, noop/1, fetch/1, respond/1, progress/1]).
--export([play/1, record/1, queue/1, answer/1, park/1, play_collect_digits/1
+-export([play/1, record/1, queue/1, answer/1, park/1, play_and_collect_digits/1
 	 ,call_pickup/1, hangup/1, say/1, sleep/1, tone_detect/1, set/1
 	 ,tones/1, tones_req_tone/1, tones_req_tone_headers/1, error/1
 	]).
 
 -export([play_v/1, record_v/1, noop_v/1, tones_v/1, tones_req_tone_v/1, queue_v/1
-         ,answer_v/1, park_v/1, play_collect_digits_v/1, call_pickup_v/1, hangup_v/1
+         ,answer_v/1, park_v/1, play_and_collect_digits_v/1, call_pickup_v/1, hangup_v/1
          ,say_v/1, sleep_v/1, tone_detect_v/1, set_v/1, respond_v/1, progress_v/1
         ]).
 
@@ -412,20 +412,20 @@ fetch_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec play_collect_digits/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
-play_collect_digits(Prop) when is_list(Prop) ->
-    case play_collect_digits_v(Prop) of
+-spec play_and_collect_digits/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+play_and_collect_digits(Prop) when is_list(Prop) ->
+    case play_and_collect_digits_v(Prop) of
 	true -> wh_api:build_message(Prop, ?PLAY_COLLECT_DIGITS_REQ_HEADERS, ?OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS);
 	false -> {error, "Proplist failed validation for play_collect_digits_req"}
     end;
-play_collect_digits(JObj) ->
-    play_collect_digits(wh_json:to_proplist(JObj)).
+play_and_collect_digits(JObj) ->
+    play_and_collect_digits(wh_json:to_proplist(JObj)).
 
--spec play_collect_digits_v/1 :: (proplist() | json_object()) -> boolean().
-play_collect_digits_v(Prop) when is_list(Prop) ->
+-spec play_and_collect_digits_v/1 :: (proplist() | json_object()) -> boolean().
+play_and_collect_digits_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PLAY_COLLECT_DIGITS_REQ_HEADERS, ?PLAY_COLLECT_DIGITS_REQ_VALUES, ?PLAY_COLLECT_DIGITS_REQ_TYPES);
-play_collect_digits_v(JObj) ->
-    play_collect_digits_v(wh_json:to_proplist(JObj)).
+play_and_collect_digits_v(JObj) ->
+    play_and_collect_digits_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Pickup a call - see wiki

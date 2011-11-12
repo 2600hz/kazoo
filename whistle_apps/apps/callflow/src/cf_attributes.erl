@@ -88,7 +88,7 @@ caller_id(CIDType, DeviceId, OwnerId, #cf_call{account_id=AccountId, cid_number=
                       Property -> Property
                   end,
             CIDNumber = wh_json:get_value(<<"number">>, CID, Num),
-            CIDName = wh_json:get_value(<<"name">>, CID, Num),
+            CIDName = wh_json:get_value(<<"name">>, CID, Name),
             ?LOG("using caller id ~s '~s'", [CIDNumber, CIDName]),
             {CIDNumber, CIDName}
     end.
@@ -257,13 +257,14 @@ fetch_attributes(Attribute, Expires, #cf_call{account_db=Db}) ->
         {ok, Attributes} ->
             Attributes;
         {error, not_found} ->
-            case couch_mgr:get_all_results(Db, get_view(Attribute)) of
+            case couch_mgr:get_results(Db, get_view(Attribute), [{<<"stale">>, <<"ok">>}]) of
                 {ok, JObj} ->
                     Properties = [{wh_json:get_value(<<"key">>, Property), wh_json:get_value(<<"value">>, Property)}
                                   || Property <- JObj],
                     wh_cache:store({cf_attribute, Db, Attribute}, Properties, Expires),
                     Properties;
-                {error, _} ->
+                {error, R} ->
+                    ?LOG("unable to fetch attribute ~s: ~p", [Attribute, R]),
                     []
             end
     end.

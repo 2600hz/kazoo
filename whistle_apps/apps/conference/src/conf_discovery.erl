@@ -516,7 +516,7 @@ play_and_collect_digits(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) 
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wapi_dialplan:play_collect_digits(Command),
+    {ok, Payload} = wapi_dialplan:play_and_collect_digits(Command),
     wapi_dialplan:publish_action(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE),
     wait_for_command(<<"play_and_collect_digits">>).
 
