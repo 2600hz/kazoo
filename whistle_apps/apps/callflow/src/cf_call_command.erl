@@ -264,8 +264,10 @@ bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Call) ->
 bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback
        , #cf_call{call_id=CallId, amqp_q=AmqpQ, owner_id=OwnerId, authorizing_id=AuthId, inception=Inception, channel_vars=CCVs}=Call) ->
     {CIDNum, CIDName} = case Inception of
-                            <<"off-net">> -> {undefined, undefined};
-                            _ -> cf_attributes:caller_id(CIDType, AuthId, OwnerId, Call)
+                            <<"on-net">> ->
+                                cf_attributes:caller_id(CIDType, AuthId, OwnerId, Call);
+                            _ ->
+                                {undefined, undefined}
                         end,
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
@@ -622,7 +624,7 @@ play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvali
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(AmqpQ, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wapi_dialplan:play_collect_digits([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+    {ok, Payload} = wapi_dialplan:play_and_collect_digits([ KV || {_, V}=KV <- Command, V =/= undefined ]),
     send_callctrl(Payload, Call).
 
 b_play_and_collect_digit(Media, Call) ->
