@@ -158,7 +158,7 @@ get_acct_id(JObj) ->
 -spec publish_status_req/1 :: (api_terms()) -> 'ok'.
 publish_status_req(Req) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?STATUS_REQ_VALUES, fun ?MODULE:status_req/1),
-    amqp_util:whapps_publish(Payload, status_req_routing_key(get_acct_id(Req)), ?DEFAULT_CONTENT_TYPE).
+    amqp_util:whapps_publish(status_req_routing_key(get_acct_id(Req)), Payload, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_status_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 publish_status_resp(Queue, Req) ->
@@ -168,7 +168,7 @@ publish_status_resp(Queue, Req) ->
 -spec publish_sync_req/1 :: (api_terms()) -> 'ok'.
 publish_sync_req(Req) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?SYNC_REQ_VALUES, fun ?MODULE:sync_req/1),
-    amqp_util:whapps_publish(Payload, sync_req_routing_key(get_acct_id(Req)), ?DEFAULT_CONTENT_TYPE).
+    amqp_util:whapps_publish(sync_req_routing_key(get_acct_id(Req)), Payload, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_sync_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 publish_sync_resp(Queue, Req) ->

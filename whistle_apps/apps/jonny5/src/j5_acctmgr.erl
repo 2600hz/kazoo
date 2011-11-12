@@ -22,7 +22,7 @@
 -include("jonny5.hrl").
 
 -define(SERVER, ?MODULE).
--define(SYNC_TIMER, 5000).
+-define(SYNC_TIMER, 60000).
 
 -record(state, {
 	 acct_id = <<>> :: binary()
@@ -338,7 +338,7 @@ handle_info({timeout, SyncRef, sync}, #state{start_time=StartTime, sync_ref=Sync
 			     ],
 		  wapi_jonny5:publish_sync_req(SyncProp)
 	  end),
-    {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER, self(), sync)}};
+    {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)}};
 
 handle_info({document_changes, AcctID, Changes}, #state{acct_rev=Rev, acct_id=AcctID, acct_type=AcctType}=State) ->
     ?LOG_SYS("change to account ~s to be processed", [AcctID]),
@@ -593,3 +593,7 @@ send_levels_resp(JObj, #state{two_way=Two, inbound=In, trunks_in_use=Dict, acct_
 		,{<<"App-Name">>, ?APP_NAME}
 	       ],
     PublishFun(wh_json:get_value(<<"Server-ID">>, JObj), SyncResp).
+
+-spec sync_fudge/0 :: () -> 1..?SYNC_TIMER.
+sync_fudge() ->
+    crypto:rand_uniform(1, ?SYNC_TIMER).
