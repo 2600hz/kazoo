@@ -68,7 +68,7 @@ get(Category, Key, Default) ->
 %% set the key to the value in the given category but specific to this node
 %% @end
 %%-----------------------------------------------------------------------------
--spec set/3 :: (Category, Key, Value) -> {ok, json_object()} | {error, term()} when
+-spec set/3 :: (Category, Key, Value) -> {ok, json_object()} when
       Category :: binary() | string() | atom(),
       Key :: binary() | string() | atom(),
       Value :: term().
@@ -82,7 +82,7 @@ set(Category, Key, Value) ->
 %% section
 %% @end
 %%-----------------------------------------------------------------------------
--spec set_default/3 :: (Category, Key, Value) -> {ok, json_object()} | {error, term()} when
+-spec set_default/3 :: (Category, Key, Value) -> {ok, json_object()} when
       Category :: binary() | string() | atom(),
       Key :: binary() | string() | atom(),
       Value :: term().
@@ -202,7 +202,7 @@ config_terms_to_json(Terms) ->
 %% for the given node
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_set/4 :: (Category, Node, Key, Value) -> {ok, json_object()} | {error, not_found} when
+-spec do_set/4 :: (Category, Node, Key, Value) -> {ok, json_object()} when
       Category :: binary() | string() | atom(),
       Node :: binary() | string() | atom(),
       Key :: binary() | string() | atom(),
