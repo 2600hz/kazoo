@@ -567,7 +567,7 @@
 				,{<<"play">>, fun wh_api:play_req_v/1}
 				,{<<"record">>, fun wh_api:record_req_v/1}
 				,{<<"store">>, fun wh_api:store_req_v/1}
-				,{<<"play_and_collect_digits">>, fun wh_api:play_collect_digits_req_v/1}
+				,{<<"play_and_collect_digits">>, fun wh_api:play_and_collect_digits_req_v/1}
 				,{<<"tones">>, fun wh_api:tones_req_v/1}
 				,{<<"tone_detect">>, fun wh_api:tone_detect_req_v/1}
 				,{<<"park">>, fun wh_api:park_req_v/1}

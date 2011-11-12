@@ -96,7 +96,7 @@ get_fs_app(_Node, _UUID, _JObj, <<"hangup">>) ->
     {<<"hangup">>, <<>>};
 
 get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
-    case wapi_dialplan:play_collect_digits_v(JObj) of
+    case wapi_dialplan:play_and_collect_digits_v(JObj) of
 	false -> {'error', <<"play_and_get_digits">>, <<"play_and_collect_digits failed to execute as JObj did not validate">>};
 	true ->
 	    Min = wh_json:get_value(<<"Minimum-Digits">>, JObj),
