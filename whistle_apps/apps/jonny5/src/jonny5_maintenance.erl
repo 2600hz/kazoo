@@ -52,9 +52,10 @@ local_summary(AcctID, _) ->
 	    do_summary([AcctJObj], fun print_summary/1)
     end.
 
--spec do_summary/2 :: (json_objects(), fun()) -> 'ok'.
+-spec do_summary/2 :: (json_objects(), fun((json_object()) -> 'ok')) -> no_return().
 do_summary(JObjs, PrintFun) ->
-    [PrintFun(JObj) || JObj <- JObjs], ok.
+    _ = [PrintFun(JObj) || JObj <- JObjs],
+    ok.
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -62,7 +63,7 @@ do_summary(JObjs, PrintFun) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_summary/1 :: (json_object()) -> 'ok'.
+-spec print_summary/1 :: (json_object()) -> 'ok' | no_return().
 print_summary(AcctJObj) ->
     TwoWayMax = wh_json:get_binary_value(<<"max_two_way">>, AcctJObj),
     TwoWayAvail = wh_json:get_binary_value(<<"two_way">>, AcctJObj),

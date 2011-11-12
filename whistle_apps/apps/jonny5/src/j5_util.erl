@@ -77,7 +77,7 @@ preload_trunkstore() ->
     ?LOG_SYS("Loading ~b trunkstore accounts", [length(TSAccts)]),
     preload_accounts(TSAccts).
 
--spec refresh_all_accounts/0 :: () -> 'ok'.
+-spec refresh_all_accounts/0 :: () -> no_return().
 refresh_all_accounts() ->
     {ok, Cache} = jonny5_sup:cache_proc(),
     AcctPids = wh_cache:filter_local(Cache, fun({j5_authz, _}, _) -> true;

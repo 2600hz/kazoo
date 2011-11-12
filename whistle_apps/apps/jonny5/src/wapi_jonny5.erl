@@ -130,17 +130,17 @@ sync_resp_v(JObj) ->
 bind_q(Queue, Props) ->
     AcctId = get_acct_id(Props),
 
-    amqp_util:resource_exchange(),
-    _ = amqp_util:bind_q_to_resource(Queue, <<?KEY_JONNY5_STATUS/binary, ".", AcctId/binary>>),
-    _ = amqp_util:bind_q_to_resource(Queue, <<?KEY_JONNY5_SYNC/binary, ".", AcctId/binary>>),
+    amqp_util:whapps_exchange(),
+    _ = amqp_util:bind_q_to_whapps(Queue, status_req_routing_key(AcctId)),
+    _ = amqp_util:bind_q_to_whapps(Queue, sync_req_routing_key(AcctId)),
     ok.
 
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     AcctId = get_acct_id(Props),
 
-    amqp_util:unbind_q_from_resource(Queue, status_req_routing_key(AcctId)),
-    amqp_util:unbind_q_from_resource(Queue, sync_req_routing_key(AcctId)).
+    amqp_util:unbind_q_from_whapps(Queue, status_req_routing_key(AcctId)),
+    amqp_util:unbind_q_from_whapps(Queue, sync_req_routing_key(AcctId)).
 
 -spec get_acct_id/1 :: (proplist()) -> ne_binary().
 get_acct_id(Prop) when is_list(Prop) ->
@@ -158,7 +158,7 @@ get_acct_id(JObj) ->
 -spec publish_status_req/1 :: (api_terms()) -> 'ok'.
 publish_status_req(Req) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?STATUS_REQ_VALUES, fun ?MODULE:status_req/1),
-    amqp_util:resource_publish(Payload, status_req_routing_key(get_acct_id(Req)), ?DEFAULT_CONTENT_TYPE).
+    amqp_util:whapps_publish(Payload, status_req_routing_key(get_acct_id(Req)), ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_status_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 publish_status_resp(Queue, Req) ->
@@ -168,7 +168,7 @@ publish_status_resp(Queue, Req) ->
 -spec publish_sync_req/1 :: (api_terms()) -> 'ok'.
 publish_sync_req(Req) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?SYNC_REQ_VALUES, fun ?MODULE:sync_req/1),
-    amqp_util:resource_publish(Payload, sync_req_routing_key(get_acct_id(Req)), ?DEFAULT_CONTENT_TYPE).
+    amqp_util:whapps_publish(Payload, sync_req_routing_key(get_acct_id(Req)), ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_sync_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 publish_sync_resp(Queue, Req) ->

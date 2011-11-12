@@ -13,8 +13,8 @@
 -include("jonny5.hrl").
 
 init() ->
-    j5_util:preload_accounts(),
-    j5_util:preload_trunkstrore().
+    _ = j5_util:preload_accounts(),
+    j5_util:preload_trunkstore().
 
 handle_req(JObj, _Props) ->
     case wapi_authz:req_v(JObj) of

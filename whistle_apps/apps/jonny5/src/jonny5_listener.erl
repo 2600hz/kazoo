@@ -49,29 +49,23 @@ start_link() ->
 				      ,{bindings, ?BINDINGS}
 				     ], []).
 
--spec stop/1 :: (Srv) -> ok when
-      Srv :: atom() | pid().
+-spec stop/1 :: (atom() | pid()) -> 'ok'.
 stop(Srv) ->
     gen_listener:stop(Srv).
 
+-spec set_blacklist_provider/2 :: (pid() | atom(), atom()) -> 'ok'.
 set_blacklist_provider(Srv, Provider) ->
     gen_listener:cast(Srv, {set_blacklist_provider, Provider}).
 
--spec add_responder/3 :: (Srv, Responder, Key) -> 'ok' when
-      Srv :: pid() | atom(),
-      Responder :: atom(),
-      Key :: {binary(), binary()}.
+-spec add_responder/3 :: (pid() | atom(), atom(), {ne_binary(), ne_binary()}) -> 'ok'.
 add_responder(Srv, Responder, Key) ->
     gen_listener:add_responder(Srv, Responder, Key).
 
--spec add_binding/2 :: (Srv, Binding) -> 'ok' when
-      Srv :: pid() | atom(),
-      Binding :: atom().
+-spec add_binding/2 :: (pid() | atom(), atom()) -> 'ok'.
 add_binding(Srv, Binding) ->
     gen_listener:add_binding(Srv, {Binding, []}).
 
--spec is_blacklisted/1 :: (AccountId) -> {'true', binary()} | 'false' when
-      AccountId :: binary().
+-spec is_blacklisted/1 :: (ne_binary()) -> {'true', binary()} | 'false'.
 is_blacklisted(AccountId) ->
     {Mod, Srv} = jonny5_sup:get_blacklist_server(),
     Mod:is_blacklisted(Srv, AccountId).
@@ -154,8 +148,6 @@ handle_info({'DOWN', PRef, process, _PPid, _Reason}, #state{bl_provider_ref=PRef
 	    PRef1 = erlang:monitor(process, PPid1),
 	    {noreply, State#state{bl_provider_ref=PRef1, bl_provider_pid=PPid1}};
 	ignore ->
-	    {noreply, State};
-	undefined ->
 	    {noreply, State}
     end
     catch
@@ -170,8 +162,6 @@ handle_info(timeout, #state{bl_provider_mod=PMod, bl_provider_pid=undefined}=Sta
 	    PRef1 = erlang:monitor(process, PPid1),
 	    {noreply, State#state{bl_provider_ref=PRef1, bl_provider_pid=PPid1}};
 	ignore ->
-	    {noreply, State};
-	undefined ->
 	    {noreply, State}
     end;
 
@@ -222,7 +212,7 @@ find_bl_provider_pid(PMod) ->
     ?LOG_SYS("trying to start ~s" , [PMod]),
     {module, PMod} = code:ensure_loaded(PMod),
     case jonny5_sup:start_child(PMod) of
-	{ok, undefined} -> ?LOG("ignored"), undefined;
+	{ok, undefined} -> ?LOG("ignored"), 'ignore';
 	{ok, Pid} -> ?LOG("started"), Pid;
 	{ok, Pid, _Info} -> ?LOG("started with ~p", [_Info]), Pid;
 	{error, already_present} ->

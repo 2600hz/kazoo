@@ -34,7 +34,7 @@
          ,inbound = 0 :: non_neg_integer()
          ,prepay = 0.0 :: float()
          ,trunks_in_use = dict:new() :: dict() %% {CallID, Type :: inbound | two_way}
-	 ,start_time = 0 :: wh_now()
+	 ,start_time = 1 :: pos_integer()
          ,sync_ref :: reference()
 	 }).
 
@@ -51,6 +51,7 @@
 %%--------------------------------------------------------------------
 -spec start_link/1 :: (ne_binary()) -> {'ok', pid()} | 'ignore' | {'error', term()}.
 start_link(AcctID) ->
+    %% why are we receiving messages for account IDs we don't bind to?
     gen_listener:start_link(?MODULE, [{bindings, [{self, []}, {jonny5, [{account_id, AcctID}]}]}
 				      ,{responders, [{ {?MODULE, handle_call_event}, [{<<"call_event">>, <<"*">>} % call events
 										      ,{<<"call_detail">>, <<"*">>} % and CDR
@@ -265,8 +266,6 @@ handle_cast({j5_msg, <<"sync_req">>, JObj}, #state{two_way=Two, inbound=In, trun
 			      ,{<<"Trunks">>, [wh_json:from_list([{<<"Call-ID">>, CallID}, {<<"Type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
 			      ,{<<"App-Version">>, ?APP_VERSION}
 			      ,{<<"App-Name">>, ?APP_NAME}
-			      %% ,{<<"Event-Category">>, <<"jonny5">>}
-			      %% ,{<<"Event-Name">>, <<"sync_resp">>}
 			     ],
 		  wapi_jonny5:publish_sync_resp(RespTo, SyncResp)
 	  end),
@@ -299,6 +298,9 @@ handle_cast({j5_msg, <<"sync_resp">>, JObj}, #state{acct_id=AcctID, max_inbound=
 		{noreply, State}
 	end
     catch
+	error:{badmatch, BadMatch} ->
+	    ?LOG("Badmatch error with ~s", [BadMatch]),
+	    {noreply, State};
 	_T:_R ->
 	    ?LOG("Failed to process sync_resp: ~p ~p", [_T, _R]),
 	    {noreply, State}
@@ -347,8 +349,6 @@ handle_info({timeout, SyncRef, sync}, #state{start_time=StartTime, sync_ref=Sync
 			      ,{<<"Server-ID">>, gen_listener:queue_name(Self)}
 			      ,{<<"App-Name">>, ?APP_NAME}
 			      ,{<<"App-Version">>, ?APP_VERSION}
-			      ,{<<"Event-Category">>, <<"jonny5">>}
-			      ,{<<"Event-Name">>, <<"sync_req">>}
 			     ],
 		  wapi_jonny5:publish_sync_req(SyncProp)
 	  end),
@@ -379,7 +379,8 @@ handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
-handle_event(_JObj, _State) ->
+handle_event(_JObj, #state{acct_id=_AcctId}=_State) ->
+    ?LOG("Acct: ~s received jobj for acctid ~s", [_AcctId, wh_json:get_value(<<"Account-ID">>, _JObj)]),
     {reply, [{server, self()}]}.
 
 %%--------------------------------------------------------------------
@@ -417,10 +418,10 @@ code_change(_OldVsn, State, _Extra) ->
 get_trunks_available(AcctID, account) ->
     case couch_mgr:get_results(whapps_util:get_db_name(AcctID, encoded), <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
 	{ok, []} ->
-	    ?LOG("No results from view, tring account doc"),
+	    ?LOG("No results from view, trying account doc"),
 	    get_trunks_available_from_account_doc(AcctID);
 	{error, not_found} ->
-	    ?LOG("Error loading view, tring account doc"),
+	    ?LOG("Error loading view, trying account doc"),
 	    get_trunks_available_from_account_doc(AcctID);
 	{ok, [JObj|_]} ->
 	    ?LOG("View result retrieved"),
