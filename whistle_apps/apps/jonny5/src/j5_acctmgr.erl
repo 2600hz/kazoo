@@ -249,26 +249,12 @@ handle_cast(refresh, #state{acct_type=AcctType, acct_id=AcctID, max_two_way=_Old
 	    {noreply, State}
     end;
 
-handle_cast({j5_msg, <<"sync_req">>, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Dict, acct_id=AcctID
-						   ,max_inbound=MaxIn, max_two_way=MaxTwo, start_time=StartTime
-						   ,prepay=Prepay
-						   }=State) ->
-    spawn(fun() ->
-		  RespTo = wh_json:get_value(<<"Server-ID">>, JObj),
-		  SyncResp = [{<<"Uptime">>, uptime(StartTime)}
-			      ,{<<"Account-ID">>, AcctID}
-			      ,{<<"Prepay">>, Prepay}
-			      ,{<<"Two-Way">>, Two}
-			      ,{<<"Inbound">>, In}
-			      ,{<<"Max-Two-Way">>, MaxTwo}
-			      ,{<<"Max-Inbound">>, MaxIn}
-			      ,{<<"Server-ID">>, <<>>}
-			      ,{<<"Trunks">>, [wh_json:from_list([{<<"Call-ID">>, CallID}, {<<"Type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
-			      ,{<<"App-Version">>, ?APP_VERSION}
-			      ,{<<"App-Name">>, ?APP_NAME}
-			     ],
-		  wapi_jonny5:publish_sync_resp(RespTo, SyncResp)
-	  end),
+handle_cast({j5_msg, <<"sync_req">>, JObj}, State) ->
+    spawn(fun() -> send_levels_resp(JObj, State, fun wapi_jonny5:publish_sync_resp/2) end),
+    {noreply, State};
+
+handle_cast({j5_msg, <<"status_req">>, JObj}, State) ->
+    spawn(fun() -> send_levels_resp(JObj, State, fun wapi_jonny5:publish_status_resp/2) end),
     {noreply, State};
 
 handle_cast({j5_msg, <<"sync_resp">>, JObj}, #state{acct_id=AcctID, max_inbound=MaxIn, max_two_way=MaxTwo
@@ -588,3 +574,22 @@ uptime(StartTime) ->
 	    1;
 	X -> X
     end.
+
+-spec send_levels_resp/3 :: (json_object(), #state{}, fun((ne_binary(), proplist() | json_object()) -> 'ok')) -> no_return().
+send_levels_resp(JObj, #state{two_way=Two, inbound=In, trunks_in_use=Dict, acct_id=AcctID
+			      ,max_inbound=MaxIn, max_two_way=MaxTwo, start_time=StartTime
+			      ,prepay=Prepay
+			     }, PublishFun) ->
+    SyncResp = [{<<"Uptime">>, uptime(StartTime)}
+		,{<<"Account-ID">>, AcctID}
+		,{<<"Prepay">>, Prepay}
+		,{<<"Two-Way">>, Two}
+		,{<<"Inbound">>, In}
+		,{<<"Max-Two-Way">>, MaxTwo}
+		,{<<"Max-Inbound">>, MaxIn}
+		,{<<"Server-ID">>, <<>>}
+		,{<<"Trunks">>, [wh_json:from_list([{<<"Call-ID">>, CallID}, {<<"Type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
+		,{<<"App-Version">>, ?APP_VERSION}
+		,{<<"App-Name">>, ?APP_NAME}
+	       ],
+    PublishFun(wh_json:get_value(<<"Server-ID">>, JObj), SyncResp).
