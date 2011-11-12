@@ -292,8 +292,8 @@ handle_cast({j5_msg, <<"sync_resp">>, JObj}, #state{acct_id=AcctID, max_inbound=
 	    {noreply, State}
     end;
 
-handle_cast({j5_msg, Evt, _JObj}, State) ->
-    ?LOG("Unhandled j5 message ~p", [Evt]),
+handle_cast({j5_msg, _Evt, _JObj}, State) ->
+    ?LOG("Unhandled j5 message ~s", [_Evt]),
     {noreply, State};
 
 handle_cast({call_event, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Dict
