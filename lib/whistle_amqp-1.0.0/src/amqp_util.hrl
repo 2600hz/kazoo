@@ -65,3 +65,8 @@
 %% doc_update.accountaXXXXX.callflow.id
 -define(EXCHANGE_CONFIGURATION, <<"configuration">>).
 -define(TYPE_CONFIGURATION, <<"topic">>).
+
+%% WhApp Exchange
+%% - For inter-whapp communication (amongst themselves)
+-define(EXCHANGE_WHAPPS, <<"whapps">>).
+-define(TYPE_WHAPPS, <<"topic">>).

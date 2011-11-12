@@ -29,6 +29,7 @@
 			  ,{?EXCHANGE_RESOURCE, ?TYPE_RESOURCE}
 			  ,{?EXCHANGE_CONFIGURATION, ?TYPE_CONFIGURATION}
 			  ,{?EXCHANGE_CONFERENCE, ?TYPE_CONFERENCE}
+			  ,{?EXCHANGE_WHAPPS, ?TYPE_WHAPPS}
 			 ]).
 
 %% Channel, ChannelRef, Ticket[, FromRef]
@@ -161,6 +162,7 @@ handle_call(stop, {From, _}, #state{manager=Mgr}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({publish, From, BasicPub, AmqpMsg}, #state{publish_channel={C,_,T}}=State) ->
+    ?LOG_SYS("Pub on ch ~p x: ~s rt: ~s", [C, BasicPub#'basic.publish'.exchange, BasicPub#'basic.publish'.routing_key]),
     spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, BasicPub#'basic.publish'{ticket=T}, AmqpMsg)) end),
     {noreply, State};
 
@@ -174,6 +176,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 	error ->
 	    case start_channel(Conn, FromPid) of
 		{C,R,T} -> % channel, channel ref, ticket
+		    ?LOG("Consuming on ch: ~p for proc: ~p", [C, FromPid]),
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, {C, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)}),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
@@ -187,6 +190,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 		    {noreply, State}
 	    end;
 	{ok, {C,_,T,_}} ->
+	    ?LOG("Already consuming on ch: ~p for proc: ~p", [C, FromPid]),
 	    gen_server:reply(From, {C, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)}),
 	    {noreply, State}
     end;
