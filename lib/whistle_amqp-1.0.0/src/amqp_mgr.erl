@@ -32,6 +32,7 @@
 	 ,handler_pid = 'undefined' :: 'undefined' | pid()
 	 ,handler_ref = 'undefined' :: 'undefined' | reference()
          ,conn_params = 'undefined' :: 'undefined' | #'amqp_params_direct'{} | #'amqp_params_network'{}
+	 ,conn_ref = 'undefined' :: 'undefined' | reference()
          ,timeout = ?START_TIMEOUT :: integer()
        }).
 
@@ -81,7 +82,7 @@ register_return_handler() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
--spec init/1 :: ([]) -> {'ok', #state{}, 0}.
+-spec init/1 :: ([]) -> {'ok', #state{}}.
 init([]) ->
     Init = get_config(),
     gen_server:cast(self(), {start_conn, props:get_value(amqp_uri, Init, ?DEFAULT_AMQP_URI)}),
@@ -176,6 +177,30 @@ handle_cast({start_conn, Uri}, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
+handle_info({reconnect, Timeout}, #state{conn_ref=undefined, conn_params=ConnP}=State) ->
+    case start_amqp_host(ConnP, State) of
+	{ok, State1} ->
+	    ?LOG_SYS("Reconnected AMQP"),
+	    {noreply, State1};
+	{error, _E} ->
+	    ?LOG_SYS("Failed to reconnect to AMQP(~p), waiting a bit more", [_E]),
+	    NextTimeout = next_timeout(Timeout),
+	    _Ref = erlang:send_after(NextTimeout, self(), {reconnect, NextTimeout}),
+	    {noreply, State}
+    end;
+
+handle_info({'DOWN', ConnRef, process, _Pid, _Reason}, #state{conn_params=ConnP, conn_ref=ConnRef}=State) ->
+    ?LOG_SYS("connection to ~s (process ~p) went down, ~w", [wh_amqp_params:host(ConnP), _Pid, _Reason]),
+    erlang:demonitor(ConnRef, [flush]),
+    _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
+    _ = stop_amqp_host(State),
+    {noreply, State#state{conn_ref=undefined, handler_pid=undefined, handler_ref=undefined}, hibernate};
+
+handle_info({'DOWN', Ref, process, _, normal}, #state{handler_ref=Ref}=State) ->
+    ?LOG_SYS("amqp host proc down normally"),
+    erlang:demonitor(Ref, [flush]),
+    {noreply, State#state{handler_ref=undefined, handler_pid=undefined}};
+
 handle_info({'DOWN', Ref, process, _, _Reason}, #state{handler_ref=Ref}=State) ->
     ?LOG_SYS("amqp host process went down, ~w", [_Reason]),
     erlang:demonitor(Ref, [flush]),
@@ -227,7 +252,7 @@ stop_amqp_host(#state{handler_pid=undefined}) ->
 stop_amqp_host(#state{handler_pid=HPid, handler_ref=HRef}) ->
     erlang:demonitor(HRef, [flush]),
     _ = net_kernel:monitor_nodes(false),
-    amqp_host:stop(HPid).
+    spawn(fun() -> amqp_host:stop(HPid) end).
 
 -spec start_amqp_host/2 :: (#'amqp_params_direct'{} | #'amqp_params_network'{}, #state{}) -> {'ok', #state{}} | {'error', 'econnrefused'}.
 start_amqp_host(ConnP, State) ->
@@ -236,10 +261,11 @@ start_amqp_host(ConnP, State) ->
 	    E;
 	{ok, Conn} ->
 	    {ok, HPid} = amqp_host_sup:start_host(wh_amqp_params:host(ConnP), Conn),
-	    Ref = erlang:monitor(process, HPid),
+	    HRef = erlang:monitor(process, HPid),
+	    ConnRef = erlang:monitor(process, Conn),
 
-	    {ok, State#state{handler_pid = HPid, handler_ref = Ref
-			     ,conn_params = ConnP, timeout=?START_TIMEOUT
+	    {ok, State#state{handler_pid=HPid, handler_ref=HRef, conn_ref=ConnRef
+			     ,conn_params=ConnP, timeout=?START_TIMEOUT
 			    }}
     end.
 
@@ -253,3 +279,12 @@ get_config() ->
             ?LOG_SYS("unable to load amqp manager configuration ~p", [E]),
             []
     end.
+
+-spec next_timeout/1 :: (pos_integer()) -> ?START_TIMEOUT..?MAX_TIMEOUT.
+next_timeout(?MAX_TIMEOUT=Timeout) -> Timeout;
+next_timeout(Timeout) when Timeout*2 > ?MAX_TIMEOUT ->
+    ?MAX_TIMEOUT;
+next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
+    ?START_TIMEOUT;
+next_timeout(Timeout) ->
+    Timeout * 2.
