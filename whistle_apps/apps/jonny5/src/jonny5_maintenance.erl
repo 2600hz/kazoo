@@ -13,13 +13,13 @@
 
 -include("jonny5.hrl").
 
--define(LOCAL_SUMMARY_ROW_FORMAT, "| ~35.s | ~35.s | ~13.s | ~13.s | ~13.s |~n").
--define(LOCAL_SUMMARY_HEADER, io:format(?LOCAL_SUMMARY_ROW_FORMAT, [<<"J5 NODE">>, <<"ACCOUNT ID">>, <<"TWO WAY (MAX)">>, <<"INBOUND (MAX)">>, <<"PREPAY">>])).
+-define(LOCAL_SUMMARY_ROW_FORMAT, " ~4.s | ~35.s | ~35.s | ~13.s | ~13.s | ~13.s |~n").
+-define(LOCAL_SUMMARY_HEADER, io:format(?LOCAL_SUMMARY_ROW_FORMAT, [<<>>, <<"J5 NODE">>, <<"ACCOUNT ID">>, <<"TWO WAY (MAX)">>, <<"INBOUND (MAX)">>, <<"PREPAY">>])).
 
 -define(REMOTE_SUMMARY_ROW_FORMAT, " ~4.s | ~35.s | ~35.s | ~13.s | ~13.s | ~13.s |~n").
 -define(REMOTE_SUMMARY_HEADER, io:format(?REMOTE_SUMMARY_ROW_FORMAT, [<<>>, <<"J5 NODE">>, <<"ACCOUNT ID">>, <<"TWO WAY (MAX)">>, <<"INBOUND (MAX)">>, <<"PREPAY">>])).
 
--define(REMOTE_TIMEOUT, 2000).
+-define(REMOTE_TIMEOUT, 1000).
 
 -define(TRUNKS_ROW_FORMAT, "| ~35.s | ~10.s |~n").
 -define(TRUNKS_HEADER, io:format(?TRUNKS_ROW_FORMAT, [<<"Call ID">>, <<"Trunk Type">>])).
