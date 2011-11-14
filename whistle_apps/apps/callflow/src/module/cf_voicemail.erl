@@ -321,7 +321,7 @@ record_voicemail(RecordingName, #mailbox{prompts=#prompts{tone_spec=ToneSpec, sa
             _ = cf_call_command:wait_for_application(<<"record">>, <<"RECORD_STOP">>),
             new_message(RecordingName, Box, Call);
 	{error, ErrorJObj} ->
-            ?LOG("media server exploded: ~p", [ErrorJObj]),
+        ?LOG("media server exploded: ~p", [ErrorJObj]),
 	    ok %% something happened Whistle-side, nothing to do for now
     end.
 
@@ -847,7 +847,11 @@ review_recording(RecordingName, #mailbox{keys=#keys{listen=Listen, save=Save, re
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+<<<<<<< HEAD
 -spec store_recording/3 :: (RecordingName, MediaId, Call) -> {ok, json_object()} | {error, timeout | json_object()} when
+=======
+-spec store_recording/3 :: (RecordingName, MediaId, Call) -> {ok, json_object()} | {error, json_object()} when
+>>>>>>> 3d9cea8... very rudimentary alerting system as a simple notifier until there is time to build it out properly
       RecordingName :: binary(),
       MediaId :: binary(),
       Call :: #cf_call{}.
