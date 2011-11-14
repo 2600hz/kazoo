@@ -10,7 +10,7 @@
 
 -export([fetch_all_accounts/0, fetch_account/1, fetch_account_handler/1]).
 
--export([store_account_handler/2]).
+-export([store_account_handler/2, uptime/1]).
 
 -export([preload_accounts/0, preload_trunkstore/0]).
 
@@ -89,3 +89,11 @@ refresh_all_accounts() ->
 refresh_account(AcctID) ->
     {ok, AcctPid} = fetch_account_handler(AcctID),
     j5_acctmgr:refresh(AcctPid).
+
+-spec uptime/1 :: (pos_integer()) -> pos_integer().
+uptime(StartTime) ->
+    case wh_util:current_tstamp() - StartTime of
+	X when X =< 0 ->
+	    1;
+	X -> X
+    end.

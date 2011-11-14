@@ -37,7 +37,7 @@
 
 -define(STATUS_RESP_HEADERS, [<<"Account-ID">>, <<"Uptime">>]).
 -define(OPTIONAL_STATUS_RESP_HEADERS, [<<"Prepay">>, <<"Max-Two-Way">>, <<"Max-Inbound">>
-					   ,<<"Two-Way">>, <<"Inbound">>, <<"Trunks">>
+					   ,<<"Two-Way">>, <<"Inbound">>, <<"Trunks">>, <<"Node">>
 				      ]).
 -define(STATUS_RESP_VALUES, [
 			     {<<"Event-Category">>, <<"jonny5">>}

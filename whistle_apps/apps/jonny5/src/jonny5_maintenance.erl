@@ -16,8 +16,10 @@
 -define(LOCAL_SUMMARY_ROW_FORMAT, "| ~35.s | ~35.s | ~13.s | ~13.s | ~13.s |~n").
 -define(LOCAL_SUMMARY_HEADER, io:format(?LOCAL_SUMMARY_ROW_FORMAT, [<<"J5 NODE">>, <<"ACCOUNT ID">>, <<"TWO WAY (MAX)">>, <<"INBOUND (MAX)">>, <<"PREPAY">>])).
 
--define(REMOTE_SUMMARY_ROW_FORMAT, "| ~35.s | ~35.s | ~13.s | ~13.s | ~13.s |~n").
--define(REMOTE_SUMMARY_HEADER, io:format(?REMOTE_SUMMARY_ROW_FORMAT, [<<"J5 NODE">>, <<"ACCOUNT ID">>, <<"TWO WAY (MAX)">>, <<"INBOUND (MAX)">>, <<"PREPAY">>])).
+-define(REMOTE_SUMMARY_ROW_FORMAT, " ~4.s | ~35.s | ~35.s | ~13.s | ~13.s | ~13.s |~n").
+-define(REMOTE_SUMMARY_HEADER, io:format(?REMOTE_SUMMARY_ROW_FORMAT, [<<>>, <<"J5 NODE">>, <<"ACCOUNT ID">>, <<"TWO WAY (MAX)">>, <<"INBOUND (MAX)">>, <<"PREPAY">>])).
+
+-define(REMOTE_TIMEOUT, 2000).
 
 -define(TRUNKS_ROW_FORMAT, "| ~35.s | ~10.s |~n").
 -define(TRUNKS_HEADER, io:format(?TRUNKS_ROW_FORMAT, [<<"Call ID">>, <<"Trunk Type">>])).
@@ -70,9 +72,9 @@ remote_summary() ->
 		 send_status_req(AcctId, Q)
 	     end
 	     || Acct <- Accts],
-	    io:format("Sent ~p reqs~n", [length(Accts)]),
+
 	    ?REMOTE_SUMMARY_HEADER,
-	    do_remote_summary(fun(JObj) -> print_summary(JObj, ?REMOTE_SUMMARY_ROW_FORMAT) end, 5000)
+	    do_remote_summary(fun(JObj, C) -> print_summary(JObj, ?REMOTE_SUMMARY_ROW_FORMAT, C) end, ?REMOTE_TIMEOUT)
     end.
 
 remote_summary(AcctId) ->
@@ -83,32 +85,33 @@ remote_summary(AcctId, details) ->
     wapi_jonny5:bind_q(Q, [{account_id, AcctId}]),
     send_status_req(AcctId, Q),
     ?REMOTE_SUMMARY_HEADER,
-    do_remote_summary(fun print_details/1, 5000);
+    do_remote_summary(fun print_details/1, ?REMOTE_TIMEOUT);
 remote_summary(AcctId, _) ->
     Q = start_amqp(),
     wapi_jonny5:bind_q(Q, [{account_id, AcctId}]),
     send_status_req(AcctId, Q),
     ?REMOTE_SUMMARY_HEADER,
-    do_remote_summary(fun(JObj) -> print_summary(JObj, ?REMOTE_SUMMARY_ROW_FORMAT) end, 5000).
+    do_remote_summary(fun(JObj, C) -> print_summary(JObj, ?REMOTE_SUMMARY_ROW_FORMAT, C) end, ?REMOTE_TIMEOUT).
 
 do_remote_summary(PrintFun, Timeout) ->
-    io:format("~p: Timeout: ~p~n", [self(), Timeout]),
+    do_remote_summary(PrintFun, Timeout, 0).
+
+do_remote_summary(PrintFun, Timeout, Count) ->
     receive
-	#'basic.consume_ok'{} -> io:format("Basic consume_ok recv~n", []), do_remote_summary(PrintFun, Timeout);
+	#'basic.consume_ok'{} -> do_remote_summary(PrintFun, Timeout, Count);
 	{#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type = ?DEFAULT_CONTENT_TYPE}, payload=Payload}} ->
 	    JObj = wh_json:normalize_jobj(wh_json:decode(Payload)),
 
 	    case wh_json:get_value(<<"event_name">>, JObj) of
 		<<"status_resp">> ->
-		    PrintFun(JObj);
+		    PrintFun(JObj, Count),
+		    do_remote_summary(PrintFun, Timeout, Count+1);
 		_ ->
-		    io:format("bad jobj: ~s~n", [Payload]),
-		    ok
-	    end,
-	    do_remote_summary(PrintFun, Timeout);
+		    do_remote_summary(PrintFun, Timeout, Count)
+	    end;
 	_Msg ->
 	    io:format("Unhandled Msg: ~p~n", [_Msg]),
-	    do_remote_summary(PrintFun, Timeout)
+	    do_remote_summary(PrintFun, Timeout, Count)
     after Timeout ->
 	    io:format("Finished waiting...~n", [])
     end.
@@ -140,14 +143,19 @@ send_status_req(AcctId, Q) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec print_summary/2 :: (json_object(), nonempty_string()) -> 'ok' | no_return().
+-spec print_summary/3 :: (json_object(), nonempty_string(), binary() | integer()) -> 'ok' | no_return().
 print_summary(AcctJObj, RowFormatStr) ->
-    TwoWayMax = wh_json:get_binary_value(<<"max_two_way">>, AcctJObj, <<"?">>),
-    TwoWayAvail = wh_json:get_binary_value(<<"two_way">>, AcctJObj, <<"?">>),
+    print_summary(AcctJObj, RowFormatStr, <<>>).
+print_summary(AcctJObj, RowFormatStr, Count) when is_integer(Count) ->
+    print_summary(AcctJObj, RowFormatStr, wh_util:to_list(Count));
+print_summary(AcctJObj, RowFormatStr, Count) ->
+    TwoWayMax = wh_json:get_binary_value(<<"max_two_way">>, AcctJObj, <<"0">>),
+    TwoWayAvail = wh_json:get_binary_value(<<"two_way">>, AcctJObj, <<"0">>),
 
-    InMax = wh_json:get_binary_value(<<"max_inbound">>, AcctJObj, <<"?">>),
-    InAvail = wh_json:get_binary_value(<<"inbound">>, AcctJObj, <<"?">>),
+    InMax = wh_json:get_binary_value(<<"max_inbound">>, AcctJObj, <<"0">>),
+    InAvail = wh_json:get_binary_value(<<"inbound">>, AcctJObj, <<"0">>),
 
-    Prepay = wh_json:get_binary_value(<<"prepay">>, AcctJObj, <<"?">>),
+    Prepay = wh_json:get_binary_value(<<"prepay">>, AcctJObj, <<"0">>),
 
     AcctName = wh_json:get_value(<<"account_id">>, AcctJObj),
 
@@ -158,7 +166,7 @@ print_summary(AcctJObj, RowFormatStr) ->
     Two = list_to_binary([TwoWayAvail, "(", TwoWayMax, ")"]),
     In = list_to_binary([InAvail, "(", InMax, ")"]),
 
-    io:format(RowFormatStr, [Node, AcctName, Two, In, Prepay]),
+    io:format(RowFormatStr, [Count, Node, AcctName, Two, In, Prepay]),
     case Trunks of
 	[] -> ok;
 	Ts ->

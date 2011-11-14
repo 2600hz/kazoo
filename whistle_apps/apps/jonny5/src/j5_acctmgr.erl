@@ -264,7 +264,7 @@ handle_cast({j5_msg, <<"sync_resp">>, JObj}, #state{acct_id=AcctID, max_inbound=
 	true = wapi_jonny5:sync_resp_v(JObj),
 	AcctID = wh_json:get_value(<<"Account-ID">>, JObj),
 
-	case uptime(StartTime) < wh_json:get_integer_value(<<"Uptime">>, JObj) of
+	case j5_util:uptime(StartTime) < wh_json:get_integer_value(<<"Uptime">>, JObj) of
 	    true ->
 		NewMaxTwo = wh_json:get_integer_value(<<"Max-Two-Way">>, JObj, MaxTwo),
 		NewMaxIn = wh_json:get_integer_value(<<"Max-Inbound">>, JObj, MaxIn),
@@ -330,7 +330,7 @@ handle_cast({call_event, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Di
 handle_info({timeout, SyncRef, sync}, #state{start_time=StartTime, sync_ref=SyncRef, acct_id=AcctID}=State) ->
     Self = self(),
     spawn(fun() ->
-		  SyncProp = [{<<"Uptime">>, uptime(StartTime)}
+		  SyncProp = [{<<"Uptime">>, j5_util:uptime(StartTime)}
 			      ,{<<"Account-ID">>, AcctID}
 			      ,{<<"Server-ID">>, gen_listener:queue_name(Self)}
 			      ,{<<"App-Name">>, ?APP_NAME}
@@ -567,20 +567,12 @@ is_us48(<<"+1", Rest/binary>>) when erlang:byte_size(Rest) =:= 10 -> true;
 is_us48(Bin) when erlang:byte_size(Bin) < 7 -> true;
 is_us48(_) -> false.
 
--spec uptime/1 :: (pos_integer()) -> pos_integer().
-uptime(StartTime) ->
-    case wh_util:current_tstamp() - StartTime of
-	X when X =< 0 ->
-	    1;
-	X -> X
-    end.
-
 -spec send_levels_resp/3 :: (json_object(), #state{}, fun((ne_binary(), proplist() | json_object()) -> 'ok')) -> no_return().
 send_levels_resp(JObj, #state{two_way=Two, inbound=In, trunks_in_use=Dict, acct_id=AcctID
 			      ,max_inbound=MaxIn, max_two_way=MaxTwo, start_time=StartTime
 			      ,prepay=Prepay
 			     }, PublishFun) ->
-    SyncResp = [{<<"Uptime">>, uptime(StartTime)}
+    SyncResp = [{<<"Uptime">>, j5_util:uptime(StartTime)}
 		,{<<"Account-ID">>, AcctID}
 		,{<<"Prepay">>, Prepay}
 		,{<<"Two-Way">>, Two}
@@ -591,6 +583,7 @@ send_levels_resp(JObj, #state{two_way=Two, inbound=In, trunks_in_use=Dict, acct_
 		,{<<"Trunks">>, [wh_json:from_list([{<<"Call-ID">>, CallID}, {<<"Type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
 		,{<<"App-Version">>, ?APP_VERSION}
 		,{<<"App-Name">>, ?APP_NAME}
+		,{<<"Node">>, wh_util:to_binary(node())}
 	       ],
     PublishFun(wh_json:get_value(<<"Server-ID">>, JObj), SyncResp).
 
