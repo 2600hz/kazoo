@@ -433,7 +433,7 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
       Headers :: json_objects(),
       Call :: #cf_call{}.
 
--type b_store_return() :: {'error', 'execution_failure' | 'timeout'} | {'ok', json_object()}.
+-type b_store_return() :: {'error', 'timeout' | json_object()} | {'ok', json_object()}.
 
 -spec b_store/3 :: (MediaName, Transfer, Call) -> b_store_return() when
       MediaName :: binary(),
@@ -560,7 +560,7 @@ tones_command(Tones, #cf_call{call_id=CallId}) ->
       Terminators :: [binary(),...],
       Call :: #cf_call{}.
 
--type b_play_and_collect_digits_return() :: {'error', 'channel_hungup' | 'channel_unbridge' | 'execution_failure'} | {'ok', binary()}.
+-type b_play_and_collect_digits_return() :: {'error', 'channel_hungup' | 'channel_unbridge' | json_object()} | {'ok', binary()}.
 
 -spec b_play_and_collect_digit/2 :: (Media, Call) -> b_play_and_collect_digits_return() when
       Media :: binary(),
@@ -922,7 +922,7 @@ b_flush(Call) ->
 %% execution untill the call is terminated.
 %% @end
 %%--------------------------------------------------------------------
--type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | 'execution_failure'} | {'ok', binary()}.
+-type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | json_object()} | {'ok', binary()}.
 
 -spec collect_digits/2 :: (MaxDigits, Call) -> collect_digits_return() when
       MaxDigits :: integer() | binary(),
@@ -981,7 +981,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                     {error, channel_hungup};
                 { <<"error">>, _, _ } ->
                     ?LOG("channel execution error while collecting digits"),
-                    {error, execution_failure};
+                    {error, JObj};
                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">> } ->
                     %% Playback completed start timeout
                     case wh_json:get_value(<<"Application-Response">>, JObj) of
@@ -1079,7 +1079,7 @@ wait_for_message(Application, Event, Type, Timeout) ->
                     {error, channel_hungup};
                 { <<"error">>, _, _ } ->
                     ?LOG("channel execution error while waiting for ~s", [Application]),
-                    {error, execution_failure};
+                    {error, JObj};
                 { Type, Event, Application } ->
                     {ok, JObj};
                 _ when Timeout =:= infinity ->
@@ -1105,7 +1105,7 @@ wait_for_message(Application, Event, Type, Timeout) ->
 %% is only interested in events for the application.
 %% @end
 %%--------------------------------------------------------------------
--type wait_for_application_return() :: {'error','execution_failure' | 'timeout'} | {'ok', json_object()}.
+-type wait_for_application_return() :: {'error', 'timeout' | json_object()} | {'ok', json_object()}.
 -spec wait_for_application/1 :: (Application) -> wait_for_application_return() when
       Application :: binary().
 -spec wait_for_application/2 :: (Application, Event) -> wait_for_application_return() when
@@ -1135,7 +1135,7 @@ wait_for_application(Application, Event, Type, Timeout) ->
             case get_event_type(JObj) of
                 { <<"error">>, _, _ } ->
                     ?LOG("channel execution error while waiting for ~s", [Application]),
-                    {error, execution_failure};
+                    {error, JObj};
                 { Type, Event, Application } ->
                     {ok, JObj};
                 _ when Timeout =:= infinity ->
@@ -1160,7 +1160,7 @@ wait_for_application(Application, Event, Type, Timeout) ->
 %% Wait for a DTMF event and extract the digits when it comes
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_dtmf/1 :: (Timeout) -> {'error', 'channel_hungup' | 'execution_failure'} | {'ok', binary()} when
+-spec wait_for_dtmf/1 :: (Timeout) -> {'error', 'channel_hungup' | json_object()} | {'ok', binary()} when
       Timeout :: 'infinity' | integer().
 wait_for_dtmf(Timeout) ->
     Start = erlang:now(),
@@ -1175,7 +1175,7 @@ wait_for_dtmf(Timeout) ->
                     {error, channel_hungup};
                 { <<"error">>, _ } ->
                     ?LOG("channel execution error while waiting for DTMF"),
-                    {error, execution_failure};
+                    {error, JObj};
                 { <<"call_event">>, <<"DTMF">> } ->
                     {ok, wh_json:get_value(<<"DTMF-Digit">>, JObj)};
                 _ when Timeout =:= infinity ->
@@ -1218,7 +1218,7 @@ wait_for_bridge(Timeout, Call) ->
                     {ok, JObj};
                 { <<"error">>, _, _ } ->
                     ?LOG("channel execution error while waiting for bridge"),
-                    {error, execution_failure};
+                    {error, JObj};
                 { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } ->
                     spawn(fun() -> update_fallback(JObj, Call) end),
                     wait_for_bridge(infinity, Call);
@@ -1335,7 +1335,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                     {error, channel_hungup};
                 { <<"error">>, _, _ } ->
                     ?LOG("channel execution error while waiting ~s or DTMF", [Application]),
-                    {error, execution_failure};
+                    {error, JObj};
                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Application} ->
                     {ok, JObj};
                 { <<"call_event">>, <<"DTMF">>, _ } ->

@@ -257,6 +257,10 @@ inbound_handler(Number, JObj) ->
               wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
              );
         {error, R} ->
+            whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
+                                            ,"Alert: could not lookup ~s~n"
+                                            ,"Fault: ~p~n"]
+                              ,[?MODULE, ?LINE, Number, R]),
             ?LOG_END("unable to get account id ~w", [R])
     end.
 

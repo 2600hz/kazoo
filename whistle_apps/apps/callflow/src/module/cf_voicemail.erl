@@ -320,7 +320,7 @@ record_voicemail(RecordingName, #mailbox{prompts=#prompts{tone_spec=ToneSpec, sa
         {error, channel_hungup} ->
             _ = cf_call_command:wait_for_application(<<"record">>, <<"RECORD_STOP">>),
             new_message(RecordingName, Box, Call);
-	{error, execution_failure} ->
+	{error, _} ->
             ?LOG("media server exploded"),
 	    ok %% something happened Whistle-side, nothing to do for now
     end.
@@ -513,10 +513,10 @@ play_messages([], _, _, _) ->
 %% user provides a valid option
 %% @end
 %%--------------------------------------------------------------------
--spec message_menu/2 :: (Box, Call) -> {'error', 'channel_hungup' | 'channel_unbridge' | 'execution_failure'} | {'ok', 'keep' | 'delete' | 'return' | 'replay'} when
+-spec message_menu/2 :: (Box, Call) -> {'error', 'channel_hungup' | 'channel_unbridge' | json_object()} | {'ok', 'keep' | 'delete' | 'return' | 'replay'} when
       Box :: #mailbox{},
       Call :: #cf_call{}.
--spec message_menu/3 :: (Prompt, Box, Call) -> {'error', 'channel_hungup' | 'channel_unbridge' | 'execution_failure'} | {'ok', 'keep' | 'delete' | 'return' | 'replay'} when
+-spec message_menu/3 :: (Prompt, Box, Call) -> {'error', 'channel_hungup' | 'channel_unbridge' | json_object()} | {'ok', 'keep' | 'delete' | 'return' | 'replay'} when
       Prompt :: proplist(),
       Box :: #mailbox{},
       Call :: #cf_call{}.
@@ -847,7 +847,7 @@ review_recording(RecordingName, #mailbox{keys=#keys{listen=Listen, save=Save, re
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording/3 :: (RecordingName, MediaId, Call) -> tuple(ok, json_object()) | tuple(error, execution_failure) when
+-spec store_recording/3 :: (RecordingName, MediaId, Call) -> {ok, json_object()} | {error, json_object()} when
       RecordingName :: binary(),
       MediaId :: binary(),
       Call :: #cf_call{}.
