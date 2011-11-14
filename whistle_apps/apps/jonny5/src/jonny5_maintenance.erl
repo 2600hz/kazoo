@@ -13,8 +13,11 @@
 
 -include("jonny5.hrl").
 
--define(SUMMARY_ROW_FORMAT, "| ~35.s | ~13.s | ~13.s | ~13.s |~n").
--define(SUMMARY_HEADER, io:format(?SUMMARY_ROW_FORMAT, [<<"ACCOUNT ID">>, <<"TWO WAY (MAX)">>, <<"INBOUND (MAX)">>, <<"PREPAY">>])).
+-define(LOCAL_SUMMARY_ROW_FORMAT, "| ~35.s | ~35.s | ~13.s | ~13.s | ~13.s |~n").
+-define(LOCAL_SUMMARY_HEADER, io:format(?LOCAL_SUMMARY_ROW_FORMAT, [<<"J5 NODE">>, <<"ACCOUNT ID">>, <<"TWO WAY (MAX)">>, <<"INBOUND (MAX)">>, <<"PREPAY">>])).
+
+-define(REMOTE_SUMMARY_ROW_FORMAT, "| ~35.s | ~35.s | ~13.s | ~13.s | ~13.s |~n").
+-define(REMOTE_SUMMARY_HEADER, io:format(?REMOTE_SUMMARY_ROW_FORMAT, [<<"J5 NODE">>, <<"ACCOUNT ID">>, <<"TWO WAY (MAX)">>, <<"INBOUND (MAX)">>, <<"PREPAY">>])).
 
 -define(TRUNKS_ROW_FORMAT, "| ~35.s | ~10.s |~n").
 -define(TRUNKS_HEADER, io:format(?TRUNKS_ROW_FORMAT, [<<"Call ID">>, <<"Trunk Type">>])).
@@ -29,8 +32,8 @@ local_summary() ->
     case j5_util:fetch_all_accounts() of
 	[] -> io:format("No accounts are being tracked~n");
 	Accts ->
-	    ?SUMMARY_HEADER,
-	    do_summary(Accts, fun print_summary/1)
+	    ?LOCAL_SUMMARY_HEADER,
+	    do_summary(Accts, fun(JObj) -> print_summary(JObj, ?LOCAL_SUMMARY_ROW_FORMAT) end)
     end.
 
 local_summary(AcctID) ->
@@ -49,8 +52,8 @@ local_summary(AcctID, _) ->
 	{error, not_found} ->
 	    io:format("Account ~s not being tracked~n", [AcctID]);
 	AcctJObj ->
-	    ?SUMMARY_HEADER,
-	    do_summary([AcctJObj], fun print_summary/1)
+	    ?LOCAL_SUMMARY_HEADER,
+	    do_summary([AcctJObj], fun(JObj) -> print_summary(JObj, ?LOCAL_SUMMARY_ROW_FORMAT) end)
     end.
 
 -spec remote_summary/0 :: () -> 'ok'.
@@ -68,8 +71,8 @@ remote_summary() ->
 	     end
 	     || Acct <- Accts],
 	    io:format("Sent ~p reqs~n", [length(Accts)]),
-	    ?SUMMARY_HEADER,
-	    do_remote_summary(fun print_summary/1, 5000)
+	    ?REMOTE_SUMMARY_HEADER,
+	    do_remote_summary(fun(JObj) -> print_summary(JObj, ?REMOTE_SUMMARY_ROW_FORMAT) end, 5000)
     end.
 
 remote_summary(AcctId) ->
@@ -79,14 +82,14 @@ remote_summary(AcctId, details) ->
     Q = start_amqp(),
     wapi_jonny5:bind_q(Q, [{account_id, AcctId}]),
     send_status_req(AcctId, Q),
-    ?SUMMARY_HEADER,
+    ?REMOTE_SUMMARY_HEADER,
     do_remote_summary(fun print_details/1, 5000);
 remote_summary(AcctId, _) ->
     Q = start_amqp(),
     wapi_jonny5:bind_q(Q, [{account_id, AcctId}]),
     send_status_req(AcctId, Q),
-    ?SUMMARY_HEADER,
-    do_remote_summary(fun print_summary/1, 5000).
+    ?REMOTE_SUMMARY_HEADER,
+    do_remote_summary(fun(JObj) -> print_summary(JObj, ?REMOTE_SUMMARY_ROW_FORMAT) end, 5000).
 
 do_remote_summary(PrintFun, Timeout) ->
     io:format("~p: Timeout: ~p~n", [self(), Timeout]),
@@ -136,8 +139,8 @@ send_status_req(AcctId, Q) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_summary/1 :: (json_object()) -> 'ok' | no_return().
-print_summary(AcctJObj) ->
+-spec print_summary/2 :: (json_object(), nonempty_string()) -> 'ok' | no_return().
+print_summary(AcctJObj, RowFormatStr) ->
     TwoWayMax = wh_json:get_binary_value(<<"max_two_way">>, AcctJObj, <<"?">>),
     TwoWayAvail = wh_json:get_binary_value(<<"two_way">>, AcctJObj, <<"?">>),
 
@@ -150,10 +153,12 @@ print_summary(AcctJObj) ->
 
     Trunks = wh_json:get_value(<<"trunks">>, AcctJObj, []),
 
+    Node = wh_json:get_value(<<"node">>, AcctJObj, wh_util:to_binary(node())),
+
     Two = list_to_binary([TwoWayAvail, "(", TwoWayMax, ")"]),
     In = list_to_binary([InAvail, "(", InMax, ")"]),
 
-    io:format("~p |" ++ ?SUMMARY_ROW_FORMAT, [self(), AcctName, Two, In, Prepay]),
+    io:format(RowFormatStr, [Node, AcctName, Two, In, Prepay]),
     case Trunks of
 	[] -> ok;
 	Ts ->
