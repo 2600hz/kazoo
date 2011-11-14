@@ -405,7 +405,7 @@ handle_info({amqp_lost_channel, no_connection}, State) ->
     _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
 
-handle_info({'basic.consume_ok', _}, S) ->
+handle_info(#'basic.consume_ok'{}, S) ->
     {noreply, S#state{is_consuming=true}};
 
 handle_info(is_consuming, #state{is_consuming=false, queue=Q}=State) ->
