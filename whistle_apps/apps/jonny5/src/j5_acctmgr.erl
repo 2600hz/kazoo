@@ -184,7 +184,7 @@ handle_call(status, _, #state{max_two_way=MaxTwo, max_inbound=MaxIn
 			       ,{<<"two_way">>, Two}
 			       ,{<<"inbound">>, In}
 			       ,{<<"prepay">>, Prepay}
-			       ,{<<"account">>, Acct}
+			       ,{<<"account_id">>, Acct}
 			       ,{<<"trunks">>, [wh_json:from_list([{<<"callid">>, CallID}, {<<"type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
 			      ]), State};
 handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->

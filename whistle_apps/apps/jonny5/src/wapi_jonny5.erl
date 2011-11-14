@@ -16,7 +16,7 @@
 -export([sync_req/1, sync_req_v/1]).
 -export([sync_resp/1, sync_resp_v/1]).
 
--export([bind_q/2, unbind_q/2]).
+-export([bind_q/2, unbind_q/2, get_acct_id/1]).
 
 -export([publish_status_req/1, publish_status_resp/2]).
 -export([publish_sync_req/1, publish_sync_resp/2]).
@@ -153,7 +153,11 @@ get_acct_id(Prop) when is_list(Prop) ->
 	AID -> AID
     end;
 get_acct_id(JObj) ->
-    wh_json:get_value(<<"Account-ID">>, JObj, <<>>).
+    case wh_json:get_value(<<"Account-ID">>, JObj) of
+	undefined ->
+	    wh_json:get_value(<<"account_id">>, JObj, <<"*">>);
+	AID -> AID
+    end.
 
 -spec publish_status_req/1 :: (api_terms()) -> 'ok'.
 publish_status_req(Req) ->
