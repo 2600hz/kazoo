@@ -135,7 +135,7 @@ store_amqp_resp(JObj) ->
 
 -spec store_amqp_resp_v/1 :: (proplist() | json_object()) -> boolean().
 store_amqp_resp_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?STORE_AMQP_RESP_HEADERS, ?STORE_AMQP_RESP_TYPES, ?STORE_AMQP_RESP_VALUES);
+    wh_api:validate(Prop, ?STORE_AMQP_RESP_HEADERS, ?STORE_AMQP_RESP_VALUES, ?STORE_AMQP_RESP_TYPES);
 store_amqp_resp_v(JObj) ->
     store_amqp_resp_v(wh_json:to_proplist(JObj)).
 
@@ -150,7 +150,7 @@ store_http_resp(JObj) ->
 
 -spec store_http_resp_v/1 :: (proplist() | json_object()) -> boolean().
 store_http_resp_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?STORE_HTTP_RESP_HEADERS, ?STORE_HTTP_RESP_TYPES, ?STORE_HTTP_RESP_VALUES);
+    wh_api:validate(Prop, ?STORE_HTTP_RESP_HEADERS, ?STORE_HTTP_RESP_VALUES, ?STORE_HTTP_RESP_TYPES);
 store_http_resp_v(JObj) ->
     store_http_resp_v(wh_json:to_proplist(JObj)).
 
