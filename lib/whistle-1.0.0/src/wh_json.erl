@@ -26,6 +26,8 @@
 
 -export([normalize_jobj/1, is_json_object/1, is_valid_json_object/1, is_json_term/1]).
 
+-export([encode/1, decode/1]).
+
 %% not for public use
 -export([prune/2, no_prune/2]).
 
@@ -35,6 +37,14 @@
 -spec new/0 :: () -> ?EMPTY_JSON_OBJECT.
 new() ->
     ?EMPTY_JSON_OBJECT.
+
+-spec encode/1 :: (json_object()) -> iolist() | ne_binary().
+encode(JObj) ->
+    mochijson2:encode(JObj).
+
+-spec decode/1 :: (iolist() | ne_binary()) -> json_object().
+decode(JSON) ->
+    mochijson2:decode(JSON).
 
 -spec is_empty/1 :: (term()) -> boolean().
 is_empty(MaybeJObj) ->
@@ -743,6 +753,14 @@ set_value_normalizer_test() ->
 
 get_values_test() ->
     ?assertEqual(true, are_all_there(?D1, ["d1v1", d1v2, ["d1v3.1", "d1v3.2", "d1v3.3"]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
+
+-define(CODEC_JOBJ, {struct, [{<<"k1">>, <<"v1">>}
+			      ,{<<"k2">>, {struct, []}}
+			      ,{<<"k3">>, {struct, [{<<"k3.1">>, <<"v3.1">>}]}}
+			      ,{<<"k4">>, [1,2,3]}
+			     ]}).
+codec_test() ->
+    ?assertEqual(?CODEC_JOBJ, decode(encode(?CODEC_JOBJ))).
 
 are_all_there(JObj, Vs, Ks) ->
     {Values, Keys} = ?MODULE:get_values(JObj),
