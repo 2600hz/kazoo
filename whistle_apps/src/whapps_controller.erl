@@ -13,6 +13,8 @@
 
 -include_lib("whistle/include/wh_log.hrl").
 
+-define(CONFIG_DB, <<"system_config">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -68,6 +70,7 @@ running_apps() ->
     [ App || {App, _, _, _} <- supervisor:which_children(whapps_sup) ].
 
 initialize_whapps() ->
+    couch_mgr:db_create(?CONFIG_DB),
     case whapps_config:get(?MODULE, <<"cookie">>) of
         undefined -> ok;
         Cookie ->
