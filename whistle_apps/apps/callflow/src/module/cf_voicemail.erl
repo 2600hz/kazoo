@@ -847,11 +847,7 @@ review_recording(RecordingName, #mailbox{keys=#keys{listen=Listen, save=Save, re
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-<<<<<<< HEAD
--spec store_recording/3 :: (RecordingName, MediaId, Call) -> {ok, json_object()} | {error, timeout | json_object()} when
-=======
 -spec store_recording/3 :: (RecordingName, MediaId, Call) -> {ok, json_object()} | {error, json_object()} when
->>>>>>> 3d9cea8... very rudimentary alerting system as a simple notifier until there is time to build it out properly
       RecordingName :: binary(),
       MediaId :: binary(),
       Call :: #cf_call{}.
