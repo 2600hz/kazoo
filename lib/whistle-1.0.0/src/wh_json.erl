@@ -19,7 +19,7 @@
 -export([filter/2, filter/3]).
 -export([get_value/2, get_value/3, get_values/1]).
 -export([get_keys/1, get_keys/2]).
--export([set_value/3, new/0]).
+-export([set_value/3, set_values/2, new/0]).
 -export([delete_key/2, delete_key/3]).
 
 -export([from_list/1, merge_jobjs/2]).
@@ -286,11 +286,11 @@ get_values(JObj) ->
     lists:unzip([ {?MODULE:get_value(Key, JObj), Key} || Key <- ?MODULE:get_keys(JObj) ]).
 
 %% Figure out how to set the current key among a list of objects
+-spec set_values/2 :: (json_proplist(), json_object()) -> json_object().
+set_values(KVs, JObj) when is_list(KVs) ->
+    lists:foldl(fun({K,V}, JObj0) -> ?MODULE:set_value(K, V, JObj0) end, JObj, KVs).
 
--spec set_value/3 :: (Key, Value, JObj) -> json_object() | json_objects() when
-      Key :: json_string() | json_strings(),
-      Value :: json_term(),
-      JObj :: json_object() | json_objects().
+-spec set_value/3 :: (json_string() | json_strings(), json_term(), json_object() | json_objects()) -> json_object() | json_objects().
 set_value(Key, Value, {struct, _}=JObj) ->
     set_value1(Key, Value, JObj);
 set_value(Key, Value, [{struct, _} | _]=JObjs) ->
