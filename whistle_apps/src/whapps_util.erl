@@ -16,6 +16,7 @@
 -export([get_account_by_realm/1]).
 -export([get_event_type/1, put_callid/1]).
 -export([get_call_termination_reason/1]).
+-export([alert/3, alert/4]).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -226,3 +227,138 @@ get_call_termination_reason(JObj) ->
            end,
     Code = wh_json:get_value(<<"Hangup-Code">>, JObj, <<>>),
     {Cause, Code}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Send an email alert to the system admin and account admin if they
+%% are configured for the alert level or better
+%% @end
+%%--------------------------------------------------------------------
+-spec alert/3 :: (Level, Format, Args) -> ok | pid() when
+      Level :: atom() | string() | binary(),
+      Format :: string(),
+      Args :: list().
+-spec alert/4 :: (Level, Format, Args, AccountId) -> ok | pid() when
+      Level :: atom() | string() | binary(),
+      Format :: string(),
+      Args :: list(),
+      AccountId :: undefined | binary().
+
+alert(Level, Format, Args) ->
+    alert(Level, Format, Args, undefined).
+alert(Level, Format, Args, AccountId) ->
+    spawn(fun() -> maybe_send_alert(Level, Format, Args, AccountId) end).
+
+maybe_send_alert(Level, Format, Args, AccountId) ->
+    AlertLevel = alert_level_to_integer(Level),
+    case [To || To <- [should_alert_system_admin(AlertLevel)
+                       ,should_alert_account_admin(AlertLevel, AccountId)]
+                    ,To =/= undefined] of
+        [] ->
+            ok;
+        NestedTo ->
+            To = lists:flatten(NestedTo),
+            Node = wh_util:to_binary(erlang:node()),
+            Subject = io_lib:format("WHISTLE: ~s alert from ~s", [Level, Node]),
+            From = whapps_config:get(<<"alerts">>, <<"from">>, Node),
+            Alert = io_lib:format(lists:flatten(Format), Args),
+            Email = {<<"text">>,<<"plain">>,
+                     [{<<"From">>,wh_util:to_binary(From)},
+                      {<<"To">>, hd(To)},
+                      {<<"Subject">>, wh_util:to_binary(Subject)}],
+                     [], wh_util:to_binary(Alert)},
+            Encoded = mimemail:encode(Email),
+            ?LOG_SYS("sending ~s alert email to ~p", [Level, To]),
+            Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
+            gen_smtp_client:send({From, To, Encoded}, [{relay, Relay}]
+                                 ,fun(X) -> ?LOG("sending email to ~p resulted in ~p", [To, X]) end)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% If the system admin is configured to recieve this alert level
+%% return the system admin emal address
+%% @end
+%%--------------------------------------------------------------------
+-spec should_alert_system_admin/1 :: (AlertLevel) -> undefined | binary() when
+      AlertLevel :: 0..8.
+should_alert_system_admin(AlertLevel) ->
+    SystemLevel = whapps_config:get(<<"alerts">>, <<"system_admin_level">>, <<"debug">>),
+    case alert_level_to_integer(SystemLevel) of
+        0 -> undefined;
+        L when L =< AlertLevel ->
+            case whapps_config:get(<<"alerts">>, <<"system_admin_email">>) of
+                undefined ->
+                    undefined;
+                Email when is_binary(Email) ->
+                    Email;
+                Emails when is_list(Emails) ->
+                    [wh_util:to_binary(E) || E <- Emails]
+            end;
+        _ -> undefined
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% If the account admin is configured to recieve this alert level
+%% return the account admin emal address
+%% @end
+%%--------------------------------------------------------------------
+-spec should_alert_account_admin/2 :: (AlertLevel, AccountId) -> undefined | binary() when
+      AlertLevel :: 0..8,
+      AccountId :: undefined | binary().
+should_alert_account_admin(_, undefined) ->
+    undefined;
+should_alert_account_admin(AlertLevel, AccountId) ->
+    AccountDb = get_db_name(AccountId, encoded),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {ok, JObj} ->
+            AdminLevel = wh_json:get_value([<<"alerts">>, <<"level">>], JObj),
+            case alert_level_to_integer(AdminLevel) of
+                0 -> undefined;
+                L when L =< AlertLevel ->
+                    case wh_json:get_value([<<"alerts">>, <<"email">>], JObj) of
+                        undefined ->
+                            undefined;
+                        Email when is_binary(Email) ->
+                            Email;
+                        Emails when is_list(Emails) ->
+                            [wh_util:to_binary(E) || E <- Emails]
+                    end;
+                _ -> undefined
+            end;
+        {error, _} ->
+            undefined
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% convert the textual alert level to an interger value
+%% @end
+%%--------------------------------------------------------------------
+-spec alert_level_to_integer/1 :: (Level) -> 0..8 when
+      Level :: atom() | string() | binary().
+alert_level_to_integer(Level) when not is_binary(Level) ->
+    alert_level_to_integer(wh_util:to_binary(Level));
+alert_level_to_integer(<<"emerg">>) ->
+    8;
+alert_level_to_integer(<<"critical">>) ->
+    7;
+alert_level_to_integer(<<"alert">>) ->
+    6;
+alert_level_to_integer(<<"error">>) ->
+    5;
+alert_level_to_integer(<<"warning">>) ->
+    4;
+alert_level_to_integer(<<"notice">>) ->
+    3;
+alert_level_to_integer(<<"info">>) ->
+    2;
+alert_level_to_integer(<<"debug">>) ->
+    1;
+alert_level_to_integer(_) ->
+    0.

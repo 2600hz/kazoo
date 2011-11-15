@@ -278,5 +278,7 @@ category_to_file(<<"notify_vm">>) ->
     [code:lib_dir(notify, priv), "/notify_vm.config"];
 category_to_file(<<"smtp_client">>) ->
     [code:lib_dir(whistle_apps, priv), "/smtp_client.config"];
+category_to_file(<<"alerts">>) ->
+    [code:lib_dir(whistle_apps, priv), "/alerts.config"];
 category_to_file(_) ->
     undefined.

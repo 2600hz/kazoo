@@ -317,6 +317,11 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
     case length(wh_json:get_value(<<"Endpoints">>, BridgeReq, [])) of
         0 ->
             ?LOG_END("no offnet resources found for request, sending failure response"),
+            whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
+                                            ,"Alert: could not process ~s~n"
+                                            ,"Fault: no offnet resources found for request~n"
+                                            ,"Call-ID: ~s~n"]
+                              ,[?MODULE, ?LINE, Number, CallId]),
             respond_resource_failed({struct, [{<<"Hangup-Cause">>, <<"NO_RESOURCES">>}
                                               ,{<<"Hangup-Code">>, <<"sip:404">>}
                                              ]}, 0, JObj);
@@ -329,6 +334,11 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                     ?LOG_END("offnet resource request resulted in a successful bridge"),
                     respond_bridged_to_resource(BridgeResp, JObj);
                 {fail, BridgeResp} ->
+                    whapps_util:alert(<<"warning">>, ["Source: ~s(~p)~n"
+                                                      ,"Alert: could not process ~s~n"
+                                                      ,"Fault: ~p~n"
+                                                      ,"Call-ID: ~s~n"]
+                                      ,[?MODULE, ?LINE, Number, BridgeResp, CallId]),
                     ?LOG_END("offnet resource failed, ~s:~s", [wh_json:get_value(<<"Hangup-Code">>, BridgeResp)
                                                                ,wh_json:get_value(<<"Application-Response">>, BridgeResp)
                                                               ]),
@@ -339,9 +349,19 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                                                              ]);
                 {error, timeout} ->
                     ?LOG_END("resource bridge request did not respond"),
+                    whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
+                                                    ,"Alert: could not process ~s~n"
+                                                    ,"Fault: timeout~n"
+                                                    ,"Call-ID: ~s~n"]
+                                      ,[?MODULE, ?LINE, Number, CallId]),
                     respond_resource_failed({struct, [{<<"Failure-Message">>, <<"TIMEOUT">>}]}, Attempts, JObj);
                 {error, ErrorResp} ->
                     ?LOG_END("internal resource bridge error"),
+                    whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
+                                                    ,"Alert: could not process ~s~n"
+                                                    ,"Fault: ~p~n"
+                                                    ,"Call-ID: ~s~n"]
+                                      ,[?MODULE, ?LINE, Number, ErrorResp, CallId]),
                     respond_erroneously(ErrorResp, JObj)
             end
     end;
