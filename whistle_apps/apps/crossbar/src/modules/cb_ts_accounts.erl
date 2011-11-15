@@ -327,7 +327,7 @@ update_ts_account(TSAccountId, #cb_context{req_data=JObj}=Context) ->
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            crossbar_doc:load_merge(TSAccountId, JObj, Context)
+            crossbar_doc:load_merge(TSAccountId, wh_json:set_value(<<"pvt_type">>, <<"sip_service">>, JObj), Context)
     end.
 
 %%--------------------------------------------------------------------
