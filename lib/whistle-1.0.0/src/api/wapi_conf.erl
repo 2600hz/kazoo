@@ -66,7 +66,7 @@ get_routing_key(Props) ->
     DocId = wh_util:to_list(props:get_value(doc_id, Props, "*")),
     amqp_util:document_routing_key(Action, Db, DocType, DocId).
 
--type conf_action() :: created | edited | deleted.
+-type conf_action() :: 'created' | 'edited' | 'deleted'.
 
 -spec publish_doc_update/5 :: (conf_action(), binary(), binary(), binary(), api_terms()) -> 'ok'.
 -spec publish_doc_update/6 :: (conf_action(), binary(), binary(), binary(), api_terms(), binary()) -> 'ok'.
