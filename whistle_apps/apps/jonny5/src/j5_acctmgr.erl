@@ -13,7 +13,7 @@
 %% API
 -export([start_link/1, authz_trunk/3, known_calls/1, status/1, refresh/1]).
 
--export([handle_call_event/2, handle_j5_msg/2]).
+-export([handle_call_event/2, handle_j5_msg/2, handle_conf_change/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -53,10 +53,12 @@
 start_link(AcctID) ->
     %% why are we receiving messages for account IDs we don't bind to?
     gen_listener:start_link(?MODULE, [{bindings, [{self, []}, {jonny5, [{account_id, AcctID}]}]}
+				      ,{conf, [{db, AcctID}, {doc_type, <<"sip_service">>}]} % bind to config changes for this account.pvt_type
 				      ,{responders, [{ {?MODULE, handle_call_event}, [{<<"call_event">>, <<"*">>} % call events
 										      ,{<<"call_detail">>, <<"*">>} % and CDR
 										     ]
 						     }
+						     ,{ {?MODULE, handle_conf_change}, [{<<"configuration">>, <<"*">>}]}
 						     ,{ {?MODULE, handle_j5_msg}, [{<<"jonny5">>, <<"*">>}]} % internal J5 sync/status
 						    ]}
 				     ], [AcctID]).
@@ -114,6 +116,10 @@ handle_call_event(JObj, Props) ->
 handle_j5_msg(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {j5_msg, wh_json:get_value(<<"Event-Name">>, JObj), JObj}).
+
+handle_conf_change(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    gen_listener:cast(Srv, {conf_change, wh_json:get_value(<<"Event-Name">>, JObj), JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -248,6 +254,11 @@ handle_cast(refresh, #state{acct_type=AcctType, acct_id=AcctID, max_two_way=_Old
 	    ?LOG("Failed to refresh: ~p", [_E]),
 	    {noreply, State}
     end;
+
+handle_cast({conf_change, EvtName, JObj}, State) ->
+    io:format("Evt: ~s~n", [EvtName]),
+    [io:format("KV: ~p~n", [KV]) || KV <- wh_json:to_proplist(JObj)],
+    {noreply, State};
 
 handle_cast({j5_msg, <<"sync_req">>, JObj}, State) ->
     spawn(fun() -> send_levels_resp(JObj, State, fun wapi_jonny5:publish_sync_resp/2) end),
