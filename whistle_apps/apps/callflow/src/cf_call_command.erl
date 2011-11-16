@@ -966,7 +966,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) when i
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) when is_binary(Interdigit) ->
     collect_digits(MaxDigits, Timeout, wh_util:to_integer(Interdigit), NoopId, Terminators, Call);
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
-    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, <<>>, infinity).
+    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, <<>>, ?MILLISECONDS_IN_DAY).
 
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After) ->
     Start = erlang:now(),
