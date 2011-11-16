@@ -47,8 +47,7 @@ ignore_early_media(Endpoints) ->
 %% Convert the call record to a string
 %% @end
 %%-----------------------------------------------------------------------------
--spec call_info_to_string/1 :: (Call) -> ok when
-      Call :: #cf_call{}.
+-spec call_info_to_string/1 :: (#cf_call{}) -> io_lib:chars().
 call_info_to_string(#cf_call{account_id=AccountId, flow_id=FlowId, call_id=CallId, cid_name=CIDName, cid_number=CIDNumber
                              ,request=Request, from=From, to=To, inception=Inception, authorizing_id=AuthorizingId }) ->
     Format = ["Call-ID: ~s~n"
