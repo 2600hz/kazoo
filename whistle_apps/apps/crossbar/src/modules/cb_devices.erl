@@ -133,6 +133,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Co
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc1}=Context1 ->
                           DeviceId = wh_json:get_value(<<"_id">>, Doc1),
+                          provision(Doc1, whapps_config:get_list(<<"crossbar.devices">>, <<"provisioning_url">>)),
                           case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
                               {ok, Rev} ->
                                   couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1)),
@@ -153,6 +154,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Con
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc1}=Context1 ->
+                          provision(Doc1, whapps_config:get_list(<<"crossbar.devices">>, <<"provisioning_url">>)),
                           couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
@@ -424,6 +426,16 @@ lookup_registration({Realm, User}, Q) ->
     {ok, JSON} = wh_api:reg_query(RegProp),
     amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_QUERY).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Collect Len number of registrations in Acc unless the timeout
+%% occurs
+%% @end
+%%--------------------------------------------------------------------
+-spec wait_for_reg_resp/2 :: (Len, Acc) -> list() when
+      Len :: non_neg_integer(),
+      Acc :: list().
 wait_for_reg_resp(0, Acc) ->
     Acc;
 wait_for_reg_resp(Len, Acc) ->
@@ -450,10 +462,54 @@ wait_for_reg_resp(Len, Acc) ->
 		wait_for_reg_resp(Len, Acc)
 	after
 	    1000 ->
-		?LOG("Timeout for registration query"),
+		?LOG("timeout for registration query"),
 		Acc
 	end
     catch
 	_:_ ->
 	    wait_for_reg_resp(Len, Acc)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Spawn the function to post data to a provisioning server, if
+%% provided with URL
+%% @end
+%%--------------------------------------------------------------------
+-spec provision/2 :: (JObj, Url) -> ok | pid() when
+      JObj :: json_object(),
+      Url :: undefined | binary().
+provision(_, undefined) ->
+    ok;
+provision(JObj, Url) ->
+    spawn(fun() -> do_provision(JObj, Url) end).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% post data to a provisiong server
+%% @end
+%%--------------------------------------------------------------------
+
+-spec do_provision/2 :: (JObj, Url) -> ok when
+      JObj :: json_object(),
+      Url :: binary().
+do_provision(JObj, Url) ->
+    Headers = [{K, V}
+               || {K, V} <- [{"Host", whapps_config:get_list(<<"crossbar.devices">>, <<"provisioning_host">>)}
+                             ,{"Referer", whapps_config:get_list(<<"crossbar.devices">>, <<"provisioning_referer">>)}
+                             ,{"User-Agent", wh_util:to_list(erlang:node())}
+                             ,{"Content-Type", "application/x-www-form-urlencoded"}]
+                      ,V =/= undefined],
+    HTTPOptions = [],
+    Body = [{"api[realm]", wh_json:get_list_value([<<"sip">>, <<"realm">>], JObj)}
+            ,{"mac", re:replace(wh_json:get_list_value(<<"mac_address">>, JObj, ""), "[^0-9a-fA-F]", "", [{return, list}, global])}
+            ,{"label", wh_json:get_list_value(<<"name">>, JObj)}
+            ,{"sip[username]", wh_json:get_list_value([<<"sip">>, <<"username">>], JObj)}
+            ,{"sip[password]", wh_json:get_list_value([<<"sip">>, <<"password">>], JObj)}
+            ,{"submit", "true"}],
+    Encoded = mochiweb_util:urlencode(Body),
+    ?LOG("posting to ~s with ~s", [Url, Encoded]),
+    ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions),
+    ok.
