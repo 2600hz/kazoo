@@ -9,7 +9,9 @@
 -module(crossbar_util).
 
 -export([response/2, response/3, response/4, response/5]).
--export([response_deprecated/1, response_deprecated_redirect/2, response_deprecated_redirect/3]).
+-export([response_deprecated/1, response_deprecated_redirect/2, response_deprecated_redirect/3
+         ,response_redirect/3
+        ]).
 -export([response_faulty_request/1]).
 -export([response_bad_identifier/2]).
 -export([response_conflicting_docs/1]).
@@ -134,6 +136,9 @@ response_deprecated_redirect(#cb_context{resp_headers=RespHeaders}=Context, Redi
     create_response(error, <<"deprecated">>, 301, JObj
 		    ,Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 
+-spec response_redirect(#cb_context{}, json_string(), json_object()) -> #cb_context{}.
+response_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj) ->
+    create_response(error, <<"redirect">>, 301, JObj, Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

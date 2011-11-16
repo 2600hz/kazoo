@@ -26,7 +26,7 @@
 -define(SERVER, ?MODULE).
 -define(ACCOUNTS_DB, <<"accounts">>).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
--define(SYS_ADMIN_MODS, [<<"global_resources">>]).
+-define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"limits">>]).
 
 %%%===================================================================
 %%% API

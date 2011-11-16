@@ -31,20 +31,20 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 		{'error', Msg} ->
                     _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
                     send_error_response(App, Msg, UUID, JObj),
-                    ControlPID ! {execute_complete, UUID, App};
+		    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, App);
 		{'error', AppName, Msg} ->
                     _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
                     send_error_response(App, Msg, UUID, JObj),
-                    ControlPID ! {execute_complete, UUID, AppName};
+		    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
                 {return, Result} ->
                     Result;
                 {AppName, noop} ->
-                    ControlPID ! {execute_complete, UUID, AppName};
+		    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
 		{<<"answer">> = AppName, AppData} ->
                     _ = send_cmd(Node, UUID, AppName, AppData),
                     %% 22:55 pyite_mac  can you sleep 0.5 seconds before continuing
                     timer:sleep(500),
-                    ControlPID ! {execute_complete, UUID, AppName};
+		    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
 		{AppName, AppData} ->
                     send_cmd(Node, UUID, AppName, AppData)
 	    end;
@@ -568,7 +568,13 @@ stream_over_http(Node, UUID, File, Method, JObj) ->
 						   ,{<<"Body">>, wh_util:to_binary(RespBody)}
 						  ]),
             send_store_call_event(Node, UUID, MediaTransResults),
-	    case wapi_dialplan:store_http_resp(wh_json:set_value(<<"Media-Transfer-Results">>, MediaTransResults, JObj)) of
+
+	    JObj1 = wh_json:set_values([{<<"Media-Transfer-Results">>, MediaTransResults}
+					,{<<"Event-Name">>, <<"response">>}
+					,{<<"Event-Category">>, <<"call">>}
+				       ], JObj),
+
+	    case wapi_dialplan:store_http_resp(JObj1) of
 		{ok, Payload} ->
 		    ?LOG("ibrowse 'OK'ed with ~p publishing to ~s: ~s", [StatusCode, AppQ, Payload]),
 		    amqp_util:targeted_publish(AppQ, Payload, <<"application/json">>);
@@ -727,11 +733,10 @@ send_error_response(App, Msg, UUID, JObj) ->
              ,{<<"Call-ID">>, UUID}
              ,{<<"Application-Name">>, App}
              ,{<<"Application-Response">>, <<>>}
-             | wh_api:default_headers(<<>>, <<"error">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+             | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
             ],
     {ok, Payload} = wapi_dialplan:error(Error),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
-
 
 %%--------------------------------------------------------------------
 %% @private

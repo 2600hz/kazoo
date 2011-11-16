@@ -40,9 +40,7 @@
 %% in DB as a couch doc
 %% @end
 %%--------------------------------------------------------------------
--spec do_validate/2 :: (File, SchemaName) -> list({error, _}) when
-      File :: string() | json_object(),
-      SchemaName :: atom().
+-spec do_validate/2 :: (json_object() | string(), atom()) -> {'error', [ne_binary(),...]} | {'ok', []}.
 do_validate(JObj, SchemaName) ->
     case  couch_mgr:open_doc(?SCHEMAS_DB, wh_util:to_binary(SchemaName)) of
 	{ok, Schema} ->

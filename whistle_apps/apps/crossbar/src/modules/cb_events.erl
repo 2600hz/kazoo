@@ -84,7 +84,6 @@ start_link() ->
 %%--------------------------------------------------------------------
 init(_) ->
     ?LOG("Known bindings at init:"),
-    [?LOG("~s", [Binding]) || Binding <- queue_bindings:known_bind_types()],
     {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
@@ -372,7 +371,12 @@ stop_srv(Context, Srv, User) ->
     save_latest(Context, undefined, User).
 
 load_available_bindings(Context) ->
-    RespJObj = {struct, [{<<"available_bindings">>, queue_bindings:known_bind_types()}]},
+    Mods = [ begin <<"wapi_", Bind/binary>> = Mod, Bind end
+	     || A <- erlang:loaded(),
+		binary:match((Mod=wh_util:to_binary(A)), <<"wapi_">>) =/= nomatch,
+		erlang:function_exported(A, bind_q, 2)
+	   ],
+    RespJObj = wh_json:from_list([{<<"available_bindings">>, Mods}]),
     crossbar_util:response(RespJObj, Context).
 
 load_current_subscriptions(Context, Srv) ->

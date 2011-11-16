@@ -116,8 +116,7 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
     receive
 	ok ->
 	    Res = run_start_cmds(Node),
-	    ?LOG_SYS("Start cmd results:"),
-	    _ = [ ?LOG("~p", [ApiRes]) || ApiRes <- Res],
+	    spawn(fun() -> print_api_responses(Res) end),
 
 	    NodeData = extract_node_data(Node),
 	    Active = get_active_channels(Node),
@@ -401,3 +400,14 @@ return_rows(Node, [R|Rs], Acc) ->
 	    return_rows(Node, Rs, [ Prop | Acc ])
     end;
 return_rows(_Node, [], Acc) -> Acc.
+
+print_api_responses(Res) ->
+    ?LOG_SYS("Start cmd results:"),
+    [ print_api_response(ApiRes) || ApiRes <- Res],
+    ?LOG_SYS("End cmd results").
+
+print_api_response({ok, Res}) ->
+    [ ?LOG_SYS("~s", [Row]) || Row <- binary:split(Res, <<"\n">>, [global]), Row =/= <<>> ];
+print_api_response(Other) ->
+    ?LOG_SYS("~p", [Other]).
+    

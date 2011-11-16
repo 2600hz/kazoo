@@ -104,7 +104,7 @@ menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_p
                 ?LOG("selection matches recording pin"),
                 M = record_prompt(tmp_file(), Menu, Call),
                 ?LOG("returning caller to menu"),
-                _ = b_play(Prompts#prompts.return_to_ivr, Call),
+                {ok, _} = b_play(Prompts#prompts.return_to_ivr, Call),
                 menu_loop(M, Call);
             {ok, Digits} ->
 		%% this try_match_digits calls hunt_for_callflow() based on the digits dialed
@@ -116,7 +116,7 @@ menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_p
     catch
         _:R ->
             ?LOG("invalid selection ~w", [R]),
-            _ = play_invalid_prompt(Menu, Call),
+            {ok, _} = play_invalid_prompt(Menu, Call),
             menu_loop(Menu#menu{retries=Retries - 1}, Call)
     end.
 

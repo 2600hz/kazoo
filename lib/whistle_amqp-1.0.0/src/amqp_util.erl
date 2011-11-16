@@ -3,6 +3,11 @@
 -include("amqp_util.hrl").
 
 -export([targeted_exchange/0, targeted_publish/2, targeted_publish/3]).
+
+-export([whapps_exchange/0, whapps_publish/2, whapps_publish/3, whapps_publish/4]).
+-export([bind_q_to_whapps/2, bind_q_to_whapps/3]).
+-export([unbind_q_from_whapps/2]).
+
 -export([callctl_exchange/0, callctl_publish/2, callctl_publish/3, callctl_publish/4]).
 -export([callevt_exchange/0, callevt_publish/1, callevt_publish/3, callevt_publish/4]).
 -export([resource_exchange/0, resource_publish/1, resource_publish/2, resource_publish/3]).
@@ -58,6 +63,16 @@ targeted_publish(Queue, Payload) ->
     targeted_publish(Queue, Payload, ?DEFAULT_CONTENT_TYPE).
 targeted_publish(Queue, Payload, ContentType) ->
     basic_publish(?EXCHANGE_TARGETED, Queue, Payload, ContentType).
+
+-spec whapps_publish/2 :: (ne_binary(), iolist()) -> 'ok'.
+-spec whapps_publish/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
+-spec whapps_publish/4 :: (ne_binary(), iolist(), ne_binary(), proplist()) -> 'ok'.
+whapps_publish(Routing, Payload) ->
+    whapps_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+whapps_publish(Routing, Payload, ContentType) ->
+    whapps_publish(Routing, Payload, ContentType, []).
+whapps_publish(Routing, Payload, ContentType, Opts) ->
+    basic_publish(?EXCHANGE_WHAPPS, Routing, Payload, ContentType, Opts).
 
 -spec callmgr_publish/3 :: (Payload, ContentType, RoutingKey) -> 'ok' when
       Payload :: iolist(),
@@ -239,6 +254,7 @@ conference_publish(Payload, service, ConfId, Options) ->
 
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
+
 -spec basic_publish/3 :: (Exchange, Queue, Payload) -> 'ok' when
       Exchange :: ne_binary(),
       Queue :: ne_binary(),
@@ -288,6 +304,10 @@ basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_binary(Payloa
 -spec targeted_exchange/0 :: () -> 'ok'.
 targeted_exchange() ->
     new_exchange(?EXCHANGE_TARGETED, ?TYPE_TARGETED).
+
+-spec whapps_exchange/0 :: () -> 'ok'.
+whapps_exchange() ->
+    new_exchange(?EXCHANGE_WHAPPS, ?TYPE_WHAPPS).
 
 -spec callctl_exchange/0 :: () -> 'ok'.
 callctl_exchange() ->
@@ -500,6 +520,13 @@ bind_q_to_targeted(Queue) ->
 bind_q_to_targeted(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TARGETED).
 
+-spec bind_q_to_whapps/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', term()}.
+-spec bind_q_to_whapps/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok' | {'error', term()}.
+bind_q_to_whapps(Queue, Routing) ->
+    bind_q_to_whapps(Queue, Routing, []).
+bind_q_to_whapps(Queue, Routing, Options) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_WHAPPS, Options).
+
 -spec bind_q_to_callctl/1 :: (Queue) -> 'ok' | {'error', term()} when
       Queue :: binary().
 -spec bind_q_to_callctl/2 :: (Queue, Routing) -> 'ok' | {'error', term()} when
@@ -657,6 +684,9 @@ unbind_q_from_configuration(Queue, Routing) ->
 unbind_q_from_targeted(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
 
+unbind_q_from_whapps(Queue, Routing) ->
+    unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_WHAPPS).
+
 unbind_q_from_exchange(Queue, Routing, Exchange) ->
     QU = #'queue.unbind'{
       queue = Queue
@@ -712,11 +742,8 @@ basic_consume(Queue, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 basic_cancel(Queue) ->
-    BC = #'basic.cancel'{
-      consumer_tag = Queue
-     },
     ?AMQP_DEBUG andalso ?LOG("cancel consume for queue ~s", [Queue]),
-    amqp_mgr:consume(BC).
+    amqp_mgr:consume(#'basic.cancel'{consumer_tag = Queue}).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -742,8 +769,8 @@ access_request(Options) ->
 %% Determines if the content is flaged as type JSON
 %% @end
 %%------------------------------------------------------------------------------
-is_json(Props) ->
-    Props#'P_basic'.content_type == ?DEFAULT_CONTENT_TYPE.
+is_json(#'P_basic'{content_type=CT}) ->
+    CT =:= ?DEFAULT_CONTENT_TYPE.
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -783,8 +810,7 @@ is_host_available() ->
 %% Specify quality of service
 %% @end
 %%------------------------------------------------------------------------------
--spec basic_qos/1 :: (PreFetch) -> 'ok' when
-      PreFetch :: non_neg_integer().
+-spec basic_qos/1 :: (non_neg_integer()) -> 'ok'.
 basic_qos(PreFetch) when is_integer(PreFetch) ->
     ?AMQP_DEBUG andalso ?LOG("set basic qos prefetch to ~p", [PreFetch]),
     amqp_mgr:consume(#'basic.qos'{prefetch_count = PreFetch}).
@@ -807,16 +833,13 @@ register_return_handler() ->
 %% Encode/decode a key so characters like dot won't interfere with routing separator
 %% @end
 %%------------------------------------------------------------------------------
--spec encode_key/1 :: (RoutingKey) -> RoutingKeyEncoded :: ne_binary() when
-      RoutingKey :: ne_binary().
+-spec encode_key/1 :: (ne_binary()) -> ne_binary().
 encode_key(RoutingKey) ->
     binary:replace(RoutingKey, <<".">>, <<"%2E">>, [global]).
 
--spec decode_key/1 :: (RoutingKey) -> RoutingKeyDecoded :: ne_binary() when
-      RoutingKey :: ne_binary().
+-spec decode_key/1 :: (ne_binary()) -> ne_binary().
 decode_key(RoutingKey) ->
     binary:replace(RoutingKey, <<"%2E">>, <<".">>, [global]).
-
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).

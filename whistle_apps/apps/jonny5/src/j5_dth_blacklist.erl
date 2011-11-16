@@ -186,7 +186,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 request_blacklist(Srv) ->
     Queue = gen_listener:queue_name(Srv),
-    Prop = wh_api:default_headers(Queue, <<"dth">>, <<"blacklist_req">>, ?APP_NAME, ?APP_VSN),
+    Prop = wh_api:default_headers(Queue, <<"dth">>, <<"blacklist_req">>, ?APP_NAME, ?APP_VERSION),
     {ok, JSON} = dth_api:blacklist_req(Prop),
     ?LOG_SYS("Sending request for blacklist: ~s", [JSON]),
     amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_DTH_BLACKLIST_REQ).

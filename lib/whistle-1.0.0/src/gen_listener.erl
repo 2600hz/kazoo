@@ -24,7 +24,7 @@
 
 -behaviour(gen_server).
 
--include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -305,7 +305,7 @@ handle_cast({rm_binding, Binding}=Req, #state{queue=Q}=State) ->
     Wapi = <<"wapi_", (wh_util:to_binary(Binding))/binary>>,
     try
 	ApiMod = wh_util:to_atom(Wapi),
-	ApiMod:ubind_q(Q),
+	ApiMod:unbind_q(Q),
 	{noreply, State}
     catch
 	error:badarg ->
@@ -328,7 +328,7 @@ handle_cast({rm_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
     Wapi = <<"wapi_", (wh_util:to_binary(Binding))/binary>>,
     try
 	ApiMod = wh_util:to_atom(Wapi),
-	ApiMod:ubind_q(Q, Props),
+	ApiMod:unbind_q(Q, Props),
 	{noreply, State}
     catch
 	error:badarg ->
@@ -405,7 +405,7 @@ handle_info({amqp_lost_channel, no_connection}, State) ->
     _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
 
-handle_info({'basic.consume_ok', _}, S) ->
+handle_info(#'basic.consume_ok'{}, S) ->
     {noreply, S#state{is_consuming=true}};
 
 handle_info(is_consuming, #state{is_consuming=false, queue=Q}=State) ->
@@ -520,6 +520,6 @@ stop_amqp(Q, Bindings) ->
     spawn(fun() -> [ gen_listener:rm_binding(Self, Type, Prop) || {Type, Prop} <- Bindings] end),
     amqp_util:queue_delete(Q).
 
--spec set_qos/1 :: (undefined | non_neg_integer()) -> 'ok'.
+-spec set_qos/1 :: ('undefined' | non_neg_integer()) -> 'ok'.
 set_qos(undefined) -> ok;
 set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).

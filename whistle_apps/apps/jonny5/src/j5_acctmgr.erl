@@ -3,39 +3,39 @@
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Handle serializing account access for crossbar accounts
-%%% TODO: convert to gen_listener
 %%% @end
 %%% Created : 16 Jul 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(j5_acctmgr).
 
--behaviour(gen_server).
+-behaviour(gen_listener).
 
 %% API
--export([start_link/1, authz_trunk/3, authz_trunk/4, known_calls/1]).
+-export([start_link/1, authz_trunk/3, known_calls/1, status/1, refresh/1]).
+
+-export([handle_call_event/2, handle_j5_msg/2, handle_conf_change/2]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
+	 ,terminate/2, code_change/3]).
 
 -include("jonny5.hrl").
 
 -define(SERVER, ?MODULE).
+-define(SYNC_TIMER, 60000).
 
 -record(state, {
-	  my_q = undefined :: binary() | undefined
-	 ,is_amqp_up = true :: boolean()
-	 ,cache = undefined :: undefined | pid()
-         ,cache_ref = make_ref() :: reference()
-	 ,acct_id = <<>> :: binary()
+	 acct_id = <<>> :: binary()
          ,acct_rev = <<>> :: binary()
-	 ,acct_type = account :: account | ts
+	 ,acct_type = 'account' :: 'account' | 'ts'
 	 ,max_two_way = 0 :: non_neg_integer()
          ,max_inbound = 0 :: non_neg_integer()
 	 ,two_way = 0 :: non_neg_integer()
          ,inbound = 0 :: non_neg_integer()
          ,prepay = 0.0 :: float()
          ,trunks_in_use = dict:new() :: dict() %% {CallID, Type :: inbound | two_way}
+	 ,start_time = 1 :: pos_integer()
+         ,sync_ref :: reference()
 	 }).
 
 %%%===================================================================
@@ -49,25 +49,34 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/1 :: (AcctID) -> {ok, pid()} | ignore | {error, term()} when
-      AcctID :: binary().
+-spec start_link/1 :: (ne_binary()) -> {'ok', pid()} | 'ignore' | {'error', term()}.
 start_link(AcctID) ->
-    gen_server:start_link(?MODULE, [AcctID], []).
+    %% why are we receiving messages for account IDs we don't bind to?
+    gen_listener:start_link(?MODULE, [{bindings, [{self, []}, {jonny5, [{account_id, AcctID}]}]}
+				      ,{conf, [{db, AcctID}, {doc_type, <<"sip_service">>}]} % bind to config changes for this account.pvt_type
+				      ,{responders, [{ {?MODULE, handle_call_event}, [{<<"call_event">>, <<"*">>} % call events
+										      ,{<<"call_detail">>, <<"*">>} % and CDR
+										     ]
+						     }
+						     ,{ {?MODULE, handle_conf_change}, [{<<"configuration">>, <<"*">>}]}
+						     ,{ {?MODULE, handle_j5_msg}, [{<<"jonny5">>, <<"*">>}]} % internal J5 sync/status
+						    ]}
+				     ], [AcctID]).
 
--spec authz_trunk/3 :: (Pid, JObj, CallDir) -> {boolean(), proplist()} when
-      Pid :: pid(),
-      JObj :: json_object(),
-      CallDir :: inbound | outbound.
+-spec status/1 :: (pid()) -> json_object().
+status(Srv) ->
+    gen_server:call(Srv, status).
+
+-spec refresh/1 :: (pid()) -> 'ok'.
+refresh(Srv) ->
+    gen_server:cast(Srv, refresh).
+
+-spec authz_trunk/3 :: (pid() | ne_binary(), json_object(), 'inbound' | 'outbound') -> {boolean(), proplist()}.
 authz_trunk(Pid, JObj, CallDir) when is_pid(Pid) ->
-    gen_server:call(Pid, {authz, JObj, CallDir}).
+    gen_server:call(Pid, {authz, JObj, CallDir});
 
--spec authz_trunk/4 :: (AcctID, JObj, CallDir, CPid) -> {boolean(), proplist()} when
-      AcctID :: binary(),
-      JObj :: json_object(),
-      CallDir :: inbound | outbound,
-      CPid :: pid().
-authz_trunk(AcctID, JObj, CallDir, CPid) ->
-    case wh_cache:fetch_local(CPid, {j5_authz, AcctID}) of
+authz_trunk(AcctID, JObj, CallDir) ->
+    case j5_util:fetch_account_handler(AcctID) of
 	{ok, AcctPID} ->
 	    case erlang:is_process_alive(AcctPID) of
 		true ->
@@ -95,10 +104,22 @@ authz_trunk(AcctID, JObj, CallDir, CPid) ->
 known_calls(Pid) when is_pid(Pid) ->
     gen_server:call(Pid, known_calls);
 known_calls(AcctID) when is_binary(AcctID) ->
-    case wh_cache:fetch_local(whereis(j5_cache), {j5_authz, AcctID}) of
+    case j5_util:fetch_account_handler(AcctID) of
 	{error, _}=E -> E;
-	{ok, AcctPid} -> known_calls(AcctPid)
+	{ok, AcctPid} when is_pid(AcctPid) -> known_calls(AcctPid)
     end.
+
+handle_call_event(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    gen_listener:cast(Srv, {call_event, JObj}).
+
+handle_j5_msg(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    gen_listener:cast(Srv, {j5_msg, wh_json:get_value(<<"Event-Name">>, JObj), JObj}).
+
+handle_conf_change(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    gen_listener:cast(Srv, {conf_change, wh_json:get_value(<<"Event-Name">>, JObj), JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -116,34 +137,34 @@ known_calls(AcctID) when is_binary(AcctID) ->
 %% @end
 %%--------------------------------------------------------------------
 init([AcctID]) ->
-    CPid = whereis(j5_cache),
-    Ref = erlang:monitor(process, CPid),
-    wh_cache:store_local(CPid, {j5_authz, AcctID}, self(), 24 * 3600), %% 1 day
+    SyncRef = erlang:start_timer(0, self(), sync), % want this to be the first message we get
+    j5_util:store_account_handler(AcctID, self()),
 
-    Q = amqp_util:new_queue(),
+    StartTime = wh_util:current_tstamp(),
 
     case get_trunks_available(AcctID, account) of
 	{error, not_found} ->
 	    ?LOG_SYS("No account found for ~s", [AcctID]),
 	    {stop, no_account};
+	{TwoWay, Inbound, Prepay, account} ->
+	    ?LOG_SYS("Init for account ~s complete", [AcctID]),
+	    {ok, #state{prepay=Prepay
+			,two_way=TwoWay, inbound=Inbound
+			,max_two_way=TwoWay, max_inbound=Inbound
+			,acct_id=AcctID, acct_type=account
+			,start_time=StartTime, sync_ref=SyncRef
+		       }};
 	{TwoWay, Inbound, Prepay, ts} ->
 	    ?LOG_SYS("Init for ts ~s complete", [AcctID]),
 	    couch_mgr:add_change_handler(<<"ts">>, AcctID),
 
 	    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"ts">>, AcctID),
 
-	    {ok, #state{my_q=Q, is_amqp_up=is_binary(Q)
-			,cache=CPid, cache_ref=Ref, prepay=Prepay
+	    {ok, #state{prepay=Prepay
 			,two_way=TwoWay, inbound=Inbound
 			,max_two_way=TwoWay, max_inbound=Inbound
 			,acct_rev=Rev, acct_id=AcctID, acct_type=ts
-		       }};
-	{TwoWay, Inbound, Prepay, account} ->
-	    {ok, #state{my_q=Q, is_amqp_up=is_binary(Q)
-			,cache=CPid, cache_ref=Ref, prepay=Prepay
-			,two_way=TwoWay, inbound=Inbound
-			,max_two_way=TwoWay, max_inbound=Inbound
-			,acct_id=AcctID, acct_type=account
+			,start_time=StartTime, sync_ref=SyncRef
 		       }}
     end.
 
@@ -161,7 +182,17 @@ init([AcctID]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
+handle_call(status, _, #state{max_two_way=MaxTwo, max_inbound=MaxIn
+			      ,two_way=Two, inbound=In, trunks_in_use=Dict
+			      ,prepay=Prepay, acct_id=Acct}=State) ->
+    {reply, wh_json:from_list([{<<"max_two_way">>, MaxTwo}
+			       ,{<<"max_inbound">>, MaxIn}
+			       ,{<<"two_way">>, Two}
+			       ,{<<"inbound">>, In}
+			       ,{<<"prepay">>, Prepay}
+			       ,{<<"account_id">>, Acct}
+			       ,{<<"trunks">>, [wh_json:from_list([{<<"callid">>, CallID}, {<<"type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
+			      ]), State};
 handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->
     {reply, dict:to_list(Dict), State};
 
@@ -214,8 +245,88 @@ handle_call({authz, JObj, outbound}, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast(refresh, #state{acct_type=AcctType, acct_id=AcctID, max_two_way=_OldTwo, max_inbound=_OldIn}=State) ->
+    case catch(get_trunks_available(AcctID, AcctType)) of
+	{MaxTwo, MaxIn, _Prepay, AcctType} ->
+	    ?LOG("Updating max two to ~b (from ~b), max inbound to ~b (from ~b)", [MaxTwo, _OldTwo, MaxIn, _OldIn]),
+	    {noreply, State#state{max_two_way=MaxTwo, max_inbound=MaxIn}};
+	_E ->
+	    ?LOG("Failed to refresh: ~p", [_E]),
+	    {noreply, State}
+    end;
+
+handle_cast({conf_change, EvtName, JObj}, State) ->
+    io:format("Evt: ~s~n", [EvtName]),
+    [io:format("KV: ~p~n", [KV]) || KV <- wh_json:to_proplist(JObj)],
+    {noreply, State};
+
+handle_cast({j5_msg, <<"sync_req">>, JObj}, State) ->
+    spawn(fun() -> send_levels_resp(JObj, State, fun wapi_jonny5:publish_sync_resp/2) end),
+    {noreply, State};
+
+handle_cast({j5_msg, <<"status_req">>, JObj}, State) ->
+    spawn(fun() -> send_levels_resp(JObj, State, fun wapi_jonny5:publish_status_resp/2) end),
+    {noreply, State};
+
+handle_cast({j5_msg, <<"sync_resp">>, JObj}, #state{acct_id=AcctID, max_inbound=MaxIn, max_two_way=MaxTwo
+						    ,start_time=StartTime, prepay=Prepay
+						   }=State) ->
+    try
+	true = wapi_jonny5:sync_resp_v(JObj),
+	AcctID = wh_json:get_value(<<"Account-ID">>, JObj),
+
+	case j5_util:uptime(StartTime) < wh_json:get_integer_value(<<"Uptime">>, JObj) of
+	    true ->
+		NewMaxTwo = wh_json:get_integer_value(<<"Max-Two-Way">>, JObj, MaxTwo),
+		NewMaxIn = wh_json:get_integer_value(<<"Max-Inbound">>, JObj, MaxIn),
+		NewPrepay = wh_json:get_float_value(<<"Prepay">>, JObj, Prepay),
+
+		?LOG("Uptime is greater than ours, updating max values"),
+		?LOG("MaxTwoWay: from ~b to ~b", [MaxTwo, NewMaxTwo]),
+		?LOG("MaxIn: from ~b to ~b", [MaxIn, NewMaxIn]),
+		?LOG("Prepay: from ~p to ~p", [Prepay, NewPrepay]),
+
+		{noreply, State#state{
+			    max_two_way=NewMaxTwo
+			    ,max_inbound=NewMaxIn
+			    ,prepay=NewPrepay
+			   }};
+	    false ->
+		{noreply, State}
+	end
+    catch
+	error:{badmatch, BadMatch} ->
+	    ?LOG("Badmatch error with ~s", [BadMatch]),
+	    {noreply, State};
+	_T:_R ->
+	    ?LOG("Failed to process sync_resp: ~p ~p", [_T, _R]),
+	    {noreply, State}
+    end;
+
+handle_cast({j5_msg, _Evt, _JObj}, State) ->
+    ?LOG("Unhandled j5 message ~s", [_Evt]),
+    {noreply, State};
+
+handle_cast({call_event, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Dict
+						    ,max_inbound=MaxIn, max_two_way=MaxTwo
+						   }=State) ->
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+
+    case process_call_event(CallID, JObj, Dict) of
+	{release, inbound, Dict1} ->
+	    ?LOG_END(CallID, "Releasing inbound trunk", []),
+	    unmonitor_call(CallID),
+	    NewIn = case (In+1) of I when I > MaxIn -> MaxIn; I -> I end,
+	    {noreply, State#state{inbound=NewIn, trunks_in_use=Dict1}, hibernate};
+	{release, twoway, Dict2} ->
+	    ?LOG_END(CallID, "Releasing two-way trunk", []),
+	    unmonitor_call(CallID),
+	    NewTwo = case (Two+1) of T when T > MaxTwo -> MaxTwo; T -> T end,
+	    {noreply, State#state{two_way=NewTwo, trunks_in_use=Dict2}, hibernate};
+	ignore ->
+	    ?LOG_END(CallID, "Ignoring event", []),
+	    {noreply, State}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -227,28 +338,18 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({_, #amqp_msg{payload=Payload}}, #state{my_q=Q, two_way=Two, inbound=In, trunks_in_use=Dict
-						    ,max_inbound=MaxIn, max_two_way=MaxTwo
-						   }=State) ->
-    JObj = mochijson2:decode(Payload),
-    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    ?LOG(CallID, "Recv JSON payload: ~s", [Payload]),
-
-    case process_call_event(CallID, JObj, Dict) of
-	{release, inbound, Dict1} ->
-	    ?LOG_END(CallID, "Releasing inbound trunk", []),
-	    unmonitor_call(Q, CallID),
-	    NewIn = case (In+1) of I when I > MaxIn -> MaxIn; I -> I end,
-	    {noreply, State#state{inbound=NewIn, trunks_in_use=Dict1}, hibernate};
-	{release, twoway, Dict2} ->
-	    ?LOG_END(CallID, "Releasing two-way trunk", []),
-	    unmonitor_call(Q, CallID),
-	    NewTwo = case (Two+1) of T when T > MaxTwo -> MaxTwo; T -> T end,
-	    {noreply, State#state{two_way=NewTwo, trunks_in_use=Dict2}, hibernate};
-	ignore ->
-	    ?LOG_END(CallID, "Ignoring event", []),
-	    {noreply, State}
-    end;
+handle_info({timeout, SyncRef, sync}, #state{start_time=StartTime, sync_ref=SyncRef, acct_id=AcctID}=State) ->
+    Self = self(),
+    spawn(fun() ->
+		  SyncProp = [{<<"Uptime">>, j5_util:uptime(StartTime)}
+			      ,{<<"Account-ID">>, AcctID}
+			      ,{<<"Server-ID">>, gen_listener:queue_name(Self)}
+			      ,{<<"App-Name">>, ?APP_NAME}
+			      ,{<<"App-Version">>, ?APP_VERSION}
+			     ],
+		  wapi_jonny5:publish_sync_req(SyncProp)
+	  end),
+    {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)}};
 
 handle_info({document_changes, AcctID, Changes}, #state{acct_rev=Rev, acct_id=AcctID, acct_type=AcctType}=State) ->
     ?LOG_SYS("change to account ~s to be processed", [AcctID]),
@@ -274,6 +375,10 @@ handle_info(#'basic.consume_ok'{}, State) ->
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
+
+handle_event(_JObj, #state{acct_id=_AcctId}=_State) ->
+    ?LOG("Acct: ~s received jobj for acctid ~s", [_AcctId, wh_json:get_value(<<"Account-ID">>, _JObj)]),
+    {reply, [{server, self()}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -308,17 +413,16 @@ code_change(_OldVsn, State, _Extra) ->
       AcctID :: binary(),
       Type :: account | ts.
 get_trunks_available(AcctID, account) ->
-    case couch_mgr:open_doc(whapps_util:get_db_name(AcctID, encoded), AcctID) of
+    case couch_mgr:get_results(whapps_util:get_db_name(AcctID, encoded), <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
+	{ok, []} ->
+	    ?LOG("No results from view, trying account doc"),
+	    get_trunks_available_from_account_doc(AcctID);
 	{error, not_found} ->
-	    ?LOG_SYS("Account ~s not found, trying ts", [AcctID]),
-	    get_trunks_available(AcctID, ts);
-	{ok, JObj} ->
-	    Trunks = wh_util:to_integer(wh_json:get_value(<<"trunks">>, JObj, 0)),
-	    InboundTrunks = wh_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, JObj, 0)),
-	    Prepay = wh_util:to_float(wh_json:get_value(<<"prepay">>, JObj, 0.0)),
-	    %% Balance = ?DOLLARS_TO_UNITS(),
-	    ?LOG_SYS("Found trunk levels for ~s: ~b two way, ~b inbound, and $ ~p prepay", [AcctID, Trunks, InboundTrunks, Prepay]),
-	    {Trunks, InboundTrunks, Prepay, account}
+	    ?LOG("Error loading view, trying account doc"),
+	    get_trunks_available_from_account_doc(AcctID);
+	{ok, [JObj|_]} ->
+	    ?LOG("View result retrieved"),
+	    get_account_values(JObj)
     end;
 get_trunks_available(AcctID, ts) ->
     case couch_mgr:open_doc(<<"ts">>, AcctID) of
@@ -336,6 +440,23 @@ get_trunks_available(AcctID, ts) ->
 	    ?LOG_SYS("Found trunk levels for ~s: ~b two way, ~b inbound, and $ ~p prepay", [AcctID, Trunks, InboundTrunks, Prepay]),
 	    {Trunks, InboundTrunks, Prepay, ts}
     end.
+
+get_trunks_available_from_account_doc(AcctID) ->
+    case couch_mgr:open_doc(whapps_util:get_db_name(AcctID, encoded), AcctID) of
+	{error, not_found} ->
+	    ?LOG_SYS("Account ~s not found, trying ts", [AcctID]),
+	    get_trunks_available(AcctID, ts);
+	{ok, JObj} ->
+	    get_account_values(JObj)
+    end.
+
+get_account_values(JObj) ->
+    Trunks = wh_util:to_integer(wh_json:get_value(<<"trunks">>, JObj, 0)),
+    InboundTrunks = wh_util:to_integer(wh_json:get_value(<<"inbound_trunks">>, JObj, 0)),
+    Prepay = wh_util:to_float(wh_json:get_value(<<"prepay">>, JObj, 0.0)),
+    %% Balance = ?DOLLARS_TO_UNITS(),
+    ?LOG_SYS("Found trunk levels: ~b two way, ~b inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
+    {Trunks, InboundTrunks, Prepay, account}.
 
 -spec try_inbound_then_twoway/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
       CallID :: binary(),
@@ -355,28 +476,24 @@ try_inbound_then_twoway(CallID, State) ->
 	    end
     end.
 
--spec try_twoway/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
-      CallID :: binary(),
-      State :: #state{}.
+-spec try_twoway/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
 try_twoway(_CallID, #state{two_way=T}=State) when T < 1 ->
     ?LOG_SYS(_CallID, "Failed to authz a two-way trunk", []),
     {{false, []}, State#state{two_way=0}};
-try_twoway(CallID, #state{my_q=Q, two_way=Two, trunks_in_use=Dict}=State) ->
+try_twoway(CallID, #state{two_way=Two, trunks_in_use=Dict}=State) ->
     ?LOG_SYS(CallID, "Authz a two-way trunk", []),
-    monitor_call(Q, CallID),
+    monitor_call(CallID),
     {{true, [{<<"Trunk-Type">>, <<"two_way">>}]}
      ,State#state{two_way=Two-1, trunks_in_use=dict:store(CallID, twoway, Dict)}
     }.
 
--spec try_inbound/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
-      CallID :: binary(),
-      State :: #state{}.
+-spec try_inbound/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
 try_inbound(_CallID, #state{inbound=I}=State) when I < 1 ->
     ?LOG_SYS(_CallID, "Failed to authz an inbound_only trunk", []),
     {{false, []}, State#state{inbound=0}};
-try_inbound(CallID, #state{my_q=Q, inbound=In, trunks_in_use=Dict}=State) ->
+try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict}=State) ->
     ?LOG_SYS(CallID, "Authz an inbound_only trunk", []),
-    monitor_call(Q, CallID),
+    monitor_call(CallID),
     {{true, [{<<"Trunk-Type">>, <<"inbound">>}]}
      ,State#state{inbound=In-1, trunks_in_use=dict:store(CallID, inbound, Dict)}
     }.
@@ -387,40 +504,28 @@ try_inbound(CallID, #state{my_q=Q, inbound=In, trunks_in_use=Dict}=State) ->
 try_prepay(_CallID, #state{prepay=Pre}=State) when Pre =< 0.0 ->
     ?LOG_SYS(_CallID, "Failed to authz a per_min trunk", []),
     {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State};
-try_prepay(CallID, #state{acct_id=AcctId, my_q=Q, prepay=_Pre, trunks_in_use=Dict}=State) ->
+try_prepay(CallID, #state{acct_id=AcctId, prepay=_Pre, trunks_in_use=Dict}=State) ->
     case jonny5_listener:is_blacklisted(AcctId) of
 	{true, Reason} ->
 	    ?LOG_SYS(CallID, "Authz false for per_min: ~s", [Reason]),
 	    {{false, [{<<"Error">>, Reason}]}, State};
 	false ->
 	    ?LOG_SYS(CallID, "Authz a per_min trunk with $~p prepay", [_Pre]),
-	    monitor_call(Q, CallID),
+	    monitor_call(CallID),
 	    {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
 	     ,State#state{trunks_in_use=dict:store(CallID, per_min, Dict)}
 	    }
     end.
 
--spec monitor_call/2 :: (Q, CallID) -> ok when
-      Q :: binary(),
-      CallID :: binary().
-monitor_call(Q, CallID) ->
-    _ = amqp_util:bind_q_to_callevt(Q, CallID),
-    _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
-    ?LOG(CallID, "Monitoring with ~s", [Q]),
-    amqp_util:basic_consume(Q, [{exclusive, false}]).
+-spec monitor_call/1 :: (ne_binary()) -> 'ok'.
+monitor_call(CallID) ->
+    gen_listener:add_binding(self(), call, [{callid, CallID}]).
 
--spec unmonitor_call/2 :: (Q, CallID) -> ok when
-      Q :: binary(),
-      CallID :: binary().
-unmonitor_call(Q, CallID) ->
-    amqp_util:unbind_q_from_callevt(Q, CallID),
-    amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
-    ?LOG(CallID, "Un-monitoring", []).
+-spec unmonitor_call/1 :: (ne_binary()) -> 'ok'.
+unmonitor_call(CallID) ->
+    gen_listener:rm_binding(self(), call, [{callid, CallID}]).
 
--spec process_call_event/3 :: (CallID, JObj, Dict) -> ignore | {release, twoway | inbound, dict()} when
-      CallID :: binary(),
-      JObj :: json_object(),
-      Dict :: dict().
+-spec process_call_event/3 :: (ne_binary(), json_object(), dict()) -> 'ignore' | {'release', 'twoway' | 'inbound', dict()}.
 process_call_event(CallID, JObj, Dict) ->
     case { wh_json:get_value(<<"Application-Name">>, JObj)
 	   ,wh_json:get_value(<<"Event-Name">>, JObj)
@@ -457,9 +562,7 @@ process_call_event(CallID, JObj, Dict) ->
 	    ignore
     end.
 
--spec release_trunk/2 :: (CallID, Dict) -> ignore | {release, twoway | inbound, dict()} when
-      CallID :: binary(),
-      Dict :: dict().
+-spec release_trunk/2 :: (ne_binary(), dict()) -> 'ignore' | {'release', 'twoway' | 'inbound', dict()}.
 release_trunk(CallID, Dict) ->
     case dict:find(CallID, Dict) of
 	error ->
@@ -474,3 +577,27 @@ is_us48(<<"+1", Rest/binary>>) when erlang:byte_size(Rest) =:= 10 -> true;
 %% extension dialing
 is_us48(Bin) when erlang:byte_size(Bin) < 7 -> true;
 is_us48(_) -> false.
+
+-spec send_levels_resp/3 :: (json_object(), #state{}, fun((ne_binary(), proplist() | json_object()) -> 'ok')) -> no_return().
+send_levels_resp(JObj, #state{two_way=Two, inbound=In, trunks_in_use=Dict, acct_id=AcctID
+			      ,max_inbound=MaxIn, max_two_way=MaxTwo, start_time=StartTime
+			      ,prepay=Prepay
+			     }, PublishFun) ->
+    SyncResp = [{<<"Uptime">>, j5_util:uptime(StartTime)}
+		,{<<"Account-ID">>, AcctID}
+		,{<<"Prepay">>, Prepay}
+		,{<<"Two-Way">>, Two}
+		,{<<"Inbound">>, In}
+		,{<<"Max-Two-Way">>, MaxTwo}
+		,{<<"Max-Inbound">>, MaxIn}
+		,{<<"Server-ID">>, <<>>}
+		,{<<"Trunks">>, [wh_json:from_list([{<<"Call-ID">>, CallID}, {<<"Type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
+		,{<<"App-Version">>, ?APP_VERSION}
+		,{<<"App-Name">>, ?APP_NAME}
+		,{<<"Node">>, wh_util:to_binary(node())}
+	       ],
+    PublishFun(wh_json:get_value(<<"Server-ID">>, JObj), SyncResp).
+
+-spec sync_fudge/0 :: () -> 1..?SYNC_TIMER.
+sync_fudge() ->
+    crypto:rand_uniform(1, ?SYNC_TIMER).

@@ -466,11 +466,7 @@ message_count_prompts(New, Saved, #prompts{you_have=YouHave, new_and=NewAnd, sav
 %% menu utill
 %% @end
 %%--------------------------------------------------------------------
--spec play_messages/4 :: (Messages, Count, Box, Call) -> 'ok' when
-      Messages :: json_objects(),
-      Count :: non_neg_integer(),
-      Box :: #mailbox{},
-      Call :: #cf_call{}.
+-spec play_messages/4 :: (json_objects(), non_neg_integer(), #mailbox{}, #cf_call{}) -> 'ok'.
 play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone
 					      ,prompts=#prompts{message_number=MsgNum,
 								received=Received,
@@ -500,7 +496,8 @@ play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone
             ok;
 	{ok, replay} ->
 	    play_messages(Messages, Count, Box, Call);
-        {error, _} ->
+        {error, _E} ->
+	    ?LOG("Error playing message menu: ~p", [_E]),
             ok
     end;
 play_messages([], _, _, _) ->
@@ -513,17 +510,14 @@ play_messages([], _, _, _) ->
 %% user provides a valid option
 %% @end
 %%--------------------------------------------------------------------
--spec message_menu/2 :: (Box, Call) -> {'error', 'channel_hungup' | 'channel_unbridge' | json_object()} | {'ok', 'keep' | 'delete' | 'return' | 'replay'} when
-      Box :: #mailbox{},
-      Call :: #cf_call{}.
--spec message_menu/3 :: (Prompt, Box, Call) -> {'error', 'channel_hungup' | 'channel_unbridge' | json_object()} | {'ok', 'keep' | 'delete' | 'return' | 'replay'} when
-      Prompt :: proplist(),
-      Box :: #mailbox{},
-      Call :: #cf_call{}.
+-type message_menu_returns() :: {'ok', 'keep' | 'delete' | 'return' | 'replay'}.
 
+-spec message_menu/2 :: (#mailbox{}, #cf_call{}) ->
+				{'error', 'channel_hungup' | 'channel_unbridge' | json_object()} | message_menu_returns().
+-spec message_menu/3 :: ([cf_call_command:audio_macro_prompt(),...], #mailbox{}, #cf_call{}) ->
+				{'error', 'channel_hungup' | 'channel_unbridge' | json_object()} | message_menu_returns().
 message_menu(#mailbox{prompts=#prompts{message_menu=MessageMenu}}=Box, Call) ->
     message_menu([{play, MessageMenu}], Box, Call).
-
 message_menu(Prompt, #mailbox{keys=#keys{replay=Replay, keep=Keep,
                                          delete=Delete, return_main=ReturnMain}}=Box, Call) ->
     NoopId = audio_macro(Prompt, Call),
@@ -732,21 +726,32 @@ new_message(RecordingName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, 
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save_metadata/3 :: (NewMessage, Db, Id) -> tuple(ok, json_object()) | tuple(error, atom()) when
-      NewMessage :: json_object(),
-      Db :: binary(),
-      Id :: binary().
+-spec save_metadata/3 :: (json_object(), ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
 save_metadata(NewMessage, Db, Id) ->
     {ok, JObj} = couch_mgr:open_doc(Db, Id),
-    NewMessages=[NewMessage | wh_json:get_value([<<"messages">>], JObj, [])],
-    case couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], NewMessages, JObj)) of
-        {error, conflict} ->
-            save_metadata(NewMessage, Db, Id);
-        {ok, _}=Ok -> Ok;
-        {error, R}=E ->
-            ?LOG("error while storing voicemail metadata ~w", [R]),
-            E
+
+    Messages = wh_json:get_value([<<"messages">>], JObj, []),
+
+    case has_message_meta(wh_json:get_value(<<"call_id">>, NewMessage), Messages) of
+	true ->
+	    ?LOG("Message meta already exists in VM Messages"),
+	    {ok, JObj};
+	false ->
+	    case couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], [NewMessage | Messages], JObj)) of
+		{error, conflict} ->
+		    ?LOG("Saving resulted in a conflict, trying again"),
+		    save_metadata(NewMessage, Db, Id);
+		{ok, _}=Ok -> Ok;
+		{error, _R}=E ->
+		    ?LOG("error while storing voicemail metadata ~w", [_R]),
+		    E
+	    end
     end.
+
+-spec has_message_meta/2 :: (ne_binary(), json_objects()) -> boolean().
+has_message_meta(_, []) -> false;
+has_message_meta(NewMsgCallId, Messages) ->
+    lists:any(fun(Msg) -> wh_json:get_value(<<"call_id">>, Msg) =:= NewMsgCallId end, Messages).
 
 %%--------------------------------------------------------------------
 %% @private

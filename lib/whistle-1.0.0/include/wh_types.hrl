@@ -1,5 +1,6 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
 
+-define(MILLISECONDS_IN_DAY, 86400000).
 -define(SECONDS_IN_DAY, 86400).
 
 -define(IS_JSON_OBJECT,
@@ -27,6 +28,7 @@
 -type wh_proplist() :: [{ne_binary() | atom(), binary() | atom() | integer() | float() | string()} | atom(),...] | [].
 
 -type json_string() :: atom() | ne_binary().
+-type json_strings() :: [json_string(),...].
 -type json_number() :: integer() | float().
 -type json_array() :: [json_term(),...] | [].
 -type json_proplist() :: [{json_string(), json_term()},...] | [].
