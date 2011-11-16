@@ -59,7 +59,7 @@ bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid, account_id=Accoun
                                               ,"Fault: ~p~n"
                                               ,"~n~s"]
                               ,[?MODULE, ?LINE, Reason, cf_util:call_info_to_string(Call)], AccountId),
-            ?LOG("failed to bridge to endpoint ~s:~s", [Code, Cause]),
+            ?LOG("failed to bridge to device ~s:~s", [Code, Cause]),
             CFPid ! { continue };
         {error, R} ->
             whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
@@ -67,6 +67,6 @@ bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid, account_id=Accoun
                                             ,"Fault: ~p~n"
                                             ,"~n~s"]
                               ,[?MODULE, ?LINE, R, cf_util:call_info_to_string(Call)], AccountId),
-            ?LOG("failed to bridge to endpoint ~p", [R]),
+            ?LOG("failed to bridge to device ~p", [R]),
             CFPid ! { continue }
     end.
