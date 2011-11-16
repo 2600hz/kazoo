@@ -117,7 +117,6 @@ get_integer(Category, Key) ->
 get_integer(Category, Key, Default) ->
     wh_util:to_integer(get(Category, Key, Default)).
 
-
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
@@ -140,8 +139,6 @@ get_is_false(Category, Key) ->
 
 get_is_false(Category, Key, Default) ->
     wh_util:is_false(get(Category, Key, Default)).
-
-
 
 %%-----------------------------------------------------------------------------
 %% @public
