@@ -173,15 +173,8 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 handle_info(timeout, CurState) ->
     bind_to_crossbar(),
     couch_mgr:db_create(?TOKEN_DB),
-    State = case file:consult(?SHARED_AUTH_CONF) of
-                {ok, Terms} ->
-                    ?LOG_SYS("loaded config from ~s", [?SHARED_AUTH_CONF]),
-                    #state{xbar_url=props:get_value(authoritative_crossbar, Terms, CurState#state.xbar_url)};
-                {error, _} ->
-                    ?LOG_SYS("could not read config from ~s", [?SHARED_AUTH_CONF]),
-                    #state{}
-            end,
-    {noreply, State};
+    Url = whapps_config:get_list(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
+    {noreply, CurState#state{xbar_url=Url}};
 
 handle_info(_, State) ->
     {noreply, State}.
