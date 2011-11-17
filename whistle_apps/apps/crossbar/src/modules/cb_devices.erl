@@ -14,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, lookup_regs/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -29,6 +29,7 @@
 -define(FIXTURE_LIST, [<<"611.device.json">>]). %% fixtures to load into each account DB
 
 -define(CB_LIST, <<"devices/crossbar_listing">>).
+-define(SIP_LIST, <<"devices/sip_credentials">>).
 
 %%%===================================================================
 %%% API
@@ -365,17 +366,24 @@ update_device(DocId, #cb_context{req_data=JObj}=Context) ->
 load_device_status(#cb_context{db_name=Db}=Context) ->
     %% RegDevices = [[realm1, user1], [realmN, userN], ...], those are owners of currently  registered devices.
     %% RegDevices is reinjected as keys for devices/sip_credentials
-    {ok, JObjs} = couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]),
-    AccountDevices = lists:foldl(fun(JObj, Acc) -> [{wh_json:get_value([<<"doc">>, <<"sip">>, <<"realm">>], JObj),
-						     wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], JObj)} | Acc] end, [], JObjs),
-    RegDevices = lookup_regs(AccountDevices),
-    Result = case RegDevices of
-		 [] -> {struct, []};
-		 [_|_] -> {ok, Devices} = couch_mgr:get_results(Db, <<"devices/sip_credentials">>, [{<<"keys">>, RegDevices}]),
-			  lists:foldl(fun(JObj, Acc) ->
-					      RegDevice = wh_json:set_value(<<"device_id">>, wh_json:get_value(<<"id">>, JObj), ?EMPTY_JSON_OBJECT),
-					      [wh_json:set_value(<<"registered">>, true, RegDevice)| Acc]
-				      end, [], Devices)
+    {ok, JObjs} = couch_mgr:get_results(Db, ?SIP_LIST, []),
+    AccountCreds = [ list_to_tuple(wh_json:get_value(<<"key">>, JObj)) || JObj <- JObjs],
+
+    Result = case cb_modules_util:lookup_regs(AccountCreds) of
+		 [] -> [];
+		 RegDevices ->
+		     lists:foldl(fun(JObj, Acc) ->
+					 Realm = wh_json:get_value([<<"value">>, <<"realm">>], JObj),
+					 User = wh_json:get_value([<<"value">>, <<"username">>], JObj),
+
+					 case lists:keyfind({Realm, User}, 1, RegDevices) =/= false of
+					     true ->
+						 [ wh_json:set_values([{<<"registered">>, true}
+								       ,{<<"device_id">>, wh_json:get_value(<<"id">>, JObj)}
+								      ], wh_json:get_value(<<"value">>, JObj)) | Acc];
+					     false -> Acc
+					 end
+				 end, [], JObjs)
 	     end,
     crossbar_util:response(Result, Context).
 
@@ -399,78 +407,6 @@ normalize_view_results(JObj, Acc) ->
 			(JObj :: json_object()) -> tuple(ok, []).
 is_valid_doc(JObj) ->
      crossbar_schema:do_validate(JObj, device).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% For a given [{Realm, Username}|...], returns  [[Realm, Username]|...]
-%% whose device is registered, ready to be used in a view filter
-%% @end
-%%--------------------------------------------------------------------
--spec lookup_regs/1 :: ([{Realm, Username},...]) -> [{binary(), binary()},...] when
-      Realm :: binary(),
-      Username :: binary().
-lookup_regs(RealmUserList) ->
-    Q = amqp_util:new_queue(),
-    ok = amqp_util:bind_q_to_targeted(Q),
-    ok = amqp_util:basic_consume(Q),
-    [spawn(fun() -> lookup_registration({Realm, User}, Q) end) || {Realm, User} <- RealmUserList],
-    wait_for_reg_resp(length(RealmUserList), []). %% number of devices we're supposed to get an answer from
-
-lookup_registration({Realm, User}, Q) ->
-    ?LOG_SYS("Looking up registration information for ~s@~s", [User, Realm]),
-    RegProp = [{<<"Username">>, User}
-	       ,{<<"Realm">>, Realm}
-	       ,{<<"Fields">>, []}
-	       ,{<<"Server-ID">>, Q}
-	       ,{<<"App-Name">>, ?MODULE}
-	       ,{<<"App-Version">>, ?APP_VERSION}
-	      ],
-    wapi_registration:publish_query_req(RegProp).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Collect Len number of registrations in Acc unless the timeout
-%% occurs
-%% @end
-%%--------------------------------------------------------------------
--spec wait_for_reg_resp/2 :: (Len, Acc) -> list() when
-      Len :: non_neg_integer(),
-      Acc :: list().
-wait_for_reg_resp(0, Acc) ->
-    Acc;
-wait_for_reg_resp(Len, Acc) ->
-    try
-	receive
-	    {amqp_host_down, _} ->
-		?LOG("lost AMQP connection"),
-                Acc;
-	    {amqp_lost_channel,no_connection} ->
-		?LOG("lost AMQP connection"),
-                Acc;
-	    {_, #amqp_msg{payload = Payload}} ->
-		JRegResp = mochijson2:decode(Payload),
-		true = wh_api:reg_query_resp_v(JRegResp),
-                Realm = wh_json:get_value([<<"Fields">>, <<"Realm">>], JRegResp),
-                User = wh_json:get_value([<<"Fields">>, <<"Username">>], JRegResp),
-                case lists:member([Realm, User], Acc) of
-                    true ->
-                        wait_for_reg_resp(Len, Acc);
-                    false ->
-                        wait_for_reg_resp(Len - 1, [[Realm, User] | Acc])
-                end;
-	    #'basic.consume_ok'{} ->
-		wait_for_reg_resp(Len, Acc)
-	after
-	    1000 ->
-		?LOG("timeout for registration query"),
-		Acc
-	end
-    catch
-	_:_ ->
-	    wait_for_reg_resp(Len, Acc)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
