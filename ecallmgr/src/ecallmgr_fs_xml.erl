@@ -179,7 +179,7 @@ get_channel_vars({<<"Timeout">>, V}, Vars) ->
 
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
-	false -> [list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(AMQPHeader), "='", wh_util:to_list(V), "'"]) | Vars];
+        false -> Vars;
 	{_, Prefix} -> [list_to_binary([Prefix, "='", wh_util:to_list(V), "'"]) | Vars]
     end;
 

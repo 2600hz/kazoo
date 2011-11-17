@@ -60,13 +60,13 @@ unbind_q(Q, Props) ->
 
 -spec get_routing_key/1 :: (proplist()) -> binary().
 get_routing_key(Props) ->
-    Action = wh_util:to_list(props:get_value(action, Props, "*")),
-    Db = wh_util:to_list(props:get_value(db, Props, "*")),
-    DocType = wh_util:to_list(props:get_value(doc_type, Props, "*")),
-    DocId = wh_util:to_list(props:get_value(doc_id, Props, "*")),
+    Action = props:get_value(action, Props, <<"*">>), % see conf_action() type below
+    Db = props:get_value(db, Props, <<"*">>),
+    DocType = props:get_value(doc_type, Props, <<"*">>),
+    DocId = props:get_value(doc_id, Props, <<"*">>),
     amqp_util:document_routing_key(Action, Db, DocType, DocId).
 
--type conf_action() :: created | edited | deleted.
+-type conf_action() :: 'created' | 'edited' | 'deleted'.
 
 -spec publish_doc_update/5 :: (conf_action(), binary(), binary(), binary(), api_terms()) -> 'ok'.
 -spec publish_doc_update/6 :: (conf_action(), binary(), binary(), binary(), api_terms(), binary()) -> 'ok'.

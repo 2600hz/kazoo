@@ -31,20 +31,20 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 		{'error', Msg} ->
                     _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
                     send_error_response(App, Msg, UUID, JObj),
-                    ControlPID ! {execute_complete, UUID, App};
+		    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, App);
 		{'error', AppName, Msg} ->
                     _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
                     send_error_response(App, Msg, UUID, JObj),
-                    ControlPID ! {execute_complete, UUID, AppName};
+		    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
                 {return, Result} ->
                     Result;
                 {AppName, noop} ->
-                    ControlPID ! {execute_complete, UUID, AppName};
+		    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
 		{<<"answer">> = AppName, AppData} ->
                     _ = send_cmd(Node, UUID, AppName, AppData),
                     %% 22:55 pyite_mac  can you sleep 0.5 seconds before continuing
                     timer:sleep(500),
-                    ControlPID ! {execute_complete, UUID, AppName};
+		    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
 		{AppName, AppData} ->
                     send_cmd(Node, UUID, AppName, AppData)
 	    end;
@@ -236,26 +236,34 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
             %% execute ring_ready so we dont leave the caller hanging with dead air.
             %% this does not test how many are ACTUALLY dialed (registered)
             %% since that is one of the things we want to be ringing during
-            'ok' = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
-		       <<"simultaneous">> when length(Endpoints) > 1 ->
-			   ?LOG("setting ring_ready to empty: ~p", [send_cmd(Node, UUID, <<"ring_ready">>, "")]);
-		       _Else ->
-			   'ok'
-		   end,
-
+            DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
+                                <<"simultaneous">> when length(Endpoints) > 1 ->
+                                    ?LOG("bridge is simultaneous to multiple endpoints, starting local ringing"),
+                                    send_cmd(Node, UUID, <<"ring_ready">>, ""),
+                                    ",";
+                                _Else ->
+                                    "|"
+                            end,
+            KeyedEPs = [{[wh_json:get_value(<<"Invite-Format">>, Endpoint)
+                         ,wh_json:get_value(<<"To-User">>, Endpoint)
+                         ,wh_json:get_value(<<"To-Realm">>, Endpoint)
+                         ,wh_json:get_value(<<"To-DID">>, Endpoint)
+                         ,wh_json:get_value(<<"Route">>, Endpoint)], Endpoint}
+                       || Endpoint <- Endpoints],
             S = self(),
             DialStrings = [D || D <- [receive {Pid, DS} -> DS end
                                       || Pid <- [spawn(fun() ->
                                                                put(callid, UUID),
                                                                S ! {self(), (catch get_bridge_endpoint(EP))}
                                                        end)
-                                                 || EP <- Endpoints]
+                                                 || {_, EP} <- orddict:to_list(orddict:from_list(KeyedEPs))]
                                      ], D =/= ""],
             Generators = [fun(DP) ->
                                   case wh_json:get_integer_value(<<"Timeout">>, JObj) of
                                       undefined ->
                                           DP;
                                       TO when TO > 0 ->
+                                          ?LOG("bridge will be attempted for ~p seconds", [TO]),
                                           [{"application", "set call_timeout=" ++ wh_util:to_list(TO)}|DP]
                                   end
                           end,
@@ -265,15 +273,19 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                           {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)"),
                                           [{"application", "set ringback=" ++ wh_util:to_list(RBSetting)}|DP];
                                       Ringback ->
-                                          [{"application", "set ringback=" ++ wh_util:to_list(media_path(Ringback, extant, UUID))},
+                                          Stream = wh_util:to_list(media_path(Ringback, extant, UUID)),
+                                          ?LOG("bridge has custom ringback: ~s", [Stream]),
+                                          [{"application", "set ringback=" ++ Stream},
                                            {"application", "set instant_ringback=true"}|DP]
                                   end
                           end,
                           fun(DP) ->
                                   case wh_json:get_value(<<"Media">>, JObj) of
                                       <<"process">> ->
+                                          ?LOG("bridge will process media through host switch"),
                                           [{"application", "set bypass_media=false"}|DP];
                                       <<"bypass">> ->
+                                          ?LOG("bridge will connect the media peer-to-perr"),
                                           [{"application", "set bypass_media=true"}|DP];
                                       _ ->
                                           DP
@@ -294,27 +306,15 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                   ,{"application", "set continue_on_fail=true"}|DP]
                          end,
                          fun(DP) ->
-                                 DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
-                                                     <<"simultaneous">> -> ",";
-                                                     <<"single">> -> "|"
-                                                 end,
-                                 %% Taken from http://montsamu.blogspot.com/2007/02/erlang-parallel-map-and-parallel.html
-                                 S = self(),
-                                 DialStrings = [ receive {Pid, DS} -> DS end
-                                                 || Pid <- [
-                                                            spawn(fun() -> S ! {self(), (catch get_bridge_endpoint(EP))} end)
-                                                            || EP <- wh_json:get_value(<<"Endpoints">>, JObj, [])
-                                                           ]
-                                               ],
                                  BridgeCmd = lists:flatten(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)])
                                      ++ string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
-				 ?LOG("Bridge Cmd: ~s", [BridgeCmd]),
                                  [{"application", BridgeCmd}|DP]
                          end],
             case DialStrings of
                 [] ->
                     {error, <<"registrar returned no endpoints">>};
                 _ ->
+                    ?LOG("creating bridge dialplan"),
                     {<<"bridge">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
             end
     end;
@@ -568,7 +568,13 @@ stream_over_http(Node, UUID, File, Method, JObj) ->
 						   ,{<<"Body">>, wh_util:to_binary(RespBody)}
 						  ]),
             send_store_call_event(Node, UUID, MediaTransResults),
-	    case wapi_dialplan:store_http_resp(wh_json:set_value(<<"Media-Transfer-Results">>, MediaTransResults, JObj)) of
+
+	    JObj1 = wh_json:set_values([{<<"Media-Transfer-Results">>, MediaTransResults}
+					,{<<"Event-Name">>, <<"response">>}
+					,{<<"Event-Category">>, <<"call">>}
+				       ], JObj),
+
+	    case wapi_dialplan:store_http_resp(JObj1) of
 		{ok, Payload} ->
 		    ?LOG("ibrowse 'OK'ed with ~p publishing to ~s: ~s", [StatusCode, AppQ, Payload]),
 		    amqp_util:targeted_publish(AppQ, Payload, <<"application/json">>);
@@ -727,11 +733,10 @@ send_error_response(App, Msg, UUID, JObj) ->
              ,{<<"Call-ID">>, UUID}
              ,{<<"Application-Name">>, App}
              ,{<<"Application-Response">>, <<>>}
-             | wh_api:default_headers(<<>>, <<"error">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+             | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
             ],
     {ok, Payload} = wapi_dialplan:error(Error),
     amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
-
 
 %%--------------------------------------------------------------------
 %% @private

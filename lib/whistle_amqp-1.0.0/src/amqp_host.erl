@@ -29,6 +29,7 @@
 			  ,{?EXCHANGE_RESOURCE, ?TYPE_RESOURCE}
 			  ,{?EXCHANGE_CONFIGURATION, ?TYPE_CONFIGURATION}
 			  ,{?EXCHANGE_CONFERENCE, ?TYPE_CONFERENCE}
+			  ,{?EXCHANGE_WHAPPS, ?TYPE_WHAPPS}
 			 ]).
 
 %% Channel, ChannelRef, Ticket[, FromRef]
@@ -102,8 +103,7 @@ misc_req(Srv, From, Req1, Req2) ->
 register_return_handler(Srv, From) ->
     gen_server:cast(Srv, {register_return_handler, From}).
 
--spec stop/1 :: (Srv) -> 'ok' | {'error', 'you_are_not_my_boss'} when
-      Srv :: pid().
+-spec stop/1 :: (pid()) -> 'ok' | {'error', 'you_are_not_my_boss'}.
 stop(Srv) ->
     case erlang:is_process_alive(Srv) of
 	true -> gen_server:call(Srv, stop);
@@ -161,6 +161,7 @@ handle_call(stop, {From, _}, #state{manager=Mgr}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({publish, From, BasicPub, AmqpMsg}, #state{publish_channel={C,_,T}}=State) ->
+    ?LOG_SYS("Pub on ch ~p x: ~s rt: ~s", [C, BasicPub#'basic.publish'.exchange, BasicPub#'basic.publish'.routing_key]),
     spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, BasicPub#'basic.publish'{ticket=T}, AmqpMsg)) end),
     {noreply, State};
 
@@ -174,6 +175,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 	error ->
 	    case start_channel(Conn, FromPid) of
 		{C,R,T} -> % channel, channel ref, ticket
+		    ?LOG("Consuming on ch: ~p for proc: ~p", [C, FromPid]),
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, {C, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)}),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
@@ -187,6 +189,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 		    {noreply, State}
 	    end;
 	{ok, {C,_,T,_}} ->
+	    ?LOG("Already consuming on ch: ~p for proc: ~p", [C, FromPid]),
 	    gen_server:reply(From, {C, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)}),
 	    {noreply, State}
     end;
@@ -459,8 +462,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec start_channel/1 :: (Connection) -> channel_data() | {'error', 'no_connection'} | 'closing' when
-      Connection :: 'undefined' | {pid(), reference()} | pid().
+-spec start_channel/1 :: ('undefined' | {pid(), reference()} | pid()) -> channel_data() | {'error', 'no_connection'} | 'closing'.
 start_channel(undefined) ->
     {error, no_connection};
 start_channel({Connection, _}) ->
@@ -481,8 +483,7 @@ start_channel(Connection) when is_pid(Connection) ->
 	    E
     end.
 
--spec start_channel/2 :: (Connection, pid()) -> channel_data() | {'error', 'no_connection'} | 'closing' when
-      Connection :: 'undefined' | {pid(), reference()} | pid().
+-spec start_channel/2 :: ('undefined' | {pid(), reference()} | pid(), pid()) -> channel_data() | {'error', 'no_connection'} | 'closing'.
 start_channel(Connection, Pid) ->
     case start_channel(Connection) of
 	{C, _, T} = Channel ->
@@ -490,6 +491,9 @@ start_channel(Connection, Pid) ->
 	    #'access.request_ok'{ticket=T} = amqp_channel:call(C, amqp_util:access_request()),
 	    ?LOG_SYS("Started channel ~p for caller ~p", [C, Pid]),
 	    Channel;
+	{error, no_connection}=E ->
+	    ?LOG_SYS("No connection available to start channel"),
+	    E;
 	E ->
             ?LOG_SYS("failed to start new channel for ~p: ~p", [Pid, E]),
             E

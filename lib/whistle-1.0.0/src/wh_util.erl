@@ -258,8 +258,10 @@ is_proplist(Term) when is_list(Term) ->
 is_proplist(_) ->
     false.
 
--spec binary_to_lower/1 :: (B) -> binary() when
-      B :: binary().
+-spec binary_to_lower/1 :: (B) -> undefined | binary() when
+      B :: undefined | binary().
+binary_to_lower(undefined) ->
+    undefined;
 binary_to_lower(Bin) when is_binary(Bin) ->
     << <<(binary_to_lower_char(B))>> || <<B>> <= Bin>>.
 

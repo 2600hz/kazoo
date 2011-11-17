@@ -317,6 +317,7 @@ parse_path_tokens([], _Loaded, Events) ->
 parse_path_tokens([Mod|T], Loaded, Events) ->
     case lists:member(<<"cb_", (Mod)/binary>>, Loaded) of
         false ->
+	    ?LOG("Failed to find ~s in loaded cb modules", [Mod]),
 	    [];
         true ->
             {Params, List2} = lists:splitwith(fun(Elem) -> not lists:member(<<"cb_", (Elem)/binary>>, Loaded) end, T),
@@ -669,14 +670,13 @@ execute_request(RD, Context) ->
     ?LOG("execute request false end"),
     {false, RD, Context}.
 
-execute_request_results(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
+execute_request_results(RD, #cb_context{resp_error_code=ReturnCode, req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
     case succeeded(Context) of
         false ->
             Content = create_resp_content(RD, Context),
             RD1 = wrq:append_to_response_body(Content, RD),
-            ReturnCode = Context#cb_context.resp_error_code,
 	    ?TIMER_TICK("v1.execute_request halt end"),
-	    ?LOG("failed to execute request, returning ~b", [ReturnCode]),
+	    ?LOG("failed to execute request, returning ~p", [props:get_value(<<"error">>, Content)]),
             {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD1), Context};
         true ->
 	    ?TIMER_TICK("v1.execute_request verb=/=put end"),

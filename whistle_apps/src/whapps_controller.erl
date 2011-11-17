@@ -11,9 +11,7 @@
 %% API
 -export([start_link/0, start_app/1, stop_app/1, restart_app/1, running_apps/0]).
 
--include_lib("whistle/include/wh_log.hrl").
-
--define(CONFIG_DB, <<"system_config">>).
+-include("whistle_apps.hrl").
 
 %%%===================================================================
 %%% API

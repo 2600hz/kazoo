@@ -418,13 +418,12 @@ lookup_regs(RealmUserList) ->
     wait_for_reg_resp(length(RealmUserList), []). %% number of devices we're supposed to get an answer from
 
 lookup_registration({Realm, User}, Q) ->
-    ?LOG_SYS("Looking up registration information for ~s@~s", [User, Realm]),
-    RegProp = [{<<"Username">>, User}
-	       ,{<<"Realm">>, Realm}
-	       ,{<<"Fields">>, []}
-	       | wh_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"cb_devices">>, <<>>) ],
-    {ok, JSON} = wh_api:reg_query(RegProp),
-    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_QUERY).
+    ?LOG_SYS("looking up registration information for ~s@~s", [User, Realm]),
+    Req = [{<<"Username">>, User}
+           ,{<<"Realm">>, Realm}
+           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+          ],
+    wapi_registration:publish_query_req(Req).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -448,10 +447,10 @@ wait_for_reg_resp(Len, Acc) ->
 		?LOG("lost AMQP connection"),
                 Acc;
 	    {_, #amqp_msg{payload = Payload}} ->
-		JRegResp = mochijson2:decode(Payload),
-		true = wh_api:reg_query_resp_v(JRegResp),
-                Realm = wh_json:get_value([<<"Fields">>, <<"Realm">>], JRegResp),
-                User = wh_json:get_value([<<"Fields">>, <<"Username">>], JRegResp),
+		Resp = mochijson2:decode(Payload),
+		true = wapi_registration:query_resp_v(Resp),
+                Realm = wh_json:get_value([<<"Fields">>, <<"Realm">>], Resp),
+                User = wh_json:get_value([<<"Fields">>, <<"Username">>], Resp),
                 case lists:member([Realm, User], Acc) of
                     true ->
                         wait_for_reg_resp(Len, Acc);

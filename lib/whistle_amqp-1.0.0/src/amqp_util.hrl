@@ -1,9 +1,14 @@
 -include_lib("whistle/include/wh_amqp.hrl").
--include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
+%%% See http://www.rabbitmq.com/releases/rabbitmq-erlang-client/v2.7.0/doc/
+
 -define(AMQP_DEBUG, true).
+
+%% see http://www.rabbitmq.com/uri-spec.html
+-define(DEFAULT_AMQP_URI, "amqp://guest:guest@localhost:5672/").
 
 %% Targeted Exchange
 %% - Any process that needs a dedicated queue to be reached at creates one on this exchange
@@ -65,3 +70,8 @@
 %% doc_update.accountaXXXXX.callflow.id
 -define(EXCHANGE_CONFIGURATION, <<"configuration">>).
 -define(TYPE_CONFIGURATION, <<"topic">>).
+
+%% WhApp Exchange
+%% - For inter-whapp communication (amongst themselves)
+-define(EXCHANGE_WHAPPS, <<"whapps">>).
+-define(TYPE_WHAPPS, <<"topic">>).

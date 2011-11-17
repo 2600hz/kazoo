@@ -70,6 +70,8 @@
 -define(OPTIONAL_STORE_HTTP_RESP_HEADERS, []).
 -define(STORE_HTTP_RESP_VALUES, [{<<"Application-Name">>, <<"store">>}
 				 ,{<<"Media-Transfer-Method">>, [<<"put">>, <<"post">>]}
+				 ,{<<"Event-Name">>, <<"response">>}
+				 ,{<<"Event-Category">>, <<"call">>}
 				]).
 -define(STORE_HTTP_RESP_TYPES, [{<<"Media-Transfer-Results">>, fun({struct, L}) when is_list(L) ->
                                                                        true;

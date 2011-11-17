@@ -75,7 +75,7 @@ init([Node, UUID, CtlPid]) ->
     self() ! startup,
     ?LOG_START("starting new call events listener"),
     is_pid(CtlPid) andalso link(CtlPid),
-    ?LOG("linked to control listener ~p",[CtlPid]),
+    ?LOG("linked to control listener process ~p",[CtlPid]),
     {'ok', #state{node=Node, uuid=UUID, ctlpid=CtlPid}}.
 
 %%--------------------------------------------------------------------
@@ -146,7 +146,7 @@ handle_info({call_event, {event, [ UUID | Data ] } }, #state{node=Node, uuid=UUI
 		OtherUUID ->
 		    ?LOG("event was a bridged to ~s", [OtherUUID]),
 		    _Pid = ecallmgr_call_sup:start_event_process(Node, OtherUUID, undefined),
-		    ?LOG("started event listener for other leg as ~p", [_Pid])
+		    ?LOG("started event listener for other leg as process ~p", [_Pid])
 	    end;
 	_ -> 'ok'
     end,
@@ -204,9 +204,9 @@ handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false
 
 handle_info(startup, #state{node=Node, uuid=UUID}=State) ->
     erlang:monitor_node(Node, true),
-    ?LOG("starting handler on ~s for ~s", [Node, UUID]),
     case freeswitch:handlecall(Node, UUID) of
         ok ->
+            ?LOG("handling events from ~s", [Node]),
             {'noreply', State, hibernate};
         timeout ->
             ?LOG("timed out trying to handle events for ~s, trying again", [Node]),
@@ -270,12 +270,12 @@ send_ctl_event(undefined, _, _, _) -> 'ok';
 send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, Props) when is_pid(CtlPid) ->
     AppName = props:get_value(<<"Application">>, Props),
 
-    ?LOG("sending execution completion to control queue"),
+    ?LOG("sending execution completion for ~s to control queue", [wh_util:binary_to_lower(AppName)]),
     ecallmgr_call_control:event_execute_complete(CtlPid, UUID, AppName);
 send_ctl_event(CtlPid, UUID, <<"CUSTOM">>, Props) when is_pid(CtlPid) ->
     case props:get_value(<<"Event-Subclass">>, Props) of
 	<<"whistle::noop">> ->
-	    ?LOG("sending noop completion to control queue"),
+	    ?LOG("sending execution completion for noop to control queue"),
 	    ecallmgr_call_control:event_execute_complete(CtlPid, UUID, <<"noop">>);
 	_ ->
 	    'ok'
@@ -323,15 +323,8 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                                       App
                               end
                       end,
-
-            %% some event are 'remapped' to be of other types, when that happens log it differently
-            case EvtName =/= FSEvtName orelse AppName =/= FSAppName of
-                true ->
-                    ?LOG("published event masquerade ~s ~s as ~s ~s", [FSEvtName, FSAppName, EvtName, AppName]);
-                false ->
-                    ?LOG("published event ~s ~s", [EvtName, AppName])
-            end,
-
+            ?LOG("publishing call event ~s ~s", [wh_util:binary_to_lower(EvtName)
+                                                 ,wh_util:binary_to_lower(AppName)]),
 	    EvtProp0 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop1)}
                         ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop1)}
                         ,{<<"Call-ID">>, UUID}
@@ -378,41 +371,29 @@ application_response(_AppName, Prop, _Node, _UUID) ->
       EventName :: binary(),
       Application :: binary(),
       Prop :: proplist().
+event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Prop) ->
+    [{<<"Application-Name">>, props:get_value(<<"whistle_application_name">>, Prop, <<"">>)}
+     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop, <<"">>)}
+    ];
+event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
+    [{<<"Application-Name">>, <<"bridge">>}
+     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
+     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
+     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<"">>)}
+    ];
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Prop) ->
-    case props:get_value(Application, ?SUPPORTED_APPLICATIONS) of
-	undefined ->
-            ?LOG("~s is not a supported application", [Application]),
-	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
-        <<"noop">> ->
-	    [{<<"Application-Name">>, props:get_value(<<"whistle_application_name">>, Prop, <<"">>)}
-	     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop, <<"">>)}
-	    ];
-        <<"bridge">> ->
-            [{<<"Application-Name">>, <<"bridge">>}
-	     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
-	     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-	     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-	     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-	     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-	     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
-             ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
-	     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<"">>)}
-	    ];
-	AppName ->
-	    [{<<"Application-Name">>, AppName}
-	     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
-	    ]
-    end;
+    [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
+     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
+    ];
 event_specific(<<"CHANNEL_EXECUTE">>, Application, Prop) ->
-    case props:get_value(Application, ?SUPPORTED_APPLICATIONS) of
-	undefined ->
-            ?LOG("~s is not a supported application", [Application]),
-	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
-	AppName ->
-	    [{<<"Application-Name">>, AppName}
-	     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
-	    ]
-    end;
+    [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
+     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
+    ];
 event_specific(<<"CHANNEL_BRIDGE">>, _, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
@@ -455,7 +436,7 @@ event_specific(<<"DETECTED_TONE">>, _, Prop) ->
 event_specific(<<"DTMF">>, _, Prop) ->
     Pressed = props:get_value(<<"DTMF-Digit">>, Prop, <<>>),
     Duration = props:get_value(<<"DTMF-Duration">>, Prop, <<>>),
-    ?LOG("DTMF: ~s (~s)", [Pressed, Duration]),
+    ?LOG("received DTMF ~s (~s)", [Pressed, Duration]),
     [{<<"DTMF-Digit">>, Pressed}
      ,{<<"DTMF-Duration">>, Duration}
     ];
@@ -509,6 +490,8 @@ get_fs_var(Node, UUID, Var, Default) ->
       EvtName :: binary().
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, _) ->
     false;
+should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
+    props:get_value(Application, ?SUPPORTED_APPLICATIONS) =/= undefined;
 should_publish(_, <<"event">>, _) ->
     false;
 should_publish(_, _, EvtName) ->

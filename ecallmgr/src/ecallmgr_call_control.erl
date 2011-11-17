@@ -87,7 +87,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Node, UUID) ->
-    ?LOG("new call control ~s ~s", [Node, UUID]),
+    ?LOG(UUID, "starting call control on ~s", [Node]),
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
 				      ,{bindings, ?BINDINGS}]
                             ,[Node, UUID]).
@@ -155,21 +155,17 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({dialplan, JObj}
 	    ,#state{keep_alive_ref=Ref, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
-
-    ?LOG("current App: ~s", [CurrApp]),
     NewCmdQ = try
                   insert_command(State, wh_util:to_atom(wh_json:get_value(<<"Insert-At">>, JObj, 'tail')), JObj)
 	      catch _T:_R ->
-                      ?LOG("failed inserting command: ~p:~p", [_T, _R]),
+                      ?LOG("failed to insert command into control queue: ~p:~p", [_T, _R]),
                       CmdQ
               end,
-
     case INU andalso (not queue:is_empty(NewCmdQ)) andalso CurrApp =:= undefined of
 	true ->
 	    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
 	    execute_control_request(Cmd, State),
 	    AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
-            ?LOG("advance to ~s", [AppName]),
 	    {noreply, State#state{command_q = NewCmdQ1, current_app = AppName, keep_alive_ref=get_keep_alive_ref(Ref)}, hibernate};
 	false ->
 	    {noreply, State#state{command_q = NewCmdQ, keep_alive_ref=get_keep_alive_ref(Ref)}, hibernate}
@@ -177,25 +173,22 @@ handle_cast({dialplan, JObj}
 
 handle_cast({event_execute_complete, UUID, EvtName}
 	    ,#state{uuid=UUID, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
-    ?LOG("CurrApp: ~s", [CurrApp]),
-    ?LOG("EvtName: ~s", [EvtName]),
-    ?LOG("CurrAppAsEvt: ~s", [wh_api:convert_whistle_app_name(CurrApp)]),
-
     case lists:member(EvtName, wh_api:convert_whistle_app_name(CurrApp)) of
         false ->
             {noreply, State};
         true ->
-	    ?LOG("execution of ~s complete, treating as application ~s", [EvtName, CurrApp]),
+            ?LOG("execution of ~s command complete", [CurrApp]),
 	    case INU andalso queue:out(CmdQ) of
 		false ->
 		    %% if the node is down, don't inject the next FS event
+                    ?LOG("not continuing until switch is avaliable"),
 		    {noreply, State#state{current_app=undefined}, hibernate};
 		{empty, _} ->
+                    ?LOG("reached end of queued call commands"),
 		    {noreply, State#state{current_app=undefined}, hibernate};
 		{{value, Cmd}, CmdQ1} ->
 		    execute_control_request(Cmd, State),
                     AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
-                    ?LOG("advance to ~s", [AppName]),
 		    {noreply, State#state{command_q = CmdQ1, current_app = AppName}, hibernate}
 	    end
     end.
@@ -235,17 +228,18 @@ handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
     end;
 
 handle_info({force_queue_advance, UUID}, #state{uuid=UUID, command_q=CmdQ, is_node_up=INU, current_app=CurrApp}=State) ->
-    ?LOG("forcing queue to advance past ~s", [CurrApp]),
+    ?LOG("received control queue unconditional advance, skipping wait for ~s command completion", [CurrApp]),
     case INU andalso queue:out(CmdQ) of
         false ->
             %% if the node is down, don't inject the next FS event
+            ?LOG("not continuing until switch is avaliable"),
             {noreply, State#state{current_app = undefined}, hibernate};
         {empty, _} ->
+            ?LOG("reached end of queued call commands"),
             {noreply, State#state{current_app = undefined}, hibernate};
         {{value, Cmd}, CmdQ1} ->
             execute_control_request(Cmd, State),
             AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
-            ?LOG("advance to ~s", [AppName]),
             {noreply, State#state{command_q = CmdQ1, current_app = AppName}, hibernate}
     end;
 
@@ -260,7 +254,6 @@ handle_info(keep_alive_expired, #state{start_time=StartTime}=State) ->
     {stop, normal, State};
 
 handle_info(_Msg, State) ->
-    ?LOG("Unhandled msg: ~p", [_Msg]),
     {noreply, State}.
 
 handle_event(_JObj, _State) ->
@@ -296,10 +289,11 @@ code_change(_OldVsn, State, _Extra) ->
 -spec insert_command/3 :: (#state{}, insert_at_options(), json_object()) -> queue().
 insert_command(#state{node=Node, uuid=UUID, command_q=CommandQ, is_node_up=IsNodeUp}=State, now, JObj) ->
     AName = wh_json:get_value(<<"Application-Name">>, JObj),
+    ?LOG("received immediate call command ~s", [AName]),
     case IsNodeUp andalso AName of
 	false ->
-            ?LOG("node ~s is not avaliable"),
-            ?LOG("sending execution error for command ~s", [Node, AName]),
+            ?LOG("node ~s is not avaliable", [Node]),
+            ?LOG("sending execution error for command ~s", [AName]),
 	    {Mega,Sec,Micro} = erlang:now(),
 	    Prop = [ {<<"Event-Name">>, <<"CHANNEL_EXECUTE_ERROR">>}
 		     ,{<<"Event-Date-Timestamp">>, ( (Mega * 1000000 + Sec) * 1000000 + Micro )}
@@ -311,7 +305,7 @@ insert_command(#state{node=Node, uuid=UUID, command_q=CommandQ, is_node_up=IsNod
 	    CommandQ;
 	<<"queue">> ->
 	    true = wapi_dialplan:queue_v(JObj),
-	    DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)), %% each command lacks the default headers
+	    DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)),
 	    lists:foreach(fun(?EMPTY_JSON_OBJECT) -> ok;
 			     (CmdJObj) ->
 				  put(callid, UUID),
@@ -320,39 +314,24 @@ insert_command(#state{node=Node, uuid=UUID, command_q=CommandQ, is_node_up=IsNod
                                   execute_control_request(CmdJObj, State)
 			  end, wh_json:get_value(<<"Commands">>, JObj)),
 	    CommandQ;
-	AppName ->
-	    ?LOG("executing command ~s immediately, bypassing queue", [AppName]),
+        _ ->
             execute_control_request(JObj, State),
 	    CommandQ
     end;
 insert_command(_State, flush, JObj) ->
-    ?LOG("flushing queue"),
-    insert_command_into_queue(queue:new(), fun queue:in/2, JObj);
+    ?LOG("received control queue flush command, clearing all waiting commands"),
+    insert_command_into_queue(queue:new(), tail, JObj);
 insert_command(#state{command_q=CommandQ}, head, JObj) ->
-    case wh_json:get_value(<<"Application-Name">>, JObj) of
-	<<"queue">> ->
-            ?LOG("inserting queued commands at head of queue"),
-	    insert_command_into_queue(CommandQ, fun queue:in_r/2, JObj);
-	AppName ->
-            ?LOG("inserting command ~s at head of queue", [AppName]),
-	    insert_command_into_queue(CommandQ, fun queue:in_r/2, JObj)
-    end;
+    insert_command_into_queue(CommandQ, head, JObj);
 insert_command(#state{command_q=CommandQ}, tail, JObj) ->
-    case wh_json:get_value(<<"Application-Name">>, JObj) of
-	<<"queue">> ->
-            ?LOG("inserting queued commands at tail of queue"),
-	    insert_command_into_queue(CommandQ, fun queue:in/2, JObj);
-        AppName ->
-            ?LOG("inserting command ~s at tail of queue", [AppName]),
-	    ?LOG("queue len prior: ~b", [queue:len(CommandQ)]),
-	    insert_command_into_queue(CommandQ, fun queue:in/2, JObj)
-    end;
-insert_command(_, Pos, _) ->
-    ?LOG("unknown position ~p", [Pos]).
+    insert_command_into_queue(CommandQ, tail, JObj);
+insert_command(Q, Pos, _) ->
+    ?LOG("received command for an unknown queue position ~p", [Pos]),
+    Q.
 
-
--spec insert_command_into_queue/3 :: (queue(), fun((json_object(), queue()) -> queue()), json_object()) -> queue().
-insert_command_into_queue(Q, InsertFun, JObj) ->
+-spec insert_command_into_queue/3 :: (queue(), tail | head, json_object()) -> queue().
+insert_command_into_queue(Q, Position, JObj) ->
+    InsertFun = queue_insert_fun(Position),
     case wh_json:get_value(<<"Application-Name">>, JObj) of
 	<<"queue">> -> %% list of commands that need to be added
 	    true = wapi_dialplan:queue_v(JObj),
@@ -361,19 +340,33 @@ insert_command_into_queue(Q, InsertFun, JObj) ->
 			   (CmdJObj, TmpQ) ->
 				AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
 				true = wapi_dialplan:v(AppCmd),
-				?LOG("inserting queued command ~s into queue", [wh_json:get_value(<<"Application-Name">>, AppCmd)]),
+                                ?LOG("inserting call command ~s at the ~s of the control queue"
+                                     ,[wh_json:get_value(<<"Application-Name">>, AppCmd), Position]),
 				InsertFun(AppCmd, TmpQ)
 			end, Q, wh_json:get_value(<<"Commands">>, JObj));
-	_AppName ->
+	AppName ->
 	    true = wapi_dialplan:v(JObj),
+            ?LOG("inserting call command ~s at the ~s of the control queue", [AppName, Position]),
 	    InsertFun(JObj, Q)
     end.
 
+queue_insert_fun(tail) ->
+    fun queue:in/2;
+queue_insert_fun(head) ->
+    fun queue:in_r/2.
+
 -spec post_hangup_commands/1 :: (queue()) -> json_objects().
 post_hangup_commands(CmdQ) ->
-    ?LOG("removing non post hangup commands from command queue"),
     [ JObj || JObj <- queue:to_list(CmdQ),
-	      lists:member(wh_json:get_value(<<"Application-Name">>, JObj), ?POST_HANGUP_COMMANDS)
+	      begin
+                  AppName = wh_json:get_value(<<"Application-Name">>, JObj),
+                  case lists:member(AppName, ?POST_HANGUP_COMMANDS) of
+                      true -> true;
+                      false ->
+                          ?LOG("removing command ~s from control queue, not valid after hangup", [AppName]),
+                          false
+                  end
+              end
     ].
 
 -spec execute_control_request/2 :: (json_object(), #state{}) -> 'ok'.
@@ -381,7 +374,7 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
     put(callid, UUID),
 
     try
-        ?LOG("executing application ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)]),
+        ?LOG("executing command ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)]),
         Mod = wh_util:to_atom(<<"ecallmgr_"
                                      ,(wh_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
                                      ,"_"
@@ -390,19 +383,19 @@ execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
         Mod:exec_cmd(Node, UUID, Cmd, self())
     catch
 	_:{error,nosession} ->
-	    ?LOG("Session in FS down"),
+	    ?LOG("unable to execute command, no session"),
 	    send_error_resp(UUID, Cmd, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>),
             self() ! {hangup, undefined, UUID},
 	    ok;
 	error:{badmatch, {error, ErrMsg}} ->
-	    ?LOG("Matching error: {'error': ~s} when executing ~s", [ErrMsg, wh_json:get_value(<<"Application-Name">>, Cmd)]),
-	    ?LOG("Stacktrace: ~w", [erlang:get_stacktrace()]),
+	    ?LOG("invalid command ~s: ~p", [wh_json:get_value(<<"Application-Name">>, Cmd), ErrMsg]),
+	    ?LOG("stacktrace: ~w", [erlang:get_stacktrace()]),
 	    send_error_resp(UUID, Cmd),
 	    self() ! {force_queue_advance, UUID},
 	    ok;
         _A:_B ->
-	    ?LOG("Exception ~s:~w when executing ~s", [_A, _B, wh_json:get_value(<<"Application-Name">>, Cmd)]),
-	    ?LOG("Stacktrace: ~w", [erlang:get_stacktrace()]),
+	    ?LOG("exception (~s) while executing ~s: ~w", [_A, wh_json:get_value(<<"Application-Name">>, Cmd), _B]),
+	    ?LOG("stacktrace: ~w", [erlang:get_stacktrace()]),
 	    send_error_resp(UUID, Cmd),
             self() ! {force_queue_advance, UUID},
             ok
@@ -419,6 +412,7 @@ send_error_resp(UUID, Cmd, Msg) ->
 	    | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
 	   ],
     {ok, Payload} = wapi_dialplan:error(Resp),
+    ?LOG("sending execution error: ~s", [Payload]),
     wapi_dialplan:publish_event(UUID, Payload).
 
 -spec get_keep_alive_ref/1 :: ('undefined' | reference()) -> 'undefined' | reference().

@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([set_host/1, get_host/0]).
+-export([start_conn/1, get_host/0]).
 
 -export([start_link/0, publish/2, consume/1, misc_req/1, misc_req/2, register_return_handler/0]).
 
@@ -28,11 +28,11 @@
 -define(STARTUP_FILE, [code:lib_dir(whistle_amqp, priv), "/startup.config"]).
 
 -record(state, {
-	  host = "" :: string() | tuple(string(), integer())
-	 ,handler_pid = undefined :: undefined | pid()
-         ,handler_ref = undefined :: undefined | reference()
-         ,conn_params = #'amqp_params'{} :: #'amqp_params'{}
-         ,conn_type = direct :: direct | network
+	  amqp_uri = "" :: string()
+	 ,handler_pid = 'undefined' :: 'undefined' | pid()
+	 ,handler_ref = 'undefined' :: 'undefined' | reference()
+         ,conn_params = 'undefined' :: 'undefined' | #'amqp_params_direct'{} | #'amqp_params_network'{}
+	 ,conn_ref = 'undefined' :: 'undefined' | reference()
          ,timeout = ?START_TIMEOUT :: integer()
        }).
 
@@ -46,8 +46,8 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-set_host(H) ->
-    gen_server:call(?SERVER, {set_host, H}).
+start_conn(AmqpUri) when is_list(AmqpUri) ->
+    gen_server:cast(?SERVER, {start_conn, AmqpUri}).
 
 get_host() ->
     gen_server:call(?SERVER, get_host).
@@ -82,13 +82,16 @@ register_return_handler() ->
 %%                         {stop, Reason}
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
--spec init/1 :: ([]) -> {'ok', #state{}, 0}.
+-spec init/1 :: ([]) -> {'ok', #state{}}.
 init([]) ->
+    Init = get_config(),
+    gen_server:cast(self(), {start_conn, props:get_value(amqp_uri, Init, ?DEFAULT_AMQP_URI)}),
+
     %% Start a connection to the AMQP broker server
     ?LOG_SYS("starting amqp manager server"),
     process_flag(trap_exit, true),
-    Init = get_config(),
-    {ok, #state{host=props:get_value(default_host, Init, net_adm:localhost())}, 0}.
+
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -100,14 +103,6 @@ init([]) ->
 %% Description: Handling call messages
 %%
 %%--------------------------------------------------------------------
-handle_call({set_host, Host}, _, #state{host=OldHost}=State) ->
-    ?LOG_SYS("changing amqp host from ~s to ~s, all channels going down", [OldHost, Host]),
-    _ = stop_amqp_host(State),
-    case start_amqp_host(Host, State) of
-	{ok, State1} -> {reply, ok, State1, hibernate};
-	{error, _}=E -> {reply, E, State, 0}
-    end;
-
 handle_call(is_available, _, #state{handler_pid=undefined}=State) ->
     {reply, false, State};
 handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
@@ -118,8 +113,8 @@ handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
 	    {reply, false, State#state{handler_pid=undefined, handler_ref=undefined}, 0}
     end;
 
-handle_call(get_host, _, #state{host=Host}=State) ->
-    {reply, Host, State};
+handle_call(get_host, _, #state{conn_params=ConnP}=State) ->
+    {reply, wh_amqp_params:host(ConnP), State};
 
 handle_call(_, _, #state{handler_pid = undefined}=State) ->
     {reply, {error, amqp_down}, State, 0};
@@ -159,8 +154,22 @@ send_req(HPid, From, Fun) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast(_Req, State) ->
-    {noreply, State}.
+handle_cast({start_conn, ""}, State) ->
+    handle_cast({start_conn, ?DEFAULT_AMQP_URI}, State);
+
+handle_cast({start_conn, Uri}, State) ->
+    ?LOG_SYS("Starting connection with uri: ~s", [Uri]),
+
+    case amqp_uri:parse(Uri) of
+	{ok, Settings} ->
+	    case start_amqp_host(Settings, State) of
+		{ok, State1} -> {noreply, State1#state{amqp_uri=Uri}};
+		{error, E} ->
+		    {stop, E, normal}
+	    end;
+	{error, {Info, _}} ->
+	    {stop, Info, normal}
+    end.
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
@@ -168,90 +177,35 @@ handle_cast(_Req, State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info({reconnect, T}, #state{host={Host,Port}=Settings, handler_pid=undefined}=State) ->
-    ?LOG_SYS("attempting to reconnect to ~s on port ~b", [Host, Port]),
-    case start_amqp_host(Settings, State) of
+handle_info({reconnect, Timeout}, #state{conn_ref=undefined, conn_params=ConnP}=State) ->
+    case start_amqp_host(ConnP, State) of
 	{ok, State1} ->
-            {noreply, State1, hibernate};
-	{error, _} ->
-            case T * 2 of
-                Timeout when Timeout > ?MAX_TIMEOUT ->
-                    ?LOG_SYS("attempting to reconnect again in ~b ms", [?MAX_TIMEOUT]),
-                    _Ref = erlang:send_after(?MAX_TIMEOUT, self(), {reconnect, ?MAX_TIMEOUT}),
-                    {noreply, State};
-                Timeout ->
-                    ?LOG_SYS("attempting to reconnect again in ~b ms", [Timeout]),
-                    _Ref = erlang:send_after(Timeout, self(), {reconnect, Timeout}),
-                    {noreply, State}
-            end
+	    ?LOG_SYS("Reconnected AMQP"),
+	    {noreply, State1};
+	{error, _E} ->
+	    ?LOG_SYS("Failed to reconnect to AMQP(~p), waiting a bit more", [_E]),
+	    NextTimeout = next_timeout(Timeout),
+	    _Ref = erlang:send_after(NextTimeout, self(), {reconnect, NextTimeout}),
+	    {noreply, State}
     end;
 
-handle_info({reconnect, T}, #state{host=Host, handler_pid=undefined}=State) ->
-    ?LOG_SYS("attempting to reconnect to ~s", [Host]),
-    case start_amqp_host(Host, State) of
-	{ok, State1} ->
-            {noreply, State1, hibernate};
-	{error, _} ->
-            case T * 2 of
-                Timeout when Timeout > ?MAX_TIMEOUT ->
-                    ?LOG_SYS("attempting to reconnect again in ~b ms", [?MAX_TIMEOUT]),
-                    _Ref = erlang:send_after(?MAX_TIMEOUT, self(), {reconnect, ?MAX_TIMEOUT}),
-                    {noreply, State};
-                Timeout ->
-                    ?LOG_SYS("attempting to reconnect again in ~b ms", [Timeout]),
-                    _Ref = erlang:send_after(Timeout, self(), {reconnect, Timeout}),
-                    {noreply, State}
-            end
-    end;
+handle_info({'DOWN', ConnRef, process, _Pid, _Reason}, #state{conn_params=ConnP, conn_ref=ConnRef}=State) ->
+    ?LOG_SYS("connection to ~s (process ~p) went down, ~w", [wh_amqp_params:host(ConnP), _Pid, _Reason]),
+    erlang:demonitor(ConnRef, [flush]),
+    _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
+    _ = stop_amqp_host(State),
+    {noreply, State#state{conn_ref=undefined, handler_pid=undefined, handler_ref=undefined}, hibernate};
 
-handle_info({reconnect, _T}, #state{host=Host}=State) ->
-    ?LOG_SYS("Reconnected to host ~s, ignoring reconnect message", [Host]),
-    {noreply, State};
-
-handle_info(timeout, #state{host={Host,Port}=Settings, handler_pid=undefined}=State) ->
-    ?LOG_SYS("attempting to connect to ~s on port ~b", [Host, Port]),
-    case start_amqp_host(Settings, State) of
-	{ok, State1} ->
-            ?LOG_SYS("connected to AMQP host"),
-            {noreply, State1, hibernate};
-	{error, R} ->
-            ?LOG_SYS("attempting to connect again(~w) in ~b ms", [R, ?START_TIMEOUT]),
-            _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
-            {noreply, State}
-    end;
-
-handle_info(timeout, #state{host=Host, handler_pid=undefined}=State) ->
-    ?LOG_SYS("attempting to connect to ~s", [Host]),
-    case start_amqp_host(Host, State) of
-	{ok, State1} ->
-            ?LOG_SYS("connected to AMQP host"),
-            {noreply, State1, hibernate};
-	{error, R} ->
-            ?LOG_SYS("attempting to connect again(~w) in ~b ms", [R, ?START_TIMEOUT]),
-            _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
-            {noreply, State}
-    end;
+handle_info({'DOWN', Ref, process, _, normal}, #state{handler_ref=Ref}=State) ->
+    ?LOG_SYS("amqp host proc down normally"),
+    erlang:demonitor(Ref, [flush]),
+    {noreply, State#state{handler_ref=undefined, handler_pid=undefined}};
 
 handle_info({'DOWN', Ref, process, _, _Reason}, #state{handler_ref=Ref}=State) ->
     ?LOG_SYS("amqp host process went down, ~w", [_Reason]),
     erlang:demonitor(Ref, [flush]),
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
     {noreply, State#state{handler_pid=undefined, handler_ref=undefined}, hibernate};
-
-handle_info({nodedown, RabbitNode}, #state{conn_params=#'amqp_params'{node=RabbitNode}}=State) ->
-    ?LOG_SYS("received node down notification for amqp"),
-    _ = stop_amqp_host(State),
-    {noreply, State#state{handler_pid=undefined, handler_ref=undefined}, hibernate};
-
-handle_info({nodeup, RabbitNode}, #state{host=Host, conn_params=#'amqp_params'{node=RabbitNode}=ConnParams, conn_type=ConnType}=State) ->
-    ?LOG_SYS("received node up notification for amqp"),
-    case start_amqp_host(Host, State, {ConnType, ConnParams}) of
-	{error, E} ->
-            ?LOG_SYS("unable to bring amqp node back up, ~p", [E]),
-	    {noreply, #state{host="localhost"}, hibernate};
-	{ok, State1} ->
-	    {noreply, State1, hibernate}
-    end;
 
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
@@ -264,10 +218,7 @@ handle_info(_Info, State) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
--spec(terminate/2 :: (Reason :: term(), State :: #state{}) -> no_return()).
-terminate(Reason, #state{host=H}) when is_list(H) ->
-    save_config([{default_host, H}]),
-    terminate(Reason, ok);
+-spec terminate/2 :: (term(), #state{}) -> no_return().
 terminate(_Reason, _) ->
     ?LOG_SYS("amqp manager ~p termination", [_Reason]),
     ok.
@@ -282,36 +233,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
--spec create_amqp_params/1 :: (Host) -> tuple(direct | network, #'amqp_params'{}) when
-      Host :: string().
--spec create_amqp_params/2 :: (Host, Port) -> tuple(direct | network, #'amqp_params'{}) when
-      Host :: string(),
-      Port :: integer().
-create_amqp_params(Host) ->
-    create_amqp_params(Host, ?PROTOCOL_PORT).
-create_amqp_params(Host, Port) ->
-    Node = list_to_atom([$r,$a,$b,$b,$i,$t,$@ | Host]),
-    case net_adm:ping(Node) of
-	pong ->
-	    %% erlang:monitor_node(Node, true),
-	    _ = net_kernel:monitor_nodes(true),
-	    {direct, #'amqp_params'{ port = Port, host = Host, node = Node }};
-	pang ->
-	    {network, #'amqp_params'{ port = Port, host = Host }}
-    end.
-
--spec get_new_connection/1 :: (Params) -> pid() | tuple(error, econnrefused) when
-      Params :: tuple(Type :: direct | network, P :: #'amqp_params'{}).
-get_new_connection({Type, #'amqp_params'{host=_Host}=P}) ->
-    case amqp_connection:start(Type, P) of
-	{ok, Connection} ->
-            ?LOG_SYS("established ~s connection to amqp broker at ~s", [Type, _Host]),
-	    Connection;
+-spec get_new_connection/1 :: (#'amqp_params_direct'{} | #'amqp_params_network'{}) -> {'ok', pid()} | {'error', 'econnrefused'}.
+get_new_connection(ConnP) ->
+    case amqp_connection:start(ConnP) of
+	{ok, Connection}=OK ->
+            ?LOG_SYS("established network connection (~p) to amqp broker at ~s", [Connection, wh_amqp_params:host(ConnP)]),
+	    OK;
 	{error, econnrefused}=E ->
-	    ?LOG_SYS("amqp connection to ~s refused", [_Host]),
+	    ?LOG_SYS("amqp connection to ~s refused", [wh_amqp_params:host(ConnP)]),
 	    E;
 	{error, broker_not_found_on_node}=E ->
-	    ?LOG_SYS("found node ~s but no amqp broker", [_Host]),
+	    ?LOG_SYS("found node ~s but no amqp broker", [wh_amqp_params:host(ConnP)]),
 	    E
     end.
 
@@ -320,27 +252,20 @@ stop_amqp_host(#state{handler_pid=undefined}) ->
 stop_amqp_host(#state{handler_pid=HPid, handler_ref=HRef}) ->
     erlang:demonitor(HRef, [flush]),
     _ = net_kernel:monitor_nodes(false),
-    amqp_host:stop(HPid).
+    spawn(fun() -> amqp_host:stop(HPid) end).
 
-start_amqp_host("localhost", State) ->
-    [_, Host] = string:tokens(wh_util:to_list(node()), "@"),
-    ?LOG_SYS("Instead of localhost, use ~s", [Host]),
-    start_amqp_host(Host, State);
-start_amqp_host({Host,Port}, State) ->
-    start_amqp_host(Host, State, create_amqp_params(Host, Port));
-start_amqp_host(Host, State) ->
-    start_amqp_host(Host, State, create_amqp_params(Host)).
-
-start_amqp_host(Host, State, {ConnType, ConnParams} = ConnInfo) ->
-    case get_new_connection(ConnInfo) of
+-spec start_amqp_host/2 :: (#'amqp_params_direct'{} | #'amqp_params_network'{}, #state{}) -> {'ok', #state{}} | {'error', 'econnrefused'}.
+start_amqp_host(ConnP, State) ->
+    case get_new_connection(ConnP) of
 	{error,_}=E ->
 	    E;
-	Conn ->
-	    {ok, HPid} = amqp_host_sup:start_host(Host, Conn),
-	    Ref = erlang:monitor(process, HPid),
-	    {ok, State#state{host=Host, handler_pid = HPid
-			     ,handler_ref = Ref, conn_type = ConnType
-			     ,conn_params = ConnParams, timeout=?START_TIMEOUT
+	{ok, Conn} ->
+	    {ok, HPid} = amqp_host_sup:start_host(wh_amqp_params:host(ConnP), Conn),
+	    HRef = erlang:monitor(process, HPid),
+	    ConnRef = erlang:monitor(process, Conn),
+
+	    {ok, State#state{handler_pid=HPid, handler_ref=HRef, conn_ref=ConnRef
+			     ,conn_params=ConnP, timeout=?START_TIMEOUT
 			    }}
     end.
 
@@ -355,10 +280,11 @@ get_config() ->
             []
     end.
 
--spec save_config/1 :: (Prop) -> no_return() when
-      Prop :: proplist().
-save_config(Prop) ->
-    ?LOG_SYS("updating config ~s", [?STARTUP_FILE]),
-    file:write_file(?STARTUP_FILE
-		    ,lists:foldl(fun(Item, Acc) -> [io_lib:format("~p.~n", [Item]) | Acc] end, "", Prop)
-		   ).
+-spec next_timeout/1 :: (pos_integer()) -> ?START_TIMEOUT..?MAX_TIMEOUT.
+next_timeout(?MAX_TIMEOUT=Timeout) -> Timeout;
+next_timeout(Timeout) when Timeout*2 > ?MAX_TIMEOUT ->
+    ?MAX_TIMEOUT;
+next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
+    ?START_TIMEOUT;
+next_timeout(Timeout) ->
+    Timeout * 2.
