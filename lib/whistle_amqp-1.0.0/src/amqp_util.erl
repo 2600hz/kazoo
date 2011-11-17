@@ -83,13 +83,8 @@ callmgr_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
 
 
--spec configuration_publish/2 :: (RoutingKey, Payload) -> 'ok' when
-      RoutingKey :: ne_binary(),
-      Payload :: iolist().
--spec configuration_publish/3 :: (RoutingKey, Payload, ContentType) -> 'ok' when
-      RoutingKey :: ne_binary(),
-      Payload :: iolist(),
-      ContentType :: ne_binary().
+-spec configuration_publish/2 :: (ne_binary(), iolist()) -> 'ok'.
+-spec configuration_publish/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
 configuration_publish(RoutingKey, Payload) ->
     configuration_publish(RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 configuration_publish(RoutingKey, Payload, ContentType) ->
@@ -120,6 +115,9 @@ document_routing_key(Action, Db) ->
     document_routing_key(Action, Db, <<"*">>).
 document_routing_key(Action, Db, Type) ->
     document_routing_key(Action, Db, Type, <<"*">>).
+
+document_routing_key(<<"*">>, Db, Type, Id) ->
+    list_to_binary([<<"*.">>, Db, ".", Type, ".", Id]);
 document_routing_key(Action, Db, Type, Id) ->
     list_to_binary(["doc_", wh_util:to_list(Action), ".", Db, ".", Type, ".", Id]).
 
