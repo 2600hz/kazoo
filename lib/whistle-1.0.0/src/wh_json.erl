@@ -24,7 +24,7 @@
 
 -export([from_list/1, merge_jobjs/2]).
 
--export([normalize_jobj/1, is_json_object/1, is_valid_json_object/1, is_json_term/1]).
+-export([normalize_jobj/1, normalize/1, is_json_object/1, is_valid_json_object/1, is_json_term/1]).
 
 -export([encode/1, decode/1]).
 
@@ -460,11 +460,13 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_jobj/1 :: (JObj :: json_object() | {Key :: binary(),  {struct, DataTuples :: json_array()}}) -> json_object() | {binary(), json_object()}).
-normalize_jobj({struct, DataTuples}) ->
-    {struct, [normalizer(DT) || DT <- DataTuples]};
-normalize_jobj({Key, {struct, DataTuples}}) ->
-    {normalize_key(Key), {struct, [normalizer(DT) || DT <- DataTuples]}}.
+-spec normalize_jobj/1 :: (json_object()) -> json_object().
+normalize_jobj(JObj) ->
+    normalize(JObj).
+
+-spec normalize/1 :: (json_object()) -> json_object().
+normalize({struct, DataTuples}) ->
+    {struct, [normalizer(DT) || DT <- DataTuples]}.
 
 -spec(normalize_binary_tuple/1 :: (BinaryTuple :: tuple(binary(), binary())) -> tuple(binary(), binary()) ).
 normalize_binary_tuple({Key,Val}) ->
