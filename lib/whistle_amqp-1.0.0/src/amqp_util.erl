@@ -45,6 +45,12 @@
 -export([access_request/0, access_request/1, basic_ack/1, basic_nack/1, basic_qos/1]).
 
 -export([is_json/1, is_host_available/0, register_return_handler/0]).
+-export([encode/1]).
+
+-define(KEY_SAFE(C), ((C >= $a andalso C =< $z) orelse
+                     (C >= $A andalso C =< $Z) orelse
+                     (C >= $0 andalso C =< $9) orelse
+                     (C =:= $- orelse C =:= $~ orelse C =:= $_))).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -121,24 +127,24 @@ document_routing_key(<<"*">>, Db, Type, Id) ->
 document_routing_key(Action, Db, Type, Id) ->
     list_to_binary(["doc_", wh_util:to_list(Action), ".", Db, ".", Type, ".", Id]).
 
--spec callctl_publish/2 :: (CallID, Payload) -> 'ok' when
-      CallID :: ne_binary(),
+-spec callctl_publish/2 :: (CtrlQ, Payload) -> 'ok' when
+      CtrlQ :: ne_binary(),
       Payload :: iolist().
--spec callctl_publish/3 :: (CallID, Payload, ContentType) -> 'ok' when
-      CallID :: ne_binary(),
+-spec callctl_publish/3 :: (CtrlQ, Payload, ContentType) -> 'ok' when
+      CtrlQ :: ne_binary(),
       Payload :: iolist(),
       ContentType :: ne_binary().
--spec callctl_publish/4 :: (CallID, Payload, ContentType, Props) -> 'ok' when
-      CallID :: ne_binary(),
+-spec callctl_publish/4 :: (CtrlQ, Payload, ContentType, Props) -> 'ok' when
+      CtrlQ :: ne_binary(),
       Payload :: iolist(),
       ContentType :: ne_binary(),
       Props :: proplist().
-callctl_publish(CallID, Payload) ->
-    callctl_publish(CallID, Payload, ?DEFAULT_CONTENT_TYPE).
-callctl_publish(CallID, Payload, ContentType) ->
-    callctl_publish(CallID, Payload, ContentType, []).
-callctl_publish(CallID, Payload, ContentType, Props) ->
-    basic_publish(?EXCHANGE_CALLCTL, CallID, Payload, ContentType, Props).
+callctl_publish(CtrlQ, Payload) ->
+    callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE).
+callctl_publish(CtrlQ, Payload, ContentType) ->
+    callctl_publish(CtrlQ, Payload, ContentType, []).
+callctl_publish(CtrlQ, Payload, ContentType, Props) ->
+    basic_publish(?EXCHANGE_CALLCTL, CtrlQ, Payload, ContentType, Props).
 
 -spec callevt_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().
@@ -155,25 +161,23 @@ callevt_publish(Payload, ContentType, media_req) ->
     basic_publish(?EXCHANGE_CALLEVT, ?KEY_CALL_MEDIA_REQ, Payload, ContentType);
 
 callevt_publish(CallID, Payload, event) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 
 callevt_publish(CallID, Payload, status_req) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, (encode(CallID))/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 
 callevt_publish(CallID, Payload, cdr) ->
-    Key = encode_key(CallID),
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, Key/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, Payload, ?DEFAULT_CONTENT_TYPE);
 
 callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 
 callevt_publish(CallID, Payload, status_req, ContentType) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, Payload, ContentType);
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, (encode(CallID))/binary>>, Payload, ContentType);
 callevt_publish(CallID, Payload, event, ContentType) ->
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, CallID/binary>>, Payload, ContentType);
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, Payload, ContentType);
 callevt_publish(CallID, Payload, cdr, ContentType) ->
-    Key = encode_key(CallID),
-    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, Key/binary>>, Payload, ContentType).
+    basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, Payload, ContentType).
 
 -spec resource_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().
@@ -373,7 +377,7 @@ new_targeted_queue(Queue) ->
 new_callevt_queue(<<>>) ->
     new_queue(<<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callevt_queue(CallID) ->
-    new_queue(list_to_binary([?EXCHANGE_CALLEVT, ".", CallID])
+    new_queue(list_to_binary([?EXCHANGE_CALLEVT, ".", encode(CallID)])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 -spec new_callctl_queue/1 :: (CallID) -> binary() | {'error', 'amqp_error'} when
@@ -381,7 +385,7 @@ new_callevt_queue(CallID) ->
 new_callctl_queue(<<>>) ->
     new_queue(<<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callctl_queue(CallID) ->
-    new_queue(list_to_binary([?EXCHANGE_CALLCTL, ".", CallID])
+    new_queue(list_to_binary([?EXCHANGE_CALLCTL, ".", encode(CallID)])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 -spec new_resource_queue/0 :: () -> binary() | {'error', 'amqp_error'}.
@@ -476,12 +480,12 @@ new_queue(Queue, Options) when is_binary(Queue) ->
 delete_callevt_queue(CallID) ->
     delete_callevt_queue(CallID, []).
 delete_callevt_queue(CallID, Prop) ->
-    queue_delete(list_to_binary([?EXCHANGE_CALLEVT, ".", CallID]), Prop).
+    queue_delete(list_to_binary([?EXCHANGE_CALLEVT, ".", encode(CallID)]), Prop).
 
 delete_callctl_queue(CallID) ->
     delete_callctl_queue(CallID, []).
 delete_callctl_queue(CallID, Prop) ->
-    queue_delete(list_to_binary([?EXCHANGE_CALLCTL, ".", CallID]), Prop).
+    queue_delete(list_to_binary([?EXCHANGE_CALLCTL, ".", encode(CallID)]), Prop).
 
 delete_callmgr_queue(Queue) ->
     queue_delete(Queue, []).
@@ -549,11 +553,11 @@ bind_q_to_callevt(Queue, CallID) ->
     bind_q_to_callevt(Queue, CallID, events).
 
 bind_q_to_callevt(Queue, CallID, events) ->
-    bind_q_to_exchange(Queue, <<?KEY_CALL_EVENT/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+    bind_q_to_exchange(Queue, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Queue, CallID, status_req) ->
-    bind_q_to_exchange(Queue, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+    bind_q_to_exchange(Queue, <<?KEY_CALL_STATUS_REQ/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Queue, CallID, cdr) ->
-    bind_q_to_exchange(Queue, <<?KEY_CALL_CDR/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+    bind_q_to_exchange(Queue, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Queue, Routing, other) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
@@ -659,11 +663,11 @@ unbind_q_from_callevt(Queue, CallID) ->
     unbind_q_from_callevt(Queue, CallID, events).
 
 unbind_q_from_callevt(Queue, CallID, events) ->
-    unbind_q_from_exchange(Queue, <<?KEY_CALL_EVENT/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+    unbind_q_from_exchange(Queue, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
 unbind_q_from_callevt(Queue, CallID, status_req) ->
-    unbind_q_from_exchange(Queue, <<?KEY_CALL_STATUS_REQ/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+    unbind_q_from_exchange(Queue, <<?KEY_CALL_STATUS_REQ/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
 unbind_q_from_callevt(Queue, CallID, cdr) ->
-    unbind_q_from_exchange(Queue, <<?KEY_CALL_CDR/binary, CallID/binary>>, ?EXCHANGE_CALLEVT);
+    unbind_q_from_exchange(Queue, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, ?EXCHANGE_CALLEVT);
 unbind_q_from_callevt(Queue, Routing, other) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
@@ -828,28 +832,41 @@ register_return_handler() ->
 %%------------------------------------------------------------------------------
 %% @public
 %% @doc
-%% Encode/decode a key so characters like dot won't interfere with routing separator
+%% Encode a key so characters like dot won't interfere with routing separator
 %% @end
 %%------------------------------------------------------------------------------
--spec encode_key/1 :: (ne_binary()) -> ne_binary().
-encode_key(RoutingKey) ->
-    binary:replace(RoutingKey, <<".">>, <<"%2E">>, [global]).
+-spec encode/1 :: (ne_binary()) -> ne_binary().
+encode(<<"*">>) ->
+    <<"*">>;
+encode(<<"#">>) ->
+    <<"#">>;
+encode(Binary) ->
+    do_encode(Binary, <<>>).
 
--spec decode_key/1 :: (ne_binary()) -> ne_binary().
-decode_key(RoutingKey) ->
-    binary:replace(RoutingKey, <<"%2E">>, <<".">>, [global]).
+-spec do_encode/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+do_encode(<<>>, Acc) ->
+    Acc;
+do_encode(<<C:8, Rest/binary>>, Acc) when ?KEY_SAFE(C) ->
+    do_encode(Rest, <<Acc/binary, (<<C>>)/binary>>);
+do_encode(<<$\s, Rest/binary>>, Acc) ->
+    do_encode(Rest, <<Acc/binary, $+>>);
+do_encode(<<$., Rest/binary>>, Acc) ->
+    do_encode(Rest, <<Acc/binary, "%2E">>);
+do_encode(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
+    do_encode(Rest, <<Acc/binary, $%, (hexdigit(Hi))/binary, (hexdigit(Lo))/binary>>).
+
+-spec hexdigit/1 :: (integer()) -> ne_binary().
+hexdigit(C) when C < 10 ->
+    <<($0 + C)>>;
+hexdigit(C) when C < 16 ->
+    <<($A + (C - 10))>>.
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 encode_key_test() ->
-    ?assertEqual(<<"key">>, encode_key(<<"key">>)),
-    ?assertEqual(<<"routing%2Ekey">>, encode_key(<<"routing.key">>)),
-    ?assertEqual(<<"long%2Erouting%2Ekey">>, encode_key(<<"long.routing.key">>)),
-    ok.
-
-decode_key_test() ->
-    ?assertEqual(<<"key">>, decode_key(<<"key">>)),
-    ?assertEqual(<<"routing.key">>, decode_key(<<"routing%2Ekey">>)),
-    ?assertEqual(<<"long.routing.key">>, decode_key(<<"long%2Erouting%2Ekey">>)),
+    ?assertEqual(<<"key">>, encode(<<"key">>)),
+    ?assertEqual(<<"routing%2Ekey">>, encode(<<"routing.key">>)),
+    ?assertEqual(<<"long%2Erouting%2Ekey">>, encode(<<"long.routing.key">>)),
+    ?assertEqual(<<"test%26%2E192%2E+168%2E+5%2E+5%23">>, encode(<<"test&.192. 168. 5. 5#">>)),
     ok.
 -endif.

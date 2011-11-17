@@ -160,6 +160,7 @@ wait(#cf_call{amqp_q=Q, call_id=CallId, account_id=AccountId}=Call, Flow, Pid, C
             JObj = mochijson2:decode(Payload),
             case whapps_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"status_resp">>} ->
+                    ?LOG("received call status: ~s", [Payload]),
                     Status = wh_json:get_value(<<"Status">>, JObj),
                     is_pid(Pid) andalso Pid ! {amqp_msg, JObj},
                     wait(Call, Flow, Pid, Status);
@@ -172,17 +173,18 @@ wait(#cf_call{amqp_q=Q, call_id=CallId, account_id=AccountId}=Call, Flow, Pid, C
             %%   this process hangs around...
             wait(Call, Flow, Pid, CallStatus)
     after
-        120000 ->
+        60000 ->
             case CallStatus of
                 undefined ->
-                    ?LOG_SYS("no call events or control and status is unknown, shuting down"),
+                    ?LOG("no call events or control and status is unknown, shuting down"),
                     whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
                                                     ,"Alert: forced channel termination~n"
-                                                    ,"Fault: no call events or status unknown~n"
+                                                    ,"Fault: no call events and status unknown~n"
                                                     ,"~n~s"]
                                       ,[?MODULE, ?LINE, cf_util:call_info_to_string(Call)], AccountId),
                     cf_call_command:hangup(Call);
                 _ ->
+                    ?LOG("ensuring call is active, requesting call status"),
                     Req = [{<<"Call-ID">>, CallId}
                            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
 		    wapi_call:publish_status_req(CallId, Req),
