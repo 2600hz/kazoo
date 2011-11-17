@@ -278,7 +278,7 @@ import(Category) ->
 fetch_category(Category, Cache) ->
     Lookups = [fun fetch_file_config/2
                ,fun fetch_db_config/2
-               ,fun(Cat, C) -> ?LOG("Trying cache for ~s", [Cat]), wh_cache:peek_local(C, {?MODULE, Cat}) end],
+               ,fun(Cat, C) -> wh_cache:peek_local(C, {?MODULE, Cat}) end],
     lists:foldr(fun(_, {ok, _}=Acc) -> Acc;
                    (F, _) -> F(Category, Cache)
                 end, {error, not_found}, Lookups).
@@ -294,7 +294,6 @@ fetch_category(Category, Cache) ->
       Category :: binary(),
       Cache :: pid().
 fetch_db_config(Category, Cache) ->
-    ?LOG("Trying DB for ~s", [Category]),
     case couch_mgr:open_doc(?CONFIG_DB, Category) of
         {ok, JObj}=Ok ->
             wh_cache:store_local(Cache, {?MODULE, Category}, JObj),
@@ -316,8 +315,6 @@ fetch_db_config(Category, Cache) ->
       Cache :: pid().
 fetch_file_config(Category, Cache) ->
     File = category_to_file(Category),
-
-    ?LOG("Trying file ~s for ~s", [File, Category]),
     case file:consult(File) of
         {ok, Terms} ->
             JObj = config_terms_to_json(Terms),
