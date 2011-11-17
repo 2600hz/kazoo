@@ -22,7 +22,7 @@
 
 -define(SERVER, ?MODULE).
 -define(CB_LIST, <<"limits/crossbar_listing">>).
--define(PVT_TYPE, <<"limits">>).
+-define(PVT_TYPE, <<"sip_service">>).
 
 %%%===================================================================
 %%% API

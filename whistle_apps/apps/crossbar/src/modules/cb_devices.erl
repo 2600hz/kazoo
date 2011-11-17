@@ -422,9 +422,11 @@ lookup_registration({Realm, User}, Q) ->
     RegProp = [{<<"Username">>, User}
 	       ,{<<"Realm">>, Realm}
 	       ,{<<"Fields">>, []}
-	       | wh_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"cb_devices">>, <<>>) ],
-    {ok, JSON} = wh_api:reg_query(RegProp),
-    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_QUERY).
+	       ,{<<"Server-ID">>, Q}
+	       ,{<<"App-Name">>, ?MODULE}
+	       ,{<<"App-Version">>, ?APP_VERSION}
+	      ],
+    wapi_registration:publish_query_req(RegProp).
 
 %%--------------------------------------------------------------------
 %% @private

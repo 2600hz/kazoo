@@ -136,23 +136,23 @@ unbind_q(Q) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_success/1 :: (api_terms()) -> 'ok'.
--spec publish_success/2 :: (api_terms(), binary()) -> 'ok'.
+-spec publish_success/2 :: (api_terms(), ne_binary()) -> 'ok'.
 publish_success(JObj) ->
     publish_success(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_success(Success, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Success, ?REG_SUCCESS_VALUES, fun ?MODULE:success/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_REG_SUCCESS).
 
--spec publish_query_req/1 :: (iolist()) -> 'ok'.
--spec publish_query_req/2 :: (iolist(), binary()) -> 'ok'.
+-spec publish_query_req/1 :: (api_terms()) -> 'ok'.
+-spec publish_query_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
 publish_query_req(JObj) ->
     publish_query_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?REG_QUERY_VALUES, fun ?MODULE:query_req/1),
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_REG_QUERY).
 
--spec publish_query_resp/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_query_resp/3 :: (ne_binary(), iolist(), binary()) -> 'ok'.
+-spec publish_query_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_query_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_query_resp(Queue, JObj) ->
     publish_query_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_resp(Queue, Resp, ContentType) ->

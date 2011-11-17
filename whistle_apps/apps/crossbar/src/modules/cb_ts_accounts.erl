@@ -27,6 +27,7 @@
 -define(TS_DB, <<"ts">>).
 -define(VIEW_FILE, <<"views/ts_accounts.json">>).
 -define(CB_LIST, <<"ts_accounts/crossbar_listing">>).
+-define(PVT_TYPE, <<"sip_service">>).
 
 %%%===================================================================
 %%% API
@@ -299,7 +300,7 @@ create_ts_account(#cb_context{req_data=JObj1}=Context) ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
             JObj2 = wh_json:set_value(<<"type">>, <<"sys_info">>, JObj1),
-            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"sip_service">>, JObj2)
+            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj2)
                                ,resp_status=success
                               }
     end.
@@ -327,7 +328,7 @@ update_ts_account(TSAccountId, #cb_context{req_data=JObj}=Context) ->
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            crossbar_doc:load_merge(TSAccountId, wh_json:set_value(<<"pvt_type">>, <<"sip_service">>, JObj), Context)
+            crossbar_doc:load_merge(TSAccountId, wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj), Context)
     end.
 
 %%--------------------------------------------------------------------

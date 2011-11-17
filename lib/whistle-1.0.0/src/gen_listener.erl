@@ -191,6 +191,9 @@ rm_binding(Srv, Binding, Props) ->
       Args :: [atom() | proplist(),...].
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
+
+    put(callid, wh_util:to_binary(Module)), %% identify the client module for this gen_listener
+
     ModState = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
 		   {ok, MS} ->
 		       MS;
@@ -202,8 +205,6 @@ init([Module, Params, InitArgs]) ->
 		   Err ->
 		       throw(Err)
 	       end,
-
-    put(callid, wh_util:to_binary(Module)), %% identify the client module for this gen_listener
 
     Responders = props:get_value(responders, Params, []),
     Bindings = props:get_value(bindings, Params, []),
