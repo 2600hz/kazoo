@@ -16,6 +16,8 @@
 
 -export([refresh_all_accounts/0, refresh_account/1]).
 
+-export([write_debit_to_ledger/5, write_credit_to_ledger/5]).
+
 -include("jonny5.hrl").
 
 -spec fetch_all_accounts/0 :: () -> json_objects().
@@ -104,3 +106,33 @@ uptime(StartTime) ->
 	    1;
 	X -> X
     end.
+
+write_debit_to_ledger(DB, CallID, CallType, DebitUnits, Duration) ->
+    Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+
+    JObj = wh_json:from_list([{<<"Call-ID">>, CallID}
+			      ,{<<"Call-Type">>, CallType}
+			      ,{<<"Call-Duration">>, Duration}
+			      ,{<<"Amount">>, DebitUnits}
+			      ,{<<"pvt_type">>, <<"debit">>}
+			      ,{<<"pvt_created">>, Timestamp}
+			      ,{<<"pvt_modified">>, Timestamp}
+			      ,{<<"pvt_version">>, ?APP_VERSION}
+			      ,{<<"_id">>, <<CallID/binary, "-", (wh_util:to_binary(Timestamp))/binary>>}
+			     ]),
+    couch_mgr:save_doc(DB, JObj).
+
+write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration) ->
+    Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+
+    JObj = wh_json:from_list([{<<"Call-ID">>, CallID}
+			      ,{<<"Call-Type">>, CallType}
+			      ,{<<"Call-Duration">>, Duration}
+			      ,{<<"Amount">>, CreditUnits}
+			      ,{<<"pvt_type">>, <<"credit">>}
+			      ,{<<"pvt_created">>, Timestamp}
+			      ,{<<"pvt_modified">>, Timestamp}
+			      ,{<<"pvt_version">>, ?APP_VERSION}
+			      ,{<<"_id">>, <<CallID/binary, "-", (wh_util:to_binary(Timestamp))/binary>>}
+			     ]),
+    couch_mgr:save_doc(DB, JObj).

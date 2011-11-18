@@ -13,6 +13,8 @@
 %% API
 -export([start_link/1, authz_trunk/3, known_calls/1, status/1, refresh/1]).
 
+-export([credit/2, debit/2]).
+
 -export([handle_call_event/2, handle_j5_msg/2, handle_conf_change/2, handle_authz_win/2]).
 
 %% gen_server callbacks
@@ -32,10 +34,11 @@
          ,max_inbound = 0 :: non_neg_integer()
 	 ,two_way = 0 :: non_neg_integer()
          ,inbound = 0 :: non_neg_integer()
-         ,prepay = 0.0 :: float()
+         ,prepay = 0 :: non_neg_integer()
          ,trunks_in_use = dict:new() :: dict() %% {CallID, Type :: inbound | two_way}
 	 ,start_time = 1 :: pos_integer()
          ,sync_ref :: reference()
+	 ,ledger_db = <<>> :: binary() %% where to write credits/debits
 	 }).
 
 %%%===================================================================
@@ -68,11 +71,19 @@ start_link(AcctID) ->
 
 -spec status/1 :: (pid()) -> json_object().
 status(Srv) ->
-    gen_server:call(Srv, status).
+    gen_listener:call(Srv, status).
 
 -spec refresh/1 :: (pid()) -> 'ok'.
 refresh(Srv) ->
-    gen_server:cast(Srv, refresh).
+    gen_listener:cast(Srv, refresh).
+
+-spec credit/2 :: (pid(), integer()) -> 'ok'.
+credit(Srv, Credit) ->
+    gen_listener:cast(Srv, {credit, Credit}).
+
+-spec debit/2 :: (pid(), integer()) -> 'ok'.
+debit(Srv, Debit) ->
+    gen_listener:cast(Srv, {debit, Debit}).
 
 -spec authz_trunk/3 :: (pid() | ne_binary(), json_object(), 'inbound' | 'outbound') -> {boolean(), proplist()}.
 authz_trunk(Pid, JObj, CallDir) when is_pid(Pid) ->
@@ -161,37 +172,46 @@ init([AcctID]) ->
 
 	    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"ts">>, AcctID),
 
-	    {ok, #state{prepay=try_update_value(Prepay, 0.0)
+	    LedgerDB = list_to_binary(["ts%2fusage%2f", AcctID]),
+	    couch_mgr:db_create(LedgerDB),
+
+	    {ok, #state{prepay=try_update_value(Prepay, 0)
 			,two_way=try_update_value(TwoWay, 0)
 			,inbound=try_update_value(Inbound, 0)
 			,max_two_way=try_update_value(TwoWay, 0)
 			,max_inbound=try_update_value(Inbound, 0)
 			,acct_rev=Rev, acct_id=AcctID, acct_type=ts
 			,start_time=StartTime, sync_ref=SyncRef
+			,ledger_db=LedgerDB
 		       }};
 	{TwoWay, Inbound, Prepay, account} ->
 	    ?LOG_SYS("Init for account ~s complete", [AcctID]),
 
-	    {ok, #state{prepay=try_update_value(Prepay, 0.0)
+	    {ok, #state{prepay=try_update_value(Prepay, 0)
 			,two_way=try_update_value(TwoWay, 0)
 			,inbound=try_update_value(Inbound, 0)
 			,max_two_way=try_update_value(TwoWay, 0)
 			,max_inbound=try_update_value(Inbound, 0)
 			,acct_id=AcctID, acct_type=account
 			,start_time=StartTime, sync_ref=SyncRef
+			,ledger_db=whapps_util:get_db_name(AcctID, encoded)
 		       }};
 	{TwoWay, Inbound, Prepay, ts} ->
 	    ?LOG_SYS("Init for ts ~s complete", [AcctID]),
 
 	    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"ts">>, AcctID),
 
-	    {ok, #state{prepay=try_update_value(Prepay, 0.0)
+	    LedgerDB = list_to_binary(["ts%2fusage%2f", AcctID]),
+	    couch_mgr:db_create(LedgerDB),
+
+	    {ok, #state{prepay=try_update_value(Prepay, 0)
 			,two_way=try_update_value(TwoWay, 0)
 			,inbound=try_update_value(Inbound, 0)
 			,max_two_way=try_update_value(TwoWay, 0)
 			,max_inbound=try_update_value(Inbound, 0)
 			,acct_rev=Rev, acct_id=AcctID, acct_type=ts
 			,start_time=StartTime, sync_ref=SyncRef
+			,ledger_db=LedgerDB
 		       }}
     end.
 
@@ -216,9 +236,17 @@ handle_call(status, _, #state{max_two_way=MaxTwo, max_inbound=MaxIn
 			       ,{<<"max_inbound">>, MaxIn}
 			       ,{<<"two_way">>, Two}
 			       ,{<<"inbound">>, In}
-			       ,{<<"prepay">>, Prepay}
+			       ,{<<"prepay">>, ?UNITS_TO_DOLLARS(Prepay)}
 			       ,{<<"account_id">>, Acct}
-			       ,{<<"trunks">>, [wh_json:from_list([{<<"callid">>, CallID}, {<<"type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
+			       ,{<<"trunks">>, [begin
+						    {CallID, Type} = case Tuple of
+									 {CID, {per_min=T, _}} -> {CID, T};
+									 {_,_} -> Tuple
+								     end,
+						    wh_json:from_list([{<<"callid">>, CallID}, {<<"type">>, Type}])
+						end
+						|| Tuple <- dict:to_list(Dict)
+					       ]}
 			      ]), State};
 handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->
     {reply, dict:to_list(Dict), State};
@@ -272,6 +300,12 @@ handle_call({authz, JObj, outbound}, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({credit, Credit}, #state{prepay=Prepay}=State) ->
+    %% maybe publish an event so all J5s of this account can update
+    {noreply, State#state{prepay=Prepay+Credit}};
+handle_cast({debit, Debit}, #state{prepay=Prepay}=State) ->
+    {noreply, State#state{prepay=Prepay+Debit}};
+
 handle_cast({authz_win, JObj}, State) ->
     ?LOG("Authz won!"),
     ?LOG("~p", [JObj]),
@@ -321,14 +355,15 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID, acct_t
 				       {Two-1, In};
 				  (_CallID, inbound, {Two, In}) ->
 				       {Two, In-1};
-				  (_, _, Acc) -> Acc
+				  (_, _, Acc) -> Acc %% ignore per-min
 			       end, {NMTW, NMI}, Dict),
 
     ?LOG("changing max two way from ~b to ~p", [MTW, NMTW]),
     ?LOG("changing max inbound from ~b to ~p", [MI, NMI]),
-    ?LOG("changing two-way in use from ~b to ~b", [_TW, NTWIU]),
-    ?LOG("changing inbound in use from ~b to ~b", [_I, NTIIU]),
-    ?LOG("Maybe changing prepay from ~p to ~p", [P, Prepay]),
+    ?LOG("changing two-way in use from ~b to ~p", [_TW, NTWIU]),
+    ?LOG("changing inbound in use from ~b to ~p", [_I, NTIIU]),
+    ?LOG("Maybe changing prepay from ~b to ~p", [P, Prepay]),
+
     {noreply, State#state{max_two_way=NMTW
 			  ,max_inbound=NMI
 			  ,two_way=NTWIU
@@ -355,7 +390,7 @@ handle_cast({j5_msg, <<"sync_resp">>, JObj}, #state{acct_id=AcctID, max_inbound=
 	    true ->
 		NewMaxTwo = wh_json:get_integer_value(<<"Max-Two-Way">>, JObj, MaxTwo),
 		NewMaxIn = wh_json:get_integer_value(<<"Max-Inbound">>, JObj, MaxIn),
-		NewPrepay = wh_json:get_float_value(<<"Prepay">>, JObj, Prepay),
+		NewPrepay = ?DOLLARS_TO_UNITS(wh_json:get_float_value(<<"Prepay">>, JObj, ?UNITS_TO_DOLLARS(Prepay))),
 
 		?LOG("Uptime is greater than ours, updating max values"),
 		?LOG("MaxTwoWay: from ~b to ~b", [MaxTwo, NewMaxTwo]),
@@ -500,22 +535,19 @@ get_ts_values(JObj) ->
 
     Trunks = wh_json:get_integer_value(<<"trunks">>, Acct),
     InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, Acct),
-    Prepay = wh_json:get_float_value(<<"prepay">>, Credits),
-    %% Balance = ?DOLLARS_TO_UNITS(),
+    Prepay = ?DOLLARS_TO_UNITS(wh_json:get_float_value(<<"prepay">>, Credits, 0.0)),
     ?LOG_SYS("Found ts trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
     {Trunks, InboundTrunks, Prepay, ts}.
 
 get_account_values(JObj) ->
     Trunks = wh_json:get_integer_value(<<"trunks">>, JObj),
     InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, JObj),
-    Prepay = wh_json:get_float_value(<<"prepay">>, JObj),
-    %% Balance = ?DOLLARS_TO_UNITS(),
+    Prepay = ?DOLLARS_TO_UNITS(wh_json:get_float_value(<<"prepay">>, JObj)),
+
     ?LOG_SYS("Found trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
     {Trunks, InboundTrunks, Prepay, account}.
 
--spec try_inbound_then_twoway/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
-      CallID :: binary(),
-      State :: #state{}.
+-spec try_inbound_then_twoway/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
 try_inbound_then_twoway(CallID, State) ->
     case try_inbound(CallID, State) of
 	{{true, _}, _}=Resp ->
@@ -535,9 +567,10 @@ try_inbound_then_twoway(CallID, State) ->
 try_twoway(_CallID, #state{two_way=T}=State) when T < 1 ->
     ?LOG_SYS(_CallID, "Failed to authz a two-way trunk", []),
     {{false, []}, State#state{two_way=0}};
-try_twoway(CallID, #state{two_way=Two, trunks_in_use=Dict}=State) ->
+try_twoway(CallID, #state{two_way=Two, trunks_in_use=Dict, ledger_db=DB}=State) ->
     ?LOG_SYS(CallID, "Authz a two-way trunk", []),
-    monitor_call(CallID),
+    monitor_call(CallID, DB, two_way),
+
     {{true, [{<<"Trunk-Type">>, <<"two_way">>}]}
      ,State#state{two_way=Two-1, trunks_in_use=dict:store(CallID, twoway, Dict)}
     }.
@@ -546,35 +579,41 @@ try_twoway(CallID, #state{two_way=Two, trunks_in_use=Dict}=State) ->
 try_inbound(_CallID, #state{inbound=I}=State) when I < 1 ->
     ?LOG_SYS(_CallID, "Failed to authz an inbound_only trunk", []),
     {{false, []}, State#state{inbound=0}};
-try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict}=State) ->
+try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) ->
     ?LOG_SYS(CallID, "Authz an inbound_only trunk", []),
-    monitor_call(CallID),
+    monitor_call(CallID, DB, inbound),
     {{true, [{<<"Trunk-Type">>, <<"inbound">>}]}
      ,State#state{inbound=In-1, trunks_in_use=dict:store(CallID, inbound, Dict)}
     }.
 
--spec try_prepay/2 :: (CallID, State) -> {{boolean(), proplist()}, #state{}} when
-      CallID :: binary(),
-      State :: #state{}.
-try_prepay(_CallID, #state{prepay=Pre}=State) when Pre =< 0.0 ->
+-spec try_prepay/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
+try_prepay(_CallID, #state{prepay=Pre}=State) when Pre =< ?PER_MIN_MIN ->
     ?LOG_SYS(_CallID, "Failed to authz a per_min trunk", []),
+
+    %% Send Email to account holder warning of low Prepay?
+
     {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State};
-try_prepay(CallID, #state{acct_id=AcctId, prepay=_Pre, trunks_in_use=Dict}=State) ->
+try_prepay(CallID, #state{acct_id=AcctId, prepay=Prepay, trunks_in_use=Dict, ledger_db=LedgerDB}=State) ->
     case jonny5_listener:is_blacklisted(AcctId) of
 	{true, Reason} ->
 	    ?LOG_SYS(CallID, "Authz false for per_min: ~s", [Reason]),
 	    {{false, [{<<"Error">>, Reason}]}, State};
 	false ->
-	    ?LOG_SYS(CallID, "Authz a per_min trunk with $~p prepay", [_Pre]),
-	    monitor_call(CallID),
+	    PrepayLeft = Prepay - ?PER_MIN_MIN,
+	    ?LOG_SYS(CallID, "Authz a per_min trunk; ~b prepay left, ~b charged up-front", [PrepayLeft, ?PER_MIN_MIN]),
+	    {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, ?PER_MIN_MIN),
 	    {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
-	     ,State#state{trunks_in_use=dict:store(CallID, per_min, Dict)}
+	     ,State#state{trunks_in_use=dict:store(CallID, {per_min, Pid}, Dict), prepay=PrepayLeft}
 	    }
     end.
 
--spec monitor_call/1 :: (ne_binary()) -> 'ok'.
-monitor_call(CallID) ->
-    gen_listener:add_binding(self(), call, [{callid, CallID}]).
+-spec monitor_call/3 :: (ne_binary(), ne_binary(), call_types()) -> {'ok', pid()}.
+monitor_call(CallID, LedgerDB, CallType) ->
+    monitor_call(CallID, LedgerDB, CallType, 0).
+monitor_call(CallID, LedgerDB, CallType, Debit) ->
+    gen_listener:add_binding(self(), call, [{callid, CallID}]),
+    j5_util:write_debit_to_ledger(LedgerDB, CallID, CallType, Debit, 0),
+    j5_call_monitor_sup:start_monitor(CallID, LedgerDB, CallType, self()).
 
 -spec unmonitor_call/1 :: (ne_binary()) -> 'ok'.
 unmonitor_call(CallID) ->
@@ -640,7 +679,7 @@ send_levels_resp(JObj, #state{two_way=Two, inbound=In, trunks_in_use=Dict, acct_
 			     }, PublishFun) ->
     SyncResp = [{<<"Uptime">>, j5_util:uptime(StartTime)}
 		,{<<"Account-ID">>, AcctID}
-		,{<<"Prepay">>, Prepay}
+		,{<<"Prepay">>, ?UNITS_TO_DOLLARS(Prepay)}
 		,{<<"Two-Way">>, Two}
 		,{<<"Inbound">>, In}
 		,{<<"Max-Two-Way">>, MaxTwo}
