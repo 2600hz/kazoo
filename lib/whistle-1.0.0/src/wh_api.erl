@@ -112,7 +112,7 @@ prepare_api_payload(JObj, HeaderValues, ValidateFun) ->
 set_missing_values(Prop, HeaderValues) when is_list(Prop) ->
     Missing = [{K, V} || {K,V} <- HeaderValues
                              ,not is_list(V)
-                             ,wh_util:is_empty(props:get_value(K, Prop))],
+                             ,is_empty(props:get_value(K, Prop))],
     Prop ++ Missing;
 set_missing_values(JObj, HeaderValues) ->
     wh_json:from_list(set_missing_values(wh_json:to_proplist(JObj), HeaderValues)).
@@ -138,7 +138,7 @@ do_empty_value_removal([{<<"Server-ID">>,_}=KV|T], Acc) ->
 do_empty_value_removal([{<<"Msg-ID">>,_}=KV|T], Acc) ->
     do_empty_value_removal(T, [KV|Acc]);
 do_empty_value_removal([{K,V}=KV|T], Acc) ->
-    case wh_util:is_empty(V) of
+    case is_empty(V) of
         true -> do_empty_value_removal(T, Acc);
         false ->
             case wh_json:is_json_object(V) orelse
@@ -150,6 +150,13 @@ do_empty_value_removal([{K,V}=KV|T], Acc) ->
                     do_empty_value_removal(T, [KV|Acc])
             end
     end.
+
+-spec is_empty/1 :: (term()) -> boolean().
+is_empty(undefined) -> true;
+is_empty([]) -> true;
+is_empty(<<>>) -> true;
+is_empty(_) -> false.
+
 
 %%--------------------------------------------------------------------
 %% @doc Extract just the default headers from a message

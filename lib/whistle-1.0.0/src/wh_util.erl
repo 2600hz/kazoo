@@ -235,8 +235,7 @@ is_false("false") -> true;
 is_false(false) -> true;
 is_false(_) -> false.
 
--spec is_empty/1 :: (Term) -> boolean() when
-      Term :: term().
+-spec is_empty/1 :: (term()) -> boolean().
 is_empty(0) -> true;
 is_empty([]) -> true;
 is_empty("0") -> true;
