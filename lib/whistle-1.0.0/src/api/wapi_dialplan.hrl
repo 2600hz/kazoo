@@ -7,7 +7,7 @@
 					  ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
 					  ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
 					  ,<<"Ringback">>, <<"Dial-Endpoint-Method">>, <<"Insert-At">>
-					  ,<<"Media">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+					  ,<<"Media">>, <<"Hold-Media">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
 				     ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 			    ,{<<"Event-Name">>, <<"command">>}
@@ -29,7 +29,7 @@
 						    ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                                     ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>
                                                     ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
-                                                    ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>
+                                                    ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>, <<"Presence-ID">>
                                                     ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
 					      ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
