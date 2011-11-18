@@ -95,19 +95,22 @@ get_setting(Setting) ->
     get_setting(Setting, undefined).
 get_setting(Setting, Default) ->
     {ok, Cache} = ecallmgr_sup:cache_proc(),
-    case wh_cache:fetch_local(Cache, {ecallmgr_setting, Setting}) of
+    case wh_cache:fetch_local(Cache, cache_key(Setting)) of
         {ok, _}=Success -> Success;
         {error, _} ->
             case file:consult(?SETTINGS_FILE) of
                 {ok, Settings} ->
                     Value = props:get_value(Setting, Settings, Default),
-                    wh_cache:store_local(Cache, {ecallmgr_setting, Setting}, Value),
+                    wh_cache:store_local(Cache, cache_key(Setting), Value),
                     {ok, Value};
                 {error, _} ->
-                    wh_cache:store_local(Cache, {ecallmgr_setting, Setting}, Default),
+                    wh_cache:store_local(Cache, cache_key(Setting), Default),
                     {ok, Default}
             end
     end.
+
+cache_key(Setting) ->
+    {?MODULE, Setting}.
 
 -spec is_node_up/1 :: (Node) -> boolean() when
       Node :: atom().

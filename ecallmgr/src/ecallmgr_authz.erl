@@ -70,8 +70,9 @@ init_authorize(Parent, FSID, CallID, FSData) ->
 	       true = wapi_authz:resp_v(RespJObj),
 	       RespJObj
 	   catch
-	       _:_ ->
+	       _T:_R ->
 		   ?LOG("Authz request un-answered or improper"),
+		   ?LOG("Authz ~p: ~p", [_T, _R]),
 		   default()
 	   end,
 
@@ -88,7 +89,7 @@ authorize_loop(JObj) ->
 	    authorize_loop(JObj);
 
 	{authz_win, From, Ref} ->
-	    wapi_authz:publish_win(wh_json:get_value(<<"Server-ID">>, JObj), JObj),
+	    wapi_authz:publish_win(wh_json:get_value(<<"Server-ID">>, JObj), wh_json:delete_key(<<"Event-Name">>, JObj)),
 	    ?LOG("Sent authz_win, nice"),
 
 	    From ! {authz_win_sent, Ref},
