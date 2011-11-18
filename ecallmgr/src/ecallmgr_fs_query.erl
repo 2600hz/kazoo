@@ -60,7 +60,7 @@ handle_channel_status(JObj, _Props) ->
     case [ecallmgr_fs_node:hostname(NH) || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
 	[] -> ?LOG("No node found having call");
 	[{ok, Hostname}] ->
-	    ?LOG("Call is on ~s", [Hostname]),
+	    ?LOG("call is on ~s", [Hostname]),
 	    Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Switch-Hostname">>, Hostname}
