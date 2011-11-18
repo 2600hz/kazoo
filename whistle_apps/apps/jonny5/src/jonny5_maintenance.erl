@@ -66,12 +66,12 @@ remote_summary() ->
 	[] -> io:format("No accounts are being tracked~n");
 	Accts ->
 	    Q = start_amqp(),
-	    [begin
-		 AcctId = wapi_jonny5:get_acct_id(Acct),
-		 wapi_jonny5:bind_q(Q, [{account_id, AcctId}]),
-		 send_status_req(AcctId, Q)
-	     end
-	     || Acct <- Accts],
+	    _ = [begin
+		     AcctId = wapi_jonny5:get_acct_id(Acct),
+		     wapi_jonny5:bind_q(Q, [{account_id, AcctId}]),
+		     send_status_req(AcctId, Q)
+		 end
+		 || Acct <- Accts],
 
 	    ?REMOTE_SUMMARY_HEADER,
 	    do_remote_summary(fun(JObj, C) -> print_summary(JObj, ?REMOTE_SUMMARY_ROW_FORMAT, C) end, ?REMOTE_TIMEOUT)
@@ -104,7 +104,7 @@ do_remote_summary(PrintFun, Timeout, Count) ->
 
 	    case wh_json:get_value(<<"event_name">>, JObj) of
 		<<"status_resp">> ->
-		    PrintFun(JObj, Count),
+		    _ = PrintFun(JObj, Count),
 		    do_remote_summary(PrintFun, Timeout, Count+1);
 		_ ->
 		    do_remote_summary(PrintFun, Timeout, Count)

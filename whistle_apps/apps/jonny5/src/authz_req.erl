@@ -48,9 +48,14 @@ send_resp(_JObj, undefined) ->
 send_resp(JObj, {AuthzResp, CCV}) ->
     ?LOG_SYS("sending authz response ~s", [AuthzResp]),
     ?LOG_SYS("CCVs: ~p", [CCV]),
+    ?LOG_SYS("Send authz_win to ~s", [props:get_value(<<"Server-ID">>, CCV, missing)]),
+
     Resp = [{<<"Is-Authorized">>, wh_util:to_binary(AuthzResp)}
-            ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCV)}
+            ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:delete(<<"Server-ID">>, CCV))}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+	    ,{<<"Server-ID">>, props:get_value(<<"Server-ID">>, CCV)}
+            ,{<<"App-Name">>, ?APP_NAME}
+	    ,{<<"App-Version">>, ?APP_VERSION}
+	   ],
     wapi_authz:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).

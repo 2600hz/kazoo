@@ -13,7 +13,7 @@
 %% API
 -export([start_link/1, authz_trunk/3, known_calls/1, status/1, refresh/1]).
 
--export([handle_call_event/2, handle_j5_msg/2, handle_conf_change/2]).
+-export([handle_call_event/2, handle_j5_msg/2, handle_conf_change/2, handle_authz_win/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -62,6 +62,7 @@ start_link(AcctID) ->
 						     }
 						     ,{ {?MODULE, handle_conf_change}, [{<<"configuration">>, <<"*">>}]}
 						     ,{ {?MODULE, handle_j5_msg}, [{<<"jonny5">>, <<"*">>}]} % internal J5 sync/status
+						     ,{ {?MODULE, handle_authz_win}, [{<<"dialplan">>, <<"authz_win">>}] } % won the authz
 						    ]}
 				     ], [AcctID]).
 
@@ -75,7 +76,8 @@ refresh(Srv) ->
 
 -spec authz_trunk/3 :: (pid() | ne_binary(), json_object(), 'inbound' | 'outbound') -> {boolean(), proplist()}.
 authz_trunk(Pid, JObj, CallDir) when is_pid(Pid) ->
-    gen_server:call(Pid, {authz, JObj, CallDir});
+    {Bool, Prop} = gen_server:call(Pid, {authz, JObj, CallDir}),
+    {Bool, [{<<"Server-ID">>, gen_listener:queue_name(Pid)} | Prop]};
 
 authz_trunk(AcctID, JObj, CallDir) ->
     case j5_util:fetch_account_handler(AcctID) of
@@ -122,6 +124,10 @@ handle_j5_msg(JObj, Props) ->
 handle_conf_change(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {conf_change, wh_json:get_value(<<"Event-Name">>, JObj), JObj}).
+
+handle_authz_win(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    gen_listener:cast(Srv, {authz_win, JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -266,6 +272,10 @@ handle_call({authz, JObj, outbound}, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({authz_win, JObj}, State) ->
+    ?LOG("Authz won!"),
+    ?LOG("~p", [JObj]),
+    {noreply, State};
 handle_cast(refresh, #state{acct_type=AcctType, acct_id=AcctID, max_two_way=OldTwo, max_inbound=OldIn, prepay=OldPrepay}=State) ->
     case catch(get_trunks_available(AcctID, AcctType)) of
 	{Trunks, InboundTrunks, Prepay, _} ->
@@ -439,8 +449,8 @@ handle_event(_JObj, #state{acct_id=_AcctId}=_State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
+terminate(_Reason, #state{acct_id=AcctID}) ->
+    j5_util:store_account_handler(AcctID, undefined).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -458,7 +468,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 -spec get_trunks_available/2 :: (ne_binary(), 'account' | 'ts') -> {'error', 'not_found'} |
-								   {non_neg_integer(), non_neg_integer(), float(), 'account' | 'ts'}.
+								   {'undefined' | non_neg_integer()
+								    ,'undefined' | non_neg_integer()
+								    ,'undefined' | float()
+								    ,'account' | 'ts'
+								   }.
 get_trunks_available(AcctID, account) ->
     case couch_mgr:get_results(whapps_util:get_db_name(AcctID, encoded), <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
 	{ok, []} ->

@@ -142,7 +142,7 @@ unbind_q(Queue, Props) ->
     amqp_util:unbind_q_from_whapps(Queue, status_req_routing_key(AcctId)),
     amqp_util:unbind_q_from_whapps(Queue, sync_req_routing_key(AcctId)).
 
--spec get_acct_id/1 :: (proplist()) -> ne_binary().
+-spec get_acct_id/1 :: (proplist() | json_object()) -> ne_binary().
 get_acct_id(Prop) when is_list(Prop) ->
     case props:get_value(account_id, Prop) of
 	undefined ->

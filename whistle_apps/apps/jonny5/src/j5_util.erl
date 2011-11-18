@@ -28,7 +28,7 @@ fetch_all_accounts(Cache) ->
     AcctPids = wh_cache:filter_local(Cache, fun({j5_authz, _}, _) -> true;
 						(_, _) -> false
 					     end),
-    [j5_acctmgr:status(AcctPid) || {{j5_authz, _AcctID}, AcctPid} <- AcctPids].
+    [j5_acctmgr:status(AcctPid) || {{j5_authz, _AcctID}, AcctPid} <- AcctPids, erlang:is_process_alive(AcctPid)].
 
 -spec fetch_account/1 :: (ne_binary()) -> json_object() | {'error', 'not_found'}.
 fetch_account(AcctID) ->
@@ -47,8 +47,15 @@ fetch_account_handler(AcctID) ->
 fetch_account_handler(AcctID, Cache) when is_pid(Cache) ->
     wh_cache:fetch_local(Cache, cache_account_handler_key(AcctID)).
 
+-spec store_account_handler/2 :: (ne_binary(), pid() | 'undefined') -> 'ok'.
 store_account_handler(AcctID, J5Pid) ->
     {ok, Cache} = jonny5_sup:cache_proc(),
+    store_account_handler(AcctID, J5Pid, Cache).
+
+-spec store_account_handler/3 :: (ne_binary(), pid() | 'undefined', pid()) -> 'ok'.
+store_account_handler(AcctID, undefined, Cache) ->
+    wh_cache:erase_local(Cache, cache_account_handler_key(AcctID));
+store_account_handler(AcctID, J5Pid, Cache) when is_pid(J5Pid) ->
     wh_cache:store_local(Cache, cache_account_handler_key(AcctID), J5Pid, infinity).
 
 cache_account_handler_key(AcctID) ->
