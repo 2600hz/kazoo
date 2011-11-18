@@ -848,13 +848,13 @@ is_cors_preflight(RD) ->
 %%--------------------------------------------------------------------
 -spec create_resp_envelope/1 :: (#cb_context{}) -> [{binary(), binary() | atom() | json_object() | json_objects()},...].
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=undefined}) ->
-    ?LOG("generating sucessfull response"),
+    ?LOG("generating successful response"),
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, success}
      ,{<<"data">>, RespData}
     ];
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=Etag}) ->
-    ?LOG("generating sucessfull response"),
+    ?LOG("generating successful response"),
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, success}
      ,{<<"data">>, RespData}
