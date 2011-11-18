@@ -108,19 +108,9 @@ todays_db_name(Prefix) ->
     {{Y,M,D}, _} = calendar:universal_time(),
     wh_util:to_binary(io_lib:format(wh_util:to_list(Prefix) ++ "%2F~4B%2F~2..0B%2F~2..0B", [Y,M,D])).
 
-%% R :: rate, per minute, in dollars (0.01, 1 cent per minute)
-%% RI :: rate increment, in seconds, bill in this increment AFTER rate minimum is taken from Secs
-%% RM :: rate minimum, in seconds, minimum number of seconds to bill for
-%% Sur :: surcharge, in dollars, (0.05, 5 cents to connect the call)
-%% Secs :: billable seconds
--spec(calculate_cost/5 :: (R :: float() | integer(), RI :: integer(), RM :: integer(), Sur :: float() | integer(), Secs :: integer()) -> float()).
-calculate_cost(_, _, _, _, 0) -> 0.0;
-calculate_cost(R, 0, RM, Sur, Secs) -> calculate_cost(R, 60, RM, Sur, Secs);
+-spec calculate_cost/5 :: (float() | integer(), integer(), integer(), float() | integer(), integer()) -> float().
 calculate_cost(R, RI, RM, Sur, Secs) ->
-    case Secs =< RM of
-	true -> Sur + ((RM / 60) * R);
-	false -> Sur + ((RM / 60) * R) + ( wh_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R))
-    end.
+    whapps_util:calculate_cost(R, RI, RM, Sur, Secs).
 
 -spec(lookup_did/1 :: (DID :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
 lookup_did(DID) ->
