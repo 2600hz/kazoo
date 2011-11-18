@@ -6,7 +6,7 @@
 %%% @end
 %%% Created :  5 Oct 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(ecm_fs_query).
+-module(ecallmgr_fs_query).
 
 -behaviour(gen_listener).
 

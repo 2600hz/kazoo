@@ -38,7 +38,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) 
         {fail, Reason} ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
             whapps_util:alert(<<"warning">>, ["Source: ~s(~p)~n"
-                                              ,"Alert: failed to bridging to device~n"
+                                              ,"Alert: failed to bridge to device~n"
                                               ,"Fault: ~p~n"
                                               ,"~n~s"]
                               ,[?MODULE, ?LINE, Reason, cf_util:call_info_to_string(Call)], AccountId),
