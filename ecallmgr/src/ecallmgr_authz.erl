@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_authz).
 
--export([authorize/3, is_authorized/1, default/0]).
+-export([authorize/3, is_authorized/1, default/0, authz_win/1]).
 
 -export([init_authorize/4]).
 
@@ -44,11 +44,19 @@ is_authorized(Pid) when is_pid(Pid) ->
     end;
 is_authorized(undefined) -> {false, []}.
 
--spec init_authorize/4 :: (Parent, FSID, CallID, FSData) -> no_return() when
-      Parent :: pid(),
-      FSID :: binary(),
-      CallID :: binary(),
-      FSData :: proplist().
+-spec authz_win/1 :: (pid() | 'undefined') -> 'ok'.
+authz_win(undefined) -> 'ok';
+authz_win(Pid) when is_pid(Pid) ->
+    Ref = make_ref(),
+    Pid ! {authz_win, self(), Ref},
+    receive
+	{authz_win_sent, Ref} -> ok
+    after 1000 ->
+	    ?LOG("Timed out sending authz_win, odd")
+    end.
+
+
+-spec init_authorize/4 :: (pid(), ne_binary(), ne_binary(), proplist()) -> no_return().
 init_authorize(Parent, FSID, CallID, FSData) ->
     proc_lib:init_ack(Parent, {ok, self()}),
     put(callid, CallID),
@@ -57,28 +65,37 @@ init_authorize(Parent, FSID, CallID, FSData) ->
 
     ReqProp = request(FSID, CallID, FSData),
 
-    {IsAuth, CCV} = try
-			{ok, RespJObj} = ecallmgr_amqp_pool:authz_req(ReqProp, 2000),
-			true = wapi_authz:resp_v(RespJObj),
-			{wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj))
-			 ,wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, [])}
-		    catch
-			_:_ ->
-			    ?LOG("Authz request un-answered or improper"),
-			    default()
-		    end,
+    JObj = try
+	       {ok, RespJObj} = ecallmgr_amqp_pool:authz_req(ReqProp, 2000),
+	       true = wapi_authz:resp_v(RespJObj),
+	       RespJObj
+	   catch
+	       _:_ ->
+		   ?LOG("Authz request un-answered or improper"),
+		   default()
+	   end,
 
-    authorize_loop(IsAuth, CCV).
+    authorize_loop(JObj).
 
--spec authorize_loop/2 :: (IsAuth, CCV) -> no_return() when
-      IsAuth :: boolean(),
-      CCV :: json_object().
-authorize_loop(IsAuth, CCV) ->
-    ?LOG("Is Authorized: ~s", [IsAuth]),
+-spec authorize_loop/1 :: (json_object()) -> no_return().
+authorize_loop(JObj) ->
     receive
 	{is_authorized, From, Ref} ->
-	    From ! {is_authorized, Ref, IsAuth, CCV};
-	_ -> authorize_loop(IsAuth, CCV)
+	    IsAuthz = wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, JObj)),
+	    CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, []),
+	    ?LOG("Is authz: ~s", [IsAuthz]),
+	    From ! {is_authorized, Ref, IsAuthz, CCV},
+	    authorize_loop(JObj);
+
+	{authz_win, From, Ref} ->
+	    wapi_authz:publish_win(wh_json:get_value(<<"Server-ID">>, JObj), JObj),
+	    ?LOG("Sent authz_win, nice"),
+
+	    From ! {authz_win_sent, Ref},
+
+	    authorize_loop(JObj);
+
+	_ -> authorize_loop(JObj)
     after ?AUTHZ_LOOP_TIMEOUT ->
 	    ?LOG_SYS("Going down from timeout")
     end.
