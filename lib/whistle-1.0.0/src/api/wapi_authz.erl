@@ -8,9 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(wapi_authz).
 
--export([req/1, resp/1, req_v/1, resp_v/1, bind_q/2, unbind_q/1]).
+-export([req/1, resp/1, req_v/1, resp_v/1, win/1, win_v/1, bind_q/2, unbind_q/1]).
 
--export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3]).
+-export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3, publish_win/2, publish_win/3]).
 
 -include("../wh_api.hrl").
 
@@ -39,6 +39,14 @@
 			    ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
 			   ]).
 -define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+
+%% Authorization Requests
+-define(AUTHZ_WIN_HEADERS, [<<"Call-ID">>]).
+-define(OPTIONAL_AUTHZ_WIN_HEADERS, []).
+-define(AUTHZ_WIN_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+			   ,{<<"Event-Name">>, <<"authz_win">>}
+			  ]).
+-define(AUTHZ_WIN_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc Authorization Request - see wiki
@@ -81,6 +89,26 @@ resp_v(JObj) ->
     resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Authorization Win - see wiki
+%% Takes proplist, creates JSON iolist or error
+%% @end
+%%--------------------------------------------------------------------
+-spec win/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+win(Prop) when is_list(Prop) ->
+        case win_v(Prop) of
+	    true -> wh_api:build_message(Prop, ?AUTHZ_WIN_HEADERS, ?OPTIONAL_AUTHZ_WIN_HEADERS);
+	    false -> {error, "Proplist failed validation for authz_win"}
+    end;
+win(JObj) ->
+    win(wh_json:to_proplist(JObj)).
+
+-spec win_v/1 :: (api_terms()) -> boolean().
+win_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?AUTHZ_WIN_HEADERS, ?AUTHZ_WIN_VALUES, ?AUTHZ_WIN_TYPES);
+win_v(JObj) ->
+    win_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Setup and tear down bindings for authz gen_listeners
 %% @end
 %%--------------------------------------------------------------------
@@ -99,7 +127,7 @@ unbind_q(Q) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_req/1 :: (api_terms()) -> 'ok'.
--spec publish_req/2 :: (api_terms(), binary()) -> 'ok'.
+-spec publish_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
@@ -107,9 +135,17 @@ publish_req(Req, ContentType) ->
     amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHZ_REQ).
 
 -spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_resp/3 :: (ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHZ_RESP_VALUES, fun ?MODULE:resp/1),
+    amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+-spec publish_win/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_win/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_win(Queue, JObj) ->
+    publish_win(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_win(Queue, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHZ_WIN_VALUES, fun ?MODULE:win/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).

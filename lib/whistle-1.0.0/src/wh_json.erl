@@ -268,7 +268,7 @@ get_value([Key|Ks], [{struct, _}|_]=L, Default) ->
     try
 	get_value1(Ks, lists:nth(Key, L), Default)
     catch
-	_:_ -> Default
+	error:badarith -> Default
     end;
 get_value(Key, L, Default) when is_list(L) ->
     get_value1(Key, {struct, L}, Default);
@@ -466,29 +466,26 @@ normalize_jobj(JObj) ->
 
 -spec normalize/1 :: (json_object()) -> json_object().
 normalize({struct, DataTuples}) ->
-    {struct, [normalizer(DT) || DT <- DataTuples]}.
+    {struct, [{normalize_key(K), normalize_value(V)} || {K, V} <- DataTuples]}.
 
--spec(normalize_binary_tuple/1 :: (BinaryTuple :: tuple(binary(), binary())) -> tuple(binary(), binary()) ).
-normalize_binary_tuple({Key,Val}) ->
-    {normalize_key(Key), Val}.
+-spec normalize_value/1 :: (json_term()) -> json_term().
+normalize_value({struct, _}=JObj) ->
+    normalize(JObj);
+normalize_value([_|_]=As) ->
+    [normalize_value(A) || A <- As];
+normalize_value(V) -> V.
 
--spec(normalize_key/1 :: (Key :: binary()) -> binary()).
+-spec normalize_key/1 :: (ne_binary()) -> ne_binary().
 normalize_key(Key) when is_binary(Key) ->
     << <<(normalize_key_char(B))>> || <<B>> <= Key>>.
 
--spec(normalize_key_char/1 :: (C :: char()) -> char()).
+-spec normalize_key_char/1 :: (char()) -> char().
 normalize_key_char($-) -> $_;
 normalize_key_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
 %% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"
 normalize_key_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
 normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 normalize_key_char(C) -> C.
-
--spec(normalizer/1 :: (DataTuple :: {binary(), json_object()} | {binary(), binary()}) -> json_object() | {binary(),  binary()}).
-normalizer({_, {struct, _}}=DataTuple) ->
-    normalize_jobj(DataTuple);
-normalizer({_,_}=DataTuple) ->
-    normalize_binary_tuple(DataTuple).
 
 %% PropEr Testing
 prop_is_json_object() ->
@@ -504,7 +501,7 @@ prop_from_list() ->
  	   ).
 
 prop_get_value() ->
-    ?FORALL(Prop, wh_proplist(),
+    ?FORALL(Prop, json_proplist(),
 	    ?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop]),
 		      begin
 			  JObj = from_list(Prop),
@@ -552,6 +549,14 @@ prop_to_proplist() ->
 is_json_object_proper_test_() ->
     {"Runs wh_json PropEr tests for is_json_object/1",
      {timeout, 10000, [?_assertEqual([], proper:module(?MODULE))]}}.
+
+is_empty_test() ->
+    ?assertEqual(true, is_empty(new())),
+    ?assertEqual(false, is_empty(?D1)),
+    ?assertEqual(false, is_empty(?D6)),
+    ?assertEqual(false, is_empty(123)),
+    ?assertEqual(false, is_empty(<<"foobar">>)),
+    ?assertEqual(false, is_empty([{bar, bas}])).
 
 merge_jobjs_test() ->
     JObj = merge_jobjs(?D1, ?D2),
@@ -604,6 +609,11 @@ new_test() ->
 
 -spec is_json_object_test/0 :: () -> no_return().
 is_json_object_test() ->
+    ?assertEqual(false, ?MODULE:is_json_object(foo)),
+    ?assertEqual(false, ?MODULE:is_json_object(123)),
+    ?assertEqual(false, ?MODULE:is_json_object([boo, yah])),
+    ?assertEqual(false, ?MODULE:is_json_object(<<"bin">>)),
+
     ?assertEqual(true, ?MODULE:is_json_object(?D1)),
     ?assertEqual(true, ?MODULE:is_json_object(?D2)),
     ?assertEqual(true, ?MODULE:is_json_object(?D3)),
