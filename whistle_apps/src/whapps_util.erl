@@ -13,7 +13,7 @@
 -export([replicate_from_accounts/2, replicate_from_account/3]).
 -export([revise_whapp_views_in_accounts/1]).
 -export([get_all_accounts/0, get_all_accounts/1]).
--export([get_account_by_realm/1]).
+-export([get_account_by_realm/1, calculate_cost/5]).
 -export([get_event_type/1, put_callid/1]).
 -export([get_call_termination_reason/1]).
 -export([alert/3, alert/4]).
@@ -362,3 +362,17 @@ alert_level_to_integer(<<"debug">>) ->
     1;
 alert_level_to_integer(_) ->
     0.
+
+%% R :: rate, per minute, in dollars (0.01, 1 cent per minute)
+%% RI :: rate increment, in seconds, bill in this increment AFTER rate minimum is taken from Secs
+%% RM :: rate minimum, in seconds, minimum number of seconds to bill for
+%% Sur :: surcharge, in dollars, (0.05, 5 cents to connect the call)
+%% Secs :: billable seconds
+-spec calculate_cost/5 :: (float() | integer(), integer(), integer(), float() | integer(), integer()) -> float().
+calculate_cost(_, _, _, _, 0) -> 0.0;
+calculate_cost(R, 0, RM, Sur, Secs) -> calculate_cost(R, 60, RM, Sur, Secs);
+calculate_cost(R, RI, RM, Sur, Secs) ->
+    case Secs =< RM of
+	true -> Sur + ((RM / 60) * R);
+	false -> Sur + ((RM / 60) * R) + ( wh_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R))
+    end.
