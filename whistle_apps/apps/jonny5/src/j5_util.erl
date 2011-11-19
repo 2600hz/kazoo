@@ -10,13 +10,15 @@
 
 -export([fetch_all_accounts/0, fetch_account/1, fetch_account_handler/1]).
 
--export([store_account_handler/2, uptime/1]).
+-export([store_account_handler/2, uptime/1, current_usage/1]).
 
 -export([preload_accounts/0, preload_trunkstore/0]).
 
 -export([refresh_all_accounts/0, refresh_account/1]).
 
--export([write_debit_to_ledger/5, write_credit_to_ledger/5]).
+-export([write_debit_to_ledger/5, write_credit_to_ledger/5
+	 ,write_debit_to_ledger/6, write_credit_to_ledger/6
+	]).
 
 -include("jonny5.hrl").
 
@@ -108,31 +110,57 @@ uptime(StartTime) ->
     end.
 
 write_debit_to_ledger(DB, CallID, CallType, DebitUnits, Duration) ->
-    Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-
-    JObj = wh_json:from_list([{<<"Call-ID">>, CallID}
-			      ,{<<"Call-Type">>, CallType}
-			      ,{<<"Call-Duration">>, Duration}
-			      ,{<<"Amount">>, DebitUnits}
-			      ,{<<"pvt_type">>, <<"debit">>}
-			      ,{<<"pvt_created">>, Timestamp}
-			      ,{<<"pvt_modified">>, Timestamp}
-			      ,{<<"pvt_version">>, ?APP_VERSION}
-			      ,{<<"_id">>, <<CallID/binary, "-", (wh_util:to_binary(Timestamp))/binary>>}
-			     ]),
-    couch_mgr:save_doc(DB, JObj).
+    write_debit_to_ledger(DB, CallID, CallType, DebitUnits, Duration, wh_json:new()).
+write_debit_to_ledger(DB, CallID, CallType, DebitUnits, Duration, JObj) ->
+    write_transaction_to_ledger(DB, CallID, CallType, DebitUnits, Duration, JObj, debit).
 
 write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration) ->
+    write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration, wh_json:new()).
+write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration, JObj) ->
+    write_transaction_to_ledger(DB, CallID, CallType, CreditUnits, Duration, JObj, credit).
+
+write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
 
-    JObj = wh_json:from_list([{<<"Call-ID">>, CallID}
-			      ,{<<"Call-Type">>, CallType}
-			      ,{<<"Call-Duration">>, Duration}
-			      ,{<<"Amount">>, CreditUnits}
-			      ,{<<"pvt_type">>, <<"credit">>}
-			      ,{<<"pvt_created">>, Timestamp}
-			      ,{<<"pvt_modified">>, Timestamp}
-			      ,{<<"pvt_version">>, ?APP_VERSION}
-			      ,{<<"_id">>, <<CallID/binary, "-", (wh_util:to_binary(Timestamp))/binary>>}
-			     ]),
-    couch_mgr:save_doc(DB, JObj).
+    AcctID = wh_json:get_value(<<"Account-ID">>, JObj, DB),
+    EvtTimestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
+
+    ID = mk_id(CallID, AcctID, EvtTimestamp),
+
+    ?LOG("trying to write ~s to ~s for doc ~s", [ID, DB, DocType]),
+
+    TransactionJObj = wh_json:from_list([{<<"call_id">>, CallID}
+					 ,{<<"call_type">>, CallType}
+					 ,{<<"call_duration">>, Duration}
+					 ,{<<"amount">>, Units}
+					 ,{<<"pvt_account_id">>, whapps_util:get_db_name(AcctID, raw)}
+					 ,{<<"pvt_account_db">>, whapps_util:get_db_name(AcctID, encoded)}
+					 ,{<<"pvt_type">>, DocType}
+					 ,{<<"pvt_created">>, Timestamp}
+					 ,{<<"pvt_modified">>, Timestamp}
+					 ,{<<"pvt_vsn">>, ?APP_VERSION}
+					 ,{<<"pvt_whapp">>, ?APP_NAME}
+					 ,{<<"_id">>, ID}
+					]),
+    ?LOG("~p", [TransactionJObj]),
+    couch_mgr:save_doc(DB, TransactionJObj).
+
+-spec mk_id/3 :: (ne_binary(), ne_binary(), ne_binary() | pos_integer()) -> ne_binary().
+mk_id(CallID, AcctID, Tstamp) ->
+    Suffix = case wh_util:is_empty(Tstamp) of
+		 true -> <<>>;
+		 false -> [<<"-">>, (wh_util:to_binary(Tstamp))]
+	     end,
+    case wh_util:is_empty(CallID) of
+	true -> list_to_binary([AcctID, Suffix]);
+	false -> list_to_binary([CallID, Suffix])
+    end.
+
+-spec current_usage/1 :: (ne_binary()) -> integer().
+current_usage(AcctID) ->
+    DB = whapps_util:get_db_name(AcctID, encoded),
+    case couch_mgr:get_results(DB, <<"transactions/credit_remaining">>, [{<<"reduce">>, true}]) of
+	{ok, []} -> 0;
+	{ok, [ViewRes|_]} -> wh_json:get_value(<<"value">>, ViewRes, 0);
+	{error, _} -> 0
+    end.
