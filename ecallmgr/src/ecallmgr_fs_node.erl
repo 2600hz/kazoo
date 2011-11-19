@@ -89,9 +89,9 @@ init([Node, Options]) ->
     {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
 
 -spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> {'noreply', #state{}} | {'reply', atom(), #state{}}.
-handle_call(hostname, From, #state{node=Node}=State) ->
-    spawn(fun() -> gen_server:reply(From, freeswitch:api(Node, hostname, "")) end),
-    {noreply, State};
+handle_call(hostname, _From, #state{node=Node}=State) ->
+    [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
+    {reply, {ok, Hostname}, State};
 handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
     spawn(fun() ->
 		  case freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of

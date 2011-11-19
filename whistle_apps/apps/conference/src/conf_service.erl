@@ -1,3 +1,4 @@
+
 %%%============================================================================
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011 VoIP Inc
@@ -124,8 +125,7 @@ handle_call(_Request, _From, Conf) ->
 %
 % @end
 %------------------------------------------------------------------------------
-handle_cast({set_route, Node}, #conf{route=undefined, conf_id=ConfId}=Conf) ->
-    [_, Focus] = binary:split(Node, <<"@">>),
+handle_cast({set_route, Focus}, #conf{route=undefined, conf_id=ConfId}=Conf) ->
     Route = <<"sip:conference_", ConfId/binary, "@", Focus/binary>>,
     ?LOG("set conference route to ~s", [Route]),
     {noreply, Conf#conf{route=Route, focus=Focus}, hibernate};
@@ -428,7 +428,7 @@ process_req({<<"call_event">>, <<"status_resp">>}, JObj, #conf{service=Srv, rout
     %% Currently, when the conference has no focus and hence no route we will use the node of
     %% the first call status response. Since no callers can 'join' the conference till the
     %% route is known, the call status will be re-requested and the logic bellow applied
-    case wh_json:get_value(<<"Node">>, JObj) of
+    case wh_json:get_value(<<"Switch-Hostname">>, JObj) of
         undefined -> ok;
         Node ->
             ?LOG("recieved call status, but hijacking it for the route"),
@@ -441,10 +441,10 @@ process_req({<<"call_event">>, <<"status_resp">>}, JObj, #conf{focus=Focus}=Conf
     %% - Join the conference
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG("recieved call status for ~s", [CallId]),
-    case binary:split(wh_json:get_value(<<"Node">>, JObj), <<"@">>) of
-        [_, Focus] ->
+    case wh_json:get_value(<<"Switch-Hostname">>, JObj) of
+        Focus ->
             join_local_conference(CallId, Conf);
-        [_, Loc] ->
+        Loc ->
             ?LOG("call ~s is at ~p but focus is ~s", [CallId, Loc, Focus]),
             bridge_to_conference(CallId, Conf)
     end;
@@ -537,10 +537,13 @@ process_req({_, <<"route_win">>}, JObj, #conf{service=Srv, amqp_q=Q}=Conf) ->
     join_local_conference(BridgeId, CtrlQ, Conf);
 
 %% <hack>
-process_req({<<"conference">>, <<"participants">>}, JObj, _Conf) ->
-    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
-    Payload = wh_util:to_binary(mochijson2:encode(JObj)),
-    amqp_util:targeted_publish(ServerId, Payload);
+process_req({<<"conference">>, <<"participants">>}, JObj, #conf{amqp_q=Q}) ->
+    case wh_json:get_value(<<"Server-ID">>, JObj) of
+        Q -> ok;
+        ServerId ->
+            Payload = wh_util:to_binary(mochijson2:encode(JObj)),
+            amqp_util:targeted_publish(ServerId, Payload)
+    end;
 
 process_req({<<"conference">>, <<"list_participants">>}, JObj, Conf) ->
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),

@@ -75,6 +75,7 @@
 			       ,{<<"Confirm-Key">>, <<"group_confirm_key">>}
 			       ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
 			       ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
+			       ,{<<"Presence-ID">>, <<"presence_id">>}
 			      ]).
 
 -define(DEFAULT_RESPONSE_CODE, <<"488">>).

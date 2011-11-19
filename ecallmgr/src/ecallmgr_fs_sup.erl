@@ -102,7 +102,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(ecm_fs_query, worker)]}}.
+    {ok, {SupFlags, []}}.
 
 %%%===================================================================
 %%% Internal functions
