@@ -12,7 +12,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/4, handle_call_event/2]).
+-export([start_link/4, handle_call_event/2, authz_won/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -27,6 +27,7 @@
 	 ,ledger_db = <<>> :: binary()
 	 ,call_type = 'per_min' :: call_types()
          ,j5_acct_pid = 'undefined' :: 'undefined' | pid()
+         ,authz_won = 'false' :: boolean()
 	 }).
 
 %%%===================================================================
@@ -41,9 +42,14 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(CallID, LedgerDB, CallType, J5AcctPid) ->
-    gen_server:start_link(?MODULE, [{bindings, [{call, [{callid, CallID}]}]}
-				    ,{responders, [{?MODULE, handle_call_event}, [{<<"*">>, <<"*">>}]]}
-				   ], [CallID, LedgerDB, CallType, J5AcctPid]).
+    gen_listener:start_link(?MODULE
+			  ,[{bindings, [{call, [{callid, CallID}]}]}
+			    ,{responders, [{{?MODULE, handle_call_event}, [{<<"*">>, <<"*">>}]}] }
+			   ]
+			  ,[CallID, LedgerDB, CallType, J5AcctPid]).
+
+authz_won(Srv) ->
+    gen_listener:cast(Srv, authz_won).
 
 handle_call_event(JObj, Props) ->
     Srv = props:get_value(server, Props),
@@ -65,6 +71,7 @@ handle_call_event(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([CallID, LedgerDB, CallType, J5AcctPid]) ->
+    put(callid, CallID),
     {ok, #state{callid=CallID, ledger_db=LedgerDB, call_type=CallType, j5_acct_pid=J5AcctPid}}.
 
 %%--------------------------------------------------------------------
@@ -81,9 +88,8 @@ init([CallID, LedgerDB, CallType, J5AcctPid]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+handle_call(_, _From, State) ->
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -95,11 +101,15 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_HANGUP">>}, _JObj}, State) ->
-    {noreply, State, 5000};
+handle_cast(authz_won, State) ->
+    ?LOG("Aww yeah, won the authz. We're responsible for writing to the ledger (don't crash!)"),
+    {noreply, State#state{authz_won=true}};
+
 handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_HANGUP_COMPLETE">>}, _JObj}, State) ->
+    ?LOG("Hangup complete, expecting a CDR any moment"),
     {noreply, State, 5000};
-handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=CallID, ledger_db=DB, call_type=per_min, j5_acct_pid=Srv}=State) ->
+
+handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=CallID, ledger_db=DB, call_type=per_min, j5_acct_pid=Srv, authz_won=true}=State) ->
     case wapi_call:cdr_v(JObj) of
 	false -> {noreply, State, 5000};
 	true ->
@@ -111,25 +121,32 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=Ca
 		    Credit = ?PER_MIN_MIN - Cost,
 		    ?LOG("Crediting back ~p", [Credit]),
 		    j5_acctmgr:credit(Srv, Credit),
-		    j5_util:write_credit_to_ledger(DB, CallID, per_min, Credit, BillingSecs);
+		    j5_util:write_credit_to_ledger(DB, CallID, per_min, Credit, BillingSecs, JObj);
 		Cost ->
 		    Debit = Cost - ?PER_MIN_MIN,
 		    ?LOG("Debiting an additional ~p", [Debit]),
 		    j5_acctmgr:debit(Srv, Debit),
-		    j5_util:write_debit_to_ledger(DB, CallID, per_min, Debit, BillingSecs)
+		    j5_util:write_debit_to_ledger(DB, CallID, per_min, Debit, BillingSecs, JObj)
 	    end,
 
 	    {stop, normal, State}
     end;
-handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=CallID, ledger_db=DB, call_type=Type}=State) ->
+
+handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=CallID, ledger_db=DB, call_type=Type, authz_won=true}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj), % assert
 
     BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
-    j5_util:write_debit_to_ledger(DB, CallID, Type, 0, BillingSecs),
+    j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
 
     {stop, normal, State};
+
+handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{authz_won=false}=State) ->
+    ?LOG("CDR received, but we're not the winner of the authz_win, so let's wait a bit and see if the ledger was updated"),
+    erlang:send_after(1000, self(), {check_ledger, JObj}),
+    {noreply, State};
+
 handle_cast({call_event, {Cat, Name}, _JObj}, State) ->
-    ?LOG("Unhandled ~s:~s", [Cat, Name]),
+    ?LOG("Unhandled event ~s:~s: ~s", [Cat, Name, wh_json:get_value(<<"Application-Name">>, _JObj)]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -142,6 +159,14 @@ handle_cast({call_event, {Cat, Name}, _JObj}, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({check_ledger, JObj}, #state{callid=CallID, ledger_db=DB, call_type=Type}=State) ->
+    ?LOG("Checking ledger for final debit/credit"),
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+
+    BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
+    j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
+    {stop, normal, State};
+
 handle_info(_Info, State) ->
     ?LOG("Unhandled message: ~p", [_Info]),
     {noreply, State}.
@@ -178,6 +203,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 %% Return the cost of the call in UNITS (not dollars)
+-spec extract_cost/1 :: (json_object()) -> integer().
 extract_cost(JObj) ->
     BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),

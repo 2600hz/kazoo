@@ -69,6 +69,7 @@ init([]) ->
     {ok, { {one_for_one, 2, 5}
 	   ,[
 	     ?CACHE(j5_cache)
+	     ,?CHILD(j5_call_monitor_sup, supervisor)
 	     ,?CHILD(jonny5_acct_sup, supervisor)
 	     ,?CHILD(jonny5_listener, worker)
 	    ]
