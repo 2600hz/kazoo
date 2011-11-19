@@ -564,7 +564,7 @@ create_placeholder_account(#cb_context{account_id=AccountId}=Context) ->
       Context :: #cb_context{}.
 authorize_trunkstore(_, #cb_context{req_verb = <<"get">>}=Context) ->
     Context#cb_context{resp_status=success};
-authorize_trunkstore(_, #cb_context{req_verb = <<"put">>, doc=JObj}=Context) ->
+authorize_trunkstore(_, #cb_context{req_verb = <<"put">>, req_data=JObj}=Context) ->
     Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
                ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
                ,{"tollfree_us", fun() -> ts_tollfree_us_quantity(JObj) end()}
@@ -576,7 +576,7 @@ authorize_trunkstore(_, #cb_context{req_verb = <<"put">>, doc=JObj}=Context) ->
         {ok, Subscription} ->
             change_subscription(Updates, Subscription, Context)
     end;
-authorize_trunkstore([AccountId], #cb_context{req_verb = <<"post">>, doc=JObj}=Context) ->
+authorize_trunkstore([AccountId], #cb_context{req_verb = <<"post">>, req_data=JObj}=Context) ->
     Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
                ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
                ,{"tollfree_us", fun() -> ts_tollfree_us_quantity(JObj) end()}
@@ -588,7 +588,7 @@ authorize_trunkstore([AccountId], #cb_context{req_verb = <<"post">>, doc=JObj}=C
         {ok, Subscription} ->
             change_subscription(Updates, Subscription, Context)
     end;
-authorize_trunkstore([AccountId], #cb_context{req_verb = <<"delete">>, doc=JObj}=Context) ->
+authorize_trunkstore([AccountId], #cb_context{req_verb = <<"delete">>, req_data=JObj}=Context) ->
     case ts_get_subscription(JObj, AccountId, Context) of
         #cb_context{}=Error ->
             Error;
