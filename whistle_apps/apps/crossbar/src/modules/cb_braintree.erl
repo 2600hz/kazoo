@@ -18,7 +18,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 -include_lib("braintree/include/braintree.hrl").
@@ -102,6 +102,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.billing">>
+                 ,{RD, #cb_context{req_verb = <<"head">>}=Context}}, State) ->
+     Pid ! {binding_result, true, {RD, Context}},
+     {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.billing">>
                  ,{RD, #cb_context{req_nouns=[{<<"ts_accounts">>, Params}]}=Context}}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
@@ -124,24 +129,24 @@ handle_info({binding_fired, Pid, <<"v1_resource.billing">>
 
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.braintree">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.braintree">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.braintree">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-		  Context1 = validate(Params, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, Context | [<<"customer">>]=Params]}, State) ->
@@ -159,7 +164,14 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
                                      crossbar_util:response_db_fatal(Context)
                              end,
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, Context | [<<"credits">>]=Params]}, State) ->
+    spawn(fun() ->
+                  %% TODO: credit has been aquired (you can get the amount from req_data.amount
+                  Pid ! {binding_result, true, [RD, Context, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, Context | [<<"cards">>]=Params]}, State) ->
@@ -167,7 +179,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, C
                   crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Card = crossbar_util:fetch(braintree, Context),
-                  io:format("~p~n", [Card]),
                   Context1 = case braintree_card:create(Card) of
                                  {ok, #bt_card{}=C} ->
                                      Response = braintree_card:record_to_json(C),
@@ -179,7 +190,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, C
                                      crossbar_util:response_db_fatal(Context)
                              end,
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, Context | [<<"cards">>, CardId]=Params]}, State) ->
@@ -200,7 +211,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
                                      crossbar_util:response_db_fatal(Context)
                              end,
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD, Context | [<<"cards">>, CardId]=Params]}, State) ->
@@ -220,7 +231,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD
                                      crossbar_util:response_db_fatal(Context)
                              end,
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, Context | [<<"addresses">>]=Params]}, State) ->
@@ -239,7 +250,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, C
                                      crossbar_util:response_db_fatal(Context)
                              end,
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, Context | [<<"addresses">>, AddressId]=Params]}, State) ->
@@ -260,7 +271,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
                                      crossbar_util:response_db_fatal(Context)
                              end,
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD, Context | [<<"addresses">>, AddressId]=Params]}, State) ->
@@ -280,7 +291,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD
                                      crossbar_util:response_db_fatal(Context)
                              end,
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -366,6 +377,9 @@ allowed_methods([<<"transactions">>]) ->
 allowed_methods([<<"transactions">>, _]) ->
     {true, ['GET']};
 
+allowed_methods([<<"credits">>]) ->
+    {true, ['GET', 'PUT']};
+
 allowed_methods(_) ->
     {false, []}.
 
@@ -392,6 +406,8 @@ resource_exists([<<"addresses">>, _]) ->
 resource_exists([<<"transactions">>]) ->
     {true, []};
 resource_exists([<<"transactions">>, _]) ->
+    {true, []};
+resource_exists([<<"credits">>]) ->
     {true, []};
 resource_exists(_) ->
     {false, []}.
@@ -508,7 +524,6 @@ validate([<<"transactions">>], #cb_context{req_verb = <<"get">>, account_id=Acco
         {error, _} ->
             crossbar_util:response_db_fatal(Context)
     end;
-
 validate([<<"transactions">>, TransactionId], #cb_context{req_verb = <<"get">>}=Context) ->
     case braintree_transaction:find(TransactionId) of
         {ok, #bt_transaction{}=T} ->
@@ -522,6 +537,27 @@ validate([<<"transactions">>, TransactionId], #cb_context{req_verb = <<"get">>}=
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         {error, _} ->
             crossbar_util:response_db_fatal(Context)
+    end;
+
+%% CREDIT SPECIFIC API
+validate([<<"credits">>], #cb_context{req_verb = <<"get">>, account_id=AccountId, doc=JObj}=Context) ->
+    %% TODO: request current balance from jonny5 and put it here
+    crossbar_util:response(wh_json:from_list([{<<"amount">>, <<"10.00">>}
+                                              ,{<<"billing_account_id">>, wh_json:get_value(<<"billing_account_id">>, JObj, AccountId)}
+                                             ]), Context);
+validate([<<"credits">>], #cb_context{req_verb = <<"put">>, account_id=AccountId, req_data=JObj}=Context) ->
+    BillingId = wh_json:get_value(<<"billing_account_id">>, JObj, AccountId),
+    Amount = wh_json:get_value(<<"amount">>, JObj, <<"0.0">>),
+    case braintree_transaction:quick_sale(BillingId, Amount) of
+        {ok, #bt_transaction{}=Transaction} ->
+            crossbar_util:response(braintree_transaction:record_to_json(Transaction), Context);
+        {error, #bt_api_error{}=ApiError} ->
+            Response = braintree_util:bt_api_error_to_json(ApiError),
+            crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+        {error, Error} ->
+            crossbar_util:response(error, <<"braintree api error">>, 400
+                                   ,wh_json:from_list([{<<"cause">>, wh_util:to_binary(Error)}])
+                                   ,Context)
     end;
 
 validate(_, Context) ->
@@ -553,10 +589,9 @@ create_placeholder_account(#cb_context{account_id=AccountId}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function determines if the parameters and content are correct
-%% for this request
-%%
-%% Failure here returns 400
+%% This function processes any trunkstore requests for billin
+%% changes, preforms the necessary braintree updates/charges and
+%% terminates the request if it fails
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize_trunkstore/2 :: (AccountId, Context) -> #cb_context{} when
@@ -564,19 +599,20 @@ create_placeholder_account(#cb_context{account_id=AccountId}=Context) ->
       Context :: #cb_context{}.
 authorize_trunkstore(_, #cb_context{req_verb = <<"get">>}=Context) ->
     Context#cb_context{resp_status=success};
-authorize_trunkstore(_, #cb_context{req_verb = <<"put">>, req_data=JObj}=Context) ->
+authorize_trunkstore(_, #cb_context{req_verb = <<"put">>, doc=JObj, auth_doc=AuthDoc}=Context) ->
     Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
                ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
                ,{"tollfree_us", fun() -> ts_tollfree_us_quantity(JObj) end()}
                ,{"e911", fun() -> ts_e911_quantity(JObj) end()}],
-    BillingAccount = wh_json:get_value(<<"billing_account_id">>, JObj),
+    AuthId = wh_json:get_value(<<"account_id">>, AuthDoc),
+    BillingAccount = wh_json:get_value(<<"billing_account_id">>, JObj, AuthId),
     case ts_get_subscription(JObj, BillingAccount, Context) of
         #cb_context{}=Error ->
             Error;
         {ok, Subscription} ->
             change_subscription(Updates, Subscription, Context)
     end;
-authorize_trunkstore([AccountId], #cb_context{req_verb = <<"post">>, req_data=JObj}=Context) ->
+authorize_trunkstore([AccountId], #cb_context{req_verb = <<"post">>, doc=JObj}=Context) ->
     Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
                ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
                ,{"tollfree_us", fun() -> ts_tollfree_us_quantity(JObj) end()}
@@ -588,7 +624,7 @@ authorize_trunkstore([AccountId], #cb_context{req_verb = <<"post">>, req_data=JO
         {ok, Subscription} ->
             change_subscription(Updates, Subscription, Context)
     end;
-authorize_trunkstore([AccountId], #cb_context{req_verb = <<"delete">>, req_data=JObj}=Context) ->
+authorize_trunkstore([AccountId], #cb_context{req_verb = <<"delete">>, doc=JObj}=Context) ->
     case ts_get_subscription(JObj, AccountId, Context) of
         #cb_context{}=Error ->
             Error;
