@@ -143,22 +143,22 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.ts_accounts">>, [RD, Co
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.ts_accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
+		  crossbar_util:binding_heartbeat(Pid),
                   #cb_context{doc=Doc} = Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
                   timer:sleep(1000),
-                  try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc), true) catch _:_ -> ok end
+                  try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc), true) catch _:_ -> ok end,
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_accounts">>
-                 ,[RD, #cb_context{auth_doc=AuthDoc, doc=Doc}=Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   crossbar_util:put_reqid(Context),
-                  AccountId = wh_json:get_value(<<"account_id">>, AuthDoc, <<"undefined">>),
-                  Context1 = crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(<<"_id">>, AccountId, Doc)}),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
+		  crossbar_util:binding_heartbeat(Pid),
+                  #cb_context{doc=Doc} = Context1 = crossbar_doc:save(Context),
                   timer:sleep(1000),
-                  try stepswitch_maintenance:reconcile(AccountId, true) catch _:_ -> ok end
+                  try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc), true) catch _:_ -> ok end,
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
@@ -274,10 +274,13 @@ resource_exists(_) ->
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     read_ts_account_summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_ts_account(Context);
+validate([], #cb_context{req_verb = <<"put">>, auth_doc=AuthDoc}=Context) ->
+    true = is_binary(AccountId = wh_json:get_value(<<"account_id">>, AuthDoc)),
+    create_ts_account(Context#cb_context{account_id=AccountId});
 validate([TSAccountId], #cb_context{req_verb = <<"get">>}=Context) ->
     read_ts_account(TSAccountId, Context#cb_context{account_id=TSAccountId});
+validate([TSAccountId], #cb_context{req_verb = <<"put">>}=Context) ->
+    check_ts_account(TSAccountId, Context#cb_context{account_id=TSAccountId});
 validate([TSAccountId], #cb_context{req_verb = <<"post">>}=Context) ->
     update_ts_account(TSAccountId, Context#cb_context{account_id=TSAccountId});
 validate([TSAccountId], #cb_context{req_verb = <<"delete">>}=Context) ->
@@ -294,13 +297,16 @@ validate(_, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(create_ts_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_ts_account(#cb_context{req_data=JObj1}=Context) ->
-    case is_valid_doc(JObj1) of
+create_ts_account(#cb_context{req_data=JObj, account_id=AccountId}=Context) ->
+    case is_valid_doc(JObj) of
         {false, Fields} ->
             crossbar_util:response_invalid_data(Fields, Context);
         {true, []} ->
-            JObj2 = wh_json:set_value(<<"type">>, <<"sys_info">>, JObj1),
-            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj2)
+            Updaters = [fun(J) -> wh_json:set_value(<<"type">>, <<"sys_info">>, J) end
+                        ,fun(J) -> wh_json:set_value(<<"_id">>, AccountId, J) end
+                        ,fun(J) -> wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, J) end
+                       ],
+            Context#cb_context{doc=lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters)
                                ,resp_status=success
                               }
     end.
