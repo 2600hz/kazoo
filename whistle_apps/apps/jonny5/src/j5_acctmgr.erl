@@ -35,7 +35,7 @@
 	 ,two_way = 0 :: non_neg_integer()
          ,inbound = 0 :: non_neg_integer()
          ,prepay = 0 :: non_neg_integer()
-         ,trunks_in_use = dict:new() :: dict() %% {CallID, Type :: inbound | two_way}
+         ,trunks_in_use = dict:new() :: dict() %% {CallID, {Type :: inbound | two_way | prepay, CallMonitor :: pid()}}
 	 ,start_time = 1 :: pos_integer()
          ,sync_ref :: reference()
 	 ,ledger_db = <<>> :: binary() %% where to write credits/debits
@@ -166,13 +166,13 @@ init([AcctID]) ->
 	{error, not_found} ->
 	    ?LOG_SYS("No account found for ~s", [AcctID]),
 	    {stop, no_account};
-	{undefined, undefined, undefined, account} ->
+	{undefined, undefined, _, account} ->
 	    {TwoWay, Inbound, Prepay, ts} = get_trunks_available(AcctID, ts),
 	    ?LOG_SYS("Init for ts ~s complete", [AcctID]),
 
 	    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"ts">>, AcctID),
 
-	    LedgerDB = list_to_binary(["ts%2fusage%2f", AcctID]),
+	    LedgerDB = whapps_util:get_db_name(AcctID, encoded),
 	    couch_mgr:db_create(LedgerDB),
 
 	    {ok, #state{prepay=try_update_value(Prepay, 0)
@@ -201,7 +201,7 @@ init([AcctID]) ->
 
 	    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"ts">>, AcctID),
 
-	    LedgerDB = list_to_binary(["ts%2fusage%2f", AcctID]),
+	    LedgerDB = whapps_util:get_db_name(AcctID, encoded),
 	    couch_mgr:db_create(LedgerDB),
 
 	    {ok, #state{prepay=try_update_value(Prepay, 0)
@@ -238,14 +238,8 @@ handle_call(status, _, #state{max_two_way=MaxTwo, max_inbound=MaxIn
 			       ,{<<"inbound">>, In}
 			       ,{<<"prepay">>, ?UNITS_TO_DOLLARS(Prepay)}
 			       ,{<<"account_id">>, Acct}
-			       ,{<<"trunks">>, [begin
-						    {CallID, Type} = case Tuple of
-									 {CID, {per_min=T, _}} -> {CID, T};
-									 {_,_} -> Tuple
-								     end,
-						    wh_json:from_list([{<<"callid">>, CallID}, {<<"type">>, Type}])
-						end
-						|| Tuple <- dict:to_list(Dict)
+			       ,{<<"trunks">>, [ wh_json:from_list([{<<"callid">>, CallID}, {<<"type">>, Type}])
+						 || {CallID, {Type, _}} <- dict:to_list(Dict)
 					       ]}
 			      ]), State};
 handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->
@@ -306,9 +300,16 @@ handle_cast({credit, Credit}, #state{prepay=Prepay}=State) ->
 handle_cast({debit, Debit}, #state{prepay=Prepay}=State) ->
     {noreply, State#state{prepay=Prepay+Debit}};
 
-handle_cast({authz_win, JObj}, State) ->
-    ?LOG("Authz won!"),
-    ?LOG("~p", [JObj]),
+handle_cast({authz_win, JObj}, #state{trunks_in_use=Dict}=State) ->
+    spawn(fun() ->
+		  ?LOG("Authz won!"),
+
+		  CID = wh_json:get_value(<<"Call-ID">>, JObj),
+
+		  [Pid] = [ P || {CallID,{_,P}} <- dict:to_list(Dict), CallID =:= CID],
+		  ?LOG("Sending authz_win to ~p", [Pid]),
+		  j5_call_monitor:authz_won(Pid)
+	  end),
     {noreply, State};
 handle_cast(refresh, #state{acct_type=AcctType, acct_id=AcctID, max_two_way=OldTwo, max_inbound=OldIn, prepay=OldPrepay}=State) ->
     case catch(get_trunks_available(AcctID, AcctType)) of
@@ -335,13 +336,13 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID, acct_t
 
     {Trunks, InboundTrunks, Prepay, _} = case AcctType of
 					     account when ConfAcctID =:= AcctID ->
-						 case get_account_values(Doc) of
-						     {undefined, undefined, undefined, account} ->
-							 get_ts_values(Doc);
+						 case get_account_values(AcctID, Doc) of
+						     {undefined, undefined, _, account} ->
+							 get_ts_values(AcctID, Doc);
 						     Levels -> Levels
 						 end;
 					     ts when ConfAcctID =:= AcctID ->
-						 get_ts_values(Doc);
+						 get_ts_values(AcctID, Doc);
 					     _ ->
 						 ?LOG("No change necessary"),
 						 ?LOG("Conf acct id: ~s", [ConfAcctID]),
@@ -351,9 +352,9 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID, acct_t
     NMTW = try_update_value(Trunks, MTW),
     NMI = try_update_value(InboundTrunks,MI),
 
-    {NTWIU, NTIIU} = dict:fold(fun(_CallID, two_way, {Two, In}) ->
+    {NTWIU, NTIIU} = dict:fold(fun(_CallID, {two_way, _}, {Two, In}) ->
 				       {Two-1, In};
-				  (_CallID, inbound, {Two, In}) ->
+				  (_CallID, {inbound, _}, {Two, In}) ->
 				       {Two, In-1};
 				  (_, _, Acc) -> Acc %% ignore per-min
 			       end, {NMTW, NMI}, Dict),
@@ -505,7 +506,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec get_trunks_available/2 :: (ne_binary(), 'account' | 'ts') -> {'error', 'not_found'} |
 								   {'undefined' | non_neg_integer()
 								    ,'undefined' | non_neg_integer()
-								    ,'undefined' | float()
+								    ,integer()
 								    ,'account' | 'ts'
 								   }.
 get_trunks_available(AcctID, account) ->
@@ -518,7 +519,7 @@ get_trunks_available(AcctID, account) ->
 	    get_trunks_available(AcctID, ts);
 	{ok, [JObj|_]} ->
 	    ?LOG("View result retrieved"),
-	    get_account_values(JObj)
+	    get_account_values(AcctID, JObj)
     end;
 get_trunks_available(AcctID, ts) ->
     case couch_mgr:open_doc(<<"ts">>, AcctID) of
@@ -526,23 +527,24 @@ get_trunks_available(AcctID, ts) ->
 	    ?LOG_SYS("No account found in ts: ~s", [AcctID]),
 	    E;
 	{ok, JObj} ->
-	    get_ts_values(JObj)
+	    get_ts_values(AcctID, JObj)
     end.
 
-get_ts_values(JObj) ->
+get_ts_values(AcctID, JObj) ->
     Acct = wh_json:get_value(<<"account">>, JObj, wh_json:new()),
-    Credits = wh_json:get_value(<<"credits">>, Acct, wh_json:new()),
 
     Trunks = wh_json:get_integer_value(<<"trunks">>, Acct),
     InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, Acct),
-    Prepay = ?DOLLARS_TO_UNITS(wh_json:get_float_value(<<"prepay">>, Credits, 0.0)),
+
+    Prepay = j5_util:current_usage(AcctID),
+
     ?LOG_SYS("Found ts trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
     {Trunks, InboundTrunks, Prepay, ts}.
 
-get_account_values(JObj) ->
+get_account_values(AcctID, JObj) ->
     Trunks = wh_json:get_integer_value(<<"trunks">>, JObj),
     InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, JObj),
-    Prepay = ?DOLLARS_TO_UNITS(wh_json:get_float_value(<<"prepay">>, JObj)),
+    Prepay = j5_util:current_usage(AcctID),
 
     ?LOG_SYS("Found trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
     {Trunks, InboundTrunks, Prepay, account}.
@@ -569,10 +571,10 @@ try_twoway(_CallID, #state{two_way=T}=State) when T < 1 ->
     {{false, []}, State#state{two_way=0}};
 try_twoway(CallID, #state{two_way=Two, trunks_in_use=Dict, ledger_db=DB}=State) ->
     ?LOG_SYS(CallID, "Authz a two-way trunk", []),
-    monitor_call(CallID, DB, two_way),
+    {ok, Pid} = monitor_call(CallID, DB, two_way),
 
     {{true, [{<<"Trunk-Type">>, <<"two_way">>}]}
-     ,State#state{two_way=Two-1, trunks_in_use=dict:store(CallID, twoway, Dict)}
+     ,State#state{two_way=Two-1, trunks_in_use=dict:store(CallID, {twoway, Pid}, Dict)}
     }.
 
 -spec try_inbound/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
@@ -581,9 +583,9 @@ try_inbound(_CallID, #state{inbound=I}=State) when I < 1 ->
     {{false, []}, State#state{inbound=0}};
 try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) ->
     ?LOG_SYS(CallID, "Authz an inbound_only trunk", []),
-    monitor_call(CallID, DB, inbound),
+    {ok, Pid} = monitor_call(CallID, DB, inbound),
     {{true, [{<<"Trunk-Type">>, <<"inbound">>}]}
-     ,State#state{inbound=In-1, trunks_in_use=dict:store(CallID, inbound, Dict)}
+     ,State#state{inbound=In-1, trunks_in_use=dict:store(CallID, {inbound, Pid}, Dict)}
     }.
 
 -spec try_prepay/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
@@ -662,7 +664,7 @@ release_trunk(CallID, Dict) ->
 	error ->
 	    ?LOG_SYS(CallID, "Call is unknown to us", []),
 	    ignore;
-	{ok, TrunkType} ->
+	{ok, {TrunkType, _}} ->
 	    {release, TrunkType, dict:erase(CallID, Dict)}
     end.
 
@@ -685,7 +687,7 @@ send_levels_resp(JObj, #state{two_way=Two, inbound=In, trunks_in_use=Dict, acct_
 		,{<<"Max-Two-Way">>, MaxTwo}
 		,{<<"Max-Inbound">>, MaxIn}
 		,{<<"Server-ID">>, <<>>}
-		,{<<"Trunks">>, [wh_json:from_list([{<<"Call-ID">>, CallID}, {<<"Type">>, Type}]) || {CallID, Type} <- dict:to_list(Dict)]}
+		,{<<"Trunks">>, [wh_json:from_list([{<<"Call-ID">>, CallID}, {<<"Type">>, Type}]) || {CallID, {Type, _}} <- dict:to_list(Dict)]}
 		,{<<"App-Version">>, ?APP_VERSION}
 		,{<<"App-Name">>, ?APP_NAME}
 		,{<<"Node">>, wh_util:to_binary(node())}
