@@ -167,9 +167,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, Context | [<<"credits">>]=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, #cb_context{account_id=AcctID, req_data=ReqData}=Context | [<<"credits">>]=Params]}, State) ->
     spawn(fun() ->
-                  %% TODO: credit has been aquired (you can get the amount from req_data.amount
+		  wapi_money:publish_credit([{<<"Account-ID">>, AcctID}
+					     ,{<<"Amount">>, wh_json:get_value(<<"amount">>, ReqData)}
+					     | wh_api:default_headers(?MODULE, ?APP_VERSION)
+					    ]),
                   Pid ! {binding_result, true, [RD, Context, Params]}
           end),
     {noreply, State};
