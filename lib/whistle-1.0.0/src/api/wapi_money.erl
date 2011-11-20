@@ -26,14 +26,14 @@
 
 -include("../wh_api.hrl").
 
--define(CREDIT_HEADERS, [<<"Account-ID">>, <<"Amount">>]).
+-define(CREDIT_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Transaction-ID">>]).
 -define(OPTIONAL_CREDIT_HEADERS, []).
 -define(CREDIT_VALUES, [{<<"Event-Category">>, <<"transaction">>}
 			   ,{<<"Event-Name">>, <<"credit">>}
 			  ]).
 -define(CREDIT_TYPES, []).
 
--define(DEBIT_HEADERS, [<<"Account-ID">>, <<"Amount">>]).
+-define(DEBIT_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Transaction-ID">>]).
 -define(OPTIONAL_DEBIT_HEADERS, []).
 -define(DEBIT_VALUES, [{<<"Event-Category">>, <<"transaction">>}
 			   ,{<<"Event-Name">>, <<"debit">>}
@@ -47,8 +47,11 @@
 			  ]).
 -define(BALANCE_REQ_TYPES, []).
 
--define(BALANCE_RESP_HEADERS, [<<"Account-ID">>, <<"Amount">>]).
--define(OPTIONAL_BALANCE_RESP_HEADERS, []).
+-define(BALANCE_RESP_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_BALANCE_RESP_HEADERS, [<<"Two-Way">>, <<"Inbound">>, <<"Prepay">>
+				       ,<<"Max-Two-Way">>, <<"Max-Inbound">>
+				       ,<<"Trunks">>, <<"Node">>
+				       ]).
 -define(BALANCE_RESP_VALUES, [{<<"Event-Category">>, <<"transaction">>}
 			     ,{<<"Event-Name">>, <<"balance_resp">>}
 			  ]).
@@ -157,21 +160,21 @@ publish_credit(Req) ->
 publish_credit(Req, ContentType) ->
     RoutingKey = list_to_binary([<<"transaction.credit.">>, wh_json:get_value(<<"Account-ID">>, Req)]),
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?CREDIT_VALUES, fun ?MODULE:credit/1),
-    amqp_util:conference_publish(RoutingKey, Payload, ContentType).
+    amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
 publish_debit(Req) ->
     publish_debit(Req, ?DEFAULT_CONTENT_TYPE).
 publish_debit(Req, ContentType) ->
     RoutingKey = list_to_binary([<<"transaction.debit.">>, wh_json:get_value(<<"Account-ID">>, Req)]),
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?DEBIT_VALUES, fun ?MODULE:debit/1),
-    amqp_util:conference_publish(RoutingKey, Payload, ContentType).
+    amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
 publish_balance_req(Req) ->
     publish_balance_req(Req, ?DEFAULT_CONTENT_TYPE).
 publish_balance_req(Req, ContentType) ->
     RoutingKey = list_to_binary([<<"transaction.balance.">>, wh_json:get_value(<<"Account-ID">>, Req)]),
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?BALANCE_REQ_VALUES, fun ?MODULE:balance_req/1),
-    amqp_util:conference_publish(RoutingKey, Payload, ContentType).
+    amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
 publish_balance_resp(Queue, Req) ->
     publish_balance_resp(Queue, Req, ?DEFAULT_CONTENT_TYPE).

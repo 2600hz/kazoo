@@ -13,7 +13,7 @@
 -export([get_integer_value/2, get_integer_value/3]).
 -export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
--export([get_list_value/2, get_list_value/3]).
+-export([get_string_value/2, get_string_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
 -export([filter/2, filter/3]).
@@ -119,10 +119,10 @@ to_proplist(MaybeJObj) ->
 to_proplist(Key, JObj) ->
     to_proplist(get_value(Key, JObj, ?EMPTY_JSON_OBJECT)).
 
--spec get_list_value/2 :: (Key, JObj) -> 'undefined' | list() when
+-spec get_string_value/2 :: (Key, JObj) -> 'undefined' | list() when
       Key :: term(),
       JObj :: json_object() | json_objects().
-get_list_value(Key, JObj) ->
+get_string_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
         Value -> wh_util:to_list(Value)
@@ -144,11 +144,11 @@ filter(Pred, JObj, Keys) ->
 filter(Pred, {struct, Props}) when is_function(Pred, 1) ->
     {struct, [ E || E <- Props, Pred(E) ]}.
 
--spec get_list_value/3 :: (Key, JObj, Default) -> list() when
+-spec get_string_value/3 :: (Key, JObj, Default) -> list() when
       Key :: term(),
       JObj :: json_object() | json_objects(),
       Default :: list().
-get_list_value(Key, JObj, Default) when is_list(Default) ->
+get_string_value(Key, JObj, Default) when is_list(Default) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> Default;
         Value -> wh_util:to_list(Value)
