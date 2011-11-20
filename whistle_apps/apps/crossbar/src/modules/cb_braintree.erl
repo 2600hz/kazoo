@@ -686,7 +686,7 @@ ts_fold_did_fun(false) ->
 ts_get_subscription(_, undefined, Context) ->
     crossbar_util:response(error, <<"billing account id unspecified">>, 400, Context);
 ts_get_subscription(JObj, BillingAccount, Context) ->
-    SubscriptionId = wh_json:get_list_value([<<"pvt_braintree">>, <<"trunkstore_subscription_id">>], JObj),
+    SubscriptionId = wh_json:get_string_value([<<"pvt_braintree">>, <<"trunkstore_subscription_id">>], JObj),
     case SubscriptionId =/= undefined andalso braintree_subscription:find(SubscriptionId) of
         false ->
             ?LOG("no trunkstore subscription id found"),

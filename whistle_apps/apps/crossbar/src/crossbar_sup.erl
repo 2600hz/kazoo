@@ -76,14 +76,14 @@ upgrade() ->
       Args :: [].
 init([]) ->
     {ok, Dispatch} = file:consult(?DISPATCH_FILE),
-    IP = whapps_config:get_list(<<"crossbar">>, <<"ip">>, <<"0.0.0.0">>),
-    Port = whapps_config:get_list(<<"crossbar">>, <<"port">>, <<"8000">>),
-    Name = whapps_config:get_list(<<"crossbar">>, <<"service_name">>, <<"crossbar">>),
+    IP = whapps_config:get_string(<<"crossbar">>, <<"ip">>, <<"0.0.0.0">>),
+    Port = whapps_config:get_string(<<"crossbar">>, <<"port">>, <<"8000">>),
+    Name = whapps_config:get_string(<<"crossbar">>, <<"service_name">>, <<"crossbar">>),
     WebConfig = [{ip, IP}
                  ,{port, Port}
                  ,{name, Name}
                  ,{dispatch, Dispatch}
-                 ,{log_dir, whapps_config:get_list(<<"crossbar">>, <<"log_dir">>, ?DEFAULT_LOG_DIR)}
+                 ,{log_dir, whapps_config:get_string(<<"crossbar">>, <<"log_dir">>, ?DEFAULT_LOG_DIR)}
                  ,{ssl, whapps_config:get_is_true(<<"crossbar">>, <<"ssl">>, false)}
                  ,{ssl_opts, wh_json:to_proplist(whapps_config:get(<<"crossbar">>, <<"ssl_opts">>, wh_json:new()))}],
     ?LOG("starting webmachine ~s:~s as ~s", [IP, Port, Name]),

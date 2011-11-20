@@ -133,7 +133,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Co
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc1}=Context1 ->
                           DeviceId = wh_json:get_value(<<"_id">>, Doc1),
-                          provision(Doc1, whapps_config:get_list(<<"crossbar.devices">>, <<"provisioning_url">>)),
+                          provision(Doc1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>)),
                           case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
                               {ok, Rev} ->
                                   couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1)),
@@ -154,7 +154,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Con
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc1}=Context1 ->
-                          provision(Doc1, whapps_config:get_list(<<"crossbar.devices">>, <<"provisioning_url">>)),
+                          provision(Doc1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>)),
                           couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
@@ -280,7 +280,7 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/3 :: ([ne_binary(),...] | [], #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
 validate([], _, #cb_context{req_verb = <<"get">>, req_json=RJ}=Context) ->
     load_device_summary(Context, RJ);
 validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
@@ -360,20 +360,17 @@ update_device(DocId, #cb_context{req_data=JObj}=Context) ->
 %% Reads registered devices in registrations, then map to devices of the account
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_status/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec load_device_status/1 :: (#cb_context{}) -> #cb_context{}.
 load_device_status(#cb_context{db_name=Db}=Context) ->
-    %% RegDevices = [[realm1, user1], [realmN, userN], ...], those are owners of currently  registered devices.
-    %% RegDevices is reinjected as keys for devices/sip_credentials
     {ok, JObjs} = couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]),
     AccountDevices = lists:foldl(fun(JObj, Acc) -> [{wh_json:get_value([<<"doc">>, <<"sip">>, <<"realm">>], JObj),
 						     wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], JObj)} | Acc] end, [], JObjs),
     RegDevices = lookup_regs(AccountDevices),
     Result = case RegDevices of
-		 [] -> {struct, []};
+		 [] -> wh_json:new();
 		 [_|_] -> {ok, Devices} = couch_mgr:get_results(Db, <<"devices/sip_credentials">>, [{<<"keys">>, RegDevices}]),
 			  lists:foldl(fun(JObj, Acc) ->
-					      RegDevice = wh_json:set_value(<<"device_id">>, wh_json:get_value(<<"id">>, JObj), ?EMPTY_JSON_OBJECT),
+					      RegDevice = wh_json:set_value(<<"device_id">>, wh_json:get_value(<<"id">>, JObj), wh_json:new()),
 					      [wh_json:set_value(<<"registered">>, true, RegDevice)| Acc]
 				      end, [], Devices)
 	     end,
@@ -385,7 +382,7 @@ load_device_status(#cb_context{db_name=Db}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -395,8 +392,7 @@ normalize_view_results(JObj, Acc) ->
 %% Validates JObj against their schema
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (JObj :: json_object()) -> tuple(error, json_objects());
-			(JObj :: json_object()) -> tuple(ok, []).
+-spec is_valid_doc/1 :: (json_object()) -> {'error', json_objects()} | {'ok', []}.
 is_valid_doc(JObj) ->
      crossbar_schema:do_validate(JObj, device).
 
@@ -496,17 +492,17 @@ provision(JObj, Url) ->
       Url :: binary().
 do_provision(JObj, Url) ->
     Headers = [{K, V}
-               || {K, V} <- [{"Host", whapps_config:get_list(<<"crossbar.devices">>, <<"provisioning_host">>)}
-                             ,{"Referer", whapps_config:get_list(<<"crossbar.devices">>, <<"provisioning_referer">>)}
+               || {K, V} <- [{"Host", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_host">>)}
+                             ,{"Referer", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_referer">>)}
                              ,{"User-Agent", wh_util:to_list(erlang:node())}
                              ,{"Content-Type", "application/x-www-form-urlencoded"}]
                       ,V =/= undefined],
     HTTPOptions = [],
-    Body = [{"api[realm]", wh_json:get_list_value([<<"sip">>, <<"realm">>], JObj)}
-            ,{"mac", re:replace(wh_json:get_list_value(<<"mac_address">>, JObj, ""), "[^0-9a-fA-F]", "", [{return, list}, global])}
-            ,{"label", wh_json:get_list_value(<<"name">>, JObj)}
-            ,{"sip[username]", wh_json:get_list_value([<<"sip">>, <<"username">>], JObj)}
-            ,{"sip[password]", wh_json:get_list_value([<<"sip">>, <<"password">>], JObj)}
+    Body = [{"api[realm]", wh_json:get_string_value([<<"sip">>, <<"realm">>], JObj)}
+            ,{"mac", re:replace(wh_json:get_string_value(<<"mac_address">>, JObj, ""), "[^0-9a-fA-F]", "", [{return, list}, global])}
+            ,{"label", wh_json:get_string_value(<<"name">>, JObj)}
+            ,{"sip[username]", wh_json:get_string_value([<<"sip">>, <<"username">>], JObj)}
+            ,{"sip[password]", wh_json:get_string_value([<<"sip">>, <<"password">>], JObj)}
             ,{"submit", "true"}],
     Encoded = mochiweb_util:urlencode(Body),
     ?LOG("posting to ~s with ~s", [Url, Encoded]),

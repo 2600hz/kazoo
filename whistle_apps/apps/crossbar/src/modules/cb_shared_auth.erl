@@ -173,7 +173,7 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 handle_info(timeout, CurState) ->
     bind_to_crossbar(),
     couch_mgr:db_create(?TOKEN_DB),
-    Url = whapps_config:get_list(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
+    Url = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
     {noreply, CurState#state{xbar_url=Url}};
 
 handle_info(_, State) ->
