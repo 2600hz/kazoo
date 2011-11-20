@@ -68,8 +68,7 @@ remote_summary() ->
 	    Q = start_amqp(),
 	    _ = [begin
 		     AcctId = wapi_jonny5:get_acct_id(Acct),
-		     wapi_jonny5:bind_q(Q, [{account_id, AcctId}]),
-		     send_status_req(AcctId, Q)
+		     publish_req(Q, AcctId)
 		 end
 		 || Acct <- Accts],
 
@@ -82,16 +81,21 @@ remote_summary(AcctId) ->
 
 remote_summary(AcctId, details) ->
     Q = start_amqp(),
-    wapi_jonny5:bind_q(Q, [{account_id, AcctId}]),
-    send_status_req(AcctId, Q),
+    publish_req(Q, AcctId),
     ?REMOTE_SUMMARY_HEADER,
     do_remote_summary(fun print_details/1, ?REMOTE_TIMEOUT);
 remote_summary(AcctId, _) ->
     Q = start_amqp(),
-    wapi_jonny5:bind_q(Q, [{account_id, AcctId}]),
-    send_status_req(AcctId, Q),
+    publish_req(Q, AcctId),
     ?REMOTE_SUMMARY_HEADER,
     do_remote_summary(fun(JObj, C) -> print_summary(JObj, ?REMOTE_SUMMARY_ROW_FORMAT, C) end, ?REMOTE_TIMEOUT).
+
+publish_req(Q, AcctId) ->
+    wapi_money:publish_balance_req([{<<"Account-ID">>, AcctId}
+				    ,{<<"Server-ID">>, Q}
+				    ,{<<"App-Name">>, ?MODULE}
+				    ,{<<"App-Version">>, ?APP_VERSION}
+				   ]).
 
 do_remote_summary(PrintFun, Timeout) ->
     do_remote_summary(PrintFun, Timeout, 0).
@@ -100,15 +104,12 @@ do_remote_summary(PrintFun, Timeout, Count) ->
     receive
 	#'basic.consume_ok'{} -> do_remote_summary(PrintFun, Timeout, Count);
 	{#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type = ?DEFAULT_CONTENT_TYPE}, payload=Payload}} ->
-	    JObj = wh_json:normalize_jobj(wh_json:decode(Payload)),
+	    JObj0 = wh_json:decode(Payload),
+	    true = wapi_money:balance_resp_v(JObj0),
+	    JObj = wh_json:normalize_jobj(JObj0),
 
-	    case wh_json:get_value(<<"event_name">>, JObj) of
-		<<"status_resp">> ->
-		    _ = PrintFun(JObj, Count),
-		    do_remote_summary(PrintFun, Timeout, Count+1);
-		_ ->
-		    do_remote_summary(PrintFun, Timeout, Count)
-	    end;
+	    _ = PrintFun(JObj, Count),
+	    do_remote_summary(PrintFun, Timeout, Count+1);
 	_Msg ->
 	    io:format("Unhandled Msg: ~p~n", [_Msg]),
 	    do_remote_summary(PrintFun, Timeout, Count)

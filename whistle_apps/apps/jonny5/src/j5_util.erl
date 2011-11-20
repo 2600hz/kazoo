@@ -119,6 +119,7 @@ write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration) ->
 write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration, JObj) ->
     write_transaction_to_ledger(DB, CallID, CallType, CreditUnits, Duration, JObj, credit).
 
+-spec write_transaction_to_ledger/7 :: (ne_binary(), ne_binary(), atom(), integer(), integer(), json_object(), debit | credit) -> {'ok', json_object()} | {'error', atom()}.
 write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
 

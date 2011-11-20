@@ -13,9 +13,8 @@
 %% API
 -export([start_link/1, authz_trunk/3, known_calls/1, status/1, refresh/1]).
 
--export([credit/2, debit/2]).
-
--export([handle_call_event/2, handle_j5_msg/2, handle_conf_change/2, handle_authz_win/2]).
+-export([handle_call_event/2, handle_conf_change/2
+	 ,handle_authz_win/2, handle_money_msg/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -56,15 +55,19 @@
 start_link(AcctID) ->
     %% why are we receiving messages for account IDs we don't bind to?
     gen_listener:start_link(?MODULE, [{bindings, [{self, []}
-						  ,{jonny5, [{account_id, AcctID}]}
+						  ,{money, [{account_id, AcctID}]}
 						  ,{conf, [{doc_id, AcctID}, {doc_type, <<"sip_service">>}]}
 						 ]}
 				      ,{responders, [{ {?MODULE, handle_call_event}, [{<<"call_event">>, <<"*">>} % call events
 										      ,{<<"call_detail">>, <<"*">>} % and CDR
 										     ]
 						     }
+						     ,{ {?MODULE, handle_money_msg}, [{<<"transaction">>, <<"credit">>}
+										      ,{<<"transaction">>, <<"debit">>}
+										      ,{<<"transaction">>, <<"balance_req">>}
+										     ]
+						      }
 						     ,{ {?MODULE, handle_conf_change}, [{<<"configuration">>, <<"*">>}]}
-						     ,{ {?MODULE, handle_j5_msg}, [{<<"jonny5">>, <<"*">>}]} % internal J5 sync/status
 						     ,{ {?MODULE, handle_authz_win}, [{<<"dialplan">>, <<"authz_win">>}] } % won the authz
 						    ]}
 				     ], [AcctID]).
@@ -76,14 +79,6 @@ status(Srv) ->
 -spec refresh/1 :: (pid()) -> 'ok'.
 refresh(Srv) ->
     gen_listener:cast(Srv, refresh).
-
--spec credit/2 :: (pid(), integer()) -> 'ok'.
-credit(Srv, Credit) ->
-    gen_listener:cast(Srv, {credit, Credit}).
-
--spec debit/2 :: (pid(), integer()) -> 'ok'.
-debit(Srv, Debit) ->
-    gen_listener:cast(Srv, {debit, Debit}).
 
 -spec authz_trunk/3 :: (pid() | ne_binary(), json_object(), 'inbound' | 'outbound') -> {boolean(), proplist()}.
 authz_trunk(Pid, JObj, CallDir) when is_pid(Pid) ->
@@ -128,10 +123,6 @@ handle_call_event(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {call_event, JObj}).
 
-handle_j5_msg(JObj, Props) ->
-    Srv = props:get_value(server, Props),
-    gen_listener:cast(Srv, {j5_msg, wh_json:get_value(<<"Event-Name">>, JObj), JObj}).
-
 handle_conf_change(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {conf_change, wh_json:get_value(<<"Event-Name">>, JObj), JObj}).
@@ -139,6 +130,10 @@ handle_conf_change(JObj, Props) ->
 handle_authz_win(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {authz_win, JObj}).
+
+handle_money_msg(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    gen_listener:cast(Srv, {money, wh_json:get_value(<<"Event-Name">>, JObj), JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -238,9 +233,7 @@ handle_call(status, _, #state{max_two_way=MaxTwo, max_inbound=MaxIn
 			       ,{<<"inbound">>, In}
 			       ,{<<"prepay">>, ?UNITS_TO_DOLLARS(Prepay)}
 			       ,{<<"account_id">>, Acct}
-			       ,{<<"trunks">>, [ wh_json:from_list([{<<"callid">>, CallID}, {<<"type">>, Type}])
-						 || {CallID, {Type, _}} <- dict:to_list(Dict)
-					       ]}
+			       ,{<<"trunks">>, trunks_to_json(Dict)}
 			      ]), State};
 handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->
     {reply, dict:to_list(Dict), State};
@@ -294,11 +287,24 @@ handle_call({authz, JObj, outbound}, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({credit, Credit}, #state{prepay=Prepay}=State) ->
-    %% maybe publish an event so all J5s of this account can update
-    {noreply, State#state{prepay=Prepay+Credit}};
-handle_cast({debit, Debit}, #state{prepay=Prepay}=State) ->
-    {noreply, State#state{prepay=Prepay+Debit}};
+handle_cast({money, <<"balance_req">>, JObj}, #state{max_two_way=MaxTwoWay, max_inbound=MaxInbound
+						     ,two_way=TwoWay, inbound=Inbound, prepay=Prepay
+						     ,acct_id=AcctId, trunks_in_use=Dict
+						    }=State) ->
+    SrvId = wh_json:get_value(<<"Server-ID">>, JObj),
+    ?LOG("Sending balance resp to ~s", [SrvId]),
+    wapi_money:publish_balance_resp(SrvId, [
+					    {<<"Max-Two-Way">>, MaxTwoWay}
+					    ,{<<"Two-Way">>, TwoWay}
+					    ,{<<"Max-Inbound">>, MaxInbound}
+					    ,{<<"Inbound">>, Inbound}
+					    ,{<<"Prepay">>, ?UNITS_TO_DOLLARS(Prepay)}
+					    ,{<<"Account-ID">>, AcctId}
+					    ,{<<"Trunks">>, trunks_to_json(Dict)}
+					    ,{<<"Node">>, wh_util:to_binary(node())}
+					    | wh_api:default_headers(?MODULE, ?APP_VERSION)
+					   ]),
+    {noreply, State};
 
 handle_cast({authz_win, JObj}, #state{trunks_in_use=Dict}=State) ->
     spawn(fun() ->
@@ -372,53 +378,6 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID, acct_t
 			  ,prepay=try_update_value(Prepay, P)
 			 }, hibernate};
 
-handle_cast({j5_msg, <<"sync_req">>, JObj}, State) ->
-    spawn(fun() -> send_levels_resp(JObj, State, fun wapi_jonny5:publish_sync_resp/2) end),
-    {noreply, State};
-
-handle_cast({j5_msg, <<"status_req">>, JObj}, State) ->
-    spawn(fun() -> send_levels_resp(JObj, State, fun wapi_jonny5:publish_status_resp/2) end),
-    {noreply, State};
-
-handle_cast({j5_msg, <<"sync_resp">>, JObj}, #state{acct_id=AcctID, max_inbound=MaxIn, max_two_way=MaxTwo
-						    ,start_time=StartTime, prepay=Prepay
-						   }=State) ->
-    try
-	true = wapi_jonny5:sync_resp_v(JObj),
-	AcctID = wh_json:get_value(<<"Account-ID">>, JObj),
-
-	case j5_util:uptime(StartTime) < wh_json:get_integer_value(<<"Uptime">>, JObj) of
-	    true ->
-		NewMaxTwo = wh_json:get_integer_value(<<"Max-Two-Way">>, JObj, MaxTwo),
-		NewMaxIn = wh_json:get_integer_value(<<"Max-Inbound">>, JObj, MaxIn),
-		NewPrepay = ?DOLLARS_TO_UNITS(wh_json:get_float_value(<<"Prepay">>, JObj, ?UNITS_TO_DOLLARS(Prepay))),
-
-		?LOG("Uptime is greater than ours, updating max values"),
-		?LOG("MaxTwoWay: from ~b to ~b", [MaxTwo, NewMaxTwo]),
-		?LOG("MaxIn: from ~b to ~b", [MaxIn, NewMaxIn]),
-		?LOG("Prepay: from ~p to ~p", [Prepay, NewPrepay]),
-
-		{noreply, State#state{
-			    max_two_way=NewMaxTwo
-			    ,max_inbound=NewMaxIn
-			    ,prepay=NewPrepay
-			   }};
-	    false ->
-		{noreply, State}
-	end
-    catch
-	error:{badmatch, BadMatch} ->
-	    ?LOG("Badmatch error with ~s", [BadMatch]),
-	    {noreply, State};
-	_T:_R ->
-	    ?LOG("Failed to process sync_resp: ~p ~p", [_T, _R]),
-	    {noreply, State}
-    end;
-
-handle_cast({j5_msg, _Evt, _JObj}, State) ->
-    ?LOG("Unhandled j5 message ~s", [_Evt]),
-    {noreply, State};
-
 handle_cast({call_event, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Dict
 						    ,max_inbound=MaxIn, max_two_way=MaxTwo
 						   }=State) ->
@@ -450,18 +409,15 @@ handle_cast({call_event, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Di
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({timeout, SyncRef, sync}, #state{start_time=StartTime, sync_ref=SyncRef, acct_id=AcctID}=State) ->
-    Self = self(),
-    spawn(fun() ->
-		  SyncProp = [{<<"Uptime">>, j5_util:uptime(StartTime)}
-			      ,{<<"Account-ID">>, AcctID}
-			      ,{<<"Server-ID">>, gen_listener:queue_name(Self)}
-			      ,{<<"App-Name">>, ?APP_NAME}
-			      ,{<<"App-Version">>, ?APP_VERSION}
-			     ],
-		  wapi_jonny5:publish_sync_req(SyncProp)
-	  end),
-    {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)}};
+handle_info({timeout, SyncRef, sync}, #state{sync_ref=SyncRef, acct_id=AcctID, acct_type=AcctType, max_two_way=Two, max_inbound=In, prepay=Pre}=State) ->
+    ?LOG_SYS("Syncing with DB"),
+    {NewTwo, NewIn, NewPre, _} = get_trunks_available(AcctID, AcctType),
+	
+    {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)
+			  ,max_two_way=try_update_value(NewTwo, Two)
+			  ,max_inbound=try_update_value(NewIn, In)
+			  ,prepay=try_update_value(Pre, NewPre)
+			 }};
 
 handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
@@ -614,8 +570,8 @@ monitor_call(CallID, LedgerDB, CallType) ->
     monitor_call(CallID, LedgerDB, CallType, 0).
 monitor_call(CallID, LedgerDB, CallType, Debit) ->
     gen_listener:add_binding(self(), call, [{callid, CallID}]),
-    j5_util:write_debit_to_ledger(LedgerDB, CallID, CallType, Debit, 0),
-    j5_call_monitor_sup:start_monitor(CallID, LedgerDB, CallType, self()).
+    _ = j5_util:write_debit_to_ledger(LedgerDB, CallID, CallType, Debit, 0),
+    j5_call_monitor_sup:start_monitor(CallID, LedgerDB, CallType).
 
 -spec unmonitor_call/1 :: (ne_binary()) -> 'ok'.
 unmonitor_call(CallID) ->
@@ -624,9 +580,8 @@ unmonitor_call(CallID) ->
 -spec process_call_event/3 :: (ne_binary(), json_object(), dict()) -> 'ignore' | {'release', 'twoway' | 'inbound', dict()}.
 process_call_event(CallID, JObj, Dict) ->
     case { wh_json:get_value(<<"Application-Name">>, JObj)
-	   ,wh_json:get_value(<<"Event-Name">>, JObj)
-	   ,wh_json:get_value(<<"Event-Category">>, JObj) } of
-	{ <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
+	   ,wh_json:get_value(<<"Event-Name">>, JObj) } of
+	{ <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">> } ->
 	    ?LOG(CallID, "Bridge event received", []),
 	    case wh_json:get_value(<<"Application-Response">>, JObj) of
 		<<"SUCCESS">> ->
@@ -637,19 +592,11 @@ process_call_event(CallID, JObj, Dict) ->
 		    release_trunk(CallID, Dict)
 	    end;
 
-	{ _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
-	    ?LOG(CallID, "Channel hungup", []),
-	    release_trunk(CallID, Dict);
-
-	{ _, _, <<"error">> } ->
-	    ?LOG(CallID, "Execution failed", []),
-	    release_trunk(CallID, Dict);
-
-	{_, <<"CHANNEL_HANGUP_COMPLETE">>, <<"call_event">>} ->
+	{_, <<"CHANNEL_HANGUP_COMPLETE">>} ->
 	    ?LOG(CallID, "Channel hungup complete", []),
 	    release_trunk(CallID, Dict);
 
-	{ _, <<"cdr">>, <<"call_detail">> } ->
+	{ _, <<"cdr">> } ->
 	    ?LOG(CallID, "CDR received", []),
 	    release_trunk(CallID, Dict);
 
@@ -674,31 +621,17 @@ is_us48(<<"+1", Rest/binary>>) when erlang:byte_size(Rest) =:= 10 -> true;
 is_us48(Bin) when erlang:byte_size(Bin) < 7 -> true;
 is_us48(_) -> false.
 
--spec send_levels_resp/3 :: (json_object(), #state{}, fun((ne_binary(), proplist() | json_object()) -> 'ok')) -> no_return().
-send_levels_resp(JObj, #state{two_way=Two, inbound=In, trunks_in_use=Dict, acct_id=AcctID
-			      ,max_inbound=MaxIn, max_two_way=MaxTwo, start_time=StartTime
-			      ,prepay=Prepay
-			     }, PublishFun) ->
-    SyncResp = [{<<"Uptime">>, j5_util:uptime(StartTime)}
-		,{<<"Account-ID">>, AcctID}
-		,{<<"Prepay">>, ?UNITS_TO_DOLLARS(Prepay)}
-		,{<<"Two-Way">>, Two}
-		,{<<"Inbound">>, In}
-		,{<<"Max-Two-Way">>, MaxTwo}
-		,{<<"Max-Inbound">>, MaxIn}
-		,{<<"Server-ID">>, <<>>}
-		,{<<"Trunks">>, [wh_json:from_list([{<<"Call-ID">>, CallID}, {<<"Type">>, Type}]) || {CallID, {Type, _}} <- dict:to_list(Dict)]}
-		,{<<"App-Version">>, ?APP_VERSION}
-		,{<<"App-Name">>, ?APP_NAME}
-		,{<<"Node">>, wh_util:to_binary(node())}
-	       ],
-    PublishFun(wh_json:get_value(<<"Server-ID">>, JObj), SyncResp).
-
 -spec sync_fudge/0 :: () -> 1..?SYNC_TIMER.
 sync_fudge() ->
     crypto:rand_uniform(1, ?SYNC_TIMER).
 
+-spec try_update_value/2 :: ('undefined' | New, integer()) -> New | integer().
 try_update_value(undefined, Default) ->
     Default;
 try_update_value(New, _) ->
     New.
+
+trunks_to_json(Dict) ->
+    [ wh_json:from_list([{<<"callid">>, CallID}, {<<"type">>, Type}])
+      || {CallID, {Type, _}} <- dict:to_list(Dict)
+    ].

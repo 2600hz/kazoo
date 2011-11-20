@@ -12,7 +12,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/4, handle_call_event/2, authz_won/1]).
+-export([start_link/3, handle_call_event/2, authz_won/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -26,7 +26,6 @@
 	  callid = <<>> :: binary()
 	 ,ledger_db = <<>> :: binary()
 	 ,call_type = 'per_min' :: call_types()
-         ,j5_acct_pid = 'undefined' :: 'undefined' | pid()
          ,authz_won = 'false' :: boolean()
 	 }).
 
@@ -41,12 +40,12 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(CallID, LedgerDB, CallType, J5AcctPid) ->
+start_link(CallID, LedgerDB, CallType) ->
     gen_listener:start_link(?MODULE
 			  ,[{bindings, [{call, [{callid, CallID}]}]}
 			    ,{responders, [{{?MODULE, handle_call_event}, [{<<"*">>, <<"*">>}]}] }
 			   ]
-			  ,[CallID, LedgerDB, CallType, J5AcctPid]).
+			  ,[CallID, LedgerDB, CallType]).
 
 authz_won(Srv) ->
     gen_listener:cast(Srv, authz_won).
@@ -70,9 +69,9 @@ handle_call_event(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([CallID, LedgerDB, CallType, J5AcctPid]) ->
+init([CallID, LedgerDB, CallType]) ->
     put(callid, CallID),
-    {ok, #state{callid=CallID, ledger_db=LedgerDB, call_type=CallType, j5_acct_pid=J5AcctPid}}.
+    {ok, #state{callid=CallID, ledger_db=LedgerDB, call_type=CallType}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -109,7 +108,7 @@ handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_HANGUP_COMPLETE">>}, _JOb
     ?LOG("Hangup complete, expecting a CDR any moment"),
     {noreply, State, 5000};
 
-handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=CallID, ledger_db=DB, call_type=per_min, j5_acct_pid=Srv, authz_won=true}=State) ->
+handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=CallID, ledger_db=DB, call_type=per_min, authz_won=true}=State) ->
     case wapi_call:cdr_v(JObj) of
 	false -> {noreply, State, 5000};
 	true ->
@@ -120,13 +119,13 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=Ca
 		Cost when Cost < ?PER_MIN_MIN ->
 		    Credit = ?PER_MIN_MIN - Cost,
 		    ?LOG("Crediting back ~p", [Credit]),
-		    j5_acctmgr:credit(Srv, Credit),
-		    j5_util:write_credit_to_ledger(DB, CallID, per_min, Credit, BillingSecs, JObj);
+		    {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, per_min, Credit, BillingSecs, JObj),
+		    publish_transaction(Transaction, fun wapi_money:publish_credit/1);
 		Cost ->
 		    Debit = Cost - ?PER_MIN_MIN,
 		    ?LOG("Debiting an additional ~p", [Debit]),
-		    j5_acctmgr:debit(Srv, Debit),
-		    j5_util:write_debit_to_ledger(DB, CallID, per_min, Debit, BillingSecs, JObj)
+		    {ok, Transaction} = j5_util:write_debit_to_ledger(DB, CallID, per_min, Debit, BillingSecs, JObj),
+		    publish_transaction(Transaction, fun wapi_money:publish_debit/1)
 	    end,
 
 	    {stop, normal, State}
@@ -136,7 +135,8 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=Ca
     CallID = wh_json:get_value(<<"Call-ID">>, JObj), % assert
 
     BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
-    j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
+    {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
+    publish_transaction(Transaction, fun wapi_money:publish_credit/1),
 
     {stop, normal, State};
 
@@ -164,7 +164,9 @@ handle_info({check_ledger, JObj}, #state{callid=CallID, ledger_db=DB, call_type=
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 
     BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
-    j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
+    {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
+    publish_transaction(Transaction, fun wapi_money:publish_credit/1),
+
     {stop, normal, State};
 
 handle_info(_Info, State) ->
@@ -216,3 +218,11 @@ extract_cost(JObj) ->
     Cost = whapps_util:calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
     ?LOG("Rating call: ~p at incr: ~p with min: ~p and surcharge: ~p for ~p secs: $~p", [Rate, RateIncr, RateMin, Surcharge, BillingSecs, Cost]),
     ?DOLLARS_TO_UNITS(Cost).
+
+publish_transaction(Transaction, PublisherFun) ->
+    ?LOG("Publishing transaction to wapi_money"),
+    PublisherFun(wh_json:from_list([{<<"Transaction-ID">>, wh_json:get_value(<<"_id">>, Transaction)}
+				    ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Transaction)}
+				    ,{<<"Amount">>, wh_json:get_value(<<"amount">>, Transaction)}
+				    | wh_util:default_headers(?APP_NAME, ?APP_VERSION)
+				   ])).
