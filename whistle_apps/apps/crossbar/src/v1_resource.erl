@@ -587,7 +587,7 @@ is_authentic(RD, Context)->
 %% authorized for this request
 %% @end
 %%--------------------------------------------------------------------
--spec(is_permitted/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(true, #wm_reqdata{}, #cb_context{})).
+-spec is_permitted/2 :: (#wm_reqdata{}, #cb_context{}) -> 'false' | {'true', #wm_reqdata{}, #cb_context{}}.
 is_permitted(RD, Context)->
     case wrq:method(RD) of
         %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight

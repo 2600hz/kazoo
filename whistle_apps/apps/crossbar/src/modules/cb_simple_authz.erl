@@ -179,6 +179,7 @@ account_is_descendant(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
     case props:get_value(<<"accounts">>, Nouns) of
         %% if the URL did not have the accounts noun then this module denies access
         undefined ->
+	    ?LOG("No accounts in Nouns: ~p", [Nouns]),
             false;
         Params ->
             %% the request that this module process the first element of after 'accounts'

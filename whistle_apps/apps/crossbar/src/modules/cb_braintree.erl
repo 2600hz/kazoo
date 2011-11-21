@@ -169,9 +169,20 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, #cb_context{account_id=AcctID, req_data=ReqData}=Context | [<<"credits">>]=Params]}, State) ->
     spawn(fun() ->
+		  Units = wapi_money:dollars_to_units(wh_json:get_value(<<"amount">>, ReqData)),
+		  Transaction = wh_json:from_list([
+						   {<<"amount">>, Units}
+						   ,{<<"pvt_type">>, <<"credit">>}
+						   ]),
+		  #cb_context{resp_status=success, doc=Saved} = crossbar_doc:save(Context#cb_context{doc=Transaction}),
+		  Id = wh_json:get_value(<<"_id">>, Saved),
+
+		  ?LOG("publishing credit API for transaction ~s for ~p units", [Id, Units]),
+
 		  wapi_money:publish_credit([{<<"Account-ID">>, AcctID}
-					     ,{<<"Amount">>, wh_json:get_value(<<"amount">>, ReqData)}
-					     | wh_api:default_headers(?MODULE, ?APP_VERSION)
+					     ,{<<"Amount">>, Units}
+					     ,{<<"Transaction-ID">>, Id}
+					     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
 					    ]),
                   Pid ! {binding_result, true, [RD, Context, Params]}
           end),
@@ -545,7 +556,10 @@ validate([<<"transactions">>, TransactionId], #cb_context{req_verb = <<"get">>}=
 %% CREDIT SPECIFIC API
 validate([<<"credits">>], #cb_context{req_verb = <<"get">>, account_id=AccountId, doc=JObj}=Context) ->
     %% TODO: request current balance from jonny5 and put it here
-    crossbar_util:response(wh_json:from_list([{<<"amount">>, <<"10.00">>}
+    #cb_context{doc=[Res|_]} = crossbar_doc:load_view(<<"transactions/credit_remaining">>, [{<<"reduce">>, true}], Context),
+    Amount = wh_json:get_integer_value(<<"value">>, Res, 0) / 1000,
+    ?LOG("Amount: ~p", [Amount]),
+    crossbar_util:response(wh_json:from_list([{<<"amount">>, Amount}
                                               ,{<<"billing_account_id">>, wh_json:get_value(<<"billing_account_id">>, JObj, AccountId)}
                                              ]), Context);
 validate([<<"credits">>], #cb_context{req_verb = <<"put">>, account_id=AccountId, req_data=JObj}=Context) ->
