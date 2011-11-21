@@ -24,7 +24,12 @@
 	 ,publish_balance_resp/3
 	]).
 
+-export([dollars_to_units/1, units_to_dollars/1, default_per_min_charge/0]).
+
 -include("../wh_api.hrl").
+
+%% tracked in tenths of a cent
+-define(DOLLAR_TO_UNIT, 1000).
 
 -define(CREDIT_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Transaction-ID">>]).
 -define(OPTIONAL_CREDIT_HEADERS, []).
@@ -181,3 +186,16 @@ publish_balance_resp(Queue, Req) ->
 publish_balance_resp(Queue, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?BALANCE_RESP_VALUES, fun ?MODULE:balance_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+-spec dollars_to_units/1 :: (float() | integer()) -> integer().
+dollars_to_units(Dollars) ->
+    round(Dollars * ?DOLLAR_TO_UNIT).
+
+-spec units_to_dollars/1 :: (integer()) -> float().
+units_to_dollars(Units) ->
+    Units / ?DOLLAR_TO_UNIT.
+
+%% How much to charge a per_min call at the outset
+-spec default_per_min_charge/0 :: () -> pos_integer().
+default_per_min_charge() ->
+    2 * ?DOLLAR_TO_UNIT.
