@@ -188,11 +188,11 @@ publish_balance_resp(Queue, Req, ContentType) ->
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec dollars_to_units/1 :: (float() | integer()) -> integer().
-dollars_to_units(Dollars) ->
+dollars_to_units(Dollars) when is_number(Dollars) ->
     round(Dollars * ?DOLLAR_TO_UNIT).
 
 -spec units_to_dollars/1 :: (integer()) -> float().
-units_to_dollars(Units) ->
+units_to_dollars(Units) when is_integer(Units) ->
     Units / ?DOLLAR_TO_UNIT.
 
 %% How much to charge a per_min call at the outset
