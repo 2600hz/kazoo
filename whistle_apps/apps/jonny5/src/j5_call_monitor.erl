@@ -115,14 +115,15 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=Ca
 	    CallID = wh_json:get_value(<<"Call-ID">>, JObj), % assert
 	    BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
 
+	    PerMinCharge = wapi_money:default_per_min_charge(),
 	    case extract_cost(JObj) of
-		Cost when Cost < ?PER_MIN_MIN ->
-		    Credit = ?PER_MIN_MIN - Cost,
+		Cost when Cost < PerMinCharge ->
+		    Credit = PerMinCharge - Cost,
 		    ?LOG("Crediting back ~p", [Credit]),
 		    {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, per_min, Credit, BillingSecs, JObj),
 		    publish_transaction(Transaction, fun wapi_money:publish_credit/1);
 		Cost ->
-		    Debit = Cost - ?PER_MIN_MIN,
+		    Debit = Cost - PerMinCharge,
 		    ?LOG("Debiting an additional ~p", [Debit]),
 		    {ok, Transaction} = j5_util:write_debit_to_ledger(DB, CallID, per_min, Debit, BillingSecs, JObj),
 		    publish_transaction(Transaction, fun wapi_money:publish_debit/1)
@@ -217,7 +218,7 @@ extract_cost(JObj) ->
 
     Cost = whapps_util:calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
     ?LOG("Rating call: ~p at incr: ~p with min: ~p and surcharge: ~p for ~p secs: $~p", [Rate, RateIncr, RateMin, Surcharge, BillingSecs, Cost]),
-    ?DOLLARS_TO_UNITS(Cost).
+    wapi_money:dollars_to_units(Cost).
 
 publish_transaction(Transaction, PublisherFun) ->
     ?LOG("Publishing transaction to wapi_money"),

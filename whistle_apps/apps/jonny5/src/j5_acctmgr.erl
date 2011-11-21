@@ -231,7 +231,7 @@ handle_call(status, _, #state{max_two_way=MaxTwo, max_inbound=MaxIn
 			       ,{<<"max_inbound">>, MaxIn}
 			       ,{<<"two_way">>, Two}
 			       ,{<<"inbound">>, In}
-			       ,{<<"prepay">>, ?UNITS_TO_DOLLARS(Prepay)}
+			       ,{<<"prepay">>, wapi_money:units_to_dollars(Prepay)}
 			       ,{<<"account_id">>, Acct}
 			       ,{<<"trunks">>, trunks_to_json(Dict)}
 			      ]), State};
@@ -254,7 +254,7 @@ handle_call({authz, JObj, inbound}, _From, #state{}=State) ->
 
     {Resp, State1} = case is_us48(ToDID) of
 			 true -> try_inbound_then_twoway(CallID, State);
-			 false -> try_prepay(CallID, State)
+			 false -> try_prepay(CallID, State, wapi_money:default_per_min_charge())
 		     end,
     {reply, Resp, State1, hibernate};
 
@@ -273,7 +273,7 @@ handle_call({authz, JObj, outbound}, _From, State) ->
 
     {Resp, State1} = case is_us48(ToDID) of
 			 true -> try_twoway(CallID, State);
-			 false -> try_prepay(CallID, State)
+			 false -> try_prepay(CallID, State, wapi_money:default_per_min_charge())
 		     end,
     {reply, Resp, State1, hibernate}.
 
@@ -298,13 +298,22 @@ handle_cast({money, <<"balance_req">>, JObj}, #state{max_two_way=MaxTwoWay, max_
 					    ,{<<"Two-Way">>, TwoWay}
 					    ,{<<"Max-Inbound">>, MaxInbound}
 					    ,{<<"Inbound">>, Inbound}
-					    ,{<<"Prepay">>, ?UNITS_TO_DOLLARS(Prepay)}
+					    ,{<<"Prepay">>, wapi_money:units_to_dollars(Prepay)}
 					    ,{<<"Account-ID">>, AcctId}
 					    ,{<<"Trunks">>, trunks_to_json(Dict)}
 					    ,{<<"Node">>, wh_util:to_binary(node())}
 					    | wh_api:default_headers(?MODULE, ?APP_VERSION)
 					   ]),
     {noreply, State};
+
+handle_cast({money, _Evt, _JObj}, #state{prepay=Prepay, acct_id=AcctId}=State) ->
+    ?LOG("~p update received", [_Evt]),
+
+    NewPre = j5_util:current_usage(AcctId),
+    ?LOG("Old prepay value: ~p", [Prepay]),
+    ?LOG("New prepay (from DB): ~p", [NewPre]),
+
+    {noreply, State#state{prepay=try_update_value(Prepay, NewPre)}};
 
 handle_cast({authz_win, JObj}, #state{trunks_in_use=Dict}=State) ->
     spawn(fun() ->
@@ -412,7 +421,10 @@ handle_cast({call_event, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Di
 handle_info({timeout, SyncRef, sync}, #state{sync_ref=SyncRef, acct_id=AcctID, acct_type=AcctType, max_two_way=Two, max_inbound=In, prepay=Pre}=State) ->
     ?LOG_SYS("Syncing with DB"),
     {NewTwo, NewIn, NewPre, _} = get_trunks_available(AcctID, AcctType),
-	
+
+    ?LOG("Old values: two: ~p, in: ~p, prepay: ~p", [Two, In, Pre]),
+    ?LOG("New values: two: ~p, in: ~p, prepay: ~p", [NewTwo, NewIn, NewPre]),
+
     {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)
 			  ,max_two_way=try_update_value(NewTwo, Two)
 			  ,max_inbound=try_update_value(NewIn, In)
@@ -517,7 +529,7 @@ try_inbound_then_twoway(CallID, State) ->
 		    ?LOG_END(CallID, "Inbound call authorized using a two-way trunk", []),
 		    Resp;
 		{{false, _}, State3} ->
-		    try_prepay(CallID, State3)
+		    try_prepay(CallID, State3, wapi_money:default_per_min_charge())
 	    end
     end.
 
@@ -544,22 +556,22 @@ try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) 
      ,State#state{inbound=In-1, trunks_in_use=dict:store(CallID, {inbound, Pid}, Dict)}
     }.
 
--spec try_prepay/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
-try_prepay(_CallID, #state{prepay=Pre}=State) when Pre =< ?PER_MIN_MIN ->
+-spec try_prepay/3 :: (ne_binary(), #state{}, integer()) -> {{boolean(), proplist()}, #state{}}.
+try_prepay(_CallID, #state{prepay=Pre}=State, PerMinCharge) when Pre =< PerMinCharge ->
     ?LOG_SYS(_CallID, "Failed to authz a per_min trunk", []),
 
     %% Send Email to account holder warning of low Prepay?
 
     {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State};
-try_prepay(CallID, #state{acct_id=AcctId, prepay=Prepay, trunks_in_use=Dict, ledger_db=LedgerDB}=State) ->
+try_prepay(CallID, #state{acct_id=AcctId, prepay=Prepay, trunks_in_use=Dict, ledger_db=LedgerDB}=State, PerMinCharge) ->
     case jonny5_listener:is_blacklisted(AcctId) of
 	{true, Reason} ->
 	    ?LOG_SYS(CallID, "Authz false for per_min: ~s", [Reason]),
 	    {{false, [{<<"Error">>, Reason}]}, State};
 	false ->
-	    PrepayLeft = Prepay - ?PER_MIN_MIN,
-	    ?LOG_SYS(CallID, "Authz a per_min trunk; ~b prepay left, ~b charged up-front", [PrepayLeft, ?PER_MIN_MIN]),
-	    {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, ?PER_MIN_MIN),
+	    PrepayLeft = Prepay - PerMinCharge,
+	    ?LOG_SYS(CallID, "Authz a per_min trunk; ~b prepay left, ~b charged up-front", [PrepayLeft, PerMinCharge]),
+	    {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
 	    {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
 	     ,State#state{trunks_in_use=dict:store(CallID, {per_min, Pid}, Dict), prepay=PrepayLeft}
 	    }

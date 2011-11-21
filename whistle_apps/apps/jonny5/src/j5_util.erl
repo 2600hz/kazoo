@@ -146,15 +146,22 @@ write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType
     ?LOG("~p", [TransactionJObj]),
     couch_mgr:save_doc(DB, TransactionJObj).
 
--spec mk_id/3 :: (ne_binary(), ne_binary(), ne_binary() | pos_integer()) -> ne_binary().
+-spec mk_id/3 :: (ne_binary(), ne_binary(), ne_binary() | pos_integer()) -> ne_binary() | 'undefined'.
 mk_id(CallID, AcctID, Tstamp) ->
     Suffix = case wh_util:is_empty(Tstamp) of
 		 true -> <<>>;
 		 false -> [<<"-">>, (wh_util:to_binary(Tstamp))]
 	     end,
     case wh_util:is_empty(CallID) of
-	true -> list_to_binary([AcctID, Suffix]);
-	false -> list_to_binary([CallID, Suffix])
+	true -> mk_id(AcctID, Suffix);
+	false -> mk_id(CallID, Suffix)
+    end.
+
+-spec mk_id/2 :: (binary(), binary()) -> ne_binary() | 'undefined'.
+mk_id(Prefix, Suffix) ->
+    case wh_util:is_empty(Prefix) of
+	true -> undefined;
+	false -> list_to_binary([Prefix, Suffix])
     end.
 
 -spec current_usage/1 :: (ne_binary()) -> integer().

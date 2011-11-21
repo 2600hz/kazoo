@@ -129,14 +129,6 @@ start_amqp() ->
     amqp_util:basic_consume(Q),
     Q.
 
--spec send_status_req/2 :: (ne_binary(), ne_binary()) -> 'ok'.
-send_status_req(AcctId, Q) ->
-    wapi_jonny5:publish_status_req([{<<"Account-ID">>, AcctId}
-				    ,{<<"Server-ID">>, Q}
-				    ,{<<"App-Name">>, wh_util:to_binary(node())}
-				    ,{<<"App-Version">>, ?APP_VERSION}
-				   ]).
-
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
