@@ -307,13 +307,15 @@ handle_cast({money, <<"balance_req">>, JObj}, #state{max_two_way=MaxTwoWay, max_
     {noreply, State};
 
 handle_cast({money, _Evt, _JObj}, #state{prepay=Prepay, acct_id=AcctId}=State) ->
-    ?LOG("~p update received", [_Evt]),
+    ?LOG("'~s' update received", [_Evt]),
 
+    timer:sleep(200), %% view needs time to update
     NewPre = j5_util:current_usage(AcctId),
-    ?LOG("Old prepay value: ~p", [Prepay]),
-    ?LOG("New prepay (from DB): ~p", [NewPre]),
 
-    {noreply, State#state{prepay=try_update_value(Prepay, NewPre)}};
+    ?LOG("Old prepay value: ~p", [Prepay]),
+    ?LOG("New prepay (from DB ~s): ~p", [whapps_util:get_db_name(AcctId, encoded), NewPre]),
+
+    {noreply, State#state{prepay=try_update_value(NewPre, Prepay)}};
 
 handle_cast({authz_win, JObj}, #state{trunks_in_use=Dict}=State) ->
     spawn(fun() ->
@@ -428,7 +430,7 @@ handle_info({timeout, SyncRef, sync}, #state{sync_ref=SyncRef, acct_id=AcctID, a
     {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)
 			  ,max_two_way=try_update_value(NewTwo, Two)
 			  ,max_inbound=try_update_value(NewIn, In)
-			  ,prepay=try_update_value(Pre, NewPre)
+			  ,prepay=try_update_value(NewPre, Pre)
 			 }};
 
 handle_info(#'basic.consume_ok'{}, State) ->
