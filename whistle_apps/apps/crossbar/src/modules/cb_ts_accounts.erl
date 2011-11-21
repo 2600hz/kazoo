@@ -105,6 +105,7 @@ handle_cast(_Msg, State) ->
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
                  ,{RD, #cb_context{auth_doc=AuthDoc, req_nouns=Nouns, req_verb=Verb, req_id=ReqId}=Context}}, State) ->
     AccountId = wh_json:get_value(<<"account_id">>, AuthDoc, <<"0000000000">>),
+
     case props:get_value(<<"ts_accounts">>, Nouns) of
         [] when Verb =:= <<"put">> ->
             ?LOG(ReqId, "authorizing request to create a new trunkstore doc", []),
@@ -112,7 +113,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
         [AccountId] ->
             ?LOG(ReqId, "authorizing request to trunkstore doc ~s", [AccountId]),
             Pid ! {binding_result, true, {RD, Context}};
-        _ ->
+        _Args ->
+	    ?LOG(ReqId, "unhandled args for ts_accounts: ~p", [_Args]),
             Pid ! {binding_result, false, {RD, Context}}
     end,
     {noreply, State};
