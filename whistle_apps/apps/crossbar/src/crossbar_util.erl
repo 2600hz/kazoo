@@ -266,8 +266,7 @@ binding_heartbeat(BPid, Timeout) ->
 %% the process dictionary, where the logger expects it.
 %% @end
 %%--------------------------------------------------------------------
--spec put_reqid/1 :: (Context) -> no_return() when
-      Context :: #cb_context{}.
+-spec put_reqid/1 :: (#cb_context{}) -> 'undefined' | ne_binary().
 put_reqid(#cb_context{req_id=ReqId}) ->
     put(callid, ReqId).
 
