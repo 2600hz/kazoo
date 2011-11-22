@@ -215,7 +215,7 @@ get(Category, Key, Default) ->
 %% set the key to the value in the given category but specific to this node
 %% @end
 %%-----------------------------------------------------------------------------
--spec set/3 :: (Category, Key, Value) -> {ok, json_object()} | {error, term()} when
+-spec set/3 :: (Category, Key, Value) -> {ok, json_object()} when
       Category :: config_category(),
       Key :: config_key(),
       Value :: term().
@@ -346,7 +346,7 @@ config_terms_to_json(Terms) ->
 %% for the given node
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_set/4 :: (Category, Node, Key, Value) -> {ok, json_object()} | {error, not_found} when
+-spec do_set/4 :: (Category, Node, Key, Value) -> {'ok', json_object()} when
       Category :: config_category(),
       Node :: config_key(),
       Key :: config_key(),
@@ -372,7 +372,7 @@ do_set(Category, Node, Key, Value) ->
 %% update the configuration category for a given node in both the db and cache
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_category_node/4 :: (Category, Node, UpdateFun , Cache) -> {ok, json_object()} when
+-spec update_category_node/4 :: (Category, Node, UpdateFun , Cache) -> {'ok', json_object()} when
       Category :: binary(),
       Node :: binary(),
       UpdateFun :: fun(),
@@ -414,7 +414,7 @@ update_category(Category, JObj, Cache) ->
 %% initial (default) settings
 %% @end
 %%-----------------------------------------------------------------------------
--spec category_to_file/1 :: (Category) -> list() | undefined when
+-spec category_to_file/1 :: (Category) -> iolist() | 'undefined' when
       Category :: binary().
 category_to_file(<<"whapps_controller">>) ->
     [code:lib_dir(whistle_apps, priv), "/startup.config"];

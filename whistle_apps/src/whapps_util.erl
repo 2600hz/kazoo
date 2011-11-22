@@ -235,11 +235,11 @@ get_call_termination_reason(JObj) ->
 %% are configured for the alert level or better
 %% @end
 %%--------------------------------------------------------------------
--spec alert/3 :: (Level, Format, Args) -> ok | pid() when
+-spec alert/3 :: (Level, Format, Args) -> pid() when
       Level :: atom() | string() | binary(),
       Format :: string(),
       Args :: list().
--spec alert/4 :: (Level, Format, Args, AccountId) -> ok | pid() when
+-spec alert/4 :: (Level, Format, Args, AccountId) -> pid() when
       Level :: atom() | string() | binary(),
       Format :: string(),
       Args :: list(),
