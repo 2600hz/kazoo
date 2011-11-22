@@ -93,10 +93,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--type binding_fired() :: {binding_fired, pid(), ne_binary(), list()}.
--spec handle_info/2 :: (binding_fired(), State) -> {noreply, State};
-		       (timeout, State) -> {noreply, State};
-		       (any(), State) -> {noreply, State}.
+%% -type binding_fired() :: {'binding_fired', pid(), ne_binary(), list()}.
+%% -spec handle_info/2 :: (binding_fired(), State) -> {noreply, State};
+%% 		       ('timeout', State) -> {noreply, State};
+-spec handle_info/2 :: (_, State) -> {noreply, State}.
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.about">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
@@ -139,6 +139,7 @@ handle_info(timeout, State) ->
 
 handle_info(_Info, State) ->
     {noreply, State}.
+
 
 %%--------------------------------------------------------------------
 %% @private
