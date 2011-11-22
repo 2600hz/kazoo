@@ -45,7 +45,7 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec(get_realm_from_db/1 :: (DBName :: binary()) -> tuple(ok, binary()) | tuple(error, atom())).
+-spec get_realm_from_db/1 :: (ne_binary()) -> {'ok', ne_binary()} | {'error', atom()}.
 get_realm_from_db(DBName) ->
     Doc = whapps_util:get_db_name(DBName, raw),
     case couch_mgr:open_doc(DBName, Doc) of

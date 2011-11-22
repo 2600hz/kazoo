@@ -297,7 +297,7 @@ store(Key, Data, #cb_context{storage=Storage}=Context) ->
 fetch(Key, #cb_context{storage=Storage}) ->
     proplists:get_value(Key, Storage).
 
--spec get_abs_url/2 :: (#wm_reqdata{}, ne_binary()) -> string().
+-spec get_abs_url/2 :: (#wm_reqdata{}, ne_binary() | nonempty_string()) -> ne_binary().
 get_abs_url(RD, Url) ->
     %% http://some.host.com:port/"
     Port = case wrq:port(RD) of
@@ -318,7 +318,7 @@ get_abs_url(RD, Url) ->
 %% Url: ../other_mod
 %%
 %% Result: http[s]://some.host.com:port/v1/accounts/acct_id/other_mod
--spec get_abs_url/3 :: (iolist(), [ne_binary(),...], ne_binary() | string()) -> string().
+-spec get_abs_url/3 :: (iolist(), [nonempty_string(),...], ne_binary() | nonempty_string()) -> ne_binary().
 get_abs_url(Host, PathTokensRev, Url) ->
     UrlTokens = string:tokens(wh_util:to_list(Url), "/"),
 
@@ -333,17 +333,18 @@ get_abs_url(Host, PathTokensRev, Url) ->
 		       (Segment, PathTokens) -> [Segment | PathTokens]
 		    end, PathTokensRev, UrlTokens)
        ), "/"),
-    ?LOG("final url: ~p", [Url1]),
-    binary_to_list(list_to_binary([Host, Url1])).
+    ?LOG("final url: ~s", [Url1]),
+    erlang:iolist_to_binary([Host, Url1]).
 
--ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+-ifdef(TEST).
+
 
 get_abs_url_test() ->
     Host = ["http://", "some.host.com", ":8000", "/"],
     PTs = ["module", "acct_id", "accounts", "v1"],
     Url = "../other_mod",
-    ?assertEqual(get_abs_url(Host, PTs, Url), "http://some.host.com:8000/v1/accounts/acct_id/other_mod"),
-    ?assertEqual(get_abs_url(Host, ["mod_id" | PTs], "../../other_mod"++"/mod_id"), "http://some.host.com:8000/v1/accounts/acct_id/other_mod/mod_id").
+    ?assertEqual(get_abs_url(Host, PTs, Url), <<"http://some.host.com:8000/v1/accounts/acct_id/other_mod">>),
+    ?assertEqual(get_abs_url(Host, ["mod_id" | PTs], "../../other_mod"++"/mod_id"), <<"http://some.host.com:8000/v1/accounts/acct_id/other_mod/mod_id">>).
 
 -endif.

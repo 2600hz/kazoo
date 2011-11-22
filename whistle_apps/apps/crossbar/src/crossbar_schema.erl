@@ -42,12 +42,12 @@
 %%--------------------------------------------------------------------
 -spec do_validate/2 :: (json_object() | string(), atom()) -> {'error', [ne_binary(),...]} | {'ok', []}.
 do_validate(JObj, SchemaName) ->
-    case  couch_mgr:open_doc(?SCHEMAS_DB, wh_util:to_binary(SchemaName)) of
+    case couch_mgr:open_doc(?SCHEMAS_DB, wh_util:to_binary(SchemaName)) of
 	{ok, Schema} ->
-	    R = validate({JObj}, {Schema}),
+	    R = validate_against_schema(JObj, Schema),
 	    case [M || {error, M} <- lists:flatten(R)] of
 		[] -> {ok, []};
-		[_|_]=Errors -> {error, Errors}
+		Errors -> {error, Errors}
 	    end;
 	{error, _} ->
 	    {ok, []}
@@ -59,12 +59,12 @@ do_validate(JObj, SchemaName) ->
 %% validation method that is recursively applied on the JSON object
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: ({IAttName, IAttVal}, {Schema, SAttName,SAttVal}) -> validation_results() when
-      IAttName :: attribute_name(),
-      IAttVal :: attribute_value(),
-      Schema :: json_object(),
-      SAttName :: attribute_name(),
-      SAttVal :: attribute_value().
+-spec validate_against_schema/2 :: (json_object(), json_object()) -> validation_results().
+-spec validate/2 :: ({attribute_name(), attribute_value()}, {json_object(), attribute_name(), attribute_value()}) -> validation_results().
+
+validate_against_schema(JObj, Schema) ->
+    Definitions = wh_json:to_proplist(Schema),
+    [validate({null, JObj}, {Schema, SAttName, SAttVal})  || {SAttName, SAttVal} <- Definitions].
 
 %% undefined property is required if required in schema
 validate({InstanceName, undefined}, {Schema}) ->
@@ -73,12 +73,8 @@ validate({InstanceName, undefined}, {Schema}) ->
 	_ -> ?VALID
     end;
 
-%% unfold schema definition until finding property
-validate({JObj},  {{struct, Definitions}=Schema}) ->
-    [validate({null, JObj}, {Schema, SAttName, SAttVal})  || {SAttName, SAttVal} <- Definitions];
-
-validate({InstanceName, InstanceValue}, {{struct, Schema}}) ->
-    [validate({InstanceName, InstanceValue}, {Schema, SAttName, SAttVal}) || {SAttName, SAttVal} <- Schema];
+validate({InstanceName, InstanceValue}, {Schema}) ->
+    [validate({InstanceName, InstanceValue}, {Schema, SAttName, SAttVal}) || {SAttName, SAttVal} <- wh_json:to_proplist(Schema)];
 
 %% couch metadata ignored for our validation impl.
 validate(_, {_, <<"_id">>, _}) ->
@@ -134,10 +130,6 @@ validate(_, {_, <<"description">>, _D}) ->
 validate({_, {struct, _}}, {_, <<"type">>, <<"object">>}) ->
     ?VALID;
 
-
-
-
-
 %% PROPERTIES
 %%--------------------------------------------------------------------
 %% @doc
@@ -147,9 +139,8 @@ validate({_, {struct, _}}, {_, <<"type">>, <<"object">>}) ->
 %%              values.
 %% @end
 %%--------------------------------------------------------------------
-validate({_, JObj}, {_, <<"properties">>, {struct, Properties}}) ->
-    [validate({Property, val(Property, JObj)}, {Schema}) || {Property, Schema} <- Properties];
-
+validate({_, JObj}, {_, <<"properties">>, Properties}) ->
+    [validate({Property, val(Property, JObj)}, {Schema}) || {Property, Schema} <- wh_json:to_proplist(Properties)];
 
 %% INSTANCE TYPE
 %%--------------------------------------------------------------------
