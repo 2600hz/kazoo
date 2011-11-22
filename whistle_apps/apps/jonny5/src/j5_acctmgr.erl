@@ -639,7 +639,7 @@ is_us48(_) -> false.
 sync_fudge() ->
     crypto:rand_uniform(1, ?SYNC_TIMER).
 
--spec try_update_value/2 :: ('undefined' | New, integer()) -> New | integer().
+-spec try_update_value/2 :: ('undefined' | New, non_neg_integer()) -> New | non_neg_integer().
 try_update_value(undefined, Default) ->
     Default;
 try_update_value(New, _) ->
