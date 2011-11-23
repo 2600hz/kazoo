@@ -4,7 +4,7 @@
 -export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
--export([binary_to_lower/1, binary_to_upper/1]).
+-export([binary_to_lower/1, binary_to_upper/1, binary_join/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
 -export([current_tstamp/0, ensure_started/1]).
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1]).
@@ -284,6 +284,10 @@ binary_to_upper_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 -> C - 32;
 binary_to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
 binary_to_upper_char(C) -> C.
 
+-spec binary_join/2 :: ([ne_binary(),...], binary()) -> ne_binary().
+binary_join([H|T], Glue) when is_binary(Glue) ->
+    list_to_binary([H, [ [Glue, I] || I <- T]]).
+
 -spec a1hash/3 :: (User, Realm, Password) -> string() when
       User :: binary() | list(),
       Realm :: binary() | list(),
@@ -499,5 +503,10 @@ microsecs_to_secs_test() ->
 
 no_whistle_version_test() ->
     ?assertEqual(<<"not available">>, whistle_version(<<"/path/to/nonexistent/file">>)).
+
+binary_join_test() ->
+    ?assertEqual(<<"foo">>, binary_join([<<"foo">>], <<", ">>)),
+    ?assertEqual(<<"foo, bar">>, binary_join([<<"foo">>, <<"bar">>], <<", ">>)),
+    ?assertEqual(<<"foo, bar, baz">>, binary_join([<<"foo">>, <<"bar">>, <<"baz">>], <<", ">>)).
 
 -endif.
