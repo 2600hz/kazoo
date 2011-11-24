@@ -2,7 +2,9 @@
 
 -export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
--export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
+-export([to_integer/1, to_float/1, to_number/1
+	 ,to_hex/1, to_list/1, to_binary/1
+	 ,to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
 -export([binary_to_lower/1, binary_to_upper/1, binary_join/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
@@ -169,6 +171,19 @@ to_float(X) when is_integer(X) ->
     X * 1.0;
 to_float(X) when is_float(X) ->
     X.
+
+-spec to_number/1 :: (binary() | string() | number()) -> number().
+to_number(X) when is_number(X) ->
+    X;
+to_number(X) when is_binary(X) ->
+    to_number(to_list(X));
+to_number(X) when is_list(X) ->
+    try list_to_integer(X) of
+	Int -> Int
+    catch
+	error:badarg ->
+	    list_to_float(X)
+    end.
 
 -spec to_list/1 :: (X) -> list() when
       X :: atom() | list() | binary() | integer() | float().
@@ -409,6 +424,13 @@ prop_to_integer() ->
 		lists:all(fun(N) -> erlang:is_integer(to_integer(N)) end, Is)
 	    end).
 
+prop_to_number() ->
+    ?FORALL({F, I}, {float(), integer()},
+	    begin
+		Is = [ Fun(N) || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
+		lists:all(fun(N) -> erlang:is_number(to_number(N)) end, Is)
+	    end).
+
 prop_to_float() ->
     ?FORALL({F, I}, {float(), integer()},
 	    begin
@@ -470,8 +492,12 @@ prop_to_e164() ->
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 
-%-export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1]).
-%-export([a1hash/3, floor/1, ceiling/1]).
+proper_test_() ->
+    {"Runs the module's PropEr tests during eunit testing",
+     {timeout, 15000,
+      [
+       ?_assertEqual([], proper:module(?MODULE, [{max_shrinks, 0}]))
+      ]}}.
 
 to_e164_test() ->
     Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],
