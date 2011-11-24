@@ -13,6 +13,7 @@
 -export([resource_consume/3, show_channels/1, fs_node/1, uuid_exists/2
 	 ,hostname/1
 	]).
+-export([distributed_presence/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -54,6 +55,10 @@ resource_consume(FsNodePid, Route, JObj) ->
     after   10000 -> {resource_error, timeout}
     end.
 
+-spec distributed_presence/3 :: (pid(), ne_binary(), proplist()) -> ok.
+distributed_presence(Srv, Type, Event) ->
+    gen_server:cast(Srv, {distributed_presence, Type, Event}).
+
 -spec show_channels/1 :: (pid()) -> [proplist(),...] | [].
 show_channels(Srv) ->
     gen_server:call(Srv, show_channels).
@@ -84,9 +89,9 @@ init([Node, Options]) ->
     {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
 
 -spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> {'noreply', #state{}} | {'reply', atom(), #state{}}.
-handle_call(hostname, From, #state{node=Node}=State) ->
-    spawn(fun() -> gen_server:reply(From, freeswitch:api(Node, hostname, "")) end),
-    {noreply, State};
+handle_call(hostname, _From, #state{node=Node}=State) ->
+    [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
+    {reply, {ok, Hostname}, State};
 handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
     spawn(fun() ->
 		  case freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
@@ -106,6 +111,15 @@ handle_call(show_channels, From, #state{node=Node}=State) ->
 	  end),
     {noreply, State}.
 
+handle_cast({distributed_presence, Type, Event}, #state{node=Node}=State) ->
+    Headers = [{wh_util:to_list(K), wh_util:to_list(V)}
+               || {K, V} <- lists:foldr(fun(Header, Props) ->
+                                                proplists:delete(Header, Props)
+                                        end, Event, ?FS_DEFAULT_HDRS)],
+    EventName = wh_util:to_atom(<<"PRESENCE_", Type/binary>>, true),
+    freeswitch:sendevent(Node, EventName, Headers),
+    {noreply, State};
+
 handle_cast(_Req, State) ->
     {noreply, State}.
 
@@ -122,6 +136,7 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
 	    Active = get_active_channels(Node),
 
 	    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+                                         ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
 					 ,'CUSTOM', 'sofia::register'
 					]),
 
@@ -142,7 +157,7 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
 handle_info(Msg, #state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=S) when De > Cr ->
     handle_info(Msg, S#state{stats=Stats#node_stats{created_channels=De, destroyed_channels=De}});
 
-handle_info({event, [undefined | Data]}, #state{stats=Stats}=State) ->
+handle_info({event, [undefined | Data]}, #state{stats=Stats, node=Node}=State) ->
     EvtName = props:get_value(<<"Event-Name">>, Data),
     case EvtName of
 	<<"HEARTBEAT">> ->
@@ -150,11 +165,22 @@ handle_info({event, [undefined | Data]}, #state{stats=Stats}=State) ->
 	<<"CUSTOM">> ->
 	    spawn(fun() -> process_custom_data(Data) end),
 	    {noreply, State, hibernate};
+        <<"PRESENCE_", Type/binary>> ->
+            case props:get_value(<<"Distributed-From">>, Data) of
+                undefined ->
+                    Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
+                    [distributed_presence(Srv, Type, Headers)
+                     || Srv <- ecallmgr_fs_sup:node_handlers()
+                            ,Srv =/= self()];
+                _Else ->
+                    ok
+            end,
+	    {noreply, State, hibernate};
 	_ ->
 	    {noreply, State, hibernate}
     end;
 
-handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
+handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
     EvtName = props:get_value(<<"Event-Name">>, Data),
     case EvtName of
 	<<"CHANNEL_CREATE">> ->
@@ -172,6 +198,17 @@ handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr
 	    end;
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
 	    {noreply, State};
+        <<"PRESENCE_", Type/binary>> ->
+            case props:get_value(<<"Distributed-From">>, Data) of
+                undefined ->
+                    Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
+                    [distributed_presence(Srv, Type, Headers)
+                     || Srv <- ecallmgr_fs_sup:node_handlers()
+                            ,Srv =/= self()];
+                _Else ->
+                    ok
+            end,
+	    {noreply, State, hibernate};
 	<<"CUSTOM">> ->
 	    spawn(fun() -> process_custom_data(Data) end),
 	    {noreply, State};
@@ -410,4 +447,3 @@ print_api_response({ok, Res}) ->
     [ ?LOG_SYS("~s", [Row]) || Row <- binary:split(Res, <<"\n">>, [global]), Row =/= <<>> ];
 print_api_response(Other) ->
     ?LOG_SYS("~p", [Other]).
-    

@@ -280,6 +280,16 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                   end
                           end,
                           fun(DP) ->
+                                  case wh_json:get_value(<<"Hold-Media">>, JObj) of
+                                      undefined ->
+                                          DP;
+                                      HoldMedia ->
+                                          Stream = wh_util:to_list(media_path(HoldMedia, extant, UUID)),
+                                          ?LOG("bridge has custom music-on-hold: ~s", [Stream]),
+                                          [{"application", "set hold_music=" ++ Stream}|DP]
+                                  end
+                          end,
+                          fun(DP) ->
                                   case wh_json:get_value(<<"Media">>, JObj) of
                                       <<"process">> ->
                                           ?LOG("bridge will process media through host switch"),
