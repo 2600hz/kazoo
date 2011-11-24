@@ -171,6 +171,8 @@ is_valid_attribute(<<"minimum">>, Min, Key, Val, AttrsJObj) ->
 	_ -> {Key, list_to_binary([<<"Value must be at least ">>, wh_util:to_binary(Min)])}
     catch
 	error:badarg ->
+	    {Key, <<"Either the value or the schema minimum for this key is not a number">>};
+	error:function_clause ->
 	    {Key, <<"Either the value or the schema minimum for this key is not a number">>}
     end;
 
@@ -183,6 +185,8 @@ is_valid_attribute(<<"maximum">>, Max, Key, Val, AttrsJObj) ->
 	_ -> {Key, list_to_binary([<<"Value must be at most ">>, wh_util:to_binary(Max)])}
     catch
 	error:badarg ->
+	    {Key, <<"Either the value or the schema maximum for this key is not a number">>};
+	error:function_clause ->
 	    {Key, <<"Either the value or the schema maximum for this key is not a number">>}
     end;
 
@@ -273,8 +277,33 @@ is_valid_attribute(<<"divisibleBy">>, DivBy, Key, Val, _AttrsJObj) ->
 		_ -> {Key, list_to_binary([<<"Value not divisible by ">>, wh_util:to_binary(DivBy)])}
 	    end
     catch
-	error:badarg -> {Key, <<"Either the numerator or the denominator in the schema is not a number">>}
+	error:badarg -> {Key, <<"Either the numerator or the denominator in the schema is not a number">>};
+	error:function_clause -> {Key, <<"Either the numerator or the denominator in the schema is not a number">>}
     end;
+
+%% 5.25
+is_valid_attribute(<<"disallow">>, Type, Key, Val, _AttrsJObj) ->
+    is_disallowed_type(Key, Val, Type);
+
+%% 5.26
+is_valid_attribute(<<"extends">>, _ExtendJObj, _Key, _Val, _AttrsJObj) ->
+    %% Not currently supported
+    true;
+
+%% 5.27
+is_valid_attribute(<<"id">>, _ID, _Key, _Val, _AttrsJObj) ->
+    %% ignored, as this is used to identify the schema for reference elsewhere
+    true;
+
+%% 5.28
+is_valid_attribute(<<"$ref">>, _Uri, _Key, _Val, _AttrsJObj) ->
+    %% ignored until we start to follow the ref URIs
+    true;
+
+%% 5.29
+is_valid_attribute(<<"$schema">>, _Uri, _Key, _Val, _AttrsJObj) ->
+    %% ignored, this URI points to a JSON Schema to validate the AttrsJObj schema against
+    true;
 
 %% 5.21, 5.22,  and unknown/unhandled attributes
 is_valid_attribute(_,_,_,_,_) ->
@@ -323,7 +352,8 @@ are_numbers(A, B) ->
 	{N, N} -> throw({duplicate_found, A});
 	_ -> false
     catch
-	error:badarg -> false
+	error:badarg -> false;
+	error:funciton_clause -> false
     end.
 
 %% contains the same number of items, and each item in
@@ -348,58 +378,94 @@ are_objects(A, B) ->
 	false -> false
     end.
 
--spec is_valid_type/3 :: (ne_binary(), binary() | list() | number(), ne_binary()) -> 'true' | error_result().
-is_valid_type(Key, Val, <<"string">>) ->
+-spec is_valid_type/3 :: (ne_binary(), binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'true' | error_result().
+-spec is_disallowed_type/3 :: (ne_binary(), binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'true' | error_result().
+
+is_valid_type(Key, Val, Union) when is_list(Union) ->
+    case lists:any(fun(<<"any">>) -> true; (Type) -> check_valid_type(Val, Type, true) end, Union) of
+	true -> true;
+	false -> [{Key, list_to_binary([<<"Value is not one of types: ">>, wh_util:binary_join(Union, <<", ">>)])}]
+    end;
+is_valid_type(_Key, _Val, <<"any">>) -> true;
+is_valid_type(Key, Val, Type) when is_binary(Type) ->
+    case check_valid_type(Val, Type, true) of
+	true -> true;
+	false -> {Key, list_to_binary([<<"Value is not of type: ">>, Type])}
+    end;
+is_valid_type(Key, Val, TypeSchema) ->
+    are_valid_attributes(wh_json:set_value(Key, Val, wh_json:new()), Key, TypeSchema).
+
+is_disallowed_type(Key, Val, Union) when is_list(Union) ->
+    case lists:any(fun(<<"any">>) -> false; (Type) -> check_valid_type(Val, Type, false) end, Union) of
+	true -> true;
+	false -> [{Key, list_to_binary([<<"Value is one of disallowed types: ">>, wh_util:binary_join(Union, <<", ">>)])}]
+    end;
+is_disallowed_type(Key, _Val, <<"any">>) -> {Key, <<"Value disallowed because schema disallows all">>};
+is_disallowed_type(Key, Val, Type) when is_binary(Type) ->
+    case check_valid_type(Val, Type, false) of
+	true -> true;
+	false -> {Key, list_to_binary([<<"Value is of disallowed type: ">>, Type])}
+    end.
+
+%% If we are testing a value to be of a type, ShouldBe is true; meaning we expect the value to be of the type.
+%% If ShouldBe is false (as when calling is_disallowed_type/3), then we expect the value to not be of the type.
+-spec check_valid_type/3 :: (binary() | list() | number(), ne_binary(), boolean()) -> 'true' | error_result().
+check_valid_type(Val, <<"string">>, ShouldBe) ->
     case is_binary(Val) of
-	true -> true;
-	false -> {Key, <<"is not a string">>}
+	true -> ShouldBe;
+	false ->
+	    %% json strings can be atoms, except the reserved ones below
+	    case is_atom(Val) andalso Val of
+		false -> not ShouldBe;
+		true -> not ShouldBe;
+		null -> not ShouldBe;
+		_ -> ShouldBe
+	    end
     end;
-is_valid_type(Key, Val, <<"number">>) ->
+check_valid_type(Val, <<"number">>, ShouldBe) ->
     try wh_util:to_number(Val) of
-	_ -> true
+	_ -> ShouldBe
     catch
-	error:badarg ->
-	    {Key, <<"is not a number">>}
+	error:badarg -> not ShouldBe;
+	error:function_clause -> not ShouldBe
     end;
-is_valid_type(Key, Val, <<"integer">>) ->
-    try wh_util:to_integer(Val) of
-	_ -> true
+check_valid_type(Val, <<"integer">>, ShouldBe) ->
+    try wh_util:to_integer(Val, strict) of
+	_ -> ShouldBe
     catch
-	error:badarg ->
-	    {Key, <<"is not an integer">>}
+	error:badarg -> not ShouldBe;
+	error:function_clause -> not ShouldBe
     end;
-is_valid_type(Key, Val, <<"float">>) ->
+check_valid_type(Val, <<"float">>, ShouldBe) ->
     try wh_util:to_float(Val) of
-	_ -> true
+	_ -> ShouldBe
     catch
-	error:badarg ->
-	    {Key, <<"is not an float">>}
+	error:badarg -> not ShouldBe;
+	error:function_clause -> not ShouldBe
     end;
-is_valid_type(Key, Val, <<"boolean">>) ->
+check_valid_type(Val, <<"boolean">>, ShouldBe) ->
     try wh_util:to_boolean(Val) of
-	_ -> true
+	_ -> ShouldBe
     catch
-	error:function_clause ->
-	    {Key, <<"is not a boolean">>}
+	error:function_clause -> not ShouldBe
     end;
-is_valid_type(Key, Val, <<"array">>) ->
+check_valid_type(Val, <<"array">>, ShouldBe) ->
     case is_list(Val) of
-	true -> true;
-	false -> {Key, <<"is not an array of values">>}
+	true -> ShouldBe;
+	false -> not ShouldBe
     end;
-is_valid_type(Key, Val, <<"object">>) ->
+check_valid_type(Val, <<"object">>, ShouldBe) ->
     case wh_json:is_json_object(Val) of
-	true -> true;
-	false -> {Key, <<"is not another json object">>}
+	true -> ShouldBe;
+	false -> not ShouldBe
     end;
-is_valid_type(Key, Val, <<"null">>) ->
+check_valid_type(Val, <<"null">>, ShouldBe) ->
     case Val of
-	<<"null">> -> true;
-	null -> true;
-	_ -> {Key, <<"is not null">>}
+	null -> ShouldBe;
+	_ -> not ShouldBe
     end;
-%% any type ('any' or user-defined) that get's here is considered valid
-is_valid_type(_,_,_) ->
+%% any type ('any' or user-defined) that get's here is considered passing
+check_valid_type(_,_,_) ->
     true.
 
 -spec is_valid_pattern/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'true' | error_result().
@@ -438,7 +504,8 @@ is_valid_format(<<"utc-millisec">>, Key, Val) ->
     try wh_util:to_number(Val) of
 	_ -> true
     catch
-	error:badarg -> {Key, <<"Value doesn't appear to be a number nor a utc-millisec value">>}
+	error:badarg -> {Key, <<"Value doesn't appear to be a number nor a utc-millisec value">>};
+	error:function_clause -> {Key, <<"Value doesn't appear to be a number nor a utc-millisec value">>}
     end;
 is_valid_format(<<"regex">>, Key, Val) ->
     case re:compile(Val) of
@@ -511,113 +578,368 @@ is_optional_attribute(AttributesJObj) ->
 
 -ifdef(TEST).
 
--define(SCHEMA_PERSON, wh_json:from_list([{<<"type">>, <<"person">>}
-					  ,{<<"properties">>, wh_json:from_list([{<<"name">>, wh_json:from_list([{<<"type">>, <<"string">>}
-														])}
-										 ,{<<"age">>, wh_json:from_list([{<<"type">>, <<"integer">>}
-														 ,{<<"maximum">>, 125}
-														])}
-										])}
-					 ])).
+-define(NULL, null).
+-define(TRUE, true).
+-define(FALSE, false).
+-define(NEG1, -1).
+-define(ZERO, 0).
+-define(POS1, 1).
+-define(PI, 3.1416).
+-define(STR1, <<"foobar">>).
+-define(STR2, barfoo).
+-define(OBJ1, {struct, [{<<"foo">>, <<"bar">>}]}).
+-define(ARR1, []).
+-define(ARR2, [?STR1]).
+-define(ARR3, [?STR1, ?STR2]).
+-define(ARR4, [?STR1, ?STR2, ?PI]).
+-define(ARR5, [?NULL, ?NULL, ?PI]).
+-define(ARR6, [?STR1, ?STR1, ?PI]).
+-define(ARR7, [?ARR3, ?ARR3, ?PI]).
+-define(ARR8, [?OBJ1, ?OBJ1, ?PI]).
 
--define(SCHEMA_CAT, wh_json:from_list([{<<"type">>, <<"cat">>}
-				       ,{<<"properties">>, wh_json:from_list([{<<"name">>, wh_json:from_list([{<<"type">>, <<"string">>}
-													     ])}
-									      ,{<<"breed">>, wh_json:from_list([{<<"type">>, <<"string">>}
-													       ])}
-									     ])}
-					 ])).
+%% Section 5.1 - type
+%%     string Value MUST be a string
+type_string_test() ->
+    Schema = "{ \"type\": \"string\" }",
+    Succeed = [?STR1, ?STR2],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?ARR1, ?ARR2, ?OBJ1],
 
--define(SCHEMA_ALL, wh_json:from_list([{<<"type">>, <<"any">>}
-				       ,{<<"properties">>, wh_json:from_list([{<<"name">>, wh_json:from_list([{<<"type">>, <<"string">>}
-													     ])}
-									     ])}
-					 ])).
+    validate_test(Succeed, Fail, Schema).
 
--define(SCHEMA_BIZARRE, wh_json:from_list([{<<"type">>, [<<"bizarro">>]}
-				       ,{<<"properties">>, wh_json:from_list([{<<"flame_length">>, wh_json:from_list([{<<"type">>, <<"integer">>}
-														     ])}
-									     ])}
-					  ])).
+%%     number Value MUST be a number, floating point numbers are allowed.
+type_number_test() ->
+    Schema = "{ \"type\": \"number\" }",
+    Succeed = [?NEG1, ?ZERO, ?POS1, ?PI],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
 
--define(SCHEMA_PERSON_OR_CAT, wh_json:from_list([{<<"type">>, [<<"person">>, <<"cat">>]}
-						 ,{<<"properties">>, wh_json:from_list([{<<"name">>, wh_json:from_list([{<<"type">>, <<"string">>}
-														       ])}
-											,{<<"breed">>, wh_json:from_list([{<<"type">>, <<"string">>}
-															 ])}
-											,{<<"age">>, wh_json:from_list([{<<"type">>, <<"integer">>}
-															,{<<"maximum">>, 125}
-														       ])}
-										       ])}
-						])).
+    validate_test(Succeed, Fail, Schema).
+
+%%     integer Value MUST be an integer, no floating point numbers are allowed
+type_integer_test() ->
+    Schema = "{ \"type\": \"integer\" }",
+    Succeed = [?NEG1, ?ZERO, ?POS1],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%     boolean Value MUST be a boolean
+type_boolean_test() ->
+    Schema = "{ \"type\": \"boolean\" }",
+    Succeed = [?TRUE, ?FALSE],
+    Fail = [?NULL, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%     object Value MUST be an object
+type_object_test() ->
+    Schema = "{ \"type\": \"object\" }",
+    Succeed = [?OBJ1],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%    array Value MUST be an array
+type_array_test() ->
+    Schema = "{ \"type\": \"array\" }",
+    Succeed = [?ARR1, ?ARR2],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%    null Value MUST be null.
+type_null_test() ->
+    Schema = "{ \"type\": \"null\" }",
+    Succeed = [?NULL],
+    Fail = [?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%    any value MAY be of any type including null
+type_any_test() ->
+    Schema = "{ \"type\": \"any\" }",
+    Succeed = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+    Fail = [],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%    If the property is not defined or is not in this list, then any type of value is acceptable.
+type_unknown_test() ->
+    Schema = "{ \"type\": \"foobar\" }",
+    Succeed = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+    Fail = [],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%    union types An array of two or more simple type definitions
+type_simple_union_test() ->
+    Schema = "{ \"type\": [\"string\", \"null\"] }",
+    Succeed = [?NULL, ?STR1, ?STR2],
+    Fail = [?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%    union types An array of type definitions with a nested schema
+type_nested_union_test() ->
+    Schema = "{ \"type\": [\"string\", { \"type\": \"number\", \"minimum\": -1, \"maximum\": 0}] }",
+    Succeed = [?STR1, ?STR2, ?NEG1, ?ZERO],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?POS1, ?PI, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%    union types An array of type definitions with a nested schema
+type_complex_union_test() ->
+    Schema = "{ \"type\": [{ \"type\": \"number\", \"minimum\": -1, \"maximum\": 0, \"exclusiveMinimum\": true}, \"string\"] }",
+    Succeed = [?STR1, ?STR2, ?ZERO],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?POS1, ?PI, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.2 - properties
+%%     object with property definitions that define the valid values of instance object property values
+
+%% Section 5.3 - patternProperties
+%%     regular expression pattern name attribute is an object that defines the schema
+
+%% Section 5.4 - additionalProperties
+%%     attribute defines a schema for all properties that are not explicitly defined
+
+%% Section 5.5 - items
+%%     defines the allowed items in an instance array
+
+%% Section 5.6 - additionalItems
+%%      definition for additional items in an array instance when tuple definitions of the items is provided
+
+%% Section 5.7 - required
+%%      indicates if the instance must have a value
+
+%% Section 5.8 - dependencies
+%%      defines the requirements of a property on an instance object
+
+%% Section 5.9 - minimum
+%%     defines the minimum value of the instance property when the type of the instance is a number
+minimum_test() ->
+    Schema = "{ \"minimum\": 0 }",
+    Succeed = [?ZERO, ?POS1, ?PI],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.10 - maximum
+%%     defines the maxium value of the instance property when the type of the instance is a number
+maximum_test() ->
+    Schema = "{ \"maximum\": 0 }",
+    Succeed = [?NEG1, ?ZERO],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.11 - exclusiveMinimum
+%%     indicates if the value of the instance (if the instance is a number) can not equal the number defined by the 'minimum' attribute
+exclusive_minimum_test() ->
+    Schema = "{ \"minimum\": 0,  \"exclusiveMinimum\": true }",
+    Succeed = [?POS1, ?PI],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.12 - exclusiveMaximum
+%%     indicates if the value of the instance (if the instance is a number) can not equal the number defined by the 'maximum' attribute
+exclusive_maximum_test() ->
+    Schema = "{ \"maximum\": 0, \"exclusiveMaximum\": true }",
+    Succeed = [?NEG1],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.13 - minItems
+%%     defines the minimum number of values in an array when the array is the instance value
+min_items_test() ->
+    Schema = "{ \"minItems\": 2 }",
+    Succeed = [?ARR3, ?ARR4],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.14 - maxItems
+%%     defines the maximum number of values in an array when the array is the instance value
+max_items_test() ->
+    Schema = "{ \"maxItems\": 2 }",
+    Succeed = [?ARR1, ?ARR2, ?ARR3],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR4, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.15 - uniqueItems
+%%     indicates that all items in an array instance MUST be unique (containes no two identical values).
+%%      - booleans/numbers/strings/null have the same value
+%%      - arrays containes the same number of iteams and each item in the array is equal to teh corresponding item in the other array
+%%      - objects contain the same property names, and each property in the object is equal to the corresponding property in the other object
+unique_items_test() ->
+    Schema = "{ \"uniqueItems\": true }",
+    Succeed = [?ARR1, ?ARR2, ?ARR3, ?ARR4],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR5, ?ARR6, ?ARR7, ?ARR8, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.16 - pattern
+%%     When the instance value is a string, this provides a regular expression that a string MUST match
+pattern_test() ->
+    Schema = "{ \"pattern\": \"tle\$\"}",
+    Succeed = [chipotle, <<"chipotle">>],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.17 - minLength
+%%     When the instance value is a string, this defines the minimum length of the string
+min_length_test() ->
+    Schema = "{ \"minLength\": 7}",
+    Succeed = [longstring, <<"longstring">>],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.18 - maxLength
+%%     When the instance value is a string, this defines the maximum length of the string
+max_length_test() ->
+    Schema = "{ \"maxLength\": 3}",
+    Succeed = [foo, <<"bar">>],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.19 - enum
+%%     Enumeration of all possible values that are valid for the instance property
+enum_test() ->
+    Schema = "{ \"enum\": [\"foobar\", 3.1416]}",
+    Succeed = [?STR1, ?PI],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.20 - default
+%% Section 5.21 - title
+%% Section 5.22 - description
+
+%% Section 5.23 - format
+%%     defines the type of data, content type, or microformat to be expected
+
+%% Section 5.24 - divisibleBy
+%%     defines what value the number instance must be divisible by
+divisible_by_test() ->
+    Schema = "{ \"divisibleBy\": 3}",
+    Succeed = [?ZERO, 3, 15],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%     test the true spirt of this property as per the advocate
+divisible_by_float_test() ->
+    Schema = "{ \"divisibleBy\": 0.01}",
+    Succeed = [?NEG1, ?ZERO, ?POS1, 3.15],
+    Fail = [?NULL, ?TRUE, ?FALSE, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.25 - disallow
+%%     string Value MUST NOT be a string
+disallow_string_test() ->
+    Schema = "{ \"disallow\": \"string\" }",
+    Succeed = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?ARR1, ?ARR2, ?OBJ1],
+    Fail = [?STR1, ?STR2],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%     number Value MUST NOT be a number, including floating point numbers
+disallow_number_test() ->
+    Schema = "{ \"disallow\": \"number\" }",
+    Succeed = [?NULL, ?TRUE, ?FALSE, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+    Fail = [?NEG1, ?ZERO, ?POS1, ?PI],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%     integer Value MUST NOT be an integer, does not include floating point numbers
+disallow_integer_test() ->
+    Schema = "{ \"disallow\": \"integer\" }",
+    Succeed = [?NULL, ?TRUE, ?FALSE, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+    Fail = [?NEG1, ?ZERO, ?POS1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%     boolean Value MUST NOT be a boolean
+disallow_boolean_test() ->
+    Schema = "{ \"disallow\": \"boolean\" }",
+    Succeed = [?NULL, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+    Fail = [?TRUE, ?FALSE],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%     object Value MUST NOT be an object
+disallow_object_test() ->
+    Schema = "{ \"disallow\": \"object\" }",
+    Succeed = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2],
+    Fail = [?OBJ1],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%    array Value MUST NOT be an array
+disallow_array_test() ->
+    Schema = "{ \"disallow\": \"array\" }",
+    Succeed = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?OBJ1],
+    Fail = [?ARR1, ?ARR2],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%    null Value MUST NOT be null
+disallow_null_test() ->
+    Schema = "{ \"disallow\": \"null\" }",
+    Succeed = [?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+    Fail = [?NULL],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%    union types An array of type definitions with a nested schema
+disallow_nested_union_test() ->
+    Schema = "{ \"disallow\": [\"string\", { \"type\": \"number\", \"maximum\": 0}] }",
+    Succeed = [?NULL, ?TRUE, ?FALSE, ?POS1, ?PI, ?ARR1, ?ARR2, ?OBJ1],
+    Fail = [?STR1, ?STR2, ?NEG1, ?ZERO],
+
+    validate_test(Succeed, Fail, Schema).
+
+%%    union types An array of type definitions with a nested schema
+disallow_complex_union_test() ->
+    Schema = "{ \"disallow\": [{ \"type\": \"number\", \"minimum\": -1, \"maximum\": 0, \"exclusiveMinimum\": true}, \"string\"] }",
+    Succeed = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?POS1, ?PI, ?ARR1, ?ARR2, ?OBJ1],
+    Fail = [?STR1, ?STR2, ?ZERO],
+
+    validate_test(Succeed, Fail, Schema).
+
+%% Section 5.26 - extends
+%%     another schema which will provide a base schema which the current schema will inherit from
 
 
--define(JSON_MAL, wh_json:from_list([{<<"type">>, <<"person">>}
-					,{<<"name">>, <<"Malcolm Reynolds">>}
-					,{<<"age">>, 42}
-				       ])).
--define(JSON_GARFIELD, wh_json:from_list([{<<"type">>, <<"cat">>}
-					  ,{<<"name">>, <<"Garfield">>}
-					  ,{<<"breed">>, <<"tabby">>}
-					 ])).
+%% Helper function to run the eunit tests listed above
+validate_test(Succeed, Fail, Schema) ->
+    SJObj = mochijson2:decode(binary:list_to_bin(Schema)),
+    S = wh_json:to_proplist(SJObj),
 
-is_valid_type_test() ->
-    Mal = ?JSON_MAL,
-    Garfield = ?JSON_GARFIELD,
-    Person = ?SCHEMA_PERSON,
-    Cat = ?SCHEMA_CAT,
-    Any = ?SCHEMA_PERSON_OR_CAT,
-    All = ?SCHEMA_ALL,
-    Bizarre = ?SCHEMA_BIZARRE,
-
-    ?assertEqual(true, is_valid_type(Mal, Person)),
-    ?assertEqual(true, is_tuple(is_valid_type(Mal, Cat))),
-    ?assertEqual(true, is_valid_type(Garfield, Cat)),
-    ?assertEqual(true, is_tuple(is_valid_type(Garfield, Person))),
-    ?assertEqual(true, is_valid_type(Garfield, Any)),
-    ?assertEqual(true, is_valid_type(Mal, Any)),
-
-    ?assertEqual(true, is_valid_type(Mal, All)),
-    ?assertEqual(true, is_valid_type(Garfield, All)),
-    ?assertEqual(true, is_tuple(is_valid_type(Garfield, Bizarre))).
-	
-
-%% {
-%%   "name":"Product",
-%%   "properties":{
-%%     "id":{
-%%       "type":"number",
-%%       "description":"Product identifier",
-%%       "required":true
-%%     },
-%%     "name":{
-%%       "description":"Name of the product",
-%%       "type":"string",
-%%       "required":true
-%%     },
-%%     "price":{
-%%       "required":true,
-%%       "type": "number",
-%%       "minimum":0,
-%%       "required":true
-%%     },
-%%     "tags":{
-%%       "type":"array",
-%%       "items":{
-%%         "type":"string"
-%%       }
-%%     }
-%%   },
-%%   "links":[
-%%     {
-%%       "rel":"full",
-%%       "href":"{id}"
-%%     },
-%%     {
-%%       "rel":"comments",
-%%       "href":"comments/?id={id}"
-%%     }
-%%   ]
-%% }
-
+    [ begin
+	  Validation = [is_valid_attribute(AttName, AttValue, <<"eunit">>, Elem, SJObj)  || {AttName, AttValue} <- S],
+	  case lists:all(fun(true) -> true; (_) -> false end, Validation) of
+	      true -> ?assert(true);
+	      false ->
+		  ?debugFmt("Failed on elem ~p, schema ~s~n", [Elem, Schema]),
+		  ?assert(false)
+	  end
+      end || Elem <- Succeed],
+    [ begin
+	  Validation = [is_valid_attribute(AttName, AttValue, <<"eunit">>, Elem, SJObj) || {AttName, AttValue} <- S],
+	  case lists:any(fun(true) -> true; (_) -> false end, Validation) of
+	      true ->
+		  ?debugFmt("Passed on elem ~p, schema ~s~n", [Elem, Schema]),
+		  ?assert(false);
+	      false ->
+		  ?assert(true)
+	  end
+      end || Elem <- Fail].
 -endif.

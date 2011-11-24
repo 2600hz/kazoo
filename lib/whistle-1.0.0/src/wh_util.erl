@@ -3,7 +3,7 @@
 -export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([is_e164/1, is_npan/1, is_1npan/1]).
--export([to_integer/1, to_float/1, to_number/1
+-export([to_integer/1, to_integer/2, to_float/1, to_float/2, to_number/1
 	 ,to_hex/1, to_list/1, to_binary/1
 	 ,to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
@@ -156,34 +156,45 @@ to_1npan(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
 to_1npan(Other) ->
     Other.
 
--spec to_integer/1 :: (X) -> integer() when
-      X :: string() | binary() | integer() | float() | atom().
-to_integer(X) when is_float(X) ->
+-spec to_integer/1 :: (string() | binary() | integer() | float()) -> integer().
+-spec to_integer/2 :: (string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
+to_integer(X) ->
+    to_integer(X, notstrict).
+
+to_integer(X, strict) when is_float(X) ->
+    error(badarg);
+to_integer(X, notstrict) when is_float(X) ->
     round(X);
-to_integer(X) when is_binary(X) ->
-    to_integer(binary_to_list(X));
-to_integer(X) when is_list(X) ->
+to_integer(X, S) when is_binary(X) ->
+    to_integer(binary_to_list(X), S);
+to_integer(X, S) when is_list(X) ->
     try
 	list_to_integer(X)
     catch
-	error:badarg -> round(list_to_float(X))
+	error:badarg when S =:= notstrict ->
+	    round(list_to_float(X))
     end;
-to_integer(X) when is_integer(X) ->
+to_integer(X, _) when is_integer(X) ->
     X.
 
--spec to_float/1 :: (X) -> float() when
-      X :: string() | binary() | integer() | float().
-to_float(X) when is_binary(X) ->
-    to_float(binary_to_list(X));
-to_float(X) when is_list(X) ->
+-spec to_float/1 :: (string() | binary() | integer() | float()) -> float().
+-spec to_float/2 :: (string() | binary() | integer() | float(), 'strict' | 'notstrict') -> float().
+to_float(X) ->
+    to_float(X, notstrict).
+
+to_float(X, S) when is_binary(X) ->
+    to_float(binary_to_list(X), S);
+to_float(X, S) when is_list(X) ->
     try
 	list_to_float(X)
     catch
-	error:badarg -> list_to_integer(X)*1.0 %% "500" -> 500.0
+	error:badarg when S =:= notstrict -> list_to_integer(X)*1.0 %% "500" -> 500.0
     end;
-to_float(X) when is_integer(X) ->
+to_float(X, strict) when is_integer(X) ->
+    error(badarg);
+to_float(X, nonstrict) when is_integer(X) ->
     X * 1.0;
-to_float(X) when is_float(X) ->
+to_float(X, _) when is_float(X) ->
     X.
 
 -spec to_number/1 :: (binary() | string() | number()) -> number().
