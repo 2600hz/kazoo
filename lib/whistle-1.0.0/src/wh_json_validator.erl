@@ -24,6 +24,15 @@
 -define(SIMPLE_TYPES, [<<"string">>,<<"number">>,<<"integer">>,<<"boolean">>,<<"object">>
 			   ,<<"array">>,<<"null">>,<<"any">>]).
 
+%% Simplistic regex to match ISO-8601 string (in UTC, so TZ is Z for zulu)
+%% Matches YYYY-MM-DDThh:mm:ssZ explicitly
+-define(ISO_8601_REGEX, <<"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$">>).
+
+%% match alphanumeric, '.', '+', and '_' 1 or more times, the '@', then alphanumeric, '-', and '.' 1 or more times,
+%% ending with a '.', and then 1 or more alphanumeric, '_', or '-'
+-define(EMAIL_REGEX, <<"^[[\:alnum\:].+_]{1,}[@][[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
+-define(HOSTNAME_REGEX, <<"^[[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
+
 %% Return true or [{JObjKey, ErrorMsg}]
 -spec is_valid/2 :: (json_object(), json_object()) -> results().
 is_valid(JObj, Schema) ->
@@ -120,11 +129,11 @@ is_valid_attribute(<<"properties">>, PropertiesSchema, Key, ValJObj, _AttrsJObj)
     end;
 
 %% 5.3
-is_valid_attribute(<<"patternProperties">>, ItemsJObj, Key, ValJObj, _AttrsJObj) ->
+is_valid_attribute(<<"patternProperties">>, _ItemsJObj, _Key, _ValJObj, _AttrsJObj) ->
     true; %% ignored for the moment
 
 %% 5.4
-is_valid_attribute(<<"additionalProperties">>, ItemsJObj, Key, ValJObj, _AttrsJObj) ->
+is_valid_attribute(<<"additionalProperties">>, _ItemsJObj, _Key, _ValJObj, _AttrsJObj) ->
     true; %% ignored for the moment
 
 %% 5.5
@@ -135,7 +144,7 @@ is_valid_attribute(<<"items">>, ItemsJObj, Key, ValJObj, _AttrsJObj) ->
     end;
 
 %% 5.6
-is_valid_attribute(<<"additionalItems">>, ItemsJObj, Key, ValJObj, _AttrsJObj) ->
+is_valid_attribute(<<"additionalItems">>, _ItemsJObj, _Key, _ValJObj, _AttrsJObj) ->
     true; %% ignored for the moment
 
 %% 5.7
@@ -150,7 +159,7 @@ is_valid_attribute(<<"required">>, IsRequired, Key, Val, _AttrsJObj) ->
     end;
 
 %% 5.8
-is_valid_attribute(<<"dependencies">>, DepsJObj, Key, Val, _AttrsJObj) ->
+is_valid_attribute(<<"dependencies">>, _DepsJObj, _Key, _Val, _AttrsJObj) ->
     true; %% ignored for the moment
 
 %% 5.9
@@ -182,7 +191,7 @@ is_valid_attribute(<<"minItems">>, Min, Key, Vals, _AttrsJObj) ->
     try {is_list(Vals), wh_util:to_integer(Min)} of
 	{true, Int} when length(Vals) >= Int -> true;
 	{false, _} -> {Key, <<"This is not a list">>};
-	{true, Int} -> {Key, list_to_binary([<<"The list is not at least ">>, wh_util:to_binary(Min), <<" items">>])}
+	{true, _Int} -> {Key, list_to_binary([<<"The list is not at least ">>, wh_util:to_binary(Min), <<" items">>])}
     catch
 	error:badarg ->
 	    {Key, <<"Schema value for minItems not a number">>}
@@ -193,7 +202,7 @@ is_valid_attribute(<<"maxItems">>, Max, Key, Vals, _AttrsJObj) ->
     try {is_list(Vals), wh_util:to_integer(Max)} of
 	{true, Int} when length(Vals) =< Int -> true;
 	{false, _} -> {Key, <<"This is not a list">>};
-	{true, Int} -> {Key, list_to_binary([<<"The list is more than ">>, wh_util:to_binary(Max), <<" items">>])}
+	{true, _Int} -> {Key, list_to_binary([<<"The list is more than ">>, wh_util:to_binary(Max), <<" items">>])}
     catch
 	error:badarg ->
 	    {Key, <<"Schema value for minItems not a number">>}
@@ -220,7 +229,7 @@ is_valid_attribute(<<"minLength">>, Min, Key, Val, _AttrsJObj) ->
     try {wh_util:to_integer(Min), is_binary(Val)} of
 	{Int, true} when erlang:byte_size(Val) >= Int -> true;
 	{_, false} -> {Key, <<"Value is not a string">>};
-	{Int, true} -> {Key, list_to_binary([<<"String must be at least ">>, wh_util:to_binary(Min), <<" characters">>])}
+	{_Int, true} -> {Key, list_to_binary([<<"String must be at least ">>, wh_util:to_binary(Min), <<" characters">>])}
     catch
 	error:badarg -> {Key, <<"Schema's minLength not an integer or value wasn't a string">>}
     end;
@@ -230,7 +239,7 @@ is_valid_attribute(<<"maxLength">>, Max, Key, Val, _AttrsJObj) ->
     try {wh_util:to_integer(Max), is_binary(Val)} of
 	{Int, true} when erlang:byte_size(Val) =< Int -> true;
 	{_, false} -> {Key, <<"Value is not a string">>};
-	{Int, true} -> {Key, list_to_binary([<<"String must be at least ">>, wh_util:to_binary(Max), <<" characters">>])}
+	{_Int, true} -> {Key, list_to_binary([<<"String must be at least ">>, wh_util:to_binary(Max), <<" characters">>])}
     catch
 	error:badarg -> {Key, <<"Schema's maxLength not an integer or value wasn't a string">>}
     end;
@@ -248,7 +257,26 @@ is_valid_attribute(<<"enum">>, Enums, Key, Val, _AttrsJObj) ->
 	    {Key, <<"Schema enum is not a list of values">>}
     end;
 
-%% 5.21 and unknown/unhandled attributes
+%% 5.23
+is_valid_attribute(<<"format">>, Format, Key, Val, _AttrsJObj) ->
+    is_valid_format(Format, Key, Val);
+
+%% 5.24
+is_valid_attribute(<<"divisibleBy">>, DivBy, Key, Val, _AttrsJObj) ->
+    try wh_util:to_number(DivBy) of
+	0 -> {Key, <<"Trying to divide by 0">>};
+	0.0 -> {Key, <<"Trying to divide by 0">>};
+	Denominator ->
+	    Numerator = wh_util:to_number(Val),
+	    case Numerator rem Denominator of
+		0 -> true;
+		_ -> {Key, list_to_binary([<<"Value not divisible by ">>, wh_util:to_binary(DivBy)])}
+	    end
+    catch
+	error:badarg -> {Key, <<"Either the numerator or the denominator in the schema is not a number">>}
+    end;
+
+%% 5.21, 5.22,  and unknown/unhandled attributes
 is_valid_attribute(_,_,_,_,_) ->
     true. %% ignorable attribute, like 'title'
 
@@ -274,7 +302,7 @@ are_same_items(A, B) ->
 	   ],
     lists:foldl(fun(F, _) -> F(A, B) end, false, Funs).
 
-are_null(<<"null">>=A, <<"null">>) ->
+are_null(<<"null">>, <<"null">>=A) ->
     throw({duplicate_found, A});
 are_null(null, null) ->
     throw({duplicate_found, <<"null">>});
@@ -385,6 +413,81 @@ is_valid_pattern(Key, Val, Pattern) ->
 		_ -> true
 	    end
     end.
+
+-spec is_valid_format/3 :: (ne_binary(), ne_binary(), ne_binary() | number()) -> 'true' | error_result().
+is_valid_format(<<"date-time">>, Key, Val) ->
+    %% ISO 8601 (YYYY-MM-DDThh:mm:ssZ) in UTC
+    case re:run(Val, ?ISO_8601_REGEX) of
+	nomatch -> {Key, <<"Failed to parse ISO-8601 datetime (in UTC)">>};
+	{match, _} -> true
+    end;
+is_valid_format(<<"date">>, Key, Val) ->
+    %% Match YYYY-MM-DD
+    case re:run(Val, <<"^\\d{4}-\\d{2}-\\d{2}$">>) of
+	nomatch -> {Key, <<"Failed to parse date (expected 'YYYY-MM-DD')">>};
+	{match, _} -> true
+    end;
+is_valid_format(<<"time">>, Key, Val) ->
+    %% Match hh:mm:ss
+    case re:run(Val, <<"^\\d{2}:\\d{2}:\\d{2}$">>) of
+	nomatch -> {Key, <<"Failed to parse time (expected 'hh:mm:ss')">>};
+	{match, _} -> true
+    end;
+is_valid_format(<<"utc-millisec">>, Key, Val) ->
+    %% Not really sure what is expected in Val, other than a number
+    try wh_util:to_number(Val) of
+	_ -> true
+    catch
+	error:badarg -> {Key, <<"Value doesn't appear to be a number nor a utc-millisec value">>}
+    end;
+is_valid_format(<<"regex">>, Key, Val) ->
+    case re:compile(Val) of
+	{error, {ErrString, Position}} ->
+	    {Key, list_to_binary([<<"Error compiling pattern '">>, Val, <<"': ">>, ErrString, <<" at ">>, wh_util:to_binary(Position)])};
+	{ok, _} -> true
+    end;
+is_valid_format(<<"color">>, _, _) ->
+    %% supposed to be valid CSS 2.1 colors
+    true;
+is_valid_format(<<"style">>, _, _) ->
+    %% supposed to be valid CSS 2.1 style definition
+    true;
+is_valid_format(<<"phone">>, Key, Val) ->
+    case wh_util:is_e164(Val) of
+	true -> true;
+	false -> {Key, <<"Phone number not in E.164 format">>}
+    end;
+is_valid_format(<<"uri">>, Key, Val) ->
+    try mochiweb_util:urlsplit(wh_util:to_list(Val)) of
+	{_Scheme, _Netloc, _Path, _Query, _Fragment} -> true;
+	_ -> {Key, <<"Failed to parse URI">>}
+    catch
+	error:function_clause -> {Key, <<"Failed to parse URI">>}
+    end;
+is_valid_format(<<"email">>, Key, Val) ->
+    case re:run(Val, ?EMAIL_REGEX, [{capture, first, binary}]) of
+	{match, [Val]} -> true;
+	{match, _} -> {Key, <<"Failed to match entire email">>};
+	nomatch -> {Key, <<"Failed to validate email address">>}
+    end;
+is_valid_format(<<"ip-address">>, Key, Val) ->
+    case wh_util:is_ipv4(Val) of
+	true -> true;
+	false -> {Key, <<"Failed to validate IPv4">>}
+    end;
+is_valid_format(<<"ipv6">>, Key, Val) ->
+    case wh_util:is_ipv6(Val) of
+	true -> true;
+	false -> {Key, <<"Failed to validate IPv6">>}
+    end;
+is_valid_format(<<"host-name">>, Key, Val) ->
+    case re:run(Val, ?HOSTNAME_REGEX, [{capture, first, binary}]) of
+	{match, [Val]} -> true;
+	{match, _} -> {Key, <<"Failed to match entire hostname">>};
+	nomatch -> {Key, <<"Failed to validate hostname">>}
+    end;
+is_valid_format(_,_,_) ->
+    true.
 
 %% Items: [ json_term(),...]
 %% SchemaItemsJObj: {"type":"some_type", properties:{"prop1":{"attr1key":"attr1val",...},...},...}

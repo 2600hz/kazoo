@@ -2,6 +2,7 @@
 
 -export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
+-export([is_e164/1, is_npan/1, is_1npan/1]).
 -export([to_integer/1, to_float/1, to_number/1
 	 ,to_hex/1, to_list/1, to_binary/1
 	 ,to_atom/1, to_atom/2]).
@@ -98,6 +99,19 @@ get_event_type(JObj) ->
       S :: term().
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
+
+-spec is_e164/1 :: (ne_binary()) -> boolean().
+-spec is_npan/1 :: (ne_binary()) -> boolean().
+-spec is_1npan/1 :: (ne_binary()) -> boolean().
+
+is_e164(DID) ->
+    re:run(DID, <<"^\\+1\\d{10}$">>) =/= nomatch.
+
+is_npan(DID) ->
+    re:run(DID, <<"^\\d{10}$">>) =/= nomatch.
+
+is_1npan(DID) ->
+    re:run(DID, <<"^1\\d{10}$">>) =/= nomatch.
 
 %% +18001234567 -> +18001234567
 -spec to_e164/1 :: (DID) -> binary() when
