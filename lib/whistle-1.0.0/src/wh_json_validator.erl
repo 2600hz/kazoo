@@ -6,12 +6,27 @@
 %%% the schema.
 %%%
 %%% Based on http://tools.ietf.org/html/draft-zyp-json-schema-03
+%%%
+%%% is_valid_object(JObj, Schema) -> 'true' | [ {JObjKey, ErrorMsg}, ...].
+%%% is_valid_attribute(Value, Schema) -> 'true' | [ {Key, ErrorMsg}, ...].
+%%%   If the Value is a simple type, Key will be <<"root">>;
+%%%   otherwise it will be the sub-key from within Value
+%%%
+%%% IMPORTANT:
+%%% JSON Strings are only Erlang binaries. Support for atoms as JSON strings
+%%% is not included.
+%%% Atoms matched against are 'true', 'false', and 'null' (which are different
+%%% from <<"true">>, <<"false">>, and <<"null">>. Please ensure the decoding of
+%%% your JSON string converts appropriately.
+%%% wh_json:decode(<<"{\"foo\":\"true\"}">>) -> [{<<"foo">>, <<"true">>}]
+%%% wh_json:decode(<<"{\"foo\":true}">>) -> [{<<"foo">>, true}]
+%%%
 %%% @end
 %%% Created : 23 Nov 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(wh_json_validator).
 
--export([is_valid/2]).
+-export([is_valid_object/2, is_valid_attribute/3]).
 
 -compile([export_all]).
 
@@ -33,9 +48,9 @@
 -define(EMAIL_REGEX, <<"^[[\:alnum\:].+_]{1,}[@][[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
 -define(HOSTNAME_REGEX, <<"^[[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
 
-%% Return true or [{JObjKey, ErrorMsg}]
--spec is_valid/2 :: (json_object(), json_object()) -> results().
-is_valid(JObj, Schema) ->
+%% Return true or [{JObjKey, ErrorMsg},...]
+-spec is_valid_object/2 :: (json_object(), json_object()) -> results().
+is_valid_object(JObj, Schema) ->
     case is_valid_type(JObj, Schema) andalso is_valid_properties(JObj, Schema) of
 	true -> true;
 	false -> [{<<"root">>, <<"json object is not of a valid type">>}];
@@ -114,9 +129,19 @@ may_use_default(Val, _) -> Val.
 %% "type" : string | number | integer | float | boolean | array | object | null | any | user-defined
 %%          The last two (any and user-defined) are automatically considered valid
 %%
+-spec is_valid_attribute/3 :: (ne_binary(), term(), json_object()) -> results().
 -spec is_valid_attribute/5 :: (ne_binary(), ne_binary() | json_object() | number()
 			       ,ne_binary(), binary() | list() | json_object() | 'undefined' | number()
 			       ,json_object()) -> results().
+
+is_valid_attribute(Key, Val, AttrsJObj) ->
+    case [ Failed || {AttrKey, AttrVal} <- wh_json:to_proplist(AttrsJObj),
+		     (Failed = is_valid_attribute(AttrKey, AttrVal, Key, Val, AttrsJObj)) =/= true
+	 ] of
+	[] -> true;
+	Errors -> lists:flatten(Errors)
+    end.
+
 %% 5.1
 is_valid_attribute(<<"type">>, Types, Key, Val, _AttrsJObj) when is_list(Types) ->
     is_one_of_valid_types(Types, Key, Val);
@@ -607,7 +632,6 @@ are_valid_items(Items, SchemaItemsJObj) ->
     ItemSchemaJObj = wh_json:get_value(<<"items">>, SchemaItemsJObj, wh_json:new()),
     true.
 
-
 -spec is_required_attribute/1 :: (json_object()) -> boolean().
 is_required_attribute(AttributesJObj) ->
     wh_json:is_true(<<"required">>, AttributesJObj, false).
@@ -962,7 +986,7 @@ disallow_complex_union_test() ->
 
 %% Helper function to run the eunit tests listed above
 validate_test(Succeed, Fail, Schema) ->
-    SJObj = mochijson2:decode(binary:list_to_bin(Schema)),
+    SJObj = wh_json:decode(wh_util:to_binary(Schema)),
     S = wh_json:to_proplist(SJObj),
 
     [ begin
