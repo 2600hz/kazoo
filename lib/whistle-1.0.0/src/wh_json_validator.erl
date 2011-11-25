@@ -118,6 +118,8 @@ may_use_default(Val, _) -> Val.
 			       ,ne_binary(), binary() | list() | json_object() | 'undefined' | number()
 			       ,json_object()) -> results().
 %% 5.1
+is_valid_attribute(<<"type">>, Types, Key, Val, _AttrsJObj) when is_list(Types) ->
+    is_one_of_valid_types(Types, Key, Val);
 is_valid_attribute(<<"type">>, Type, Key, Val, _AttrsJObj) ->
     is_valid_type(Key, Val, Type);
 
@@ -218,7 +220,7 @@ is_valid_attribute(<<"uniqueItems">>, TryUnique, Key, Vals, _AttrsJObj) ->
 	{true, true} ->
 	    case are_unique_items(Vals) of
 		true -> true;
-		Errors -> [{Key, <<"list of items are not unique">>} | Errors]
+		Error -> [{Key, <<"list of items are not unique">>}, Error]
 	    end;
 	{false, _} -> {Key, <<"uniqueItems set improperly (should be set to 'true'">>};
 	{true, false} -> {Key, <<"Expected a list; was disappoint">>}
@@ -252,7 +254,7 @@ is_valid_attribute(<<"maxLength">>, Max, Key, Val, _AttrsJObj) ->
 is_valid_attribute(<<"enum">>, Enums, Key, Val, _AttrsJObj) ->
     case is_list(Enums) of
 	true ->
-	    try lists:any(fun(Enum) -> are_same_items(Enum, Val) end) of
+	    try lists:any(fun(Enum) -> are_same_items(Enum, Val) end, Enums) of
 		false -> {Key, <<"value not found in enumerated list of values">>}
 	    catch
 		throw:{duplicate_found,_} -> true
@@ -267,14 +269,21 @@ is_valid_attribute(<<"format">>, Format, Key, Val, _AttrsJObj) ->
 
 %% 5.24
 is_valid_attribute(<<"divisibleBy">>, DivBy, Key, Val, _AttrsJObj) ->
-    try wh_util:to_number(DivBy) of
-	0 -> {Key, <<"Trying to divide by 0">>};
-	0.0 -> {Key, <<"Trying to divide by 0">>};
-	Denominator ->
-	    Numerator = wh_util:to_number(Val),
+    try {erlang:abs(wh_util:to_number(DivBy)), erlang:abs(wh_util:to_number(Val))} of
+	{0, _} -> {Key, <<"Trying to divide by 0">>};
+	{0.0, _} -> {Key, <<"Trying to divide by 0">>};
+	{Denominator, Numerator} when is_integer(Denominator) andalso is_integer(Numerator) ->
 	    case Numerator rem Denominator of
 		0 -> true;
 		_ -> {Key, list_to_binary([<<"Value not divisible by ">>, wh_util:to_binary(DivBy)])}
+	    end;
+	{Denominator, Numerator} ->
+	    Res = Numerator / Denominator,
+	    %% 1 / 0.1 = 10.0 which is evenly divisible
+	    %% trunc(10.0) == 10 (notice == NOT =:=)
+	    case trunc(Res) == Res of
+		true -> true;
+		false -> {Key, list_to_binary([<<"Value not divisible by ">>, wh_util:to_binary(DivBy)])}
 	    end
     catch
 	error:badarg -> {Key, <<"Either the numerator or the denominator in the schema is not a number">>};
@@ -282,8 +291,16 @@ is_valid_attribute(<<"divisibleBy">>, DivBy, Key, Val, _AttrsJObj) ->
     end;
 
 %% 5.25
+is_valid_attribute(<<"disallow">>, Types, Key, Val, _AttrsJObj) when is_list(Types) ->
+    case is_one_of_disallowed_types(Types, Key, Val) of
+	false -> true;
+	E -> E
+    end;
 is_valid_attribute(<<"disallow">>, Type, Key, Val, _AttrsJObj) ->
-    is_disallowed_type(Key, Val, Type);
+    case is_disallowed_type(Key, Val, Type) of
+	false -> true;
+	E -> E
+    end;
 
 %% 5.26
 is_valid_attribute(<<"extends">>, _ExtendJObj, _Key, _Val, _AttrsJObj) ->
@@ -309,43 +326,49 @@ is_valid_attribute(<<"$schema">>, _Uri, _Key, _Val, _AttrsJObj) ->
 is_valid_attribute(_,_,_,_,_) ->
     true. %% ignorable attribute, like 'title'
 
--spec are_unique_items/1 :: (list()) -> results().
+-spec are_unique_items/1 :: (list()) -> 'true' | error_result().
 are_unique_items(Vals) ->
-    try lists:usort(Vals, fun are_same_items/2) of
-	_ -> true
+    try lists:usort(fun are_same_items/2, Vals) of
+	_E -> io:format("~p~n", [_E]), true
     catch
 	throw:{duplicate_found, A} ->
-	    [{<<"duplicate found">>, wh_util:to_binary(A)}]
+	    {<<"duplicate found">>, wh_util:to_binary(A)};
+	error:function_clause ->
+	    %% some one failed (likely wh_json:get_keys/1)
+	    %% which means they probably weren't equal
+	    io:format("~p~n", [erlang:get_stacktrace()]),
+	    true
     end.
 
 %% will throw an exception if A and B are identical
 -spec are_same_items/2 :: (term(), term()) -> false.
-are_same_items(A, A) -> throw({duplicate_found, A});
+%% are_same_items(A, A) -> throw({duplicate_found, A});
 are_same_items(A, B) ->
     Funs = [ fun are_null/2
 	     ,fun are_boolean/2
 	     ,fun are_numbers/2
-	     %% ,fun are_strings/2 %% handled by first clause (A =:= A)
+	     ,fun are_strings/2 %% handled by first clause (A =:= A)
 	     ,fun are_arrays/2
 	     ,fun are_objects/2
 	   ],
     lists:foldl(fun(F, _) -> F(A, B) end, false, Funs).
 
-are_null(<<"null">>, <<"null">>=A) ->
-    throw({duplicate_found, A});
 are_null(null, null) ->
     throw({duplicate_found, <<"null">>});
 are_null(_, _) ->
     false.
 
-are_boolean(A, B) ->
+are_boolean(A, B) when (is_binary(A) orelse is_atom(A)) andalso
+		       (is_binary(B) orelse is_atom(B)) ->
     try {wh_util:to_boolean(A), wh_util:to_boolean(B)} of
 	{C, C} -> throw({duplicate_found, C});
 	_ -> false
     catch
 	error:function_clause ->
 	    false
-    end.
+    end;
+are_boolean(_, _) ->
+    false.
 
 are_numbers(A, B) ->
     try {wh_util:to_number(A), wh_util:to_number(B)} of
@@ -353,8 +376,16 @@ are_numbers(A, B) ->
 	_ -> false
     catch
 	error:badarg -> false;
-	error:funciton_clause -> false
+	error:function_clause -> false
     end.
+
+are_strings(A, B) when is_binary(A) andalso is_binary(B) ->
+    case A =:= B of
+	true -> throw({duplicate_found, A});
+	false -> false
+    end;
+are_strings(_, _) ->
+    false.
 
 %% contains the same number of items, and each item in
 %% the array is equal to the corresponding item in the other array
@@ -363,29 +394,45 @@ are_arrays([], [_|_]) -> false;
 are_arrays([_|_], []) -> false;
 are_arrays([A|As], [A|Bs]) ->
     are_arrays(As, Bs);
-are_arrays(_, _) ->
+are_arrays(_,_) ->
     false.
 
 %% contains the same property names, and each property
 %% in the object is equal to the corresponding property in the other
 %% object.
-are_objects(A, B) ->
+are_objects(A, B) when is_tuple(A) andalso is_tuple(B) ->
     %% Forall keys in A, A(Key) =:= B(Key), and vice versa
     %% if either is false, they aren't identical objects
     case lists:all(fun(AK) -> wh_json:get_value(AK, B) =:= wh_json:get_value(AK, A) end, wh_json:get_keys(A)) andalso
 	lists:all(fun(BK) -> wh_json:get_value(BK, A) =:= wh_json:get_value(BK, B) end, wh_json:get_keys(B)) of
 	true -> throw({duplicate_found, <<"objects match">>});
 	false -> false
-    end.
+    end;
+are_objects(_, _) ->
+    false.
+
+-spec is_one_of_valid_types/3 :: ([ne_binary(),...] | [], binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'true' | error_result().
+-spec is_one_of_disallowed_types/3 :: ([ne_binary(),...] | [], binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'false' | error_result().
 
 -spec is_valid_type/3 :: (ne_binary(), binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'true' | error_result().
--spec is_disallowed_type/3 :: (ne_binary(), binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'true' | error_result().
+-spec is_disallowed_type/3 :: (ne_binary(), binary() | list() | number(), ne_binary() | [ne_binary(),...] | json_object()) -> 'false' | error_result().
 
-is_valid_type(Key, Val, Union) when is_list(Union) ->
-    case lists:any(fun(<<"any">>) -> true; (Type) -> check_valid_type(Val, Type, true) end, Union) of
+is_one_of_valid_types([], Key, _) ->
+    {Key, <<"Value did not match one of the necessary types">>};
+is_one_of_valid_types([Type|Types], Key, Val) ->
+    case is_valid_type(Key, Val, Type) of
 	true -> true;
-	false -> [{Key, list_to_binary([<<"Value is not one of types: ">>, wh_util:binary_join(Union, <<", ">>)])}]
-    end;
+	_ -> is_one_of_valid_types(Types, Key, Val)
+    end.
+
+is_one_of_disallowed_types([], _, _) ->
+    false;
+is_one_of_disallowed_types([Type|Types], Key, Val) ->
+    case is_disallowed_type(Key, Val, Type) of
+	false -> is_one_of_disallowed_types(Types, Key, Val);
+	{_,_}=E -> E
+    end.
+
 is_valid_type(_Key, _Val, <<"any">>) -> true;
 is_valid_type(Key, Val, Type) when is_binary(Type) ->
     case check_valid_type(Val, Type, true) of
@@ -395,33 +442,26 @@ is_valid_type(Key, Val, Type) when is_binary(Type) ->
 is_valid_type(Key, Val, TypeSchema) ->
     are_valid_attributes(wh_json:set_value(Key, Val, wh_json:new()), Key, TypeSchema).
 
-is_disallowed_type(Key, Val, Union) when is_list(Union) ->
-    case lists:any(fun(<<"any">>) -> false; (Type) -> check_valid_type(Val, Type, false) end, Union) of
-	true -> true;
-	false -> [{Key, list_to_binary([<<"Value is one of disallowed types: ">>, wh_util:binary_join(Union, <<", ">>)])}]
-    end;
 is_disallowed_type(Key, _Val, <<"any">>) -> {Key, <<"Value disallowed because schema disallows all">>};
 is_disallowed_type(Key, Val, Type) when is_binary(Type) ->
     case check_valid_type(Val, Type, false) of
-	true -> true;
+	true -> false;
 	false -> {Key, list_to_binary([<<"Value is of disallowed type: ">>, Type])}
+    end;
+is_disallowed_type(Key, Val, TypeSchema) ->
+    case are_valid_attributes(wh_json:set_value(Key, Val, wh_json:new()), Key, TypeSchema) of
+	true -> {Key, list_to_binary([<<"Value is of disallowed type: ">>, wh_json:get_value(<<"type">>, TypeSchema, <<"any">>)])};
+	_ -> false
     end.
 
 %% If we are testing a value to be of a type, ShouldBe is true; meaning we expect the value to be of the type.
 %% If ShouldBe is false (as when calling is_disallowed_type/3), then we expect the value to not be of the type.
 -spec check_valid_type/3 :: (binary() | list() | number(), ne_binary(), boolean()) -> 'true' | error_result().
-check_valid_type(Val, <<"string">>, ShouldBe) ->
-    case is_binary(Val) of
-	true -> ShouldBe;
-	false ->
-	    %% json strings can be atoms, except the reserved ones below
-	    case is_atom(Val) andalso Val of
-		false -> not ShouldBe;
-		true -> not ShouldBe;
-		null -> not ShouldBe;
-		_ -> ShouldBe
-	    end
-    end;
+check_valid_type(Val, <<"string">>, ShouldBe) when is_binary(Val) ->
+     ShouldBe;
+check_valid_type(_, <<"string">>, ShouldBe) ->
+    not ShouldBe;
+
 check_valid_type(Val, <<"number">>, ShouldBe) ->
     try wh_util:to_number(Val) of
 	_ -> ShouldBe
@@ -469,7 +509,7 @@ check_valid_type(_,_,_) ->
     true.
 
 -spec is_valid_pattern/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'true' | error_result().
-is_valid_pattern(Key, Val, Pattern) ->
+is_valid_pattern(Key, Val, Pattern) when is_binary(Val) ->
     case re:compile(Pattern) of
 	{error, {ErrString, Position}} ->
 	    {Key, list_to_binary([<<"Error compiling pattern '">>, Pattern, <<"': ">>, ErrString, <<" at ">>, wh_util:to_binary(Position)])};
@@ -478,7 +518,9 @@ is_valid_pattern(Key, Val, Pattern) ->
 		nomatch -> {Key, list_to_binary([<<"Failed to match pattern '">>, Pattern, <<"'">>])};
 		_ -> true
 	    end
-    end.
+    end;
+is_valid_pattern(Key, _, _) ->
+    {Key, <<"Value is not a string">>}.
 
 -spec is_valid_format/3 :: (ne_binary(), ne_binary(), ne_binary() | number()) -> 'true' | error_result().
 is_valid_format(<<"date-time">>, Key, Val) ->
@@ -586,8 +628,8 @@ is_optional_attribute(AttributesJObj) ->
 -define(POS1, 1).
 -define(PI, 3.1416).
 -define(STR1, <<"foobar">>).
--define(STR2, barfoo).
--define(OBJ1, {struct, [{<<"foo">>, <<"bar">>}]}).
+-define(STR2, <<"barfoo">>).
+-define(OBJ1, wh_json:from_list([{<<"foo">>, <<"bar">>}])).
 -define(ARR1, []).
 -define(ARR2, [?STR1]).
 -define(ARR3, [?STR1, ?STR2]).
@@ -785,7 +827,7 @@ unique_items_test() ->
 %%     When the instance value is a string, this provides a regular expression that a string MUST match
 pattern_test() ->
     Schema = "{ \"pattern\": \"tle\$\"}",
-    Succeed = [chipotle, <<"chipotle">>],
+    Succeed = [<<"chipotle">>],
     Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
 
     validate_test(Succeed, Fail, Schema).
@@ -794,8 +836,8 @@ pattern_test() ->
 %%     When the instance value is a string, this defines the minimum length of the string
 min_length_test() ->
     Schema = "{ \"minLength\": 7}",
-    Succeed = [longstring, <<"longstring">>],
-    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+    Succeed = [<<"longstring">>],
+    Fail = [longstring, ?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
 
     validate_test(Succeed, Fail, Schema).
 
@@ -803,7 +845,7 @@ min_length_test() ->
 %%     When the instance value is a string, this defines the maximum length of the string
 max_length_test() ->
     Schema = "{ \"maxLength\": 3}",
-    Succeed = [foo, <<"bar">>],
+    Succeed = [<<"bar">>],
     Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?PI, ?STR1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
 
     validate_test(Succeed, Fail, Schema).
@@ -924,21 +966,22 @@ validate_test(Succeed, Fail, Schema) ->
     S = wh_json:to_proplist(SJObj),
 
     [ begin
-	  Validation = [is_valid_attribute(AttName, AttValue, <<"eunit">>, Elem, SJObj)  || {AttName, AttValue} <- S],
-	  case lists:all(fun(true) -> true; (_) -> false end, Validation) of
-	      true -> ?assert(true);
-	      false ->
-		  ?debugFmt("Failed on elem ~p, schema ~s~n", [Elem, Schema]),
-		  ?assert(false)
+	  Validation = [Failed || {AttName, AttValue} <- S, (Failed = is_valid_attribute(AttName, AttValue, <<"eunit">>, Elem, SJObj)) =/= true],
+	  case lists:flatten(Validation) of
+	      [] ->
+		  ?assert(true);
+	      [_|_]=FailCity ->
+		  ?debugFmt("Failed at least one test (unexpected): ~p~nFor el: ~p and ~s~n", [FailCity, Elem, Schema]),
+		  ?assert(true)
 	  end
       end || Elem <- Succeed],
     [ begin
-	  Validation = [is_valid_attribute(AttName, AttValue, <<"eunit">>, Elem, SJObj) || {AttName, AttValue} <- S],
-	  case lists:any(fun(true) -> true; (_) -> false end, Validation) of
-	      true ->
-		  ?debugFmt("Passed on elem ~p, schema ~s~n", [Elem, Schema]),
+	  Validation = [Failed || {AttName, AttValue} <- S, (Failed = is_valid_attribute(AttName, AttValue, <<"eunit">>, Elem, SJObj)) =/= true],
+	  case lists:flatten(Validation) of
+	      [] ->
+		  ?debugFmt("Passed all tests (unexpected) elem ~p, schema ~s~n", [Elem, Schema]),
 		  ?assert(false);
-	      false ->
+	      [_|_] ->
 		  ?assert(true)
 	  end
       end || Elem <- Fail].

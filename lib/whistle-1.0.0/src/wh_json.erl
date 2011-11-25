@@ -245,7 +245,7 @@ get_binary_boolean(Key, JObj) ->
     end.
 
 -spec get_keys/1 :: (json_object()) -> json_strings() | [].
--spec get_keys/2 :: (json_string() | json_strings(), json_object()) -> 'undefined' | json_strings() | [].
+-spec get_keys/2 :: (json_string() | json_strings(), json_object()) -> json_strings() | [].
 get_keys(JObj) ->
     get_keys1(JObj).
 
@@ -256,8 +256,7 @@ get_keys(Key, JObj) ->
 
 get_keys1(KVs) when is_list(KVs) ->
     lists:seq(1,length(KVs));
-get_keys1({struct, KVs}) when is_list(KVs) -> props:get_keys(KVs);
-get_keys1(_) -> undefined.
+get_keys1({struct, KVs}) when is_list(KVs) -> props:get_keys(KVs).
 
 -spec get_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> json_term().
 -spec get_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), json_term()) -> json_term().
@@ -306,10 +305,7 @@ set_value(Key, Value, {struct, _}=JObj) ->
 set_value(Key, Value, [{struct, _} | _]=JObjs) ->
     set_value1(Key, Value, JObjs).
 
--spec set_value1/3 :: (Key, Value, JObj) -> json_object() | json_objects() when
-      Key :: json_string() | json_strings(),
-      Value :: json_term(),
-      JObj :: json_object() | json_objects().
+-spec set_value1/3 :: (json_string() | json_strings(), json_term(), json_object() | json_objects()) -> json_object() | json_objects().
 set_value1(Key, Value, JObj) when not is_list(Key) ->
     set_value1([Key], Value, JObj);
 set_value1([Key|T], Value, [{struct, _}|_]=JObjs) ->
