@@ -38,8 +38,8 @@
 %
 % @end
 %------------------------------------------------------------------------------
--spec ( start_link/0 :: ( ) -> tuple(ok, Pid :: pid()) | ignore | tuple(error, Error :: term()) ).
-start_link ( ) ->
+-spec start_link/0 :: () -> startlink_ret().
+start_link() ->
     gen_server:start_link( {local, ?SERVER}, ?MODULE, [], [] ).
 
 %%-----------------------------------------------------------------------------
@@ -100,8 +100,8 @@ handle_info ({binding_fired, Pid, <<"v1_resource.resource_exists.callflows">>, P
 
 handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
+                  _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
@@ -109,7 +109,7 @@ handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
@@ -120,7 +120,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
@@ -131,7 +131,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, C
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]},
                   %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
@@ -142,7 +142,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD
 
 handle_info({binding_fired, Pid, <<"account.created">>, DBName}, State) ->
     spawn(fun() ->
-                  couch_mgr:revise_views_from_folder(DBName, callflow),
+                  _ = couch_mgr:revise_views_from_folder(DBName, callflow),
                   Pid ! {binding_result, true, []}
           end),
     {noreply, State};

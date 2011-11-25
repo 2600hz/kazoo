@@ -109,7 +109,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.billing">>
 handle_info({binding_fired, Pid, <<"v1_resource.billing">>
                  ,{RD, #cb_context{req_nouns=[{<<"ts_accounts">>, Params}]}=Context}}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = try
                                  case authorize_trunkstore(Params, Context) of
@@ -143,7 +143,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.braintree">>, Pa
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.braintree">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
@@ -151,7 +151,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.braintree">>, [RD, Cont
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, Context | [<<"customer">>]=Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Customer = crossbar_util:fetch(braintree, Context),
                   Context1 = case braintree_customer:update(Customer) of
                                  {ok, #bt_customer{}=C} ->
@@ -169,8 +169,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, #cb_context{account_id=AcctID, req_data=ReqData}=Context | [<<"credits">>]=Params]}, State) ->
     spawn(fun() ->
-		  crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
+		  _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:binding_heartbeat(Pid),
 
 		  Units = wapi_money:dollars_to_units(wh_json:get_float_value(<<"amount">>, ReqData)),
 		  ?LOG("Putting ~p units", [Units]),
@@ -197,8 +197,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, #
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, Context | [<<"cards">>]=Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
+                  _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:binding_heartbeat(Pid),
                   Card = crossbar_util:fetch(braintree, Context),
                   Context1 = case braintree_card:create(Card) of
                                  {ok, #bt_card{}=C} ->
@@ -216,8 +216,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, C
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, Context | [<<"cards">>, CardId]=Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
+                  _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:binding_heartbeat(Pid),
                   Card = crossbar_util:fetch(braintree, Context),
                   Context1 = case braintree_card:update(Card) of
                                  {ok, #bt_card{}=C} ->
@@ -237,8 +237,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD, Context | [<<"cards">>, CardId]=Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
+                  _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:binding_heartbeat(Pid),
                   Context1 = case braintree_card:delete(CardId) of
                                  {ok, #bt_card{}=C} ->
                                      Response = braintree_card:record_to_json(C),
@@ -257,8 +257,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, Context | [<<"addresses">>]=Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
+                  _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:binding_heartbeat(Pid),
                   Address = crossbar_util:fetch(braintree, Context),
                   Context1 = case braintree_address:create(Address) of
                                  {ok, #bt_address{}=A} ->
@@ -276,8 +276,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, C
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, Context | [<<"addresses">>, AddressId]=Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
+                  _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:binding_heartbeat(Pid),
                   Address = crossbar_util:fetch(braintree, Context),
                   Context1 = case braintree_address:update(Address) of
                                  {ok, #bt_address{}=A} ->
@@ -297,8 +297,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD, Context | [<<"addresses">>, AddressId]=Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
+                  _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:binding_heartbeat(Pid),
                   Context1 = case braintree_address:delete(Context#cb_context.account_id, AddressId) of
                                  {ok, #bt_address{}=A} ->
                                      Response = braintree_card:record_to_json(A),
@@ -597,10 +597,9 @@ validate(_, Context) ->
 %% Creates an empty customer in braintree
 %% @end
 %%--------------------------------------------------------------------
--spec create_placeholder_account/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec create_placeholder_account/1 :: (#cb_context{}) -> #cb_context{}.
 create_placeholder_account(#cb_context{account_id=AccountId}=Context) ->
-    case braintree_customer:create(#bt_customer{id=AccountId}) of
+    case braintree_customer:create(#bt_customer{id=wh_util:to_list(AccountId)}) of
         {ok, #bt_customer{}=C} ->
             ?LOG("created new customer ~s", [AccountId]),
             Response = braintree_customer:record_to_json(C),
@@ -622,9 +621,7 @@ create_placeholder_account(#cb_context{account_id=AccountId}=Context) ->
 %% terminates the request if it fails
 %% @end
 %%--------------------------------------------------------------------
--spec authorize_trunkstore/2 :: (AccountId, Context) -> #cb_context{} when
-      AccountId :: binary(),
-      Context :: #cb_context{}.
+-spec authorize_trunkstore/2 :: ([ne_binary()], #cb_context{}) -> #cb_context{}.
 authorize_trunkstore(_, #cb_context{req_verb = <<"get">>}=Context) ->
     Context#cb_context{resp_status=success};
 authorize_trunkstore(_, #cb_context{req_verb = <<"put">>, doc=JObj, auth_doc=AuthDoc}=Context) ->

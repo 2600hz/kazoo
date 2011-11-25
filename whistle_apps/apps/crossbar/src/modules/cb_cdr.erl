@@ -115,7 +115,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.cdr">>, Payload}
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.cdr">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  Context1 = validate(Params, RD, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -233,43 +233,3 @@ validate([CDRId], RD, #cb_context{req_verb = <<"get">>}=Context) ->
     crossbar_util:response_deprecated_redirect(Context, Relative, wh_json:from_list([{<<"Location">>, wh_util:to_binary(Location)}]));
 validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load list of CDR, each summarized.
-%% @end
-%%--------------------------------------------------------------------
--spec load_cdr_summary/2 :: (Context, QueryParams) -> #cb_context{} when
-      Context :: #cb_context{},
-      QueryParams :: proplist().
-load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
-    Nouns = Context#cb_context.req_nouns,
-    LastNoun  = lists:nth(2, Nouns), %%st is {cdr, _}
-    case LastNoun of
-	{<<"accounts">>, _} ->
-	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams, []),
-	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
-	{<<"users">>, [UserId]} ->
-	    {ok, SipCredsFromDevices} = couch_mgr:get_results(DbName, <<"devices/listing_by_owner">>, [{<<"key">>, UserId}, {<<"include_docs">>, true}]),
-	    SipCredsKeys = lists:foldl(fun(SipCred, Acc) ->
-					       [[wh_json:get_value([<<"doc">>, <<"sip">>, <<"realm">>], SipCred),
-						wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], SipCred)]|Acc]
-				       end, [], SipCredsFromDevices),
-	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"keys">>, SipCredsKeys}]),
-	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
-	_ ->
-	    crossbar_util:response_faulty_request(Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a CDR document from the database
-%% @end
-%%--------------------------------------------------------------------
--spec load_cdr/2 :: (CdrId, Context) -> #cb_context{} when
-      CdrId :: binary(),
-      Context :: #cb_context{}.
-load_cdr(CdrId, Context) ->
-    crossbar_doc:load(CdrId, Context).
