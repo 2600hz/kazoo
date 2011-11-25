@@ -179,7 +179,7 @@ is_valid_attribute(<<"additionalItems">>, _ItemsJObj, _Key, _ValJObj, _AttrsJObj
 
 %% 5.7
 is_valid_attribute(<<"required">>, IsRequired, Key, Val, _AttrsJObj) ->
-    case wh_util:is_true(IsRequired, false) of
+    case wh_util:is_true(IsRequired) of
 	false -> true;
 	true ->
 	    case Val =:= undefined of
@@ -439,14 +439,14 @@ are_objects(A, B) when is_tuple(A) andalso is_tuple(B) ->
 are_objects(_, _) ->
     false.
 
--spec is_one_of_valid_types/3 :: ([ne_binary(),...] | [], binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'true' | error_result().
--spec is_one_of_disallowed_types/3 :: ([ne_binary(),...] | [], binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'false' | error_result().
+-spec is_one_of_valid_types/3 :: ([ne_binary(),...] | [], binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'true' | error_results().
+-spec is_one_of_disallowed_types/3 :: ([ne_binary(),...] | [], binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'false' | error_results().
 
--spec is_valid_type/3 :: (ne_binary(), binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'true' | error_result().
--spec is_disallowed_type/3 :: (ne_binary(), binary() | list() | number(), ne_binary() | [ne_binary(),...] | json_object()) -> 'false' | error_result().
+-spec is_valid_type/3 :: (ne_binary(), binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'true' | error_results().
+-spec is_disallowed_type/3 :: (ne_binary(), binary() | list() | number(), ne_binary() | [ne_binary(),...] | json_object()) -> 'false' | error_results().
 
 is_one_of_valid_types([], Key, _) ->
-    {Key, <<"Value did not match one of the necessary types">>};
+    [{Key, <<"Value did not match one of the necessary types">>}];
 is_one_of_valid_types([Type|Types], Key, Val) ->
     case is_valid_type(Key, Val, Type) of
 	true -> true;
@@ -458,14 +458,14 @@ is_one_of_disallowed_types([], _, _) ->
 is_one_of_disallowed_types([Type|Types], Key, Val) ->
     case is_disallowed_type(Key, Val, Type) of
 	false -> is_one_of_disallowed_types(Types, Key, Val);
-	{_,_}=E -> E
+	E -> E
     end.
 
 is_valid_type(_Key, _Val, <<"any">>) -> true;
 is_valid_type(Key, Val, Type) when is_binary(Type) ->
     case check_valid_type(Val, Type, true) of
 	true -> true;
-	false -> {Key, list_to_binary([<<"Value is not of type: ">>, Type])}
+	false -> [{Key, list_to_binary([<<"Value is not of type: ">>, Type])}]
     end;
 is_valid_type(Key, Val, TypeSchema) ->
     are_valid_attributes(wh_json:set_value(Key, Val, wh_json:new()), Key, TypeSchema).
@@ -474,17 +474,17 @@ is_disallowed_type(Key, _Val, <<"any">>) -> {Key, <<"Value disallowed because sc
 is_disallowed_type(Key, Val, Type) when is_binary(Type) ->
     case check_valid_type(Val, Type, false) of
 	true -> false;
-	false -> {Key, list_to_binary([<<"Value is of disallowed type: ">>, Type])}
+	false -> [{Key, list_to_binary([<<"Value is of disallowed type: ">>, Type])}]
     end;
 is_disallowed_type(Key, Val, TypeSchema) ->
     case are_valid_attributes(wh_json:set_value(Key, Val, wh_json:new()), Key, TypeSchema) of
-	true -> {Key, list_to_binary([<<"Value is of disallowed type: ">>, wh_json:get_value(<<"type">>, TypeSchema, <<"any">>)])};
+	true -> [{Key, list_to_binary([<<"Value is of disallowed type: ">>, wh_json:get_value(<<"type">>, TypeSchema, <<"any">>)])}];
 	_ -> false
     end.
 
 %% If we are testing a value to be of a type, ShouldBe is true; meaning we expect the value to be of the type.
 %% If ShouldBe is false (as when calling is_disallowed_type/3), then we expect the value to not be of the type.
--spec check_valid_type/3 :: (binary() | list() | number(), ne_binary(), boolean()) -> 'true' | error_result().
+-spec check_valid_type/3 :: (binary() | list() | number(), ne_binary(), boolean()) -> boolean().
 check_valid_type(Val, <<"string">>, ShouldBe) when is_binary(Val) ->
      ShouldBe;
 check_valid_type(_, <<"string">>, ShouldBe) ->
@@ -533,8 +533,8 @@ check_valid_type(Val, <<"null">>, ShouldBe) ->
 	_ -> not ShouldBe
     end;
 %% any type ('any' or user-defined) that get's here is considered passing
-check_valid_type(_,_,_) ->
-    true.
+check_valid_type(_,_,ShouldBe) ->
+    ShouldBe.
 
 -spec is_valid_pattern/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'true' | error_result().
 is_valid_pattern(Key, Val, Pattern) when is_binary(Val) ->
@@ -992,24 +992,14 @@ validate_test(Succeed, Fail, Schema) ->
     SJObj = wh_json:decode(wh_util:to_binary(Schema)),
     S = wh_json:to_proplist(SJObj),
 
-    [ begin
-	  Validation = [Failed || {AttName, AttValue} <- S, (Failed = is_valid_attribute(AttName, AttValue, <<"eunit">>, Elem, SJObj)) =/= true],
-	  case lists:flatten(Validation) of
-	      [] ->
-		  ?assert(true);
-	      [_|_]=FailCity ->
-		  ?debugFmt("Failed at least one test (unexpected): ~p~nFor el: ~p and ~s~n", [FailCity, Elem, Schema]),
-		  ?assert(true)
-	  end
-      end || Elem <- Succeed],
-    [ begin
-	  Validation = [Failed || {AttName, AttValue} <- S, (Failed = is_valid_attribute(AttName, AttValue, <<"eunit">>, Elem, SJObj)) =/= true],
-	  case lists:flatten(Validation) of
-	      [] ->
-		  ?debugFmt("Passed all tests (unexpected) elem ~p, schema ~s~n", [Elem, Schema]),
-		  ?assert(false);
-	      [_|_] ->
-		  ?assert(true)
-	  end
-      end || Elem <- Fail].
+    _ = [ begin
+	      Validation = [Failed || {AttName, AttValue} <- S, (Failed = is_valid_attribute(AttName, AttValue, <<"eunit">>, Elem, SJObj)) =/= true],
+	      Results = lists:flatten(Validation),
+	      ?assertEqual(true, Results =:= [])
+	  end || Elem <- Succeed],
+    _ = [ begin
+	      Validation = [Failed || {AttName, AttValue} <- S, (Failed = is_valid_attribute(AttName, AttValue, <<"eunit">>, Elem, SJObj)) =/= true],
+	      Results = lists:flatten(Validation),
+	      ?assertEqual(true, Results =/= [])
+	  end || Elem <- Fail].
 -endif.
