@@ -252,11 +252,7 @@ init_route_req(Parent, Node, FSID, CallID, FSData) ->
     put(callid, CallID),
     process_route_req(Node, FSID, CallID, FSData).
 
--spec process_route_req/4 :: (Node, FSID, CallID, FSData) -> ok when
-      Node :: atom(),
-      FSID :: binary(),
-      CallID :: binary(),
-      FSData :: proplist().
+-spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
 process_route_req(Node, FSID, CallID, FSData) ->
     DefProp = [{<<"Msg-ID">>, FSID}
 	       ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}

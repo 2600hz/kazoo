@@ -239,7 +239,8 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
             DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
                                 <<"simultaneous">> when length(Endpoints) > 1 ->
                                     ?LOG("bridge is simultaneous to multiple endpoints, starting local ringing"),
-                                    send_cmd(Node, UUID, <<"ring_ready">>, ""),
+				    %% we don't really care if this succeeds, the call will fail later on
+                                    _ = send_cmd(Node, UUID, <<"ring_ready">>, ""),
                                     ",";
                                 _Else ->
                                     "|"

@@ -117,7 +117,7 @@ handle_cast({distributed_presence, Type, Event}, #state{node=Node}=State) ->
                                                 proplists:delete(Header, Props)
                                         end, Event, ?FS_DEFAULT_HDRS)],
     EventName = wh_util:to_atom(<<"PRESENCE_", Type/binary>>, true),
-    freeswitch:sendevent(Node, EventName, Headers),
+    _ = freeswitch:sendevent(Node, EventName, Headers),
     {noreply, State};
 
 handle_cast(_Req, State) ->
@@ -166,15 +166,15 @@ handle_info({event, [undefined | Data]}, #state{stats=Stats, node=Node}=State) -
 	    spawn(fun() -> process_custom_data(Data) end),
 	    {noreply, State, hibernate};
         <<"PRESENCE_", Type/binary>> ->
-            case props:get_value(<<"Distributed-From">>, Data) of
-                undefined ->
-                    Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
-                    [distributed_presence(Srv, Type, Headers)
-                     || Srv <- ecallmgr_fs_sup:node_handlers()
-                            ,Srv =/= self()];
-                _Else ->
-                    ok
-            end,
+            _ = case props:get_value(<<"Distributed-From">>, Data) of
+		    undefined ->
+			Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
+			[distributed_presence(Srv, Type, Headers)
+			 || Srv <- ecallmgr_fs_sup:node_handlers()
+				,Srv =/= self()];
+		    _Else ->
+			ok
+		end,
 	    {noreply, State, hibernate};
 	_ ->
 	    {noreply, State, hibernate}
@@ -199,15 +199,15 @@ handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
 	    {noreply, State};
         <<"PRESENCE_", Type/binary>> ->
-            case props:get_value(<<"Distributed-From">>, Data) of
-                undefined ->
-                    Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
-                    [distributed_presence(Srv, Type, Headers)
-                     || Srv <- ecallmgr_fs_sup:node_handlers()
-                            ,Srv =/= self()];
-                _Else ->
-                    ok
-            end,
+            _ = case props:get_value(<<"Distributed-From">>, Data) of
+		    undefined ->
+			Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
+			[distributed_presence(Srv, Type, Headers)
+			 || Srv <- ecallmgr_fs_sup:node_handlers()
+				,Srv =/= self()];
+		    _Else ->
+			ok
+		end,
 	    {noreply, State, hibernate};
 	<<"CUSTOM">> ->
 	    spawn(fun() -> process_custom_data(Data) end),
@@ -440,7 +440,7 @@ return_rows(_Node, [], Acc) -> Acc.
 
 print_api_responses(Res) ->
     ?LOG_SYS("Start cmd results:"),
-    [ print_api_response(ApiRes) || ApiRes <- Res],
+    _ = [ print_api_response(ApiRes) || ApiRes <- Res],
     ?LOG_SYS("End cmd results").
 
 print_api_response({ok, Res}) ->
