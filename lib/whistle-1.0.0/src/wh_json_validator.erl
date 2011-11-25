@@ -51,9 +51,12 @@
 %% Return true or [{JObjKey, ErrorMsg},...]
 -spec is_valid_object/2 :: (json_object(), json_object()) -> results().
 is_valid_object(JObj, Schema) ->
-    case is_valid_type(JObj, Schema) andalso is_valid_properties(JObj, Schema) of
-	true -> true;
-	false -> [{<<"root">>, <<"json object is not of a valid type">>}];
+    case is_valid_type(JObj, Schema) of
+	true ->
+	    case is_valid_properties(JObj, Schema) of
+		true -> true;
+		Errors -> Errors
+	    end;
 	Errors -> Errors
     end.
 
