@@ -192,16 +192,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(setup_couch/0 :: () -> no_return()).
+-spec setup_couch/0 :: () -> no_return().
 setup_couch() ->
-    couch_mgr:db_create(?REG_DB),
-    case couch_mgr:update_doc_from_file(?REG_DB, crossbar, ?REG_VIEW_FILE) of
-	{error, _} ->
-	    couch_mgr:load_doc_from_file(?REG_DB, crossbar, ?REG_VIEW_FILE);
-	{ok, _} -> ok
-    end.
+    ok.
 
--spec(bind_to_crossbar/0 :: () ->  no_return()).
+-spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.registrations">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.registrations">>),
@@ -219,14 +214,13 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (list()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_RegID]) ->
     {true, ['GET', 'POST', 'DELETE']};
 allowed_methods(_) ->
     {false, []}.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -239,7 +233,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (list()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
