@@ -112,7 +112,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.limits">>, Paylo
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.limits">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  _BPid = crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, RD, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -125,7 +125,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.limits">>, [RD, Cont
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.limits">>, [RD, Context | Params]}, State) ->
     spawn_monitor(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc, resp_headers=RespHeaders}=Context1 ->
@@ -140,7 +140,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.limits">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.limits">>, [RD, Context | Params]}, State) ->
     spawn_monitor(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc, resp_headers=RespHeaders}=Context1 ->
@@ -257,7 +257,7 @@ validate([], _RD, #cb_context{req_verb = <<"get">>}=Context) ->
         _T:_R ->
 	    ST = erlang:get_stacktrace(),
 	    ?LOG("Loading summary crashed: ~p: ~p", [_T, _R]),
-	    [?LOG("~p", [S]) || S <- ST],
+	    _ = [?LOG("~p", [S]) || S <- ST],
             crossbar_util:response_db_fatal(Context)
     end;
 validate([], RD, #cb_context{req_verb = <<"put">>}=Context) ->
@@ -319,8 +319,8 @@ create_limits(RD, Context) ->
 -spec validate_create/1 :: (#cb_context{}) -> #cb_context{}.
 validate_create(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {error, Fields} ->
-	    crossbar_util:response_invalid_data(Fields, Context);
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, Fields, wh_json:new()), Context);
         {ok, _} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj)
@@ -338,8 +338,8 @@ validate_create(#cb_context{req_data=JObj}=Context) ->
 -spec update_limits/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_limits(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {error, Fields} ->
-	    crossbar_util:response_invalid_data(Fields, Context);
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, Fields, wh_json:new()), Context);
         {ok, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
@@ -350,6 +350,6 @@ update_limits(DocId, #cb_context{req_data=JObj}=Context) ->
 %% Validates JObj against their schema
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> {'error', json_objects()} | {'ok', []}.
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
      crossbar_schema:do_validate(JObj, limits).

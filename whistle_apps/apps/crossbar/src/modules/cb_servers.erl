@@ -32,15 +32,16 @@
 -define(CB_LIST, <<"servers/crossbar_listing">>).
 -define(VIEW_DEPLOY_ROLES, <<"servers/list_deployment_roles">>).
 
--record(state, {data_bag_tmpl=undefined
-                ,role_tmpl=undefined
-                ,prod_deploy_tmpl=undefined
-                ,dev_deploy_tmpl=undefined
-                ,dev_role = <<"all_in_one">>
-                ,role_path_tmpl=undefined
-                ,databag_path_tmpl=undefined
-                ,databag_mapping=undefined
-                ,delete_tmpl=undefined}).
+-record(state, {data_bag_tmpl = 'undefined' :: atom()
+                ,role_tmpl = 'undefined' :: atom()
+                ,prod_deploy_tmpl = 'undefined' :: atom()
+                ,dev_deploy_tmpl = 'undefined' :: atom()
+                ,dev_role = <<"all_in_one">> :: ne_binary()
+                ,role_path_tmpl = 'undefined' :: atom()
+                ,databag_path_tmpl = 'undefined' :: atom()
+                ,databag_mapping = 'undefined' :: atom()
+                ,delete_tmpl = 'undefined' :: atom()
+	       }).
 
 %%%===================================================================
 %%% API
@@ -167,7 +168,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.servers">>, Payl
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -176,7 +177,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.servers">>, [RD, Contex
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, Context | [_, <<"deployment">>]=Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context2 = case crossbar_doc:save(Context) of
                                  #cb_context{resp_status=success, doc=JObj}=Context1 ->
                                      Context1#cb_context{resp_data={struct, [{<<"status">>, wh_json:get_value(<<"pvt_deploy_status">>, JObj)}
@@ -189,7 +190,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -197,7 +198,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Context | [_, <<"deployment">>]=Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = execute_deploy_command(Context, State),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -205,7 +206,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Id = wh_util:to_binary(wh_util:to_hex(crypto:md5([wh_json:get_value(<<"ip">>, Doc), wh_json:get_value(<<"ssh_port">>, Doc)]))),
                   Context1 = crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(<<"_id">>, Id, Doc)}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -214,7 +215,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, #cb
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.servers">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   case crossbar_doc:delete(Context, permanent) of
                       #cb_context{resp_status=success}=Context1 ->
                           execute_delete_command(Context, State),
@@ -424,11 +425,13 @@ validate(_, _, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_server_summary/2 :: (#cb_context{}, json_object()) -> #cb_context{}.
-load_server_summary(Context, []) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
-load_server_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
-    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, wh_json:to_proplist(QueryParams)),
-    Context#cb_context{resp_data=Result, resp_status=success}.
+load_server_summary(#cb_context{db_name=DbName}=Context, JObj) ->
+    case wh_json:is_empty(JObj) of
+	true -> crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+	false ->
+	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, wh_json:to_proplist(JObj)),
+	    Context#cb_context{resp_data=Result, resp_status=success}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -582,9 +585,7 @@ get_command_tmpl(#cb_context{doc=JObj}, #state{dev_role=DevRole}=State) ->
 %% create a proplist to provide to the templates during render
 %% @end
 %%--------------------------------------------------------------------
--spec template_props/2 :: (Context, State) -> proplist() when
-      State :: #state{},
-      Context :: #cb_context{}.
+-spec template_props/2 :: (#cb_context{}, #state{}) -> [{ne_binary(), ne_binary() | json_object() | json_objects()},...].
 template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context, State) ->
     Server = wh_json:to_proplist(JObj),
     Servers = case couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]) of
@@ -629,12 +630,8 @@ template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context, State) 
 %% Creates the role document (when it doesnt exist)
 %% @end
 %%--------------------------------------------------------------------
--spec create_role/3 :: (Account, Context, State) -> json_object() when
-      Account :: proplist(),
-      Context :: #cb_context{},
-      State :: #state{}.
-create_role(_, _, #state{role_tmpl=undefined}) ->
-    [];
+-spec create_role/3 :: (proplist(), #cb_context{}, #state{}) -> json_object().
+create_role(_, _, #state{role_tmpl=undefined}) -> wh_json:new();
 create_role(Account, #cb_context{db_name=Db}, #state{role_tmpl=RoleTmpl}) ->
     try
         Props = [{<<"account">>, Account}
@@ -652,12 +649,11 @@ create_role(Account, #cb_context{db_name=Db}, #state{role_tmpl=RoleTmpl}) ->
                  ,{<<"rand_large_5">>, wh_util:to_hex(crypto:rand_bytes(24))}
                 ],
         {ok, Role} = RoleTmpl:render(Props),
-        JObj = mochijson2:decode(binary_to_list(iolist_to_binary(Role))),
+        JObj = wh_json:decode(iolist_to_binary(Role)),
         {ok, R} = couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_type">>, <<"deployment_role">>, JObj)),
         R
     catch
-        _:_ ->
-            ?EMPTY_JSON_OBJECT
+        _:_ -> wh_json:new()
     end.
 
 %%--------------------------------------------------------------------
@@ -779,18 +775,14 @@ mark_deploy_complete(Db, ServerId) ->
 %% to the priv directory of this module
 %% @end
 %%--------------------------------------------------------------------
--spec compile_template/2 :: (Template, Name) -> undefined | atom() when
-      Template :: undefined | string() | binary(),
-      Name :: atom().
-compile_template(undefined, _) ->
-    undefined;
+-spec compile_template/2 :: ('undefined' | string() | binary(), atom()) -> 'undefined' | atom().
+compile_template(undefined, _) -> undefined;
 compile_template(Template, Name) when not is_binary(Template) ->
     Path = case string:substr(Template, 1, 1) of
-               "/" ->
-                   Template;
+               "/" -> wh_json:to_binary(Template);
                _ ->
                    BasePath = code:lib_dir(crossbar, priv),
-                   lists:concat([BasePath, "/servers/", Template])
+                   list_to_binary([BasePath, "/servers/", Template])
            end,
     ?LOG("sourcing template from file at ~s", [Path]),
     do_compile_template(Path, Name);
@@ -803,9 +795,7 @@ compile_template(Template, Name) ->
 %% Compiles template string or path, normalizing the return
 %% @end
 %%--------------------------------------------------------------------
--spec do_compile_template/2 :: (Template, Name) -> undefined | atom() when
-      Template :: string() | binary(),
-      Name :: atom().
+-spec do_compile_template/2 :: (ne_binary(), atom()) -> 'undefined' | atom().
 do_compile_template(Template, Name) ->
     case erlydtl:compile(Template, Name) of
         {ok, Name} ->
@@ -815,6 +805,6 @@ do_compile_template(Template, Name) ->
             ?LOG("compiled ~s template file", [Name]),
             Name;
         _E ->
-            ?LOG("could not compile ~s template, ignoring", [Name]),
+            ?LOG("could not compile ~s template, ignoring (~p)", [Name, _E]),
             undefined
     end.

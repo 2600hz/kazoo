@@ -109,7 +109,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
 
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, Context}}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   case account_is_descendant(Context)
                       andalso allowed_if_sys_admin_mod(Context) of
                       true ->

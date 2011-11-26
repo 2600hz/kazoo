@@ -66,8 +66,8 @@ wait_for_reg_resp([_|Ps]=Pids, Acc) ->
 	    ?LOG("Received reg for ~s @ ~s", [User, Realm]),
 
 	    case lists:keyfind(RU={Realm, User}, 1, Acc) of
-		true -> wait_for_reg_resp(Pids, Acc);
-		false -> wait_for_reg_resp(Ps, [{RU, Fields} | Acc])
+		false -> wait_for_reg_resp(Ps, [{RU, Fields} | Acc]);
+		_ -> wait_for_reg_resp(Pids, Acc)
 	    end;
 	#'basic.consume_ok'{} ->
 	    wait_for_reg_resp(Pids, Acc)

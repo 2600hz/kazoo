@@ -119,7 +119,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.devices">>, Payl
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -128,12 +128,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Contex
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc1}=Context1 ->
                           DeviceId = wh_json:get_value(<<"_id">>, Doc1),
-                          provision(Doc1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>)),
+                          _ = provision(Doc1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>)),
                           case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
                               {ok, Rev} ->
                                   couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1)),
@@ -150,11 +150,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc1}=Context1 ->
-                          provision(Doc1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>)),
+                          _ = provision(Doc1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>)),
                           couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
@@ -165,7 +165,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:delete(Context) of
                       #cb_context{resp_status=success}=Context1 ->
@@ -318,8 +318,8 @@ load_device_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
 -spec create_device/1 :: (#cb_context{}) -> #cb_context{}.
 create_device(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {error, Fields} ->
-	    crossbar_util:response_invalid_data(Fields, Context);
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, Fields, wh_json:new()), Context);
         {ok, _} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
@@ -347,8 +347,8 @@ load_device(DocId, Context) ->
 -spec(update_device/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 update_device(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {error, Fields} ->
-	    crossbar_util:response_invalid_data(Fields, Context);
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, Fields, wh_json:new()), Context);
         {ok, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
@@ -392,7 +392,7 @@ normalize_view_results(JObj, Acc) ->
 %% Validates JObj against their schema
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> {'error', json_objects()} | {'ok', []}.
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
      crossbar_schema:do_validate(JObj, device).
 
@@ -403,17 +403,17 @@ is_valid_doc(JObj) ->
 %% whose device is registered, ready to be used in a view filter
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_regs/1 :: ([{Realm, Username},...]) -> [{binary(), binary()},...] when
-      Realm :: binary(),
-      Username :: binary().
+-spec lookup_regs/1 :: ([{ne_binary(), ne_binary()},...] | []) -> [[ne_binary(),...],...] | [].
+lookup_regs([]) -> [];
 lookup_regs(RealmUserList) ->
     Q = amqp_util:new_queue(),
     ok = amqp_util:bind_q_to_targeted(Q),
     ok = amqp_util:basic_consume(Q),
-    [spawn(fun() -> lookup_registration({Realm, User}, Q) end) || {Realm, User} <- RealmUserList],
-    wait_for_reg_resp(length(RealmUserList), []). %% number of devices we're supposed to get an answer from
+    _ = [spawn(fun() -> lookup_registration(Realm, User, Q) end) || {Realm, User} <- RealmUserList],
+    wait_for_reg_resp(RealmUserList, []). %% number of devices we're supposed to get an answer from
 
-lookup_registration({Realm, User}, Q) ->
+-spec lookup_registration/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+lookup_registration(Realm, User, Q) ->
     ?LOG_SYS("looking up registration information for ~s@~s", [User, Realm]),
     Req = [{<<"Username">>, User}
            ,{<<"Realm">>, Realm}
@@ -428,12 +428,9 @@ lookup_registration({Realm, User}, Q) ->
 %% occurs
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_reg_resp/2 :: (Len, Acc) -> list() when
-      Len :: non_neg_integer(),
-      Acc :: list().
-wait_for_reg_resp(0, Acc) ->
-    Acc;
-wait_for_reg_resp(Len, Acc) ->
+-spec wait_for_reg_resp/2 :: (list(), list()) -> [[ne_binary(),...],...] | [].
+wait_for_reg_resp([], Acc) -> Acc;
+wait_for_reg_resp([_|T], Acc) ->
     try
 	receive
 	    {amqp_host_down, _} ->
@@ -449,20 +446,20 @@ wait_for_reg_resp(Len, Acc) ->
                 User = wh_json:get_value([<<"Fields">>, <<"Username">>], Resp),
                 case lists:member([Realm, User], Acc) of
                     true ->
-                        wait_for_reg_resp(Len, Acc);
+                        wait_for_reg_resp([ok|T], Acc);
                     false ->
-                        wait_for_reg_resp(Len - 1, [[Realm, User] | Acc])
+                        wait_for_reg_resp(T, [[Realm, User] | Acc])
                 end;
 	    #'basic.consume_ok'{} ->
-		wait_for_reg_resp(Len, Acc)
+		wait_for_reg_resp([ok|T], Acc)
 	after
-	    1000 ->
+	    500 ->
 		?LOG("timeout for registration query"),
 		Acc
 	end
     catch
 	_:_ ->
-	    wait_for_reg_resp(Len, Acc)
+	    wait_for_reg_resp([ok|T], Acc)
     end.
 
 %%--------------------------------------------------------------------
@@ -472,11 +469,8 @@ wait_for_reg_resp(Len, Acc) ->
 %% provided with URL
 %% @end
 %%--------------------------------------------------------------------
--spec provision/2 :: (JObj, Url) -> ok | pid() when
-      JObj :: json_object(),
-      Url :: undefined | binary().
-provision(_, undefined) ->
-    ok;
+-spec provision/2 :: (json_object(), ne_binary() | 'undefined') -> 'ok' | pid().
+provision(_, undefined) -> ok;
 provision(JObj, Url) ->
     spawn(fun() -> do_provision(JObj, Url) end).
 
@@ -487,9 +481,7 @@ provision(JObj, Url) ->
 %% @end
 %%--------------------------------------------------------------------
 
--spec do_provision/2 :: (JObj, Url) -> ok when
-      JObj :: json_object(),
-      Url :: binary().
+-spec do_provision/2 :: (json_object(), ne_binary()) -> 'ok'.
 do_provision(JObj, Url) ->
     Headers = [{K, V}
                || {K, V} <- [{"Host", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_host">>)}

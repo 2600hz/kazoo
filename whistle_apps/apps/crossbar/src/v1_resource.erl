@@ -380,7 +380,7 @@ get_json_body(RD) ->
 	case wrq:req_body(RD) of
 	    <<>> -> QS;
 	    ReqBody ->
-		JSON = mochijson2:decode(ReqBody),
+		JSON = wh_json:decode(ReqBody),
 		case is_valid_request_envelope(JSON) of
 		    true -> wh_json:merge_jobjs(JSON, QS);
 		    false ->

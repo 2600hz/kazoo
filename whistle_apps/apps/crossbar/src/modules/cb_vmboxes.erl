@@ -127,7 +127,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.vmboxes">>, Payl
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.vmboxes">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -138,7 +138,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.vmboxes">>, [RD, Con
     case Params of
 	[_, ?MESSAGES_RESOURCE, _MediaId, ?BIN_DATA] ->
 	    spawn(fun() ->
-                          crossbar_util:put_reqid(Context),
+                          _ = crossbar_util:put_reqid(Context),
 			  Pid ! {binding_result, true, [RD, Context, Params]}
 
 		  end);
@@ -151,7 +151,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.vmboxes">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.vmboxes">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  Context1 = crossbar_doc:save(Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -159,7 +159,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.vmboxes">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.vmboxes">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  Context1 = crossbar_doc:save(Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -169,13 +169,13 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.vmboxes">>, [RD, 
     case Params of
 	[_, ?MESSAGES_RESOURCE, _] ->
 	    spawn(fun() ->
-                          crossbar_util:put_reqid(Context),
+                          _ = crossbar_util:put_reqid(Context),
 			  Context1 = crossbar_doc:save(Context),
 			  Pid ! {binding_result, true, [RD, Context1, Params]}
 		  end);
 	_ ->
 	    spawn(fun() ->
-                          crossbar_util:put_reqid(Context),
+                          _ = crossbar_util:put_reqid(Context),
 			  Context1 = crossbar_doc:delete(Context),
 			  Pid ! {binding_result, true, [RD, Context1, Params]}
 		  end)

@@ -143,7 +143,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.events">>, Paylo
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.events">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  Context1 = validate(Params, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -151,7 +151,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.events">>, [RD, Context
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.events">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:ensure_saved(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -159,7 +159,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.events">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.events">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:ensure_saved(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -167,7 +167,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.events">>, [RD, Cont
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.events">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:ensure_saved(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -401,7 +401,7 @@ format_sub_result({'error', 'already_present'}) ->
 
 rm_subscriptions(Context, Srv, Subs, User) ->
     ?LOG("removing: ~p", [Subs]),
-    [cb_events_srv:unsubscribe(Srv, Sub) || Sub <- Subs],
+    _ = [cb_events_srv:unsubscribe(Srv, Sub) || Sub <- Subs],
     save_latest(Context, Srv, User).
 
 save_latest(Context, Srv, User) ->

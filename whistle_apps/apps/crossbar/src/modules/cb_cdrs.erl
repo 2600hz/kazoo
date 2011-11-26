@@ -115,7 +115,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.cdrs">>, Payload
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.cdrs">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  _BPid = crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, RD, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -229,7 +229,7 @@ validate([], _RD, #cb_context{req_json=RJ, req_verb = <<"get">>}=Context) ->
         _T:_R ->
 	    ST = erlang:get_stacktrace(),
 	    ?LOG("Loading summary crashed: ~p: ~p", [_T, _R]),
-	    [?LOG("~p", [S]) || S <- ST],
+	    _ = [?LOG("~p", [S]) || S <- ST],
             crossbar_util:response_db_fatal(Context)
     end;
 validate([CDRId], _, #cb_context{req_verb = <<"get">>}=Context) ->

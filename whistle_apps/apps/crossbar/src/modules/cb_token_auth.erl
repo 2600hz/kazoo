@@ -103,7 +103,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{auth_token=AuthToken}=Context}}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   case couch_mgr:open_doc(?TOKEN_DB, AuthToken) of
                       {ok, JObj} ->

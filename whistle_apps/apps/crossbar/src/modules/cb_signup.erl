@@ -173,7 +173,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.signup">>, Paylo
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.signup">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context#cb_context{db_name=?SIGNUP_DB}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -182,7 +182,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.signup">>, [RD, Context
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   case activate_signup(JObj) of
                       {ok, Account, User} ->
@@ -200,7 +200,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.signup">>, [RD, #cb
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.signup">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   case crossbar_doc:save(Context#cb_context{db_name=?SIGNUP_DB}) of
                       #cb_context{resp_status=success}=Context1 ->
                           Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=[]}, Params]},
