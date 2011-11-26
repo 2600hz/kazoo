@@ -188,9 +188,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.signup">>, [RD, #cb
                       {ok, Account, User} ->
                           delete_signup(JObj),
                           Context1 = Context#cb_context{resp_status=success
-                                                       ,resp_data={struct, [{<<"account">>, Account}
-                                                                            ,{<<"user">>, User}]}},
-                          Pid ! {binding_result, true, [RD, Context1, Params]};
+							,resp_data=wh_json:from_list([{<<"account">>, Account}
+										      ,{<<"user">>, User}
+										     ])},
+			  Pid ! {binding_result, true, [RD, Context1, Params]};
                       _Else ->
                           Context1 = crossbar_util:response_db_fatal(Context),
                           Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -252,7 +253,7 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, #state{cleanup_timer=CurTRef}, _Extra) ->
-    timer:cancel(CurTRef),
+    _ = timer:cancel(CurTRef),
     bind_to_crossbar(),
     couch_mgr:db_create(?SIGNUP_DB),
     case couch_mgr:update_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE) of
@@ -470,8 +471,7 @@ check_activation_key(ActivationKey, Context) ->
 %% Activate signup document by creating an account and user
 %% @end
 %%--------------------------------------------------------------------
--spec activate_signup/1 :: (JObj) -> boolean() when
-      JObj :: json_object().
+-spec activate_signup/1 :: (json_object()) -> {'ok', json_object(), json_object()} | {'error', 'creation_failed' | 'account_undefined' | 'user_undefined'}.
 activate_signup(JObj) ->
     case activate_account(wh_json:get_value(<<"pvt_account">>, JObj)) of
         {ok, Account} ->
@@ -486,8 +486,7 @@ activate_signup(JObj) ->
 %% Create the account defined on the signup document
 %% @end
 %%--------------------------------------------------------------------
--spec activate_account/1 :: (Account) -> tuple(ok, binary()) | tuple(error, atom()) when
-      Account :: undefined | json_object().
+-spec activate_account/1 :: ('undefined' | json_object()) -> {'ok', json_object()} | {'error', 'creation_failed' | 'account_undefined'}.
 activate_account(undefined) ->
     {error, account_undefined};
 activate_account(Account) ->
@@ -510,10 +509,8 @@ activate_account(Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec activate_user/2 :: (Account, User) -> tuple(ok, binary(), binary())
-                                                  | tuple(error, atom()) when
-      Account :: json_object(),
-      User :: undefined | json_object().
+-spec activate_user/2 :: (json_object(), 'undefined' | json_object()) -> {'ok', json_object(), json_object()} |
+									 {'error', 'user_undefined' | 'creation_failed'}.
 activate_user(_, undefined) ->
     {error, user_undefined};
 activate_user(Account, User) ->
@@ -593,17 +590,15 @@ send_activation_email(RD, #cb_context{doc=JObj, req_id=ReqId}=Context, #state{ac
 %% if they have been provided
 %% @end
 %%--------------------------------------------------------------------
--spec create_body/3 :: (State, Props, Body) -> list() when
-      State :: #state{},
-      Props :: proplist(),
-      Body :: list().
+-spec create_body/3 :: (#state{}, proplist(), list()) -> list().
 create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/= undefined ->
     case Tmpl:render(Props) of
         {ok, Content} ->
             Part = {<<"text">>, <<"html">>
                     ,[{<<"Content-Type">>, <<"text/html">>}]
                     ,[]
-                    ,iolist_to_binary(Content)},
+                    ,iolist_to_binary(Content)
+		   },
              create_body(State#state{activation_email_html=undefined}, Props, [Part|Body]);
         _ ->
              create_body(State#state{activation_email_html=undefined}, Props, Body)
@@ -614,7 +609,8 @@ create_body(#state{activation_email_plain=Tmpl}=State, Props, Body) when Tmpl =/
             Part = {<<"text">>, <<"plain">>
                     ,[{<<"Content-Type">>, <<"text/plain">>}]
                     ,[]
-                    ,iolist_to_binary(Content)},
+                    ,iolist_to_binary(Content)
+		   },
              create_body(State#state{activation_email_plain=undefined}, Props, [Part|Body]);
         _ ->
              create_body(State#state{activation_email_plain=undefined}, Props, Body)
@@ -628,9 +624,7 @@ create_body(_, _, Body) ->
 %% create a proplist to provide to the templates during render
 %% @end
 %%--------------------------------------------------------------------
--spec template_props/2 :: (RD, Context) -> proplist() when
-      RD :: #wm_reqdata{},
-      Context :: #cb_context{}.
+-spec template_props/2 :: (#wm_reqdata{}, #cb_context{}) -> [{ne_binary(), proplist() | binary()},...].
 template_props(RD, #cb_context{doc=JObj, req_data=Data}) ->
     Port = case wrq:port(RD) of
 	       80 -> "";
@@ -657,22 +651,16 @@ template_props(RD, #cb_context{doc=JObj, req_data=Data}) ->
 %% accounts and completed signups
 %% @end
 %%--------------------------------------------------------------------
--spec is_unique_realm/1 :: (Realm) -> boolean() when
-      Realm :: undefined | binary().
-is_unique_realm(undefined) ->
-    false;
-is_unique_realm(<<>>) ->
-    false;
+-spec is_unique_realm/1 :: (binary() | 'undfined') -> boolean().
+is_unique_realm(undefined) -> false;
+is_unique_realm(<<>>) -> false;
 is_unique_realm(Realm) ->
     case whapps_util:get_account_by_realm(Realm) of
-        {ok, _} ->
-            false;
+        {ok, _} -> false;
         {error, _} ->
             case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_REALM, [{<<"key">>, Realm}]) of
-                {ok, []} ->
-                    true;
-                _Else ->
-                    false
+                {ok, []} -> true;
+                _Else -> false
             end
     end.
 
@@ -684,8 +672,7 @@ is_unique_realm(Realm) ->
 %% the db load.
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_signups/1 :: (State) -> no_return() when
-      State :: #state{}.
+-spec cleanup_signups/1 :: (#state{}) -> no_return().
 cleanup_signups(#state{signup_lifespan=Lifespan}) ->
     ?LOG_SYS("cleaning up signups"),
     Expiration = calendar:datetime_to_gregorian_seconds(calendar:universal_time()) + Lifespan,
