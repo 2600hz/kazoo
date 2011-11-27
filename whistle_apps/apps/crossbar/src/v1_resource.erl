@@ -342,11 +342,11 @@ set_req_header(RD, #cb_context{req_id=ReqId}) ->
 %% POST to PUT or DELETE.
 %% @end
 %%--------------------------------------------------------------------
--spec(get_http_verb/2 :: (RD :: #wm_reqdata{}, JSON :: json_object() | malformed) -> binary()).
+-spec get_http_verb/2 :: (#wm_reqdata{}, json_object() | {'malformed', ne_binary()}) -> ne_binary().
 get_http_verb(RD, {malformed, _}) ->
     wh_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD))));
 get_http_verb(RD, JSON) ->
-    HttpV = wh_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD)))),
+    HttpV = wh_util:binary_to_lower(wh_util:to_binary(wrq:method(RD))),
     case override_verb(RD, JSON, HttpV) of
 	{true, OverrideV} ->
             ?LOG("override verb, treating request as a ~s", [OverrideV]),
@@ -354,15 +354,15 @@ get_http_verb(RD, JSON) ->
 	false -> HttpV
     end.
 
--spec(override_verb/3 :: (RD :: #wm_reqdata{}, JSON :: json_object(), Verb :: binary()) -> tuple(true, binary()) | false).
+-spec override_verb/3 :: (#wm_reqdata{}, json_object(), ne_binary()) -> {'true', ne_binary()} | 'false'.
 override_verb(RD, JSON, <<"post">>) ->
     case wh_json:get_value(<<"verb">>, JSON) of
 	undefined ->
 	    case wrq:get_qs_value("verb", RD) of
 		undefined -> false;
-		V -> {true, wh_util:to_binary(string:to_lower(V))}
+		V -> {true, wh_util:binary_to_lower(V)}
 	    end;
-	V -> {true, wh_util:to_binary(string:to_lower(binary_to_list(V)))}
+	V -> {true, wh_util:binary_to_lower(V)}
     end;
 override_verb(RD, _, <<"options">>) ->
     case wrq:get_req_header("Access-Control-Request-Method", RD) of
@@ -715,7 +715,7 @@ create_resp_content(RD, #cb_context{req_json=ReqJson, resp_data=RespData}=Contex
 	binary ->
 	    RespData;
         _ ->
-            JSON = mochijson2:encode(wh_json:from_list(create_resp_envelope(Context))),
+            JSON = wh_json:encode(wh_json:from_list(create_resp_envelope(Context))),
 	    case wh_json:get_value(<<"jsonp">>, ReqJson) of
 		undefined -> JSON;
 		JsonFun when is_binary(JsonFun) ->
