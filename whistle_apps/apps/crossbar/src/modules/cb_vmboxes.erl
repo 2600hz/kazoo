@@ -337,8 +337,7 @@ validate(_Other, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_vmbox_summary/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec load_vmbox_summary/1 :: (#cb_context{}) -> #cb_context{}.
 load_vmbox_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -348,12 +347,11 @@ load_vmbox_summary(Context) ->
 %% Create a new vmbox document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create_vmbox/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec create_vmbox/1 :: (#cb_context{}) -> #cb_context{}.
 create_vmbox(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {true, _} ->
             Context#cb_context{
 	      doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
@@ -367,9 +365,7 @@ create_vmbox(#cb_context{req_data=JObj}=Context) ->
 %% Load a vmbox document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_vmbox/2 :: (DocId, Context) -> #cb_context{} when
-      DocId :: binary(),
-      Context :: #cb_context{}.
+-spec load_vmbox/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_vmbox(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
@@ -380,13 +376,11 @@ load_vmbox(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update_vmbox/2 :: (DocId, Context) -> #cb_context{} when
-      DocId :: binary(),
-      Context :: #cb_context{}.
+-spec update_vmbox/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_vmbox(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {true, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
@@ -397,9 +391,7 @@ update_vmbox(DocId, #cb_context{req_data=JObj}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (JObj, Acc) -> json_objects() when
-      JObj :: json_object(),
-      Acc :: json_objects().
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -409,10 +401,9 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (JObj) -> {boolean(), [binary()]} when
-      JObj :: json_object().
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
-    {(wh_json:get_value(<<"mailbox">>, JObj) =/= undefined), [<<"mailbox">>]}.
+    crossbar_schema:do_validate(JObj, vmbox).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -420,9 +411,7 @@ is_valid_doc(JObj) ->
 %% Get messages summary for a given mailbox
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_summary/2 :: (DocId, Context) -> #cb_context{} when
-      DocId :: binary(),
-      Context :: #cb_context{}.
+-spec load_message_summary/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_message_summary(DocId, Context) ->
     case load_messages(DocId, Context) of
 	[] ->
@@ -440,9 +429,7 @@ load_message_summary(DocId, Context) ->
 %% Get associated  Messages as a List of json obj
 %% @end
 %%--------------------------------------------------------------------
--spec load_messages/2 :: (DocId, Context) -> json_objects() when
-      DocId :: binary(),
-      Context :: #cb_context{}.
+-spec load_messages/2 :: (ne_binary(), #cb_context{}) -> json_objects().
 load_messages(DocId, Context) ->
     #cb_context{resp_status=success, doc=Doc} = crossbar_doc:load(DocId, Context),
     wh_json:get_value(<<"messages">>, Doc, []).
@@ -453,10 +440,7 @@ load_messages(DocId, Context) ->
 %% Get message by its media ID and its context
 %% @end
 %%--------------------------------------------------------------------
--spec load_message/3 :: (DocId, MediaId, Context) -> #cb_context{} when
-      DocId :: binary(),
-      MediaId :: binary(),
-      Context :: #cb_context{}.
+-spec load_message/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 load_message(DocId, MediaId, Context) ->
     case lists:filter(fun(M) -> wh_json:get_value(<<"media_id">>, M) =:= MediaId end, load_messages(DocId, Context)) of
 	[M] ->
@@ -567,22 +551,16 @@ find_index(MediaId, [Message | Ms], Index) ->
 %% Only Folder prop is editable atm
 %% @end
 %%--------------------------------------------------------------------
--spec update_message/3 :: (DocId, MediaId, Context) -> #cb_context{} when
-      DocId :: binary(),
-      MediaId :: binary(),
-      Context :: #cb_context{}.
+-spec update_message/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 update_message(DocId, MediaId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {true, _} ->
 	    update_message1(DocId, MediaId, Context)
     end.
 
--spec update_message1/3 :: (DocId, MediaId, Context) -> #cb_context{} when
-      DocId :: binary(),
-      MediaId :: binary(),
-      Context :: #cb_context{}.
+-spec update_message1/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 update_message1(DocId, MediaId, Context) ->
     RequestedValue = wh_json:get_value(<<"folder">>, Context#cb_context.req_data),
     Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),

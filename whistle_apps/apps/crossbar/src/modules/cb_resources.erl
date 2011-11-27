@@ -262,8 +262,7 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_resource_summary/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec load_resource_summary/1 :: (#cb_context{}) -> #cb_context{}.
 load_resource_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -273,11 +272,11 @@ load_resource_summary(Context) ->
 %% Create a new resource document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_resource/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec create_resource/1 :: (#cb_context{}) -> #cb_context{}.
 create_resource(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {true, _} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)
@@ -291,7 +290,7 @@ create_resource(#cb_context{req_data=JObj}=Context) ->
 %% Load a resource document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_resource/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_resource/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_resource(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
@@ -302,11 +301,11 @@ load_resource(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_resource/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_resource/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_resource(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {true, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
@@ -317,7 +316,7 @@ update_resource(DocId, #cb_context{req_data=JObj}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -328,6 +327,6 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()))).
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
-    {(wh_json:get_value(<<"gateways">>, JObj) =/= undefined), [<<"gateways">>]}.
+    crossbar_schema:do_validate(JObj, resource).

@@ -298,11 +298,11 @@ validate(_, Context) ->
 %% Create a new ts_account document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_ts_account/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec create_ts_account/1 :: (#cb_context{}) -> #cb_context{}.
 create_ts_account(#cb_context{req_data=JObj, account_id=AccountId}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {true, []} ->
             Updaters = [fun(J) -> wh_json:set_value(<<"type">>, <<"sys_info">>, J) end
                         ,fun(J) -> wh_json:set_value(<<"_id">>, AccountId, J) end
@@ -319,7 +319,7 @@ create_ts_account(#cb_context{req_data=JObj, account_id=AccountId}=Context) ->
 %% Load a ts_account document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(read_ts_account/2 :: (TSAccountId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec read_ts_account/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 read_ts_account(TSAccountId, Context) ->
     crossbar_doc:load(TSAccountId, Context).
 
@@ -330,11 +330,11 @@ read_ts_account(TSAccountId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_ts_account/2 :: (TSAccountId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_ts_account/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_ts_account(TSAccountId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {true, []} ->
             crossbar_doc:load_merge(TSAccountId, wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj), Context)
     end.
@@ -346,10 +346,9 @@ update_ts_account(TSAccountId, #cb_context{req_data=JObj}=Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(read_ts_account_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec read_ts_account_summary/1 :: (#cb_context{}) -> #cb_context{}.
 read_ts_account_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -358,9 +357,7 @@ read_ts_account_summary(Context) ->
 %% possible, altho just getting here...
 %% @end
 %%--------------------------------------------------------------------
--spec check_ts_account/2 :: (TSAccountId, Context) -> #cb_context{} when
-      TSAccountId :: binary(),
-      Context :: #cb_context{}.
+-spec check_ts_account/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 check_ts_account(TSAccountId, #cb_context{db_name=Db}=Context) ->
     case couch_mgr:lookup_doc_rev(Db, TSAccountId) of
         {ok, Rev} ->
@@ -377,7 +374,7 @@ check_ts_account(TSAccountId, #cb_context{db_name=Db}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -388,11 +385,6 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (JObj :: json_object()) -> {boolean(), [binary(),...] | []}.
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
-    case wh_json:get_value(<<"account">>, JObj) of
-	undefined ->
-	    {false, [<<"account">>]};
-	_ ->
-	    {true, []}
-    end.
+    crossbar_schema:do_validate(JObj, ts_account).
