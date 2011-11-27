@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
@@ -7,9 +7,9 @@
 %%% Handle client requests for skel documents
 %%%
 %%% @end
-%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 26 Nov 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cb_skels).
+-module(cb_schema).
 
 -behaviour(gen_server).
 
@@ -24,7 +24,7 @@
 
 -define(SERVER, ?MODULE).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
--define(CB_LIST, <<"skels/crossbar_listing">>).
+-define(SCHEMA_DB, <<"crossbar_schemas">>).
 
 %%%===================================================================
 %%% API
@@ -99,49 +99,30 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.skels">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"schema">>,_}], req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authorizing request to fetch schema(s)", []),
+    Pid ! {binding_result, true, {RD, Context}},
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.schema">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.skels">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.schema">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.skels">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.schema">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
 		  Context1 = validate(Params, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.skels">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.skels">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.skels">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
@@ -193,10 +174,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.skels">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.skels">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.schema">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.schema">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.schema">>),
+    crossbar_bindings:bind(<<"v1_resource.execute.#.schema">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -209,9 +191,9 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods/1 :: ([ne_binary(),...] | []) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
-    {true, ['GET', 'PUT']};
+    {true, ['GET']};
 allowed_methods([_]) ->
-    {true, ['GET', 'POST', 'DELETE']};
+    {true, ['GET']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -242,35 +224,11 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec validate/2 :: ([ne_binary(),...] | [], #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create(Context);
+    summary(Context#cb_context{db_name = ?SCHEMA_DB});
 validate([Id], #cb_context{req_verb = <<"get">>}=Context) ->
-    read(Id, Context);
-validate([Id], #cb_context{req_verb = <<"post">>}=Context) ->
-    update(Id, Context);
-validate([Id], #cb_context{req_verb = <<"delete">>}=Context) ->
-    read(Id, Context);
+    read(Id, Context#cb_context{db_name = ?SCHEMA_DB});
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create/1 :: (#cb_context{}) -> #cb_context{}.
-create(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {false, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            Context#cb_context{doc=JObj1, resp_status=success}
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -285,32 +243,13 @@ read(Id, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing instance with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update(Id, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {false, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            crossbar_doc:load_merge(Id, JObj1, Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
 -spec summary/1 :: (#cb_context{}) -> #cb_context{}.
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_docs(Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -320,24 +259,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Validate against schema doc in DB
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, skels).    
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% These are the pvt funs that add the necessary pvt fields to every
-%% instance
-%% @end
-%%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (json_object(), #cb_context{}) -> json_object().
-add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, <<"skel">>, JObj).
+    case wh_json:get_value(<<"id">>, JObj) of
+	<<"_design/", _/binary>> -> Acc;
+	ID -> [ID | Acc]
+    end.

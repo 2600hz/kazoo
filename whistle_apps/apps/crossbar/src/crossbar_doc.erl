@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_doc).
 
--export([load/2, load_from_file/2, load_merge/3, load_view/3, load_view/4, load_attachment/3]).
+-export([load/2, load_from_file/2, load_merge/3, load_view/3, load_view/4, load_attachment/3, load_docs/2]).
 -export([save/1, delete/1, delete/2, save_attachment/4, save_attachment/5, delete_attachment/3]).
 -export([ensure_saved/1]).
 -export([public_fields/1, private_fields/1, is_private_key/1]).
@@ -159,11 +159,7 @@ load_view(View, Options, #cb_context{db_name=DB}=Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_view/4 :: (View, Options, Context, Filter) -> #cb_context{} when
-      View :: binary(),
-      Options :: proplist(),
-      Context :: #cb_context{},
-      Filter :: fun((Item :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec load_view/4 :: (ne_binary(), proplist(), #cb_context{}, fun((json_object(), json_objects()) -> json_objects())) -> #cb_context{}.
 load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
     case load_view(View, Options, Context) of
         #cb_context{resp_status=success, doc=Doc} = Context1 ->
@@ -173,6 +169,29 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
                                                  end, lists:foldr(Filter, [], Doc))};
         Else ->
             Else
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function attempts to load the context with the results of all the
+%% docs in the supplied Db, with the fold function weeding out those not
+%% desired by returning 'undefined' or not adding it to the Accumulator
+%%
+%% Failure here returns 500 or 503
+%% @end
+%%--------------------------------------------------------------------
+-spec load_docs/2 :: (#cb_context{}, fun((json_object(), json_objects()) -> [json_object() | 'undefined',...])) -> #cb_context{}.
+load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) ->
+    case couch_mgr:all_docs(Db) of
+	{ok, Docs} ->
+            Context#cb_context{resp_status=success, resp_data=lists:filter(fun(X) -> X =/= undefined end, lists:foldr(Filter, [], Docs))};
+        {error, db_not_reachable} ->
+            crossbar_util:response_datastore_timeout(Context);
+        {error, not_found} ->
+            crossbar_util:response_db_missing(Context);
+	_Else ->
+	    Context
     end.
 
 %%--------------------------------------------------------------------
