@@ -153,14 +153,23 @@ init_first_account_for_reals() ->
 		#cb_context{resp_status=success} = crossbar_doc:save(#cb_context{db_name = ?ACCOUNTS_AGG_DB, doc=DbDoc, req_verb = <<"put">>}),
 		create_init_user(Db)
 	    catch
+		error:{badmatch, #cb_context{resp_status=Status,resp_error_msg=Msg,resp_error_code=Code,resp_data=JTerm}} ->
+		    ?LOG("Failed to match successful context"),
+		    ?LOG("Error: Status: ~s Msg: ~s Code: ~p Data: ~p", [Status, Msg, Code, JTerm]),
+		    revert_init(Db, DbName),
+		    {error, Msg};
 		_T:_R ->
 		    ?LOG("Failed to create user: ~p:~p", [_T, _R]),
 		    ?LOG("Reverting changes"),
-		    _ = couch_mgr:del_doc(?ACCOUNTS_AGG_DB, DbName),
-		    _ = couch_mgr:db_delete(Db),
+		    revert_init(Db, DbName),
 		    {error, user_create_failed}
 	    end
     end.
+
+
+revert_init(Db, DbName) ->
+    _ = couch_mgr:del_doc(?ACCOUNTS_AGG_DB, DbName),
+    _ = couch_mgr:db_delete(Db).
 
 create_init_user(Db) ->
     {ok, Hostname} = inet:gethostname(),
