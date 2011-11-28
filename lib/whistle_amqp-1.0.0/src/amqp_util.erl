@@ -349,10 +349,16 @@ conference_exchange() ->
       Options :: proplist().
 new_exchange(Exchange, Type) ->
     new_exchange(Exchange, Type, []).
-new_exchange(Exchange, Type, _Options) ->
+new_exchange(Exchange, Type, Options) ->
     ED = #'exchange.declare'{
       exchange = Exchange
       ,type = Type
+      ,passive = props:get_value(passive, Options, false)
+      ,durable = props:get_value(durable, Options, false)
+      ,auto_delete = props:get_value(auto_delete, Options, false)
+      ,internal = props:get_value(internal, Options, false)
+      ,nowait = props:get_value(nowait, Options, false)
+      ,arguments = props:get_value(arguments, Options, [])
      },
     ?AMQP_DEBUG andalso ?LOG("create new ~s exchange: ~s", [Type, Exchange]),
     amqp_mgr:misc_req(ED).
