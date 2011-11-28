@@ -138,8 +138,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.api_auth">>, Pay
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.api_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
+                  _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
@@ -147,8 +147,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.api_auth">>, [RD, Conte
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.api_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
+                  _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:binding_heartbeat(Pid),
                   Context1 = create_token(RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),

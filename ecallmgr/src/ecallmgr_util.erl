@@ -62,7 +62,7 @@ custom_channel_vars(Prop) ->
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
 -spec eventstr_to_proplist/1 :: (EvtStr) -> proplist() when
-      EvtStr :: string().
+      EvtStr :: string() | binary().
 eventstr_to_proplist(EvtStr) ->
     [to_kv(X, ": ") || X <- string:tokens(wh_util:to_list(EvtStr), "\n")].
 
@@ -95,19 +95,22 @@ get_setting(Setting) ->
     get_setting(Setting, undefined).
 get_setting(Setting, Default) ->
     {ok, Cache} = ecallmgr_sup:cache_proc(),
-    case wh_cache:fetch_local(Cache, {ecallmgr_setting, Setting}) of
+    case wh_cache:fetch_local(Cache, cache_key(Setting)) of
         {ok, _}=Success -> Success;
         {error, _} ->
             case file:consult(?SETTINGS_FILE) of
                 {ok, Settings} ->
                     Value = props:get_value(Setting, Settings, Default),
-                    wh_cache:store_local(Cache, {ecallmgr_setting, Setting}, Value),
+                    wh_cache:store_local(Cache, cache_key(Setting), Value),
                     {ok, Value};
                 {error, _} ->
-                    wh_cache:store_local(Cache, {ecallmgr_setting, Setting}, Default),
+                    wh_cache:store_local(Cache, cache_key(Setting), Default),
                     {ok, Default}
             end
     end.
+
+cache_key(Setting) ->
+    {?MODULE, Setting}.
 
 -spec is_node_up/1 :: (Node) -> boolean() when
       Node :: atom().

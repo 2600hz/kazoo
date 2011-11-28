@@ -24,7 +24,7 @@
 -include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
--define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
+-define(CB_LIST_BY_USER, <<"cdrs/listing_by_user">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 
 %%%===================================================================
@@ -115,7 +115,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.cdr">>, Payload}
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.cdr">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  Context1 = validate(Params, RD, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -222,45 +222,14 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
-    load_cdr_summary(Context, QueryString);
-validate([CDRId], _, #cb_context{req_verb = <<"get">>}=Context) ->
-    load_cdr(CDRId, Context);
+-spec validate/3 :: ([binary(),...] | [], #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
+validate([], RD, #cb_context{req_verb = <<"get">>}=Context) ->
+    Relative = <<"../cdrs">>,
+    Location = crossbar_util:get_abs_url(RD, Relative),
+    crossbar_util:response_deprecated_redirect(Context, Relative, wh_json:from_list([{<<"Location">>, wh_util:to_binary(Location)}]));
+validate([CDRId], RD, #cb_context{req_verb = <<"get">>}=Context) ->
+    Relative = list_to_binary(["../../cdrs/", CDRId]),
+    Location = crossbar_util:get_abs_url(RD, Relative),
+    crossbar_util:response_deprecated_redirect(Context, Relative, wh_json:from_list([{<<"Location">>, wh_util:to_binary(Location)}]));
 validate(_, _, Context) ->
     crossbar_util:response_faulty_request(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load list of CDR, each summarized.
-%% @end
-%%--------------------------------------------------------------------
--spec load_cdr_summary/2 :: (Context, QueryParams) -> #cb_context{} when
-      Context :: #cb_context{},
-      QueryParams :: proplist().
-load_cdr_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
-    Nouns = Context#cb_context.req_nouns,
-    LastNoun  = lists:nth(2, Nouns), %%st is {cdr, _}
-    case LastNoun of
-	{<<"accounts">>, _} ->
-	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams, []),
-	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
-	{<<"users">>, [UserId]} ->
-	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, QueryParams, [{<<"key">>, UserId}]),
-	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
-	_ ->
-	    crossbar_util:response_faulty_request(Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a CDR document from the database
-%% @end
-%%--------------------------------------------------------------------
--spec load_cdr/2 :: (CdrId, Context) -> #cb_context{} when
-      CdrId :: binary(),
-      Context :: #cb_context{}.
-load_cdr(CdrId, Context) ->
-    crossbar_doc:load(CdrId, Context).

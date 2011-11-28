@@ -127,7 +127,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.vmboxes">>, Payl
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.vmboxes">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -138,7 +138,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.vmboxes">>, [RD, Con
     case Params of
 	[_, ?MESSAGES_RESOURCE, _MediaId, ?BIN_DATA] ->
 	    spawn(fun() ->
-                          crossbar_util:put_reqid(Context),
+                          _ = crossbar_util:put_reqid(Context),
 			  Pid ! {binding_result, true, [RD, Context, Params]}
 
 		  end);
@@ -151,7 +151,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.vmboxes">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.vmboxes">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  Context1 = crossbar_doc:save(Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -159,7 +159,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.vmboxes">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.vmboxes">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  Context1 = crossbar_doc:save(Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -169,13 +169,13 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.vmboxes">>, [RD, 
     case Params of
 	[_, ?MESSAGES_RESOURCE, _] ->
 	    spawn(fun() ->
-                          crossbar_util:put_reqid(Context),
+                          _ = crossbar_util:put_reqid(Context),
 			  Context1 = crossbar_doc:save(Context),
 			  Pid ! {binding_result, true, [RD, Context1, Params]}
 		  end);
 	_ ->
 	    spawn(fun() ->
-                          crossbar_util:put_reqid(Context),
+                          _ = crossbar_util:put_reqid(Context),
 			  Context1 = crossbar_doc:delete(Context),
 			  Pid ! {binding_result, true, [RD, Context1, Params]}
 		  end)
@@ -444,8 +444,8 @@ load_message_summary(DocId, Context) ->
       DocId :: binary(),
       Context :: #cb_context{}.
 load_messages(DocId, Context) ->
-    #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
-    wh_json:get_value(<<"messages">>, Doc).
+    #cb_context{resp_status=success, doc=Doc} = crossbar_doc:load(DocId, Context),
+    wh_json:get_value(<<"messages">>, Doc, []).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -483,17 +483,23 @@ load_message_binary(VMBoxId, VMId, #cb_context{db_name=Db}=Context) ->
 
     #cb_context{resp_data=VMMetaJObj} = load_message(VMBoxId, VMId, Context),
 
+    {ok, VMBoxJObj} = couch_mgr:open_doc(Db, VMBoxId),
+
     Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
 				   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
 				   ,wh_json:get_value(<<"media_type">>, VMJObj)
+				   ,wh_json:get_value(<<"timezone">>, VMBoxJObj)
 				  ),
+    ?LOG("Sending file with filename ~s", [Filename]),
 
     Ctx = crossbar_doc:load_attachment(VMId, AttachmentId, Context),
     Ctx#cb_context{resp_headers = [
-       {<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], VMJObj)},
-       {<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>},
-       {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], VMJObj))}
-       | Context#cb_context.resp_headers]}.
+				   {<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], VMJObj)},
+				   {<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>},
+				   {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], VMJObj))}
+				   | Context#cb_context.resp_headers
+				  ]
+		  }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -597,12 +603,18 @@ update_message1(DocId, MediaId, Context) ->
 %% CallerID_YYYY-MM-DD_HH-MM-SS.ext
 %% @end
 %%--------------------------------------------------------------------
--spec(generate_media_name/3 :: (binary(), binary(), binary()) -> binary()).
-generate_media_name(CallerId, GregorianSeconds, Ext) ->
-    {{Y,Mo,D}, {H, Mi, S}}  = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(GregorianSeconds)),
+-spec generate_media_name/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
+    UTCDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(GregorianSeconds)),
+    
+    {{Y,Mo,D},{H,Mi,S}} = case localtime:utc_to_local(UTCDateTime, wh_util:to_list(Timezone)) of
+			      {{_,_,_},{_,_,_}}=LocalTime -> ?LOG("Converted to TZ: ~s", [Timezone]), LocalTime;
+			      _ -> ?LOG("Bad TZ: ~p", [Timezone]), UTCDateTime
+			  end,
+
     Date = iolist_to_binary(io_lib:format("_~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
 					  [Y, Mo, D, H, Mi, S])),
     case CallerId of
-	undefined -> <<"unknown", Date/binary, ".", Ext/binary>>;
-	_ -> <<CallerId/binary, Date/binary, ".", Ext/binary>>
+	undefined -> list_to_binary(["unknown_", Date, ".", Ext]);
+	_ -> list_to_binary([CallerId, "_", Date, ".", Ext])
     end.

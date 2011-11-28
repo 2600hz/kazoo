@@ -2,8 +2,12 @@
 
 -export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
--export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1, to_atom/1, to_atom/2]).
--export([to_boolean/1, is_true/1, is_false/1, binary_to_lower/1, binary_to_upper/1]).
+-export([is_e164/1, is_npan/1, is_1npan/1]).
+-export([to_integer/1, to_integer/2, to_float/1, to_float/2, to_number/1
+	 ,to_hex/1, to_list/1, to_binary/1
+	 ,to_atom/1, to_atom/2]).
+-export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
+-export([binary_to_lower/1, binary_to_upper/1, binary_join/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
 -export([current_tstamp/0, ensure_started/1]).
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1]).
@@ -63,7 +67,7 @@ call_response1(CallId, CtrlQ, Commands) ->
                ,{<<"Call-ID">>, CallId}
                ,{<<"Commands">>, Commands}
                | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
-    {ok, Payload} = wh_api:queue_req(Command),
+    {ok, Payload} = wapi_dialplan:queue(Command),
     amqp_util:callctl_publish(CtrlQ, Payload).
 
 %%--------------------------------------------------------------------
@@ -95,6 +99,19 @@ get_event_type(JObj) ->
       S :: term().
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
+
+-spec is_e164/1 :: (ne_binary()) -> boolean().
+-spec is_npan/1 :: (ne_binary()) -> boolean().
+-spec is_1npan/1 :: (ne_binary()) -> boolean().
+
+is_e164(DID) ->
+    re:run(DID, <<"^\\+1\\d{10}$">>) =/= nomatch.
+
+is_npan(DID) ->
+    re:run(DID, <<"^\\d{10}$">>) =/= nomatch.
+
+is_1npan(DID) ->
+    re:run(DID, <<"^1\\d{10}$">>) =/= nomatch.
 
 %% +18001234567 -> +18001234567
 -spec to_e164/1 :: (DID) -> binary() when
@@ -139,35 +156,59 @@ to_1npan(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
 to_1npan(Other) ->
     Other.
 
--spec to_integer/1 :: (X) -> integer() when
-      X :: string() | binary() | integer() | float() | atom().
-to_integer(X) when is_float(X) ->
+-spec to_integer/1 :: (string() | binary() | integer() | float()) -> integer().
+-spec to_integer/2 :: (string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
+to_integer(X) ->
+    to_integer(X, notstrict).
+
+to_integer(X, strict) when is_float(X) ->
+    error(badarg);
+to_integer(X, notstrict) when is_float(X) ->
     round(X);
-to_integer(X) when is_binary(X) ->
-    to_integer(binary_to_list(X));
-to_integer(X) when is_list(X) ->
+to_integer(X, S) when is_binary(X) ->
+    to_integer(binary_to_list(X), S);
+to_integer(X, S) when is_list(X) ->
     try
 	list_to_integer(X)
     catch
-	error:badarg -> round(list_to_float(X))
+	error:badarg when S =:= notstrict ->
+	    round(list_to_float(X))
     end;
-to_integer(X) when is_integer(X) ->
+to_integer(X, _) when is_integer(X) ->
     X.
 
--spec to_float/1 :: (X) -> float() when
-      X :: string() | binary() | integer() | float().
-to_float(X) when is_binary(X) ->
-    to_float(binary_to_list(X));
-to_float(X) when is_list(X) ->
+-spec to_float/1 :: (string() | binary() | integer() | float()) -> float().
+-spec to_float/2 :: (string() | binary() | integer() | float(), 'strict' | 'notstrict') -> float().
+to_float(X) ->
+    to_float(X, notstrict).
+
+to_float(X, S) when is_binary(X) ->
+    to_float(binary_to_list(X), S);
+to_float(X, S) when is_list(X) ->
     try
 	list_to_float(X)
     catch
-	error:badarg -> list_to_integer(X)*1.0 %% "500" -> 500.0
+	error:badarg when S =:= notstrict -> list_to_integer(X)*1.0 %% "500" -> 500.0
     end;
-to_float(X) when is_integer(X) ->
+to_float(X, strict) when is_integer(X) ->
+    error(badarg);
+to_float(X, nonstrict) when is_integer(X) ->
     X * 1.0;
-to_float(X) when is_float(X) ->
+to_float(X, _) when is_float(X) ->
     X.
+
+-spec to_number/1 :: (binary() | string() | number()) -> number().
+to_number(X) when is_number(X) ->
+    X;
+to_number(X) when is_binary(X) ->
+    to_number(to_list(X));
+to_number(X) when is_list(X) ->
+    try list_to_integer(X) of
+	Int -> Int
+    catch
+	error:badarg ->
+	    list_to_float(X)
+    end.
 
 -spec to_list/1 :: (X) -> list() when
       X :: atom() | list() | binary() | integer() | float().
@@ -234,8 +275,32 @@ is_false("false") -> true;
 is_false(false) -> true;
 is_false(_) -> false.
 
--spec binary_to_lower/1 :: (B) -> binary() when
-      B :: binary().
+-spec is_empty/1 :: (term()) -> boolean().
+is_empty(0) -> true;
+is_empty([]) -> true;
+is_empty("0") -> true;
+is_empty("false") -> true;
+is_empty("NULL") -> true;
+is_empty(<<>>) -> true;
+is_empty(<<"0">>) -> true;
+is_empty(<<"false">>) -> true;
+is_empty(<<"NULL">>) -> true;
+is_empty(false) -> true;
+is_empty(undefined) -> true;
+is_empty(?EMPTY_JSON_OBJECT) -> true;
+is_empty(_) -> false.
+
+-spec is_proplist/1 :: (Term) -> boolean() when
+      Term :: term().
+is_proplist(Term) when is_list(Term) ->
+    lists:all(fun({_,_}) -> true; (_) -> false end, Term);
+is_proplist(_) ->
+    false.
+
+-spec binary_to_lower/1 :: (B) -> undefined | binary() when
+      B :: undefined | binary().
+binary_to_lower(undefined) ->
+    undefined;
 binary_to_lower(Bin) when is_binary(Bin) ->
     << <<(binary_to_lower_char(B))>> || <<B>> <= Bin>>.
 
@@ -258,6 +323,10 @@ binary_to_upper_char(C) when is_integer(C), $a =< C, C =< $z -> C - 32;
 binary_to_upper_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 -> C - 32;
 binary_to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
 binary_to_upper_char(C) -> C.
+
+-spec binary_join/2 :: ([ne_binary(),...], binary()) -> ne_binary().
+binary_join([H|T], Glue) when is_binary(Glue) ->
+    list_to_binary([H, [ [Glue, I] || I <- T]]).
 
 -spec a1hash/3 :: (User, Realm, Password) -> string() when
       User :: binary() | list(),
@@ -380,6 +449,13 @@ prop_to_integer() ->
 		lists:all(fun(N) -> erlang:is_integer(to_integer(N)) end, Is)
 	    end).
 
+prop_to_number() ->
+    ?FORALL({F, I}, {float(), integer()},
+	    begin
+		Is = [ Fun(N) || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
+		lists:all(fun(N) -> erlang:is_number(to_number(N)) end, Is)
+	    end).
+
 prop_to_float() ->
     ?FORALL({F, I}, {float(), integer()},
 	    begin
@@ -441,8 +517,12 @@ prop_to_e164() ->
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 
-%-export([to_integer/1, to_float/1, to_hex/1, to_list/1, to_binary/1]).
-%-export([a1hash/3, floor/1, ceiling/1]).
+proper_test_() ->
+    {"Runs the module's PropEr tests during eunit testing",
+     {timeout, 15000,
+      [
+       ?_assertEqual([], proper:module(?MODULE, [{max_shrinks, 0}]))
+      ]}}.
 
 to_e164_test() ->
     Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],
@@ -474,5 +554,10 @@ microsecs_to_secs_test() ->
 
 no_whistle_version_test() ->
     ?assertEqual(<<"not available">>, whistle_version(<<"/path/to/nonexistent/file">>)).
+
+binary_join_test() ->
+    ?assertEqual(<<"foo">>, binary_join([<<"foo">>], <<", ">>)),
+    ?assertEqual(<<"foo, bar">>, binary_join([<<"foo">>, <<"bar">>], <<", ">>)),
+    ?assertEqual(<<"foo, bar, baz">>, binary_join([<<"foo">>, <<"bar">>, <<"baz">>], <<", ">>)).
 
 -endif.

@@ -13,17 +13,20 @@
 -export([get_integer_value/2, get_integer_value/3]).
 -export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
--export([get_list_value/2, get_list_value/3]).
+-export([get_string_value/2, get_string_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
+-export([filter/2, filter/3]).
 -export([get_value/2, get_value/3, get_values/1]).
 -export([get_keys/1, get_keys/2]).
--export([set_value/3, new/0]).
+-export([set_value/3, set_values/2, new/0]).
 -export([delete_key/2, delete_key/3]).
 
 -export([from_list/1, merge_jobjs/2]).
 
--export([normalize_jobj/1, is_json_object/1, is_json_term/1]).
+-export([normalize_jobj/1, normalize/1, is_json_object/1, is_valid_json_object/1, is_json_term/1]).
+
+-export([encode/1, decode/1]).
 
 %% not for public use
 -export([prune/2, no_prune/2]).
@@ -35,13 +38,24 @@
 new() ->
     ?EMPTY_JSON_OBJECT.
 
+-spec encode/1 :: (json_object()) -> iolist() | ne_binary().
+encode(JObj) ->
+    mochijson2:encode(JObj).
+
+-spec decode/1 :: (iolist() | ne_binary()) -> json_object().
+decode(JSON) ->
+    mochijson2:decode(JSON).
+
 -spec is_empty/1 :: (term()) -> boolean().
 is_empty(MaybeJObj) ->
     MaybeJObj =:= ?EMPTY_JSON_OBJECT.
 
--spec is_json_object/1 :: (MaybeJObj) -> boolean() when
-      MaybeJObj :: term().
-is_json_object(MaybeJObj) ->
+-spec is_json_object/1 :: (term()) -> boolean().
+is_json_object({struct, _}) -> true;
+is_json_object(_) -> false.
+
+-spec is_valid_json_object/1 :: (term()) -> boolean().
+is_valid_json_object(MaybeJObj) ->
     try
  	lists:all(fun(K) -> is_json_term(?MODULE:get_value([K], MaybeJObj)) end,
 		  ?MODULE:get_keys(MaybeJObj))
@@ -50,8 +64,7 @@ is_json_object(MaybeJObj) ->
 	error:_ -> false
     end.
 
--spec is_json_term/1 :: (V) -> boolean() when
-      V :: json_term().
+-spec is_json_term/1 :: (json_term()) -> boolean().
 is_json_term(undefined) -> throw({error, no_undefined_atom_in_jobj_please});
 is_json_term(V) when is_atom(V) -> true;
 is_json_term(V) when is_binary(V) -> true;
@@ -71,14 +84,14 @@ is_json_term(MaybeJObj) ->
 %% would be converted to json by
 %% wh_json:from_list([{a,b}, {c, wh_json:from_list([{d, e}])}]).
 %% the sub-proplist [{d,e}] needs converting before being passed to the next level
--spec from_list/1 :: (L) -> json_object() when
-      L :: wh_proplist().
+-spec from_list/1 :: (wh_proplist()) -> json_object().
 from_list(L) when is_list(L) ->
-    lists:foldr(fun({K,V}, Acc) ->
-			true = is_json_term(V), % crash if invalid
-			set_value([K], V, Acc); % set all other Values normally
-		   (A, Acc) when is_atom(A) -> set_value([A], true, Acc)
-		end, ?EMPTY_JSON_OBJECT, L).
+    {struct, L}.
+%%    lists:foldr(fun({K,V}, Acc) ->
+%%                        true = is_json_term(V), % crash if invalid
+%%                        set_value([K], V, Acc); % set all other Values normally
+%%                   (A, Acc) when is_atom(A) -> set_value([A], true, Acc)
+%%                end, ?EMPTY_JSON_OBJECT, L).
 
 %% only a top-level merge
 %% merges JObj1 into JObj2
@@ -90,18 +103,15 @@ merge_jobjs(JObj1, JObj2) ->
 			wh_json:set_value(K, wh_json:get_value(K, JObj1), Acc)
 		end, JObj2, ?MODULE:get_keys(JObj1)).
 
--spec to_proplist/1 :: (JObj) -> proplist() when
-      JObj :: json_object().
--spec to_proplist/2 :: (Key, JObj) -> proplist() when
-      Key :: term(),
-      JObj :: json_object().
-
-%% Convert an array (possibly of json objects)
+-spec to_proplist/1 :: (json_object() | json_objects()) -> proplist() | [proplist(),...].
+-spec to_proplist/2 :: (term(), json_object()) -> proplist().
+%% Convert a json object to a proplist
+%% only top-level conversion is supported
 to_proplist(Objects) when is_list(Objects)->
     [to_proplist(O) || O <- Objects];
 to_proplist(MaybeJObj) ->
     case is_json_object(MaybeJObj) of
-	true -> [ {K, to_proplist(K, MaybeJObj)} || K <- ?MODULE:get_keys(MaybeJObj)];
+	true -> [ {K, get_value(K, MaybeJObj)} || K <- ?MODULE:get_keys(MaybeJObj)];
 	false -> MaybeJObj
     end.
 
@@ -109,20 +119,36 @@ to_proplist(MaybeJObj) ->
 to_proplist(Key, JObj) ->
     to_proplist(get_value(Key, JObj, ?EMPTY_JSON_OBJECT)).
 
--spec get_list_value/2 :: (Key, JObj) -> 'undefined' | list() when
+-spec get_string_value/2 :: (Key, JObj) -> 'undefined' | list() when
       Key :: term(),
       JObj :: json_object() | json_objects().
-get_list_value(Key, JObj) ->
+get_string_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
         Value -> wh_util:to_list(Value)
     end.
 
--spec get_list_value/3 :: (Key, JObj, Default) -> list() when
+-spec filter/3 :: (Pred, JObj, Keys) -> json_object() when
+      Pred :: fun( (Element) -> boolean() ),
+      Element :: json_term() | {json_string(), json_term()},
+      JObj :: json_object(),
+      Keys :: json_string() | [json_string(),...].
+filter(Pred, JObj, Keys) ->
+    Value = ?MODULE:filter(Pred, ?MODULE:get_value(Keys, JObj)),
+    ?MODULE:set_value(Keys, Value, JObj).
+
+-spec filter/2 :: (Pred, JObj) -> json_object() when
+      Pred :: fun( (Element) -> boolean() ),
+      Element :: json_term() | {json_string(), json_term()},
+      JObj :: json_object().
+filter(Pred, {struct, Props}) when is_function(Pred, 1) ->
+    {struct, [ E || E <- Props, Pred(E) ]}.
+
+-spec get_string_value/3 :: (Key, JObj, Default) -> list() when
       Key :: term(),
       JObj :: json_object() | json_objects(),
       Default :: list().
-get_list_value(Key, JObj, Default) when is_list(Default) ->
+get_string_value(Key, JObj, Default) when is_list(Default) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> Default;
         Value -> wh_util:to_list(Value)
@@ -218,11 +244,8 @@ get_binary_boolean(Key, JObj) ->
         Value -> wh_util:to_binary(wh_util:is_true(Value))
     end.
 
--spec get_keys/1 :: (JObj) -> [term(),...] | [] when
-      JObj :: json_object().
--spec get_keys/2 :: (Key, JObj) -> 'undefined' | [term(),...] | [] when
-      Key :: term(),
-      JObj :: json_object().
+-spec get_keys/1 :: (json_object()) -> json_strings() | [].
+-spec get_keys/2 :: (json_string() | json_strings(), json_object()) -> json_strings() | [].
 get_keys(JObj) ->
     get_keys1(JObj).
 
@@ -233,16 +256,10 @@ get_keys(Key, JObj) ->
 
 get_keys1(KVs) when is_list(KVs) ->
     lists:seq(1,length(KVs));
-get_keys1({struct, KVs}) when is_list(KVs) -> props:get_keys(KVs);
-get_keys1(_) -> undefined.
+get_keys1({struct, KVs}) when is_list(KVs) -> props:get_keys(KVs).
 
--spec get_value/2 :: (Key, JObj) -> term() when
-      Key :: term(),
-      JObj :: json_object() | json_objects().
--spec get_value/3 :: (Key, JObj, Default) -> term() when
-      Key :: term(),
-      JObj :: json_object() | json_objects(),
-      Default :: term().
+-spec get_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> json_term().
+-spec get_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), json_term()) -> json_term().
 get_value(Key, JObj) ->
     get_value(Key, JObj, undefined).
 
@@ -250,17 +267,14 @@ get_value([Key|Ks], [{struct, _}|_]=L, Default) ->
     try
 	get_value1(Ks, lists:nth(Key, L), Default)
     catch
-	_:_ -> Default
+	error:badarith -> Default
     end;
 get_value(Key, L, Default) when is_list(L) ->
     get_value1(Key, {struct, L}, Default);
 get_value(K, Doc, Default) ->
     get_value1(K, Doc, Default).
 
--spec get_value1/3 :: (Key, JObj, Default) -> term() when
-      Key :: term(),
-      JObj :: json_object() | json_objects(),
-      Default :: term().
+-spec get_value1/3 :: (json_string() | json_strings(), json_object() | json_objects(), json_term()) -> json_term().
 get_value1([], JObj, _Default) -> JObj;
 get_value1(Key, JObj, Default) when not is_list(Key)->
     get_value1([Key], JObj, Default);
@@ -274,28 +288,24 @@ get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
 get_value1(_, _, Default) -> Default.
 
 %% split the json object into values and the corresponding keys
--spec get_values/1 :: (JObj) -> {Values, Keys} when
-      JObj :: json_object(),
+-spec get_values/1 :: (json_object()) -> {Values, Keys} when
       Values :: [json_term(),...] | [],
-      Keys :: [json_string(),...] | [].
+      Keys :: json_strings() | [].
 get_values(JObj) ->
     lists:unzip([ {?MODULE:get_value(Key, JObj), Key} || Key <- ?MODULE:get_keys(JObj) ]).
 
 %% Figure out how to set the current key among a list of objects
+-spec set_values/2 :: (json_proplist(), json_object()) -> json_object().
+set_values(KVs, JObj) when is_list(KVs) ->
+    lists:foldl(fun({K,V}, JObj0) -> ?MODULE:set_value(K, V, JObj0) end, JObj, KVs).
 
--spec set_value/3 :: (Key, Value, JObj) -> json_object() | json_objects() when
-      Key :: term(),
-      Value :: term(),
-      JObj :: json_object() | json_objects().
+-spec set_value/3 :: (json_string() | json_strings(), json_term(), json_object() | json_objects()) -> json_object() | json_objects().
 set_value(Key, Value, {struct, _}=JObj) ->
     set_value1(Key, Value, JObj);
 set_value(Key, Value, [{struct, _} | _]=JObjs) ->
     set_value1(Key, Value, JObjs).
 
--spec set_value1/3 :: (Key, Value, JObj) -> json_object() | json_objects() when
-      Key :: term(),
-      Value :: term(),
-      JObj :: json_object() | json_objects().
+-spec set_value1/3 :: (json_string() | json_strings(), json_term(), json_object() | json_objects()) -> json_object() | json_objects().
 set_value1(Key, Value, JObj) when not is_list(Key) ->
     set_value1([Key], Value, JObj);
 set_value1([Key|T], Value, [{struct, _}|_]=JObjs) ->
@@ -446,33 +456,32 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_jobj/1 :: (JObj :: json_object() | {Key :: binary(),  {struct, DataTuples :: json_array()}}) -> json_object() | {binary(), json_object()}).
-normalize_jobj({struct, DataTuples}) ->
-    {struct, [normalizer(DT) || DT <- DataTuples]};
-normalize_jobj({Key, {struct, DataTuples}}) ->
-    {normalize_key(Key), {struct, [normalizer(DT) || DT <- DataTuples]}}.
+-spec normalize_jobj/1 :: (json_object()) -> json_object().
+normalize_jobj(JObj) ->
+    normalize(JObj).
 
--spec(normalize_binary_tuple/1 :: (BinaryTuple :: tuple(binary(), binary())) -> tuple(binary(), binary()) ).
-normalize_binary_tuple({Key,Val}) ->
-    {normalize_key(Key), Val}.
+-spec normalize/1 :: (json_object()) -> json_object().
+normalize({struct, DataTuples}) ->
+    {struct, [{normalize_key(K), normalize_value(V)} || {K, V} <- DataTuples]}.
 
--spec(normalize_key/1 :: (Key :: binary()) -> binary()).
+-spec normalize_value/1 :: (json_term()) -> json_term().
+normalize_value({struct, _}=JObj) ->
+    normalize(JObj);
+normalize_value([_|_]=As) ->
+    [normalize_value(A) || A <- As];
+normalize_value(V) -> V.
+
+-spec normalize_key/1 :: (ne_binary()) -> ne_binary().
 normalize_key(Key) when is_binary(Key) ->
     << <<(normalize_key_char(B))>> || <<B>> <= Key>>.
 
--spec(normalize_key_char/1 :: (C :: char()) -> char()).
+-spec normalize_key_char/1 :: (char()) -> char().
 normalize_key_char($-) -> $_;
 normalize_key_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
 %% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"
 normalize_key_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
 normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 normalize_key_char(C) -> C.
-
--spec(normalizer/1 :: (DataTuple :: {binary(), json_object()} | {binary(), binary()}) -> json_object() | {binary(),  binary()}).
-normalizer({_, {struct, _}}=DataTuple) ->
-    normalize_jobj(DataTuple);
-normalizer({_,_}=DataTuple) ->
-    normalize_binary_tuple(DataTuple).
 
 %% PropEr Testing
 prop_is_json_object() ->
@@ -488,7 +497,7 @@ prop_from_list() ->
  	   ).
 
 prop_get_value() ->
-    ?FORALL(Prop, wh_proplist(),
+    ?FORALL(Prop, json_proplist(),
 	    ?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop]),
 		      begin
 			  JObj = from_list(Prop),
@@ -537,6 +546,14 @@ is_json_object_proper_test_() ->
     {"Runs wh_json PropEr tests for is_json_object/1",
      {timeout, 10000, [?_assertEqual([], proper:module(?MODULE))]}}.
 
+is_empty_test() ->
+    ?assertEqual(true, is_empty(new())),
+    ?assertEqual(false, is_empty(?D1)),
+    ?assertEqual(false, is_empty(?D6)),
+    ?assertEqual(false, is_empty(123)),
+    ?assertEqual(false, is_empty(<<"foobar">>)),
+    ?assertEqual(false, is_empty([{bar, bas}])).
+
 merge_jobjs_test() ->
     JObj = merge_jobjs(?D1, ?D2),
     ?assertEqual(true, undefined =/= wh_json:get_value(<<"d1k1">>, JObj)),
@@ -575,11 +592,24 @@ is_true_test() ->
     ?assertEqual(false, wh_json:is_true(<<"d1k1">>, ?D1)),
     ?assertEqual(true, wh_json:is_true(<<"a_key">>, {struct, [{<<"a_key">>, true}]})).
 
+-define(D1_FILTERED, {struct, [{<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]}).
+-define(D2_FILTERED, {struct, [{<<"sub_d1">>, ?D1}]}).
+-define(D3_FILTERED, {struct, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?D1, ?D2_FILTERED]}]}).
+filter_test() ->
+    ?assertEqual(?D1_FILTERED, ?MODULE:filter(fun({<<"d1k1">>, _}) -> false; (_) -> true end, ?D1)),
+    ?assertEqual(?D2_FILTERED, ?MODULE:filter(fun({_, V}) when is_number(V) -> false; (_) -> true end, ?D2)),
+    ?assertEqual(?D3_FILTERED, ?MODULE:filter(fun({_, V}) when is_number(V) -> false; (_) -> true end, ?D3, [<<"sub_docs">>, 2])).
+
 new_test() ->
     ?EMPTY_JSON_OBJECT =:= ?MODULE:new().
 
 -spec is_json_object_test/0 :: () -> no_return().
 is_json_object_test() ->
+    ?assertEqual(false, ?MODULE:is_json_object(foo)),
+    ?assertEqual(false, ?MODULE:is_json_object(123)),
+    ?assertEqual(false, ?MODULE:is_json_object([boo, yah])),
+    ?assertEqual(false, ?MODULE:is_json_object(<<"bin">>)),
+
     ?assertEqual(true, ?MODULE:is_json_object(?D1)),
     ?assertEqual(true, ?MODULE:is_json_object(?D2)),
     ?assertEqual(true, ?MODULE:is_json_object(?D3)),
@@ -602,10 +632,10 @@ is_json_object_test() ->
 			    }).
 
 -define(P1, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]).
--define(P2, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?P1}]).
--define(P3, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?P1, ?P2]}]).
+-define(P2, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, {struct, ?P1}}]).
+-define(P3, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [{struct, ?P1}, {struct, ?P2}]}]).
 -define(P4, [?P1, ?P2, ?P3]).
--define(P6, [{<<"d2k1">>, 1},{<<"d2k2">>, 3.14},{<<"sub_d1">>, [{<<"d1k1">>, "d1v1"}]}]).
+-define(P6, [{<<"d2k1">>, 1},{<<"d2k2">>, 3.14},{<<"sub_d1">>, {struct, [{<<"d1k1">>, "d1v1"}]}}]).
 -define(P7, [{<<"d1k1">>, <<"d1v1">>}]).
 
 -spec get_keys_test/0 :: () -> no_return().
@@ -731,6 +761,14 @@ set_value_normalizer_test() ->
 
 get_values_test() ->
     ?assertEqual(true, are_all_there(?D1, ["d1v1", d1v2, ["d1v3.1", "d1v3.2", "d1v3.3"]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
+
+-define(CODEC_JOBJ, {struct, [{<<"k1">>, <<"v1">>}
+			      ,{<<"k2">>, {struct, []}}
+			      ,{<<"k3">>, {struct, [{<<"k3.1">>, <<"v3.1">>}]}}
+			      ,{<<"k4">>, [1,2,3]}
+			     ]}).
+codec_test() ->
+    ?assertEqual(?CODEC_JOBJ, decode(encode(?CODEC_JOBJ))).
 
 are_all_there(JObj, Vs, Ks) ->
     {Values, Keys} = ?MODULE:get_values(JObj),

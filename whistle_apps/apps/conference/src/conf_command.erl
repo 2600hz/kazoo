@@ -10,7 +10,7 @@
 
 -include("conference.hrl").
 
--export([participants/1, play/2, play/3]).
+-export([participants/1, participants/2, play/2, play/3]).
 -export([mute/2, unmute/2, deaf/2, undeaf/2]).
 -export([send_command/2]).
 
@@ -23,7 +23,13 @@
 %%--------------------------------------------------------------------
 -spec participants/1 :: (Conference) -> ok when
       Conference :: #conf{}.
-participants(#conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
+-spec participants/2 :: (Queue, Conference) -> ok when
+      Queue :: binary(),
+      Conference :: #conf{}.
+
+participants(#conf{amqp_q=Q}=Conf) ->
+    participants(Q, Conf).
+participants(Q, #conf{conf_id=ConfId}=Conf) ->
     Command = [
                 {<<"Application-Name">>, <<"participants">>}
                ,{<<"Insert-At">>, <<"now">>}

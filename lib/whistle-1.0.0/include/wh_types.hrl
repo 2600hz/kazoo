@@ -1,5 +1,6 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
 
+-define(MILLISECONDS_IN_DAY, 86400000).
 -define(SECONDS_IN_DAY, 86400).
 
 -define(IS_JSON_OBJECT,
@@ -10,6 +11,8 @@
                           end, L);
            (_) -> false
         end).
+
+-type api_terms() :: json_object() | proplist().
 
 %% non-empty binary
 -type ne_binary() :: <<_:8,_:_*8>>.
@@ -25,6 +28,7 @@
 -type wh_proplist() :: [{ne_binary() | atom(), binary() | atom() | integer() | float() | string()} | atom(),...] | [].
 
 -type json_string() :: atom() | ne_binary().
+-type json_strings() :: [json_string(),...].
 -type json_number() :: integer() | float().
 -type json_array() :: [json_term(),...] | [].
 -type json_proplist() :: [{json_string(), json_term()},...] | [].
@@ -33,6 +37,12 @@
 -type json_term() :: json_string() | json_number() | json_array() | json_object() | json_iolist().
 -type json_objects() :: [json_object(),...] | [].
 -type mochijson() :: json_object() | json_objects() | json_term() | [].
+
+%% result of calendar:datetime_to_gregorian_seconds({{1970,1,1},{0,0,0}}).
+%% Subtract this value from a gregorian seconds version of a date
+%% to get the Unix timestamp
+%% datetime_to_gregorian_seconds({date(),time()}) - ?UNIX_EPOCH_IN_GREGORIAN.
+-define(UNIX_EPOCH_IN_GREGORIAN, 62167219200).
 
 -type wh_now() :: calendar:t_now().
 -type wh_year() :: non_neg_integer().

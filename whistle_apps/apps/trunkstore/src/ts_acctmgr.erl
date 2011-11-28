@@ -597,13 +597,9 @@ is_call_active(CallID) ->
     try
 	true = is_binary(Q = amqp_util:new_targeted_queue()),
 	_ = amqp_util:bind_q_to_targeted(Q),
-
 	Req = [{<<"Call-ID">>, CallID}
-	       | wh_api:default_headers(Q, <<"call_event">>, <<"status_req">>, <<"ts_acctmgr">>, <<>>)],
-
-	{ok, JSON} = wh_api:call_status_req(Req),
-	amqp_util:callevt_publish(CallID, JSON, status_req),
-
+	       | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+	wapi_call:publish_status_req(CallID, Req),
 	is_call_active_loop()
     catch
 	Type:Reason ->
@@ -617,7 +613,7 @@ is_call_active_loop() ->
     receive
 	{_, #amqp_msg{payload = Payload}} ->
 	    {struct, Prop} = mochijson2:decode(binary_to_list(Payload)),
-	    wh_api:call_status_resp_v(Prop);
+	    wapi_call:status_resp_v(Prop);
 	_ ->
 	    is_call_active_loop()
     after ?ACTIVE_CALL_TIMEOUT ->

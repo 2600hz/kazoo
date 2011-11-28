@@ -4,7 +4,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, cache_proc/0]).
+-export([start_link/0, cache_proc/0, registrar_proc/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -22,9 +22,13 @@ start_link() ->
 
 -spec cache_proc/0 :: () -> {'ok', pid()}.
 cache_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-		Mod =:= ecallmgr_cache],
+    [P] = find_procs(ecallmgr_cache),
     {ok, P}.
+
+-spec registrar_proc/0 :: () -> {'ok', pid()}.
+registrar_proc() ->
+    [R] = find_procs(ecallmgr_registrar),
+    {ok, R}.
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -34,8 +38,7 @@ init([]) ->
     {ok
      ,{
        {one_for_one, 5, 10}
-       ,[
-	 ?CHILD(ecallmgr_fs_sup, supervisor)
+       ,[?CHILD(ecallmgr_fs_sup, supervisor)
 	 ,?CHILD(ecallmgr_call_sup, supervisor) % handles dynamic call {event,control} processes
          ,?CHILD(ecallmgr_shout_sup, supervisor) % handles dynamic record streams from FreeSWITCH to local filesystem
 	 ,?CHILD(ecallmgr_fs_route_sup, supervisor)
@@ -49,7 +52,11 @@ init([]) ->
 	 ,?CHILD(ecallmgr_amqp_pool, worker) % pool of queues for sending msgs
 	 ,?CHILD(ecallmgr_fs_handler, worker) % handles starting FreeSWITCH handlers for a given FS node
 	 ,?CHILD(ecallmgr_media_registry, worker) % handles tracking media names and files per-call
-	 ,?CHILD(ecallmgr_notify, worker) % handles notify-type API calls (like MWI, BLF, check-sync)
+	 ,?CHILD(ecallmgr_notify, worker) % handles notify-type API calls (like MWI, BLF, check-sync
+	 ,?CHILD(ecallmgr_fs_query, worker) % handles queries for call information/location
 	]
       }
     }.
+
+find_procs(Mod) ->
+    [P || {M, P, _, _} <- supervisor:which_children(?MODULE), M =:= Mod].

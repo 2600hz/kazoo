@@ -120,10 +120,13 @@ create_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Inception}=Ca
                   ,wh_json:get_value(<<"custom_sip_headers">>, SIP))
     end,
 
-    FaxEnabled = case wh_json:is_true(<<"fax_enabled">>, Endpoint) of
-		     false -> [];
-		     true -> [{<<"Fax-Enabled">>, true}]
-		 end,
+    CCVs = case wh_json:is_true(<<"fax_enabled">>, Endpoint) of
+               false -> [{<<"Endpoint-ID">>, EndpointId}
+                         ,{<<"Owner-ID">>, OwnerId}];
+               true -> [{<<"Fax-Enabled">>, <<"true">>}
+                        ,{<<"Endpoint-ID">>, EndpointId}
+                        ,{<<"Owner-ID">>, OwnerId}]
+           end,
 
     Prop = [{<<"Invite-Format">>, wh_json:get_value(<<"invite_format">>, SIP, <<"username">>)}
             ,{<<"To-User">>, wh_json:get_value(<<"username">>, SIP)}
@@ -139,10 +142,7 @@ create_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Inception}=Ca
             ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
             ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Media)}
             ,{<<"SIP-Headers">>, SIPHeaders} % converted to json_object() in merge_headers/2
-            ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Endpoint-ID">>, EndpointId}
-							    ,{<<"Owner-ID">>, OwnerId}
-							    | FaxEnabled
-							   ])}
+            ,{<<"Custom-Channel-Vars">>, wh_json:from_list([ KV || {_, V}=KV <- CCVs, V =/= undefined ])}
            ],
     wh_json:from_list([ KV || {_, V}=KV <- Prop, V =/= undefined ]).
 
@@ -179,7 +179,6 @@ create_call_fwd_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Ince
                               end,
 
     SIP = wh_json:get_value(<<"sip">>, Endpoint, ?EMPTY_JSON_OBJECT),
-    Media = wh_json:get_value(<<"media">>, Endpoint, ?EMPTY_JSON_OBJECT),
 
     CCV1 = case wh_util:is_true(wh_json:get_value(<<"keep_caller_id">>, CallFwd)) of
                true ->
@@ -200,7 +199,7 @@ create_call_fwd_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Ince
                     ,{<<"Confirm-File">>, ?CONFIRM_FILE}] ++ CCV1;
                false ->
                    IgnoreEarlyMedia
-                       = wh_json:get_binary_boolean(<<"ignore_early_media">>, Media),
+                       = wh_json:get_binary_boolean(<<"ignore_early_media">>, CallFwd),
                    CCV1
            end,
 

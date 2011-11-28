@@ -248,25 +248,23 @@ start_amqp() ->
 
 send_error_resp(JObj, ErrCode, <<>>) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
-    Prop = [{<<"Media-Name">>, MediaName}
-	    ,{<<"Error-Code">>, wh_util:to_binary(ErrCode)}
-	    | wh_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, Payload} = wh_api:media_error(Prop),
+    Error = [{<<"Media-Name">>, MediaName}
+             ,{<<"Error-Code">>, wh_util:to_binary(ErrCode)}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     ?LOG_END("sending error reply ~s for ~s", [ErrCode, MediaName]),
-    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload);
+    wapi_media:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error);
 send_error_resp(JObj, _ErrCode, ErrMsg) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
-    Prop = [{<<"Media-Name">>, MediaName}
-	    ,{<<"Error-Code">>, <<"other">>}
-	    ,{<<"Error-Msg">>, wh_util:to_binary(ErrMsg)}
-	    | wh_api:default_headers(<<>>, <<"media">>, <<"media_error">>, ?APP_NAME, ?APP_VERSION)],
-    {ok, Payload} = wh_api:media_error(Prop),
+    Error = [{<<"Media-Name">>, MediaName}
+             ,{<<"Error-Code">>, <<"other">>}
+             ,{<<"Error-Msg">>, wh_util:to_binary(ErrMsg)}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     ?LOG_END("sending error reply ~s for ~s", [_ErrCode, MediaName]),
-    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+    wapi_media:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error).
 
 -spec(handle_req/3 :: (JObj :: json_object(), Port :: port(), Streams :: list()) -> no_return()).
 handle_req(JObj, Port, Streams) ->
-    true = wh_api:media_req_v(JObj),
+    true = wapi_media:req_v(JObj),
     case find_attachment(binary:split(wh_json:get_value(<<"Media-Name">>, JObj, <<>>), <<"/">>, [global, trim])) of
         not_found ->
             send_error_resp(JObj, <<"not_found">>, <<>>);

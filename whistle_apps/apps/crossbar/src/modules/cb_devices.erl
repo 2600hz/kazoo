@@ -30,9 +30,6 @@
 
 -define(CB_LIST, <<"devices/crossbar_listing">>).
 
--define(AGG_DB, <<"sip_auth">>).
--define(AGG_FILTER, <<"devices/export_sip">>).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -122,7 +119,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.devices">>, Payl
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -131,27 +128,58 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Contex
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-		  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  _ = crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  case crossbar_doc:save(Context) of
+                      #cb_context{resp_status=success, doc=Doc1}=Context1 ->
+                          DeviceId = wh_json:get_value(<<"_id">>, Doc1),
+                          _ = provision(Doc1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>)),
+                          case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
+                              {ok, Rev} ->
+                                  couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1)),
+                                  Pid ! {binding_result, true, [RD, Context1, Params]};
+                              {error, not_found} ->
+                                  couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
+                                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                          end;
+                      Else ->
+                          Pid ! {binding_result, true, [RD, Else, Params]}
+                  end
 	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-		  whapps_util:replicate_from_account(Context1#cb_context.db_name, ?AGG_DB, ?AGG_FILTER)
+                  _ = crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  case crossbar_doc:save(Context) of
+                      #cb_context{resp_status=success, doc=Doc1}=Context1 ->
+                          _ = provision(Doc1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>)),
+                          couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
+                          Pid ! {binding_result, true, [RD, Context1, Params]};
+                      Else ->
+                          Pid ! {binding_result, true, [RD, Else, Params]}
+                  end
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  _ = crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  case crossbar_doc:delete(Context) of
+                      #cb_context{resp_status=success}=Context1 ->
+                          DeviceId = wh_json:get_value(<<"_id">>, Doc),
+                          case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
+                              {ok, Rev} ->
+                                  couch_mgr:del_doc(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Doc));
+                              {error, not_found} ->
+                                  ok
+                          end,
+                          Pid ! {binding_result, true, [RD, Context1, Params]};
+                      Else ->
+                          Pid ! {binding_result, true, [RD, Else, Params]}
+                  end
 	  end),
     {noreply, State};
 
@@ -252,9 +280,9 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-validate([], #wm_reqdata{req_qs=QueryString}, #cb_context{req_verb = <<"get">>}=Context) ->
-    load_device_summary(Context, QueryString);
+-spec validate/3 :: ([ne_binary(),...] | [], #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
+validate([], _, #cb_context{req_verb = <<"get">>, req_json=RJ}=Context) ->
+    load_device_summary(Context, RJ);
 validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
     create_device(Context);
 validate([<<"status">>], _, #cb_context{req_verb = <<"get">>}=Context) ->
@@ -275,13 +303,11 @@ validate(_, _, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_summary/2 :: (Context, QueryParams) -> #cb_context{} when
-      Context :: #cb_context{},
-      QueryParams :: proplist().
-load_device_summary(Context, []) ->
+-spec load_device_summary/2 :: (#cb_context{}, json_object()) -> #cb_context{}.
+load_device_summary(Context, ?EMPTY_JSON_OBJECT) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 load_device_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
-    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, QueryParams),
+    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, wh_json:to_proplist(QueryParams)),
     Context#cb_context{resp_data=Result, resp_status=success}.
 %%--------------------------------------------------------------------
 %% @private
@@ -289,11 +315,11 @@ load_device_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
 %% Create a new device document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_device/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec create_device/1 :: (#cb_context{}) -> #cb_context{}.
 create_device(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {error, Fields} ->
-	    crossbar_util:response_invalid_data(Fields, Context);
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, Fields, wh_json:new()), Context);
         {ok, _} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
@@ -307,7 +333,7 @@ create_device(#cb_context{req_data=JObj}=Context) ->
 %% Load a device document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_device/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_device/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_device(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
@@ -321,8 +347,8 @@ load_device(DocId, Context) ->
 -spec(update_device/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
 update_device(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {error, Fields} ->
-	    crossbar_util:response_invalid_data(Fields, Context);
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, Fields, wh_json:new()), Context);
         {ok, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
@@ -334,20 +360,17 @@ update_device(DocId, #cb_context{req_data=JObj}=Context) ->
 %% Reads registered devices in registrations, then map to devices of the account
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_status/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec load_device_status/1 :: (#cb_context{}) -> #cb_context{}.
 load_device_status(#cb_context{db_name=Db}=Context) ->
-    %% RegDevices = [[realm1, user1], [realmN, userN], ...], those are owners of currently  registered devices.
-    %% RegDevices is reinjected as keys for devices/sip_credentials
     {ok, JObjs} = couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]),
     AccountDevices = lists:foldl(fun(JObj, Acc) -> [{wh_json:get_value([<<"doc">>, <<"sip">>, <<"realm">>], JObj),
 						     wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], JObj)} | Acc] end, [], JObjs),
     RegDevices = lookup_regs(AccountDevices),
     Result = case RegDevices of
-		 [] -> {struct, []};
+		 [] -> wh_json:new();
 		 [_|_] -> {ok, Devices} = couch_mgr:get_results(Db, <<"devices/sip_credentials">>, [{<<"keys">>, RegDevices}]),
 			  lists:foldl(fun(JObj, Acc) ->
-					      RegDevice = wh_json:set_value(<<"device_id">>, wh_json:get_value(<<"id">>, JObj), ?EMPTY_JSON_OBJECT),
+					      RegDevice = wh_json:set_value(<<"device_id">>, wh_json:get_value(<<"id">>, JObj), wh_json:new()),
 					      [wh_json:set_value(<<"registered">>, true, RegDevice)| Acc]
 				      end, [], Devices)
 	     end,
@@ -359,7 +382,7 @@ load_device_status(#cb_context{db_name=Db}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -369,8 +392,7 @@ normalize_view_results(JObj, Acc) ->
 %% Validates JObj against their schema
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (JObj :: json_object()) -> tuple(error, json_objects());
-			(JObj :: json_object()) -> tuple(ok, []).
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
      crossbar_schema:do_validate(JObj, device).
 
@@ -381,49 +403,100 @@ is_valid_doc(JObj) ->
 %% whose device is registered, ready to be used in a view filter
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_regs/1 :: ([{Realm, Username},...]) -> [{binary(), binary()},...] when
-      Realm :: binary(),
-      Username :: binary().
+-spec lookup_regs/1 :: ([{ne_binary(), ne_binary()},...] | []) -> [[ne_binary(),...],...] | [].
+lookup_regs([]) -> [];
 lookup_regs(RealmUserList) ->
     Q = amqp_util:new_queue(),
     ok = amqp_util:bind_q_to_targeted(Q),
     ok = amqp_util:basic_consume(Q),
-    [spawn(fun() -> lookup_registration({Realm, User}, Q) end) || {Realm, User} <- RealmUserList],
-    wait_for_reg_resp(length(RealmUserList), []). %% number of devices we're supposed to get an answer from
+    _ = [spawn(fun() -> lookup_registration(Realm, User, Q) end) || {Realm, User} <- RealmUserList],
+    wait_for_reg_resp(RealmUserList, []). %% number of devices we're supposed to get an answer from
 
-lookup_registration({Realm, User}, Q) ->
-    ?LOG_SYS("Looking up registration information for ~s@~s", [User, Realm]),
-    RegProp = [{<<"Username">>, User}
-	       ,{<<"Realm">>, Realm}
-	       ,{<<"Fields">>, []}
-	       | wh_api:default_headers(Q, <<"directory">>, <<"reg_query">>, <<"cb_devices">>, <<>>) ],
-    {ok, JSON} = wh_api:reg_query(RegProp),
-    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_QUERY).
+-spec lookup_registration/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+lookup_registration(Realm, User, Q) ->
+    ?LOG_SYS("looking up registration information for ~s@~s", [User, Realm]),
+    Req = [{<<"Username">>, User}
+           ,{<<"Realm">>, Realm}
+           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+          ],
+    wapi_registration:publish_query_req(Req).
 
-wait_for_reg_resp(0, Acc) ->
-    Acc;
-wait_for_reg_resp(Len, Acc) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Collect Len number of registrations in Acc unless the timeout
+%% occurs
+%% @end
+%%--------------------------------------------------------------------
+-spec wait_for_reg_resp/2 :: (list(), list()) -> [[ne_binary(),...],...] | [].
+wait_for_reg_resp([], Acc) -> Acc;
+wait_for_reg_resp([_|T], Acc) ->
     try
 	receive
 	    {amqp_host_down, _} ->
 		?LOG("lost AMQP connection"),
-		exit(amqp_host_down);
+                Acc;
 	    {amqp_lost_channel,no_connection} ->
 		?LOG("lost AMQP connection"),
-		exit(amqp_host_down);
+                Acc;
 	    {_, #amqp_msg{payload = Payload}} ->
-		JRegResp = mochijson2:decode(Payload),
-		true = wh_api:reg_query_resp_v(JRegResp),
-		[[wh_json:get_value([<<"Fields">>, <<"Realm">>], JRegResp),
-		  wh_json:get_value([<<"Fields">>, <<"Username">>], JRegResp)] | Acc];
+		Resp = mochijson2:decode(Payload),
+		true = wapi_registration:query_resp_v(Resp),
+                Realm = wh_json:get_value([<<"Fields">>, <<"Realm">>], Resp),
+                User = wh_json:get_value([<<"Fields">>, <<"Username">>], Resp),
+                case lists:member([Realm, User], Acc) of
+                    true ->
+                        wait_for_reg_resp([ok|T], Acc);
+                    false ->
+                        wait_for_reg_resp(T, [[Realm, User] | Acc])
+                end;
 	    #'basic.consume_ok'{} ->
-		wait_for_reg_resp(Len, Acc)
+		wait_for_reg_resp([ok|T], Acc)
 	after
-	    1000 ->
-		?LOG("Timeout for registration query"),
+	    500 ->
+		?LOG("timeout for registration query"),
 		Acc
 	end
     catch
 	_:_ ->
-	    wait_for_reg_resp(Len-1, Acc)
+	    wait_for_reg_resp([ok|T], Acc)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Spawn the function to post data to a provisioning server, if
+%% provided with URL
+%% @end
+%%--------------------------------------------------------------------
+-spec provision/2 :: (json_object(), ne_binary() | 'undefined') -> 'ok' | pid().
+provision(_, undefined) -> ok;
+provision(JObj, Url) ->
+    spawn(fun() -> do_provision(JObj, Url) end).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% post data to a provisiong server
+%% @end
+%%--------------------------------------------------------------------
+
+-spec do_provision/2 :: (json_object(), ne_binary()) -> 'ok'.
+do_provision(JObj, Url) ->
+    Headers = [{K, V}
+               || {K, V} <- [{"Host", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_host">>)}
+                             ,{"Referer", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_referer">>)}
+                             ,{"User-Agent", wh_util:to_list(erlang:node())}
+                             ,{"Content-Type", "application/x-www-form-urlencoded"}]
+                      ,V =/= undefined],
+    HTTPOptions = [],
+    Body = [{"api[realm]", wh_json:get_string_value([<<"sip">>, <<"realm">>], JObj)}
+            ,{"mac", re:replace(wh_json:get_string_value(<<"mac_address">>, JObj, ""), "[^0-9a-fA-F]", "", [{return, list}, global])}
+            ,{"label", wh_json:get_string_value(<<"name">>, JObj)}
+            ,{"sip[username]", wh_json:get_string_value([<<"sip">>, <<"username">>], JObj)}
+            ,{"sip[password]", wh_json:get_string_value([<<"sip">>, <<"password">>], JObj)}
+            ,{"submit", "true"}],
+    Encoded = mochiweb_util:urlencode(Body),
+    ?LOG("posting to ~s with ~s", [Url, Encoded]),
+    ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions),
+    ok.

@@ -26,7 +26,7 @@
 -define(SERVER, ?MODULE).
 -define(ACCOUNTS_DB, <<"accounts">>).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
--define(SYS_ADMIN_MODS, [<<"global_resources">>]).
+-define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"limits">>]).
 
 %%%===================================================================
 %%% API
@@ -109,7 +109,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
 
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, Context}}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   case account_is_descendant(Context)
                       andalso allowed_if_sys_admin_mod(Context) of
                       true ->
@@ -179,6 +179,7 @@ account_is_descendant(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
     case props:get_value(<<"accounts">>, Nouns) of
         %% if the URL did not have the accounts noun then this module denies access
         undefined ->
+	    ?LOG("No accounts in Nouns: ~p", [Nouns]),
             false;
         Params ->
             %% the request that this module process the first element of after 'accounts'
@@ -200,7 +201,15 @@ account_is_descendant(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
                 %% is the parent tree, make sure the authorized account id is in that tree
                 {ok, [JObj]} ->
                     [_, Tree] = wh_json:get_value(<<"key">>, JObj),
-                    lists:member(AuthAccountId, Tree);
+                    %% more logging was called for...
+                    case lists:member(AuthAccountId, Tree) of
+                        true ->
+                            ?LOG("requested account is a decendant of the auth token, authorizing"),
+                            true;
+                        false ->
+                            ?LOG("requested account is not a decendant of the auth token, not authorizing"),
+                            false
+                    end;
                 %% anything else and they are not allowed
                 {error, R} ->
                     ?LOG("error during lookup ~p, not authorizing", [R]),
@@ -222,15 +231,24 @@ allowed_if_sys_admin_mod(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
         %% if this is request is not made to a system admin module then this
         %% function doesnt deny it
         false ->
+            ?LOG("the request does not contain any system administration modules, authorizing"),
             true;
         %% if this request is to a system admin module then check if the
         %% account has the 'pvt_superduper_admin'
         true ->
-            ?LOG("the request contains a system administration module, checking if authorized"),
+            ?LOG("the request contains a system administration module"),
             AccountId = wh_json:get_value(<<"account_id">>, AuthDoc),
             case couch_mgr:open_doc(?ACCOUNTS_DB, AccountId) of
                 {ok, JObj} ->
-                    wh_json:is_true(<<"pvt_superduper_admin">>, JObj);
+                    %% more logging was called for
+                    case wh_json:is_true(<<"pvt_superduper_admin">>, JObj) of
+                        true ->
+                            ?LOG("the requestor is a superduper admin, authorizing"),
+                            true;
+                        false ->
+                            ?LOG("the requestor is not a superduper admin, not authorizing"),
+                            false
+                    end;
                 {error, R} ->
                     ?LOG("error during lookup ~p, not authorizing", [R]),
                     false

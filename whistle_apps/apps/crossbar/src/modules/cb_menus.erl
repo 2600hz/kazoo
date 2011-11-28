@@ -115,7 +115,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.menus">>, Payloa
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.menus">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -124,7 +124,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.menus">>, [RD, Context 
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.menus">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -132,7 +132,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.menus">>, [RD, Cont
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.menus">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -140,7 +140,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.menus">>, [RD, Conte
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.menus">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),

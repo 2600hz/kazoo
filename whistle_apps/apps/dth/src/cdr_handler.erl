@@ -27,7 +27,7 @@ init() ->
     ok.
 
 handle_req2(JObj, Props) ->
-    true = wh_api:call_cdr_v(JObj),
+    true = wapi_call:cdr_v(JObj),
 
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
@@ -59,7 +59,7 @@ handle_req2(JObj, Props) ->
     detergent:call(WsdlModel, "SubmitCallRecord", [CallRecord]).
 
 handle_req(JObj, Props) ->
-    true = wh_api:call_cdr_v(JObj),
+    true = wapi_call:cdr_v(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
     ?LOG_SYS(CallID, "Valid call cdr", []),

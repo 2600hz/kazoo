@@ -1,6 +1,7 @@
 -module(cf_util).
 
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
+-export([call_info_to_string/1]).
 
 -include("callflow.hrl").
 
@@ -39,6 +40,28 @@ ignore_early_media(Endpoints) ->
                                      or Acc
                          end, false, Endpoints),
     wh_util:to_binary(Ignore).
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% Convert the call record to a string
+%% @end
+%%-----------------------------------------------------------------------------
+-spec call_info_to_string/1 :: (#cf_call{}) -> io_lib:chars().
+call_info_to_string(#cf_call{account_id=AccountId, flow_id=FlowId, call_id=CallId, cid_name=CIDName, cid_number=CIDNumber
+                             ,request=Request, from=From, to=To, inception=Inception, authorizing_id=AuthorizingId }) ->
+    Format = ["Call-ID: ~s~n"
+              ,"Callflow: ~s~n"
+              ,"Account ID: ~s~n"
+              ,"Request: ~s~n"
+              ,"To: ~s~n"
+              ,"From: ~s~n"
+              ,"CID: ~s ~s~n"
+              ,"Innception: ~s~n"
+              ,"Authorizing ID: ~s~n"],
+    io_lib:format(lists:flatten(Format)
+                  ,[CallId, FlowId, AccountId, Request, To, From
+                    ,CIDNumber, CIDName, Inception, AuthorizingId]).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

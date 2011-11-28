@@ -1,0 +1,12 @@
+{
+    "_id":"_design/maintenance"
+    ,"language":"javascript"
+    ,"views": {
+        "conflicts": {
+            "map":"function(doc) { if(doc._conflicts) { emit(doc._conflicts, null); } }"
+        },
+        "soft_deletes": {
+            "map":"function(doc) { if(doc.pvt_deleted) { emit(doc.pvt_type, null); } }"
+        }
+    }
+}

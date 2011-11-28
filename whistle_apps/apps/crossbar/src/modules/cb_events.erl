@@ -84,7 +84,6 @@ start_link() ->
 %%--------------------------------------------------------------------
 init(_) ->
     ?LOG("Known bindings at init:"),
-    [?LOG("~s", [Binding]) || Binding <- queue_bindings:known_bind_types()],
     {ok, ok, 0}.
 
 %%--------------------------------------------------------------------
@@ -144,7 +143,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.events">>, Paylo
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.events">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  Context1 = validate(Params, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -152,7 +151,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.events">>, [RD, Context
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.events">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:ensure_saved(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -160,7 +159,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.events">>, [RD, Con
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.events">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:ensure_saved(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -168,7 +167,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.events">>, [RD, Cont
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.events">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:ensure_saved(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -372,7 +371,12 @@ stop_srv(Context, Srv, User) ->
     save_latest(Context, undefined, User).
 
 load_available_bindings(Context) ->
-    RespJObj = {struct, [{<<"available_bindings">>, queue_bindings:known_bind_types()}]},
+    Mods = [ begin <<"wapi_", Bind/binary>> = Mod, Bind end
+	     || A <- erlang:loaded(),
+		binary:match((Mod=wh_util:to_binary(A)), <<"wapi_">>) =/= nomatch,
+		erlang:function_exported(A, bind_q, 2)
+	   ],
+    RespJObj = wh_json:from_list([{<<"available_bindings">>, Mods}]),
     crossbar_util:response(RespJObj, Context).
 
 load_current_subscriptions(Context, Srv) ->
@@ -397,7 +401,7 @@ format_sub_result({'error', 'already_present'}) ->
 
 rm_subscriptions(Context, Srv, Subs, User) ->
     ?LOG("removing: ~p", [Subs]),
-    [cb_events_srv:unsubscribe(Srv, Sub) || Sub <- Subs],
+    _ = [cb_events_srv:unsubscribe(Srv, Sub) || Sub <- Subs],
     save_latest(Context, Srv, User).
 
 save_latest(Context, Srv, User) ->

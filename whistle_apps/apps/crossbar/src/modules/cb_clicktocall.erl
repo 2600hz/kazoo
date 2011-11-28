@@ -120,7 +120,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.clicktocall">>, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -135,7 +135,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD,
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = crossbar_doc:save(Context),
      		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -144,7 +144,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -152,7 +152,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.clicktocall">>, [RD,
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -388,7 +388,7 @@ originate_call(CallerNumber, CalleeExtension, C2CName, AccountId) ->
     amqp_util:bind_q_to_targeted(Amqp),
     amqp_util:basic_consume(Amqp),
 
-    %basic call info to display on phone's screen
+    %% basic call info to display on phone's screen
     CallInfo = << ",origination_caller_id_name=", CalleeExtension/binary,
 		  ",origination_caller_id_number=", CalleeExtension/binary,
 		  ",origination_callee_id_name='", C2CName/binary, "'",
@@ -396,19 +396,16 @@ originate_call(CallerNumber, CalleeExtension, C2CName, AccountId) ->
 
     OrigStringPart = <<"{ecallmgr_Account-ID=",AccountId/binary, CallInfo/binary, "}loopback/", CallerNumber/binary, "/context_2">>,
 
-    JObjReq = [
-	       {<<"Msg-ID">>, wh_util:current_tstamp()}
-               ,{<<"Resource-Type">>, <<"audio">>}
-               ,{<<"Invite-Format">>, <<"route">>}
-	       ,{<<"Route">>, OrigStringPart}
-	       ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Account-ID">>, AccountId}] } }
-               ,{<<"Application-Name">>, <<"transfer">>}
-	       ,{<<"Application-Data">>, {struct, [{<<"Route">>, CalleeExtension}]} }
-               | wh_api:default_headers(Amqp, <<"resource">>, <<"originate_req">>, <<"clicktocall">>, <<"0.1">>)
-              ],
+    Req = [{<<"Msg-ID">>, wh_util:current_tstamp()}
+           ,{<<"Resource-Type">>, <<"audio">>}
+           ,{<<"Invite-Format">>, <<"route">>}
+           ,{<<"Route">>, OrigStringPart}
+           ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, AccountId}])}
+           ,{<<"Application-Name">>, <<"transfer">>}
+           ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, CalleeExtension}])}
+           | wh_api:default_headers(Amqp, ?APP_NAME, ?APP_VERSION)],
 
-    {ok, Json} = wh_api:resource_req({struct, JObjReq}),
-    amqp_util:callmgr_publish(Json, <<"application/json">>, ?KEY_RESOURCE_REQ),
+    wapi_resource:publish_req(Req),
 
     receive
 	{_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->

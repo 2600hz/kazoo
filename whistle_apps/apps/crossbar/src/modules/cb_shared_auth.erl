@@ -36,10 +36,10 @@
 -define(SERVER, ?MODULE).
 
 -define(TOKEN_DB, <<"token_auth">>).
-
 -define(SHARED_AUTH_CONF, list_to_binary([code:lib_dir(crossbar, priv), "/shared_auth/shared_auth.conf"])).
 
--record(state, {xbar_url=undefined :: undefined | string()}).
+-record(state, {xbar_url = 'undefined' :: 'undefined' | string()
+	       }).
 
 %%%===================================================================
 %%% API
@@ -149,18 +149,18 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.shared_auth">>, 
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.shared_auth">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.shared_auth">>, [RD, Context | Params]}, #state{xbar_url=XBarUrl}=State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, Context, State),
+                  Context1 = validate(Params, Context, XBarUrl),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	 end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.shared_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = create_local_token(RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -174,15 +174,8 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
 handle_info(timeout, CurState) ->
     bind_to_crossbar(),
     couch_mgr:db_create(?TOKEN_DB),
-    State = case file:consult(?SHARED_AUTH_CONF) of
-                {ok, Terms} ->
-                    ?LOG_SYS("loaded config from ~s", [?SHARED_AUTH_CONF]),
-                    #state{xbar_url=props:get_value(authoritative_crossbar, Terms, CurState#state.xbar_url)};
-                {error, _} ->
-                    ?LOG_SYS("could not read config from ~s", [?SHARED_AUTH_CONF]),
-                    #state{}
-            end,
-    {noreply, State};
+    Url = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
+    {noreply, CurState#state{xbar_url=Url}};
 
 handle_info(_, State) ->
     {noreply, State}.
@@ -233,8 +226,7 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (Paths) -> tuple(boolean(), http_methods()) when
-      Paths :: list().
+-spec allowed_methods/1 :: (list()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['PUT', 'GET']};
 allowed_methods(_) ->
@@ -248,8 +240,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: (Paths) -> tuple(boolean(), []) when
-      Paths :: list().
+-spec resource_exists/1 :: (list()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists(_) ->
@@ -280,16 +271,13 @@ resource_exists(_) ->
 %% Failure here returns 400 or 401
 %% @end
 %%--------------------------------------------------------------------
--spec validate/3 :: (Params, Context, State) -> #cb_context{} when
-      Params :: list(),
-      Context :: #cb_context{},
-      State :: #state{}.
-validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context, State) ->
+-spec validate/3 :: (list(), #cb_context{}, nonempty_string() | 'undefined') -> #cb_context{}.
+validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context, XBarUrl) ->
     SharedToken = wh_json:get_value(<<"shared_token">>, JObj),
-    case authenticate_shared_token(SharedToken, State) of
+    case authenticate_shared_token(SharedToken, XBarUrl) of
         {ok, Payload} ->
             ?LOG("authoritive shared auth request succeeded"),
-            RemoteData = wh_json:get_value(<<"data">>, mochijson2:decode(Payload)),
+            RemoteData = wh_json:get_value(<<"data">>, wh_json:decode(Payload)),
             case import_missing_data(RemoteData) of
                 true ->
                     Context#cb_context{resp_status=success, doc=RemoteData, auth_token=SharedToken};
@@ -318,10 +306,12 @@ validate([], #cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context, _) ->
                     Context#cb_context{resp_status=success
                                        ,resp_data={struct, [{<<"account">>, Account}
                                                             ,{<<"user">>, User}]}};
-                {error, _} ->
+                {error, R} ->
+                    ?LOG("failed to get user for response ~p", [R]),
                     crossbar_util:response_db_fatal(Context)
             end;
-        {error, _} ->
+        {error, R} ->
+            ?LOG("failed to get account for response ~p", [R]),
             crossbar_util:response_db_fatal(Context)
     end;
 validate(_, Context, _) ->
@@ -333,34 +323,32 @@ validate(_, Context, _) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec create_local_token/2 :: (RD, Context) -> #cb_context{} when
-      RD :: #wm_reqdata{},
-      Context :: #cb_context{}.
+-spec create_local_token/2 :: (#wm_reqdata{}, #cb_context{}) -> #cb_context{}.
 create_local_token(RD, #cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
     AccountId = wh_json:get_value([<<"account">>, <<"_id">>], JObj, <<>>),
     OwnerId = wh_json:get_value([<<"user">>, <<"_id">>], JObj, <<>>),
-    Token = {struct, [{<<"account_id">>, AccountId}
-                      ,{<<"owner_id">>, OwnerId}
-                      ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                      ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                      ,{<<"method">>, wh_util:to_binary(?MODULE)}
-                      ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
-                      ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-                      ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
-                      ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-                      ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-                      ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-                      ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
-                      ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
-                      ,{<<"shared_token">>, SharedToken}
-                     ]},
+    Token = wh_json:from_list([{<<"account_id">>, AccountId}
+			       ,{<<"owner_id">>, OwnerId}
+			       ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+			       ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+			       ,{<<"method">>, wh_util:to_binary(?MODULE)}
+			       ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
+			       ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+			       ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
+			       ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+			       ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+			       ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+			       ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
+			       ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+			       ,{<<"shared_token">>, SharedToken}
+			      ]),
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->
             AuthToken = wh_json:get_value(<<"_id">>, Doc),
             ?LOG("created new local auth token ~s", [AuthToken]),
-            crossbar_util:response({struct, [{<<"account_id">>, AccountId}
-                                             ,{<<"owner_id">>, OwnerId}
-                                            ]}
+            crossbar_util:response(wh_json:from_list([{<<"account_id">>, AccountId}
+						      ,{<<"owner_id">>, OwnerId}
+						     ])
                                    ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, R} ->
             ?LOG("could not create new local auth token, ~p", [R]),
@@ -374,12 +362,11 @@ create_local_token(RD, #cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate_shared_token/2 :: (SharedToken, State) -> tuple(ok, json_object()) | tuple(error, atom()) when
-      SharedToken :: undefined | binary(),
-      State :: #state{}.
+-spec authenticate_shared_token/2 :: ('undefined' | ne_binary(), nonempty_string())
+				     -> {'ok', string() | binary()} | {'error', atom()} | {'forbidden', 'shared_token_rejected'}.
 authenticate_shared_token(undefined, _) ->
     {forbidden, missing_shared_token};
-authenticate_shared_token(SharedToken, #state{xbar_url=XBarUrl}) ->
+authenticate_shared_token(SharedToken, XBarUrl) ->
     Url = lists:flatten(XBarUrl, "/shared_auth"),
     Headers = [{"Accept", "application/json"}
 	       ,{"X-Auth-Token", wh_util:to_list(SharedToken)}
@@ -401,8 +388,7 @@ authenticate_shared_token(SharedToken, #state{xbar_url=XBarUrl}) ->
 %% an account and user, ensure those exist locally.
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_data/1 :: (RemoteData) -> boolean() when
-      RemoteData :: json_object().
+-spec import_missing_data/1 :: (json_object()) -> boolean().
 import_missing_data(RemoteData) ->
     Account = wh_json:get_value(<<"account">>, RemoteData),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, Account),
@@ -422,25 +408,50 @@ import_missing_data(RemoteData) ->
       AccountId :: undefined | binary(),
       Account :: undefined | json_object().
 import_missing_account(undefined, _) ->
+    ?LOG("shared auth reply did not define an account id"),
     false;
 import_missing_account(_, undefined) ->
+    ?LOG("shared auth reply did not define an account definition"),
     false;
 import_missing_account(AccountId, Account) ->
+    %% check if the acount datbase exists
     Db = whapps_util:get_db_name(AccountId, encoded),
     case couch_mgr:db_exists(Db) of
+        %% if the account database exists make sure it has the account
+        %% definition, because when couch is acting up it can skip this
         true ->
-            ?LOG("remote account ~s alread exists locally", [AccountId]),
-            true;
+            ?LOG("remote account db ~s alread exists locally", [AccountId]),
+            %% make sure the account definition is in the account, if not
+            %% use the one we got from shared auth
+            Event = <<"v1_resource.execute.post.accounts">>,
+            Doc = case couch_mgr:open_doc(Db, AccountId) of
+                      {error, not_found} ->
+                          ?LOG("missing local account definition, creating from shared auth response"),
+                          wh_json:delete_key(<<"_rev">>, Account);
+                      {ok, JObj} ->
+                          ?LOG("account definition exists locally"),
+                          JObj
+                  end,
+            Payload = [undefined, #cb_context{doc=Doc, db_name=Db}, AccountId],
+            case crossbar_bindings:fold(Event, Payload) of
+                [_, #cb_context{resp_status=success} | _] ->
+                    ?LOG("udpated account definition"),
+                    true;
+                _ ->
+                    ?LOG("could not update account definition"),
+                    false
+            end;
         false ->
+            ?LOG("remote account db ~s does not exist locally, creating", [AccountId]),
             Event = <<"v1_resource.execute.put.accounts">>,
             Doc = wh_json:delete_key(<<"_rev">>, Account),
             Payload = [undefined, #cb_context{doc=Doc}, [[]]],
             case crossbar_bindings:fold(Event, Payload) of
                 [_, #cb_context{resp_status=success} | _] ->
-                    ?LOG("imported account ~s", [AccountId]),
+                    ?LOG("imported account"),
                     true;
                 _ ->
-                    ?LOG("could not import account ~s", [AccountId]),
+                    ?LOG("could not import account"),
                     false
             end
     end.
@@ -457,8 +468,10 @@ import_missing_account(AccountId, Account) ->
       UserId :: undefined | binary(),
       User :: undefined | json_object().
 import_missing_user(_, undefined, _) ->
+    ?LOG("shared auth reply did not define an user id"),
     false;
 import_missing_user(_, _, undefined) ->
+    ?LOG("shared auth reply did not define an user object"),
     false;
 import_missing_user(AccountId, UserId, User) ->
     Db = whapps_util:get_db_name(AccountId, encoded),

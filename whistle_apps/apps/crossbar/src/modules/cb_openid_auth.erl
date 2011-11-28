@@ -154,7 +154,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.openid_auth">>, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.openid_auth">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -164,7 +164,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.openid_auth">>, [RD, Co
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD, Context | [Provider]=Params]}
             ,#state{realm=Realm}=State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
 
                   %% find the discovery URL of the IdP
@@ -187,7 +187,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD,
                       {ok, AuthReq} when Popup ->
                           Location = wh_util:to_binary(openid:authentication_url(AuthReq, Return, Realm)),
                           ?LOG("providing redirect location ~s as openid auth ~s", [Location, Seed]),
-                          Context1 = Context#cb_context{resp_data={struct, [{"location", Location}]}
+                          Context1 = Context#cb_context{resp_data=wh_json:from_list([{"location", Location}])
                                                         ,resp_status=success},
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       {ok, AuthReq} ->
@@ -236,7 +236,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD,
                                   Pid ! redirect_client(Location, RD, Context, Params);
                               %% ...nope-ish
                               {error, _} when Popup->
-                                  JObj = {struct, extract_attributes(QS)},
+                                  JObj = wh_json:from_list(extract_attributes(QS)),
                                   ?LOG("determined that ~s id ~s (~s) has no associated account", [Provider, Identity, wh_json:get_value(<<"email">>, JObj)]),
                                   Context1 = Context#cb_context{resp_data=JObj
                                                                 ,resp_status=error
@@ -246,7 +246,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD,
                                   Pid ! {binding_result, true, [RD, Context1, Params]};
                               {error, _}  ->
                                   RespQS = mochiweb_util:urlencode(extract_attributes(QS)),
-                                  Location = wh_util:to_list(list_to_binary([RegUrl, "?", RespQS])),
+                                  Location = list_to_binary([RegUrl, "?", RespQS]),
                                   ?LOG("redirecting client to registration url: ~s", [Location]),
                                   Pid ! redirect_client(Location, RD, Context, Params)
                           end;
@@ -438,29 +438,29 @@ find_account(Identifier, Provider) ->
       RD :: #wm_reqdata{},
       Context :: #cb_context{}.
 create_token(IdentityUrl, AccountId, RD, Context) ->
-    Token = {struct, [{<<"account_id">>, AccountId}
-%%                      ,{<<"owner_id">>, OwnerId}
-                      ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                      ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                      ,{<<"method">>, wh_util:to_binary(?MODULE)}
-                      ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
-                      ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-                      ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
-                      ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-                      ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-                      ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-                      ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
-                      ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
-                      ,{<<"openid_identity_url">>, wh_util:to_binary(IdentityUrl)}
-%%                      ,{<<"openid_provider">>, wh_util:to_binary(IdentityUrl)}
-                     ]},
+    Token = wh_json:from_list( [{<<"account_id">>, AccountId}
+				%%,{<<"owner_id">>, OwnerId}
+				,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+				,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+				,{<<"method">>, wh_util:to_binary(?MODULE)}
+				,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
+				,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+				,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
+				,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+				,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+				,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+				,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
+				,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+				,{<<"openid_identity_url">>, wh_util:to_binary(IdentityUrl)}
+				%%,{<<"openid_provider">>, wh_util:to_binary(IdentityUrl)}
+			       ]),
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->
             AuthToken = wh_json:get_value(<<"_id">>, Doc),
             ?LOG("created new local auth token ~s", [AuthToken]),
-            crossbar_util:response({struct, [{<<"account_id">>, AccountId}
-%%                                             ,{<<"owner_id">>, OwnerId}]}
-                                             ,{<<"owner_id">>, <<>>}]}
+            crossbar_util:response(wh_json:from_list([{<<"account_id">>, AccountId}
+						      ,{<<"owner_id">>, <<>>}
+						     ])
                                    ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, R} ->
             ?LOG("could not create new local auth token, ~p", [R]),
@@ -474,8 +474,7 @@ create_token(IdentityUrl, AccountId, RD, Context) ->
 %% openid provider
 %% @end
 %%--------------------------------------------------------------------
--spec extract_attributes/1 :: (QS) -> proplist() when
-      QS :: proplist().
+-spec extract_attributes/1 :: ([{nonempty_string(), nonempty_string()},...] | []) ->  [{ne_binary(), binary()},...] | [].
 extract_attributes(QS) ->
     Attributes = [{"http://axschema.org/contact/email", <<"email">>}
                   ,{"http://axschema.org/namePerson/first", <<"first_name">>}
@@ -492,17 +491,15 @@ extract_attributes(QS) ->
 %% openid provider and accumulate a proplist (normalizing the names)
 %% @end
 %%--------------------------------------------------------------------
--spec extract_attribute/4 :: (Attributes, QS, RemainingQS, Accumulator) -> proplist() when
-      Attributes :: [{string(), binary()},...],
-      QS :: proplist(),
-      RemainingQS :: proplist(),
-      Accumulator :: proplist().
-extract_attribute(_, _, [], Props) ->
-    Props;
+-spec extract_attribute/4 :: ([{nonempty_string(), ne_binary()},...]
+			      ,[{nonempty_string(), nonempty_string()},...] | []
+			      ,[{nonempty_string(), nonempty_string()},...] | []
+			      ,[{ne_binary(), binary()},...] | [])
+			     -> [{ne_binary(), binary()},...] | [].
+extract_attribute(_, _, [], Props) -> Props;
 extract_attribute(Attributes, QS, [{K, V}|T], Acc) ->
     case props:get_value(V, Attributes) of
-        undefined ->
-            extract_attribute(Attributes, QS, T, Acc);
+        undefined -> extract_attribute(Attributes, QS, T, Acc);
         NormalizedName ->
             %% heavy handed approach to namespace, should only operate in "http://openid.net/srv/ax/1.0"
             %% ...getting it done fast
@@ -518,14 +515,10 @@ extract_attribute(Attributes, QS, [{K, V}|T], Acc) ->
 %% to a given URL
 %% @end
 %%--------------------------------------------------------------------
--spec redirect_client/4 :: (Location, RD, Context, Params) -> {'binding_result', 'true', list()} when
-      Location :: string(),
-      RD :: #wm_reqdata{},
-      Context :: #cb_context{},
-      Params :: list().
+-spec redirect_client/4 :: (ne_binary(), #wm_reqdata{}, #cb_context{}, list()) -> {'binding_result', 'true', list()}.
 redirect_client(Location, RD, Context, Params) ->
     Context1 = Context#cb_context{resp_headers=[{<<"Location">>, Location}]
                                   ,resp_error_code=302
                                   ,resp_status=error},
-    RD1 = wrq:set_resp_header("Location", Location, RD),
+    RD1 = wrq:set_resp_header("Location", wh_util:to_list(Location), RD),
     {binding_result, true, [wrq:do_redirect(true, RD1), Context1, Params]}.

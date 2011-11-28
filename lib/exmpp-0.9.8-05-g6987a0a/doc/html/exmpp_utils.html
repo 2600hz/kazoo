@@ -1,0 +1,96 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_utils</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_utils</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_utils</strong> provides functions which
+  doesn't deserve a dedicated module.
+
+<p><b>Authors:</b> Jean-Sebastien Pedron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2>
+  The module <strong>exmpp_utils</strong> provides functions which
+  doesn't deserve a dedicated module.
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#any_to_binary-1">any_to_binary/1</a></td><td>Convert any type to its <code>binary()</code> form.</td></tr>
+<tr><td valign="top"><a href="#any_to_list-1">any_to_list/1</a></td><td>Convert any type to its <code>string()</code> form.</td></tr>
+<tr><td valign="top"><a href="#random_id-0">random_id/0</a></td><td>Generate a random ID.</td></tr>
+<tr><td valign="top"><a href="#random_id-1">random_id/1</a></td><td>Generate a random stanza ID.</td></tr>
+<tr><td valign="top"><a href="#strip-1">strip/1</a></td><td>Strip leading and trailing blanks.</td></tr>
+<tr><td valign="top"><a href="#strip-2">strip/2</a></td><td>Strip leading and/or trailing blanks, depending on the <code>Direction</code>.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="any_to_binary-1">any_to_binary/1</a></h3>
+<div class="spec">
+<p><tt>any_to_binary(Atom::Any) -&gt; Binary</tt>
+<ul class="definitions"><li><tt>Any = binary() | string() | atom() | integer()</tt></li><li><tt>Binary = binary()</tt></li></ul></p>
+</div><p><p>Convert any type to its <code>binary()</code> form.</p>
+ 
+  For an atom, <a href="erlang.html#atom_to_list-1"><code>erlang:atom_to_list/1</code></a> is used. For an integer,
+  <a href="erlang.html#integer_to_list-1"><code>erlang:integer_to_list/1</code></a> is used. For a string, <a href="erlang.html#list_to_binary-1"><code>erlang:list_to_binary/1</code></a> is used. A binary is returned as is.</p>
+
+<h3 class="function"><a name="any_to_list-1">any_to_list/1</a></h3>
+<div class="spec">
+<p><tt>any_to_list(Atom::Any) -&gt; String</tt>
+<ul class="definitions"><li><tt>Any = binary() | string() | atom() | integer()</tt></li><li><tt>String = string()</tt></li></ul></p>
+</div><p><p>Convert any type to its <code>string()</code> form.</p>
+ 
+  For an atom, <a href="erlang.html#atom_to_list-1"><code>erlang:atom_to_list/1</code></a> is used. For an integer,
+  <a href="erlang.html#integer_to_list-1"><code>erlang:integer_to_list/1</code></a> is used. For a binary, <a href="erlang.html#binary_to_list-1"><code>erlang:binary_to_list/1</code></a> is used. A string is returned as is.</p>
+
+<h3 class="function"><a name="random_id-0">random_id/0</a></h3>
+<div class="spec">
+<p><tt>random_id() -&gt; ID</tt>
+<ul class="definitions"><li><tt>ID = string()</tt></li></ul></p>
+</div><p><p>Generate a random ID.</p>
+ 
+  Use the <code>exmpp</code> prefix.
+ </p>
+<p><b>See also:</b> <a href="#random_id-1">random_id/1</a>.</p>
+
+<h3 class="function"><a name="random_id-1">random_id/1</a></h3>
+<div class="spec">
+<p><tt>random_id(Prefix) -&gt; ID</tt>
+<ul class="definitions"><li><tt>Prefix = string()</tt></li><li><tt>ID = string()</tt></li></ul></p>
+</div><p><p>Generate a random stanza ID.</p>
+ 
+  <p>This function uses <a href="random.html#uniform-1"><code>random:uniform/1</code></a>. It's up to the caller to  
+seed the generator.</p>
+ 
+  The ID is not guaranted to be unique.</p>
+
+<h3 class="function"><a name="strip-1">strip/1</a></h3>
+<div class="spec">
+<p><tt>strip(Stream) -&gt; Stripped</tt>
+<ul class="definitions"><li><tt>Stream = binary() | string()</tt></li><li><tt>Stripped = binary() | string()</tt></li></ul></p>
+</div><p>Strip leading and trailing blanks.
+ </p>
+<p><b>See also:</b> <a href="#strip-3">strip/3</a>.</p>
+
+<h3 class="function"><a name="strip-2">strip/2</a></h3>
+<div class="spec">
+<p><tt>strip(Stream, X2::Direction) -&gt; Stripped</tt>
+<ul class="definitions"><li><tt>Stream = binary() | string()</tt></li><li><tt>Direction = left | right | both</tt></li><li><tt>Stripped = binary() | string()</tt></li></ul></p>
+</div><p><p>Strip leading and/or trailing blanks, depending on the <code>Direction</code>.</p>
+ 
+  <p>Blanks characters are <code>\s</code>, <code>\t</code>, <code>\n</code> and <code>\r</code>.</p>
+ 
+  The binary version was made by Christopher Faulet in his
+  <a href="http://www.capflam.org/?p=9">stream module</a>.
+ </p>
+<p><b>See also:</b> <a href="#strip-3">strip/3</a>.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:39.</i></p>
+</body>
+</html>

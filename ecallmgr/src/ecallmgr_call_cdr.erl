@@ -44,21 +44,19 @@
       UUID :: binary(),
       EvtProp :: proplist().
 new_cdr(UUID, EvtProp) ->
-    CDRJson = create_cdr(EvtProp),
-    ?LOG_SYS(UUID, "CDR to send: ~s", [CDRJson]),
-    amqp_util:callevt_publish(UUID, CDRJson, cdr).
+    CDR = create_cdr(EvtProp),
+    wapi_call:publish_cdr(UUID, CDR),
+    ?LOG_SYS(UUID, "sent cdr: ~s", [mochijson2:encode(CDR)]).
 
--spec create_cdr/1 :: (EvtProp) -> iolist() when
+-spec create_cdr/1 :: (EvtProp) -> proplist() when
       EvtProp :: proplist().
 create_cdr(EvtProp) ->
     DefProp = wh_api:default_headers(<<>>, ?EVENT_CAT, ?EVENT_NAME, ?APP_NAME, ?APP_VERSION),
     ApiProp0 = add_values(?FS_TO_WHISTLE_MAP, DefProp, EvtProp),
-    ApiProp1 = case props:get_value(<<"direction">>, ApiProp0) of
-		   <<"outbound">> -> add_values(?FS_TO_WHISTLE_OUTBOUND_MAP, ApiProp0, EvtProp);
-		   _ -> ApiProp0
-	       end,
-    {ok, JSON} = wh_api:call_cdr(ApiProp1),
-    JSON.
+    case props:get_value(<<"direction">>, ApiProp0) of
+        <<"outbound">> -> add_values(?FS_TO_WHISTLE_OUTBOUND_MAP, ApiProp0, EvtProp);
+        _ -> ApiProp0
+    end.
 
 -spec add_values/3 :: (Mappings, BaseProp, ChannelProp) -> proplist() when
       Mappings :: proplist(),
@@ -66,13 +64,15 @@ create_cdr(EvtProp) ->
       ChannelProp :: proplist().
 add_values(Mappings, BaseProp, ChannelProp) ->
     lists:foldl(fun({<<"ecallmgr">>, <<"Custom-Channel-Vars">>=WK}, WApi) ->
-                        [{WK, {struct, ecallmgr_util:custom_channel_vars(ChannelProp)}} | WApi];
+                        [{WK, wh_json:from_list(ecallmgr_util:custom_channel_vars(ChannelProp))} | WApi];
+
                    ({<<"Event-Date-Timestamp">>=FSKey, WK}, WApi) ->
                         case props:get_value(FSKey, ChannelProp) of
                             undefined -> WApi;
                             V -> VUnix =  wh_util:unix_seconds_to_gregorian_seconds(wh_util:microseconds_to_seconds(V)),
                                  [{WK, wh_util:to_binary(VUnix)} | WApi]
                         end;
+
                    ({FSKey, WK}, WApi) ->
                         case props:get_value(FSKey, ChannelProp) of
                             undefined -> WApi;

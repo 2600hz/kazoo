@@ -35,9 +35,9 @@ check({Date = {Year, _, _},Time}, {_, _, _, _Shift, DstShift, DstStartRule, DstS
    CurrDay = get_day_of_year(Date),
    case is_dst_date(DstStartDay, DstEndDay, CurrDay) of
       equal_to_start ->
-         is_dst_start_time(time_to_minutes(Time), time_to_minutes(DstStartTime), time_to_minutes(DstShift));
+         is_dst_start_time(time_to_minutes(Time), time_to_minutes(DstStartTime), DstShift);
       equal_to_end ->
-         is_dst_end_time(time_to_minutes(Time), time_to_minutes(DstEndTime), time_to_minutes(DstShift));
+         is_dst_end_time(time_to_minutes(Time), time_to_minutes(DstEndTime), DstShift);
       Res ->
          Res
    end.
@@ -143,7 +143,7 @@ get_day_of_year_test() ->
    ?assertEqual(62, get_dst_day_of_year({1,wed,mar}, 2010)).
 
 check_test() ->
-   Tz = {"Europe/Moscow",{"MSK","MSK"},{"MSD","MSD"},{3,0},{1,0},{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
+   Tz = {"Europe/Moscow",{"MSK","MSK"},{"MSD","MSD"},180,60,{last,sun,mar},{2,0},{last,sun,oct},{3,0}},
    ?assertEqual(is_not_in_dst, localtime_dst:check({{2010, 1, 1}, {10, 10, 0}}, Tz)),
    ?assertEqual(is_in_dst, check({{2010, 7, 8}, {10, 10, 0}}, Tz)),
    ?assertEqual(is_not_in_dst, check({{2010, 3, 28}, {1, 59, 0}}, Tz)),

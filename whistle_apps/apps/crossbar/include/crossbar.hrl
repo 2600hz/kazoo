@@ -1,11 +1,20 @@
--include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include("crossbar_types.hrl").
 
+-define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
+
+-define(SIP_AGG_DB, <<"sip_auth">>).
+
+-define(ACCOUNTS_AGG_DB, <<"accounts">>).
+-define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
+
+-define(SCHEMAS_DB, <<"crossbar_schemas">>).
+
 -define(APP_NAME, <<"crossbar">>).
--define(APP_VSN, <<"0.8.0">>).
+-define(APP_VERSION, <<"0.8.0">>).
 
 -define(CONTENT_PROVIDED, [{to_json, ["application/json","application/x-json"]}]).
 

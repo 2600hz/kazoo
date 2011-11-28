@@ -10,7 +10,10 @@
 
 %% API
 -export([start_link/1, start_link/2]).
--export([resource_consume/3]).
+-export([resource_consume/3, show_channels/1, fs_node/1, uuid_exists/2
+	 ,hostname/1
+	]).
+-export([distributed_presence/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -18,10 +21,11 @@
 
 -include("ecallmgr.hrl").
 
--record(state, {node = 'undefined' :: atom()
-	       ,stats = #node_stats{} :: #node_stats{}
-	       ,options = [] :: proplist()
-	       }).
+-record(state, {
+	  node = 'undefined' :: atom()
+	  ,stats = #node_stats{} :: #node_stats{}
+	  ,options = [] :: proplist()
+	 }).
 
 -define(SERVER, ?MODULE).
 
@@ -34,6 +38,12 @@
 
 -define(FS_TIMEOUT, 5000).
 
+%% keep in sync with wh_api.hrl OPTIONAL_CHANNEL_QUERY_REQ_HEADERS
+-define(CALL_STATUS_HEADERS, [<<"Unique-ID">>, <<"Call-Direction">>, <<"Caller-Caller-ID-Name">>, <<"Caller-Caller-ID-Number">>
+				  ,<<"Caller-Network-Addr">>, <<"Caller-Destination-Number">>, <<"FreeSWITCH-Hostname">>
+			     ]).
+-define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, [<<"Call-ID">> | wapi_channel_query:optional_headers()])).
+
 -spec resource_consume/3 :: (FsNodePid, Route, JObj) -> {'resource_consumed', binary(), binary(), integer()} |
 							{'resource_error', binary() | 'error'} when
       FsNodePid :: pid(),
@@ -44,6 +54,26 @@ resource_consume(FsNodePid, Route, JObj) ->
     receive Resp -> Resp
     after   10000 -> {resource_error, timeout}
     end.
+
+-spec distributed_presence/3 :: (pid(), ne_binary(), proplist()) -> ok.
+distributed_presence(Srv, Type, Event) ->
+    gen_server:cast(Srv, {distributed_presence, Type, Event}).
+
+-spec show_channels/1 :: (pid()) -> [proplist(),...] | [].
+show_channels(Srv) ->
+    gen_server:call(Srv, show_channels).
+
+-spec hostname/1 :: (pid()) -> fs_api_ret().
+hostname(Srv) ->
+    gen_server:call(Srv, hostname).
+
+-spec fs_node/1 :: (pid()) -> atom().
+fs_node(Srv) ->
+    gen_server:call(Srv, fs_node).
+
+-spec uuid_exists/2 :: (pid(), binary()) -> boolean().
+uuid_exists(Srv, UUID) ->
+    gen_server:call(Srv, {uuid_exists, UUID}).
 
 -spec start_link/1 :: (Node :: atom()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node) ->
@@ -58,8 +88,37 @@ init([Node, Options]) ->
     Stats = #node_stats{started = erlang:now()},
     {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
 
-handle_call(_Req, _From, State) ->
-    {reply, ok, State}.
+-spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> {'noreply', #state{}} | {'reply', atom(), #state{}}.
+handle_call(hostname, _From, #state{node=Node}=State) ->
+    [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
+    {reply, {ok, Hostname}, State};
+handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
+    spawn(fun() ->
+		  case freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
+		      {'ok', Result} -> ?LOG(UUID, "Result of uuid_exists: ~s", [Result]), gen_server:reply(From, wh_util:is_true(Result));
+		      _ -> ?LOG(UUID, "Failed to get result from uuid_exists", []), gen_server:reply(From, false)
+		  end
+	  end),
+    {noreply, State};
+handle_call(fs_node, _From, #state{node=Node}=State) ->
+    {reply, Node, State};
+handle_call(show_channels, From, #state{node=Node}=State) ->
+    spawn(fun() ->
+		  case freeswitch:api(Node, show, "channels") of
+		      {ok, Rows} -> gen_server:reply(From, convert_rows(Node, Rows));
+		      _ -> gen_server:reply(From, [])
+		  end
+	  end),
+    {noreply, State}.
+
+handle_cast({distributed_presence, Type, Event}, #state{node=Node}=State) ->
+    Headers = [{wh_util:to_list(K), wh_util:to_list(V)}
+               || {K, V} <- lists:foldr(fun(Header, Props) ->
+                                                proplists:delete(Header, Props)
+                                        end, Event, ?FS_DEFAULT_HDRS)],
+    EventName = wh_util:to_atom(<<"PRESENCE_", Type/binary>>, true),
+    _ = freeswitch:sendevent(Node, EventName, Headers),
+    {noreply, State};
 
 handle_cast(_Req, State) ->
     {noreply, State}.
@@ -71,14 +130,14 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
     receive
 	ok ->
 	    Res = run_start_cmds(Node),
-	    ?LOG_SYS("Start cmd results:"),
-	    _ = [ ?LOG("~p", [ApiRes]) || ApiRes <- Res],
+	    spawn(fun() -> print_api_responses(Res) end),
 
 	    NodeData = extract_node_data(Node),
 	    Active = get_active_channels(Node),
 
 	    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
-                                         ,'CHANNEL_ANSWER', 'CUSTOM', 'sofia::register', 'sofia_presence::subscribe'
+                                         ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
+					 ,'CUSTOM', 'sofia::register'
 					]),
 
 	    {noreply, State#state{stats=(Stats#node_stats{
@@ -98,37 +157,36 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
 handle_info(Msg, #state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=S) when De > Cr ->
     handle_info(Msg, S#state{stats=Stats#node_stats{created_channels=De, destroyed_channels=De}});
 
-handle_info({event, [undefined | Data]}, #state{stats=Stats}=State) ->
+handle_info({event, [undefined | Data]}, #state{stats=Stats, node=Node}=State) ->
     EvtName = props:get_value(<<"Event-Name">>, Data),
     case EvtName of
 	<<"HEARTBEAT">> ->
 	    {noreply, State#state{stats=Stats#node_stats{last_heartbeat=erlang:now()}}, hibernate};
 	<<"CUSTOM">> ->
-	    spawn(fun() ->
-                          put(callid, wh_json:get_value(<<"Channel-Call-UUID">>, Data, <<"000000000000">>)),
-                          ?LOG("custom event received ~s", [EvtName]),
-                          process_custom_data(Data, ?APP_VERSION)
-                  end),
+	    spawn(fun() -> process_custom_data(Data) end),
+	    {noreply, State, hibernate};
+        <<"PRESENCE_", Type/binary>> ->
+            _ = case props:get_value(<<"Distributed-From">>, Data) of
+		    undefined ->
+			Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
+			[distributed_presence(Srv, Type, Headers)
+			 || Srv <- ecallmgr_fs_sup:node_handlers()
+				,Srv =/= self()];
+		    _Else ->
+			ok
+		end,
 	    {noreply, State, hibernate};
 	_ ->
 	    {noreply, State, hibernate}
     end;
 
-handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
+handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
     EvtName = props:get_value(<<"Event-Name">>, Data),
     case EvtName of
 	<<"CHANNEL_CREATE">> ->
 	    ?LOG(UUID, "received channel create event", []),
-            spawn(fun() ->
-                          put(callid, UUID),
-                          ecallmgr_notify:callstate_change(Data)
-                  end),
 	    {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}, hibernate};
 	<<"CHANNEL_DESTROY">> ->
-            spawn(fun() ->
-                          put(callid, UUID),
-                          ecallmgr_notify:callstate_change(Data)
-                  end),
 	    ChanState = props:get_value(<<"Channel-State">>, Data),
 	    case ChanState of
 		<<"CS_NEW">> -> % ignore
@@ -140,18 +198,19 @@ handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr
 	    end;
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
 	    {noreply, State};
-        <<"CHANNEL_ANSWER">> ->
-            spawn(fun() ->
-                          put(callid, UUID),
-                          ecallmgr_notify:callstate_change(Data)
-                  end),
-	    {noreply, State};
+        <<"PRESENCE_", Type/binary>> ->
+            _ = case props:get_value(<<"Distributed-From">>, Data) of
+		    undefined ->
+			Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
+			[distributed_presence(Srv, Type, Headers)
+			 || Srv <- ecallmgr_fs_sup:node_handlers()
+				,Srv =/= self()];
+		    _Else ->
+			ok
+		end,
+	    {noreply, State, hibernate};
 	<<"CUSTOM">> ->
-	    spawn(fun() ->
-                          put(callid, UUID),
-                          ?LOG("custom event ~s received", [EvtName]),
-                          process_custom_data(Data, ?APP_VERSION)
-                  end),
+	    spawn(fun() -> process_custom_data(Data) end),
 	    {noreply, State};
 	_ ->
 	    {noreply, State}
@@ -229,20 +288,18 @@ originate_channel(Node, Pid, Route, AvailChan, JObj) ->
 	    Pid ! {resource_error, timeout}
     end.
 
--spec start_call_handling/2 :: (Node :: atom(), UUID :: binary()) -> CtlQueue :: binary() | {'error', 'amqp_error'}.
+-spec start_call_handling/2 :: (atom(), ne_binary()) -> ne_binary() | {'error', 'amqp_error'}.
 start_call_handling(Node, UUID) ->
     try
-	true = is_binary(CtlQueue = amqp_util:new_callctl_queue(<<>>)),
-	_ = amqp_util:bind_q_to_callctl(CtlQueue),
-
-	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, CtlQueue),
+	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID),
 	{ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
-	CtlQueue
+
+	ecallmgr_call_control:amqp_queue(CtlPid)
     catch
 	_:_ -> {error, amqp_error}
     end.
 
--spec diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return().
+-spec diagnostics/2 :: (pid(), tuple()) -> proplist().
 diagnostics(Pid, Stats) ->
     Resp = ecallmgr_diagnostics:get_diagnostics(Stats),
     Pid ! Resp.
@@ -257,13 +314,12 @@ channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) ->
 							 ]}
     end.
 
--spec extract_node_data/1 :: (Node) -> [{'cpu',string()} |
+-spec extract_node_data/1 :: (atom()) -> [{'cpu',string()} |
 					{'sessions_max',integer()} |
 					{'sessions_per_thirty',integer()} |
 					{'sessions_since_startup',integer()} |
 					{'uptime',number()}
-					,...] when
-      Node :: atom().
+					,...].
 extract_node_data(Node) ->
     {ok, Status} = freeswitch:api(Node, status),
     Lines = string:tokens(wh_util:to_list(Status), [$\n]),
@@ -294,17 +350,18 @@ process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->
      ,{cpu, lists:flatten(CPUNum)}
     ].
 
-process_custom_data(Data, AppVsn) ->
-    case props:get_value(<<"Event-Subclass">>, Data) of
-	undefined -> ok;
-	<<"sofia::register">> -> publish_register_event(Data, AppVsn);
-	<<"sofia_presence::subscribe">> -> publish_presence_subscription(Data, AppVsn);
-	_ -> ok
+process_custom_data(Data) ->
+    put(callid, props:get_value(<<"call-id">>, Data)),
+    Subclass = props:get_value(<<"Event-Subclass">>, Data),
+    ?LOG("custom event received ~s", [Subclass]),
+    case Subclass of
+	<<"sofia::register">> ->
+            publish_register_event(Data);
+	_ ->
+            ok
     end.
 
-publish_register_event(Data, AppVsn) ->
-    Keys = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
-    DefProp = wh_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, wh_util:to_binary(?MODULE), AppVsn),
+publish_register_event(Data) ->
     ApiProp = lists:foldl(fun(K, Api) ->
 				  case props:get_value(wh_util:binary_to_lower(K), Data) of
 				      undefined ->
@@ -314,38 +371,13 @@ publish_register_event(Data, AppVsn) ->
 					  end;
 				      V -> [{K, V} | Api]
 				  end
-			  end, [{<<"Event-Timestamp">>, round(wh_util:current_tstamp())} | DefProp], Keys),
+			  end
+                          ,[{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
+                            ,{<<"Call-ID">>, get(callid)}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
+                          ,wapi_registration:success_keys()),
     ?LOG("sending successful registration"),
-    case wh_api:reg_success(ApiProp) of
-	{error, E} ->
-            ?LOG("failed API message creation: ~p", [E]);
-	{ok, JSON} ->
-	    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_SUCCESS)
-    end.
-
-publish_presence_subscription(Data, _AppVsn) ->
-    Subscription = [{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
-                    ,{<<"From-User">>, props:get_value(<<"sip_from_user">>, Data)}
-                    ,{<<"From-Host">>, props:get_value(<<"sip_from_host">>, Data)}
-                    ,{<<"Contact">>, props:get_value(<<"sip_contact">>, Data)}
-                    ,{<<"Call-ID">>, props:get_value(<<"sip_call_id">>, Data)}
-                    ,{<<"Expires">>, props:get_value(<<"presence_expires">>, Data)}
-                    ,{<<"To-User">>, props:get_value(<<"sip_to_user">>, Data)}
-                    ,{<<"To-Host">>, props:get_value(<<"sip_to_host">>, Data)}
-                    ,{<<"From-Tag">>, props:get_value(<<"sip_from_tag">>, Data)}
-                    ,{<<"To-Tag">>, props:get_value(<<"sip_to_tag">>, Data)}
-                    ,{<<"Accept">>, props:get_value(<<"sip_accept">>, Data)}
-                    ,{<<"Agent">>, props:get_value(<<"sip_full_agent">>, Data)}
-                    ,{<<"Event">>, props:get_value(<<"presence_proto_specific_event">>, Data)}
-                    | wh_api:default_headers(<<>>, <<"presence">>, <<"subscribe">>, ?APP_NAME, ?APP_VERSION)
-                   ],
-    ?LOG("sending successful presence subscription"),
-    case wh_api:presence_subscr([ KV || {_, V}=KV <- Subscription, V =/= undefined ]) of
-	{error, E} ->
-            ?LOG("failed API message creation: ~p", [E]);
-	{ok, Payload} ->
-            amqp_util:callmgr_publish(Payload, <<"application/json">>, ?KEY_PRESENCE_IN)
-    end.
+    wapi_registration:publish_success(ApiProp).
 
 get_originate_action(<<"transfer">>, Data) ->
     case wh_json:get_value(<<"Route">>, Data) of
@@ -377,3 +409,41 @@ get_active_channels(Node) ->
 	_ ->
 	    0
     end.
+
+-spec convert_rows/2 :: (atom(), binary()) -> [proplist(),...] | [].
+convert_rows(_, <<"\n0 total.\n">>) ->
+    ?LOG("No channels up"),
+    [];
+convert_rows(Node, RowsBin) ->
+    [_|Rows] = binary:split(RowsBin, <<"\n">>, [global]),
+    return_rows(Node, Rows, []).
+
+-spec return_rows/3 :: (atom(), [binary(),...] | [], [proplist(),...] | []) -> [proplist(),...] | [].
+return_rows(Node, [<<>>|Rs], Acc) ->
+    return_rows(Node, Rs, Acc);
+return_rows(Node, [R|Rs], Acc) ->
+    ?LOG("R: ~s", [R]),
+    case binary:split(R, <<",">>) of
+	[_Total] ->
+	    ?LOG("Total: ~s", [_Total]),
+	    return_rows(Node, Rs, Acc);
+	[UUID|_] ->
+	    ?LOG("UUID: ~s", [UUID]),
+	    {ok, Dump} = freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)),
+	    DumpProp = ecallmgr_util:eventstr_to_proplist(Dump),
+
+	    %% Pull wanted data from the converted DUMP proplist
+	    Prop = [{AMQPKey, props:get_value(FSKey, DumpProp)} || {FSKey, AMQPKey} <- ?CALL_STATUS_MAPPING],
+	    return_rows(Node, Rs, [ Prop | Acc ])
+    end;
+return_rows(_Node, [], Acc) -> Acc.
+
+print_api_responses(Res) ->
+    ?LOG_SYS("Start cmd results:"),
+    _ = [ print_api_response(ApiRes) || ApiRes <- Res],
+    ?LOG_SYS("End cmd results").
+
+print_api_response({ok, Res}) ->
+    [ ?LOG_SYS("~s", [Row]) || Row <- binary:split(Res, <<"\n">>, [global]), Row =/= <<>> ];
+print_api_response(Other) ->
+    ?LOG_SYS("~p", [Other]).

@@ -300,7 +300,7 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
     BridgeReq = try
                     {ok, AccountId, false} = gen_server:call(stepswitch_inbound, {lookup_number, Number}),
                     ?LOG("number belongs to another on-net account, loopback back to account ~s", [AccountId]),
-                    build_loopback_request(JObj, Number, Q)
+                    build_loopback_request(JObj, Number, AccountId, Q)
                 catch
                     _:_ ->
                         EPs = case wh_json:get_value(<<"Flags">>, JObj) of
@@ -317,18 +317,28 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
     case length(wh_json:get_value(<<"Endpoints">>, BridgeReq, [])) of
         0 ->
             ?LOG_END("no offnet resources found for request, sending failure response"),
+            whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
+                                            ,"Alert: could not process ~s~n"
+                                            ,"Fault: no offnet resources found for request~n"
+                                            ,"Call-ID: ~s~n"]
+                              ,[?MODULE, ?LINE, Number, CallId]),
             respond_resource_failed({struct, [{<<"Hangup-Cause">>, <<"NO_RESOURCES">>}
                                               ,{<<"Hangup-Code">>, <<"sip:404">>}
                                              ]}, 0, JObj);
         Attempts ->
-            {ok, Payload} = wh_api:bridge_req({struct, BridgeReq}),
-            amqp_util:callctl_publish(wh_json:get_value(<<"Control-Queue">>, JObj), Payload),
+            {ok, Payload} = wapi_dialplan:bridge(BridgeReq),
+	    wapi_dialplan:publish_action(wh_json:get_value(<<"Control-Queue">>, JObj), Payload, ?DEFAULT_CONTENT_TYPE),
 
             case wait_for_bridge(60000) of
                 {ok, BridgeResp} ->
                     ?LOG_END("offnet resource request resulted in a successful bridge"),
                     respond_bridged_to_resource(BridgeResp, JObj);
                 {fail, BridgeResp} ->
+                    whapps_util:alert(<<"warning">>, ["Source: ~s(~p)~n"
+                                                      ,"Alert: could not process ~s~n"
+                                                      ,"Fault: ~p~n"
+                                                      ,"Call-ID: ~s~n"]
+                                      ,[?MODULE, ?LINE, Number, BridgeResp, CallId]),
                     ?LOG_END("offnet resource failed, ~s:~s", [wh_json:get_value(<<"Hangup-Code">>, BridgeResp)
                                                                ,wh_json:get_value(<<"Application-Response">>, BridgeResp)
                                                               ]),
@@ -339,9 +349,19 @@ process_req({<<"resource">>, <<"offnet_req">>}, JObj, #state{resrcs=R1}) ->
                                                              ]);
                 {error, timeout} ->
                     ?LOG_END("resource bridge request did not respond"),
+                    whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
+                                                    ,"Alert: could not process ~s~n"
+                                                    ,"Fault: timeout~n"
+                                                    ,"Call-ID: ~s~n"]
+                                      ,[?MODULE, ?LINE, Number, CallId]),
                     respond_resource_failed({struct, [{<<"Failure-Message">>, <<"TIMEOUT">>}]}, Attempts, JObj);
                 {error, ErrorResp} ->
                     ?LOG_END("internal resource bridge error"),
+                    whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
+                                                    ,"Alert: could not process ~s~n"
+                                                    ,"Fault: ~p~n"
+                                                    ,"Call-ID: ~s~n"]
+                                      ,[?MODULE, ?LINE, Number, ErrorResp, CallId]),
                     respond_erroneously(ErrorResp, JObj)
             end
     end;
@@ -606,16 +626,18 @@ evaluate_rules([Regex|T], Number) ->
 %% off-net request, endpoints, and our AMQP Q
 %% @end
 %%--------------------------------------------------------------------
--spec build_loopback_request/3 :: (JObj, Number, Q) -> proplist() when
+-spec build_loopback_request/4 :: (JObj, Number, LoopAccount, Q) -> proplist() when
       JObj :: json_object(),
       Number :: binary(),
+      LoopAccount :: binary(),
       Q :: binary().
-build_loopback_request(JObj, Number, Q) ->
+build_loopback_request(JObj, Number, LoopAccount, Q) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Endpoints = [{struct, [{<<"Invite-Format">>, <<"route">>}
                            ,{<<"Route">>, <<"loopback/", (Number)/binary>>}
                            ,{<<"Custom-Channel-Vars">>, {struct,[{<<"Offnet-Loopback-Number">>, Number}
                                                                  ,{<<"Offnet-Loopback-Account-ID">>, AccountId}
+                                                                 ,{<<"Account-ID">>, LoopAccount}
                                                                 ]}}
                           ]}],
     Command = [{<<"Application-Name">>, <<"bridge">>}
@@ -861,19 +883,17 @@ wait_for_bridge(Timeout) ->
       JObj :: json_object().
 respond_bridged_to_resource(BridgeResp, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, BridgeResp),
-    Response = [{<<"Call-ID">>, wh_json:get_value(<<"Other-Leg-Unique-ID">>, BridgeResp)}
-                ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-                ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, JObj)}
-                ,{<<"To">>, wh_json:get_value(<<"Other-Leg-Destination-Number">>, BridgeResp)}
-                ,{<<"Caller-ID-Name">>, wh_json:get_value(<<"Other-Leg-Caller-ID-Name">>, BridgeResp)}
-                ,{<<"Caller-ID-Number">>, wh_json:get_value(<<"Other-Leg-Caller-ID-Number">>, BridgeResp)}
-                ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, BridgeResp)}
-                ,{<<"Timestamp">>, wh_json:get_value(<<"Timestamp">>, BridgeResp)}
-                ,{<<"Channel-Call-State">>, wh_json:get_value(<<"Channel-Call-State">>, BridgeResp)}
-               | wh_api:default_headers(Q, <<"resource">>, <<"offnet_resp">>, ?APP_NAME, ?APP_VERSION)
-            ],
-    {ok, Payload} = wh_api:resource_resp([ KV || {_, V}=KV <- Response, V =/= undefined ]),
-    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+    Resp = [{<<"Call-ID">>, wh_json:get_value(<<"Other-Leg-Unique-ID">>, BridgeResp)}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+            ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, JObj)}
+            ,{<<"To">>, wh_json:get_value(<<"Other-Leg-Destination-Number">>, BridgeResp)}
+            ,{<<"Caller-ID-Name">>, wh_json:get_value(<<"Other-Leg-Caller-ID-Name">>, BridgeResp)}
+            ,{<<"Caller-ID-Number">>, wh_json:get_value(<<"Other-Leg-Caller-ID-Number">>, BridgeResp)}
+            ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, BridgeResp)}
+            ,{<<"Timestamp">>, wh_json:get_value(<<"Timestamp">>, BridgeResp)}
+            ,{<<"Channel-Call-State">>, wh_json:get_value(<<"Channel-Call-State">>, BridgeResp)}
+            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+    wapi_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -888,17 +908,15 @@ respond_bridged_to_resource(BridgeResp, JObj) ->
       JObj :: json_object().
 respond_resource_failed(BridgeResp, Attempts, JObj) ->
     Q = wh_json:get_value(<<"Server-ID">>, BridgeResp, <<>>),
-    Response = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-                ,{<<"Failed-Attempts">>, wh_util:to_binary(Attempts)}
-                ,{<<"Failure-Message">>,
-                  wh_json:get_value(<<"Application-Response">>, BridgeResp, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp))}
-                ,{<<"Failure-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
-                ,{<<"Hangup-Cause">>, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp)}
-                ,{<<"Hangup-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
-               | wh_api:default_headers(Q, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)
-            ],
-    {ok, Payload} = wh_api:resource_error([ KV || {_, V}=KV <- Response, V =/= undefined ]),
-    _ = amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
+    Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+             ,{<<"Failed-Attempts">>, wh_util:to_binary(Attempts)}
+             ,{<<"Failure-Message">>,
+               wh_json:get_value(<<"Application-Response">>, BridgeResp, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp))}
+             ,{<<"Failure-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
+             ,{<<"Hangup-Cause">>, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp)}
+             ,{<<"Hangup-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
+             | wh_api:default_headers(Q, <<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
+    wapi_resource:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error).
 
 %%--------------------------------------------------------------------
 %% @private

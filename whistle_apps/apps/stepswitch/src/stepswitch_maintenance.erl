@@ -11,7 +11,7 @@
 -include("stepswitch.hrl").
 
 %% API
--export([reconcile/0, reconcile/1, reconcile/2, lookup_number/1, validate_routes/0]).
+-export([reconcile/0, reconcile/1, reconcile/2, lookup_number/1]).
 -export([reload_resources/0, process_number/1, process_number/2]).
 
 %% These are temporary until the viewing of numbers in an account can
@@ -67,18 +67,6 @@ reconcile(AccountId, false) ->
     Db = whapps_util:get_db_name(AccountId, encoded),
     Numbers = get_callflow_account_numbers(Db),
     _ = reconcile_account_route(whapps_util:get_db_name(AccountId, raw), Numbers),
-    done.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Run validity checks on the routes currently in the db
-%% @end
-%%--------------------------------------------------------------------
--spec validate_routes/0 :: () -> done.
-validate_routes() ->
-    ok = find_duplicate_numbers(),
-%%    find_missing_accounts(),
     done.
 
 %%--------------------------------------------------------------------
@@ -262,30 +250,6 @@ reconcile_account_route(AccountId, Numbers) ->
                                                          ,{<<"pvt_created">>, Timestamp}
                                                          ,{<<"numbers">>, Numbers}
                                                         ]})
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% prints to the log if any numbers are assigned to more than one
-%% account.
-%% @end
-%%--------------------------------------------------------------------
--spec find_duplicate_numbers/0 :: () -> ok|tuple(error, atom()).
-find_duplicate_numbers() ->
-    case couch_mgr:get_results(?ROUTES_DB, ?LIST_ROUTE_DUPS, [{<<"group">>, <<"true">>}]) of
-        {ok, Routes} ->
-            _ = [begin
-		     Accounts = [", " ++ Account || Account <- wh_json:get_value([<<"value">>, <<"accounts">>], Route, [])],
-		     Number = wh_json:get_value(<<"key">>, Route),
-		     ?LOG_SYS("the number ~s routes to multiple accounts~s", [Number, Accounts])
-		 end
-		 || Route <- Routes,
-		    wh_json:get_value([<<"value">>, <<"total">>], Route, 0) > 1],
-            ok;
-        {error, _}=E ->
-            ?LOG_SYS("unable to check for duplicate routes ~p~n", [E]),
-            E
     end.
 
 %%--------------------------------------------------------------------

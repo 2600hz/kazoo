@@ -225,8 +225,8 @@ process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:answer_req(Command),
-    amqp_util:callctl_publish(CtrlQ, Payload),
+    {ok, Payload} = wapi_dialplan:answer(Command),
+    wapi_dialplan:publish_action(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE),
 
     {ok, _} = play_greeting(S1),
 
@@ -489,8 +489,8 @@ play(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) ->
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:play_req(Command),
-    amqp_util:callctl_publish(CtrlQ, Payload),
+    {ok, Payload} = wapi_dialplan:play(Command),
+    wapi_dialplan:publish_action(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE),
     wait_for_command(<<"play">>).
 
 %%--------------------------------------------------------------------
@@ -516,8 +516,8 @@ play_and_collect_digits(Media, #search{call_id=CallId, amqp_q=Q, ctrl_q=CtrlQ}) 
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:play_collect_digits_req(Command),
-    amqp_util:callctl_publish(CtrlQ, Payload),
+    {ok, Payload} = wapi_dialplan:play_and_collect_digits(Command),
+    wapi_dialplan:publish_action(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE),
     wait_for_command(<<"play_and_collect_digits">>).
 
 %%--------------------------------------------------------------------

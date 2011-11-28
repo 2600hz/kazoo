@@ -28,7 +28,6 @@
 -record(state, {
 	  node = undefined :: atom()
           ,uuid = <<>> :: binary()
-          ,amqp_q = <<>> :: binary() | {'error', term()}
           ,ctlpid = undefined :: 'undefined' | pid()
 	  ,is_node_up = true :: boolean()
 	  ,is_amqp_up = true :: boolean()
@@ -76,7 +75,7 @@ init([Node, UUID, CtlPid]) ->
     self() ! startup,
     ?LOG_START("starting new call events listener"),
     is_pid(CtlPid) andalso link(CtlPid),
-    ?LOG("linked to control listener ~p",[CtlPid]),
+    ?LOG("linked to control listener process ~p",[CtlPid]),
     {'ok', #state{node=Node, uuid=UUID, ctlpid=CtlPid}}.
 
 %%--------------------------------------------------------------------
@@ -147,7 +146,7 @@ handle_info({call_event, {event, [ UUID | Data ] } }, #state{node=Node, uuid=UUI
 		OtherUUID ->
 		    ?LOG("event was a bridged to ~s", [OtherUUID]),
 		    _Pid = ecallmgr_call_sup:start_event_process(Node, OtherUUID, undefined),
-		    ?LOG("started event listener for other leg as ~p", [_Pid])
+		    ?LOG("started event listener for other leg as process ~p", [_Pid])
 	    end;
 	_ -> 'ok'
     end,
@@ -203,52 +202,12 @@ handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false
 	    end
     end;
 
-handle_info({amqp_host_down, _}, State) ->
-    ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    _Ref = erlang:send_after(1000, self(), is_amqp_up),
-    {'noreply', State#state{amqp_q={'error', amqp_host_down}, is_amqp_up=false}, hibernate};
-
-handle_info(is_amqp_up, #state{uuid=UUID, amqp_q={'error', _}, queued_events=Evts, node=Node}=State) ->
-    Q1 = add_amqp_listener(UUID),
-    case is_binary(Q1) of
-	true ->
-	    spawn(fun() -> put(callid, UUID), send_queued(Node, UUID, Evts) end),
-	    {'noreply', State#state{amqp_q = Q1, is_amqp_up = true, queued_events=[]}, hibernate};
-	false ->
-	    _Ref = erlang:send_after(1000, self(), is_amqp_up),
-	    {'noreply', State}
-    end;
-
-handle_info({#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload = Payload}}
-	    ,#state{node=Node, uuid=UUID, failed_node_checks=FNC}=State) ->
-    JObj = mochijson2:decode(Payload),
-    IsUp = ecallmgr_util:is_node_up(Node, UUID),
-
-    spawn(fun() -> put(callid, UUID), handle_amqp_prop(wh_json:get_value(<<"Event-Name">>, JObj), JObj, Node, IsUp) end),
-
-    case IsUp of
-	true ->
-	    {'noreply', State#state{is_node_up=IsUp, failed_node_checks=0}, hibernate};
-	false ->
-	    case FNC > ?MAX_FAILED_NODE_CHECKS of
-		true ->
-		    ?LOG(UUID, "node ~s appears down, and we've checked ~b times now; going down", [Node, FNC]),
-		    {'stop', 'normal', State};
-		false ->
-		    ?LOG(UUID, "node ~s appears down, and we've checked ~b times now; will check again", [Node, FNC]),
-		    _Ref = erlang:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART}),
-		    {'noreply', State#state{is_node_up=IsUp, failed_node_checks=FNC+1}, hibernate}
-	    end
-    end;
-
 handle_info(startup, #state{node=Node, uuid=UUID}=State) ->
     erlang:monitor_node(Node, true),
-    ?LOG("starting handler on ~s for ~s", [Node, UUID]),
     case freeswitch:handlecall(Node, UUID) of
         ok ->
-            Q = add_amqp_listener(UUID),
-            ?LOG("call event handler setup complete"),
-            {'noreply', State#state{amqp_q = Q, is_amqp_up = is_binary(Q)}, hibernate};
+            ?LOG("handling events from ~s", [Node]),
+            {'noreply', State, hibernate};
         timeout ->
             ?LOG("timed out trying to handle events for ~s, trying again", [Node]),
             self() ! startup,
@@ -260,9 +219,6 @@ handle_info(startup, #state{node=Node, uuid=UUID}=State) ->
             ?LOG("failed to handle call events for ~s: ~p", [Node, _E]),
             {'stop', 'normal', State}
     end;
-
-handle_info(#'basic.consume_ok'{}, State) ->
-    {'noreply', State};
 
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -297,9 +253,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec shutdown/2 :: (CtlPid, UUID) -> 'ok' when
-      CtlPid :: pid() | undefined,
-      UUID :: binary().
+-spec shutdown/2 :: (pid() | 'undefined', ne_binary()) -> 'ok'.
 shutdown(undefined, _) -> 'ok';
 shutdown(CtlPid, UUID) ->
     ?LOG("sending hangup for call ~s", [UUID]),
@@ -316,15 +270,13 @@ send_ctl_event(undefined, _, _, _) -> 'ok';
 send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, Props) when is_pid(CtlPid) ->
     AppName = props:get_value(<<"Application">>, Props),
 
-    ?LOG("sending execution completion to control queue"),
-    erlang:is_process_alive(CtlPid) andalso CtlPid ! {execute_complete, UUID, AppName},
-    'ok';
+    ?LOG("sending execution completion for ~s to control queue", [wh_util:binary_to_lower(AppName)]),
+    ecallmgr_call_control:event_execute_complete(CtlPid, UUID, AppName);
 send_ctl_event(CtlPid, UUID, <<"CUSTOM">>, Props) when is_pid(CtlPid) ->
     case props:get_value(<<"Event-Subclass">>, Props) of
 	<<"whistle::noop">> ->
-	    ?LOG("sending noop completion to control queue"),
-	    erlang:is_process_alive(CtlPid) andalso CtlPid ! {execute_complete, UUID, <<"noop">>},
-	    'ok';
+	    ?LOG("sending execution completion for noop to control queue"),
+	    ecallmgr_call_control:event_execute_complete(CtlPid, UUID, <<"noop">>);
 	_ ->
 	    'ok'
     end;
@@ -371,15 +323,8 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                                       App
                               end
                       end,
-
-            %% some event are 'remapped' to be of other types, when that happens log it differently
-            case EvtName =/= FSEvtName orelse AppName =/= FSAppName of
-                true ->
-                    ?LOG("published event masquerade ~s ~s as ~s ~s", [FSEvtName, FSAppName, EvtName, AppName]);
-                false ->
-                    ?LOG("published event ~s ~s", [EvtName, AppName])
-            end,
-
+            ?LOG("publishing call event ~s ~s", [wh_util:binary_to_lower(EvtName)
+                                                 ,wh_util:binary_to_lower(AppName)]),
 	    EvtProp0 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop1)}
                         ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop1)}
                         ,{<<"Call-ID">>, UUID}
@@ -387,13 +332,12 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                         ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop1)}
                         ,{<<"Channel-State">>, get_channel_state(Prop1)}
 		       | event_specific(EvtName, AppName, Prop1) ],
-	    EvtProp1 = EvtProp0 ++ wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION),
+	    EvtProp1 = wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION) ++ EvtProp0,
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
 			   [] -> EvtProp1;
-			   CustomProp -> [{<<"Custom-Channel-Vars">>, {struct, CustomProp}} | EvtProp1]
+			   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
 		       end,
-	    {'ok', JSON} = wh_api:call_event(EvtProp2),
-	    amqp_util:callevt_publish(UUID, JSON, event);
+	    wapi_call:publish_event(UUID, EvtProp2);
 	_ ->
             ok
 %%	    ?LOG("skipped event ~s ~s", [FSEvtName, FSAppName])
@@ -405,18 +349,6 @@ get_channel_state(Prop) ->
     case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
         undefined -> <<"unknown">>;
         ChannelState -> ChannelState
-    end.
-
-%% Setup process to listen for call.status_req api calls and respond in the affirmative
--spec add_amqp_listener/1 :: (CallID) -> binary() | {'error', 'amqp_error'} when
-      CallID :: binary().
-add_amqp_listener(CallID) ->
-    case amqp_util:new_queue(<<>>) of
-	{'error', _} = E -> E;
-	Q ->
-	    _ = amqp_util:bind_q_to_callevt(Q, CallID, status_req),
-	    _ = amqp_util:basic_consume(Q),
-	    Q
     end.
 
 % gets the appropriate application response value for the type of application
@@ -439,41 +371,29 @@ application_response(_AppName, Prop, _Node, _UUID) ->
       EventName :: binary(),
       Application :: binary(),
       Prop :: proplist().
+event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Prop) ->
+    [{<<"Application-Name">>, props:get_value(<<"whistle_application_name">>, Prop, <<"">>)}
+     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop, <<"">>)}
+    ];
+event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
+    [{<<"Application-Name">>, <<"bridge">>}
+     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
+     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
+     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<"">>)}
+    ];
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Prop) ->
-    case props:get_value(Application, ?SUPPORTED_APPLICATIONS) of
-	undefined ->
-            ?LOG("~s is not a supported application", [Application]),
-	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
-        <<"noop">> ->
-	    [{<<"Application-Name">>, props:get_value(<<"whistle_application_name">>, Prop, <<"">>)}
-	     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop, <<"">>)}
-	    ];
-        <<"bridge">> ->
-            [{<<"Application-Name">>, <<"bridge">>}
-	     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
-	     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-	     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-	     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-	     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-	     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
-             ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
-	     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<"">>)}
-	    ];
-	AppName ->
-	    [{<<"Application-Name">>, AppName}
-	     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
-	    ]
-    end;
+    [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
+     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
+    ];
 event_specific(<<"CHANNEL_EXECUTE">>, Application, Prop) ->
-    case props:get_value(Application, ?SUPPORTED_APPLICATIONS) of
-	undefined ->
-            ?LOG("~s is not a supported application", [Application]),
-	    [{<<"Application-Name">>, <<"">>}, {<<"Application-Response">>, <<"">>}];
-	AppName ->
-	    [{<<"Application-Name">>, AppName}
-	     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
-	    ]
-    end;
+    [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
+     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
+    ];
 event_specific(<<"CHANNEL_BRIDGE">>, _, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
@@ -516,49 +436,12 @@ event_specific(<<"DETECTED_TONE">>, _, Prop) ->
 event_specific(<<"DTMF">>, _, Prop) ->
     Pressed = props:get_value(<<"DTMF-Digit">>, Prop, <<>>),
     Duration = props:get_value(<<"DTMF-Duration">>, Prop, <<>>),
-    ?LOG("DTMF: ~s (~s)", [Pressed, Duration]),
+    ?LOG("received DTMF ~s (~s)", [Pressed, Duration]),
     [{<<"DTMF-Digit">>, Pressed}
      ,{<<"DTMF-Duration">>, Duration}
     ];
 event_specific(_Evt, _App, _Prop) ->
     [].
-
-handle_amqp_prop(<<"status_req">>, JObj, Node, IsNodeUp) ->
-    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    put(callid, CallID),
-
-    try
-	true = wh_api:call_status_req_v(JObj),
-	?LOG_START("call status request received"),
-
-	{Status, ErrMsg} = case IsNodeUp of
-			       true -> query_call(Node, CallID);
-			       false -> {<<"tmpdown">>, {<<"Error-Msg">>, <<"Handling switch is currently not responding">>}}
-			   end,
-        ?LOG_END("call status of ~s is ~s", [CallID, Status]),
-
-	RespJObj = [{<<"Call-ID">>, CallID}
-		    ,{<<"Status">>, Status}
-		    ,{<<"Node">>, Node}
-		    | wh_api:default_headers(<<>>, <<"call_event">>, <<"status_resp">>, ?APP_NAME, ?APP_VERSION) ],
-	{'ok', Payload} = wh_api:call_status_resp([ ErrMsg | RespJObj ]),
-	amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload)
-    catch
-	E:R ->
-	    ?LOG("Call Status exception: ~s:~w", [E, R]),
-	    ?LOG("Stackstrace: ~w", [erlang:get_stacktrace()])
-    end.
-
-query_call(Node, CallID) ->
-    case freeswitch:api(Node, uuid_exists, wh_util:to_list(CallID)) of
-	{'ok', Result} ->
-	    case wh_util:is_true(Result) of
-		true -> {<<"active">>, {ignore, me}};
-		false -> {<<"down">>, {<<"Error-Msg">>, <<"Call is no longer active">>}}
-	    end;
-	_ ->
-	    {<<"tmpdown">>, {<<"Error-Msg">>, <<"Switch did not respond to query">>}}
-    end.
 
 %% if the call went down but we had queued events to send, try for up to 10 seconds to send them
 
@@ -607,6 +490,8 @@ get_fs_var(Node, UUID, Var, Default) ->
       EvtName :: binary().
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, _) ->
     false;
+should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
+    props:get_value(Application, ?SUPPORTED_APPLICATIONS) =/= undefined;
 should_publish(_, <<"event">>, _) ->
     false;
 should_publish(_, _, EvtName) ->

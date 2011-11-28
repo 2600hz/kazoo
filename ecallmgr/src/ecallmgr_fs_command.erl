@@ -8,20 +8,15 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_command).
 
--export([exec_cmd/3]).
+-export([exec_cmd/4]).
 
 -include("ecallmgr.hrl").
 
--spec(exec_cmd/3 :: (Node :: atom(), UUID :: binary(), JObj :: json_object()) -> ok | tuple(error, string())).
-exec_cmd(Node, UUID, JObj) ->
-    DestID = wh_json:get_value(<<"Call-ID">>, JObj),
-    case DestID =:= UUID of
-	true ->
-	    true = wh_api:fs_req_v(JObj),
-	    AppName = wh_json:get_value(<<"Application-Name">>, JObj),
-	    AppArgs = wh_json:get_value(<<"Args">>, JObj),
-	    {ok, _} = freeswitch:api(Node, AppName, AppArgs),
-	    ok;
-	false ->
-	    {error, "Command not for this node"}
-    end.
+-spec exec_cmd/4 :: (atom(), ne_binary(), json_object(), pid()) -> fs_api_ret().
+exec_cmd(Node, UUID, JObj, _ControlPid) ->
+    UUID = wh_json:get_value(<<"Call-ID">>, JObj),
+    true = wapi_fs:req_v(JObj),
+    AppName = wh_json:get_value(<<"Application-Name">>, JObj),
+    AppArgs = wh_json:get_value(<<"Args">>, JObj),
+    ?LOG(UUID, "Executing fs api ~s with ~s", [AppName, AppArgs]),
+    freeswitch:api(Node, wh_util:to_atom(AppName), wh_util:to_list(AppArgs)).

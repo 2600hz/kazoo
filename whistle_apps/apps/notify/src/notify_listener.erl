@@ -21,11 +21,14 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{notify_vm, [{<<"notification">>, <<"new_voicemail">>}]}
-		     ,{notify_subscribe, [{<<"presence">>, <<"subscribe">>}]}
-		     ,{notify_subscribe_query, [{<<"presence">>, <<"subscribers_query">>}]}
-                    ]).
--define(BINDINGS, [{notifications, []}]).
+-define(RESPONDERS, [
+		     {notify_vm, [
+				  {<<"notification">>, <<"new_voicemail">>}
+				 ]}
+		    ]).
+-define(BINDINGS, [
+		   {notifications, []}
+		  ]).
 
 -record(state, {}).
 %%%===================================================================
@@ -63,7 +66,7 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new notify process"),
+    ?LOG_SYS("starting new vm notify process"),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -119,7 +122,6 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    io:format("~p~n", [_JObj]),
     {reply, []}.
 
 %%--------------------------------------------------------------------

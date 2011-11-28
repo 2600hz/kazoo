@@ -12,6 +12,7 @@
 
 %% API
 -export([start_link/0, upgrade/0, start_child/1, get_blacklist_server/0]).
+-export([cache_proc/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -38,6 +39,12 @@ get_blacklist_server() ->
     [{_, _}=Pair] = [ {Mod, Pid} || {?BLACKLIST_SERVER, Pid, worker, [Mod]} <- supervisor:which_children(?MODULE)],
     Pair.
 
+-spec cache_proc/0 :: () -> {'ok', pid()}.
+cache_proc() ->
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+		Mod =:= j5_cache],
+    {ok, P}.
+
 %% @spec upgrade() -> ok
 %% @doc Add processes if necessary.
 upgrade() ->
@@ -62,6 +69,7 @@ init([]) ->
     {ok, { {one_for_one, 2, 5}
 	   ,[
 	     ?CACHE(j5_cache)
+	     ,?CHILD(j5_call_monitor_sup, supervisor)
 	     ,?CHILD(jonny5_acct_sup, supervisor)
 	     ,?CHILD(jonny5_listener, worker)
 	    ]

@@ -15,6 +15,8 @@
 -define(FOLDER_NEW, <<"new">>).
 -define(FOLDER_SAVED, <<"saved">>).
 -define(FOLDER_DELETED, <<"deleted">>).
+-define(MAILBOX_DEFAULT_SIZE, 0).
+-define(MAILBOX_DEFAULT_MSG_MAX_LENGTH, 0).
 
 -import(cf_call_command, [answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
                           ,b_store/3, b_play_and_collect_digits/5, b_play_and_collect_digit/2
@@ -95,7 +97,7 @@
           ,new_pin_saved = <<"/system_media/vm-pin_set">>
           ,new_pin_bad = <<"/system_media/vm-pin_invalid">>
 
-          ,tone_spec = [wh_json:from_list([{<<"Frequencies">>, [440]},{<<"Duration-ON">>, 500},{<<"Duration-OFF">>, 100}])]
+          ,tone_spec = [wh_json:from_list([{<<"Frequencies">>, [<<"440">>]},{<<"Duration-ON">>, <<"500">>},{<<"Duration-OFF">>, <<"100">>}])]
          }).
 
 -record(mailbox, {
@@ -113,6 +115,9 @@
           ,check_if_owner = true :: boolean()
           ,owner_id = <<>> :: binary()
           ,is_setup = false :: boolean()
+	  ,message_count = 0 :: non_neg_integer()
+          ,max_message_count = 0 :: non_neg_integer()
+	  ,message_max_length = 0 :: non_neg_integer()
           ,keys = #keys{}
           ,prompts = #prompts{}
          }).
@@ -239,6 +244,10 @@ compose_voicemail(#mailbox{check_if_owner=true, owner_id=OwnerId}=Box, #cf_call{
 compose_voicemail(#mailbox{exists=false, prompts=#prompts{no_mailbox=NoMailbox}}, Call) ->
     ?LOG("attempted to compose voicemail for missing mailbox"),
     b_play(NoMailbox, Call);
+compose_voicemail(#mailbox{max_message_count=Count, message_count=Count,
+			   prompts=#prompts{mailbox_full=MailboxFull}}, Call) when Count /= 0->
+    ?LOG("voicemail box is full, cannot hold more messages"),
+    b_play(MailboxFull, Call);
 compose_voicemail(#mailbox{skip_greeting=SkipGreeting, skip_instructions=SkipInstructions
 			   ,prompts=#prompts{record_instructions=RecordInstructions}
 			   ,keys=#keys{login=Login}}=Box, Call) ->
@@ -311,8 +320,8 @@ record_voicemail(RecordingName, #mailbox{prompts=#prompts{tone_spec=ToneSpec, sa
         {error, channel_hungup} ->
             _ = cf_call_command:wait_for_application(<<"record">>, <<"RECORD_STOP">>),
             new_message(RecordingName, Box, Call);
-	{error, execution_failure} ->
-            ?LOG("media server exploded"),
+	{error, ErrorJObj} ->
+        ?LOG("media server exploded: ~p", [ErrorJObj]),
 	    ok %% something happened Whistle-side, nothing to do for now
     end.
 
@@ -457,11 +466,7 @@ message_count_prompts(New, Saved, #prompts{you_have=YouHave, new_and=NewAnd, sav
 %% menu utill
 %% @end
 %%--------------------------------------------------------------------
--spec play_messages/4 :: (Messages, Count, Box, Call) -> 'ok' when
-      Messages :: json_objects(),
-      Count :: non_neg_integer(),
-      Box :: #mailbox{},
-      Call :: #cf_call{}.
+-spec play_messages/4 :: (json_objects(), non_neg_integer(), #mailbox{}, #cf_call{}) -> 'ok'.
 play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone
 					      ,prompts=#prompts{message_number=MsgNum,
 								received=Received,
@@ -491,7 +496,8 @@ play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone
             ok;
 	{ok, replay} ->
 	    play_messages(Messages, Count, Box, Call);
-        {error, _} ->
+        {error, _E} ->
+	    ?LOG("Error playing message menu: ~p", [_E]),
             ok
     end;
 play_messages([], _, _, _) ->
@@ -504,17 +510,14 @@ play_messages([], _, _, _) ->
 %% user provides a valid option
 %% @end
 %%--------------------------------------------------------------------
--spec message_menu/2 :: (Box, Call) -> {'error', 'channel_hungup' | 'channel_unbridge' | 'execution_failure'} | {'ok', 'keep' | 'delete' | 'return' | 'replay'} when
-      Box :: #mailbox{},
-      Call :: #cf_call{}.
--spec message_menu/3 :: (Prompt, Box, Call) -> {'error', 'channel_hungup' | 'channel_unbridge' | 'execution_failure'} | {'ok', 'keep' | 'delete' | 'return' | 'replay'} when
-      Prompt :: proplist(),
-      Box :: #mailbox{},
-      Call :: #cf_call{}.
+-type message_menu_returns() :: {'ok', 'keep' | 'delete' | 'return' | 'replay'}.
 
+-spec message_menu/2 :: (#mailbox{}, #cf_call{}) ->
+				{'error', 'channel_hungup' | 'channel_unbridge' | json_object()} | message_menu_returns().
+-spec message_menu/3 :: ([cf_call_command:audio_macro_prompt(),...], #mailbox{}, #cf_call{}) ->
+				{'error', 'channel_hungup' | 'channel_unbridge' | json_object()} | message_menu_returns().
 message_menu(#mailbox{prompts=#prompts{message_menu=MessageMenu}}=Box, Call) ->
     message_menu([{play, MessageMenu}], Box, Call).
-
 message_menu(Prompt, #mailbox{keys=#keys{replay=Replay, keep=Keep,
                                          delete=Delete, return_main=ReturnMain}}=Box, Call) ->
     NoopId = audio_macro(Prompt, Call),
@@ -723,21 +726,32 @@ new_message(RecordingName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, 
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save_metadata/3 :: (NewMessage, Db, Id) -> tuple(ok, json_object()) | tuple(error, atom()) when
-      NewMessage :: json_object(),
-      Db :: binary(),
-      Id :: binary().
+-spec save_metadata/3 :: (json_object(), ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
 save_metadata(NewMessage, Db, Id) ->
     {ok, JObj} = couch_mgr:open_doc(Db, Id),
-    NewMessages=[NewMessage | wh_json:get_value([<<"messages">>], JObj, [])],
-    case couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], NewMessages, JObj)) of
-        {error, conflict} ->
-            save_metadata(NewMessage, Db, Id);
-        {ok, _}=Ok -> Ok;
-        {error, R}=E ->
-            ?LOG("error while storing voicemail metadata ~w", [R]),
-            E
+
+    Messages = wh_json:get_value([<<"messages">>], JObj, []),
+
+    case has_message_meta(wh_json:get_value(<<"call_id">>, NewMessage), Messages) of
+	true ->
+	    ?LOG("Message meta already exists in VM Messages"),
+	    {ok, JObj};
+	false ->
+	    case couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], [NewMessage | Messages], JObj)) of
+		{error, conflict} ->
+		    ?LOG("Saving resulted in a conflict, trying again"),
+		    save_metadata(NewMessage, Db, Id);
+		{ok, _}=Ok -> Ok;
+		{error, _R}=E ->
+		    ?LOG("error while storing voicemail metadata ~w", [_R]),
+		    E
+	    end
     end.
+
+-spec has_message_meta/2 :: (ne_binary(), json_objects()) -> boolean().
+has_message_meta(_, []) -> false;
+has_message_meta(NewMsgCallId, Messages) ->
+    lists:any(fun(Msg) -> wh_json:get_value(<<"call_id">>, Msg) =:= NewMsgCallId end, Messages).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -781,6 +795,12 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                          wh_json:get_value(<<"owner_id">>, JObj)
                      ,is_setup =
                          wh_json:is_true(<<"is_setup">>, JObj, false)
+		     ,max_message_count =
+			 wh_json:get_integer_value(<<"max_message_count">>, JObj, ?MAILBOX_DEFAULT_SIZE)
+		     ,message_count =
+			 length(wh_json:get_value(<<"messages">>, JObj, []))
+		     ,message_max_length =
+			 wh_json:get_integer_value(<<"message_max_length">>, JObj, ?MAILBOX_DEFAULT_MSG_MAX_LENGTH)
                      ,exists = true
                     };
         {error, R} ->
@@ -832,7 +852,7 @@ review_recording(RecordingName, #mailbox{keys=#keys{listen=Listen, save=Save, re
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording/3 :: (RecordingName, MediaId, Call) -> tuple(ok, json_object()) | tuple(error, execution_failure) when
+-spec store_recording/3 :: (RecordingName, MediaId, Call) -> {ok, json_object()} | {error, json_object()} when
       RecordingName :: binary(),
       MediaId :: binary(),
       Call :: #cf_call{}.
@@ -1100,13 +1120,13 @@ new_timestamp() ->
 %% encoded Unix epoch in the provided timezone
 %% @end
 %%--------------------------------------------------------------------
--spec get_unix_epoch/2 :: (Epoch, Timezone) -> binary() when
-      Epoch :: binary(),
-      Timezone :: binary().
+-spec get_unix_epoch/2 :: (Epoch, Timezone) -> ne_binary() when
+      Epoch :: ne_binary(),
+      Timezone :: ne_binary().
 get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(Epoch)),
     LocalDateTime = localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)),
-    wh_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - 62167219200).
+    wh_util:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1141,9 +1161,9 @@ update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, #cf_call{account_db=Db}) ->
 				  Realm = wh_json:get_value([<<"value">>, <<"sip_realm">>], Device),
 				  Command = wh_json:from_list([{<<"Notify-User">>, User}
 							       ,{<<"Notify-Realm">>, Realm}
-							       ,{<<"Messages-New">>, wh_util:to_binary(New)}
-							       ,{<<"Messages-Saved">>, wh_util:to_binary(Saved)}
-							       | wh_api:default_headers(<<>>, <<"notify">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
+							       ,{<<"Messages-New">>, New}
+							       ,{<<"Messages-Saved">>, Saved}
+							       | wh_api:default_headers(<<>>, <<"notification">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
 							      ]),
 				  ?LOG("sending mwi update to ~s@~s ~p:~p", [User, Realm, New, Saved]),
 				  {ok, Payload} = wh_api:mwi_update(Command),

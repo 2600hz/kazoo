@@ -1,0 +1,286 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_tls</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_tls</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_tls</strong> provides functions to handle a
+  TLS session.
+
+<p><b>Behaviours:</b> <a href="gen_server.html"><tt>gen_server</tt></a>.</p>
+<p><b>Authors:</b> Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2>
+  The module <strong>exmpp_tls</strong> provides functions to handle a
+  TLS session.
+<h2><a name="types">Data Types</a></h2>
+
+<h3 class="typedecl"><a name="type-tls_socket">tls_socket()</a></h3>
+<p><b>abstract datatype</b>: <tt>tls_socket()</tt></p>
+<p>TLS socket obtained with <a href="#connect-4"><code>connect/4</code></a> or <a href="#accept-4"><code>accept/4</code></a>.</p>
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#accept-4">accept/4</a></td><td>Start TLS handshake as a server.</td></tr>
+<tr><td valign="top"><a href="#close-1">close/1</a></td><td>Shutdown the TLS session and close the underlying socket.</td></tr>
+<tr><td valign="top"><a href="#connect-4">connect/4</a></td><td>Start TLS handshake as a client.</td></tr>
+<tr><td valign="top"><a href="#controlling_process-2">controlling_process/2</a></td><td>Change the controlling socket of the underlying socket.</td></tr>
+<tr><td valign="top"><a href="#get_auth_methods-0">get_auth_methods/0</a></td><td>Return the list of supported auth methods.</td></tr>
+<tr><td valign="top"><a href="#get_engine_driver-1">get_engine_driver/1</a></td><td>Return the port driver name associated to the given engine.</td></tr>
+<tr><td valign="top"><a href="#get_engine_names-0">get_engine_names/0</a></td><td>Return the list of TLS engines.</td></tr>
+<tr><td valign="top"><a href="#get_engine_names-1">get_engine_names/1</a></td><td>Return the list of TLS engines which support the given auth method.</td></tr>
+<tr><td valign="top"><a href="#get_finished-1">get_finished/1</a></td><td>Retrieve latest "Finished" message (sent out from this side).</td></tr>
+<tr><td valign="top"><a href="#get_peer_certificate-1">get_peer_certificate/1</a></td><td>Return the peer certificate if he provided one.</td></tr>
+<tr><td valign="top"><a href="#get_peer_finished-1">get_peer_finished/1</a></td><td>Retrieve latest "Finished" message (received on this side).</td></tr>
+<tr><td valign="top"><a href="#get_prefered_engine_name-1">get_prefered_engine_name/1</a></td><td>Return the name of the prefered TLS engines which support the
+  given auth method.</td></tr>
+<tr><td valign="top"><a href="#get_verify_result-1">get_verify_result/1</a></td><td>Return verify result.</td></tr>
+<tr><td valign="top"><a href="#getopts-2">getopts/2</a></td><td>Gets one or more options for a socket.</td></tr>
+<tr><td valign="top"><a href="#handshake-5">handshake/5</a></td><td></td></tr>
+<tr><td valign="top"><a href="#is_engine_available-1">is_engine_available/1</a></td><td>Tell if <code>Engine_Name</code> is available.</td></tr>
+<tr><td valign="top"><a href="#peername-1">peername/1</a></td><td>Returns the address and port for the other end of a connection.</td></tr>
+<tr><td valign="top"><a href="#quiet_shutdown-1">quiet_shutdown/1</a></td><td>Flag the TLS session as down but do not exchange "close notify".</td></tr>
+<tr><td valign="top"><a href="#recv-1">recv/1</a></td><td>Receive data over a TLS-protected connection.</td></tr>
+<tr><td valign="top"><a href="#recv-2">recv/2</a></td><td>Receive data over a TLS-protected connection.</td></tr>
+<tr><td valign="top"><a href="#recv_data-2">recv_data/2</a></td><td>Decrypt already received data.</td></tr>
+<tr><td valign="top"><a href="#register_engine-3">register_engine/3</a></td><td>Add a new TLS engine.</td></tr>
+<tr><td valign="top"><a href="#register_engine-4">register_engine/4</a></td><td>Add a new TLS engine.</td></tr>
+<tr><td valign="top"><a href="#send-2">send/2</a></td><td>Send <code>Orig_Packet</code> over a TLS-protected connection.</td></tr>
+<tr><td valign="top"><a href="#send_data-2">send_data/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#setopts-2">setopts/2</a></td><td>Sets one or more options for a socket.</td></tr>
+<tr><td valign="top"><a href="#shutdown-1">shutdown/1</a></td><td>Shutdown the TLS session.</td></tr>
+<tr><td valign="top"><a href="#shutdown-2">shutdown/2</a></td><td>Shutdown the TLS session.</td></tr>
+<tr><td valign="top"><a href="#shutdown-3">shutdown/3</a></td><td>Shutdown the TLS session.</td></tr>
+<tr><td valign="top"><a href="#sockname-1">sockname/1</a></td><td>Returns the local address and port number for a socket.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="accept-4">accept/4</a></h3>
+<div class="spec">
+<p><tt>accept(Socket_Desc, Identity, Peer_Verification, Options) -&gt; TLS_Socket</tt>
+<ul class="definitions"><li><tt>Socket_Desc = {Mod, Socket}</tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Identity = {Auth_Method, Certificate, Private_Key}</tt></li><li><tt>Auth_Method = atom()</tt></li><li><tt>Certificate = string()</tt></li><li><tt>Private_Key = string()</tt></li><li><tt>Peer_Verification = bool() | Peer_Name</tt></li><li><tt>Peer_Name = string()</tt></li><li><tt>Options = [Option]</tt></li><li><tt>Option = {engine, Engine} | {mode, Mode} | {trusted_certs, {Auth_Method, Certs}} | peer_cert_required | accept_expired_cert | accept_revoked_cert | accept_non_trusted_cert | accept_corrupted_cert</tt></li><li><tt>Engine = atom()</tt></li><li><tt>Mode = binary | list</tt></li><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li></ul></p>
+</div><p>Start TLS handshake as a server.</p>
+
+<h3 class="function"><a name="close-1">close/1</a></h3>
+<div class="spec">
+<p><tt>close(Tls_socket::TLS_Socket) -&gt; ok | {error, Reason}</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Reason = term()</tt></li></ul></p>
+</div><p>Shutdown the TLS session and close the underlying socket.</p>
+
+<h3 class="function"><a name="connect-4">connect/4</a></h3>
+<div class="spec">
+<p><tt>connect(Socket_Desc, Identity, Peer_Verification, Options) -&gt; TLS_Socket</tt>
+<ul class="definitions"><li><tt>Socket_Desc = {Mod, Socket}</tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Identity = {Auth_Method, Certificate, Private_Key} | undefined</tt></li><li><tt>Auth_Method = atom()</tt></li><li><tt>Certificate = string()</tt></li><li><tt>Private_Key = string()</tt></li><li><tt>Peer_Verification = bool() | Peer_Name</tt></li><li><tt>Peer_Name = string()</tt></li><li><tt>Options = [Option]</tt></li><li><tt>Option = {engine, Engine} | {mode, Mode} | {trusted_certs, Auth_Method, Certs} | peer_cert_required | accept_expired_cert | accept_revoked_cert | accept_non_trusted_cert | accept_corrupted_cert</tt></li><li><tt>Engine = atom()</tt></li><li><tt>Mode = binary | list</tt></li><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li></ul></p>
+</div><p>Start TLS handshake as a client.</p>
+
+<h3 class="function"><a name="controlling_process-2">controlling_process/2</a></h3>
+<div class="spec">
+<p><tt>controlling_process(Tls_socket::TLS_Socket, Pid) -&gt; ok | {error, Reason}</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Pid = pid()</tt></li><li><tt>Reason = term()</tt></li></ul></p>
+</div><p>Change the controlling socket of the underlying socket.</p>
+
+<h3 class="function"><a name="get_auth_methods-0">get_auth_methods/0</a></h3>
+<div class="spec">
+<p><tt>get_auth_methods() -&gt; [Auth_Method]</tt>
+<ul class="definitions"><li><tt>Auth_Method = atom()</tt></li></ul></p>
+</div><p>Return the list of supported auth methods.</p>
+
+<h3 class="function"><a name="get_engine_driver-1">get_engine_driver/1</a></h3>
+<div class="spec">
+<p><tt>get_engine_driver(Engine_Name) -&gt; Driver_Name</tt>
+<ul class="definitions"><li><tt>Engine_Name = atom()</tt></li><li><tt>Driver_Name = atom()</tt></li></ul></p>
+</div><p>Return the port driver name associated to the given engine.</p>
+
+<h3 class="function"><a name="get_engine_names-0">get_engine_names/0</a></h3>
+<div class="spec">
+<p><tt>get_engine_names() -&gt; [Engine_Name]</tt>
+<ul class="definitions"><li><tt>Engine_Name = atom()</tt></li></ul></p>
+</div><p>Return the list of TLS engines.</p>
+
+<h3 class="function"><a name="get_engine_names-1">get_engine_names/1</a></h3>
+<div class="spec">
+<p><tt>get_engine_names(Auth_Method) -&gt; [Engine_Name]</tt>
+<ul class="definitions"><li><tt>Auth_Method = atom()</tt></li><li><tt>Engine_Name = atom()</tt></li></ul></p>
+</div><p><p>Return the list of TLS engines which support the given auth method.</p>
+ 
+  The list is sorted from the most to the least prefered engine.</p>
+
+<h3 class="function"><a name="get_finished-1">get_finished/1</a></h3>
+<div class="spec">
+<p><tt>get_finished(Tls_socket::TLS_Socket) -&gt; Finished</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Finished = binary()</tt></li></ul></p>
+</div><p><p>Retrieve latest "Finished" message (sent out from this side).</p>
+ 
+  "Finished" message is needed for tls-unique channel binding,
+  used for example by SCRAM-SHA-1-PLUS SASL method.</p>
+
+<h3 class="function"><a name="get_peer_certificate-1">get_peer_certificate/1</a></h3>
+<div class="spec">
+<p><tt>get_peer_certificate(Tls_socket::TLS_Socket) -&gt; Certificate | undefined</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Certificate = <a href="#type-certificate">certificate()</a></tt></li><li><tt>Reason = term()</tt></li></ul></p>
+</div><p>throws <tt>{tls, peer_certificate, decode_failed, Reason}</tt></p>
+<p><p>Return the peer certificate if he provided one.</p>
+ 
+  <p>Note that a client will only send a certificate when requested by a server.  
+This means that in the server case, this function will return anything  
+only when peer verification is enabled.</p>
+ 
+  Certificate is returned as a
+  <a href="http://erlang.org/doc/apps/public_key/cert_records.html">
+  public_key certificate record</a>.</p>
+
+<h3 class="function"><a name="get_peer_finished-1">get_peer_finished/1</a></h3>
+<div class="spec">
+<p><tt>get_peer_finished(Tls_socket::TLS_Socket) -&gt; Finished</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Finished = binary()</tt></li></ul></p>
+</div><p><p>Retrieve latest "Finished" message (received on this side).</p>
+ 
+  "Finished" message is needed for tls-unique channel binding,
+  used for example by SCRAM-SHA-1-PLUS SASL method.</p>
+
+<h3 class="function"><a name="get_prefered_engine_name-1">get_prefered_engine_name/1</a></h3>
+<div class="spec">
+<p><tt>get_prefered_engine_name(Auth_Method) -&gt; [Engine_Name]</tt>
+<ul class="definitions"><li><tt>Auth_Method = atom()</tt></li><li><tt>Engine_Name = atom()</tt></li></ul></p>
+</div><p>Return the name of the prefered TLS engines which support the
+  given auth method.</p>
+
+<h3 class="function"><a name="get_verify_result-1">get_verify_result/1</a></h3>
+<div class="spec">
+<p><tt>get_verify_result(Tls_socket::TLS_Socket) -&gt; Result</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Result = integer()</tt></li></ul></p>
+</div><p>Return verify result.</p>
+
+<h3 class="function"><a name="getopts-2">getopts/2</a></h3>
+<div class="spec">
+<p><tt>getopts(Tls_socket::TLS_Socket, Options) -&gt; {ok, Option_Values} | {error, <a href="#type-posix">posix()</a>}</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Options = list()</tt></li><li><tt>Option_Values = list()</tt></li></ul></p>
+</div><p>Gets one or more options for a socket.</p>
+
+<h3 class="function"><a name="handshake-5">handshake/5</a></h3>
+<div class="spec">
+<p><tt>handshake(Mode, Socket_Desc, Identity, Peer_Verification, Options) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="is_engine_available-1">is_engine_available/1</a></h3>
+<div class="spec">
+<p><tt>is_engine_available(Engine_Name) -&gt; bool()</tt>
+<ul class="definitions"><li><tt>Engine_Name = atom()</tt></li></ul></p>
+</div><p>Tell if <code>Engine_Name</code> is available.</p>
+
+<h3 class="function"><a name="peername-1">peername/1</a></h3>
+<div class="spec">
+<p><tt>peername(Tls_socket::TLS_Socket) -&gt; {ok, {Address, Port}} | {error, <a href="#type-posix">posix()</a>}</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Address = <a href="#type-ip_address">ip_address()</a></tt></li><li><tt>Port = integer()</tt></li></ul></p>
+</div><p>Returns the address and port for the other end of a connection.</p>
+
+<h3 class="function"><a name="quiet_shutdown-1">quiet_shutdown/1</a></h3>
+<div class="spec">
+<p><tt>quiet_shutdown(Tls_socket::TLS_Socket) -&gt; Socket_Desc</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Socket_Desc = {Mod, Socket}</tt></li></ul></p>
+</div><p><p>Flag the TLS session as down but do not exchange "close notify".</p>
+ 
+  The underlying socket is NOT closed.</p>
+
+<h3 class="function"><a name="recv-1">recv/1</a></h3>
+<div class="spec">
+<p><tt>recv(TLS_Socket) -&gt; {ok, Orig_Packet} | {error, Reason}</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Orig_Packet = binary() | list()</tt></li><li><tt>Reason = term()</tt></li></ul></p>
+</div><p>Receive data over a TLS-protected connection.</p>
+
+<h3 class="function"><a name="recv-2">recv/2</a></h3>
+<div class="spec">
+<p><tt>recv(Tls_socket::TLS_Socket, Timeout) -&gt; {ok, Orig_Packet} | {error, Reason}</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Timeout = integer()</tt></li><li><tt>Orig_Packet = binary() | list()</tt></li><li><tt>Reason = term()</tt></li></ul></p>
+</div><p>Receive data over a TLS-protected connection.</p>
+
+<h3 class="function"><a name="recv_data-2">recv_data/2</a></h3>
+<div class="spec">
+<p><tt>recv_data(Tls_socket::TLS_Socket, Packet) -&gt; {ok, Orig_Packet} | {error, Reason}</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Packet = binary() | list()</tt></li><li><tt>Orig_Packet = binary() | list()</tt></li><li><tt>Reason = term()</tt></li></ul></p>
+</div><p><p>Decrypt already received data.</p>
+ 
+  This function won't read anything from the underlying socket but WILL
+  write to it.</p>
+
+<h3 class="function"><a name="register_engine-3">register_engine/3</a></h3>
+<div class="spec">
+<p><tt>register_engine(Name, Driver, Auth_Methods) -&gt; ok</tt>
+<ul class="definitions"><li><tt>Name = atom()</tt></li><li><tt>Driver = atom()</tt></li><li><tt>Auth_Mehods = [{atom(), Priority}]</tt></li><li><tt>Priority = integer()</tt></li></ul></p>
+</div><p>Add a new TLS engine.</p>
+
+<h3 class="function"><a name="register_engine-4">register_engine/4</a></h3>
+<div class="spec">
+<p><tt>register_engine(Name, Driver_Path, Driver, Auth_Methods) -&gt; ok</tt>
+<ul class="definitions"><li><tt>Name = atom()</tt></li><li><tt>Driver_Path = string()</tt></li><li><tt>Driver = atom()</tt></li><li><tt>Auth_Mehods = [{atom(), Priority}]</tt></li><li><tt>Priority = integer()</tt></li></ul></p>
+</div><p>Add a new TLS engine.</p>
+
+<h3 class="function"><a name="send-2">send/2</a></h3>
+<div class="spec">
+<p><tt>send(Tls_socket::TLS_Socket, Packet::Orig_Packet) -&gt; ok | {error, Reason}</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Orig_Packet = binary() | list()</tt></li><li><tt>Reason = term()</tt></li></ul></p>
+</div><p>Send <code>Orig_Packet</code> over a TLS-protected connection.</p>
+
+<h3 class="function"><a name="send_data-2">send_data/2</a></h3>
+<div class="spec">
+<p><tt>send_data(Tls_socket, Packet) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="setopts-2">setopts/2</a></h3>
+<div class="spec">
+<p><tt>setopts(Tls_socket::TLS_Socket, Options) -&gt; ok | {error, <a href="#type-posix">posix()</a>}</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Options = list()</tt></li></ul></p>
+</div><p>Sets one or more options for a socket.</p>
+
+<h3 class="function"><a name="shutdown-1">shutdown/1</a></h3>
+<div class="spec">
+<p><tt>shutdown(TLS_Socket) -&gt; Socket_Desc</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Socket_Desc = {Mod, Socket}</tt></li></ul></p>
+</div><p><p>Shutdown the TLS session.</p>
+ 
+  <p>Only a unidirectional shutdown is made.</p>
+ 
+  The underlying socket is NOT closed.</p>
+
+<h3 class="function"><a name="shutdown-2">shutdown/2</a></h3>
+<div class="spec">
+<p><tt>shutdown(TLS_Socket, Mode) -&gt; Socket_Desc</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Mode = unidirectional | bidirectional</tt></li><li><tt>Socket_Desc = {Mod, Socket}</tt></li></ul></p>
+</div><p><p>Shutdown the TLS session.</p>
+ 
+  <p>For bidirectional shutdown, there's no timeout for the peer's  
+"close notify".</p>
+ 
+  The underlying socket is NOT closed.</p>
+
+<h3 class="function"><a name="shutdown-3">shutdown/3</a></h3>
+<div class="spec">
+<p><tt>shutdown(Tls_socket::TLS_Socket, Mode, Timeout) -&gt; Socket_Desc</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Mode = unidirectional | bidirectional</tt></li><li><tt>Timeout = infinity | integer()</tt></li><li><tt>Socket_Desc = {Mod, Socket}</tt></li></ul></p>
+</div><p><p>Shutdown the TLS session.</p>
+ 
+  <p>For bidirectional shutdown, the peer must send his "close notify" within
+  <code>Timeout</code> milliseconds.</p>
+ 
+  <p>If the peer doesn't send its "close notify" or if the underlying socket  
+is closed, the function still succeeds.</p>
+ 
+  The underlying socket is NOT closed by this function.</p>
+
+<h3 class="function"><a name="sockname-1">sockname/1</a></h3>
+<div class="spec">
+<p><tt>sockname(Tls_socket::TLS_Socket) -&gt; {ok, {Address, Port}} | {error, <a href="#type-posix">posix()</a>}</tt>
+<ul class="definitions"><li><tt>TLS_Socket = <a href="#type-tls_socket">tls_socket()</a></tt></li><li><tt>Mod = atom()</tt></li><li><tt>Socket = term()</tt></li><li><tt>Address = <a href="#type-ip_address">ip_address()</a></tt></li><li><tt>Port = integer()</tt></li></ul></p>
+</div><p>Returns the local address and port number for a socket.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:39.</i></p>
+</body>
+</html>

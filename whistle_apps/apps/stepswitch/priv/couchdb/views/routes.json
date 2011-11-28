@@ -5,10 +5,6 @@
        "listing_by_number": {
            "map": "function(doc) { if (doc.pvt_type != 'route' || doc.pvt_deleted) return; for(var i in doc.numbers) { emit(i, doc.numbers[i]); } }"
        },
-       "listing_by_assignment": {
-           "map": "function(doc) { if (doc.pvt_type != 'route' || doc.pvt_deleted) return; for(var i in doc.numbers) { emit(i, {id: doc._id}); } }",
-           "reduce": "function(keys, values, rereduce) { var output = { \"total\": 0, \"accounts\": [] }; if (rereduce) { for (idx in values) { output.total += 1; if (values[idx].id !== undefined) { output.accounts.push(values[idx].id); } else { output.accounts.push(values[idx].accounts); }}} else { for (idx in values) { output.total += 1; output.accounts = values[idx].id; }} return output; }"
-       },
        "listing_by_account": {
            "map": "function(doc) { if (doc.pvt_type != 'route' || doc.pvt_deleted) return; var numbers = []; for(var i in doc.numbers) { numbers.push(i); } emit(doc._id, numbers); }"
        }

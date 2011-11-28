@@ -89,10 +89,15 @@ next(#cf_call{last_action=LastAction}=Call, Flow, CallStatus) ->
       Flow :: json_object(),
       Pid :: undefined | pid(),
       CallStatus :: undefined | binary().
-wait(#cf_call{amqp_q=Q, call_id=CallId}=Call, Flow, Pid, CallStatus) ->
+wait(#cf_call{amqp_q=Q, call_id=CallId, account_id=AccountId}=Call, Flow, Pid, CallStatus) ->
     receive
         {'EXIT', Pid, Reason} when Reason =/= normal ->
             ?LOG("action ~w died unexpectedly, ~p", [Pid, Reason]),
+            whapps_util:alert(<<"notice">>, ["Source: ~s(~p)~n"
+                                             ,"Alert: action died unexpectedly~n"
+                                             ,"Fault: ~p~n"
+                                             ,"~n~s"]
+                              ,[?MODULE, ?LINE, Reason, cf_util:call_info_to_string(Call)], AccountId),
             self() ! {continue, <<"_">>},
             wait(Call, Flow, Pid, CallStatus);
         {continue} ->
@@ -155,6 +160,7 @@ wait(#cf_call{amqp_q=Q, call_id=CallId}=Call, Flow, Pid, CallStatus) ->
             JObj = mochijson2:decode(Payload),
             case whapps_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"status_resp">>} ->
+                    ?LOG("received call status: ~s", [Payload]),
                     Status = wh_json:get_value(<<"Status">>, JObj),
                     is_pid(Pid) andalso Pid ! {amqp_msg, JObj},
                     wait(Call, Flow, Pid, Status);
@@ -167,17 +173,21 @@ wait(#cf_call{amqp_q=Q, call_id=CallId}=Call, Flow, Pid, CallStatus) ->
             %%   this process hangs around...
             wait(Call, Flow, Pid, CallStatus)
     after
-        120000 ->
+        60000 ->
             case CallStatus of
                 undefined ->
-                    ?LOG_SYS("no call events or control and status is unknown, shuting down"),
+                    ?LOG("no call events or control and status is unknown, shuting down"),
+                    whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
+                                                    ,"Alert: forced channel termination~n"
+                                                    ,"Fault: no call events and status unknown~n"
+                                                    ,"~n~s"]
+                                      ,[?MODULE, ?LINE, cf_util:call_info_to_string(Call)], AccountId),
                     cf_call_command:hangup(Call);
                 _ ->
-                    Command = [{<<"Call-ID">>, CallId}
-                               | wh_api:default_headers(Q, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
-                              ],
-                    {ok, Payload} = wh_api:call_status_req({struct, Command}),
-                    amqp_util:callevt_publish(CallId, Payload, status_req),
+                    ?LOG("ensuring call is active, requesting call status"),
+                    Req = [{<<"Call-ID">>, CallId}
+                           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+		    wapi_call:publish_status_req(CallId, Req),
                     wait(Call, Flow, Pid, undefined)
             end
     end.
@@ -204,8 +214,7 @@ init_amqp(#cf_call{call_id=CallId}) ->
 %% the call that is about to be processed
 %% @end
 %%-----------------------------------------------------------------------------
--spec call_info/1 :: (Call) -> ok when
-      Call :: #cf_call{}.
+-spec call_info/1 :: (#cf_call{}) -> 'ok'.
 call_info(#cf_call{account_id=AccountId, flow_id=FlowId, call_id=CallId, cid_name=CIDName, cid_number=CIDNumber
                ,request=Request, from=From, to=To, inception=Inception, authorizing_id=AuthorizingId }) ->
     put(callid, CallId),
