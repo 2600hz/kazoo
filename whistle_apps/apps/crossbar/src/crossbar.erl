@@ -141,7 +141,7 @@ init_first_account_for_reals() ->
 			      ,{<<"_id">>, DbName}
 			      ,{<<"type">>, <<"object">>}
 			     ]),
-    DbContext = cb_accounts:create_account(#cb_context{req_data=JObj, req_verb = <<"put">>}),
+    DbContext = cb_accounts:create_account(#cb_context{db_name=Db, req_data=JObj, req_verb = <<"put">>}),
 
     case couch_mgr:db_create(Db) of
         false ->
