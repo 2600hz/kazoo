@@ -361,12 +361,9 @@ hash_password(#cb_context{doc=JObj}=Context) ->
         undefined ->
             Context;
         Password ->
-            Creds = <<(wh_json:get_value(<<"username">>, JObj, <<>>))/binary, $:, Password/binary>>,
+	    {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
 
-            SHA1 = wh_util:to_binary(wh_util:to_hex(crypto:sha(Creds))),
-            MD5 = wh_util:to_binary(wh_util:to_hex(erlang:md5(Creds))),
-
-            JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
+	    JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
 					,{<<"pvt_sha1_auth">>, SHA1}
 				       ], JObj),
             Context#cb_context{doc=wh_json:delete_key(<<"password">>, JObj1)}

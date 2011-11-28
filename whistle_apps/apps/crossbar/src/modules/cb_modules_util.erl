@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cb_modules_util).
 
--export([lookup_regs/1]).
+-export([lookup_regs/1, pass_hashes/2]).
 
 -include("../../include/crossbar.hrl").
 
@@ -76,3 +76,11 @@ wait_for_reg_resp([_|Ps]=Pids, Acc) ->
 	    ?LOG("timeout for registration query"),
 	    Acc
     end.
+
+-spec pass_hashes/2 :: (ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+pass_hashes(Username, Password) ->
+    Creds = list_to_binary([Username, ":", Password]),
+    SHA1 = wh_util:to_binary(wh_util:to_hex(crypto:sha(Creds))),
+    MD5 = wh_util:to_binary(wh_util:to_hex(erlang:md5(Creds))),
+    {MD5, SHA1}.
+      
