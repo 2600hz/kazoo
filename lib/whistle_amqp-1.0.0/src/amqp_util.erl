@@ -745,7 +745,7 @@ basic_consume(Queue, Options) ->
 %%------------------------------------------------------------------------------
 basic_cancel(Queue) ->
     ?AMQP_DEBUG andalso ?LOG("cancel consume for queue ~s", [Queue]),
-    amqp_mgr:consume(#'basic.cancel'{consumer_tag = Queue}).
+    amqp_mgr:consume(#'basic.cancel'{consumer_tag = Queue, nowait = false}).
 
 %%------------------------------------------------------------------------------
 %% @public
