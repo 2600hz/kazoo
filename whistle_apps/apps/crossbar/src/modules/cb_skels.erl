@@ -263,9 +263,9 @@ validate(_, Context) ->
 -spec create/1 :: (#cb_context{}) -> #cb_context{}.
 create(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
+        {ok, []} ->
             {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
                                              {F(J, C), C}
                                      end, {JObj, Context}, ?PVT_FUNS),
@@ -292,9 +292,9 @@ read(Id, Context) ->
 -spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update(Id, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
+        {ok, []} ->
             {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
                                              {F(J, C), C}
                                      end, {JObj, Context}, ?PVT_FUNS),

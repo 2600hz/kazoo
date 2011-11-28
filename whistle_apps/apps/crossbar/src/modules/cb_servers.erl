@@ -442,9 +442,9 @@ load_server_summary(#cb_context{db_name=DbName}=Context, JObj) ->
 -spec create_server/1 :: (#cb_context{}) -> #cb_context{}.
 create_server(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, _} ->
+        {ok, _} ->
             Funs = [fun(Obj) -> wh_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, Obj) end,
                     fun(Obj) -> wh_json:set_value(<<"pvt_deploy_log">>, [], Obj) end,
                     fun(Obj) -> wh_json:set_value(<<"pvt_type">>, <<"server">>, Obj) end],
@@ -471,9 +471,9 @@ load_server(ServerId, Context) ->
 -spec update_server/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, _} ->
+        {ok, _} ->
             crossbar_doc:load_merge(ServerId, JObj, Context)
     end.
 

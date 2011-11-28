@@ -276,9 +276,9 @@ load_user_summary(Context) ->
 -spec create_user/1 :: (#cb_context{}) -> #cb_context{}.
 create_user(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
+        {ok, []} ->
             case is_unique_username(undefined, Context) of
                 true ->
                     Context#cb_context{
@@ -316,9 +316,9 @@ load_user(UserId, Context) ->
 -spec update_user/2 :: (binary(), #cb_context{}) -> #cb_context{}.
 update_user(UserId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
+        {ok, []} ->
             case is_unique_username(UserId, Context) of
                 true ->
                     crossbar_doc:load_merge(UserId, JObj, Context);

@@ -352,9 +352,9 @@ establish_c2c(C2CId, #cb_context{req_data=Req, account_id=AccountId}=Context) ->
 
 create_c2c(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-	{true, _} ->
+	{ok, _} ->
             Context#cb_context{
 	      doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:set_value(<<"history">>, [], JObj))
 	      ,resp_status=success

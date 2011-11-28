@@ -350,9 +350,9 @@ load_vmbox_summary(Context) ->
 -spec create_vmbox/1 :: (#cb_context{}) -> #cb_context{}.
 create_vmbox(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, _} ->
+        {ok, _} ->
             Context#cb_context{
 	      doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
 	      ,resp_status=success
@@ -379,9 +379,9 @@ load_vmbox(DocId, Context) ->
 -spec update_vmbox/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_vmbox(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, _} ->
+        {ok, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -457,10 +457,7 @@ load_message(DocId, MediaId, Context) ->
 %% VMId is the id for the voicemail document, containing the binary data
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_binary/3 :: (VMBoxId, VMId, Context) -> #cb_context{} when
-      VMBoxId :: binary(),
-      VMId :: binary(),
-      Context :: #cb_context{}.
+-spec load_message_binary/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 load_message_binary(VMBoxId, VMId, #cb_context{db_name=Db}=Context) ->
     {ok, VMJObj} = couch_mgr:open_doc(Db, VMId),
     [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
@@ -491,13 +488,10 @@ load_message_binary(VMBoxId, VMId, #cb_context{db_name=Db}=Context) ->
 %% DELETE the message (set folder prop to deleted)
 %% @end
 %%--------------------------------------------------------------------
--spec delete_message/3 :: (DocId, MediaId, Context) -> #cb_context{} when
-      DocId :: binary(),
-      MediaId :: binary(),
-      Context :: #cb_context{}.
+-spec delete_message/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 delete_message(DocId, MediaId, #cb_context{db_name=Db}=Context) ->
     Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
-    Messages = wh_json:get_value(<<"messages">>, Doc),
+    Messages = wh_json:get_value(<<"messages">>, Doc, []),
 
     case get_message_index(MediaId, Messages) of
 	Index when Index > 0 ->
@@ -519,9 +513,7 @@ delete_message(DocId, MediaId, #cb_context{db_name=Db}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_message_index/2 :: (MediaId, Messages) -> pos_integer() when
-      MediaId :: binary(),
-      Messages :: json_objects().
+-spec get_message_index/2 :: (ne_binary(), json_objects()) -> pos_integer().
 get_message_index(MediaId, Messages) ->
     find_index(MediaId, Messages, 1).
 
@@ -532,16 +524,11 @@ get_message_index(MediaId, Messages) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_index/3 :: (MediaId, Ms, Index) -> pos_integer() when
-      MediaId :: binary(),
-      Ms :: list(),
-      Index :: non_neg_integer().
+-spec find_index/3 :: (ne_binary(), json_objects(), pos_integer()) -> pos_integer().
 find_index(MediaId, [Message | Ms], Index) ->
     case wh_json:get_value(<<"media_id">>, Message) =:= MediaId of
-	true ->
-	    Index;
-	false ->
-	    find_index(MediaId, Ms, Index + 1)
+	true -> Index;
+	false -> find_index(MediaId, Ms, Index + 1)
     end.
 
 %%--------------------------------------------------------------------
@@ -554,9 +541,9 @@ find_index(MediaId, [Message | Ms], Index) ->
 -spec update_message/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 update_message(DocId, MediaId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, _} ->
+        {ok, _} ->
 	    update_message1(DocId, MediaId, Context)
     end.
 

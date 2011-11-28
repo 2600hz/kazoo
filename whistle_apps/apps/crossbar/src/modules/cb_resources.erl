@@ -275,9 +275,9 @@ load_resource_summary(Context) ->
 -spec create_resource/1 :: (#cb_context{}) -> #cb_context{}.
 create_resource(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, _} ->
+        {ok, _} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)
                 ,resp_status=success
@@ -304,9 +304,9 @@ load_resource(DocId, Context) ->
 -spec update_resource/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_resource(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, _} ->
+        {ok, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 

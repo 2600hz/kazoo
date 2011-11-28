@@ -268,9 +268,9 @@ validate(_, Context) ->
 -spec create_ts_user/1 :: (#cb_context{}) -> #cb_context{}.
 create_ts_user(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
+        {ok, []} ->
             JObj1 = wh_json:set_value(<<"_id">>, list_to_binary([<<"user_">>, wh_json:get_binary_value(<<"userID">>, JObj,<<>>)]), JObj),
             Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"ts_user">>, JObj1)
                                ,resp_status=success
@@ -305,9 +305,9 @@ read_ts_user(TSUserId, Context) ->
 -spec update_ts_user/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_ts_user(TSUserId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
+        {ok, []} ->
             crossbar_doc:load_merge(<<"user_", TSUserId/binary>>, JObj, Context)
     end.
 

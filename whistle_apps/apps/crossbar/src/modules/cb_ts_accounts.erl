@@ -106,17 +106,17 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
                  ,{RD, #cb_context{auth_doc=AuthDoc, req_nouns=Nouns, req_verb=Verb, req_id=ReqId}=Context}}, State) ->
     AccountId = wh_json:get_value(<<"account_id">>, AuthDoc, <<"0000000000">>),
 
-    case props:get_value(<<"ts_accounts">>, Nouns) of
-        [] when Verb =:= <<"put">> ->
-            ?LOG(ReqId, "authorizing request to create a new trunkstore doc", []),
-            Pid ! {binding_result, true, {RD, Context}};
-        [AccountId] ->
+    _ = case props:get_value(<<"ts_accounts">>, Nouns) of
+	    [] when Verb =:= <<"put">> ->
+		?LOG(ReqId, "authorizing request to create a new trunkstore doc", []),
+		Pid ! {binding_result, true, {RD, Context}};
+	    [AccountId] ->
             ?LOG(ReqId, "authorizing request to trunkstore doc ~s", [AccountId]),
-            Pid ! {binding_result, true, {RD, Context}};
-        _Args ->
-	    ?LOG(ReqId, "unhandled args for ts_accounts: ~p", [_Args]),
-            Pid ! {binding_result, false, {RD, Context}}
-    end,
+		Pid ! {binding_result, true, {RD, Context}};
+	    _Args ->
+		?LOG(ReqId, "unhandled args for ts_accounts: ~p", [_Args]),
+		Pid ! {binding_result, false, {RD, Context}}
+	end,
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.ts_accounts">>, Payload}, State) ->
@@ -301,9 +301,9 @@ validate(_, Context) ->
 -spec create_ts_account/1 :: (#cb_context{}) -> #cb_context{}.
 create_ts_account(#cb_context{req_data=JObj, account_id=AccountId}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
+        {ok, []} ->
             Updaters = [fun(J) -> wh_json:set_value(<<"type">>, <<"sys_info">>, J) end
                         ,fun(J) -> wh_json:set_value(<<"_id">>, AccountId, J) end
                         ,fun(J) -> wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, J) end
@@ -333,9 +333,9 @@ read_ts_account(TSAccountId, Context) ->
 -spec update_ts_account/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_ts_account(TSAccountId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
+        {ok, []} ->
             crossbar_doc:load_merge(TSAccountId, wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj), Context)
     end.
 
