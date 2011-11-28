@@ -319,7 +319,7 @@ load_device_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
 create_device(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, Fields, wh_json:new()), Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {ok, _} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
@@ -348,7 +348,7 @@ load_device(DocId, Context) ->
 update_device(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, Fields, wh_json:new()), Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {ok, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.

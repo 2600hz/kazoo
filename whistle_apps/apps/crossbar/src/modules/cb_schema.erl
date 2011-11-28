@@ -1,15 +1,15 @@
-%%%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
+%%%-------------------------------------------------------------------
+%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Resources module
 %%%
-%%% Handle client requests for resource documents
+%%%
+%%% Handle client requests for skel documents
 %%%
 %%% @end
-%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 26 Nov 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cb_resources).
+-module(cb_schema).
 
 -behaviour(gen_server).
 
@@ -23,7 +23,8 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
--define(CB_LIST, <<"resources/crossbar_listing">>).
+-define(PVT_FUNS, [fun add_pvt_type/2]).
+-define(SCHEMA_DB, <<"crossbar_schemas">>).
 
 %%%===================================================================
 %%% API
@@ -98,53 +99,32 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.resources">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{req_nouns=[{<<"schema">>,_}], req_id=ReqId}=Context}}, State) ->
+    ?LOG(ReqId, "authorizing request to fetch schema(s)", []),
+    Pid ! {binding_result, true, {RD, Context}},
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.schema">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.resources">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.schema">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.resources">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.schema">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.resources">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+		  Context1 = validate(Params, Context),
+		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.resources">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.resources">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
-    {noreply, State};
-
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
@@ -192,12 +172,13 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  no_return()).
+-spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.resources">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.resources">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.resources">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.resources">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.schema">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.schema">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.schema">>),
+    crossbar_bindings:bind(<<"v1_resource.execute.#.schema">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -208,11 +189,11 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: ([ne_binary(),...] | []) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
-    {true, ['GET', 'PUT']};
+    {true, ['GET']};
 allowed_methods([_]) ->
-    {true, ['GET', 'POST', 'DELETE']};
+    {true, ['GET']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -224,7 +205,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: ([ne_binary(),...] | []) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -241,74 +222,34 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/2 :: ([ne_binary(),...] | [], #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_resource_summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_resource(Context);
-validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_resource(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_resource(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_resource(DocId, Context);
+    summary(Context#cb_context{db_name = ?SCHEMA_DB});
+validate([Id], #cb_context{req_verb = <<"get">>}=Context) ->
+    read(Id, Context#cb_context{db_name = ?SCHEMA_DB});
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
-%% account summary.
+%% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_resource_summary/1 :: (#cb_context{}) -> #cb_context{}.
-load_resource_summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+-spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+read(Id, Context) ->
+    crossbar_doc:load(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new resource document with the data provided, if it is valid
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec create_resource/1 :: (#cb_context{}) -> #cb_context{}.
-create_resource(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {false, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, _} ->
-            Context#cb_context{
-                 doc=wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)
-                ,resp_status=success
-            }
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a resource document from the database
-%% @end
-%%--------------------------------------------------------------------
--spec load_resource/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-load_resource(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing resource document with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update_resource/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_resource(DocId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {false, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, _} ->
-            crossbar_doc:load_merge(DocId, JObj, Context)
-    end.
+-spec summary/1 :: (#cb_context{}) -> #cb_context{}.
+summary(Context) ->
+    crossbar_doc:load_docs(Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -318,15 +259,7 @@ update_resource(DocId, #cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, resource).
+    case wh_json:get_value(<<"id">>, JObj) of
+	<<"_design/", _/binary>> -> Acc;
+	ID -> [ID | Acc]
+    end.

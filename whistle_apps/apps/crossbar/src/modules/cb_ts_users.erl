@@ -265,14 +265,14 @@ validate(_, Context) ->
 %% Create a new ts_user document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_ts_user/1 :: (Context :: #cb_context{}) -> #cb_context{}).
-create_ts_user(#cb_context{req_data=JObj1}=Context) ->
-    case is_valid_doc(JObj1) of
+-spec create_ts_user/1 :: (#cb_context{}) -> #cb_context{}.
+create_ts_user(#cb_context{req_data=JObj}=Context) ->
+    case is_valid_doc(JObj) of
         {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {true, []} ->
-            JObj2 = wh_json:set_value(<<"_id">>, <<"user_", (wh_json:get_value(<<"userID">>, JObj1))/binary>>, JObj1),
-            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"ts_user">>, JObj2)
+            JObj1 = wh_json:set_value(<<"_id">>, list_to_binary([<<"user_">>, wh_json:get_binary_value(<<"userID">>, JObj,<<>>)]), JObj),
+            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"ts_user">>, JObj1)
                                ,resp_status=success
                               }
     end.
@@ -283,7 +283,7 @@ create_ts_user(#cb_context{req_data=JObj1}=Context) ->
 %% Load a ts_user document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(read_ts_user/2 :: (TSUserId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec read_ts_user/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 read_ts_user(TSUserId, Context) ->
     case crossbar_doc:load(<<"user_", TSUserId/binary>>, Context) of
         #cb_context{resp_status=success, resp_data=Data1}=Context1 ->
@@ -302,11 +302,11 @@ read_ts_user(TSUserId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_ts_user/2 :: (TSUserId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_ts_user/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_ts_user(TSUserId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {true, []} ->
             crossbar_doc:load_merge(<<"user_", TSUserId/binary>>, JObj, Context)
     end.
@@ -318,7 +318,7 @@ update_ts_user(TSUserId, #cb_context{req_data=JObj}=Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(read_ts_user_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec read_ts_user_summary/1 :: (#cb_context{}) -> #cb_context{}.
 read_ts_user_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -328,7 +328,7 @@ read_ts_user_summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -339,10 +339,6 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (JObj) -> {boolean(), [binary(),...] | []} when
-      JObj :: json_object().
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
-    case wh_json:get_value(<<"email">>, JObj) of
-	undefined -> {false, [<<"email">>]};
-	_ -> {true, []}
-    end.
+    crossbar_schema:do_validate(JObj, ts_user).

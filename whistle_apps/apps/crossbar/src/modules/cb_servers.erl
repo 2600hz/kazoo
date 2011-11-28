@@ -439,12 +439,11 @@ load_server_summary(#cb_context{db_name=DbName}=Context, JObj) ->
 %% Create a new server document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create_server/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec create_server/1 :: (#cb_context{}) -> #cb_context{}.
 create_server(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {true, _} ->
             Funs = [fun(Obj) -> wh_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, Obj) end,
                     fun(Obj) -> wh_json:set_value(<<"pvt_deploy_log">>, [], Obj) end,
@@ -458,9 +457,7 @@ create_server(#cb_context{req_data=JObj}=Context) ->
 %% Load a server document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_server/2 :: (ServerId, Context) -> #cb_context{} when
-      ServerId :: binary(),
-      Context :: #cb_context{}.
+-spec load_server/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_server(ServerId, Context) ->
     crossbar_doc:load(ServerId, Context).
 
@@ -471,13 +468,11 @@ load_server(ServerId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update_server/2 :: (ServerId, Context) -> #cb_context{} when
-      ServerId :: binary(),
-      Context :: #cb_context{}.
+-spec update_server/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {true, _} ->
             crossbar_doc:load_merge(ServerId, JObj, Context)
     end.
@@ -488,9 +483,7 @@ update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (Doc, Acc) -> json_objects() when
-      Doc :: json_object(),
-      Acc :: json_objects().
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -501,11 +494,9 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (JObj) -> {boolean(), [binary(),...]} when
-      JObj :: json_object().
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
-    {(wh_json:get_value(<<"hostname">>, JObj) =/= undefined), [<<"hostname">>]}.
-
+    crossbar_schema:do_validate(JObj, server).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -320,7 +320,7 @@ create_limits(RD, Context) ->
 validate_create(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, Fields, wh_json:new()), Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {ok, _} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj)
@@ -339,7 +339,7 @@ validate_create(#cb_context{req_data=JObj}=Context) ->
 update_limits(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, Fields, wh_json:new()), Context);
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {ok, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
@@ -352,4 +352,4 @@ update_limits(DocId, #cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
-     crossbar_schema:do_validate(JObj, limits).
+    crossbar_schema:do_validate(JObj, limits).

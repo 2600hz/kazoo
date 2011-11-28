@@ -374,27 +374,23 @@ load_account_summary(AccountId, Context) ->
 %% Create a new account document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create_account/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
--spec create_account/2 :: (Context, Parrent) -> #cb_context{} when
-      Context :: #cb_context{},
-      Parrent :: undefined | binary().
-
+-spec create_account/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create_account/2 :: (#cb_context{}, 'undefined' | ne_binary()) -> #cb_context{}.
 create_account(Context) ->
     create_account(Context, undefined).
 
-create_account(#cb_context{req_data=JObj}=Context, ParrentId) ->
+create_account(#cb_context{req_data=JObj}=Context, ParentId) ->
     case is_valid_doc(JObj) of
         {errors, Fields} ->
 	    ?LOG_SYS("Invalid JSON failed on fields ~p", [Fields]),
-            crossbar_util:response_invalid_data(Fields, Context);
+            crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {ok, _} ->
 	    ?LOG_SYS("JSON is valid"),
             case is_unique_realm(undefined, Context) of
                 true ->
 		    ?LOG_SYS("Realm ~s is valid and unique", [wh_json:get_value(<<"realm">>, JObj)]),
                     Context#cb_context{
-                      doc=set_private_fields(JObj, Context, ParrentId)
+                      doc=set_private_fields(JObj, Context, ParentId)
                       ,resp_status=success
                      };
                 false ->
