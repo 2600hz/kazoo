@@ -329,8 +329,8 @@ validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account_summary([], Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create_account(Context);
-validate([ParrentId], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_account(Context, ParrentId);
+validate([ParentId], #cb_context{req_verb = <<"put">>}=Context) ->
+    create_account(Context, ParentId);
 validate([AccountId], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account(AccountId, Context);
 validate([AccountId], #cb_context{req_verb = <<"post">>}=Context) ->
@@ -614,10 +614,10 @@ set_private_fields(JObj0, Context, undefined) ->
     lists:foldl(fun(Fun, JObj1) ->
                         Fun(JObj1, Context)
                 end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, fun add_pvt_tree/2]);
-set_private_fields(JObj0, Context, ParrentId) ->
-    case is_binary(ParrentId) andalso couch_mgr:open_doc(whapps_util:get_db_name(ParrentId, encoded), ParrentId) of
-        {ok, ParrentJObj} ->
-            Tree = wh_json:get_value(<<"pvt_tree">>, ParrentJObj, []) ++ [ParrentId],
+set_private_fields(JObj0, Context, ParentId) ->
+    case is_binary(ParentId) andalso couch_mgr:open_doc(whapps_util:get_db_name(ParentId, encoded), ParentId) of
+        {ok, ParentJObj} ->
+            Tree = wh_json:get_value(<<"pvt_tree">>, ParentJObj, []) ++ [ParentId],
             AddPvtTree = fun(JObj, _) -> wh_json:set_value(<<"pvt_tree">>, Tree, JObj) end,
             lists:foldl(fun(Fun, JObj1) ->
                                 Fun(JObj1, Context)
@@ -715,8 +715,8 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
 -spec is_unique_realm/2 :: (ne_binary() | 'undefined', #cb_context{}) -> boolean().
 is_unique_realm(AccountId, #cb_context{req_data=JObj}=Context) ->
     is_unique_realm(AccountId, Context, wh_json:get_value(<<"realm">>, JObj)).
-is_unique_realm(_, _, undefined) -> false;
 
+is_unique_realm(_, _, undefined) -> false;
 is_unique_realm(undefined, _, Realm) ->
     %% unique if Realm doesn't exist in agg DB
     case couch_mgr:get_results(?ACCOUNTS_AGG_DB, ?AGG_VIEW_REALM, [{<<"key">>, Realm}]) of
