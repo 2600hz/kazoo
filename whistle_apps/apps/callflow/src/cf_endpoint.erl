@@ -10,7 +10,7 @@
 
 -include("callflow.hrl").
 
--export([build/2, build/3]).
+-export([build/2, build/3, build/4]).
 
 -define(CONFIRM_FILE, <<"/opt/freeswitch/sounds/en/us/callie/ivr/8000/ivr-accept_reject_voicemail.wav">>).
 
@@ -34,40 +34,34 @@
       EndpointId :: binary(),
       Call :: #cf_call{},
       Properties :: 'undefined' | json_object().
+-spec build/4 :: (EndpointId, Call, Properties, RejectSelf) -> {'ok', json_objects()} | {'error', build_errors()} when
+      EndpointId :: binary(),
+      Call :: #cf_call{},
+      Properties :: 'undefined' | json_object(),
+      RejectSelf :: boolean().
 
 build(EndpointId, Call) ->
     build(EndpointId, Call, ?EMPTY_JSON_OBJECT).
 
+build(undefined, _Call, _Properties) ->
+    {error, endpoint_id_undefined};
 build(EndpointId, Call, undefined) ->
     build(EndpointId, Call, ?EMPTY_JSON_OBJECT);
-build(EndpointId, #cf_call{authorizing_id=AuthId, inception_during_transfer=IDT}=Call, Properties) when is_binary(EndpointId) ->
-    case wh_util:is_false(wh_json:get_value(<<"can_call_self">>, Properties, false))
-        andalso EndpointId =:= AuthId andalso (not IDT) of
-        true ->
-            ?LOG("call is from endpoint ~s, skipping", [EndpointId]),
-            {error, called_self};
-        false ->
-            get_endpoints(EndpointId, Call, Properties)
-    end.
+build(EndpointId, Call, Properties) ->
+    build(EndpointId, Call, Properties, wh_json:is_false(<<"can_call_self">>, Properties)).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Collects all the appropriate endpoints to reach this endpoint ID
-%% @end
-%%--------------------------------------------------------------------
--spec get_endpoints/3 :: (EndpointId, Call, Properties) -> {'ok', json_objects()} | {'error', 'db_not_reachable' | 'not_found'} when
-      EndpointId :: binary(),
-      Call :: #cf_call{},
-      Properties :: json_object().
-get_endpoints(EndpointId, #cf_call{account_db=Db}=Call, Properties) ->
-    Fwd = cf_attributes:call_forward(EndpointId, Call),
+build(EndpointId, #cf_call{authorizing_id=EndpointId}, _Properties, true) ->
+        ?LOG("call is from endpoint ~s, skipping", [EndpointId]),
+        {error, called_self};
+build(EndpointId, #cf_call{account_db=Db}=Call, Properties, false) ->
     case couch_mgr:open_doc(Db, EndpointId) of
         {ok, Endpoint} ->
+            OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
+            Fwd = cf_attributes:call_forward(EndpointId, OwnerId, Call),
             case {Fwd, wh_json:is_false(<<"substitute">>, Fwd)} of
                 %% if the call forward object is undefined then there is no fwd'n
                 {undefined, _} ->
-                    {ok, [create_endpoint(Endpoint, Call, Properties)]};
+                    {ok, [create_sip_endpoint(Endpoint, Call, Properties)]};
                 %% if the call forwarding was not undefined (see above) and substitute is
                 %% not explicitly set to false then only ring the fwd'd number
                 {_, false} ->
@@ -76,10 +70,10 @@ get_endpoints(EndpointId, #cf_call{account_db=Db}=Call, Properties) ->
                 %% explicitly set to false then ring the fwd'd number and the device
                 {_, true} ->
                     {ok, [create_call_fwd_endpoint(Endpoint, Call, Properties, Fwd)
-                          ,create_endpoint(Endpoint, Call, Properties)]}
+                          ,create_sip_endpoint(Endpoint, Call, Properties)]}
             end;
-        {error, _Reason}=E ->
-            ?LOG("failed to load endpoint ~s, ~w", [EndpointId, _Reason]),
+        {error, R}=E ->
+            ?LOG("failed to load endpoint ~s, ~p", [EndpointId, R]),
             E
     end.
 
@@ -91,11 +85,11 @@ get_endpoints(EndpointId, #cf_call{account_db=Db}=Call, Properties) ->
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoint/3 :: (Endpoint, Call, Properties) -> json_object() when
+-spec create_sip_endpoint/3 :: (Endpoint, Call, Properties) -> json_object() when
       Endpoint :: json_object(),
       Call :: #cf_call{},
       Properties :: 'undefined' | json_object().
-create_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Inception}=Call, Properties) ->
+create_sip_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Inception}=Call, Properties) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
     OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
     ?LOG("creating endpoint for ~s", [EndpointId]),
@@ -103,30 +97,57 @@ create_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Inception}=Ca
     SIP = wh_json:get_value(<<"sip">>, Endpoint, ?EMPTY_JSON_OBJECT),
     Media = wh_json:get_value(<<"media">>, Endpoint, ?EMPTY_JSON_OBJECT),
 
-    case Inception of
-        <<"off-net">> ->
-            {CalleeNum, CalleeName} =
-                cf_attributes:callee_id(<<"external">>, EndpointId, OwnerId, Call),
-            SIPHeaders =
-                merge_sip_headers(
-                  wh_json:get_value([<<"ringtones">>, <<"external">>], Endpoint)
-                  ,wh_json:get_value(<<"custom_sip_headers">>, SIP));
-        _ ->
-            {CalleeNum, CalleeName} =
-                cf_attributes:callee_id(<<"internal">>, EndpointId, OwnerId, Call),
-            SIPHeaders =
-                merge_sip_headers(
-                  wh_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint)
-                  ,wh_json:get_value(<<"custom_sip_headers">>, SIP))
-    end,
+    HeaderFuns = [fun(J) -> 
+                           case wh_json:get_value(<<"custom_sip_headers">>, SIP) of
+                               undefined -> J;
+                               CustomHeaders ->
+                                   wh_json:merge_jobjs(CustomHeaders, J)
+                           end
+                  end
+                  ,fun(J) when Inception =:= <<"off-net">> ->
+                           case wh_json:get_value([<<"ringtones">>, <<"external">>], Endpoint) of
+                                undefined -> J;
+                                Ringtone ->
+                                    wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
+                           end
+                  end
+                  ,fun(J) when Inception =/= <<"off-net">> ->
+                           case wh_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint) of
+                                undefined -> J;
+                                Ringtone ->
+                                    wh_json:set_value(<<"Alert-Info">>, Ringtone, J)
+                           end
+                  end
+                 ],
 
-    CCVs = case wh_json:is_true(<<"fax_enabled">>, Endpoint) of
-               false -> [{<<"Endpoint-ID">>, EndpointId}
-                         ,{<<"Owner-ID">>, OwnerId}];
-               true -> [{<<"Fax-Enabled">>, <<"true">>}
-                        ,{<<"Endpoint-ID">>, EndpointId}
-                        ,{<<"Owner-ID">>, OwnerId}]
-           end,
+   CCVFuns = [fun(J) ->
+                        case wh_json:is_true(<<"fax_enabled">>, Endpoint) of
+                            false -> J;
+                            true -> wh_json:set_value(<<"Fax-Enabled">>, <<"true">>, J)
+                        end
+              end
+              ,fun(J) -> 
+                        case EndpointId of
+                            undefined -> J;
+                            _ ->
+                                wh_json:set_value(<<"Endpoint-ID">>, EndpointId, J) 
+                        end
+              end
+              ,fun(J) -> 
+                        case OwnerId of
+                            undefined -> J;
+                            _ -> 
+                                wh_json:set_value(<<"Owner-ID">>, OwnerId, J)
+                        end
+              end
+             ],
+
+   {CalleeNum, CalleeName} = case Inception of
+                                  <<"off-net">> ->
+                                      cf_attributes:callee_id(<<"external">>, EndpointId, OwnerId, Call);
+                                  _ ->
+                                      cf_attributes:callee_id(<<"internal">>, EndpointId, OwnerId, Call)
+                             end,
 
     Prop = [{<<"Invite-Format">>, wh_json:get_value(<<"invite_format">>, SIP, <<"username">>)}
             ,{<<"To-User">>, wh_json:get_value(<<"username">>, SIP)}
@@ -140,9 +161,10 @@ create_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Inception}=Ca
             ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_binary_value(<<"progress_timeout">>, Media)}
             ,{<<"Endpoint-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
             ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
-            ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, Media)}
-            ,{<<"SIP-Headers">>, SIPHeaders} % converted to json_object() in merge_headers/2
-            ,{<<"Custom-Channel-Vars">>, wh_json:from_list([ KV || {_, V}=KV <- CCVs, V =/= undefined ])}
+            ,{<<"Hold-Media">>, cf_attributes:media_attributes(<<"hold_id">>, EndpointId, OwnerId, Call)}
+            ,{<<"Codecs">>, cf_attributes:media_attributes(<<"codecs">>, EndpointId, OwnerId, Call)}
+            ,{<<"SIP-Headers">>, wh_json:from_list(lists:foldr(fun(F, J) -> F(J) end, ?EMPTY_JSON_OBJECT, HeaderFuns))}
+            ,{<<"Custom-Channel-Vars">>, wh_json:from_list(lists:foldr(fun(F, J) -> F(J) end, ?EMPTY_JSON_OBJECT, CCVFuns))}
            ],
     wh_json:from_list([ KV || {_, V}=KV <- Prop, V =/= undefined ]).
 
@@ -167,6 +189,7 @@ create_call_fwd_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Ince
 			 ,Properties, CallFwd) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
     OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
+
     ?LOG("creating call forward endpoint for ~s", [EndpointId]),
     ?LOG("call forwarding number set to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
 
@@ -180,28 +203,48 @@ create_call_fwd_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Ince
 
     SIP = wh_json:get_value(<<"sip">>, Endpoint, ?EMPTY_JSON_OBJECT),
 
-    CCV1 = case wh_util:is_true(wh_json:get_value(<<"keep_caller_id">>, CallFwd)) of
-               true ->
-                   ?LOG("call forwarding configured to keep the caller id"),
-                   [{<<"Call-Forward">>, <<"true">>}
-                    ,{<<"Retain-CID">>, <<"true">>}];
-               false ->
-                   ?LOG("call forwarding configured use the caller id of the endpoint"),
-                   [{<<"Call-Forward">>, <<"true">>}]
-           end,
+    CCVFuns = [fun(J) ->
+                        case wh_json:is_true(<<"keep_caller_id">>, CallFwd) of
+                            false -> J;
+                            true -> 
+                                ?LOG("call forwarding configured to keep the caller id"),
+                                wh_json:set_value(<<"Retain-CID">>, <<"true">>, J)
+                        end
+              end
+              ,fun(J) -> 
+                        case EndpointId of
+                            undefined -> J;
+                            _ ->
+                                wh_json:set_value(<<"Endpoint-ID">>, EndpointId, J) 
+                        end
+              end
+              ,fun(J) -> 
+                        case OwnerId of
+                            undefined -> J;
+                            _ -> 
+                                wh_json:set_value(<<"Owner-ID">>, OwnerId, J)
+                        end
+              end
+              ,fun(J) ->
+                  wh_json:set_value(<<"Call-Forward">>, <<"true">>, J)
+              end
+              ,fun(J) -> 
+                        case wh_json:is_true(<<"require_keypress">>, CallFwd) of
+                            undefined -> J;
+                            _ ->
+                                ?LOG("call forwarding configured to require key press"),
+                                Confirm = [{<<"Confirm-Key">>, <<"1">>}
+                                           ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
+                                           ,{<<"Confirm-File">>, ?CONFIRM_FILE}],
+                                wh_json:merge_jobjs(wh_json:from_list(Confirm), J)
+                        end
+              end
+             ],
 
-    CCV2 = case wh_util:is_true(wh_json:get_value(<<"require_keypress">>, CallFwd)) of
-               true ->
-                   ?LOG("call forwarding configured to require key press"),
-                   IgnoreEarlyMedia = <<"true">>,
-                   [{<<"Confirm-Key">>, <<"1">>}
-                    ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
-                    ,{<<"Confirm-File">>, ?CONFIRM_FILE}] ++ CCV1;
-               false ->
-                   IgnoreEarlyMedia
-                       = wh_json:get_binary_boolean(<<"ignore_early_media">>, CallFwd),
-                   CCV1
-           end,
+    IgnoreEarlyMedia = case wh_json:is_true(<<"require_keypress">>, CallFwd) of
+                           true -> <<"true">>;
+                           false -> wh_json:get_binary_boolean(<<"ignore_early_media">>, CallFwd)
+                       end,
 
     Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"To-DID">>, wh_json:get_value(<<"number">>, Endpoint, ReqUser)}
@@ -214,28 +257,8 @@ create_call_fwd_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Ince
             ,{<<"Bypass-Media">>, <<"false">>}
             ,{<<"Endpoint-Leg-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
             ,{<<"Endpoint-Leg-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
+            ,{<<"Hold-Media">>, cf_attributes:media_attributes(<<"hold_id">>, EndpointId, OwnerId, Call)}
             ,{<<"SIP-Headers">>, wh_json:get_value(<<"custom_sip_headers">>, SIP)}
-            ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Authorizing-ID">>, EndpointId}
-							    ,{<<"Owner-ID">>, OwnerId}
-							    | CCV2])}
+            ,{<<"Custom-Channel-Vars">>, wh_json:from_list(lists:foldr(fun(F, J) -> F(J) end, ?EMPTY_JSON_OBJECT, CCVFuns))}
            ],
     wh_json:from_list([ KV || {_, V}=KV <- Prop, V =/= undefined ]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Creates the sip headers json object for the whistle API with by
-%% merging the 'ringtones' (alert-info) with any custom sip headers
-%% @end
-%%--------------------------------------------------------------------
--spec merge_sip_headers/2 :: (AlertInfo, CustomHeaders) -> 'undefined' | json_object() when
-      AlertInfo :: 'undefined' | json_object(),
-      CustomHeaders :: 'undefined' | json_object().
-merge_sip_headers(undefined, undefined) ->
-    undefined;
-merge_sip_headers(AlertInfo, undefined) ->
-    wh_json:set_value(<<"Alert-Info">>, AlertInfo, wh_json:new());
-merge_sip_headers(undefined, CustomHeaders) ->
-    CustomHeaders;
-merge_sip_headers(AlertInfo, JObj) ->
-    wh_json:set_value(<<"Alert-Info">>, AlertInfo, JObj).
