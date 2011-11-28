@@ -136,10 +136,12 @@ init_first_account_for_reals() ->
 
     Db = whapps_util:get_db_name(DbName, encoded),
 
-    DbDoc = wh_json:from_list([{<<"name">>, <<"Master Account">>}
-			     ,{<<"realm">>, wh_util:to_binary(net_adm:localhost())}
-			     ,{<<"_id">>, DbName}
-			    ]),
+    JObj = wh_json:from_list([{<<"name">>, <<"Master Account">>}
+			      ,{<<"realm">>, wh_util:to_binary(net_adm:localhost())}
+			      ,{<<"_id">>, DbName}
+			      ,{<<"type">>, <<"object">>}
+			     ]),
+    DbContext = cb_accounts:create_account(#cb_context{req_data=JObj, req_verb = <<"put">>}),
 
     case couch_mgr:db_create(Db) of
         false ->
@@ -149,8 +151,8 @@ init_first_account_for_reals() ->
 		_ = crossbar_bindings:map(<<"account.created">>, Db),
 		_ = couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
 		_ = couch_mgr:revise_doc_from_file(Db, crossbar, ?MAINTENANCE_VIEW_FILE),
-		#cb_context{resp_status=success} = crossbar_doc:save(#cb_context{db_name=Db, doc=DbDoc, req_verb = <<"put">>}),
-		#cb_context{resp_status=success} = crossbar_doc:save(#cb_context{db_name = ?ACCOUNTS_AGG_DB, doc=DbDoc, req_verb = <<"put">>}),
+		#cb_context{resp_status=success} = crossbar_doc:save(DbContext#cb_context{db_name = Db, req_verb = <<"put">>}),
+		#cb_context{resp_status=success} = crossbar_doc:save(DbContext#cb_context{db_name = ?ACCOUNTS_AGG_DB, req_verb = <<"put">>}),
 		create_init_user(Db)
 	    catch
 		error:{badmatch, #cb_context{resp_status=Status,resp_error_msg=Msg,resp_error_code=Code,resp_data=JTerm}} ->
@@ -165,7 +167,6 @@ init_first_account_for_reals() ->
 		    {error, user_create_failed}
 	    end
     end.
-
 
 revert_init(Db, DbName) ->
     _ = couch_mgr:del_doc(?ACCOUNTS_AGG_DB, DbName),
@@ -183,6 +184,7 @@ create_init_user(Db) ->
 			      ,{<<"verified">>, true}
 			      ,{<<"pvt_md5_auth">>, MD5}
 			      ,{<<"pvt_sha1_auth">>, SHA1}
+			      ,{<<"type">>, <<"object">>}
 			     ]),
 
     #cb_context{resp_status=success, doc=UserDoc}=Context = cb_users:create_user(#cb_context{db_name=Db, req_data=User, req_verb = <<"put">>}),

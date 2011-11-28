@@ -50,19 +50,20 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
 
     %% Body = wrq:req_body(RD),
     #cb_context{req_json=ReqJSON}=Context1 = case wrq:get_req_header("Content-Type", RD) of
-		   "multipart/form-data" ++ _ ->
-		       extract_files_and_params(RD, Context#cb_context{req_id=ReqId});
-		   "application/x-www-form-urlencoded" ++ _ ->
-		       extract_files_and_params(RD, Context#cb_context{req_id=ReqId});
-		   "application/json" ++ _ ->
-		       Context#cb_context{req_json=get_json_body(RD), req_id=ReqId};
-		   "application/x-json" ++ _ ->
-		       Context#cb_context{req_json=get_json_body(RD), req_id=ReqId};
-		   %% _ when Body =:= undefined; Body =:= <<>> ->
-                   %%     Context#cb_context{req_json=?EMPTY_JSON_OBJECT};
-		   _ ->
-		       extract_file(RD, Context#cb_context{req_id=ReqId})
-	       end,
+						 "multipart/form-data" ++ _ ->
+						     extract_files_and_params(RD, Context#cb_context{req_id=ReqId});
+						 "application/x-www-form-urlencoded" ++ _ ->
+						     extract_files_and_params(RD, Context#cb_context{req_id=ReqId});
+						 "application/json" ++ _ ->
+						     Context#cb_context{req_json=get_json_body(RD), req_id=ReqId};
+						 "application/x-json" ++ _ ->
+						     Context#cb_context{req_json=get_json_body(RD), req_id=ReqId};
+						 %% _ when Body =:= undefined; Body =:= <<>> ->
+						 %%     Context#cb_context{req_json=?EMPTY_JSON_OBJECT};
+						 _CT ->
+						     ?LOG("Unknown content-type: ~s", [_CT]),
+						     extract_file(RD, Context#cb_context{req_id=ReqId})
+					     end,
 
     Verb = get_http_verb(RD, ReqJSON),
     ?LOG("method using for request: ~s", [Verb]),
