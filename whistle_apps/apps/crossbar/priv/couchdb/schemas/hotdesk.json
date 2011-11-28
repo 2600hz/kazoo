@@ -1,7 +1,6 @@
 {
    "_id": "hotdesk",
    "id": "http://json-schema.org/draft-03/schema#",
-   "type": "object",
    "description": "",
    "properties": {
        "id": {
