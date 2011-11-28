@@ -239,8 +239,7 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec save/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec save/1 :: (#cb_context{}) -> #cb_context{}.
 save(#cb_context{db_name = <<>>}=Context) ->
     ?LOG("DB undefined, cannot save"),
     crossbar_util:response_db_missing(Context);

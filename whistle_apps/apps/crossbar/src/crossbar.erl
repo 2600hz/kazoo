@@ -12,7 +12,7 @@
 
 -export([start_link/0, stop/0]).
 
--export([refresh/0, refresh/1]).
+-export([refresh/0, refresh/1, init_first_account/0]).
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 
@@ -62,20 +62,19 @@ start_deps() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh/0 :: () -> 'started'.
--spec refresh/1 :: (Account) -> 'ok' when
-      Account :: binary() | string().
-
+-spec refresh/1 :: (ne_binary() | nonempty_string()) -> 'ok'.
 refresh() ->
-    spawn(fun() ->
-                  refresh(?SIP_AGG_DB),
-                  refresh(?SCHEMAS_DB),
-                  refresh(?ACCOUNTS_AGG_DB),
-                  lists:foreach(fun(AccountDb) ->
-                                        timer:sleep(2000),
-                                        refresh(AccountDb)
-                                end, whapps_util:get_all_accounts())
-          end),
+    spawn(fun do_refresh/0),
     started.
+
+do_refresh() ->
+    refresh(?SIP_AGG_DB),
+    refresh(?SCHEMAS_DB),
+    refresh(?ACCOUNTS_AGG_DB),
+    lists:foreach(fun(AccountDb) ->
+			  timer:sleep(2000),
+			  refresh(AccountDb)
+		  end, whapps_util:get_all_accounts()).
 
 refresh(Account) when not is_binary(Account) ->
     refresh(wh_util:to_binary(Account));
@@ -118,3 +117,52 @@ aggregate_device(Device) ->
             couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Device))
     end,
     ok.
+
+init_first_account() ->
+    refresh(?ACCOUNTS_AGG_DB),
+    case couch_mgr:all_docs(?ACCOUNTS_AGG_DB) of
+	{ok, Docs} ->
+	    case [AcctDoc || AcctDoc <- Docs, erlang:binary_part(wh_json:get_value(<<"id">>, AcctDoc, <<>>), 0, 8) =/= <<"_design/">>] of
+		[] -> init_first_account_for_reals();
+		_ -> {error, accounts_exist}
+	    end;
+	E ->
+	    E
+    end.
+		    
+init_first_account_for_reals() ->
+    DbName = wh_util:to_binary(couch_mgr:get_uuid()),
+    Db = whapps_util:get_db_name(DbName, encoded),
+
+    DbDoc = wh_json:from_list([{<<"name">>, <<"Master Account">>}
+			     ,{<<"realm">>, wh_util:to_binary(net_adm:localhost())}
+			     ,{<<"_id">>, DbName}
+			    ]),
+
+    case couch_mgr:db_create(Db) of
+        false ->
+	    {error, db_create_failed};
+        true ->
+	    _ = crossbar_bindings:map(<<"account.created">>, Db),
+	    couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
+	    couch_mgr:revise_doc_from_file(Db, crossbar, ?MAINTENANCE_VIEW_FILE),
+	    crossbar_doc:save(#cb_context{db_name=Db, doc=DbDoc, req_verb = <<"put">>}),
+	    crossbar_doc:save(#cb_context{db_name = ?ACCOUNTS_AGG_DB, doc=DbDoc, req_verb = <<"put">>}),
+	    create_init_user(Db)
+    end.
+
+create_init_user(Db) ->
+    {ok, Hostname} = inet:gethostname(),
+    Username = list_to_binary([Hostname, "-admin"]),
+
+    Pass = wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(6))),
+
+    {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Pass),
+
+    User = wh_json:from_list([{<<"username">>, Username}
+			      ,{<<"verified">>, true}
+			      ,{<<"pvt_md5_auth">>, MD5}
+			      ,{<<"pvt_sha1_auth">>, SHA1}
+			     ]),
+    #cb_context{resp_status=success} = crossbar_doc:save(cb_users:create_user(#cb_context{db_name=Db, req_data=User, req_verb = <<"put">>})),
+    {ok, {Username, Pass}}.
