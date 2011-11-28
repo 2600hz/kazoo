@@ -132,6 +132,8 @@ init_first_account() ->
 		    
 init_first_account_for_reals() ->
     DbName = wh_util:to_binary(couch_mgr:get_uuid()),
+    put(callid, DbName),
+
     Db = whapps_util:get_db_name(DbName, encoded),
 
     DbDoc = wh_json:from_list([{<<"name">>, <<"Master Account">>}
@@ -143,12 +145,21 @@ init_first_account_for_reals() ->
         false ->
 	    {error, db_create_failed};
         true ->
-	    _ = crossbar_bindings:map(<<"account.created">>, Db),
-	    couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
-	    couch_mgr:revise_doc_from_file(Db, crossbar, ?MAINTENANCE_VIEW_FILE),
-	    crossbar_doc:save(#cb_context{db_name=Db, doc=DbDoc, req_verb = <<"put">>}),
-	    crossbar_doc:save(#cb_context{db_name = ?ACCOUNTS_AGG_DB, doc=DbDoc, req_verb = <<"put">>}),
-	    create_init_user(Db)
+	    try
+		_ = crossbar_bindings:map(<<"account.created">>, Db),
+		_ = couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
+		_ = couch_mgr:revise_doc_from_file(Db, crossbar, ?MAINTENANCE_VIEW_FILE),
+		#cb_context{resp_status=success} = crossbar_doc:save(#cb_context{db_name=Db, doc=DbDoc, req_verb = <<"put">>}),
+		#cb_context{resp_status=success} = crossbar_doc:save(#cb_context{db_name = ?ACCOUNTS_AGG_DB, doc=DbDoc, req_verb = <<"put">>}),
+		create_init_user(Db)
+	    catch
+		_T:_R ->
+		    ?LOG("Failed to create user: ~p:~p", [_T, _R]),
+		    ?LOG("Reverting changes"),
+		    _ = couch_mgr:del_doc(?ACCOUNTS_AGG_DB, DbName),
+		    _ = couch_mgr:db_delete(Db),
+		    {error, user_create_failed}
+	    end
     end.
 
 create_init_user(Db) ->
@@ -164,5 +175,9 @@ create_init_user(Db) ->
 			      ,{<<"pvt_md5_auth">>, MD5}
 			      ,{<<"pvt_sha1_auth">>, SHA1}
 			     ]),
-    #cb_context{resp_status=success} = crossbar_doc:save(cb_users:create_user(#cb_context{db_name=Db, req_data=User, req_verb = <<"put">>})),
+
+    #cb_context{resp_status=success, doc=UserDoc}=Context = cb_users:create_user(#cb_context{db_name=Db, req_data=User, req_verb = <<"put">>}),
+    ?LOG("Saving ~p", [UserDoc]),
+
+    #cb_context{resp_status=success} = crossbar_doc:save(Context),
     {ok, {Username, Pass}}.

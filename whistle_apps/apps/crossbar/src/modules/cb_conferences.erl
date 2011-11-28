@@ -293,9 +293,9 @@ load_conference_summary(Context) ->
 -spec create_conference/1 :: (#cb_context{}) -> #cb_context{}.
 create_conference(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, _} ->
+        {ok, _} ->
             Context#cb_context{
 	      doc=wh_json:set_value(<<"pvt_type">>, <<"conference">>, JObj)
 	      ,resp_status=success
@@ -322,9 +322,9 @@ load_conference(DocId, Context) ->
 -spec update_conference/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_conference(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
+        {ok, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 

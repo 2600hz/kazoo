@@ -278,9 +278,9 @@ load_callflow_summary(Context) ->
 -spec create_callflow/1 :: (#cb_context{}) -> #cb_context{}.
 create_callflow(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
+        {ok, []} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"callflow">>, JObj)
                 ,resp_status=success
@@ -313,9 +313,9 @@ load_callflow(DocId, Context) ->
 -spec update_callflow/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_callflow(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
+        {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {true, []} ->
+        {ok, []} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
