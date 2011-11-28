@@ -151,8 +151,8 @@ init_first_account_for_reals() ->
 		_ = crossbar_bindings:map(<<"account.created">>, Db),
 		_ = couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
 		_ = couch_mgr:revise_doc_from_file(Db, crossbar, ?MAINTENANCE_VIEW_FILE),
-		#cb_context{resp_status=success} = crossbar_doc:save(DbContext#cb_context{db_name = Db, req_verb = <<"put">>}),
-		#cb_context{resp_status=success} = crossbar_doc:save(DbContext#cb_context{db_name = ?ACCOUNTS_AGG_DB, req_verb = <<"put">>}),
+		#cb_context{resp_status=success, doc=AcctDoc} = crossbar_doc:save(DbContext#cb_context{db_name = Db, req_verb = <<"put">>}),
+		{ok, _} = couch_mgr:save_doc(?ACCOUNTS_AGG_DB, wh_json:delete_key(<<"_rev">>, AcctDoc)),
 		create_init_user(Db)
 	    catch
 		error:{badmatch, #cb_context{resp_status=Status,resp_error_msg=Msg,resp_error_code=Code,resp_data=JTerm}} ->
