@@ -8,6 +8,9 @@
        "caller_id_options": {
            "map": "function(doc) { if (!doc.caller_id_options || doc.pvt_deleted) return; emit(doc._id, doc.caller_id_options); }"
        },
+       "media_options": {
+           "map": "function(doc) { if (!doc.media || doc.pvt_deleted) return; emit(doc._id, doc.media); }"
+       },
        "call_forward": {
            "map": "function(doc) { if (!doc.call_forward.enabled || doc.pvt_deleted) return; emit(doc._id, doc.call_forward); }"
        },

@@ -892,7 +892,7 @@ respond_bridged_to_resource(BridgeResp, JObj) ->
             ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, BridgeResp)}
             ,{<<"Timestamp">>, wh_json:get_value(<<"Timestamp">>, BridgeResp)}
             ,{<<"Channel-Call-State">>, wh_json:get_value(<<"Channel-Call-State">>, BridgeResp)}
-            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+            | wh_api:default_headers(Q, <<"resource">>, <<"offnet_resp">>, ?APP_NAME, ?APP_VERSION)],
     wapi_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 %%--------------------------------------------------------------------

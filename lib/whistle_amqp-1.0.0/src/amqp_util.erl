@@ -272,6 +272,9 @@ conference_publish(Payload, service, ConfId, Options) ->
       Payload :: iolist() | ne_binary(),
       ContentType :: ne_binary(),
       Prop :: proplist().
+
+basic_publish(_Exchange, Queue, _Payload) when not is_binary(Queue) ->
+    {error, invalid_queue_name};
 basic_publish(Exchange, Queue, Payload) ->
     basic_publish(Exchange, Queue, Payload, ?DEFAULT_CONTENT_TYPE).
 basic_publish(Exchange, Queue, Payload, ContentType) ->
@@ -505,6 +508,8 @@ delete_monitor_queue(Queue) ->
 queue_delete(Queue) ->
     queue_delete(Queue, []).
 
+queue_delete(Queue, _Prop) when not is_binary(Queue) ->
+    {error, invalid_queue_name};
 queue_delete(Queue, Prop) ->
     QD = #'queue.delete'{
       queue=Queue
@@ -628,6 +633,8 @@ bind_q_to_conference(Queue, events, ConfId) ->
       Routing :: binary(),
       Exchange :: binary(),
       Options :: proplist().
+bind_q_to_exchange(Queue, _Routing, _Exchange) when not is_binary(Queue) ->
+    {error, invalid_queue_name};
 bind_q_to_exchange(Queue, Routing, Exchange) ->
     bind_q_to_exchange(Queue, Routing, Exchange, []).
 bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
@@ -695,6 +702,8 @@ unbind_q_from_targeted(Queue) ->
 unbind_q_from_whapps(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_WHAPPS).
 
+unbind_q_from_exchange(Queue, _Routing, _Exchange) when not is_binary(Queue) ->
+    {error, invalid_queue_name};
 unbind_q_from_exchange(Queue, Routing, Exchange) ->
     QU = #'queue.unbind'{
       queue = Queue
@@ -720,6 +729,8 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
 basic_consume(Queue) ->
     basic_consume(Queue, []).
 
+basic_consume(Queue, _Options) when not is_binary(Queue) ->
+    {error, invalid_queue_name};
 basic_consume(Queue, Options) ->
     BC = #'basic.consume'{
       queue = Queue
@@ -751,7 +762,7 @@ basic_consume(Queue, Options) ->
 %%------------------------------------------------------------------------------
 basic_cancel(Queue) ->
     ?AMQP_DEBUG andalso ?LOG("cancel consume for queue ~s", [Queue]),
-    amqp_mgr:consume(#'basic.cancel'{consumer_tag = Queue}).
+    amqp_mgr:consume(#'basic.cancel'{consumer_tag = Queue, nowait = false}).
 
 %%------------------------------------------------------------------------------
 %% @public
