@@ -145,8 +145,13 @@ get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
 -spec get_channel_vars/2 :: ({binary(), binary() | json_object()}, [binary(),...] | []) -> [binary(),...] | [].
 get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
-    Custom = wh_json:to_proplist(JObj),
-    lists:foldl(fun(KV, Vars0) -> get_channel_vars(KV, Vars0) end, Vars, Custom);
+    lists:foldl(fun({K, V}, Acc) ->
+                        case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
+                            false -> [list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K)
+                                                      ,"='", wh_util:to_list(V), "'"]) | Acc];
+                            {_, Prefix} -> [list_to_binary([Prefix, "='", wh_util:to_list(V), "'"]) | Acc]
+                        end
+                end, Vars, wh_json:to_proplist(JObj));
 
 get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
     SIPHeaders = wh_json:to_proplist(SIPJObj),
