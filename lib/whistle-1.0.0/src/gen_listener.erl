@@ -72,7 +72,7 @@ behaviour_info(_) ->
 
 -record(state, {
 	  queue = <<>> :: binary()
-         ,is_consuming = false :: boolean()
+         ,is_consuming = 'false' :: boolean()
 	 ,responders = [] :: responders() %% { {EvtCat, EvtName}, Module }
          ,bindings = [] :: bindings() %% authentication | {authentication, [{key, value},...]}
          ,params = [] :: proplist()
@@ -84,8 +84,7 @@ behaviour_info(_) ->
 -define(TIMEOUT_RETRY_CONN, 1000).
 
 %% API functions for requesting data from the gen_listener
--spec queue_name/1 :: (Srv) -> {'ok', binary()} | {'error', atom()} when
-      Srv :: atom() | pid().
+-spec queue_name/1 :: (pid() | atom()) -> {'ok', binary()} | {'error', atom()}.
 queue_name(Srv) ->
     gen_server:call(Srv, queue_name).
 
@@ -93,92 +92,65 @@ responders(Srv) ->
     gen_server:call(Srv, responders).
 
 %% API functions that mirror gen_server:call,cast,reply
--spec call/2 :: (Name, Request) -> term() when
-      Name :: atom() | pid(),
-      Request :: term().
+-spec call/2 :: (pid() | atom(), term()) -> term().
 call(Name, Request) ->
     gen_server:call(Name, Request).
 
--spec call/3 :: (Name, Request, Timeout) -> term() when
-      Name :: atom() | pid(),
-      Request :: term(),
-      Timeout :: 'infinity' | non_neg_integer().
+-spec call/3 :: (pid() | atom(), term(), 'infinity' | non_neg_integer()) -> term().
 call(Name, Request, Timeout) ->
     gen_server:call(Name, Request, Timeout).
 
--spec cast/2 :: (Name, Request) -> 'ok' when
-      Name :: atom() | pid(),
-      Request :: term().
+-spec cast/2 :: (pid() | atom(), term()) -> 'ok'.
 cast(Name, Request) ->
     gen_server:cast(Name, Request).
 
--spec reply/2 :: (From, Msg) -> no_return() when
-      From :: {pid(), reference()},
-      Msg :: term().
+-spec reply/2 :: ({pid(), reference()}, term()) -> no_return().
 reply(From, Msg) ->
     gen_server:reply(From, Msg).
 
 %% Starting the gen_server
--spec start_link/3 :: (Module, Params, InitArgs) -> startlink_ret() when
-      Module :: atom(),
-      Params :: start_params(),
-      InitArgs :: term().
+-spec start_link/3 :: (atom(), start_params(), term()) -> startlink_ret().
 start_link(Module, Params, InitArgs) ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
 
--spec stop/1 :: (Srv) -> 'ok' when
-      Srv :: atom() | pid().
+-spec stop/1 :: (pid() | atom()) -> 'ok'.
 stop(Srv) when is_atom(Srv) ->
     stop(whereis(Srv));
 stop(Srv) when is_pid(Srv) ->
     gen_server:cast(Srv, stop).
 
--spec add_responder/3 :: (Srv, Responder, Key) -> 'ok' when
-      Srv :: atom() | pid(),
-      Responder :: atom() | {atom(), atom()},
-      Key :: {binary(), binary()} | [{binary(), binary()},...].
+-type responder_callback_mod() :: atom() | {atom(), atom()}.
+-type responder_callback_mapping() :: {ne_binary(), ne_binary()}.
+-type responder_callback_mappings() :: [responder_callback_mapping(),...] | [].
+
+-spec add_responder/3 :: (pid() | atom(), responder_callback_mod(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
 add_responder(Srv, Responder, Key) when not is_list(Key) ->
     add_responder(Srv, Responder, [Key]);
 add_responder(Srv, Responder, [{_,_}|_] = Keys) ->
     gen_server:cast(Srv, {add_responder, Responder, Keys}).
 
--spec rm_responder/2 :: (Srv, Responder) -> 'ok' when
-      Srv :: atom() | pid(),
-      Responder :: atom() | {atom(), atom()}.
--spec rm_responder/3 :: (Srv, Responder, Key) -> 'ok' when
-      Srv :: atom() | pid(),
-      Responder :: atom(),
-      Key :: [{binary(), binary()},...] | []. %% empty list removes all
+-spec rm_responder/2 :: (pid() | atom(), responder_callback_mod()) -> 'ok'.
+-spec rm_responder/3 :: (pid() | atom(), responder_callback_mod(), responder_callback_mappings()) -> 'ok'.
 rm_responder(Srv, Responder) ->
-    rm_responder(Srv, Responder, []).
+    rm_responder(Srv, Responder, []).  %% empty list removes all
 rm_responder(Srv, Responder, {_,_}=Key) ->
     rm_responder(Srv, Responder, [Key]);
 rm_responder(Srv, Responder, Keys) ->
     gen_server:cast(Srv, {rm_responder, Responder, Keys}).
 
--spec add_binding/2 :: (Srv, Binding) -> 'ok' when
-      Srv :: atom() | pid(),
-      Binding :: binding().
+-spec add_binding/2 :: (pid() | atom(), binding()) -> 'ok'.
 add_binding(Srv, {Binding, Props}) ->
     gen_server:cast(Srv, {add_binding, Binding, Props}).
 
--spec add_binding/3 :: (Srv, Binding, Props) -> 'ok' when
-      Srv :: atom() | pid(),
-      Binding :: queue_bindings:bind_types(),
-      Props :: proplist().
+-spec add_binding/3 :: (pid() | atom(), binding(), proplist()) -> 'ok'.
 add_binding(Srv, Binding, Props) ->
     gen_server:cast(Srv, {add_binding, Binding, Props}).
 
--spec rm_binding/2 :: (Srv, Binding) -> 'ok' when
-      Srv :: atom() | pid(),
-      Binding :: atom().
+-spec rm_binding/2 :: (pid() | atom(), binding()) -> 'ok'.
 rm_binding(Srv, Binding) ->
     gen_server:cast(Srv, {rm_binding, Binding}).
 
--spec rm_binding/3 :: (Srv, Binding, Props) -> 'ok' when
-      Srv :: atom() | pid(),
-      Binding :: atom(),
-      Props :: proplist().
+-spec rm_binding/3 :: (pid() | atom(), binding(), proplist()) -> 'ok'.
 rm_binding(Srv, Binding, []) ->
     gen_server:cast(Srv, {rm_binding, Binding});
 rm_binding(Srv, Binding, Props) ->
@@ -187,8 +159,7 @@ rm_binding(Srv, Binding, Props) ->
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
--spec init/1 :: (Args) -> {'ok', #state{}, 'hibernate'} when
-      Args :: [atom() | proplist(),...].
+-spec init/1 :: ([atom() | proplist(),...]) -> {'ok', #state{}, 'hibernate'}.
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
 
