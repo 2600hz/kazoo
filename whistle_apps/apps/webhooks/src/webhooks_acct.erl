@@ -70,6 +70,7 @@ start_link(AcctID, Webhooks) ->
 %% @end
 %%--------------------------------------------------------------------
 init([AcctID, Webhooks]) ->
+    gen_listener:cast(self(), start_bindings),
     {ok, #state{acctdb=AcctID
 		,webhooks=lists:foldl(fun(Hook, Ord) ->
 					      orddict:update(wh_json:get_value(<<"bind_event">>, Hook)
