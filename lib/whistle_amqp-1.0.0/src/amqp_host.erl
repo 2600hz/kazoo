@@ -177,6 +177,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 		{C,R,T} -> % channel, channel ref, ticket
 		    ?LOG("Consuming on ch: ~p for proc: ~p", [C, FromPid]),
 		    FromRef = erlang:monitor(process, FromPid),
+                    amqp_gen_consumer:register_default_consumer(C, self()),
 		    gen_server:reply(From, {C, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)}),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
 		closing ->
@@ -427,7 +428,6 @@ handle_info({#'basic.return'{}, #amqp_msg{}}=ReturnMsg, #state{return_handlers=R
     {noreply, State};
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
