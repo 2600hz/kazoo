@@ -34,7 +34,7 @@
 -define(SERVER, ?MODULE). 
 
 -record(state, {acctdb = 'undefined' :: 'undefined' | ne_binary()
-	       ,webhooks = [] :: json_objects()
+	       ,webhooks = [] :: orddict:orddict() % {bind_event, [webhookJObj,...]}
 	       }).
 
 %%%===================================================================
@@ -123,8 +123,10 @@ handle_cast(_Msg, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-handle_event(_JObj, _State) ->
-    {reply, [{server, self()}]}.
+handle_event(JObj, #state{webhooks=Webhooks}) ->
+    EvtName = wh_json:get_value(<<"Event-Name">>, JObj),
+    Hooks = orddict:fetch(EvtName, Webhooks),
+    {reply, [{server, self()}, {hooks, Hooks}]}.
 
 %%--------------------------------------------------------------------
 %% @private

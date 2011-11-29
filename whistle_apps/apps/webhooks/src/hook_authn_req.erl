@@ -21,7 +21,60 @@ init() ->
     'ok'.
 
 add_binding(Srv) ->
+    gen_listener:add_binding(Srv, [{authn_req, []}]), % add AMQP bindings
+    gen_listener:add_responder(Srv, ?MODULE, [{<<"directory">>, <<"authn_req">>}]), % register callbacks
     'ok'.
 
 handle_req(JObj, Props) ->
-    'ok'.
+    wh_util:put_callid(JObj),
+    Hooks = props:get_value(hooks, Props), %% list of callbacks to call for the request
+
+    Q = wh_json:get_value(<<"Server-ID">>, JObj),
+    Self = self(),
+    Reqs = [spawn_monitor(fun() -> call_webhook(Self, Hook, JObj) end) || Hook <- Hooks],
+    wait_for_resps(Reqs, Q).
+
+-spec wait_for_resps/2 :: ([{pid(), reference()},...] | [], ne_binary()) -> 'ok'.
+wait_for_resps([], _) -> ok;
+wait_for_resps(Reqs, Q) ->
+    receive
+	{ok, Resp} ->
+	    ?LOG("Authn resp recv: ~p", [Resp]),
+	    wapi_authn:publish_resp(Q, Resp),
+	    wait_for_resps(Reqs, Q);
+	{'DOWN', Ref, process, Pid, Reason} ->
+	    ?LOG("Pid ~p down: ~p", [Pid, Reason]),
+	    wait_for_resps(lists:keydelete(Ref, 2, Reqs), Q)
+    end.
+
+call_webhook(Parent, Hook, JObj) ->
+    wh_util:put_callid(JObj),
+    Uri = wh_json:get_value(<<"callback_uri">>, Hook),
+    Method = get_method_atom(wh_json:get_binary_value(<<"http_method">>, Hook, <<"post">>)),
+
+    ?LOG("Sending json to ~s using method ~s", [Uri, Method]),
+
+    Retries = wh_json:get_integer_value(<<"retries">>, Hook, 3),
+
+    try_send_req(Uri, Method, Parent, JObj, Retries).
+
+-spec try_send_req/5 :: (ne_binary(), 'put' | 'post' | 'get', pid(), json_object(), non_neg_integer()) -> no_return().
+try_send_req(_, _, _, _, R) when R =< 0 -> ?LOG("Retries exceeded");
+try_send_req(Uri, Method, Parent, JObj, Retries) ->
+    case ibrowse:send_req(wh_util:to_list(Uri)
+			  ,[{"content-type", "application/json"}
+			    ,{"accept", "application/json"}
+			   ]
+			  ,Method, wh_json:encode(JObj)) of
+	{ok, Status, _ResponseHeaders, ResponseBody} ->
+	    ?LOG("Recv status ~s: ~s", [Status, ResponseBody]),
+	    Parent ! {ok, wh_json:decode(ResponseBody)};
+	{error, Reason} ->
+	    ?LOG("Request failed: ~p", [Reason]),
+	    try_send_req(Uri, Method, Parent, JObj, Retries-1)
+    end.
+
+-spec get_method_atom/1 :: (ne_binary()) -> 'put' | 'post' | 'get'.
+get_method_atom(<<"put">>) -> put;
+get_method_atom(<<"post">>) -> post;
+get_method_atom(<<"get">>) -> get.
