@@ -70,7 +70,13 @@ start_link(AcctID, Webhooks) ->
 %% @end
 %%--------------------------------------------------------------------
 init([AcctID, Webhooks]) ->
-    {ok, #state{acctdb=AcctID, webhooks=Webhooks}}.
+    {ok, #state{acctdb=AcctID
+		,webhooks=lists:foldl(fun(Hook, Ord) ->
+					      orddict:update(wh_json:get_value(<<"bind_event">>, Hook)
+							     ,fun(Old) -> [Hook | Old] end
+							     ,[Hook], Ord)
+				      end, orddict:new(), Webhooks)
+	       }}.
 
 %%--------------------------------------------------------------------
 %% @private
