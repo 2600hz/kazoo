@@ -21,6 +21,8 @@
 %%--------------------------------------------------------------------
 -spec filter_on_query_string/3 :: (ne_binary(), ne_binary(), proplist()) -> json_objects().
 filter_on_query_string(DbName, View, QueryParams) ->
+    ?LOG("Filtering on the following query string params"),
+    [?LOG("~s : ~s", [K, V]) || {K, V} <- QueryParams],
     filter_on_query_string(DbName, View, QueryParams, []).
 
 -spec filter_on_query_string/4 :: (ne_binary(), ne_binary(), proplist(), proplist()) -> json_objects().
