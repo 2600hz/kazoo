@@ -361,10 +361,10 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
         false -> {'error', <<"set failed to execute as JObj did not validate">>};
         true ->
             ChannelVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
-	    _ = [ set(Node, UUID, get_fs_kv(K, V)) || {K, V} <- ChannelVars],
+	    _ = [ set(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- ChannelVars],
 
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
-	    _ = [ export(Node, UUID, get_fs_kv(K, V)) || {K, V} <- CallVars],
+	    _ = [ export(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- CallVars],
 
             {<<"set">>, noop}
     end;
@@ -407,8 +407,12 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %% set channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_kv/2 :: (binary(), binary()) -> binary().
-get_fs_kv(Key, Val) ->
+-spec get_fs_kv/3 :: (ne_binary(), ne_binary(), ne_binary()) -> binary().
+get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
+    list_to_binary(["hold_music='"
+                    ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID))
+                    ,"'"]);
+get_fs_kv(Key, Val, _) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
 	false ->
 	    list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "=", wh_util:to_list(Val)]);
