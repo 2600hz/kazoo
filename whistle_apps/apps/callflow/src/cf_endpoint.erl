@@ -12,8 +12,6 @@
 
 -export([build/2, build/3, build/4]).
 
--define(CONFIRM_FILE, <<"/opt/freeswitch/sounds/en/us/callie/ivr/8000/ivr-accept_reject_voicemail.wav">>).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -103,9 +101,9 @@ create_sip_endpoint(Endpoint, #cf_call{request_user=RUser}=Call, Properties) ->
             ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_binary_value([<<"media">>, <<"progress_timeout">>], Endpoint)}
             ,{<<"Endpoint-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
             ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
-            ,{<<"Hold-Media">>, cf_attributes:media_attributes(Endpoint, <<"hold_id">>, Call)}
-            ,{<<"Presence-ID">>, get_presence_id(Endpoint, Call)}
+            ,{<<"Presence-ID">>, cf_util:get_presence_id(Endpoint, Call)}
             ,{<<"Codecs">>, cf_attributes:media_attributes(Endpoint, <<"codecs">>, Call)}
+            ,{<<"Hold-Media">>, cf_util:get_hold_media(Endpoint, Call)}
             ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
             ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
            ],
@@ -151,10 +149,10 @@ create_call_fwd_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Ince
             ,{<<"Callee-ID-Name">>, CalleeName}
             ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
             ,{<<"Bypass-Media">>, <<"false">>}
-            ,{<<"Presence-ID">>, get_presence_id(Endpoint, Call)}
+            ,{<<"Presence-ID">>, cf_util:get_presence_id(Endpoint, Call)}
             ,{<<"Endpoint-Leg-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
             ,{<<"Endpoint-Leg-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
-            ,{<<"Hold-Media">>, cf_attributes:media_attributes(Endpoint, <<"hold_id">>, Call)}
+            ,{<<"Hold-Media">>, cf_util:get_hold_media(Endpoint, Call)}
             ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
             ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallFwd)}
            ],
@@ -228,11 +226,18 @@ generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
                         end
                 end
                ,fun(J) ->
+                        case wh_json:get_value(<<"pvt_account_id">>, Endpoint) of
+                            undefined ->
+                                wh_json:set_value(<<"Account-ID">>, AccountId, J);
+                            PvtAccountId ->
+                                wh_json:set_value(<<"Account-ID">>, PvtAccountId, J)
+                        end
+                end
+               ,fun(J) ->
                         case CallFwd of
                             undefined -> J;
                             _ ->
-                                wh_json:set_value(<<"Call-Forward">>, <<"true">>
-                                                      ,wh_json:set_value(<<"Account-ID">>, AccountId, J))
+                                wh_json:set_value(<<"Call-Forward">>, <<"true">>, J)
                         end
                 end
                ,fun(J) ->
@@ -254,14 +259,3 @@ generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
                end
               ],
     lists:foldr(fun(F, J) -> F(J) end, ?EMPTY_JSON_OBJECT, CCVFuns).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will return the precense id for the endpoint
-%% @end
-%%--------------------------------------------------------------------
--spec get_presence_id/2 :: (json_object(), #cf_call{}) -> ne_binary().
-get_presence_id(Endpoint, #cf_call{request_user=RUser, request_realm=RRealm}) ->
-    <<(wh_json:get_value([<<"sip">>, <<"username">>], Endpoint, RUser))/binary
-      ,$@, (wh_json:get_value([<<"sip">>, <<"realm">>], Endpoint, RRealm))/binary>>.

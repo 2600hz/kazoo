@@ -27,7 +27,7 @@
 -define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
 						    ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
 						    ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-                                                    ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>
+                                                    ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>
                                                     ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
                                                     ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>, <<"Presence-ID">>
                                                     ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>

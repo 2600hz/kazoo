@@ -111,22 +111,20 @@ callee_id(Endpoint, #cf_call{inception=Inception}=Call) ->
             callee_id(Endpoint, <<"internal">>, Call)
     end.
 
-callee_id(Endpoint, Type, #cf_call{account_db=Db}=Call) when is_binary(Endpoint) ->
+callee_id(Endpoint, Type, #cf_call{account_db=Db, request_user=RUser}=Call) when is_binary(Endpoint) ->
     case couch_mgr:open_doc(Db, Endpoint) of
         {ok, JObj} ->
             callee_id(JObj, Type, Call);
         {error, R} ->
             ?LOG("unable to load endpoint ~s for callee id: ~p", [Endpoint, R]),
-            {undefined, undefined}
+            {RUser, <<"">>}
     end;
-callee_id(Endpoint, Type, #cf_call{request_user=RUser}=Call) ->
+callee_id(Endpoint, Type, Call) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
     OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
-    callee_id(EndpointId, OwnerId, Type
-              ,Call#cf_call{request_realm=wh_json:get_value(<<"name">>, Endpoint, RUser)}).
+    callee_id(EndpointId, OwnerId, Type, Call).
 
-callee_id(EndpointId, OwnerId, Type, #cf_call{account_id=AccountId, request_user=RUser
-                                              ,request_realm=RRealm}=Call) ->
+callee_id(EndpointId, OwnerId, Type, #cf_call{account_id=AccountId, request_user=RUser}=Call) ->
     Ids = [begin ?LOG("looking for callee id type ~s on doc ~s", [Type, Id]), Id end
            || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
     Attributes = fetch_attributes(caller_id, 3600, Call),
@@ -135,10 +133,9 @@ callee_id(EndpointId, OwnerId, Type, #cf_call{account_id=AccountId, request_user
                   search_attributes(<<"default">>, [AccountId], Attributes);
               Value -> Value
           end,
-    CIDNumber = wh_json:get_value(<<"number">>, CID, RUser),
-    CIDName = wh_json:get_value(<<"name">>, CID, RRealm),
-    ?LOG("using callee id ~s '~s'", [CIDNumber, CIDName]),
-    {CIDNumber, CIDName}.
+    CIDName = wh_json:get_value(<<"name">>, CID, <<"">>),
+    ?LOG("using callee id ~s '~s'", [RUser, CIDName]),
+    {RUser, CIDName}.
 
 %%-----------------------------------------------------------------------------
 %% @public

@@ -12,6 +12,7 @@
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
 -export([fs_log/3, put_callid/1]).
+-export([media_path/2, media_path/3]).
 
 -include("ecallmgr.hrl").
 
@@ -147,3 +148,40 @@ put_callid(JObj) ->
 	undefined -> put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>));
 	CallID -> put(callid, CallID)
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec media_path/2 :: (MediaName, UUID) -> binary() when
+      MediaName :: binary(),
+      UUID :: binary().
+-spec media_path/3 :: (MediaName, Type, UUID) -> binary() when
+      MediaName :: binary(),
+      Type :: 'extant' | 'new',
+      UUID :: binary().
+
+media_path(MediaName, UUID) ->
+    media_path(MediaName, new, UUID).
+
+media_path(MediaName, Type, UUID) ->
+    case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
+        {'error', _} ->
+            MediaName;
+        {ok, Url} ->
+            get_fs_playback(Url)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_fs_playback/1 :: (Url) -> binary() when
+      Url :: binary().
+get_fs_playback(<<"http://", _/binary>>=Url) ->
+    {ok, RemoteAudioScript} = get_setting(remote_audio_script, <<"/tmp/fetch_remote_audio.sh">>),
+    <<"shell_stream://", (wh_util:to_binary(RemoteAudioScript))/binary, " ", Url/binary>>;
+get_fs_playback(Url) ->
+    Url.

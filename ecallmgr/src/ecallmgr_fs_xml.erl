@@ -139,8 +139,8 @@ get_leg_vars(JObj) -> get_leg_vars(wh_json:to_proplist(JObj)).
 
 -spec get_channel_vars/1 :: (json_object() | proplist()) -> [string(),...].
 get_channel_vars([_|_]=Prop) ->
-    P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
-    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
+%%    P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
+    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "}"];
 get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
 -spec get_channel_vars/2 :: ({binary(), binary() | json_object()}, [binary(),...] | []) -> [binary(),...] | [].
@@ -165,6 +165,11 @@ get_channel_vars({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
     [ <<"sip_cid_type=rpid">> | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
     [ <<"sip_cid_type=pid">> | Vars];
+
+get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
+    [list_to_binary(["hold_music='"
+                     ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, get(callid)))
+                     ,"'"]) | Vars];
 
 get_channel_vars({<<"Codecs">>, []}, Vars) ->
     Vars;
