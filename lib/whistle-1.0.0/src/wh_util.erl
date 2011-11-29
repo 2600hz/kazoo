@@ -417,7 +417,7 @@ unix_seconds_to_gregorian_seconds(UnixSeconds) ->
 
 -spec pretty_print_datetime/1 :: (wh_datetime()) -> ne_binary().
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
-    iolist_to_binary(io_lib:format("_~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
 				   [Y, Mo, D, H, Mi, S])).
 
 -spec microseconds_to_seconds/1 :: (integer() | string() | binary()) -> non_neg_integer().
