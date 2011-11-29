@@ -70,7 +70,7 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, SubjTmpl, JObj) ->
     ?LOG_SYS("Attachment doc: ~s", [AttachmentId]),
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
-    AttachmentFileName = get_file_name(TemplateProps, JObj),
+    AttachmentFileName = get_file_name(TemplateProps),
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
@@ -115,16 +115,19 @@ get_template_props(JObj) ->
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
     ToE164 = wh_util:to_e164(wh_json:get_value(<<"To-User">>, JObj)),
     DateCalled = wh_util:to_integer(wh_json:get_value(<<"Voicemail-Timestamp">>, JObj)),
+    UTCDateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
+
     [{caller_id_number, pretty_print_did(CIDNum)}
      ,{caller_id_name, CIDName}
      ,{to_user, pretty_print_did(ToE164)}
-     ,{date_called, calendar:gregorian_seconds_to_datetime(DateCalled)}
+     ,{date_called, UTCDateTime}
+     ,{date_called_local, localtime:utc_to_localtime(UTCDateTime, wh_json:get_value(<<"timezone">>, JObj, <<"UTC">>))}
      ,{support_number, whapps_config:get(?MODULE, <<"default_support_number">>, <<"(415) 886 - 7900">>)}
      ,{support_email, whapps_config:get(?MODULE, <<"default_support_email">>, <<"support@2600hz.com">>)}
     ].
 
--spec get_file_name/2 :: (proplist(), json_object()) -> ne_binary().
-get_file_name(Props, JObj) ->
+-spec get_file_name/1 :: (proplist()) -> ne_binary().
+get_file_name(Props) ->
     %% CallerID_Date_Time.mp3
     CallerID = case {props:get_value(caller_id_name, Props), props:get_value(caller_id_number, Props)} of
 		   {undefined, undefined} -> <<"Unknown">>;
@@ -133,12 +136,8 @@ get_file_name(Props, JObj) ->
 	       end,
     ?LOG("CallerID for filename: ~s", [CallerID]),
 
-    TZ = wh_json:get_value(<<"timezone">>, JObj, <<"UTC">>),
-    ?LOG("TZ for user: ~s", [TZ]),
-
-    DateTime = props:get_value(date_called, Props),
-    LocalDateTime = localtime:utc_to_local(DateTime, TZ),
-    ?LOG("UTC: ~p Local: ~p", [DateTime, LocalDateTime]),
+    LocalDateTime = props:get_value(date_called_local, Props),
+    ?LOG("UTC: ~p Local: ~p", [props:get_value(date_called, Props), LocalDateTime]),
 
     list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".mp3"]).
 
