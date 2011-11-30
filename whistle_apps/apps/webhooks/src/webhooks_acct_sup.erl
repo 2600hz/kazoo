@@ -18,7 +18,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(SERVER, ?MODULE).
--define(CHILD(I, Type), {I, {I, start_link, []}, transient, 5000, worker, [I]}).
+-define(CHILD(I), {I, {I, start_link, []}, transient, 5000, worker, [I]}).
 
 %% ===================================================================
 %% API functions
@@ -36,5 +36,5 @@ start_acct(AcctDB, Webhooks) ->
 
 init([]) ->
     {ok, { {simple_one_for_one, 5, 10}, [
-					 ?CHILD(webhooks_acct, worker)
+					 ?CHILD(webhooks_acct)
 					]} }.

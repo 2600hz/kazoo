@@ -31,10 +31,22 @@ add_binding(Srv) ->
 -spec handle_req/2 :: (json_object(), proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     wh_util:put_callid(JObj),
-    Hooks = props:get_value(hooks, Props), %% list of callbacks to call for the request
+
+    ?LOG("Starting authn_req webhook"),
+
+    case {props:get_value(realm, Props), wapi_authn:get_auth_realm(JObj)} of
+	{R, R} -> ?LOG("Realms (~s) match", [R]);
+	{R, AR} ->
+	    ?LOG("Realm ~s doesn't match requested realm ~s", [R, AR]),
+	    exit(mismatched_realm)
+    end,
+
+    Hooks = orddict:fetch(<<"authn">>, props:get_value(hooks, Props)), %% list of callbacks to call for the request
+
 
     Q = wh_json:get_value(<<"Server-ID">>, JObj),
     Self = self(),
+
     Reqs = [spawn_monitor(fun() -> call_webhook(Self, Hook, JObj) end) || Hook <- Hooks],
     wait_for_resps(Reqs, Q).
 
@@ -44,7 +56,7 @@ wait_for_resps(Reqs, Q) ->
     receive
 	{ok, Resp} ->
 	    ?LOG("Authn resp recv: ~p", [Resp]),
-	    wapi_authn:publish_resp(Q, Resp),
+	    ?LOG("sent: ~p", [catch(wapi_authn:publish_resp(Q, Resp))]),
 	    wait_for_resps(Reqs, Q);
 	{'DOWN', Ref, process, Pid, Reason} ->
 	    ?LOG("Pid ~p down: ~p", [Pid, Reason]),
@@ -65,18 +77,30 @@ call_webhook(Parent, Hook, JObj) ->
 
 -spec try_send_req/5 :: (ne_binary(), 'put' | 'post' | 'get', pid(), json_object(), non_neg_integer()) -> no_return().
 try_send_req(_, _, _, _, R) when R =< 0 -> ?LOG("Retries exceeded");
-try_send_req(Uri, Method, Parent, JObj, Retries) ->
+try_send_req(Uri, Method, Parent, ReqJObj, Retries) ->
     case ibrowse:send_req(wh_util:to_list(Uri)
 			  ,[{"content-type", "application/json"}
 			    ,{"accept", "application/json"}
 			   ]
-			  ,Method, wh_json:encode(JObj)) of
-	{ok, Status, _ResponseHeaders, ResponseBody} ->
-	    ?LOG("Recv status ~s: ~s", [Status, ResponseBody]),
-	    Parent ! {ok, wh_json:decode(ResponseBody)};
+			  ,Method, wh_json:encode(ReqJObj)) of
+	{ok, Status, ResponseHeaders, ResponseBody} ->
+	    ?LOG("Recv status: ~s", [Status]),
+	    [?LOG("RespHeader: ~p", [ResponseHeader]) || ResponseHeader <- ResponseHeaders],
+	    ?LOG("RespBody: ~s", [ResponseBody]),
+
+	    ?DEFAULT_CONTENT_TYPE = wh_util:to_binary(props:get_value("Content-Type", ResponseHeaders)),
+
+	    try Parent ! {ok, wh_json:decode(ResponseBody)} of
+		{ok, _RespJObj} -> ?LOG("Resp JSON: ~p", [_RespJObj])
+	    catch
+		exit:_E ->
+		    ?LOG("Failed to decode: ~p", [_E]);
+		T:R ->
+		    ?LOG("~p: ~p", [T, R])
+	    end;
 	{error, Reason} ->
 	    ?LOG("Request failed: ~p", [Reason]),
-	    try_send_req(Uri, Method, Parent, JObj, Retries-1)
+	    try_send_req(Uri, Method, Parent, ReqJObj, Retries-1)
     end.
 
 -spec get_method_atom/1 :: (<<_:24,_:_*8>>) -> 'put' | 'post' | 'get'.

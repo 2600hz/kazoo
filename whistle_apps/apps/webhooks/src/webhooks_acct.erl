@@ -34,7 +34,9 @@
 -define(SERVER, ?MODULE). 
 
 -record(state, {acctdb = 'undefined' :: 'undefined' | ne_binary()
+               ,acctid = 'undefined' :: 'undefined' | ne_binary()
 	       ,webhooks = [] :: orddict:orddict() % {bind_event, [webhookJObj,...]}
+               ,realm = 'undefined' :: 'undefined' | ne_binary()
 	       }).
 
 %%%===================================================================
@@ -49,10 +51,10 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(AcctID, Webhooks) ->
-    gen_server:start_link(?MODULE, [{responders, []}
-				    ,{bindings, [{self, []}]}
-				    ,{basic_qos, 1}
-				   ], [AcctID, Webhooks]).
+    gen_listener:start_link(?MODULE, [{responders, []}
+				      ,{bindings, [{self, []}]}
+				      ,{basic_qos, 1}
+				     ], [AcctID, Webhooks]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -69,9 +71,20 @@ start_link(AcctID, Webhooks) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([AcctID, Webhooks]) ->
+init([AcctDB, Webhooks]) ->
+    AcctID = whapps_util:get_db_name(AcctDB, raw),
+    put(callid, AcctID),
+
     gen_listener:cast(self(), start_bindings),
-    {ok, #state{acctdb=AcctID
+
+    {ok, AcctDoc} = couch_mgr:open_doc(AcctDB, AcctID),
+    Realm = wh_json:get_value(<<"realm">>, AcctDoc),
+
+    ?LOG("Starting webhooks listener for ~s (~s)", [AcctID, Realm]),
+
+    {ok, #state{acctdb=AcctDB
+		,acctid=AcctID
+		,realm=Realm
 		,webhooks=lists:foldl(fun(Hook, Ord) ->
 					      orddict:update(wh_json:get_value(<<"bind_event">>, Hook)
 							     ,fun(Old) -> [Hook | Old] end
@@ -94,8 +107,7 @@ init([AcctID, Webhooks]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -125,10 +137,8 @@ handle_cast(start_bindings, #state{webhooks=Ord}=State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-handle_event(JObj, #state{webhooks=Webhooks}) ->
-    EvtName = wh_json:get_value(<<"Event-Name">>, JObj),
-    Hooks = orddict:fetch(EvtName, Webhooks),
-    {reply, [{server, self()}, {hooks, Hooks}]}.
+handle_event(_JObj, #state{webhooks=Webhooks,realm=Realm, acctid=AcctId}) ->
+    {reply, [{hooks, Webhooks}, {realm, Realm}, {acctid, AcctId}]}.
 
 %%--------------------------------------------------------------------
 %% @private
