@@ -264,6 +264,7 @@ process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
                             ,to_realm = ToRealm
                             ,inception = wh_json:get_value(<<"Inception">>, CVs)
                             ,account_id = AccountId
+                            ,account_db = whapps_util:get_db_name(AccountId, encoded)
                             ,authorizing_id = wh_json:get_value(<<"Authorizing-ID">>, CVs)
                             ,channel_vars = CVs
                             ,inception_during_transfer = wh_json:is_true(<<"During-Transfer">>, JObj)
@@ -273,14 +274,14 @@ process_req({<<"dialplan">>, <<"route_req">>}, JObj, #state{amqp_q=Q}) ->
 
 process_req({_, <<"route_win">>}, JObj, #state{self=Self}) ->
     ?LOG_START("received route win"),
-    {ok, #cf_call{account_id=AccountId}=Call} = wh_cache:fetch({cf_call, get(callid)}),
-    ?LOG("fetched call record from cache"),
+    {ok, #cf_call{authorizing_id=AuthId}=Call} = wh_cache:fetch({cf_call, get(callid)}),
     case lookup_callflow(Call) of
         {ok, Flow, _} ->
+            ?LOG("building final call record"),
             C = Call#cf_call{cf_responder = Self
                              ,ctrl_q = wh_json:get_value(<<"Control-Queue">>, JObj)
-                             ,account_db = whapps_util:get_db_name(AccountId, encoded)
                              ,capture_group = wh_json:get_value(<<"capture_group">>, Flow)
+                             ,owner_id = cf_attributes:owner_id(AuthId, Call)
                             },
             execute_call_flow(Flow, C);
         {error, R} ->
@@ -297,20 +298,46 @@ process_req({_, _}, _, _) ->
 %% cf_exe_sup tree.
 %% @end
 %%-----------------------------------------------------------------------------
+-spec execute_call_flow/2 :: (json_object(), #cf_call{}) -> no_return().
 execute_call_flow(Flow, #cf_call{authorizing_id=AuthId, channel_vars=CCVs}=Call) ->
-    case AuthId of
-        undefined ->
-            cf_call_command:set(CCVs
-                                ,undefined
-                                ,Call);
-        _ ->
-            ?LOG("set transfer fallback to ~s", [AuthId]),
-            cf_call_command:set(CCVs
-                                ,{struct, [{<<"Transfer-Fallback">>, AuthId}]}
-                                ,Call)
-    end,
+    cf_call_command:set(update_ccvs(CCVs, Call), undefined, Call),
     ?LOG("call has been setup, passing control to callflow executer"),
-    cf_exe_sup:start_proc(Call, wh_json:get_value(<<"flow">>, Flow)).
+    cf_exe_sup:start_proc(Call, wh_json:get_value(<<"flow">>, Flow)),
+    cf_endpoint:get(AuthId, Call).
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% update the custome channel vars for this call
+%% @end
+%%-----------------------------------------------------------------------------
+-spec update_ccvs/2 :: (json_object(), #cf_call{}) -> json_object().
+update_ccvs(CCVs, #cf_call{authorizing_id=AuthId, owner_id=OwnerId}=Call) ->
+    CCVFuns = [fun(J) ->
+                       case OwnerId of
+                           undefined -> J;
+                           OwnerId ->
+                               wh_json:set_value(<<"Owner-ID">>, OwnerId, J)
+                       end
+                end
+               ,fun(J) ->
+                        case cf_attributes:moh_attributes(AuthId, <<"media_id">>, Call) of
+                            undefined -> J;
+                            MediaId ->
+                                ?LOG("set hold media to ~s", [MediaId]),
+                                wh_json:set_value(<<"Hold-Media">>, MediaId, J)
+                        end
+                end
+               ,fun(J) ->
+                        case AuthId of
+                            undefined -> J;
+                            _Else ->
+                                ?LOG("set transfer fallback to ~s", [AuthId]),
+                                wh_json:set_value(<<"Transfer-Fallback">>, AuthId, J)
+                        end
+                end
+              ],
+    lists:foldr(fun(F, J) -> F(J) end, CCVs, CCVFuns).
 
 %%-----------------------------------------------------------------------------
 %% @private

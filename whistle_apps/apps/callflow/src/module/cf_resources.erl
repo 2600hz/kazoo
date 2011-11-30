@@ -26,17 +26,12 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> {'continue'} | {'branch', json_object()} | boolean().
-handle(Data, #cf_call{call_id=CallId, authorizing_id=AuthId}=Call) ->
+handle(Data, #cf_call{call_id=CallId}=Call) ->
     put(callid, CallId),
     {ok, Endpoints} = find_endpoints(Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
     IgnoreEarlyMedia = wh_json:get_value(<<"ignore_early_media">>, Data),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
-    case cf_util:get_hold_media(AuthId, Call) of
-        undefined -> ok;
-        HoldMedia ->
-            cf_call_command:set(wh_json:from_list([{<<"Hold-Media">>, HoldMedia}]), undefined, Call)
-    end,
     bridge_to_resources(Endpoints, Timeout, IgnoreEarlyMedia, Ringback, Call).
 
 %%--------------------------------------------------------------------

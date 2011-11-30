@@ -43,8 +43,7 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId,
            ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
            ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
            ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
-           ,{<<"Hold-Media">>, cf_util:get_hold_media(AuthId, Call)}
-           ,{<<"Presence-ID">>, cf_util:get_presence_id(AuthId, Call)}
+           ,{<<"Presence-ID">>, cf_attributes:presence_id(AuthId, Call)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
            | wh_api:default_headers(AmqpQ, ?APP_NAME, ?APP_VERSION)],
     wapi_offnet_resource:publish_req(Req),

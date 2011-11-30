@@ -33,7 +33,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
                                         {ok, Endpoint} -> Endpoint ++ Acc;
                                         {error, _} -> Acc
                                     end
-                            end, [], cf_attributes:owned_by(UserId, Call, device)),
+                            end, [], cf_attributes:owned_by(UserId, device, Call)),
     case Endpoints of
         [] ->
             ?LOG("user ~s had no endpoints to bridge to", [UserId]),
