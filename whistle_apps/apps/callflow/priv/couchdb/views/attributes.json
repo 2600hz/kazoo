@@ -11,6 +11,9 @@
        "media_options": {
            "map": "function(doc) { if (!doc.media || doc.pvt_deleted) return; emit(doc._id, doc.media); }"
        },
+       "moh_options": {
+           "map": "function(doc) { if (!doc.music_on_hold || doc.pvt_deleted) return; emit(doc._id, doc.music_on_hold); }"
+       },
        "call_forward": {
            "map": "function(doc) { if (!doc.call_forward.enabled || doc.pvt_deleted) return; emit(doc._id, doc.call_forward); }"
        },
@@ -19,9 +22,6 @@
        },
        "owned": {
            "map": "function(doc) { if (!doc.owner_id || doc.pvt_deleted) return; emit([doc.owner_id, doc.pvt_type], doc._id); }"
-       },
-       "owned_devices": {
-           "map": "function(doc) { if (!doc.owner_id || doc.pvt_type != 'device' || doc.pvt_deleted) return; emit(doc.owner_id, {'sip_username':doc.sip.username, 'sip_realm': doc.sip.realm}); }"
        },
        "hotdesk_id": {
            "map": "function(doc) { if (!doc.hotdesk  || doc.pvt_deleted) return; emit(doc.hotdesk.id, {'owner_id':doc._id, 'hotdesk':doc.hotdesk}); }"

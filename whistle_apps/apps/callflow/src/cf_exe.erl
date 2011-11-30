@@ -40,15 +40,12 @@ start_link(Call, Flow) ->
       Parent :: pid(),
       Call :: #cf_call{},
       Flow :: json_object().
-init(Parent, #cf_call{authorizing_id=AuthId}=Call, Flow) ->
+init(Parent, Call, Flow) ->
     process_flag(trap_exit, true),
     _ = call_info(Call),
     AmqpQ = init_amqp(Call),
     proc_lib:init_ack(Parent, {ok, self()}),
-    _ = next(Call#cf_call{cf_pid=self()
-                          ,amqp_q=AmqpQ
-                          ,owner_id=cf_attributes:owner_id(AuthId, Call)}
-             ,Flow, <<"active">>).
+    _ = next(Call#cf_call{cf_pid=self(), amqp_q=AmqpQ}, Flow, <<"active">>).
 
 %%--------------------------------------------------------------------
 %% @private

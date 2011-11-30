@@ -67,7 +67,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) 
 get_endpoints(Data, Call) ->
     lists:foldr(fun(Member, Acc) ->
                         EndpointId = wh_json:get_value(<<"id">>, Member),
-                        case cf_endpoint:build(EndpointId, Call, Member) of
+                        case cf_endpoint:build(EndpointId, Member, Call) of
                             {ok, Endpoint} -> Endpoint ++ Acc;
                             {error, _} -> Acc
                         end

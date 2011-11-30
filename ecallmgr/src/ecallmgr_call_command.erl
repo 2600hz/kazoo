@@ -409,9 +409,9 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %%--------------------------------------------------------------------
 -spec get_fs_kv/3 :: (ne_binary(), ne_binary(), ne_binary()) -> binary().
 get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
-    list_to_binary(["hold_music='"
+    list_to_binary(["hold_music="
                     ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID))
-                    ,"'"]);
+                   ]);
 get_fs_kv(Key, Val, _) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
 	false ->

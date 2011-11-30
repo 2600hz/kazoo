@@ -2,8 +2,6 @@
 
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
 -export([call_info_to_string/1]).
--export([get_hold_media/2]).
--export([get_presence_id/2]).
 
 -include("callflow.hrl").
 
@@ -64,33 +62,6 @@ call_info_to_string(#cf_call{account_id=AccountId, flow_id=FlowId, call_id=CallI
     io_lib:format(lists:flatten(Format)
                   ,[CallId, FlowId, AccountId, Request, To, From
                     ,CIDNumber, CIDName, Inception, AuthorizingId]).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will return the hold media id for the given endpoint,
-%% if it has one
-%% @end
-%%--------------------------------------------------------------------
--spec get_hold_media/2 :: (json_object(), #cf_call{}) -> undefined | ne_binary().
-get_hold_media(Endpoint, #cf_call{account_id=AccountId}=Call) ->
-    case cf_attributes:media_attributes(Endpoint, <<"hold_id">>, Call) of
-        undefined ->
-            undefined;
-        Media ->
-            <<$/, AccountId/binary, $/, Media/binary>>
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will return the precense id for the endpoint
-%% @end
-%%--------------------------------------------------------------------
--spec get_presence_id/2 :: (json_object(), #cf_call{}) -> ne_binary().
-get_presence_id(Endpoint, #cf_call{request_user=RUser, request_realm=RRealm}) ->
-    <<(wh_json:get_value([<<"sip">>, <<"username">>], Endpoint, RUser))/binary
-      ,$@, (wh_json:get_value([<<"sip">>, <<"realm">>], Endpoint, RRealm))/binary>>.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
