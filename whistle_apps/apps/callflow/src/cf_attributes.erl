@@ -9,23 +9,26 @@
 
 -include("callflow.hrl").
 
--export([call_forward/3]).
+-export([temporal_rules/1]).
+-export([call_forward/2, call_forward/3]).
 -export([caller_id/4]).
 -export([callee_id/2, callee_id/3, callee_id/4]).
 -export([caller_id_attributes/3, caller_id_attributes/4]).
 -export([media_attributes/3, media_attributes/4]).
--export([owner_id/2, owned_by/2, owned_by/3]).
--export([temporal_rules/1]).
+-export([moh_attributes/3, moh_attributes/4]).
+-export([owner_id/2, fetch_owner_id/2]).
+-export([owned_by/2, owned_by/3, fetch_owned_by/2, fetch_owned_by/3]).
+-export([presence_id/2]).
 
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec temporal_rules/1 :: (Call) -> undefined | json_objects() when
-      Call :: #cf_call{}.
+-spec temporal_rules/1 :: (#cf_call{}) -> json_objects() | [].
 temporal_rules(#cf_call{account_db=Db}) ->
-    case couch_mgr:get_results(Db, get_view(temporal_rules), [{<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"temporal_rules">>}
+                               ,[{<<"include_docs">>, true}]) of
         {ok, JObjs} -> JObjs;
         {error, _} -> []
     end.
@@ -37,12 +40,18 @@ temporal_rules(#cf_call{account_db=Db}) ->
 %% or on a busy system call forwarding will not appear to disable....
 %% @end
 %%-----------------------------------------------------------------------------
--spec call_forward/3 :: (EndpointId, OwnerId, Call) -> undefined | json_object() when
-      EndpointId :: cf_api_binary(),
-      OwnerId :: cf_api_binary(),
-      Call :: #cf_call{}.
+-spec call_forward/2 :: (undefined | ne_binary() | json_object(), #cf_call{}) -> undefined | json_object().
+-spec call_forward/3 :: (undefined | ne_binary(), undefined | ne_binary(), #cf_call{}) -> undefined | json_object().
+
+call_forward(Endpoint, Call) when is_tuple(Endpoint) ->
+    EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
+    call_forward(EndpointId, Call);
+call_forward(EndpointId, Call) ->
+    OwnerId = owner_id(EndpointId, Call),
+    call_forward(EndpointId, OwnerId, Call).
+
 call_forward(EndpointId, OwnerId, #cf_call{account_db=Db}) ->
-    CallFwd = case couch_mgr:get_all_results(Db, get_view(call_forward)) of
+    CallFwd = case couch_mgr:get_all_results(Db, {<<"cf_attributes">>, <<"call_forward">>}) of
                   {ok, JObj} ->
                       [{Key, wh_json:get_value(<<"value">>, CF)}
                        || CF <- JObj
@@ -51,7 +60,8 @@ call_forward(EndpointId, OwnerId, #cf_call{account_db=Db}) ->
                                     Key = wh_json:get_value(<<"key">>, CF),
                                     lists:member(Key, [EndpointId, OwnerId])
                                 end)];
-                  _ ->
+                  {error, R}->
+                      ?LOG("failed to load call fowarding objects: ~p", [R]),
                       []
               end,
     case props:get_value(EndpointId, CallFwd) of
@@ -75,18 +85,26 @@ call_forward(EndpointId, OwnerId, #cf_call{account_db=Db}) ->
       OwnerId :: cf_api_binary(),
       Call :: #cf_call{}.
 caller_id(CIDType, EndpointId, OwnerId, #cf_call{account_id=AccountId, cid_number=Num, cid_name=Name, channel_vars=CCVs}=Call) ->
-    Ids = [begin ?LOG("looking for caller id type ~s on doc ~s", [CIDType, Id]), Id end
-           || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
+    Ids = [Id || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
     case wh_util:is_true(wh_json:get_value(<<"Retain-CID">>, CCVs)) of
         true ->
             ?LOG("retaining caller id ~s '~s'", [Num, Name]),
             {Num, Name};
         false ->
-            Attributes = fetch_attributes(caller_id, 3600, Call),
+            Attributes = fetch_attributes(caller_id, Call),
             CID = case search_attributes(CIDType, Ids, Attributes) of
                       undefined ->
-                          search_attributes(<<"default">>, [AccountId], Attributes);
-                      Value -> Value
+                          case search_attributes(<<"default">>, [AccountId], Attributes) of
+                              undefined ->
+                                  [?LOG("unable to find ~s caller id on ~s", [CIDType, Id]) || Id <- Ids],
+                                  undefined;
+                              {Id, Value} ->
+                                  ?LOG("found default caller id on ~s", [Id]),
+                                  Value
+                          end;
+                      {Id, Value} ->
+                          ?LOG("found ~s caller id on ~s", [CIDType, Id]),
+                          Value
                   end,
             CIDNumber = wh_json:get_value(<<"number">>, CID, Num),
             CIDName = wh_json:get_value(<<"name">>, CID, Name),
@@ -111,27 +129,29 @@ callee_id(Endpoint, #cf_call{inception=Inception}=Call) ->
             callee_id(Endpoint, <<"internal">>, Call)
     end.
 
-callee_id(Endpoint, Type, #cf_call{account_db=Db, request_user=RUser}=Call) when is_binary(Endpoint) ->
-    case couch_mgr:open_doc(Db, Endpoint) of
-        {ok, JObj} ->
-            callee_id(JObj, Type, Call);
-        {error, R} ->
-            ?LOG("unable to load endpoint ~s for callee id: ~p", [Endpoint, R]),
-            {RUser, <<"">>}
-    end;
-callee_id(Endpoint, Type, Call) ->
+callee_id(Endpoint, Attribute, Call) when is_tuple(Endpoint) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
-    OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
-    callee_id(EndpointId, OwnerId, Type, Call).
+    callee_id(EndpointId, Attribute, Call);
+callee_id(EndpointId, Attribute, Call) ->
+    OwnerId = owner_id(EndpointId, Call),
+    callee_id(EndpointId, OwnerId, Attribute, Call).
 
-callee_id(EndpointId, OwnerId, Type, #cf_call{account_id=AccountId, request_user=RUser}=Call) ->
-    Ids = [begin ?LOG("looking for callee id type ~s on doc ~s", [Type, Id]), Id end
-           || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
-    Attributes = fetch_attributes(caller_id, 3600, Call),
-    CID = case search_attributes(Type, Ids, Attributes) of
-              undefined ->
-                  search_attributes(<<"default">>, [AccountId], Attributes);
-              Value -> Value
+callee_id(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId, request_user=RUser}=Call) ->
+    Ids = [Id || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
+    Attributes = fetch_attributes(caller_id, Call),
+    CID = case search_attributes(Attribute, Ids, Attributes) of
+                      undefined ->
+                          case search_attributes(<<"default">>, [AccountId], Attributes) of
+                              undefined ->
+                                  [?LOG("unable to find ~s caller id on ~s", [Attribute, Id]) || Id <- Ids],
+                                  undefined;
+                              {Id, Value} ->
+                                  ?LOG("found default caller id on ~s", [Id]),
+                                  Value
+                          end;
+                      {Id, Value} ->
+                          ?LOG("found ~s callee id on ~s", [Attribute, Id]),
+                          Value
           end,
     CIDName = wh_json:get_value(<<"name">>, CID, <<"">>),
     ?LOG("using callee id ~s '~s'", [RUser, CIDName]),
@@ -145,27 +165,23 @@ callee_id(EndpointId, OwnerId, Type, #cf_call{account_id=AccountId, request_user
 -spec caller_id_attributes/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> undefined | ne_binary().
 -spec caller_id_attributes/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> undefined | ne_binary().
 
-caller_id_attributes(Endpoint, Attribute, #cf_call{account_db=Db}=Call) when is_binary(Endpoint) ->
-    case couch_mgr:open_doc(Db, Endpoint) of
-        {ok, JObj} ->
-            caller_id_attributes(JObj, Attribute, Call);
-        {error, R} ->
-            ?LOG("unable to load endpoint ~s for caller id attribute ~s: ~p", [Endpoint, Attribute, R]),
-            undefined
-    end;
-caller_id_attributes(Endpoint, Attribute, Call) ->
+caller_id_attributes(Endpoint, Attribute, Call) when is_tuple(Endpoint) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
-    OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
+    caller_id_attributes(EndpointId, Attribute, Call);
+caller_id_attributes(EndpointId, Attribute, Call) ->
+    OwnerId = owner_id(EndpointId, Call),
     caller_id_attributes(EndpointId, OwnerId, Attribute, Call).
 
 caller_id_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=Call) ->
-    Ids = [begin ?LOG("looking for caller id attribute ~s on doc ~s", [Attribute, Id]), Id end
-           || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
-    Attributes = fetch_attributes(caller_id_options, 3600, Call),
+    Ids = [Id || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
+    Attributes = fetch_attributes(caller_id_options, Call),
     case search_attributes(Attribute, Ids, Attributes) of
         undefined ->
+            [?LOG("unable to find caller id attribute ~s on ~s", [Attribute, Id]) || Id <- Ids],
             undefined;
-        Value -> Value
+        {Id, Value} ->
+            ?LOG("found caller id ~s on ~s: '~p'", [Attribute, Id, Value]),
+            Value
     end.
 
 %%-----------------------------------------------------------------------------
@@ -176,32 +192,32 @@ caller_id_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=Account
 -spec media_attributes/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> undefined | ne_binary() | list().
 -spec media_attributes/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> undefined | ne_binary() | list().
 
-media_attributes(Endpoint, Attribute, #cf_call{account_db=Db}=Call) when is_binary(Endpoint) ->
-    case couch_mgr:open_doc(Db, Endpoint) of
-        {ok, JObj} ->
-            media_attributes(JObj, Attribute, Call);
-        {error, R} ->
-            ?LOG("unable to load endpoint ~s for media attribute ~s: ~p", [Endpoint, Attribute, R]),
-            undefined
-    end;
-media_attributes(Endpoint, Attribute, Call) ->
+media_attributes(Endpoint, Attribute, Call) when is_tuple(Endpoint) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
-    OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
+    media_attributes(EndpointId, Attribute, Call);
+media_attributes(EndpointId, Attribute, Call) ->
+    OwnerId = owner_id(EndpointId, Call),
     media_attributes(EndpointId, OwnerId, Attribute, Call).
 
 
 media_attributes(EndpointId, OwnerId, <<"codecs">>, Call) ->
     Audio = media_attributes(EndpointId, OwnerId, <<"audio">>, Call),
     Video = media_attributes(EndpointId, OwnerId, <<"video">>, Call),
-    wh_json:get_value(<<"codecs">>, Audio, []) ++ wh_json:get_value(<<"codecs">>, Video, []);
+    Audio ++ Video;
 media_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=Call) ->
-    Ids = [begin ?LOG("looking for media attribute ~s on doc ~s", [Attribute, Id]), Id end
-           || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
-    Attributes = fetch_attributes(media_options, 3600, Call),
+    Ids = [Id || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
+    Attributes = fetch_attributes(media_options, Call),
     case search_attributes(Attribute, Ids, Attributes) of
         undefined ->
+            [?LOG("unable to find media attribute ~s on ~s", [Attribute, Id]) || Id <- Ids],
             undefined;
-        Value -> Value
+        {Id, Value} when Attribute =:= <<"audio">>; Attribute =:= <<"video">> ->
+            Codecs = wh_json:get_value(<<"codecs">>, Value, []),
+            [?LOG("found media attribute ~s codec ~s on ~s", [Attribute, Codec, Id]) || Codec <- Codecs],
+            Codecs;
+        {Id, Value} ->
+            ?LOG("found media attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
+            Value
     end.
 
 %%-----------------------------------------------------------------------------
@@ -209,75 +225,119 @@ media_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec owner_id/2 :: (ObjectId, Call) -> undefined | json_object() when
-      ObjectId :: undefined | binary(),
-      Call :: #cf_call{}.
-owner_id(undefined, _) ->
+-spec moh_attributes/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> undefined | ne_binary() | list().
+-spec moh_attributes/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> undefined | ne_binary() | list().
+
+moh_attributes(Endpoint, Attribute, Call) when is_tuple(Endpoint) ->
+    EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
+    moh_attributes(EndpointId, Attribute, Call);
+moh_attributes(EndpointId, Attribute, Call) ->
+    OwnerId = owner_id(EndpointId, Call),
+    moh_attributes(EndpointId, OwnerId, Attribute, Call).
+
+moh_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=Call) ->
+    Ids = [Id || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
+    Attributes = fetch_attributes(moh_options, Call),
+    case search_attributes(Attribute, Ids, Attributes) of
+        undefined ->
+            [?LOG("unable to find moh attribute ~s on ~s", [Attribute, Id]) || Id <- Ids],
+            undefined;
+        {Id, Value} when Attribute =:= <<"media_id">> ->
+            MediaId = <<$/, AccountId/binary, $/, Value/binary>>,
+            ?LOG("found moh attribute ~s on ~s: '~p'", [Attribute, Id, MediaId]),
+            MediaId;
+        {Id, Value} ->
+            ?LOG("found moh attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
+            Value
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec owner_id/2 :: (undefined | ne_binary(), #cf_call{}) -> undefined | json_object().
+-spec fetch_owner_id/2 :: (undefined | ne_binary(), #cf_call{}) -> undefined | json_object().
+
+owner_id(undefined, _Call) ->
     undefined;
-owner_id(ObjectId, #cf_call{account_db=Db})->
-    Id = wh_util:to_binary(ObjectId),
-    case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owner">>}, [{<<"key">>, Id}]) of
-        {ok, []} ->
+owner_id(ObjectId, Call) ->
+    Attributes = fetch_attributes(owner, Call),
+    case props:get_value(ObjectId, Attributes) of
+        undefined ->
+            ?LOG("object ~s has no owner", [ObjectId]),
             undefined;
-        {ok, JObj} ->
-            wh_json:get_value(<<"value">>, hd(JObj));
-        {error, _} ->
-            undefined
+        Value ->
+            ?LOG("object ~s is owned by ~s", [ObjectId, Value]),
+            Value
     end.
+
+fetch_owner_id(ObjectId, #cf_call{account_db=Db}=Call) ->
+    wh_cache:erase({?MODULE, Db, owner}),
+    owner_id(ObjectId, Call).
 
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec owned_by/2 :: (OwnerId, Call) -> undefined | list() when
-      OwnerId :: undefined | binary(),
-      Call :: #cf_call{}.
+-spec owned_by/2 :: (undefined | ne_binary(), #cf_call{}) -> list().
+-spec owned_by/3 :: (undefined | ne_binary(), atom() | string() | ne_binary(), #cf_call{}) -> list().
+
+-spec fetch_owned_by/2 :: (undefined | ne_binary(), #cf_call{}) -> list().
+-spec fetch_owned_by/3 :: (undefined | ne_binary(), atom() | string() | ne_binary(), #cf_call{}) -> list().
+
 owned_by(undefined, _) ->
-    undefined;
-owned_by(OwnerId, #cf_call{account_db=Db})->
-    Id = wh_util:to_binary(OwnerId),
+    [];
+owned_by(OwnerId, Call) ->
+    Attributes = fetch_attributes(owned, Call),
+    [V || {[I, _], V} <- Attributes, I =:= OwnerId].
 
-    case couch_mgr:get_results(Db, <<"cf_attributes/owned">>, [{<<"start_key">>, [Id, false]}, {<<"end_key">>, [Id, ?EMPTY_JSON_OBJECT]} ]) of
-        {ok, []} ->
-            undefined;
-        {ok, JObj} ->
-	    [wh_json:get_value(<<"id">>, D)  || D <- JObj];
-        {error, _} ->
-            undefined
-    end.
+owned_by(undefined, _, _) ->
+    [];
+owned_by(OwnerId, false, #cf_call{account_db=Db}=Call) ->
+    wh_cache:erase({?MODULE, Db, owned}),
+    owned_by(OwnerId, Call);
+owned_by(OwnerId, Attribute, Call) when not is_binary(Attribute) ->
+    owned_by(OwnerId, wh_util:to_binary(Attribute), Call);
+owned_by(OwnerId, Attribute, Call) ->
+    Attributes = fetch_attributes(owned, Call),
+    [V || {[I, T], V} <- Attributes, I =:= OwnerId, T =:= Attribute].
 
-%%-----------------------------------------------------------------------------
+fetch_owned_by(OwnerId, #cf_call{account_db=Db}=Call) ->
+    wh_cache:erase({?MODULE, Db, owned}),
+    owned_by(OwnerId, Call).
+
+fetch_owned_by(OwnerId, Attribute, #cf_call{account_db=Db}=Call) ->
+    wh_cache:erase({?MODULE, Db, owned}),
+    owned_by(OwnerId, Attribute, Call).
+
+%%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Returns a list of doc ID of the specified type for thiw owner
+%% This function will return the precense id for the endpoint
 %% @end
-%%-----------------------------------------------------------------------------
--spec owned_by/3 :: (OwnerId, Call, Type) -> undefined | list() when
-      OwnerId :: undefined | binary(),
-      Call :: #cf_call{},
-      Type :: atom().
-owned_by(undefined, _, _) ->
+%%--------------------------------------------------------------------
+-spec presence_id/2 :: (undefined | ne_binary() | json_object(), #cf_call{}) -> undefined | ne_binary().
+presence_id(undefined, _) ->
     undefined;
-owned_by(OwnerId, #cf_call{account_db=Db}, Type)->
-    Id = wh_util:to_binary(OwnerId),
-    T = wh_util:to_binary(Type),
-
-    case couch_mgr:get_results(Db, <<"cf_attributes/owned">>, [{<<"key">>, [Id, T]}]) of
-        {ok, []} ->
-            undefined;
-        {ok, JObj} ->
-	    [wh_json:get_value(<<"id">>, D)  || D <- JObj];
+presence_id(EndpointId, Call) when is_binary(EndpointId) ->
+    case cf_endpoint:get(EndpointId, Call) of
+        {ok, Endpoint} ->
+            presence_id(Endpoint, Call);
         {error, _} ->
             undefined
-    end.
+    end;
+presence_id(Endpoint, #cf_call{request_user=RUser, request_realm=RRealm}) ->
+    <<(wh_json:get_value([<<"sip">>, <<"username">>], Endpoint, RUser))/binary
+      ,$@, (wh_json:get_value([<<"sip">>, <<"realm">>], Endpoint, RRealm))/binary>>.
 
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec search_attributes/3 :: (Attribute, Ids, Attributes) -> cf_api_binary() when
+-spec search_attributes/3 :: (Attribute, Ids, Attributes) -> undefined | {ne_binary(), term()} when
       Attribute :: cf_api_binary(),
       Ids :: list(),
       Attributes :: proplist().
@@ -291,7 +351,8 @@ search_attributes(Attribute, [Id|T], Attributes) ->
     case fetch_sub_key(Attribute, Id, Attributes) of
         undefined ->
             search_attributes(Attribute, T, Attributes);
-        Value -> Value
+        Value ->
+            {Id, Value}
     end.
 
 %%-----------------------------------------------------------------------------
@@ -315,33 +376,20 @@ fetch_sub_key(Attribute, JObj) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_attributes/3 :: (Attribute, Expires, Call) -> proplist() when
-      Attribute :: atom(),
-      Expires :: non_neg_integer(),
-      Call :: #cf_call{}.
-fetch_attributes(Attribute, Expires, #cf_call{account_db=Db}) ->
-    case wh_cache:peek({cf_attribute, Db, Attribute}) of
+-spec fetch_attributes/2 :: (atom(), #cf_call{}) -> proplist().
+fetch_attributes(Attribute, #cf_call{account_db=Db}) ->
+    case wh_cache:peek({?MODULE, Db, Attribute}) of
         {ok, Attributes} ->
             Attributes;
         {error, not_found} ->
-            case couch_mgr:get_results(Db, get_view(Attribute), [{<<"stale">>, <<"ok">>}]) of
+            case couch_mgr:get_all_results(Db, {<<"cf_attributes">>, wh_util:to_binary(Attribute)}) of
                 {ok, JObjs} ->
                     Props = [{wh_json:get_value(<<"key">>, JObj), wh_json:get_value(<<"value">>, JObj)}
                                   || JObj <- JObjs],
-                    wh_cache:store({cf_attribute, Db, Attribute}, Props, Expires),
+                    wh_cache:store({?MODULE, Db, Attribute}, Props, 900),
                     Props;
                 {error, R} ->
                     ?LOG("unable to fetch attribute ~s: ~p", [Attribute, R]),
                     []
             end
     end.
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_view/1 :: (Attribute) -> tuple(binary(), binary()) when
-      Attribute :: atom().
-get_view(Attribute) ->
-    {<<"cf_attributes">>, wh_util:to_binary(Attribute)}.

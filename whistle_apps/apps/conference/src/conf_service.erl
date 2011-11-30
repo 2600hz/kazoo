@@ -339,7 +339,7 @@ handle_info({#'basic.return'{}, #amqp_msg{props=#'P_basic'{content_type = <<"app
                 {noreply, Conf#conf{ctrl_q=[]}, hibernate};
             NewQ ->
                 ?LOG("replay a conference command on new control channel"),
-                amqp_util:callctl_publish(NewQ, Payload, <<"application/json">>, [{mandatory, true}]),
+                amqp_util:callctl_publish(hd(NewQ), Payload, <<"application/json">>, [{mandatory, true}]),
                 {noreply, Conf#conf{ctrl_q=NewQ}, hibernate}
         end
     catch

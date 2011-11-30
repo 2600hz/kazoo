@@ -67,7 +67,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 		get_hotdesk_profile({user_id, UserId}, Call)
 	end,
 
-    Devices = cf_attributes:owned_by(H#hotdesk.owner_id, Call, device),
+    Devices = cf_attributes:fetch_owned_by(H#hotdesk.owner_id, device, Call),
     case wh_json:get_value(<<"action">>, Data) of
 	<<"bridge">> ->
 	    %% bridge only if hotdesk is enabled

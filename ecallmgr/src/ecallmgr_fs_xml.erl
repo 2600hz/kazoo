@@ -167,9 +167,9 @@ get_channel_vars({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
     [ <<"sip_cid_type=pid">> | Vars];
 
 get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
-    [list_to_binary(["hold_music='"
+    [list_to_binary(["hold_music="
                      ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, get(callid)))
-                     ,"'"]) | Vars];
+                    ]) | Vars];
 
 get_channel_vars({<<"Codecs">>, []}, Vars) ->
     Vars;

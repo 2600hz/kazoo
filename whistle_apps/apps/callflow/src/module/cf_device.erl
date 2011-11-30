@@ -27,7 +27,7 @@
       Call :: #cf_call{}.
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
-    case cf_endpoint:build(wh_json:get_value(<<"id">>, Data), Call, Data) of
+    case cf_endpoint:build(wh_json:get_value(<<"id">>, Data), Data, Call) of
         {ok, Endpoints} ->
             Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
             bridge_to_endpoints(Endpoints, Timeout, Call);
