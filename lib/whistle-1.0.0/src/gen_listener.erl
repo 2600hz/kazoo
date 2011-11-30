@@ -417,8 +417,8 @@ handle_event(Payload, <<"application/erlang">>, State) ->
 -spec process_req/2 :: (#state{}, json_object()) -> pid().
 process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj) ->
     Props1 = case catch Module:handle_event(JObj, ModState) of
-		 {reply, Props} when is_list(Props) -> [{queue, Queue} | Props];
-		 {'EXIT', _Why} -> [{queue, Queue}]
+		 {reply, Props} when is_list(Props) -> [{server, self()}, {queue, Queue} | Props];
+		 {'EXIT', _Why} -> [{server, self()}, {queue, Queue}]
 	     end,
     spawn_link(fun() -> _ = wh_util:put_callid(JObj), process_req(Props1, Responders, JObj) end).
 

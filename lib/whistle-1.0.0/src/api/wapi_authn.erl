@@ -12,6 +12,8 @@
 
 -export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3]).
 
+-export([get_auth_user/1, get_auth_realm/1]).
+
 -include("../wh_api.hrl").
 
 -define(AUTHN_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
@@ -115,3 +117,31 @@ publish_resp(Queue, JObj) ->
 publish_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHN_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% extract the auth user from the API request
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_auth_user/1  :: (json_object()) -> ne_binary() | 'undefined'.
+get_auth_user(ApiJObj) ->
+    wh_json:get_value(<<"Auth-User">>, ApiJObj).
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% extract the auth realm from the API request, using the requests to domain
+%% when provided with an IP
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_auth_realm/1  :: (json_object()) -> ne_binary() | 'undefined'.
+get_auth_realm(ApiJObj) ->
+    AuthRealm = wh_json:get_value(<<"Auth-Realm">>, ApiJObj),
+    case wh_util:is_ipv4(AuthRealm) orelse wh_util:is_ipv6(AuthRealm) of
+        true ->
+            [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, ApiJObj), <<"@">>),
+            ToDomain;
+        false ->
+            AuthRealm
+    end.
