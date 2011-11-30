@@ -788,11 +788,11 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
                      ,check_if_owner =
                          wh_json:is_true(<<"check_if_owner">>, JObj, CheckIfOwner)
                      ,unavailable_media_id =
-                         wh_json:get_value([<<"media">>, <<"unavailable">>], JObj)
+                         wh_json:get_ne_value([<<"media">>, <<"unavailable">>], JObj)
                      ,name_media_id =
-                         wh_json:get_value([<<"media">>, <<"name">>], JObj)
+                         wh_json:get_ne_value([<<"media">>, <<"name">>], JObj)
                      ,owner_id =
-                         wh_json:get_value(<<"owner_id">>, JObj)
+                         wh_json:get_ne_value(<<"owner_id">>, JObj)
                      ,is_setup =
                          wh_json:is_true(<<"is_setup">>, JObj, false)
 		     ,max_message_count =

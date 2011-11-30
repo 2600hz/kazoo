@@ -10,7 +10,7 @@
 -include("whistle_apps.hrl").
 
 -export([get/2, get/3]).
--export([get_list/2, get_list/3]).
+-export([get_string/2, get_string/3]).
 -export([get_binary/2, get_binary/3]).
 -export([get_atom/2, get_atom/3]).
 -export([get_integer/2, get_integer/3]).
@@ -28,21 +28,20 @@
 %% get a configuration key for a given category and cast it as a list
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_list/2 :: (Category, Key) -> list() | undefined when
+-spec get_string/2 :: (Category, Key) -> nonempty_string() | 'undefined' when
       Category :: config_category(),
       Key :: config_key().
--spec get_list/3 :: (Category, Key, Default) -> list() when
+-spec get_string/3 :: (Category, Key, Default) -> nonempty_string() | Default when
       Category :: config_category(),
-      Key :: config_key(),
-      Default :: term().
+      Key :: config_key().
 
-get_list(Category, Key) ->
+get_string(Category, Key) ->
     case get(Category, Key) of
         undefined -> undefined;
         Else -> wh_util:to_list(Else)
     end.
 
-get_list(Category, Key, Default) ->
+get_string(Category, Key, Default) ->
     wh_util:to_list(get(Category, Key, Default)).
 
 %%-----------------------------------------------------------------------------
@@ -136,150 +135,6 @@ get_is_false(Category, Key) ->
 
 get_is_false(Category, Key, Default) ->
     wh_util:is_false(get(Category, Key, Default)).
-
-%%-----------------------------------------------------------------------------
-%% @public
-%% @doc
-%% get a configuration key for a given category and cast it as a is_true
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_is_true/2 :: (Category, Key) -> boolean() | undefined when
-      Category :: config_category(),
-      Key :: config_key().
--spec get_is_true/3 :: (Category, Key, Default) -> boolean() when
-      Category :: config_category(),
-      Key :: config_key(),
-      Default :: term().
-
-get_is_true(Category, Key) ->
-    case get(Category, Key) of
-        undefined -> undefined;
-        Else -> wh_util:is_true(Else)
-    end.
-
-get_is_true(Category, Key, Default) ->
-    wh_util:is_true(get(Category, Key, Default)).
-
--type config_category() :: binary() | string() | atom().
--type config_key() :: binary() | string() | atom().
-
-%%-----------------------------------------------------------------------------
-%% @public
-%% @doc
-%% get a configuration key for a given category and cast it as a list
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_list/2 :: (Category, Key) -> list() | undefined when
-      Category :: config_category(),
-      Key :: config_key().
--spec get_list/3 :: (Category, Key, Default) -> list() when
-      Category :: config_category(),
-      Key :: config_key(),
-      Default :: term().
-
-get_list(Category, Key) ->
-    case get(Category, Key) of
-        undefined -> undefined;
-        Else -> wh_util:to_list(Else)
-    end.
-
-get_list(Category, Key, Default) ->
-    wh_util:to_list(get(Category, Key, Default)).
-
-%%-----------------------------------------------------------------------------
-%% @public
-%% @doc
-%% get a configuration key for a given category and cast it as a binary
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_binary/2 :: (Category, Key) -> binary() | undefined when
-      Category :: config_category(),
-      Key :: config_key().
--spec get_binary/3 :: (Category, Key, Default) -> binary() when
-      Category :: config_category(),
-      Key :: config_key(),
-      Default :: term().
-
-get_binary(Category, Key) ->
-    case get(Category, Key) of
-        undefined -> undefined;
-        Else -> wh_util:to_binary(Else)
-    end.
-
-get_binary(Category, Key, Default) ->
-    wh_util:to_binary(get(Category, Key, Default)).
-
-%%-----------------------------------------------------------------------------
-%% @public
-%% @doc
-%% get a configuration key for a given category and cast it as a atom
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_atom/2 :: (Category, Key) -> atom() | undefined when
-      Category :: config_category(),
-      Key :: config_key().
--spec get_atom/3 :: (Category, Key, Default) -> atom() when
-      Category :: config_category(),
-      Key :: config_key(),
-      Default :: term().
-
-get_atom(Category, Key) ->
-    case get(Category, Key) of
-        undefined -> undefined;
-        Else -> wh_util:to_atom(Else, true)
-    end.
-
-get_atom(Category, Key, Default) ->
-    wh_util:to_atom(get(Category, Key, Default), true).
-
-%%-----------------------------------------------------------------------------
-%% @public
-%% @doc
-%% get a configuration key for a given category and cast it as a integer
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_integer/2 :: (Category, Key) -> integer() | undefined when
-      Category :: config_category(),
-      Key :: config_key().
--spec get_integer/3 :: (Category, Key, Default) -> integer() when
-      Category :: config_category(),
-      Key :: config_key(),
-      Default :: term().
-
-get_integer(Category, Key) ->
-    case get(Category, Key) of
-        undefined -> undefined;
-        Else -> wh_util:to_integer(Else)
-    end.
-
-get_integer(Category, Key, Default) ->
-    wh_util:to_integer(get(Category, Key, Default)).
-
-
-%%-----------------------------------------------------------------------------
-%% @public
-%% @doc
-%% get a configuration key for a given category and cast it as a is_false
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_is_false/2 :: (Category, Key) -> boolean() | undefined when
-      Category :: config_category(),
-      Key :: config_key().
--spec get_is_false/3 :: (Category, Key, Default) -> boolean() when
-      Category :: config_category(),
-      Key :: config_key(),
-      Default :: term().
-
-get_is_false(Category, Key) ->
-    case get(Category, Key) of
-        undefined -> undefined;
-        Else -> wh_util:is_false(Else)
-    end.
-
-get_is_false(Category, Key, Default) ->
-    wh_util:is_false(get(Category, Key, Default)).
-
-
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -360,7 +215,7 @@ get(Category, Key, Default) ->
 %% set the key to the value in the given category but specific to this node
 %% @end
 %%-----------------------------------------------------------------------------
--spec set/3 :: (Category, Key, Value) -> {ok, json_object()} | {error, term()} when
+-spec set/3 :: (Category, Key, Value) -> {ok, json_object()} when
       Category :: config_category(),
       Key :: config_key(),
       Value :: term().
@@ -491,7 +346,7 @@ config_terms_to_json(Terms) ->
 %% for the given node
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_set/4 :: (Category, Node, Key, Value) -> {ok, json_object()} | {error, not_found} when
+-spec do_set/4 :: (Category, Node, Key, Value) -> {'ok', json_object()} when
       Category :: config_category(),
       Node :: config_key(),
       Key :: config_key(),
@@ -517,7 +372,7 @@ do_set(Category, Node, Key, Value) ->
 %% update the configuration category for a given node in both the db and cache
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_category_node/4 :: (Category, Node, UpdateFun , Cache) -> {ok, json_object()} when
+-spec update_category_node/4 :: (Category, Node, UpdateFun , Cache) -> {'ok', json_object()} when
       Category :: binary(),
       Node :: binary(),
       UpdateFun :: fun(),
@@ -559,7 +414,7 @@ update_category(Category, JObj, Cache) ->
 %% initial (default) settings
 %% @end
 %%-----------------------------------------------------------------------------
--spec category_to_file/1 :: (Category) -> list() | undefined when
+-spec category_to_file/1 :: (Category) -> iolist() | 'undefined' when
       Category :: binary().
 category_to_file(<<"whapps_controller">>) ->
     [code:lib_dir(whistle_apps, priv), "/startup.config"];
