@@ -20,6 +20,9 @@
 -type proplist_key() :: nonempty_string() | ne_binary() | atom().
 -type proplist() :: [{proplist_key(), term()} | atom(),...] | [].
 
+%% when using gen_smtp to send emails, it takes a 5-tuple for a message-body part
+-type mail_message_body() :: {ne_binary(), ne_binary(), proplist(), proplist(), ne_binary() | iolist()}.
+
 %% for setting types on dicts
 -type dict(K,V) :: [{K, V}].
 

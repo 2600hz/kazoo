@@ -303,13 +303,9 @@ validate(_, Context) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()) | [])).
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
-    case lists:any(fun(undefined) -> true; (_) -> false end, [wh_json:get_value(<<"name">>, JObj)
-							      ,wh_json:get_value(<<"extension">>, JObj)]) of
-	true -> {false, [<<"name">>, <<"extension">>]};
-	_ -> {true, []}
-    end.
+    crossbar_schema:do_validate(JObj, clicktocall).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -317,10 +313,9 @@ is_valid_doc(JObj) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
 
 load_c2c_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
@@ -357,9 +352,9 @@ establish_c2c(C2CId, #cb_context{req_data=Req, account_id=AccountId}=Context) ->
 
 create_c2c(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-	{true, _} ->
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+	{ok, _} ->
             Context#cb_context{
 	      doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:set_value(<<"history">>, [], JObj))
 	      ,resp_status=success
@@ -368,11 +363,11 @@ create_c2c(#cb_context{req_data=JObj}=Context) ->
 
 create_c2c_history_item(Req, CallID, CdrID) ->
     Now = wh_util:current_tstamp(),
-    {struct, [ {<<"contact">>, wh_json:get_value(<<"contact">>, Req)},
-	       {<<"timestamp">>, Now},
-	       {<<"call_id">>, CallID},
-	       {<<"cdr_id">>, CdrID}
-	     ]}.
+    wh_json:from_list([ {<<"contact">>, wh_json:get_value(<<"contact">>, Req)}
+			,{<<"timestamp">>, Now}
+			,{<<"call_id">>, CallID}
+			,{<<"cdr_id">>, CdrID}
+		      ]).
 
 %%--------------------------------------------------------------------
 %% @private

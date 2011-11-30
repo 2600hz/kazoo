@@ -264,13 +264,12 @@ validate(_, Context) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec create/1 :: (#cb_context{}) -> #cb_context{}.
 create(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+        {ok, []} ->
             {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
                                              {F(J, C), C}
                                      end, {JObj, Context}, ?PVT_FUNS),
@@ -283,7 +282,7 @@ create(#cb_context{req_data=JObj}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(read/2 :: (Id :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
 
@@ -294,12 +293,12 @@ read(Id, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update/2 :: (Id :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update(Id, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+        {ok, []} ->
             {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
                                              {F(J, C), C}
                                      end, {JObj, Context}, ?PVT_FUNS),
@@ -313,8 +312,7 @@ update(Id, #cb_context{req_data=JObj}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec summary/1 :: (#cb_context{}) -> #cb_context{}.
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -337,13 +335,9 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (JObj) -> {boolean(), [binary(),...] | []} when
-      JObj :: json_object().
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
-    case wh_json:get_value(<<"gateways">>, JObj) of
-	undefined -> {false, [<<"gateways">>]};
-	_ -> {true, []}
-    end.
+    crossbar_schema:do_validate(JObj, resource).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -352,9 +346,6 @@ is_valid_doc(JObj) ->
 %% instance
 %% @end
 %%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (JObj, Context) -> json_object() when
-      JObj :: json_object(),
-      Context :: #cb_context{}.
-
+-spec add_pvt_type/2 :: (json_object(), #cb_context{}) -> json_object().
 add_pvt_type(JObj, _) ->
     wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj).

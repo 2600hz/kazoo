@@ -20,8 +20,6 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
--import(logger, [format_log/3]).
-
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
@@ -292,12 +290,12 @@ load_conference_summary(Context) ->
 %% Create a new conference document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_conference/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec create_conference/1 :: (#cb_context{}) -> #cb_context{}.
 create_conference(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, _} ->
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+        {ok, _} ->
             Context#cb_context{
 	      doc=wh_json:set_value(<<"pvt_type">>, <<"conference">>, JObj)
 	      ,resp_status=success
@@ -310,7 +308,7 @@ create_conference(#cb_context{req_data=JObj}=Context) ->
 %% Load a conference document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_conference/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_conference/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_conference(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
@@ -321,12 +319,12 @@ load_conference(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_conference/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_conference/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_conference(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+        {ok, _} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -336,7 +334,7 @@ update_conference(DocId, #cb_context{req_data=JObj}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -346,6 +344,6 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, [])).
-is_valid_doc(_JObj) ->
-    {true, []}.
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
+is_valid_doc(JObj) ->
+    crossbar_schema:do_validate(JObj, conference).
