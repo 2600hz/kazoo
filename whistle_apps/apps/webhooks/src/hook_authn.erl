@@ -2,13 +2,13 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Bind to authn_req, exclude ones not for this account, and call the URI
+%%% Bind to wapi_authn bindings, exclude ones not for this account, and call the URI
 %%% supplied when a valid authn_req is received, hopefully receive a valid
 %%% authn_resp, and send it along to Whistle.
 %%% @end
 %%% Created : 29 Nov 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(hook_authn_req).
+-module(hook_authn).
 
 -behaviour(gen_hook).
 
@@ -17,14 +17,18 @@
 
 -include("webhooks.hrl").
 
-init() ->
-    'ok'.
+%% called by gen_listener
+-spec init/0 :: () -> 'ok'.
+init() -> 'ok'.
 
+%% called by webhook_acct
+-spec add_binding/1 :: (pid() | atom()) -> 'ok'.
 add_binding(Srv) ->
-    gen_listener:add_binding(Srv, [{authn_req, []}]), % add AMQP bindings
-    gen_listener:add_responder(Srv, ?MODULE, [{<<"directory">>, <<"authn_req">>}]), % register callbacks
-    'ok'.
+    gen_listener:add_binding(Srv, authn, []), % add AMQP bindings
+    gen_listener:add_responder(Srv, ?MODULE, [{<<"directory">>, <<"authn_req">>}]). % register callbacks
 
+%% called by gen_listener after calling webhook_acct:handle_event to get Props
+-spec handle_req/2 :: (json_object(), proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     wh_util:put_callid(JObj),
     Hooks = props:get_value(hooks, Props), %% list of callbacks to call for the request
@@ -47,6 +51,7 @@ wait_for_resps(Reqs, Q) ->
 	    wait_for_resps(lists:keydelete(Ref, 2, Reqs), Q)
     end.
 
+-spec call_webhook/3 :: (pid(), json_object(), json_object()) -> no_return().
 call_webhook(Parent, Hook, JObj) ->
     wh_util:put_callid(JObj),
     Uri = wh_json:get_value(<<"callback_uri">>, Hook),
@@ -74,7 +79,7 @@ try_send_req(Uri, Method, Parent, JObj, Retries) ->
 	    try_send_req(Uri, Method, Parent, JObj, Retries-1)
     end.
 
--spec get_method_atom/1 :: (ne_binary()) -> 'put' | 'post' | 'get'.
+-spec get_method_atom/1 :: (<<_:24,_:_*8>>) -> 'put' | 'post' | 'get'.
 get_method_atom(<<"put">>) -> put;
 get_method_atom(<<"post">>) -> post;
 get_method_atom(<<"get">>) -> get.

@@ -60,8 +60,13 @@ behaviour_info(_) ->
     undefined.
 
 -type responders() :: [listener_utils:responder(),...] | [].
--type binding() :: {queue_bindings:bind_types(), proplist()}.
+-type binding() :: atom() | {atom(), proplist()}.
 -type bindings() :: [binding(),...] | [].
+
+-type responder_callback_mod() :: atom() | {atom(), atom()}.
+-type responder_callback_mapping() :: {ne_binary(), ne_binary()}.
+-type responder_callback_mappings() :: [responder_callback_mapping(),...] | [].
+
 -type start_params() :: [{responders, responders()} |
 			 {bindings, bindings()} |
 			 {queue_name, binary()} |
@@ -118,10 +123,6 @@ stop(Srv) when is_atom(Srv) ->
     stop(whereis(Srv));
 stop(Srv) when is_pid(Srv) ->
     gen_server:cast(Srv, stop).
-
--type responder_callback_mod() :: atom() | {atom(), atom()}.
--type responder_callback_mapping() :: {ne_binary(), ne_binary()}.
--type responder_callback_mappings() :: [responder_callback_mapping(),...] | [].
 
 -spec add_responder/3 :: (pid() | atom(), responder_callback_mod(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
 add_responder(Srv, Responder, Key) when not is_list(Key) ->
@@ -197,10 +198,7 @@ init([Module, Params, InitArgs]) ->
 				 {'noreply', #state{}, gen_server_timeout()} |
 				 {'stop', term(), #state{}} | {'stop', term(), term(), #state{}}.
 
--spec handle_call/3 :: (Request, From, State) -> gen_l_handle_call_ret() when
-      Request :: term(),
-      From :: {pid(), reference()},
-      State :: #state{}.
+-spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> gen_l_handle_call_ret().
 handle_call(queue_name, _From, #state{queue=Q}=State) ->
     {reply, Q, State};
 handle_call(responders, _From, #state{responders=Rs}=State) ->
@@ -224,9 +222,7 @@ handle_call(Request, From, #state{module=Module, module_state=ModState}=State) -
 	    {stop, Why, State}
     end.
 
--spec handle_cast/2 :: (Request, State) -> handle_cast_ret() when
-      Request :: term(),
-      State :: #state{}.
+-spec handle_cast/2 :: (term(), #state{}) -> handle_cast_ret().
 handle_cast(stop, #state{active_responders=[]}=State) ->
     {stop, normal, State};
 handle_cast(stop, #state{queue = <<>>}=State) ->
@@ -245,7 +241,7 @@ handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State
 
 handle_cast({add_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
     ?LOG("adding binding ~s, ~p", [Binding, Props]),
-    Wapi = <<"wapi_", (wh_util:to_binary(Binding))/binary>>,
+    Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
     try
         ApiMod = wh_util:to_atom(Wapi),
 	ApiMod:bind_q(Q, Props),
@@ -264,7 +260,7 @@ handle_cast({add_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
 		    handle_cast(Req, State)
 	    end;
 	error:undef ->
-	    ?LOG_SYS("Module ~s doesn't exist of bind_q/2 isn't exported", [Wapi]),
+	    ?LOG_SYS("Module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
 	    ?LOG_SYS("Trying old school add_binding for ~s", [Binding]),
 	    queue_bindings:add_binding_to_q(Q, Binding, Props),
 	    {noreply, State};
@@ -332,9 +328,7 @@ handle_cast(Message, #state{module=Module, module_state=ModState}=State) ->
 	    {stop, Why, State}
     end.
 
--spec handle_info/2 :: (Request, State) -> handle_info_ret() when
-      Request :: term(),
-      State :: #state{}.
+-spec handle_info/2 :: (term(), #state{}) -> handle_info_ret().
 handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, #state{active_responders=ARs}=State) ->
     case catch handle_event(Payload, CT, State) of
 	Pid when is_pid(Pid) ->
@@ -412,10 +406,7 @@ terminate(Reason, #state{module=Module, module_state=ModState}) ->
     Module:terminate(Reason, ModState),
     ok.
 
--spec handle_event/3 :: (Payload, ContentType, State) -> pid() when
-      Payload :: binary(),
-      ContentType :: binary(),
-      State :: #state{}.
+-spec handle_event/3 :: (ne_binary(), ne_binary(), #state{}) -> pid().
 handle_event(Payload, <<"application/json">>, State) ->
     JObj = mochijson2:decode(Payload),
     process_req(State, JObj);
@@ -423,9 +414,7 @@ handle_event(Payload, <<"application/erlang">>, State) ->
     JObj = binary_to_term(Payload),
     process_req(State, JObj).
 
--spec process_req/2 :: (State, JObj) -> pid() when
-      State :: #state{},
-      JObj :: json_object().
+-spec process_req/2 :: (#state{}, json_object()) -> pid().
 process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj) ->
     Props1 = case catch Module:handle_event(JObj, ModState) of
 		 {reply, Props} when is_list(Props) -> [{queue, Queue} | Props];
@@ -433,10 +422,7 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
 	     end,
     spawn_link(fun() -> _ = wh_util:put_callid(JObj), process_req(Props1, Responders, JObj) end).
 
--spec process_req/3 :: (Props, Responders, JObj) -> 'ok' when
-      Props :: proplist(),
-      Responders :: responders(),
-      JObj :: json_object().
+-spec process_req/3 :: (proplist(), responders(), json_object()) -> 'ok'.
 process_req(Props, Responders, JObj) ->
     Key = wh_util:get_event_type(JObj),
 
@@ -449,9 +435,7 @@ process_req(Props, Responders, JObj) ->
     wait_for_handlers(Handlers).
 
 %% allow wildcard (<<"*">>) in the Key to match either (or both) Category and Name
--spec maybe_event_matches_key/2 :: (Key, Event) -> boolean() when
-      Key :: {binary(), binary()},
-      Event :: {binary(), binary()}.
+-spec maybe_event_matches_key/2 :: (responder_callback_mapping(), responder_callback_mapping()) -> boolean().
 maybe_event_matches_key(Evt, Evt) -> true;
 maybe_event_matches_key({_, Name}, {<<"*">>, Name}) -> true;
 maybe_event_matches_key({Cat, _}, {Cat, <<"*">>}) -> true;
@@ -460,8 +444,7 @@ maybe_event_matches_key(_A, _B) -> false.
 
 %% Collect the spawned handlers going down so the main process_req proc doesn't end until all
 %% handlers have completed (for graceful stopping).
--spec wait_for_handlers/1 :: (Handlers) -> 'ok' when
-      Handlers :: [{pid(), reference()},...] | [].
+-spec wait_for_handlers/1 :: ([{pid(), reference()},...] | []) -> 'ok'.
 wait_for_handlers([{Pid, Ref} | Hs]) ->
     receive
 	{'DOWN', Ref, process, Pid, _Reason} ->

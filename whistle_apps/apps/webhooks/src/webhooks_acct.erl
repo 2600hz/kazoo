@@ -107,7 +107,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
+handle_cast(start_bindings, #state{webhooks=Ord}=State) ->
+    Self = self(),
+    [spawn(fun() -> maybe_add_binding(Self, Key) end) || Key <- orddict:fetch_keys(Ord)],
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -156,3 +158,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec maybe_add_binding/2 :: (pid(), ne_binary()) -> 'ok'.
+maybe_add_binding(Srv, Key) ->
+    HookModBin = list_to_binary([<<"hook_">>, Key]),
+    try
+	HookMod = wh_util:to_atom(HookModBin),
+	HookMod:add_binding(Srv),
+	?LOG("Hook ~s bound queue", [HookMod])
+    catch
+	error:badarg ->
+	    ?LOG_SYS("hook module ~s not found", [HookModBin]),
+	    case code:where_is_file(wh_util:to_list(<<HookModBin/binary, ".beam">>)) of
+		non_existing ->
+		    ?LOG_SYS("beam file not found for ~s", [HookModBin]),
+		    throw({invalid_hook, Key});
+		_Path ->
+		    ?LOG_SYS("beam file found: ~s", [_Path]),
+		    wh_util:to_atom(HookModBin, true), %% put atom into atom table
+		    maybe_add_binding(Srv, Key) % try again
+	    end;
+	error:undef ->
+	    ?LOG_SYS("Hook ~s doesn't exist or add_binding/1 isn't exported", [HookModBin]),
+	    throw({invalid_hook, Key});
+        E:R ->
+	    ?LOG("Unexpected error: ~p:~p", [E, R]),
+            io:format("~p ~p~n", [E, R]),
+	    ok
+    end.

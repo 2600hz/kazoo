@@ -142,7 +142,7 @@ filter(Pred, {struct, Props}) when is_function(Pred, 1) ->
 
 -spec map/2 :: (fun((json_string(), json_term()) -> term()), json_object()) -> json_object().
 map(F, JObj) ->
-    wh_json:from_list([ F(K, ?MODULE:get_value(K)) || K <- ?MODULE:get_keys(JObj)]).
+    wh_json:from_list([ F(K, ?MODULE:get_value(K, JObj)) || K <- ?MODULE:get_keys(JObj)]).
 
 -spec get_string_value/3 :: (Key, JObj, Default) -> list() when
       Key :: term(),
