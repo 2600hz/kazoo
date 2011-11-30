@@ -180,7 +180,7 @@ caller_id_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=Account
             [?LOG("unable to find caller id attribute ~s on ~s", [Attribute, Id]) || Id <- Ids],
             undefined;
         {Id, Value} ->
-            ?LOG("found caller id ~s on ~s: '~p'", [Attribute, Id, Value]),
+            ?LOG("found caller id attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
             Value
     end.
 
@@ -198,7 +198,6 @@ media_attributes(Endpoint, Attribute, Call) when is_tuple(Endpoint) ->
 media_attributes(EndpointId, Attribute, Call) ->
     OwnerId = owner_id(EndpointId, Call),
     media_attributes(EndpointId, OwnerId, Attribute, Call).
-
 
 media_attributes(EndpointId, OwnerId, <<"codecs">>, Call) ->
     Audio = media_attributes(EndpointId, OwnerId, <<"audio">>, Call),
