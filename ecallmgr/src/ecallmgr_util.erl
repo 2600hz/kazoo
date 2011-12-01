@@ -42,7 +42,7 @@ get_sip_request(Prop) ->
     list_to_binary([
 		    props:get_value(<<"Caller-Destination-Number">>, Prop, props:get_value(<<"variable_sip_req_user">>, Prop, "nouser"))
 		    ,"@"
-                    ,props:get_value(<<"variable_sip_req_host">>, Prop
+                    ,props:get_value(<<"variable_sip_auth_realm">>, Prop
                                ,props:get_value( list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"]), Prop, "nodomain"))
 		   ]).
 
