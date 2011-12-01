@@ -14,6 +14,12 @@
            ,"type":"string"
            ,"format": "uri"
        }
+       ,"callback_method": {
+           "description":"What HTTP method to use when contacting the server"
+          ,"default":"post"
+          ,"type":"string"
+ 	  ,"enum":["get","put","post"]
+       }
 	,"bind_event": {
 	    "description": "The trigger event for a request being made to 'callback_uri'."
 	    ,"required":"true"
