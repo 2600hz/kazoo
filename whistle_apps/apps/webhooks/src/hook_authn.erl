@@ -43,31 +43,35 @@ handle_req(JObj, Props) ->
 
     Hooks = orddict:fetch(<<"authn">>, props:get_value(hooks, Props)), %% list of callbacks to call for the request
 
-
-    Q = wh_json:get_value(<<"Server-ID">>, JObj),
+    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+    MyQueue = props:get_value(queue, Props),
     Self = self(),
 
     Reqs = [spawn_monitor(fun() -> call_webhook(Self, Hook, JObj) end) || Hook <- Hooks],
-    wait_for_resps(Reqs, Q).
+    wait_for_resps(Reqs, RespQ, MyQueue).
 
--spec wait_for_resps/2 :: ([{pid(), reference()},...] | [], ne_binary()) -> 'ok'.
-wait_for_resps([], _) -> ok;
-wait_for_resps(Reqs, Q) ->
+-spec wait_for_resps/3 :: ([{pid(), reference()},...] | [], ne_binary(), ne_binary()) -> 'ok'.
+wait_for_resps([], _, _) -> ok;
+wait_for_resps(Reqs, RespQ, MyQ) ->
     receive
 	{ok, Resp} ->
-	    ?LOG("Authn resp recv: ~p", [Resp]),
-	    ?LOG("sent: ~p", [catch(wapi_authn:publish_resp(Q, Resp))]),
-	    wait_for_resps(Reqs, Q);
+	    ?LOG("Authn resp recv"),
+	    case catch(wapi_authn:publish_resp(RespQ, wh_json:set_value(<<"Server-ID">>, MyQ, Resp))) of
+		ok -> ?LOG("Authn response sent successfully");
+		{'EXIT', _Why} -> ?LOG("Failed to send authn response: ~p", [_Why])
+	    end,
+	    wait_for_resps(Reqs, RespQ, MyQ);
 	{'DOWN', Ref, process, Pid, Reason} ->
 	    ?LOG("Pid ~p down: ~p", [Pid, Reason]),
-	    wait_for_resps(lists:keydelete(Ref, 2, Reqs), Q)
+	    wait_for_resps(lists:keydelete(Ref, 2, Reqs), RespQ, MyQ)
     end.
 
 -spec call_webhook/3 :: (pid(), json_object(), json_object()) -> no_return().
 call_webhook(Parent, Hook, JObj) ->
     wh_util:put_callid(JObj),
+
     Uri = wh_json:get_value(<<"callback_uri">>, Hook),
-    Method = get_method_atom(wh_json:get_binary_value(<<"http_method">>, Hook, <<"post">>)),
+    Method = get_method_atom(wh_json:get_binary_value(<<"http_method">>, Hook, <<"get">>)),
 
     ?LOG("Sending json to ~s using method ~s", [Uri, Method]),
 
@@ -78,28 +82,27 @@ call_webhook(Parent, Hook, JObj) ->
 -spec try_send_req/5 :: (ne_binary(), 'put' | 'post' | 'get', pid(), json_object(), non_neg_integer()) -> no_return().
 try_send_req(_, _, _, _, R) when R =< 0 -> ?LOG("Retries exceeded");
 try_send_req(Uri, Method, Parent, ReqJObj, Retries) ->
-    case ibrowse:send_req(wh_util:to_list(Uri)
-			  ,[{"content-type", "application/json"}
-			    ,{"accept", "application/json"}
-			   ]
-			  ,Method, wh_json:encode(ReqJObj)) of
-	{ok, Status, ResponseHeaders, ResponseBody} ->
-	    ?LOG("Recv status: ~s", [Status]),
-	    [?LOG("RespHeader: ~p", [ResponseHeader]) || ResponseHeader <- ResponseHeaders],
-	    ?LOG("RespBody: ~s", [ResponseBody]),
+    try
+	case ibrowse:send_req(wh_util:to_list(Uri)
+			      ,[{"content-type", "application/json"}
+				,{"accept", "application/json"}
+			       ]
+			      ,Method, wh_json:encode(ReqJObj)) of
+	    {ok, Status, ResponseHeaders, ResponseBody} ->
+		?LOG("Resp status: ~s", [Status]),
+		[?LOG("Resp header: ~s: ~s", [K,V]) || {K,V} <- ResponseHeaders],
+		?LOG("Resp body: ~s", [ResponseBody]),
 
-	    ?DEFAULT_CONTENT_TYPE = wh_util:to_binary(props:get_value("Content-Type", ResponseHeaders)),
+		?DEFAULT_CONTENT_TYPE = wh_util:to_binary(props:get_value("Content-Type", ResponseHeaders)),
 
-	    try Parent ! {ok, wh_json:decode(ResponseBody)} of
-		{ok, _RespJObj} -> ?LOG("Resp JSON: ~p", [_RespJObj])
-	    catch
-		exit:_E ->
-		    ?LOG("Failed to decode: ~p", [_E]);
-		T:R ->
-		    ?LOG("~p: ~p", [T, R])
-	    end;
-	{error, Reason} ->
-	    ?LOG("Request failed: ~p", [Reason]),
+		Parent ! {ok, wh_json:decode(ResponseBody)};
+	    {error, Reason} ->
+		?LOG("Request failed: ~p", [Reason]),
+		try_send_req(Uri, Method, Parent, ReqJObj, Retries-1)
+	end
+    catch
+	T:R ->
+	    ?LOG("Caught ~s:~p", [T, R]),
 	    try_send_req(Uri, Method, Parent, ReqJObj, Retries-1)
     end.
 
