@@ -139,8 +139,8 @@ get_leg_vars(JObj) -> get_leg_vars(wh_json:to_proplist(JObj)).
 
 -spec get_channel_vars/1 :: (json_object() | proplist()) -> [string(),...].
 get_channel_vars([_|_]=Prop) ->
-%%    P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
-    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "}"];
+    P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
+    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
 get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
 -spec get_channel_vars/2 :: ({binary(), binary() | json_object()}, [binary(),...] | []) -> [binary(),...] | [].

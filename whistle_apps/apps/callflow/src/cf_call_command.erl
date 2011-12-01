@@ -12,7 +12,7 @@
 
 -export([audio_macro/2]).
 -export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
--export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
+-export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([store/3, store/4, store/5]).
@@ -26,7 +26,7 @@
 -export([flush/1, flush_dtmf/1]).
 
 -export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2]).
--export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
+-export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6]).
 -export([b_play/2, b_play/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_store/3, b_store/4, b_store/5]).
@@ -237,44 +237,32 @@ b_hangup(Call) ->
 %% Produces the low level wh_api request to bridge the call
 %% @end
 %%--------------------------------------------------------------------
--type cf_cid_types() :: binary() | 'undefined'.
 -spec bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) -> 'ok'.
 -spec bridge/3 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
--spec bridge/5 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), CIDType :: cf_cid_types(), Strategy :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
--spec bridge/6 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), CIDType :: cf_cid_types(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
--spec bridge/7 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), CIDType :: cf_cid_types(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Ringback :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
+-spec bridge/4 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
+-spec bridge/5 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
+-spec bridge/6 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Ringback :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
 
 -spec b_bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) -> cf_api_bridge_return().
 -spec b_bridge/3 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
--spec b_bridge/4 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), CIDType :: cf_cid_types(), Call :: #cf_call{}) -> cf_api_bridge_return().
--spec b_bridge/5 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), CIDType :: cf_cid_types(), Strategy :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
--spec b_bridge/6 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), CIDType :: cf_cid_types(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
--spec b_bridge/7 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), CIDType :: cf_cid_types(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Ringback :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
+-spec b_bridge/4 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
+-spec b_bridge/5 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
+-spec b_bridge/6 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Ringback :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
 
 bridge(Endpoints, Call) ->
-    bridge(Endpoints, <<"26">>, Call).
+    bridge(Endpoints, ?DEFAULT_TIMEOUT, Call).
 bridge(Endpoints, Timeout, Call) ->
-    bridge(Endpoints, Timeout, undefined, Call).
-bridge(Endpoints, Timeout, CIDType, Call) ->
-    bridge(Endpoints, Timeout, CIDType, <<"single">>, Call).
-bridge(Endpoints, Timeout, CIDType, Strategy, Call) ->
-    bridge(Endpoints, Timeout, CIDType, Strategy, <<"false">>, Call).
-bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Call) ->
-    bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, undefined, Call).
-bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback
-       , #cf_call{call_id=CallId, amqp_q=AmqpQ, owner_id=OwnerId, authorizing_id=AuthId, inception=Inception, channel_vars=CCVs}=Call) ->
-    {CIDNum, CIDName} = case Inception of
-                            <<"on-net">> ->
-                                cf_attributes:caller_id(CIDType, AuthId, OwnerId, Call);
-                            _ ->
-                                {undefined, undefined}
-                        end,
+    bridge(Endpoints, Timeout, <<"single">>, Call).
+bridge(Endpoints, Timeout, Strategy, Call) ->
+    bridge(Endpoints, Timeout, Strategy, <<"false">>, Call).
+bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, undefined, Call).
+bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback
+       ,#cf_call{call_id=CallId, amqp_q=AmqpQ, channel_vars=CCVs}=Call) ->
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, Timeout}
                ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-               ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
-               ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
                ,{<<"Ringback">>, Ringback}
                ,{<<"Dial-Endpoint-Method">>, Strategy}
                ,{<<"Custom-Channel-Vars">>, CCVs}
@@ -285,17 +273,15 @@ bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback
     send_callctrl(Payload, Call).
 
 b_bridge(Endpoints, Call) ->
-    b_bridge(Endpoints, <<"26">>, Call).
+    b_bridge(Endpoints, ?DEFAULT_TIMEOUT, Call).
 b_bridge(Endpoints, Timeout, Call) ->
-    b_bridge(Endpoints, Timeout, <<"default">>, Call).
-b_bridge(Endpoints, Timeout, CIDType, Call) ->
-    b_bridge(Endpoints, Timeout, CIDType, <<"single">>, Call).
-b_bridge(Endpoints, Timeout, CIDType, Strategy, Call) ->
-    b_bridge(Endpoints, Timeout, CIDType, Strategy, <<"false">>, Call).
-b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Call) ->
-    b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, undefined, Call).
-b_bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
-    bridge(Endpoints, Timeout, CIDType, Strategy, IgnoreEarlyMedia, Ringback, Call),
+    b_bridge(Endpoints, Timeout, <<"single">>, Call).
+b_bridge(Endpoints, Timeout, Strategy, Call) ->
+    b_bridge(Endpoints, Timeout, Strategy, <<"false">>, Call).
+b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
+    b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, undefined, Call).
+b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call),
     case wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000, Call) of
         {ok, Bridge}=Ok ->
             spawn(fun() -> update_fallback(Bridge, Call) end),

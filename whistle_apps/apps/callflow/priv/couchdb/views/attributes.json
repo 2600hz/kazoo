@@ -23,6 +23,9 @@
        "owned": {
            "map": "function(doc) { if (!doc.owner_id || doc.pvt_deleted) return; emit([doc.owner_id, doc.pvt_type], doc._id); }"
        },
+       "friendly_name": {
+           "map": "function(doc) { if ((doc.pvt_type != 'user' && doc.pvt_type != 'device') || doc.pvt_deleted) return; if (doc.pvt_type == 'user') emit(doc._id, {'friendly_name': doc.first_name + ' ' + doc.last_name}); else emit(doc._id, {'friendly_name': doc.name}); }"
+       },
        "hotdesk_id": {
            "map": "function(doc) { if (!doc.hotdesk  || doc.pvt_deleted) return; emit(doc.hotdesk.id, {'owner_id':doc._id, 'hotdesk':doc.hotdesk}); }"
        },

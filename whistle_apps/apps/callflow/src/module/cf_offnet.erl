@@ -26,10 +26,7 @@
 handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId, inception_during_transfer=IDT
                       ,ctrl_q=CtrlQ, amqp_q=AmqpQ, cf_pid=CFPid, owner_id=OwnerId, authorizing_id=AuthId, channel_vars=CCV}=Call) ->
     put(callid, CallId),
-    {CIDNum, CIDName}
-        = cf_attributes:caller_id(wh_json:get_value(<<"caller_id_type">>, Data, <<"external">>), AuthId, OwnerId, Call),
-    {ECIDNum, ECIDName}
-        = cf_attributes:caller_id(<<"emergency">>, AuthId, OwnerId, Call),
+    {ECIDNum, ECIDName} = cf_attributes:caller_id(AuthId, OwnerId, <<"emergency">>, Call),
     Req = [{<<"Call-ID">>, CallId}
            ,{<<"Resource-Type">>, <<"audio">>}
            ,{<<"To-DID">>, ReqNum}
@@ -39,8 +36,6 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId,
            ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Data)}
            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
            ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, Data)}
-           ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
-           ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
            ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
            ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
            ,{<<"Presence-ID">>, cf_attributes:presence_id(AuthId, Call)}

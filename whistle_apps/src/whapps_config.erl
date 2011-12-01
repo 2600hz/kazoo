@@ -194,7 +194,7 @@ get(Category, Key, Default) ->
                         undefined ->
                             ?LOG("missing key ~s(~s) ~s: ~p", [Category, Node, Key, Default]),
                             Default =/= undefined andalso
-                                spawn(fun() -> ?MODULE:set(Category, Key, Default) end),
+                                ?MODULE:set(Category, Key, Default),
                             Default;
                         Else ->
                             ?LOG("fetched config ~s(~s) ~s: ~p", [Category, "default", Key, Else]),
@@ -324,8 +324,11 @@ fetch_file_config(Category, Cache) ->
                         end,
             update_category_node(Category, <<"default">>, UpdateFun, Cache);
         {error, _}=E ->
-            ?LOG("failed to imported default configuration from ~s: ~p", [File, E]),
-            {error, not_found}
+            ?LOG("initializing category ~s without configuration: ~p", [Category, E]),
+            UpdateFun = fun(J) ->
+                                wh_json:set_value(<<"default">>, wh_json:new(), J)
+                        end,
+            update_category_node(Category, <<"default">>, UpdateFun, Cache)
     end.
 
 %%-----------------------------------------------------------------------------

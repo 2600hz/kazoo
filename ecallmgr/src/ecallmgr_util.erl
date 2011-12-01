@@ -165,6 +165,14 @@ put_callid(JObj) ->
 media_path(MediaName, UUID) ->
     media_path(MediaName, new, UUID).
 
+media_path(undefined, _Type, _UUID) ->
+    <<"silence_stream://5">>;
+media_path(MediaName, Type, UUID) when not is_binary(MediaName) ->
+    media_path(wh_util:to_binary(MediaName), Type, UUID);
+media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID) ->
+    Media;
+media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID) ->
+    Media;
 media_path(MediaName, Type, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
         {'error', _} ->
