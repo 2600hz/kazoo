@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/7, find_failure_branch/2]).
+-import(cf_call_command, [b_bridge/6, find_failure_branch/2]).
 
 -define(VIEW_BY_RULES, <<"cf_attributes/active_resources_by_rules">>).
 
@@ -48,7 +48,7 @@ handle(Data, #cf_call{call_id=CallId}=Call) ->
 -spec bridge_to_resources/5 :: (Endpoints :: endpoints(), Timeout :: cf_api_binary()
                                 ,IngoreEarlyMeida :: cf_api_binary(), Ringback :: cf_api_binary()
                                 ,Call :: #cf_call{}) -> {'continue'} | {'branch', json_object()} | 'true'.
-bridge_to_resources([{DestNum, Rsc, CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, #cf_call{cf_pid=CFPid
+bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, #cf_call{cf_pid=CFPid
                                                                                                     ,inception_during_transfer=IDT
                                                                                                     ,channel_vars=CCV}=Call) ->
     CCVs1 = case wh_json:is_true(<<"fax_enabled">>, Rsc) of
@@ -57,7 +57,7 @@ bridge_to_resources([{DestNum, Rsc, CIDType}|T], Timeout, IgnoreEarlyMedia, Ring
 	    end,
 
     case b_bridge([create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)]
-                  ,Timeout, CIDType, <<"single">>, IgnoreEarlyMedia, Ringback
+                  ,Timeout, <<"single">>, IgnoreEarlyMedia, Ringback
 		  ,Call#cf_call{channel_vars=CCVs1}
 		 ) of
         {ok, _} ->

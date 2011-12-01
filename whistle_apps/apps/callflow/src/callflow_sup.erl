@@ -20,7 +20,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
--define(CHILDREN, [{cf_responder, worker}, {cf_exe_sup, supervisor}]).
+-define(CHILDREN, [{cf_listener, worker}, {cf_exe_sup, supervisor}]).
 
 %% ===================================================================
 %% API functions

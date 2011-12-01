@@ -11,13 +11,14 @@
 
 -export([temporal_rules/1]).
 -export([call_forward/2, call_forward/3]).
--export([caller_id/4]).
+-export([caller_id/2, caller_id/3, caller_id/4]).
 -export([callee_id/2, callee_id/3, callee_id/4]).
 -export([caller_id_attributes/3, caller_id_attributes/4]).
 -export([media_attributes/3, media_attributes/4]).
 -export([moh_attributes/3, moh_attributes/4]).
 -export([owner_id/2, fetch_owner_id/2]).
 -export([owned_by/2, owned_by/3, fetch_owned_by/2, fetch_owned_by/3]).
+-export([friendly_name/2, friendly_name/3]).
 -export([presence_id/2]).
 
 %%-----------------------------------------------------------------------------
@@ -59,7 +60,9 @@ call_forward(EndpointId, OwnerId, #cf_call{account_db=Db}) ->
                               ,(begin
                                     Key = wh_json:get_value(<<"key">>, CF),
                                     lists:member(Key, [EndpointId, OwnerId])
-                                end)];
+                                end)
+                              ,not wh_util:is_empty(wh_json:get_value([<<"value">>, <<"number">>], CF))
+                      ];
                   {error, R}->
                       ?LOG("failed to load call fowarding objects: ~p", [R]),
                       []
@@ -79,38 +82,60 @@ call_forward(EndpointId, OwnerId, #cf_call{account_db=Db}) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec caller_id/4 :: (CIDType, EndpointId, OwnerId, Call) -> tuple(cf_api_binary(), cf_api_binary()) when
-      CIDType :: cf_api_binary(),
-      EndpointId :: cf_api_binary(),
-      OwnerId :: cf_api_binary(),
-      Call :: #cf_call{}.
-caller_id(CIDType, EndpointId, OwnerId, #cf_call{account_id=AccountId, cid_number=Num, cid_name=Name, channel_vars=CCVs}=Call) ->
+-spec caller_id/2 :: (ne_binary() | json_object(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
+-spec caller_id/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
+-spec caller_id/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
+
+caller_id(Endpoint, #cf_call{inception=Inception}=Call) ->
+    case Inception of
+        <<"off-net">> ->
+            caller_id(Endpoint, <<"external">>, Call);
+        _ ->
+            caller_id(Endpoint, <<"internal">>, Call)
+    end.
+
+caller_id(Endpoint, Attribute, Call) when is_tuple(Endpoint) ->
+    EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
+    caller_id(EndpointId, Attribute, Call);
+caller_id(EndpointId, Attribute, Call) ->
+    OwnerId = owner_id(EndpointId, Call),
+    caller_id(EndpointId, OwnerId, Attribute, Call).
+
+caller_id(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId, channel_vars=CCVs, inception=Inception
+                                                   ,cid_number=OrgNum, cid_name=OrgName}=Call) ->
     Ids = [Id || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
-    case wh_util:is_true(wh_json:get_value(<<"Retain-CID">>, CCVs)) of
-        true ->
-            ?LOG("retaining caller id ~s '~s'", [Num, Name]),
-            {Num, Name};
-        false ->
-            Attributes = fetch_attributes(caller_id, Call),
-            CID = case search_attributes(CIDType, Ids, Attributes) of
+    CID = case (Inception =:= <<"off-net">> andalso not wh_json:is_true(<<"Call-Forward">>, CCVs))
+              orelse wh_json:is_true(<<"Retain-CID">>, CCVs) of
+              true ->
+                  ?LOG("retaining original caller id"),
+                  wh_json:from_list([{<<"number">>, OrgNum}, {<<"name">>, OrgName}]);
+              false ->
+                  Attributes = fetch_attributes(caller_id, Call),
+                  case search_attributes(Attribute, Ids, Attributes) of
                       undefined ->
                           case search_attributes(<<"default">>, [AccountId], Attributes) of
                               undefined ->
-                                  [?LOG("unable to find ~s caller id on ~s", [CIDType, Id]) || Id <- Ids],
-                                  undefined;
+                                  [?LOG("unable to find ~s caller id on ~s", [Attribute, Id]) || Id <- Ids],
+                                  ?EMPTY_JSON_OBJECT;
                               {Id, Value} ->
                                   ?LOG("found default caller id on ~s", [Id]),
                                   Value
                           end;
                       {Id, Value} ->
-                          ?LOG("found ~s caller id on ~s", [CIDType, Id]),
+                          ?LOG("found ~s caller id on ~s", [Attribute, Id]),
                           Value
-                  end,
-            CIDNumber = wh_json:get_value(<<"number">>, CID, Num),
-            CIDName = wh_json:get_value(<<"name">>, CID, Name),
-            ?LOG("using caller id ~s '~s'", [CIDNumber, CIDName]),
-            {CIDNumber, CIDName}
-   end.
+                  end
+          end,
+    CIDNum = case wh_json:get_ne_value(<<"number">>, CID) of
+                 undefined -> OrgNum;
+                 Number -> Number
+             end,
+    CIDName = case wh_json:get_ne_value(<<"name">>, CID) of
+                  undefined -> friendly_name(EndpointId, OwnerId, Call);
+                  Name -> Name
+              end,
+    ?LOG("using caller id ~s '~s'", [CIDNum, CIDName]),
+    {CIDNum, CIDName}.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -144,18 +169,25 @@ callee_id(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId, request
                           case search_attributes(<<"default">>, [AccountId], Attributes) of
                               undefined ->
                                   [?LOG("unable to find ~s caller id on ~s", [Attribute, Id]) || Id <- Ids],
-                                  undefined;
+                                  ?EMPTY_JSON_OBJECT;
                               {Id, Value} ->
-                                  ?LOG("found default caller id on ~s", [Id]),
+                                  ?LOG("found default callee id on ~s", [Id]),
                                   Value
                           end;
                       {Id, Value} ->
                           ?LOG("found ~s callee id on ~s", [Attribute, Id]),
                           Value
           end,
-    CIDName = wh_json:get_value(<<"name">>, CID, <<"">>),
-    ?LOG("using callee id ~s '~s'", [RUser, CIDName]),
-    {RUser, CIDName}.
+    CIDNum = case wh_json:get_ne_value(<<"number">>, CID) of
+                 undefined -> RUser;
+                 Number -> Number
+             end,
+    CIDName = case wh_json:get_ne_value(<<"name">>, CID) of
+                  undefined -> friendly_name(EndpointId, OwnerId, Call);
+                  Name -> Name
+              end,
+    ?LOG("using callee id ~s '~s'", [CIDNum, CIDName]),
+    {CIDNum, CIDName}.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -310,6 +342,33 @@ fetch_owned_by(OwnerId, #cf_call{account_db=Db}=Call) ->
 fetch_owned_by(OwnerId, Attribute, #cf_call{account_db=Db}=Call) ->
     wh_cache:erase({?MODULE, Db, owned}),
     owned_by(OwnerId, Attribute, Call).
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec friendly_name/2 :: (ne_binary() | json_object(), #cf_call{}) -> ne_binary().
+-spec friendly_name/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> ne_binary().
+
+friendly_name(Endpoint, Call) when is_tuple(Endpoint) ->
+    EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
+    friendly_name(EndpointId, Call);
+friendly_name(EndpointId, Call) ->
+    OwnerId = owner_id(EndpointId, Call),
+    friendly_name(EndpointId, OwnerId, Call).
+
+friendly_name(EndpointId, OwnerId, #cf_call{cid_name=CIDName}=Call) ->
+    Ids = [Id || Id <- [OwnerId, EndpointId], Id =/= undefined],
+    Attributes = fetch_attributes(friendly_name, Call),
+    case search_attributes(<<"friendly_name">>, Ids, Attributes) of
+        undefined ->
+            [?LOG("unable to find a name on ~s", [Id]) || Id <- Ids],
+            CIDName;
+        {Id, Value} ->
+            ?LOG("using name '~s' from ~s", [Value, Id]),
+            Value
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

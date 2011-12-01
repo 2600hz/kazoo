@@ -28,7 +28,7 @@
                           ,audio_macro/2, flush_dtmf/1
 			 ]).
 
--import(cf_call_command, [b_bridge/6, wait_for_unbridge/0]).
+-import(cf_call_command, [b_bridge/5, wait_for_unbridge/0]).
 
 -define(MAX_LOGIN_ATTEMPTS, 3).
 -define(CF_HOTDESK_VIEW, <<"cf_attributes/hotdesk_id">>).
@@ -268,7 +268,7 @@ get_hotdesk_profile({hotdesk_id, HId}, #cf_call{account_db=Db}=Call) ->
       Call :: #cf_call{}.
 bridge_to_endpoints(Endpoints, Timeout, Call) ->
     IgnoreEarlyMedia = ignore_early_media(Endpoints),
-    case b_bridge(Endpoints, Timeout, <<"internal">>, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
+    case b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
             ?LOG("bridged to endpoint"),
             wait_for_unbridge();
