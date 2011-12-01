@@ -2,9 +2,9 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Bind to wapi_authn bindings, exclude ones not for this account, and call the URI
-%%% supplied when a valid authn_req is received, hopefully receive a valid
-%%% authn_resp, and send it along to Whistle.
+%%% Bind to wapi_authz bindings, exclude ones not for this account, and call the URI
+%%% supplied when a valid authz_req is received, hopefully receive a valid
+%%% authz_resp, and send it along to Whistle.
 %%% @end
 %%% Created : 29 Nov 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
@@ -32,7 +32,7 @@ add_binding(Srv) ->
 handle_req(JObj, Props) ->
     wh_util:put_callid(JObj),
 
-    ?LOG("Starting authn_req webhook"),
+    ?LOG("Starting authz_req webhook"),
 
     case {props:get_value(realm, Props), wapi_authz:get_auth_realm(JObj)} of
 	{R, R} -> ?LOG("Realms (~s) match", [R]);
@@ -48,4 +48,4 @@ handle_req(JObj, Props) ->
     Self = self(),
 
     Reqs = [spawn_monitor(fun() -> gen_hook:call_webhook(Self, Hook, JObj) end) || Hook <- Hooks],
-    gen_hook:wait_for_resps(Reqs, RespQ, MyQ, fun wapi_authz:publish/2).
+    gen_hook:wait_for_resps(Reqs, RespQ, MyQ, fun wapi_authz:publish_resp/2).

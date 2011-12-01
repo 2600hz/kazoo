@@ -16,7 +16,7 @@
 %%%-------------------------------------------------------------------
 -module(gen_hook).
 
--export([call_webhook/3, wait_for_resps/4]).
+-export([call_webhook/3, wait_for_resps/4, no_resp/2]).
 
 -export([behaviour_info/1]).
 
@@ -29,6 +29,11 @@ behaviour_info(callbacks) ->
     ];
 behaviour_info(_) ->
     undefined.
+
+%% When sending events, route_win, etc, that don't require a response from the webhook
+-spec no_resp/2 :: (_, _) -> 'ok'.
+no_resp(_, _) ->
+    ?LOG("Not publishing the response from webhook").
 
 -spec wait_for_resps/4 :: ([{pid(), reference()},...] | [], ne_binary(), ne_binary(), fun((ne_binary(), json_object()) -> 'ok')) -> 'ok'.
 wait_for_resps([], _, _, _) -> ok;
@@ -70,7 +75,7 @@ try_send_req(Uri, Method, Parent, ReqJObj, Retries) ->
 			      ,Method, wh_json:encode(ReqJObj)) of
 	    {ok, Status, ResponseHeaders, ResponseBody} ->
 		?LOG("Resp status: ~s", [Status]),
-		[?LOG("Resp header: ~s: ~s", [K,V]) || {K,V} <- ResponseHeaders],
+		_ = [?LOG("Resp header: ~s: ~s", [K,V]) || {K,V} <- ResponseHeaders],
 		?LOG("Resp body: ~s", [ResponseBody]),
 
 		?DEFAULT_CONTENT_TYPE = wh_util:to_binary(props:get_value("Content-Type", ResponseHeaders)),
