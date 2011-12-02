@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, authn_resp_xml/1]).
+-export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, get_channel_vars/2, authn_resp_xml/1]).
 
 -include("ecallmgr.hrl").
 

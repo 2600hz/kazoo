@@ -44,6 +44,8 @@ start_link() ->
 -spec handle_req/2 :: (json_object(), proplist()) -> 'ok' | 'fail'.
 handle_req(JObj, _Prop) ->
     true = wapi_resource:req_v(JObj),
+%%    put(callid, wh_util:put_callid(JObj)),
+    put(callid, "0000000000"),
 
     Options = get_request_options(JObj),
     Nodes = get_resources(request_type(JObj), Options),
@@ -53,9 +55,9 @@ handle_req(JObj, _Prop) ->
 
     Route = ecallmgr_fs_xml:build_route(wh_json:set_value(<<"Realm">>, ?DEFAULT_DOMAIN, JObj), wh_json:get_value(<<"Invite-Format">>, JObj)),
 
-    case start_channels(Nodes, JObj, Route, Min, Max-Min) of
-	{error, failed_starting, Failed} ->
-	    send_failed_req(JObj, Failed),
+    case start_channels(Nodes, JObj, Route, Min, Max-Min, []) of
+	{error, failed_starting, Errors} ->
+	    send_failed_req(JObj, Errors),
 	    fail;
 	ok -> ok
     end.
@@ -174,21 +176,21 @@ get_request_options(JObj) ->
      ,{max_channels_requested, wh_util:to_integer(wh_json:get_value(<<"Resource-Maximum">>, JObj, Min))}
     ].
 
--spec start_channels/5 :: ([proplist(),...] | [], json_object(), binary() | list(), integer(), integer()) -> {'error', 'failed_starting', integer()} | 'ok'.
-start_channels(_Ns, _JObj, _Route, 0, 0) -> ok; %% started all channels requested
-start_channels([], _JObj, _Route, 0, _) -> ok; %% started at least the minimum channels, but ran out of servers with available resources
-start_channels([], _JObj, _Route, M, _) -> {error, failed_starting, M}; %% failed to start the minimum channels before server resources ran out
-start_channels([N | Ns]=Nodes, JObj, Route, 0, Max) -> %% these are bonus channels not required but desired
+-spec start_channels/6 :: ([proplist(),...] | [], json_object(), binary() | list(), integer(), integer(), list()) -> {'error', 'failed_starting', list()} | 'ok'.
+start_channels(_Ns, _JObj, _Route, 0, 0, _) -> ok; %% started all channels requested
+start_channels([], _JObj, _Route, 0, _, _) -> ok; %% started at least the minimum channels, but ran out of servers with available resources
+start_channels([], _JObj, _Route, _, _, Errors) -> {error, failed_starting, Errors}; %% failed to start the minimum channels before server resources ran out
+start_channels([N | Ns]=Nodes, JObj, Route, 0, Max, Errors) -> %% these are bonus channels not required but desired
     case start_channel(N, Route, JObj) of
-	{ok, 0} -> start_channels(Ns, JObj, Route, 0, Max-1);
-	{ok, _} -> start_channels(Nodes, JObj, Route, 0, Max-1);
-	{error, _} -> start_channels(Ns, JObj, Route, 0, Max)
+	{ok, 0} -> start_channels(Ns, JObj, Route, 0, Max-1, Errors);
+	{ok, _} -> start_channels(Nodes, JObj, Route, 0, Max-1, Errors);
+	{error, E} -> start_channels(Ns, JObj, Route, 0, Max, [E|Errors])
     end;
-start_channels([N | Ns]=Nodes, JObj, Route, Min, Max) -> %% start the minimum channels
+start_channels([N | Ns]=Nodes, JObj, Route, Min, Max, Errors) -> %% start the minimum channels
     case start_channel(N, Route, JObj) of
-	{ok, 0} -> start_channels(Ns, JObj, Route, Min-1, Max);
-	{ok, _} -> start_channels(Nodes, JObj, Route, Min-1, Max);
-	{error, _} -> start_channels(Ns, JObj, Route, Min, Max)
+	{ok, 0} -> start_channels(Ns, JObj, Route, Min-1, Max, Errors);
+	{ok, _} -> start_channels(Nodes, JObj, Route, Min-1, Max, Errors);
+	{error, E} -> start_channels(Ns, JObj, Route, Min, Max, [E|Errors])
     end.
 
 -spec start_channel/3 :: (proplist(), binary() | list(), json_object()) -> {'ok', integer()} | {'error', 'timeout' | binary()}.
@@ -213,12 +215,13 @@ send_uuid_to_app(JObj, UUID, CtlQ) ->
     ?LOG("sending resource response for ~s", [UUID]),
     wapi_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
--spec send_failed_req/2 :: (json_object(), integer()) -> 'ok'.
-send_failed_req(JObj, Failed) ->
+-spec send_failed_req/2 :: (json_object(), list()) -> 'ok'.
+send_failed_req(JObj, Errors) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            ,{<<"Failed-Attempts">>, Failed}
-            | wh_api:default_headers(<<"resource">>, <<"resource_error">>, ?APP_NAME, ?APP_VERSION)],
-    ?LOG("sending resource error after ~p attempts", [Failed]),
+            ,{<<"Failed-Attempts">>, length(Errors)}
+            ,{<<"Failure-Message">>, [wh_json:to_binary(E) || E <- Errors]}
+            | wh_api:default_headers(<<"resource">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
+    ?LOG("sending resource error"),
     wapi_resource:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec send_failed_consume/3 :: (binary() | list(), json_object(), binary()) -> 'ok'.
