@@ -61,7 +61,7 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
 		   %% _ when Body =:= undefined; Body =:= <<>> ->
                    %%     Context#cb_context{req_json=?EMPTY_JSON_OBJECT};
 		   _ ->
-		       extract_file(RD, Context#cb_context{req_json=?EMPTY_JSON_OBJECT, req_id=ReqId})
+		       extract_file(RD, Context#cb_context{req_id=ReqId})
 	       end,
 
     Verb = get_http_verb(RD, ReqJSON),
@@ -152,7 +152,7 @@ resource_exists(RD, Context) ->
                     ReturnCode = Context1#cb_context.resp_error_code,
 		    ?LOG("requested resource did not validate, returning ~w", [ReturnCode]),
 		    ?TIMER_TICK("v1.resource_exists halt end"),
-                    {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD2), Context1}
+                    {{halt, ReturnCode}, set_resp_headers(wrq:remove_resp_header("Content-Encoding", RD2), Context1), Context1}
             end;
 	false ->
 	    ?TIMER_TICK("v1.resource_exists false end"),
@@ -317,6 +317,7 @@ parse_path_tokens([], _Loaded, Events) ->
 parse_path_tokens([Mod|T], Loaded, Events) ->
     case lists:member(<<"cb_", (Mod)/binary>>, Loaded) of
         false ->
+	    ?LOG("Failed to find ~s in loaded cb modules", [Mod]),
 	    [];
         true ->
             {Params, List2} = lists:splitwith(fun(Elem) -> not lists:member(<<"cb_", (Elem)/binary>>, Loaded) end, T),
@@ -371,14 +372,15 @@ override_verb(RD, _, <<"options">>) ->
     end;
 override_verb(_, _, _) -> false.
 
--spec(get_json_body/1 :: (RD :: #wm_reqdata{}) -> json_object() | tuple(malformed, binary())).
+-spec get_json_body/1 :: (#wm_reqdata{}) -> json_object() | {'malformed', ne_binary()}.
 get_json_body(RD) ->
     try
-	QS = wh_json:from_list([ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- wrq:req_qs(RD)]),
+	QS = get_qs(RD),
+
 	case wrq:req_body(RD) of
 	    <<>> -> QS;
 	    ReqBody ->
-		JSON = mochijson2:decode(ReqBody),
+		JSON = wh_json:decode(ReqBody),
 		case is_valid_request_envelope(JSON) of
 		    true -> wh_json:merge_jobjs(JSON, QS);
 		    false ->
@@ -395,6 +397,10 @@ get_json_body(RD) ->
 	    {malformed, <<"JSON failed to validate; check your commas and curlys">>}
     end.
 
+-spec get_qs/1 :: (#wm_reqdata{}) -> json_object().
+get_qs(RD) ->
+    wh_json:from_list([ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- wrq:req_qs(RD)]).
+
 -spec(extract_files_and_params/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
 extract_files_and_params(RD, Context) ->
     try
@@ -405,6 +411,7 @@ extract_files_and_params(RD, Context) ->
 
 	{ReqProp, FilesProp} = get_streamed_body(StreamParts),
 	?LOG("extracted request vars(~b) and files(~b)", [length(ReqProp), length(FilesProp)]),
+
 	Context#cb_context{req_json={struct, ReqProp}, req_files=FilesProp}
     catch
 	_A:_B ->
@@ -415,6 +422,8 @@ extract_files_and_params(RD, Context) ->
 
 -spec(extract_file/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
 extract_file(RD, Context) ->
+    QS = get_qs(RD),
+
     FileContents = wh_util:to_binary(wrq:req_body(RD)),
     ContentType = wrq:get_req_header("Content-Type", RD),
     ContentSize = wrq:get_req_header("Content-Length", RD),
@@ -426,6 +435,7 @@ extract_file(RD, Context) ->
 								  ,{<<"contents">>, FileContents}
 								 ]}
 				  }]
+		       ,req_json=QS
 		      }.
 
 get_streamed_body(StreamReq) ->
@@ -577,7 +587,7 @@ is_authentic(RD, Context)->
 %% authorized for this request
 %% @end
 %%--------------------------------------------------------------------
--spec(is_permitted/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(true, #wm_reqdata{}, #cb_context{})).
+-spec is_permitted/2 :: (#wm_reqdata{}, #cb_context{}) -> 'false' | {'true', #wm_reqdata{}, #cb_context{}}.
 is_permitted(RD, Context)->
     case wrq:method(RD) of
         %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
@@ -660,14 +670,13 @@ execute_request(RD, Context) ->
     ?LOG("execute request false end"),
     {false, RD, Context}.
 
-execute_request_results(RD, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
+execute_request_results(RD, #cb_context{resp_error_code=ReturnCode, req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
     case succeeded(Context) of
         false ->
             Content = create_resp_content(RD, Context),
             RD1 = wrq:append_to_response_body(Content, RD),
-            ReturnCode = Context#cb_context.resp_error_code,
 	    ?TIMER_TICK("v1.execute_request halt end"),
-	    ?LOG("failed to execute request, returning ~b", [ReturnCode]),
+	    ?LOG("failed to execute request, returning ~p", [props:get_value(<<"error">>, Content)]),
             {{halt, ReturnCode}, wrq:remove_resp_header("Content-Encoding", RD1), Context};
         true ->
 	    ?TIMER_TICK("v1.execute_request verb=/=put end"),
@@ -772,30 +781,7 @@ set_resp_headers(RD0, #cb_context{resp_headers=Headers}) ->
 
 -spec fix_header/3 :: (#wm_reqdata{}, string(), string() | binary()) -> {string(), string()}.
 fix_header(RD, "Location"=H, Url) ->
-    %% http://some.host.com:port/"
-    Port = case wrq:port(RD) of
-	       80 -> "";
-	       P -> [":", wh_util:to_list(P)]
-	   end,
-
-    Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
-    ?LOG("host: ~s", [Host]),
-
-    %% /v1/accounts/acct_id/module => [module, acct_id, accounts, v1]
-    PathTokensRev = lists:reverse(string:tokens(wrq:path(RD), "/")),
-    UrlTokens = string:tokens(wh_util:to_list(Url), "/"),
-
-    Url1 =
-	string:join(
-	  lists:reverse(
-	    lists:foldl(fun("..", []) -> [];
-			   ("..", [_ | PathTokens]) -> PathTokens;
-			   (".", PathTokens) -> PathTokens;
-			   (Segment, PathTokens) -> [Segment | PathTokens]
-			end, PathTokensRev, UrlTokens)
-	   ), "/"),
-
-    {H, lists:concat([Host | [Url1]])};
+    {H, crossbar_util:get_abs_url(RD, Url)};
 fix_header(_, H, V) ->
     {wh_util:to_list(H), wh_util:to_list(V)}.
 
@@ -862,13 +848,13 @@ is_cors_preflight(RD) ->
 %%--------------------------------------------------------------------
 -spec create_resp_envelope/1 :: (#cb_context{}) -> [{binary(), binary() | atom() | json_object() | json_objects()},...].
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=undefined}) ->
-    ?LOG("generating sucessfull response"),
+    ?LOG("generating successful response"),
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, success}
      ,{<<"data">>, RespData}
     ];
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=Etag}) ->
-    ?LOG("generating sucessfull response"),
+    ?LOG("generating successful response"),
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, success}
      ,{<<"data">>, RespData}

@@ -13,6 +13,7 @@
 -export([resource_consume/3, show_channels/1, fs_node/1, uuid_exists/2
 	 ,hostname/1
 	]).
+-export([distributed_presence/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -41,7 +42,7 @@
 -define(CALL_STATUS_HEADERS, [<<"Unique-ID">>, <<"Call-Direction">>, <<"Caller-Caller-ID-Name">>, <<"Caller-Caller-ID-Number">>
 				  ,<<"Caller-Network-Addr">>, <<"Caller-Destination-Number">>, <<"FreeSWITCH-Hostname">>
 			     ]).
--define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, [<<"Call-ID">> | ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS])).
+-define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, [<<"Call-ID">> | wapi_channel_query:optional_headers()])).
 
 -spec resource_consume/3 :: (FsNodePid, Route, JObj) -> {'resource_consumed', binary(), binary(), integer()} |
 							{'resource_error', binary() | 'error'} when
@@ -53,6 +54,10 @@ resource_consume(FsNodePid, Route, JObj) ->
     receive Resp -> Resp
     after   10000 -> {resource_error, timeout}
     end.
+
+-spec distributed_presence/3 :: (pid(), ne_binary(), proplist()) -> ok.
+distributed_presence(Srv, Type, Event) ->
+    gen_server:cast(Srv, {distributed_presence, Type, Event}).
 
 -spec show_channels/1 :: (pid()) -> [proplist(),...] | [].
 show_channels(Srv) ->
@@ -84,9 +89,9 @@ init([Node, Options]) ->
     {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
 
 -spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> {'noreply', #state{}} | {'reply', atom(), #state{}}.
-handle_call(hostname, From, #state{node=Node}=State) ->
-    spawn(fun() -> gen_server:reply(From, freeswitch:api(Node, hostname, "")) end),
-    {noreply, State};
+handle_call(hostname, _From, #state{node=Node}=State) ->
+    [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
+    {reply, {ok, Hostname}, State};
 handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
     spawn(fun() ->
 		  case freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
@@ -106,6 +111,15 @@ handle_call(show_channels, From, #state{node=Node}=State) ->
 	  end),
     {noreply, State}.
 
+handle_cast({distributed_presence, Type, Event}, #state{node=Node}=State) ->
+    Headers = [{wh_util:to_list(K), wh_util:to_list(V)}
+               || {K, V} <- lists:foldr(fun(Header, Props) ->
+                                                proplists:delete(Header, Props)
+                                        end, Event, ?FS_DEFAULT_HDRS)],
+    EventName = wh_util:to_atom(<<"PRESENCE_", Type/binary>>, true),
+    _ = freeswitch:sendevent(Node, EventName, Headers),
+    {noreply, State};
+
 handle_cast(_Req, State) ->
     {noreply, State}.
 
@@ -116,13 +130,13 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
     receive
 	ok ->
 	    Res = run_start_cmds(Node),
-	    ?LOG_SYS("Start cmd results:"),
-	    _ = [ ?LOG("~p", [ApiRes]) || ApiRes <- Res],
+	    spawn(fun() -> print_api_responses(Res) end),
 
 	    NodeData = extract_node_data(Node),
 	    Active = get_active_channels(Node),
 
 	    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+                                         ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
 					 ,'CUSTOM', 'sofia::register'
 					]),
 
@@ -143,23 +157,30 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
 handle_info(Msg, #state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=S) when De > Cr ->
     handle_info(Msg, S#state{stats=Stats#node_stats{created_channels=De, destroyed_channels=De}});
 
-handle_info({event, [undefined | Data]}, #state{stats=Stats}=State) ->
+handle_info({event, [undefined | Data]}, #state{stats=Stats, node=Node}=State) ->
     EvtName = props:get_value(<<"Event-Name">>, Data),
     case EvtName of
 	<<"HEARTBEAT">> ->
 	    {noreply, State#state{stats=Stats#node_stats{last_heartbeat=erlang:now()}}, hibernate};
 	<<"CUSTOM">> ->
-	    spawn(fun() ->
-                          put(callid, props:get_value(<<"call-id">>, Data)),
-                          ?LOG("custom event received ~s", [EvtName]),
-                          process_custom_data(Data, ?APP_VERSION)
-                  end),
+	    spawn(fun() -> process_custom_data(Data) end),
+	    {noreply, State, hibernate};
+        <<"PRESENCE_", Type/binary>> ->
+            _ = case props:get_value(<<"Distributed-From">>, Data) of
+		    undefined ->
+			Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
+			[distributed_presence(Srv, Type, Headers)
+			 || Srv <- ecallmgr_fs_sup:node_handlers()
+				,Srv =/= self()];
+		    _Else ->
+			ok
+		end,
 	    {noreply, State, hibernate};
 	_ ->
 	    {noreply, State, hibernate}
     end;
 
-handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
+handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
     EvtName = props:get_value(<<"Event-Name">>, Data),
     case EvtName of
 	<<"CHANNEL_CREATE">> ->
@@ -177,12 +198,19 @@ handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr
 	    end;
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
 	    {noreply, State};
+        <<"PRESENCE_", Type/binary>> ->
+            _ = case props:get_value(<<"Distributed-From">>, Data) of
+		    undefined ->
+			Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
+			[distributed_presence(Srv, Type, Headers)
+			 || Srv <- ecallmgr_fs_sup:node_handlers()
+				,Srv =/= self()];
+		    _Else ->
+			ok
+		end,
+	    {noreply, State, hibernate};
 	<<"CUSTOM">> ->
-	    spawn(fun() ->
-                          put(callid, props:get_value(<<"call-id">>, Data)),
-                          ?LOG("custom event received ~s", [EvtName]),
-                          process_custom_data(Data, ?APP_VERSION)
-                  end),
+	    spawn(fun() -> process_custom_data(Data) end),
 	    {noreply, State};
 	_ ->
 	    {noreply, State}
@@ -230,50 +258,50 @@ code_change(_OldVsn, State, _Extra) ->
       AvailChan :: integer(),
       JObj :: json_object().
 originate_channel(Node, Pid, Route, AvailChan, JObj) ->
-    Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Data">>, JObj)),
-    OrigStr = binary_to_list(list_to_binary([Route, " &", Action])),
+    ChannelVars = ecallmgr_fs_xml:get_channel_vars(JObj),
+    Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), JObj),
+    OrigStr = binary_to_list(list_to_binary([ChannelVars, Route, " ", Action])),
     ?LOG_SYS("originate ~s on node ~s", [OrigStr, Node]),
+    _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [OrigStr]),
     Result = freeswitch:bgapi(Node, originate, OrigStr),
     case Result of
 	{ok, JobId} ->
 	    receive
 		{bgok, JobId, X} ->
 		    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
-		    ?LOG_START(CallID, "originate with job id ~s received bgok ~s", [Node, JobId, X]),
+		    ?LOG_START(CallID, "originate on ~s with job id ~s received bgok ~s", [Node, JobId, X]),
 		    CtlQ = start_call_handling(Node, CallID),
 		    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 		{bgerror, JobId, Y} ->
 		    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-		    ?LOG_SYS("failed to originate, ~p", [Node, ErrMsg]),
+		    ?LOG_SYS("~s failed to originate, ~p", [Node, ErrMsg]),
 		    Pid ! {resource_error, ErrMsg}
 	    after
 		9000 ->
-		    ?LOG_SYS("originate timed out", [Node]),
+		    ?LOG_SYS("~s originate timed out", [Node]),
 		    Pid ! {resource_error, timeout}
 	    end;
 	{error, Y} ->
 	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-	    ?LOG_SYS("failed to originate ~p", [Node, ErrMsg]),
+	    ?LOG_SYS("~s failed to originate ~p", [Node, ErrMsg]),
 	    Pid ! {resource_error, ErrMsg};
 	timeout ->
-	    ?LOG_SYS("originate timed out", [Node]),
+	    ?LOG_SYS("~s originate timed out", [Node]),
 	    Pid ! {resource_error, timeout}
     end.
 
--spec start_call_handling/2 :: (Node :: atom(), UUID :: binary()) -> CtlQueue :: binary() | {'error', 'amqp_error'}.
+-spec start_call_handling/2 :: (atom(), ne_binary()) -> ne_binary() | {'error', 'amqp_error'}.
 start_call_handling(Node, UUID) ->
     try
-	true = is_binary(CtlQueue = amqp_util:new_callctl_queue(<<>>)),
-	_ = amqp_util:bind_q_to_callctl(CtlQueue),
-
-	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, CtlQueue),
+	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID),
 	{ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
-	CtlQueue
+
+	ecallmgr_call_control:amqp_queue(CtlPid)
     catch
 	_:_ -> {error, amqp_error}
     end.
 
--spec diagnostics/2 :: (Pid :: pid(), Stats :: tuple()) -> no_return().
+-spec diagnostics/2 :: (pid(), tuple()) -> proplist().
 diagnostics(Pid, Stats) ->
     Resp = ecallmgr_diagnostics:get_diagnostics(Stats),
     Pid ! Resp.
@@ -288,13 +316,12 @@ channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) ->
 							 ]}
     end.
 
--spec extract_node_data/1 :: (Node) -> [{'cpu',string()} |
+-spec extract_node_data/1 :: (atom()) -> [{'cpu',string()} |
 					{'sessions_max',integer()} |
 					{'sessions_per_thirty',integer()} |
 					{'sessions_since_startup',integer()} |
 					{'uptime',number()}
-					,...] when
-      Node :: atom().
+					,...].
 extract_node_data(Node) ->
     {ok, Status} = freeswitch:api(Node, status),
     Lines = string:tokens(wh_util:to_list(Status), [$\n]),
@@ -325,16 +352,18 @@ process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->
      ,{cpu, lists:flatten(CPUNum)}
     ].
 
-process_custom_data(Data, AppVsn) ->
-    case props:get_value(<<"Event-Subclass">>, Data) of
-	undefined -> ok;
-	<<"sofia::register">> -> publish_register_event(Data, AppVsn);
-	_ -> ok
+process_custom_data(Data) ->
+    put(callid, props:get_value(<<"call-id">>, Data)),
+    Subclass = props:get_value(<<"Event-Subclass">>, Data),
+    ?LOG("custom event received ~s", [Subclass]),
+    case Subclass of
+	<<"sofia::register">> ->
+            publish_register_event(Data);
+	_ ->
+            ok
     end.
 
-publish_register_event(Data, AppVsn) ->
-    Keys = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
-    DefProp = wh_api:default_headers(<<>>, <<"directory">>, <<"reg_success">>, wh_util:to_binary(?MODULE), AppVsn),
+publish_register_event(Data) ->
     ApiProp = lists:foldl(fun(K, Api) ->
 				  case props:get_value(wh_util:binary_to_lower(K), Data) of
 				      undefined ->
@@ -344,30 +373,40 @@ publish_register_event(Data, AppVsn) ->
 					  end;
 				      V -> [{K, V} | Api]
 				  end
-			  end, [{<<"Event-Timestamp">>, round(wh_util:current_tstamp())} | DefProp], Keys),
+			  end
+                          ,[{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
+                            ,{<<"Call-ID">>, get(callid)}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
+                          ,wapi_registration:success_keys()),
     ?LOG("sending successful registration"),
-    case wh_api:reg_success(ApiProp) of
-	{error, E} ->
-            ?LOG("failed API message creation: ~p", [E]);
-	{ok, JSON} ->
-	    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_REG_SUCCESS)
-    end.
+    wapi_registration:publish_success(ApiProp).
 
-get_originate_action(<<"transfer">>, Data) ->
-    case wh_json:get_value(<<"Route">>, Data) of
+get_originate_action(<<"transfer">>, JObj) ->
+    case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of
 	undefined -> <<"error">>;
 	Route ->
-	    list_to_binary([ <<"transfer(">>, wh_util:to_e164(Route), <<" XML context_2)">>])
+	    list_to_binary(["'m:^:", get_unset_vars(JObj), "transfer:", wh_util:to_e164(Route), " XML context_2' inline"])
     end;
-get_originate_action(<<"bridge">>, Data) ->
+get_originate_action(<<"bridge">>, JObj) ->
+    Data = wh_json:get_value(<<"Application-Data">>, JObj),
     case ecallmgr_fs_xml:build_route(Data, wh_json:get_value(<<"Invite-Format">>, Data)) of
 	{error, timeout} -> <<"error">>;
 	EndPoint ->
-	    CVs = ecallmgr_fs_xml:get_leg_vars(Data),
-	    list_to_binary([<<"bridge(">>, CVs, EndPoint, <<")">>])
+	    list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", EndPoint, "' inline"])
     end;
 get_originate_action(_, _) ->
-    <<"park">>.
+    <<"&park()">>.
+
+get_unset_vars(JObj) ->
+    ExportProps = [{K, <<>>} || K <- wh_json:get_value(<<"Export-Custom-Channel-Vars">>, JObj, [])],
+    Export = [K || KV <- lists:foldr({ecallmgr_fs_xml, get_channel_vars}, [], [{<<"Custom-Channel-Vars">>, ExportProps}])
+                       ,([K, _] = string:tokens(binary_to_list(KV), "=")) =/= undefined],
+    case [["unset:", K] || KV <- lists:foldr({ecallmgr_fs_xml, get_channel_vars}, [], wh_json:to_proplist(JObj))
+                               ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)] of
+        [] -> "";
+        Unset ->
+            [string:join(Unset, "^"), "^"]
+    end.
 
 -spec run_start_cmds/1 :: (atom()) -> [fs_api_ret(),...].
 run_start_cmds(Node) ->
@@ -411,3 +450,13 @@ return_rows(Node, [R|Rs], Acc) ->
 	    return_rows(Node, Rs, [ Prop | Acc ])
     end;
 return_rows(_Node, [], Acc) -> Acc.
+
+print_api_responses(Res) ->
+    ?LOG_SYS("Start cmd results:"),
+    _ = [ print_api_response(ApiRes) || ApiRes <- Res],
+    ?LOG_SYS("End cmd results").
+
+print_api_response({ok, Res}) ->
+    [ ?LOG_SYS("~s", [Row]) || Row <- binary:split(Res, <<"\n">>, [global]), Row =/= <<>> ];
+print_api_response(Other) ->
+    ?LOG_SYS("~p", [Other]).

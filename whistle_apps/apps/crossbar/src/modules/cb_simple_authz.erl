@@ -26,7 +26,7 @@
 -define(SERVER, ?MODULE).
 -define(ACCOUNTS_DB, <<"accounts">>).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
--define(SYS_ADMIN_MODS, [<<"global_resources">>]).
+-define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"limits">>]).
 
 %%%===================================================================
 %%% API
@@ -109,7 +109,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
 
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, Context}}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   case account_is_descendant(Context)
                       andalso allowed_if_sys_admin_mod(Context) of
                       true ->
@@ -179,6 +179,7 @@ account_is_descendant(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
     case props:get_value(<<"accounts">>, Nouns) of
         %% if the URL did not have the accounts noun then this module denies access
         undefined ->
+	    ?LOG("No accounts in Nouns: ~p", [Nouns]),
             false;
         Params ->
             %% the request that this module process the first element of after 'accounts'

@@ -14,15 +14,13 @@
 -export([start_link/0, lookup/3, handle_req/2]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
-	 terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
+         ,terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [
-		     {?MODULE, [{<<"directory">>, <<"reg_success">>}]}
-		    ]).
--define(BINDINGS, [{registrations, []}]).
+-define(RESPONDERS, [{?MODULE, [{<<"directory">>, <<"reg_success">>}]}]).
+-define(BINDINGS, [{registration, []}]).
 
 -include("ecallmgr.hrl").
 
@@ -39,16 +37,16 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				     ], []).
+				     ,{bindings, ?BINDINGS}]
+                            ,[]).
 
--spec lookup/3 :: (Realm, User, Fields) -> proplist() | {error, timeout} when
+-spec lookup/3 :: (Realm, User, Fields) -> proplist() | {'error', 'timeout'} when
       Realm :: binary(),
       User :: binary(),
       Fields :: [binary(),...].
 lookup(Realm, User, Fields) ->
     {ok, Srv} = ecallmgr_sup:registrar_proc(),
-    gen_server:call(Srv, {lookup, Realm, User, Fields}).
+    gen_server:call(Srv, {lookup, Realm, User, Fields, get(callid)}).
 
 -spec handle_req/2 :: (json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
@@ -74,7 +72,7 @@ handle_req(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("Ecallmgr Registrar starting"),
+    ?LOG("Starting up"),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -91,8 +89,11 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({lookup, Realm, User, Fields}, From, State) ->
-    spawn(fun() -> gen_server:reply(From, lookup_reg(Realm, User, Fields)) end),
+handle_call({lookup, Realm, User, Fields, CallId}, From, State) ->
+    spawn(fun() ->
+                  put(callid, CallId),
+                  gen_server:reply(From, lookup_reg(Realm, User, Fields))
+          end),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -119,19 +120,19 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
-    ?LOG_SYS("Storing registration information for ~s@~s", [User, Realm]),
+    ?LOG_SYS("storing registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),
 
     wh_cache:store_local(Cache, cache_key(Realm, User), RegFields
 			 ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
 			),
-    {noreply, State};
+    {noreply, State, hibernate};
 
 handle_info(_Info, State) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
-handle_event(_, _) ->
+handle_event(_,_) ->
     {reply, []}.
 
 %%--------------------------------------------------------------------
@@ -168,7 +169,7 @@ code_change(_OldVsn, State, _Extra) ->
       User :: binary(),
       Fields :: [binary(),...].
 lookup_reg(Realm, User, Fields) ->
-    ?LOG_SYS("Looking up registration information for ~s@~s", [User, Realm]),
+    ?LOG("looking up registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),
     FilterFun = fun({K, _}=V, Acc) ->
 			case lists:member(K, Fields) of
@@ -183,29 +184,34 @@ lookup_reg(Realm, User, Fields) ->
 	    RegProp = [{<<"Username">>, User}
 		       ,{<<"Realm">>, Realm}
 		       ,{<<"Fields">>, []}
-		       | wh_api:default_headers(<<>>, <<"directory">>, <<"reg_query">>, <<"ecallmgr">>, <<>>) ],
+		       | wh_api:default_headers(?APP_NAME, ?APP_VERSION) ],
 	    try
 		case ecallmgr_amqp_pool:reg_query(RegProp, 1000) of
 		    {ok, RegJObj} ->
-			true = wh_api:reg_query_resp_v(RegJObj),
+			true = wapi_registration:query_resp_v(RegJObj),
 
-			RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RegJObj, wh_json:new())),
-			?SERVER ! {cache_registrations, Realm, User, RegFields},
+                        RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RegJObj, wh_json:new())),
 
-			?LOG_SYS("Received registration information"),
-			lists:foldr(FilterFun, [], RegFields);
-		    timeout ->
-			?LOG_SYS("Looking up registration timed out"),
-			{error, timeout}
-		end
-	    catch
-		_:_ ->
-		    ?LOG_SYS("Looking up registration threw exception"),
-		    {error, timeout}
-	    end;
-	{ok, RegFields} ->
-	    ?LOG_SYS("Found cached registration information"),
-	    lists:foldr(FilterFun, [], RegFields)
+                        {ok, Srv} = ecallmgr_sup:registrar_proc(),
+                        Srv ! {cache_registrations, Realm, User, RegFields},
+
+                        ?LOG("received registration information"),
+                        lists:foldr(FilterFun, [], RegFields);
+                    timeout ->
+                        ?LOG("Looking up registration timed out"),
+                        {error, timeout}
+                end
+            catch
+                _:{timeout, _} ->
+                    ?LOG("looking up registration threw exception: timeout", []),
+                    {error, timeout};
+                _:R ->
+                    ?LOG("looking up registration threw exception: ~p", [R]),
+                    {error, timeout}
+            end;
+        {ok, RegFields} ->
+            ?LOG("found cached registration information"),
+            lists:foldr(FilterFun, [], RegFields)
     end.
 
 cache_key(Realm, User) ->

@@ -15,94 +15,118 @@
 init() ->
     ok.
 
--spec handle_req/2 :: (JObj, Props) -> 'ok' when
-      JObj :: json_object(),
+-spec handle_req/2 :: (ApiJObj, Props) -> 'ok' when
+      ApiJObj :: json_object(),
       Props :: proplist().
-handle_req(JObj, Props) ->
-    true = wh_api:authn_req_v(JObj),
+handle_req(ApiJObj, _Props) ->
+    true = wapi_authn:req_v(ApiJObj),
 
-    Cache = props:get_value(cache, Props),
-    Queue = props:get_value(queue, Props),
+    put(callid, wh_json:get_value(<<"Msg-ID">>, ApiJObj, <<"000000000000">>)),
 
     ?LOG_START("received SIP authentication request"),
 
-    AuthU = wh_json:get_value(<<"Auth-User">>, JObj),
-    AuthR0 = wh_json:get_value(<<"Auth-Realm">>, JObj),
+    AuthU = get_auth_user(ApiJObj),
+    AuthR = get_auth_realm(ApiJObj),
 
-    AuthR = case wh_util:is_ipv4(AuthR0) orelse wh_util:is_ipv6(AuthR0) of
-                true ->
-                    [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-                    ?LOG("auth-realm (~s) not a hostname, trying To-domain (~s)", [AuthR0, ToDomain]),
-                    ToDomain;
-                false ->
-                    AuthR0
-            end,
-
-    %% crashes if not found, no return necessary
-    {ok, AuthJObj} = reg_util:lookup_auth_user(AuthU, AuthR, Cache),
-
-    AuthId = wh_json:get_value([<<"doc">>, <<"_id">>], AuthJObj),
-
-    AccountId = case wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], AuthJObj) of
-		    undefined ->
-                        case wh_json:get_value([<<"doc">>, <<"pvt_account_db">>], AuthJObj) of
-                            undefined -> undefined;
-                            AcctDb -> whapps_util:get_db_name(AcctDb, raw)
-                        end;
-                    AcctId -> AcctId
-		end,
-
-    CCVs = [CCV || {_, V}=CCV <- [{<<"Username">>, AuthU}
-                                  ,{<<"Realm">>, AuthR}
-                                  ,{<<"Account-ID">>, AccountId}
-                                  ,{<<"Inception">>, <<"on-net">>}
-                                  ,{<<"Authorizing-ID">>, AuthId}
-                                 ],
-		   V =/= undefined],
-
-    Defaults = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-		,{<<"Custom-Channel-Vars">>, {struct, CCVs}}
-		| wh_api:default_headers(Queue % serverID is not important, though we may want to define it eventually
-					      ,wh_json:get_value(<<"Event-Category">>, JObj)
-					      ,<<"authn_resp">>
-					      ,?APP_NAME
-					      ,?APP_VERSION)],
-
-    {ok, Payload} = authn_response(wh_json:get_value(<<"value">>, AuthJObj), Defaults),
-    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    reg_util:send_resp(Payload, RespQ).
+    case reg_util:lookup_auth_user(AuthU, AuthR) of
+        {ok, AuthJObj} ->
+            send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj);
+        {error, not_found} ->
+            ?LOG_END("user ~s@~s is unknown", [AuthU, AuthR])
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
-%% determine if the user was known and send a reply if so
+%% extract the auth realm from the API request, using the requests to domain
+%% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec authn_response/2 :: (AuthnResp, Prop) -> {ok, iolist()} | {error, string()} when
-      AuthnResp :: json_object() | integer(),
-      Prop :: proplist().
-authn_response(?EMPTY_JSON_OBJECT, _) ->
-    ?LOG_END("user is unknown");
-authn_response(AuthInfo, Prop) ->
-    Data = lists:umerge(auth_specific_response(AuthInfo), Prop),
+-spec send_auth_resp/4  :: (AuthJObj, AuthU, AuthR, ApiJObj) -> ok when
+      AuthJObj :: json_object(),
+      AuthU :: binary(),
+      AuthR :: binary(),
+      ApiJObj :: json_object().
+send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
+    AuthValue = wh_json:get_value(<<"value">>, AuthJObj),
+    AuthDoc = wh_json:get_value(<<"doc">>, AuthJObj),
+    Category = wh_json:get_value(<<"Event-Category">>, ApiJObj),
+
+    CCVs = [{<<"Username">>, AuthU}
+            ,{<<"Realm">>, AuthR}
+            ,{<<"Account-ID">>, get_account_id(AuthDoc)}
+            ,{<<"Inception">>, <<"on-net">>}
+            ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, AuthDoc)}],
+
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
+            ,{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthValue)}
+            ,{<<"Auth-Method">>, get_auth_method(AuthValue)}
+%%            ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthValue, <<"ignore">>)}
+%%            ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthValue, <<"ignore">>)}
+            ,{<<"Custom-Channel-Vars">>, wh_json:from_list([CCV || {_, V}=CCV <- CCVs, V =/= undefined ])}
+            | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)],
+
     ?LOG_END("sending SIP authentication reply, with credentials"),
-    wh_api:authn_resp(Data).
-
+    wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp).
 
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
-%% create a auth response proplist to send back when the user is known
+%% extract the auth user from the API request
 %% @end
 %%-----------------------------------------------------------------------------
--spec auth_specific_response/1 :: (AuthInfo) -> proplist() when
-      AuthInfo :: json_object() | integer().
-auth_specific_response(AuthInfo) ->
-    Method = list_to_binary(string:to_lower(binary_to_list(wh_json:get_value(<<"method">>, AuthInfo, <<"password">>)))),
-    [{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthInfo)}
-     ,{<<"Auth-Method">>, Method}
-     ,{<<"Event-Name">>, <<"authn_resp">>}
-     ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthInfo, <<"ignore">>)}
-     ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthInfo, <<"ignore">>)}
-    ].
+-spec get_auth_user/1  :: (ApiJObj) -> binary() | undefined when
+      ApiJObj :: json_object().
+get_auth_user(ApiJObj) ->
+    wh_json:get_value(<<"Auth-User">>, ApiJObj).
 
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% extract the auth realm from the API request, using the requests to domain
+%% when provided with an IP
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_auth_realm/1  :: (ApiJObj) -> binary() | undefined when
+      ApiJObj :: json_object().
+get_auth_realm(ApiJObj) ->
+    AuthRealm = wh_json:get_value(<<"Auth-Realm">>, ApiJObj),
+    case wh_util:is_ipv4(AuthRealm) orelse wh_util:is_ipv6(AuthRealm) of
+        true ->
+            [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, ApiJObj), <<"@">>),
+            ?LOG("auth-realm (~s) not a hostname, using To-domain (~s)", [AuthRealm, ToDomain]),
+            ToDomain;
+        false ->
+            AuthRealm
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% extract the account id from the auth document, using the newer pvt field
+%% when present but failing back to reformating the older db name pvt.
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_account_id/1  :: (AuthDoc) -> binary() | undefined when
+      AuthDoc :: json_object().
+get_account_id(AuthDoc) ->
+    case wh_json:get_value(<<"pvt_account_id">>, AuthDoc) of
+        undefined ->
+            case wh_json:get_value(<<"pvt_account_db">>, AuthDoc) of
+                undefined -> undefined;
+                AcctDb -> whapps_util:get_db_name(AcctDb, raw)
+            end;
+        AcctId -> AcctId
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% extract a normalized method from the view results
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_auth_method/1  :: (AuthValue) -> binary() when
+      AuthValue :: json_object().
+get_auth_method(AuthValue) ->
+    Method = wh_json:get_value(<<"method">>, AuthValue, <<"password">>),
+    list_to_binary(string:to_lower(binary_to_list(Method))).

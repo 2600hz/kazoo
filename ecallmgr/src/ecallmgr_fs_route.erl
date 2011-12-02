@@ -252,11 +252,7 @@ init_route_req(Parent, Node, FSID, CallID, FSData) ->
     put(callid, CallID),
     process_route_req(Node, FSID, CallID, FSData).
 
--spec process_route_req/4 :: (Node, FSID, CallID, FSData) -> ok when
-      Node :: atom(),
-      FSID :: binary(),
-      CallID :: binary(),
-      FSData :: proplist().
+-spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
 process_route_req(Node, FSID, CallID, FSData) ->
     DefProp = [{<<"Msg-ID">>, FSID}
 	       ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
@@ -275,39 +271,23 @@ process_route_req(Node, FSID, CallID, FSData) ->
 	false -> route(Node, FSID, CallID, DefProp, undefined)
     end.
 
--spec authorize_and_route/5 :: (Node, FSID, CallID, FSData, DefProp) -> 'ok' when
-      Node :: atom(),
-      FSID :: binary(),
-      CallID :: binary(),
-      FSData :: proplist(),
-      DefProp :: proplist().
+-spec authorize_and_route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), proplist()) -> 'ok'.
 authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
     ?LOG("Starting authorization request"),
     {ok, AuthZPid} = ecallmgr_authz:authorize(FSID, CallID, FSData),
     route(Node, FSID, CallID, DefProp, AuthZPid).
 
--spec route/5 :: (Node, FSID, CallID, DefProp, AuthZPid) -> ok when
-      Node :: atom(),
-      FSID :: binary(),
-      CallID :: binary(),
-      DefProp :: proplist(),
-      AuthZPid :: pid() | undefined.
+-spec route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), pid() | 'undefined') -> 'ok'.
 route(Node, FSID, CallID, DefProp, AuthZPid) ->
     ?LOG("Starting route request"),
     {ok, RespJObj} = ecallmgr_amqp_pool:route_req(DefProp),
     RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, ?EMPTY_JSON_OBJECT),
     authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV).
 
--spec authorize/6 :: (Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) -> ok when
-      Node :: atom(),
-      FSID :: binary(),
-      CallID :: binary(),
-      RespJObj :: json_object(),
-      AuthZPid :: pid() | undefined,
-      RouteCCV :: json_object().
+-spec authorize/6 :: (atom(), ne_binary(), ne_binary(), json_object(), pid() | 'undefined', json_object()) -> 'ok'.
 authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->
     ?LOG("No authz available, validating route_resp"),
-    true = wh_api:route_resp_v(RespJObj),
+    true = wapi_route:resp_v(RespJObj),
     reply(Node, FSID, CallID, RespJObj, RouteCCV);
 authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
     ?LOG("Checking authz_resp"),
@@ -318,16 +298,14 @@ authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
 	{true, CCVJObj} ->
 	    CCV = wh_json:to_proplist(CCVJObj),
 	    ?LOG("Authz is true"),
-	    true = wh_api:route_resp_v(RespJObj),
+	    true = wapi_route:resp_v(RespJObj),
 	    ?LOG("Valid route resp"),
 	    RouteCCV1 = lists:foldl(fun({K,V}, RouteCCV0) -> wh_json:set_value(K, V, RouteCCV0) end, RouteCCV, CCV),
 
-	    reply(Node, FSID, CallID, RespJObj, RouteCCV1)
+	    reply(Node, FSID, CallID, RespJObj, RouteCCV1, AuthZPid)
     end.
 
--spec reply_forbidden/2 :: (Node, FSID) -> ok when
-      Node :: atom(),
-      FSID :: binary().
+-spec reply_forbidden/2 :: (atom(), ne_binary()) -> 'ok'.
 reply_forbidden(Node, FSID) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
 						,{<<"Route-Error-Code">>, <<"486">>}
@@ -343,21 +321,21 @@ reply_forbidden(Node, FSID) ->
 	    ?LOG_END("received no reply from freeswitch, timeout")
     end.
 
--spec reply/5 :: (Node, FSID, CallID, RespJObj, CCVs) -> ok when
-      Node :: atom(),
-      FSID :: binary(),
-      CallID :: binary(),
-      RespJObj :: json_object(),
-      CCVs :: json_object().
+-spec reply/5 :: (atom(), ne_binary(), ne_binary(), json_object(), json_object()) -> 'ok'.
+-spec reply/6 :: (atom(), ne_binary(), ne_binary(), json_object(), json_object(), pid() | 'undefined') -> 'ok'.
 reply(Node, FSID, CallID, RespJObj, CCVs) ->
+    reply(Node, FSID, CallID, RespJObj, CCVs, undefined).
+
+reply(Node, FSID, CallID, RespJObj, CCVs, AuthZPid) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml(RespJObj),
     ServerQ = wh_json:get_value(<<"Server-ID">>, RespJObj),
 
     case freeswitch:fetch_reply(Node, FSID, XML) of
 	ok ->
 	    %% only start control if freeswitch recv'd reply
-	    ?LOG("freeswitch accepted our route, starting control and events"),
-	    start_control_and_events(Node, CallID, ServerQ, CCVs);
+	    ?LOG("freeswitch accepted our route (authzed), starting control and events"),
+	    start_control_and_events(Node, CallID, ServerQ, CCVs),
+	    ecallmgr_authz:authz_win(AuthZPid);
 	{error, Reason} ->
 	    ?LOG_END("freeswitch rejected our route response, ~p", [Reason]);
 	timeout ->
@@ -371,10 +349,10 @@ reply(Node, FSID, CallID, RespJObj, CCVs) ->
       CCVs :: json_object().
 start_control_and_events(Node, CallID, SendTo, CCVs) ->
     try
-	true = is_binary(CtlQ = amqp_util:new_callctl_queue(<<>>)),
-	_ = amqp_util:bind_q_to_callctl(CtlQ),
-	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID, CtlQ),
+	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID),
 	{ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallID, CtlPid),
+
+	CtlQ = ecallmgr_call_control:amqp_queue(CtlPid),
 
 	CtlProp = [{<<"Msg-ID">>, CallID}
 		   ,{<<"Call-ID">>, CallID}
@@ -392,10 +370,5 @@ start_control_and_events(Node, CallID, SendTo, CCVs) ->
       SendTo :: binary(),
       CtlProp :: proplist().
 send_control_queue(SendTo, CtlProp) ->
-    case wh_api:route_win(CtlProp) of
-	{ok, JSON} ->
-	    ?LOG_END("sending route_win to ~s", [SendTo]),
-	    amqp_util:targeted_publish(SendTo, JSON, <<"application/json">>);
-	{error, _Msg} ->
-	    ?LOG_END("sending route_win to ~s failed, ~p", [SendTo, _Msg])
-    end.
+    ?LOG_END("sending route_win to ~s", [SendTo]),
+    wapi_route:publish_win(SendTo, CtlProp).

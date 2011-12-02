@@ -1,0 +1,175 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_presence</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_presence</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_presence</strong> provides helpers to do presence
+  common operations.
+
+<p><b>Authors:</b> Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2>
+  The module <strong>exmpp_presence</strong> provides helpers to do presence
+  common operations.
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#available-0">available/0</a></td><td>Create a presence stanza to tell that the sender is available.</td></tr>
+<tr><td valign="top"><a href="#error-2">error/2</a></td><td>Prepare a presence stanza to notify an error.</td></tr>
+<tr><td valign="top"><a href="#get_priority-1">get_priority/1</a></td><td>Return the priority attribute of the presence.</td></tr>
+<tr><td valign="top"><a href="#get_show-1">get_show/1</a></td><td>Return the show attribute of the presence.</td></tr>
+<tr><td valign="top"><a href="#get_status-1">get_status/1</a></td><td>Return the status attribute of the presence.</td></tr>
+<tr><td valign="top"><a href="#get_type-1">get_type/1</a></td><td>Return the type of the given presence stanza.</td></tr>
+<tr><td valign="top"><a href="#is_presence-1">is_presence/1</a></td><td>Tell if <code>El</code> is a presence.</td></tr>
+<tr><td valign="top"><a href="#presence-2">presence/2</a></td><td>Create a presence stanza with given type and status.</td></tr>
+<tr><td valign="top"><a href="#probe-0">probe/0</a></td><td>Create a probe presence stanza.</td></tr>
+<tr><td valign="top"><a href="#set_priority-2">set_priority/2</a></td><td>Set the <code>&lt;priority/&gt;</code> field of a presence stanza.</td></tr>
+<tr><td valign="top"><a href="#set_show-2">set_show/2</a></td><td>Set the <code>&lt;show/&gt;</code> field of a presence stanza.</td></tr>
+<tr><td valign="top"><a href="#set_status-2">set_status/2</a></td><td>Set the <code>&lt;status/&gt;</code> field of a presence stanza.</td></tr>
+<tr><td valign="top"><a href="#set_type-2">set_type/2</a></td><td>Set the type of the given presence stanza.</td></tr>
+<tr><td valign="top"><a href="#subscribe-0">subscribe/0</a></td><td>Create a presence stanza to tell that the sender wants to
+  subscribe to the receiver's presence.</td></tr>
+<tr><td valign="top"><a href="#subscribed-0">subscribed/0</a></td><td>Create a presence stanza to tell that the receiver was
+  subscribed from the sender's presence.</td></tr>
+<tr><td valign="top"><a href="#unavailable-0">unavailable/0</a></td><td>Create a presence stanza to tell that the sender is not available.</td></tr>
+<tr><td valign="top"><a href="#unsubscribe-0">unsubscribe/0</a></td><td>Create a presence stanza to tell that the sender wants to
+  unsubscribe to the receiver's presence.</td></tr>
+<tr><td valign="top"><a href="#unsubscribed-0">unsubscribed/0</a></td><td>Create a presence stanza to tell that the receiver was
+  unsubscribed from the sender's presence.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="available-0">available/0</a></h3>
+<div class="spec">
+<p><tt>available() -&gt; Presence</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Create a presence stanza to tell that the sender is available.</p>
+
+<h3 class="function"><a name="error-2">error/2</a></h3>
+<div class="spec">
+<p><tt>error(Presence, Condition::Error) -&gt; New_Presence</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Error = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a> | atom()</tt></li><li><tt>New_Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Prepare a presence stanza to notify an error.</p>
+ 
+  If <code>Error</code> is an atom, it must be a standard condition defined by
+  XMPP Core.</p>
+
+<h3 class="function"><a name="get_priority-1">get_priority/1</a></h3>
+<div class="spec">
+<p><tt>get_priority(Xmlel::Presence) -&gt; Priority</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Priority = integer()</tt></li></ul></p>
+</div><p>Return the priority attribute of the presence.</p>
+
+<h3 class="function"><a name="get_show-1">get_show/1</a></h3>
+<div class="spec">
+<p><tt>get_show(Xmlel::Presence) -&gt; Show | undefined</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Show = online | away | chat | dnd | xa | undefined</tt></li></ul></p>
+</div><p>Return the show attribute of the presence.</p>
+
+<h3 class="function"><a name="get_status-1">get_status/1</a></h3>
+<div class="spec">
+<p><tt>get_status(Xmlel::Presence) -&gt; Status | undefined</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Status = binary()</tt></li></ul></p>
+</div><p>Return the status attribute of the presence.</p>
+
+<h3 class="function"><a name="get_type-1">get_type/1</a></h3>
+<div class="spec">
+<p><tt>get_type(Presence) -&gt; Type</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Type = available | unavailable | subscribe | subscribed | unsubscribe | unsubscribed | probe | error | undefined</tt></li></ul></p>
+</div><p>Return the type of the given presence stanza.</p>
+
+<h3 class="function"><a name="is_presence-1">is_presence/1</a></h3>
+<div class="spec">
+<p><tt>is_presence(Presence::El) -&gt; bool</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Tell if <code>El</code> is a presence.</p>
+ 
+  You should probably use the <code>IS_PRESENCE(El)</code> guard expression.</p>
+
+<h3 class="function"><a name="presence-2">presence/2</a></h3>
+<div class="spec">
+<p><tt>presence(Type, Status) -&gt; Presence</tt>
+<ul class="definitions"><li><tt>Type = available | unavailable | subscribe | subscribed | unsubscribe | unsubscribed | probe | error</tt></li><li><tt>Status = string() | binary()</tt></li><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Create a presence stanza with given type and status.</p>
+
+<h3 class="function"><a name="probe-0">probe/0</a></h3>
+<div class="spec">
+<p><tt>probe() -&gt; Presence</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Create a probe presence stanza.</p>
+
+<h3 class="function"><a name="set_priority-2">set_priority/2</a></h3>
+<div class="spec">
+<p><tt>set_priority(Xmlel::Presence, Priority) -&gt; New_Presence</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Priority = integer()</tt></li><li><tt>New_Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Set the <code>&lt;priority/&gt;</code> field of a presence stanza.</p>
+
+<h3 class="function"><a name="set_show-2">set_show/2</a></h3>
+<div class="spec">
+<p><tt>set_show(Xmlel::Presence, Show) -&gt; New_Presence</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Show = online | away | chat | dnd | xa | binary() | string()</tt></li><li><tt>New_Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Set the <code>&lt;show/&gt;</code> field of a presence stanza.</p>
+ 
+  If <code>Type</code> is an empty string or the atom <code>online</code>, the <code>&lt;show/&gt;</code>
+  element is removed.</p>
+
+<h3 class="function"><a name="set_status-2">set_status/2</a></h3>
+<div class="spec">
+<p><tt>set_status(Xmlel::Presence, Status) -&gt; New_Presence</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Status = string() | binary()</tt></li><li><tt>New_Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Set the <code>&lt;status/&gt;</code> field of a presence stanza.</p>
+ 
+  If <code>Status</code> is an empty string (or an empty binary), the previous
+  status is removed.</p>
+
+<h3 class="function"><a name="set_type-2">set_type/2</a></h3>
+<div class="spec">
+<p><tt>set_type(Presence, Type) -&gt; New_Presence</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Type = available | unavailable | subscribe | subscribed | unsubscribe | unsubscribed | probe | error | binary() | string()</tt></li><li><tt>New_Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Set the type of the given presence stanza.</p>
+
+<h3 class="function"><a name="subscribe-0">subscribe/0</a></h3>
+<div class="spec">
+<p><tt>subscribe() -&gt; Presence</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Create a presence stanza to tell that the sender wants to
+  subscribe to the receiver's presence.</p>
+
+<h3 class="function"><a name="subscribed-0">subscribed/0</a></h3>
+<div class="spec">
+<p><tt>subscribed() -&gt; Presence</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Create a presence stanza to tell that the receiver was
+  subscribed from the sender's presence.</p>
+
+<h3 class="function"><a name="unavailable-0">unavailable/0</a></h3>
+<div class="spec">
+<p><tt>unavailable() -&gt; Presence</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Create a presence stanza to tell that the sender is not available.</p>
+
+<h3 class="function"><a name="unsubscribe-0">unsubscribe/0</a></h3>
+<div class="spec">
+<p><tt>unsubscribe() -&gt; Presence</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Create a presence stanza to tell that the sender wants to
+  unsubscribe to the receiver's presence.</p>
+
+<h3 class="function"><a name="unsubscribed-0">unsubscribed/0</a></h3>
+<div class="spec">
+<p><tt>unsubscribed() -&gt; Presence</tt>
+<ul class="definitions"><li><tt>Presence = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Create a presence stanza to tell that the receiver was
+  unsubscribed from the sender's presence.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:39.</i></p>
+</body>
+</html>

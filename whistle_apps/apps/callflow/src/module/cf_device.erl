@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/6]).
+-import(cf_call_command, [b_bridge/5]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -27,7 +27,7 @@
       Call :: #cf_call{}.
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
-    case cf_endpoint:build(wh_json:get_value(<<"id">>, Data), Call, Data) of
+    case cf_endpoint:build(wh_json:get_value(<<"id">>, Data), Data, Call) of
         {ok, Endpoints} ->
             Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
             bridge_to_endpoints(Endpoints, Timeout, Call);
@@ -46,17 +46,27 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
       Endpoints :: json_objects(),
       Timeout :: binary(),
       Call :: #cf_call{}.
-bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid}=Call) ->
+bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid, account_id=AccountId}=Call) ->
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-    case b_bridge(Endpoints, Timeout, <<"internal">>, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
+    case b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
             ?LOG("completed successful bridge to the device"),
             CFPid ! { stop };
         {fail, Reason} ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-            ?LOG("failed to bridge to endpoint ~s:~s", [Code, Cause]),
+            whapps_util:alert(<<"warning">>, ["Source: ~s(~p)~n"
+                                              ,"Alert: failed to bridge to device~n"
+                                              ,"Fault: ~p~n"
+                                              ,"~n~s"]
+                              ,[?MODULE, ?LINE, Reason, cf_util:call_info_to_string(Call)], AccountId),
+            ?LOG("failed to bridge to device ~s:~s", [Code, Cause]),
             CFPid ! { continue };
         {error, R} ->
-            ?LOG("failed to bridge to endpoint ~p", [R]),
+            whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
+                                            ,"Alert: error bridging to device~n"
+                                            ,"Fault: ~p~n"
+                                            ,"~n~s"]
+                              ,[?MODULE, ?LINE, R, cf_util:call_info_to_string(Call)], AccountId),
+            ?LOG("failed to bridge to device ~p", [R]),
             CFPid ! { continue }
     end.

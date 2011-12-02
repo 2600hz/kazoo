@@ -26,28 +26,22 @@
 handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId, inception_during_transfer=IDT
                       ,ctrl_q=CtrlQ, amqp_q=AmqpQ, cf_pid=CFPid, owner_id=OwnerId, authorizing_id=AuthId, channel_vars=CCV}=Call) ->
     put(callid, CallId),
-    {CIDNum, CIDName}
-        = cf_attributes:caller_id(wh_json:get_value(<<"caller_id_type">>, Data, <<"external">>), AuthId, OwnerId, Call),
-    {ECIDNum, ECIDName}
-        = cf_attributes:caller_id(<<"emergency">>, AuthId, OwnerId, Call),
-    Command = [{<<"Call-ID">>, CallId}
-               ,{<<"Resource-Type">>, <<"audio">>}
-               ,{<<"To-DID">>, ReqNum}
-               ,{<<"Account-ID">>, AccountId}
-               ,{<<"Control-Queue">>, CtrlQ}
-               ,{<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Data)}
-               ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
-               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, Data)}
-               ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
-               ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
-               ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
-               ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
-               ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
-               | wh_api:default_headers(AmqpQ, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
-            ],
-    {ok, Payload} = wh_api:offnet_resource_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
-    amqp_util:offnet_resource_publish(Payload),
+    {ECIDNum, ECIDName} = cf_attributes:caller_id(AuthId, OwnerId, <<"emergency">>, Call),
+    Req = [{<<"Call-ID">>, CallId}
+           ,{<<"Resource-Type">>, <<"audio">>}
+           ,{<<"To-DID">>, ReqNum}
+           ,{<<"Account-ID">>, AccountId}
+           ,{<<"Control-Queue">>, CtrlQ}
+           ,{<<"Application-Name">>, <<"bridge">>}
+           ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Data)}
+           ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
+           ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, Data)}
+           ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
+           ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
+           ,{<<"Presence-ID">>, cf_attributes:presence_id(AuthId, Call)}
+           ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
+           | wh_api:default_headers(AmqpQ, ?APP_NAME, ?APP_VERSION)],
+    wapi_offnet_resource:publish_req(Req),
     case wait_for_offnet(60000, Call) of
         {ok, _} ->
             ?LOG("completed successful offnet bridge"),

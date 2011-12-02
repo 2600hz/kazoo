@@ -118,7 +118,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.ts_users">>, Pay
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.ts_users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
 		  Context1 = validate(Params, Context#cb_context{db_name=?TS_DB}),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -127,7 +127,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.ts_users">>, [RD, Conte
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.ts_users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -135,7 +135,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.ts_users">>, [RD, C
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
@@ -143,7 +143,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_users">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.ts_users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-                  crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),

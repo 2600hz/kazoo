@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, authn_resp_xml/1]).
+-export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, get_channel_vars/2, authn_resp_xml/1]).
 
 -include("ecallmgr.hrl").
 
@@ -124,7 +124,7 @@ build_route(RouteJObj, DIDFormat) ->
 	    E
     end.
 
--spec format_did/2 :: (binary(), Format :: binary()) -> binary().
+-spec format_did/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 format_did(DID, <<"e164">>) ->
     wh_util:to_e164(DID);
 format_did(DID, <<"npan">>) ->
@@ -145,8 +145,13 @@ get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
 -spec get_channel_vars/2 :: ({binary(), binary() | json_object()}, [binary(),...] | []) -> [binary(),...] | [].
 get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
-    Custom = wh_json:to_proplist(JObj),
-    lists:foldl(fun(KV, Vars0) -> get_channel_vars(KV, Vars0) end, Vars, Custom);
+    lists:foldl(fun({K, V}, Acc) ->
+                        case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
+                            false -> [list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K)
+                                                      ,"='", wh_util:to_list(V), "'"]) | Acc];
+                            {_, Prefix} -> [list_to_binary([Prefix, "='", wh_util:to_list(V), "'"]) | Acc]
+                        end
+                end, Vars, wh_json:to_proplist(JObj));
 
 get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
     SIPHeaders = wh_json:to_proplist(SIPJObj),
@@ -160,6 +165,11 @@ get_channel_vars({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
     [ <<"sip_cid_type=rpid">> | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
     [ <<"sip_cid_type=pid">> | Vars];
+
+get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
+    [list_to_binary(["hold_music="
+                     ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, get(callid)))
+                    ]) | Vars];
 
 get_channel_vars({<<"Codecs">>, []}, Vars) ->
     Vars;
@@ -177,11 +187,15 @@ get_channel_vars({<<"Timeout">>, V}, Vars) ->
             Vars
     end;
 
-get_channel_vars({AMQPHeader, V}, Vars) ->
+get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
-	false -> [list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(AMQPHeader), "='", wh_util:to_list(V), "'"]) | Vars];
+        false -> Vars;
 	{_, Prefix} -> [list_to_binary([Prefix, "='", wh_util:to_list(V), "'"]) | Vars]
-    end.
+    end;
+
+get_channel_vars(_, Vars) ->
+    Vars.
+
 
 get_channel_params(JObj) ->
     CV0 = case wh_json:get_value(<<"Tenant-ID">>, JObj) of

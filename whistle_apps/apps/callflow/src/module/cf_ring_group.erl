@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/6]).
+-import(cf_call_command, [b_bridge/5]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -25,22 +25,32 @@
 -spec handle/2 :: (Data, Call) -> {'stop' | 'continue'} when
       Data :: json_object(),
       Call :: #cf_call{}.
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) ->
     put(callid, CallId),
     Endpoints = get_endpoints(Data, Call),
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     ?LOG("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case b_bridge(Endpoints, Timeout, <<"internal">>, Strategy, <<"true">>, Call) of
+    case b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Call) of
         {ok, _} ->
             ?LOG("completed successful bridge to the ring group"),
             CFPid ! { stop };
         {fail, Reason} ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+            whapps_util:alert(<<"warning">>, ["Source: ~s(~p)~n"
+                                              ,"Alert: failed to bridge to device~n"
+                                              ,"Fault: ~p~n"
+                                              ,"~n~s"]
+                              ,[?MODULE, ?LINE, Reason, cf_util:call_info_to_string(Call)], AccountId),
             ?LOG("failed to bridge to ring group ~s:~s", [Code, Cause]),
             CFPid ! { continue };
         {error, R} ->
             ?LOG("failed to bridge to ring group ~p", [R]),
+            whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
+                                            ,"Alert: error bridging to ring group~n"
+                                            ,"Fault: ~p~n"
+                                            ,"~n~s"]
+                              ,[?MODULE, ?LINE, R, cf_util:call_info_to_string(Call)], AccountId),
             CFPid ! { continue }
     end.
 
@@ -57,7 +67,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 get_endpoints(Data, Call) ->
     lists:foldr(fun(Member, Acc) ->
                         EndpointId = wh_json:get_value(<<"id">>, Member),
-                        case cf_endpoint:build(EndpointId, Call, Member) of
+                        case cf_endpoint:build(EndpointId, Member, Call) of
                             {ok, Endpoint} -> Endpoint ++ Acc;
                             {error, _} -> Acc
                         end

@@ -257,6 +257,10 @@ inbound_handler(Number, JObj) ->
               wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
              );
         {error, R} ->
+            whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
+                                            ,"Alert: could not lookup ~s~n"
+                                            ,"Fault: ~p~n"]
+                              ,[?MODULE, ?LINE, Number, R]),
             ?LOG_END("unable to get account id ~w", [R])
     end.
 
@@ -341,9 +345,7 @@ custom_channel_vars(AccountId, AuthId, JObj) ->
 %% relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
--spec relay_route_req/1 :: (JObj) -> no_return() when
-      JObj :: json_object().
-relay_route_req(JObj) ->
-    {ok, Payload} = wh_api:route_req(JObj),
-    amqp_util:callmgr_publish(Payload, <<"application/json">>, ?KEY_ROUTE_REQ),
+-spec relay_route_req/1 :: (json_object()) -> 'ok'.
+relay_route_req(Req) ->
+    wapi_route:publish_req(Req),
     ?LOG_END("relayed route request").

@@ -255,11 +255,11 @@ lookup_remote(MediaName, new, CallID) ->
               ],
     lookup_remote(MediaName, Request).
 
--spec(lookup_remote/2 :: (MediaName :: binary(), Request :: proplist()) -> tuple('ok', binary()) | tuple('error', 'not_local')).
+-spec lookup_remote/2 :: (binary(), proplist()) -> {'ok', binary()} | {'error', 'not_local'}.
 lookup_remote(MediaName, Request) ->
     try
 	{ok, MediaResp} = ecallmgr_amqp_pool:media_req(Request, 1000),
-	true = wh_api:media_resp_v(MediaResp),
+	true = wapi_media:resp_v(MediaResp),
 	MediaName = wh_json:get_value(<<"Media-Name">>, MediaResp),
 
 	{ok, wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}

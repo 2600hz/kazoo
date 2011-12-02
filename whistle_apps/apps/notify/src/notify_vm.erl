@@ -12,16 +12,19 @@
 
 -include("notify.hrl").
 
+-type txt_template_module() :: notify_vm_text_custom_tmpl | notify_vm_text_tmpl.
+-type html_template_module() :: notify_vm_html_custom_tmpl | notify_vm_html_tmpl.
+-type subj_template_module() :: notify_vm_subj_custom_tmpl | notify_vm_subj_tmpl.
+
 -spec init/0 :: () -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
-    {ok, notify_vm_tmpl} = erlydtl:compile(?DEFAULT_VM_TEMPLATE, notify_vm_tmpl),
-    {ok, notify_html_vm_tmpl} = erlydtl:compile(?DEFAULT_HTML_VM_TEMPLATE, notify_html_vm_tmpl),
+    {ok, notify_vm_text_tmpl} = erlydtl:compile(whapps_config:get(?MODULE, default_text_template), notify_vm_text_tmpl),
+    {ok, notify_vm_html_tmpl} = erlydtl:compile(whapps_config:get(?MODULE, default_html_template), notify_vm_html_tmpl),
+    {ok, notify_vm_subj_tmpl} = erlydtl:compile(whapps_config:get(?MODULE, default_subject_template), notify_vm_subj_tmpl),
     ?LOG_SYS("init done for vm-to-email").
 
--spec handle_req/2 :: (JObj, Props) -> no_return() when
-      JObj :: json_object(),
-      Props :: proplist().
+-spec handle_req/2 :: (json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
     true = cf_api:new_voicemail_v(JObj),
     whapps_util:put_callid(JObj),
@@ -38,7 +41,8 @@ handle_req(JObj, _Props) ->
 	    {ok, AcctObj} = couch_mgr:open_doc(AcctDB, whapps_util:get_db_name(AcctDB, raw)),
 	    TxtTemplate = get_txt_tmpl(AcctObj),
 	    HTMLTemplate = get_html_tmpl(AcctObj),
-	    send_vm_to_email(Email, TxtTemplate, HTMLTemplate, JObj)
+	    SubjTemplate = get_subject_tmpl(AcctObj),
+	    send_vm_to_email(Email, TxtTemplate, HTMLTemplate, SubjTemplate, wh_json:set_value(<<"timezone">>, wh_json:get_value(<<"timezone">>, UserJObj), JObj))
     end.
 %%--------------------------------------------------------------------
 %% @private
@@ -46,20 +50,18 @@ handle_req(JObj, _Props) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec send_vm_to_email/4 :: (To, TxtTmpl, HTMLTmpl, JObj) -> no_return() when
-      To :: binary(),
-      TxtTmpl :: notify_vm_custom_tmpl | notify_vm_tmpl,
-      HTMLTmpl :: notify_html_vm_custom_tmpl | notify_html_vm_tmpl,
-      JObj :: json_object().
-send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
-    Subject = <<"New voicemail received">>,
-    {ok, TxtBody} = format_plaintext(JObj, TxtTmpl),
-    {ok, HTMLBody} = format_html(JObj, HTMLTmpl),
+-spec send_vm_to_email/5 :: (ne_binary(), txt_template_module(), html_template_module(), subj_template_module(), json_object()) -> no_return().
+send_vm_to_email(To, TxtTmpl, HTMLTmpl, SubjTmpl, JObj) ->
+    TemplateProps = get_template_props(JObj),
+    {ok, TxtBody} = TxtTmpl:render(TemplateProps),
+    {ok, HTMLBody} = HTMLTmpl:render(TemplateProps),
+    {ok, Subject} = SubjTmpl:render(TemplateProps),
 
     DB = wh_json:get_value(<<"Account-DB">>, JObj),
     DocId = wh_json:get_value(<<"Voicemail-Name">>, JObj),
 
-    From = <<"no_reply@", (wh_util:to_binary(net_adm:localhost()))/binary>>,
+    HostFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
+    From = whapps_config:get_binary(?MODULE, <<"default_from">>, HostFrom),
 
     ?LOG_SYS("Opening ~s in ~s", [DocId, DB]),
     {ok, VMJObj} = couch_mgr:open_doc(DB, DocId),
@@ -68,75 +70,76 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, JObj) ->
     ?LOG_SYS("Attachment doc: ~s", [AttachmentId]),
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
-    Email = {<<"multipart">>, <<"alternative">> %% Content Type / Sub Type
-		 ,[ %% Headers
+    AttachmentFileName = get_file_name(TemplateProps),
+
+    %% Content Type, Subtype, Headers, Parameters, Body
+    Email = {<<"multipart">>, <<"mixed">>
+		 ,[
 		    {<<"From">>, From},
 		    {<<"To">>, To},
 		    {<<"Subject">>, Subject}
 		  ]
-	     ,[] %% Parameters
-	     ,[ %% Body
-		{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)} %% Content Type, Subtype, Headers, Parameters, Body
-		,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)} %% Content Type, Subtype, Headers, Parameters, Body
-		,{<<"audio">>, <<"mpeg">>
-		      ,[
-			{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}
-			,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentId, "\""])}
-		       ]
-		  ,[], AttachmentBin
-		 }
+	     ,[]
+	     ,[
+	       {<<"multipart">>, <<"alternative">>, [], []
+		,[
+		  {<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
+		  ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
+		 ]
+	       }
+	       ,{<<"audio">>, <<"mpeg">>
+		     ,[
+		       {<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
+		       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
+		       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+		      ]
+		 ,[], AttachmentBin
+		}
 	      ]
 	    },
     Encoded = mimemail:encode(Email),
     ?LOG_SYS("Sending email to ~s", [To]),
-    gen_smtp_client:send({From, [To], Encoded}, [{relay, "localhost"}]
+    Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
+    gen_smtp_client:send({From, [To], Encoded}, [{relay, Relay}]
 			 ,fun(X) -> ?LOG("Sending email to ~s resulted in ~p", [To, X]) end).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% create the plain text vm to email component
+%% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec format_plaintext/2 :: (JObj, Tmpl) -> tuple(ok, iolist()) when
-      JObj :: json_object(),
-      Tmpl :: notify_vm_custom_tmpl | notify_vm_tmpl.
-format_plaintext(JObj, Tmpl) ->
+-spec get_template_props/1 :: (json_object()) -> proplist().
+get_template_props(JObj) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
     ToE164 = wh_util:to_e164(wh_json:get_value(<<"To-User">>, JObj)),
     DateCalled = wh_util:to_integer(wh_json:get_value(<<"Voicemail-Timestamp">>, JObj)),
+    UTCDateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    Tmpl:render([{caller_id_number, pretty_print_did(CIDNum)}
-		 ,{caller_id_name, CIDName}
-		 ,{to_user, pretty_print_did(ToE164)}
-		 ,{date_called, calendar:gregorian_seconds_to_datetime(DateCalled)}
-		 ,{support_number, ?DEFAULT_SUPPORT_NUMBER}
-		 ,{support_email, ?DEFAULT_SUPPORT_EMAIL}
-		]).
+    [{caller_id_number, pretty_print_did(CIDNum)}
+     ,{caller_id_name, CIDName}
+     ,{to_user, pretty_print_did(ToE164)}
+     ,{date_called, UTCDateTime}
+     ,{date_called_local, localtime:utc_to_localtime(UTCDateTime, wh_json:get_value(<<"timezone">>, JObj, <<"UTC">>))}
+     ,{support_number, whapps_config:get(?MODULE, <<"default_support_number">>, <<"(415) 886 - 7900">>)}
+     ,{support_email, whapps_config:get(?MODULE, <<"default_support_email">>, <<"support@2600hz.com">>)}
+    ].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% create the HTML vm to email component
-%% @end
-%%--------------------------------------------------------------------
--spec format_html/2 :: (JObj, Tmpl) -> tuple(ok, iolist()) when
-      JObj :: json_object(),
-      Tmpl :: notify_html_vm_custom_tmpl | notify_html_vm_tmpl.
-format_html(JObj, Tmpl) ->
-    CIDName = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
-    CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
-    ToE164 = wh_util:to_e164(wh_json:get_value(<<"To-User">>, JObj)),
-    DateCalled = wh_util:to_integer(wh_json:get_value(<<"Voicemail-Timestamp">>, JObj)),
+-spec get_file_name/1 :: (proplist()) -> ne_binary().
+get_file_name(Props) ->
+    %% CallerID_Date_Time.mp3
+    CallerID = case {props:get_value(caller_id_name, Props), props:get_value(caller_id_number, Props)} of
+		   {undefined, undefined} -> <<"Unknown">>;
+		   {undefined, Num} -> wh_util:to_binary(Num);
+		   {Name, _} -> wh_util:to_binary(Name)
+	       end,
+    ?LOG("CallerID for filename: ~s", [CallerID]),
 
-    Tmpl:render([{caller_id_number, pretty_print_did(CIDNum)}
-		 ,{caller_id_name, CIDName}
-		 ,{to_user, pretty_print_did(ToE164)}
-		 ,{date_called, calendar:gregorian_seconds_to_datetime(DateCalled)}
-		 ,{support_number, ?DEFAULT_SUPPORT_NUMBER}
-		 ,{support_email, ?DEFAULT_SUPPORT_EMAIL}
-		]).
+    LocalDateTime = props:get_value(date_called_local, Props),
+    ?LOG("UTC: ~p Local: ~p", [props:get_value(date_called, Props), LocalDateTime]),
+
+    list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".mp3"]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -144,8 +147,7 @@ format_html(JObj, Tmpl) ->
 %% create a friendly format for DIDs
 %% @end
 %%--------------------------------------------------------------------
--spec pretty_print_did/1 :: (DID) -> binary() when
-      DID :: binary().
+-spec pretty_print_did/1 :: (ne_binary()) -> ne_binary().
 pretty_print_did(<<"+1", Area:3/binary, Locale:3/binary, Rest:4/binary>>) ->
     <<"1.", Area/binary, ".", Locale/binary, ".", Rest/binary>>;
 pretty_print_did(<<"011", Rest/binary>>) ->
@@ -155,30 +157,45 @@ pretty_print_did(Other) ->
 
 get_txt_tmpl(AcctObj) ->
     case wh_json:get_value(<<"vm_to_email_template">>, AcctObj) of
-	undefined -> notify_vm_tmpl;
+	undefined -> notify_vm_text_tmpl;
 	Tmpl ->
 	    try
-		{ok, notify_vm_custom_tmpl} = erlydtl:compile(Tmpl, notify_vm_custom_tmpl),
-		?LOG("Compiled custom template"),
-		notify_vm_custom_tmpl
+		{ok, notify_vm_text_custom_tmpl} = erlydtl:compile(Tmpl, notify_vm_text_custom_tmpl),
+		?LOG("compiled custom text template"),
+		notify_vm_text_custom_tmpl
 	    catch
 		_:E ->
-		    ?LOG("Error compiling txt template ~p", [E]),
-		    notify_vm_tmpl
+		    ?LOG("error compiling text template ~p", [E]),
+		    notify_vm_text_tmpl
 	    end
     end.
 
 get_html_tmpl(AcctObj) ->
     case wh_json:get_value(<<"html_vm_to_email_template">>, AcctObj) of
-	undefined -> notify_html_vm_tmpl;
+	undefined -> notify_vm_html_tmpl;
 	Tmpl ->
 	    try
-		{ok, notify_html_vm_custom_tmpl} = erlydtl:compile(Tmpl, notify_html_vm_custom_tmpl),
-		?LOG("Compiled custom template"),
-		notify_html_vm_custom_tmpl
+		{ok, notify_vm_html_custom_tmpl} = erlydtl:compile(Tmpl, notify_vm_html_custom_tmpl),
+		?LOG("compiled custom html template"),
+		notify_vm_html_custom_tmpl
 	    catch
 		_:E ->
-		    ?LOG("Error compiling html template ~p", [E]),
-		    notify_html_vm_tmpl
+		    ?LOG("error compiling html template ~p", [E]),
+		    notify_vm_html_tmpl
+	    end
+    end.
+
+get_subject_tmpl(AcctObj) ->
+    case wh_json:get_value(<<"subject_vm_to_email_template">>, AcctObj) of
+	undefined -> notify_vm_subj_tmpl;
+	Tmpl ->
+	    try
+		{ok, notify_vm_subj_custom_tmpl} = erlydtl:compile(Tmpl, notify_vm_subj_custom_tmpl),
+		?LOG("compiled custom subject template"),
+		notify_vm_subj_custom_tmpl
+	    catch
+		_:E ->
+		    ?LOG("error compiling subject template ~p", [E]),
+		    notify_vm_subj_tmpl
 	    end
     end.

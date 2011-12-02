@@ -104,7 +104,7 @@ menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_p
                 ?LOG("selection matches recording pin"),
                 M = record_prompt(tmp_file(), Menu, Call),
                 ?LOG("returning caller to menu"),
-                _ = b_play(Prompts#prompts.return_to_ivr, Call),
+                {ok, _} = b_play(Prompts#prompts.return_to_ivr, Call),
                 menu_loop(M, Call);
             {ok, Digits} ->
 		%% this try_match_digits calls hunt_for_callflow() based on the digits dialed
@@ -116,7 +116,7 @@ menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_p
     catch
         _:R ->
             ?LOG("invalid selection ~w", [R]),
-            _ = play_invalid_prompt(Menu, Call),
+            {ok, _} = play_invalid_prompt(Menu, Call),
             menu_loop(Menu#menu{retries=Retries - 1}, Call)
     end.
 
@@ -213,9 +213,9 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(hunt_for_callflow/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
-hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{cf_pid=CFPid, cf_responder=CFRPid, account_id=AccountId}=Call) ->
+hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{cf_pid=CFPid, account_id=AccountId}=Call) ->
     ?LOG("hunting for ~s in account ~s", [Digits, AccountId]),
-    case gen_server:call(CFRPid, {find_flow, Digits, AccountId}, 2000) of
+    case cf_util:lookup_callflow(Digits, AccountId) of
         {ok, Flow, false} ->
             ?LOG("callflow hunt succeeded, branching"),
             _ = flush_dtmf(Call),

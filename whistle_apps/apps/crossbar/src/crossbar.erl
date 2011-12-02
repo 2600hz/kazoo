@@ -102,11 +102,10 @@ refresh(Account) ->
     end,
     case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, [{<<"include_docs">>, true}]) of
         {ok, Devices} ->
-            [aggregate_device(wh_json:get_value(<<"doc">>, Device)) || Device <- Devices];
+            _ = [aggregate_device(wh_json:get_value(<<"doc">>, Device)) || Device <- Devices], ok;
         {error, _} ->
             ok
-    end,
-    ok.
+    end.
 
 aggregate_device(undefined) ->
     ok;

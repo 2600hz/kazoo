@@ -24,7 +24,7 @@
 
 -behaviour(gen_server).
 
--include_lib("rabbitmq_erlang_client/include/amqp_client.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -46,7 +46,7 @@
 %% gen_listener API
 -export([add_responder/3, rm_responder/2, rm_responder/3]).
 
--export([add_binding/2, add_binding/3, rm_binding/2]).
+-export([add_binding/2, add_binding/3, rm_binding/2, rm_binding/3]).
 
 behaviour_info(callbacks) ->
     [{init, 1}
@@ -175,6 +175,15 @@ add_binding(Srv, Binding, Props) ->
 rm_binding(Srv, Binding) ->
     gen_server:cast(Srv, {rm_binding, Binding}).
 
+-spec rm_binding/3 :: (Srv, Binding, Props) -> 'ok' when
+      Srv :: atom() | pid(),
+      Binding :: atom(),
+      Props :: proplist().
+rm_binding(Srv, Binding, []) ->
+    gen_server:cast(Srv, {rm_binding, Binding});
+rm_binding(Srv, Binding, Props) ->
+    gen_server:cast(Srv, {rm_binding, Binding, Props}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -182,6 +191,9 @@ rm_binding(Srv, Binding) ->
       Args :: [atom() | proplist(),...].
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
+
+    put(callid, wh_util:to_binary(Module)), %% identify the client module for this gen_listener
+
     ModState = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
 		   {ok, MS} ->
 		       MS;
@@ -197,11 +209,13 @@ init([Module, Params, InitArgs]) ->
     Responders = props:get_value(responders, Params, []),
     Bindings = props:get_value(bindings, Params, []),
 
-    {ok, Q} = start_amqp(Bindings, Params),
+    {ok, Q} = start_amqp(Params),
+
     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
 
     Self = self(),
     spawn(fun() -> [add_responder(Self, Mod, Evts) || {Mod, Evts} <- Responders] end),
+    spawn(fun() -> [add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings] end),
 
     {ok, #state{queue=Q, module=Module, module_state=ModState
 		,responders=[], bindings=Bindings
@@ -258,13 +272,81 @@ handle_cast({add_responder, Responder, Keys}, #state{responders=Responders}=Stat
 handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State) ->
     {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}, hibernate};
 
-handle_cast({add_binding, Binding, Props}, #state{queue=Q}=State) ->
-    queue_bindings:add_binding_to_q(Q, Binding, Props),
-    {noreply, State};
+handle_cast({add_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
+    ?LOG("adding binding ~s, ~p", [Binding, Props]),
+    Wapi = <<"wapi_", (wh_util:to_binary(Binding))/binary>>,
+    try
+        ApiMod = wh_util:to_atom(Wapi),
+	ApiMod:bind_q(Q, Props),
+	{noreply, State}
+    catch
+	error:badarg ->
+	    ?LOG_SYS("api module ~s not found", [Wapi]),
+	    case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
+		non_existing ->
+		    ?LOG_SYS("beam file not found for ~s, trying old method", [Wapi]),
+		    queue_bindings:add_binding_to_q(Q, Binding, Props),
+		    {noreply, State};
+		_Path ->
+		    ?LOG_SYS("beam file found: ~s", [_Path]),
+		    wh_util:to_atom(Wapi, true), %% put atom into atom table
+		    handle_cast(Req, State)
+	    end;
+	error:undef ->
+	    ?LOG_SYS("Module ~s doesn't exist of bind_q/2 isn't exported", [Wapi]),
+	    ?LOG_SYS("Trying old school add_binding for ~s", [Binding]),
+	    queue_bindings:add_binding_to_q(Q, Binding, Props),
+	    {noreply, State};
+        E:R ->
+            io:format("~p ~p~n", [E, R]),
+            {noreply, State}
+    end;
 
-handle_cast({rm_binding, Binding}, #state{queue=Q}=State) ->
-    queue_bindings:rm_binding_from_q(Q, Binding),
-    {noreply, State};
+handle_cast({rm_binding, Binding}=Req, #state{queue=Q}=State) ->
+    Wapi = <<"wapi_", (wh_util:to_binary(Binding))/binary>>,
+    try
+	ApiMod = wh_util:to_atom(Wapi),
+	ApiMod:unbind_q(Q),
+	{noreply, State}
+    catch
+	error:badarg ->
+	    ?LOG_SYS("Atom ~s not found", [Wapi]),
+	    case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
+		non_existing ->
+		    {noreply, State};
+		_Path ->
+		    ?LOG_SYS("beam file found: ~s", [_Path]),
+		    wh_util:to_atom(Wapi, true),
+		    handle_cast(Req, State)
+	    end;
+	error:undef ->
+	    ?LOG_SYS("Module ~s doesn't exist or unbind_q/1 isn't exported", [Wapi]),
+	    queue_bindings:rm_binding_from_q(Q, Binding),
+	    {noreply, State}
+    end;
+
+handle_cast({rm_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
+    Wapi = <<"wapi_", (wh_util:to_binary(Binding))/binary>>,
+    try
+	ApiMod = wh_util:to_atom(Wapi),
+	ApiMod:unbind_q(Q, Props),
+	{noreply, State}
+    catch
+	error:badarg ->
+	    ?LOG_SYS("Atom ~s not found", [Wapi]),
+	    case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
+		non_existing ->
+		    {noreply, State};
+		_Path ->
+		    ?LOG_SYS("beam file found: ~s", [_Path]),
+		    wh_util:to_atom(Wapi, true),
+		    handle_cast(Req, State)
+	    end;
+	error:undef ->
+	    ?LOG_SYS("Module ~s doesn't exist or unbind_q/2 isn't exported", [Wapi]),
+	    queue_bindings:rm_binding_from_q(Q, Binding, Props),
+	    {noreply, State}
+    end;
 
 handle_cast(Message, #state{module=Module, module_state=ModState}=State) ->
     case catch Module:handle_cast(Message, ModState) of
@@ -302,9 +384,11 @@ handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=
     case amqp_util:is_host_available() of
 	true ->
 	    ?LOG("Host is available, let's try wiring up"),
-	    case start_amqp(Bindings, Params) of
+	    case start_amqp(Params) of
 		{ok, Q} ->
-		    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
+		    Self = self(),
+		    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
+		    spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
 		    {noreply, State#state{queue=Q, is_consuming=false}, hibernate};
 		{error, _} ->
 		    ?LOG("Failed to start amqp, waiting another second"),
@@ -322,7 +406,7 @@ handle_info({amqp_lost_channel, no_connection}, State) ->
     _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
 
-handle_info({'basic.consume_ok', _}, S) ->
+handle_info(#'basic.consume_ok'{}, S) ->
     {noreply, S#state{is_consuming=true}};
 
 handle_info(is_consuming, #state{is_consuming=false, queue=Q}=State) ->
@@ -353,6 +437,7 @@ code_change(_OldVersion, State, _Extra) ->
     {ok, State}.
 
 terminate(Reason, #state{module=Module, module_state=ModState}) ->
+    ?LOG_SYS("terminating with ~p", [Reason]),
     Module:terminate(Reason, ModState),
     ok.
 
@@ -400,7 +485,7 @@ maybe_event_matches_key(Evt, Evt) -> true;
 maybe_event_matches_key({_, Name}, {<<"*">>, Name}) -> true;
 maybe_event_matches_key({Cat, _}, {Cat, <<"*">>}) -> true;
 maybe_event_matches_key({_,_}, {<<"*">>, <<"*">>}) -> true;
-maybe_event_matches_key(_, _) -> false.
+maybe_event_matches_key(_A, _B) -> false.
 
 %% Collect the spawned handlers going down so the main process_req proc doesn't end until all
 %% handlers have completed (for graceful stopping).
@@ -413,40 +498,29 @@ wait_for_handlers([{Pid, Ref} | Hs]) ->
     end;
 wait_for_handlers([]) -> ok.
 
--spec start_amqp/2 :: (bindings(), proplist()) -> {'ok', binary()} | {'error', 'amqp_error'}.
-start_amqp(Bindings, Props) ->
+-spec start_amqp/1 :: (proplist()) -> {'ok', binary()} | {'error', 'amqp_error'}.
+start_amqp(Props) ->
     QueueProps = props:get_value(queue_options, Props, []),
     QueueName = props:get_value(queue_name, Props, <<>>),
     case catch amqp_util:new_queue(QueueName, QueueProps) of
 	{error, amqp_error}=E -> ?LOG("Failed to start new queue"), E;
 	{'EXIT', _Why} -> ?LOG("Exit: ~p", [_Why]), {error, amqp_error};
-	Queue -> start_amqp(Bindings, Props, Queue)
+	Queue ->
+	    ConsumeProps = props:get_value(consume_options, Props, []),
+
+	    set_qos(props:get_value(basic_qos, Props)),
+	    amqp_util:basic_consume(Queue, ConsumeProps),
+	    ?LOG("Consuming on ~s", [Queue]),
+	    {ok, Queue}
     end.
 
--spec start_amqp/3 :: (bindings(), proplist(), binary()) -> {'ok', binary()}.
-start_amqp(Bindings, Props, Q) ->
-    ?LOG("New queue: ~s", [Q]),
-
-    ConsumeProps = props:get_value(consume_options, Props, []),
-
-    set_qos(props:get_value(basic_qos, Props)),
-
-    _ = [ queue_bindings:add_binding_to_q(Q, Type, BindProps) || {Type, BindProps} <- Bindings ],
-    ?LOG("Binding complete for ~s", [Q]),
-
-    amqp_util:basic_consume(Q, ConsumeProps),
-    ?LOG("Consuming on ~s", [Q]),
-    {ok, Q}.
-
--spec stop_amqp/2 :: (Q, Bindings) -> ok when
-      Q :: binary(),
-      Bindings :: bindings().
+-spec stop_amqp/2 :: (binary(), bindings()) -> 'ok'.
 stop_amqp(<<>>, _) -> ok;
 stop_amqp(Q, Bindings) ->
-    _ = [ queue_bindings:rm_binding_from_q(Q, Type) || {Type, _} <- Bindings],
+    Self = self(),
+    spawn(fun() -> [ gen_listener:rm_binding(Self, Type, Prop) || {Type, Prop} <- Bindings] end),
     amqp_util:queue_delete(Q).
 
--spec set_qos/1 :: (N) -> ok when
-      N :: undefined | non_neg_integer().
+-spec set_qos/1 :: ('undefined' | non_neg_integer()) -> 'ok'.
 set_qos(undefined) -> ok;
 set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
