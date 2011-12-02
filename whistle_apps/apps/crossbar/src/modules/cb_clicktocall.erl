@@ -133,11 +133,17 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD,
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, #cb_context{resp_data=HistoryItem}=Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
 		  crossbar_util:binding_heartbeat(Pid),
-		  Context1 = crossbar_doc:save(Context),
+		  Context0 = crossbar_doc:save(Context),
+                  Context1 = case Context#cb_context.req_nouns of
+                                 ?CONNECT_C2C_URL ->
+                                     Context#cb_context{resp_data=HistoryItem};
+                                 _Else ->
+                                     Context0
+                             end,
      		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
@@ -321,38 +327,19 @@ is_valid_doc(JObj) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
-
 load_c2c_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 load_c2c(C2CId, Context) ->
-    #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
-    C2C1 = wh_json:set_value(<<"history_items">>, length(wh_json:get_value(<<"history">>, C2C)), wh_json:delete_key(<<"history">>, C2C)),
-    Context1#cb_context{doc=C2C1}.
+    crossbar_doc:load(C2CId, Context).
 
 load_c2c_history(C2CId, Context) ->
-    #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
-    Context1#cb_context{doc=wh_json:get_value(<<"history">>, C2C)}.
-
-update_c2c(C2CId, #cb_context{req_data=Doc}=Context) ->
-    crossbar_doc:load_merge(C2CId, Doc, Context).
-
-establish_c2c(C2CId, #cb_context{req_data=Req, account_id=AccountId}=Context) ->
-    #cb_context{doc=C2C}=Context1 = crossbar_doc:load(C2CId, Context),
-
-    Caller = wh_util:to_e164(wh_json:get_value(<<"contact">>, Req)),
-    Callee = wh_util:to_e164(wh_json:get_value(<<"extension">>, C2C)),
-    C2CName = wh_json:get_value(<<"name">>, C2C),
-
-    Status = originate_call(Caller, Callee, C2CName, AccountId),
-
-    case Status of
-	{success, [CallID, CdrID]} ->
-	    History = wh_json:get_value(<<"history">>, C2C, []),
-	    List = [create_c2c_history_item(Req, CallID, CdrID) | History],
-	    Context1#cb_context{doc=wh_json:set_value(<<"history">>, List, C2C)};
-	{error, _} -> Context1#cb_context{resp_status=error};
-	{timeout, _} -> Context1#cb_context{resp_status=error}
+    case crossbar_doc:load(C2CId, Context) of
+        #cb_context{doc=JObj, resp_status=success}=Context1 ->
+            History = wh_json:get_value(<<"pvt_history">>, JObj, []),
+            Context1#cb_context{resp_data=History};
+        Else ->
+            Else
     end.
 
 create_c2c(#cb_context{req_data=JObj}=Context) ->
@@ -361,66 +348,137 @@ create_c2c(#cb_context{req_data=JObj}=Context) ->
             crossbar_util:response_invalid_data(Fields, Context);
 	{true, _} ->
             Context#cb_context{
-	      doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:set_value(<<"history">>, [], JObj))
+	      doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:set_value(<<"pvt_history">>, [], JObj))
 	      ,resp_status=success
 	     }
     end.
 
-create_c2c_history_item(Req, CallID, CdrID) ->
-    Now = wh_util:current_tstamp(),
-    {struct, [ {<<"contact">>, wh_json:get_value(<<"contact">>, Req)},
-	       {<<"timestamp">>, Now},
-	       {<<"call_id">>, CallID},
-	       {<<"cdr_id">>, CdrID}
-	     ]}.
+update_c2c(C2CId, #cb_context{req_data=Doc}=Context) ->
+    crossbar_doc:load_merge(C2CId, Doc, Context).
+
+establish_c2c(C2CId, Context) ->
+    case crossbar_doc:load(C2CId, Context) of
+        #cb_context{resp_status=success}=Context1 ->
+            originate_call(Context1);
+        Else ->
+            Else
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
-%%--------------------------------------------------------------------
-originate_call(CallerNumber, CalleeExtension, C2CName, AccountId) ->
-    ?LOG("attempting clicktocall ~s from ~s to ~s in account ~s", [C2CName, CallerNumber, CalleeExtension, AccountId]),
+%%-------------------------------------------------------------------
+-spec originate_call/1 :: (#cb_context{}) -> #cb_context{}.
+-spec originate_call/3 :: (ne_binary(), json_object(), ne_binary()) -> {success, binary()} | {error, binary()} | {timeout}.
 
-    %% create, bind & consume amqp queue
+originate_call(#cb_context{doc=JObj, req_data=Req, account_id=AccountId}=Context) ->
+    case get_c2c_contact(wh_json:get_string_value(<<"contact">>, Req)) of
+        undefined ->
+            Context#cb_context{resp_status=error, resp_error_msg = <<"invalid contact">>, resp_error_code = 400, resp_data=[]};
+        Contact ->
+            Status = originate_call(Contact, JObj, AccountId),
+            HistoryItem = wh_json:from_list(create_c2c_history_item(Status, Contact)),
+
+            History = wh_json:get_value(<<"pvt_history">>, JObj, []),
+            Context#cb_context{doc=wh_json:set_value(<<"pvt_history">>, [HistoryItem | History], JObj)
+                               ,resp_data=HistoryItem
+                               ,resp_status=get_c2c_resp_status(Status)}
+    end.
+
+originate_call(Contact, JObj, AccountId) ->
+    Exten = wh_util:to_e164(wh_json:get_binary_value(<<"extension">>, JObj)),
+    FriendlyName = wh_json:get_ne_value(<<"name">>, JObj, <<>>),
+
+    ?LOG("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
+
     Amqp = amqp_util:new_queue(),
     amqp_util:bind_q_to_targeted(Amqp),
     amqp_util:basic_consume(Amqp),
 
-    %% basic call info to display on phone's screen
-    CallInfo = << ",origination_caller_id_name=", CalleeExtension/binary,
-		  ",origination_caller_id_number=", CalleeExtension/binary,
-		  ",origination_callee_id_name='", C2CName/binary, "'",
-		  ",origination_callee_id_number=", CallerNumber/binary >>,
-
-    OrigStringPart = <<"{ecallmgr_Account-ID=",AccountId/binary, CallInfo/binary, "}loopback/", CallerNumber/binary, "/context_2">>,
+    CCVs = [{<<"Account-ID">>, AccountId}
+            ,{<<"Auto-Answer">>, <<"true">>}
+            ,{<<"Retain-CID">>, <<"true">>}
+            ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, JObj)}
+           ],
 
     Req = [{<<"Msg-ID">>, wh_util:current_tstamp()}
            ,{<<"Resource-Type">>, <<"audio">>}
            ,{<<"Invite-Format">>, <<"route">>}
-           ,{<<"Route">>, OrigStringPart}
-           ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, AccountId}])}
+           ,{<<"Route">>, <<"loopback/", Exten/binary, "/context_2">>}
+           ,{<<"Outgoing-Callee-ID-Name">>, Exten}
+           ,{<<"Outgoing-Callee-ID-Number">>, Exten}
+           ,{<<"Outgoing-Caller-ID-Name">>, FriendlyName}
+           ,{<<"Outgoing-Caller-ID-Number">>, Contact}
+           ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+           ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>]}
            ,{<<"Application-Name">>, <<"transfer">>}
-           ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, CalleeExtension}])}
+           ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Contact}])}
            | wh_api:default_headers(Amqp, ?APP_NAME, ?APP_VERSION)],
 
+    ?LOG("pubishing origination request from ~s to ~s", [Contact, Exten]),
     wapi_resource:publish_req(Req),
+    wait_for_originate().
 
+-spec wait_for_originate/0 :: () -> {success, binary()} | {error, binary()} | {timeout}.
+wait_for_originate() ->
     receive
 	{_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
-	    JObj = mochijson2:decode(Payload),
-	    case wh_json:get_value(<<"Event-Name">>, JObj) of
-		<<"originate_resp">> ->
-                    whapps_util:put_callid(JObj),
-                    ?LOG("established clicktocall ~s from ~s to ~s in account ~s", [C2CName, CallerNumber, CalleeExtension, AccountId]),
-		    {success, [wh_json:get_value(<<"Call-ID">>, JObj), null]};
-		<<"resource_error">> ->
-                    ?LOG("cannot establish click to call, ~s", [wh_json:get_value(<<"Failure-Message">>, JObj, <<>>)]),
-		    {error, []}
-	    end
+            try
+                JObj = mochijson2:decode(Payload),
+                case whapps_util:get_event_type(JObj) of
+                    {<<"resource">>, <<"originate_resp">>} ->
+                        true = wapi_resource:resp_v(JObj),
+                        whapps_util:put_callid(JObj),
+                        {success, wh_json:get_value(<<"Call-ID">>, JObj)};
+                    {<<"resource">>, <<"originate_error">>} ->
+                        true = wapi_resource:error_v(JObj),
+                        {error, wh_json:get_value(<<"Failure-Message">>, JObj, <<>>)};
+                    _ ->
+                        wait_for_originate()
+                end
+            catch
+                _:_ ->
+                    wait_for_originate()
+            end;
+        _ ->
+            wait_for_originate()
     after
 	15000 ->
             ?LOG("cannot establish click to call, timeout"),
-	    {timeout, []}
+	    {timeout}
     end.
+
+-spec get_c2c_contact/1 :: (undefined | list() | binary()) -> undefined | binary().
+get_c2c_contact(undefined) ->
+    undefined;
+get_c2c_contact(Contact) when not is_list(Contact) ->
+    get_c2c_contact(wh_util:to_list(Contact));
+get_c2c_contact(Contact) ->
+    Encoded = mochiweb_util:quote_plus(Contact),
+    wh_util:to_e164(wh_util:to_binary(Encoded)).
+
+-spec get_c2c_resp_status/1 :: ({success, binary()} | {error, binary()} | {timeout}) -> success | error.
+get_c2c_resp_status({success, _}) -> success;
+get_c2c_resp_status(_) -> error.
+
+-spec create_c2c_history_item/2 :: ({success, binary()} | {error, binary()} | {timeout}, binary()) -> proplist().
+create_c2c_history_item({success, CallId}, Contact) ->
+    [{<<"timestamp">>, wh_util:current_tstamp()}
+     ,{<<"contact">>, Contact}
+     ,{<<"call_id">>, CallId}
+     ,{<<"result">>, <<"success">>}
+    ];
+create_c2c_history_item({error, Error}, Contact) ->
+    [{<<"timestamp">>, wh_util:current_tstamp()}
+     ,{<<"contact">>, Contact}
+     ,{<<"result">>, <<"error">>}
+     ,{<<"cause">>, Error}
+    ];
+create_c2c_history_item({timeout}, Contact) ->
+    [{<<"timestamp">>, wh_util:current_tstamp()}
+     ,{<<"contact">>, Contact}
+     ,{<<"result">>, <<"timeout">>}
+     ,{<<"cause">>, <<"no response received">>}
+    ].
