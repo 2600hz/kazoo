@@ -20,30 +20,30 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
+handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, channel_vars=CCVs}=Call) ->
     put(callid, CallId),
-    {ok, Status} = cf_call_command:b_status(Call),
     ParkedCalls = get_parked_calls(Call),
     SlotNumber = get_slot_number(ParkedCalls, Call),
-    ReferredTo = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-To">>], Status, <<>>),
+    ReferredTo = wh_json:get_value(<<"Referred-To">>, CCVs, <<>>),
+    CallerHost = get_switch_hostname(Call),
     case re:run(ReferredTo, "Replaces=([^;]*)", [{capture, [1], binary}]) of
         nomatch when ReferredTo =:= <<>> ->
             ?LOG("call was the result of a direct dial"),
             case wh_json:get_value(<<"action">>, Data, <<"park">>) of
                 <<"park">> ->
-                    park_call(SlotNumber, ParkedCalls, Status, Call),
+                    park_call(SlotNumber, ParkedCalls, CallerHost, Call),
                     CFPid ! {transfer};
                 <<"retrieve">> ->
-                    retrieve(SlotNumber, ParkedCalls, Status, Call),
+                    retrieve(SlotNumber, ParkedCalls, CallerHost, Call),
                     CFPid ! {hangup};
                 <<"auto">> ->
-                    retrieve(SlotNumber, ParkedCalls, Status, Call)
-                        orelse park_call(SlotNumber, ParkedCalls, Status, Call),
+                    retrieve(SlotNumber, ParkedCalls, CallerHost, Call)
+                        orelse park_call(SlotNumber, ParkedCalls, CallerHost, Call),
                     CFPid ! {transfer}
             end;
         nomatch ->
             ?LOG("call was the result of a blind transfer, assuming intention was to park"),
-            park_call(SlotNumber, ParkedCalls, Status, Call),
+            park_call(SlotNumber, ParkedCalls, CallerHost, Call),
             CFPid ! {transfer};
         {match, [Replaces]} ->
             ?LOG("call was the result of an attended-transfer completion, updating call id"),
@@ -51,37 +51,51 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
             CFPid ! {transfer}
     end.
 
+
+get_switch_hostname(#cf_call{call_id=undefined}) ->
+    undefined;
+get_switch_hostname(Call) ->
+    case cf_call_command:b_status(Call) of
+        {ok, CallerStatus} ->
+            wh_json:get_ne_value(<<"Switch-Hostname">>, CallerStatus);
+        _Else ->
+            undefined
+    end.
+
+get_switch_hostname(CallId, Call) ->
+    get_switch_hostname(Call#cf_call{call_id=CallId}).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Determine the appropriate action to retrieve a parked call
 %% @end
 %%--------------------------------------------------------------------
--spec retrieve/4 :: (SlotNumber, ParkedCalls, Status, Call) -> boolean() when
+-spec retrieve/4 :: (SlotNumber, ParkedCalls, CallerHost, Call) -> boolean() when
       SlotNumber :: binary(),
       ParkedCalls :: json_object(),
-      Status :: json_object(),
+      CallerHost :: json_object(),
       Call :: #cf_call{}.
-retrieve(SlotNumber, ParkedCalls, Status, #cf_call{to_user=ToUser, to_realm=ToRealm, call_id=CallId}=Call) ->
+retrieve(SlotNumber, ParkedCalls, CallerHost, #cf_call{to_user=ToUser, to_realm=ToRealm, call_id=CallId}=Call) ->
     case wh_json:get_value([<<"slots">>, SlotNumber], ParkedCalls) of
         undefined ->
             ?LOG("They hungup? play back nobody here message", []),
             false;
         Slot ->
-            Node = wh_json:get_value(<<"Node">>, Status, <<"unknown">>),
-            case wh_json:get_value(<<"Node">>, Slot) of
+            ParkedCall = wh_json:get_value(<<"Call-ID">>, Slot),
+            ?LOG("~p~n", [ParkedCall]),
+            case get_switch_hostname(ParkedCall, Call) of
                 undefined ->
                     ?LOG("THEY HUNGUP! playback nobody here and clean up", []),
                     false;
-                Node ->
-                    ParkedCall = wh_json:get_value(<<"Call-ID">>, Slot),
+                CallerHost ->
                     ?LOG("pickup call id ~s", [ParkedCall]),
                     Command = [{<<"Application-Name">>, <<"call_pickup">>}
                                ,{<<"Target-Call-ID">>, ParkedCall}
                                ,{<<"Call-ID">>, CallId}
                                | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                               ],
-                    {ok, Payload} = wh_api:call_pickup_req([ KV || {_, V}=KV <- Command, V =/= undefined ]),
+                    {ok, Payload} = wapi_dialplan:call_pickup([ KV || {_, V}=KV <- Command, V =/= undefined ]),
                     cf_call_command:send_callctrl(Payload, Call),
                     true;
                 OtherNode ->
@@ -120,16 +134,16 @@ get_node_ip(Node) ->
 %% Determine the appropriate action to park the current call scenario
 %% @end
 %%--------------------------------------------------------------------
--spec park_call/4 :: (SlotNumber, ParkedCalls, Status, Call) -> ok | integer() when
+-spec park_call/4 :: (SlotNumber, ParkedCalls, CallerHost, Call) -> ok | integer() when
       SlotNumber :: binary(),
       ParkedCalls :: json_object(),
-      Status :: json_object(),
+      CallerHost :: json_object(),
       Call :: #cf_call{}.
-park_call(SlotNumber, ParkedCalls, Status, Call) ->
+park_call(SlotNumber, ParkedCalls, CallerHost, Call) ->
     ?LOG("attempting to park call in slot ~p", [SlotNumber]),
-    Slot = create_slot(Status, Call),
+    Slot = create_slot(Call),
     save_slot(SlotNumber, Slot, ParkedCalls, Call),
-    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-To">>], Status) of
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-To">>], CallerHost) of
         undefined ->
             ?LOG("playback slot number to caller"),
             cf_call_command:b_answer(Call),
@@ -144,13 +158,9 @@ park_call(SlotNumber, ParkedCalls, Status, Call) ->
 %% Builds the json object representing the call in the parking slot
 %% @end
 %%--------------------------------------------------------------------
--spec create_slot/2 :: (Status, Call) -> integer() when
-      Status :: json_object(),
-      Call :: #cf_call{}.
-create_slot(Status, #cf_call{call_id=CallId}) ->
-    Node = wh_json:get_value(<<"Node">>, Status),
-    wh_json:from_list([{<<"Call-ID">>, CallId}
-                       ,{<<"Node">>, Node}]).
+-spec create_slot/1 :: (#cf_call{}) -> json_object().
+create_slot(#cf_call{call_id=CallId}) ->
+    wh_json:from_list([{<<"Call-ID">>, CallId}]).
 
 %%--------------------------------------------------------------------
 %% @private

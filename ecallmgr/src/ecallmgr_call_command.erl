@@ -331,7 +331,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
     end;
 
 get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
-    case wh_api:call_pickup_req_v(JObj) of
+    case wapi_dialplan:call_pickup_v(JObj) of
 	false -> {'error', <<"intercept failed to execute as JObj did not validate">>};
 	true ->
             Generators = [fun(DP) ->
@@ -406,7 +406,7 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
             {<<"set">>, noop}
     end;
 
-get_fs_app(_Node, _UUID, JObj, <<"respond">>) ->
+get_fs_app(Node, UUID, JObj, <<"respond">>) ->
     case wapi_dialplan:respond_v(JObj) of
         false -> {'error', <<"respond failed to execute as JObj did not validate">>};
         true ->

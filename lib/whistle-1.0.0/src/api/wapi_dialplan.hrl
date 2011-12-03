@@ -203,7 +203,6 @@
 				]).
 -define(CALL_PICKUP_REQ_TYPES, []).
 
-
 %% Play Request
 -define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>]).

@@ -238,22 +238,19 @@ b_hangup(Call) ->
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec status/1 :: (Call) -> 'ok' when
-      Call :: #cf_call{}.
--spec b_status/1 :: (Call) -> {'ok', 'channel_hungup'} when
-      Call :: #cf_call{}.
+-spec status/1 :: (#cf_call{}) -> 'ok'.
+-spec b_status/1 :: (#cf_call{}) -> {'ok', 'channel_hungup'}.
 
 status(#cf_call{call_id=CallId, amqp_q=AmqpQ}) ->
     Command = [{<<"Call-ID">>, CallId}
                ,{<<"Insert-At">>, <<"now">>}
-               | wh_api:default_headers(AmqpQ, <<"call_event">>, <<"status_req">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(AmqpQ, ?APP_NAME, ?APP_VERSION)
               ],
-    {ok, Payload} = wh_api:call_status_req({struct, Command}),
-    amqp_util:callevt_publish(CallId, Payload, status_req).
+    wapi_call:publish_status_req(CallId, Command).
 
 b_status(Call) ->
     status(Call),
-    wait_for_message(<<"status">>, <<"status_resp">>, <<"call_event">>, 5000).
+    wait_for_message(<<>>, <<"status_resp">>, <<"call_event">>, 5000).
 
 
 %%--------------------------------------------------------------------
