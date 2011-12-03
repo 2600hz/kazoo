@@ -13,7 +13,7 @@
 -behaviour(gen_hook).
 
 %% gen_hook callbacks
--export([init/0, add_binding/1, handle_req/2]).
+-export([init/0, add_binding/1, handle_req/2, add_followup_binding/2]).
 
 -include("webhooks.hrl").
 
@@ -45,7 +45,12 @@ handle_req(JObj, Props) ->
 
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     MyQueue = props:get_value(queue, Props),
+    Srv = props:get_value(server, Props),
+
     Self = self(),
 
     Reqs = [spawn_monitor(fun() -> gen_hook:call_webhook(Self, Hook, JObj) end) || Hook <- Hooks],
-    gen_hook:wait_for_resps(Reqs, RespQ, MyQueue, fun wapi_authn:publish_resp/2).
+    gen_hook:wait_for_resps(Reqs, RespQ, MyQueue, fun wapi_authn:publish_resp/2, Srv).
+
+
+%% If an authn_resp includes a callback uri, bind to the reg_success event and send it to the callback uri.

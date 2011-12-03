@@ -16,7 +16,7 @@
 %%%-------------------------------------------------------------------
 -module(gen_hook).
 
--export([call_webhook/3, wait_for_resps/4, no_resp/2]).
+-export([call_webhook/3, wait_for_resps/4, wait_for_resps/5, no_resp/2]).
 
 -export([behaviour_info/1]).
 
@@ -36,14 +36,21 @@ no_resp(_, _) ->
     ?LOG("Not publishing the response from webhook").
 
 -spec wait_for_resps/4 :: ([{pid(), reference()},...] | [], ne_binary(), ne_binary(), fun((ne_binary(), json_object()) -> 'ok')) -> 'ok'.
-wait_for_resps([], _, _, _) -> ok;
+-spec wait_for_resps/5 :: ([{pid(), reference()},...] | [], ne_binary(), ne_binary(), fun((ne_binary(), json_object()) -> 'ok'), pid() | 'undefined') -> 'ok'.
 wait_for_resps(Reqs, RespQ, MyQ, PubFun) ->
+    wait_for_resps(Reqs, RespQ, MyQ, PubFun, undefined).
+
+wait_for_resps([], _, _, _, _) -> ok;
+wait_for_resps(Reqs, RespQ, MyQ, PubFun, AcctSrv) ->
     receive
 	{ok, Resp} ->
 	    ?LOG("response received"),
 	    case catch(PubFun(RespQ, wh_json:set_value(<<"Server-ID">>, MyQ, Resp))) of
-		ok -> ?LOG("Response sent successfully");
-		{'EXIT', _Why} -> ?LOG("Failed to send response: ~p", [_Why])
+		ok ->
+		    ?LOG("Response sent successfully"),
+		    check_for_callback(Resp, AcctSrv);
+		{'EXIT', _Why} ->
+		    ?LOG("Failed to send response: ~p", [_Why])
 	    end,
 	    wait_for_resps(Reqs, RespQ, MyQ, PubFun);
 	{'DOWN', Ref, process, Pid, Reason} ->
@@ -95,3 +102,6 @@ try_send_req(Uri, Method, Parent, ReqJObj, Retries) ->
 get_method_atom(<<"put">>) -> put;
 get_method_atom(<<"post">>) -> post;
 get_method_atom(<<"get">>) -> get.
+
+check_for_callback(Resp, AcctSrv) ->
+    ok.
