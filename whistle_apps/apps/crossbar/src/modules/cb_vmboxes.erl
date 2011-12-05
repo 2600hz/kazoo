@@ -572,13 +572,13 @@ update_message1(DocId, MediaId, Context) ->
 generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     UTCDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(GregorianSeconds)),
     
-    {{Y,Mo,D},{H,Mi,S}} = case localtime:utc_to_local(UTCDateTime, wh_util:to_list(Timezone)) of
-			      {{_,_,_},{_,_,_}}=LocalTime -> ?LOG("Converted to TZ: ~s", [Timezone]), LocalTime;
-			      _ -> ?LOG("Bad TZ: ~p", [Timezone]), UTCDateTime
-			  end,
+    LocalTime = case localtime:utc_to_local(UTCDateTime, wh_util:to_list(Timezone)) of
+		    {{_,_,_},{_,_,_}}=LT -> ?LOG("Converted to TZ: ~s", [Timezone]), LT;
+		    _ -> ?LOG("Bad TZ: ~p", [Timezone]), UTCDateTime
+		end,
 
-    Date = iolist_to_binary(io_lib:format("_~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
-					  [Y, Mo, D, H, Mi, S])),
+    Date = wh_util:pretty_print_datetime(LocalTime),
+
     case CallerId of
 	undefined -> list_to_binary(["unknown_", Date, ".", Ext]);
 	_ -> list_to_binary([CallerId, "_", Date, ".", Ext])

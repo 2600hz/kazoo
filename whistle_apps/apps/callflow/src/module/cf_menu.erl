@@ -213,9 +213,9 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(hunt_for_callflow/3 :: (Digits :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> boolean()).
-hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{cf_pid=CFPid, cf_responder=CFRPid, account_id=AccountId}=Call) ->
+hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{cf_pid=CFPid, account_id=AccountId}=Call) ->
     ?LOG("hunting for ~s in account ~s", [Digits, AccountId]),
-    case gen_server:call(CFRPid, {find_flow, Digits, AccountId}, 2000) of
+    case cf_util:lookup_callflow(Digits, AccountId) of
         {ok, Flow, false} ->
             ?LOG("callflow hunt succeeded, branching"),
             _ = flush_dtmf(Call),

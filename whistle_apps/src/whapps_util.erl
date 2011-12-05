@@ -158,18 +158,16 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_all_accounts/0 :: () -> [binary(),...] | [].
--spec get_all_accounts/1 :: (Encoding) -> [binary(),...] | [] when
-      Encoding :: unencoded | encoded | raw.
-
+-spec get_all_accounts/1 :: ('unencoded' | 'encoded' | 'raw') -> [binary(),...] | [].
 get_all_accounts() ->
     get_all_accounts(?REPLICATE_ENCODING).
 
 get_all_accounts(Encoding) ->
     {ok, Databases} = couch_mgr:db_info(),
-    [get_db_name(Db, Encoding) || Db <- Databases
-				      ,fun(<<"account/", _/binary>>) -> true;
-					  (_) -> false end(Db)
-    ].
+    [get_db_name(Db, Encoding) || Db <- Databases, is_acct_db(Db)].
+
+is_acct_db(<<"account/", _/binary>>) -> true;
+is_acct_db(_) -> false.
 
 %%--------------------------------------------------------------------
 %% @public

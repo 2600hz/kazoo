@@ -18,6 +18,8 @@
 	,publish_win/2, publish_win/3
 	]).
 
+-export([get_auth_realm/1]).
+
 %% Route Requests
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
 				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
@@ -229,3 +231,15 @@ publish_win(RespQ, JObj) ->
 publish_win(RespQ, Win, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Win, ?ROUTE_WIN_VALUES, fun win/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% extract the auth realm from the API request, using the requests to domain
+%% when provided with an IP
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_auth_realm/1  :: (json_object()) -> ne_binary().
+get_auth_realm(ApiJObj) ->
+    [_ReqUser, ReqDomain] = binary:split(wh_json:get_value(<<"Request">>, ApiJObj), <<"@">>),
+    ReqDomain.

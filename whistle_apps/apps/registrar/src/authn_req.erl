@@ -25,8 +25,8 @@ handle_req(ApiJObj, _Props) ->
 
     ?LOG_START("received SIP authentication request"),
 
-    AuthU = get_auth_user(ApiJObj),
-    AuthR = get_auth_realm(ApiJObj),
+    AuthU = wapi_authn:get_auth_user(ApiJObj),
+    AuthR = wapi_authn:get_auth_realm(ApiJObj),
 
     case reg_util:lookup_auth_user(AuthU, AuthR) of
         {ok, AuthJObj} ->
@@ -61,8 +61,8 @@ send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
             ,{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthValue)}
             ,{<<"Auth-Method">>, get_auth_method(AuthValue)}
-            ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthValue, <<"ignore">>)}
-            ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthValue, <<"ignore">>)}
+%%            ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthValue, <<"ignore">>)}
+%%            ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthValue, <<"ignore">>)}
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list([CCV || {_, V}=CCV <- CCVs, V =/= undefined ])}
             | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)],
 
@@ -72,43 +72,11 @@ send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
-%% extract the auth user from the API request
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_auth_user/1  :: (ApiJObj) -> binary() | undefined when
-      ApiJObj :: json_object().
-get_auth_user(ApiJObj) ->
-    wh_json:get_value(<<"Auth-User">>, ApiJObj).
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% extract the auth realm from the API request, using the requests to domain
-%% when provided with an IP
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_auth_realm/1  :: (ApiJObj) -> binary() | undefined when
-      ApiJObj :: json_object().
-get_auth_realm(ApiJObj) ->
-    AuthRealm = wh_json:get_value(<<"Auth-Realm">>, ApiJObj),
-    case wh_util:is_ipv4(AuthRealm) orelse wh_util:is_ipv6(AuthRealm) of
-        true ->
-            [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, ApiJObj), <<"@">>),
-            ?LOG("auth-realm (~s) not a hostname, using To-domain (~s)", [AuthRealm, ToDomain]),
-            ToDomain;
-        false ->
-            AuthRealm
-    end.
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
 %% extract the account id from the auth document, using the newer pvt field
 %% when present but failing back to reformating the older db name pvt.
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_account_id/1  :: (AuthDoc) -> binary() | undefined when
-      AuthDoc :: json_object().
+-spec get_account_id/1  :: (json_object()) -> ne_binary() | 'undefined'.
 get_account_id(AuthDoc) ->
     case wh_json:get_value(<<"pvt_account_id">>, AuthDoc) of
         undefined ->
@@ -125,8 +93,7 @@ get_account_id(AuthDoc) ->
 %% extract a normalized method from the view results
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_method/1  :: (AuthValue) -> binary() when
-      AuthValue :: json_object().
+-spec get_auth_method/1  :: (json_object()) -> ne_binary().
 get_auth_method(AuthValue) ->
-    Method = wh_json:get_value(<<"method">>, AuthValue, <<"password">>),
-    list_to_binary(string:to_lower(binary_to_list(Method))).
+    Method = wh_json:get_binary_value(<<"method">>, AuthValue, <<"password">>),
+    wh_util:binary_to_lower(Method).

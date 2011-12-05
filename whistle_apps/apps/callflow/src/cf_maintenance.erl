@@ -10,9 +10,34 @@
 
 -define(CB_VIEW, {<<"vmboxes">>, <<"crossbar_listing">>}).
 
+-export([refresh/0, refresh/1]).
 -export([migrate_voicemail/0, migrate_voicemail/1]).
 
 -include("callflow.hrl").
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Verify that an application is running
+%% @end
+%%--------------------------------------------------------------------
+-spec refresh/0 :: () -> 'started'.
+-spec refresh/1 :: (binary() | string()) -> 'ok'.
+
+refresh() ->
+    spawn(fun() ->
+                  lists:foreach(fun(AccountDb) ->
+                                        timer:sleep(2000),
+                                        refresh(AccountDb)
+                                end, whapps_util:get_all_accounts())
+          end),
+    started.
+
+refresh(Account) when not is_binary(Account) ->
+    refresh(wh_util:to_binary(Account));
+refresh(Account) ->
+    AccountDb = whapps_util:get_db_name(Account, encoded),
+    couch_mgr:revise_views_from_folder(AccountDb, callflow).
 
 %%--------------------------------------------------------------------
 %% @public

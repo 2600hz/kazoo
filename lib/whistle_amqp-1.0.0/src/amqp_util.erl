@@ -872,7 +872,7 @@ do_encode(<<$., Rest/binary>>, Acc) ->
 do_encode(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
     do_encode(Rest, <<Acc/binary, $%, (hexdigit(Hi))/binary, (hexdigit(Lo))/binary>>).
 
--spec hexdigit/1 :: (byte()) -> binary().
+-spec hexdigit/1 :: (byte()) -> ne_binary().
 hexdigit(C) when C < 10 ->
     <<($0 + C)>>;
 hexdigit(C) when C < 16 ->

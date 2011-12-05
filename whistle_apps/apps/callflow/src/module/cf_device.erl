@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/6]).
+-import(cf_call_command, [b_bridge/5]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -27,7 +27,7 @@
       Call :: #cf_call{}.
 handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
-    case cf_endpoint:build(wh_json:get_value(<<"id">>, Data), Call, Data) of
+    case cf_endpoint:build(wh_json:get_value(<<"id">>, Data), Data, Call) of
         {ok, Endpoints} ->
             Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
             bridge_to_endpoints(Endpoints, Timeout, Call);
@@ -48,7 +48,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
       Call :: #cf_call{}.
 bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid, account_id=AccountId}=Call) ->
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-    case b_bridge(Endpoints, Timeout, <<"internal">>, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
+    case b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
         {ok, _} ->
             ?LOG("completed successful bridge to the device"),
             CFPid ! { stop };

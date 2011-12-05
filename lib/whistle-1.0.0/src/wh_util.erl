@@ -10,7 +10,9 @@
 -export([binary_to_lower/1, binary_to_upper/1, binary_join/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
 -export([current_tstamp/0, ensure_started/1]).
--export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1]).
+-export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
+	 ,pretty_print_datetime/1
+	]).
 -export([microseconds_to_seconds/1, put_callid/1, get_event_type/1]).
 -export([whistle_version/0, write_pid/1]).
 -export([is_ipv4/1, is_ipv6/1]).
@@ -405,23 +407,24 @@ ensure_started(App) when is_atom(App) ->
 %% there are 62167219200 seconds between Jan 1, 0000 and Jan 1, 1970
 -define(UNIX_EPOCH_AS_GREG_SECONDS, 62167219200).
 
--spec gregorian_seconds_to_unix_seconds/1 :: (GregorianSeconds) -> non_neg_integer() when
-      GregorianSeconds :: integer() | string() | binary().
+-spec gregorian_seconds_to_unix_seconds/1 :: (integer() | string() | binary()) -> non_neg_integer().
 gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
     to_integer(GregorianSeconds) - ?UNIX_EPOCH_AS_GREG_SECONDS.
 
--spec unix_seconds_to_gregorian_seconds/1 :: (UnixSeconds) -> non_neg_integer() when
-      UnixSeconds :: integer() | string() | binary().
+-spec unix_seconds_to_gregorian_seconds/1 :: (integer() | string() | binary()) -> non_neg_integer().
 unix_seconds_to_gregorian_seconds(UnixSeconds) ->
     to_integer(UnixSeconds) + ?UNIX_EPOCH_AS_GREG_SECONDS.
 
--spec microseconds_to_seconds/1 :: (Microseconds) -> non_neg_integer() when
-      Microseconds :: integer() | string() | binary().
+-spec pretty_print_datetime/1 :: (wh_datetime()) -> ne_binary().
+pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
+				   [Y, Mo, D, H, Mi, S])).
+
+-spec microseconds_to_seconds/1 :: (integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) ->
     erlang:trunc(to_integer(Microseconds) * math:pow(10, -6)).
 
--spec is_ipv4/1 :: (Address) -> boolean() when
-      Address :: string() | binary().
+-spec is_ipv4/1 :: (string() | binary()) -> boolean().
 is_ipv4(Address) when is_binary(Address) ->
     is_ipv4(to_list(Address));
 is_ipv4(Address) when is_list(Address) ->
@@ -431,8 +434,7 @@ is_ipv4(Address) when is_list(Address) ->
         {error, _} -> false
     end.
 
--spec is_ipv6/1 :: (Address) -> boolean() when
-      Address :: string() | binary().
+-spec is_ipv6/1 :: (string() | binary()) -> boolean().
 is_ipv6(Address) when is_binary(Address) ->
     is_ipv6(to_list(Address));
 is_ipv6(Address) when is_list(Address) ->

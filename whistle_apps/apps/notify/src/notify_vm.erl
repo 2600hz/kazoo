@@ -12,6 +12,10 @@
 
 -include("notify.hrl").
 
+-type txt_template_module() :: notify_vm_text_custom_tmpl | notify_vm_text_tmpl.
+-type html_template_module() :: notify_vm_html_custom_tmpl | notify_vm_html_tmpl.
+-type subj_template_module() :: notify_vm_subj_custom_tmpl | notify_vm_subj_tmpl.
+
 -spec init/0 :: () -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
@@ -20,9 +24,7 @@ init() ->
     {ok, notify_vm_subj_tmpl} = erlydtl:compile(whapps_config:get(?MODULE, default_subject_template), notify_vm_subj_tmpl),
     ?LOG_SYS("init done for vm-to-email").
 
--spec handle_req/2 :: (JObj, Props) -> no_return() when
-      JObj :: json_object(),
-      Props :: proplist().
+-spec handle_req/2 :: (json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
     true = cf_api:new_voicemail_v(JObj),
     whapps_util:put_callid(JObj),
@@ -40,7 +42,7 @@ handle_req(JObj, _Props) ->
 	    TxtTemplate = get_txt_tmpl(AcctObj),
 	    HTMLTemplate = get_html_tmpl(AcctObj),
 	    SubjTemplate = get_subject_tmpl(AcctObj),
-	    send_vm_to_email(Email, TxtTemplate, HTMLTemplate, SubjTemplate, JObj)
+	    send_vm_to_email(Email, TxtTemplate, HTMLTemplate, SubjTemplate, wh_json:set_value(<<"timezone">>, wh_json:get_value(<<"timezone">>, UserJObj), JObj))
     end.
 %%--------------------------------------------------------------------
 %% @private
@@ -48,12 +50,7 @@ handle_req(JObj, _Props) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec send_vm_to_email/5 :: (To, TxtTmpl, HTMLTmpl, SubjTmpl, JObj) -> no_return() when
-      To :: binary(),
-      TxtTmpl :: notify_vm_text_custom_tmpl | notify_vm_text_tmpl,
-      HTMLTmpl :: notify_vm_html_custom_tmpl | notify_vm_html_tmpl,
-      SubjTmpl :: notify_vm_subj_custom_tmpl | notify_vm_subj_tmpl,
-      JObj :: json_object().
+-spec send_vm_to_email/5 :: (ne_binary(), txt_template_module(), html_template_module(), subj_template_module(), json_object()) -> no_return().
 send_vm_to_email(To, TxtTmpl, HTMLTmpl, SubjTmpl, JObj) ->
     TemplateProps = get_template_props(JObj),
     {ok, TxtBody} = TxtTmpl:render(TemplateProps),
@@ -63,8 +60,8 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, SubjTmpl, JObj) ->
     DB = wh_json:get_value(<<"Account-DB">>, JObj),
     DocId = wh_json:get_value(<<"Voicemail-Name">>, JObj),
 
-    HostFrom = <<"no_reply@", (wh_util:to_binary(net_adm:localhost()))/binary>>,
-    From = wh_util:to_binary(whapps_config:get(?MODULE, <<"default_from">>, HostFrom)),
+    HostFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
+    From = whapps_config:get_binary(?MODULE, <<"default_from">>, HostFrom),
 
     ?LOG_SYS("Opening ~s in ~s", [DocId, DB]),
     {ok, VMJObj} = couch_mgr:open_doc(DB, DocId),
@@ -72,6 +69,8 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, SubjTmpl, JObj) ->
     [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
     ?LOG_SYS("Attachment doc: ~s", [AttachmentId]),
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
+
+    AttachmentFileName = get_file_name(TemplateProps),
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
@@ -90,8 +89,8 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, SubjTmpl, JObj) ->
 	       }
 	       ,{<<"audio">>, <<"mpeg">>
 		     ,[
-		       {<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentId, "\""])}
-		       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentId, "\""])}
+		       {<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
+		       ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
 		       ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
 		      ]
 		 ,[], AttachmentBin
@@ -110,20 +109,37 @@ send_vm_to_email(To, TxtTmpl, HTMLTmpl, SubjTmpl, JObj) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec get_template_props/1 :: (JObj) -> proplist() when
-      JObj :: json_object().
+-spec get_template_props/1 :: (json_object()) -> proplist().
 get_template_props(JObj) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
     ToE164 = wh_util:to_e164(wh_json:get_value(<<"To-User">>, JObj)),
     DateCalled = wh_util:to_integer(wh_json:get_value(<<"Voicemail-Timestamp">>, JObj)),
+    UTCDateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
+
     [{caller_id_number, pretty_print_did(CIDNum)}
      ,{caller_id_name, CIDName}
      ,{to_user, pretty_print_did(ToE164)}
-     ,{date_called, calendar:gregorian_seconds_to_datetime(DateCalled)}
+     ,{date_called, UTCDateTime}
+     ,{date_called_local, localtime:utc_to_localtime(UTCDateTime, wh_json:get_value(<<"timezone">>, JObj, <<"UTC">>))}
      ,{support_number, whapps_config:get(?MODULE, <<"default_support_number">>, <<"(415) 886 - 7900">>)}
      ,{support_email, whapps_config:get(?MODULE, <<"default_support_email">>, <<"support@2600hz.com">>)}
     ].
+
+-spec get_file_name/1 :: (proplist()) -> ne_binary().
+get_file_name(Props) ->
+    %% CallerID_Date_Time.mp3
+    CallerID = case {props:get_value(caller_id_name, Props), props:get_value(caller_id_number, Props)} of
+		   {undefined, undefined} -> <<"Unknown">>;
+		   {undefined, Num} -> wh_util:to_binary(Num);
+		   {Name, _} -> wh_util:to_binary(Name)
+	       end,
+    ?LOG("CallerID for filename: ~s", [CallerID]),
+
+    LocalDateTime = props:get_value(date_called_local, Props),
+    ?LOG("UTC: ~p Local: ~p", [props:get_value(date_called, Props), LocalDateTime]),
+
+    list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".mp3"]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -131,8 +147,7 @@ get_template_props(JObj) ->
 %% create a friendly format for DIDs
 %% @end
 %%--------------------------------------------------------------------
--spec pretty_print_did/1 :: (DID) -> binary() when
-      DID :: binary().
+-spec pretty_print_did/1 :: (ne_binary()) -> ne_binary().
 pretty_print_did(<<"+1", Area:3/binary, Locale:3/binary, Rest:4/binary>>) ->
     <<"1.", Area/binary, ".", Locale/binary, ".", Rest/binary>>;
 pretty_print_did(<<"011", Rest/binary>>) ->

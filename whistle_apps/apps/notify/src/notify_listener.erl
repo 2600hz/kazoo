@@ -45,6 +45,7 @@
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
 				      ,{bindings, ?BINDINGS}
+				      ,{basic_qos, 1} %% process one notification at a time (will round-robin amongst notify whapps)
 				     ], []).
 
 stop(Srv) ->

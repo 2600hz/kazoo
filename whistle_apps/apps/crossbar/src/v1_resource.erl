@@ -782,7 +782,7 @@ set_resp_headers(RD0, #cb_context{resp_headers=Headers}) ->
 
 -spec fix_header/3 :: (#wm_reqdata{}, string(), string() | binary()) -> {string(), string()}.
 fix_header(RD, "Location"=H, Url) ->
-    {H, crossbar_util:get_abs_url(RD, Url)};
+    {H, wh_util:to_list(crossbar_util:get_abs_url(RD, Url))};
 fix_header(_, H, V) ->
     {wh_util:to_list(H), wh_util:to_list(V)}.
 

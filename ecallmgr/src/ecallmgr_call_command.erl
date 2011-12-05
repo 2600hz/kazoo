@@ -87,7 +87,7 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case wapi_dialplan:play_v(JObj) of
 	false -> {'error', <<"playback">>, <<"play failed to execute as JObj did not validate">>};
 	true ->
-	    F = media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID),
+	    F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID),
 	    'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 	    {<<"playback">>, F}
     end;
@@ -103,8 +103,8 @@ get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
 	    Max = wh_json:get_value(<<"Maximum-Digits">>, JObj),
 	    Timeout = wh_json:get_value(<<"Timeout">>, JObj),
 	    Terminators = wh_json:get_value(<<"Terminators">>, JObj),
-	    Media = <<$', (media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID))/binary, $'>>,
-	    InvalidMedia = <<$', (media_path(wh_json:get_value(<<"Failed-Media-Name">>, JObj), UUID))/binary, $'>>,
+	    Media = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID))/binary, $'>>,
+	    InvalidMedia = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Failed-Media-Name">>, JObj), UUID))/binary, $'>>,
 	    Tries = wh_json:get_value(<<"Media-Tries">>, JObj),
 	    Regex = wh_json:get_value(<<"Digits-Regex">>, JObj),
 	    Storage = <<"collected_digits">>,
@@ -274,7 +274,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                           {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)"),
                                           [{"application", "set ringback=" ++ wh_util:to_list(RBSetting)}|DP];
                                       Ringback ->
-                                          Stream = wh_util:to_list(media_path(Ringback, extant, UUID)),
+                                          Stream = wh_util:to_list(ecallmgr_util:media_path(Ringback, extant, UUID)),
                                           ?LOG("bridge has custom ringback: ~s", [Stream]),
                                           [{"application", "set ringback=" ++ Stream},
                                            {"application", "set instant_ringback=true"}|DP]
@@ -285,7 +285,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                       undefined ->
                                           DP;
                                       HoldMedia ->
-                                          Stream = wh_util:to_list(media_path(HoldMedia, extant, UUID)),
+                                          Stream = wh_util:to_list(ecallmgr_util:media_path(HoldMedia, extant, UUID)),
                                           ?LOG("bridge has custom music-on-hold: ~s", [Stream]),
                                           [{"application", "set hold_music=" ++ Stream}|DP]
                                   end
@@ -361,10 +361,10 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
         false -> {'error', <<"set failed to execute as JObj did not validate">>};
         true ->
             ChannelVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
-	    _ = [ set(Node, UUID, get_fs_kv(K, V)) || {K, V} <- ChannelVars],
+	    _ = [ set(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- ChannelVars],
 
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
-	    _ = [ export(Node, UUID, get_fs_kv(K, V)) || {K, V} <- CallVars],
+	    _ = [ export(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- CallVars],
 
             {<<"set">>, noop}
     end;
@@ -407,8 +407,12 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %% set channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_kv/2 :: (binary(), binary()) -> binary().
-get_fs_kv(Key, Val) ->
+-spec get_fs_kv/3 :: (ne_binary(), ne_binary(), ne_binary()) -> binary().
+get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
+    list_to_binary(["hold_music="
+                    ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID))
+                   ]);
+get_fs_kv(Key, Val, _) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
 	false ->
 	    list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "=", wh_util:to_list(Val)]);
@@ -472,43 +476,6 @@ get_bridge_endpoint(JObj) ->
 	    CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
 	    wh_util:to_list(list_to_binary([CVs, EndPoint]))
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec media_path/2 :: (MediaName, UUID) -> binary() when
-      MediaName :: binary(),
-      UUID :: binary().
--spec media_path/3 :: (MediaName, Type, UUID) -> binary() when
-      MediaName :: binary(),
-      Type :: 'extant' | 'new',
-      UUID :: binary().
-
-media_path(MediaName, UUID) ->
-    media_path(MediaName, new, UUID).
-
-media_path(MediaName, Type, UUID) ->
-    case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
-        {'error', _} ->
-            MediaName;
-        {ok, Url} ->
-            get_fs_playback(Url)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec get_fs_playback/1 :: (Url) -> binary() when
-      Url :: binary().
-get_fs_playback(<<"http://", _/binary>>=Url) ->
-    {ok, RemoteAudioScript} = ecallmgr_util:get_setting(remote_audio_script, <<"/tmp/fetch_remote_audio.sh">>),
-    <<"shell_stream://", (wh_util:to_binary(RemoteAudioScript))/binary, " ", Url/binary>>;
-get_fs_playback(Url) ->
-    Url.
 
 %%--------------------------------------------------------------------
 %% @private

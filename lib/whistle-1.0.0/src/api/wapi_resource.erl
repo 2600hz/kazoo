@@ -22,9 +22,14 @@
 %% Resource Request
 -define(RESOURCE_REQ_HEADERS, [<<"Msg-ID">>, <<"Resource-Type">>, <<"Invite-Format">>]).
 -define(OPTIONAL_RESOURCE_REQ_HEADERS, [<<"Resource-Minimum">>, <<"Resource-Maximum">>, <<"Geo-Location">>
-                                        ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
-					,<<"Application-Name">>, <<"Application-Data">>, <<"SIP-Headers">>
-                                        ,<<"Custom-Channel-Vars">>
+                                            ,<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
+                                            ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+                                            ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
+                                            ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>
+                                            ,<<"Codecs">>, <<"SIP-Headers">>, <<"Presence-ID">>
+                                            ,<<"Custom-Channel-Vars">>, <<"Export-Custom-Channel-Vars">>
+                                            ,<<"Auth-User">>, <<"Auth-Password">>
+                                            ,<<"Application-Name">>, <<"Application-Data">>
 				       ]).
 -define(RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
 			      ,{<<"Event-Name">>, <<"originate_req">>}
@@ -38,6 +43,7 @@
 			     ,{<<"To-Realm">>, fun is_binary/1}
 			     ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
                              ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                             ,{<<"Export-Custom-Channel-Vars">>, fun is_list/1}
 			    ]).
 
 %% Resource Response

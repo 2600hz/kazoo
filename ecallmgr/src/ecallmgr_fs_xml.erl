@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, authn_resp_xml/1]).
+-export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, get_channel_vars/2, authn_resp_xml/1]).
 
 -include("ecallmgr.hrl").
 
@@ -165,6 +165,11 @@ get_channel_vars({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
     [ <<"sip_cid_type=rpid">> | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"pid">>}, Vars) ->
     [ <<"sip_cid_type=pid">> | Vars];
+
+get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
+    [list_to_binary(["hold_music="
+                     ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, get(callid)))
+                    ]) | Vars];
 
 get_channel_vars({<<"Codecs">>, []}, Vars) ->
     Vars;

@@ -12,13 +12,16 @@
 
 -export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3, publish_win/2, publish_win/3]).
 
+-export([get_auth_realm/1]).
+
 -include("../wh_api.hrl").
 
 %% Authorization Requests
 -define(AUTHZ_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
 				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+				,<<"Request">>
 			   ]).
--define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Request">>]).
+-define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>]).
 -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
 			   ,{<<"Event-Name">>, <<"authz_req">>}
 			  ]).
@@ -149,3 +152,15 @@ publish_win(Queue, JObj) ->
 publish_win(Queue, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHZ_WIN_VALUES, fun ?MODULE:win/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% extract the auth realm from the API request, using the requests to domain
+%% when provided with an IP
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_auth_realm/1  :: (json_object()) -> ne_binary().
+get_auth_realm(ApiJObj) ->
+    [_ReqUser, ReqDomain] = binary:split(wh_json:get_value(<<"Request">>, ApiJObj), <<"@">>),
+    ReqDomain.
