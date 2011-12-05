@@ -1,7 +1,6 @@
 {
    "_id": "conference",
    "id": "http://json-schema.org/draft-03/schema#",
-   "type": "object",
    "description": "",
    "properties": {
        "name": {
