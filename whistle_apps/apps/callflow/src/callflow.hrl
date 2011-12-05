@@ -13,6 +13,8 @@
 -define(APP_NAME, <<"callflow">>).
 -define(APP_VERSION, <<"0.8.2">> ).
 
+-define(CONFIRM_FILE, <<"/opt/freeswitch/sounds/en/us/callie/ivr/8000/ivr-accept_reject_voicemail.wav">>).
+
 -define(DIALPLAN_MAP, [{ <<"tone">>, <<"tones">> }]).
 
 -define(LIST_BY_NUMBER, {<<"callflow">>, <<"listing_by_number">>}).

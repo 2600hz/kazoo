@@ -25,9 +25,11 @@
 %% Bridge Endpoints
 -define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
+                                                    ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+                                                    ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
 						    ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
 						    ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-                                                    ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>
+                                                    ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>
                                                     ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
                                                     ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>, <<"Presence-ID">>
                                                     ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
@@ -226,10 +228,10 @@
 
 %% Play and Record Digits
 -define(PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Minimum-Digits">>, <<"Maximum-Digits">>
-				 ,<<"Timeout">>, <<"Terminators">>, <<"Media-Name">>, <<"Media-Tries">>
-				 ,<<"Failed-Media-Name">>, <<"Digits-Regex">>
+                                              ,<<"Media-Name">>, <<"Media-Tries">>, <<"Digits-Regex">>
+                                              ,<<"Timeout">>, <<"Terminators">>
 			    ]).
--define(OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Insert-At">>]).
+-define(OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Insert-At">>, <<"Failed-Media-Name">>]).
 -define(PLAY_COLLECT_DIGITS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 					 ,{<<"Event-Name">>, <<"command">>}
 					 ,{<<"Application-Name">>, <<"play_and_collect_digits">>}

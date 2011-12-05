@@ -27,7 +27,7 @@ handle(_, #cf_call{capture_group=undefined, cf_pid=CFPid, call_id=CallId}) ->
 handle(_, #cf_call{capture_group=Digits, account_id=AccountId, cf_pid=CFPid, call_id=CallId}=Call) ->
     put(callid, CallId),
     set(undefined, {struct, [{<<"Auto-Answer">>, <<"true">>}]}, Call),
-    case gen_server:call(cf_responder, {find_flow, wh_util:to_binary(Digits), AccountId}, 2000) of
+    case cf_util:lookup_callflow(Digits, AccountId) of
         {ok, Flow, false} ->
             CFPid ! {branch, wh_json:get_value(<<"flow">>, Flow, ?EMPTY_JSON_OBJECT)};
         _ ->

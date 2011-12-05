@@ -16,7 +16,8 @@
 -export([get_string_value/2, get_string_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
--export([filter/2, filter/3, map/2]).
+-export([filter/2, filter/3]).
+-export([get_ne_value/2, get_ne_value/3]).
 -export([get_value/2, get_value/3, get_values/1]).
 -export([get_keys/1, get_keys/2]).
 -export([set_value/3, set_values/2, new/0]).
@@ -257,6 +258,19 @@ get_keys(Key, JObj) ->
 get_keys1(KVs) when is_list(KVs) ->
     lists:seq(1,length(KVs));
 get_keys1({struct, KVs}) when is_list(KVs) -> props:get_keys(KVs).
+
+-spec get_ne_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> json_term().
+-spec get_ne_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), json_term()) -> json_term().
+
+get_ne_value(Key, JObj) ->
+    get_ne_value(Key, JObj, undefined).
+
+get_ne_value(Key, JObj, Default) ->
+    Value = get_value(Key, JObj),
+    case wh_util:is_empty(Value) of
+        true -> Default;
+        false -> Value
+    end.
 
 -spec get_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> json_term().
 -spec get_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), json_term()) -> json_term().

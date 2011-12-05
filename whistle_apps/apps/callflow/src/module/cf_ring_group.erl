@@ -12,7 +12,7 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/6]).
+-import(cf_call_command, [b_bridge/5]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -31,7 +31,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) 
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     ?LOG("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case b_bridge(Endpoints, Timeout, <<"internal">>, Strategy, <<"true">>, Call) of
+    case b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Call) of
         {ok, _} ->
             ?LOG("completed successful bridge to the ring group"),
             CFPid ! { stop };
@@ -67,7 +67,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) 
 get_endpoints(Data, Call) ->
     lists:foldr(fun(Member, Acc) ->
                         EndpointId = wh_json:get_value(<<"id">>, Member),
-                        case cf_endpoint:build(EndpointId, Call, Member) of
+                        case cf_endpoint:build(EndpointId, Member, Call) of
                             {ok, Endpoint} -> Endpoint ++ Acc;
                             {error, _} -> Acc
                         end

@@ -10,71 +10,100 @@
 
 -include("callflow.hrl").
 
--export([build/2, build/3, build/4]).
-
--define(CONFIRM_FILE, <<"/opt/freeswitch/sounds/en/us/callie/ivr/8000/ivr-accept_reject_voicemail.wav">>).
+-export([build/2, build/3]).
+-export([get/2]).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Fetches a endpoint defintion from the database, and creates one
-%% or more whistle API endpoints for use in a bridge string.  Takes
-%% into account settings on the callflow, the endpoint, call forwarding,
-%% and ringtones.  More functionality to come, but as it is added
-%% it will be implicit in all functions that 'ring an endpoing' like
-%% devices, ring groups, and resources.
+%% Creates one or more whistle API endpoints for use in a bridge string.
+%% Takes into account settings on the callflow, the endpoint, call
+%% forwarding, and ringtones.  More functionality to come, but as it is
+%% added it will be implicit in all functions that 'ring an endpoing'
+%% like devices, ring groups, and resources.
 %% @end
 %%--------------------------------------------------------------------
--type build_errors() :: 'called_self' | 'not_found' | 'db_not_reachable'.
-
--spec build/2 :: (EndpointId, Call) -> {'ok', json_objects()} | {'error', build_errors()} when
-      EndpointId :: binary(),
-      Call :: #cf_call{}.
--spec build/3 :: (EndpointId, Call, Properties) -> {'ok', json_objects()} | {'error', build_errors()} when
-      EndpointId :: binary(),
-      Call :: #cf_call{},
-      Properties :: 'undefined' | json_object().
--spec build/4 :: (EndpointId, Call, Properties, RejectSelf) -> {'ok', json_objects()} | {'error', build_errors()} when
-      EndpointId :: binary(),
-      Call :: #cf_call{},
-      Properties :: 'undefined' | json_object(),
-      RejectSelf :: boolean().
+-spec build/2 :: (undefined | ne_binary() | json_object(), #cf_call{}) -> {'ok', json_objects()} | {'error', term()}.
+-spec build/3 :: (undefined | ne_binary() | json_object(), undefined | json_object(), #cf_call{}) -> {'ok', json_objects()} | {'error', term()}.
+-spec build/4 :: (undefined | ne_binary() | json_object()
+                  ,undefined | json_object()
+                  ,{undefined| ne_binary(), undefined | ne_binary(), undefined | ne_binary()}
+                  ,#cf_call{}) -> {'ok', json_objects()} | {'error', term()}.
+-spec build/5 :: (undefined | ne_binary() | json_object()
+                  ,undefined | json_object()
+                  ,{undefined| ne_binary(), undefined | ne_binary(), undefined | ne_binary()}
+                  ,boolean()
+                  ,#cf_call{}) -> {'ok', json_objects()} | {'error', term()}.
 
 build(EndpointId, Call) ->
-    build(EndpointId, Call, ?EMPTY_JSON_OBJECT).
+    build(EndpointId, ?EMPTY_JSON_OBJECT, Call).
 
-build(undefined, _Call, _Properties) ->
+build(undefined, _Properties, _Call) ->
     {error, endpoint_id_undefined};
-build(EndpointId, Call, undefined) ->
-    build(EndpointId, Call, ?EMPTY_JSON_OBJECT);
-build(EndpointId, Call, Properties) ->
-    build(EndpointId, Call, Properties, wh_json:is_false(<<"can_call_self">>, Properties)).
-
-build(EndpointId, #cf_call{authorizing_id=EndpointId}, _Properties, true) ->
-    ?LOG("call is from endpoint ~s, skipping", [EndpointId]),
-    {error, called_self};
-build(EndpointId, #cf_call{account_db=Db}=Call, Properties, false) ->
-    case couch_mgr:open_doc(Db, EndpointId) of
+build(EndpointId, undefined, Call) ->
+    build(EndpointId, ?EMPTY_JSON_OBJECT, Call);
+build(EndpointId, Properties, Call) when is_binary(EndpointId) ->
+    case ?MODULE:get(EndpointId, Call) of
         {ok, Endpoint} ->
-            OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
-            Fwd = cf_attributes:call_forward(EndpointId, OwnerId, Call),
-            case {Fwd, wh_json:is_false(<<"substitute">>, Fwd)} of
-                %% if the call forward object is undefined then there is no fwd'n
-                {undefined, _} ->
-                    {ok, [create_sip_endpoint(Endpoint, Call, Properties)]};
-                %% if the call forwarding was not undefined (see above) and substitute is
-                %% not explicitly set to false then only ring the fwd'd number
-                {_, false} ->
-                    {ok, [create_call_fwd_endpoint(Endpoint, Call, Properties, Fwd)]};
-                %% if the call forwarding was not undefined (see above) and substitute is
-                %% explicitly set to false then ring the fwd'd number and the device
-                {_, true} ->
-                    {ok, [create_call_fwd_endpoint(Endpoint, Call, Properties, Fwd)
-                          ,create_sip_endpoint(Endpoint, Call, Properties)]}
-            end;
-        {error, R}=E ->
-            ?LOG("failed to load endpoint ~s, ~p", [EndpointId, R]),
+            build(Endpoint, Properties, Call);
+        {error, _}=E ->
             E
+    end;
+build(Endpoint, Properties, #cf_call{account_id=AccountId}=Call) ->
+    EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
+    OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
+    build(Endpoint, Properties, {OwnerId, EndpointId, AccountId}, Call).
+
+
+build(Endpoint, Properties, Hierarchy, Call) ->
+    CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
+    build(Endpoint, Properties, Hierarchy, CanCallSelf, Call).
+
+build(_Endpoint, _Properties, {OwnerId, _, _}, false, #cf_call{owner_id=OwnerId}) when is_binary(OwnerId) ->
+    ?LOG("call originated from same user ~s, skipping", [OwnerId]),
+    {error, owner_called_self};
+build(_Endpoint, _Properties, {_, EndpointId, _}, false, #cf_call{authorizing_id=EndpointId}) when is_binary(EndpointId) ->
+    ?LOG("call originated from same endpoint ~s, skipping", [EndpointId]),
+    {error, endpoint_called_self};
+build(Endpoint, Properties, {OwnerId, EndpointId, _},  _, Call) ->
+    Fwd = cf_attributes:call_forward(EndpointId, OwnerId, Call),
+    case {Fwd, wh_json:is_false(<<"substitute">>, Fwd)} of
+        %% if the call forward object is undefined then there is no fwd'n
+        {undefined, _} ->
+            {ok, [create_sip_endpoint(Endpoint, Properties, Call)]};
+        %% if the call forwarding was not undefined (see above) and substitute is
+        %% not explicitly set to false then only ring the fwd'd number
+        {_, false} ->
+            {ok, [create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call)]};
+        %% if the call forwarding was not undefined (see above) and substitute is
+        %% explicitly set to false then ring the fwd'd number and the device
+        {_, true} ->
+            {ok, [create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call)
+                  ,create_sip_endpoint(Endpoint, Properties, Call)]}
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Fetches a endpoint defintion from the database or cache
+%% @end
+%%--------------------------------------------------------------------
+-spec get/2 :: (undefined | ne_binary(), #cf_call{}) -> {ok, json_object} | {error, term()}.
+get(undefined, _Call) ->
+    {error, invalid_endpoint_id};
+get(EndpointId, #cf_call{account_db=Db}) ->
+    case wh_cache:peek({?MODULE, Db, EndpointId}) of
+        {ok, _}=Ok ->
+            Ok;
+        {error, not_found} ->
+            case couch_mgr:open_doc(Db, EndpointId) of
+                {ok, JObj}=OK ->
+                    wh_cache:store({?MODULE, Db, EndpointId}, JObj, 900),
+                    OK;
+                {error, R}=E ->
+                    ?LOG("unable to fetch endpoint ~s: ~p", [EndpointId, R]),
+                    E
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -85,17 +114,30 @@ build(EndpointId, #cf_call{account_db=Db}=Call, Properties, false) ->
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec create_sip_endpoint/3 :: (Endpoint, Call, Properties) -> json_object() when
-      Endpoint :: json_object(),
-      Call :: #cf_call{},
-      Properties :: 'undefined' | json_object().
-create_sip_endpoint(Endpoint, #cf_call{request_user=RUser}=Call, Properties) ->
+-spec create_sip_endpoint/3 :: (json_object(), json_object(), #cf_call{}) -> json_object().
+create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_id=OwnerId
+                                                   ,request_user=RUser, cid_name=CIDName, cid_number=CIDNum}=Call) ->
     {CalleeNum, CalleeName} = cf_attributes:callee_id(Endpoint, Call),
+    {IntCIDNumber, IntCIDName} = case cf_attributes:caller_id(AuthId, OwnerId, <<"internal">>, Call) of
+                                     %% if both the internal name and number are the same as the current
+                                     %% caller id then leave it alone
+                                     {CIDNum, CIDName} -> {undefined, undefined};
+                                     %% if both the internal name is the same as the current
+                                     %% caller id then leave it alone
+                                     {AltCIDNum, CIDName} -> {AltCIDNum, undefined};
+                                     %% if both the internal number is the same as the current
+                                     %% caller id then leave it alone
+                                     {CIDNum, AltCIDName} -> {undefined, AltCIDName};
+                                     %% if both the internal number and name are different, use them!
+                                     {AltCIDNum, AltCIDName} -> {AltCIDNum, AltCIDName}
+                                 end,
     Prop = [{<<"Invite-Format">>, wh_json:get_value([<<"sip">>, <<"invite_format">>], Endpoint, <<"username">>)}
             ,{<<"To-User">>, wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)}
             ,{<<"To-Realm">>, wh_json:get_value([<<"sip">>, <<"realm">>], Endpoint)}
             ,{<<"To-DID">>, wh_json:get_value([<<"sip">>, <<"number">>], Endpoint, RUser)}
             ,{<<"Route">>, wh_json:get_value([<<"sip">>, <<"route">>], Endpoint)}
+            ,{<<"Outgoing-Caller-ID-Number">>, IntCIDNumber}
+            ,{<<"Outgoing-Caller-ID-Name">>, IntCIDName}
             ,{<<"Callee-ID-Number">>, CalleeNum}
             ,{<<"Callee-ID-Name">>, CalleeName}
             ,{<<"Ignore-Early-Media">>, wh_json:get_binary_boolean([<<"media">>, <<"ignore_early_media">>], Endpoint)}
@@ -103,9 +145,9 @@ create_sip_endpoint(Endpoint, #cf_call{request_user=RUser}=Call, Properties) ->
             ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_binary_value([<<"media">>, <<"progress_timeout">>], Endpoint)}
             ,{<<"Endpoint-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
             ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
-            ,{<<"Hold-Media">>, cf_attributes:media_attributes(Endpoint, <<"hold_id">>, Call)}
-            ,{<<"Presence-ID">>, get_presence_id(Endpoint, Call)}
             ,{<<"Codecs">>, cf_attributes:media_attributes(Endpoint, <<"codecs">>, Call)}
+            ,{<<"Hold-Media">>, cf_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
+            ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
             ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
             ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
            ],
@@ -121,22 +163,9 @@ create_sip_endpoint(Endpoint, #cf_call{request_user=RUser}=Call, Properties) ->
 %% the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec create_call_fwd_endpoint/4 :: (Endpoint, Call, Properties, CallFwd) -> json_object() when
-      Endpoint :: json_object(),
-      Call :: #cf_call{},
-      Properties :: json_object(),
-      CallFwd :: json_object().
-create_call_fwd_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Inception
-					    ,authorizing_id=AuthId, owner_id=AuthOwnerId
-					    ,cid_number=CIDNum, cid_name=CIDName}=Call
-			 ,Properties, CallFwd) ->
+-spec create_call_fwd_endpoint/4 :: (json_object(), json_object(), json_object(), #cf_call{}) -> json_object().
+create_call_fwd_endpoint(Endpoint, Properties, CallFwd, #cf_call{request_user=ReqUser}=Call) ->
     ?LOG("call forwarding endpoint to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
-    {CalleeNum, CalleeName} = cf_attributes:callee_id(Endpoint, <<"external">>, Call),
-    {CallerNum, CallerName} = case Inception of
-                                  <<"off-net">> -> {CIDNum, CIDName};
-                                  _ ->
-                                      cf_attributes:callee_id(AuthId, AuthOwnerId, <<"external">>, Call)
-                              end,
     IgnoreEarlyMedia = case wh_json:is_true(<<"require_keypress">>, CallFwd)
                            orelse not wh_json:is_true(<<"substitute">>, CallFwd) of
                            true -> <<"true">>;
@@ -145,16 +174,11 @@ create_call_fwd_endpoint(Endpoint, #cf_call{request_user=ReqUser, inception=Ince
     Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"To-DID">>, wh_json:get_value(<<"number">>, Endpoint, ReqUser)}
             ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallFwd, <<"unknown">>))/binary>>}
-            ,{<<"Caller-ID-Number">>, CallerNum}
-            ,{<<"Caller-ID-Name">>, CallerName}
-            ,{<<"Callee-ID-Number">>, CalleeNum}
-            ,{<<"Callee-ID-Name">>, CalleeName}
             ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
             ,{<<"Bypass-Media">>, <<"false">>}
-            ,{<<"Presence-ID">>, get_presence_id(Endpoint, Call)}
             ,{<<"Endpoint-Leg-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
             ,{<<"Endpoint-Leg-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
-            ,{<<"Hold-Media">>, cf_attributes:media_attributes(Endpoint, <<"hold_id">>, Call)}
+            ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
             ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
             ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallFwd)}
            ],
@@ -217,7 +241,7 @@ generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
                         case wh_json:get_value(<<"_id">>, Endpoint) of
                             undefined -> J;
                             EndpointId ->
-                                wh_json:set_value(<<"Endpoint-ID">>, EndpointId, J)
+                                wh_json:set_value(<<"Authorizing-ID">>, EndpointId, J)
                         end
                 end
                ,fun(J) ->
@@ -228,11 +252,18 @@ generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
                         end
                 end
                ,fun(J) ->
+                        case wh_json:get_value(<<"pvt_account_id">>, Endpoint) of
+                            undefined ->
+                                wh_json:set_value(<<"Account-ID">>, AccountId, J);
+                            PvtAccountId ->
+                                wh_json:set_value(<<"Account-ID">>, PvtAccountId, J)
+                        end
+                end
+               ,fun(J) ->
                         case CallFwd of
                             undefined -> J;
                             _ ->
-                                wh_json:set_value(<<"Call-Forward">>, <<"true">>
-                                                      ,wh_json:set_value(<<"Account-ID">>, AccountId, J))
+                                wh_json:set_value(<<"Call-Forward">>, <<"true">>, J)
                         end
                 end
                ,fun(J) ->
@@ -254,14 +285,3 @@ generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
                end
               ],
     lists:foldr(fun(F, J) -> F(J) end, ?EMPTY_JSON_OBJECT, CCVFuns).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will return the precense id for the endpoint
-%% @end
-%%--------------------------------------------------------------------
--spec get_presence_id/2 :: (json_object(), #cf_call{}) -> ne_binary().
-get_presence_id(Endpoint, #cf_call{request_user=RUser, request_realm=RRealm}) ->
-    <<(wh_json:get_value([<<"sip">>, <<"username">>], Endpoint, RUser))/binary
-      ,$@, (wh_json:get_value([<<"sip">>, <<"realm">>], Endpoint, RRealm))/binary>>.

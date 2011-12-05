@@ -1,36 +1,38 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
+%%% @author Karl anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Handle updating devices and emails about voicemails
+%%% Listener for route requests that can be fulfilled by callflows
 %%% @end
-%%% Created :  3 May 2011 by James Aimonetti <james@2600hz.org>
+%%% Created : 30 Nov 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(notify_listener).
+-module(cf_listener).
 
 -behaviour(gen_listener).
 
 %% API
 -export([start_link/0, stop/1]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+%% gen_listener callbacks
+-export([init/1, handle_call/3, handle_cast/2
+         ,handle_info/2, handle_event/2, terminate/2
+         ,code_change/3
+        ]).
 
--include("notify.hrl").
+-include("callflow.hrl").
+
+-define(RESPONDERS, [{cf_route_req, [{<<"dialplan">>, <<"route_req">>}]}
+                     ,{cf_route_win, [{<<"dialplan">>, <<"route_win">>}]}
+                    ]).
+-define(BINDINGS, [{route, []}
+                   ,{self, []}
+                  ]).
 
 -define(SERVER, ?MODULE).
+-define(REG_QUEUE_NAME, <<"">>).
+-define(REG_QUEUE_OPTIONS, []).
+-define(REG_CONSUME_OPTIONS, []).
 
--define(RESPONDERS, [
-		     {notify_vm, [
-				  {<<"notification">>, <<"new_voicemail">>}
-				 ]}
-		    ]).
--define(BINDINGS, [
-		   {notifications, []}
-		  ]).
-
--record(state, {}).
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -45,14 +47,16 @@
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
 				      ,{bindings, ?BINDINGS}
-				      ,{basic_qos, 1} %% process one notification at a time (will round-robin amongst notify whapps)
+				      ,{queue_name, ?REG_QUEUE_NAME}
+				      ,{queue_options, ?REG_QUEUE_OPTIONS}
+				      ,{consume_options, ?REG_CONSUME_OPTIONS}
 				     ], []).
 
 stop(Srv) ->
     gen_listener:stop(Srv).
 
 %%%===================================================================
-%%% gen_server callbacks
+%%% gen_listener callbacks
 %%%===================================================================
 
 %%--------------------------------------------------------------------
@@ -67,8 +71,8 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new vm notify process"),
-    {ok, #state{}}.
+    ?LOG_SYS("starting new callflow listener"),
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -84,8 +88,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+handle_call(_Msg, _From, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -111,7 +115,6 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -128,17 +131,17 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function is called by a gen_server when it is about to
+%% This function is called by a gen_listener when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%% necessary cleaning up. When it returns, the gen_listener terminates
 %% with Reason. The return value is ignored.
 %%
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ?LOG_SYS("vm notify process ~p termination", [_Reason]),
-    ok.
+-spec terminate/2 :: (term(), term()) -> 'ok'.
+terminate(_Reason, _) ->
+    ?LOG_SYS("callflow listner ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -150,3 +153,7 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================

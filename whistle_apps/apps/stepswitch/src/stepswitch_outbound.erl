@@ -690,6 +690,8 @@ build_bridge_request(JObj, Endpoints, Q) ->
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
                ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
+               ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
+               ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
                ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}

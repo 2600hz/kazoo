@@ -61,8 +61,8 @@ send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
             ,{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthValue)}
             ,{<<"Auth-Method">>, get_auth_method(AuthValue)}
-            ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthValue, <<"ignore">>)}
-            ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthValue, <<"ignore">>)}
+%%            ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthValue, <<"ignore">>)}
+%%            ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthValue, <<"ignore">>)}
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list([CCV || {_, V}=CCV <- CCVs, V =/= undefined ])}
             | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)],
 
