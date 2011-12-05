@@ -473,8 +473,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec get_trunks_available/2 :: (ne_binary(), 'account' | 'ts') -> {'error', 'not_found'} |
-								   {'undefined' | non_neg_integer()
+-spec get_trunks_available/2 :: (ne_binary(), 'account' | 'ts') -> {'undefined' | non_neg_integer()
 								    ,'undefined' | non_neg_integer()
 								    ,integer()
 								    ,'account' | 'ts'
@@ -495,7 +494,7 @@ get_trunks_available(AcctID, ts) ->
     case couch_mgr:open_doc(<<"ts">>, AcctID) of
 	{error, not_found}=E ->
 	    ?LOG_SYS("No account found in ts: ~s", [AcctID]),
-	    E;
+	    {0,0,0.0, account};
 	{ok, JObj} ->
 	    get_ts_values(AcctID, JObj)
     end.
