@@ -137,9 +137,9 @@ init_first_account_for_reals() ->
     Db = whapps_util:get_db_name(DbName, encoded),
 
     JObj = wh_json:from_list([{<<"name">>, <<"Master Account">>}
-			      ,{<<"realm">>, wh_util:to_binary(net_adm:localhost())}
+			      ,{<<"realm">>, list_to_binary([<<"admin.">>, net_adm:localhost()])}
+                              ,{<<"pvt_superduper_admin">>, true} % first account is super duper account
 			      ,{<<"_id">>, DbName}
-			      ,{<<"type">>, <<"object">>}
 			     ]),
     DbContext = cb_accounts:create_account(#cb_context{db_name=Db, req_data=JObj, req_verb = <<"put">>}),
 
@@ -173,8 +173,7 @@ revert_init(Db, DbName) ->
     _ = couch_mgr:db_delete(Db).
 
 create_init_user(Db) ->
-    {ok, Hostname} = inet:gethostname(),
-    Username = list_to_binary([Hostname, "-admin"]),
+    Username = <<"admin">>,
 
     Pass = wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(6))),
 
@@ -182,9 +181,13 @@ create_init_user(Db) ->
 
     User = wh_json:from_list([{<<"username">>, Username}
 			      ,{<<"verified">>, true}
+                              ,{<<"apps">>, wh_json:from_list([{<<"voip">>, wh_json:from_list([{<<"label">>, <<"VoIP Services">>}
+                                                          	                               ,{<<"icon">>, <<"voip_services">>}
+      											       ,{<<"api_url">>, list_to_binary(["http://", net_adm:localhost(), ":8000/v1"])}
+                                              						       ,{<<"admin">>, true}
+ 											      ])}])}
 			      ,{<<"pvt_md5_auth">>, MD5}
 			      ,{<<"pvt_sha1_auth">>, SHA1}
-			      ,{<<"type">>, <<"object">>}
 			     ]),
 
     #cb_context{resp_status=success, doc=UserDoc}=Context = cb_users:create_user(#cb_context{db_name=Db, req_data=User, req_verb = <<"put">>}),
