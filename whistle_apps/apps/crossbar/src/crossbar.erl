@@ -181,6 +181,11 @@ create_init_user(Db) ->
 
     User = wh_json:from_list([{<<"username">>, Username}
 			      ,{<<"verified">>, true}
+                              ,{<<"apps">>, wh_json:from_list([{<<"voip">>, wh_json:from_list([{<<"label">>, <<"VoIP Services">>}
+                                                          	                               ,{<<"icon">>, <<"voip_services">>}
+      											       ,{<<"api_url">>, list_to_binary(["http://", net_adm:localhost(), ":8000/v1"])}
+                                              						       ,{<<"admin">>, true}
+ 											      ])}])}
 			      ,{<<"pvt_md5_auth">>, MD5}
 			      ,{<<"pvt_sha1_auth">>, SHA1}
 			     ]),
