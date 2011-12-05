@@ -492,7 +492,7 @@ get_trunks_available(AcctID, account) ->
     end;
 get_trunks_available(AcctID, ts) ->
     case couch_mgr:open_doc(<<"ts">>, AcctID) of
-	{error, not_found}=E ->
+	{error, not_found} ->
 	    ?LOG_SYS("No account found in ts: ~s", [AcctID]),
 	    {0,0,0.0, account};
 	{ok, JObj} ->
