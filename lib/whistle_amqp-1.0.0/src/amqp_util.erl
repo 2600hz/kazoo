@@ -86,7 +86,7 @@ whapps_publish(Routing, Payload, ContentType, Opts) ->
       RoutingKey :: ne_binary().
 %% TODO: The routing key on this function should be the first argument for consistency
 callmgr_publish(Payload, ContentType, RoutingKey) ->
-    basic_publish(?EXCHANGE_CALLMGR, encode(RoutingKey), Payload, ContentType).
+    basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
 
 
 -spec configuration_publish/2 :: (ne_binary(), iolist()) -> 'ok'.

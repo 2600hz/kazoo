@@ -188,15 +188,15 @@ get_success_routing(JObj) ->
 get_success_binding(Props) ->
     User = case props:get_value(user, Props) of
 	       undefined -> ".*";
-	       U -> [".", U]
+	       U -> [".", amqp_util:encode(U)]
 	   end,
     Realm = case props:get_value(realm, Props) of
 		undefined -> ".*";
-		R -> [".", R]
+		R -> [".", amqp_util:encode(R)]
 	    end,
 
     iolist_to_binary([?KEY_REG_SUCCESS, Realm, User]).
 
 -spec get_success_routing/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 get_success_routing(Realm, User) ->
-    list_to_binary([?KEY_REG_SUCCESS, ".", Realm, ".", User]).
+    list_to_binary([?KEY_REG_SUCCESS, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
