@@ -95,13 +95,13 @@ delete(CustomerId) ->
 %% Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
--spec all/0 :: () -> list(#bt_customer{}) | tuple(error, term()).
+-spec all/0 :: () -> {'ok', [#bt_customer{},...]} | {'error', term()}.
 all() ->
     case braintree_request:get("/customers/") of
         {ok, Xml} ->
             Customers = [xml_to_record(Customer)
                          || Customer <- xmerl_xpath:string("/customers/customer", Xml)],
-            {ok, [Customers]};
+            {ok, Customers};
         {error, _}=E ->
             E
     end.
@@ -112,8 +112,7 @@ all() ->
 %% Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (CustomerId) -> bt_result() when
-      CustomerId :: binary() | string().
+-spec find/1 :: (ne_binary() | nonempty_string()) -> bt_result().
 find(CustomerId) ->
         try
             true = validate_id(CustomerId),
@@ -155,11 +154,8 @@ validate_id(Id, _) ->
 %% Convert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (Xml) -> #bt_address{} when
-      Xml :: bt_xml().
--spec xml_to_record/2 :: (Xml, Base) -> #bt_address{} when
-      Xml :: bt_xml(),
-      Base :: string().
+-spec xml_to_record/1 :: (bt_xml()) -> #bt_customer{}.
+-spec xml_to_record/2 :: (bt_xml(), string()) -> #bt_customer{}.
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/customer").

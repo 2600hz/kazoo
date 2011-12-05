@@ -32,7 +32,7 @@ get(Path) ->
 %%--------------------------------------------------------------------
 -spec post/2 :: (Path, Request) -> bt_result() when
       Path :: string(),
-      Request :: #bt_customer{}.
+      Request :: bt_xml().
 post(Path, Request) ->
     do_request(post, Path, Request).
 
@@ -44,7 +44,7 @@ post(Path, Request) ->
 %%--------------------------------------------------------------------
 -spec put/2 :: (Path, Request) -> bt_result() when
       Path :: string(),
-      Request :: #bt_customer{}.
+      Request :: bt_xml().
 put(Path, Request) ->
     do_request(put, Path, Request).
 
@@ -73,17 +73,17 @@ do_request(Method, Path, Body) ->
     ?LOG("making ~s request to braintree ~s", [Method, Path]),
     ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                       ,io_lib:format("Request:~n~s ~s~n~s~n", [Method, Path, Body])),
-    Config = #bt_config{},
+
     Url = ["https://"
-           ,braintree_server_url(Config#bt_config.environment)
-           ,"/merchants/", Config#bt_config.merchant_id
+           ,braintree_server_url(whapps_config:get_string(<<"braintree">>, <<"default_environment">>))
+           ,"/merchants/", whapps_config:get_string(<<"braintree">>, <<"default_merchant_id">>)
            ,Path],
     Headers = [{"Accept", "application/xml"}
                ,{"User-Agent", "Braintree Erlang Library 1"}
                ,{"X-ApiVersion", wh_util:to_list(?BT_API_VERSION)}
                ,{"Content-Type", "application/xml"}],
     HTTPOptions = [{ssl,[{verify,0}]}
-                   ,{basic_auth, {Config#bt_config.public_key, Config#bt_config.private_key}}],
+                   ,{basic_auth, {whapps_config:get_string(<<"braintree">>, <<"default_public_key">>), whapps_config:get_string(<<"braintree">>, <<"default_private_key">>)}}],
     case ibrowse:send_req(lists:flatten(Url), Headers, Method, Body, HTTPOptions) of
         {ok, "401", _, _Response} ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"

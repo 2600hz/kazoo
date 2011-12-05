@@ -181,9 +181,9 @@ validate_id(Id, _) ->
 %% Convert the given XML to a record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (Xml) -> #bt_address{} when
+-spec xml_to_record/1 :: (Xml) -> #bt_card{} when
       Xml :: bt_xml().
--spec xml_to_record/2 :: (Xml, Base) -> #bt_address{} when
+-spec xml_to_record/2 :: (Xml, Base) -> #bt_card{} when
       Xml :: bt_xml(),
       Base :: string().
 

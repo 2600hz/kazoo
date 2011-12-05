@@ -41,7 +41,7 @@
 %% @spec () -> binary()
 uuid4() ->
     {A1, A2, A3} = now(),
-    random:seed(A1, A2, A3),
+    _ = random:seed(A1, A2, A3),
     U0 = random:uniform((2 bsl 48) - 1),
     U1 = random:uniform((2 bsl 12) - 1),
     U2 = random:uniform((2 bsl 60) - 1),
@@ -75,6 +75,8 @@ to_binary(UuidStr) when is_list(UuidStr) ->
     Parts = string:tokens(UuidStr, "$-"),
     [I0, I1, I2, I3, I4] = [hex_to_int(Part) || Part <- Parts],
     <<I0:32, I1:16, I2:16, I3:16, I4:48>>;
+to_binary(Bin) when is_binary(Bin) ->
+    Bin;
 to_binary(_) ->
     erlang:error(badarg).
 
