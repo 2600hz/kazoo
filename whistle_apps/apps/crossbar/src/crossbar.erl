@@ -138,6 +138,7 @@ init_first_account_for_reals() ->
 
     JObj = wh_json:from_list([{<<"name">>, <<"Master Account">>}
 			      ,{<<"realm">>, list_to_binary([<<"admin.">>, net_adm:localhost()])}
+                              ,{<<"pvt_superduper_admin">>, true} % first account is super duper account
 			      ,{<<"_id">>, DbName}
 			     ]),
     DbContext = cb_accounts:create_account(#cb_context{db_name=Db, req_data=JObj, req_verb = <<"put">>}),
@@ -172,7 +173,6 @@ revert_init(Db, DbName) ->
     _ = couch_mgr:db_delete(Db).
 
 create_init_user(Db) ->
-    {ok, Hostname} = inet:gethostname(),
     Username = <<"admin">>,
 
     Pass = wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(6))),
