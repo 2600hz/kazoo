@@ -16,7 +16,7 @@
 -export([get_string_value/2, get_string_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
--export([filter/2, filter/3]).
+-export([filter/2, filter/3, map/2]).
 -export([get_ne_value/2, get_ne_value/3]).
 -export([get_value/2, get_value/3, get_values/1]).
 -export([get_keys/1, get_keys/2]).
@@ -143,7 +143,7 @@ filter(Pred, {struct, Props}) when is_function(Pred, 1) ->
 
 -spec map/2 :: (fun((json_string(), json_term()) -> term()), json_object()) -> json_object().
 map(F, JObj) ->
-    wh_json:from_list([ F(K, ?MODULE:get_value(K)) || K <- ?MODULE:get_keys(JObj)]).
+    wh_json:from_list([ F(K, ?MODULE:get_value(K, JObj)) || K <- ?MODULE:get_keys(JObj)]).
 
 -spec get_string_value/3 :: (Key, JObj, Default) -> list() when
       Key :: term(),

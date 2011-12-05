@@ -10,7 +10,7 @@
 
 -export([success/1, query_req/1, query_resp/1, success_v/1, query_req_v/1, query_resp_v/1]).
 
--export([bind_q/2, unbind_q/1]).
+-export([bind_q/2, unbind_q/1, unbind_q/2]).
 
 -export([success_keys/0]).
 
@@ -121,15 +121,19 @@ query_resp_v(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
-bind_q(Q, _Props) ->
+bind_q(Q, Props) ->
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_SUCCESS),
+
+    amqp_util:bind_q_to_callmgr(Q, get_success_binding(Props)),
     amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
     ok.
 
--spec unbind_q/1 :: (binary()) -> 'ok'.
+-spec unbind_q/1 :: (ne_binary()) -> 'ok'.
+-spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Q) ->
-    amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHN_REQ).
+    unbind_q(Q, []).
+unbind_q(Q, Props) ->
+    amqp_util:unbind_q_from_callmgr(Q, get_success_binding(Props)).
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
@@ -141,7 +145,7 @@ publish_success(JObj) ->
     publish_success(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_success(Success, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Success, ?REG_SUCCESS_VALUES, fun ?MODULE:success/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_REG_SUCCESS).
+    amqp_util:callmgr_publish(Payload, ContentType, get_success_routing(Success)).
 
 -spec publish_query_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_query_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
@@ -166,3 +170,33 @@ publish_query_resp(Queue, Resp, ContentType) ->
 -spec success_keys/0 :: () -> [ne_binary(),...].
 success_keys() ->
     ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS.
+
+-spec get_success_routing/1 :: (api_terms()) -> ne_binary().
+get_success_routing(Prop) when is_list(Prop) ->
+    User = props:get_value(<<"Username">>, Prop),
+    Realm = props:get_value(<<"Realm">>, Prop),
+    get_success_routing(Realm, User);
+get_success_routing(JObj) ->
+    User = wh_json:get_value(<<"Username">>, JObj),
+    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    get_success_routing(Realm, User).
+
+%% Allow Queues to be bound for specific realms, and even users within those realms
+%% the resulting binding will be reg.success.{realm | *}.{user | *}
+%% * matches one segment only, which means all reg_success messages will be published to
+%% "key.success.realm.user"
+get_success_binding(Props) ->
+    User = case props:get_value(user, Props) of
+	       undefined -> ".*";
+	       U -> [".", U]
+	   end,
+    Realm = case props:get_value(realm, Props) of
+		undefined -> ".*";
+		R -> [".", R]
+	    end,
+
+    iolist_to_binary([?KEY_REG_SUCCESS, Realm, User]).
+
+-spec get_success_routing/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+get_success_routing(Realm, User) ->
+    list_to_binary([?KEY_REG_SUCCESS, ".", Realm, ".", User]).

@@ -27,9 +27,9 @@
 
 %% lookups [ {LPid, FS_ReqID, erlang:now()} ]
 -record(state, {
-	  node = undefined :: atom()
-	  ,stats = #handler_stats{} :: tuple()
-	  ,lookups = [] :: list(tuple(pid(), binary(), tuple(integer(), integer(), integer())))
+	  node = 'undefined' :: atom()
+	  ,stats = #handler_stats{} :: #handler_stats{}
+	  ,lookups = [] :: [{pid(), ne_binary(), {integer(), integer(), integer()}},...] | []
 	 }).
 
 %%%===================================================================
@@ -233,20 +233,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_route_req/4 :: (Node, FSID, CallID, FSData) -> {'ok', pid()} when
-      Node :: atom(),
-      FSID :: binary(),
-      CallID :: binary(),
-      FSData :: proplist().
+-spec handle_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> {'ok', pid()}.
 handle_route_req(Node, FSID, CallID, FSData) ->
     proc_lib:start_link(?MODULE, init_route_req, [self(), Node, FSID, CallID, FSData]).
 
--spec init_route_req/5 :: (Parent, Node, FSID, CallID, FSData) -> no_return() when
-      Parent :: pid(),
-      Node :: atom(),
-      FSID :: binary(),
-      CallID :: binary(),
-      FSData :: proplist().
+-spec init_route_req/5 :: (pid(), atom(), ne_binary(), ne_binary(), proplist()) -> no_return().
 init_route_req(Parent, Node, FSID, CallID, FSData) ->
     proc_lib:init_ack(Parent, {ok, self()}),
     put(callid, CallID),
