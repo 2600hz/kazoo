@@ -258,33 +258,35 @@ code_change(_OldVsn, State, _Extra) ->
       AvailChan :: integer(),
       JObj :: json_object().
 originate_channel(Node, Pid, Route, AvailChan, JObj) ->
-    Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Data">>, JObj)),
-    OrigStr = binary_to_list(list_to_binary([Route, " &", Action])),
+    ChannelVars = ecallmgr_fs_xml:get_channel_vars(JObj),
+    Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), JObj),
+    OrigStr = binary_to_list(list_to_binary([ChannelVars, Route, " ", Action])),
     ?LOG_SYS("originate ~s on node ~s", [OrigStr, Node]),
+    _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [OrigStr]),
     Result = freeswitch:bgapi(Node, originate, OrigStr),
     case Result of
 	{ok, JobId} ->
 	    receive
 		{bgok, JobId, X} ->
 		    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
-		    ?LOG_START(CallID, "originate with job id ~s received bgok ~s", [Node, JobId, X]),
+		    ?LOG_START(CallID, "originate on ~s with job id ~s received bgok ~s", [Node, JobId, X]),
 		    CtlQ = start_call_handling(Node, CallID),
 		    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
 		{bgerror, JobId, Y} ->
 		    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-		    ?LOG_SYS("failed to originate, ~p", [Node, ErrMsg]),
+		    ?LOG_SYS("~s failed to originate, ~p", [Node, ErrMsg]),
 		    Pid ! {resource_error, ErrMsg}
 	    after
 		9000 ->
-		    ?LOG_SYS("originate timed out", [Node]),
+		    ?LOG_SYS("~s originate timed out", [Node]),
 		    Pid ! {resource_error, timeout}
 	    end;
 	{error, Y} ->
 	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-	    ?LOG_SYS("failed to originate ~p", [Node, ErrMsg]),
+	    ?LOG_SYS("~s failed to originate ~p", [Node, ErrMsg]),
 	    Pid ! {resource_error, ErrMsg};
 	timeout ->
-	    ?LOG_SYS("originate timed out", [Node]),
+	    ?LOG_SYS("~s originate timed out", [Node]),
 	    Pid ! {resource_error, timeout}
     end.
 
@@ -379,21 +381,32 @@ publish_register_event(Data) ->
     ?LOG("sending successful registration"),
     wapi_registration:publish_success(ApiProp).
 
-get_originate_action(<<"transfer">>, Data) ->
-    case wh_json:get_value(<<"Route">>, Data) of
+get_originate_action(<<"transfer">>, JObj) ->
+    case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of
 	undefined -> <<"error">>;
 	Route ->
-	    list_to_binary([ <<"transfer(">>, wh_util:to_e164(Route), <<" XML context_2)">>])
+	    list_to_binary(["'m:^:", get_unset_vars(JObj), "transfer:", wh_util:to_e164(Route), " XML context_2' inline"])
     end;
-get_originate_action(<<"bridge">>, Data) ->
+get_originate_action(<<"bridge">>, JObj) ->
+    Data = wh_json:get_value(<<"Application-Data">>, JObj),
     case ecallmgr_fs_xml:build_route(Data, wh_json:get_value(<<"Invite-Format">>, Data)) of
 	{error, timeout} -> <<"error">>;
 	EndPoint ->
-	    CVs = ecallmgr_fs_xml:get_leg_vars(Data),
-	    list_to_binary([<<"bridge(">>, CVs, EndPoint, <<")">>])
+	    list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", EndPoint, "' inline"])
     end;
 get_originate_action(_, _) ->
-    <<"park">>.
+    <<"&park()">>.
+
+get_unset_vars(JObj) ->
+    ExportProps = [{K, <<>>} || K <- wh_json:get_value(<<"Export-Custom-Channel-Vars">>, JObj, [])],
+    Export = [K || KV <- lists:foldr({ecallmgr_fs_xml, get_channel_vars}, [], [{<<"Custom-Channel-Vars">>, ExportProps}])
+                       ,([K, _] = string:tokens(binary_to_list(KV), "=")) =/= undefined],
+    case [["unset:", K] || KV <- lists:foldr({ecallmgr_fs_xml, get_channel_vars}, [], wh_json:to_proplist(JObj))
+                               ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)] of
+        [] -> "";
+        Unset ->
+            [string:join(Unset, "^"), "^"]
+    end.
 
 -spec run_start_cmds/1 :: (atom()) -> [fs_api_ret(),...].
 run_start_cmds(Node) ->
