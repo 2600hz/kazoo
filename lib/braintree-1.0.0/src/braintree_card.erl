@@ -297,16 +297,16 @@ json_to_record(undefined) ->
     undefined;
 json_to_record(JObj) ->
     #bt_card{token = create_or_get_json_id(JObj)
-             ,cardholder_name = wh_json:get_list_value(<<"cardholder_name">>, JObj)
-             ,expiration_date = wh_json:get_list_value(<<"expiration_date">>, JObj)
-             ,expiration_month = wh_json:get_list_value(<<"expiration_month">>, JObj)
-             ,expiration_year = wh_json:get_list_value(<<"expiration_year">>, JObj)
-             ,customer_id = wh_json:get_list_value(<<"customer_id">>, JObj)
-             ,number = wh_json:get_list_value(<<"number">>, JObj)
-             ,cvv = wh_json:get_list_value(<<"cvv">>, JObj)
-             ,billing_address_id = wh_json:get_list_value(<<"billing_address_id">>, JObj)
+             ,cardholder_name = wh_json:get_string_value(<<"cardholder_name">>, JObj)
+             ,expiration_date = wh_json:get_string_value(<<"expiration_date">>, JObj)
+             ,expiration_month = wh_json:get_string_value(<<"expiration_month">>, JObj)
+             ,expiration_year = wh_json:get_string_value(<<"expiration_year">>, JObj)
+             ,customer_id = wh_json:get_string_value(<<"customer_id">>, JObj)
+             ,number = wh_json:get_string_value(<<"number">>, JObj)
+             ,cvv = wh_json:get_string_value(<<"cvv">>, JObj)
+             ,billing_address_id = wh_json:get_string_value(<<"billing_address_id">>, JObj)
              ,billing_address = braintree_address:json_to_record(wh_json:get_value(<<"billing_address">>, JObj))
-             ,update_existing = wh_json:get_list_value(<<"update_existing">>, JObj)
+             ,update_existing = wh_json:get_string_value(<<"update_existing">>, JObj)
              ,verify = wh_json:is_true(<<"verify">>, JObj, true)
              ,make_default = wh_json:is_true(<<"make_default">>, JObj)}.
 
