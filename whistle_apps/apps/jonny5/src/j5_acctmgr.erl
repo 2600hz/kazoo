@@ -33,7 +33,7 @@
          ,max_inbound = 0 :: non_neg_integer()
 	 ,two_way = 0 :: non_neg_integer()
          ,inbound = 0 :: non_neg_integer()
-         ,prepay = 0 :: non_neg_integer()
+         ,prepay = 0 :: non_neg_integer() %% in UNITS, not dollars
          ,trunks_in_use = dict:new() :: dict() %% {CallID, {Type :: inbound | two_way | prepay, CallMonitor :: pid()}}
 	 ,start_time = 1 :: pos_integer()
          ,sync_ref :: reference()
@@ -494,7 +494,7 @@ get_trunks_available(AcctID, ts) ->
     case couch_mgr:open_doc(<<"ts">>, AcctID) of
 	{error, not_found} ->
 	    ?LOG_SYS("No account found in ts: ~s", [AcctID]),
-	    {0,0,0.0, account};
+	    {0,0,0,account};
 	{ok, JObj} ->
 	    get_ts_values(AcctID, JObj)
     end.
