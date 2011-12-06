@@ -342,6 +342,11 @@ handle_cast(refresh, #state{acct_type=AcctType, acct_id=AcctID, max_two_way=OldT
 	    {noreply, State}
     end;
 
+handle_cast({conf_change, <<"doc_deleted">>, _JObj}, State) ->
+    ?LOG("Document was deleted"),
+    {stop, normal, State};
+handle_cast({conf_change, <<"doc_created">>, JObj}, State) ->
+    handle_cast({conf_change, <<"doc_edited">>, JObj}, State);
 handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID, acct_type=AcctType
 							  ,max_two_way=MTW, max_inbound=MI, prepay=P
 							  ,two_way=_TW, inbound=_I
