@@ -158,9 +158,6 @@ init([AcctID]) ->
 
     put(callid, AcctID),
     case get_trunks_available(AcctID, account) of
-	{error, not_found} ->
-	    ?LOG_SYS("No account found for ~s", [AcctID]),
-	    {stop, no_account};
 	{undefined, undefined, _, account} ->
 	    {TwoWay, Inbound, Prepay, ts} = get_trunks_available(AcctID, ts),
 	    ?LOG_SYS("Init for ts ~s complete", [AcctID]),
