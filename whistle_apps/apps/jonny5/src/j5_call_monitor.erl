@@ -3,7 +3,7 @@
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Monitor a call for CDR. If per-minute, write to the ledger with the final
-%%% cost of the call.
+%%% cost of the call. Sole listener for call events
 %%% @end
 %%% Created : 18 Nov 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
