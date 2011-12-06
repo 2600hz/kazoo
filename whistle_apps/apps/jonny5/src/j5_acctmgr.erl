@@ -565,7 +565,7 @@ try_twoway(_CallID, #state{two_way=T}=State) when T < 1 ->
 try_twoway(CallID, #state{two_way=Two, trunks_in_use=Dict, ledger_db=DB}=State) ->
     ?LOG_SYS(CallID, "Authz a two-way trunk", []),
     {ok, Pid} = monitor_call(CallID, DB, two_way),
-    erlang:monitor(Pid),
+    erlang:monitor(process, Pid),
 
     {{true, [{<<"Trunk-Type">>, <<"two_way">>}]}
      ,State#state{two_way=Two-1, trunks_in_use=dict:store(CallID, {twoway, Pid}, Dict)}
@@ -578,7 +578,7 @@ try_inbound(_CallID, #state{inbound=I}=State) when I < 1 ->
 try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) ->
     ?LOG_SYS(CallID, "Authz an inbound_only trunk", []),
     {ok, Pid} = monitor_call(CallID, DB, inbound),
-    erlang:monitor(Pid),
+    erlang:monitor(process, Pid),
 
     {{true, [{<<"Trunk-Type">>, <<"inbound">>}]}
      ,State#state{inbound=In-1, trunks_in_use=dict:store(CallID, {inbound, Pid}, Dict)}
@@ -600,7 +600,7 @@ try_prepay(CallID, #state{acct_id=AcctId, prepay=Prepay, trunks_in_use=Dict, led
 	    PrepayLeft = Prepay - PerMinCharge,
 	    ?LOG_SYS(CallID, "Authz a per_min trunk; ~b prepay left, ~b charged up-front", [PrepayLeft, PerMinCharge]),
 	    {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
-	    erlang:monitor(Pid),
+	    erlang:monitor(process, Pid),
 
 	    {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
 	     ,State#state{trunks_in_use=dict:store(CallID, {per_min, Pid}, Dict), prepay=PrepayLeft}
