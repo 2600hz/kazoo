@@ -531,7 +531,7 @@ try_inbound_then_twoway(CallID, State) ->
 try_twoway_then_prepay(CallID, State) ->
     case try_twoway(CallID, State) of
 	{{true, _}, _}=Resp ->
-	    ?LOG_END(CallID, "Inbound call authorized using a two-way trunk", []),
+	    ?LOG_END(CallID, "Authorized using a two-way trunk", []),
 	    Resp;
 	{{false, _}, State2} ->
 	    try_prepay(CallID, State2, wapi_money:default_per_min_charge())
