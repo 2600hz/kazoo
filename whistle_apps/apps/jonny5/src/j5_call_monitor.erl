@@ -135,6 +135,8 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=Ca
 handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=CallID, ledger_db=DB, call_type=Type, authz_won=true}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj), % assert
 
+    ?LOG("Received CDR, finishing transaction"),
+
     BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
     {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
     publish_transaction(Transaction, fun wapi_money:publish_credit/1),
@@ -225,5 +227,5 @@ publish_transaction(Transaction, PublisherFun) ->
     PublisherFun(wh_json:from_list([{<<"Transaction-ID">>, wh_json:get_value(<<"_id">>, Transaction)}
 				    ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Transaction)}
 				    ,{<<"Amount">>, wh_json:get_value(<<"amount">>, Transaction)}
-				    | wh_util:default_headers(?APP_NAME, ?APP_VERSION)
+				    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
 				   ])).
