@@ -218,14 +218,14 @@ record_to_xml(Customer, ToString) ->
 json_to_record(undefined) ->
     #bt_customer{};
 json_to_record(JObj) ->
-    #bt_customer{id = wh_json:get_list_value(<<"id">>, JObj)
-                 ,first_name = wh_json:get_list_value(<<"first_name">>, JObj)
-                 ,last_name = wh_json:get_list_value(<<"last_name">>, JObj)
-                 ,company = wh_json:get_list_value(<<"company">>, JObj)
-                 ,email = wh_json:get_list_value(<<"email">>, JObj)
-                 ,phone = wh_json:get_list_value(<<"phone">>, JObj)
-                 ,fax = wh_json:get_list_value(<<"fax">>, JObj)
-                 ,website = wh_json:get_list_value(<<"website">>, JObj)
+    #bt_customer{id = wh_json:get_string_value(<<"id">>, JObj)
+                 ,first_name = wh_json:get_string_value(<<"first_name">>, JObj)
+                 ,last_name = wh_json:get_string_value(<<"last_name">>, JObj)
+                 ,company = wh_json:get_string_value(<<"company">>, JObj)
+                 ,email = wh_json:get_string_value(<<"email">>, JObj)
+                 ,phone = wh_json:get_string_value(<<"phone">>, JObj)
+                 ,fax = wh_json:get_string_value(<<"fax">>, JObj)
+                 ,website = wh_json:get_string_value(<<"website">>, JObj)
                  ,credit_cards = [braintree_card:json_to_record(wh_json:get_value(<<"credit_card">>, JObj))]}.
 
 %%--------------------------------------------------------------------
