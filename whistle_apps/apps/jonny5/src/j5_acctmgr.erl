@@ -494,7 +494,7 @@ get_trunks_available(AcctID, ts) ->
     case couch_mgr:open_doc(<<"ts">>, AcctID) of
 	{error, not_found} ->
 	    ?LOG_SYS("No account found in ts: ~s", [AcctID]),
-	    {0,0,0.0, account};
+	    {0,0,j5_util:current_usage(AcctID),account};
 	{ok, JObj} ->
 	    get_ts_values(AcctID, JObj)
     end.
