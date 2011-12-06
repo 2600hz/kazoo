@@ -663,11 +663,13 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
     ?LOG_SYS("Account determined that db name: ~s", [DbName]),
     case couch_mgr:db_exists(DbName) of
         false ->
+	    ?LOG("Check failed for db_exists on ~s", [AccountId]),
             Context#cb_context{
                  db_name = <<>>
                 ,account_id = <<>>
             };
         true ->
+	    ?LOG("Check succeeded for db_exists on ~s", [AccountId]),
             Context#cb_context{
                 db_name = DbName
                ,account_id = AccountId
