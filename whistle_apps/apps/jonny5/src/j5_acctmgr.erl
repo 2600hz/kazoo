@@ -236,9 +236,10 @@ handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->
     {reply, dict:to_list(Dict), State};
 
 %% pull from inbound, then two_way, then prepay
-handle_call({authz, JObj, inbound}, _From, #state{}=State) ->
+handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG_START(CallID, "Authorizing inbound call...", []),
+    ?LOG(CallID, "Trunks available: Two: ~b In: ~b Pre: ~b Per-min: ~b", [T, I, P, wapi_money:default_per_min_charge()]),
 
     ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
 		[<<"nouser">>, _] ->
@@ -255,9 +256,10 @@ handle_call({authz, JObj, inbound}, _From, #state{}=State) ->
 		     end,
     {reply, Resp, State1, hibernate};
 
-handle_call({authz, JObj, outbound}, _From, State) ->
+handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG_START(CallID, "Authorizing outbound call...", []),
+    ?LOG(CallID, "Trunks available: Two: ~b Pre: ~b Per-min: ~b", [T, P, wapi_money:default_per_min_charge()]),
 
     ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
 		[<<"nouser">>, _] ->
@@ -269,7 +271,7 @@ handle_call({authz, JObj, outbound}, _From, State) ->
     ?LOG("ToDID: ~s", [ToDID]),
 
     {Resp, State1} = case is_us48(ToDID) of
-			 true -> try_twoway(CallID, State);
+			 true -> try_twoway_then_prepay(CallID, State);
 			 false -> try_prepay(CallID, State, wapi_money:default_per_min_charge())
 		     end,
     {reply, Resp, State1, hibernate}.
@@ -522,13 +524,17 @@ try_inbound_then_twoway(CallID, State) ->
 	    ?LOG_END(CallID, "Inbound call authorized with inbound trunk", []),
 	    Resp;
 	{{false, _}, State2} ->
-	    case try_twoway(CallID, State2) of
-		{{true, _}, _}=Resp ->
-		    ?LOG_END(CallID, "Inbound call authorized using a two-way trunk", []),
-		    Resp;
-		{{false, _}, State3} ->
-		    try_prepay(CallID, State3, wapi_money:default_per_min_charge())
-	    end
+	    try_twoway_then_prepay(CallID, State2)
+    end.
+
+-spec try_twoway_then_prepay/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
+try_twoway_then_prepay(CallID, State) ->
+    case try_twoway(CallID, State) of
+	{{true, _}, _}=Resp ->
+	    ?LOG_END(CallID, "Inbound call authorized using a two-way trunk", []),
+	    Resp;
+	{{false, _}, State2} ->
+	    try_prepay(CallID, State2, wapi_money:default_per_min_charge())
     end.
 
 -spec try_twoway/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
