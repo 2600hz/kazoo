@@ -271,9 +271,12 @@ handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P}=State) ->
 
     ?LOG("ToDID: ~s", [ToDID]),
 
-    {Resp, State1} = case is_us48(ToDID) of
-			 true -> try_twoway_then_prepay(CallID, State);
-			 false -> try_prepay(CallID, State, wapi_money:default_per_min_charge())
+    {Resp, State1} = case {erlang:byte_size(ToDID) > 6, is_us48(ToDID)} of
+			 {true, true} -> try_twoway_then_prepay(CallID, State);
+			 {true, false} -> try_prepay(CallID, State, wapi_money:default_per_min_charge());
+			 {false, _} ->
+			     ?LOG(CallID, "Auto-authz call to internal-seeming extension: ~s", [ToDID]),
+			     {{true, [{<<"Trunk-Type">>, <<"internal">>}]}, State}
 		     end,
     {reply, Resp, State1, hibernate}.
 
