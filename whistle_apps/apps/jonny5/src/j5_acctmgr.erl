@@ -387,7 +387,7 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID, acct_t
 				  (_, _, Acc) -> Acc %% ignore per-min
 			       end, {NMTW, NMI}, Dict),
 
-    Dict1 = lists:filter(fun(_CallID, {_, Pid}) -> erlang:is_process_alive(Pid) end, Dict),
+    Dict1 = dict:filter(fun(_CallID, {_, Pid}) -> erlang:is_process_alive(Pid) end, Dict),
 
     ?LOG("changing max two way from ~b to ~p", [MTW, NMTW]),
     ?LOG("changing max inbound from ~b to ~p", [MI, NMI]),
