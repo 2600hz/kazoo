@@ -2,7 +2,6 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
--include_lib("cf_amqp.hrl").
 
 -type cf_exe_response() :: {'stop'} | {'continue'} | {'continue', integer()} | {'heartbeat'}.
 -type cf_api_error() :: {'error', 'channel_hungup' | 'channel_unbridge' | 'timeout' | json_object()}.

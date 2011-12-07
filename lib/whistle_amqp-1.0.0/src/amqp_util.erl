@@ -153,7 +153,7 @@ callctl_publish(CtrlQ, Payload, ContentType, Props) ->
       Payload :: iolist() | ne_binary(),
       Type :: 'media_req' | 'event' | 'status_req' | 'cdr' | ne_binary().
 -spec callevt_publish/4 :: (ne_binary(), iolist(), Type, ne_binary()) -> 'ok' when
-      Type :: 'status_req' | 'event'.
+      Type :: 'status_req' | 'event' | ne_binary().
 callevt_publish(Payload) ->
     callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, media_req).
 
@@ -172,12 +172,15 @@ callevt_publish(CallID, Payload, cdr) ->
 callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 
+callevt_publish(_CallID, Payload, RoutingKey, ContentType) when is_binary(RoutingKey) ->
+    basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ContentType);
 callevt_publish(CallID, Payload, status_req, ContentType) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, (encode(CallID))/binary>>, Payload, ContentType);
 callevt_publish(CallID, Payload, event, ContentType) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, Payload, ContentType);
 callevt_publish(CallID, Payload, cdr, ContentType) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, Payload, ContentType).
+
 
 -spec resource_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().

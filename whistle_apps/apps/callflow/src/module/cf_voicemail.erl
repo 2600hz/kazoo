@@ -704,21 +704,19 @@ new_message(RecordingName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, 
     {ok, _} = save_metadata(Metadata, Db, Id),
     ?LOG("stored voicemail metadata for ~s", [MediaId]),
 
-    {ok, JSON} = cf_api:new_voicemail([{<<"From-User">>, FromU}
-				       ,{<<"From-Realm">>, FromR}
-				       ,{<<"To-User">>, ToU}
-				       ,{<<"To-Realm">>, ToR}
-				       ,{<<"Account-DB">>, Db}
-				       ,{<<"Voicemail-Box">>, Id}
-				       ,{<<"Voicemail-Name">>, MediaId}
-				       ,{<<"Caller-ID-Name">>, CIDName}
-				       ,{<<"Caller-ID-Number">>, CIDNumber}
-				       ,{<<"Voicemail-Timestamp">>, Tstamp}
-				       ,{<<"Call-ID">>, CallID}
-				       | wh_api:default_headers(<<>>, <<"notification">>, <<"new_voicemail">>, ?APP_NAME, ?APP_VERSION)
-				      ]),
-    ?LOG("new voicemail message ~s whistle API broadcast", [MediaId]),
-    amqp_util:callevt_publish(CallID, JSON, ?NOTIFY_VOICEMAIL_NEW),
+    wapi_notifications:publish_voicemail([{<<"From-User">>, FromU}
+					  ,{<<"From-Realm">>, FromR}
+					  ,{<<"To-User">>, ToU}
+					  ,{<<"To-Realm">>, ToR}
+					  ,{<<"Account-DB">>, Db}
+					  ,{<<"Voicemail-Box">>, Id}
+					  ,{<<"Voicemail-Name">>, MediaId}
+					  ,{<<"Caller-ID-Name">>, CIDName}
+					  ,{<<"Caller-ID-Number">>, CIDNumber}
+					  ,{<<"Voicemail-Timestamp">>, Tstamp}
+					  ,{<<"Call-ID">>, CallID}
+					  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+					 ]),
     update_mwi(Box, Call).
 
 %%--------------------------------------------------------------------
