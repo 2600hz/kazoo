@@ -33,8 +33,8 @@
          ,max_inbound = 0 :: non_neg_integer()
 	 ,two_way = 0 :: non_neg_integer()
          ,inbound = 0 :: non_neg_integer()
-         ,prepay = 0 :: non_neg_integer()
-         ,trunks_in_use = dict:new() :: dict() %% {CallID, {Type :: inbound | two_way | prepay, CallMonitor :: pid()}}
+         ,prepay = 0 :: non_neg_integer() %% in UNITS, not dollars
+         ,trunks_in_use = dict:new() :: dict() %% {CallID, {Type :: inbound | twoway | prepay, CallMonitor :: pid()}}
 	 ,start_time = 1 :: pos_integer()
          ,sync_ref :: reference()
 	 ,ledger_db = <<>> :: binary() %% where to write credits/debits
@@ -374,12 +374,20 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID, acct_t
     NMTW = try_update_value(Trunks, MTW),
     NMI = try_update_value(InboundTrunks,MI),
 
-    {NTWIU, NTIIU} = dict:fold(fun(_CallID, {two_way, _}, {Two, In}) ->
-				       {Two-1, In};
-				  (_CallID, {inbound, _}, {Two, In}) ->
-				       {Two, In-1};
+    {NTWIU, NTIIU} = dict:fold(fun(_CallID, {twoway, MonPid}, {Two, In}=Acc) ->
+				       case erlang:is_process_alive(MonPid) of
+					   true -> {Two-1, In};
+					   false -> Acc
+				       end;
+				  (_CallID, {inbound, MonPid}, {Two, In}=Acc) ->
+				       case erlang:is_process_alive(MonPid) of
+					   true -> {Two, In-1};
+					   false -> Acc
+				       end;
 				  (_, _, Acc) -> Acc %% ignore per-min
 			       end, {NMTW, NMI}, Dict),
+
+    Dict1 = lists:filter(fun(_CallID, {_, Pid}) -> erlang:is_process_alive(Pid) end, Dict),
 
     ?LOG("changing max two way from ~b to ~p", [MTW, NMTW]),
     ?LOG("changing max inbound from ~b to ~p", [MI, NMI]),
@@ -392,28 +400,8 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID, acct_t
 			  ,two_way=NTWIU
 			  ,inbound=NTIIU
 			  ,prepay=try_update_value(Prepay, P)
+			  ,trunks_in_use=Dict1
 			 }, hibernate};
-
-%% handle_cast({call_event, JObj}, #state{two_way=Two, inbound=In, trunks_in_use=Dict
-%% 						    ,max_inbound=MaxIn, max_two_way=MaxTwo
-%% 						   }=State) ->
-%%     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-
-%%     case process_call_event(CallID, JObj, Dict) of
-%% 	{release, inbound, Dict1} ->
-%% 	    ?LOG_END(CallID, "Releasing inbound trunk", []),
-%% 	    unmonitor_call(CallID),
-%% 	    NewIn = case (In+1) of I when I > MaxIn -> MaxIn; I -> I end,
-%% 	    {noreply, State#state{inbound=NewIn, trunks_in_use=Dict1}, hibernate};
-%% 	{release, twoway, Dict2} ->
-%% 	    ?LOG_END(CallID, "Releasing two-way trunk", []),
-%% 	    unmonitor_call(CallID),
-%% 	    NewTwo = case (Two+1) of T when T > MaxTwo -> MaxTwo; T -> T end,
-%% 	    {noreply, State#state{two_way=NewTwo, trunks_in_use=Dict2}, hibernate};
-%% 	ignore ->
-%% 	    ?LOG_END(CallID, "Ignoring event", []),
-%% 	    {noreply, State}
-%%     end;
 
 handle_cast(Req, State) ->
     ?LOG("Failed cast request: ~p", [Req]),
@@ -447,7 +435,7 @@ handle_info({timeout, SyncRef, sync}, #state{sync_ref=SyncRef, acct_id=AcctID, a
 handle_info({'DOWN', _Ref, process, Pid, Reason}, #state{two_way=T, inbound=I, trunks_in_use=Dict}=State) ->
     ?LOG("Pid ~p down: ~p, checking for call monitor proc", [Pid, Reason]),
     case unmonitor_call(Pid, Dict) of
-	{two_way, Dict1} -> ?LOG("Was two-way trunk, adding 1 to ~b", [T]), {noreply, State#state{two_way=T+1, trunks_in_use=Dict1}};
+	{twoway, Dict1} -> ?LOG("Was two-way trunk, adding 1 to ~b", [T]), {noreply, State#state{two_way=T+1, trunks_in_use=Dict1}};
 	{inbound, Dict1} -> ?LOG("Was inbound trunk, adding 1 to ~b", [I]), {noreply, State#state{inbound=T+1, trunks_in_use=Dict1}};
 	{prepay, Dict1} -> ?LOG("Was prepay trunk"), {noreply, State#state{trunks_in_use=Dict1}};
 	_ -> ?LOG("Ignoring down proc"), {noreply, State}
@@ -564,7 +552,7 @@ try_twoway(_CallID, #state{two_way=T}=State) when T < 1 ->
     {{false, []}, State#state{two_way=0}};
 try_twoway(CallID, #state{two_way=Two, trunks_in_use=Dict, ledger_db=DB}=State) ->
     ?LOG_SYS(CallID, "Authz a two-way trunk", []),
-    {ok, Pid} = monitor_call(CallID, DB, two_way),
+    {ok, Pid} = monitor_call(CallID, DB, twoway),
     erlang:monitor(process, Pid),
 
     {{true, [{<<"Trunk-Type">>, <<"two_way">>}]}
@@ -615,11 +603,7 @@ monitor_call(CallID, LedgerDB, CallType, Debit) ->
     _ = j5_util:write_debit_to_ledger(LedgerDB, CallID, CallType, Debit, 0),
     j5_call_monitor_sup:start_monitor(CallID, LedgerDB, CallType).
 
-%% -spec unmonitor_call/1 :: (ne_binary()) -> 'ok'.
-%% unmonitor_call(CallID) ->
-    %% gen_listener:rm_binding(self(), call, [{callid, CallID}]).
-
--spec unmonitor_call/2 :: (pid(), dict()) -> {'two_way' | 'inbound' | 'prepay' | 'ignore', dict()}.
+-spec unmonitor_call/2 :: (pid(), dict()) -> {'twoway' | 'inbound' | 'prepay' | 'ignore', dict()}.
 unmonitor_call(Pid, Dict) ->
     dict:fold(fun(CallId, {Type, MonPid}, {_, Dict0}) when MonPid =:= Pid ->
 		      ?LOG(CallId, "Found monitor pid: ~p for trunk of type ~s", [Pid, Type]),
@@ -627,44 +611,6 @@ unmonitor_call(Pid, Dict) ->
 		 (CallId, V, {Type, Dict0}) ->
 		      {Type, dict:store(CallId, V, Dict0)}
 	      end, {ignore, dict:new()}, Dict).
-
-%% -spec process_call_event/3 :: (ne_binary(), json_object(), dict()) -> 'ignore' | {'release', 'twoway' | 'inbound', dict()}.
-%% process_call_event(CallID, JObj, Dict) ->
-%%     case { wh_json:get_value(<<"Application-Name">>, JObj)
-%% 	   ,wh_json:get_value(<<"Event-Name">>, JObj) } of
-%% 	{ <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">> } ->
-%% 	    ?LOG(CallID, "Bridge event received", []),
-%% 	    case wh_json:get_value(<<"Application-Response">>, JObj) of
-%% 		<<"SUCCESS">> ->
-%% 		    ?LOG(CallID, "Bridge event successful", []),
-%% 		    ignore;
-%% 		Cause ->
-%% 		    ?LOG("Failed to bridge: ~s", [Cause]),
-%% 		    release_trunk(CallID, Dict)
-%% 	    end;
-
-%% 	{_, <<"CHANNEL_HANGUP_COMPLETE">>} ->
-%% 	    ?LOG(CallID, "Channel hungup complete", []),
-%% 	    release_trunk(CallID, Dict);
-
-%% 	{ _, <<"cdr">> } ->
-%% 	    ?LOG(CallID, "CDR received", []),
-%% 	    release_trunk(CallID, Dict);
-
-%% 	_E ->
-%% 	    ?LOG("Unhandled call event: ~p", [_E]),
-%% 	    ignore
-%%     end.
-
-%% -spec release_trunk/2 :: (ne_binary(), dict()) -> 'ignore' | {'release', 'twoway' | 'inbound', dict()}.
-%% release_trunk(CallID, Dict) ->
-%%     case dict:find(CallID, Dict) of
-%% 	error ->
-%% 	    ?LOG_SYS(CallID, "Call is unknown to us", []),
-%% 	    ignore;
-%% 	{ok, {TrunkType, _}} ->
-%% 	    {release, TrunkType, dict:erase(CallID, Dict)}
-%%     end.
 
 %% Match +1XXXYYYZZZZ as US-48; all others are not
 is_us48(<<"+1", Rest/binary>>) when erlang:byte_size(Rest) =:= 10 -> true;
