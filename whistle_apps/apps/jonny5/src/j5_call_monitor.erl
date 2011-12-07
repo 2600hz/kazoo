@@ -21,7 +21,7 @@
 -include("jonny5.hrl").
 
 -define(SERVER, ?MODULE).
--define(TIMER_CALL_STATUS, 10000). %% ask for call status every 10 seconds
+-define(TIMER_CALL_STATUS, 60000). %% ask for call status every 10 seconds
 
 -record(state, {
 	  callid = <<>> :: binary()
@@ -203,15 +203,31 @@ handle_info({check_ledger, JObj}, #state{callid=CallID, ledger_db=DB, call_type=
 handle_info({timeout, CallStatusRef, call_status}, #state{timer_ref=CallStatusRef, callid=CallID}=State) ->
     ?LOG("Been a while, time to check in on call"),
 
-    StatusReq = [{<<"Call-ID">>, CallID}
-		 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-		],
+    Self = self(),
+    spawn(fun() ->
+		  StatusReq = [{<<"Call-ID">>, CallID}
+			       | wh_api:default_headers(gen_listener:queue_name(Self), ?APP_NAME, ?APP_VERSION)
+			      ],
 
-    wapi_call:publish_status_req(CallID, StatusReq),
+		  wapi_call:publish_status_req(CallID, StatusReq)
+	  end),
 
     {noreply, State#state{timer_ref=start_status_timer()}};
 
-handle_info({timeout, DownRef, call_status_down}, #state{timer_ref=DownRef, ledger_db=DB}=State) ->
+handle_info({timeout, DownRef, call_status_down}, #state{callid=CallID, timer_ref=DownRef, call_type=per_min, ledger_db=DB}=State) ->
+    ?LOG("Per minute call got lost somehow. What to do???"),
+
+    whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
+				    ,"Alert: Per-minute call went down without us receiving the CDR.~n"
+				    ,"No way to bill the proper amount (didn't check for the CDR in the DB.~n"
+				    ,"Call-ID: ~s~n"
+				    ,"Ledger-DB: ~s~n"
+				   ]
+		      ,[?MODULE, ?LINE, CallID, DB]),
+
+    {stop, normal, State};
+
+handle_info({timeout, DownRef, call_status_down}, #state{timer_ref=DownRef}=State) ->
     ?LOG("Call is down; status requests have gone unanswered or indicate call is down"),
     {stop, normal, State};
 
@@ -220,7 +236,7 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 handle_event(_, _) ->
-    {reply, [{server, self()}]}.
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -282,7 +298,7 @@ restart_status_timer(Ref) ->
     start_status_timer().
 
 start_status_timer() ->
-    erlang:start_status_timer(?TIMER_CALL_STATUS, self(), call_status).
+    erlang:start_timer(?TIMER_CALL_STATUS, self(), call_status).
 
 start_down_timer() ->
-    erlang:start_status_timer(?TIMER_CALL_STATUS, self(), call_status_down).
+    erlang:start_timer(?TIMER_CALL_STATUS, self(), call_status_down).

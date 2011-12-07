@@ -143,7 +143,6 @@ write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType
 					 ,{<<"pvt_whapp">>, ?APP_NAME}
 					 ,{<<"_id">>, ID}
 					]),
-    ?LOG("~p", [TransactionJObj]),
     couch_mgr:save_doc(DB, TransactionJObj).
 
 -spec mk_id/3 :: (ne_binary(), ne_binary(), ne_binary() | pos_integer()) -> ne_binary() | 'undefined'.
