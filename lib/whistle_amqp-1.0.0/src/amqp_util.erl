@@ -744,7 +744,7 @@ basic_consume(Queue, Options) ->
       ,nowait = props:get_value(nowait, Options, false)
      },
     case amqp_mgr:consume(BC) of
-        {_Pid, {'basic.consume_ok', _}} ->
+        {_Pid, #'basic.consume_ok'{}} ->
             %% link(C),
             ?AMQP_DEBUG andalso ?LOG("started consume of queue(~p) ~s", [Options, Queue]),
             ok;
