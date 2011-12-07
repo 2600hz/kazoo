@@ -241,6 +241,7 @@ resource_exists(_) ->
       Params :: list(),
       Context :: #cb_context{}.
 validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
+    ?LOG("Auth User: ~p", [JObj]),
     authorize_user(Context
 		   ,wh_json:get_value(<<"realm">>, JObj)
                    ,wh_json:get_value(<<"credentials">>, JObj)

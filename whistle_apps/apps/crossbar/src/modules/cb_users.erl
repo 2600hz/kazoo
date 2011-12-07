@@ -276,9 +276,9 @@ load_user_summary(Context) ->
 -spec create_user/1 :: (#cb_context{}) -> #cb_context{}.
 create_user(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+        {ok, []} ->
             case is_unique_username(undefined, Context) of
                 true ->
                     Context#cb_context{
@@ -316,9 +316,9 @@ load_user(UserId, Context) ->
 -spec update_user/2 :: (binary(), #cb_context{}) -> #cb_context{}.
 update_user(UserId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        {false, Fields} ->
-            crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+        {ok, []} ->
             case is_unique_username(UserId, Context) of
                 true ->
                     crossbar_doc:load_merge(UserId, JObj, Context);
@@ -344,19 +344,9 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(boolean(), list(binary()) | [])).
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
-    RequiredFields = [<<"email">>, <<"username">>],
-    ErrorFields = [Field || Field <- RequiredFields, not field_exists(Field, JObj) ],
-
-    case ErrorFields of
-	[] -> {true, []};
-	_ -> {false, ErrorFields}
-    end.
-
--spec(field_exists/2 :: (Field :: binary(), JObj :: json_object()) -> boolean()).
-field_exists(Field, JObj) ->
-    is_binary(wh_json:get_value(Field, JObj)).
+    crossbar_schema:do_validate(JObj, user).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -365,18 +355,18 @@ field_exists(Field, JObj) ->
 %% and if so create the hashes then remove it.
 %% @end
 %%--------------------------------------------------------------------
--spec(hash_password/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec hash_password/1 :: (#cb_context{}) -> #cb_context{}.
 hash_password(#cb_context{doc=JObj}=Context) ->
     case wh_json:get_value(<<"password">>, JObj) of
         undefined ->
             Context;
         Password ->
-            Creds = <<(wh_json:get_value(<<"username">>, JObj, <<>>))/binary, $:, Password/binary>>,
-            SHA1 = wh_util:to_binary(wh_util:to_hex(crypto:sha(Creds))),
-            MD5 = wh_util:to_binary(wh_util:to_hex(erlang:md5(Creds))),
-            JObj1 = wh_json:set_value(<<"pvt_md5_auth">>, MD5, JObj),
-            {struct, Props} = wh_json:set_value(<<"pvt_sha1_auth">>, SHA1, JObj1),
-            Context#cb_context{doc={struct, props:delete(<<"password">>, Props)}}
+	    {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
+
+	    JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
+					,{<<"pvt_sha1_auth">>, SHA1}
+				       ], JObj),
+            Context#cb_context{doc=wh_json:delete_key(<<"password">>, JObj1)}
     end.
 
 %%--------------------------------------------------------------------
@@ -386,7 +376,7 @@ hash_password(#cb_context{doc=JObj}=Context) ->
 %% unique or belongs to the request being made
 %% @end
 %%--------------------------------------------------------------------
--spec is_unique_username/2 :: (binary() | 'undefined', #cb_context{}) -> boolean().
+-spec is_unique_username/2 :: (ne_binary() | 'undefined', #cb_context{}) -> boolean().
 is_unique_username(UserId, #cb_context{req_data=ReqData}=Context) ->
     Username = wh_json:get_value(<<"username">>, ReqData),
     JObj = case crossbar_doc:load_view(?GROUP_BY_USERNAME, [{<<"key">>, Username}, {<<"reduce">>, <<"true">>}], Context) of

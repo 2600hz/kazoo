@@ -590,7 +590,7 @@ send_activation_email(RD, #cb_context{doc=JObj, req_id=ReqId}=Context, #state{ac
 %% if they have been provided
 %% @end
 %%--------------------------------------------------------------------
--spec create_body/3 :: (#state{}, proplist(), list()) -> list().
+-spec create_body/3 :: (#state{}, proplist(), [] | [mail_message_body(),...]) -> [] | [mail_message_body(),...].
 create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/= undefined ->
     case Tmpl:render(Props) of
         {ok, Content} ->

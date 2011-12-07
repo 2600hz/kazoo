@@ -13,14 +13,18 @@
 
 -export([get/1, post/2, put/2, delete/1]).
 
+-type error_types() :: 'authentication' | 'authorization' | 'not_found' | 'upgrade_required' | 'server_error' | 'maintenance' | #bt_api_error{}.
+-type do_request_ret() :: {'error', error_types()} | {'ok', bt_xml()}.
+
+-export_type([error_types/0]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Preform a get request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec get/1 :: (Path) -> bt_result() when
-      Path :: string().
+-spec get/1 :: (nonempty_string()) -> do_request_ret().
 get(Path) ->
     do_request(get, Path, <<>>).
 
@@ -30,9 +34,7 @@ get(Path) ->
 %% Preform a post request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec post/2 :: (Path, Request) -> bt_result() when
-      Path :: string(),
-      Request :: #bt_customer{}.
+-spec post/2 :: (nonempty_string(), ne_binary()) -> do_request_ret().
 post(Path, Request) ->
     do_request(post, Path, Request).
 
@@ -42,9 +44,7 @@ post(Path, Request) ->
 %% Preform a put request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec put/2 :: (Path, Request) -> bt_result() when
-      Path :: string(),
-      Request :: #bt_customer{}.
+-spec put/2 :: (nonempty_string(), ne_binary()) -> do_request_ret().
 put(Path, Request) ->
     do_request(put, Path, Request).
 
@@ -54,8 +54,7 @@ put(Path, Request) ->
 %% Preform a delete request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (Path) -> bt_result() when
-      Path :: string().
+-spec delete/1 :: (nonempty_string()) -> do_request_ret().
 delete(Path) ->
     do_request(delete, Path, <<>>).
 
@@ -65,25 +64,23 @@ delete(Path) ->
 %% Preform a request to the braintree service
 %% @end
 %%--------------------------------------------------------------------
--spec do_request/3 :: (Method, Path, Body) -> term() when
-      Method :: atom(),
-      Path :: string(),
-      Body :: binary().
+
+-spec do_request/3 :: ('put' | 'post' | 'get' | 'delete', nonempty_string(), binary()) -> do_request_ret().
 do_request(Method, Path, Body) ->
     ?LOG("making ~s request to braintree ~s", [Method, Path]),
     ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                       ,io_lib:format("Request:~n~s ~s~n~s~n", [Method, Path, Body])),
-    Config = #bt_config{},
+
     Url = ["https://"
-           ,braintree_server_url(Config#bt_config.environment)
-           ,"/merchants/", Config#bt_config.merchant_id
+           ,braintree_server_url(whapps_config:get_string(<<"braintree">>, <<"default_environment">>))
+           ,"/merchants/", whapps_config:get_string(<<"braintree">>, <<"default_merchant_id">>)
            ,Path],
     Headers = [{"Accept", "application/xml"}
                ,{"User-Agent", "Braintree Erlang Library 1"}
                ,{"X-ApiVersion", wh_util:to_list(?BT_API_VERSION)}
                ,{"Content-Type", "application/xml"}],
     HTTPOptions = [{ssl,[{verify,0}]}
-                   ,{basic_auth, {Config#bt_config.public_key, Config#bt_config.private_key}}],
+                   ,{basic_auth, {whapps_config:get_string(<<"braintree">>, <<"default_public_key">>), whapps_config:get_string(<<"braintree">>, <<"default_private_key">>)}}],
     case ibrowse:send_req(lists:flatten(Url), Headers, Method, Body, HTTPOptions) of
         {ok, "401", _, _Response} ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
@@ -164,8 +161,8 @@ braintree_server_url(Env) ->
 %% Determine if the response was valid
 %% @end
 %%--------------------------------------------------------------------
--spec verify_response/1 :: (Xml) -> tuple(ok, bt_xml()) | tuple(error, term()) when
-      Xml :: bt_xml().
+-spec verify_response/1 :: (Xml) -> {'ok', Xml} | {'error', #bt_api_error{}}.
+
 verify_response(Xml) ->
     case xmerl_xpath:string("/api-error-response", Xml) of
         [] ->

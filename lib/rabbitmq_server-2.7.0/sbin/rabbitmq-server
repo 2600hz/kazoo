@@ -107,7 +107,7 @@ set -f
 exec erl \
     ${RABBITMQ_EBIN_PATH} \
     ${RABBITMQ_START_RABBIT} \
-    -sname ${RABBITMQ_NODENAME} \
+    -name ${RABBITMQ_NODENAME} \
     -boot ${RABBITMQ_BOOT_FILE} \
     ${RABBITMQ_CONFIG_ARG} \
     +W w \

@@ -192,7 +192,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  no_return()).
+-spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.menus">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.menus">>),
@@ -208,7 +208,7 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
@@ -224,7 +224,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -241,7 +241,7 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_menu_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
@@ -262,8 +262,7 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_menu_summary/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec load_menu_summary/1 :: (#cb_context{}) -> #cb_context{}.
 load_menu_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -273,16 +272,16 @@ load_menu_summary(Context) ->
 %% Create a new menu document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_menu/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec create_menu/1 :: (#cb_context{}) -> #cb_context{}.
 create_menu(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+        {ok, []} ->
             Context#cb_context{
-                 doc=wh_json:set_value(<<"pvt_type">>, <<"menu">>, JObj)
-                ,resp_status=success
-            }
+	      doc=wh_json:set_value(<<"pvt_type">>, <<"menu">>, JObj)
+	      ,resp_status=success
+	     }
     end.
 
 %%--------------------------------------------------------------------
@@ -291,7 +290,7 @@ create_menu(#cb_context{req_data=JObj}=Context) ->
 %% Load a menu document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_menu/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_menu/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_menu(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
 
@@ -302,12 +301,12 @@ load_menu(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_menu/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_menu/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_menu(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+        {ok, []} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -317,7 +316,7 @@ update_menu(DocId, #cb_context{req_data=JObj}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -328,6 +327,6 @@ normalize_view_results(JObj, Acc) ->
 %% complete!
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, json_objects())).
-is_valid_doc(_JObj) ->
-    {true, []}.
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
+is_valid_doc(JObj) ->
+    crossbar_schema:do_validate(JObj, menu).

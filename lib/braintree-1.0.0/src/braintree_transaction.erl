@@ -99,7 +99,7 @@ credit(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_CREDIT, customer_id=CustomerId}).
 
 quick_credit(CustomerId, Amount) ->
-    credit(CustomerId, #bt_transaction{amount=Amount, settle=false, tax_exempt=undefined}).
+    credit(CustomerId, #bt_transaction{amount=wh_util:to_list(Amount), settle=false, tax_exempt=false}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -146,7 +146,7 @@ refund(#bt_transaction{id=Id}, Amount) ->
 refund(Id, Amount) ->
     try
         true = validate_id(Id),
-        Request = record_to_xml(#bt_transaction{amount=Amount, tax_exempt=undefined, settle=undefined}, true),
+        Request = record_to_xml(#bt_transaction{amount=Amount}, true),
         case braintree_request:put("/transactions/" ++ Id ++ "/refund", Request) of
             {ok, Xml} ->
                 {ok, xml_to_record(Xml)};
@@ -233,7 +233,7 @@ validate_id(Id, _) ->
 %%--------------------------------------------------------------------
 -spec xml_to_record/1 :: (Xml) -> #bt_transaction{} when
       Xml :: bt_xml().
--spec xml_to_record/2 :: (Xml, Base) -> #bt_address{} when
+-spec xml_to_record/2 :: (Xml, Base) -> #bt_transaction{} when
       Xml :: bt_xml(),
       Base :: string().
 

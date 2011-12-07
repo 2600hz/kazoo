@@ -10,7 +10,7 @@
 
 -include("braintree.hrl").
 
--export([xml_to_record/1, xml_to_record/2, record_to_xml/1]).
+-export([xml_to_record/1, xml_to_record/2, record_to_xml/1, record_to_xml/2]).
 -export([record_to_json/1]).
 
 -import(braintree_util, [get_xml_value/2, make_doc_xml/2]).
@@ -21,9 +21,9 @@
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (Xml) -> #bt_address{} when
+-spec xml_to_record/1 :: (Xml) -> #bt_addon{} when
       Xml :: bt_xml().
--spec xml_to_record/2 :: (Xml, Base) -> #bt_address{} when
+-spec xml_to_record/2 :: (Xml, Base) -> #bt_addon{} when
       Xml :: bt_xml(),
       Base :: string().
 
@@ -44,11 +44,9 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (Addon) -> bt_xml() when
-      Addon :: #bt_addon{}.
--spec record_to_xml/2 :: (Addon, ToString) -> bt_xml() when
-      Addon :: #bt_addon{},
-      ToString :: boolean().
+-type record_proplist() :: [{'amount' | 'existing-id' | 'id' | 'never-expires' | 'number-of-billing-cycles' | 'quantity',_},...].
+-spec record_to_xml/1 :: (#bt_addon{}) -> record_proplist() | braintree_util:char_to_bin_res().
+-spec record_to_xml/2 :: (#bt_addon{}, boolean()) -> record_proplist() | braintree_util:char_to_bin_res().
 
 record_to_xml(Addon) ->
     record_to_xml(Addon, false).
@@ -72,10 +70,10 @@ record_to_xml(Addon, ToString) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (AddOn) -> json_object() when
-      AddOn :: #bt_addon{}.
-record_to_json(Addon) ->
-    Props = [{<<"id">>, Addon#bt_addon.id}
-             ,{<<"amount">>, Addon#bt_addon.amount}
-             ,{<<"quantity">>, Addon#bt_addon.quantity}],
+-spec record_to_json/1 :: (#bt_addon{}) -> json_object().
+record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
+    Props = [{<<"id">>, Id}
+             ,{<<"amount">>, Amount}
+             ,{<<"quantity">>, Q}
+	    ],
     braintree_util:props_to_json(Props).

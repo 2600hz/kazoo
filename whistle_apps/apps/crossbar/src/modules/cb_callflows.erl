@@ -265,8 +265,7 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_callflow_summary/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec load_callflow_summary/1 :: (#cb_context{}) -> #cb_context{}.
 load_callflow_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -276,12 +275,12 @@ load_callflow_summary(Context) ->
 %% Create a new callflow document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(create_callflow/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec create_callflow/1 :: (#cb_context{}) -> #cb_context{}.
 create_callflow(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+        {ok, []} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"callflow">>, JObj)
                 ,resp_status=success
@@ -294,7 +293,7 @@ create_callflow(#cb_context{req_data=JObj}=Context) ->
 %% Load a callflow document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_callflow/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_callflow/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_callflow(DocId, Context) ->
     case crossbar_doc:load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc, resp_data=Data, db_name=Db}=Context1 ->
@@ -311,12 +310,12 @@ load_callflow(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_callflow/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_callflow/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_callflow(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
+        {errors, Fields} ->
+	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+        {ok, []} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -326,7 +325,7 @@ update_callflow(DocId, #cb_context{req_data=JObj}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -336,9 +335,9 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_doc/1 :: (JObj :: json_object()) -> tuple(true, [])). %% tuple(boolean(), json_objects())).
-is_valid_doc(_JObj) ->
-    {true, []}.
+-spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
+is_valid_doc(JObj) ->
+    crossbar_schema:do_validate(JObj, callflow).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -346,35 +345,24 @@ is_valid_doc(_JObj) ->
 %% collect addional informat about the objects referenced in the flow
 %% @end
 %%--------------------------------------------------------------------
--spec get_metadata/3 :: (Flow, Db, JObj) -> json_object() when
-      Flow :: 'undefined' | json_object(),
-      Db :: binary(),
-      JObj :: json_object().
+-spec get_metadata/3 :: ('undefined' | json_object(), ne_binary(), json_object()) -> json_object().
 get_metadata(undefined, _, JObj) ->
     JObj;
 get_metadata(Flow, Db, JObj) ->
     JObj1 = case wh_json:get_value([<<"data">>, <<"id">>], Flow) of
-                undefined ->
-                    %% this node has no id, dont change the metadata
-                    JObj;
-                Id ->
-                    %% node has an id, try to update the metadata
-                    create_metadata(Db, Id, JObj)
+		%% this node has no id, dont change the metadata
+                undefined -> JObj;
+		%% node has an id, try to update the metadata
+                Id -> create_metadata(Db, Id, JObj)
             end,
     case wh_json:get_value(<<"children">>, Flow) of
-        ?EMPTY_JSON_OBJECT ->
-            %% no children, this branch is done
-            JObj1;
-        {struct, Children} ->
+	undefined -> JObj1;
+        Children ->
             %% iterate through each child, collecting metadata on the
             %% branch name (things like temporal routes)
             lists:foldr(fun({K, Child}, J) ->
-                                get_metadata(Child, Db
-                                             ,create_metadata(Db, K, J))
-                        end, JObj1, Children);
-        _ ->
-            %% somebody didnt read  the docs on callflows...
-            JObj1
+                                get_metadata(Child, Db, create_metadata(Db, K, J))
+                        end, JObj1, wh_json:to_proplist(Children))
     end.
 
 %%--------------------------------------------------------------------

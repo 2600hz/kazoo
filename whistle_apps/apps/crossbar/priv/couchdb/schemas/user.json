@@ -1,6 +1,5 @@
 {
    "_id": "user",
-   "type": "object",
    "description": "",
    "properties": {
        "first_name": {

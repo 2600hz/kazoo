@@ -189,10 +189,15 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 		    gen_server:reply(From, E),
 		    {noreply, State}
 	    end;
-	{ok, {C,_,T,_}} ->
-	    ?LOG("Already consuming on ch: ~p for proc: ~p", [C, FromPid]),
-	    gen_server:reply(From, {C, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)}),
-	    {noreply, State}
+	{ok, {C,R,0,FromRef}} ->
+	    ?LOG("Already consuming on ch: ~p for proc: ~p on ticket ~b", [C, FromPid, 0]),
+	    gen_server:reply(From, {C, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=1}, FromPid)}),
+	    {noreply, State#state{consumers=dict:store(FromPid, {C,R,1,FromRef}, Consumers)}, hibernate};
+	{ok, {C,R,T,FromRef}} ->
+	    ?LOG("Already consuming on ch: ~p for proc: ~p on ticket ~b", [C, FromPid, T]),
+	    gen_server:reply(From, {C, #'basic.consume_ok'{}}),
+	    {noreply, State#state{consumers=dict:store(FromPid, {C,R,1,FromRef}, Consumers)}, hibernate}
+
     end;
 
 handle_cast({consume, {FromPid, _}=From, #'basic.cancel'{}=BasicCancel}, #state{connection=Conn, consumers=Consumers}=State) ->
@@ -471,7 +476,7 @@ start_channel(Connection) when is_pid(Connection) ->
     %% Open an AMQP channel to access our realm
     case erlang:is_process_alive(Connection) andalso amqp_connection:open_channel(Connection) of
 	{ok, Channel} ->
-	    #'access.request_ok'{ticket = Ticket} = amqp_channel:call(Channel, amqp_util:access_request()),
+	    Ticket = 0,
 	    ?LOG_SYS("Opened channel ~p with ticket ~b", [Channel, Ticket]),
 
 	    ChanMRef = erlang:monitor(process, Channel),
@@ -486,9 +491,8 @@ start_channel(Connection) when is_pid(Connection) ->
 -spec start_channel/2 :: ('undefined' | {pid(), reference()} | pid(), pid()) -> channel_data() | {'error', 'no_connection'} | 'closing'.
 start_channel(Connection, Pid) ->
     case start_channel(Connection) of
-	{C, _, T} = Channel ->
+	{C, _, _T} = Channel ->
 	    amqp_channel:register_return_handler(C, Pid),
-	    #'access.request_ok'{ticket=T} = amqp_channel:call(C, amqp_util:access_request()),
 	    ?LOG_SYS("Started channel ~p for caller ~p", [C, Pid]),
 	    Channel;
 	{error, no_connection}=E ->

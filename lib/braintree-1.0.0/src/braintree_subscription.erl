@@ -127,11 +127,10 @@ find(Id) ->
       Subscription :: #bt_subscription{} | binary() | string(),
       AddOnId :: binary() | string(),
       Quantity :: integer() | binary() | string().
+
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_list(Quantity) ->
     update_addon_quantity(Subscription, AddOnId, wh_util:to_list(Quantity));
-update_addon_quantity(#bt_subscription{add_ons=undefined}=Subscription, AddOnId, Quantity) ->
-    update_addon_quantity(Subscription#bt_subscription{add_ons=[]}, AddOnId, Quantity);
-update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Quantity) ->
+update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Quantity) when is_list(AddOns) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         false ->
             AddOn = #bt_addon{inherited_from=AddOnId, quantity=Quantity},
@@ -140,7 +139,7 @@ update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Qu
             AddOn1 = AddOn#bt_addon{existing_id=AddOnId, quantity=Quantity},
             {ok, Subscription#bt_subscription{add_ons=[AddOn1|lists:keydelete(AddOnId, #bt_addon.id, AddOns)]}}
     end;
-update_addon_quantity(SubscriptionId, AddOnId, Quantity) ->
+update_addon_quantity(SubscriptionId, AddOnId, Quantity) when is_binary(SubscriptionId); is_list(SubscriptionId) ->
     case find(SubscriptionId) of
         {ok, Subscription} ->
             update_addon_quantity(Subscription, AddOnId, Quantity);
@@ -175,9 +174,9 @@ validate_id(Id, _) ->
 %% Contert the given XML to a subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (Xml) -> #bt_address{} when
+-spec xml_to_record/1 :: (Xml) -> #bt_subscription{} when
       Xml :: bt_xml().
--spec xml_to_record/2 :: (Xml, Base) -> #bt_address{} when
+-spec xml_to_record/2 :: (Xml, Base) -> #bt_subscription{} when
       Xml :: bt_xml(),
       Base :: string().
 
@@ -303,10 +302,7 @@ record_to_xml(Subscription, ToString) ->
 %% Determine the necessary steps to change the add ons
 %% @end
 %%--------------------------------------------------------------------
--spec create_addon_changes/1 :: (AddOns) -> undefined | list() when
-      AddOns :: list().
-create_addon_changes(undefined) ->
-    undefined;
+-spec create_addon_changes/1 :: ([#bt_addon{},...] | []) -> list() | 'undefined'.
 create_addon_changes(AddOns) ->
     Remove = [{'item', Id}
               || #bt_addon{id=Id, quantity=Q} <- AddOns, Id =/= undefined, Q =:= "0"],

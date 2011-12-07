@@ -371,34 +371,25 @@ open_doc(DbName, DocId) ->
 open_doc(DbName, DocId, Options) ->
     couch_util:open_doc(get_conn(), DbName, DocId, Options).
 
--spec all_docs/1 :: (DbName) -> {ok, json_objects()} | {error, atom()} when
-      DbName :: binary().
--spec admin_all_docs/1 :: (DbName) -> {ok, json_objects()} | {error, atom()} when
-      DbName :: binary().
+-spec all_docs/1 :: (ne_binary()) -> {'ok', json_objects()} | {'error', atom()}.
+-spec admin_all_docs/1 :: (ne_binary()) -> {'ok', json_objects()} | {'error', atom()}.
 all_docs(DbName) ->
     couch_util:all_docs(get_conn(), DbName, []).
 admin_all_docs(DbName) ->
     couch_util:all_docs(get_admin_conn(), DbName, []).
 
--spec all_docs/2 :: (DbName, Options) -> {ok, json_objects()} | {error, atom()} when
-      DbName :: binary(),
-      Options :: proplist().
--spec admin_all_docs/2 :: (DbName, Options) -> {ok, json_objects()} | {error, atom()} when
-      DbName :: binary(),
-      Options :: proplist().
+-spec all_docs/2 :: (ne_binary(), proplist()) -> {'ok', json_objects()} | {'error', atom()}.
+-spec admin_all_docs/2 :: (ne_binary(), proplist()) -> {'ok', json_objects()} | {'error', atom()}.
 all_docs(DbName, Options) ->
     couch_util:all_docs(get_conn(), DbName, Options).
 admin_all_docs(DbName, Options) ->
     couch_util:all_docs(get_admin_conn(), DbName, Options).
 
--spec all_design_docs/1 :: (DbName) -> {ok, json_objects()} | {error, atom()} when
-      DbName :: binary().
+-spec all_design_docs/1 :: (ne_binary()) -> {'ok', json_objects()} | {'error', atom()}.
 all_design_docs(DbName) ->
     couch_util:all_design_docs(get_conn(), DbName, []).
 
--spec all_design_docs/2 :: (DbName, Options) -> {ok, json_objects()} | {error, atom()} when
-      DbName :: binary(),
-      Options :: proplist().
+-spec all_design_docs/2 :: (ne_binary(), proplist()) -> {'ok', json_objects()} | {'error', atom()}.
 all_design_docs(DbName, Options) ->
     couch_util:all_design_docs(get_conn(), DbName, Options).
 

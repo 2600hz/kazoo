@@ -153,7 +153,7 @@ callctl_publish(CtrlQ, Payload, ContentType, Props) ->
       Payload :: iolist() | ne_binary(),
       Type :: 'media_req' | 'event' | 'status_req' | 'cdr' | ne_binary().
 -spec callevt_publish/4 :: (ne_binary(), iolist(), Type, ne_binary()) -> 'ok' when
-      Type :: 'status_req' | 'event'.
+      Type :: 'status_req' | 'event' | ne_binary().
 callevt_publish(Payload) ->
     callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, media_req).
 
@@ -172,12 +172,15 @@ callevt_publish(CallID, Payload, cdr) ->
 callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 
+callevt_publish(_CallID, Payload, RoutingKey, ContentType) when is_binary(RoutingKey) ->
+    basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ContentType);
 callevt_publish(CallID, Payload, status_req, ContentType) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, (encode(CallID))/binary>>, Payload, ContentType);
 callevt_publish(CallID, Payload, event, ContentType) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, Payload, ContentType);
 callevt_publish(CallID, Payload, cdr, ContentType) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, Payload, ContentType).
+
 
 -spec resource_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().
@@ -352,10 +355,16 @@ conference_exchange() ->
       Options :: proplist().
 new_exchange(Exchange, Type) ->
     new_exchange(Exchange, Type, []).
-new_exchange(Exchange, Type, _Options) ->
+new_exchange(Exchange, Type, Options) ->
     ED = #'exchange.declare'{
       exchange = Exchange
       ,type = Type
+      ,passive = props:get_value(passive, Options, false)
+      ,durable = props:get_value(durable, Options, false)
+      ,auto_delete = props:get_value(auto_delete, Options, false)
+      ,internal = props:get_value(internal, Options, false)
+      ,nowait = props:get_value(nowait, Options, false)
+      ,arguments = props:get_value(arguments, Options, [])
      },
     ?AMQP_DEBUG andalso ?LOG("create new ~s exchange: ~s", [Type, Exchange]),
     amqp_mgr:misc_req(ED).
@@ -735,7 +744,7 @@ basic_consume(Queue, Options) ->
       ,nowait = props:get_value(nowait, Options, false)
      },
     case amqp_mgr:consume(BC) of
-        {_Pid, {'basic.consume_ok', _}} ->
+        {_Pid, #'basic.consume_ok'{}} ->
             %% link(C),
             ?AMQP_DEBUG andalso ?LOG("started consume of queue(~p) ~s", [Options, Queue]),
             ok;
@@ -866,7 +875,7 @@ do_encode(<<$., Rest/binary>>, Acc) ->
 do_encode(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
     do_encode(Rest, <<Acc/binary, $%, (hexdigit(Hi))/binary, (hexdigit(Lo))/binary>>).
 
--spec hexdigit/1 :: (byte()) -> binary().
+-spec hexdigit/1 :: (byte()) -> ne_binary().
 hexdigit(C) when C < 10 ->
     <<($0 + C)>>;
 hexdigit(C) when C < 16 ->
