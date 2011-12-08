@@ -508,13 +508,12 @@ delete_message(VMBoxId, MediaId, #cb_context{db_name=Db}=Context) ->
 	    crossbar_util:response_bad_identifier(MediaId, Context)
     end.
 
-count_messages(Messages, Folder) ->
-    lists:sum([1 || Message <- Messages, wh_json:get_value(<<"folder">>, Message) =:= Folder]).
-
 -spec update_mwi/2 :: (json_object(), ne_binary()) -> 'ok'.
 update_mwi(VMBox, DB) ->
     OwnerID = wh_json:get_value(<<"owner_id">>, VMBox),
     false = wh_util:is_empty(OwnerID),
+
+    ?LOG("Sending MWI update to devices owned by ~s", [OwnerID]),
 
     Messages = wh_json:get_value(<<"messages">>, VMBox, []),
 
@@ -522,6 +521,8 @@ update_mwi(VMBox, DB) ->
 
     New = count_messages(Messages, <<"new">>),
     Saved = count_messages(Messages, <<"saved">>),
+
+    ?LOG("New: ~b Saved: ~b", [New, Saved]),
 
     CommonHeaders = [{<<"Messages-New">>, New}
                      ,{<<"Messages-Saved">>, Saved}
@@ -536,10 +537,12 @@ update_mwi(VMBox, DB) ->
                                                        ,{<<"Notify-Realm">>, Realm}
                                                        | CommonHeaders
                                                       ]),
-			  wapi_notification:publish_mwi_update(Command);
-                     (_) ->
-                          ok
+			  wapi_notification:publish_mwi_update(Command)
                   end, Devices).
+
+-spec count_messages/2 :: (json_objects(), ne_binary()) -> non_neg_integer().
+count_messages(Messages, Folder) ->
+    lists:sum([1 || Message <- Messages, wh_json:get_value(<<"folder">>, Message) =:= Folder]).
 
 %%--------------------------------------------------------------------
 %% @private
