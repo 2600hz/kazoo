@@ -614,7 +614,7 @@ monitor_call(CallID, LedgerDB, CallType, Debit) ->
     _ = j5_util:write_debit_to_ledger(LedgerDB, CallID, CallType, Debit, 0),
     j5_call_monitor_sup:start_monitor(CallID, LedgerDB, CallType).
 
--spec unmonitor_call/2 :: (pid(), dict()) -> {'twoway' | 'inbound' | 'prepay' | 'ignore', dict()}.
+-spec unmonitor_call/2 :: (pid(), dict()) -> {call_types() | 'ignore', dict()}.
 unmonitor_call(Pid, Dict) ->
     dict:fold(fun(CallId, {Type, MonPid}, {_, Dict0}) when MonPid =:= Pid ->
 		      ?LOG(CallId, "Found monitor pid: ~p for trunk of type ~s", [Pid, Type]),
