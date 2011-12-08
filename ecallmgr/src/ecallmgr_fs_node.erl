@@ -398,10 +398,12 @@ get_originate_action(_, _) ->
     <<"&park()">>.
 
 get_unset_vars(JObj) ->
+    %% Refactor (Karl wishes he had unit tests here for you to use)
     ExportProps = [{K, <<>>} || K <- wh_json:get_value(<<"Export-Custom-Channel-Vars">>, JObj, [])],
-    Export = [K || KV <- lists:foldr({ecallmgr_fs_xml, get_channel_vars}, [], [{<<"Custom-Channel-Vars">>, ExportProps}])
+
+    Export = [K || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], [{<<"Custom-Channel-Vars">>, ExportProps}])
                        ,([K, _] = string:tokens(binary_to_list(KV), "=")) =/= undefined],
-    case [["unset:", K] || KV <- lists:foldr({ecallmgr_fs_xml, get_channel_vars}, [], wh_json:to_proplist(JObj))
+    case [[$u,$n,$s,$e,$t,$: | K] || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], wh_json:to_proplist(JObj))
                                ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)] of
         [] -> "";
         Unset ->

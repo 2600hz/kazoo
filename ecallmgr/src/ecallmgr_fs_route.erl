@@ -296,11 +296,12 @@ authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
 	    reply(Node, FSID, CallID, RespJObj, RouteCCV1, AuthZPid)
     end.
 
+%% Reply with a 402 for unauthzed calls
 -spec reply_forbidden/2 :: (atom(), ne_binary()) -> 'ok'.
 reply_forbidden(Node, FSID) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
-						,{<<"Route-Error-Code">>, <<"486">>}
-						,{<<"Route-Error-Message">>, <<"No more channels">>}
+						,{<<"Route-Error-Code">>, <<"402">>}
+						,{<<"Route-Error-Message">>, <<"Payment Required">>}
 					       ]),
     case freeswitch:fetch_reply(Node, FSID, XML) of
 	ok ->
