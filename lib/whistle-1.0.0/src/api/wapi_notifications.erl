@@ -85,7 +85,7 @@ bind_q(Q, _Props) ->
     amqp_util:callevt_exchange(),
     amqp_util:callmgr_exchange(),
 
-    amqp_util:bind_q_to_callevt(Q, ?NOTIFY_VOICEMAIL_NEW),
+    amqp_util:bind_q_to_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other),
     amqp_util:bind_q_to_callmgr(Q, ?KEY_SIP_NOTIFY).
 
 -spec unbind_q/1 :: (ne_binary()) -> 'ok'.

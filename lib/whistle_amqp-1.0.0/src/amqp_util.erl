@@ -582,9 +582,7 @@ bind_q_to_resource(Queue) ->
 bind_q_to_resource(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
 
--spec bind_q_to_callmgr/2 :: (Queue, Routing) -> 'ok' | {'error', term()} when
-      Queue :: binary(),
-      Routing :: binary().
+-spec bind_q_to_callmgr/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', term()}.
 bind_q_to_callmgr(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
 
@@ -599,7 +597,6 @@ bind_q_to_configuration(Queue, Routing) ->
       Routing :: binary().
 bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
-
 
 -spec bind_q_to_conference/2 :: (Queue, Routing) -> 'ok' | {'error', term()} when
       Queue :: binary(),
