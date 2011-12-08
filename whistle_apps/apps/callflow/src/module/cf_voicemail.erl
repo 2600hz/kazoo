@@ -973,18 +973,9 @@ get_message(Message, #cf_call{account_db=Db}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec count_messages/2 :: (Messages, Folder) -> integer() when
-      Messages :: json_objects(),
-      Folder :: binary().
+-spec count_messages/2 :: (json_objects(), ne_binary()) -> non_neg_integer().
 count_messages(Messages, Folder) ->
-    lists:foldr(fun(Message, Count) ->
-                       case wh_json:get_value(<<"folder">>, Message) of
-                           Folder ->
-                               Count + 1;
-                           _ ->
-                               Count
-                       end
-               end, 0, Messages).
+    lists:sum([1 || Message <- Messages, wh_json:get_value(<<"folder">>, Message) =:= Folder]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1148,26 +1139,21 @@ update_mwi(Box, Call) ->
     Saved = count_messages(Messages, ?FOLDER_SAVED),
     update_mwi(New, Saved, Box, Call).
 
-update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, #cf_call{amqp_q=AmqpQ}=Call) ->
+update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, Call) ->
     Devices = [cf_endpoint:get(DeviceId, Call) || DeviceId <- cf_attributes:owned_by(OwnerId, device, Call)],
     CommonHeaders = [{<<"Messages-New">>, New}
                      ,{<<"Messages-Saved">>, Saved}
-                     | wh_api:default_headers(AmqpQ, <<"notification">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
     lists:foreach(fun({ok, Device}) ->
                           User = wh_json:get_value([<<"sip">>, <<"username">>], Device),
                           Realm = wh_json:get_value([<<"sip">>, <<"realm">>], Device),
+
                           Command = wh_json:from_list([{<<"Notify-User">>, User}
                                                        ,{<<"Notify-Realm">>, Realm}
                                                        | CommonHeaders
                                                       ]),
-                          case wh_api:mwi_update(Command) of
-                              {ok, Payload} ->
-                                  ?LOG("sending mwi update to ~s@~s ~p:~p", [User, Realm, New, Saved]),
-                                  amqp_util:callmgr_publish(Payload, <<"application/json">>, ?KEY_SIP_NOTIFY);
-                              _ ->
-                                  ok
-                          end;
+			  wapi_notification:publish_mwi_update(Command);
                      (_) ->
                           ok
                   end, Devices).

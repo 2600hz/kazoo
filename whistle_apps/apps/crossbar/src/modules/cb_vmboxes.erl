@@ -489,22 +489,57 @@ load_message_binary(VMBoxId, VMId, #cb_context{db_name=Db}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_message/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-delete_message(DocId, MediaId, #cb_context{db_name=Db}=Context) ->
-    Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
-    Messages = wh_json:get_value(<<"messages">>, Doc, []),
+delete_message(VMBoxId, MediaId, #cb_context{db_name=Db}=Context) ->
+    Context1 = #cb_context{doc=VMBox} = crossbar_doc:load(VMBoxId, Context),
+    Messages = wh_json:get_value(<<"messages">>, VMBox, []),
 
     case get_message_index(MediaId, Messages) of
 	Index when Index > 0 ->
-	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], <<"deleted">>, Doc),
+	    VMBox1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], <<"deleted">>, VMBox),
 
 	    %% let's not forget the associated private_media doc
 	    {ok, D} = couch_mgr:open_doc(Db, MediaId),
 	    couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deleted">>, true, D)),
 
-	    Context1#cb_context{doc=Doc1};
+	    spawn(fun() -> update_mwi(VMBox1, Db) end),
+
+	    Context1#cb_context{doc=VMBox1};
 	_ ->
 	    crossbar_util:response_bad_identifier(MediaId, Context)
     end.
+
+count_messages(Messages, Folder) ->
+    lists:sum([1 || Message <- Messages, wh_json:get_value(<<"folder">>, Message) =:= Folder]).
+
+-spec update_mwi/2 :: (json_object(), ne_binary()) -> 'ok'.
+update_mwi(VMBox, DB) ->
+    OwnerID = wh_json:get_value(<<"owner_id">>, VMBox),
+    false = wh_util:is_empty(OwnerID),
+
+    Messages = wh_json:get_value(<<"messages">>, VMBox, []),
+
+    Devices = cb_module_util:get_devices_owned_by(OwnerID, DB),
+
+    New = count_messages(Messages, <<"new">>),
+    Saved = count_messages(Messages, <<"saved">>),
+
+    CommonHeaders = [{<<"Messages-New">>, New}
+                     ,{<<"Messages-Saved">>, Saved}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ],
+
+    lists:foreach(fun(Device) ->
+                          User = wh_json:get_value([<<"sip">>, <<"username">>], Device),
+                          Realm = wh_json:get_value([<<"sip">>, <<"realm">>], Device),
+
+                          Command = wh_json:from_list([{<<"Notify-User">>, User}
+                                                       ,{<<"Notify-Realm">>, Realm}
+                                                       | CommonHeaders
+                                                      ]),
+			  wapi_notification:publish_mwi_update(Command);
+                     (_) ->
+                          ok
+                  end, Devices).
 
 %%--------------------------------------------------------------------
 %% @private
