@@ -8,4 +8,4 @@
 -define(APP_VERSION, <<"0.2.0">>).
 -define(BLACKLIST_SERVER, blacklist_server).
 
--type call_types() :: 'per_min' | 'two_way' | 'inbound'.
+-type call_types() :: 'per_min' | 'twoway' | 'inbound'.

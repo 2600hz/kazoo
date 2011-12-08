@@ -20,13 +20,15 @@
 
 -include("jonny5.hrl").
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
+-define(TIMER_CALL_STATUS, 60000). %% ask for call status every 10 seconds
 
 -record(state, {
 	  callid = <<>> :: binary()
 	 ,ledger_db = <<>> :: binary()
 	 ,call_type = 'per_min' :: call_types()
          ,authz_won = 'false' :: boolean()
+         ,timer_ref = 'undefined' :: 'undefined' | reference() % timer ref for sending call_status requests
 	 }).
 
 %%%===================================================================
@@ -42,7 +44,7 @@
 %%--------------------------------------------------------------------
 start_link(CallID, LedgerDB, CallType) ->
     gen_listener:start_link(?MODULE
-			  ,[{bindings, [{call, [{callid, CallID}]}]}
+			  ,[{bindings, [{call, [{callid, CallID}]}, {self, []}]}
 			    ,{responders, [{{?MODULE, handle_call_event}, [{<<"*">>, <<"*">>}]}] }
 			   ]
 			  ,[CallID, LedgerDB, CallType]).
@@ -71,7 +73,10 @@ handle_call_event(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([CallID, LedgerDB, CallType]) ->
     put(callid, CallID),
-    {ok, #state{callid=CallID, ledger_db=LedgerDB, call_type=CallType}}.
+    ?LOG_SYS("Init complete"),
+    {ok, #state{callid=CallID, ledger_db=LedgerDB
+		,call_type=CallType, timer_ref=start_status_timer()
+	       }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -104,15 +109,20 @@ handle_cast(authz_won, State) ->
     ?LOG("Aww yeah, won the authz. We're responsible for writing to the ledger (don't crash!)"),
     {noreply, State#state{authz_won=true}};
 
-handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_HANGUP_COMPLETE">>}, _JObj}, State) ->
+handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_HANGUP_COMPLETE">>}, _JObj}, #state{timer_ref=Ref}=State) ->
     ?LOG("Hangup complete, expecting a CDR any moment"),
-    {noreply, State, 5000};
+    {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
 
-handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=CallID, ledger_db=DB, call_type=per_min, authz_won=true}=State) ->
+handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref=Ref, callid=CallID, ledger_db=DB
+								       ,call_type=per_min, authz_won=true}=State) ->
     case wapi_call:cdr_v(JObj) of
-	false -> {noreply, State, 5000};
+	false ->
+	    ?LOG("CDR failed validation"),
+	    {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
 	true ->
+	    ?LOG("CDR passed validation"),
 	    CallID = wh_json:get_value(<<"Call-ID">>, JObj), % assert
+	    ?LOG("CDR is for our call-id"),
 	    BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
 
 	    PerMinCharge = wapi_money:default_per_min_charge(),
@@ -132,25 +142,43 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=Ca
 	    {stop, normal, State}
     end;
 
-handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{callid=CallID, ledger_db=DB, call_type=Type, authz_won=true}=State) ->
-    CallID = wh_json:get_value(<<"Call-ID">>, JObj), % assert
+handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref=Ref, callid=CallID
+								       ,ledger_db=DB, call_type=Type, authz_won=true}=State) ->
+    case CallID =:= wh_json:get_value(<<"Call-ID">>, JObj) andalso wapi_call:cdr_v(JObj) of
+	true ->
+	    ?LOG("Received CDR, finishing transaction"),
+	    BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
+	    {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
+	    publish_transaction(Transaction, fun wapi_money:publish_credit/1),
 
-    ?LOG("Received CDR, finishing transaction"),
+	    {stop, normal, State};
+	false ->
+	    ?LOG("JSON not for our call leg (recv call-id ~s) or CDR was invalid", [wh_json:get_value(<<"Call-ID">>, JObj)]),
+	    {noreply, State#state{timer_ref=restart_status_timer(Ref)}}
+    end;
 
-    BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
-    {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
-    publish_transaction(Transaction, fun wapi_money:publish_credit/1),
-
-    {stop, normal, State};
-
-handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{authz_won=false}=State) ->
+handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref=Ref, authz_won=false}=State) ->
     ?LOG("CDR received, but we're not the winner of the authz_win, so let's wait a bit and see if the ledger was updated"),
     erlang:send_after(1000, self(), {check_ledger, JObj}),
-    {noreply, State};
+    {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
 
-handle_cast({call_event, {Cat, Name}, _JObj}, State) ->
+handle_cast({call_event, {<<"call_event">>, <<"status_resp">>}, JObj}, #state{timer_ref=Ref}=State) ->
+    case {wapi_call:status_resp_v(JObj), wapi_call:get_status(JObj)} of
+	{true, <<"active">>} ->
+	    ?LOG("Received active status_resp"),
+	    {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
+	{true, <<"tmpdown">>} ->
+	    ?LOG("Call tmpdown, starting down timer"),
+	    _ = erlang:cancel_timer(Ref),
+	    {noreply, State#state{timer_ref=start_down_timer()}};
+	{false, _} ->
+	    ?LOG("Failed validation of status_resp"),
+	    {noreply, State}
+    end;
+
+handle_cast({call_event, {Cat, Name}, _JObj}, #state{timer_ref=Ref}=State) ->
     ?LOG("Unhandled event ~s:~s: ~s", [Cat, Name, wh_json:get_value(<<"Application-Name">>, _JObj)]),
-    {noreply, State}.
+    {noreply, State#state{timer_ref=restart_status_timer(Ref)}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -172,12 +200,43 @@ handle_info({check_ledger, JObj}, #state{callid=CallID, ledger_db=DB, call_type=
 
     {stop, normal, State};
 
+handle_info({timeout, CallStatusRef, call_status}, #state{timer_ref=CallStatusRef, callid=CallID}=State) ->
+    ?LOG("Been a while, time to check in on call"),
+
+    Self = self(),
+    spawn(fun() ->
+		  StatusReq = [{<<"Call-ID">>, CallID}
+			       | wh_api:default_headers(gen_listener:queue_name(Self), ?APP_NAME, ?APP_VERSION)
+			      ],
+
+		  wapi_call:publish_status_req(CallID, StatusReq)
+	  end),
+
+    {noreply, State#state{timer_ref=start_status_timer()}};
+
+handle_info({timeout, DownRef, call_status_down}, #state{callid=CallID, timer_ref=DownRef, call_type=per_min, ledger_db=DB}=State) ->
+    ?LOG("Per minute call got lost somehow. What to do???"),
+
+    whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
+				    ,"Alert: Per-minute call went down without us receiving the CDR.~n"
+				    ,"No way to bill the proper amount (didn't check for the CDR in the DB.~n"
+				    ,"Call-ID: ~s~n"
+				    ,"Ledger-DB: ~s~n"
+				   ]
+		      ,[?MODULE, ?LINE, CallID, DB]),
+
+    {stop, normal, State};
+
+handle_info({timeout, DownRef, call_status_down}, #state{timer_ref=DownRef}=State) ->
+    ?LOG("Call is down; status requests have gone unanswered or indicate call is down"),
+    {stop, normal, State};
+
 handle_info(_Info, State) ->
     ?LOG("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_, _) ->
-    {reply, [{server, self()}]}.
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -229,3 +288,17 @@ publish_transaction(Transaction, PublisherFun) ->
 				    ,{<<"Amount">>, wh_json:get_value(<<"amount">>, Transaction)}
 				    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
 				   ])).
+
+-spec start_status_timer/0 :: () -> reference().
+-spec restart_status_timer/1 :: ('undefined' | reference()) -> reference().
+restart_status_timer(undefined) ->
+    start_status_timer();
+restart_status_timer(Ref) ->
+    _ = erlang:cancel_timer(Ref),
+    start_status_timer().
+
+start_status_timer() ->
+    erlang:start_timer(?TIMER_CALL_STATUS, self(), call_status).
+
+start_down_timer() ->
+    erlang:start_timer(?TIMER_CALL_STATUS, self(), call_status_down).

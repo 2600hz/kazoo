@@ -271,9 +271,12 @@ handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P}=State) ->
 
     ?LOG("ToDID: ~s", [ToDID]),
 
-    {Resp, State1} = case is_us48(ToDID) of
-			 true -> try_twoway_then_prepay(CallID, State);
-			 false -> try_prepay(CallID, State, wapi_money:default_per_min_charge())
+    {Resp, State1} = case {erlang:byte_size(ToDID) > 6, is_us48(ToDID)} of
+			 {true, true} -> try_twoway_then_prepay(CallID, State);
+			 {true, false} -> try_prepay(CallID, State, wapi_money:default_per_min_charge());
+			 {false, _} ->
+			     ?LOG(CallID, "Auto-authz call to internal-seeming extension: ~s", [ToDID]),
+			     {{true, [{<<"Trunk-Type">>, <<"internal">>}]}, State}
 		     end,
     {reply, Resp, State1, hibernate}.
 
@@ -387,12 +390,12 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID, acct_t
 				  (_, _, Acc) -> Acc %% ignore per-min
 			       end, {NMTW, NMI}, Dict),
 
-    Dict1 = lists:filter(fun(_CallID, {_, Pid}) -> erlang:is_process_alive(Pid) end, Dict),
+    Dict1 = dict:filter(fun(_CallID, {_, Pid}) -> erlang:is_process_alive(Pid) end, Dict),
 
     ?LOG("changing max two way from ~b to ~p", [MTW, NMTW]),
     ?LOG("changing max inbound from ~b to ~p", [MI, NMI]),
-    ?LOG("changing two-way in use from ~b to ~p", [_TW, NTWIU]),
-    ?LOG("changing inbound in use from ~b to ~p", [_I, NTIIU]),
+    ?LOG("changing two-way avail from ~b to ~p", [_TW, NTWIU]),
+    ?LOG("changing inbound avail from ~b to ~p", [_I, NTIIU]),
     ?LOG("Maybe changing prepay from ~b to ~p", [P, Prepay]),
 
     {noreply, State#state{max_two_way=NMTW
@@ -423,8 +426,8 @@ handle_info({timeout, SyncRef, sync}, #state{sync_ref=SyncRef, acct_id=AcctID, a
     ?LOG_SYS("Syncing with DB"),
     {NewTwo, NewIn, NewPre, _} = get_trunks_available(AcctID, AcctType),
 
-    ?LOG("Old values: two: ~p, in: ~p, prepay: ~p", [Two, In, Pre]),
-    ?LOG("New values: two: ~p, in: ~p, prepay: ~p", [NewTwo, NewIn, NewPre]),
+    ?LOG("Old Maxs: two: ~p, in: ~p, prepay: ~p", [Two, In, Pre]),
+    ?LOG("New Possible Maxs: two: ~p, in: ~p, prepay: ~p", [NewTwo, NewIn, NewPre]),
 
     {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)
 			  ,max_two_way=try_update_value(NewTwo, Two)
@@ -449,7 +452,6 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 handle_event(_JObj, #state{acct_id=_AcctId}=_State) ->
-    ?LOG("Acct: ~s received jobj for acctid ~s", [_AcctId, wh_json:get_value(<<"Account-ID">>, _JObj)]),
     {reply, [{server, self()}]}.
 
 %%--------------------------------------------------------------------
@@ -573,10 +575,19 @@ try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) 
     }.
 
 -spec try_prepay/3 :: (ne_binary(), #state{}, integer()) -> {{boolean(), proplist()}, #state{}}.
-try_prepay(_CallID, #state{prepay=Pre}=State, PerMinCharge) when Pre =< PerMinCharge ->
-    ?LOG_SYS(_CallID, "Failed to authz a per_min trunk", []),
+try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId}=State, PerMinCharge) when Pre =< PerMinCharge ->
+    ?LOG_SYS(CallID, "Failed to authz a per_min trunk", []),
 
     %% Send Email to account holder warning of low Prepay?
+
+    %% Alert admins of the situation
+    whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
+				    ,"Alert: Insufficient prepay to authorize the call.~n"
+				    ,"Call-ID: ~s~n"
+				    ,"Account-ID: ~s~n"
+				    ,"Current Prepay Balance: ~p~n"
+				   ]
+		      ,[?MODULE, ?LINE, CallID, AcctId, wapi_money:units_to_dollars(Pre)]),
 
     {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State};
 try_prepay(CallID, #state{acct_id=AcctId, prepay=Prepay, trunks_in_use=Dict, ledger_db=LedgerDB}=State, PerMinCharge) ->
