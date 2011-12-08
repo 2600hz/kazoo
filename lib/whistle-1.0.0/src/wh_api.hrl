@@ -507,17 +507,6 @@
                                 ,{<<"Participant-ID">>, fun is_binary/1}
                                 ,{<<"Correlate-ID">>, fun is_binary/1}
                                ]).
-%% Notify MWI request
--define(MWI_REQ_HEADERS, [<<"Notify-User">>, <<"Notify-Realm">>, <<"Messages-New">>, <<"Messages-Saved">>]).
--define(OPTIONAL_MWI_REQ_HEADERS, [<<"Messages-Urgent">>, <<"Messages-Urgent-Saved">>]).
--define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"notification">>}
-			 ,{<<"Event-Name">>, <<"mwi">>}
-                        ]).
--define(MWI_REQ_TYPES, [{<<"Messages-New">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
-			,{<<"Messages-Saved">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
-			,{<<"Messages-Urgent">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
-			,{<<"Messages-Urgent-Saved">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
-		       ]).
 
 %% The AMQP passthrough of FS commands - whitelist commands allowed (exluding any prefixed by uuid_ which are auto-allowed)
 -define(FS_COMMAND_WHITELIST, [<<"set">>, <<"hangup">>, <<"bridge">>]).

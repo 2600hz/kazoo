@@ -25,9 +25,6 @@
 %% In-Call
 -export([error_resp/1]).
 
-%% Maintenance API calls
--export([mwi_update/1]).
-
 %% Conference Members
 -export([conference_participants_req/1, conference_participants_resp/1, conference_play_req/1, conference_deaf_req/1,
          conference_undeaf_req/1, conference_mute_req/1, conference_unmute_req/1, conference_kick_req/1,
@@ -38,7 +35,7 @@
 
 -export([conference_participants_req_v/1, conference_participants_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1
          ,conference_undeaf_req_v/1, conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1
-         ,conference_move_req_v/1, conference_discovery_req_v/1, mwi_update_v/1
+         ,conference_move_req_v/1, conference_discovery_req_v/1
 	]).
 
 %% Other AMQP API validators can use these helpers
@@ -192,28 +189,6 @@ error_resp_v({struct, Prop}) ->
     error_resp_v(Prop);
 error_resp_v(Prop) ->
     validate(Prop, ?ERROR_RESP_HEADERS, ?ERROR_RESP_VALUES, ?ERROR_RESP_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec mwi_update/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-      Prop :: api_terms().
-mwi_update({struct, Prop}) ->
-    mwi_update(Prop);
-mwi_update(Prop) ->
-    case mwi_update_v(Prop) of
-	true -> build_message(Prop, ?MWI_REQ_HEADERS, ?OPTIONAL_MWI_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for mwi_req"}
-    end.
-
--spec mwi_update_v/1 :: (Prop) -> boolean() when
-      Prop :: api_terms().
-mwi_update_v({struct, Prop}) ->
-    mwi_update_v(Prop);
-mwi_update_v(Prop) ->
-    validate(Prop, ?MWI_REQ_HEADERS, ?MWI_REQ_VALUES, ?MWI_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Conference::discovery - Used to identify the conference ID
