@@ -410,20 +410,23 @@ get_fs_app(Node, UUID, JObj, <<"respond">>) ->
     case wapi_dialplan:respond_v(JObj) of
         false -> {'error', <<"respond failed to execute as JObj did not validate">>};
         true ->
-            case wh_json:get_value(<<"Response-Code">>, JObj, ?DEFAULT_RESPONSE_CODE) of
-                <<"302">> ->
-                    case wh_json:get_value(<<"Redirect-Server">>, JObj) of
-                        undefined ->
-                            ok;
-                        Server ->
-                            set(Node, UUID, <<"sip_rh_X-Redirect-Server=", Server/binary>>)
-                    end,
-                    {<<"redirect">>, wh_json:get_value(<<"Response-Message">>, JObj, <<>>)};
-                Code ->
-                    Response = <<Code/binary ," "
-                                 ,(wh_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary>>,
-                    {<<"respond">>, Response}
-            end
+            Code = wh_json:get_value(<<"Response-Code">>, JObj, ?DEFAULT_RESPONSE_CODE),
+            Response = <<Code/binary ," "
+                         ,(wh_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary>>,
+            {<<"respond">>, Response}
+    end;
+
+get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
+    case wapi_dialplan:redirect_v(JObj) of
+        false -> {'error', <<"redirect failed to execute as JObj did not validate">>};
+        true ->
+            case wh_json:get_value(<<"Redirect-Server">>, JObj) of
+                undefined ->
+                    ok;
+                Server ->
+                    set(Node, UUID, <<"sip_rh_X-Redirect-Server=", Server/binary>>)
+            end,
+            {<<"redirect">>, wh_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"fetch">>) ->

@@ -14,7 +14,7 @@
 -export([store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
 	 ,store_http_resp/1, store_http_resp_v/1]).
 
--export([conference/1, noop/1, fetch/1, respond/1, progress/1]).
+-export([conference/1, noop/1, fetch/1, respond/1, redirect/1, progress/1]).
 -export([play/1, record/1, queue/1, answer/1, park/1, play_and_collect_digits/1
 	 ,call_pickup/1, hangup/1, say/1, sleep/1, tone_detect/1, set/1
 	 ,tones/1, tones_req_tone/1, tones_req_tone_headers/1, error/1
@@ -22,7 +22,7 @@
 
 -export([play_v/1, record_v/1, noop_v/1, tones_v/1, tones_req_tone_v/1, queue_v/1
          ,answer_v/1, park_v/1, play_and_collect_digits_v/1, call_pickup_v/1, hangup_v/1
-         ,say_v/1, sleep_v/1, tone_detect_v/1, set_v/1, respond_v/1, progress_v/1
+         ,say_v/1, sleep_v/1, tone_detect_v/1, set_v/1, respond_v/1, redirect_v/1, progress_v/1
         ]).
 
 -export([conference_v/1, error_v/1]).
@@ -486,6 +486,26 @@ respond_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?RESPOND_REQ_HEADERS, ?RESPOND_REQ_VALUES, ?RESPOND_REQ_TYPES);
 respond_v(JObj) ->
     respond_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Redirect a session - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec redirect/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+redirect(Prop) when is_list(Prop) ->
+    case redirect_v(Prop) of
+	true -> wh_api:build_message(Prop, ?REDIRECT_REQ_HEADERS, ?OPTIONAL_REDIRECT_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for redirect_req"}
+    end;
+redirect(JObj) ->
+    redirect(wh_json:to_proplist(JObj)).
+
+-spec redirect_v/1 :: (proplist() | json_object()) -> boolean().
+redirect_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?REDIRECT_REQ_HEADERS, ?REDIRECT_REQ_VALUES, ?REDIRECT_REQ_TYPES);
+redirect_v(JObj) ->
+    redirect_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Sleep - Pauses execution - see wiki

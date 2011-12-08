@@ -550,6 +550,7 @@
 				 ,{<<"tone_detect">>, <<"tone_detect">>}
 				 ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
 				 ,{<<"respond">>, <<"respond">>}
+				 ,{<<"redirect">>, <<"redirect">>}
 				 ,{<<"conference">>, <<"conference">>}
 				 ,{<<"noop">>, <<"noop">>}
 				]).
@@ -567,24 +568,25 @@
 
 %% List of tuples: {dialplan application-name, validation_fun}
 -define(DIALPLAN_APPLICATIONS, [
-				{<<"queue">>, fun wh_api:queue_req_v/1}
-				,{<<"answer">>, fun wh_api:answer_req_v/1}
-				,{<<"play">>, fun wh_api:play_req_v/1}
-				,{<<"record">>, fun wh_api:record_req_v/1}
-				,{<<"store">>, fun wh_api:store_req_v/1}
-				,{<<"play_and_collect_digits">>, fun wh_api:play_and_collect_digits_req_v/1}
-				,{<<"tones">>, fun wh_api:tones_req_v/1}
-				,{<<"tone_detect">>, fun wh_api:tone_detect_req_v/1}
-				,{<<"park">>, fun wh_api:park_req_v/1}
-				,{<<"call_pickup">>, fun wh_api:call_pickup_req_v/1}
-				,{<<"hangup">>, fun wh_api:hangup_req_v/1}
-				,{<<"say">>, fun wh_api:say_req_v/1}
-				,{<<"sleep">>, fun wh_api:sleep_req_v/1}
-				,{<<"respond">>, fun wh_api:respond_req_v/1}
-				,{<<"progress">>, fun wh_api:progress_req_v/1}
-				,{<<"set">>, fun wh_api:set_req_v/1}
-				,{<<"conference">>, fun wh_api:conference_req_v/1}
-				,{<<"noop">>, fun wh_api:noop_req_v/1}
+				{<<"queue">>, fun wapi_dialplan:queue_v/1}
+				,{<<"answer">>, fun wapi_dialplan:answer_v/1}
+				,{<<"play">>, fun wapi_dialplan:play_v/1}
+				,{<<"record">>, fun wapi_dialplan:record_v/1}
+				,{<<"store">>, fun wapi_dialplan:store_v/1}
+				,{<<"play_and_collect_digits">>, fun wapi_dialplan:play_and_collect_digits_v/1}
+				,{<<"tones">>, fun wapi_dialplan:tones_v/1}
+				,{<<"tone_detect">>, fun wapi_dialplan:tone_detect_v/1}
+				,{<<"park">>, fun wapi_dialplan:park_v/1}
+				,{<<"call_pickup">>, fun wapi_dialplan:call_pickup_v/1}
+				,{<<"hangup">>, fun wapi_dialplan:hangup_v/1}
+				,{<<"say">>, fun wapi_dialplan:say_v/1}
+				,{<<"sleep">>, fun wapi_dialplan:sleep_v/1}
+				,{<<"respond">>, fun wapi_dialplan:respond_v/1}
+				,{<<"redirect">>, fun wapi_dialplan:redirect_v/1}
+				,{<<"progress">>, fun wapi_dialplan:progress_v/1}
+				,{<<"set">>, fun wapi_dialplan:set_v/1}
+				,{<<"conference">>, fun wapi_dialplan:conference_v/1}
+				,{<<"noop">>, fun wapi_dialplan:noop_v/1}
 			       ]).
 
 -define(FS_CHANNEL_STATES, [{<<"CS_NEW">>, <<"new">>}
