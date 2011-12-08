@@ -49,7 +49,6 @@
 -export([send_callctrl/2]).
 
 -export([find_failure_branch/2]).
--export([update_fallback/2]).
 
 %%--------------------------------------------------------------------
 %% @pubic
@@ -250,7 +249,7 @@ status(#cf_call{call_id=CallId, amqp_q=AmqpQ}) ->
 
 b_status(Call) ->
     status(Call),
-    wait_for_message(<<>>, <<"status_resp">>, <<"call_event">>, 5000).
+    wait_for_message(<<>>, <<"status_resp">>, <<"call_event">>, 2000).
 
 
 %%--------------------------------------------------------------------
@@ -305,8 +304,7 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call),
     case wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000, Call) of
-        {ok, Bridge}=Ok ->
-            spawn(fun() -> update_fallback(Bridge, Call) end),
+        {ok, _}=Ok ->
             Ok;
         Else ->
             Else
@@ -1218,7 +1216,6 @@ wait_for_bridge(Timeout, Call) ->
                     ?LOG("channel execution error while waiting for bridge"),
                     {error, JObj};
                 { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } ->
-                    spawn(fun() -> update_fallback(JObj, Call) end),
                     wait_for_bridge(infinity, Call);
                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">> } ->
                     case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
@@ -1404,34 +1401,4 @@ find_failure_branch(Error, #cf_call{cf_pid=CFPid}) ->
     after
         1000 ->
             false
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%.
-%% @end
-%%--------------------------------------------------------------------
--spec update_fallback/2 :: (Bridge, Call) -> 'ok' when
-      Bridge :: json_object(),
-      Call :: #cf_call{}.
-update_fallback(Bridge, Call) ->
-    Fallback = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Bridge) of
-                   undefined ->
-                       case b_fetch(true, Call) of
-                           {ok, OtherLeg} ->
-                               wh_json:get_value(<<"Endpoint-ID">>, OtherLeg);
-                           _ ->
-                               undefined
-                       end;
-                   AuthId ->
-                       AuthId
-               end,
-    case Fallback =/= undefined of
-        true ->
-            ?LOG("set transfer fallback to ~s", [Fallback]),
-            set(undefined, wh_json:from_list([{<<"Transfer-Fallback">>, Fallback}]), Call),
-            ok;
-        false ->
-            ok
     end.
