@@ -424,7 +424,7 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
 microseconds_to_seconds(Microseconds) ->
     erlang:trunc(to_integer(Microseconds) * math:pow(10, -6)).
 
--spec is_ipv4/1 :: (string() | binary()) -> boolean().
+-spec is_ipv4/1 :: (nonempty_string() | ne_binary()) -> boolean().
 is_ipv4(Address) when is_binary(Address) ->
     is_ipv4(to_list(Address));
 is_ipv4(Address) when is_list(Address) ->
@@ -434,7 +434,7 @@ is_ipv4(Address) when is_list(Address) ->
         {error, _} -> false
     end.
 
--spec is_ipv6/1 :: (string() | binary()) -> boolean().
+-spec is_ipv6/1 :: (nonempty_string() | ne_binary()) -> boolean().
 is_ipv6(Address) when is_binary(Address) ->
     is_ipv6(to_list(Address));
 is_ipv6(Address) when is_list(Address) ->

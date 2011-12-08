@@ -135,9 +135,9 @@ get_auth_user(ApiJObj) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_realm/1  :: (json_object()) -> ne_binary() | 'undefined'.
+-spec get_auth_realm/1  :: (json_object()) -> ne_binary().
 get_auth_realm(ApiJObj) ->
-    AuthRealm = wh_json:get_binary_value(<<"Auth-Realm">>, ApiJObj),
+    AuthRealm = wh_json:get_value(<<"Auth-Realm">>, ApiJObj, <<"missing.realm">>),
     case wh_util:is_ipv4(AuthRealm) orelse wh_util:is_ipv6(AuthRealm) of
         true ->
             [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, ApiJObj), <<"@">>),
