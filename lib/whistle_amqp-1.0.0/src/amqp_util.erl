@@ -472,13 +472,10 @@ new_queue(Queue, Options) when is_binary(Queue) ->
       ,arguments = props:get_value(arguments, Options, [])
      },
     case amqp_mgr:consume(QD) of
-	'ok' ->
+	{'ok', Q} ->
             ?AMQP_DEBUG andalso ?LOG("create queue(~p) ~s)", [Options, Queue]),
-            Queue;
-	#'queue.declare_ok'{queue=Q} ->
-            ?AMQP_DEBUG andalso ?LOG("create queue(~p) ~s", [Options, Q]),
             Q;
-	_Other ->
+	{error, _Other} ->
             ?AMQP_DEBUG andalso ?LOG("error creating queue(~p): ~p", [Options, _Other]),
 	    {'error', 'amqp_error'}
     end.
@@ -649,13 +646,13 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
       ,arguments = []
      },
     case amqp_mgr:consume(QB) of
-        {'queue.bind_ok'} ->
-            ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
-            ok;
         ok ->
             ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
             ok;
-        Else ->
+        {ok, #'queue.bind_ok'{}} ->
+            ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
+            ok;
+	{error, _E}=Else ->
             ?AMQP_DEBUG andalso ?LOG("failed to bind queue ~s: ~p", [Queue, Else]),
             Else
     end.
@@ -744,13 +741,12 @@ basic_consume(Queue, Options) ->
       ,nowait = props:get_value(nowait, Options, false)
      },
     case amqp_mgr:consume(BC) of
-        {_Pid, #'basic.consume_ok'{}} ->
-            %% link(C),
+	{error, E}=Err ->
+            ?AMQP_DEBUG andalso ?LOG("error when trying to consume on ~s: ~p", [Queue, E]),
+	    Err;
+        {Pid, ok} when is_pid(Pid) ->
             ?AMQP_DEBUG andalso ?LOG("started consume of queue(~p) ~s", [Options, Queue]),
             ok;
-        {_, Error} ->
-            ?AMQP_DEBUG andalso ?LOG("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Error]),
-            Error;
         Else ->
             ?AMQP_DEBUG andalso ?LOG("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Else]),
             Else
