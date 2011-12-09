@@ -440,7 +440,7 @@ handle_info({'DOWN', _Ref, process, Pid, Reason}, #state{two_way=T, inbound=I, t
     case unmonitor_call(Pid, Dict) of
 	{twoway, Dict1} -> ?LOG("Was two-way trunk, adding 1 to ~b", [T]), {noreply, State#state{two_way=T+1, trunks_in_use=Dict1}};
 	{inbound, Dict1} -> ?LOG("Was inbound trunk, adding 1 to ~b", [I]), {noreply, State#state{inbound=T+1, trunks_in_use=Dict1}};
-	{prepay, Dict1} -> ?LOG("Was prepay trunk"), {noreply, State#state{trunks_in_use=Dict1}};
+	{per_min, Dict1} -> ?LOG("Was prepay trunk"), {noreply, State#state{trunks_in_use=Dict1}};
 	_ -> ?LOG("Ignoring down proc"), {noreply, State}
     end;
 
@@ -589,7 +589,14 @@ try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId}=State, PerMinCharge) when 
 				   ]
 		      ,[?MODULE, ?LINE, CallID, AcctId, wapi_money:units_to_dollars(Pre)]),
 
-    {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State};
+    case whapps_config:get_is_true(<<"jonny5">>, <<"authz_on_no_prepay">>, true) of
+	true ->
+	    ?LOG("authz_on_no_prepay set to true, authz the call"),
+	    {{true, [{<<"Trunk-Type">>, <<"pre_min">>}]}};
+	false ->
+	    ?LOG("authz_on_no_prepay set to false, denying the call"),
+	    {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State}
+    end;
 try_prepay(CallID, #state{acct_id=AcctId, prepay=Prepay, trunks_in_use=Dict, ledger_db=LedgerDB}=State, PerMinCharge) ->
     case jonny5_listener:is_blacklisted(AcctId) of
 	{true, Reason} ->
