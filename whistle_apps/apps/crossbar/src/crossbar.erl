@@ -13,6 +13,7 @@
 -export([start_link/0, stop/0]).
 
 -export([refresh/0, refresh/1, init_first_account/0]).
+-export([purge_doc_type/2]).
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 
@@ -129,7 +130,7 @@ init_first_account() ->
 	E ->
 	    E
     end.
-		    
+
 init_first_account_for_reals() ->
     DbName = wh_util:to_binary(couch_mgr:get_uuid()),
     put(callid, DbName),
@@ -195,3 +196,16 @@ create_init_user(Db) ->
 
     #cb_context{resp_status=success} = crossbar_doc:save(Context),
     {ok, {Username, Pass}}.
+
+purge_doc_type(Type, Account) when not is_binary(Type) ->
+    purge_doc_type(wh_util:to_binary(Type), Account);
+purge_doc_type(Type, Account) when not is_binary(Account) ->
+    purge_doc_type(Type, wh_util:to_binary(Account));
+purge_doc_type(Type, Account) ->
+    Db = whapps_util:get_db_name(Account, encoded),
+    case couch_mgr:get_results(Db, {<<"maintenance">>, <<"listing_by_type">>}, [{<<"key">>, Type}, {<<"include_docs">>, true}]) of
+        {ok, JObjs} ->
+            couch_mgr:del_docs(Db, [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]);
+        {error, _}=E ->
+            E
+    end.
