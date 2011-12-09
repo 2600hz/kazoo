@@ -24,7 +24,7 @@
 	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
--define(HANGUP_EVENT_NAME, <<"CHANNEL_HANGUP_COMPLETE">>).
+
 -record(state, {
 	  node = undefined :: atom()
           ,uuid = <<>> :: binary()
@@ -297,9 +297,6 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
     EvtName = case FSEvtName of
                   <<"CUSTOM">> ->
                       props:get_value(<<"whistle_event_name">>, Prop);
-                  ?HANGUP_EVENT_NAME ->
-                      spawn(fun() -> put(callid, UUID), ecallmgr_call_cdr:new_cdr(UUID, Prop) end),
-                      ?HANGUP_EVENT_NAME;
                   Evt ->
                       Evt
               end,
@@ -416,7 +413,7 @@ event_specific(<<"CHANNEL_HANGUP">>, _, Prop) ->
      ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
      ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
     ];
-event_specific(?HANGUP_EVENT_NAME, _, Prop) ->
+event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, _, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}

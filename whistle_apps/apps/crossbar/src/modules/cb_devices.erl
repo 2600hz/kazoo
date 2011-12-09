@@ -281,8 +281,8 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate/3 :: ([ne_binary(),...] | [], #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
-validate([], _, #cb_context{req_verb = <<"get">>, req_json=RJ}=Context) ->
-    load_device_summary(Context, RJ);
+validate([], _, #cb_context{req_verb = <<"get">>}=Context) ->
+    load_device_summary(Context);
 validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
     create_device(Context);
 validate([<<"status">>], _, #cb_context{req_verb = <<"get">>}=Context) ->
@@ -303,12 +303,10 @@ validate(_, _, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_device_summary/2 :: (#cb_context{}, json_object()) -> #cb_context{}.
-load_device_summary(Context, ?EMPTY_JSON_OBJECT) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
-load_device_summary(#cb_context{db_name=DbName}=Context, QueryParams) ->
-    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, wh_json:to_proplist(QueryParams)),
-    Context#cb_context{resp_data=Result, resp_status=success}.
+-spec load_device_summary/1 :: (#cb_context{}) -> #cb_context{}.
+load_device_summary(Context) ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
