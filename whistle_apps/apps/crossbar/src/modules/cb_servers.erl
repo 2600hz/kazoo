@@ -376,8 +376,8 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
-validate([], _, #cb_context{req_verb = <<"get">>, req_json=RJ}=Context) ->
-    load_server_summary(Context, RJ);
+validate([], _, #cb_context{req_verb = <<"get">>}=Context) ->
+    load_server_summary(Context);
 validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
     create_server(Context);
 validate([ServerId], _, #cb_context{req_verb = <<"get">>}=Context) ->
@@ -424,14 +424,9 @@ validate(_, _, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_server_summary/2 :: (#cb_context{}, json_object()) -> #cb_context{}.
-load_server_summary(#cb_context{db_name=DbName}=Context, JObj) ->
-    case wh_json:is_empty(JObj) of
-	true -> crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
-	false ->
-	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, wh_json:to_proplist(JObj)),
-	    Context#cb_context{resp_data=Result, resp_status=success}
-    end.
+-spec load_server_summary/1 :: (#cb_context{}) -> #cb_context{}.
+load_server_summary(Context) ->
+	crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
