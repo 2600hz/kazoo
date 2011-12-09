@@ -47,9 +47,10 @@ handle_req(JObj, _Options) ->
 %%-----------------------------------------------------------------------------
 -spec execute_call_flow/2 :: (json_object(), #cf_call{}) -> no_return().
 execute_call_flow(Flow, Call) ->
-    cf_call_command:set(get_channel_ccvs(Call), get_call_ccvs(Call), Call),
+    CCVs = get_channel_ccvs(Call),
+    cf_call_command:set(CCVs, get_call_ccvs(Call), Call),
     ?LOG("call has been setup, passing control to callflow executer"),
-    cf_exe_sup:start_proc(Call, wh_json:get_value(<<"flow">>, Flow)).
+    cf_exe_sup:start_proc(Call#cf_call{channel_vars=CCVs}, wh_json:get_value(<<"flow">>, Flow)).
 
 %%-----------------------------------------------------------------------------
 %% @private
