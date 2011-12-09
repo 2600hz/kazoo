@@ -129,20 +129,35 @@ load_merge(DocId, DataJObj, #cb_context{db_name=DBName}=Context) ->
 load_view(_View, _Options, #cb_context{db_name = <<>>}=Context) ->
     ?LOG("db missing from #cb_context for view ~s", [view_name_to_binary(_View)]),
     crossbar_util:response_db_missing(Context);
-load_view(View, Options, #cb_context{db_name=DB}=Context) ->
-    case couch_mgr:get_results(DB, View, Options) of
+load_view(View, Options, #cb_context{db_name=DB, req_json=RJ}=Context) ->
+    {HasFilter, ViewOptions} = case has_filter(RJ) of
+                                   true ->
+                                       {true
+                                        ,[{<<"include_docs">>, true} | proplists:delete(<<"include_docs">>, Options)]};
+                                   false ->
+                                       {false, Options}
+                               end,
+    case couch_mgr:get_results(DB, View, ViewOptions) of
 	{error, invalid_view_name} ->
 	    ?LOG("loading view ~s from ~s failed: invalid view", [view_name_to_binary(View), DB]),
             crossbar_util:response_missing_view(Context);
 	{error, not_found} ->
 	    ?LOG("loading view ~s from ~s failed: not found", [view_name_to_binary(View), DB]),
 	    crossbar_util:response_missing_view(Context);
-	{ok, Doc} ->
+        {ok, Docs} when HasFilter ->
+	    ?LOG("loaded view ~s from ~s, running query filter", [view_name_to_binary(View), DB]),
+            Filtered = [Doc || Doc <- Docs, Doc =/= undefined, filter_doc(wh_json:get_value(<<"doc">>, Doc), RJ)],
+            Context#cb_context{
+	      doc=Filtered
+	      ,resp_status=success
+	      ,resp_etag=rev_to_etag(Filtered)
+	     };
+	{ok, Docs} ->
 	    ?LOG("loaded view ~s from ~s", [view_name_to_binary(View), DB]),
             Context#cb_context{
-	      doc=Doc
+	      doc=Docs
 	      ,resp_status=success
-	      ,resp_etag=rev_to_etag(Doc)
+	      ,resp_etag=rev_to_etag(Docs)
 	     };
         _Else ->
 	    ?LOG("loading view ~s from ~s failed: unexpected ~p", [view_name_to_binary(View), DB, _Else]),
@@ -596,5 +611,64 @@ add_pvt_modified(JObj, _) ->
 view_name_to_binary(View) when is_binary(View) -> View;
 view_name_to_binary({Cat, View}) -> list_to_binary([Cat, "/", View]);
 view_name_to_binary(View) -> wh_util:to_binary(View).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Given a context or query parameter json object determines if the
+%% request has a filter defined
+%% @end
+%%--------------------------------------------------------------------
+-spec has_filter/1 :: (#cb_context{} | json_object) -> boolean().
+has_filter(#cb_context{req_json=JObj}) ->
+    has_filter(JObj);
+has_filter(JObj) ->
+    lists:any(fun is_filter_key/1, wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Given a proplist element from the query string, determines if it
+%% represents a filter parameter
+%% @end
+%%--------------------------------------------------------------------
+-spec is_filter_key/1 :: ({binary(), term()}) -> boolean().
+is_filter_key({<<"filter_", _/binary>>, _}) -> true;
+is_filter_key({<<"created_from">>, _}) -> true;
+is_filter_key({<<"created_to">>, _}) -> true;
+is_filter_key({<<"modified_from">>, _}) -> true;
+is_filter_key({<<"modified_to">>, _}) -> true;
+is_filter_key(_) -> false.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns true if all of the requested props are found, false if one is not found
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_doc/2 :: (json_object(), proplist()) -> boolean().
+filter_doc(Doc, Query) ->
+    Props = wh_json:to_proplist(Query),
+    lists:all(fun({K, V}) -> filter_prop(Doc, K, V) end, Props).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns true or false if the prop is found inside the doc
+%% @end
+%%--------------------------------------------------------------------
+-spec filter_prop/3 :: (json_object(), ne_binary(), term()) -> boolean().
+filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
+    wh_json:get_value(binary:split(Key, <<".">>), Doc) =:= Val;
+filter_prop(Doc, <<"created_from">>, Val) ->
+    wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) >= wh_util:to_integer(Val);
+filter_prop(Doc, <<"created_to">>, Val) ->
+    wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) =< wh_util:to_integer(Val);
+filter_prop(Doc, <<"modified_from">>, Val) ->
+    wh_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) >= wh_util:to_integer(Val);
+filter_prop(Doc, <<"modified_to">>, Val) ->
+    wh_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) =< wh_util:to_integer(Val);
+filter_prop(_, _, _) ->
+    true.
 
 %% ADD Unit Tests for private/public field filtering and merging

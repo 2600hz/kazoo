@@ -197,6 +197,7 @@ handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_
 		    {noreply, State#state{stats=Stats#node_stats{destroyed_channels=De+1}}, hibernate}
 	    end;
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
+            spawn(fun() -> put(callid, UUID), ecallmgr_call_cdr:new_cdr(UUID, Data) end),
 	    {noreply, State};
         <<"PRESENCE_", Type/binary>> ->
             _ = case props:get_value(<<"Distributed-From">>, Data) of

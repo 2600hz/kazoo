@@ -396,12 +396,28 @@ create_metadata(Db, Id, JObj) ->
 create_metadata(Doc) ->
     %% simple funciton for setting the same key in one json object
     %% with the value of that key in another, unless it doesnt exist
-    Metadata = fun(K, D, J) ->
-                     case wh_json:get_value(K, D) of
-                         undefined -> J;
-                         V -> wh_json:set_value(K, V, J)
-                     end
-             end,
+    Metadata = fun(<<"name">> = K, D, J) ->
+                       case wh_json:get_value(<<"pvt_type">>, D) of
+                           <<"user">> ->
+                               Name = <<(wh_json:get_binary_value(<<"first_name">>, D, <<>>))/binary
+                                        ," "
+                                        ,(wh_json:get_binary_value(<<"last_name">>, D, <<>>))/binary>>,
+                               case Name of
+                                   <<>> -> J;
+                                   _ -> wh_json:set_value(<<"name">>, Name, J)
+                               end;
+                           _ ->
+                               case wh_json:get_value(K, D) of
+                                   undefined -> J;
+                                   V -> wh_json:set_value(K, V, J)
+                               end
+                       end;
+                  (K, D, J) ->
+                       case wh_json:get_value(K, D) of
+                           undefined -> J;
+                           V -> wh_json:set_value(K, V, J)
+                       end
+               end,
     %% list of keys to extract from documents and set on the metadata
     Funs = [fun(D, J) -> Metadata(<<"name">>, D, J) end,
             fun(D, J) -> Metadata(<<"numbers">>, D, J) end,
