@@ -1153,7 +1153,7 @@ update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, Call) ->
                                                        ,{<<"Notify-Realm">>, Realm}
                                                        | CommonHeaders
                                                       ]),
-			  wapi_notification:publish_mwi_update(Command);
+			  wapi_notifications:publish_mwi_update(Command);
                      (_) ->
                           ok
                   end, Devices).

@@ -26,7 +26,7 @@ init() ->
 
 -spec handle_req/2 :: (json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
-    true = wapi_notification:voicemail_v(JObj),
+    true = wapi_notifications:voicemail_v(JObj),
     whapps_util:put_callid(JObj),
 
     AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),

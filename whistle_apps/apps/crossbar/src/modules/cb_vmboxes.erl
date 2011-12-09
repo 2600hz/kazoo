@@ -501,7 +501,7 @@ delete_message(VMBoxId, MediaId, #cb_context{db_name=Db}=Context) ->
 	    {ok, D} = couch_mgr:open_doc(Db, MediaId),
 	    couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deleted">>, true, D)),
 
-	    spawn(fun() -> update_mwi(VMBox1, Db) end),
+	    spawn(fun() -> crossbar_util:put_reqid(Context), update_mwi(VMBox1, Db) end),
 
 	    Context1#cb_context{doc=VMBox1};
 	_ ->
@@ -537,7 +537,7 @@ update_mwi(VMBox, DB) ->
                                                        ,{<<"Notify-Realm">>, Realm}
                                                        | CommonHeaders
                                                       ]),
-			  wapi_notification:publish_mwi_update(Command)
+			  wapi_notifications:publish_mwi_update(Command)
                   end, Devices).
 
 -spec count_messages/2 :: (json_objects(), ne_binary()) -> non_neg_integer().
