@@ -117,7 +117,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.cdrs">>, [RD, Context |
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
 		  _BPid = crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, RD, Context),
+		  Context1 = validate(Params, Context),
 		  Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
@@ -221,50 +221,38 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/3 :: ([binary(),...] | [], #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
-validate([], _RD, #cb_context{req_json=RJ, req_verb = <<"get">>}=Context) ->
-    try
-        load_cdr_summary(Context, RJ)
-    catch
-        _T:_R ->
-	    ST = erlang:get_stacktrace(),
-	    ?LOG("Loading summary crashed: ~p: ~p", [_T, _R]),
-	    _ = [?LOG("~p", [S]) || S <- ST],
-            crossbar_util:response_db_fatal(Context)
-    end;
-validate([CDRId], _, #cb_context{req_verb = <<"get">>}=Context) ->
-    try
-        load_cdr(CDRId, Context)
-    catch
-        _T:_R ->
-	    ?LOG("Loading cdr crashed: ~p: ~p", [_T, _R]),
-            crossbar_util:response_db_fatal(Context)
-    end;
-validate(_, _, Context) ->
+-spec validate/2 :: ([binary(),...] | [], #cb_context{}) -> #cb_context{}.
+validate([], #cb_context{req_verb = <<"get">>}=Context) ->
+        load_cdr_summary(Context);
+validate([CDRId], #cb_context{req_verb = <<"get">>}=Context) ->
+        load_cdr(CDRId, Context);
+validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempt to load list of CDR, each summarized.
+%% Attempt to load list of accounts, each summarized.  Or a specific
+%% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr_summary/2 :: (#cb_context{}, json_object()) -> #cb_context{}.
-load_cdr_summary(#cb_context{req_nouns=Nouns, db_name=DbName}=Context, QueryParams) ->
+-spec load_cdr_summary/1 :: (#cb_context{}) -> #cb_context{}.
+load_cdr_summary(#cb_context{req_nouns=Nouns}=Context) ->
     case Nouns of
 	[_, {<<"accounts">>, _AID} | _] ->
-	    ?LOG("Loading cdrs for account(s): ~p", [_AID]),
-	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST, wh_json:to_proplist(QueryParams), []),
-	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
+	    ?LOG("loading cdrs for account ~s", [_AID]),
+            crossbar_doc:load_view({<<"cdrs">>, <<"crossbar_listing">>}
+                                   ,[]
+                                   ,Context
+                                   ,fun normalize_view_results/2);
 	[_, {<<"users">>, [UserId] } | _] ->
-	    {ok, SipCredsFromDevices} = couch_mgr:get_results(DbName, <<"devices/listing_by_owner">>, [{<<"key">>, UserId}, {<<"include_docs">>, true}]),
-	    SipCredsKeys = lists:foldl(fun(SipCred, Acc) ->
-					       [[wh_json:get_value([<<"doc">>, <<"sip">>, <<"realm">>], SipCred),
-						wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], SipCred)]|Acc]
-				       end, [], SipCredsFromDevices),
-	    Result = crossbar_filter:filter_on_query_string(DbName, ?CB_LIST_BY_USER, wh_json:to_proplist(QueryParams), [{<<"keys">>, SipCredsKeys}]),
-	    Context#cb_context{resp_data=Result, resp_status=success, resp_etag=automatic};
+	    ?LOG("loading cdrs for user ~s", [UserId]),
+            crossbar_doc:load_view({<<"cdrs">>, <<"listing_by_owner">>}
+                                   ,[{<<"key">>, UserId}]
+                                   ,Context
+                                   ,fun normalize_view_results/2);
 	_ ->
+	    ?LOG("invalid URL chain for cdr summary request"),
 	    crossbar_util:response_faulty_request(Context)
     end.
 
@@ -277,3 +265,13 @@ load_cdr_summary(#cb_context{req_nouns=Nouns, db_name=DbName}=Context, QueryPara
 -spec load_cdr/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_cdr(CdrId, Context) ->
     crossbar_doc:load(CdrId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalizes the resuts of a view
+%% @end
+%%--------------------------------------------------------------------
+-spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
+normalize_view_results(JObj, Acc) ->
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
