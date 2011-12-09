@@ -27,7 +27,7 @@
 				 ]}
 		    ]).
 -define(BINDINGS, [
-		   {notifications, []}
+		   {notifications, [{notices, [new_voicemail]}]}
 		  ]).
 
 -record(state, {}).

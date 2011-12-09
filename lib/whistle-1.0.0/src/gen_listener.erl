@@ -266,6 +266,7 @@ handle_cast({add_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
 	    {noreply, State};
         E:R ->
             io:format("~p ~p~n", [E, R]),
+	    io:format("~p~n", [erlang:get_stacktrace()]),
             {noreply, State}
     end;
 
