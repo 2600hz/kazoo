@@ -28,6 +28,10 @@
 		   {notifications, [{notices, [sip_notify]}]}
 		  ]).
 
+-define(QUEUE_NAME, <<"ecallmgr_notify">>).
+-define(QUEUE_OPTIONS, [{exclusive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
+
 -include("ecallmgr.hrl").
 
 %%%===================================================================
@@ -44,6 +48,9 @@ start_link() ->
     gen_listener:start_link(?MODULE,
 			    [{responders, ?RESPONDERS}
 			     ,{bindings, ?BINDINGS}
+			     ,{queue_name, ?QUEUE_NAME}
+			     ,{queue_options, ?QUEUE_OPTIONS}
+			     ,{consume_options, ?CONSUME_OPTIONS}
 			     ,{basic_qos, 1}
 			    ], []).
 
