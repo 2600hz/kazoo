@@ -25,7 +25,7 @@
 		     {?MODULE, [{<<"notification">>, <<"mwi">>}]}
 		    ]).
 -define(BINDINGS, [
-		   {notifications, [{keys, [?KEY_SIP_NOTIFY]}]}
+		   {notifications, []}
 		  ]).
 
 -include("ecallmgr.hrl").
@@ -47,13 +47,11 @@ start_link() ->
 			     ,{basic_qos, 1}
 			    ], []).
 
--spec handle_req/2 :: (JObj, Props) -> no_return() when
-      JObj :: json_object(),
-      Props :: proplist().
+-spec handle_req/2 :: (json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
     wh_util:put_callid(JObj),
 
-    true = wh_api:mwi_update_v(JObj),
+    true = wapi_notifications:mwi_update_v(JObj),
 
     User = wh_json:get_value(<<"Notify-User">>, JObj),
     Realm  = wh_json:get_value(<<"Notify-Realm">>, JObj),
