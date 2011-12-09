@@ -81,12 +81,21 @@ mwi_update_v(JObj) ->
     mwi_update(wh_json:to_proplist(JObj)).
 
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
-bind_q(Q, _Props) ->
-    amqp_util:callevt_exchange(),
-    amqp_util:callmgr_exchange(),
+bind_q(Q, Props) ->
+    bind_q_(Q, props:get_value(notices, Props, [])).
 
+bind_q_(Q, [new_voicemail | T]) ->
+    amqp_util:callevt_exchange(),
     amqp_util:bind_q_to_callevt(Q, ?NOTIFY_VOICEMAIL_NEW, other),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_SIP_NOTIFY).
+    bind_q_(Q, T);
+bind_q_(Q, [sip_notify | T]) ->
+    amqp_util:callmgr_exchange(),
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_SIP_NOTIFY),
+    bind_q_(Q, T);
+bind_q_(Q, [_|T]) ->
+    bind_q_(Q, T);
+bind_q_(_, []) ->
+    ok.
 
 -spec unbind_q/1 :: (ne_binary()) -> 'ok'.
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.

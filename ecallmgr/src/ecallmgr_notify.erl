@@ -25,7 +25,7 @@
 		     {?MODULE, [{<<"notification">>, <<"mwi">>}]}
 		    ]).
 -define(BINDINGS, [
-		   {notifications, []}
+		   {notifications, [{notices, [sip_notify]}]}
 		  ]).
 
 -include("ecallmgr.hrl").

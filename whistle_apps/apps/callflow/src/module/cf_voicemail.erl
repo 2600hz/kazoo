@@ -1145,6 +1145,9 @@ update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, Call) ->
                      ,{<<"Messages-Saved">>, Saved}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
+
+    ?LOG("Updating MWI for owner ~s: (~b/~b)", [OwnerId, New, Saved]),
+
     lists:foreach(fun({ok, Device}) ->
                           User = wh_json:get_value([<<"sip">>, <<"username">>], Device),
                           Realm = wh_json:get_value([<<"sip">>, <<"realm">>], Device),
