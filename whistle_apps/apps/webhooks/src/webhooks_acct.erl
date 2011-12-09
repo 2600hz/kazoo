@@ -31,7 +31,9 @@
 
 -include("webhooks.hrl").
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
+-define(QUEUE_OPTIONS, [{exclusive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 -record(state, {acctdb = 'undefined' :: 'undefined' | ne_binary()
                ,acctid = 'undefined' :: 'undefined' | ne_binary()
@@ -51,8 +53,12 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(AcctID, Webhooks) ->
+    QueueName = list_to_binary([whapps_util:get_db_name(AcctID, raw), <<"-webhooks">>]),
     gen_listener:start_link(?MODULE, [{responders, []}
 				      ,{bindings, [{self, []}]}
+				      ,{queue_name, Raw}
+				      ,{queue_options, ?QUEUE_OPTIONS}
+				      ,{consume_options, ?CONSUME_OPTIONS}
 				      ,{basic_qos, 1}
 				     ], [AcctID, Webhooks]).
 
