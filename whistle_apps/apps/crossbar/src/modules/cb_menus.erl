@@ -278,8 +278,11 @@ create_menu(#cb_context{req_data=JObj}=Context) ->
         {errors, Fields} ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {ok, []} ->
+            Pvts = [fun(J) -> wh_json:set_value(<<"pvt_type">>, <<"menu">>, J) end
+                    ,fun(J) ->wh_json:set_value(<<"pvt_vsn">>, <<"2">>, J) end
+                   ],
             Context#cb_context{
-	      doc=wh_json:set_value(<<"pvt_type">>, <<"menu">>, JObj)
+	      doc=lists:foldr(fun(F, J) -> F(J) end, JObj, Pvts)
 	      ,resp_status=success
 	     }
     end.
