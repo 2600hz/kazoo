@@ -4,11 +4,17 @@
    "description": "",
    "properties": {
        "retries": {
-           "type": "number",
+           "type": [
+               "number",
+               "string"
+           ],
            "minimum": 0
        },
        "timeout": {
-           "type": "number",
+           "type": [
+               "number",
+               "string"
+           ],
            "minimum": 0
        },
        "hunt": {
@@ -20,20 +26,26 @@
                "type": "string",
                "format": "regex"
            },
-           "required": "true"
+           "required": "false"
        },
        "hunt_allow": {
            "pattern": {
                "type": "string",
                "format": "regex"
            },
-           "required": "true"
+           "required": "false"
        },
        "max_extension_length": {
-           "type": "number"
+           "type": [
+               "number",
+               "string"
+           ]
        },
        "record_pin": {
-           "type": "string"
+           "type": [
+               "number",
+               "string"
+           ]
        }
    }
 }
