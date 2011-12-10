@@ -658,8 +658,10 @@ filter_doc(Doc, Query) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec filter_prop/3 :: (json_object(), ne_binary(), term()) -> boolean().
+filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
+    not (wh_json:get_binary_value(binary:split(Key, <<".">>), Doc, <<>>) =:= wh_util:to_binary(Val));
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
-    wh_json:get_value(binary:split(Key, <<".">>), Doc) =:= Val;
+    wh_json:get_binary_value(binary:split(Key, <<".">>), Doc, <<>>) =:= wh_util:to_binary(Val);
 filter_prop(Doc, <<"created_from">>, Val) ->
     wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) >= wh_util:to_integer(Val);
 filter_prop(Doc, <<"created_to">>, Val) ->
