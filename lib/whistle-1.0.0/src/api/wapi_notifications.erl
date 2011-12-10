@@ -78,7 +78,7 @@ mwi_update(JObj) ->
 mwi_update_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?MWI_REQ_HEADERS, ?MWI_REQ_VALUES, ?MWI_REQ_TYPES);
 mwi_update_v(JObj) ->
-    mwi_update(wh_json:to_proplist(JObj)).
+    mwi_update_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 bind_q(Q, Props) ->
