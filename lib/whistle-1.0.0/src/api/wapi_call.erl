@@ -153,8 +153,19 @@ cdr_v(JObj) ->
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     CallID = props:get_value(callid, Props),
-    amqp_util:bind_q_to_callevt(Queue, CallID),
-    amqp_util:bind_q_to_callevt(Queue, CallID, cdr),
+    amqp_util:callevt_exchange(),
+
+    bind_q(Queue, props:get_value(restrict_to, Props), CallID).
+
+bind_q(Q, undefined, CallID) ->
+    amqp_util:bind_q_to_callevt(Q, CallID),
+    amqp_util:bind_q_to_callevt(Q, CallID, cdr);
+bind_q(Q, [cdr|T], CallID) ->
+    amqp_util:bind_q_to_callevt(Q, CallID, cdr),
+    bind_q(Q, T, CallID);
+bind_q(Q, [_|T], CallID) ->
+    bind_q(Q, T, CallID);
+bind_q(_Q, [], _CallID) ->
     ok.
 
 -spec unbind_q/2 :: (binary(), proplist()) -> 'ok'.

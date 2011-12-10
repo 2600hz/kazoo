@@ -117,10 +117,7 @@ update_doc_from_file(DbName, App, File) ->
 %% contents of a file
 %% @end
 %%--------------------------------------------------------------------
--spec revise_doc_from_file/3 :: (DbName, App, File) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary(),
-      App :: atom(),
-      File :: list() | binary().
+-spec revise_doc_from_file/3 :: (ne_binary(), atom(), ne_binary() | nonempty_string()) -> {'ok', json_object()} | {'error', atom()}.
 revise_doc_from_file(DbName, App, File) ->
     case ?MODULE:update_doc_from_file(DbName, App, File) of
         {error, _E} ->
