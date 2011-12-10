@@ -46,7 +46,7 @@
 
 -record(menu, {
            menu_id = undefined :: binary() | undefined
-          ,s_prompt = false :: boolean()
+          ,name = <<>>
           ,retries = 3 :: pos_integer()
           ,timeout = <<"2000">> :: binary()
           ,max_length = <<"4">> :: binary()
@@ -54,7 +54,7 @@
           ,hunt_deny = <<>> :: binary()
           ,hunt_allow = <<>> :: binary()
           ,record_pin = <<>> :: binary()
-          ,has_prompt_media = false :: boolean()
+          ,greeting_id = undefined :: binary()
           ,prompts = #prompts{} :: #prompts{}
           ,keys = #keys{} :: #keys{}
          }).
@@ -102,7 +102,7 @@ menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_p
 		throw(no_digits_collected);
 	    {ok, RecordPin} ->
                 ?LOG("selection matches recording pin"),
-                M = record_prompt(tmp_file(), Menu, Call),
+                M = record_greeting(tmp_file(), Menu, Call),
                 ?LOG("returning caller to menu"),
                 {ok, _} = b_play(Prompts#prompts.return_to_ivr, Call),
                 menu_loop(M, Call);
@@ -234,14 +234,6 @@ hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{cf_pid=CFPid, account
 %% @end
 %%--------------------------------------------------------------------
 -spec(play_invalid_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
-play_invalid_prompt(#menu{s_prompt=true, retries=1}, Call) ->
-    cf_call_command:hangup(Call);
-play_invalid_prompt(#menu{s_prompt=true, retries=2}, Call) ->
-    b_play(<<"/system_media/ivr-one_more_mistake">>, Call);
-play_invalid_prompt(#menu{s_prompt=true, retries=3}, Call) ->
-    b_play(<<"/system_media/ivr-seriously_mean_to_press_key">>, Call);
-play_invalid_prompt(#menu{s_prompt=true}, Call) ->
-    b_play(<<"/system_media/ivr-did_you_mean_to_press_key">>, Call);
 play_invalid_prompt(#menu{prompts=Prompts}, Call) ->
     Prompts#prompts.invalid_entry =/= <<>> andalso b_play(Prompts#prompts.invalid_entry, Call).
 
@@ -251,31 +243,93 @@ play_invalid_prompt(#menu{prompts=Prompts}, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(record_prompt/3 :: (MediaName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> #menu{}).
-record_prompt(MediaName, #menu{prompts=Prompts}=Menu, Call) ->
-    _ = flush_dtmf(Call),
+-spec record_greeting/3 :: (binary(), #menu{}, #cf_call{}) -> #menu{}.
+record_greeting(AttachmentName, #menu{greeting_id=undefined}=Menu, Call) ->
+    MediaId = recording_media_doc(<<"greeting">>, Menu, Call),
+    ok = update_doc([<<"media">>, <<"greeting">>], MediaId, Menu, Call),
+    record_greeting(AttachmentName, Menu#menu{greeting_id=MediaId}, Call);
+record_greeting(AttachmentName, #menu{prompts=#prompts{record_prompt=RecordGreeting, tone_spec=ToneSpec
+                                                      ,message_saved=Saved, message_deleted=Deleted}
+                                     ,greeting_id=MediaId}=Menu, Call) ->
     ?LOG("recording new menu greeting"),
-    audio_macro([
-                  {play,  Prompts#prompts.record_prompt}
-                 ,{tones, Prompts#prompts.tone_spec}
-                ], Call),
-    case b_record(MediaName, Call) of
-        {ok, _Msg} ->
-            case review_recording(MediaName, Menu, Call) of
-                {ok, record} ->
-                    record_prompt(tmp_file(), Menu, Call);
-                {ok, save} ->
-                    _ = b_play(Prompts#prompts.message_saved, Call),
-                    store_recording(MediaName, ?MEDIA_PROMPT, Menu, Call),
-                    Menu#menu{has_prompt_media=true};
-                {ok, no_selection} ->
-                    ?LOG("abandoning recorded greeting"),
-                    _ = b_play(Prompts#prompts.message_deleted, Call),
-                    Menu
-            end;
-        _Else ->
+    _NoopId = audio_macro([{play, RecordGreeting}
+			   ,{tones, ToneSpec}]
+			  ,Call),
+    {ok, _} = b_record(AttachmentName, Call),
+    case review_recording(AttachmentName, Menu, Call) of
+	{ok, record} ->
+	    record_greeting(tmp_file(), Menu, Call);
+	{ok, save} ->
+	    {ok, _} = store_recording(AttachmentName, MediaId, Call),
+            {ok, _} = b_play(Saved, Call),
+            Menu;
+        {ok, no_selection} ->
+            ?LOG("abandoning recorded greeting"),
+            {ok, _} = b_play(Deleted, Call),
             Menu
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec(get_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> binary()).
+get_prompt(#menu{greeting_id=undefined, prompts=Prompts}, _) ->
+    Prompts#prompts.generic_prompt;
+get_prompt(#menu{greeting_id=Id}, #cf_call{account_db=Db}) ->
+    <<$/, Db/binary, $/, Id/binary>>.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec store_recording/3 :: (binary(), binary(), #cf_call{}) -> {ok, json_object()} | {error, json_object()}.
+store_recording(AttachmentName, MediaId, Call) ->
+    ?LOG("storing recording ~s as media ~s", [AttachmentName, MediaId]),
+    ok = update_doc(<<"content_type">>, <<"audio/mpeg">>, MediaId, Call),
+    cf_call_command:b_store(AttachmentName, get_new_attachment_url(AttachmentName, MediaId, Call), Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_new_attachment_url/3 :: (binary(), binary(), #cf_call{}) -> binary().
+get_new_attachment_url(AttachmentName, MediaId, #cf_call{account_db=Db}) ->
+    case couch_mgr:open_doc(Db, MediaId) of
+        {ok, JObj} ->
+            case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
+                [] ->
+                    ok;
+                Existing ->
+                    [couch_mgr:delete_attachment(Db, MediaId, Attach) || Attach <- Existing]
+            end;
+        {error, _} ->
+            ok
+    end,
+    Rev = case couch_mgr:lookup_doc_rev(Db, MediaId) of
+              {ok, R} ->
+                  <<"?rev=", R/binary>>;
+              _ ->
+                  <<>>
+          end,
+    <<(couch_mgr:get_url())/binary
+      ,Db/binary
+      ,$/, MediaId/binary
+      ,$/, AttachmentName/binary
+      ,Rev/binary>>.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec(tmp_file/0 :: () -> binary()).
+tmp_file() ->
+     <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -306,33 +360,19 @@ review_recording(MediaName, #menu{prompts=Prompts, keys=#keys{listen=ListenKey, 
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(store_recording/4 :: (MediaName :: binary(), DestName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> ok).
-store_recording(MediaName, DestName, Menu, Call) ->
-    ?LOG("saving new menu greeting"),
-    store(MediaName, get_attachment_path(DestName, Menu, Call), Call).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec(get_attachment_path/3 :: (MediaName :: binary(), Menu :: #menu{}, Call :: #cf_call{}) -> binary()).
-get_attachment_path(MediaName, #menu{menu_id=Id}, #cf_call{account_db=Db}) ->
-    {ok, Rev} = couch_mgr:lookup_doc_rev(Db, Id),
-	<<(couch_mgr:get_url())/binary
-	  ,Db/binary
-	  ,$/, Id/binary
-	  ,$/, MediaName/binary
-	  ,"?rev=", Rev/binary>>.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec(tmp_file/0 :: () -> binary()).
-tmp_file() ->
-     <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
+-spec recording_media_doc/3 :: (binary(), #menu{}, #cf_call{}) -> binary().
+recording_media_doc(Type, #menu{name=MenuName, menu_id=Id}, #cf_call{account_db=Db}) ->
+    Name = <<MenuName/binary, " menu ", Type/binary >>,
+    Props = [{<<"name">>, Name}
+             ,{<<"description">>, <<"menu recorded/prompt media">>}
+             ,{<<"source_type">>, <<"menu">>}
+             ,{<<"source_id">>, Id}
+             ,{<<"content_type">>, <<"audio/mpeg">>}
+             ,{<<"media_type">>, <<"mp3">>}
+             ,{<<"streamable">>, true}],
+    Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{type, <<"media">>}]),
+    {ok, JObj} = couch_mgr:save_doc(Db, Doc),
+    wh_json:get_value(<<"_id">>, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -340,12 +380,25 @@ tmp_file() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(get_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> binary()).
-get_prompt(#menu{has_prompt_media=false, prompts=Prompts}, _) ->
-    Prompts#prompts.generic_prompt;
-get_prompt(#menu{menu_id=Id}, #cf_call{account_db=Db}) ->
-    Prompt = ?MEDIA_PROMPT,
-    <<$/, Db/binary, $/, Id/binary, $/, Prompt/binary>>.
+-spec update_doc/4 :: (list() | binary(), json_term(), #menu{} | binary(),  #cf_call{} | binary()) -> ok | {error, atom()}.
+update_doc(Key, Value, #menu{menu_id=Id}, Db) ->
+    update_doc(Key, Value, Id, Db);
+update_doc(Key, Value, Id, #cf_call{account_db=Db}) ->
+    update_doc(Key, Value, Id, Db);
+update_doc(Key, Value, Id, Db) ->
+    case couch_mgr:open_doc(Db, Id) of
+        {ok, JObj} ->
+            case couch_mgr:save_doc(Db, wh_json:set_value(Key, Value, JObj)) of
+                {error, conflict} ->
+                    update_doc(Key, Value, Id, Db);
+                {ok, _} ->
+                    ok;
+                {error, _}=E ->
+                    ?LOG("unable to update ~s in ~s, ~p", [Id, Db, E])
+            end;
+        {error, _}=E ->
+            ?LOG("unable to update ~s in ~s, ~p", [Id, Db, E])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -361,24 +414,24 @@ get_menu_profile(Data, Db) ->
             ?LOG("loaded menu route ~s", [Id]),
             Default=#menu{},
             #menu{menu_id = Id
+                  ,name =
+                      wh_json:get_ne_value(<<"name">>, JObj, Id)
                   ,retries =
-                      wh_util:to_integer(wh_json:get_value(<<"retries">>, JObj, Default#menu.retries))
+                      wh_json:get_integer_value(<<"retries">>, JObj, Default#menu.retries)
                   ,timeout =
                       wh_json:get_binary_value(<<"timeout">>, JObj, Default#menu.timeout)
                   ,max_length =
                       wh_json:get_binary_value(<<"max_extension_length">>, JObj, Default#menu.max_length)
                   ,hunt =
-                      wh_util:is_true(wh_json:get_value(<<"hunt">>, JObj, Default#menu.hunt))
+                      wh_json:is_true(<<"hunt">>, JObj, Default#menu.hunt)
                   ,hunt_deny =
                       wh_json:get_value(<<"hunt_deny">>, JObj, Default#menu.hunt_deny)
                   ,hunt_allow =
                       wh_json:get_value(<<"hunt_allow">>, JObj, Default#menu.hunt_allow)
                   ,record_pin =
                       wh_json:get_value(<<"record_pin">>, JObj, Default#menu.record_pin)
-                  ,has_prompt_media =
-                      wh_json:get_value([<<"_attachments">>, ?MEDIA_PROMPT], JObj) =/= undefined
-                  ,s_prompt =
-                      wh_json:get_value(<<115,97,115,115,121,95,109,111,100,101>>, JObj) =/= undefined
+                  ,greeting_id =
+                      wh_json:get_ne_value([<<"media">>, <<"greeting">>], JObj)
                  };
         {error, R} ->
             ?LOG("failed to load menu route ~s, ~w", [Id, R]),
