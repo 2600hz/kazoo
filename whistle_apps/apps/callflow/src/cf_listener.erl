@@ -21,17 +21,17 @@
 
 -include("callflow.hrl").
 
+-define(SERVER, ?MODULE).
+
 -define(RESPONDERS, [{cf_route_req, [{<<"dialplan">>, <<"route_req">>}]}
                      ,{cf_route_win, [{<<"dialplan">>, <<"route_win">>}]}
                     ]).
 -define(BINDINGS, [{route, []}
                    ,{self, []}
                   ]).
-
--define(SERVER, ?MODULE).
--define(REG_QUEUE_NAME, <<"">>).
--define(REG_QUEUE_OPTIONS, []).
--define(REG_CONSUME_OPTIONS, []).
+-define(QUEUE_NAME, <<"">>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -47,9 +47,9 @@
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
 				      ,{bindings, ?BINDINGS}
-				      ,{queue_name, ?REG_QUEUE_NAME}
-				      ,{queue_options, ?REG_QUEUE_OPTIONS}
-				      ,{consume_options, ?REG_CONSUME_OPTIONS}
+				      ,{queue_name, ?QUEUE_NAME}
+				      ,{queue_options, ?QUEUE_OPTIONS}
+				      ,{consume_options, ?CONSUME_OPTIONS}
 				     ], []).
 
 stop(Srv) ->

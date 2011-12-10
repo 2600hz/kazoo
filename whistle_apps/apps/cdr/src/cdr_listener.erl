@@ -23,6 +23,12 @@
 
 -define(SERVER, ?MODULE).
 
+-define(RESPONDERS, [{{?MODULE, handle_cdr}, [{<<"call_detail">>, <<"cdr">>}]}]).
+-define(BINDINGS, [{call, [{restrict_to, [cdr]}, {callid, <<"*">>}]}]).
+-define(QUEUE_NAME, <<"">>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -35,11 +41,12 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link(?MODULE
-			  ,[{bindings, [{call, [{restrict_to, [cdr]}, {callid, <<"*">>}]}]}
-			    ,{responders, [{?MODULE, handle_cdr}, {<<"call_detail">>, <<"cdr">>}]}
-			   ]
-			  ,[]).
+    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
+				      ,{bindings, ?BINDINGS}
+				      ,{queue_name, ?QUEUE_NAME}
+				      ,{queue_options, ?QUEUE_OPTIONS}
+				      ,{consume_options, ?CONSUME_OPTIONS}
+				     ], []).
 
 -spec handle_cdr/2 :: (json_object(), proplist()) -> no_return().
 handle_cdr(JObj, _Props) ->
