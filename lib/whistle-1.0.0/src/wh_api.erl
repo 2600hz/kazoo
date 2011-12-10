@@ -419,35 +419,25 @@ conference_move_req_v(Prop) ->
 
 %% given a proplist of a FS event, return the Whistle-equivalent app name(s).
 %% a FS event could have multiple Whistle equivalents
--spec convert_fs_evt_name/1 :: (EvtName) -> [binary(),...] | [] when
-      EvtName :: binary().
+-spec convert_fs_evt_name/1 :: (ne_binary()) -> [ne_binary(),...] | [].
 convert_fs_evt_name(EvtName) ->
     [ WhAppEvt || {FSEvt, WhAppEvt} <- ?SUPPORTED_APPLICATIONS, FSEvt =:= EvtName].
 
 %% given a Whistle Dialplan Application name, return the FS-equivalent event name
 %% A Whistle Dialplan Application name is 1-to-1 with the FS-equivalent
--spec convert_whistle_app_name/1 :: (App) -> [binary(),...] | [] when
-      App :: binary().
+-spec convert_whistle_app_name/1 :: (ne_binary()) -> [ne_binary(),...] | [].
 convert_whistle_app_name(App) ->
     [EvtName || {EvtName, AppName} <- ?SUPPORTED_APPLICATIONS, App =:= AppName].
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec validate/4 :: (Prop, ReqHeaders, DefValues, DefTypes) -> boolean() when
-      Prop :: proplist(),
-      ReqHeaders :: [binary(),...] | [],
-      DefValues :: proplist(),
-      DefTypes :: proplist().
+-spec validate/4 :: (proplist(), [ne_binary(),...] | [], proplist(), proplist()) -> boolean().
 validate(Prop, ReqH, Vals, Types) ->
     has_all(Prop, ?DEFAULT_HEADERS) andalso
 	validate_message(Prop, ReqH, Vals, Types).
 
--spec validate_message/4 :: (Prop, ReqHeaders, DefValues, DefTypes) -> boolean() when
-      Prop :: proplist(),
-      ReqHeaders :: [binary(),...] | [],
-      DefValues :: proplist(),
-      DefTypes :: proplist().
+-spec validate_message/4 :: (proplist(), [ne_binary(),...] | [], proplist(), proplist()) -> boolean().
 validate_message(Prop, ReqH, Vals, Types) ->
     has_all(Prop, ReqH) andalso
 	values_check(Prop, Vals) andalso
@@ -573,9 +563,7 @@ add_optional_headers(Prop, Fields, Headers) ->
 		end, {Headers, Prop}, Fields).
 
 %% Checks Prop against a list of required headers, returns true | false
--spec has_all/2 :: (Prop, Headers) -> boolean() when
-      Prop :: proplist(),
-      Headers :: [binary(),...] | [].
+-spec has_all/2 :: (proplist(), [ne_binary(),...] | []) -> boolean().
 has_all(Prop, Headers) ->
     lists:all(fun(Header) ->
 		      case props:is_defined(Header, Prop) of
@@ -587,9 +575,7 @@ has_all(Prop, Headers) ->
 	      end, Headers).
 
 %% Checks Prop against a list of optional headers, returns true | false if at least one if found
--spec has_any/2 :: (Prop, Headers) -> boolean() when
-      Prop :: proplist(),
-      Headers :: [binary(),...] | [].
+-spec has_any/2 :: (proplist(), [ne_binary(),...] | []) -> boolean().
 has_any(Prop, Headers) ->
     lists:any(fun(Header) -> props:is_defined(Header, Prop) end, Headers).
 
