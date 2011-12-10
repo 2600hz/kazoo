@@ -56,7 +56,7 @@ start_link() ->
 
 -spec handle_req/2 :: (json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
-    wh_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
 
     true = wapi_notifications:mwi_update_v(JObj),
 
@@ -202,9 +202,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% 'sip:{User}'
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoint/2 :: (User, Realm) -> tuple(error, timeout) | string() when
-      User :: binary(),
-      Realm :: binary().
+-spec get_endpoint/2 :: (ne_binary(), ne_binary()) -> {'error', 'timeout'} | nonempty_string().
 get_endpoint(User, Realm) ->
     case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
         [{<<"Contact">>, Contact}] ->

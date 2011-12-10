@@ -598,7 +598,7 @@ stream_over_http(Node, UUID, File, Method, JObj) ->
 	{ok, "504", _, _} ->
             stream_over_http(Node, UUID, File, Method, JObj);
 	{ok, StatusCode, RespHeaders, RespBody} ->
-            MediaTransResults = wh_json:from_list([{<<"Status-Code">>, StatusCode}
+            MediaTransResults = wh_json:from_list([{<<"Status-Code">>, wh_util:to_binary(StatusCode)}
 						   ,{<<"Headers">>, wh_json:from_list([ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- RespHeaders ])}
 						   ,{<<"Body">>, wh_util:to_binary(RespBody)}
 						  ]),
