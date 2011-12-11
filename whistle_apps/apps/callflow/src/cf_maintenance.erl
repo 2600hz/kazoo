@@ -68,7 +68,7 @@ migrate_menus(Account) ->
 do_menu_migration(Menu, Db) ->
     Doc = wh_json:get_value(<<"doc">>, Menu),
     MenuId = wh_json:get_value(<<"_id">>, Doc),
-    VSN = wh_json:get_integer_value(<<"pvt_vsn">>, Doc),
+    VSN = wh_json:get_integer_value(<<"pvt_vsn">>, Doc, 1),
     case couch_mgr:fetch_attachment(Db, MenuId, <<"prompt.mp3">>) of
         {ok, _} when VSN =/= 1 ->
             log("menu ~s in ~s already migrated", [MenuId, Db]),
