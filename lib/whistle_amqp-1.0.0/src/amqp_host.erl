@@ -211,6 +211,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 	    end;
 	{ok, {C,_,Tag,_}} ->
 	    ?LOG("Already consuming on ch: ~p for proc: ~p on tag ~s", [C, FromPid, Tag]),
+	    gen_server:reply(From, {C, ok}),
 	    {noreply, State, hibernate}
     end;
 
