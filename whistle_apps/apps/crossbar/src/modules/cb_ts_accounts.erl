@@ -305,7 +305,17 @@ create_ts_account(#cb_context{req_data=JObj, account_id=AccountId}=Context) ->
 	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {ok, []} ->
             Updaters = [fun(J) -> wh_json:set_value(<<"type">>, <<"sys_info">>, J) end
-                        ,fun(J) -> wh_json:set_value(<<"_id">>, AccountId, J) end
+                        ,fun(J) ->
+                                 Id = case wh_util:is_empty(AccountId) of
+                                          false ->
+                                              AccountId;
+                                          true ->
+                                              AuthRealm = wh_json:get_value([<<"account">>, <<"auth_realm">>], JObj),
+                                              {ok, RealmAccountDb} = whapps_util:get_account_by_realm(AuthRealm),
+                                              whapps_util:get_db_name(RealmAccountDb, raw)
+                                      end,
+                                 wh_json:set_value(<<"_id">>, Id, J)
+                         end
                         ,fun(J) -> wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, J) end
                        ],
             Context#cb_context{doc=lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters)

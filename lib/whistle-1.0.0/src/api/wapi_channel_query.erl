@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 19 Oct 2011 by James Aimonetti <>
+%%% Created : 19 Oct 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(wapi_channel_query).
 
@@ -55,7 +55,7 @@ req(JObj) ->
     req(wh_json:to_proplist(JObj)).
 
 -spec req_v/1 :: (api_terms()) -> boolean().
-req_v([_|_]=Prop) ->
+req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?CHANNEL_QUERY_REQ_VALUES, ?CHANNEL_QUERY_REQ_TYPES);
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).

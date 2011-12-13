@@ -194,15 +194,15 @@
                          ]).
 
 %% Call Pickup
--define(CALL_PICKUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, [<<"Insert-At">>]).
+-define(CALL_PICKUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Target-Call-ID">>]).
+-define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, [<<"Insert-At">>, <<"Unbridged-Only">>, <<"Unanswered-Only">>
+                                               ,<<"Other-Leg">>]).
 -define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
 				 ,{<<"Event-Name">>, <<"command">>}
 				 ,{<<"Application-Name">>, <<"call_pickup">>}
 				 ,?INSERT_AT_TUPLE
 				]).
 -define(CALL_PICKUP_REQ_TYPES, []).
-
 
 %% Play Request
 -define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
@@ -265,6 +265,18 @@
 			   ]).
 -define(RESPOND_REQ_TYPES, [{<<"Response-Code">>, fun is_binary/1}
                             ,{<<"Response-Message">>, fun is_binary/1}
+                           ]).
+
+%% Redirect
+-define(REDIRECT_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Redirect-Contact">>]).
+-define(OPTIONAL_REDIRECT_REQ_HEADERS, [<<"Insert-At">>, <<"Redirect-Server">>]).
+-define(REDIRECT_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+			    ,{<<"Event-Name">>, <<"command">>}
+			    ,{<<"Application-Name">>, <<"redirect">>}
+			    ,?INSERT_AT_TUPLE
+			   ]).
+-define(REDIRECT_REQ_TYPES, [{<<"Redirect-Contact">>, fun is_binary/1}
+                            ,{<<"Redirect-Server">>, fun is_binary/1}
                            ]).
 
 %% Sleep

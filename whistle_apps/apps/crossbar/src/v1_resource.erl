@@ -78,18 +78,18 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
                 true ->
 		    ?TIMER_TICK("v1.allowed_methods end OPTS"),
                     ?LOG("allowing OPTIONS request for CORS preflight"),
-                    {['OPTIONS'], RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}};
+                    {['OPTIONS'], RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1, query_json=get_qs(RD)}};
                 false ->
 		    ?TIMER_TICK("v1.allowed_methods end Meth1"),
                     {Methods1
                      ,add_cors_headers(RD, Context1)
-                     ,Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}}
+                     ,Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1, query_json=get_qs(RD)}}
             end;
         [] ->
 	    ?TIMER_TICK("v1.allowed_methods end Meths"),
             {Methods
              ,add_cors_headers(RD, Context1)
-             ,Context1#cb_context{req_verb=Verb}}
+             ,Context1#cb_context{req_verb=Verb, query_json=get_qs(RD)}}
     end.
 
 -spec(malformed_request/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(boolean(), #wm_reqdata{}, #cb_context{})).
@@ -107,7 +107,7 @@ malformed_request(RD, #cb_context{req_json={malformed, ErrBin}}=Context) ->
     {true, RD1, Context1};
 malformed_request(RD, #cb_context{req_json=Json, req_verb=Verb}=Context) ->
     ?TIMER_TICK("v1.malformed_request start"),
-    Data = wh_json:get_value([<<"data">>], Json),
+    Data = wh_json:get_value([<<"data">>], Json, wh_json:new()),
     Auth = get_auth_token(RD, wh_json:get_value(<<"auth_token">>, Json, <<>>), Verb),
     ?LOG("request is using auth token ~s", [Auth]),
     ?TIMER_TICK("v1.malformed_request end"),
@@ -379,11 +379,13 @@ get_json_body(RD) ->
 	QS = get_qs(RD),
 
 	case wrq:req_body(RD) of
-	    <<>> -> QS;
+	    <<>> -> wh_json:set_value(<<"data">>, QS, wh_json:new());
 	    ReqBody ->
-		JSON = wh_json:decode(ReqBody),
-		case is_valid_request_envelope(JSON) of
-		    true -> wh_json:merge_jobjs(JSON, QS);
+		JObj = wh_json:decode(ReqBody),
+		case is_valid_request_envelope(JObj) of
+		    true ->
+			Data = wh_json:get_value(<<"data">>, JObj),
+			wh_json:set_value(<<"data">>, wh_json:merge_jobjs(Data, QS), JObj);
 		    false ->
                         ?LOG("invalid request envelope"),
                         {malformed, <<"Invalid request envelope">>}
@@ -402,7 +404,7 @@ get_json_body(RD) ->
 get_qs(RD) ->
     wh_json:from_list([ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- wrq:req_qs(RD)]).
 
--spec(extract_files_and_params/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+-spec extract_files_and_params/2 :: (#wm_reqdata{}, #cb_context{}) -> #cb_context{}.
 extract_files_and_params(RD, Context) ->
     try
 	Boundry = webmachine_multipart:find_boundary(RD),
@@ -413,7 +415,7 @@ extract_files_and_params(RD, Context) ->
 	{ReqProp, FilesProp} = get_streamed_body(StreamParts),
 	?LOG("extracted request vars(~b) and files(~b)", [length(ReqProp), length(FilesProp)]),
 
-	Context#cb_context{req_json={struct, ReqProp}, req_files=FilesProp}
+	Context#cb_context{req_json=wh_json:from_list(ReqProp), req_files=FilesProp}
     catch
 	_A:_B ->
 	    ?LOG("exception extracting files and params: ~p:~p", [_A, _B]),
@@ -421,7 +423,7 @@ extract_files_and_params(RD, Context) ->
 	    Context
     end.
 
--spec(extract_file/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+-spec extract_file/2 :: (#wm_reqdata{}, #cb_context{}) -> #cb_context{}.
 extract_file(RD, Context) ->
     QS = get_qs(RD),
 
@@ -430,11 +432,11 @@ extract_file(RD, Context) ->
     ContentSize = wrq:get_req_header("Content-Length", RD),
     ?LOG("extracting file content type ~s", [ContentType]),
     ?LOG("extracting file content size ~s", [ContentSize]),
-    Context#cb_context{req_files=[{<<"uploaded_file">>, {struct, [{<<"headers">>, {struct, [{<<"content_type">>, ContentType}
-											    ,{<<"content_length">>, ContentSize}
-											   ]}}
-								  ,{<<"contents">>, FileContents}
-								 ]}
+    Context#cb_context{req_files=[{<<"uploaded_file">>, wh_json:from_list([{<<"headers">>, wh_json:from_list([{<<"content_type">>, ContentType}
+													      ,{<<"content_length">>, ContentSize}
+													     ])}
+									   ,{<<"contents">>, FileContents}
+									  ])
 				  }]
 		       ,req_json=QS
 		      }.
@@ -442,7 +444,7 @@ extract_file(RD, Context) ->
 get_streamed_body(StreamReq) ->
     get_streamed_body(StreamReq, [], []).
 
--spec(get_streamed_body/3 :: (Term :: term(), ReqProp :: proplist(), FilesProp :: proplist()) -> tuple(proplist(), proplist())).
+-spec get_streamed_body/3 :: (term(), proplist(), proplist()) -> {proplist(), proplist()}.
 get_streamed_body(done_parts, ReqProp, FilesProp) ->
     ?LOG("Done streaming body"),
     {ReqProp, FilesProp};
@@ -469,7 +471,6 @@ get_streamed_body({{_Ignored, {Params, Hdrs}, Content}, Next}, ReqProp, FilesPro
 get_streamed_body(Term, _, _) ->
     ?LOG("Erro get_streamed_body: ~p", [Term]).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -487,11 +488,10 @@ get_streamed_body(Term, _, _) ->
 %% 'POST' from the allowed methods.
 %% @end
 %%--------------------------------------------------------------------
--spec(allow_methods/4  :: (Reponses :: list(tuple(term(), term())), Avaliable :: http_methods(), ReqVerb :: binary(), HttpVerb :: atom()) -> http_methods()).
+-spec allow_methods/4  :: ([{term(), term()},...], http_methods(), ne_binary(), atom()) -> http_methods().
 allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
     case crossbar_bindings:succeeded(Responses) of
-        [] ->
-	    Available;
+        [] -> Available;
 	Succeeded ->
 	    Allowed = lists:foldr(fun({true, Response}, Acc) ->
 					  Set1 = sets:from_list(Acc),
@@ -519,15 +519,14 @@ add_post_method(_, _, Allowed) ->
 %% query paramerts (for GET and DELETE) or HTTP content (for POST and PUT)
 %% @end
 %%--------------------------------------------------------------------
--spec(get_auth_token/3 :: (RD :: #wm_reqdata{}, JsonToken :: binary(), Verb :: binary()) -> binary()).
+-spec get_auth_token/3 :: (#wm_reqdata{}, ne_binary(), ne_binary()) -> ne_binary().
 get_auth_token(RD, JsonToken, Verb) ->
     case wrq:get_req_header("X-Auth-Token", RD) of
         undefined ->
             case Verb of
                 <<"get">> ->
                     wh_util:to_binary(props:get_value("auth_token", wrq:req_qs(RD), <<>>));
-		_ ->
-		    JsonToken
+		_ -> JsonToken
 	    end;
         AuthToken ->
             wh_util:to_binary(AuthToken)
@@ -539,9 +538,9 @@ get_auth_token(RD, JsonToken, Verb) ->
 %% Determines if the request envelope is valid
 %% @end
 %%--------------------------------------------------------------------
--spec(is_valid_request_envelope/1 :: (JSON :: json_object()) -> boolean()).
+-spec is_valid_request_envelope/1 :: (json_object()) -> boolean().
 is_valid_request_envelope(JSON) ->
-    wh_json:get_value([<<"data">>], JSON, not_found) =/= not_found.
+    wh_json:get_value([<<"data">>], JSON, undefined) =/= undefined.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -550,7 +549,7 @@ is_valid_request_envelope(JSON) ->
 %% (the final module in the chain) accepts this verb parameter pair.
 %% @end
 %%--------------------------------------------------------------------
--spec(does_resource_exist/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> boolean()).
+-spec does_resource_exist/2 :: (#wm_reqdata{}, #cb_context{}) -> boolean().
 does_resource_exist(_RD, #cb_context{req_nouns=[{Mod, Params}|_]}) ->
     Event = <<"v1_resource.resource_exists.", Mod/binary>>,
     Responses = crossbar_bindings:map(Event, Params),
@@ -565,19 +564,16 @@ does_resource_exist(_RD, _Context) ->
 %% provided a valid authentication token
 %% @end
 %%--------------------------------------------------------------------
--spec(is_authentic/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> false | tuple(true, #wm_reqdata{}, #cb_context{})).
+-spec is_authentic/2 :: (#wm_reqdata{}, #cb_context{}) -> 'false' | {'true', #wm_reqdata{}, #cb_context{}}.
 is_authentic(RD, Context)->
     case wrq:method(RD) of
         %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
-        'OPTIONS' ->
-            {true, RD, Context};
+        'OPTIONS' -> {true, RD, Context};
         _ ->
             Event = <<"v1_resource.authenticate">>,
             case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {RD, Context})) of
-                [] ->
-                    false;
-                [{true, {RD1, Context1}}|_] ->
-                    {true, RD1, Context1}
+                [] -> false;
+                [{true, {RD1, Context1}}|_] -> {true, RD1, Context1}
             end
     end.
 

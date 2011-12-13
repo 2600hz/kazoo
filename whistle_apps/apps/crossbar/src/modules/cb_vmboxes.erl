@@ -136,11 +136,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.vmboxes">>, [RD, Contex
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.vmboxes">>, [RD, Context | Params]}, State) ->
     case Params of
-	[_, ?MESSAGES_RESOURCE, _MediaId, ?BIN_DATA] ->
+	[_VMBoxId, ?MESSAGES_RESOURCE, _MediaId, ?BIN_DATA] ->
 	    spawn(fun() ->
                           _ = crossbar_util:put_reqid(Context),
 			  Pid ! {binding_result, true, [RD, Context, Params]}
-
 		  end);
 	_ ->
 	    spawn(fun() ->
@@ -458,7 +457,7 @@ load_message(DocId, MediaId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_message_binary/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-load_message_binary(VMBoxId, VMId, #cb_context{db_name=Db}=Context) ->
+load_message_binary(VMBoxId, VMId, #cb_context{req_data=ReqData, db_name=Db, resp_headers=RespHeaders}=Context) ->
     {ok, VMJObj} = couch_mgr:open_doc(Db, VMId),
     [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
 
@@ -474,11 +473,25 @@ load_message_binary(VMBoxId, VMId, #cb_context{db_name=Db}=Context) ->
     ?LOG("Sending file with filename ~s", [Filename]),
 
     Ctx = crossbar_doc:load_attachment(VMId, AttachmentId, Context),
+
+    _ = case wh_json:get_value(<<"folder">>, ReqData) of
+	    undefined -> ok;
+	    Folder ->
+		?LOG("Moving message to ~s", [Folder]),
+		spawn(fun() ->
+			      crossbar_util:put_reqid(Context),
+			      Context1 = update_message1(VMBoxId, VMId, Context),
+			      #cb_context{resp_status=success}=crossbar_doc:save(Context1),
+			      ?LOG("Saved message to new folder ~s", [Folder]),
+			      update_mwi(VMBoxJObj, Db)
+		      end)
+	end,
+
     Ctx#cb_context{resp_headers = [
 				   {<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], VMJObj)},
 				   {<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>},
 				   {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], VMJObj))}
-				   | Context#cb_context.resp_headers
+				   | RespHeaders
 				  ]
 		  }.
 
@@ -489,22 +502,60 @@ load_message_binary(VMBoxId, VMId, #cb_context{db_name=Db}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_message/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-delete_message(DocId, MediaId, #cb_context{db_name=Db}=Context) ->
-    Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
-    Messages = wh_json:get_value(<<"messages">>, Doc, []),
+delete_message(VMBoxId, MediaId, #cb_context{db_name=Db}=Context) ->
+    Context1 = #cb_context{doc=VMBox} = crossbar_doc:load(VMBoxId, Context),
+    Messages = wh_json:get_value(<<"messages">>, VMBox, []),
 
     case get_message_index(MediaId, Messages) of
 	Index when Index > 0 ->
-	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], <<"deleted">>, Doc),
+	    VMBox1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], <<"deleted">>, VMBox),
 
 	    %% let's not forget the associated private_media doc
 	    {ok, D} = couch_mgr:open_doc(Db, MediaId),
 	    couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deleted">>, true, D)),
 
-	    Context1#cb_context{doc=Doc1};
+	    spawn(fun() -> crossbar_util:put_reqid(Context), update_mwi(VMBox1, Db) end),
+
+	    Context1#cb_context{doc=VMBox1};
 	_ ->
 	    crossbar_util:response_bad_identifier(MediaId, Context)
     end.
+
+-spec update_mwi/2 :: (json_object(), ne_binary()) -> 'ok'.
+update_mwi(VMBox, DB) ->
+    OwnerID = wh_json:get_value(<<"owner_id">>, VMBox),
+    false = wh_util:is_empty(OwnerID),
+
+    ?LOG("Sending MWI update to devices owned by ~s", [OwnerID]),
+
+    Messages = wh_json:get_value(<<"messages">>, VMBox, []),
+
+    Devices = cb_module_util:get_devices_owned_by(OwnerID, DB),
+
+    New = count_messages(Messages, <<"new">>),
+    Saved = count_messages(Messages, <<"saved">>),
+
+    ?LOG("New: ~b Saved: ~b", [New, Saved]),
+
+    CommonHeaders = [{<<"Messages-New">>, New}
+                     ,{<<"Messages-Saved">>, Saved}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ],
+
+    lists:foreach(fun(Device) ->
+                          User = wh_json:get_value([<<"sip">>, <<"username">>], Device),
+                          Realm = wh_json:get_value([<<"sip">>, <<"realm">>], Device),
+
+                          Command = wh_json:from_list([{<<"Notify-User">>, User}
+                                                       ,{<<"Notify-Realm">>, Realm}
+                                                       | CommonHeaders
+                                                      ]),
+			  wapi_notifications:publish_mwi_update(Command)
+                  end, Devices).
+
+-spec count_messages/2 :: (json_objects(), ne_binary()) -> non_neg_integer().
+count_messages(Messages, Folder) ->
+    lists:sum([1 || Message <- Messages, wh_json:get_value(<<"folder">>, Message) =:= Folder]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -548,16 +599,18 @@ update_message(DocId, MediaId, #cb_context{req_data=JObj}=Context) ->
     end.
 
 -spec update_message1/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-update_message1(DocId, MediaId, Context) ->
-    RequestedValue = wh_json:get_value(<<"folder">>, Context#cb_context.req_data),
-    Context1 = #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
-    Messages = wh_json:get_value(<<"messages">>, Doc),
+update_message1(VMBoxId, MediaId, #cb_context{req_data=ReqData}=Context) ->
+    RequestedValue = wh_json:get_value(<<"folder">>, ReqData),
+
+    Context1 = #cb_context{doc=VMBox} = crossbar_doc:load(VMBoxId, Context),
+
+    Messages = wh_json:get_value(<<"messages">>, VMBox),
 
     case get_message_index(MediaId, Messages) of
   	Index when Index > 0 ->
-	    Doc1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], RequestedValue, Doc),
-	    Context1#cb_context{doc=Doc1};
-	_ ->
+	    VMBox1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], RequestedValue, VMBox),
+	    Context1#cb_context{doc=VMBox1};
+	_Idx ->
 	    crossbar_util:response_bad_identifier(MediaId, Context)
     end.
 

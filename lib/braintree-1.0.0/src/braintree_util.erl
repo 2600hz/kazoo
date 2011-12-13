@@ -15,6 +15,12 @@
 -export([props_to_json/1]).
 -export([bt_error_to_json/1, bt_verification_to_json/1, bt_api_error_to_json/1]).
 
+%% from stdlib/src/unicode.erl
+-type char_to_bin_res() :: binary() |
+			   {'error', binary(), unicode:latin1_chardata() | unicode:chardata() | unicode:external_chardata()} |
+			   {'incomplete', binary(), binary()}.
+-export_type([char_to_bin_res/0]).
+
 
 get_xml_value(Path, Xml) ->
     try
@@ -25,6 +31,7 @@ get_xml_value(Path, Xml) ->
             undefined
     end.
 
+-spec make_doc_xml/2 :: (proplist(), atom()) -> char_to_bin_res().
 make_doc_xml(Props, Root) ->
     Xml = xmerl:export_simple([doc_xml_simple(Props, Root)], xmerl_xml
                               ,[{prolog, ?BT_XML_PROLOG}]),
@@ -58,16 +65,17 @@ props_to_xml([{K, V}|T], Xml) when is_boolean(V) ->
 props_to_xml([{K, V}|T], Xml) ->
     props_to_xml(T, [{K, [wh_util:to_list(V)]}|Xml]).
 
+-spec props_to_json/1 :: (proplist()) -> json_object().
 props_to_json(Props) ->
-    {struct, [begin
-                  case V of
-                      {struct, _} -> {K, V};
-                      [{struct, _}|_] -> {K, V};
-                      [] -> {K, V};
-                      _ when is_boolean(V) -> {K, V};
-                      _ -> {K, wh_util:to_binary(V)}
-                  end
-              end || {K, V} <- Props, V =/= undefined]}.
+    wh_json:from_list([begin
+			   case V of
+			       {struct, _} -> {K, V};
+			       [{struct, _}|_] -> {K, V};
+			       [] -> {K, V};
+			       _ when is_boolean(V) -> {K, V};
+			       _ -> {K, wh_util:to_binary(V)}
+			   end
+		       end || {K, V} <- Props, V =/= undefined]).
 
 bt_error_to_json(BtError) ->
     Props = [{<<"code">>, BtError#bt_error.code}

@@ -13,9 +13,12 @@
 
 -export([bind_q/2, unbind_q/2]).
 
--export([publish_event/2, publish_event/3, publish_status_req/2,
-	 publish_status_req/3, publish_status_resp/2, publish_status_resp/3
+-export([publish_event/2, publish_event/3
+	 ,publish_status_req/1 ,publish_status_req/2, publish_status_req/3
+	 ,publish_status_resp/2, publish_status_resp/3
 	 ,publish_cdr/2, publish_cdr/3]).
+
+-export([get_status/1]).
 
 -include("../wh_api.hrl").
 
@@ -150,8 +153,19 @@ cdr_v(JObj) ->
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     CallID = props:get_value(callid, Props),
-    amqp_util:bind_q_to_callevt(Queue, CallID),
-    amqp_util:bind_q_to_callevt(Queue, CallID, cdr),
+    amqp_util:callevt_exchange(),
+
+    bind_q(Queue, props:get_value(restrict_to, Props), CallID).
+
+bind_q(Q, undefined, CallID) ->
+    amqp_util:bind_q_to_callevt(Q, CallID),
+    amqp_util:bind_q_to_callevt(Q, CallID, cdr);
+bind_q(Q, [cdr|T], CallID) ->
+    amqp_util:bind_q_to_callevt(Q, CallID, cdr),
+    bind_q(Q, T, CallID);
+bind_q(Q, [_|T], CallID) ->
+    bind_q(Q, T, CallID);
+bind_q(_Q, [], _CallID) ->
     ok.
 
 -spec unbind_q/2 :: (binary(), proplist()) -> 'ok'.
@@ -168,8 +182,14 @@ publish_event(CallID, Event, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Event, ?CALL_EVENT_VALUES, fun ?MODULE:event/1),
     amqp_util:callevt_publish(CallID, Payload, event, ContentType).
 
+-spec publish_status_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_status_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_status_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_status_req(API) ->
+    case is_list(API) of
+	true -> publish_status_req(props:get_value(<<"Call-ID">>, API), API);
+	false -> publish_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
+    end.
 publish_status_req(CallID, JObj) ->
     publish_status_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_req(CallID, Req, ContentType) ->
@@ -191,3 +211,9 @@ publish_cdr(CallID, JObj) ->
 publish_cdr(CallID, CDR, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(CDR, ?CALL_CDR_VALUES, fun ?MODULE:cdr/1),
     amqp_util:callevt_publish(CallID, Payload, cdr, ContentType).
+
+-spec get_status/1 :: (api_terms()) -> ne_binary().
+get_status(API) when is_list(API) ->
+    props:get_value(<<"Status">>, API);
+get_status(API) ->
+    wh_json:get_value(<<"Status">>, API).

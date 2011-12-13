@@ -239,6 +239,8 @@ media_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=
     Ids = [Id || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
     Attributes = fetch_attributes(media_options, Call),
     case search_attributes(Attribute, Ids, Attributes) of
+        undefined when Attribute =:= <<"audio">>; Attribute =:= <<"video">> ->
+            []; 
         undefined ->
             [?LOG("unable to find media attribute ~s on ~s", [Attribute, Id]) || Id <- Ids],
             undefined;

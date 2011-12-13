@@ -11,7 +11,7 @@
 -include("callflow.hrl").
 
 -export([audio_macro/2]).
--export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
+-export([answer/1, hangup/1, set/3, fetch/1, fetch/2, status/1]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
@@ -25,7 +25,7 @@
 -export([noop/1]).
 -export([flush/1, flush_dtmf/1]).
 
--export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2]).
+-export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2, b_status/1]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6]).
 -export([b_play/2, b_play/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
@@ -49,7 +49,6 @@
 -export([send_callctrl/2]).
 
 -export([find_failure_branch/2]).
--export([update_fallback/2]).
 
 %%--------------------------------------------------------------------
 %% @pubic
@@ -234,6 +233,28 @@ b_hangup(Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Produces the low level wh_api request to get the channel status.
+%% This request will execute immediately
+%% @end
+%%--------------------------------------------------------------------
+-spec status/1 :: (#cf_call{}) -> 'ok'.
+-spec b_status/1 :: (#cf_call{}) -> {'ok', 'channel_hungup'}.
+
+status(#cf_call{call_id=CallId, amqp_q=AmqpQ}) ->
+    Command = [{<<"Call-ID">>, CallId}
+               ,{<<"Insert-At">>, <<"now">>}
+               | wh_api:default_headers(AmqpQ, ?APP_NAME, ?APP_VERSION)
+              ],
+    wapi_call:publish_status_req(CallId, Command).
+
+b_status(Call) ->
+    status(Call),
+    wait_for_message(<<>>, <<"status_resp">>, <<"call_event">>, 2000).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Produces the low level wh_api request to bridge the call
 %% @end
 %%--------------------------------------------------------------------
@@ -283,8 +304,7 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call),
     case wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000, Call) of
-        {ok, Bridge}=Ok ->
-            spawn(fun() -> update_fallback(Bridge, Call) end),
+        {ok, _}=Ok ->
             Ok;
         Else ->
             Else
@@ -1196,7 +1216,6 @@ wait_for_bridge(Timeout, Call) ->
                     ?LOG("channel execution error while waiting for bridge"),
                     {error, JObj};
                 { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } ->
-                    spawn(fun() -> update_fallback(JObj, Call) end),
                     wait_for_bridge(infinity, Call);
                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">> } ->
                     case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
@@ -1382,34 +1401,4 @@ find_failure_branch(Error, #cf_call{cf_pid=CFPid}) ->
     after
         1000 ->
             false
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%.
-%% @end
-%%--------------------------------------------------------------------
--spec update_fallback/2 :: (Bridge, Call) -> 'ok' when
-      Bridge :: json_object(),
-      Call :: #cf_call{}.
-update_fallback(Bridge, Call) ->
-    Fallback = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Bridge) of
-                   undefined ->
-                       case b_fetch(true, Call) of
-                           {ok, OtherLeg} ->
-                               wh_json:get_value(<<"Endpoint-ID">>, OtherLeg);
-                           _ ->
-                               undefined
-                       end;
-                   AuthId ->
-                       AuthId
-               end,
-    case Fallback =/= undefined of
-        true ->
-            ?LOG("set transfer fallback to ~s", [Fallback]),
-            set(undefined, wh_json:from_list([{<<"Transfer-Fallback">>, Fallback}]), Call),
-            ok;
-        false ->
-            ok
     end.

@@ -25,8 +25,12 @@
 		     {?MODULE, [{<<"notification">>, <<"mwi">>}]}
 		    ]).
 -define(BINDINGS, [
-		   {notifications, [{keys, [?KEY_SIP_NOTIFY]}]}
+		   {notifications, [{notices, [sip_notify]}]}
 		  ]).
+
+-define(QUEUE_NAME, <<"ecallmgr_notify">>).
+-define(QUEUE_OPTIONS, [{exclusive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 -include("ecallmgr.hrl").
 
@@ -44,16 +48,17 @@ start_link() ->
     gen_listener:start_link(?MODULE,
 			    [{responders, ?RESPONDERS}
 			     ,{bindings, ?BINDINGS}
+			     ,{queue_name, ?QUEUE_NAME}
+			     ,{queue_options, ?QUEUE_OPTIONS}
+			     ,{consume_options, ?CONSUME_OPTIONS}
 			     ,{basic_qos, 1}
 			    ], []).
 
--spec handle_req/2 :: (JObj, Props) -> no_return() when
-      JObj :: json_object(),
-      Props :: proplist().
+-spec handle_req/2 :: (json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
-    wh_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
 
-    true = wh_api:mwi_update_v(JObj),
+    true = wapi_notifications:mwi_update_v(JObj),
 
     User = wh_json:get_value(<<"Notify-User">>, JObj),
     Realm  = wh_json:get_value(<<"Notify-Realm">>, JObj),
@@ -197,9 +202,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% 'sip:{User}'
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoint/2 :: (User, Realm) -> tuple(error, timeout) | string() when
-      User :: binary(),
-      Realm :: binary().
+-spec get_endpoint/2 :: (ne_binary(), ne_binary()) -> {'error', 'timeout'} | nonempty_string().
 get_endpoint(User, Realm) ->
     case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
         [{<<"Contact">>, Contact}] ->

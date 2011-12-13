@@ -32,9 +32,10 @@
 			  ,{?EXCHANGE_WHAPPS, ?TYPE_WHAPPS}
 			 ]).
 
-%% Channel, ChannelRef, Ticket[, FromRef]
--type channel_data() :: {pid(), reference(), integer()}.
--type consumer_data() :: {pid(), reference(), integer(), reference()}.
+%% Channel, ChannelRef
+%% Channel, ChannelRef, Tag, FromRef
+-type channel_data() :: {pid(), reference()}.
+-type consumer_data() :: {pid(), reference(), binary(), reference()}.
 
 -type consume_records() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{} | #'queue.delete'{} |
 			   #'basic.consume'{} | #'basic.cancel'{}.
@@ -160,9 +161,9 @@ handle_call(stop, {From, _}, #state{manager=Mgr}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({publish, From, BasicPub, AmqpMsg}, #state{publish_channel={C,_,T}}=State) ->
-    ?LOG_SYS("Pub on ch ~p x: ~s rt: ~s", [C, BasicPub#'basic.publish'.exchange, BasicPub#'basic.publish'.routing_key]),
-    spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, BasicPub#'basic.publish'{ticket=T}, AmqpMsg)) end),
+handle_cast({publish, From, #'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg}, #state{publish_channel={C,_}}=State) ->
+    ?LOG_SYS("Pub on ch ~p x: ~s rt: ~s", [C, _Exchange, _RK]),
+    spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, BasicPub, AmqpMsg)) end),
     {noreply, State};
 
 handle_cast({register_return_handler, {FromPid, _}=From}, #state{return_handlers=RHDict}=State) ->
@@ -174,12 +175,19 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
     case dict:find(FromPid, Consumers) of
 	error ->
 	    case start_channel(Conn, FromPid) of
-		{C,R,T} -> % channel, channel ref, ticket
+		{C,R} when is_pid(C) andalso is_reference(R) -> % channel, channel ref
 		    ?LOG("Consuming on ch: ~p for proc: ~p", [C, FromPid]),
 		    FromRef = erlang:monitor(process, FromPid),
-                    amqp_gen_consumer:register_default_consumer(C, self()),
-		    gen_server:reply(From, {C, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)}),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
+                    amqp_selective_consumer:register_default_consumer(C, self()),
+
+		    case try_to_subscribe(C, BasicConsume, FromPid) of
+			{ok, Tag} ->
+			    gen_server:reply(From, {C, ok}),
+			    {noreply, State#state{consumers=dict:store(FromPid, {C,R,Tag,FromRef}, Consumers)}, hibernate};
+			{error, _E}=Err ->
+			    gen_server:reply(From, Err),
+			    {noreply, State}
+		    end;
 		closing ->
 		    ?LOG_SYS("Failed to start channel: closing"),
 		    gen_server:reply(From, {error, closing}),
@@ -189,20 +197,56 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 		    gen_server:reply(From, E),
 		    {noreply, State}
 	    end;
-	{ok, {C,_,T,_}} ->
-	    ?LOG("Already consuming on ch: ~p for proc: ~p", [C, FromPid]),
-	    gen_server:reply(From, {C, amqp_channel:subscribe(C, BasicConsume#'basic.consume'{ticket=T}, FromPid)}),
+	{ok, {C,R,<<>>,FromRef}} ->
+	    amqp_selective_consumer:register_default_consumer(C, self()),
+	    ?LOG("Channel ~p exists for proc ~p, but we aren't consuming yet", [C, FromPid]),
+
+	    case try_to_subscribe(C, BasicConsume, FromPid) of
+		{ok, Tag} ->
+		    gen_server:reply(From, {C, ok}),
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,Tag,FromRef}, Consumers)}, hibernate};
+		{error, _E}=Err ->
+		    gen_server:reply(From, Err),
+		    {noreply, State}
+	    end;
+	{ok, {C,_,Tag,_}} ->
+	    ?LOG("Already consuming on ch: ~p for proc: ~p on tag ~s", [C, FromPid, Tag]),
+	    gen_server:reply(From, {C, ok}),
+	    {noreply, State, hibernate}
+    end;
+
+handle_cast({consume, {FromPid, _}=From, #'basic.cancel'{}=BasicCancel}, #state{consumers=Consumers}=State) ->
+    case dict:find(FromPid, Consumers) of
+	error ->
+	    gen_server:reply(From, {error, not_consuming}),
+	    {noreply, State};
+	{ok, {C,_,Tag,_}} ->
+	    gen_server:reply(From, amqp_channel:cast(C, BasicCancel#'basic.cancel'{consumer_tag=Tag}, FromPid)),
 	    {noreply, State}
     end;
 
-handle_cast({consume, {FromPid, _}=From, #'basic.cancel'{}=BasicCancel}, #state{connection=Conn, consumers=Consumers}=State) ->
+handle_cast({consume, {FromPid, _}=From, #'queue.bind'{}=QueueBind}, #state{connection=Conn, consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
 	error ->
 	    case start_channel(Conn, FromPid) of
-		{C,R,T} ->
+		{C,R} when is_pid(C) andalso is_reference(R) ->
 		    FromRef = erlang:monitor(process, FromPid),
-		    gen_server:reply(From, amqp_channel:cast(C, BasicCancel, FromPid)),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
+		    case amqp_channel:call(C, QueueBind) of
+			#'queue.bind_ok'{} ->
+			    gen_server:reply(From, ok),
+			    {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate};
+			ok ->
+			    gen_server:reply(From, ok),
+			    {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate};
+			{error, _E}=Err ->
+			    ?LOG("Error binding queue: ~p", [_E]),
+			    gen_server:reply(From, {error, Err}),
+			    {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate};
+			E ->
+			    ?LOG("Unexpected ~p", [E]),
+			    gen_server:reply(From, {error, E}),
+			    {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate}
+		    end;
 		closing ->
 		    ?LOG_SYS("Failed to start channel: closing"),
 		    gen_server:reply(From, {error, closing}),
@@ -212,28 +256,16 @@ handle_cast({consume, {FromPid, _}=From, #'basic.cancel'{}=BasicCancel}, #state{
 		    {noreply, State}
 	    end;
 	{ok, {C,_,_,_}} ->
-	    gen_server:reply(From, amqp_channel:cast(C, BasicCancel, FromPid)),
-	    {noreply, State}
-    end;
-
-handle_cast({consume, {FromPid, _}=From, #'queue.bind'{}=QueueBind}, #state{connection=Conn, consumers=Consumers}=State) ->
-    case dict:find(FromPid, Consumers) of
-	error ->
-	    case start_channel(Conn, FromPid) of
-		{C,R,T} ->
-		    FromRef = erlang:monitor(process, FromPid),
-		    gen_server:reply(From, amqp_channel:call(C, QueueBind#'queue.bind'{ticket=T})),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
-		closing ->
-		    ?LOG_SYS("Failed to start channel: closing"),
-		    gen_server:reply(From, {error, closing}),
-		    {noreply, State};
-		{error, _}=E ->
-		    gen_server:reply(From, E),
-		    {noreply, State}
-	    end;
-	{ok, {C,_,T,_}} ->
-	    gen_server:reply(From, amqp_channel:call(C, QueueBind#'queue.bind'{ticket=T})),
+	    case amqp_channel:call(C, QueueBind) of
+		#'queue.bind_ok'{} ->
+		    gen_server:reply(From, ok);
+		ok ->
+		    gen_server:reply(From, ok);
+		{error, _E}=Err ->
+		    gen_server:reply(From, Err);
+		Err ->
+		    gen_server:reply(From, {error, Err})
+	    end,
 	    {noreply, State}
     end;
 
@@ -241,10 +273,17 @@ handle_cast({consume, {FromPid, _}=From, #'queue.unbind'{}=QueueUnbind}, #state{
     case dict:find(FromPid, Consumers) of
 	error ->
 	    case start_channel(Conn, FromPid) of
-		{C,R,T} ->
+		{C,R} when is_pid(C) andalso is_reference(R) ->
 		    FromRef = erlang:monitor(process, FromPid),
-		    gen_server:reply(From, amqp_channel:call(C, QueueUnbind#'queue.unbind'{ticket=T})),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
+		    case amqp_channel:call(C, QueueUnbind) of
+			#'queue.unbind_ok'{} ->
+			    gen_server:reply(From, ok);
+			{error, _E}=Err ->
+			    gen_server:reply(From, Err);
+			Err ->
+			    gen_server:reply(From, {error, Err})
+		    end,
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
@@ -252,8 +291,17 @@ handle_cast({consume, {FromPid, _}=From, #'queue.unbind'{}=QueueUnbind}, #state{
 		    gen_server:reply(From, E),
 		    {noreply, State}
 	    end;
-	{ok, {C,_,T,_}} ->
-	    gen_server:reply(From, amqp_channel:call(C, QueueUnbind#'queue.unbind'{ticket=T})),
+	{ok, {C,_,_,_}} ->
+	    case amqp_channel:call(C, QueueUnbind) of
+		#'queue.unbind_ok'{} ->
+		    gen_server:reply(From, ok);
+		ok ->
+		    gen_server:reply(From, ok);
+		{error, _E}=Err ->
+		    gen_server:reply(From, Err);
+		Err ->
+		    gen_server:reply(From, {error, Err})
+	    end,
 	    {noreply, State}
     end;
 
@@ -261,10 +309,19 @@ handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #stat
     case dict:find(FromPid, Consumers) of
 	error ->
 	    case start_channel(Conn, FromPid) of
-		{C,R,T} ->
+		{C,R} when is_pid(C) andalso is_reference(R) ->
 		    FromRef = erlang:monitor(process, FromPid),
-		    gen_server:reply(From, amqp_channel:call(C, QueueDeclare#'queue.declare'{ticket=T})),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
+		    case amqp_channel:call(C, QueueDeclare) of
+			#'queue.declare_ok'{queue=Q} ->
+			    gen_server:reply(From, {ok, Q});
+			ok ->
+			    gen_server:reply(From, ok);
+			{error, _E}=Err ->
+			    gen_server:reply(From, Err);
+			Err ->
+			    gen_server:reply(From, {error, Err})
+		    end,
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
@@ -272,9 +329,17 @@ handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #stat
 		    gen_server:reply(From, E),
 		    {noreply, State}
 	    end;
-	{ok, {C,_,T,_}} ->
-	    Call = amqp_channel:call(C, QueueDeclare#'queue.declare'{ticket=T}),
-	    gen_server:reply(From, Call),
+	{ok, {C,_,_,_}} ->
+	    case amqp_channel:call(C, QueueDeclare) of
+		#'queue.declare_ok'{queue=Q} ->
+		    gen_server:reply(From, {ok, Q});
+		ok ->
+		    gen_server:reply(From, ok);
+		{error, _E}=Err ->
+		    gen_server:reply(From, Err);
+		Err ->
+		    gen_server:reply(From, {error, Err})
+	    end,
 	    {noreply, State}
     end;
 
@@ -282,10 +347,21 @@ handle_cast({consume, {FromPid, _}=From, #'queue.delete'{}=QueueDelete}, #state{
     case dict:find(FromPid, Consumers) of
 	error ->
 	    case start_channel(Conn, FromPid) of
-		{C,R,T} ->
+		{C,R} when is_pid(C) andalso is_reference(R) ->
 		    FromRef = erlang:monitor(process, FromPid),
-		    gen_server:reply(From, amqp_channel:cast(C, QueueDelete#'queue.delete'{ticket=T})),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
+
+		    case amqp_channel:call(C, QueueDelete) of
+			#'queue.delete_ok'{} ->
+			    gen_server:reply(From, ok);
+			ok ->
+			    gen_server:reply(From, ok);
+			{error, _E}=Err ->
+			    gen_server:reply(From, Err);
+			Err ->
+			    gen_server:reply(From, {error, Err})
+		    end,
+
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
@@ -293,8 +369,17 @@ handle_cast({consume, {FromPid, _}=From, #'queue.delete'{}=QueueDelete}, #state{
 		    gen_server:reply(From, E),
 		    {noreply, State}
 	    end;
-	{ok, {C,_,T,_}} ->
-	    gen_server:reply(From, amqp_channel:cast(C, QueueDelete#'queue.delete'{ticket=T})),
+	{ok, {C,_,_,_}} ->
+	    case amqp_channel:call(C, QueueDelete) of
+		#'queue.delete_ok'{} ->
+		    gen_server:reply(From, ok);
+		ok ->
+		    gen_server:reply(From, ok);
+		{error, _E}=Err ->
+		    gen_server:reply(From, Err);
+		Err ->
+		    gen_server:reply(From, {error, Err})
+	    end,
 	    {noreply, State}
     end;
 
@@ -302,10 +387,10 @@ handle_cast({consume, {FromPid, _}=From, #'basic.qos'{}=BasicQos}, #state{connec
     case dict:find(FromPid, Consumers) of
 	error ->
 	    case start_channel(Conn, FromPid) of
-		{C,R,T} ->
+		{C,R} when is_pid(C) andalso is_reference(R) ->
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, amqp_channel:call(C, BasicQos)),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
@@ -322,10 +407,10 @@ handle_cast({consume, {FromPid, _}=From, #'basic.ack'{}=BasicAck}, #state{connec
     case dict:find(FromPid, Consumers) of
 	error ->
 	    case start_channel(Conn, FromPid) of
-		{C,R,T} ->
+		{C,R} when is_pid(C) andalso is_reference(R) ->
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, amqp_channel:cast(C, BasicAck)),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
@@ -342,10 +427,10 @@ handle_cast({consume, {FromPid, _}=From, #'basic.nack'{}=BasicNack}, #state{conn
     case dict:find(FromPid, Consumers) of
 	error ->
 	    case start_channel(Conn, FromPid) of
-		{C,R,T} ->
+		{C,R} when is_pid(C) andalso is_reference(R) ->
 		    FromRef = erlang:monitor(process, FromPid),
 		    gen_server:reply(From, amqp_channel:cast(C, BasicNack)),
-		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,T,FromRef}, Consumers)}, hibernate};
+		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate};
 		closing ->
 		    gen_server:reply(From, {error, closing}),
 		    {noreply, State};
@@ -358,20 +443,21 @@ handle_cast({consume, {FromPid, _}=From, #'basic.nack'{}=BasicNack}, #state{conn
 	    {noreply, State}
     end;
 
-handle_cast({misc_req, From, #'exchange.declare'{}=ED}, #state{misc_channel={C,_,T}}=State) ->
+handle_cast({misc_req, From, #'exchange.declare'{}=ED}, #state{misc_channel={C,_}}=State) ->
     spawn(fun() ->
-		  case amqp_channel:call(C, ED#'exchange.declare'{ticket=T}) of
+		  case amqp_channel:call(C, ED) of
 		      #'exchange.declare_ok'{} -> gen_server:reply(From, ok);
-		      E -> gen_server:reply(From, E)
+		      {error, _E}=Err -> gen_server:reply(From, Err);
+		      E -> gen_server:reply(From, {error, E})
 		  end
 	  end),
     {noreply, State};
 
-handle_cast({misc_req, From, Req}, #state{misc_channel={C,_,_}}=State) ->
+handle_cast({misc_req, From, Req}, #state{misc_channel={C,_}}=State) ->
     spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, Req)) end),
     {noreply, State};
 
-handle_cast({misc_req, From, Req1, Req2}, #state{misc_channel={C,_,_}}=State) ->
+handle_cast({misc_req, From, Req1, Req2}, #state{misc_channel={C,_}}=State) ->
     spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, Req1, Req2)) end),
     {noreply, State};
 
@@ -401,8 +487,8 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{return_handlers=RHDict
 handle_info(timeout, {Host, Conn}) ->
     Ref = erlang:monitor(process, Conn),
     case start_channel(Conn) of
-	{Channel, _, Ticket} = PubChan ->
-	    load_exchanges(Channel, Ticket),
+	{Channel, _} = PubChan when is_pid(Channel) ->
+	    load_exchanges(Channel),
             amqp_channel:register_return_handler(Channel, self()),
 	    {noreply, #state{
 	       connection = {Conn, Ref}
@@ -441,9 +527,7 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (Reason, State) -> 'ok' when
-      Reason :: term(),
-      State :: #state{}.
+-spec terminate/2 :: (term(), #state{}) -> 'ok'.
 terminate(_Reason, #state{consumers=Consumers, amqp_h=Host}) ->
     spawn(fun() -> notify_consumers({amqp_host_down, Host}, Consumers) end),
     ?LOG_SYS("amqp host for ~s terminated ~p", [Host, _Reason]).
@@ -471,11 +555,10 @@ start_channel(Connection) when is_pid(Connection) ->
     %% Open an AMQP channel to access our realm
     case erlang:is_process_alive(Connection) andalso amqp_connection:open_channel(Connection) of
 	{ok, Channel} ->
-	    #'access.request_ok'{ticket = Ticket} = amqp_channel:call(Channel, amqp_util:access_request()),
-	    ?LOG_SYS("Opened channel ~p with ticket ~b", [Channel, Ticket]),
+	    ?LOG_SYS("Opened channel ~p", [Channel]),
 
 	    ChanMRef = erlang:monitor(process, Channel),
-	    {Channel, ChanMRef, Ticket};
+	    {Channel, ChanMRef};
 	false ->
 	    {error, no_connection};
 	E ->
@@ -486,9 +569,7 @@ start_channel(Connection) when is_pid(Connection) ->
 -spec start_channel/2 :: ('undefined' | {pid(), reference()} | pid(), pid()) -> channel_data() | {'error', 'no_connection'} | 'closing'.
 start_channel(Connection, Pid) ->
     case start_channel(Connection) of
-	{C, _, T} = Channel ->
-	    amqp_channel:register_return_handler(C, Pid),
-	    #'access.request_ok'{ticket=T} = amqp_channel:call(C, amqp_util:access_request()),
+	{C, _} = Channel when is_pid(C) ->
 	    ?LOG_SYS("Started channel ~p for caller ~p", [C, Pid]),
 	    Channel;
 	{error, no_connection}=E ->
@@ -499,23 +580,22 @@ start_channel(Connection, Pid) ->
             E
     end.
 
--spec load_exchanges/2 :: (pid(), integer()) -> 'ok'.
-load_exchanges(Channel, Ticket) ->
+-spec load_exchanges/1 :: (pid()) -> 'ok'.
+load_exchanges(Channel) ->
     lists:foreach(fun({Ex, Type}) ->
 			  ED = #'exchange.declare'{
-			    ticket = Ticket
-			    ,exchange = Ex
+			    exchange = Ex
 			    ,type = Type
 			   },
 			  #'exchange.declare_ok'{} = amqp_channel:call(Channel, ED)
 		  end, ?KNOWN_EXCHANGES).
 
 -spec remove_ref/2 :: (reference(), #state{}) -> #state{}.
-remove_ref(Ref, #state{connection={Conn, _}, publish_channel={C,Ref,_}}=State) ->
+remove_ref(Ref, #state{connection={Conn, _}, publish_channel={C,Ref}}=State) ->
     ?LOG_SYS("reference was for publish channel ~p, restarting", [C]),
     State#state{publish_channel=start_channel(Conn)};
 
-remove_ref(Ref, #state{connection={Conn, _}, misc_channel={C,Ref,_}}=State) ->
+remove_ref(Ref, #state{connection={Conn, _}, misc_channel={C,Ref}}=State) ->
     ?LOG_SYS("reference was for misc channel ~p, restarting", [C]),
     State#state{misc_channel=start_channel(Conn)};
 
@@ -524,19 +604,12 @@ remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
 		    dict:fold(fun(K, V, Acc) -> clean_consumers(K, V, Acc, Ref, Conn) end, Cs, Cs)
 	       }.
 
--spec notify_consumers/2 :: (Msg, Dict) -> 'ok' when
-      Msg :: {'amqp_host_down', binary()},
-      Dict :: dict().
+-spec notify_consumers/2 :: ({'amqp_host_down', binary()}, dict()) -> 'ok'.
 notify_consumers(Msg, Dict) ->
     lists:foreach(fun({Pid,_}) -> Pid ! Msg end, dict:to_list(Dict)).
 
 %% Channel died
--spec clean_consumers/5 :: (FromPid, Value, Acc, Ref, Conn) -> dict() when
-      FromPid :: pid(),
-      Value :: {pid(), reference(), integer(), reference()},
-      Acc :: dict(),
-      Ref :: reference(),
-      Conn :: pid().
+-spec clean_consumers/5 :: (pid(), consumer_data(), dict(), reference(), pid()) -> dict().
 clean_consumers(FromPid, {C,Ref1,_,FromRef}, AccDict, Ref, Conn) when Ref =:= Ref1 ->
     ?LOG_SYS("reference was for channel ~p for ~p, restarting", [C, FromPid]),
 
@@ -544,9 +617,9 @@ clean_consumers(FromPid, {C,Ref1,_,FromRef}, AccDict, Ref, Conn) when Ref =:= Re
     erlang:is_process_alive(C) andalso amqp_channel:close(C),
 
     case start_channel(Conn, FromPid) of
-	{CNew, RefNew, TNew} ->
+	{CNew, RefNew} when is_pid(CNew) andalso is_reference(RefNew) ->
 	    ?LOG_SYS("New channel started for ~p", [FromPid]),
-	    dict:store(FromPid, {CNew, RefNew, TNew, FromRef}, AccDict);
+	    dict:store(FromPid, {CNew, RefNew, <<>>, FromRef}, AccDict);
 	{error, no_connection} ->
 	    ?LOG_SYS("No connection available"),
 	    FromPid ! {amqp_lost_channel, no_connection},
@@ -580,3 +653,12 @@ clean_consumers(FromPid, {C,CRef,_,FromRef}, AccDict, _, _) ->
 %% Simple catchall
 clean_consumers(_, _, AccDict,_,_) ->
     AccDict.
+
+-spec try_to_subscribe/3 :: (pid(), #'basic.consume'{}, pid()) -> {'ok', non_neg_integer()} | {'error', term()}.
+try_to_subscribe(C, BasicConsume, FromPid) ->
+    try amqp_channel:subscribe(C, BasicConsume, FromPid) of
+	#'basic.consume_ok'{consumer_tag=Tag} -> {ok, Tag};
+	Other -> {error, Other}
+    catch
+	_E:R -> {error, R}
+    end.

@@ -246,8 +246,8 @@ init_route_req(Parent, Node, FSID, CallID, FSData) ->
 -spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
 process_route_req(Node, FSID, CallID, FSData) ->
     DefProp = [{<<"Msg-ID">>, FSID}
-	       ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
-	       ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
+	       ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"Unknown">>)}
+	       ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>)}
 	       ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
 	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
 	       ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
@@ -296,11 +296,12 @@ authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
 	    reply(Node, FSID, CallID, RespJObj, RouteCCV1, AuthZPid)
     end.
 
+%% Reply with a 402 for unauthzed calls
 -spec reply_forbidden/2 :: (atom(), ne_binary()) -> 'ok'.
 reply_forbidden(Node, FSID) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
-						,{<<"Route-Error-Code">>, <<"486">>}
-						,{<<"Route-Error-Message">>, <<"No more channels">>}
+						,{<<"Route-Error-Code">>, <<"402">>}
+						,{<<"Route-Error-Message">>, <<"Payment Required">>}
 					       ]),
     case freeswitch:fetch_reply(Node, FSID, XML) of
 	ok ->

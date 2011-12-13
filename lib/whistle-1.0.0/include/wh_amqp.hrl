@@ -25,8 +25,6 @@
 -define(KEY_REG_SUCCESS, <<"registration.success">>).
 -define(KEY_REG_QUERY, <<"registration.query">>).
 
--define(KEY_SIP_NOTIFY, <<"sip.notify">>).
-
 -define(KEY_ASR_REQ, <<"asr.req">>).
 
 -define(KEY_CHANNEL_QUERY, <<"locate.channel_req">>).

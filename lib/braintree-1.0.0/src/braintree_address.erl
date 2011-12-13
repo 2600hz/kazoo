@@ -23,11 +23,8 @@
 %% Creates a new customer using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (Address) -> bt_result() when
-      Address :: #bt_address{}.
--spec create/2 :: (CustomerId, Address) -> bt_result() when
-      CustomerId :: string() | binary(),
-      Address :: #bt_address{}.
+-spec create/1 :: (#bt_address{}) -> {'ok', #bt_address{}} | {'error', braintree_request:error_types() | 'customer_id_invalid'}.
+-spec create/2 :: (nonempty_string() | ne_binary(), #bt_address{}) -> {'ok', #bt_address{}} | {'error', braintree_request:error_types() | 'customer_id_invalid'}.
 
 create(#bt_address{customer_id=CustomerId}=Address) ->
     try
@@ -55,8 +52,7 @@ create(CustomerId, Address) ->
 %% Updates a customer with the given record
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (Address) -> bt_result() when
-      Address :: #bt_address{}.
+-spec update/1 :: (#bt_address{}) -> {'ok', #bt_address{}} | {'error', braintree_request:error_types() | 'address_id_invalid'}.
 update(#bt_address{id=Id, customer_id=CustomerId}=Address) ->
     try
         true = validate_id(Id),
@@ -81,12 +77,9 @@ update(#bt_address{id=Id, customer_id=CustomerId}=Address) ->
 %% Deletes a customer id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (Address) -> bt_result() when
-      Address :: #bt_address{}.
--spec delete/2 :: (CustomerId, Id) -> bt_result() when
-      CustomerId :: binary() | string(),
-      Id :: binary() | string().
-
+-spec delete/1 :: (#bt_address{}) -> {'ok', #bt_address{}} | {'error', braintree_request:error_types() | 'address_id_invalid'}.
+-spec delete/2 :: (ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) ->
+			  {'ok', #bt_address{}} | {'error', braintree_request:error_types() | 'address_id_invalid'}.
 delete(#bt_address{customer_id=CustomerId, id=Id}) ->
     delete(CustomerId, Id).
 
@@ -113,9 +106,8 @@ delete(CustomerId, Id) ->
 %% Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/2 :: (CustomerId, Id) -> bt_result() when
-      CustomerId :: binary() | string(),
-      Id :: binary() | string().
+-spec find/2 :: (ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) ->
+			{'ok', #bt_address{}} | {'error', braintree_request:error_types() | 'address_id_invalid'}.
 find(CustomerId, Id) ->
         try
             true = validate_id(Id),
@@ -139,17 +131,11 @@ find(CustomerId, Id) ->
 %% Verifies that the id being used is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_id/1 :: (Id) -> boolean() when
-      Id :: string() | binary().
--spec validate_id/2 :: (Id, AllowUndefined) -> boolean() when
-      Id :: string() | binary(),
-      AllowUndefined :: boolean().
+-spec validate_id/1 :: (nonempty_string() | ne_binary()) -> boolean().
+-spec validate_id/2 :: (nonempty_string() | ne_binary(), boolean()) -> boolean().
 
 validate_id(Id) ->
     validate_id(Id, false).
-
-validate_id(undefined, false) ->
-    false;
 validate_id(Id, _) ->
     (Id =/= <<>> andalso Id =/= "")
         andalso (re:run(Id, "^[0-9A-Za-z_-]+$") =/= nomatch).
@@ -193,11 +179,13 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (Address) -> bt_xml() when
-      Address :: #bt_address{}.
--spec record_to_xml/2 :: (Address, ToString) -> bt_xml() when
-      Address :: #bt_address{},
-      ToString :: boolean().
+-type record_proplist() :: [{'first-name' | 'last-name' | 'company' | 'street-address'
+			     | 'extended-address' | 'locality' | 'region' | 'postal-code'
+			     | 'country-code-alpha2' | 'country-code-alpha3' | 'country-code-numeric'
+			     | 'country-name'
+			     ,'undefined' | [char() | {_,_}]},...].
+-spec record_to_xml/1 :: (#bt_address{}) -> record_proplist() | braintree_util:char_to_bin_res().
+-spec record_to_xml/2 :: (#bt_address{}, boolean()) -> record_proplist() | braintree_util:char_to_bin_res().
 
 record_to_xml(Address) ->
     record_to_xml(Address, false).

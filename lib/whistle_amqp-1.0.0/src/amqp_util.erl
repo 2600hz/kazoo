@@ -153,7 +153,7 @@ callctl_publish(CtrlQ, Payload, ContentType, Props) ->
       Payload :: iolist() | ne_binary(),
       Type :: 'media_req' | 'event' | 'status_req' | 'cdr' | ne_binary().
 -spec callevt_publish/4 :: (ne_binary(), iolist(), Type, ne_binary()) -> 'ok' when
-      Type :: 'status_req' | 'event'.
+      Type :: 'status_req' | 'event' | ne_binary().
 callevt_publish(Payload) ->
     callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, media_req).
 
@@ -172,12 +172,15 @@ callevt_publish(CallID, Payload, cdr) ->
 callevt_publish(_CallID, Payload, RoutingKey) when is_binary(RoutingKey) ->
     basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 
+callevt_publish(_CallID, Payload, RoutingKey, ContentType) when is_binary(RoutingKey) ->
+    basic_publish(?EXCHANGE_CALLEVT, RoutingKey, Payload, ContentType);
 callevt_publish(CallID, Payload, status_req, ContentType) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_STATUS_REQ/binary, (encode(CallID))/binary>>, Payload, ContentType);
 callevt_publish(CallID, Payload, event, ContentType) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, Payload, ContentType);
 callevt_publish(CallID, Payload, cdr, ContentType) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, Payload, ContentType).
+
 
 -spec resource_publish/1 :: (Payload) -> 'ok' when
       Payload :: iolist().
@@ -469,13 +472,10 @@ new_queue(Queue, Options) when is_binary(Queue) ->
       ,arguments = props:get_value(arguments, Options, [])
      },
     case amqp_mgr:consume(QD) of
-	'ok' ->
+	{'ok', Q} ->
             ?AMQP_DEBUG andalso ?LOG("create queue(~p) ~s)", [Options, Queue]),
-            Queue;
-	#'queue.declare_ok'{queue=Q} ->
-            ?AMQP_DEBUG andalso ?LOG("create queue(~p) ~s", [Options, Q]),
             Q;
-	_Other ->
+	{error, _Other} ->
             ?AMQP_DEBUG andalso ?LOG("error creating queue(~p): ~p", [Options, _Other]),
 	    {'error', 'amqp_error'}
     end.
@@ -582,9 +582,7 @@ bind_q_to_resource(Queue) ->
 bind_q_to_resource(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
 
--spec bind_q_to_callmgr/2 :: (Queue, Routing) -> 'ok' | {'error', term()} when
-      Queue :: binary(),
-      Routing :: binary().
+-spec bind_q_to_callmgr/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', term()}.
 bind_q_to_callmgr(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
 
@@ -599,7 +597,6 @@ bind_q_to_configuration(Queue, Routing) ->
       Routing :: binary().
 bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
-
 
 -spec bind_q_to_conference/2 :: (Queue, Routing) -> 'ok' | {'error', term()} when
       Queue :: binary(),
@@ -646,13 +643,13 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
       ,arguments = []
      },
     case amqp_mgr:consume(QB) of
-        {'queue.bind_ok'} ->
-            ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
-            ok;
         ok ->
             ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
             ok;
-        Else ->
+        {ok, #'queue.bind_ok'{}} ->
+            ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
+            ok;
+	{error, _E}=Else ->
             ?AMQP_DEBUG andalso ?LOG("failed to bind queue ~s: ~p", [Queue, Else]),
             Else
     end.
@@ -741,13 +738,12 @@ basic_consume(Queue, Options) ->
       ,nowait = props:get_value(nowait, Options, false)
      },
     case amqp_mgr:consume(BC) of
-        {_Pid, {'basic.consume_ok', _}} ->
-            %% link(C),
+	{error, E}=Err ->
+            ?AMQP_DEBUG andalso ?LOG("error when trying to consume on ~s: ~p", [Queue, E]),
+	    Err;
+        {Pid, ok} when is_pid(Pid) ->
             ?AMQP_DEBUG andalso ?LOG("started consume of queue(~p) ~s", [Options, Queue]),
             ok;
-        {_, Error} ->
-            ?AMQP_DEBUG andalso ?LOG("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Error]),
-            Error;
         Else ->
             ?AMQP_DEBUG andalso ?LOG("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Else]),
             Else

@@ -330,6 +330,43 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
             end
     end;
 
+get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
+    case wapi_dialplan:call_pickup_v(JObj) of
+	false -> {'error', <<"intercept failed to execute as JObj did not validate">>};
+	true ->
+            Generators = [fun(DP) ->
+                                  case wh_json:is_true(<<"Unbridged-Only">>, JObj) of
+                                      false ->
+                                          DP;
+                                      true ->
+                                          [{"application", "set intercept_unbridged_only=true"}|DP]
+                                  end
+                          end,
+                          fun(DP) ->
+                                  case wh_json:is_true(<<"Unanswered-Only">>, JObj) of
+                                      false ->
+                                          DP;
+                                      true ->
+                                          [{"application", "set intercept_unanswered_only=true"}|DP]
+                                  end
+                          end,
+                          fun(DP) ->
+                                  [{"application", "export failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
+                                   ,{"application", "export uuid_bridge_continue_on_cancel=true"}
+                                   ,{"application", "export continue_on_fail=true"}|DP]
+                          end,
+                          fun(DP) ->
+                                  Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
+                                  Arg = case wh_json:is_true(<<"Other-Leg">>, JObj) of
+                                            true -> <<"-bleg ", Target/binary>>;
+                                            false -> Target
+                                        end,
+                                  [{"application", "intercept " ++ wh_util:to_list(Arg)}|DP]
+                          end],
+            Dialplan = lists:foldr(fun(F, DP) -> F(DP) end, [], Generators),
+            {<<"intercept">>, Dialplan}
+    end;
+
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
     case wapi_dialplan:tone_detect_v(JObj) of
 	false -> {'error', <<"tone detect failed to execute as JObj did not validate">>};
@@ -373,14 +410,23 @@ get_fs_app(_Node, _UUID, JObj, <<"respond">>) ->
     case wapi_dialplan:respond_v(JObj) of
         false -> {'error', <<"respond failed to execute as JObj did not validate">>};
         true ->
-            case wh_json:get_value(<<"Response-Code">>, JObj, ?DEFAULT_RESPONSE_CODE) of
-                <<"302">> ->
-                    {<<"redirect">>, wh_json:get_value(<<"Response-Message">>, JObj, <<>>)};
-                Code ->
-                    Response = <<Code/binary ," "
-                                 ,(wh_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary>>,
-                    {<<"respond">>, Response}
-            end
+            Code = wh_json:get_value(<<"Response-Code">>, JObj, ?DEFAULT_RESPONSE_CODE),
+            Response = <<Code/binary ," "
+                         ,(wh_json:get_value(<<"Response-Message">>, JObj, <<>>))/binary>>,
+            {<<"respond">>, Response}
+    end;
+
+get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
+    case wapi_dialplan:redirect_v(JObj) of
+        false -> {'error', <<"redirect failed to execute as JObj did not validate">>};
+        true ->
+            _ = case wh_json:get_value(<<"Redirect-Server">>, JObj) of
+		    undefined ->
+			ok;
+		    Server ->
+			set(Node, UUID, <<"sip_rh_X-Redirect-Server=", Server/binary>>)
+		end,
+            {<<"redirect">>, wh_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
@@ -437,6 +483,17 @@ send_cmd(Node, UUID, <<"hangup">>, _) ->
     ?LOG("terminate call on node ~s", [Node]),
     _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
     freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
+send_cmd(Node, UUID, <<"intercept">>, Args) ->
+    Dialplan = Args ++ [{"application", "event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade,whistle_event_name=CHANNEL_EXECUTE_COMPLETE,whistle_application_name=intercept"}
+                        ,{"application", "park  "}],
+    _ = [begin
+	     App = lists:takewhile(fun($ ) -> false; (_) -> true end, V),
+	     Data = tl(lists:dropwhile(fun($ ) -> false; (_) -> true end, V)),
+	     _ = ecallmgr_util:fs_log(Node, "whistle queing command in 'xferext' extension: ~s ~s", [App, Data]),
+	     ?LOG("building xferext on node ~s: ~s(~s)", [Node, App, Data])
+	 end || {_, V} <- Dialplan],
+    'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ Dialplan),
+    ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
 send_cmd(Node, UUID, <<"bridge">>, Args) ->
     Dialplan = Args ++ [{"application", "event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade,whistle_event_name=CHANNEL_EXECUTE_COMPLETE,whistle_application_name=bridge"}
                         ,{"application", "park  "}],
@@ -541,7 +598,7 @@ stream_over_http(Node, UUID, File, Method, JObj) ->
 	{ok, "504", _, _} ->
             stream_over_http(Node, UUID, File, Method, JObj);
 	{ok, StatusCode, RespHeaders, RespBody} ->
-            MediaTransResults = wh_json:from_list([{<<"Status-Code">>, StatusCode}
+            MediaTransResults = wh_json:from_list([{<<"Status-Code">>, wh_util:to_binary(StatusCode)}
 						   ,{<<"Headers">>, wh_json:from_list([ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- RespHeaders ])}
 						   ,{<<"Body">>, wh_util:to_binary(RespBody)}
 						  ]),
@@ -589,14 +646,9 @@ stream_file({Iod, _File}=State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_terminators/3 :: (Node, UUID, Terminators) -> 'ok' | fs_api_ret() when
-      Node :: atom(),
-      UUID :: binary(),
-      Terminators :: undefined | binary().
-set_terminators(_Node, _UUID, undefined) ->
-    'ok';
-set_terminators(Node, UUID, <<>>) ->
-    set(Node, UUID, <<"none">>);
+-spec set_terminators/3 :: (atom(), ne_binary(), 'undefined' | binary()) -> 'ok' | fs_api_ret().
+set_terminators(_Node, _UUID, undefined) -> 'ok';
+set_terminators(Node, UUID, <<>>) -> set(Node, UUID, <<"none">>);
 set_terminators(Node, UUID, Ts) ->
     Terms = list_to_binary(["playback_terminators=", Ts]),
     set(Node, UUID, Terms).
@@ -606,10 +658,7 @@ set_terminators(Node, UUID, Ts) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set/3 :: (Node, UUID, Arg) -> send_cmd_ret() when
-      Node :: atom(),
-      UUID :: binary(),
-      Arg :: binary().
+-spec set/3 :: (atom(), ne_binary(), binary()) -> send_cmd_ret().
 set(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "set", Arg).
 
@@ -618,10 +667,7 @@ set(Node, UUID, Arg) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec export/3 :: (Node, UUID, Arg) -> send_cmd_ret() when
-      Node :: atom(),
-      UUID :: binary(),
-      Arg :: binary().
+-spec export/3 :: (atom(), ne_binary(), binary()) -> send_cmd_ret().
 export(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
 
@@ -631,8 +677,7 @@ export(Node, UUID, Arg) ->
 %% builds a FS specific flag string for the conference command
 %% @end
 %%--------------------------------------------------------------------
--spec get_conference_flags/1 :: (JObj) -> binary() when
-      JObj :: json_object().
+-spec get_conference_flags/1 :: (json_object()) -> binary().
 get_conference_flags(JObj) ->
     Flags = [
              <<Flag/binary, Delim/binary>>
@@ -651,15 +696,12 @@ get_conference_flags(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_fetch_call_event/3 :: (Node, UUID, JObj) -> 'ok' when
-      Node :: binary(),
-      UUID :: binary(),
-      JObj :: json_object().
+-spec send_fetch_call_event/3 :: (atom(), ne_binary(), json_object()) -> 'ok'.
 send_fetch_call_event(Node, UUID, JObj) ->
     try
         Prop = case wh_util:is_true(wh_json:get_value(<<"From-Other-Leg">>, JObj)) of
                    true ->
-                       {ok, OtherUUID} = freeswitch:api(Node, uuid_getvar, wh_util:to_list(<<UUID/binary, " signal_bond">>)),
+                       {ok, OtherUUID} = freeswitch:api(Node, uuid_getvar, wh_util:to_list(<<UUID/binary, " bridge_uuid">>)),
                        {ok, Dump} = freeswitch:api(Node, uuid_dump, wh_util:to_list(OtherUUID)),
                        ecallmgr_util:eventstr_to_proplist(Dump);
                    false ->
@@ -699,11 +741,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_error_response/4 :: (App, Msg, UUID, JObj) -> 'ok' when
-      App :: binary(),
-      Msg :: binary(),
-      UUID :: binary(),
-      JObj :: json_object().
+-spec send_error_response/4 :: (ne_binary(), ne_binary(), ne_binary(), json_object()) -> 'ok'.
 send_error_response(App, Msg, UUID, JObj) ->
     ?LOG("error getting FS app for ~s: ~p", [App, Msg]),
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}

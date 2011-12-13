@@ -26,8 +26,10 @@ init() ->
 
 -spec handle_req/2 :: (json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
-    true = cf_api:new_voicemail_v(JObj),
+    true = wapi_notifications:voicemail_v(JObj),
     whapps_util:put_callid(JObj),
+
+    ?LOG("New voicemail left, sending to email if enabled"),
 
     AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
     {ok, VMBox} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),
@@ -38,6 +40,7 @@ handle_req(JObj, _Props) ->
 	{_Email, false} ->
 	    ?LOG_END("voicemail to email disabled for ~s", [_Email]);
 	{Email, true} ->
+	    ?LOG("VM->Email enabled for user, sending to ~s", [Email]),
 	    {ok, AcctObj} = couch_mgr:open_doc(AcctDB, whapps_util:get_db_name(AcctDB, raw)),
 	    TxtTemplate = get_txt_tmpl(AcctObj),
 	    HTMLTemplate = get_html_tmpl(AcctObj),
@@ -121,7 +124,7 @@ get_template_props(JObj) ->
      ,{caller_id_name, CIDName}
      ,{to_user, pretty_print_did(ToE164)}
      ,{date_called, UTCDateTime}
-     ,{date_called_local, localtime:utc_to_localtime(UTCDateTime, wh_json:get_value(<<"timezone">>, JObj, <<"UTC">>))}
+     ,{date_called_local, localtime:utc_to_local(UTCDateTime, wh_json:get_value(<<"timezone">>, JObj, <<"UTC">>))}
      ,{support_number, whapps_config:get(?MODULE, <<"default_support_number">>, <<"(415) 886 - 7900">>)}
      ,{support_email, whapps_config:get(?MODULE, <<"default_support_email">>, <<"support@2600hz.com">>)}
     ].

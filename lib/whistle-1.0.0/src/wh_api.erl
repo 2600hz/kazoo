@@ -25,9 +25,6 @@
 %% In-Call
 -export([error_resp/1]).
 
-%% Maintenance API calls
--export([mwi_update/1]).
-
 %% Conference Members
 -export([conference_participants_req/1, conference_participants_resp/1, conference_play_req/1, conference_deaf_req/1,
          conference_undeaf_req/1, conference_mute_req/1, conference_unmute_req/1, conference_kick_req/1,
@@ -38,7 +35,7 @@
 
 -export([conference_participants_req_v/1, conference_participants_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1
          ,conference_undeaf_req_v/1, conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1
-         ,conference_move_req_v/1, conference_discovery_req_v/1, mwi_update_v/1
+         ,conference_move_req_v/1, conference_discovery_req_v/1
 	]).
 
 %% Other AMQP API validators can use these helpers
@@ -192,28 +189,6 @@ error_resp_v({struct, Prop}) ->
     error_resp_v(Prop);
 error_resp_v(Prop) ->
     validate(Prop, ?ERROR_RESP_HEADERS, ?ERROR_RESP_VALUES, ?ERROR_RESP_TYPES).
-
-%%--------------------------------------------------------------------
-%% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec mwi_update/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-      Prop :: api_terms().
-mwi_update({struct, Prop}) ->
-    mwi_update(Prop);
-mwi_update(Prop) ->
-    case mwi_update_v(Prop) of
-	true -> build_message(Prop, ?MWI_REQ_HEADERS, ?OPTIONAL_MWI_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for mwi_req"}
-    end.
-
--spec mwi_update_v/1 :: (Prop) -> boolean() when
-      Prop :: api_terms().
-mwi_update_v({struct, Prop}) ->
-    mwi_update_v(Prop);
-mwi_update_v(Prop) ->
-    validate(Prop, ?MWI_REQ_HEADERS, ?MWI_REQ_VALUES, ?MWI_REQ_TYPES).
 
 %%--------------------------------------------------------------------
 %% @doc Conference::discovery - Used to identify the conference ID
@@ -444,35 +419,25 @@ conference_move_req_v(Prop) ->
 
 %% given a proplist of a FS event, return the Whistle-equivalent app name(s).
 %% a FS event could have multiple Whistle equivalents
--spec convert_fs_evt_name/1 :: (EvtName) -> [binary(),...] | [] when
-      EvtName :: binary().
+-spec convert_fs_evt_name/1 :: (ne_binary()) -> [ne_binary(),...] | [].
 convert_fs_evt_name(EvtName) ->
     [ WhAppEvt || {FSEvt, WhAppEvt} <- ?SUPPORTED_APPLICATIONS, FSEvt =:= EvtName].
 
 %% given a Whistle Dialplan Application name, return the FS-equivalent event name
 %% A Whistle Dialplan Application name is 1-to-1 with the FS-equivalent
--spec convert_whistle_app_name/1 :: (App) -> [binary(),...] | [] when
-      App :: binary().
+-spec convert_whistle_app_name/1 :: (ne_binary()) -> [ne_binary(),...] | [].
 convert_whistle_app_name(App) ->
     [EvtName || {EvtName, AppName} <- ?SUPPORTED_APPLICATIONS, App =:= AppName].
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec validate/4 :: (Prop, ReqHeaders, DefValues, DefTypes) -> boolean() when
-      Prop :: proplist(),
-      ReqHeaders :: [binary(),...] | [],
-      DefValues :: proplist(),
-      DefTypes :: proplist().
+-spec validate/4 :: (proplist(), [ne_binary(),...] | [], proplist(), proplist()) -> boolean().
 validate(Prop, ReqH, Vals, Types) ->
     has_all(Prop, ?DEFAULT_HEADERS) andalso
 	validate_message(Prop, ReqH, Vals, Types).
 
--spec validate_message/4 :: (Prop, ReqHeaders, DefValues, DefTypes) -> boolean() when
-      Prop :: proplist(),
-      ReqHeaders :: [binary(),...] | [],
-      DefValues :: proplist(),
-      DefTypes :: proplist().
+-spec validate_message/4 :: (proplist(), [ne_binary(),...] | [], proplist(), proplist()) -> boolean().
 validate_message(Prop, ReqH, Vals, Types) ->
     has_all(Prop, ReqH) andalso
 	values_check(Prop, Vals) andalso
@@ -598,9 +563,7 @@ add_optional_headers(Prop, Fields, Headers) ->
 		end, {Headers, Prop}, Fields).
 
 %% Checks Prop against a list of required headers, returns true | false
--spec has_all/2 :: (Prop, Headers) -> boolean() when
-      Prop :: proplist(),
-      Headers :: [binary(),...] | [].
+-spec has_all/2 :: (proplist(), [ne_binary(),...] | []) -> boolean().
 has_all(Prop, Headers) ->
     lists:all(fun(Header) ->
 		      case props:is_defined(Header, Prop) of
@@ -612,9 +575,7 @@ has_all(Prop, Headers) ->
 	      end, Headers).
 
 %% Checks Prop against a list of optional headers, returns true | false if at least one if found
--spec has_any/2 :: (Prop, Headers) -> boolean() when
-      Prop :: proplist(),
-      Headers :: [binary(),...] | [].
+-spec has_any/2 :: (proplist(), [ne_binary(),...] | []) -> boolean().
 has_any(Prop, Headers) ->
     lists:any(fun(Header) -> props:is_defined(Header, Prop) end, Headers).
 

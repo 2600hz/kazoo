@@ -40,10 +40,7 @@ start_link() ->
 				     ,{bindings, ?BINDINGS}]
                             ,[]).
 
--spec lookup/3 :: (Realm, User, Fields) -> proplist() | {'error', 'timeout'} when
-      Realm :: binary(),
-      User :: binary(),
-      Fields :: [binary(),...].
+-spec lookup/3 :: (ne_binary(), ne_binary(), [ne_binary(),...]) -> proplist() | {'error', 'timeout'}.
 lookup(Realm, User, Fields) ->
     {ok, Srv} = ecallmgr_sup:registrar_proc(),
     gen_server:call(Srv, {lookup, Realm, User, Fields, get(callid)}).
@@ -164,10 +161,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 %% Returns a proplist with the keys corresponding to the elements of Fields
--spec lookup_reg/3 :: (Realm, User, Fields) -> proplist() | {'error', 'timeout'} when
-      Realm :: binary(),
-      User :: binary(),
-      Fields :: [binary(),...].
+-spec lookup_reg/3 :: (ne_binary(), ne_binary(), [ne_binary(),...] | []) -> proplist() | {'error', 'timeout'}.
 lookup_reg(Realm, User, Fields) ->
     ?LOG("looking up registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),

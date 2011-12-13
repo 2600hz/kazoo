@@ -27,8 +27,11 @@
 				 ]}
 		    ]).
 -define(BINDINGS, [
-		   {notifications, []}
+		   {notifications, [{notices, [new_voicemail]}]}
 		  ]).
+-define(QUEUE_NAME, <<"notify_listener">>).
+-define(QUEUE_OPTIONS, [{exclusive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 -record(state, {}).
 %%%===================================================================
@@ -45,6 +48,9 @@
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
 				      ,{bindings, ?BINDINGS}
+				      ,{queue_name, ?QUEUE_NAME}
+				      ,{queue_options, ?QUEUE_OPTIONS}
+				      ,{consume_options, ?CONSUME_OPTIONS}
 				      ,{basic_qos, 1} %% process one notification at a time (will round-robin amongst notify whapps)
 				     ], []).
 

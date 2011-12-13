@@ -10,19 +10,25 @@
 %%%-------------------------------------------------------------------
 -module(cdr_listener).
 
--behaviour(gen_server).
+-behaviour(gen_listener).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, handle_cdr/2]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
+	 ,terminate/2, code_change/3]).
 
 -include("cdr.hrl").
 
 -define(SERVER, ?MODULE).
--record(state, {amqp_q = <<>> :: binary()}).
+
+-define(RESPONDERS, [{{?MODULE, handle_cdr}, [{<<"call_detail">>, <<"cdr">>}]}]).
+-define(BINDINGS, [{call, [{restrict_to, [cdr]}, {callid, <<"*">>}]}]).
+-define(QUEUE_NAME, <<"">>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -35,7 +41,34 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
+				      ,{bindings, ?BINDINGS}
+				      ,{queue_name, ?QUEUE_NAME}
+				      ,{queue_options, ?QUEUE_OPTIONS}
+				      ,{consume_options, ?CONSUME_OPTIONS}
+				     ], []).
+
+-spec handle_cdr/2 :: (json_object(), proplist()) -> no_return().
+handle_cdr(JObj, _Props) ->
+    true  = wapi_call:cdr_v(JObj),
+
+    AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
+
+    Db = case couch_mgr:db_exists(AccountDb) of
+	     true -> AccountDb;
+	     false -> ?ANONYMOUS_CDR_DB
+	 end,
+
+    NormDoc = wh_json:normalize_jobj(JObj),
+    DocOpts = [{type, cdr}, {crossbar_doc_vsn, 1}],
+    JObj1 = wh_doc:update_pvt_parameters(NormDoc, Db, DocOpts),
+
+    Id = wh_json:get_value(<<"call_id">>, NormDoc, couch_mgr:get_uuid()),
+    NewDoc = wh_json:set_value(<<"_id">>, Id, JObj1),
+
+    ?LOG_SYS(Id, "Saving CDR to ~s", [Db]),
+
+    couch_mgr:save_doc(Db, NewDoc).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -53,7 +86,11 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}, 0}.
+    _ = create_anonymous_cdr_db(?ANONYMOUS_CDR_DB),
+
+    ?LOG_SYS("Init complete"),
+
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -96,47 +133,11 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, #state{amqp_q = <<>>}=State) ->
-    try
-        {ok, Q} = start_amqp(),
-        create_anonymous_cdr_db(?ANONYMOUS_CDR_DB),
-        {noreply, State#state{amqp_q=Q}, hibernate}
-    catch
-        _:_ ->
-            ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
-            {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
-	    {noreply, State}
-    end;
-
-handle_info({amqp_reconnect, T}, State) ->
-    try
-	{ok, NewQ} = start_amqp(),
-	{noreply, State#state{amqp_q=NewQ}, hibernate}
-    catch
-	_:_ ->
-            case T * 2 of
-                Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
-                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
-                    {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
-                    {noreply, State};
-                Timeout ->
-                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
-                    {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
-                    {noreply, State}
-            end
-    end;
-
-handle_info({amqp_host_down, _}, State) ->
-    ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
-    {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
-    {noreply, State#state{amqp_q = <<>>}, hibernate};
-
-handle_info({_, #amqp_msg{props = Props, payload = Payload}}, State) when Props#'P_basic'.content_type == <<"application/json">> ->
-    spawn(fun() -> handle_cdr(Payload) end),
-    {noreply, State};
-
 handle_info(_Info, State) ->
     {noreply, State}.
+
+handle_event(_JObj, _State) ->
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -167,49 +168,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec start_amqp/0 :: () -> tuple(ok, binary()).
-start_amqp() ->
-    try
-        _ = amqp_util:callevt_exchange(),
-        Q = amqp_util:new_callmgr_queue(<<>>),
-        amqp_util:bind_q_to_callevt(Q, <<"*">>, cdr), % bind to all CDR events
-        amqp_util:basic_consume(Q),
-        ?LOG_SYS("connected to AMQP"),
-        {ok, Q}
-    catch
-        _:R ->
-            ?LOG_SYS("failed to connect to AMQP ~p", [R]),
-            {error, amqp_error}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% process th payload of an AMQPrequests
-%% @end
-%%--------------------------------------------------------------------
--spec handle_cdr/1 :: (Payload) -> no_return() when
-      Payload :: binary().
-handle_cdr(Payload) ->
-    JObj = mochijson2:decode(Payload),
-    true  = wapi_call:cdr_v(JObj),
-
-    AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
-
-    Db = case couch_mgr:db_exists(AccountDb) of
-	     true -> AccountDb;
-	     false -> ?ANONYMOUS_CDR_DB
-	 end,
-
-    NormDoc = wh_json:normalize_jobj(JObj),
-    DocOpts = [{type, cdr}, {crossbar_doc_vsn, 1}],
-    JObj1 = wh_doc:update_pvt_parameters(NormDoc, Db, DocOpts),
-
-    Id = wh_json:get_value(<<"call_id">>, NormDoc, couch_mgr:get_uuid()),
-    NewDoc = wh_json:set_value(<<"_id">>, Id, JObj1),
-
-    couch_mgr:save_doc(Db, NewDoc).
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -217,11 +175,7 @@ handle_cdr(Payload) ->
 %% Creation of the anonymous_cdr DB if it doesn't exists
 %% @end
 %%--------------------------------------------------------------------
--spec create_anonymous_cdr_db/1 :: (DB) -> no_return() when
-      DB :: binary().
+-spec create_anonymous_cdr_db/1 :: (ne_binary()) -> {'ok', json_object()} | {'error', term()}.
 create_anonymous_cdr_db(DB) ->
     couch_mgr:db_create(DB),
-    case couch_mgr:load_doc_from_file(DB, cdr, <<"cdr.json">>) of
-	{ok, _} -> ok;
-	{error, _} -> couch_mgr:update_doc_from_file(DB, cdr, <<"cdr.json">>)
-    end.
+    couch_mgr:revise_doc_from_file(DB, cdr, <<"cdr.json">>).
