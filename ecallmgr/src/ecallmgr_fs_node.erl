@@ -44,11 +44,8 @@
 			     ]).
 -define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, [<<"Call-ID">> | wapi_channel_query:optional_headers()])).
 
--spec resource_consume/3 :: (FsNodePid, Route, JObj) -> {'resource_consumed', binary(), binary(), integer()} |
-							{'resource_error', binary() | 'error'} when
-      FsNodePid :: pid(),
-      Route :: binary(),
-      JObj :: json_object().
+-spec resource_consume/3 :: (pid(), ne_binary(), json_object()) -> {'resource_consumed', binary(), binary(), integer()} |
+								   {'resource_error', binary() | 'error'}.
 resource_consume(FsNodePid, Route, JObj) ->
     FsNodePid ! {resource_consume, self(), Route, JObj},
     receive Resp -> Resp
