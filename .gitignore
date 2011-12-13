@@ -13,5 +13,7 @@ whistle_apps/apps/*/log/*
 lib/whistle*/ebin/*.beam
 lib/whistle*/ebin/*.app
 lib/whistle*/log/*.sasl
+lib/erlydtl*/ebin
+lib/erlydtl*/src/erlydtl_parser.erl
 utils/*/ebin/*.beam
 utils/*/ebin/*.app

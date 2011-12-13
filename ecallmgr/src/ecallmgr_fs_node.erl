@@ -44,11 +44,8 @@
 			     ]).
 -define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, [<<"Call-ID">> | wapi_channel_query:optional_headers()])).
 
--spec resource_consume/3 :: (FsNodePid, Route, JObj) -> {'resource_consumed', binary(), binary(), integer()} |
-							{'resource_error', binary() | 'error'} when
-      FsNodePid :: pid(),
-      Route :: binary(),
-      JObj :: json_object().
+-spec resource_consume/3 :: (pid(), ne_binary(), json_object()) -> {'resource_consumed', binary(), binary(), integer()} |
+								   {'resource_error', binary() | 'error'}.
 resource_consume(FsNodePid, Route, JObj) ->
     FsNodePid ! {resource_consume, self(), Route, JObj},
     receive Resp -> Resp
@@ -111,12 +108,13 @@ handle_call(show_channels, From, #state{node=Node}=State) ->
 	  end),
     {noreply, State}.
 
-handle_cast({distributed_presence, Type, Event}, #state{node=Node}=State) ->
+handle_cast({distributed_presence, Presence, Event}, #state{node=Node}=State) ->
     Headers = [{wh_util:to_list(K), wh_util:to_list(V)}
                || {K, V} <- lists:foldr(fun(Header, Props) ->
                                                 proplists:delete(Header, Props)
-                                        end, Event, ?FS_DEFAULT_HDRS)],
-    EventName = wh_util:to_atom(<<"PRESENCE_", Type/binary>>, true),
+                                        end, Event, ?FS_DEFAULT_HDRS)
+	      ],
+    EventName = wh_util:to_atom(Presence, true), %% Presence = <<"PRESENCE_", Type/binary>>
     _ = freeswitch:sendevent(Node, EventName, Headers),
     {noreply, State};
 
@@ -158,31 +156,30 @@ handle_info(Msg, #state{stats=#node_stats{created_channels=Cr, destroyed_channel
     handle_info(Msg, S#state{stats=Stats#node_stats{created_channels=De, destroyed_channels=De}});
 
 handle_info({event, [undefined | Data]}, #state{stats=Stats, node=Node}=State) ->
-    EvtName = props:get_value(<<"Event-Name">>, Data),
-    case EvtName of
+    case props:get_value(<<"Event-Name">>, Data) of
+        <<"PRESENCE_", _/binary>> = EvtName ->
+            _ = case props:get_value(<<"Distributed-From">>, Data) of
+		    undefined ->
+			Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)} | Data],
+			[distributed_presence(Srv, EvtName, Headers)
+			 || Srv <- ecallmgr_fs_sup:node_handlers(),
+			    Srv =/= self()
+			];
+		    _Else ->
+			ok
+		end,
+	    {noreply, State, hibernate};
 	<<"HEARTBEAT">> ->
 	    {noreply, State#state{stats=Stats#node_stats{last_heartbeat=erlang:now()}}, hibernate};
 	<<"CUSTOM">> ->
 	    spawn(fun() -> process_custom_data(Data) end),
-	    {noreply, State, hibernate};
-        <<"PRESENCE_", Type/binary>> ->
-            _ = case props:get_value(<<"Distributed-From">>, Data) of
-		    undefined ->
-			Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
-			[distributed_presence(Srv, Type, Headers)
-			 || Srv <- ecallmgr_fs_sup:node_handlers()
-				,Srv =/= self()];
-		    _Else ->
-			ok
-		end,
 	    {noreply, State, hibernate};
 	_ ->
 	    {noreply, State, hibernate}
     end;
 
 handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
-    EvtName = props:get_value(<<"Event-Name">>, Data),
-    case EvtName of
+    case props:get_value(<<"Event-Name">>, Data) of
 	<<"CHANNEL_CREATE">> ->
 	    ?LOG(UUID, "received channel create event", []),
 	    {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}, hibernate};
@@ -199,13 +196,14 @@ handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
             spawn(fun() -> put(callid, UUID), ecallmgr_call_cdr:new_cdr(UUID, Data) end),
 	    {noreply, State};
-        <<"PRESENCE_", Type/binary>> ->
+        <<"PRESENCE_", _/binary>> = EvtName ->
             _ = case props:get_value(<<"Distributed-From">>, Data) of
 		    undefined ->
 			Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
-			[distributed_presence(Srv, Type, Headers)
-			 || Srv <- ecallmgr_fs_sup:node_handlers()
-				,Srv =/= self()];
+			[distributed_presence(Srv, EvtName, Headers)
+			 || Srv <- ecallmgr_fs_sup:node_handlers(),
+			    Srv =/= self()
+			];
 		    _Else ->
 			ok
 		end,
@@ -328,13 +326,12 @@ extract_node_data(Node) ->
     Lines = string:tokens(wh_util:to_list(Status), [$\n]),
     process_status(Lines).
 
--spec process_status/1 :: (Lines) -> [{'cpu',string()} |
-				      {'sessions_max',integer()} |
-				      {'sessions_per_thirty',integer()} |
-				      {'sessions_since_startup',integer()} |
-				      {'uptime',number()}
-				      ,...] when
-      Lines :: [nonempty_string(),...].
+-spec process_status/1 :: ([nonempty_string(),...]) -> [{'cpu',string()} |
+							{'sessions_max',integer()} |
+							{'sessions_per_thirty',integer()} |
+							{'sessions_since_startup',integer()} |
+							{'uptime',number()}
+							,...].
 process_status([Uptime, _, SessSince, Sess30, SessMax, CPU]) ->
     process_status([Uptime, SessSince, Sess30, SessMax, CPU]);
 process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->
@@ -413,7 +410,9 @@ get_unset_vars(JObj) ->
 
 -spec run_start_cmds/1 :: (atom()) -> [fs_api_ret(),...].
 run_start_cmds(Node) ->
-    [freeswitch:api(Node, wh_util:to_atom(ApiCmd, true), wh_util:to_list(ApiArg)) || {ApiCmd, ApiArg} <- ecallmgr_config:fetch(fs_cmds, [])].
+    [freeswitch:api(Node, wh_util:to_atom(ApiCmd, true), wh_util:to_list(ApiArg))
+     || {ApiCmd, ApiArg} <- ecallmgr_config:fetch(fs_cmds, []) %% replace with AMQP call to get list of startup commands
+    ].
 
 -spec get_active_channels/1 :: (atom()) -> integer().
 get_active_channels(Node) ->

@@ -286,10 +286,7 @@ watch_node_for_restart(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART) ->
 watch_node_for_restart(Node, Opts, Timeout) ->
     is_node_up(Node, Opts, Timeout * 2).
 
--spec is_node_up/3 :: (Node, Opts, Timeout) -> 'ok' | {'error', 'no_connection'} when
-      Node :: atom(),
-      Opts :: proplist(),
-      Timeout :: pos_integer().
+-spec is_node_up/3 :: (atom(), proplist(), pos_integer()) -> 'ok' | {'error', 'no_connection'}.
 is_node_up(Node, Opts, Timeout) ->
     case net_adm:ping(Node) of
 	pong ->
@@ -307,8 +304,7 @@ is_node_up(Node, Opts, Timeout) ->
 	    end
     end.
 
--spec check_options/1 :: (Opts) -> proplist() when
-      Opts :: proplist().
+-spec check_options/1 :: (proplist()) -> proplist().
 check_options([]) ->
     [{bias, 1}, {max_channels, 100}];
 check_options(Opts) ->
@@ -322,8 +318,7 @@ check_options(Opts) ->
     end.
 
 %% query a pid for its diagnostics info
--spec diagnostics_query/1 :: (Pid) -> tuple(ok, proplist()) | tuple(error, atom(), term()) when
-      Pid :: pid().
+-spec diagnostics_query/1 :: (pid()) -> {'ok', proplist()} | {'error', 'timed_out' | 'not_responding', 'handler_busy' | 'handler_down'}.
 diagnostics_query(Pid) when is_pid(Pid) ->
     case erlang:is_process_alive(Pid) of
 	true ->
@@ -339,10 +334,7 @@ diagnostics_query(Pid) when is_pid(Pid) ->
 diagnostics_query(X) ->
     {error, handler_down, X}.
 
--spec add_fs_node/3 :: (Node, Options, State) -> {'ok', #state{}} | {{'error', 'no_connection'}, #state{}} when
-      Node :: atom(),
-      Options :: proplist(),
-      State :: #state{}.
+-spec add_fs_node/3 :: (atom(), proplist(), #state{}) -> {'ok', #state{}} | {{'error', 'no_connection'}, #state{}}.
 add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
     case [N || #node_handler{node=Node1}=N <- Nodes, Node =:= Node1] of
 	[] ->
