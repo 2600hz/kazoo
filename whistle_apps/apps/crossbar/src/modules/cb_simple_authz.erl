@@ -168,7 +168,7 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Returns true if the requested account id is a decendant or the same
+%% Returns true if the requested account id is a descendant or the same
 %% as the account id that has been authorized to make the request.
 %% @end
 %%--------------------------------------------------------------------
@@ -189,7 +189,7 @@ account_is_descendant(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
             AuthAccountId = wh_json:get_value(<<"account_id">>, AuthDoc),
             %% we will get the requested account definition from accounts using a view
             %% with a complex key (whose alternate value is useful to use on retrieval)
-            ?LOG("checking if account ~s is a decendant of ~s", [ReqAccountId, AuthAccountId]),
+            ?LOG("checking if account ~s is a descendant of ~s", [ReqAccountId, AuthAccountId]),
             Opts = [{<<"startkey">>, [ReqAccountId]}
                     ,{<<"endkey">>, [ReqAccountId, ?EMPTY_JSON_OBJECT ]}],
             case couch_mgr:get_results(?ACCOUNTS_DB, ?VIEW_SUMMARY, Opts) of
@@ -204,10 +204,10 @@ account_is_descendant(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
                     %% more logging was called for...
                     case lists:member(AuthAccountId, Tree) of
                         true ->
-                            ?LOG("requested account is a decendant of the auth token, authorizing"),
+                            ?LOG("requested account is a descendant of the auth token, authorizing"),
                             true;
                         false ->
-                            ?LOG("requested account is not a decendant of the auth token, not authorizing"),
+                            ?LOG("requested account is not a descendant of the auth token, not authorizing"),
                             false
                     end;
                 %% anything else and they are not allowed
