@@ -35,7 +35,7 @@
 %% data.
 %% @end
 %%--------------------------------------------------------------------
--spec(response/2 :: (JTerm :: json_term(), Context :: #cb_context{}) -> #cb_context{}).
+-spec response/2 :: (json_term(), #cb_context{}) -> #cb_context{}.
 response(JTerm, Context) ->
     create_response(success, undefined, undefined, JTerm, Context).
 
@@ -46,7 +46,7 @@ response(JTerm, Context) ->
 %% fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec(response/3 :: (Status :: error|fatal, Msg :: json_string(), Context :: #cb_context{}) -> #cb_context{}).
+-spec response/3 :: ('error'|'fatal', json_string(), #cb_context{}) -> #cb_context{}.
 response(error, Msg, Context) ->
     create_response(error, Msg, 500, [], Context);
 response(fatal, Msg, Context) ->
@@ -59,7 +59,7 @@ response(fatal, Msg, Context) ->
 %% of type fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec(response/4 :: (Status :: error|fatal, Msg :: json_string(), Code :: integer()|undefined, Context :: #cb_context{}) -> #cb_context{}).
+-spec response/4 :: ('error'|'fatal', json_string(), integer()|'undefined', #cb_context{}) -> #cb_context{}.
 response(error, Msg, Code, Context) ->
     create_response(error, Msg, Code, [], Context);
 response(fatal, Msg, Code, Context) ->
@@ -72,7 +72,7 @@ response(fatal, Msg, Code, Context) ->
 %% of type fatal or error with additional data
 %% @end
 %%--------------------------------------------------------------------
--spec(response/5 :: (Status :: error|fatal, Msg :: json_string(), Code :: integer()|undefined, JTerm :: json_term(), Context :: #cb_context{}) -> #cb_context{}).
+-spec response/5 :: ('error'|'fatal', json_string(), integer()|'undefined', json_term(), #cb_context{}) -> #cb_context{}.
 response(error, Msg, Code, JTerm, Context) ->
     create_response(error, Msg, Code, JTerm, Context);
 response(fatal, Msg, Code, JTerm, Context) ->
@@ -86,7 +86,7 @@ response(fatal, Msg, Code, JTerm, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec create_response/5 :: (error|fatal|success, json_string(), integer()|undefined, json_term(), #cb_context{}) -> #cb_context{}.
+-spec create_response/5 :: (crossbar_status(), json_string(), integer()|'undefined', json_term(), #cb_context{}) -> #cb_context{}.
 create_response(Status, Msg, Code, JTerm, Context) ->
     Context#cb_context {
          resp_status = Status
@@ -147,7 +147,7 @@ response_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JO
 %% a softer not found now.
 %% @end
 %%--------------------------------------------------------------------
--spec(response_bad_identifier/2 :: (Id :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec response_bad_identifier/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 response_bad_identifier(Id, Context) ->
     response(error, <<"bad identifier">>, 404, [Id], Context).
 
@@ -158,7 +158,7 @@ response_bad_identifier(Id, Context) ->
 %% because of a conflict in the DB
 %% @end
 %%--------------------------------------------------------------------
--spec(response_conflicting_docs/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec response_conflicting_docs/1 :: (#cb_context{}) -> #cb_context{}.
 response_conflicting_docs(Context) ->
     response(error, <<"conflicting documents">>, 409, Context).
 
@@ -168,7 +168,7 @@ response_conflicting_docs(Context) ->
 %% Create a standard response if the requested data query was missing
 %% @end
 %%--------------------------------------------------------------------
--spec(response_missing_view/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec response_missing_view/1 :: (#cb_context{}) -> #cb_context{}.
 response_missing_view(Context) ->
     response(fatal, <<"datastore missing view">>, 500, Context).
 
@@ -178,7 +178,7 @@ response_missing_view(Context) ->
 %% Create a standard response if the datastore time'd out
 %% @end
 %%--------------------------------------------------------------------
--spec(response_datastore_timeout/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec response_datastore_timeout/1 :: (#cb_context{}) -> #cb_context{}.
 response_datastore_timeout(Context) ->
     response(error, <<"datastore timeout">>, 503, Context).
 
@@ -188,7 +188,7 @@ response_datastore_timeout(Context) ->
 %% Create a standard response if the datastore time'd out
 %% @end
 %%--------------------------------------------------------------------
--spec(response_datastore_conn_refused/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec response_datastore_conn_refused/1 :: (#cb_context{}) -> #cb_context{}.
 response_datastore_conn_refused(Context) ->
     response(error, <<"datastore connection refused">>, 503, Context).
 
@@ -198,7 +198,7 @@ response_datastore_conn_refused(Context) ->
 %% Create a standard response if the provided data did not validate
 %% @end
 %%--------------------------------------------------------------------
--spec(response_invalid_data/2 :: (JTerm :: json_term(), Context :: #cb_context{}) -> #cb_context{}).
+-spec response_invalid_data/2 :: (json_term(), #cb_context{}) -> #cb_context{}.
 response_invalid_data(JTerm, Context) ->
     response(error, <<"invalid data">>, 400, JTerm, Context).
 
@@ -209,7 +209,7 @@ response_invalid_data(JTerm, Context) ->
 %% record collection
 %% @end
 %%--------------------------------------------------------------------
--spec(response_db_missing/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec response_db_missing/1 :: (#cb_context{}) -> #cb_context{}.
 response_db_missing(Context) ->
     response(fatal, <<"data collection missing: database not found">>, 503, Context).
 
@@ -220,7 +220,7 @@ response_db_missing(Context) ->
 %% record collection
 %% @end
 %%--------------------------------------------------------------------
--spec(response_db_fatal/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec response_db_fatal/1 :: (#cb_context{}) -> #cb_context{}.
 response_db_fatal(Context) ->
     response(fatal, <<"datastore fatal error">>, 500, Context).
 
@@ -231,14 +231,10 @@ response_db_fatal(Context) ->
 %% the crossbar_binding PID provided as long as the parent lives
 %% @end
 %%--------------------------------------------------------------------
--spec binding_heartbeat/1 :: (BPid) -> pid() when
-      BPid :: pid().
+-spec binding_heartbeat/1 :: (pid()) -> pid().
+-spec binding_heartbeat/2 :: (pid(), non_neg_integer() | 'infinity') -> pid().
 binding_heartbeat(BPid) ->
-    binding_heartbeat(BPid, 10000).
-
--spec binding_heartbeat/2 :: (BPid, Timeout) -> pid() when
-      BPid :: pid(),
-      Timeout :: non_neg_integer() | 'infinity'.
+    binding_heartbeat(BPid, 3600000). % one hour
 binding_heartbeat(BPid, Timeout) ->
     PPid = self(),
     ?LOG("Starting binding heartbeat for ~p", [PPid]),
@@ -277,12 +273,9 @@ put_reqid(#cb_context{req_id=ReqId}) ->
 %% this request.
 %% @end
 %%--------------------------------------------------------------------
--spec store/3 :: (Key, Data, Context) -> #cb_context{} when
-      Key :: term(),
-      Data :: term(),
-      Context :: #cb_context{}.
+-spec store/3 :: (term(), term(), #cb_context{}) -> #cb_context{}.
 store(Key, Data, #cb_context{storage=Storage}=Context) ->
-    Context#cb_context{storage=[{Key, Data}|proplists:delete(Key, Storage)]}.
+    Context#cb_context{storage=[{Key, Data}|props:delete(Key, Storage)]}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -290,11 +283,9 @@ store(Key, Data, #cb_context{storage=Storage}=Context) ->
 %% Fetches a previously stored value from the current request.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch/2 :: (Key, Context) -> term() when
-      Key :: term(),
-      Context :: #cb_context{}.
+-spec fetch/2 :: (term(), #cb_context{}) -> term().
 fetch(Key, #cb_context{storage=Storage}) ->
-    proplists:get_value(Key, Storage).
+    props:get_value(Key, Storage).
 
 -spec get_abs_url/2 :: (#wm_reqdata{}, ne_binary() | nonempty_string()) -> ne_binary().
 get_abs_url(RD, Url) ->
@@ -337,7 +328,6 @@ get_abs_url(Host, PathTokensRev, Url) ->
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
-
 
 get_abs_url_test() ->
     Host = ["http://", "some.host.com", ":8000", "/"],
