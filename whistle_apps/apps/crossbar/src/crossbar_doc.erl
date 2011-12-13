@@ -129,7 +129,7 @@ load_merge(DocId, DataJObj, #cb_context{db_name=DBName}=Context) ->
 load_view(_View, _Options, #cb_context{db_name = <<>>}=Context) ->
     ?LOG("db missing from #cb_context for view ~s", [view_name_to_binary(_View)]),
     crossbar_util:response_db_missing(Context);
-load_view(View, Options, #cb_context{db_name=DB, req_json=RJ}=Context) ->
+load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
     {HasFilter, ViewOptions} = case has_filter(RJ) of
                                    true ->
                                        {true
