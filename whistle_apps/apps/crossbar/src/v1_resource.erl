@@ -78,18 +78,18 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
                 true ->
 		    ?TIMER_TICK("v1.allowed_methods end OPTS"),
                     ?LOG("allowing OPTIONS request for CORS preflight"),
-                    {['OPTIONS'], RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}};
+                    {['OPTIONS'], RD, Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1, query_json=get_qs(RD)}};
                 false ->
 		    ?TIMER_TICK("v1.allowed_methods end Meth1"),
                     {Methods1
                      ,add_cors_headers(RD, Context1)
-                     ,Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1}}
+                     ,Context1#cb_context{req_nouns=Nouns, req_verb=Verb, allow_methods=Methods1, query_json=get_qs(RD)}}
             end;
         [] ->
 	    ?TIMER_TICK("v1.allowed_methods end Meths"),
             {Methods
              ,add_cors_headers(RD, Context1)
-             ,Context1#cb_context{req_verb=Verb}}
+             ,Context1#cb_context{req_verb=Verb, query_json=get_qs(RD)}}
     end.
 
 -spec(malformed_request/2 :: (RD :: #wm_reqdata{}, Context :: #cb_context{}) -> tuple(boolean(), #wm_reqdata{}, #cb_context{})).

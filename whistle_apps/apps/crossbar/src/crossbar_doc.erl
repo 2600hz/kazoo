@@ -129,8 +129,15 @@ load_merge(DocId, DataJObj, #cb_context{db_name=DBName}=Context) ->
 load_view(_View, _Options, #cb_context{db_name = <<>>}=Context) ->
     ?LOG("db missing from #cb_context for view ~s", [view_name_to_binary(_View)]),
     crossbar_util:response_db_missing(Context);
-load_view(View, Options, #cb_context{db_name=DB}=Context) ->
-    case couch_mgr:get_results(DB, View, Options) of
+load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
+    {HasFilter, ViewOptions} = case has_filter(RJ) of
+                                   true ->
+                                       {true
+                                        ,[{<<"include_docs">>, true} | proplists:delete(<<"include_docs">>, Options)]};
+                                   false ->
+                                       {false, Options}
+                               end,
+    case couch_mgr:get_results(DB, View, ViewOptions) of
 	{error, invalid_view_name} ->
 	    ?LOG("loading view ~s from ~s failed: invalid view", [view_name_to_binary(View), DB]),
             crossbar_util:response_missing_view(Context);
