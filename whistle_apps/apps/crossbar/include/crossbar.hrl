@@ -43,6 +43,7 @@
           ,req_json = ?EMPTY_JSON_OBJECT :: json_object() | {'malformed', binary()} %% the request JSON envelope
 	  ,req_files = [] :: [{binary(), json_object()},...] | []
           ,req_data = [] :: mochijson()  % the "data" from the request JSON envelope
+          ,query_json = ?EMPTY_JSON_OBJECT :: json_object()
           ,account_id = <<>> :: binary()
           ,db_name = <<>> :: binary()
           ,doc = ?EMPTY_JSON_OBJECT :: json_object() | json_objects()
