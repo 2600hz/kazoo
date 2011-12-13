@@ -410,7 +410,9 @@ get_unset_vars(JObj) ->
 
 -spec run_start_cmds/1 :: (atom()) -> [fs_api_ret(),...].
 run_start_cmds(Node) ->
-    [freeswitch:api(Node, wh_util:to_atom(ApiCmd, true), wh_util:to_list(ApiArg)) || {ApiCmd, ApiArg} <- ecallmgr_config:fetch(fs_cmds, [])].
+    [freeswitch:api(Node, wh_util:to_atom(ApiCmd, true), wh_util:to_list(ApiArg))
+     || {ApiCmd, ApiArg} <- ecallmgr_config:fetch(fs_cmds, []) %% replace with AMQP call to get list of startup commands
+    ].
 
 -spec get_active_channels/1 :: (atom()) -> integer().
 get_active_channels(Node) ->
