@@ -18,7 +18,6 @@
 	 terminate/2, code_change/3]).
 
 -include("media.hrl").
--include_lib("kernel/include/inet.hrl").
 
 -define(SERVER, ?MODULE).
 -define(CONTENT_TYPE_MP3, <<"audio/mpeg">>).
@@ -151,8 +150,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 		      _ -> CType
 		  end,
 
-    {ok, Host} = inet:gethostname(),
-    {ok, #hostent{h_name=Hostname}} = inet:gethostbyname(Host),
+    Hostname = wh_util:get_hostname(),
 
     CallID = get(callid),
     {Resp, Header, CT, StreamUrl} = case ContentType of
