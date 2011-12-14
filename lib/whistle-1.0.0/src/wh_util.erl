@@ -1,5 +1,6 @@
 -module(wh_util).
 
+-export([pad_binary/3]).
 -export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([is_e164/1, is_npan/1, is_1npan/1]).
@@ -29,6 +30,12 @@ get_hostname() ->
     {ok, Host} = inet:gethostname(),
     {ok, #hostent{h_name=Hostname}} = inet:gethostbyname(Host),
     Hostname.
+
+-spec pad_binary/3 :: (binary(), non_neg_integer(), binary()) -> binary().
+pad_binary(Bin, Size, Value) when size(Bin) < Size ->
+    pad_binary(<<Bin/binary, Value/binary>>, Size, Value);
+pad_binary(Bin, _, _) ->
+    Bin.
 
 -spec call_response/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 -spec call_response/4 :: (ne_binary(), ne_binary(), ne_binary(), 'undefined' | binary()) -> 'ok'.
@@ -519,6 +526,9 @@ proper_test_() ->
       [
        ?_assertEqual([], proper:module(?MODULE, [{max_shrinks, 0}]))
       ]}}.
+
+pad_binary_test() ->
+    ?assertEqual(<<"1234500000">>, pad_binary(<<"12345">>, 10, <<"0">>)).
 
 to_e164_test() ->
     Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],
