@@ -119,6 +119,8 @@ aggregate_device(Device) ->
     end,
     ok.
 
+-spec init_first_account/0 :: () -> {'error', 'accounts_exist' | 'db_create_failed' | 'user_create_failed' | ne_binary()} |
+				    {ok, {ne_binary(), ne_binary()}}.
 init_first_account() ->
     refresh(?ACCOUNTS_AGG_DB),
     case couch_mgr:all_docs(?ACCOUNTS_AGG_DB) of
@@ -127,10 +129,11 @@ init_first_account() ->
 		[] -> init_first_account_for_reals();
 		_ -> {error, accounts_exist}
 	    end;
-	E ->
-	    E
+	E -> E
     end.
 
+-spec init_first_account_for_reals/0 :: () -> {'error', 'db_create_failed' | 'user_create_failed' | ne_binary()} |
+					      {'ok', {ne_binary(), ne_binary()}}.
 init_first_account_for_reals() ->
     DbName = wh_util:to_binary(couch_mgr:get_uuid()),
     put(callid, DbName),
@@ -169,10 +172,12 @@ init_first_account_for_reals() ->
 	    end
     end.
 
+-spec revert_init/2 :: (ne_binary(), ne_binary()) -> boolean().
 revert_init(Db, DbName) ->
     _ = couch_mgr:del_doc(?ACCOUNTS_AGG_DB, DbName),
-    _ = couch_mgr:db_delete(Db).
+    couch_mgr:db_delete(Db).
 
+-spec create_init_user/1 :: (ne_binary()) -> {'ok', {ne_binary(), ne_binary()}}.
 create_init_user(Db) ->
     Username = <<"admin">>,
 
