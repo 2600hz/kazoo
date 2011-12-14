@@ -413,10 +413,10 @@ is_valid_doc(JObj) ->
 -spec load_message_summary/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_message_summary(DocId, Context) ->
     case load_messages(DocId, Context) of
-	[] ->
-	    crossbar_util:response(error, no_messages, Context);
+	[] ->            
+	    crossbar_util:response([], Context);
 	[?EMPTY_JSON_OBJECT] ->
-	    crossbar_util:response(error, no_messages, Context);
+	    crossbar_util:response([], Context);
 	Messages ->
 	    crossbar_util:response(Messages,Context)
     end.
