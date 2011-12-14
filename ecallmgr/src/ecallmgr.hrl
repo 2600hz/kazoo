@@ -167,7 +167,7 @@
                         ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>, <<"CHANNEL_CREATE">>
                         ,<<"RECORD_START">>, <<"RECORD_STOP">>
                         ,<<"CHANNEL_DESTROY">>, <<"CHANNEL_EXECUTE_ERROR">>, <<"CHANNEL_PROGRESS_MEDIA">>
-                        ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PARK">>
+                        ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PARK">>, <<"CHANNEL_PROGRESS">>
                    ]).
 
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>

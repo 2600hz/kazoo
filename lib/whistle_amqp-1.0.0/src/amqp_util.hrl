@@ -97,3 +97,8 @@
                           ,channel_ref = 'undefined' :: 'undefined' | reference() | atom()
                           ,consumer_ref = 'undefined' :: 'undefined' | reference() | atom()
                          }).
+
+%% Lync Exchange
+%% - For lync messaging in the system
+-define(EXCHANGE_LYNC, <<"lync">>).
+-define(TYPE_LYNC, <<"topic">>).
