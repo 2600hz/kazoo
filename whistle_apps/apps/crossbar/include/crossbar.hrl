@@ -37,25 +37,25 @@
 	  ,allowed_methods = ?ALLOWED_METHODS :: [atom(),...] | []
           ,allow_methods = ?ALLOWED_METHODS :: [atom(),...] | []
           ,auth_token = <<>> :: binary()
-          ,auth_doc = undefined :: json_object() | 'undefined'
+          ,auth_doc = 'undefined' :: json_object() | 'undefined'
           ,req_verb = <<"get">> :: binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>, <<"head">>
           ,req_nouns = [{<<"404">>, []}] :: [{binary(), list()},...] | []
-          ,req_json = ?EMPTY_JSON_OBJECT :: json_object() | {'malformed', binary()}
+          ,req_json = ?EMPTY_JSON_OBJECT :: json_object() | {'malformed', binary()} %% the request JSON envelope
 	  ,req_files = [] :: [{binary(), json_object()},...] | []
-          ,req_data = [] :: mochijson()
+          ,req_data = [] :: mochijson()  % the "data" from the request JSON envelope
           ,query_json = ?EMPTY_JSON_OBJECT :: json_object()
           ,account_id = <<>> :: binary()
           ,db_name = <<>> :: binary()
           ,doc = ?EMPTY_JSON_OBJECT :: json_object() | json_objects()
           ,resp_expires = {{1999,1,1},{0,0,0}} :: wh_datetime()
-          ,resp_etag = undefined :: 'undefined' | 'automatic' | string()
-	  ,resp_status = error :: crossbar_status()
-	  ,resp_error_msg = undefined :: json_string() | 'undefined'
-	  ,resp_error_code = undefined :: json_number() | 'undefined'
+          ,resp_etag = 'undefined' :: 'undefined' | 'automatic' | string()
+	  ,resp_status = 'error' :: crossbar_status()
+	  ,resp_error_msg = 'undefined' :: json_string() | 'undefined'
+	  ,resp_error_code = 'undefined' :: json_number() | 'undefined'
 	  ,resp_data = [] :: mochijson()
 	  ,resp_headers = [] :: proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
 	  ,start = erlang:now() :: wh_now()
-          ,req_id = <<"000000000000">> :: binary()
+          ,req_id = <<"000000000000">> :: ne_binary()
           ,storage = []
 	 }).
 
