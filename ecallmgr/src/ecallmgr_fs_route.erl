@@ -166,10 +166,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
 process_route_req(Node, FSID, CallId, Props) ->
+    %% Epid Code
+    EpidFrom =  ecallmgr_util:parse_epid(props:get_value(<<"variable_sip_full_from">>, Props, <<"undefined">>)),
+    Props1 = [{<<"ecallmgr_Epid-From">>, EpidFrom}
+              | Props
+             ],
+
     put(callid, CallId),
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,route_req(CallId, FSID, Props, Node)
+                                  ,route_req(CallId, FSID, Props1, Node)
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1),
     case ReqResp of
@@ -182,7 +188,7 @@ process_route_req(Node, FSID, CallId, Props) ->
                 {ok, false} -> 
                     reply_forbidden(Node, FSID);
                 _Else ->
-                    reply_affirmative(Node, FSID, CallId, RespJObj, Props)
+                    reply_affirmative(Node, FSID, CallId, RespJObj, Props1)
             end
     end.
 

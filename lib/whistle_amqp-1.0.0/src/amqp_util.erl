@@ -75,6 +75,13 @@
 -export([unbind_q_from_conference/2, unbind_q_from_conference/3]).
 -export([conference_publish/2, conference_publish/3, conference_publish/4, conference_publish/5]).
 
+-export([lync_exchange/0]).
+-export([new_lync_queue/0, new_lync_queue/1]).
+-export([delete_lync_queue/1]).
+-export([bind_q_to_lync/2, bind_q_to_lync/3]).
+-export([unbind_q_from_lync/2]).
+-export([lync_publish/2, lync_publish/3, lync_publish/4]).
+
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
@@ -150,6 +157,17 @@ sysconf_publish(Routing, Payload, ContentType) ->
     sysconf_publish(Routing, Payload, ContentType, []).
 sysconf_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_SYSCONF, Routing, Payload, ContentType, Opts).
+
+-spec lync_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
+-spec lync_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec lync_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), proplist()) -> 'ok'.
+lync_publish(Routing, Payload) ->
+    lync_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+lync_publish(Routing, Payload, ContentType) ->
+    lync_publish(Routing, Payload, ContentType, []).
+lync_publish(Routing, Payload, ContentType, Opts) ->
+    basic_publish(?EXCHANGE_LYNC, Routing, Payload, ContentType, Opts).
+
 
 -spec callmgr_publish/3 :: (amqp_payload(), ne_binary(), ne_binary()) -> 'ok'.
 -spec callmgr_publish/4 :: (amqp_payload(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
@@ -307,6 +325,7 @@ conference_publish(Payload, event, ConfId, Options, ContentType) ->
 conference_publish(Payload, command, ConfId, Options, ContentType) ->
     basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, Payload, ContentType, Options).
 
+
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
 
@@ -409,6 +428,10 @@ monitor_exchange() ->
 conference_exchange() ->
     new_exchange(?EXCHANGE_CONFERENCE, ?TYPE_CONFERENCE).
 
+-spec lync_exchange/0 :: () -> 'ok'.
+lync_exchange() ->
+    new_exchange(?EXCHANGE_LYNC, ?TYPE_LYNC).
+
 %% A generic Exchange maker
 -spec new_exchange/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 -spec new_exchange/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok'.
@@ -463,6 +486,14 @@ new_sysconf_queue() ->
     new_sysconf_queue(<<>>).
 
 new_sysconf_queue(Queue) ->
+    new_queue(Queue, [{nowait, false}]).
+
+-spec new_lync_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_lync_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
+new_lync_queue() ->
+    new_lync_queue(<<>>).
+
+new_lync_queue(Queue) ->
     new_queue(Queue, [{nowait, false}]).
 
 -spec new_callevt_queue/1 :: (binary()) -> ne_binary() | {'error', _}.
@@ -558,6 +589,9 @@ delete_notifications_queue(Queue) ->
 delete_sysconf_queue(Queue) ->
     queue_delete(Queue, []).
 
+delete_lync_queue(Queue) ->
+    queue_delete(Queue, []).
+
 delete_callevt_queue(CallID) ->
     delete_callevt_queue(CallID, []).
 delete_callevt_queue(CallID, Prop) ->
@@ -629,6 +663,13 @@ bind_q_to_sysconf(Queue, Routing) ->
     bind_q_to_sysconf(Queue, Routing, []).
 bind_q_to_sysconf(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_SYSCONF, Options).
+
+-spec bind_q_to_lync/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
+-spec bind_q_to_lync/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok' | {'error', atom()}.
+bind_q_to_lync(Queue, Routing) ->
+    bind_q_to_lync(Queue, Routing, []).
+bind_q_to_lync(Queue, Routing, Options) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_LYNC, Options).
 
 -spec bind_q_to_callctl/1 :: (ne_binary()) -> 'ok'.
 -spec bind_q_to_callctl/2 :: (ne_binary(), ne_binary()) -> 'ok'.
@@ -760,6 +801,9 @@ unbind_q_from_notifications(Queue, Routing) ->
 
 unbind_q_from_sysconf(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_SYSCONF).
+
+unbind_q_from_lync(Queue, Routing) ->
+    unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_LYNC).
 
 unbind_q_from_resource(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
