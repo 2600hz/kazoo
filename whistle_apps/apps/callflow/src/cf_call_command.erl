@@ -1201,17 +1201,27 @@ wait_for_dtmf(Timeout) ->
 -spec wait_for_bridge/2 :: (Timeout, Call) -> cf_api_bridge_return() when
       Timeout :: 'infinity' | integer(),
       Call :: #cf_call{}.
-wait_for_bridge(Timeout, Call) ->
+wait_for_bridge(Timeout, #cf_call{cf_pid=CFPid}=Call) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case get_event_type(JObj) of
+            case get_event_type(JObj) of               
                 { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
-                    ?LOG("channel was destroyed while waiting for bridge"),
-                    {ok, JObj};
+                    case is_during_transfer(JObj) of
+                        false -> {ok, JObj};
+                        true ->
+                            ?LOG("CONTROL WAS JUST TRANSFERED TO US!!!! TAKE OWNERSHIP NOW!"),
+                            ?LOG("--> ~s", [mochijson2:encode(JObj)]),
+                            wait_for_bridge(Timeout, Call)
+                    end;
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                    ?LOG("channel was hungup while waiting for bridge"),
-                    {ok, JObj};
+                    case is_during_transfer(JObj) of
+                        false -> {ok, JObj};
+                        true ->
+                            ?LOG("CONTROL WAS JUST TRANSFERED TO US!!!! TAKE OWNERSHIP NOW!"),
+                            ?LOG("--> ~s", [mochijson2:encode(JObj)]),
+                            wait_for_bridge(Timeout, Call)
+                    end;
                 { <<"error">>, _, _ } ->
                     ?LOG("channel execution error while waiting for bridge"),
                     {error, JObj};
@@ -1221,6 +1231,13 @@ wait_for_bridge(Timeout, Call) ->
                     case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
                         <<"SUCCESS">> -> {ok, JObj};
                         _ -> {fail, JObj}
+                    end;
+                {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _} ->
+                    case is_during_transfer(JObj) of
+                        false -> wait_for_bridge(Timeout, Call);
+                        true -> 
+                            CFPid ! {transfer},
+                            {ok, JObj}
                     end;
                 _ when Timeout =:= infinity ->
                     wait_for_bridge(Timeout, Call);
@@ -1238,6 +1255,19 @@ wait_for_bridge(Timeout, Call) ->
     after
         Timeout ->
             {error, timeout}
+    end.
+
+is_during_transfer(JObj) ->
+    Timestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
+    Epoch = binary:part(wh_util:pad_binary(Timestamp, 10, <<"0">>), 0, 10),
+    case wh_json:get_value([<<"Transfer-History">>, Epoch], JObj, wh_json:new()) of
+        ?EMPTY_JSON_OBJECT -> 
+            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
+                <<"ATTENDED_TRANSFER">> -> true;
+                _Else -> false
+            end;    
+        _Else -> 
+            true
     end.
 
 %%--------------------------------------------------------------------
