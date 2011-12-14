@@ -13,6 +13,7 @@
 -export([is_node_up/1, is_node_up/2]).
 -export([fs_log/3, put_callid/1]).
 -export([media_path/2, media_path/3]).
+-export([unserialize_fs_array/1]).
 
 -include("ecallmgr.hrl").
 
@@ -81,6 +82,12 @@ fix_value("Event-Date-Timestamp", TStamp) ->
     wh_util:microseconds_to_seconds(wh_util:to_integer(TStamp));
 fix_value(_K, V) -> V.
 
+
+-spec unserialize_fs_array/1 :: (undefined | binary()) -> list().
+unserialize_fs_array(undefined) ->
+    [];
+unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
+    binary:split(Serialized, <<"|:">>, [global]).
 
 %% convert a raw FS list of vars  to a proplist
 %% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]

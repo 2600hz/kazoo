@@ -153,10 +153,10 @@ handle_info({call_event, {event, [ UUID | Data ] } }, #state{node=Node, uuid=UUI
 
     case IsAmqpUp of
 	true ->
-	    spawn(fun() -> put(callid, UUID), send_ctl_event(CtlPid, UUID, EvtName, Data), publish_msg(Node, UUID, Data) end),
+	    spawn(fun() -> put(callid, UUID), send_ctl_event(EvtName, UUID, CtlPid, Data), publish_msg(Node, UUID, Data) end),
 	    {'noreply', State};
 	false ->
-	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
+	    send_ctl_event(EvtName, UUID, CtlPid, AppName),
 	    {'noreply', State#state{queued_events = [Data | QEs]}, hibernate}
     end;
 
@@ -261,18 +261,18 @@ shutdown(CtlPid, UUID) ->
     'ok'.
 
 %% let the ctl process know a command finished executing
--spec send_ctl_event/4 :: (CtlPid, UUID, EventName, Event) -> 'ok' when
+-spec send_ctl_event/4 :: (EventName, UUID, CtlPid, Event) -> 'ok' when
       CtlPid :: pid() | undefined,
       UUID :: binary(),
       EventName :: binary(),
       Event :: proplist().
-send_ctl_event(undefined, _, _, _) -> 'ok';
-send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, Props) when is_pid(CtlPid) ->
+send_ctl_event(_, _, undefined, _) -> 'ok';
+send_ctl_event(<<"CHANNEL_EXECUTE_COMPLETE">>, UUID, CtlPid, Props) when is_pid(CtlPid) ->
     AppName = props:get_value(<<"Application">>, Props),
 
     ?LOG("sending execution completion for ~s to control queue", [wh_util:binary_to_lower(AppName)]),
     ecallmgr_call_control:event_execute_complete(CtlPid, UUID, AppName);
-send_ctl_event(CtlPid, UUID, <<"CUSTOM">>, Props) when is_pid(CtlPid) ->
+send_ctl_event(<<"CUSTOM">>, UUID, CtlPid, Props) when is_pid(CtlPid) ->
     case props:get_value(<<"Event-Subclass">>, Props) of
 	<<"whistle::noop">> ->
 	    ?LOG("sending execution completion for noop to control queue"),
@@ -328,6 +328,7 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                         ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop1)}
                         ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop1)}
                         ,{<<"Channel-State">>, get_channel_state(Prop1)}
+                        ,{<<"Transfer-History">>, get_transfer_history(Prop1)}
 		       | event_specific(EvtName, AppName, Prop1) ],
 	    EvtProp1 = wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION) ++ EvtProp0,
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
@@ -379,7 +380,8 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop
+                                           ,props:get_value(<<"variable_last_bridge_hangup_cause">>, Prop, <<>>))}
      ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<"">>)}
     ];
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Prop) ->
@@ -395,22 +397,26 @@ event_specific(<<"CHANNEL_BRIDGE">>, _, Prop) ->
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}];
+     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
+    ];
 event_specific(<<"CHANNEL_UNBRIDGE">>, _, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Destination-Number">>,props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
-     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}];
+     ,{<<"Hangup-Cause">>, props:get_value(<<"variable_hangup_cause">>, Prop
+                                           ,props:get_value(<<"Hangup-Cause">>, Prop, <<>>))}
+     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
+    ];
 event_specific(<<"CHANNEL_HANGUP">>, _, Prop) ->
     [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop
+                                           ,props:get_value(<<"variable_last_bridge_hangup_cause">>, Prop, <<>>))}
      ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
     ];
 event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, _, Prop) ->
@@ -419,8 +425,19 @@ event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, _, Prop) ->
      ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
      ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
+     ,{<<"Hangup-Cause">>, props:get_value(<<"variable_hangup_cause">>, Prop
+                                           ,props:get_value(<<"variable_last_bridge_hangup_cause">>, Prop, <<>>))}
      ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
+    ];
+event_specific(<<"CHANNEL_DESTROY">>, _, Prop) ->
+    [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
+     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop)}
+     ,{<<"Hangup-Cause">>, props:get_value(<<"variable_hangup_cause">>, Prop
+                                           ,props:get_value(<<"Hangup-Cause">>, Prop, <<>>))}
+     ,{<<"Hangup-Code">>, props:get_value("variable_proto_specific_hangup_cause", Prop, <<>>)}
     ];
 event_specific(<<"RECORD_STOP">>, _, Prop) ->
     [{<<"Application-Name">>, <<"record">>}
@@ -494,3 +511,29 @@ should_publish(_, <<"event">>, _) ->
     false;
 should_publish(_, _, EvtName) ->
     lists:member(EvtName, ?FS_EVENTS).
+
+-spec get_transfer_history/1 :: (proplist()) -> json_object().
+get_transfer_history(Props) ->
+    SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
+    Hist = [HistJObj 
+            || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory)
+                   ,(HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, [global]))) =/= undefined],
+    wh_json:from_list(Hist).
+
+-spec create_trnsf_history_object/1 :: (list()) -> {binary, json_object} | undefined.
+create_trnsf_history_object([Epoch, UUID, <<"att_xfer">>, Data]) ->
+    [Transferee, Transferer] = binary:split(Data, <<"/">>),
+    Props = [{<<"uuid">>, UUID}
+             ,{<<"type">>, <<"attended">>}
+             ,{<<"transferee">>, Transferee}
+             ,{<<"transferer">>, Transferer}],
+    {Epoch, wh_json:from_list(Props)};
+create_trnsf_history_object([Epoch, UUID, <<"bl_xfer">>, Data]) ->
+    [Exten, _, _] = binary:split(Data, <<"/">>, [global]),
+    Props = [{<<"uuid">>, UUID}
+             ,{<<"type">>, <<"blind">>}
+             ,{<<"extension">>, Exten}
+            ],
+    {Epoch, wh_json:from_list(Props)};        
+create_trnsf_history_object(_) ->
+    undefined.
