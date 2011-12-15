@@ -21,11 +21,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(BINDINGS, [ {rating, []} ]).
--define(RESPONDERS, [{hon_rater, [{<<"call">>, <<"rating_req">>}]}]).
-
--record(state, {
-	 }).
+-define(BINDINGS, [ {call, [{restrict_to, [rating]}]} ]).
+-define(RESPONDERS, [{hon_rater, [{<<"call_mgmt">>, <<"rating_req">>}]}]).
 
 %%%===================================================================
 %%% API
@@ -44,8 +41,7 @@ start_link() ->
 				      ,{bindings, ?BINDINGS}
 				     ], []).
 
--spec stop/1 :: (Srv) -> ok when
-      Srv :: atom() | pid().
+-spec stop/1 :: (pid() | atom()) -> 'ok'.
 stop(Srv) ->
     gen_listener:stop(Srv).
 
@@ -66,7 +62,7 @@ stop(Srv) ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting hotornot listener"),
-    {ok, #state{}}.
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -2,13 +2,13 @@
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP, INC
 %%% @doc
-%%% Given a rating_req, find appropriate rate for the call
+%%% Given a rate_req, find appropriate rate for the call
 %%% @end
 %%% Created : 16 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(hon_rater).
 
--export([init/0, handle_req/1]).
+-export([init/0, handle_req/2]).
 
 -include("hotornot.hrl").
 
@@ -17,23 +17,24 @@ init() ->
     couch_mgr:load_doc_from_file(?RATES_DB, hotornot, <<"fixtures/us-1.json">>),
     couch_mgr:revise_doc_from_file(?RATES_DB, hotornot, <<"views/rating.json">>). %% only load it (will fail if exists)
 
-handle_req(JObj) ->
-    true = hon_api:rating_req_v(JObj),
+-spec handle_req/2 :: (json_object(), proplist()) -> 'ok'.
+handle_req(JObj, Props) ->
+    true = wapi_call:rate_req_v(JObj),
     ?LOG("Valid rating request"),
 
-    {ok, RateData} = get_rate_data(JObj),
+    {ok, RatesData} = get_rate_data(JObj),
     ?LOG("Rate data retrieved"),
 
-    {ok, JSON} = hon_api:rating_resp(wh_api:default_headers(<<>>, <<"call">>, <<"rating_resp">>, ?APP_NAME, ?APP_VERSION) ++ RateData),
-    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    ?LOG_END("Sending ~s to ~s", [JSON, RespQ]),
-    amqp_util:targeted_publish(RespQ, JSON).
+    RespProp = [{<<"Rates">>, RatesData}
+		| wh_api:default_headers(props:get_value(queue, Props, <<>>), ?APP_NAME, ?APP_VERSION)
+	       ],
 
--spec get_rate_data/1 :: (JObj) -> {ok, proplist()} | {error, no_rate_found} when
-      JObj :: json_object().
+    wapi_call:publish_rate_resp(wh_json:get_value(<<"Server-ID">>, JObj), RespProp).
+
+-spec get_rate_data/1 :: (json_object()) -> {'ok', proplist()} | {'error', 'no_rate_found'}.
 get_rate_data(JObj) ->
     ToDID = wh_util:to_e164(wh_json:get_value(<<"To-DID">>, JObj)),
-    FromDID = wh_util:to_e164(wh_json:get_value(<<"From-DID">>, JObj)),
+    _FromDID = wh_util:to_e164(wh_json:get_value(<<"From-DID">>, JObj)),
     RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
     Direction = wh_json:get_value(<<"Direction">>, JObj),
     <<"+", Start:1/binary, Rest/binary>> = ToDID,
@@ -41,31 +42,37 @@ get_rate_data(JObj) ->
 
     ?LOG("searching for rates in the range ~s to ~s", [Start, End]),
     case couch_mgr:get_results(?RATES_DB, <<"rating/lookup">>, [{<<"startkey">>, wh_util:to_integer(Start)}
-								,{<<"endkey">>, wh_util:to_integer(End)}]) of
+								,{<<"endkey">>, wh_util:to_integer(End)}
+							       ]) of
 	{ok, []} -> ?LOG("rate lookup had no results"), {error, no_rate_found};
 	{error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_rate_found};
 	{ok, Rates} ->
 	    Matching = filter_rates(ToDID, Direction, RouteOptions, Rates),
 	    case lists:usort(fun sort_rates/2, Matching) of
 		[] -> ?LOG("no rates left after filter"), {error, no_rate_found};
-		[Rate|_] ->
+		[_|_]=SortedRates ->
 		    %% wh_timer:tick("post usort data found"),
-		    ?LOG("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
 
-		    BaseCost = wh_json:get_float_value(<<"rate_cost">>, Rate, 0.01) * ( wh_json:get_integer_value(<<"rate_minimum">>, Rate, 60) div 60 )
-			+ wh_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0),
-
-		    ?LOG("base cost for a minute call: ~p", [BaseCost]),
-
-		    {ok, [{<<"Rate">>, wh_json:get_binary_value(<<"rate_cost">>, Rate)}
-			  ,{<<"Rate-Increment">>, wh_json:get_binary_value(<<"rate_increment">>, Rate)}
-			  ,{<<"Rate-Minimum">>, wh_json:get_binary_value(<<"rate_minimum">>, Rate)}
-			  ,{<<"Surcharge">>, wh_json:get_binary_value(<<"rate_surcharge">>, Rate)}
-			  ,{<<"Rate-Name">>, wh_json:get_binary_value(<<"rate_name">>, Rate)}
-			  ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
-			 ]}
+		    {ok, [rate_to_json(Rate) || Rate <- SortedRates]}
 	    end
     end.
+
+-spec rate_to_json/1 :: (json_object()) -> json_object().
+rate_to_json(Rate) ->
+    ?LOG("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
+
+    BaseCost = wh_json:get_float_value(<<"rate_cost">>, Rate, 0.01) * ( wh_json:get_integer_value(<<"rate_minimum">>, Rate, 60) div 60 )
+	+ wh_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0),
+
+    ?LOG("base cost for a minute call: ~p", [BaseCost]),
+
+    wh_json:from_list([{<<"Rate">>, wh_json:get_binary_value(<<"rate_cost">>, Rate)}
+		       ,{<<"Rate-Increment">>, wh_json:get_binary_value(<<"rate_increment">>, Rate)}
+		       ,{<<"Rate-Minimum">>, wh_json:get_binary_value(<<"rate_minimum">>, Rate)}
+		       ,{<<"Surcharge">>, wh_json:get_binary_value(<<"rate_surcharge">>, Rate)}
+		       ,{<<"Rate-Name">>, wh_json:get_binary_value(<<"rate_name">>, Rate)}
+		       ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
+		      ]).
 
 
 filter_rates(To, Direction, RouteOptions, Rates) ->
