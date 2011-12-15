@@ -1257,6 +1257,13 @@ wait_for_bridge(Timeout, #cf_call{cf_pid=CFPid}=Call) ->
             {error, timeout}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec is_during_transfer/1 :: (json_object()) -> boolean().
 is_during_transfer(JObj) ->
     Timestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
     Epoch = binary:part(wh_util:pad_binary(Timestamp, 10, <<"0">>), 0, 10),
