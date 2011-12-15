@@ -16,27 +16,23 @@
 -export([microseconds_to_seconds/1, put_callid/1, get_event_type/1]).
 -export([whistle_version/0, write_pid/1]).
 -export([is_ipv4/1, is_ipv6/1]).
+-export([get_hostname/0]).
 
+-include_lib("kernel/include/inet.hrl").
 -include_lib("proper/include/proper.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, whistle_version}).
 
--spec call_response/3 :: (CallId, CtrlQ, Code) -> 'ok' when
-      CallId :: binary(),
-      CtrlQ :: binary(),
-      Code :: binary().
--spec call_response/4 :: (CallId, CtrlQ, Code, Cause) -> 'ok' when
-      CallId :: binary(),
-      CtrlQ :: binary(),
-      Code :: binary(),
-      Cause :: 'undefined' | binary().
--spec call_response/5 :: (CallId, CtrlQ, Code, Cause, Media) -> 'ok' when
-      CallId :: binary(),
-      CtrlQ :: binary(),
-      Code :: binary(),
-      Cause :: 'undefined' | binary(),
-      Media :: 'undefined' | binary().
+-spec get_hostname/0 :: () -> string().
+get_hostname() ->
+    {ok, Host} = inet:gethostname(),
+    {ok, #hostent{h_name=Hostname}} = inet:gethostbyname(Host),
+    Hostname.
+
+-spec call_response/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec call_response/4 :: (ne_binary(), ne_binary(), ne_binary(), 'undefined' | binary()) -> 'ok'.
+-spec call_response/5 :: (ne_binary(), ne_binary(), ne_binary(), 'undefined' | binary(), 'undefined' | binary()) -> 'ok'.
 call_response(CallId, CtrlQ, Code) ->
     call_response(CallId, CtrlQ, Code, <<>>).
 call_response(CallId, CtrlQ, Code, undefined) ->
@@ -44,24 +40,24 @@ call_response(CallId, CtrlQ, Code, undefined) ->
 call_response(CallId, CtrlQ, Code, Cause) ->
     call_response(CallId, CtrlQ, Code, Cause, undefined).
 call_response(CallId, CtrlQ, Code, Cause, Media) ->
-    Respond = {struct, [{<<"Application-Name">>, <<"respond">>}
-                        ,{<<"Response-Code">>, Code}
-                        ,{<<"Response-Message">>, Cause}
-                        ,{<<"Call-ID">>, CallId}]
-              },
+    Respond = wh_json:from_list([{<<"Application-Name">>, <<"respond">>}
+				 ,{<<"Response-Code">>, Code}
+				 ,{<<"Response-Message">>, Cause}
+				 ,{<<"Call-ID">>, CallId}
+				]),
     call_response1(CallId, CtrlQ, Media, Respond).
 
 call_response1(CallId, CtrlQ, undefined, Respond) ->
     call_response1(CallId, CtrlQ, [Respond]);
 call_response1(CallId, CtrlQ, Media, Respond) ->
     call_response1(CallId, CtrlQ, [Respond
-				   ,{struct, [{<<"Application-Name">>, <<"play">>}
-					      ,{<<"Media-Name">>, Media}
-					      ,{<<"Call-ID">>, CallId}]
-				    }
-				   ,{struct, [{<<"Application-Name">>, <<"progress">>}
-					      ,{<<"Call-ID">>, CallId}]
-				    }
+				   ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
+						       ,{<<"Media-Name">>, Media}
+						       ,{<<"Call-ID">>, CallId}
+						      ])
+				   ,wh_json:from_list([{<<"Application-Name">>, <<"progress">>}
+						       ,{<<"Call-ID">>, CallId}
+						      ])
 				  ]).
 
 call_response1(CallId, CtrlQ, Commands) ->
@@ -70,7 +66,7 @@ call_response1(CallId, CtrlQ, Commands) ->
                ,{<<"Commands">>, Commands}
                | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
     {ok, Payload} = wapi_dialplan:queue(Command),
-    amqp_util:callctl_publish(CtrlQ, Payload).
+    wapi_dialplan:publish_action(CtrlQ, Payload).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -116,24 +112,22 @@ is_1npan(DID) ->
     re:run(DID, <<"^1\\d{10}$">>) =/= nomatch.
 
 %% +18001234567 -> +18001234567
--spec to_e164/1 :: (DID) -> binary() when
-      DID :: binary().
+-spec to_e164/1 :: (ne_binary()) -> ne_binary().
 to_e164(<<"011", N/binary>>) ->
-    <<$+, N/binary>>;
-to_e164(<<$+, $1, N/bitstring>>=E164) when erlang:bit_size(N) =:= 80 -> % 8bits/ch * 10ch
+    to_e164(N);
+to_e164(<<"+1", _/binary>> = E164) when erlang:byte_size(E164) =:= 12 ->
     E164;
 %% 18001234567 -> +18001234567
-to_e164(<<$1, N/binary>>=NPAN1) when erlang:bit_size(N) =:= 80 ->
-    << $+, NPAN1/bitstring >>;
+to_e164(<<$1, _/binary>> = NPAN1) when erlang:byte_size(NPAN1) =:= 11 ->
+    << $+, NPAN1/binary>>;
 %% 8001234567 -> +18001234567
-to_e164(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
-    <<$+, $1, NPAN/bitstring>>;
+to_e164(NPAN) when erlang:byte_size(NPAN) =:= 10 ->
+    <<$+, $1, NPAN/binary>>;
 to_e164(Other) ->
     Other.
 
 %% end up with 8001234567 from 1NPAN and E.164
--spec to_npan/1 :: (NPAN) -> binary() when
-      NPAN :: binary().
+-spec to_npan/1 :: (ne_binary()) -> ne_binary().
 to_npan(<<"011", N/binary>>) ->
     to_npan(N);
 to_npan(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
