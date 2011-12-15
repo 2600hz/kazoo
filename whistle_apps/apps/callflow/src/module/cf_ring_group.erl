@@ -37,7 +37,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) 
             CFPid ! { stop };
         {fail, Reason} ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-            Level = wh_util:hangup_cause_to_alert_level(Cause),
+            Level = whapps_util:hangup_cause_to_alert_level(Cause),
             whapps_util:alert(Level, ["Source: ~s(~p)~n"
                                       ,"Alert: failed to bridge to device~n"
                                       ,"Fault: ~p~n"
