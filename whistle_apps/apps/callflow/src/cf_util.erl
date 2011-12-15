@@ -165,7 +165,7 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
             %% matching groups by list, reverse so head is largest, then take the head of the list
             {Start, End} = hd(lists:reverse(lists:keysort(2, tl(CaptureGroups)))),
             case binary:part(Number, Start, End) of
-                Match when size(Match) > size(Result) ->
+                Match when size(Match) > size(Capture) ->
                     F = wh_json:get_value(<<"doc">>, Pattern),
                     test_callflow_patterns(T, Number, {F, Match});
                 _ ->
