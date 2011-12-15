@@ -174,7 +174,7 @@ get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
 get_channel_vars({<<"Codecs">>, []}, Vars) ->
     Vars;
 get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
-    Codecs = [ binary_to_list(C) || C <- Cs ],
+    Codecs = [ wh_util:to_list(C) || C <- Cs, not wh_util:is_empty(C) ],
     CodecStr = string:join(Codecs, ","),
     [ list_to_binary(["codec_string='", CodecStr, "'"]) | Vars];
 
