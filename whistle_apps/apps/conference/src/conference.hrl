@@ -15,6 +15,7 @@
                   ,incorrect_id = <<"/system_media/conf-bad_conf">>
                   ,incorrect_pin = <<"/system_media/conf-bad_pin">>
                   ,to_many_attempts = <<"/system_media/conf-enter_conf_number">>
+                  ,generic_joining = <<"/system_media/conf-joining_conference">>
                   ,alone_enter = <<"/system_media/conf-alone">>
                   ,single_enter = <<"/system_media/conf-single">>
                   ,multiple_enter_1 = <<"/system_media/conf-there_are">>
