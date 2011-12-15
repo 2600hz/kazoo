@@ -1236,6 +1236,7 @@ wait_for_bridge(Timeout, #cf_call{cf_pid=CFPid}=Call) ->
                     case is_during_transfer(JObj) of
                         false -> wait_for_bridge(Timeout, Call);
                         true -> 
+                            ?LOG("channel unbridge as a result of a transfer while waiting for bridge"),
                             CFPid ! {transfer},
                             {ok, JObj}
                     end;
