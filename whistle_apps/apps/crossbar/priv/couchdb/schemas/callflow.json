@@ -6,7 +6,6 @@
        "numbers": {
            "description": "",
            "type": "array",
-           "required": "true"
        },
        "flow": {
            "description": "",
