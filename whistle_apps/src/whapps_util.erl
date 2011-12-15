@@ -17,6 +17,7 @@
 -export([get_event_type/1, put_callid/1]).
 -export([get_call_termination_reason/1]).
 -export([alert/3, alert/4]).
+-export([hangup_cause_to_alert_level/1]).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -374,3 +375,22 @@ calculate_cost(R, RI, RM, Sur, Secs) ->
 	true -> Sur + ((RM / 60) * R);
 	false -> Sur + ((RM / 60) * R) + ( wh_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R))
     end.
+
+hangup_cause_to_alert_level(<<"UNALLOCATED_NUMBER">>) ->
+    <<"warning">>;
+hangup_cause_to_alert_level(<<"NO_ROUTE_DESTINATION">>) ->
+    <<"warning">>;
+hangup_cause_to_alert_level(<<"USER_BUSY">>) ->
+    <<"warning">>;
+hangup_cause_to_alert_level(<<"NORMAL_UNSPECIFIED">>) ->
+    <<"warning">>;
+hangup_cause_to_alert_level(<<"ORIGINATOR_CANCEL">>) ->
+    <<"info">>;
+hangup_cause_to_alert_level(<<"NO_ANSWER">>) ->
+    <<"info">>;
+hangup_cause_to_alert_level(<<"LOSE_RACE">>) ->
+    <<"info">>;
+hangup_cause_to_alert_level(<<"ATTENDED_TRANSFER">>) ->
+    <<"info">>;
+hangup_cause_to_alert_level(_) ->
+    <<"error">>.

@@ -179,7 +179,15 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, #
                                   Pid ! {binding_result, true, [RD, Else, Params]}
                           end;
                       _ ->
-                          Pid ! {binding_result, true, [RD, crossbar_util:response_conflicting_docs(Context), Params]}
+                          case crossbar_doc:save(Context#cb_context{db_name=AccountDb
+                                                                    ,doc=wh_json:delete_key(<<"_rev">>, Doc)
+                                                                   }) of
+                              #cb_context{resp_status=success, doc=Doc1}=Context1 ->
+                                  couch_mgr:ensure_saved(?ACCOUNTS_AGG_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
+                                  Pid ! {binding_result, true, [RD, Context1, Params]};
+                              Else ->
+                                  Pid ! {binding_result, true, [RD, Else, Params]}
+                          end
                   end
           end),
     {noreply, State};

@@ -245,6 +245,8 @@ process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
     %% to create new services, however one will fail because the queue is exclusive.
     %% when that happens the one with the failing service just needs to re-send the
     %% add caller request... Quick and dirty...
+    Prompts = S3#search.prompts,
+    play(Prompts#prompts.generic_joining, S3),
     try send_add_caller(S3) catch _:_ -> send_add_caller(S3) end.
 
 %%--------------------------------------------------------------------
@@ -255,7 +257,8 @@ process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
 %%--------------------------------------------------------------------
 -spec send_add_caller/1 :: (Search) -> no_return() when
       Search :: #search{}.
-send_add_caller(#search{conf_id=ConfId, account_id=AccountId, call_id=CallId, ctrl_q=CtrlQ, moderator=Moderator, amqp_q=Q}) ->
+send_add_caller(#search{conf_id=ConfId, account_id=AccountId, call_id=CallId
+                        ,ctrl_q=CtrlQ, moderator=Moderator, amqp_q=Q}) ->
     ?LOG("attempting to handoff call control to conference service"),
 
     %% Bind to conference events for this confid so we will know if an existing service accepts the

@@ -46,6 +46,7 @@
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 
 -include("wh_api.hrl").
+-include("../include/wh_log.hrl").
 
 %%%===================================================================
 %%% API
@@ -434,8 +435,13 @@ convert_whistle_app_name(App) ->
 %%%===================================================================
 -spec validate/4 :: (proplist(), [ne_binary(),...] | [], proplist(), proplist()) -> boolean().
 validate(Prop, ReqH, Vals, Types) ->
-    has_all(Prop, ?DEFAULT_HEADERS) andalso
-	validate_message(Prop, ReqH, Vals, Types).
+    case has_all(Prop, ?DEFAULT_HEADERS) andalso validate_message(Prop, ReqH, Vals, Types) of
+        true ->
+            true;
+        false ->
+            ?LOG("failing API JSON: ~s", [wh_json:encode(wh_json:from_list(Prop))]),
+            false
+    end.
 
 -spec validate_message/4 :: (proplist(), [ne_binary(),...] | [], proplist(), proplist()) -> boolean().
 validate_message(Prop, ReqH, Vals, Types) ->
@@ -450,7 +456,8 @@ validate_message(Prop, ReqH, Vals, Types) ->
 build_message(Prop, ReqH, OptH) ->
     case defaults(Prop) of
 	{error, _Reason}=Error ->
-	    io:format("Build Error: ~p~nDefHeaders: ~p~nPassed: ~p~n", [Error, ?DEFAULT_HEADERS, Prop]),
+            ?LOG("API message does not have the default headers ~s: ~p"
+                 ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
 	    Error;
 	HeadAndProp ->
 	    case build_message_specific_headers(HeadAndProp, ReqH, OptH) of
@@ -466,7 +473,8 @@ build_message(Prop, ReqH, OptH) ->
 build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
 	{error, _Reason} = Error ->
-	    io:format("Build Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ReqH, Prop]),
+            ?LOG("API message does not have the required headers ~s: ~p"
+                 ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
 	    Error;
 	{Headers1, Prop1} ->
 	    {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
@@ -482,7 +490,8 @@ build_message_specific_headers(Prop, ReqH, OptH) ->
 build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
 	{error, _Reason} = Error ->
-	    io:format("Build Error: ~p~nReqHeaders: ~p~nPassed: ~p~n", [Error, ReqH, Prop]),
+            ?LOG("API message does not have the required headers ~s: ~p"
+                 ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
 	    Error;
 	{Headers1, Prop1} ->
 	    {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
@@ -569,7 +578,7 @@ has_all(Prop, Headers) ->
 		      case props:is_defined(Header, Prop) of
 			  true -> true;
 			  false ->
-			      io:format("WHISTLE_API.has_all: Failed to find ~p~nProp: ~p~n", [Header, Prop]),
+			      ?LOG("failed to find key '~s' on API message", [Header]),
 			      false
 		      end
 	      end, Headers).
@@ -588,7 +597,8 @@ values_check(Prop, Values) ->
 			  V -> case lists:member(V, Vs) of
 				   true -> true;
 				   false ->
-				       io:format("WHISTLE_API.values_check: K: ~p V: ~p not in ~p~n", [Key, V, Vs]),
+                                       ?LOG("API key '~s' value '~p' is not one of the values: ~p"
+                                            ,[Key, V, Vs]),
 				       false
 			       end
 		      end;
@@ -597,7 +607,8 @@ values_check(Prop, Values) ->
 			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
 			  V -> true;
 			  _Val ->
-			      io:format("WHISTLE_API.values_check: Key: ~p Set: ~p Expected: ~p~n", [Key, _Val, V]),
+                              ?LOG("API key '~s' value '~p' is not '~p'"
+                                   ,[Key, _Val, V]),
 			      false
 		      end
 	      end, Values).
@@ -611,11 +622,13 @@ type_check(Prop, Types) ->
 			  Value -> try case Fun(Value) of % returns boolean
 					   true -> true;
 					   false ->
-					       io:format("WHISTLE_API.type_check: K: ~p V: ~p failed fun~n", [Key, Value]),
+                                               ?LOG("API key '~s' value '~p' failed validation fun", [Key, Value]),
 					       false
 				       end
-				   catch _:_ -> io:format("WHISTLE_API.type_check: K: ~p V: ~p threw exception~n", [Key, Value]),
-						false
+				   catch 
+                                       _:R -> 
+                                           ?LOG("API key '~s' value '~p' caused validation fun exception: ~p", [Key, Value, R]),
+                                           false
 				   end
 		      end
 	      end, Types).
