@@ -37,10 +37,11 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) 
             CFPid ! { stop };
         {fail, Reason} ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-            whapps_util:alert(<<"warning">>, ["Source: ~s(~p)~n"
-                                              ,"Alert: failed to bridge to device~n"
-                                              ,"Fault: ~p~n"
-                                              ,"~n~s"]
+            Level = wh_util:hangup_cause_to_alert_level(Cause),
+            whapps_util:alert(Level, ["Source: ~s(~p)~n"
+                                      ,"Alert: failed to bridge to device~n"
+                                      ,"Fault: ~p~n"
+                                      ,"~n~s"]
                               ,[?MODULE, ?LINE, Reason, cf_util:call_info_to_string(Call)], AccountId),
             ?LOG("failed to bridge to ring group ~s:~s", [Code, Cause]),
             CFPid ! { continue };
