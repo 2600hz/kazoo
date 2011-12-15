@@ -283,9 +283,15 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                           fun(DP) ->
                                   case wh_json:get_value(<<"Hold-Media">>, JObj) of
                                       undefined ->
-                                          DP;
-                                      HoldMedia ->
-                                          Stream = wh_util:to_list(ecallmgr_util:media_path(HoldMedia, extant, UUID)),
+					  case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
+					      undefined -> DP;
+					      Media ->
+						  Stream = wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID)),
+						  ?LOG("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
+						  [{"application", "set hold_music=" ++ Stream}|DP]
+					  end;
+                                      Media ->
+                                          Stream = wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID)),
                                           ?LOG("bridge has custom music-on-hold: ~s", [Stream]),
                                           [{"application", "set hold_music=" ++ Stream}|DP]
                                   end
@@ -296,7 +302,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                           ?LOG("bridge will process media through host switch"),
                                           [{"application", "set bypass_media=false"}|DP];
                                       <<"bypass">> ->
-                                          ?LOG("bridge will connect the media peer-to-perr"),
+                                          ?LOG("bridge will connect the media peer-to-peer"),
                                           [{"application", "set bypass_media=true"}|DP];
                                       _ ->
                                           DP
