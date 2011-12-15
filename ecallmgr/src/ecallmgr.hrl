@@ -76,7 +76,7 @@
 			       ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
 			       ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
 			       ,{<<"Presence-ID">>, <<"presence_id">>}
-			       ,{<<"Hold-Media">>, <<"hold_music">>}
+			       %% ,{<<"Hold-Media">>, <<"hold_music">>}
 			      ]).
 
 -define(DEFAULT_RESPONSE_CODE, <<"488">>).

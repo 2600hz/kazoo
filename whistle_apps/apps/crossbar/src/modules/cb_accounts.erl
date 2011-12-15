@@ -570,7 +570,7 @@ update_tree(AccountId, ParentId, Context) ->
                 #cb_context{resp_status=success, doc=[]} ->
                     crossbar_util:response_bad_identifier(AccountId, Context);
                 #cb_context{resp_status=success, doc=Doc}=Context1 ->
-                    Tree = wh_json:get_value(<<"pvt_tree">>, Parent) ++ [ParentId, AccountId],
+                    Tree = wh_json:get_value(<<"pvt_tree">>, Parent, []) ++ [ParentId, AccountId],
                     Updater = fun(Update, Acc) -> update_doc_tree(Tree, Update, Acc) end,
                     Updates = lists:foldr(Updater, [], Doc),
                     Context1#cb_context{doc=Updates}

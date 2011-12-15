@@ -83,7 +83,18 @@ reload() ->
 %% @end
 %%--------------------------------------------------------------------
 init(_) ->
-    {ok, #state{}, 0}.
+    _ = bind_to_crossbar(),
+    couch_mgr:db_create(?SIGNUP_DB),
+
+    case couch_mgr:update_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE) of
+        {error, _} ->
+            couch_mgr:load_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE);
+        {ok, _} -> ok
+    end,
+
+    State = init_state(),
+    {ok, TRef} = timer:send_interval(State#state.cleanup_interval * 1000, cleanup),
+    {ok, State#state{cleanup_timer=TRef}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -222,11 +233,6 @@ handle_info(cleanup, State) ->
     cleanup_signups(State),
     {noreply, State};
 
-handle_info(timeout, S) ->
-    {ok, State} = code_change(0, S, []),
-    {ok, TRef} = timer:send_interval(State#state.cleanup_interval * 1000, cleanup),
-    {noreply, State#state{cleanup_timer=TRef}};
-
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -252,39 +258,41 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change/3 :: (_, tuple(), _) -> {'ok', #state{}}.
 code_change(_OldVsn, #state{cleanup_timer=CurTRef}, _Extra) ->
     _ = timer:cancel(CurTRef),
-    bind_to_crossbar(),
-    couch_mgr:db_create(?SIGNUP_DB),
-    case couch_mgr:update_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE) of
-        {error, _} ->
-            couch_mgr:load_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE);
-        {ok, _} -> ok
-    end,
-    State = case file:consult(?SIGNUP_CONF) of
-                {ok, Terms} ->
-                    ?LOG_SYS("loaded config from ~s", [?SIGNUP_CONF]),
-                    Defaults = #state{},
-                    #state{cleanup_interval =
-                               props:get_value(cleanup_interval, Terms, Defaults#state.cleanup_interval)
-                           ,signup_lifespan =
-                               props:get_value(signup_lifespan, Terms, Defaults#state.signup_lifespan)
-                           ,register_cmd =
-                               compile_template(props:get_value(register_cmd, Terms), cb_signup_register_cmd)
-                           ,activation_email_plain =
-                               compile_template(props:get_value(activation_email_plain, Terms), cb_signup_email_plain)
-                           ,activation_email_html =
-                               compile_template(props:get_value(activation_email_html, Terms), cb_signup_email_html)
-                           ,activation_email_from =
-                               compile_template(props:get_value(activation_email_from, Terms), cb_signup_email_from)
-                           ,activation_email_subject =
-                               compile_template(props:get_value(activation_email_subject, Terms), cb_signup_email_subject)
-                          };
-                {error, _} ->
-                    ?LOG_SYS("could not read config from ~s", [?SIGNUP_CONF]),
-                    #state{}
-            end,
-    {ok, State}.
+    _ = bind_to_crossbar(),
+    {ok, init_state()}.
+
+init_state() ->
+    case get_configs() of
+	{ok, Terms} ->
+	    ?LOG_SYS("loaded config from ~s", [?SIGNUP_CONF]),
+	    Defaults = #state{},
+	    #state{cleanup_interval =
+		       props:get_value(cleanup_interval, Terms, Defaults#state.cleanup_interval)
+		   ,signup_lifespan =
+		       props:get_value(signup_lifespan, Terms, Defaults#state.signup_lifespan)
+		   ,register_cmd =
+		       compile_template(props:get_value(register_cmd, Terms), cb_signup_register_cmd)
+		   ,activation_email_plain =
+		       compile_template(props:get_value(activation_email_plain, Terms), cb_signup_email_plain)
+		   ,activation_email_html =
+		       compile_template(props:get_value(activation_email_html, Terms), cb_signup_email_html)
+		   ,activation_email_from =
+		       compile_template(props:get_value(activation_email_from, Terms), cb_signup_email_from)
+		   ,activation_email_subject =
+		       compile_template(props:get_value(activation_email_subject, Terms), cb_signup_email_subject)
+		  };
+	{error, _} ->
+	    ?LOG_SYS("could not read config from ~s", [?SIGNUP_CONF]),
+	    #state{}
+    end.
+
+-spec get_configs/0 :: () -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
+						   | {integer(), module(), term()}}.
+get_configs() ->
+    file:consult(lists:flatten(?SIGNUP_CONF)).
 
 %%%===================================================================
 %%% Internal functions
@@ -296,7 +304,7 @@ code_change(_OldVsn, #state{cleanup_timer=CurTRef}, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec bind_to_crossbar/0 :: () ->  no_return().
+-spec bind_to_crossbar/0 :: () ->  'ok' | {'error', 'exists'}.
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
@@ -448,9 +456,7 @@ create_activation_key() ->
 %% Load a signup document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec check_activation_key/2 :: (ActivationKey, Context) -> #cb_context{} when
-      ActivationKey :: binary(),
-      Context :: #cb_context{}.
+-spec check_activation_key/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 check_activation_key(ActivationKey, Context) ->
     case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_KEYS, [{<<"key">>, ActivationKey}
                                                                    ,{<<"include_docs">>, true}]) of
@@ -535,10 +541,7 @@ activate_user(Account, User) ->
 %% then exectute it now.
 %% @end
 %%--------------------------------------------------------------------
--spec exec_register_command/3 :: (RD, Context, State) -> no_return() when
-      RD :: #wm_reqdata{},
-      Context :: #cb_context{},
-      State :: #state{}.
+-spec exec_register_command/3 :: (#wm_reqdata{}, #cb_context{}, #state{}) -> no_return().
 exec_register_command(_, _, #state{register_cmd=undefined}) ->
     ok;
 exec_register_command(RD, Context, #state{register_cmd=CmdTmpl}) ->
@@ -552,10 +555,7 @@ exec_register_command(RD, Context, #state{register_cmd=CmdTmpl}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_activation_email/3 :: (RD, Context, State) -> no_return() when
-      RD :: #wm_reqdata{},
-      Context :: #cb_context{},
-      State :: #state{}.
+-spec send_activation_email/3 :: (#wm_reqdata{}, #cb_context{}, #state{}) -> no_return().
 send_activation_email(RD, #cb_context{doc=JObj, req_id=ReqId}=Context, #state{activation_email_subject=SubjectTmpl
                                                                 ,activation_email_from=FromTmpl}=State) ->
     Props = template_props(RD, Context),
@@ -624,7 +624,7 @@ create_body(_, _, Body) ->
 %% create a proplist to provide to the templates during render
 %% @end
 %%--------------------------------------------------------------------
--spec template_props/2 :: (#wm_reqdata{}, #cb_context{}) -> [{ne_binary(), proplist() | binary()},...].
+-spec template_props/2 :: (#wm_reqdata{}, #cb_context{}) -> [{ne_binary(), proplist() | ne_binary()},...].
 template_props(RD, #cb_context{doc=JObj, req_data=Data}) ->
     Port = case wrq:port(RD) of
 	       80 -> "";
@@ -651,7 +651,7 @@ template_props(RD, #cb_context{doc=JObj, req_data=Data}) ->
 %% accounts and completed signups
 %% @end
 %%--------------------------------------------------------------------
--spec is_unique_realm/1 :: (binary() | 'undfined') -> boolean().
+-spec is_unique_realm/1 :: (binary() | 'undefined') -> boolean().
 is_unique_realm(undefined) -> false;
 is_unique_realm(<<>>) -> false;
 is_unique_realm(Realm) ->
@@ -672,19 +672,21 @@ is_unique_realm(Realm) ->
 %% the db load.
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_signups/1 :: (#state{}) -> no_return().
+-spec cleanup_signups/1 :: (#state{}) -> 'ok'.
 cleanup_signups(#state{signup_lifespan=Lifespan}) ->
     ?LOG_SYS("cleaning up signups"),
     Expiration = calendar:datetime_to_gregorian_seconds(calendar:universal_time()) + Lifespan,
     case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_CREATED, [{<<"startkey">>, 0}
                                                                       ,{<<"endkey">>, Expiration}
-                                                                      ,{<<"include_docs">>, true}]) of
+                                                                      ,{<<"include_docs">>, true}
+								     ]) of
         {ok, Expired} ->
             [spawn(fun() ->
                            timer:sleep(random:uniform(500) * 1000),
                            delete_signup(wh_json:get_value(<<"doc">>, JObj))
                    end)
-             || JObj <- Expired];
+             || JObj <- Expired],
+	    ok;
         _Else ->
             ok
     end.
@@ -696,10 +698,8 @@ cleanup_signups(#state{signup_lifespan=Lifespan}) ->
 %% as expired.
 %% @end
 %%--------------------------------------------------------------------
--spec delete_signup/1 :: (JObj) -> no_return() when
-      JObj :: undefined | json_object().
-delete_signup(undefined) ->
-    ok;
+-spec delete_signup/1 :: ('undefined' | json_object()) -> 'ok' | #cb_context{}.
+delete_signup(undefined) -> ok;
 delete_signup(JObj) ->
     ?LOG_SYS("removing expired signup ~s", [wh_json:get_value(<<"_id">>, JObj)]),
     crossbar_doc:delete(#cb_context{doc=JObj, db_name=?SIGNUP_DB}).
@@ -711,9 +711,7 @@ delete_signup(JObj) ->
 %% to the priv directory of this module
 %% @end
 %%--------------------------------------------------------------------
--spec compile_template/2 :: (Template, Name) -> undefined | atom() when
-      Template :: undefined | string() | binary(),
-      Name :: atom().
+-spec compile_template/2 :: ('undefined' | string() | binary(), atom()) -> 'undefined' | atom().
 compile_template(undefined, _) ->
     undefined;
 compile_template(Template, Name) when not is_binary(Template) ->
@@ -735,9 +733,7 @@ compile_template(Template, Name) ->
 %% Compiles template string or path, normalizing the return
 %% @end
 %%--------------------------------------------------------------------
--spec do_compile_template/2 :: (Template, Name) -> undefined | atom() when
-      Template :: string() | binary(),
-      Name :: atom().
+-spec do_compile_template/2 :: (nonempty_string() | ne_binary(), Name) -> 'undefined' | Name.
 do_compile_template(Template, Name) ->
     case erlydtl:compile(Template, Name) of
         {ok, Name} ->

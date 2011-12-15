@@ -133,7 +133,7 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
     {HasFilter, ViewOptions} = case has_filter(RJ) of
                                    true ->
                                        {true
-                                        ,[{<<"include_docs">>, true} | proplists:delete(<<"include_docs">>, Options)]};
+                                        ,[{<<"include_docs">>, true} | props:delete(<<"include_docs">>, Options)]};
                                    false ->
                                        {false, Options}
                                end,
@@ -562,6 +562,7 @@ rev_to_etag(JObj) ->
         undefined -> undefined;
         Rev -> wh_util:to_list(Rev)
     end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -619,9 +620,7 @@ view_name_to_binary(View) -> wh_util:to_binary(View).
 %% request has a filter defined
 %% @end
 %%--------------------------------------------------------------------
--spec has_filter/1 :: (#cb_context{} | json_object) -> boolean().
-has_filter(#cb_context{req_json=JObj}) ->
-    has_filter(JObj);
+-spec has_filter/1 :: (json_object()) -> boolean().
 has_filter(JObj) ->
     lists:any(fun is_filter_key/1, wh_json:to_proplist(JObj)).
 
@@ -646,10 +645,9 @@ is_filter_key(_) -> false.
 %% Returns true if all of the requested props are found, false if one is not found
 %% @end
 %%--------------------------------------------------------------------
--spec filter_doc/2 :: (json_object(), proplist()) -> boolean().
+-spec filter_doc/2 :: (json_object(), json_object()) -> boolean().
 filter_doc(Doc, Query) ->
-    Props = wh_json:to_proplist(Query),
-    lists:all(fun({K, V}) -> filter_prop(Doc, K, V) end, Props).
+    lists:all(fun({K, V}) -> filter_prop(Doc, K, V) end, wh_json:to_proplist(Query)).
 
 %%--------------------------------------------------------------------
 %% @private

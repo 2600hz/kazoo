@@ -47,10 +47,10 @@
 %% Connection = {Host, #server{}}
 %% Change handler {DBName :: string(), {Srv :: pid(), SrvRef :: reference()}
 -record(state, {
-          host = {"", ?DEFAULT_PORT, ?DEFAULT_ADMIN_PORT} :: tuple(string(), integer(), integer())
+          host = {"", ?DEFAULT_PORT, ?DEFAULT_ADMIN_PORT} :: {nonempty_string(), pos_integer(), pos_integer()}
 	  ,connection = #server{} :: #server{}
 	  ,admin_connection = #server{} :: #server{}
-	  ,creds = {"", ""} :: tuple(string(), string()) % {User, Pass}
+	  ,creds = {"", ""} :: {string(), string()} % {User, Pass}
 	  ,change_handlers = dict:new() :: dict()
 	 }).
 
@@ -63,16 +63,13 @@
 %% Load a file into couch as a document (not an attachement)
 %% @end
 %%--------------------------------------------------------------------
--spec load_doc_from_file/3 :: (DbName, App, File) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary(),
-      App :: atom(),
-      File :: list() | binary().
+-spec load_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
 load_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
     ?LOG_SYS("Read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
-	?MODULE:save_doc(DbName, mochijson2:decode(Bin)) %% if it crashes on the match, the catch will let us know
+	?MODULE:save_doc(DbName, wh_json:decode(Bin)) %% if it crashes on the match, the catch will let us know
     catch
         _Type:{badmatch,{error,Reason}} ->
 	    ?LOG_SYS("badmatch error: ~p", [Reason]),
@@ -89,16 +86,13 @@ load_doc_from_file(DbName, App, File) ->
 %% a file
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc_from_file/3 :: (DbName, App, File) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary(),
-      App :: atom(),
-      File :: list() | binary().
+-spec update_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
 update_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
     ?LOG_SYS("Update db ~s from CouchDB file: ~s", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
-	JObj = mochijson2:decode(Bin),
+	JObj = wh_json:decode(Bin),
 	{ok, Rev} = ?MODULE:lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)),
 	?MODULE:save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj))
     catch
@@ -135,9 +129,7 @@ revise_doc_from_file(DbName, App, File) ->
 %% into a given database
 %% @end
 %%--------------------------------------------------------------------
--spec revise_views_from_folder/2 :: (DbName, App) -> ok when
-      DbName :: binary(),
-      App :: atom().
+-spec revise_views_from_folder/2 :: (ne_binary(), atom()) -> 'ok'.
 revise_views_from_folder(DbName, App) ->
     revise_docs_from_folder(DbName, App, "views").
 
@@ -148,23 +140,17 @@ revise_views_from_folder(DbName, App) ->
 %% priv/couchdb/ into a given database
 %% @end
 %%--------------------------------------------------------------------
--spec revise_docs_from_folder/3 :: (DbName, App, Folder) -> ok when
-      DbName :: binary(),
-      App :: atom(),
-      Folder :: list().
+-spec revise_docs_from_folder/3 :: (ne_binary(), atom(), ne_binary() | nonempty_string()) -> 'ok'.
 revise_docs_from_folder(DbName, App, Folder) ->
     Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
     do_revise_docs_from_folder(DbName, Files).
 
--spec do_revise_docs_from_folder/2 :: (Db, Docs) -> ok when
-      Db :: binary(),
-      Docs :: [string(),...] | [].
-do_revise_docs_from_folder(_, []) ->
-    ok;
+-spec do_revise_docs_from_folder/2 :: (ne_binary(), [ne_binary() | nonempty_string(),...]) -> 'ok'.
+do_revise_docs_from_folder(_, []) -> ok;
 do_revise_docs_from_folder(DbName, [H|T]) ->
     try
         {ok, Bin} = file:read_file(H),
-        JObj = mochijson2:decode(Bin),
+        JObj = wh_json:decode(Bin),
         timer:sleep(250),
         case lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)) of
             {ok, Rev} ->
@@ -188,8 +174,7 @@ do_revise_docs_from_folder(DbName, [H|T]) ->
 %% Detemine if a database exists
 %% @end
 %%--------------------------------------------------------------------
--spec db_exists/1 :: (DbName) -> boolean() when
-      DbName :: binary().
+-spec db_exists/1 :: (ne_binary()) -> boolean().
 db_exists(DbName) ->
     couch_util:db_exists(get_conn(), DbName).
 
@@ -199,11 +184,10 @@ db_exists(DbName) ->
 %% Retrieve information regarding all databases
 %% @end
 %%--------------------------------------------------------------------
--spec db_info/0 :: () -> {ok, [binary(),...] | []} | {error, atom()}.
+-spec db_info/0 :: () -> {'ok', [ne_binary(),...] | []} | {'error', atom()}.
+-spec admin_db_info/0 :: () -> {'ok', [ne_binary(),...] | []} | {'error', atom()}.
 db_info() ->
     couch_util:db_info(get_conn()).
-
--spec admin_db_info/0 :: () -> {ok, [binary(),...] | []} | {error, atom()}.
 admin_db_info() ->
     couch_util:db_info(get_admin_conn()).
 
@@ -213,13 +197,10 @@ admin_db_info() ->
 %% Retrieve information regarding a database
 %% @end
 %%--------------------------------------------------------------------
--spec db_info/1 :: (DbName) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary().
+-spec db_info/1 :: (ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
+-spec admin_db_info/1 :: (ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
 db_info(DbName) ->
     couch_util:db_info(get_conn(), DbName).
-
--spec admin_db_info/1 :: (DbName) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary().
 admin_db_info(DbName) ->
     couch_util:db_info(get_admin_conn(), DbName).
 
@@ -229,37 +210,24 @@ admin_db_info(DbName) ->
 %% Retrieve information regarding a database design doc
 %% @end
 %%--------------------------------------------------------------------
--spec design_info/2 :: (DbName, DesignName) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary(),
-      DesignName :: binary().
+-spec design_info/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
+-spec admin_design_info/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
 design_info(DbName, DesignName) ->
     couch_util:design_info(get_conn(), DbName, DesignName).
-
--spec admin_design_info/2 :: (DbName, DesignName) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary(),
-      DesignName :: binary().
 admin_design_info(DbName, DesignName) ->
     couch_util:design_info(get_admin_conn(), DbName, DesignName).
 
--spec design_compact/2 :: (DbName, Design) -> boolean() when
-      DbName :: binary(),
-      Design :: binary().
+-spec design_compact/2 :: (ne_binary(), ne_binary()) -> boolean().
+-spec admin_design_compact/2 :: (ne_binary(), ne_binary()) -> boolean().
 design_compact(DbName, Design) ->
     couch_util:design_compact(get_conn(), DbName, Design).
-
--spec admin_design_compact/2 :: (DbName, Design) -> boolean() when
-      DbName :: binary(),
-      Design :: binary().
 admin_design_compact(DbName, Design) ->
     couch_util:design_compact(get_admin_conn(), DbName, Design).
 
--spec db_view_cleanup/1 :: (DbName) -> boolean() when
-      DbName :: binary().
+-spec db_view_cleanup/1 :: (ne_binary()) -> boolean().
+-spec admin_db_view_cleanup/1 :: (ne_binary()) -> boolean().
 db_view_cleanup(DbName) ->
     couch_util:db_view_cleanup(get_conn(), DbName).
-
--spec admin_db_view_cleanup/1 :: (DbName) -> boolean() when
-      DbName :: binary().
 admin_db_view_cleanup(DbName) ->
     couch_util:db_view_cleanup(get_admin_conn(), DbName).
 
@@ -296,11 +264,11 @@ admin_db_view_cleanup(DbName) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec db_replicate/1 :: (Prop :: tuple(struct, proplist()) | proplist()) -> {ok, json_object()} | {error, atom()}.
+-spec db_replicate/1 :: (proplist() | json_object()) -> {'ok', json_object()} | {'error', atom()}.
 db_replicate(Prop) when is_list(Prop) ->
-    db_replicate({struct, Prop});
-db_replicate({struct, _}=MochiJson) ->
-    couch_util:db_replicate(get_conn(), MochiJson).
+    db_replicate(wh_json:from_list(Prop));
+db_replicate(JObj) ->
+    couch_util:db_replicate(get_conn(), JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -308,14 +276,11 @@ db_replicate({struct, _}=MochiJson) ->
 %% Detemine if a database exists
 %% @end
 %%--------------------------------------------------------------------
--spec db_create/1 :: (DbName) -> boolean() when
-      DbName :: binary().
+-spec db_create/1 :: (ne_binary()) -> boolean().
 db_create(DbName) ->
     db_create(DbName, []).
 
--spec db_create/2 :: (DbName, Options) -> boolean() when
-      DbName :: binary(),
-      Options :: [{q,integer()} | {n,integer()},...] | [].
+-spec db_create/2 :: (ne_binary(),  [{'q',pos_integer()} | {'n',pos_integer()},...] | []) -> boolean().
 db_create(DbName, Options) ->
     couch_util:db_create(get_conn(), DbName, Options).
 
@@ -325,13 +290,10 @@ db_create(DbName, Options) ->
 %% Compact a database
 %% @end
 %%--------------------------------------------------------------------
--spec db_compact/1 :: (DbName) -> boolean() when
-      DbName :: binary().
+-spec db_compact/1 :: (ne_binary()) -> boolean().
+-spec admin_db_compact/1 :: (ne_binary()) -> boolean().
 db_compact(DbName) ->
     couch_util:db_compact(get_conn(), DbName).
-
--spec admin_db_compact/1 :: (DbName) -> boolean() when
-      DbName :: binary().
 admin_db_compact(DbName) ->
     couch_util:db_compact(get_admin_conn(), DbName).
 
@@ -341,8 +303,7 @@ admin_db_compact(DbName) ->
 %% Delete a database
 %% @end
 %%--------------------------------------------------------------------
--spec db_delete/1 :: (DbName) -> boolean() when
-      DbName :: binary().
+-spec db_delete/1 :: (ne_binary()) -> boolean().
 db_delete(DbName) ->
     couch_util:db_delete(get_conn(), DbName).
 
@@ -355,16 +316,10 @@ db_delete(DbName) ->
 %% open a document given a doc id returns an error tuple or the json
 %% @end
 %%--------------------------------------------------------------------
--spec open_doc/2 :: (DbName, DocId) -> {ok, json_object()} | {error, not_found | db_not_reachable} when
-      DbName :: binary(),
-      DocId :: binary().
+-spec open_doc/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found' | 'db_not_reachable'}.
+-spec open_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', json_object()} | {'error', 'not_found' | 'db_not_reachable'}.
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
-
--spec open_doc/3 :: (DbName, DocId, Options) -> {ok, json_object()} | {error, not_found | db_not_reachable} when
-      DbName :: binary(),
-      DocId :: binary(),
-      Options :: proplist().
 open_doc(DbName, DocId, Options) ->
     couch_util:open_doc(get_conn(), DbName, DocId, Options).
 
@@ -396,9 +351,7 @@ all_design_docs(DbName, Options) ->
 %% get the revision of a document (much faster than requesting the whole document)
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_doc_rev/2 :: (DbName, DocId) -> {error, atom()} | {ok, binary()} when
-      DbName :: binary(),
-      DocId :: binary().
+-spec lookup_doc_rev/2 :: (ne_binary(), ne_binary()) -> {'error', atom()} | {'ok', ne_binary()}.
 lookup_doc_rev(DbName, DocId) ->
     couch_util:lookup_doc_rev(get_conn(), DbName, DocId).
 
@@ -408,44 +361,27 @@ lookup_doc_rev(DbName, DocId) ->
 %% save document to the db
 %% @end
 %%--------------------------------------------------------------------
--spec save_doc/2 :: (DbName, Doc) -> {ok, json_object()} | {ok, json_objects()} | {error, atom()} when
-      DbName :: binary(),
-      Doc :: proplist() | json_object() | json_objects().
-save_doc(DbName, [{struct, [_|_]}=Doc]) ->
-    save_doc(DbName, Doc, []);
-save_doc(DbName, [{struct, _}|_]=Docs) ->
+-spec save_doc/2 :: (ne_binary(), json_object() | json_objects()) -> {'ok', json_object() | json_objects()} | {'error', atom()}.
+save_doc(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []);
-save_doc(DbName, Doc) when is_list(Doc) ->
-    save_doc(DbName, {struct, Doc}, []);
 save_doc(DbName, Doc) ->
     save_doc(DbName, Doc, []).
 
 %% save a document; if it fails to save because of conflict, pull the latest revision and try saving again.
 %% any other error is returned
--spec ensure_saved/2 :: (DbName, Doc) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary(),
-      Doc :: json_object().
+-spec ensure_saved/2 :: (ne_binary(), json_object()) -> {'ok', json_object()} | {'error', atom()}.
 ensure_saved(DbName, Doc) ->
     couch_util:ensure_saved(get_conn(), DbName, Doc, []).
 
--spec save_doc/3 :: (DbName, Doc, Opts) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary(),
-      Doc :: json_object(),
-      Opts :: proplist().
-save_doc(DbName, {struct, _}=Doc, Opts) ->
+-spec save_doc/3 :: (ne_binary(), json_object(), proplist()) -> {'ok', json_object()} | {'error', atom()}.
+save_doc(DbName, Doc, Opts) ->
     couch_util:save_doc(get_conn(), DbName, Doc, Opts).
 
--spec save_docs/2 :: (DbName, Docs) -> {ok, json_objects()} | {error, atom()} when
-      DbName :: binary(),
-      Docs :: json_objects().
-save_docs(DbName, Docs) ->
+-spec save_docs/2 :: (ne_binary(), json_objects()) -> {'ok', json_objects()} | {'error', atom()}.
+-spec save_docs/3 :: (ne_binary(), json_objects(), proplist()) -> {'ok', json_objects()} | {'error', atom()}.
+save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
-
--spec save_docs/3 :: (DbName, Docs, Opts) -> {ok, json_objects()} | {error, atom()} when
-      DbName :: binary(),
-      Docs :: json_objects(),
-      Opts :: proplist().
-save_docs(DbName, Docs, Opts) ->
+save_docs(DbName, Docs, Opts) when is_list(Docs) ->
     couch_util:save_docs(get_conn(), DbName, Docs, Opts).
 
 %%--------------------------------------------------------------------
@@ -454,9 +390,7 @@ save_docs(DbName, Docs, Opts) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec del_doc/2 :: (DbName, Doc) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary(),
-      Doc :: json_object() | binary().
+-spec del_doc/2 :: (ne_binary(), json_object() | ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
 del_doc(DbName, Doc) ->
     couch_util:del_doc(get_conn(), DbName, Doc).
 
@@ -466,52 +400,29 @@ del_doc(DbName, Doc) ->
 %% remove documents from the db
 %% @end
 %%--------------------------------------------------------------------
--spec del_docs/2 :: (DbName, Docs) -> {ok, json_objects()} | {error, atom()} when
-      DbName :: binary(),
-      Docs :: json_objects().
+-spec del_docs/2 :: (ne_binary(), json_objects()) -> {'ok', json_objects()} | {'error', atom()}.
 del_docs(DbName, Docs) ->
     couch_util:del_docs(get_conn(), DbName, Docs).
 
 %%%===================================================================
 %%% Attachment Functions
 %%%===================================================================
--spec fetch_attachment/3 :: (DbName, DocId, AName) -> {ok, binary()} | {error, atom()} when
-      DbName :: binary(),
-      DocId :: binary(),
-      AName :: binary().
+-spec fetch_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', atom()}.
 fetch_attachment(DbName, DocId, AName) ->
     couch_util:fetch_attachment(get_conn(), DbName, DocId, AName).
 
--spec put_attachment/4 :: (DbName, DocId, AName, Contents) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary(),
-      DocId :: binary(),
-      AName :: binary(),
-      Contents :: binary().
+-spec put_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
+%% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
+-spec put_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', json_object()} | {'error', atom()}.
 put_attachment(DbName, DocId, AName, Contents) ->
     couch_util:put_attachment(get_conn(), DbName, DocId, AName, Contents).
-
-%% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
--spec put_attachment/5 :: (DbName, DocId, AName, Contents, Options) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary(),
-      DocId :: binary(),
-      AName :: binary(),
-      Contents :: binary(),
-      Options :: proplist().
 put_attachment(DbName, DocId, AName, Contents, Options) ->
     couch_util:put_attachment(get_conn(), DbName, DocId, AName, Contents, Options).
 
--spec delete_attachment/3 :: (DbName, DocId, AName) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary(),
-      DocId :: binary(),
-      AName :: binary().
+-spec delete_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
+-spec delete_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', json_object()} | {'error', atom()}.
 delete_attachment(DbName, DocId, AName) ->
     couch_util:delete_attachment(get_conn(), DbName, DocId, AName).
-
--spec delete_attachment/4 :: (DbName, DocId, AName, Options) -> {ok, json_object()} | {error, atom()} when
-      DbName :: binary(),
-      DocId :: binary(),
-      AName :: binary(),
-      Options :: proplist().
 delete_attachment(DbName, DocId, AName, Options) ->
     couch_util:delete_attachment(get_conn(), DbName, DocId, AName, Options).
 
@@ -525,26 +436,18 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_results/2 :: (DbName, DesignDoc) -> {ok, json_objects()} | {error, atom()} when
-      DbName :: binary(),
-      DesignDoc :: binary().
+-spec get_all_results/2 :: (ne_binary(), ne_binary()) -> {'ok', json_objects()} | {'error', atom()}.
+-spec get_results/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', json_objects()} | {'error', atom()}.
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
-
--spec get_results/3 :: (DbName, DesignDoc, ViewOptions) -> {ok, json_objects()} | {error, atom()} when
-      DbName :: binary(),
-      DesignDoc :: binary(),
-      ViewOptions :: proplist().
 get_results(DbName, DesignDoc, ViewOptions) ->
     couch_util:get_results(get_conn(), DbName, DesignDoc, ViewOptions).
 
--spec get_result_keys/1 :: (JObjs) -> [binary(),...] | [] when
-      JObjs :: json_objects().
+-spec get_result_keys/1 :: (json_objects()) -> [json_string(),...] | [].
 get_result_keys(JObjs) ->
     lists:map(fun get_keys/1, JObjs).
 
--spec get_keys/1 :: (JObj) -> binary() when
-      JObj :: json_object().
+-spec get_keys/1 :: (json_object()) -> json_string().
 get_keys(JObj) ->
     wh_json:get_value(<<"key">>, JObj).
 
@@ -607,8 +510,7 @@ get_uuid() ->
     [UUID] = couchbeam:get_uuid(get_conn()),
     wh_util:to_binary(UUID).
 
--spec get_uuids/1 :: (Count) -> [binary(),...] when
-      Count :: pos_integer().
+-spec get_uuids/1 :: (pos_integer()) -> [ne_binary(),...].
 get_uuids(Count) ->
     Conn = get_conn(),
     [wh_util:to_binary(UUID) || UUID <- couchbeam:get_uuids(Conn, Count)].
@@ -617,38 +519,25 @@ get_uuids(Count) ->
 get_node_cookie() ->
     couch_config:fetch(bigcouch_cookie, monster).
 
--spec set_node_cookie/1 :: (Cookie) -> ok when
-      Cookie :: atom().
+-spec set_node_cookie/1 :: (atom()) -> 'ok'.
 set_node_cookie(Cookie) when is_atom(Cookie) ->
     couch_config:store(bigcouch_cookie, Cookie, infinity).
 
--spec get_url/0 :: () -> binary().
+-spec get_url/0 :: () -> ne_binary() | 'undefined'.
+-spec get_admin_url/0 :: () -> ne_binary() | 'undefined'.
 get_url() ->
-    case {wh_util:to_binary(get_host()), get_creds(), get_port()} of
-        {<<"">>, _, _} ->
-            undefined;
-        {H, {[], []}, P} ->
-            <<"http://", H/binary, ":", (wh_util:to_binary(P))/binary, $/>>;
-        {H, {User, Pwd}, P} ->
-            <<"http://"
-              ,(wh_util:to_binary(User))/binary, $: ,(wh_util:to_binary(Pwd))/binary
-              ,$@, H/binary
-              ,":", (wh_util:to_binary(P))/binary, $/>>
-    end.
-
--spec(get_admin_url/0 :: () -> binary()).
+    get_url(wh_util:to_binary(get_host()), get_creds(), get_port()).
 get_admin_url() ->
-    case {wh_util:to_binary(get_host()), get_creds(), get_admin_port()} of
-        {<<"">>, _, _} ->
-            undefined;
-        {H, {[], []}, P} ->
-            <<"http://", H/binary, ":", (wh_util:to_binary(P))/binary, $/>>;
-        {H, {User, Pwd}, P} ->
-            <<"http://"
-              ,(wh_util:to_binary(User))/binary, $: ,(wh_util:to_binary(Pwd))/binary
-              ,$@, H/binary
-              ,":", (wh_util:to_binary(P))/binary, $/>>
-    end.
+    get_url(wh_util:to_binary(get_host()), get_creds(), get_admin_port()).
+
+-spec get_url/3 :: (binary(), {string(), string()}, pos_integer()) -> ne_binary() | 'undefined'.
+get_url(<<>>, _, _) -> 'undefined';
+get_url(H, {[], []}, P) ->
+    list_to_binary(["http://", H, ":", wh_util:to_binary(P), "/"]);
+get_url(H, {User, Pwd}, P) ->
+    list_to_binary(["http://", wh_util:to_binary(User), ":", wh_util:to_binary(Pwd)
+		    ,"@", H, ":", wh_util:to_binary(P), "/"
+		   ]).
 
 add_change_handler(DBName, DocID) ->
     ?LOG_SYS("Add change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
