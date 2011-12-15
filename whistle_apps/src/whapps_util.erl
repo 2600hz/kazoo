@@ -392,5 +392,7 @@ hangup_cause_to_alert_level(<<"LOSE_RACE">>) ->
     <<"info">>;
 hangup_cause_to_alert_level(<<"ATTENDED_TRANSFER">>) ->
     <<"info">>;
+hangup_cause_to_alert_level(<<"CALL_REJECTED">>) ->
+    <<"info">>;
 hangup_cause_to_alert_level(_) ->
     <<"error">>.

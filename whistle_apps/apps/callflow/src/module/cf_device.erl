@@ -54,7 +54,7 @@ bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid, account_id=Accoun
             CFPid ! { stop };
         {fail, Reason} ->
             {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-            Level = wh_util:hangup_cause_to_alert_level(Cause),
+            Level = whapps_util:hangup_cause_to_alert_level(Cause),
             whapps_util:alert(Level, ["Source: ~s(~p)~n"
                                       ,"Alert: failed to bridge to device~n"
                                       ,"Fault: ~p~n"
