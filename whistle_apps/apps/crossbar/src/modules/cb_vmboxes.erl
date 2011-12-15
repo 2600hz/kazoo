@@ -550,7 +550,7 @@ update_mwi(VMBox, DB) ->
                                                        ,{<<"Notify-Realm">>, Realm}
                                                        | CommonHeaders
                                                       ]),
-			  wapi_notifications:publish_mwi_update(Command)
+			  catch wapi_notifications:publish_mwi_update(Command)
                   end, Devices).
 
 -spec count_messages/2 :: (json_objects(), ne_binary()) -> non_neg_integer().
