@@ -280,7 +280,7 @@ db_replicate(JObj) ->
 db_create(DbName) ->
     db_create(DbName, []).
 
--spec db_create/2 :: (ne_binary(),  [{'q',pos_integer()} | {'n',pos_integer()},...] | []) -> boolean().
+-spec db_create/2 :: (ne_binary(), couch_util:db_create_options()) -> boolean().
 db_create(DbName, Options) ->
     couch_util:db_create(get_conn(), DbName, Options).
 
