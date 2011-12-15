@@ -865,7 +865,7 @@ store_recording(AttachmentName, MediaId, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_new_attachment_url/3 :: (binary(), binary(), #cf_call{}) -> binary().
+-spec get_new_attachment_url/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, #cf_call{account_db=Db}) ->
     case couch_mgr:open_doc(Db, MediaId) of
         {ok, JObj} ->
@@ -884,27 +884,22 @@ get_new_attachment_url(AttachmentName, MediaId, #cf_call{account_db=Db}) ->
               _ ->
                   <<>>
           end,
-    <<(couch_mgr:get_url())/binary
-      ,Db/binary
-      ,$/, MediaId/binary
-      ,$/, AttachmentName/binary
-      ,Rev/binary>>.
+
+    list_to_binary([couch_mgr:get_url(), Db, "/", MediaId, "/", AttachmentName, Rev]).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec message_media_doc/2 :: (Db, Box) -> binary() when
-      Db :: binary(),
-      Box :: #mailbox{}.
-
+-spec message_media_doc/2 :: (ne_binary(), #mailbox{}) -> ne_binary().
 message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Timezone}) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(wh_util:current_tstamp()),
     {{Y,M,D},{H,I,S}} = localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)),
-    Name = <<"mailbox ", BoxNum/binary, " message "
-             ,(wh_util:to_binary(M))/binary, $-, (wh_util:to_binary(D))/binary, $-, (wh_util:to_binary(Y))/binary
-             ,$ , (wh_util:to_binary(H))/binary, $:, (wh_util:to_binary(I))/binary, $:, (wh_util:to_binary(S))/binary>>,
+    Name = list_to_binary(["mailbox ", BoxNum, " message "
+			   ,wh_util:to_binary(M), "-", wh_util:to_binary(D), "-", wh_util:to_binary(Y)
+			   ," " , wh_util:to_binary(H), ":", wh_util:to_binary(I), ":", wh_util:to_binary(S)
+			  ]),
     Props = [{<<"name">>, Name}
              ,{<<"description">>, <<"voicemail message media">>}
              ,{<<"source_type">>, <<"voicemail">>}
@@ -921,13 +916,9 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec recording_media_doc/3 :: (Recording, Box, Call) -> binary() when
-      Recording :: binary(),
-      Box :: #mailbox{},
-      Call :: #cf_call{}.
-
+-spec recording_media_doc/3 :: (ne_binary(), #mailbox{}, #cf_call{}) -> ne_binary().
 recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum, mailbox_id=Id}, #cf_call{account_db=Db}) ->
-    Name = <<"mailbox ", BoxNum/binary, $ , Recording/binary>>,
+    Name = list_to_binary(["mailbox ", BoxNum, " ", Recording]),
     Props = [{<<"name">>, Name}
              ,{<<"description">>, <<"voicemail recorded/prompt media">>}
              ,{<<"source_type">>, <<"voicemail">>}
@@ -945,9 +936,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum, mailbox_id=Id}, #
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_messages/2 :: (Mailbox, Call) -> json_objects() when
-      Mailbox :: #mailbox{},
-      Call :: #cf_call{}.
+-spec get_messages/2 :: (#mailbox{}, #cf_call{}) -> json_objects().
 get_messages(#mailbox{mailbox_id=Id}, #cf_call{account_db=Db}) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} -> wh_json:get_value(<<"messages">>, JObj, []);
@@ -960,12 +949,10 @@ get_messages(#mailbox{mailbox_id=Id}, #cf_call{account_db=Db}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_message/2 :: (Message, Call) -> binary() when
-      Message :: json_object(),
-      Call :: #cf_call{}.
+-spec get_message/2 :: (json_object(), #cf_call{}) -> ne_binary().
 get_message(Message, #cf_call{account_db=Db}) ->
     MediaId = wh_json:get_value(<<"media_id">>, Message),
-    <<$/, Db/binary, $/, MediaId/binary>>.
+    list_to_binary(["/", Db, "/", MediaId]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -983,16 +970,9 @@ count_messages(Messages, Folder) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_folder/2 :: (Messages, Folder) -> json_objects() when
-      Messages :: json_objects(),
-      Folder :: binary().
+-spec get_folder/2 :: (json_objects(), ne_binary()) -> json_objects().
 get_folder(Messages, Folder) ->
-    lists:foldr(fun(Message, Acc) ->
-			case wh_json:get_value(<<"folder">>, Message) of
-			    Folder -> [Message|Acc];
-			    _ -> Acc
-			end
-		end, [], Messages).
+    [M || M <- Messages, wh_json:get_value(<<"folder">>, M) =:= Folder].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1000,11 +980,7 @@ get_folder(Messages, Folder) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_folder/4 :: (Folder, Message, Box, Call) -> no_return() when
-      Folder :: binary(),
-      Message :: json_object(),
-      Box :: #mailbox{},
-      Call :: #cf_call{}.
+-spec set_folder/4 :: (ne_binary(), json_object(), #mailbox{}, #cf_call{}) -> no_return().
 set_folder(Folder, Message, Box, Call) ->
     ?LOG("setting folder for message to ~s", [Folder]),
     not (wh_json:get_value(<<"folder">>, Message) =:= Folder) andalso

@@ -5,6 +5,8 @@
 				  | {crossbar_status(), proplist(), string()}
 				  | {crossbar_status(), proplist(), string(), integer()}.
 
+-type path_tokens() :: [ne_binary(),...] | [].
+
 -type crossbar_content_handler() :: {atom(), [string(),...]}.
 
 -type http_method() :: 'POST' | 'GET' | 'PUT' | 'DELETE'.

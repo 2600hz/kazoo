@@ -76,7 +76,7 @@ reload() ->
 %% @end
 %%--------------------------------------------------------------------
 init(_) ->
-    {ok, #state{}, 0}.
+    {ok, init_state()}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -231,10 +231,6 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
-handle_info(timeout, _) ->
-    {ok, State} = code_change(0, undefined, []),
-    {noreply, State};
-
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -260,35 +256,44 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change/3 :: (_,_,_) -> {'ok', #state{}}.
 code_change(_OldVsn, _State, _Extra) ->
     _ = bind_to_crossbar(),
-    State = case file:consult(lists:flatten(?SERVER_CONF)) of
-                {ok, Terms} ->
-                    %% ?LOG_SYS("loaded config from ~s", [?SERVER_CONF]),
-                    #state{data_bag_tmpl =
-                               compile_template(props:get_value(data_bag_tmpl, Terms), cb_servers_data_bag)
-                           ,databag_mapping =
-                               props:get_value(databag_mapping, Terms, [])
-                           ,databag_path_tmpl =
-                               compile_template(props:get_value(databag_path_tmpl, Terms), cb_servers_databag_path_tmpl)
-                           ,role_tmpl =
-                               compile_template(props:get_value(role_tmpl, Terms), cb_servers_role_tmpl)
-                           ,role_path_tmpl =
-                               compile_template(props:get_value(role_path_tmpl, Terms), cb_servers_role_path_tmpl)
-                           ,prod_deploy_tmpl =
-                               compile_template(props:get_value(prod_deploy_tmpl, Terms), cb_servers_prod_deploy_tmpl)
-                           ,dev_deploy_tmpl =
-                               compile_template(props:get_value(dev_deploy_tmpl, Terms), cb_servers_dev_deploy_tmpl)
-                           ,dev_role =
-                               wh_util:to_binary(props:get_value(dev_role, Terms, <<"all_in_one">>))
-                           ,delete_tmpl =
-                               compile_template(props:get_value(delete_tmpl, Terms), cb_server_delete_tmpl)
-                          };
-                {error, _} ->
-                    ?LOG_SYS("could not read config from ~s", [?SERVER_CONF]),
-                    #state{}
-            end,
-    {ok, State}.
+    {ok, init_state()}.
+
+-spec init_state/0 :: () -> #state{}.
+init_state() ->
+    case get_configs() of
+	{ok, Terms} ->
+	    ?LOG_SYS("loaded config from ~s", [?SERVER_CONF]),
+	    #state{data_bag_tmpl =
+		       compile_template(props:get_value(data_bag_tmpl, Terms), cb_servers_data_bag)
+		   ,databag_mapping =
+		       props:get_value(databag_mapping, Terms, [])
+		   ,databag_path_tmpl =
+		       compile_template(props:get_value(databag_path_tmpl, Terms), cb_servers_databag_path_tmpl)
+		   ,role_tmpl =
+		       compile_template(props:get_value(role_tmpl, Terms), cb_servers_role_tmpl)
+		   ,role_path_tmpl =
+		       compile_template(props:get_value(role_path_tmpl, Terms), cb_servers_role_path_tmpl)
+		   ,prod_deploy_tmpl =
+		       compile_template(props:get_value(prod_deploy_tmpl, Terms), cb_servers_prod_deploy_tmpl)
+		   ,dev_deploy_tmpl =
+		       compile_template(props:get_value(dev_deploy_tmpl, Terms), cb_servers_dev_deploy_tmpl)
+		   ,dev_role =
+		       wh_util:to_binary(props:get_value(dev_role, Terms, <<"all_in_one">>))
+		   ,delete_tmpl =
+		       compile_template(props:get_value(delete_tmpl, Terms), cb_server_delete_tmpl)
+		  };
+	{error, _} ->
+	    ?LOG_SYS("could not read config from ~s", [?SERVER_CONF]),
+	    #state{}
+    end.
+
+-spec get_configs/0 :: () -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
+						   | {integer(), module(), term()}}.
+get_configs() ->
+    file:consult(lists:flatten(?SERVER_CONF)).
 
 %%%===================================================================
 %%% Internal functions
@@ -300,7 +305,7 @@ code_change(_OldVsn, _State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec bind_to_crossbar/0 :: () ->  no_return().
+-spec bind_to_crossbar/0 :: () ->  'ok' | {'error', 'exists'}.
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.servers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
@@ -317,8 +322,7 @@ bind_to_crossbar() ->
 %% plain text
 %% @end
 %%--------------------------------------------------------------------
--spec(content_types_provided/1 :: (Context :: #cb_context{}) ->
-                                        #cb_context{}).
+-spec content_types_provided/1 :: (#cb_context{}) -> #cb_context{}.
 content_types_provided(#cb_context{req_verb = <<"get">>, content_types_provided=CTP}=Context) ->
     Context#cb_context{content_types_provided=[{to_binary, ["text/plain"] ++ props:get_value(to_binary, CTP, [])}
                                                | proplists:delete(to_binary,CTP)]};
@@ -333,8 +337,7 @@ content_types_provided(Context) -> Context.
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (Paths) -> {boolean(), http_methods()} when
-      Paths :: list().
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
@@ -354,7 +357,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -375,7 +378,7 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/3 :: (Params :: list(), RD :: #wm_reqdata{}, Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/3 :: (path_tokens(), #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
 validate([], _, #cb_context{req_verb = <<"get">>}=Context) ->
     load_server_summary(Context);
 validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
@@ -499,9 +502,7 @@ is_valid_doc(JObj) ->
 %% Optional command template to execute on the deletion of a server
 %% @end
 %%--------------------------------------------------------------------
--spec execute_delete_command/2 :: (Context, State) -> ok when
-      Context :: #cb_context{},
-      State :: #state{}.
+-spec execute_delete_command/2 :: (#cb_context{}, #state{}) -> 'ok'.
 execute_delete_command(_, #state{delete_tmpl=undefined}) ->
     ?LOG("no delete template defined"),
     ok;
@@ -522,9 +523,7 @@ execute_delete_command(#cb_context{doc=JObj}, #state{delete_tmpl=DeleteTmpl}) ->
 %% deployment
 %% @end
 %%--------------------------------------------------------------------
--spec execute_deploy_command/2 :: (Context, State) -> #cb_context{} when
-      Context :: #cb_context{},
-      State :: #state{}.
+-spec execute_deploy_command/2 :: (#cb_context{}, #state{}) -> #cb_context{}.
 execute_deploy_command(Context, #state{dev_deploy_tmpl=undefined}) ->
     ?LOG("no development deploy template defined"),
     crossbar_util:response(error, <<"failed to start deployment">>, Context);
@@ -552,7 +551,6 @@ execute_deploy_command(#cb_context{db_name=Db, doc=JObj}=Context, State) ->
         {error, _} ->
             crossbar_util:response(error, <<"could not lock deployment">>, Context)
     end.
-
 
 get_command_tmpl(#cb_context{doc=JObj}, #state{dev_role=DevRole}=State) ->
     Roles = wh_json:get_value(<<"roles">>, JObj, []),
@@ -652,7 +650,7 @@ create_role(Account, #cb_context{db_name=Db}, #state{role_tmpl=RoleTmpl}) ->
 %% TODO: this cant be a template (the databag contents) yet...
 %% @end
 %%--------------------------------------------------------------------
--spec write_databag/4 :: (proplist(), proplist(), json_object(), atom()) -> binary().
+-spec write_databag/4 :: (proplist(), proplist(), json_object(), atom()) -> ne_binary().
 write_databag(_, _, _, undefined) -> <<>>;
 write_databag(Account, Server, JObj, PathTmpl) ->
     JSON = mochijson2:encode(crossbar_doc:public_fields(JObj)),
@@ -741,8 +739,8 @@ mark_deploy_complete(Db, ServerId) ->
 %% to the priv directory of this module
 %% @end
 %%--------------------------------------------------------------------
--spec compile_template/2 :: ('undefined' | string() | binary(), atom()) -> 'undefined' | atom().
-compile_template(undefined, _) -> undefined;
+-spec compile_template/2 :: (nonempty_string() | binary() | 'undefined', atom()) -> 'undefined' | atom().
+compile_template(undefined, _) -> 'undefined';
 compile_template(Template, Name) when not is_binary(Template) ->
     Path = case string:substr(Template, 1, 1) of
                "/" -> wh_json:to_binary(Template);
