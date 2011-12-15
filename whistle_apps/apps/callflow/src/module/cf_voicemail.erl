@@ -761,16 +761,16 @@ has_message_meta(NewMsgCallId, Messages) ->
 -spec get_mailbox_profile/2 :: (Data, Call) -> #mailbox{} when
       Data :: json_object(),
       Call :: #cf_call{}.
-get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_action=LastAct}) ->
-    Id = wh_json:get_value(<<"id">>, Data, <<"undefined">>),
-    case couch_mgr:open_doc(Db, Id) of
+get_mailbox_profile(Data, #cf_call{capture_group=CG, account_db=Db, request_user=ReqUser, last_action=LastAct}) ->
+    Id = wh_json:get_value(<<"id">>, Data),
+    case get_mailbox_doc(Db, Id, CG) of
         {ok, JObj} ->
-            ?LOG("loaded voicemail box ~s", [Id]),
+            ?LOG("loaded voicemail box ~s", [wh_json:get_value(<<"_id">>, JObj)]),
             Default = #mailbox{},
             %% dont check if the voicemail box belongs to the owner (by default) if the call was not
             %% specificly to him, IE: calling a ring group and going to voicemail should not check
             CheckIfOwner = ((undefined =:= LastAct) orelse (cf_device =:= LastAct)),
-            #mailbox{mailbox_id = Id
+            #mailbox{mailbox_id = wh_json:get_value(<<"_id">>, JObj)
                      ,skip_instructions =
                          wh_json:is_true(<<"skip_instructions">>, JObj, Default#mailbox.skip_instructions)
                      ,skip_greeting =
@@ -806,6 +806,28 @@ get_mailbox_profile(Data, #cf_call{account_db=Db, request_user=ReqUser, last_act
             #mailbox{}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_mailbox_doc/3 :: (binary(), undefined | binary(), undefined | binary()) -> {ok, json_object()} | {error, term()}.
+get_mailbox_doc(Db, Id, CaptureGroup) ->
+    CGIsEmpty = wh_util:is_empty(CaptureGroup),
+    case wh_util:is_empty(Id) of 
+        false -> couch_mgr:open_doc(Db, Id);
+        true when not CGIsEmpty -> 
+            Opts = [{<<"key">>, CaptureGroup}, {<<"include_docs">>, true}], 
+            case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"mailbox_number">>}, Opts) of
+                {ok, []} -> {error, not_found};
+                {ok, [JObj|_]} -> {ok, wh_json:get_value(<<"doc">>, JObj, wh_json:new())};
+                Else -> Else
+            end;
+        true ->
+            {error, "ID and capture group is empty, what voicemail box do you want?"}
+    end.
+            
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
