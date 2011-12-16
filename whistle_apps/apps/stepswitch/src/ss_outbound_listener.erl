@@ -39,7 +39,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{bindings, [{offnet, []}]}
+    gen_listener:start_link(?MODULE, [{bindings, [{offnet_resource, []}]}
 				      ,{responders, [{offnet_req, {<<"resource">>, <<"offnet_req">>}}]}
 				      ,{queue_name, ?RESOURCE_QUEUE_NAME}
 				      ,{queue_options, [{exclusive, false}, {auto_delete, true}, {nowait, false}]}
