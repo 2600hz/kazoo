@@ -1205,44 +1205,60 @@ wait_for_bridge(Timeout, #cf_call{cf_pid=CFPid}=Call) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
+            Result = case bridge_was_successful(JObj) of
+                         true -> ok;
+                         false -> fail
+                     end,
             case get_event_type(JObj) of               
-                { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
-                    case is_during_transfer(JObj) of
-                        false -> {ok, JObj};
-                        true ->
-                            ?LOG("CONTROL WAS JUST TRANSFERED TO US!!!! TAKE OWNERSHIP NOW!"),
-                            ?LOG("--> ~s", [mochijson2:encode(JObj)]),
-                            wait_for_bridge(Timeout, Call)
-                    end;
-                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                    case is_during_transfer(JObj) of
-                        false -> {ok, JObj};
-                        true ->
-                            ?LOG("CONTROL WAS JUST TRANSFERED TO US!!!! TAKE OWNERSHIP NOW!"),
-                            ?LOG("--> ~s", [mochijson2:encode(JObj)]),
-                            wait_for_bridge(Timeout, Call)
-                    end;
-                { <<"error">>, _, _ } ->
-                    ?LOG("channel execution error while waiting for bridge"),
-                    {error, JObj};
-                { <<"call_event">>, <<"CHANNEL_BRIDGE">>, _ } ->
+                {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
+                    ?LOG("channel was successfully bridged, stopping bridge attempt failure timer"),
                     wait_for_bridge(infinity, Call);
-                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">> } ->
-                    case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
-                        <<"SUCCESS">> -> {ok, JObj};
-                        _ -> {fail, JObj}
-                    end;
-                {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _} ->
-                    case is_during_transfer(JObj) of
-                        false -> wait_for_bridge(Timeout, Call);
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
+                    case (wh_json:get_value(<<"Hangup-Cause">>, JObj) =:= <<"ATTENDED_TRANSFER">>)
+                        andalso (wh_json:get_value(<<"Disposition">>, JObj) =:= <<"ATTENDED_TRANSFER">>) of
                         true -> 
-                            ?LOG("channel unbridge as a result of a transfer while waiting for bridge"),
+                            wait_for_bridge(Timeout, Call);
+                        false ->                    
+                            ?LOG("channel was destroyed while waiting for bridge with result '~s'", [Result]),
+                            {Result, JObj}
+                    end;
+                {<<"call_event">>, <<"CHANNEL_HANGUP">>, _} ->
+                    case (wh_json:get_value(<<"Hangup-Cause">>, JObj) =:= undefined)
+                        andalso (wh_json:get_value(<<"Disposition">>, JObj) =:= <<"ATTENDED_TRANSFER">>) of
+                        true -> 
+%%                            ?LOG("CONTROL WAS JUST TRANSFERED TO US!!!! TAKE OWNERSHIP NOW!"),                                    
+                            ?LOG("channel was unbridged as a result of a partial attended transfer, acquire control"),
+                            wait_for_bridge(Timeout, Call);
+                        false ->
+                            ?LOG("channel was hungup while waiting for bridge with result '~s'", [Result]),
+                            {Result, JObj}
+                    end;
+                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
+                    ?LOG("-> ~s", [wh_json:encode(JObj)]),
+                    ?LOG("bridge execution completed with result '~s'", [Result]),
+                    {Result, JObj};
+                {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _} ->
+                    Timestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
+                    Epoch = binary:part(wh_util:pad_binary(Timestamp, 10, <<"0">>), 0, 10),
+                    case wh_json:get_value([<<"Transfer-History">>, Epoch], JObj) of
+                        undefined ->
+                            case (wh_json:get_value(<<"Application-Response">>, JObj) =:= undefined)
+                                andalso (wh_json:get_value(<<"Disposition">>, JObj) =:= <<"ATTENDED_TRANSFER">>) of
+                                true -> 
+%%                                    ?LOG("CONTROL WAS JUST TRANSFERED TO US!!!! TAKE OWNERSHIP NOW!"),                                    
+                                    ?LOG("channel was unbridged as a result of a partial attended transfer, acquire control"),
+                                    wait_for_bridge(Timeout, Call);
+                                false ->
+                                    wait_for_bridge(Timeout, Call)
+                            end;
+                        _Else ->
+                            ?LOG("channel was unbridged as a result of a transfer"),
                             CFPid ! {transfer},
                             {ok, JObj}
                     end;
-                _ when Timeout =:= infinity ->
+                _M1 when Timeout =:= infinity ->
                     wait_for_bridge(Timeout, Call);
-                _ ->
+                _M2 ->
 		    DiffMicro = timer:now_diff(erlang:now(), Start),
                     wait_for_bridge(Timeout - (DiffMicro div 1000), Call)
             end;
@@ -1266,17 +1282,21 @@ wait_for_bridge(Timeout, #cf_call{cf_pid=CFPid}=Call) ->
 %%--------------------------------------------------------------------
 -spec is_during_transfer/1 :: (json_object()) -> boolean().
 is_during_transfer(JObj) ->
-    Timestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
-    Epoch = binary:part(wh_util:pad_binary(Timestamp, 10, <<"0">>), 0, 10),
-    case wh_json:get_value([<<"Transfer-History">>, Epoch], JObj, wh_json:new()) of
-        ?EMPTY_JSON_OBJECT -> 
-            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
-                <<"ATTENDED_TRANSFER">> -> true;
-                _Else -> false
-            end;    
-        _Else -> 
-            true
-    end.
+    (wh_json:get_value(<<"Application-Response">>, JObj) =:= <<"failure">>)
+        andalso (wh_json:get_value(<<"Disposition">>, JObj) =:= <<"ATTENDED_TRANSFER">>).
+%%    case (wh_json:get_value(<<"Hangup-Cause">>, JObj) =:= undefined)
+%%        andalso (wh_json:get_value(<<"Disposition">>, JObj) =:= <<"ATTENDED_TRANSFER">>) of
+%%        true -> true;
+%%        false ->
+%%            Timestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
+%%            Epoch = binary:part(wh_util:pad_binary(Timestamp, 10, <<"0">>), 0, 10),
+%%            wh_json:get_value([<<"Transfer-History">>, Epoch], JObj) =/= undefined
+%%    end.
+
+bridge_was_successful(JObj) ->
+    lists:member(wh_json:get_value(<<"Application-Response">>, JObj)
+                 ,[<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
+    
 
 %%--------------------------------------------------------------------
 %% @public
