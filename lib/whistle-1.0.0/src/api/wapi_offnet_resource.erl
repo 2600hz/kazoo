@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(wapi_offnet_resource).
 
--export([req/1, req_v/1, publish_req/1, publish_req/2, bind_q/2, unbind_q/1]).
+-export([req/1, req_v/1, publish_req/1, publish_req/2, bind_q/2, unbind_q/1, unbind_q/2]).
 
 -include("../wh_api.hrl").
 
@@ -60,11 +60,13 @@ req_v(JObj) ->
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     _ = amqp_util:resource_exchange(),
-    amqp_util:bind_q_to_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ),
-    ok.
+    amqp_util:bind_q_to_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
 
 -spec unbind_q/1 :: (ne_binary()) -> 'ok'.
+-spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Queue) ->
+    amqp_util:unbind_q_from_resource(Queue).
+unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_resource(Queue).
 
 -spec publish_req/1 :: (api_terms()) -> 'ok'.
