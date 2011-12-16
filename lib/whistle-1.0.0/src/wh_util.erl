@@ -1,6 +1,6 @@
 -module(wh_util).
 
--export([pad_binary/3]).
+-export([pad_binary/3, join_binary/2]).
 -export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([is_e164/1, is_npan/1, is_1npan/1]).
@@ -36,6 +36,12 @@ pad_binary(Bin, Size, Value) when size(Bin) < Size ->
     pad_binary(<<Bin/binary, Value/binary>>, Size, Value);
 pad_binary(Bin, _, _) ->
     Bin.
+
+-spec join_binary/2 :: ([binary(),...], binary()) -> binary().
+join_binary([Bin], _) ->
+    Bin;
+join_binary([Bin|Rest], Sep) -> 
+    <<Bin/binary, Sep/binary, (join_binary(Rest, Sep))/binary>>.
 
 -spec call_response/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 -spec call_response/4 :: (ne_binary(), ne_binary(), ne_binary(), 'undefined' | binary()) -> 'ok'.
