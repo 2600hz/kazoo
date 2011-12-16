@@ -329,7 +329,10 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                         ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop1)}
                         ,{<<"Channel-State">>, get_channel_state(Prop1)}
                         ,{<<"Transfer-History">>, get_transfer_history(Prop1)}
-		       | event_specific(EvtName, AppName, Prop1) ],
+                        ,{<<"Hangup-Cause">>, get_hangup_cause(Prop1)}
+                        ,{<<"Hangup-Code">>, props:get_value("variable_proto_specific_hangup_cause", Prop1)}
+                        ,{<<"Disposition">>, get_disposition(Prop1)}
+                        | event_specific(EvtName, AppName, Prop1) ],
 	    EvtProp1 = wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION) ++ EvtProp0,
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
 			   [] -> EvtProp1;
@@ -374,15 +377,12 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Prop) ->
     ];
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
     [{<<"Application-Name">>, <<"bridge">>}
-     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
-     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop
-                                           ,props:get_value(<<"variable_last_bridge_hangup_cause">>, Prop, <<>>))}
-     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<"">>)}
+     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
+     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop)}
+     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop)}
+     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop)}
+     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop)}
+     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop)}
     ];
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Prop) ->
     [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
@@ -392,72 +392,31 @@ event_specific(<<"CHANNEL_EXECUTE">>, Application, Prop) ->
     [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
      ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
     ];
-event_specific(<<"CHANNEL_BRIDGE">>, _, Prop) ->
-    [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
-    ];
-event_specific(<<"CHANNEL_UNBRIDGE">>, _, Prop) ->
-    [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Destination-Number">>,props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"variable_hangup_cause">>, Prop
-                                           ,props:get_value(<<"Hangup-Cause">>, Prop, <<>>))}
-     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
-    ];
-event_specific(<<"CHANNEL_HANGUP">>, _, Prop) ->
-    [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop
-                                           ,props:get_value(<<"variable_last_bridge_hangup_cause">>, Prop, <<>>))}
-     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
-    ];
-event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, _, Prop) ->
-    [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"variable_hangup_cause">>, Prop
-                                           ,props:get_value(<<"variable_last_bridge_hangup_cause">>, Prop, <<>>))}
-     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
-    ];
-event_specific(<<"CHANNEL_DESTROY">>, _, Prop) ->
-    [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"variable_hangup_cause">>, Prop
-                                           ,props:get_value(<<"Hangup-Cause">>, Prop, <<>>))}
-     ,{<<"Hangup-Code">>, props:get_value("variable_proto_specific_hangup_cause", Prop, <<>>)}
-    ];
 event_specific(<<"RECORD_STOP">>, _, Prop) ->
     [{<<"Application-Name">>, <<"record">>}
-     ,{<<"Application-Response">>, props:get_value(<<"Record-File-Path">>, Prop, <<>>)}
-     ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Prop, <<>>)}
+     ,{<<"Application-Response">>, props:get_value(<<"Record-File-Path">>, Prop)}
+     ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Prop)}
     ];
 event_specific(<<"DETECTED_TONE">>, _, Prop) ->
-    [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Prop, <<>>)}];
+    [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Prop)}];
 event_specific(<<"DTMF">>, _, Prop) ->
-    Pressed = props:get_value(<<"DTMF-Digit">>, Prop, <<>>),
-    Duration = props:get_value(<<"DTMF-Duration">>, Prop, <<>>),
+    Pressed = props:get_value(<<"DTMF-Digit">>, Prop),
+    Duration = props:get_value(<<"DTMF-Duration">>, Prop),
     ?LOG("received DTMF ~s (~s)", [Pressed, Duration]),
     [{<<"DTMF-Digit">>, Pressed}
      ,{<<"DTMF-Duration">>, Duration}
     ];
-event_specific(_Evt, _App, _Prop) ->
-    [].
+event_specific(_Evt, App, Prop) ->
+    [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop)}
+     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop)}
+     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop)}
+     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop)}
+     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop)}
+     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"failure">>)}
+     ,{<<"Application-Name">>, props:get_value(App, ?SUPPORTED_APPLICATIONS)}
+    ].
 
 %% if the call went down but we had queued events to send, try for up to 10 seconds to send them
-
 -spec send_queued/3 :: (Node, UUID, Evts) -> 'ok' when
       Node :: atom(),
       UUID :: binary(),
@@ -526,10 +485,15 @@ create_trnsf_history_object([Epoch, UUID, <<"att_xfer">>, Data]) ->
     Props = [{<<"uuid">>, UUID}
              ,{<<"type">>, <<"attended">>}
              ,{<<"transferee">>, Transferee}
-             ,{<<"transferer">>, Transferer}],
+             ,{<<"transferer">>, Transferer}
+            ],
     {Epoch, wh_json:from_list(Props)};
-create_trnsf_history_object([Epoch, UUID, <<"bl_xfer">>, Data]) ->
-    [Exten, _, _] = binary:split(Data, <<"/">>, [global]),
+create_trnsf_history_object([Epoch, UUID, <<"bl_xfer">> | Data]) ->            
+    %% This looks confusing but FS uses the same delimiter to in the array
+    %% as it does for inline dialplan actions (like those created during partial attended)
+    %% so we have to put it together to take it apart... I KNOW! ARRRG
+    Dialplan = lists:last(binary:split(wh_util:join_binary(Data, <<":">>), <<",">>)),
+    [Exten | _] = binary:split(Dialplan, <<"/">>, [global]),    
     Props = [{<<"uuid">>, UUID}
              ,{<<"type">>, <<"blind">>}
              ,{<<"extension">>, Exten}
@@ -537,3 +501,34 @@ create_trnsf_history_object([Epoch, UUID, <<"bl_xfer">>, Data]) ->
     {Epoch, wh_json:from_list(Props)};        
 create_trnsf_history_object(_) ->
     undefined.
+
+-spec get_hangup_cause/1 :: (proplist()) -> undefined | binary().
+get_hangup_cause(Props) ->
+    Causes = [<<"variable_hangup_cause">>, <<"variable_bridge_hangup_cause">>],
+    Order = case props:get_value(<<"variable_current_application">>, Props) of
+                <<"bridge">> ->
+                    lists:reverse(Causes);
+                _ ->
+                    Causes
+            end,
+    find_event_value(Order, Props).
+
+-spec get_disposition/1 :: (proplist()) -> undefined | binary().
+get_disposition(Props) ->
+    find_event_value([<<"variable_endpoint_disposition">>
+                          ,<<"variable_originate_disposition">>
+                     ], Props).
+
+-spec find_event_value/2 :: ([binary(),...], proplist()) -> undefined | binary().
+find_event_value(Keys, Props) ->
+    find_event_value(Keys, Props, undefined).
+
+-spec find_event_value/3 :: ([binary(),...], proplist(), term()) -> term().
+find_event_value([], _, Default) ->
+    Default;
+find_event_value([H|T], Props, Default) ->
+    Value = props:get_value(H, Props),
+    case wh_util:is_empty(Value) of
+        true -> find_event_value(T, Props, Default);
+        false -> Value
+    end.
