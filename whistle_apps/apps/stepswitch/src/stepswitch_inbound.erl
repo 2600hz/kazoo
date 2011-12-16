@@ -75,20 +75,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({lookup_number, Number}, From, State) ->
-    spawn(fun() ->
-                  Num = wh_util:to_e164(wh_util:to_binary(Number)),
-                  case lookup_account_by_number(Num) of
-                      {ok, AccountId, _}=Ok ->
-                          ?LOG("found number is associated to account ~s", [AccountId]),
-                          gen_server:reply(From, Ok);
-                      {error, Reason}=E ->
-                          ?LOG("number is not associated to any account, ~w", [Reason]),
-                          gen_server:reply(From, E)
-                  end
-          end),
-    {noreply, State};
-
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -250,7 +236,7 @@ inbound_handler(JObj) ->
     Number = get_dest_number(JObj),
     inbound_handler(Number, JObj).
 inbound_handler(Number, JObj) ->
-    case lookup_account_by_number(Number) of
+    case stepswitch_util:lookup_account_by_number(Number) of
         {ok, AccountId, _} ->
             ?LOG("number associated with account ~s", [AccountId]),
             relay_route_req(
@@ -281,40 +267,6 @@ get_dest_number(JObj) ->
                    ToUser
            end,
     wh_util:to_e164(User).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% lookup the account ID by number
-%% @end
-%%--------------------------------------------------------------------
--spec lookup_account_by_number/1 :: (Number) -> tuple(ok, binary(), boolean())|tuple(error, atom()) when
-      Number :: binary().
-lookup_account_by_number(Number) ->
-    ?LOG("lookup account for ~s", [Number]),
-    case wh_cache:fetch({stepswitch_number, Number}) of
-	{ok, {AccountId, ForceOut}} ->
-            {ok, AccountId, ForceOut};
-	{error, not_found} ->
-            Options = [{<<"key">>, Number}],
-	    case couch_mgr:get_results(?ROUTES_DB, ?LIST_ROUTES_BY_NUMBER, Options) of
-		{error, _}=E ->
-		    E;
-		{ok, []} ->
-		    {error, not_found};
-		{ok, [{struct, _}=JObj]} ->
-                    AccountId = wh_json:get_value(<<"id">>, JObj),
-                    ForceOut = wh_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
-                    wh_cache:store({stepswitch_number, Number}, {AccountId, ForceOut}),
-		    {ok, AccountId, ForceOut};
-		{ok, [{struct, _}=JObj | _Rest]} ->
-		    ?LOG("number lookup resulted in more than one result, using the first"),
-                    AccountId = wh_json:get_value(<<"id">>, JObj),
-                    ForceOut = wh_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
-                    wh_cache:store({stepswitch_number, Number}, {AccountId, ForceOut}),
-		    {ok, AccountId, ForceOut}
-	    end
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
