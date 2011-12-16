@@ -22,7 +22,7 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
 -define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
--define(CHILDREN, [{stepswitch_inbound, worker}, {ss_outbound_listener, worker}]).
+-define(CHILDREN, [{ss_inbound_listener, worker}, {ss_outbound_listener, worker}]).
 
 %% ===================================================================
 %% API functions

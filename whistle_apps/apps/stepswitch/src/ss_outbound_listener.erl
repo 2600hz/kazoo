@@ -142,10 +142,10 @@ handle_info({document_changes, DocId, [Changes]=C}, #state{resrcs=Resrcs}=State)
     end;
 
 handle_info({document_deleted, DocId}, #state{resrcs=Resrcs}=State) ->
-    case lists:keysearch(DocId, #resrc.id, Resrcs) of
+    case lists:keyfind(DocId, #resrc.id, Resrcs) of
         false -> {noreply, State};
-        {value, _} ->
-            ?LOG_SYS("resource ~p deleted", [DocId]),
+        _ ->
+            ?LOG_SYS("resource ~s deleted", [DocId]),
             couch_mgr:rm_change_handler(?RESOURCES_DB, DocId),
             {noreply, State#state{resrcs=lists:keydelete(DocId, #resrc.id, Resrcs)}, hibernate}
     end;
