@@ -33,10 +33,10 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link(?MODULE, [
-				    {bindings, [{route, []}]}
-				    ,{responders, [ {route_req, [{<<"dialplan">>, <<"route_req">>}]} ]}
-				   ], []).
+    gen_listener:start_link(?MODULE, [
+				      {bindings, [{route, []}]}
+				      ,{responders, [ {ss_route_req, {<<"dialplan">>, <<"route_req">>}} ]}
+				     ], []).
 
 %%%===================================================================
 %%% gen_server callbacks

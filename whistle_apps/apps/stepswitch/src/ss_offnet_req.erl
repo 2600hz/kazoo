@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 15 Dec 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(offnet_req).
+-module(ss_offnet_req).
 
 -export([init/0, handle_req/2]).
 

@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 16 Dec 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(route_req).
+-module(ss_route_req).
 
 -export([init/0, handle_req/2]).
 
