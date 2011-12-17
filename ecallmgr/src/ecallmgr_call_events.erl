@@ -332,7 +332,13 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                         ,{<<"Hangup-Cause">>, get_hangup_cause(Prop1)}
                         ,{<<"Hangup-Code">>, props:get_value("variable_proto_specific_hangup_cause", Prop1)}
                         ,{<<"Disposition">>, get_disposition(Prop1)}
-                        | event_specific(EvtName, AppName, Prop1) ],
+                        ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop1)}
+                        ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop1)}
+                        ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop1)}
+                        ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop1)}
+                        ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop1)}                        
+                        | event_specific(EvtName, AppName, Prop1) 
+                       ],
 	    EvtProp1 = wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION) ++ EvtProp0,
 	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
 			   [] -> EvtProp1;
@@ -372,25 +378,12 @@ application_response(_AppName, Prop, _Node, _UUID) ->
       Application :: binary(),
       Prop :: proplist().
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Prop) ->
-    [{<<"Application-Name">>, props:get_value(<<"whistle_application_name">>, Prop, <<"">>)}
-     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop, <<"">>)}
+    [{<<"Application-Name">>, props:get_value(<<"whistle_application_name">>, Prop)}
+     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop)}
     ];
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
-     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop)}
-     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop)}
-    ];
-event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Prop) ->
-    [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
-     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
-    ];
-event_specific(<<"CHANNEL_EXECUTE">>, Application, Prop) ->
-    [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
-     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
     ];
 event_specific(<<"RECORD_STOP">>, _, Prop) ->
     [{<<"Application-Name">>, <<"record">>}
@@ -406,14 +399,9 @@ event_specific(<<"DTMF">>, _, Prop) ->
     [{<<"DTMF-Digit">>, Pressed}
      ,{<<"DTMF-Duration">>, Duration}
     ];
-event_specific(_Evt, App, Prop) ->
-    [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop)}
-     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop)}
-     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"failure">>)}
-     ,{<<"Application-Name">>, props:get_value(App, ?SUPPORTED_APPLICATIONS)}
+event_specific(_Evt, Application, Prop) ->
+    [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
+     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
     ].
 
 %% if the call went down but we had queued events to send, try for up to 10 seconds to send them
