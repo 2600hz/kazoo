@@ -12,7 +12,10 @@
 	 ,status_resp/1, status_resp_v/1, cdr/1, cdr_v/1
 	 ,rate_req/1, rate_req_v/1, rate_resp/1, rate_resp_v/1
 	 ,rate_resp_rate/1, rate_resp_rate_v/1
+	 ,channel_req/1, channel_resp/1, channel_req_v/1, channel_resp_v/1
 	]).
+
+-export([optional_channel_headers/0]).
 
 -export([bind_q/2, unbind_q/2]).
 
@@ -22,6 +25,8 @@
 	 ,publish_cdr/2, publish_cdr/3
 	 ,publish_rate_req/1, publish_rate_req/2, publish_rate_req/3
 	 ,publish_rate_resp/2, publish_rate_resp/3
+	 ,publish_channel_req/2, publish_channel_req/3
+	 ,publish_channel_resp/2, publish_channel_resp/3
 	]).
 
 -export([get_status/1]).
@@ -250,17 +255,83 @@ rate_resp_rate_v(Prop) when is_list(Prop) ->
 rate_resp_rate_v(JObj) ->
     rate_resp_rate_v(wh_json:to_proplist(JObj)).
 
+%% Channel Query Request
+-define(CHANNEL_QUERY_REQ_HEADERS, []).
+-define(OPTIONAL_CHANNEL_QUERY_REQ_HEADERS, [<<"Call-Direction">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+						 ,<<"IP-Address">>, <<"Destination-Number">>, <<"Switch-Hostname">>
+					    ]).
+-define(CHANNEL_QUERY_REQ_VALUES, [{<<"Event-Category">>, <<"locate">>}
+				   ,{<<"Event-Name">>, <<"channel_req">>}
+				   ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
+				  ]).
+-define(CHANNEL_QUERY_REQ_TYPES, []).
+
+%% Channel Query Response
+-define(CHANNEL_QUERY_RESP_HEADERS, [<<"Active-Calls">>]).
+-define(OPTIONAL_CHANNEL_QUERY_RESP_HEADERS, []).
+-define(CHANNEL_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"locate">>}
+				    ,{<<"Event-Name">>, <<"channel_resp">>}
+				   ]).
+-define(CHANNEL_QUERY_RESP_TYPES, []).
+
+optional_channel_headers() ->
+    ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS.
+
+%%--------------------------------------------------------------------
+%% @doc Channel Query Request - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec channel_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+channel_req(Prop) when is_list(Prop) ->
+    case channel_req_v(Prop) of
+	true -> wh_api:build_message(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS);
+	false -> {error, "Proplist failed validation for channel_query_req"}
+    end;
+channel_req(JObj) ->
+    channel_req(wh_json:to_proplist(JObj)).
+
+-spec channel_req_v/1 :: (api_terms()) -> boolean().
+channel_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?CHANNEL_QUERY_REQ_VALUES, ?CHANNEL_QUERY_REQ_TYPES);
+channel_req_v(JObj) ->
+    channel_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Channel Query Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec channel_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+channel_resp(Prop) when is_list(Prop) ->
+    case channel_resp_v(Prop) of
+	true -> wh_api:build_message(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?OPTIONAL_CHANNEL_QUERY_RESP_HEADERS);
+	false -> {error, "Proplist failed validation for resource_resp"}
+    end;
+channel_resp(JObj) ->
+    channel_resp(wh_json:to_proplist(JObj)).
+
+-spec channel_resp_v/1 :: (api_terms()) -> boolean().
+channel_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?CHANNEL_QUERY_RESP_VALUES, ?CHANNEL_QUERY_RESP_TYPES);
+channel_resp_v(JObj) ->
+    channel_resp_v(wh_json:to_proplist(JObj)).
+
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    CallID = props:get_value(callid, Props),
-    amqp_util:callevt_exchange(),
+    CallID = props:get_value(callid, Props, <<"*">>),
 
+    amqp_util:callevt_exchange(),
+    amqp_util:callmgr_exchange(),
+    amqp_util:resource_exchange(),
     bind_q(Queue, props:get_value(restrict_to, Props), CallID).
 
 bind_q(Q, undefined, CallID) ->
     amqp_util:bind_q_to_callevt(Q, CallID),
     amqp_util:bind_q_to_callevt(Q, CallID, cdr),
+    amqp_util:bind_q_to_resource(Q, ?KEY_CHANNEL_QUERY),
     amqp_util:bind_q_to_callmgr(Q, rating_key(CallID));
+
 bind_q(Q, [events|T], CallID) ->
     amqp_util:bind_q_to_callevt(Q, CallID),
     bind_q(Q, T, CallID);
@@ -270,16 +341,25 @@ bind_q(Q, [cdr|T], CallID) ->
 bind_q(Q, [rating|T], CallID) ->
     amqp_util:bind_q_to_callmgr(Q, rating_key(CallID)),
     bind_q(Q, T, CallID);
+bind_q(Q, [call_status|T], CallID) ->
+    amqp_util:bind_q_to_callevt(Q, CallID, status_req),
+    bind_q(Q, T, CallID);
+bind_q(Q, [switch_lookups|T], CallID) ->
+    amqp_util:bind_q_to_resource(Q, ?KEY_CHANNEL_QUERY),
+    bind_q(Q, T, CallID);
 bind_q(Q, [_|T], CallID) ->
     bind_q(Q, T, CallID);
 bind_q(_Q, [], _CallID) ->
     ok.
 
--spec unbind_q/2 :: (binary(), proplist()) -> 'ok'.
+-spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
-    CallID = props:get_value(callid, Props),
+    CallID = props:get_value(callid, Props, <<"*">>),
+
     amqp_util:unbind_q_from_callevt(Queue, CallID),
     amqp_util:bind_q_to_callmgr(Queue, rating_key(CallID)),
+    amqp_util:unbind_q_from_resource(Queue, ?KEY_CHANNEL_QUERY),
+    amqp_util:bind_q_to_callevt(Queue, CallID, status_req),
     amqp_util:unbind_q_from_callevt(Queue, CallID, cdr).
 
 -spec publish_event/2 :: (ne_binary(), api_terms()) -> 'ok'.
@@ -341,6 +421,23 @@ publish_rate_resp(Queue, JObj) ->
 publish_rate_resp(Queue, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?RATING_RESP_VALUES, fun ?MODULE:rate_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+-spec publish_channel_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_channel_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_channel_req(CallID, JObj) ->
+    publish_channel_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_channel_req(CallID, Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?CHANNEL_QUERY_REQ_VALUES, fun ?MODULE:req/1),
+    amqp_util:callevt_publish(CallID, Payload, ContentType).
+
+-spec publish_channel_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_channel_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_channel_resp(RespQ, JObj) ->
+    publish_channel_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_channel_resp(RespQ, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?CHANNEL_QUERY_RESP_VALUES, fun ?MODULE:resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
 
 -spec get_status/1 :: (api_terms()) -> ne_binary().
 get_status(API) when is_list(API) ->
