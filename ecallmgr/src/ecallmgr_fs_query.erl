@@ -26,8 +26,7 @@
 		     ,{{?MODULE, handle_channel_query}, [{<<"locate">>, <<"channel_req">>}]}
 		    ]).
 -define(BINDINGS, [
-		   {switch_lookups, []}
-		   ,{channel_query, []}
+		   {call, [{restrict_to, [switch_lookups, call_status]}]}
 		  ]).
 
 -record(state, {}).
@@ -82,7 +81,7 @@ handle_channel_status(JObj, _Props) ->
     end.
 
 handle_channel_query(JObj, _Props) ->
-    true = wapi_channel_query:req_v(JObj),
+    true = wapi_call_query:req_v(JObj),
     wh_util:put_callid(JObj),
 
     ?LOG("Channel query received"),
@@ -94,7 +93,7 @@ handle_channel_query(JObj, _Props) ->
 					   undefined -> Acc;
 					   Value -> [{Field, Value} | Acc]
 				       end
-			       end, [], wapi_channel_query:optional_headers()),
+			       end, [], wapi_call:optional_channel_headers()),
 
     case lists:foldl(fun(NodeChannels, Acc) ->
 			     filter_for_matching_uuids(SearchParams, NodeChannels, Acc)
@@ -235,4 +234,4 @@ make_jobj(C) ->
 send_channel_query_resp(RespQ, UUIDs) ->
     Resp = [{<<"Active-Calls">>, UUIDs}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    wapi_channel_query:publish_resp(RespQ, Resp).
+    wapi_call:publish_channel_resp(RespQ, Resp).

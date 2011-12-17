@@ -54,13 +54,7 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
--spec start_req/6 :: (Srv, Prop, ApiFun, CallId, From, Parent) -> 'ok' when
-      Srv :: pid(),
-      Prop :: proplist(),
-      ApiFun :: fun(),
-      CallId :: binary(),
-      From :: {pid(), reference()},
-      Parent :: pid() | atom().
+-spec start_req/6 :: (pid(), proplist(), fun(), ne_binary(), {pid(), reference()}, pid() | atom()) -> 'ok'.
 start_req(Srv, Prop, ApiFun, CallId, From, Parent) ->
     JObj = case wh_json:is_json_object(Prop) of
 	       true -> Prop;
@@ -157,7 +151,10 @@ handle_info({'DOWN', Ref, process, Pid, _Info}, #state{status=busy, ref=Ref, par
     ?LOG_END("requestor (~w) down, giving up on task", [Pid]),
     erlang:demonitor(Ref, [flush]),
     ecallmgr_amqp_pool:worker_free(Parent, self(), 0),
-    {noreply, #state{}}.
+    {noreply, #state{}};
+handle_info(_Info, State) ->
+    ?LOG("Unhandled message: ~p", [_Info]),
+    {noreply, State}.
 
 handle_event(_JObj, _State) ->
     {reply, [{server, self()}]}.
