@@ -330,7 +330,7 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
                         ,{<<"Channel-State">>, get_channel_state(Prop1)}
                         ,{<<"Transfer-History">>, get_transfer_history(Prop1)}
                         ,{<<"Hangup-Cause">>, get_hangup_cause(Prop1)}
-                        ,{<<"Hangup-Code">>, props:get_value("variable_proto_specific_hangup_cause", Prop1)}
+                        ,{<<"Hangup-Code">>, get_hangup_code(Prop1)}
                         ,{<<"Disposition">>, get_disposition(Prop1)}
                         ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop1)}
                         ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop1)}
@@ -382,6 +382,7 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Prop) ->
      ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop)}
     ];
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
+    io:format("~p~n", [Prop]),
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
     ];
@@ -490,28 +491,33 @@ create_trnsf_history_object([Epoch, UUID, <<"bl_xfer">> | Data]) ->
 create_trnsf_history_object(_) ->
     undefined.
 
--spec get_hangup_cause/1 :: (proplist()) -> undefined | binary().
+-spec get_hangup_cause/1 :: (proplist()) -> undefined | ne_binary().
 get_hangup_cause(Props) ->
-    Causes = [<<"variable_hangup_cause">>, <<"variable_bridge_hangup_cause">>],
-    Order = case props:get_value(<<"variable_current_application">>, Props) of
-                <<"bridge">> ->
-                    lists:reverse(Causes);
-                _ ->
-                    Causes
-            end,
-    find_event_value(Order, Props).
+    Causes = case props:get_value(<<"variable_current_application">>, Props) of
+                 <<"bridge">> ->
+                     [<<"variable_bridge_hangup_cause">>, <<"variable_hangup_cause">>, <<"Hangup-Cause">>];
+                 _ ->
+                     [<<"variable_hangup_cause">>, <<"variable_bridge_hangup_cause">>, <<"Hangup-Cause">>]
+             end,
+    find_event_value(Causes, Props).
 
--spec get_disposition/1 :: (proplist()) -> undefined | binary().
+-spec get_disposition/1 :: (proplist()) -> undefined | ne_binary().
 get_disposition(Props) ->
     find_event_value([<<"variable_endpoint_disposition">>
                           ,<<"variable_originate_disposition">>
                      ], Props).
 
--spec find_event_value/2 :: ([binary(),...], proplist()) -> undefined | binary().
+-spec get_hangup_code/1 :: (proplist()) -> undefined | ne_binary().
+get_hangup_code(Props) ->
+    find_event_value([<<"variable_proto_specific_hangup_cause">>
+                          ,<<"variable_last_bridge_proto_specific_hangup_cause">>
+                     ], Props).
+    
+-spec find_event_value/2 :: ([ne_binary(),...], proplist()) -> undefined | ne_binary().
 find_event_value(Keys, Props) ->
     find_event_value(Keys, Props, undefined).
 
--spec find_event_value/3 :: ([binary(),...], proplist(), term()) -> term().
+-spec find_event_value/3 :: ([ne_binary(),...], proplist(), term()) -> term().
 find_event_value([], _, Default) ->
     Default;
 find_event_value([H|T], Props, Default) ->
