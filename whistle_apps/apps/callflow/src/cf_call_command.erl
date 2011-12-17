@@ -1214,47 +1214,113 @@ wait_for_bridge(Timeout, #cf_call{cf_pid=CFPid}=Call) ->
                     ?LOG("channel was successfully bridged, stopping bridge attempt failure timer"),
                     wait_for_bridge(infinity, Call);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    case (wh_json:get_value(<<"Hangup-Cause">>, JObj) =:= <<"ATTENDED_TRANSFER">>)
-                        andalso (wh_json:get_value(<<"Disposition">>, JObj) =:= <<"ATTENDED_TRANSFER">>) of
-                        true -> 
+                    case wh_json:get_value(<<"Disposition">>, JObj) of
+                        %% caller preforms a blind transfer
+                        <<"BLIND_TRANSFER">> ->
+                            ?LOG("channel was hungup as a result of a blind transfer"),                            
+wait_for_bridge(Timeout, Call);
+%%                            CFPid ! {transfer};
+                        %% callee preforms partial attended
+                        %% callee preforms attended transfer
+                        <<"ATTENDED_TRANSFER">> ->
+                            ?LOG("channel was hungup as a result of an attended transfer, acquire control"),
                             wait_for_bridge(Timeout, Call);
-                        false ->                    
-                            ?LOG("channel was destroyed while waiting for bridge with result '~s'", [Result]),
-                            {Result, JObj}
+                        %% caller preforms a attended transfer
+                        %% caller preforms a partial attended
+                        <<"ANSWER">> ->
+                            %% to be sure check if it was during a transfer, may not be necessary...
+                            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
+                                undefined ->
+                                    ?LOG("channel was hungup as a result of a transfer"),
+wait_for_bridge(Timeout, Call);
+%%                                    CFPid ! {transfer};
+                                _Else ->
+                                    ?LOG("channel was hungup with result '~s'", [Result]),
+wait_for_bridge(Timeout, Call)
+%%                                   {Result, JObj}
+                            end;
+                        %% missing events:
+                        %% callee preforms blind transfer
+                        _Else ->
+wait_for_bridge(Timeout, Call)                            
+%%                        {Result, JObj}
                     end;
                 {<<"call_event">>, <<"CHANNEL_HANGUP">>, _} ->
-                    case (wh_json:get_value(<<"Hangup-Cause">>, JObj) =:= undefined)
-                        andalso (wh_json:get_value(<<"Disposition">>, JObj) =:= <<"ATTENDED_TRANSFER">>) of
-                        true -> 
-%%                            ?LOG("CONTROL WAS JUST TRANSFERED TO US!!!! TAKE OWNERSHIP NOW!"),                                    
-                            ?LOG("channel was unbridged as a result of a partial attended transfer, acquire control"),
+                    case wh_json:get_value(<<"Disposition">>, JObj) of
+                        %% caller preforms a blind transfer
+                        <<"BLIND_TRANSFER">> ->
+                            ?LOG("channel was hungup as a result of a blind transfer"),                            
+wait_for_bridge(Timeout, Call);
+%%                            CFPid ! {transfer};
+                        %% callee preforms partial attended
+                        %% callee preforms attended transfer
+                        <<"ATTENDED_TRANSFER">> ->
+                            ?LOG("channel was hungup as a result of an attended transfer, acquire control"),
                             wait_for_bridge(Timeout, Call);
-                        false ->
-                            ?LOG("channel was hungup while waiting for bridge with result '~s'", [Result]),
-                            {Result, JObj}
+                        %% caller preforms a attended transfer
+                        %% caller preforms a partial attended
+                        <<"ANSWER">> ->
+                            %% to be sure check if it was during a transfer, may not be necessary...
+                            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
+                                undefined ->
+                                    ?LOG("channel was hungup as a result of a transfer"),
+wait_for_bridge(Timeout, Call);
+%%                                    CFPid ! {transfer};
+                                _Else ->
+                                    ?LOG("channel was hungup with result '~s'", [Result]),
+wait_for_bridge(Timeout, Call)
+%%                                   {Result, JObj}
+                            end;
+                        %% missing events:
+                        %% callee preforms blind transfer
+                        _Else ->
+wait_for_bridge(Timeout, Call)                            
+%%                        {Result, JObj}
                     end;
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-                    ?LOG("-> ~s", [wh_json:encode(JObj)]),
-                    ?LOG("bridge execution completed with result '~s'", [Result]),
-                    {Result, JObj};
+%%                    ?LOG("--> ~s", [wh_json:encode(JObj)]),
+%%                    ?LOG("bridge execution completed with result '~s'", [Result]),
+%%                    {Result, JObj};
+wait_for_bridge(Timeout, Call);
                 {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _} ->
                     Timestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
                     Epoch = binary:part(wh_util:pad_binary(Timestamp, 10, <<"0">>), 0, 10),
-                    case wh_json:get_value([<<"Transfer-History">>, Epoch], JObj) of
-                        undefined ->
-                            case (wh_json:get_value(<<"Application-Response">>, JObj) =:= undefined)
-                                andalso (wh_json:get_value(<<"Disposition">>, JObj) =:= <<"ATTENDED_TRANSFER">>) of
-                                true -> 
-%%                                    ?LOG("CONTROL WAS JUST TRANSFERED TO US!!!! TAKE OWNERSHIP NOW!"),                                    
-                                    ?LOG("channel was unbridged as a result of a partial attended transfer, acquire control"),
-                                    wait_for_bridge(Timeout, Call);
-                                false ->
+                    Transfer = wh_json:get_value([<<"Transfer-History">>, Epoch], JObj),
+                    Disposition = wh_json:get_value(<<"Disposition">>, JObj),
+                    case {Disposition, Transfer} of
+                        %% caller preforms a blind transfer
+                        {<<"BLIND_TRANSFER">>, undefined} ->
+                            ?LOG("channel was unbridged as a result of a blind transfer"),
+wait_for_bridge(Timeout, Call);
+%%                            CFPid ! {transfer};
+                        %% callee preforms a attended transfer (on C-leg)
+                        {<<"ATTENDED_TRANSFER">>, undefined} ->
+                            ?LOG("channel was unbridged as a result of an attended transfer, acquire control"),
+                            wait_for_bridge(Timeout, Call);
+                        %% caller preforms a attended transfer
+                        %% caller preforms a partial attended
+                        {<<"ANSWER">>, undefined} ->
+                            %% to be sure check if it was during a transfer, may not be necessary...
+                            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
+                                undefined ->
+                                    ?LOG("channel was unbridged as a result of a transfer"),
+wait_for_bridge(Timeout, Call);
+%%                                    CFPid ! {transfer};
+                                _Else ->
                                     wait_for_bridge(Timeout, Call)
                             end;
-                        _Else ->
+                        %% just a catch for undefined Transfer History Item
+                        %% IE: This unbridge was NOT part of the transfer history,
+                        %%     otherwise it WAS and the next clause will handle it.
+                        {_, undefined} ->
+                            wait_for_bridge(Timeout, Call);
+                        %% callee preforms a blind transfer
+                        %% callee preforms a partial attended
+                        %% callee preforms a attended transfer
+                        {_, _} ->
                             ?LOG("channel was unbridged as a result of a transfer"),
-                            CFPid ! {transfer},
-                            {ok, JObj}
+wait_for_bridge(Timeout, Call)
+%%                            CFPid ! {transfer}
                     end;
                 _M1 when Timeout =:= infinity ->
                     wait_for_bridge(Timeout, Call);
