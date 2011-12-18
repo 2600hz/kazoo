@@ -34,6 +34,9 @@ lookup_number(Number) ->
 %% lookup the account ID by number
 %% @end
 %%--------------------------------------------------------------------
+cache_key_number(Number) ->
+    {stepswitch_number, Number}.
+
 -spec lookup_account_by_number/1 :: (ne_binary()) -> {'ok', ne_binary(), boolean()} |
 						     {'error', atom()}.
 -spec lookup_account_by_number/2 :: (ne_binary(), pid()) -> {'ok', ne_binary(), boolean()} |
@@ -42,8 +45,8 @@ lookup_account_by_number(Number) ->
     ?LOG("lookup account for ~s", [Number]),
     {ok, Cache} = stepswitch_sup:cache_proc(),
     lookup_account_by_number(Number, Cache).
-lookup_account_by_number(Number, Cache) ->
-    case wh_cache:fetch_local(Cache, {stepswitch_number, Number}) of
+lookup_account_by_number(Number, Cache) when is_pid(Cache) ->
+    case wh_cache:fetch_local(Cache, cache_key_number(Number)) of
 	{ok, {AccountId, ForceOut}} ->
             {ok, AccountId, ForceOut};
 	{error, not_found} ->
@@ -56,7 +59,7 @@ lookup_account_by_number(Number, Cache) ->
 		{ok, [JObj]} ->
                     AccountId = wh_json:get_value(<<"id">>, JObj),
                     ForceOut = wh_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
-                    wh_cache:store_local(Cache, {stepswitch_number, Number}, {AccountId, ForceOut}),
+                    wh_cache:store_local(Cache, cache_key_number(Number), {AccountId, ForceOut}),
 		    {ok, AccountId, ForceOut};
 		{ok, [JObj | _Rest]} ->
 		    whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
@@ -69,7 +72,7 @@ lookup_account_by_number(Number, Cache) ->
 		    ?LOG("number lookup resulted in more than one result, using the first"),
                     AccountId = wh_json:get_value(<<"id">>, JObj),
                     ForceOut = wh_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
-                    wh_cache:store(Cache, {stepswitch_number, Number}, {AccountId, ForceOut}),
+                    wh_cache:store_local(Cache, cache_key_number(Number), {AccountId, ForceOut}),
 		    {ok, AccountId, ForceOut}
 	    end
     end.

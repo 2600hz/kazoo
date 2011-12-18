@@ -128,8 +128,10 @@ wait_for_bridge(Number, JObj, CtlQueue, EPLen) ->
 						       ,{<<"Call-ID">>, get(callid)}
 						       ,{<<"Custom-Call-Vars">>, wh_json:new()}
 						       ,{<<"Custom-Channel-Vars">>, RateInfoJObj}
+						       ,{<<"Insert-At">>, <<"now">>}
+						       | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
 						      ]),
-		    wapi_dialplan:publish_event(CtlQueue, Payload),
+		    wapi_dialplan:publish_action(CtlQueue, Payload),
 		    ?LOG("Sent rate information to call channel"),
 		    wait_for_bridge(Number, JObj, CtlQueue, EPLen)
 	    end

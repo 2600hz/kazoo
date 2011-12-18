@@ -452,4 +452,4 @@ get_status(API) ->
 rating_key(undefined) ->
     list_to_binary([?KEY_RATING_REQ, ".*"]);
 rating_key(CallID) when is_binary(CallID) ->
-    list_to_binary([?KEY_RATING_REQ, ".", CallID]).
+    list_to_binary([?KEY_RATING_REQ, ".", amqp_util:encode(CallID)]).
