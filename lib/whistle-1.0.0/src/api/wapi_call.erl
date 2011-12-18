@@ -15,7 +15,7 @@
 	 ,channel_req/1, channel_resp/1, channel_req_v/1, channel_resp_v/1
 	]).
 
--export([optional_channel_headers/0]).
+-export([optional_channel_headers/0, required_rate_resp_rate_headers/0]).
 
 -export([bind_q/2, unbind_q/2]).
 
@@ -276,6 +276,9 @@ rate_resp_rate_v(JObj) ->
 
 optional_channel_headers() ->
     ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS.
+
+required_rate_resp_rate_headers() ->
+    ?RATING_RESP_RATE_HEADERS.
 
 %%--------------------------------------------------------------------
 %% @doc Channel Query Request - see wiki

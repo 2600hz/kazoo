@@ -19,6 +19,7 @@ init() ->
 -spec handle_req/2 :: (json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Prop) ->
     whapps_util:put_callid(JObj),
+
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     case wh_json:get_value(<<"Account-ID">>, CCVs) of
         undefined ->
@@ -30,8 +31,8 @@ handle_req(JObj, _Prop) ->
                     ?LOG_START("received inter account inbound dialplan route request"),
                     _ =  inbound_handler(Number, JObj)
             end;
-        _ ->
-            ok
+        _AcctID ->
+	    ?LOG_END("Account ~s found, ignoring request", [_AcctID])
     end.
 
 

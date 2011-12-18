@@ -244,7 +244,7 @@ build_bridge_request(JObj, Endpoints, Q) ->
 %% waits for the return from the bridge request
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_bridge/1 :: (non_neg_integer()) -> {'ok' | 'fail' | 'hungup' | 'error', json_object()} |
+-spec wait_for_bridge/1 :: (non_neg_integer()) -> {'ok' | 'fail' | 'hungup' | 'error' | 'rate_resp', json_object()} |
 						  {'error', 'timeout'}.
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
@@ -263,6 +263,8 @@ wait_for_bridge(Timeout) ->
                     {hungup, JObj};
                 { _, _, <<"error">> } ->
                     {error, JObj};
+		{_, <<"rating_resp">>, <<"call_mgmt">>} ->
+		    {rate_resp, JObj};
                 _ ->
 		    DiffMicro = timer:now_diff(erlang:now(), Start),
                     wait_for_bridge(Timeout - (DiffMicro div 1000))
@@ -410,7 +412,7 @@ build_endpoint(Number, Gateway, Delay) ->
             ,{<<"Auth-User">>, Gateway#gateway.username}
             ,{<<"Auth-Password">>, Gateway#gateway.password}
             ,{<<"SIP-Headers">>, Gateway#gateway.sip_headers}
-            ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Resource-ID">>, Gateway#gateway.resource_id}]}}
+            ,{<<"Custom-Channel-Vars">>, wh_json:set_value(<<"Resource-ID">>, Gateway#gateway.resource_id, wh_json:new())}
            ],
     wh_json:from_list([ KV || {_, V}=KV <- Prop, V =/= 'undefined' andalso V =/= <<"0">>]).
 
