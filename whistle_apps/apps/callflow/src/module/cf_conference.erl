@@ -20,17 +20,20 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> tuple(stop)).
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, ctrl_q=CtrlQ, account_id=AccountId, amqp_q=AmqpQ}) ->
-    put(callid, CallId),
+-spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+handle(Data, #cf_call{account_id=AccountId}=Call) ->
     Command = [{<<"Account-ID">>, AccountId}
-               ,{<<"Call-ID">>, CallId}
-               ,{<<"Control-Queue">>, CtrlQ}
+               ,{<<"Call-ID">>, cf_exe:callid(Call)}
+               ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
                ,{<<"Conference-ID">>, wh_json:get_value(<<"id">>, Data)}
                ,{<<"Moderator">>, wh_json:get_binary_boolean(<<"moderator">>, Data)}
-               | wh_api:default_headers(AmqpQ, <<"conference">>, <<"discovery">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(cf_exe:queue_name(Call)
+                                        ,<<"conference">>
+                                        ,<<"discovery">>
+                                        ,?APP_NAME
+                                        ,?APP_VERSION)
               ],
     {ok, Payload} = wh_api:conference_discovery_req(Command),
     amqp_util:conference_publish(Payload, discovery),
     {ok, _} = cf_call_command:wait_for_hangup(),
-    CFPid ! {stop}.
+    cf_exe:stop(Call).

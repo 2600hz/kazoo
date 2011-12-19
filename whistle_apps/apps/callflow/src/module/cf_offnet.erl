@@ -12,26 +12,20 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [wait_for_bridge/2, find_failure_branch/2]).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (Data, Call) -> no_return() when
-      Data :: json_object(),
-      Call :: #cf_call{}.
-handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId, inception_during_transfer=IDT
-                      ,ctrl_q=CtrlQ, amqp_q=AmqpQ, cf_pid=CFPid, owner_id=OwnerId, authorizing_id=AuthId, channel_vars=CCV}=Call) ->
-    put(callid, CallId),
+-spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+handle(Data, #cf_call{account_id=AccountId, request_user=ReqNum, owner_id=OwnerId, authorizing_id=AuthId}=Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(AuthId, OwnerId, <<"emergency">>, Call),
-    Req = [{<<"Call-ID">>, CallId}
+    Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Resource-Type">>, <<"audio">>}
            ,{<<"To-DID">>, ReqNum}
            ,{<<"Account-ID">>, AccountId}
-           ,{<<"Control-Queue">>, CtrlQ}
+           ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
            ,{<<"Application-Name">>, <<"bridge">>}
            ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Data)}
            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
@@ -40,34 +34,18 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId,
            ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
            ,{<<"Presence-ID">>, cf_attributes:presence_id(AuthId, Call)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
-           | wh_api:default_headers(AmqpQ, ?APP_NAME, ?APP_VERSION)],
+           | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)],
     wapi_offnet_resource:publish_req(Req),
     case wait_for_offnet(60000, Call) of
         {ok, _} ->
             ?LOG("completed successful offnet bridge"),
-            CFPid ! { stop };
-        {fail, Reason} when IDT ->
-            case wh_json:get_binary_value(<<"Transfer-Fallback">>, CCV) of
-                undefined ->
-                    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-                    ?LOG("offnet request during transfer failed ~s:~s", [Cause, Code]),
-                    find_failure_branch({Cause, Code}, Call)
-                        orelse CFPid ! { continue };
-                FallbackId ->
-                    Gen = [fun(J) -> wh_json:set_value(<<"module">>, <<"device">>, J) end
-                           ,fun(J) -> wh_json:set_value([<<"data">>, <<"id">>], FallbackId, J) end
-                           ,fun(J) -> wh_json:set_value([<<"children">>, <<"_">>], ?EMPTY_JSON_OBJECT, J) end],
-                    Flow = lists:foldr(fun(Fun, JObj) -> Fun(JObj) end, ?EMPTY_JSON_OBJECT, Gen),
-                    CFPid ! {branch, Flow}
-            end;
-        {fail, Reason} ->
-            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-            ?LOG("offnet request failed ~s:~s", [Cause, Code]),
-            find_failure_branch({Cause, Code}, Call)
-                orelse CFPid ! { continue };
-        {error, Reason} ->
-            ?LOG("offnet resource bridge error ~p", [Reason]),
-            CFPid ! { continue }
+            cf_exe:stop(Call);
+        {fail, _}=F ->
+            ?CF_ALERT(F, Call),
+            cf_util:handle_bridge_failure(F, Call);            
+        {error, _}=E ->
+            ?CF_ALERT(E, "offnet_resource error", Call),
+            cf_exe:continue(Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -76,22 +54,20 @@ handle(Data, #cf_call{call_id=CallId, request_user=ReqNum, account_id=AccountId,
 %% Consume Erlang messages and return on resource completion message
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_offnet/2 :: (Timeout, Call) -> tuple(ok | fail, json_object())
-                                                  | tuple(error, channel_hungup | execution_failed | timeout) when
-      Timeout :: integer(),
-      Call :: #cf_call{}.
+-spec wait_for_offnet/2 :: (non_neg_integer(), #cf_call{}) -> {ok | fail, json_object()}
+                                                                  | {error, channel_hungup | execution_failed | timeout}.
 wait_for_offnet(Timeout, Call) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            case { wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Event-Category">>, JObj) } of
-                { <<"offnet_resp">>, <<"resource">> } ->
-                    wait_for_bridge(infinity, Call);
-                { <<"resource_error">>, <<"resource">> } ->
+            case wh_util:get_event_type(JObj) of
+                { <<"resource">>, <<"offnet_resp">> } ->
+                    cf_call_command:wait_for_bridge(infinity, Call);
+                { <<"resource">>, <<"resource_error">> } ->
                     {fail, JObj};
-                { <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
+                { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
                     {error, channel_hungup};
-                { _, <<"error">> } ->
+                { <<"error">>, _ } ->
                     {error, execution_failed};
                 _ ->
 		    DiffMicro = timer:now_diff(erlang:now(), Start),

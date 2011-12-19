@@ -12,8 +12,6 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/6, find_failure_branch/2]).
-
 -define(VIEW_BY_RULES, <<"cf_attributes/active_resources_by_rules">>).
 
 -type endpoint() :: {binary(), json_objects(), 'raw' | binary()}.
@@ -25,9 +23,8 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> {'continue'} | {'branch', json_object()} | boolean().
-handle(Data, #cf_call{call_id=CallId}=Call) ->
-    put(callid, CallId),
+-spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+handle(Data, Call) ->
     {ok, Endpoints} = find_endpoints(Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
     IgnoreEarlyMedia = wh_json:get_value(<<"ignore_early_media">>, Data),
@@ -45,54 +42,33 @@ handle(Data, #cf_call{call_id=CallId}=Call) ->
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_resources/5 :: (Endpoints :: endpoints(), Timeout :: cf_api_binary()
-                                ,IngoreEarlyMeida :: cf_api_binary(), Ringback :: cf_api_binary()
-                                ,Call :: #cf_call{}) -> {'continue'} | {'branch', json_object()} | 'true'.
-bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, #cf_call{cf_pid=CFPid
-                                                                                                    ,inception_during_transfer=IDT
-                                                                                                    ,channel_vars=CCV}=Call) ->
-    CCVs1 = case wh_json:is_true(<<"fax_enabled">>, Rsc) of
-		true -> wh_json:set_value(<<"Fax-Enabled">>, true, CCV);
-		false -> CCV
-	    end,
-
-    case b_bridge([create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)]
-                  ,Timeout, <<"single">>, IgnoreEarlyMedia, Ringback
-		  ,Call#cf_call{channel_vars=CCVs1}
-		 ) of
+-spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), #cf_call{}) -> ok.
+bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Call) ->
+    Endpoint = [create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
+    case cf_call_command:b_bridge(Endpoint, imeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
             ?LOG("completed successful bridge to resource"),
-            CFPid ! { stop };
-        {fail, Reason} when IDT, T =:= [] ->
-            case wh_json:get_binary_value(<<"Transfer-Fallback">>, CCV) of
-                undefined ->
-                    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-                    ?LOG("offnet request during transfer failed ~s:~s", [Cause, Code]),
-                    find_failure_branch({Cause, Code}, Call)
-                        orelse CFPid ! { continue };
-                FallbackId ->
-                    Gen = [fun(J) -> wh_json:set_value(<<"module">>, <<"device">>, J) end
-                           ,fun(J) -> wh_json:set_value([<<"data">>, <<"id">>], FallbackId, J) end
-                           ,fun(J) -> wh_json:set_value([<<"children">>, <<"_">>], ?EMPTY_JSON_OBJECT, J) end],
-                    Flow = lists:foldr(fun(Fun, JObj) -> Fun(JObj) end, ?EMPTY_JSON_OBJECT, Gen),
-                    CFPid ! {branch, Flow}
+            cf_exe:stop(Call);
+        {fail, R}=F when T =:= [] ->
+            ?CF_ALERT(F, Call),
+            {Cause, Code} = whapps_util:get_call_termination_reason(R),
+            ?LOG("attempting failure branch ~s:~s", [Code, Cause]),
+            case (cf_util:handle_bridge_failure(Cause, Call) =:= ok)
+                orelse (cf_util:handle_bridge_failure(Code, Call) =:= ok) of
+                true -> 
+                    ok;
+                false -> 
+                    bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call)
             end;
-        {fail, Reason} when T =:= [] ->
-            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-            ?LOG("resource failed ~s:~s", [Cause, Code]),
-            find_failure_branch({Cause, Code}, Call)
-                orelse bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call);
-        {fail, Reason} ->
-            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-            ?LOG("resource failed ~s:~s", [Code, Cause]),
+        {fail, _} ->
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call);
-        {error, R} ->
-            ?LOG("resource bridge error ~p", [R]),
+        {error, _}=E ->
+            ?CF_ALERT(E, "error bridging to device", Call),
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call)
     end;
-bridge_to_resources([], _, _, _, #cf_call{cf_pid=CFPid}) ->
+bridge_to_resources([], _, _, _, Call) ->
     ?LOG("resources exhausted without success"),
-    CFPid ! { continue }.
+    cf_exe:continue(Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,7 +77,7 @@ bridge_to_resources([], _, _, _, #cf_call{cf_pid=CFPid}) ->
 %% for use with the whistle bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoint/2 :: (DestNum :: binary(), Gateway :: json_object()) -> json_object().
+-spec create_endpoint/2 :: (ne_binary(), json_object()) -> json_object().
 create_endpoint(DestNum, JObj) ->
     Rule = <<"sip:"
               ,(wh_json:get_value(<<"prefix">>, JObj, <<>>))/binary
@@ -109,7 +85,6 @@ create_endpoint(DestNum, JObj) ->
               ,(wh_json:get_value(<<"suffix">>, JObj, <<>>))/binary
               ,$@ ,(wh_json:get_value(<<"server">>, JObj))/binary>>,
     ?LOG("attempting resource ~s", [Rule]),
-
     Endpoint = [{<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>, Rule}
                 ,{<<"Auth-User">>, wh_json:get_value(<<"username">>, JObj)}
@@ -174,7 +149,7 @@ get_caller_id_type(Resource, #cf_call{channel_vars=CVs}) ->
 %% full destination number otherwise return an empty list.
 %% @end
 %%--------------------------------------------------------------------
--spec(evaluate_rules/2 :: (Key :: list(), DestNum:: binary()) -> [] | [binary()]).
+-spec evaluate_rules/2 :: (list(), ne_binary()) -> [] | [ne_binary(),...].
 evaluate_rules([_, Regex], DestNum) ->
     case re:run(DestNum, Regex) of
         {match, [_, {Start,End}|_]} ->

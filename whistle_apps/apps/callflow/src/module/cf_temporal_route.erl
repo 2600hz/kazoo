@@ -80,38 +80,37 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return().
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
-    put(callid, CallId),
+-spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+handle(Data,Call) ->
     Temporal = get_temporal_route(Data, Call),
     case wh_json:get_value(<<"action">>, Data) of
         <<"menu">> ->
             ?LOG("temporal rules main menu"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
             {ok, _} = temporal_route_menu(Temporal, Rules, Call),
-            CFPid ! {stop};
+            cf_exe:stop(Call);
         <<"enable">> ->
             ?LOG("force temporal rules to enable"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
             {ok, _} = enable_temporal_rules(Temporal, Rules, Call),
-            CFPid ! {stop};
+            cf_exe:stop(Call);
         <<"disable">> ->
             ?LOG("force temporal rules to disable"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
             {ok, _} = disable_temporal_rules(Temporal, Rules, Call),
-            CFPid ! {stop};
+            cf_exe:stop(Call);
         <<"reset">> ->
             ?LOG("resume normal temporal rule operation"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
             {ok, _} = reset_temporal_rules(Temporal, Rules, Call),
-            CFPid ! {stop};
+            cf_exe:stop(Call);
         _ ->
             Rules = get_temporal_rules(Temporal, Call),
             case process_rules(Temporal, Rules, Call) of
                 default ->
-                    CFPid ! {continue};
+                    cf_exe:continue(Call);
                 ChildId ->
-                    CFPid ! {continue, ChildId}
+                    cf_exe:continue(ChildId, Call)
             end
     end.
 

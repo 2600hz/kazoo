@@ -27,13 +27,12 @@ handle_req(JObj, _Options) ->
             ?LOG("bootstrapping callflow executer"),
             OwnerId = cf_attributes:owner_id(AuthId, Call),
             {CIDNumber, CIDName} = cf_attributes:caller_id(AuthId, OwnerId, <<"external">>, Call),
-            C = Call#cf_call{ctrl_q = wh_json:get_value(<<"Control-Queue">>, JObj)
-                             ,capture_group = wh_json:get_value(<<"capture_group">>, Flow)
+            C = Call#cf_call{capture_group = wh_json:get_ne_value(<<"capture_group">>, Flow)
                              ,owner_id = OwnerId
                              ,cid_name = CIDName
                              ,cid_number = CIDNumber
                             },
-            execute_call_flow(Flow, C);
+            execute_call_flow(Flow, wh_json:get_value(<<"Control-Queue">>, JObj), CallId, C);
         {error, R} ->
             ?LOG_END("unable to find callflow during second lookup (HUH?) ~p", [R])
     end.
@@ -45,12 +44,14 @@ handle_req(JObj, _Options) ->
 %% cf_exe_sup tree.
 %% @end
 %%-----------------------------------------------------------------------------
--spec execute_call_flow/2 :: (json_object(), #cf_call{}) -> no_return().
-execute_call_flow(Flow, Call) ->
+-spec execute_call_flow/4 :: (json_object(), ne_binary(), ne_binary(), #cf_call{}) -> ok.
+execute_call_flow(Flow, ControlQ, CallId, Call) ->
     CCVs = get_channel_ccvs(Call),
-    cf_call_command:set(CCVs, get_call_ccvs(Call), Call),
+%%    cf_call_command:set(CCVs, get_call_ccvs(Call), Call),
     ?LOG("call has been setup, passing control to callflow executer"),
-    cf_exe_sup:start_proc(Call#cf_call{channel_vars=CCVs}, wh_json:get_value(<<"flow">>, Flow)).
+    R = cf_exe_sup:new(wh_json:get_value(<<"flow">>, Flow), ControlQ, CallId, Call#cf_call{channel_vars=CCVs}),
+    io:format("~p~n", [R]),
+    ok.
 
 %%-----------------------------------------------------------------------------
 %% @private

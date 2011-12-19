@@ -19,12 +19,11 @@
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, ctrl_q=CtrlQ}) ->
-    put(callid, CallId),
+-spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+handle(Data, Call) ->
     Code = wh_json:get_value(<<"code">>, Data, <<"486">>),
-    Cause = wh_json:get_value(<<"message">>, Data),
-    Media = wh_json:get_value(<<"media">>, Data),
+    Cause = wh_json:get_ne_value(<<"message">>, Data),
+    Media = wh_json:get_ne_value(<<"media">>, Data),
     ?LOG("repsonding to call with ~s ~s", [Code, Cause]),
-    wh_util:call_response(CallId, CtrlQ, Code, Cause, Media),
-    CFPid ! { stop }.
+    cf_call_command:call_response(Code, Cause, Media, Call),
+    cf_exe:stop(Call).

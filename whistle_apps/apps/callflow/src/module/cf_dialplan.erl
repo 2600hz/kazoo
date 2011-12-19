@@ -13,14 +13,7 @@
 %% API
 -export([handle/2]).
 
--import(logger, [format_log/3]).
-
 -include("../callflow.hrl").
 
-handle (_Data, _Call) ->
-    {continue}.
-
-%%%
-%%%============================================================================
-%%%== END =====
-%%%============================================================================
+handle (_Data, Call) ->
+    cf_exe:continue(Call).

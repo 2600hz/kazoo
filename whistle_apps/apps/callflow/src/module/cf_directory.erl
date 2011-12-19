@@ -111,9 +111,7 @@
 -spec handle/2 :: (Data, Call) -> no_return() when
       Data :: json_object(),
       Call :: #cf_call{}.
-handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
-    put(callid, CallId),
-
+handle(Data, #cf_call{account_db=AccountDB}=Call) ->
     DirID = wh_json:get_value(<<"id">>, Data),
     {ok, DirJObj} = couch_mgr:open_doc(AccountDB, DirID),
 
@@ -122,10 +120,9 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
 	       true ->
 		   ASR = wh_json:get_value(<<"asr_provider">>, DirJObj, wh_json:new()),
 		   ?LOG("Setting ASR data for directory lookup"),
-		   #dbn_state{
-			       asr_endpoint = wh_json:get_value(<<"p_endpoint">>, ASR)
-			       ,asr_account_id = wh_json:get_value(<<"p_account_id">>, ASR)
-			       ,asr_account_pass = wh_json:get_value(<<"p_account_pass">>, ASR)
+		   #dbn_state{asr_endpoint = wh_json:get_value(<<"p_endpoint">>, ASR)
+                              ,asr_account_id = wh_json:get_value(<<"p_account_id">>, ASR)
+                              ,asr_account_pass = wh_json:get_value(<<"p_account_pass">>, ASR)
 			     };
 	       false -> #dbn_state{}
 	   end,
@@ -137,13 +134,12 @@ handle(Data, #cf_call{call_id=CallId, account_db=AccountDB}=Call) ->
     ?LOG_START("Dial By Name: ~s", [wh_json:get_value(<<"name">>, DirJObj)]),
     ?LOG("SortBy: ~s", [SortBy]),
 
-    DbN = DbN0#dbn_state{
-	    sort_by = SortBy
-	    ,min_dtmf = MinDTMF
-	    ,max_dtmf = get_max_dtmf(wh_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0), MinDTMF)
-	    ,confirm_match = wh_json:is_true(<<"confirm_match">>, DirJObj, false)
-	    ,orig_lookup_table = LookupTable
-	   },
+    DbN = DbN0#dbn_state{sort_by = SortBy
+                         ,min_dtmf = MinDTMF
+                         ,max_dtmf = get_max_dtmf(wh_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0), MinDTMF)
+                         ,confirm_match = wh_json:is_true(<<"confirm_match">>, DirJObj, false)
+                         ,orig_lookup_table = LookupTable
+                        },
     start_search(Call, #prompts{}, DbN, LookupTable).
 
 -spec start_search/4 :: (Call, Prompts, State, LookupTable) -> no_return() when
@@ -192,35 +188,33 @@ analyze_text(#cf_call{account_db=DB}=Call, Prompts, #dbn_state{confirm_match=Con
 asr_response() ->
     ?LOG("Waiting for ASR response"),
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case wh_util:get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     ?LOG("channel was destroyed while waiting for bridge"),
                     {error, hangup};
-                { <<"call_event">>, <<"CHANNEL_HANGUP">>} ->
+                {<<"call_event">>, <<"CHANNEL_HANGUP">>} ->
                     ?LOG("channel was hungup while waiting for bridge"),
                     {error, hangup};
-                { <<"error">>, _} ->
+                {<<"error">>, _} ->
                     ?LOG("channel execution error while waiting for bridge"),
                     {error, execution_failure};
-		{ <<"asr">>, <<"asr_resp">>} ->
+		{<<"asr">>, <<"asr_resp">>} ->
 		    {ok, wh_json:get_value(<<"Response-Text">>, JObj)};
 		{_,_} ->
 		    asr_response()
 	    end
     end.
 
-send_asr_info(#cf_call{amqp_q=OurQ, ctrl_q=CtrlQ, call_id=CallID}
-	      ,#dbn_state{asr_endpoint=EP, asr_account_id=AID, asr_account_pass=Pass
-			 ,asr_lang=Lang}) ->
+send_asr_info(Call, #dbn_state{asr_endpoint=EP, asr_account_id=AID, asr_account_pass=Pass, asr_lang=Lang}) ->
     Req = [{<<"ASR-Endpoint">>, EP}
            ,{<<"ASR-Account-ID">>, AID}
            ,{<<"ASR-Account-Password">>, Pass}
-           ,{<<"Call-ID">>, CallID}
-           ,{<<"Control-Queue">>, CtrlQ}
+           ,{<<"Call-ID">>, cf_exe:callid(Call)}
+           ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
            ,{<<"Language">>, Lang}
            ,{<<"Stream-Response">>, false}
-           | wh_api:default_headers(OurQ, ?APP_NAME, ?APP_VERSION)],
+           | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)],
     wapi_asr:publish_req(Req).
 
 -spec collect_min_digits/5 :: (Call, Prompts, State, LookupTable, Collected) -> no_return() when
@@ -389,22 +383,21 @@ play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj, DB) ->
                MediaID -> {play, <<$/, DB/binary, $/, MediaID/binary>>}
            end,
 
-    play_and_collect([
-		      {play, ResultNumber}
+    play_and_collect([{play, ResultNumber}
 		      ,{say, wh_util:to_binary(MatchNo), <<"number">>}
 		      ,Name
 		     ], Call).
 
 %% Takes a user doc ID, creates the endpoint, and routes the call (ending the dialplan callflow as well)
 -spec route_to_match/2 :: (#cf_call{}, json_object()) -> {'branch', json_object()} | {'continue'}.
-route_to_match(#cf_call{cf_pid=CFPid, account_db=DB}, JObj) ->
+route_to_match(#cf_call{account_db=DB}=Call, JObj) ->
     case couch_mgr:open_doc(DB, wh_json:get_value(<<"callflow_id">>, JObj)) of
         {ok, CallflowJObj} ->
             ?LOG("Routing to Callflow: ~s", [wh_json:get_value(<<"_id">>, CallflowJObj)]),
-            CFPid ! {branch, wh_json:get_value(<<"flow">>, CallflowJObj)};
+            cf_exe:branch(wh_json:get_value(<<"flow">>, CallflowJObj), Call);
         _ ->
             ?LOG("Failed to find callflow: ~s", [wh_json:get_value(<<"callflow_id">>, JObj)]),
-            CFPid ! {continue}
+            cf_exe:continue(Call)
     end.
 
 -spec confirm_match/4 :: (Call, Prompts, ConfirmMatch, UserJObj) -> boolean() when
@@ -439,17 +432,14 @@ confirm_match_dtmf(Call, Prompts, JObj, _) ->
       Call :: #cf_call{},
       Prompts :: #prompts{}.
 play_invalid_key(Call, #prompts{invalid_key=InvalidKey}) ->
-    play_and_collect([
-		      {play, InvalidKey}
-		     ], Call).
+    play_and_collect([{play, InvalidKey}], Call).
 
 -spec play_has_matches/3 :: (Call, Prompts, Matches) -> 'ok' when
       Call :: #cf_call{},
       Prompts :: #prompts{},
       Matches :: non_neg_integer().
 play_has_matches(Call, #prompts{result_match=ResultMatch}, Matches) ->
-    ok = play_and_wait([
-			{say, wh_util:to_binary(Matches), <<"number">>}
+    ok = play_and_wait([{say, wh_util:to_binary(Matches), <<"number">>}
 			,{play, ResultMatch, ?ANY_DIGIT}
 		       ], Call).
 
@@ -458,8 +448,7 @@ play_has_matches(Call, #prompts{result_match=ResultMatch}, Matches) ->
       Prompts :: #prompts{},
       JObj :: json_object().
 play_confirm_match(Call, #prompts{confirm_menu=ConfirmMenu, found=Found}, JObj) ->
-    play_and_collect([
-                      {play, Found}
+    play_and_collect([{play, Found}
                       ,{say, wh_json:get_value(<<"first_name">>, JObj)}
                       ,{say, wh_json:get_value(<<"last_name">>, JObj)}
                       ,{play, ConfirmMenu, ?ANY_DIGIT}
@@ -476,8 +465,7 @@ play_no_results(Call, #prompts{no_matching_results=NoMatchingResults}) ->
       Prompts :: #prompts{},
       MinDTMF :: pos_integer().
 play_min_digits_needed(Call, #prompts{specify_minimum=SpecifyMinimum, letters_of_name=LettersOfName}, MinDTMF) ->
-    play_and_collect([
-		      {play, SpecifyMinimum, ?ANY_DIGIT}
+    play_and_collect([{play, SpecifyMinimum, ?ANY_DIGIT}
 		      ,{say, wh_util:to_binary(MinDTMF), <<"number">>}
 		      ,{play, LettersOfName, ?ANY_DIGIT}
 		     ], Call).

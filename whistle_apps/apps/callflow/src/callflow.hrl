@@ -29,13 +29,47 @@
                     ,<<"*">>, <<"0">>, <<"#">>
                    ]).
 
+-define(CF_ALERT(Error, AlertCall), 
+        (fun({fail, Reason}, #cf_call{account_id=AId}) ->
+                 {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+                 Level = whapps_util:hangup_cause_to_alert_level(Cause),
+                 ?LOG("failed to bridge: ~s:~s", [Cause, Code]),
+                 Message = ["Source: ~s(~p)~n"
+                            ,"Alert: failed to bridge ~p ~p~n"
+                            ,"Fault: ~p~n"
+                            ,"~n~s"
+                           ],
+                Args = [?MODULE, ?LINE, Reason, Cause, Code
+                        ,cf_util:call_info_to_string(AlertCall)],
+                 whapps_util:alert(Level, lists:flatten(Message), Args, AId);
+            ({error, Reason}, #cf_call{account_id=AId}) ->
+                 ?LOG("error: ~s", [wh_json:encode(Reason)]),
+                 Message = ["Source: ~s(~p)~n"
+                            ,"Alert: generic error~n"
+                            ,"Fault: ~p~n"
+                            ,"~n~s"
+                           ],
+                 Args = [?MODULE, ?LINE, Reason
+                         ,cf_util:call_info_to_string(AlertCall)],
+                  whapps_util:alert(error, lists:flatten(Message), Args, AId)
+         end)(Error, AlertCall)).
+
+-define(CF_ALERT(Error, Msg, AlertCall),
+        (fun({error, Reason}, Msg, #cf_call{account_id=AId}) ->
+                 ?LOG("~s: ~s", [Msg, wh_json:encode(Reason)]),
+                 Message = ["Source: ~s(~p)~n"
+                            ,"Alert: ~s~n"
+                            ,"Fault: ~p~n"
+                            ,"~n~s"
+                           ],
+                 Args = [?MODULE, ?LINE, Msg, Reason
+                         ,cf_util:call_info_to_string(AlertCall)],
+                 whapps_util:alert(error, lists:flatten(Message), Args, AId)
+         end)(Error, Msg, AlertCall)).
+
 -record (cf_call, {
-             amqp_q = <<>> :: binary()                              %% The AMPQ queue that we consume on
-            ,ctrl_q = <<>> :: binary()                              %% The control queue for this request
-            ,bdst_q = <<>> :: binary()                              %% The broadcast queue the request was recieved on
-            ,call_id = <<>> :: binary()                             %% The call-id of this request
+            bdst_q = <<>> :: binary()                              %% The broadcast queue the request was recieved on
             ,cf_pid = 'undefined' :: pid() | 'undefined'                %% PID of the callflow tree processor, who we should pass control back to
-            ,cf_responder = 'undefined' :: pid() | 'undefined'          %% PID of the callflow responder that won this route_request
             ,flow_id = 'undefined' :: binary() | 'undefined'            %% The ID of the callflow that was intially executed (does not reflect branches, or hunts)
             ,cid_name = <<>> :: binary()                            %% The CID name provided on the route req
             ,cid_number = <<>> :: binary()                          %% The CID number provided on the route req

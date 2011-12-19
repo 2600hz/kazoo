@@ -12,7 +12,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req/2 :: (json_object(), proplist()) -> no_return().
+-spec handle_req/2 :: (json_object(), proplist()) -> ok.
 handle_req(JObj, Options) ->
     case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
         undefined ->
@@ -32,8 +32,7 @@ handle_req(JObj, Options) ->
             [FromUser, FromRealm] = binary:split(From, <<"@">>),
             [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
 
-            Call = #cf_call{call_id = CallId
-                            ,bdst_q = props:get_value(queue, Options)
+            Call = #cf_call{bdst_q = props:get_value(queue, Options)
                             ,cid_name = wh_json:get_value(<<"Caller-ID-Name">>, JObj, <<"Unknown">>)
                             ,cid_number = wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<"0000000000">>)
                             ,request = Request
@@ -52,7 +51,7 @@ handle_req(JObj, Options) ->
                             ,channel_vars = CVs
                             ,inception_during_transfer = wh_json:is_true(<<"During-Transfer">>, JObj)
                            },
-            fulfill_call_request(JObj, Call)
+            fulfill_call_request(JObj, CallId, Call)
     end.
 
 %%-----------------------------------------------------------------------------
@@ -61,8 +60,8 @@ handle_req(JObj, Options) ->
 %% attempt to fulfill authorized call requests
 %% @end
 %%-----------------------------------------------------------------------------
--spec fulfill_call_request/2 :: (#cf_call{}, json_object()) -> no_return().
-fulfill_call_request(JObj, #cf_call{call_id=CallId, account_id=AccountId}=Call) ->
+-spec fulfill_call_request/3 :: (#cf_call{}, ne_binary(), json_object()) -> ok.
+fulfill_call_request(JObj, CallId, #cf_call{account_id=AccountId}=Call) ->
     case cf_util:lookup_callflow(Call) of
         {ok, Flow, NoMatch} ->
             FlowId = wh_json:get_value(<<"_id">>, Flow),
@@ -70,7 +69,8 @@ fulfill_call_request(JObj, #cf_call{call_id=CallId, account_id=AccountId}=Call) 
             wh_cache:store({cf_call, CallId}, Call#cf_call{flow_id = FlowId, no_match = NoMatch}, 5),
             send_route_response(JObj, Call);
         {error, R} ->
-            ?LOG_END("unable to find callflow ~p", [R])
+            ?LOG_END("unable to find callflow ~p", [R]),
+            ok
     end.
 
 %%-----------------------------------------------------------------------------

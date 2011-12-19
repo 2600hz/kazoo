@@ -12,8 +12,6 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/5]).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -22,18 +20,18 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (Data, Call) -> {'stop' | 'continue'} when
-      Data :: json_object(),
-      Call :: #cf_call{}.
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
-    put(callid, CallId),
-    case cf_endpoint:build(wh_json:get_value(<<"id">>, Data), Data, Call) of
-        {ok, Endpoints} ->
-            Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
-            bridge_to_endpoints(Endpoints, Timeout, Call);
-        {error, _Reason} ->
-            ?LOG("no endpoints to bridge to, ~p", [_Reason]),
-            CFPid ! { continue }
+-spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+handle(Data, Call) ->
+    case bridge_to_endpoints(Data, Call) of
+        {ok, _} ->
+            ?LOG("completed successful bridge to the device"),
+            cf_exe:stop(Call);
+        {fail, _}=F ->
+            ?CF_ALERT(F, Call),
+            cf_util:handle_bridge_failure(F, Call);
+        {error, _}=E ->
+            ?CF_ALERT(E, "error bridging to device", Call),
+            cf_exe:continue(Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -42,32 +40,16 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
 %% Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints/3 :: (Endpoints, Timeout, Call) -> {'stop' | 'continue'} when
-      Endpoints :: json_objects(),
-      Timeout :: binary(),
-      Call :: #cf_call{}.
-bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid, account_id=AccountId}=Call) ->
-    IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-    case b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
-        {ok, _} ->
-            ?LOG("completed successful bridge to the device"),
-            CFPid ! { stop };
-        {fail, Reason} ->
-            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-            Level = whapps_util:hangup_cause_to_alert_level(Cause),
-            whapps_util:alert(Level, ["Source: ~s(~p)~n"
-                                      ,"Alert: failed to bridge to device~n"
-                                      ,"Fault: ~p~n"
-                                      ,"~n~s"]
-                              ,[?MODULE, ?LINE, Reason, cf_util:call_info_to_string(Call)], AccountId),
-            ?LOG("failed to bridge to device ~s:~s", [Code, Cause]),
-            CFPid ! { continue };
-        {error, R} ->
-            whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
-                                            ,"Alert: error bridging to device~n"
-                                            ,"Fault: ~p~n"
-                                            ,"~n~s"]
-                              ,[?MODULE, ?LINE, R, cf_util:call_info_to_string(Call)], AccountId),
-            ?LOG("failed to bridge to device ~p", [R]),
-            CFPid ! { continue }
+-spec bridge_to_endpoints/2 :: (json_object(), #cf_call{}) -> {ok, json_object()} 
+                                                                  | {fail, json_object()}
+                                                                  | {error, term()}.
+bridge_to_endpoints(Data, Call) ->
+    EndpointId = wh_json:get_value(<<"id">>, Data),
+    case cf_endpoint:build(EndpointId, Data, Call) of
+        {error, _}=E ->
+            E;
+        {ok, Endpoints} ->
+            Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
+            IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
+            cf_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call)
     end.

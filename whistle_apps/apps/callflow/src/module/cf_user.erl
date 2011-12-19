@@ -12,8 +12,6 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/5]).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -22,59 +20,43 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (Data, Call) -> {'stop' | 'continue'} when
-      Data :: json_object(),
-      Call :: #cf_call{}.
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
-    put(callid, CallId),
-    UserId = wh_json:get_value(<<"id">>, Data),
-    Endpoints = lists:foldl(fun(DeviceId, Acc) ->
-                                    case cf_endpoint:build(DeviceId, Call) of
-                                        {ok, Endpoint} -> Endpoint ++ Acc;
-                                        {error, _} -> Acc
-                                    end
-                            end, [], cf_attributes:owned_by(UserId, device, Call)),
-    case Endpoints of
-        [] ->
-            ?LOG("user ~s had no endpoints to bridge to", [UserId]),
-            CFPid ! { continue };
-        Endpoints ->
-            Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
-            bridge_to_endpoints(Endpoints, Timeout, Call)
+-spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+handle(Data, Call) ->
+    UserId = wh_json:get_ne_value(<<"id">>, Data),
+    Endpoints = get_endpoints(UserId, Call),
+    Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
+    Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
+    ?LOG("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
+    case length(Endpoints) > 0 andalso cf_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Call) of
+        false ->
+            Error = {error, wh_json:from_list([{<<"user_id">>, UserId}])},
+            ?CF_ALERT(Error, "user has no endpoints", Call),
+            cf_exe:continue(Call);
+        {ok, _} ->
+            ?LOG("completed successful bridge to user"),
+            cf_exe:stop(Call);
+        {fail, _}=F ->
+            ?CF_ALERT(F, Call),
+            cf_util:handle_bridge_failure(F, Call);
+        {error, _}=E ->
+            ?CF_ALERT(E, "error bridging to user", Call),
+            cf_exe:continue(Call)
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempts to bridge to the endpoints created to reach this user
+%% Loop over the provided endpoints for the callflow and build the
+%% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints/3 :: (Endpoints, Timeout, Call) -> {'stop' | 'continue'} when
-      Endpoints :: json_objects(),
-      Timeout :: binary(),
-      Call :: #cf_call{}.
-bridge_to_endpoints(Endpoints, Timeout, #cf_call{cf_pid=CFPid, account_id=AccountId}=Call) ->
-    IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-    case b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call) of
-        {ok, _} ->
-            ?LOG("completed successful bridge to the user"),
-            CFPid ! { stop };
-        {fail, Reason} ->
-            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-            Level = whapps_util:hangup_cause_to_alert_level(Cause),
-            whapps_util:alert(Level, ["Source: ~s(~p)~n"
-                                      ,"Alert: failed to bridge to user~n"
-                                      ,"Fault: ~p~n"
-                                      ,"~n~s"]
-                              ,[?MODULE, ?LINE, Reason, cf_util:call_info_to_string(Call)], AccountId),
-            ?LOG("failed to bridge to user ~s:~s", [Code, Cause]),
-            CFPid ! { continue };
-        {error, R} ->
-            whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
-                                            ,"Alert: error bridging to user~n"
-                                            ,"Fault: ~p~n"
-                                            ,"~n~s"]
-                              ,[?MODULE, ?LINE, R, cf_util:call_info_to_string(Call)], AccountId),
-            ?LOG("failed to bridge to user ~p", [R]),
-            CFPid ! { continue }
-    end.
+-spec get_endpoints/2 :: (undefined | ne_binary(), #cf_call{}) -> json_objects().
+get_endpoints(undefined, _) ->
+    [];
+get_endpoints(UserId, Call) ->
+    lists:foldr(fun(EndpointId, Acc) ->
+                        case cf_endpoint:build(EndpointId, Call) of
+                            {ok, Endpoint} -> Endpoint ++ Acc;
+                            {error, _} -> Acc
+                        end
+                end, [], cf_attributes:fetch_owned_by(UserId, device, Call)).
