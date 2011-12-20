@@ -150,7 +150,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:save(Context#cb_context{db_name=whapps_util:get_db_name(AccountId, encoded)}) of
                       #cb_context{resp_status=success}=Context1 ->
-                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=?EMPTY_JSON_OBJECT}, Params]};
+                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data = wh_json:new()}, Params]};
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
                   end
@@ -232,11 +232,22 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
+handle_info({binding_flushed, Binding}, State) ->
+    ?LOG("Lost binding ~s, wait and rebind", [Binding]),
+    erlang:send_after(100, self(), {rebind, Binding}),
+    {noreply, State};
+
+handle_info({rebind, Binding}, State) ->
+    ?LOG("Rebinding ~s", [Binding]),
+    crossbar_bindings:bind(Binding),
+    {noreply, State};
+
 handle_info(timeout, State) ->
     bind_to_crossbar(),
     {noreply, State};
 
 handle_info(_Info, State) ->
+    ?LOG("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -274,7 +285,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  no_return()).
+-spec bind_to_crossbar/0 :: () ->  'ok' | {'error', 'exists'}.
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>),
@@ -311,7 +322,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -332,7 +343,7 @@ resource_exists(_T) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_account_summary([], Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
@@ -367,14 +378,14 @@ validate(_, Context) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec(load_account_summary/2 :: (AccountId :: binary() | [], Context :: #cb_context{}) -> #cb_context{}).
+-spec load_account_summary/2 :: (ne_binary() | [], #cb_context{}) -> #cb_context{}.
 load_account_summary([], Context) ->
     crossbar_doc:load_view(?AGG_VIEW_SUMMARY, [], Context, fun normalize_view_results/2);
 load_account_summary(AccountId, Context) ->
     crossbar_doc:load_view(?AGG_VIEW_SUMMARY, [
-         {<<"startkey">>, [AccountId]}
-        ,{<<"endkey">>, [AccountId, wh_json:new()]}
-    ], Context, fun normalize_view_results/2).
+					       {<<"startkey">>, [AccountId]}
+					       ,{<<"endkey">>, [AccountId, wh_json:new()]}
+					      ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -448,15 +459,13 @@ update_account(AccountId, #cb_context{req_data=Data}=Context) ->
 %% Attempt to load a summary of the parent of the account
 %% @end
 %%--------------------------------------------------------------------
--spec(load_parent/2 :: (AccountId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_parent/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_parent(AccountId, Context) ->
-    View =
-        crossbar_doc:load_view(?AGG_VIEW_PARENT, [
-             {<<"startkey">>, AccountId}
-            ,{<<"endkey">>, AccountId}
-        ], Context),
-    case View#cb_context.doc of
-        [JObj|_] ->
+    case crossbar_doc:load_view(?AGG_VIEW_PARENT, [
+						   {<<"startkey">>, AccountId}
+						   ,{<<"endkey">>, AccountId}
+						  ], Context) of
+	#cb_context{resp_status=success, doc=[JObj|_]} ->
             Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
             load_account_summary(Parent, Context);
         _Else ->
@@ -490,9 +499,9 @@ update_parent(AccountId, #cb_context{req_data=Data}=Context) ->
 -spec load_children/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_children(AccountId, Context) ->
     crossbar_doc:load_view(?AGG_VIEW_CHILDREN, [
-         {<<"startkey">>, [AccountId]}
-        ,{<<"endkey">>, [AccountId, wh_json:new()]}
-    ], Context, fun normalize_view_results/2).
+						{<<"startkey">>, [AccountId]}
+						,{<<"endkey">>, [AccountId, wh_json:new()]}
+					       ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -503,9 +512,9 @@ load_children(AccountId, Context) ->
 -spec load_descendants/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_descendants(AccountId, Context) ->
     crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [
-         {<<"startkey">>, [AccountId]}
-        ,{<<"endkey">>, [AccountId, wh_json:new()]}
-    ], Context, fun normalize_view_results/2).
+						   {<<"startkey">>, [AccountId]}
+						   ,{<<"endkey">>, [AccountId, wh_json:new()]}
+						  ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -569,19 +578,15 @@ update_tree(_AccountId, undefined, Context) ->
 update_tree(AccountId, ParentId, Context) ->
     case crossbar_doc:load(ParentId, Context) of
         #cb_context{resp_status=success, doc=Parent} ->
-            Descendants =
-                crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [
-                     {<<"startkey">>, [AccountId]}
-                    ,{<<"endkey">>, [AccountId, ?EMPTY_JSON_OBJECT]}
-                ], Context),
-            case Descendants of
+            case load_descendants(AccountId, Context) of
                 #cb_context{resp_status=success, doc=[]} ->
                     crossbar_util:response_bad_identifier(AccountId, Context);
-                #cb_context{resp_status=success, doc=Doc}=Context1 ->
+                #cb_context{resp_status=success, doc=Docs}=Context1 when is_list(Docs) ->
                     Tree = wh_json:get_value(<<"pvt_tree">>, Parent, []) ++ [ParentId, AccountId],
                     Updater = fun(Update, Acc) -> update_doc_tree(Tree, Update, Acc) end,
-                    Updates = lists:foldr(Updater, [], Doc),
-                    Context1#cb_context{doc=Updates}
+                    Updates = lists:foldr(Updater, [], Docs),
+                    Context1#cb_context{doc=Updates};
+		Context1 -> Context1
             end;
         Else ->
             Else
@@ -593,19 +598,20 @@ update_tree(AccountId, ParentId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc_tree/3 :: (list(), json_object(), json_objects()) -> json_objects().
+-spec update_doc_tree/3 :: ([ne_binary(),...], json_object(), json_objects()) -> json_objects().
 update_doc_tree(ParentTree, JObj, Acc) ->
     AccountId = wh_json:get_value(<<"id">>, JObj),
     ParentId = lists:last(ParentTree),
+
     case crossbar_doc:load(AccountId, #cb_context{db_name=?ACCOUNTS_AGG_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
-            Tree = wh_json:get_value(<<"pvt_tree">>, Doc),
-            SubTree =
+            Tree = wh_json:get_value(<<"pvt_tree">>, Doc, []),
+            MyTree =
                 case lists:dropwhile(fun(E)-> E =/= ParentId end, Tree) of
-                    [] -> [];
-                    List -> lists:nthtail(1,List)
+                    [] -> ParentTree;
+                    List -> ParentTree ++ tl(List)
                 end,
-            [wh_json:set_value(<<"pvt_tree">>, [E || E <- ParentTree ++ SubTree, E =/= AccountId], Doc) | Acc];
+            [wh_json:set_value(<<"pvt_tree">>, [E || E <- MyTree, E =/= AccountId], Doc) | Acc];
         _Else ->
             Acc
     end.
@@ -617,7 +623,7 @@ update_doc_tree(ParentTree, JObj, Acc) ->
 %% document
 %% @end
 %%--------------------------------------------------------------------
--spec set_private_fields/3 :: (json_object(), #cb_context{}, 'undefined' | ne_binary) -> json_object().
+-spec set_private_fields/3 :: (json_object(), #cb_context{}, 'undefined' | ne_binary()) -> json_object().
 set_private_fields(JObj0, Context, undefined) ->
     lists:foldl(fun(Fun, JObj1) ->
                         Fun(JObj1, Context)
