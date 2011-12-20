@@ -42,20 +42,14 @@ start_link() ->
 register_local_media(MediaName, CallId) ->
     gen_server:call(?MODULE, {register_local_media, MediaName, CallId}).
 
--spec lookup_media/2 :: (MediaName, CallId) -> tuple(ok, binary()) | tuple(error, not_local) when
-      MediaName :: binary(),
-      CallId :: binary().
+-spec lookup_media/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_local'}.
+-spec lookup_media/3 :: (ne_binary() , 'extant' | 'new', ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_local'}.
 lookup_media(MediaName, CallId) ->
     request_media(MediaName, new, CallId).
-
--spec lookup_media/3 :: (MediaName , Type, CallId) -> tuple(ok, binary()) | tuple(error, not_local) when
-      MediaName :: binary(),
-      Type :: extant | new,
-      CallId :: binary().
 lookup_media(MediaName, Type, CallId) ->
     request_media(MediaName, Type, CallId).
 
--spec(is_local/2 :: (MediaName :: binary(), CallId :: binary()) -> tuple(ok, binary()) | tuple(error, not_local)).
+-spec is_local/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_local'}.
 is_local(MediaName, CallId) ->
     gen_server:call(?MODULE, {is_local, MediaName, CallId}).
 
@@ -224,10 +218,7 @@ generate_local_path(MediaName) ->
     M = wh_util:to_binary(MediaName),
     <<?LOCAL_MEDIA_PATH, M/binary>>.
 
--spec request_media/3 :: (MediaName, Type, CallID) -> tuple(ok, binary()) | tuple(error, not_local) when
-      MediaName :: binary(),
-      Type :: extant | new,
-      CallID :: binary().
+-spec request_media/3 :: (ne_binary(), 'extant' | 'new', ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_local'}.
 request_media(MediaName, Type, CallID) ->
     case gen_server:call(?MODULE, {lookup_local, MediaName, CallID}, infinity) of
         {ok, Path} ->
@@ -255,7 +246,7 @@ lookup_remote(MediaName, new, CallID) ->
               ],
     lookup_remote(MediaName, Request).
 
--spec lookup_remote/2 :: (binary(), proplist()) -> {'ok', binary()} | {'error', 'not_local'}.
+-spec lookup_remote/2 :: (ne_binary(), proplist()) -> {'ok', ne_binary()} | {'error', 'not_local'}.
 lookup_remote(MediaName, Request) ->
     try
 	{ok, MediaResp} = ecallmgr_amqp_pool:media_req(Request, 1000),

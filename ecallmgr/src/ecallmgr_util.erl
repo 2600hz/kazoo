@@ -17,8 +17,7 @@
 -include("ecallmgr.hrl").
 
 %% retrieves the sip address for the 'to' field
--spec get_sip_to/1 :: (Prop) -> binary() when
-      Prop :: proplist().
+-spec get_sip_to/1 :: (proplist()) -> ne_binary().
 get_sip_to(Prop) ->
     list_to_binary([props:get_value(<<"sip_to_user">>, Prop, props:get_value(<<"variable_sip_to_user">>, Prop, "nouser"))
 		    , "@"
@@ -26,8 +25,7 @@ get_sip_to(Prop) ->
 		   ]).
 
 %% retrieves the sip address for the 'from' field
--spec get_sip_from/1 :: (Prop) -> binary() when
-      Prop :: proplist().
+-spec get_sip_from/1 :: (proplist()) -> ne_binary().
 get_sip_from(Prop) ->
     list_to_binary([
 		    props:get_value(<<"sip_from_user">>, Prop, props:get_value(<<"variable_sip_from_user">>, Prop, "nouser"))
@@ -36,8 +34,7 @@ get_sip_from(Prop) ->
 		   ]).
 
 %% retrieves the sip address for the 'request' field
--spec get_sip_request/1 :: (Prop) -> binary() when
-      Prop :: proplist().
+-spec get_sip_request/1 :: (proplist()) -> ne_binary().
 get_sip_request(Prop) ->
     list_to_binary([
 		    props:get_value(<<"Caller-Destination-Number">>, Prop, props:get_value(<<"variable_sip_req_user">>, Prop, "nouser"))
@@ -46,14 +43,12 @@ get_sip_request(Prop) ->
                                ,props:get_value( list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"]), Prop, "nodomain"))
 		   ]).
 
--spec get_orig_ip/1 :: (Prop) -> binary() when
-      Prop :: proplist().
+-spec get_orig_ip/1 :: (proplist()) -> ne_binary().
 get_orig_ip(Prop) ->
     props:get_value(<<"X-AUTH-IP">>, Prop, props:get_value(<<"ip">>, Prop)).
 
 %% Extract custom channel variables to include in the event
--spec custom_channel_vars/1 :: (Prop) -> proplist() when
-      Prop :: proplist().
+-spec custom_channel_vars/1 :: (proplist()) -> proplist().
 custom_channel_vars(Prop) ->
     lists:foldl(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
 		   ({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
@@ -64,14 +59,11 @@ custom_channel_vars(Prop) ->
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
--spec eventstr_to_proplist/1 :: (EvtStr) -> proplist() when
-      EvtStr :: string() | binary().
+-spec eventstr_to_proplist/1 :: (ne_binary() | nonempty_string()) -> proplist().
 eventstr_to_proplist(EvtStr) ->
     [to_kv(X, ": ") || X <- string:tokens(wh_util:to_list(EvtStr), "\n")].
 
--spec to_kv/2 :: (X, Separator) -> {binary(), binary()} when
-      X :: string(),
-      Separator :: string().
+-spec to_kv/2 :: (nonempty_string(), nonempty_string()) -> {ne_binary(), ne_binary()}.
 to_kv(X, Separator) ->
     [K, V] = string:tokens(X, Separator),
     [{V1,[]}] = mochiweb_util:parse_qs(V),
@@ -84,16 +76,12 @@ fix_value(_K, V) -> V.
 
 %% convert a raw FS list of vars  to a proplist
 %% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
--spec varstr_to_proplist/1 :: (VarStr) -> proplist() when
-      VarStr :: string().
+-spec varstr_to_proplist/1 :: (nonempty_string()) -> proplist().
 varstr_to_proplist(VarStr) ->
     [to_kv(X, "=") || X <- string:tokens(wh_util:to_list(VarStr), ",")].
 
--spec get_setting/1 :: (Setting) -> {ok, term()} when
-      Setting :: atom().
--spec get_setting/2 :: (Setting, Default) -> {ok, term()} when
-      Setting :: atom(),
-      Default :: term().
+-spec get_setting/1 :: (atom()) -> {'ok', term()}.
+-spec get_setting/2 :: (atom(), term()) -> {'ok', term()}.
 get_setting(Setting) ->
     get_setting(Setting, undefined).
 get_setting(Setting, Default) ->
@@ -115,14 +103,11 @@ get_setting(Setting, Default) ->
 cache_key(Setting) ->
     {?MODULE, Setting}.
 
--spec is_node_up/1 :: (Node) -> boolean() when
-      Node :: atom().
+-spec is_node_up/1 :: (atom()) -> boolean().
 is_node_up(Node) ->
     ecallmgr_fs_handler:is_node_up(Node).
 
--spec is_node_up/2 :: (Node, UUID) -> boolean() when
-      Node :: atom(),
-      UUID :: binary().
+-spec is_node_up/2 :: (atom(), ne_binary()) -> boolean().
 is_node_up(Node, UUID) ->
     case ecallmgr_fs_handler:is_node_up(Node) andalso freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
 	{'ok', IsUp} -> wh_util:is_true(IsUp);
@@ -130,10 +115,7 @@ is_node_up(Node, UUID) ->
 	_ -> false
     end.
 
--spec fs_log/3 :: (Node, Format, Args) -> fs_api_ret() when
-      Node :: atom(),
-      Format :: string(),
-      Args :: list().
+-spec fs_log/3 :: (atom(), nonempty_string(), list()) -> fs_api_ret().
 fs_log(Node, Format, Args) ->
     Log = case lists:flatten(io_lib:format("Notice log|~s|" ++ Format, [get(callid)] ++ Args)) of
               L when length(L) > 1016 ->
@@ -143,8 +125,7 @@ fs_log(Node, Format, Args) ->
           end,
     freeswitch:api(Node, log, lists:flatten(Log)).
 
--spec put_callid/1 :: (JObj) -> 'undefined' | term() when
-      JObj :: json_object().
+-spec put_callid/1 :: (json_object()) -> 'undefined' | term().
 put_callid(JObj) ->
     case props:get_value(<<"Call-ID">>, JObj) of
 	undefined -> put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>));
@@ -156,14 +137,8 @@ put_callid(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec media_path/2 :: (MediaName, UUID) -> binary() when
-      MediaName :: binary(),
-      UUID :: binary().
--spec media_path/3 :: (MediaName, Type, UUID) -> binary() when
-      MediaName :: binary(),
-      Type :: 'extant' | 'new',
-      UUID :: binary().
-
+-spec media_path/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+-spec media_path/3 :: (ne_binary(), 'extant' | 'new', ne_binary()) -> ne_binary().
 media_path(MediaName, UUID) ->
     media_path(MediaName, new, UUID).
 
@@ -177,9 +152,11 @@ media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID) ->
     Media;
 media_path(MediaName, Type, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
-        {'error', _} ->
+        {'error', _E} ->
+	    ?LOG("Failed to get media ~s: ~p", [MediaName, _E]),
             MediaName;
         {ok, Url} ->
+	    ?LOG("Recevied URL: ~s", [Url]),
             get_fs_playback(Url)
     end.
 
@@ -188,8 +165,7 @@ media_path(MediaName, Type, UUID) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_playback/1 :: (Url) -> binary() when
-      Url :: binary().
+-spec get_fs_playback/1 :: (ne_binary()) -> ne_binary().
 get_fs_playback(<<"http://", _/binary>>=Url) ->
     {ok, RemoteAudioScript} = get_setting(remote_audio_script, <<"/tmp/fetch_remote_audio.sh">>),
     <<"shell_stream://", (wh_util:to_binary(RemoteAudioScript))/binary, " ", Url/binary>>;
