@@ -201,7 +201,7 @@ to_float(X, S) when is_list(X) ->
     end;
 to_float(X, strict) when is_integer(X) ->
     error(badarg);
-to_float(X, nonstrict) when is_integer(X) ->
+to_float(X, notstrict) when is_integer(X) ->
     X * 1.0;
 to_float(X, _) when is_float(X) ->
     X.
@@ -454,22 +454,22 @@ is_ipv6(Address) when is_list(Address) ->
 prop_to_integer() ->
     ?FORALL({F, I}, {float(), integer()},
 	    begin
-		Is = [ Fun(N) || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
-		lists:all(fun(N) -> erlang:is_integer(to_integer(N)) end, Is)
+		Is = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
+		lists:all(fun([FN, N]) -> erlang:is_integer(to_integer(N)) andalso erlang:is_integer(to_integer(FN)) end, Is)
 	    end).
 
 prop_to_number() ->
     ?FORALL({F, I}, {float(), integer()},
 	    begin
-		Is = [ Fun(N) || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
-		lists:all(fun(N) -> erlang:is_number(to_number(N)) end, Is)
+		Is = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
+		lists:all(fun([FN, N]) -> erlang:is_number(to_number(N)) andalso erlang:is_number(to_number(FN)) end, Is)
 	    end).
 
 prop_to_float() ->
     ?FORALL({F, I}, {float(), integer()},
 	    begin
-		Fs = [ Fun(N) || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
-		lists:all(fun(N) -> erlang:is_float(to_float(N)) end, Fs)
+		Fs = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
+		lists:all(fun([FN, N]) -> erlang:is_float(to_float(N)) andalso erlang:is_float(to_float(FN)) end, Fs)
 	    end).
 
 prop_to_list() ->
@@ -482,7 +482,7 @@ prop_to_binary() ->
 	    lists:all(fun(X) -> is_binary(to_binary(X)) end, [A, L, B, I, F, IO])).
 
 prop_iolist_t() ->
-    ?FORALL(IO, iolist(), is_binary(iolist_to_binary(IO))).
+    ?FORALL(IO, iolist(), is_binary(to_binary(IO))).
 
 %% (AAABBBCCCC, 1AAABBBCCCC) -> AAABBBCCCCCC.
 prop_to_npan() ->
