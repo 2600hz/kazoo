@@ -19,7 +19,7 @@
            "type": "string",
            "required": "true"
        },
-       "operating_system": {
+       "os": {
            "type": "string",
            "required": "true"
        }
