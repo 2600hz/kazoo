@@ -11,7 +11,8 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, handle_channel_query/2, handle_channel_status/2]).
+-export([start_link/0, handle_channel_query/2, handle_channel_status/2, handle_call_status/2]).
+-export([call_status/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -21,12 +22,11 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [
-		     {{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"status_req">>}]}
+-define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
+		     ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
 		     ,{{?MODULE, handle_channel_query}, [{<<"locate">>, <<"channel_req">>}]}
 		    ]).
--define(BINDINGS, [
-		   {switch_lookups, []}
+-define(BINDINGS, [{switch_lookups, []}
 		   ,{channel_query, []}
 		  ]).
 
@@ -49,38 +49,86 @@ start_link() ->
 			     ,{bindings, ?BINDINGS}
 			    ], []).
 
+call_status(CallID) when not is_binary(CallID) ->
+    call_status(wh_util:to_binary(CallID));
+call_status(CallID) ->
+    case [NH || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
+        [] -> ?LOG("no node found with call having leg ~s", [CallID]);
+        [NodeHandler] ->
+            case ecallmgr_fs_node:uuid_dump(NodeHandler, CallID) of
+                {error, E} ->
+                    ?LOG("failed to get channel info for ~s: ~p", [CallID, E]),
+                    [{<<"Call-ID">>, CallID}
+                     ,{<<"Status">>, <<"active">>}
+                     ,{<<"Error-Msg">>, wh_util:to_binary(E)}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)];
+                {ok, Props} ->
+                    ?LOG("got channel info for ~s, forming response", [CallID]),
+                    create_call_status_resp(Props, props:get_value(<<"Channel-Call-UUID">>, Props) =:= CallID)
+            end
+    end.
+
+
 -spec handle_channel_status/2 :: (json_object(), proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
-    true = wapi_call:status_req_v(JObj),
+    true = wapi_call:channel_status_req_v(JObj),
     wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 
     ?LOG_START("channel status request received"),
 
     case [ecallmgr_fs_node:hostname(NH) || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
-	[] -> ?LOG("No node found having call");
+	[] -> ?LOG("no node found with channel ~s", [CallID]);
 	[{ok, Hostname}] ->
 	    ?LOG("call is on ~s", [Hostname]),
 	    Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Switch-Hostname">>, Hostname}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-	    wapi_call:publish_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+	    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
 	[{error, Err}] ->
 	    ?LOG("Hostname lookup failed, but call is active"),
 	    Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Error-Msg">>, wh_util:to_binary(Err)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-	    wapi_call:publish_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+	    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
 	[timeout] ->
 	    Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Error-Msg">>, <<"switch timeout">>}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-	    wapi_call:publish_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
+	    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
+-spec handle_call_status/2 :: (json_object(), proplist()) -> 'ok'.
+handle_call_status(JObj, _Props) ->
+    true = wapi_call:call_status_req_v(JObj),
+    wh_util:put_callid(JObj),
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+io:format("lookup ~s~n", [CallID]),
+    ?LOG("call status request received"),
+
+    case [NH || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
+        [] -> ?LOG("no node found with call having leg ~s", [CallID]);
+        [NodeHandler] ->
+            case ecallmgr_fs_node:uuid_dump(NodeHandler, CallID) of
+                {error, E} ->
+                    ?LOG("failed to get channel info for ~s: ~p", [CallID, E]),
+                    Resp = [{<<"Call-ID">>, CallID}
+                            ,{<<"Status">>, <<"active">>}
+                            ,{<<"Error-Msg">>, wh_util:to_binary(E)}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+                    wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+                {ok, Props} ->
+                    ?LOG("got channel info for ~s, forming response", [CallID]),
+                    Resp = create_call_status_resp(Props, props:get_value(<<"Channel-Call-UUID">>, Props) =:= CallID),
+                    io:format("~p~n", [[{<<"Control-Queue">>, <<"test">>}|Resp]]),
+                    wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), [{<<"Control-Queue">>, <<"test">>}|Resp])
+            end
+    end.
+
+-spec handle_channel_query/2 :: (json_object(), proplist()) -> 'ok'.
 handle_channel_query(JObj, _Props) ->
     true = wapi_channel_query:req_v(JObj),
     wh_util:put_callid(JObj),
@@ -236,3 +284,53 @@ send_channel_query_resp(RespQ, UUIDs) ->
     Resp = [{<<"Active-Calls">>, UUIDs}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     wapi_channel_query:publish_resp(RespQ, Resp).
+
+-spec create_call_status_resp/2 :: (proplist(), boolean()) -> proplist().
+create_call_status_resp(Props, true) ->
+    {OLCIName, OLCINum} = case props:get_value(<<"Other-Leg-Direction">>, Props) of
+                               <<"outbound">> ->
+                                   {props:get_value(<<"Other-Leg-Callee-ID-Name">>, Props)
+                                    ,props:get_value(<<"Other-Leg-Callee-ID-Number">>, Props)};
+                               <<"inbound">> ->
+                                   {props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)
+                                    ,props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
+                           end,     
+    [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
+     ,{<<"Status">>, <<"active">>}
+     ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
+     ,{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
+     ,{<<"Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
+     ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props
+                                              ,props:get_value(<<"Caller-Caller-ID-Name">>, Props))}
+     ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props
+                                              ,props:get_value(<<"Caller-Caller-ID-Number">>, Props))}
+     ,{<<"Destination-Number">>, props:get_value(<<"Caller-Destination-Number">>, Props)}
+     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props)}
+     ,{<<"Other-Leg-Caller-ID-Name">>, OLCIName}
+     ,{<<"Other-Leg-Caller-ID-Number">>, OLCINum}
+     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)];
+create_call_status_resp(Props, false) ->
+    {OLCIName, OLCINum} = case props:get_value(<<"Call-Direction">>, Props) of
+                               <<"outbound">> ->
+                                   {props:get_value(<<"Caller-Callee-ID-Name">>, Props)
+                                    ,props:get_value(<<"Caller-Callee-ID-Number">>, Props)};
+                               <<"inbound">> ->
+                                   {props:get_value(<<"Caller-Caller-ID-Name">>, Props)
+                                    ,props:get_value(<<"Caller-Caller-ID-Number">>, Props)}
+                           end,     
+    [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
+     ,{<<"Status">>, <<"active">>}
+     ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
+     ,{<<"Call-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props)}
+     ,{<<"Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
+     ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props
+                                              ,props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props))}
+     ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props
+                                              ,props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props))}
+     ,{<<"Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
+     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
+     ,{<<"Other-Leg-Caller-ID-Name">>, OLCIName}
+     ,{<<"Other-Leg-Caller-ID-Number">>, OLCINum}
+     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Caller-Destination-Number">>, Props)}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)].
