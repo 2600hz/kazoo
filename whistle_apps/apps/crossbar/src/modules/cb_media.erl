@@ -63,7 +63,8 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, ok, 0}.
+    _ = bind_to_crossbar(),
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -107,6 +108,7 @@ handle_cast(_, S) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.content_types_provided.media">>, {RD, Context, Params}}, State) ->
     spawn(fun() ->
+		  _ = crossbar_util:put_reqid(Context),
 		  Context1 = content_types_provided(Params, Context),
                   Pid ! {binding_result, true, {RD, Context1, Params}}
 	  end),
@@ -114,6 +116,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.content_types_provided.media">>,
 
 handle_info({binding_fired, Pid, <<"v1_resource.content_types_accepted.media">>, {RD, Context, Params}}, State) ->
     spawn(fun() ->
+		  _ = crossbar_util:put_reqid(Context),
 		  Context1 = content_types_accepted(Params, Context),
                   Pid ! {binding_result, true, {RD, Context1, Params}}
 	  end),
@@ -156,6 +159,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.media">>, [RD, Conte
 		  end);
 	_ ->
 	    spawn(fun() ->
+			  _ = crossbar_util:put_reqid(Context),
 			  Pid ! {binding_result, true, [RD, Context, Params]}
 		  end)
     end,
@@ -230,11 +234,8 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
-handle_info(timeout, State) ->
-    bind_to_crossbar(),
-    {noreply, State};
-
 handle_info(_Info, State) ->
+    ?LOG("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -272,7 +273,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  no_return()).
+-spec bind_to_crossbar/0 :: () ->  'ok' | {'error', 'exists'}.
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.media">>),
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.media">>),
@@ -288,11 +289,13 @@ bind_to_crossbar() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec content_types_provided/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
 content_types_provided([_MediaID, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
     CTP = [{to_binary, ?MEDIA_MIME_TYPES}],
     Context#cb_context{content_types_provided=CTP};
 content_types_provided(_, Context) -> Context.
 
+-spec content_types_accepted/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
 content_types_accepted([_MediaID, ?BIN_DATA], #cb_context{req_verb = <<"post">>}=Context) ->
     CTA = [{from_binary, ?MEDIA_MIME_TYPES}],
     Context#cb_context{content_types_accepted=CTA};
@@ -309,7 +312,7 @@ content_types_accepted(_, Context) -> Context.
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_MediaID]) ->
@@ -330,7 +333,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_MediaID]) ->
@@ -349,7 +352,7 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
+-spec validate/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     lookup_media(Context);
 
@@ -402,6 +405,7 @@ validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context
     ?LOG_SYS("Data: ~p", [D]),
     crossbar_util:response_faulty_request(Context).
 
+-spec create_media_meta/2 :: (json_object(), #cb_context{}) -> #cb_context{}.
 create_media_meta(Data, Context) ->
     Doc1 = lists:foldr(fun(Meta, DocAcc) ->
 			       case wh_json:get_value(Meta, Data) of
@@ -409,15 +413,16 @@ create_media_meta(Data, Context) ->
 				   V -> [{Meta, wh_util:to_binary(V)} | DocAcc]
 			       end
 		       end, [], ?METADATA_FIELDS),
-    crossbar_doc:save(Context#cb_context{doc={struct, [{<<"pvt_type">>, <<"media">>} | Doc1]}}).
+    crossbar_doc:save(Context#cb_context{doc=wh_json:from_list([{<<"pvt_type">>, <<"media">>} | Doc1])}).
 
+-spec update_media_binary/4 :: (ne_binary(), ne_binary(), #cb_context{}, json_object()) -> #cb_context{}.
 update_media_binary(MediaID, Contents, Context, HeadersJObj) ->
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
     Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
 
     ?LOG("Setting Content-Type to ~s", [CT]),
 
-    case crossbar_doc:save_attachment(MediaID, attachment_name(MediaID), Contents, Context, Opts) of
+    case crossbar_doc:save_attachment(MediaID, attachment_name(), Contents, Context, Opts) of
 	#cb_context{resp_status=success}=Context1 ->
 	    ?LOG("Saved attachement successfully"),
 	    #cb_context{doc=Doc} = crossbar_doc:load(MediaID, Context),
@@ -429,7 +434,7 @@ update_media_binary(MediaID, Contents, Context, HeadersJObj) ->
     end.
 
 %% GET /media
--spec(lookup_media/1 :: (Context :: #cb_context{}) -> #cb_context{}).
+-spec lookup_media/1 :: (Context :: #cb_context{}) -> #cb_context{}.
 lookup_media(Context) ->
     case crossbar_doc:load_view(<<"media/crossbar_listing">>, [], Context) of
 	#cb_context{resp_status=success, doc=Doc}=Context1 ->
@@ -439,16 +444,25 @@ lookup_media(Context) ->
     end.
 
 %% GET/POST/DELETE /media/MediaID
--spec(get_media_doc/2 :: (MediaID :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec get_media_doc/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 get_media_doc(MediaID, Context) ->
     crossbar_doc:load(MediaID, Context).
 
 %% GET/DELETE /media/MediaID/raw
 get_media_binary(MediaID, Context) ->
-    crossbar_doc:load_attachment(MediaID, attachment_name(MediaID), Context).
+    case crossbar_doc:load(MediaID, Context) of
+	#cb_context{resp_status=success, doc=MediaMeta} ->
+	    case wh_json:get_value([<<"_attachments">>, 1], MediaMeta) of
+		undefined -> crossbar_util:response_bad_identifier(MediaID, Context);
+		AttachMeta ->
+		    [AttachmentID] = wh_json:get_keys(AttachMeta),
+		    crossbar_doc:load_attachment(MediaID, AttachmentID, Context)
+	    end;
+	Context1 -> Context1
+    end.
 
 %% check for existence of media by name
--spec(lookup_media_by_name/2 :: (MediaID :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec lookup_media_by_name/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 lookup_media_by_name(MediaName, Context) ->
     crossbar_doc:load_view(<<"media/listing_by_name">>, [{<<"key">>, MediaName}], Context).
 
@@ -461,7 +475,17 @@ delete_media(Context) ->
     crossbar_doc:delete(Context).
 
 delete_media_binary(MediaID, Context) ->
-    crossbar_doc:delete_attachment(MediaID, attachment_name(MediaID), Context).
+    case crossbar_doc:load(MediaID, Context) of
+	#cb_context{resp_status=success, doc=MediaMeta} ->
+	    case wh_json:get_value([<<"_attachments">>, 1], MediaMeta) of
+		undefined -> crossbar_util:response_bad_identifier(MediaID, Context);
+		AttachMeta ->
+		    [AttachmentID] = wh_json:get_keys(AttachMeta),
+		    crossbar_doc:delete_attachment(MediaID, AttachmentID, Context)
+	    end;
+	Context1 -> Context1
+    end.
 
-attachment_name(MediaID) ->
-    <<MediaID/binary, "-raw">>.
+-spec attachment_name/0 :: () -> ne_binary().
+attachment_name() ->
+    list_to_binary([wh_util:to_hex(crypto:rand_bytes(16)), ".mp3"]).
