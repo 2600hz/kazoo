@@ -14,6 +14,8 @@
 -export([callid/1, queue_name/1, control_queue_name/1]).
 -export([continue/1, continue/2, branch/2, stop/1, transfer/1]).
 -export([get_branch_keys/1, get_all_branch_keys/1, attempt/1, attempt/2]).
+-export([acquire_control/2]).
+-export([other_legs/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -23,7 +25,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CALL_SANITY_CHECK, 60000).
+-define(CALL_SANITY_CHECK, 30000).
 
 -define(RESPONDERS, [{{?MODULE, relay_amqp}, [{<<"*">>, <<"*">>}]}]).
 -define(QUEUE_NAME, <<"">>).
@@ -37,6 +39,7 @@
                 ,ctrl_q = undefined :: undefined | ne_binary()
                 ,call_id = <<"0000000000">> :: ne_binary()
                 ,sanity_timer = undefined :: undefined | timer:tref()
+                ,other_legs = [] :: [ne_binary(),...] | []
                }).
                
 %%%===================================================================
@@ -59,24 +62,6 @@ start_link(Flow, ControlQ, CallId, Call) ->
 				      ,{queue_options, ?QUEUE_OPTIONS}
 				      ,{consume_options, ?CONSUME_OPTIONS}
 				     ], [Flow, ControlQ, CallId, Call]).
-
--spec callid/1 :: (#cf_call{} | pid()) -> ne_binary().
-callid(#cf_call{cf_pid=Srv}) ->
-    callid(Srv);
-callid(Srv) ->
-    CallId = gen_server:call(Srv, {callid}),
-    put(callid, CallId),
-    CallId.
-
--spec queue_name/1 :: (#cf_call{} | pid()) -> ne_binary().
-queue_name(#cf_call{cf_pid=Srv}) ->
-    gen_listener:queue_name(Srv).
-
--spec control_queue_name/1 :: (#cf_call{} | pid()) -> ne_binary().
-control_queue_name(#cf_call{cf_pid=Srv}) ->
-    control_queue_name(Srv);
-control_queue_name(Srv) ->
-    gen_server:call(Srv, {control_queue_name}).
 
 -spec continue/1 :: (#cf_call{} | pid()) -> ok.
 -spec continue/2 :: (ne_binary(), #cf_call{} | pid()) -> ok.
@@ -106,6 +91,39 @@ transfer(#cf_call{cf_pid=Srv}) ->
 transfer(Srv) ->
     gen_server:cast(Srv, {transfer}).
 
+-spec acquire_control/2 :: (ne_binary(), #cf_call{} | pid()) -> ok.
+acquire_control(CallId, #cf_call{cf_pid=Srv}) ->
+    acquire_control(CallId, Srv);
+acquire_control(CallId, Srv) ->
+    put(callid, CallId),
+    gen_server:cast(Srv, {acquire_control, CallId}).
+
+-spec callid/1 :: (#cf_call{} | pid()) -> ne_binary().
+callid(#cf_call{cf_pid=Srv}) ->
+    callid(Srv);
+callid(Srv) ->
+    CallId = gen_server:call(Srv, {callid}),
+    put(callid, CallId),
+    CallId.
+
+-spec queue_name/1 :: (#cf_call{} | pid()) -> ne_binary().
+queue_name(#cf_call{cf_pid=Srv}) ->
+    queue_name(Srv);
+queue_name(Srv) ->
+    gen_listener:queue_name(Srv).
+
+-spec control_queue_name/1 :: (#cf_call{} | pid()) -> ne_binary().
+control_queue_name(#cf_call{cf_pid=Srv}) ->
+    control_queue_name(Srv);
+control_queue_name(Srv) ->
+    gen_server:call(Srv, {control_queue_name}).
+
+-spec other_legs/1 :: (#cf_call{} | pid()) -> ne_binary().
+other_legs(#cf_call{cf_pid=Srv}) ->
+    other_legs(Srv);
+other_legs(Srv) ->
+    gen_server:call(Srv, {other_legs}).
+
 -spec get_branch_keys/1 :: (#cf_call{} | pid()) -> [ne_binary(),...].
 get_branch_keys(#cf_call{cf_pid=Srv}) ->
     get_branch_keys(Srv);
@@ -134,6 +152,8 @@ relay_amqp(JObj, Props) ->
             Pid ! {amqp_msg, JObj},
             ok;
         _Else ->
+            %% TODO: queue?
+            ?LOG("received event to relay while no module running, dropping"),
             ok
     end.
 
@@ -185,6 +205,8 @@ handle_call({callid}, _From, #state{call_id=CallId}=State) ->
     {reply, CallId, State};
 handle_call({control_queue_name}, _From, #state{ctrl_q=CtrlQ}=State) ->
     {reply, CtrlQ, State};
+handle_call({other_legs}, _From, #state{other_legs=CallIds}=State) ->
+    {reply, CallIds, State};
 handle_call({get_branch_keys}, _From, #state{flow = Flow}=State) ->
     {struct, Children} = wh_json:get_value(<<"children">>, Flow, ?EMPTY_JSON_OBJECT),
     Reply = {branch_keys, lists:delete(<<"_">>, proplists:get_keys(Children))},
@@ -226,6 +248,7 @@ handle_cast({continue, Key}, #state{flow=Flow}=State) ->
     ?LOG("continuing to child ~s", [Key]),
     case wh_json:get_value([<<"children">>, Key], Flow) of
         undefined when Key =:= <<"_">> ->
+            ?LOG("wildcard child does not exist, we are lost..."),
             {stop, normal, State};
         undefined ->
             ?LOG("requested child does not exist, trying wild card", [Key]),
@@ -243,9 +266,35 @@ handle_cast({transfer}, State) ->
 handle_cast({branch, NewFlow}, State) ->
     ?LOG("callflow has been branched"),
     {noreply, launch_cf_module(State#state{flow=NewFlow})};
-handle_cast({call_status_received, _}, State) ->
+handle_cast({channel_status_received, _}, #state{sanity_timer=RunningTRef}=State) ->
     ?LOG("callflow executer is sane... for now"),
-    {noreply, State#state{status = <<"sane">>}};
+    timer:cancel(RunningTRef),
+    {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
+    {noreply, State#state{status = <<"sane">>, sanity_timer=TRef}};
+handle_cast({add_leg, undefined}, State) ->
+    {noreply, State};
+handle_cast({add_leg, CallId}, #state{other_legs=Legs}=State) ->
+    case lists:member(CallId, Legs) of
+        true -> {noreply, State};
+        false ->
+            ?LOG("added leg ~s to call", [CallId]),
+            {noreply, State#state{other_legs=[CallId|Legs]}}
+    end;
+handle_cast({rm_leg, undefined}, State) ->
+    {noreply, State};
+handle_cast({rm_leg, CallId}, #state{other_legs=Legs}=State) ->
+    ?LOG("removed leg ~s from call", [CallId]),
+    {noreply, State#state{other_legs=lists:delete(CallId, Legs)}};
+handle_cast({update_callid, NewCallId}, #state{call_id=NewCallId}=State) ->
+    ?LOG("ummm, no."),
+    {noreply, State};
+handle_cast({acquire_control, NewCallId}, #state{call_id=PrevCallId, other_legs=Legs}=State) ->
+    ?LOG("attempting to acquire control of call ~s", [NewCallId]),
+    gen_listener:rm_binding(self(), call, [{callid, PrevCallId}]),
+    put(callid, NewCallId),
+    gen_listener:add_binding(self(), call, [{callid, NewCallId}]),
+    ?LOG("acquired control from ~s", [PrevCallId]),
+    {noreply, State#state{call_id=NewCallId, other_legs=lists:delete(NewCallId, Legs)}};
 handle_cast(_, State) ->
     {noreply, State}.
 
@@ -276,7 +325,7 @@ handle_info({'EXIT', Pid, Reason}, #state{cf_module_pid=Pid, call=#cf_call{accou
     ?MODULE:continue(self()),
     {noreply, State};
 handle_info({call_sanity_check}, #state{status = <<"testing">>, call=#cf_call{account_id=AccountId}=Call}=State) ->
-    ?LOG("call executer is insane, shuting down"),
+    ?LOG("callflow executer is insane, shuting down"),
     spawn(fun() ->
                   Message = ["Source: ~s(~p)~n"
                              ,"Alert: forced channel termination~n"
@@ -287,13 +336,10 @@ handle_info({call_sanity_check}, #state{status = <<"testing">>, call=#cf_call{ac
                   whapps_util:alert(<<"notice">>, lists:flatten(Message), Args, AccountId)
           end),
     {stop, insane, State#state{status = <<"insane">>}};
-handle_info({call_sanity_check}, #state{call_id=CallId}=State) ->
-    ?LOG("ensuring call is active, requesting call status"),
-    Q = ?MODULE:queue_name(self()),
-    Req = [{<<"Call-ID">>, CallId}
-           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
-    wapi_call:publish_status_req(CallId, Req),
-    {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
+handle_info({call_sanity_check}, #state{call_id=CallId, call=Call}=State) ->
+    ?LOG("ensuring call is active, requesting controlling channel status"),
+    spawn(fun() -> cf_call_command:channel_status(CallId, Call) end),
+    {ok, TRef} = timer:send_after(2000, self(), {call_sanity_check}),
     {noreply, State#state{status = <<"testing">>, sanity_timer=TRef}};
 handle_info(timeout, State) ->
     {noreply, launch_cf_module(State)};
@@ -305,15 +351,35 @@ handle_info(_, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-handle_event(JObj, #state{cf_module_pid=Pid}) ->
-    case whapps_util:get_event_type(JObj) of
-        {<<"call_event">>, <<"status_resp">>} ->
-            ?LOG("received call status"),
-            gen_server:cast(self(), {call_status_received, JObj});
-        _Else ->
-            ok
-    end,
-    {reply, [{cf_module_pid, Pid}]}.
+handle_event(JObj, #state{cf_module_pid=Pid, call_id=CallId}) ->
+    case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)}of
+        {{<<"call_event">>, <<"channel_status_resp">>}, _} ->
+            gen_server:cast(self(), {channel_status_received, JObj}),
+            {reply, [{cf_module_pid, Pid}]};
+        {{<<"call_event">>, <<"call_status_resp">>}, _} ->
+            {reply, [{cf_module_pid, Pid}]};
+        {{<<"call_event">>, <<"CHANNEL_CREATE">>}, CallId} ->
+            OLUI = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+            gen_server:cast(self(), {add_leg, OLUI}),
+            {reply, [{cf_module_pid, Pid}]};
+        {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
+            OLUI = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+            gen_server:cast(self(), {rm_leg, OLUI}),
+            {reply, [{cf_module_pid, Pid}]};
+        {{<<"call_event">>, <<"CHANNEL_BRIDGE">>}, CallId} ->
+            OLUI = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+            gen_server:cast(self(), {add_leg, OLUI}),
+            {reply, [{cf_module_pid, Pid}]};
+        {{<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, CallId} ->
+            OLUI = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+            gen_server:cast(self(), {rm_leg, OLUI}),
+            {reply, [{cf_module_pid, Pid}]};
+        {_, CallId} ->
+            {reply, [{cf_module_pid, Pid}]};
+        {_, _Else} ->
+            ?LOG("received event from call ~s while relaying for ~s, dropping", [_Else, CallId]),
+            ignore
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -356,6 +422,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%--------------------------------------------------------------------
 %% @private
+%% this function determines if the callflow module specified at the 
+%% current node is 'avaliable' and attempts to launch it if so. 
+%% Otherwise it will advance to the next child in the flow
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -379,6 +448,8 @@ launch_cf_module(#state{call=#cf_call{last_action=LastAction}=Call, flow=Flow, c
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% helper function to spawn a linked callflow module, from the entry
+%% point 'handle' having set the callid on the new process first
 %% @end
 %%--------------------------------------------------------------------
 -spec spawn_cf_module/4 :: (atom(), list(), ne_binary(), #cf_call{}) -> {pid(), atom()}.
@@ -391,6 +462,10 @@ spawn_cf_module(CFModule, Data, CallId, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% unlike the cf_call_command this send command does not call the 
+%% functions of this module to form the headers, nor does it set
+%% the reply queue.  Used when this module is terminating to send
+%% a hangup command without relying on the (now terminated) cf_exe.
 %% @end
 %%--------------------------------------------------------------------
 -spec send_command/2 :: (proplist(), #state{}) -> ok.
