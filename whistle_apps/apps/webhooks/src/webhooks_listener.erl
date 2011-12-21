@@ -3,7 +3,9 @@
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
-%%% Listener for a webhook
+%%% Listener for a webhook. This module should do almost nothing with the
+%%% the response besides receive it and pass it along to
+%%% wh_api:disambiguate_and_publish/3
 %%%
 %%% @end
 %%% Created : 29 Nov 2011 by James Aimonetti <james@2600hz.org>
