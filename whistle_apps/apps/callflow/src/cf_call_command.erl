@@ -14,7 +14,8 @@
 -export([response/2, response/3, response/4]).
 -export([pickup/2]).
 -export([redirect/3]).
--export([answer/1, hangup/1, set/3, fetch/1, fetch/2, status/1, status/2]).
+-export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
+-export([call_status/1, call_status/2, channel_status/1, channel_status/2]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
@@ -28,7 +29,8 @@
 -export([noop/1]).
 -export([flush/1, flush_dtmf/1]).
 
--export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2, b_status/1, b_status/2]).
+-export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2]).
+-export([b_call_status/1, b_call_status/2, b_channel_status/1, b_channel_status/2]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6]).
 -export([b_play/2, b_play/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
@@ -258,34 +260,62 @@ b_hangup(Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Produces the low level wh_api request to get the call status.
+%% This request will execute immediately
+%% @end
+%%--------------------------------------------------------------------
+-spec call_status/1 :: (#cf_call{}) -> 'ok'.
+-spec call_status/2 :: (undefined | ne_binary(), #cf_call{}) -> 'ok'.
+-spec b_call_status/1 :: (#cf_call{}) -> {'ok', 'channel_hungup'}.
+-spec b_call_status/2 :: (undefined | ne_binary(), #cf_call{}) -> {'ok', 'channel_hungup'}.
+
+call_status(Call) ->
+    call_status(cf_exe:callid(Call), Call).
+
+call_status(undefined, Call) ->
+    call_status(cf_exe:callid(Call), Call);    
+call_status(CallId, Call) ->
+    Command = [{<<"Call-ID">>, CallId}
+               | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+              ],
+    wapi_call:publish_call_status_req(CallId, Command).
+
+b_call_status(Call) ->
+    b_call_status(cf_exe:callid(Call), Call).
+
+b_call_status(CallId, Call) ->
+    call_status(CallId, Call),
+    wait_for_message(<<>>, <<"call_status_resp">>, <<"call_event">>, 2000).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Produces the low level wh_api request to get the channel status.
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec status/1 :: (#cf_call{}) -> 'ok'.
--spec status/2 :: (undefined | ne_binary(), #cf_call{}) -> 'ok'.
--spec b_status/1 :: (#cf_call{}) -> {'ok', 'channel_hungup'}.
--spec b_status/2 :: (undefined | ne_binary(), #cf_call{}) -> {'ok', 'channel_hungup'}.
+-spec channel_status/1 :: (#cf_call{}) -> 'ok'.
+-spec channel_status/2 :: (undefined | ne_binary(), #cf_call{}) -> 'ok'.
+-spec b_channel_status/1 :: (#cf_call{}) -> {'ok', 'channel_hungup'}.
+-spec b_channel_status/2 :: (undefined | ne_binary(), #cf_call{}) -> {'ok', 'channel_hungup'}.
 
-status(Call) ->
-    status(cf_exe:callid(Call), Call).
+channel_status(Call) ->
+    channel_status(cf_exe:callid(Call), Call).
 
-status(undefined, Call) ->
-    status(cf_exe:callid(Call), Call);    
-status(CallId, Call) ->
+channel_status(undefined, Call) ->
+    channel_status(cf_exe:callid(Call), Call);    
+channel_status(CallId, Call) ->
     Command = [{<<"Call-ID">>, CallId}
-               ,{<<"Insert-At">>, <<"now">>}
                | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
               ],
-    wapi_call:publish_status_req(CallId, Command).
+    wapi_call:publish_channel_status_req(CallId, Command).
 
-b_status(Call) ->
-    b_status(cf_exe:callid(Call), Call).
+b_channel_status(Call) ->
+    b_channel_status(cf_exe:callid(Call), Call).
 
-b_status(CallId, Call) ->
-    status(CallId, Call),
-    wait_for_message(<<>>, <<"status_resp">>, <<"call_event">>, 2000).
-
+b_channel_status(CallId, Call) ->
+    channel_status(CallId, Call),
+    wait_for_message(<<>>, <<"channel_status_resp">>, <<"call_event">>, 1000).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1210,36 +1240,66 @@ wait_for_bridge(Timeout, Call) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            Result = case bridge_was_successful(JObj) of
+            EventType = get_event_type(JObj),
+            AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
+                                            wh_json:get_value(<<"Hangup-Cause">>, JObj)),
+            Result = case lists:member(AppResponse, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]) of
                          true -> ok;
                          false -> fail
                      end,
-            EventType = get_event_type(JObj),
-            AppResponse = wh_json:get_value(<<"Application-Response">>, JObj),
             case {EventType, get_transfer_state(EventType, JObj)} of               
                 {{<<"error">>, <<"dialplan">>, _}, _} ->
+                    ?LOG("dialplan error: ~s", [wh_json:encode(JObj)]),
                     {error, JObj};
 
                 {{<<"call_event">>, <<"CHANNEL_BRIDGE">>, _}, _} ->
-		    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    ?LOG("bridged started, cancelling failure timer with ~pms remaining", [Timeout - (DiffMicro div 1000)]),
+                    CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+                    ?LOG("channel bridged to ~s", [CallId]),
                     wait_for_bridge(infinity, Call);
 
-                {{<<"call_event">>, <<"CHANNEL_DESTROY">>, _}, transferer} ->
-                    cf_exe:transfer(Call);
-                {{<<"call_event">>, <<"CHANNEL_DESTROY">>, _}, transferee} ->
-                    ?LOG("~s", [wh_json:encode(JObj)]),
-%%                    do_something_to_acquire_channel();
-                    wait_for_bridge(Timeout, Call);
-                {{<<"call_event">>, <<"CHANNEL_DESTROY">>, _}, undefined} ->
-                    ?LOG("bridge destroyed with result ~s catagorized as ~s", [AppResponse, Result]),
-                    {Result, JObj};
+%%                {{<<"call_event">>, <<"CHANNEL_DESTROY">>, _}, transferer} ->
+%%                    cf_exe:transfer(Call);
+%%                {{<<"call_event">>, <<"CHANNEL_DESTROY">>, _}, transferee} ->
+%%                    ?LOG("~s", [wh_json:encode(JObj)]),
+%%
+%%                    CallId = case wh_json:get_value(<<"Disposition">>, JObj) of
+%%                                 <<"ATTENDED_TRANSFER">> ->
+%%                                     ?LOG("lookup last bridged to callid"),
+%%                                     hd(cf_exe:other_legs(Call));
+%%                                 _Else ->
+%%                                     ?LOG("lookup other leg callid"),
+%%                                     wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)
+%%                             end,
+%%                    ?LOG("getting call status for ~s", [CallId]),
+%%
+%%                    {ok, Status} = b_call_status(CallId, Call),
+%%                    NewCallId = wh_json:get_value(<<"Call-ID">>, Status),
+%%                    cf_exe:acquire_control(NewCallId, Call),
+%%
+%%                    wait_for_bridge(Timeout, Call);
+%%                {{<<"call_event">>, <<"CHANNEL_DESTROY">>, _}, undefined} ->
+%%                    ?LOG("bridge destroyed with result ~s catagorized as ~s", [AppResponse, Result]),
+%%                    {Result, JObj};
 
                 {{<<"call_event">>, <<"CHANNEL_HANGUP">>, _}, transferer} ->
                     cf_exe:transfer(Call);
                 {{<<"call_event">>, <<"CHANNEL_HANGUP">>, _}, transferee} ->
-                    ?LOG("~s", [wh_json:encode(JObj)]),
-%%                    do_something_to_acquire_channel();
+%%                    ?LOG("~s", [wh_json:encode(JObj)]),
+
+                    CallId = case wh_json:get_value(<<"Disposition">>, JObj) of
+                                 <<"ATTENDED_TRANSFER">> ->
+                                     ?LOG("lookup last bridged to callid"),
+                                     hd(cf_exe:other_legs(Call));
+                                 _Else ->
+                                     ?LOG("lookup other leg callid"),
+                                     wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)
+                             end,
+                    ?LOG("getting call status for ~s", [CallId]),
+
+                    {ok, Status} = b_call_status(CallId, Call),
+                    NewCallId = wh_json:get_value(<<"Call-ID">>, Status),
+                    cf_exe:acquire_control(NewCallId, Call),
+
                     wait_for_bridge(Timeout, Call);
                 {{<<"call_event">>, <<"CHANNEL_HANGUP">>, _}, undefined} ->
                     ?LOG("bridge hungup with result ~s catagorized as ~s", [AppResponse, Result]),
@@ -1252,8 +1312,12 @@ wait_for_bridge(Timeout, Call) ->
                 {{<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _}, transferer} ->
                     cf_exe:transfer(Call);
                 {{<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _}, transferee} ->
-                    ?LOG("~s", [wh_json:encode(JObj)]),
-%%                    do_something_to_acquire_channel();
+%%                    ?LOG("~s", [wh_json:encode(JObj)]),
+
+                    CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+                    {ok, Status} = b_call_status(CallId, Call),
+                    NewCallId = wh_json:get_value(<<"Call-ID">>, Status),
+                    cf_exe:acquire_control(NewCallId, Call),
                     wait_for_bridge(Timeout, Call);
 
                 _M1 when Timeout =:= infinity ->
@@ -1356,11 +1420,6 @@ do_get_transfer_state(_, JObj) ->
         _Else ->
             undefined
     end.
-
-bridge_was_successful(JObj) ->
-    lists:member(wh_json:get_value(<<"Application-Response">>, JObj)
-                 ,[<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
-    
 
 %%--------------------------------------------------------------------
 %% @public
