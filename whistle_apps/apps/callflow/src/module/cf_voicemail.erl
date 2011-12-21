@@ -800,7 +800,7 @@ get_mailbox_profile(Data, #cf_call{capture_group=CG, account_db=Db, request_user
                      ,exists = true
                     };
         {error, R} ->
-            ?LOG("failed to load voicemail box ~s, ~w", [Id, R]),
+            ?LOG("failed to load voicemail box ~s, ~p", [Id, R]),
             #mailbox{}
     end.
 
