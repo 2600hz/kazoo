@@ -334,6 +334,8 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type=CT}, 
     case catch handle_event(Payload, CT, State) of
 	Pid when is_pid(Pid) ->
 	    {noreply, State#state{active_responders=[Pid | ARs]}, hibernate};
+        ignore ->
+            {noreply, State};
 	{'EXIT', Why} ->
 	    ?LOG("exception: ~p", [Why]),
 	    {stop, Why, State}
@@ -419,9 +421,14 @@ handle_event(Payload, <<"application/erlang">>, State) ->
 process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj) ->
     Props1 = case catch Module:handle_event(JObj, ModState) of
 		 {reply, Props} when is_list(Props) -> [{server, self()}, {queue, Queue} | Props];
-		 {'EXIT', _Why} -> [{server, self()}, {queue, Queue}]
+		 {'EXIT', _Why} -> [{server, self()}, {queue, Queue}];
+                 ignore -> ignore
 	     end,
-    spawn_link(fun() -> _ = wh_util:put_callid(JObj), process_req(Props1, Responders, JObj) end).
+    case Props1 of
+        ignore -> ignore;
+        _Else ->
+            spawn_link(fun() -> _ = wh_util:put_callid(JObj), process_req(Props1, Responders, JObj) end)
+    end.
 
 -spec process_req/3 :: (proplist(), responders(), json_object()) -> 'ok'.
 process_req(Props, Responders, JObj) ->
