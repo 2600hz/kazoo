@@ -218,7 +218,7 @@ load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) -
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(load_attachment/3 :: (DocId :: binary(), AName :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_attachment/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 load_attachment(_DocId, _AName, #cb_context{db_name = <<>>}=Context) ->
     ?LOG("loading attachment ~s from doc ~s failed: no db", [_DocId, _AName]),
     crossbar_util:response_db_missing(Context);
