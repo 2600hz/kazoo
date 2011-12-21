@@ -66,7 +66,7 @@ get_switch_hostname(Call) ->
     get_switch_hostname(undefined, Call).
 
 get_switch_hostname(CallId, Call) ->
-    case cf_call_command:b_status(CallId, Call) of
+    case cf_call_command:b_channel_status(CallId, Call) of
         {ok, CallerStatus} ->
             wh_json:get_ne_value(<<"Switch-Hostname">>, CallerStatus);
         _Else ->
