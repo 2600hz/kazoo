@@ -17,7 +17,7 @@
 -define(MAX_WAIT_FOR_EVENT, 10000). %% how long to wait for an event from FS before checking status of call
 
 %% API
--export([start_link/3, publish_msg/3]).
+-export([start_link/3, publish_msg/3, swap_call_legs/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -284,9 +284,10 @@ send_ctl_event(_, _, _, _) -> 'ok'.
 
 -spec publish_msg/3 :: (Node, UUID, Prop) -> 'ok' when
       Node :: atom(),
-      UUID :: binary(),
+      UUID :: undefined | binary(),
       Prop :: proplist().
 publish_msg(_, _, []) -> 'ok';
+publish_msg(_, undefined, _) -> ok;
 publish_msg(Node, UUID, Prop) when is_list(Prop) ->
     FSEvtName = props:get_value(<<"Event-Name">>, Prop),
     FSAppName = props:get_value(<<"Application">>, Prop),
@@ -349,14 +350,6 @@ publish_msg(Node, UUID, Prop) when is_list(Prop) ->
             ok
     end.
 
--spec get_channel_state/1 :: (Prop) -> binary() when
-      Prop :: proplist().
-get_channel_state(Prop) ->
-    case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
-        undefined -> <<"unknown">>;
-        ChannelState -> ChannelState
-    end.
-
 % gets the appropriate application response value for the type of application
 -spec application_response/4 :: (AppName, Prop, Node, UUID) -> binary() when
       AppName :: binary(),
@@ -382,7 +375,6 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Prop) ->
      ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop)}
     ];
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
-    io:format("~p~n", [Prop]),
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
     ];
@@ -491,6 +483,14 @@ create_trnsf_history_object([Epoch, UUID, <<"bl_xfer">> | Data]) ->
 create_trnsf_history_object(_) ->
     undefined.
 
+-spec get_channel_state/1 :: (Prop) -> binary() when
+      Prop :: proplist().
+get_channel_state(Prop) ->
+    case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
+        undefined -> <<"unknown">>;
+        ChannelState -> ChannelState
+    end.
+
 -spec get_hangup_cause/1 :: (proplist()) -> undefined | ne_binary().
 get_hangup_cause(Props) ->
     Causes = case props:get_value(<<"variable_current_application">>, Props) of
@@ -526,3 +526,15 @@ find_event_value([H|T], Props, Default) ->
         true -> find_event_value(T, Props, Default);
         false -> Value
     end.
+
+swap_call_legs(Props) ->
+    swap_call_legs(Props, []).
+
+swap_call_legs([], Swap) ->
+    Swap;
+swap_call_legs([{<<"Caller-", Key/binary>>, Value}|T], Swap) ->
+    swap_call_legs(T, [{<<"Other-Leg-", Key/binary>>, Value}|Swap]);
+swap_call_legs([{<<"Other-Leg-", Key/binary>>, Value}|T], Swap) ->
+    swap_call_legs(T, [{<<"Caller-", Key/binary>>, Value}|Swap]);
+swap_call_legs([Prop|T], Swap) ->
+    swap_call_legs(T, [Prop|Swap]).
