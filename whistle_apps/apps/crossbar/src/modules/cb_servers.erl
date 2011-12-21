@@ -741,14 +741,14 @@ mark_deploy_complete(Db, ServerId) ->
 %% to the priv directory of this module
 %% @end
 %%--------------------------------------------------------------------
--spec compile_template/2 :: ('undefined' | string() | binary(), atom()) -> 'undefined' | atom().
-compile_template(undefined, _) -> undefined;
+-spec compile_template/2 :: (nonempty_string() | binary() | 'undefined', atom()) -> ne_binary() | string().
+compile_template(undefined, _) -> 'undefined';
 compile_template(Template, Name) when not is_binary(Template) ->
     Path = case string:substr(Template, 1, 1) of
                "/" -> wh_json:to_binary(Template);
                _ ->
                    BasePath = code:lib_dir(crossbar, priv),
-                   list_to_binary([BasePath, "/servers/", Template])
+                   lists:concat([BasePath, "/servers/", Template])
            end,
     ?LOG("sourcing template from file at ~s", [Path]),
     do_compile_template(Path, Name);
@@ -761,10 +761,13 @@ compile_template(Template, Name) ->
 %% Compiles template string or path, normalizing the return
 %% @end
 %%--------------------------------------------------------------------
--spec do_compile_template/2 :: (ne_binary(), Name) -> 'undefined' | Name.
+-spec do_compile_template/2 :: (ne_binary() | string(), Name) -> 'undefined' | Name.
 do_compile_template(Template, Name) ->
     case erlydtl:compile(Template, Name) of
         ok ->
+            ?LOG("compiled ~s template file", [Name]),
+            Name;
+        {ok, _} ->
             ?LOG("compiled ~s template file", [Name]),
             Name;
         _E ->
