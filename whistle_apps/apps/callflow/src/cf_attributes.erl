@@ -110,12 +110,12 @@ caller_id(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId, channel
                   ?LOG("retaining original caller id"),
                   wh_json:from_list([{<<"number">>, OrgNum}, {<<"name">>, OrgName}]);
               false ->
+                  ?LOG("find ~s caller id on ~s", [Attribute, wh_util:join_binary(Ids)]),
                   Attributes = fetch_attributes(caller_id, Call),
                   case search_attributes(Attribute, Ids, Attributes) of
                       undefined ->
                           case search_attributes(<<"default">>, [AccountId], Attributes) of
                               undefined ->
-                                  [?LOG("unable to find ~s caller id on ~s", [Attribute, Id]) || Id <- Ids],
                                   ?EMPTY_JSON_OBJECT;
                               {Id, Value} ->
                                   ?LOG("found default caller id on ~s", [Id]),
@@ -163,12 +163,12 @@ callee_id(EndpointId, Attribute, Call) ->
 
 callee_id(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId, request_user=RUser}=Call) ->
     Ids = [Id || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
+    ?LOG("find ~s callee id on ~s", [Attribute, wh_util:join_binary(Ids)]),
     Attributes = fetch_attributes(caller_id, Call),
     CID = case search_attributes(Attribute, Ids, Attributes) of
                       undefined ->
                           case search_attributes(<<"default">>, [AccountId], Attributes) of
                               undefined ->
-                                  [?LOG("unable to find ~s caller id on ~s", [Attribute, Id]) || Id <- Ids],
                                   ?EMPTY_JSON_OBJECT;
                               {Id, Value} ->
                                   ?LOG("found default callee id on ~s", [Id]),
@@ -206,10 +206,11 @@ caller_id_attributes(EndpointId, Attribute, Call) ->
 
 caller_id_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=Call) ->
     Ids = [Id || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
+    ?LOG("find caller id attr ~s on ~s", [Attribute, wh_util:join_binary(Ids)]),
     Attributes = fetch_attributes(caller_id_options, Call),
     case search_attributes(Attribute, Ids, Attributes) of
         undefined ->
-            [?LOG("unable to find caller id attribute ~s on ~s", [Attribute, Id]) || Id <- Ids],
+            ?LOG("unable to find caller id attribute ~s", [Attribute]),
             undefined;
         {Id, Value} ->
             ?LOG("found caller id attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
@@ -237,12 +238,13 @@ media_attributes(EndpointId, OwnerId, <<"codecs">>, Call) ->
     Audio ++ Video;
 media_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=Call) ->
     Ids = [Id || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
+    ?LOG("find media attr ~s on ~s", [Attribute, wh_util:join_binary(Ids)]),
     Attributes = fetch_attributes(media_options, Call),
     case search_attributes(Attribute, Ids, Attributes) of
         undefined when Attribute =:= <<"audio">>; Attribute =:= <<"video">> ->
             []; 
         undefined ->
-            [?LOG("unable to find media attribute ~s on ~s", [Attribute, Id]) || Id <- Ids],
+            ?LOG("unable to find media attribute ~s", [Attribute]),
             undefined;
         {Id, Value} when Attribute =:= <<"audio">>; Attribute =:= <<"video">> ->
             Codecs = wh_json:get_value(<<"codecs">>, Value, []),
@@ -270,10 +272,11 @@ moh_attributes(EndpointId, Attribute, Call) ->
 
 moh_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=Call) ->
     Ids = [Id || Id <- [EndpointId, OwnerId, AccountId], Id =/= undefined],
+    ?LOG("find moh attr ~s on ~s", [Attribute, wh_util:join_binary(Ids)]),
     Attributes = fetch_attributes(moh_options, Call),
     case search_attributes(Attribute, Ids, Attributes) of
         undefined ->
-            [?LOG("unable to find moh attribute ~s on ~s", [Attribute, Id]) || Id <- Ids],
+            ?LOG("unable to find moh attribute ~s", [Attribute]),
             undefined;
         {Id, Value} when Attribute =:= <<"media_id">> ->
             MediaId = <<$/, AccountId/binary, $/, Value/binary>>,
@@ -362,10 +365,11 @@ friendly_name(EndpointId, Call) ->
 
 friendly_name(EndpointId, OwnerId, #cf_call{cid_name=CIDName}=Call) ->
     Ids = [Id || Id <- [OwnerId, EndpointId], Id =/= undefined],
+    ?LOG("find friendly name on ~s", [wh_util:join_binary(Ids)]),
     Attributes = fetch_attributes(friendly_name, Call),
     case search_attributes(<<"friendly_name">>, Ids, Attributes) of
         undefined ->
-            [?LOG("unable to find a name on ~s", [Id]) || Id <- Ids],
+            ?LOG("unable to find a usable friendly name"),
             CIDName;
         {Id, Value} ->
             ?LOG("using name '~s' from ~s", [Value, Id]),
