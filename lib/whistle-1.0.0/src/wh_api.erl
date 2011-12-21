@@ -21,6 +21,7 @@
 %% API
 -export([default_headers/2, default_headers/3, default_headers/4, default_headers/5]).
 -export([prepare_api_payload/3, set_missing_values/2, remove_empty_values/1, extract_defaults/1]).
+-export([disambiguate_and_publish/3]).
 
 %% In-Call
 -export([error_resp/1]).
@@ -80,6 +81,12 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
      ,{<<"Event-Name">>, EvtName}
      ,{<<"App-Name">>, AppName}
      ,{<<"App-Version">>, AppVsn}].
+
+disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
+    Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
+    ?LOG("Wapi mod: ~s", [Wapi]),
+    ApiMod = wh_util:to_atom(Wapi),
+    ApiMod:disambiguate_and_publish(ReqJObj, RespJObj).
 
 %%--------------------------------------------------------------------
 %% @doc
