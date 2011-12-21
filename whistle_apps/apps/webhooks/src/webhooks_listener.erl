@@ -175,7 +175,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec try_send_req/5 :: (ne_binary(), 'put' | 'post' | 'get', json_object(), non_neg_integer()) -> {'ok', json_object()} | {'error', 'retries_exceeded'}.
+-spec try_send_req/4 :: (ne_binary(), 'put' | 'post' | 'get', json_object(), non_neg_integer()) -> {'ok', json_object()} | {'error', 'retries_exceeded'}.
 try_send_req(_, _, _, R) when R =< 0 ->
     ?LOG("Retries exceeded"),
     {error, retries_exceeded};
@@ -197,12 +197,12 @@ try_send_req(Uri, Method, ReqJObj, Retries) ->
 		end;
 	    {error, Reason} ->
 		?LOG("Request failed: ~p", [Reason]),
-		try_send_req(Uri, Method, Parent, ReqJObj, Retries-1)
+		try_send_req(Uri, Method, ReqJObj, Retries-1)
 	end
     catch
 	T:R ->
 	    ?LOG("Caught ~s:~p", [T, R]),
-	    try_send_req(Uri, Method, Parent, ReqJObj, Retries-1)
+	    try_send_req(Uri, Method, ReqJObj, Retries-1)
     end.
 
 -spec get_method_atom/1 :: (<<_:24,_:_*8>>) -> 'put' | 'post' | 'get'.
@@ -210,7 +210,7 @@ get_method_atom(<<"put">>) -> put;
 get_method_atom(<<"post">>) -> post;
 get_method_atom(<<"get">>) -> get.
 
-decode_xml(Body) ->
+decode_xml(_Body) ->
     %% eventually support TwiML and other XML-based formats
     throw({not_supported, xml}).
 
