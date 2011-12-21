@@ -210,6 +210,7 @@ get_method_atom(<<"put">>) -> put;
 get_method_atom(<<"post">>) -> post;
 get_method_atom(<<"get">>) -> get.
 
+-spec decode_xml/1 :: (ne_binary()) -> no_return(). % throw({'not_supported', 'xml'}).
 decode_xml(_Body) ->
     %% eventually support TwiML and other XML-based formats
     throw({not_supported, xml}).
