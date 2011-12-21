@@ -87,8 +87,9 @@ put_callid(JObj) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (JObj) -> {binary(), binary()} when
-      JObj :: json_object().
+-spec get_event_type/1 :: (json_object() | proplist()) -> {ne_binary(), ne_binary()}.
+get_event_type(Prop) when is_list(Prop) ->
+    { props:get_value(<<"Event-Category">>, Prop), props:get_value(<<"Event-Name">>, Prop) };
 get_event_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
 

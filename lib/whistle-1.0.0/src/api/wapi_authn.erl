@@ -8,19 +8,24 @@
 %%%-------------------------------------------------------------------
 -module(wapi_authn).
 
--export([req/1, resp/1, req_v/1, resp_v/1, bind_q/2, unbind_q/1]).
+-export([req/1, resp/1, req_v/1, resp_v/1, bind_q/2, unbind_q/1, unbind_q/2]).
 
--export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3]).
+-export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
+	,disambiguate_and_publish/2
+	]).
 
 -export([get_auth_user/1, get_auth_realm/1]).
 
 -include("../wh_api.hrl").
 
+-define(EVENT_CATEGORY, <<"directory">>).
+-define(AUTHN_REQ_EVENT_NAME, <<"authn_req">>).
+
 -define(AUTHN_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
 				, <<"Auth-User">>, <<"Auth-Realm">>]).
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>]).
--define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, <<"directory">>}
-			   ,{<<"Event-Name">>, <<"authn_req">>}
+-define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+			   ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
 			  ]).
 -define(AUTHN_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
 			  ,{<<"To">>, fun is_binary/1}
@@ -88,15 +93,21 @@ resp_v(JObj) ->
 %% @doc Setup and tear down bindings for authn gen_listeners
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
-bind_q(Q, _Props) ->
+-spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+bind_q(Q, Props) ->
+    Realm = props:get_value(realm, Props, <<"*">>),
+
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHN_REQ),
+    amqp_util:bind_q_to_callmgr(Q, get_authn_req_routing(Realm)),
     ok.
 
--spec unbind_q/1 :: (binary()) -> 'ok'.
+-spec unbind_q/1 :: (ne_binary()) -> 'ok'.
+-spec unbind_q/2:: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Q) ->
-    amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHN_REQ).
+    unbind_q(Q, []).
+unbind_q(Q, Props) ->
+    Realm = props:get_value(realm, Props, <<"*">>),
+    amqp_util:unbind_q_from_callmgr(Q, get_authn_req_routing(Realm)).
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
@@ -108,7 +119,7 @@ publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?AUTHN_REQ_VALUES, fun ?MODULE:req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHN_REQ).
+    amqp_util:callmgr_publish(Payload, ContentType, get_authn_req_routing(Req)).
 
 -spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_resp/3 :: (ne_binary(), api_terms(), binary()) -> 'ok'.
@@ -117,6 +128,23 @@ publish_resp(Queue, JObj) ->
 publish_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHN_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+disambiguate_and_publish(ReqJObj, RespJObj) ->
+    {?EVENT_CATEGORY, ?AUTHN_REQ_EVENT_NAME} = wh_util:get_event_type(ReqJObj), % only one, in this case
+    RespQ = wh_json:get_value(<<"Server-ID">>, ReqJObj),
+    publish_resp(RespQ, RespJObj).
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% creating the routing key for either binding queues or publishing messages
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_authn_req_routing/1 :: (ne_binary() | proplist() | json_object()) -> ne_binary().
+get_authn_req_routing(Realm) when is_binary(Realm) ->
+    list_to_binary([?KEY_AUTHN_REQ, ".", amqp_util:encode(Realm)]);
+get_authn_req_routing(Req) ->
+    get_authn_req_routing(get_auth_realm(Req)).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -135,13 +163,15 @@ get_auth_user(ApiJObj) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_realm/1  :: (json_object()) -> ne_binary().
-get_auth_realm(ApiJObj) ->
-    AuthRealm = wh_json:get_value(<<"Auth-Realm">>, ApiJObj, <<"missing.realm">>),
+-spec get_auth_realm/1  :: (json_object() | proplist()) -> ne_binary().
+get_auth_realm(ApiProp) when is_list(ApiProp) ->
+    AuthRealm = props:get_value(<<"Auth-Realm">>, ApiProp, <<"missing.realm">>),
     case wh_util:is_ipv4(AuthRealm) orelse wh_util:is_ipv6(AuthRealm) of
         true ->
-            [_ToUser, ToDomain] = binary:split(wh_json:get_value(<<"To">>, ApiJObj), <<"@">>),
+            [_ToUser, ToDomain] = binary:split(props:get_value(<<"To">>, ApiProp), <<"@">>),
             ToDomain;
         false ->
             AuthRealm
-    end.
+    end;
+get_auth_realm(ApiJObj) ->
+    get_auth_realm(wh_json:to_proplist(ApiJObj)).

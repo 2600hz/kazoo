@@ -85,13 +85,21 @@ init([AcctDB, Webhook]) ->
     AcctID = whapps_util:get_db_name(AcctDB, raw),
     put(callid, AcctID),
 
-    Self = self(),
-    spawn(fun() ->
-		  gen_listener:add_binding(Self, wh_json:get_value(<<"bind_event">>, Webhook), wh_json:get_value(<<"bind_options">>, Webhook, []))
-	  end),
-
     {ok, AcctDoc} = couch_mgr:open_doc(AcctDB, AcctID),
     Realm = wh_json:get_value(<<"realm">>, AcctDoc),
+
+    Self = self(),
+    spawn(fun() ->
+		  BindOptions = case wh_json:get_value(<<"bind_options">>, Webhook, []) of
+				    Prop when is_list(Prop) -> Prop;
+				    JObj -> wh_json:to_proplist(JObj) % maybe [{restrict_to, [call, events]},...] or other json-y type
+				end,
+
+		  gen_listener:add_binding(Self
+					   ,wh_json:get_value(<<"bind_event">>, Webhook)
+					   ,[{realm, Realm}, {acctid, AcctID} | BindOptions]
+					  )
+	  end),
 
     ?LOG("Starting webhook listener for ~s (~s)", [AcctID, Realm]),
 
