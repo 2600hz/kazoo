@@ -36,10 +36,8 @@
 -define(SERVER, ?MODULE).
 
 -define(TOKEN_DB, <<"token_auth">>).
--define(SHARED_AUTH_CONF, list_to_binary([code:lib_dir(crossbar, priv), "/shared_auth/shared_auth.conf"])).
 
--record(state, {xbar_url = 'undefined' :: 'undefined' | string()
-	       }).
+-record(state, {xbar_url = 'undefined' :: 'undefined' | nonempty_string()}).
 
 %%%===================================================================
 %%% API
@@ -74,7 +72,13 @@ reload() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}, 0}.
+    couch_mgr:db_create(?TOKEN_DB),
+    _ = bind_to_crossbar(),
+    Url = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
+
+    ?LOG("Shared Auth started up, using ~s as authoritative crossbar", [Url]),
+
+    {ok, #state{xbar_url=Url}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -91,8 +95,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,7 +108,8 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({reload}, _) ->
-    {noreply, #state{}, 0};
+    Url = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
+    {noreply, #state{xbar_url=Url}};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -171,13 +175,8 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
-handle_info(timeout, CurState) ->
-    bind_to_crossbar(),
-    couch_mgr:db_create(?TOKEN_DB),
-    Url = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
-    {noreply, CurState#state{xbar_url=Url}};
-
-handle_info(_, State) ->
+handle_info(_Info, State) ->
+    ?LOG("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -208,7 +207,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec bind_to_crossbar/0 :: () -> no_return().
+-spec bind_to_crossbar/0 :: () -> 'ok' | {'error', 'exists'}.
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
@@ -226,7 +225,7 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (list()) -> {boolean(), http_methods()}.
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['PUT', 'GET']};
 allowed_methods(_) ->
@@ -240,7 +239,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: (list()) -> {boolean(), []}.
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists(_) ->
@@ -271,7 +270,7 @@ resource_exists(_) ->
 %% Failure here returns 400 or 401
 %% @end
 %%--------------------------------------------------------------------
--spec validate/3 :: (list(), #cb_context{}, nonempty_string() | 'undefined') -> #cb_context{}.
+-spec validate/3 :: (path_tokens(), #cb_context{}, nonempty_string() | 'undefined') -> #cb_context{}.
 validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context, XBarUrl) ->
     SharedToken = wh_json:get_value(<<"shared_token">>, JObj),
     case authenticate_shared_token(SharedToken, XBarUrl) of
@@ -404,9 +403,7 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account/2 :: (AccountId, Account) -> boolean() when
-      AccountId :: undefined | binary(),
-      Account :: undefined | json_object().
+-spec import_missing_account/2 :: ('undefined' | ne_binary(), 'undefined' | json_object()) -> boolean().
 import_missing_account(undefined, _) ->
     ?LOG("shared auth reply did not define an account id"),
     false;
@@ -416,45 +413,33 @@ import_missing_account(_, undefined) ->
 import_missing_account(AccountId, Account) ->
     %% check if the acount datbase exists
     Db = whapps_util:get_db_name(AccountId, encoded),
-    case couch_mgr:db_exists(Db) of
-        %% if the account database exists make sure it has the account
-        %% definition, because when couch is acting up it can skip this
-        true ->
-            ?LOG("remote account db ~s alread exists locally", [AccountId]),
-            %% make sure the account definition is in the account, if not
-            %% use the one we got from shared auth
-            Event = <<"v1_resource.execute.post.accounts">>,
-            Doc = case couch_mgr:open_doc(Db, AccountId) of
-                      {error, not_found} ->
-                          ?LOG("missing local account definition, creating from shared auth response"),
-                          wh_json:delete_key(<<"_rev">>, Account);
-                      {ok, JObj} ->
-                          ?LOG("account definition exists locally"),
-                          JObj
-                  end,
-            Payload = [undefined, #cb_context{doc=Doc, db_name=Db}, AccountId],
-            case crossbar_bindings:fold(Event, Payload) of
-                [_, #cb_context{resp_status=success} | _] ->
-                    ?LOG("udpated account definition"),
-                    true;
-                _ ->
-                    ?LOG("could not update account definition"),
-                    false
-            end;
-        false ->
-            ?LOG("remote account db ~s does not exist locally, creating", [AccountId]),
-            Event = <<"v1_resource.execute.put.accounts">>,
-            Doc = wh_json:delete_key(<<"_rev">>, Account),
-            Payload = [undefined, #cb_context{doc=Doc}, [[]]],
-            case crossbar_bindings:fold(Event, Payload) of
-                [_, #cb_context{resp_status=success} | _] ->
-                    ?LOG("imported account"),
-                    true;
-                _ ->
-                    ?LOG("could not import account"),
-                    false
-            end
-    end.
+
+    {Event, Payload} =
+	case couch_mgr:db_exists(Db) of
+	    %% if the account database exists make sure it has the account
+	    %% definition, because when couch is acting up it can skip this
+	    true ->
+		?LOG("remote account db ~s alread exists locally", [AccountId]),
+		%% make sure the account definition is in the account, if not
+		%% use the one we got from shared auth
+		Doc = case couch_mgr:open_doc(Db, AccountId) of
+			  {ok, JObj} ->
+			      ?LOG("account definition exists locally"),
+			      JObj;
+			  {error, _} ->
+			      ?LOG("missing local account definition, creating from shared auth response"),
+			      wh_json:delete_key(<<"_rev">>, Account)
+		      end,
+		{<<"v1_resource.execute.post.accounts">>, [undefined, #cb_context{doc=Doc, db_name=Db}, AccountId]};
+	    false ->
+		?LOG("remote account db ~s does not exist locally, creating", [AccountId]),
+		Doc = wh_json:delete_key(<<"_rev">>, Account),
+		{<<"v1_resource.execute.put.accounts">>, [undefined, #cb_context{doc=Doc}, [[]]]}
+	end,
+
+    [_, #cb_context{resp_status=RespStatus} | _] = crossbar_bindings:fold(Event, Payload),
+    ?LOG("update or import account resulted in: ~s", [RespStatus]),
+    RespStatus =:= success.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -463,10 +448,7 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user/3 :: (AccountId, UserId, User) -> boolean() when
-      AccountId :: undefined | binary(),
-      UserId :: undefined | binary(),
-      User :: undefined | json_object().
+-spec import_missing_user/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | json_object()) -> boolean().
 import_missing_user(_, undefined, _) ->
     ?LOG("shared auth reply did not define an user id"),
     false;

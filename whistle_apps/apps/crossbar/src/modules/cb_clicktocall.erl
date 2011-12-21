@@ -459,7 +459,7 @@ get_c2c_contact(Contact) ->
 get_c2c_resp_status({success, _}) -> success;
 get_c2c_resp_status(_) -> error.
 
--spec create_c2c_history_item/2 :: ({'success', ne_binary()} | {'error', ne_binary()} | {'timeout'}, ne_binary()) -> proplist().
+-spec create_c2c_history_item/2 :: ({'success', ne_binary()} | {'error', ne_binary()} | {'timeout'}, ne_binary()) -> [{ne_binary(), term()},...].
 create_c2c_history_item({success, CallId}, Contact) ->
     [{<<"timestamp">>, wh_util:current_tstamp()}
      ,{<<"contact">>, Contact}
