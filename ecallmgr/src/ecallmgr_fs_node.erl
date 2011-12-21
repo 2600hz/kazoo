@@ -11,7 +11,7 @@
 %% API
 -export([start_link/1, start_link/2]).
 -export([resource_consume/3, show_channels/1, fs_node/1, uuid_exists/2
-	 ,hostname/1
+	 ,uuid_dump/2, hostname/1
 	]).
 -export([distributed_presence/3]).
 
@@ -72,6 +72,10 @@ fs_node(Srv) ->
 uuid_exists(Srv, UUID) ->
     gen_server:call(Srv, {uuid_exists, UUID}).
 
+-spec uuid_dump/2 :: (pid(), binary()) -> proplist().
+uuid_dump(Srv, UUID) ->
+    gen_server:call(Srv, {uuid_dump, UUID}).
+
 -spec start_link/1 :: (Node :: atom()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node) ->
     gen_server:start_link(?SERVER, [Node, []], []).
@@ -94,6 +98,18 @@ handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
 		  case freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
 		      {'ok', Result} -> ?LOG(UUID, "Result of uuid_exists: ~s", [Result]), gen_server:reply(From, wh_util:is_true(Result));
 		      _ -> ?LOG(UUID, "Failed to get result from uuid_exists", []), gen_server:reply(From, false)
+		  end
+	  end),
+    {noreply, State};
+handle_call({uuid_dump, UUID}, From, #state{node=Node}=State) ->
+    spawn(fun() ->
+		  case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
+		      {'ok', Result} -> 
+                          Props = ecallmgr_util:eventstr_to_proplist(Result),
+                          gen_server:reply(From, {ok, Props});
+		      Error -> 
+                          ?LOG(UUID, "failed to get result from uuid_dump", []),
+                          gen_server:reply(From, Error)
 		  end
 	  end),
     {noreply, State};
@@ -182,6 +198,11 @@ handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_
     case props:get_value(<<"Event-Name">>, Data) of
 	<<"CHANNEL_CREATE">> ->
 	    ?LOG(UUID, "received channel create event", []),
+            spawn(fun() -> 
+                          ecallmgr_call_events:publish_msg(Node
+                                                           ,props:get_value(<<"Other-Leg-Unique-ID">>, Data)
+                                                           ,ecallmgr_call_events:swap_call_legs(Data))
+                  end),
 	    {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}, hibernate};
 	<<"CHANNEL_DESTROY">> ->
 	    ChanState = props:get_value(<<"Channel-State">>, Data),
@@ -191,6 +212,11 @@ handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_
 		    {noreply, State, hibernate};
 		<<"CS_DESTROY">> ->
 		    ?LOG(UUID, "received channel destroyed", []),
+                    spawn(fun() -> 
+                                  ecallmgr_call_events:publish_msg(Node
+                                                                   ,props:get_value(<<"Other-Leg-Unique-ID">>, Data)
+                                                                   ,ecallmgr_call_events:swap_call_legs(Data))
+                          end),
 		    {noreply, State#state{stats=Stats#node_stats{destroyed_channels=De+1}}, hibernate}
 	    end;
 	<<"CHANNEL_HANGUP_COMPLETE">> ->
