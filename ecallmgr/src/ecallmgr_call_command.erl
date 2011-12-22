@@ -25,32 +25,32 @@
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of
-	true ->
-	    App = wh_json:get_value(<<"Application-Name">>, JObj),
-	    case get_fs_app(Node, UUID, JObj, App) of
-		{'error', Msg} ->
+        true ->
+            App = wh_json:get_value(<<"Application-Name">>, JObj),
+            case get_fs_app(Node, UUID, JObj, App) of
+                {'error', Msg} ->
                     _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
                     send_error_response(App, Msg, UUID, JObj),
-		    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, App);
-		{'error', AppName, Msg} ->
+                    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, App);
+                {'error', AppName, Msg} ->
                     _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
                     send_error_response(App, Msg, UUID, JObj),
-		    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
+                    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
                 {return, Result} ->
                     Result;
                 {AppName, noop} ->
-		    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
-		{<<"answer">> = AppName, AppData} ->
+                    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
+                {<<"answer">> = AppName, AppData} ->
                     _ = send_cmd(Node, UUID, AppName, AppData),
                     %% 22:55 pyite_mac  can you sleep 0.5 seconds before continuing
                     timer:sleep(500),
-		    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
-		{AppName, AppData} ->
+                    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
+                {AppName, AppData} ->
                     send_cmd(Node, UUID, AppName, AppData)
-	    end;
-	false ->
-	    ?LOG("command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
-	    {'error', invalid_callid}
+            end;
+        false ->
+            ?LOG("command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
+            {'error', invalid_callid}
     end.
 
 %%--------------------------------------------------------------------
@@ -61,14 +61,14 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_fs_app/4 :: (atom(), ne_binary(), json_object(), ne_binary()) -> {binary(), binary() | 'noop'}
-									       | {'return', 'ok'}
-									       | {'error', binary()}
-									       | {'error', binary(), binary()}.
+                                                                               | {'return', 'ok'}
+                                                                               | {'error', binary()}
+                                                                               | {'error', binary(), binary()}.
 get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
     case wapi_dialplan:noop_v(JObj) of
-	false ->
+        false ->
             {'error', <<"noop">>, <<"noop failed to execute as JObj did not validate">>};
-	true ->
+        true ->
             Args = case wh_json:get_value(<<"Msg-ID">>, JObj) of
                        undefined ->
                            <<"Event-Subclass=whistle::noop,Event-Name=CUSTOM"
@@ -80,16 +80,16 @@ get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
                              ,",whistle_application_name=noop"
                              ,",whistle_application_response=", (wh_util:to_binary(NoopId))/binary>>
                    end,
-	    {<<"event">>, Args}
+            {<<"event">>, Args}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case wapi_dialplan:play_v(JObj) of
-	false -> {'error', <<"playback">>, <<"play failed to execute as JObj did not validate">>};
-	true ->
-	    F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID),
-	    'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-	    {<<"playback">>, F}
+        false -> {'error', <<"playback">>, <<"play failed to execute as JObj did not validate">>};
+        true ->
+            F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID),
+            'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
+            {<<"playback">>, F}
     end;
 
 get_fs_app(_Node, _UUID, _JObj, <<"hangup">>) ->
@@ -97,105 +97,105 @@ get_fs_app(_Node, _UUID, _JObj, <<"hangup">>) ->
 
 get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
     case wapi_dialplan:play_and_collect_digits_v(JObj) of
-	false -> {'error', <<"play_and_get_digits">>, <<"play_and_collect_digits failed to execute as JObj did not validate">>};
-	true ->
-	    Min = wh_json:get_value(<<"Minimum-Digits">>, JObj),
-	    Max = wh_json:get_value(<<"Maximum-Digits">>, JObj),
-	    Timeout = wh_json:get_value(<<"Timeout">>, JObj),
-	    Terminators = wh_json:get_value(<<"Terminators">>, JObj),
-	    Media = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID))/binary, $'>>,
-	    InvalidMedia = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Failed-Media-Name">>, JObj), UUID))/binary, $'>>,
-	    Tries = wh_json:get_value(<<"Media-Tries">>, JObj),
-	    Regex = wh_json:get_value(<<"Digits-Regex">>, JObj),
-	    Storage = <<"collected_digits">>,
-	    Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " "
-				   ,Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
-	    {<<"play_and_get_digits">>, Data}
+        false -> {'error', <<"play_and_get_digits">>, <<"play_and_collect_digits failed to execute as JObj did not validate">>};
+        true ->
+            Min = wh_json:get_value(<<"Minimum-Digits">>, JObj),
+            Max = wh_json:get_value(<<"Maximum-Digits">>, JObj),
+            Timeout = wh_json:get_value(<<"Timeout">>, JObj),
+            Terminators = wh_json:get_value(<<"Terminators">>, JObj),
+            Media = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID))/binary, $'>>,
+            InvalidMedia = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Failed-Media-Name">>, JObj), UUID))/binary, $'>>,
+            Tries = wh_json:get_value(<<"Media-Tries">>, JObj),
+            Regex = wh_json:get_value(<<"Digits-Regex">>, JObj),
+            Storage = <<"collected_digits">>,
+            Data = list_to_binary([Min, " ", Max, " ", Tries, " ", Timeout, " ", Terminators, " "
+                                   ,Media, " ", InvalidMedia, " ", Storage, " ", Regex]),
+            {<<"play_and_get_digits">>, Data}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"record">>) ->
     case wapi_dialplan:record_v(JObj) of
-	false -> {'error', <<"record failed to execute as JObj did not validate">>};
-	true ->
-	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+        false -> {'error', <<"record failed to execute as JObj did not validate">>};
+        true ->
+            MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
             Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
 
-	    _ = set(Node, UUID, <<"enable_file_write_buffering=false">>), % disable buffering to see if we get all the media
+            _ = set(Node, UUID, <<"enable_file_write_buffering=false">>), % disable buffering to see if we get all the media
 
-	    RecArg = binary_to_list(list_to_binary([Media, " "
-						    ,wh_util:to_list(wh_json:get_value(<<"Time-Limit">>, JObj, "20")), " "
-						    ,wh_util:to_list(wh_json:get_value(<<"Silence-Threshold">>, JObj, "500")), " "
-						    ,wh_util:to_list(wh_json:get_value(<<"Silence-Hits">>, JObj, "5"))
-						   ])),
-	    'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
+            RecArg = binary_to_list(list_to_binary([Media, " "
+                                                    ,wh_util:to_list(wh_json:get_value(<<"Time-Limit">>, JObj, "20")), " "
+                                                    ,wh_util:to_list(wh_json:get_value(<<"Silence-Threshold">>, JObj, "500")), " "
+                                                    ,wh_util:to_list(wh_json:get_value(<<"Silence-Hits">>, JObj, "5"))
+                                                   ])),
+            'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 
-	    {<<"record">>, RecArg}
+            {<<"record">>, RecArg}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"store">>) ->
     case wapi_dialplan:store_v(JObj) of
-	false -> {'error', <<"store failed to execute as JObj did not validate">>};
-	true ->
-	    MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
-	    case ecallmgr_media_registry:is_local(MediaName, UUID) of
-		{'error', not_local} ->
-		    ?LOG("failed to find media ~s for storing", [MediaName]),
+        false -> {'error', <<"store failed to execute as JObj did not validate">>};
+        true ->
+            MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
+            case ecallmgr_media_registry:is_local(MediaName, UUID) of
+                {'error', not_local} ->
+                    ?LOG("failed to find media ~s for storing", [MediaName]),
                     {error, <<"failed to find media requested for storage">>};
-		{ok, Media} ->
-		    ?LOG("Streaming media ~s", [MediaName]),
-		    case filelib:is_regular(Media) andalso wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
-			<<"stream">> ->
-			    %% stream file over AMQP
-			    Headers = [{<<"Media-Transfer-Method">>, <<"stream">>}
-				       ,{<<"Media-Name">>, MediaName}
-				       ,{<<"Application-Name">>, <<"store">>}
-				      ],
-			    ?LOG("stream ~s via AMQP", [MediaName]),
-			    stream_over_amqp(Node, UUID, Media, JObj, Headers),
-			    {<<"store">>, noop};
-			<<"put">> ->
-			    %% stream file over HTTP PUT
-			    ?LOG("stream ~s via HTTP PUT", [MediaName]),
-			    stream_over_http(Node, UUID, Media, put, JObj),
-			    {<<"store">>, noop};
-			<<"post">> ->
-			    %% stream file over HTTP POST
-			    ?LOG("stream ~s via HTTP POST", [MediaName]),
-			    stream_over_http(Node, UUID, Media, post, JObj),
-			    {<<"store">>, noop};
-			false ->
-			    ?LOG("file ~s has gone missing!", [Media]),
-			    {return, error};
-			_Method ->
-			    %% unhandled method
-			    ?LOG("unhandled stream method ~s", [_Method]),
-			    {return, error}
-		    end
-	    end
+                {ok, Media} ->
+                    ?LOG("Streaming media ~s", [MediaName]),
+                    case filelib:is_regular(Media) andalso wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
+                        <<"stream">> ->
+                            %% stream file over AMQP
+                            Headers = [{<<"Media-Transfer-Method">>, <<"stream">>}
+                                       ,{<<"Media-Name">>, MediaName}
+                                       ,{<<"Application-Name">>, <<"store">>}
+                                      ],
+                            ?LOG("stream ~s via AMQP", [MediaName]),
+                            stream_over_amqp(Node, UUID, Media, JObj, Headers),
+                            {<<"store">>, noop};
+                        <<"put">> ->
+                            %% stream file over HTTP PUT
+                            ?LOG("stream ~s via HTTP PUT", [MediaName]),
+                            stream_over_http(Node, UUID, Media, put, JObj),
+                            {<<"store">>, noop};
+                        <<"post">> ->
+                            %% stream file over HTTP POST
+                            ?LOG("stream ~s via HTTP POST", [MediaName]),
+                            stream_over_http(Node, UUID, Media, post, JObj),
+                            {<<"store">>, noop};
+                        false ->
+                            ?LOG("file ~s has gone missing!", [Media]),
+                            {return, error};
+                        _Method ->
+                            %% unhandled method
+                            ?LOG("unhandled stream method ~s", [_Method]),
+                            {return, error}
+                    end
+            end
     end;
 
 get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case wapi_dialplan:tones_v(JObj) of
-	false -> {'error', <<"playback">>, <<"tones failed to execute as JObj did not validate">>};
-	true ->
-	    Tones = wh_json:get_value(<<"Tones">>, JObj, []),
-	    FSTones = [begin
-			   Vol = case wh_json:get_value(<<"Volume">>, Tone) of
-				     undefined -> [];
-				     %% need to map V (0-100) to FS values
-				     V -> list_to_binary(["v=", wh_util:to_list(V), ";"])
-				 end,
-			   Repeat = case wh_json:get_value(<<"Repeat">>, Tone) of
-					undefined -> [];
-					R -> list_to_binary(["l=", wh_util:to_list(R), ";"])
-				    end,
-			   Freqs = string:join([ wh_util:to_list(V) || V <- wh_json:get_value(<<"Frequencies">>, Tone) ], ","),
-			   On = wh_util:to_list(wh_json:get_value(<<"Duration-ON">>, Tone)),
-			   Off = wh_util:to_list(wh_json:get_value(<<"Duration-OFF">>, Tone)),
-			   wh_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
-		       end || Tone <- Tones],
-	    Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
-	    {<<"playback">>, Arg}
+        false -> {'error', <<"playback">>, <<"tones failed to execute as JObj did not validate">>};
+        true ->
+            Tones = wh_json:get_value(<<"Tones">>, JObj, []),
+            FSTones = [begin
+                           Vol = case wh_json:get_value(<<"Volume">>, Tone) of
+                                     undefined -> [];
+                                     %% need to map V (0-100) to FS values
+                                     V -> list_to_binary(["v=", wh_util:to_list(V), ";"])
+                                 end,
+                           Repeat = case wh_json:get_value(<<"Repeat">>, Tone) of
+                                        undefined -> [];
+                                        R -> list_to_binary(["l=", wh_util:to_list(R), ";"])
+                                    end,
+                           Freqs = string:join([ wh_util:to_list(V) || V <- wh_json:get_value(<<"Frequencies">>, Tone) ], ","),
+                           On = wh_util:to_list(wh_json:get_value(<<"Duration-ON">>, Tone)),
+                           Off = wh_util:to_list(wh_json:get_value(<<"Duration-OFF">>, Tone)),
+                           wh_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
+                       end || Tone <- Tones],
+            Arg = [$t,$o,$n,$e,$_,$s,$t,$r,$e,$a,$m,$:,$/,$/ | string:join(FSTones, ";")],
+            {<<"playback">>, Arg}
     end;
 
 get_fs_app(_Node, _UUID, _JObj, <<"answer">>) ->
@@ -209,29 +209,29 @@ get_fs_app(_Node, _UUID, _JObj, <<"park">>) ->
 
 get_fs_app(_Node, _UUID, JObj, <<"sleep">>) ->
     case wapi_dialplan:sleep_v(JObj) of
-	false -> {'error', <<"sleep failed to execute as JObj did not validate">>};
-	true -> {<<"sleep">>, wh_json:get_binary_value(<<"Time">>, JObj, <<"50">>)}
+        false -> {'error', <<"sleep failed to execute as JObj did not validate">>};
+        true -> {<<"sleep">>, wh_json:get_binary_value(<<"Time">>, JObj, <<"50">>)}
     end;
 
 get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
     case wapi_dialplan:say_v(JObj) of
-	false -> {'error', <<"say failed to execute as JObj did not validate">>};
-	true ->
-	    Lang = wh_json:get_value(<<"Language">>, JObj),
-	    Type = wh_json:get_value(<<"Type">>, JObj),
-	    Method = wh_json:get_value(<<"Method">>, JObj),
-	    Txt = wh_json:get_value(<<"Say-Text">>, JObj),
-	    Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
-	    ?LOG("say command ~s", [Arg]),
-	    {<<"say">>, Arg}
+        false -> {'error', <<"say failed to execute as JObj did not validate">>};
+        true ->
+            Lang = wh_json:get_value(<<"Language">>, JObj),
+            Type = wh_json:get_value(<<"Type">>, JObj),
+            Method = wh_json:get_value(<<"Method">>, JObj),
+            Txt = wh_json:get_value(<<"Say-Text">>, JObj),
+            Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
+            ?LOG("say command ~s", [Arg]),
+            {<<"say">>, Arg}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
     Endpoints = wh_json:get_value(<<"Endpoints">>, JObj, []),
     case wapi_dialplan:bridge_v(JObj) of
-	false -> {'error', <<"bridge failed to execute as JObj did not validate">>};
-	true when Endpoints =:= [] -> {'error', <<"bridge request had no endpoints">>};
-	true ->
+        false -> {'error', <<"bridge failed to execute as JObj did not validate">>};
+        true when Endpoints =:= [] -> {'error', <<"bridge request had no endpoints">>};
+        true ->
             %% if we are intending to ring multiple device simultaneously then
             %% execute ring_ready so we dont leave the caller hanging with dead air.
             %% this does not test how many are ACTUALLY dialed (registered)
@@ -239,7 +239,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
             DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
                                 <<"simultaneous">> when length(Endpoints) > 1 ->
                                     ?LOG("bridge is simultaneous to multiple endpoints, starting local ringing"),
-				    %% we don't really care if this succeeds, the call will fail later on
+                                    %% we don't really care if this succeeds, the call will fail later on
                                     _ = send_cmd(Node, UUID, <<"ring_ready">>, ""),
                                     ",";
                                 _Else ->
@@ -283,13 +283,13 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                           fun(DP) ->
                                   case wh_json:get_value(<<"Hold-Media">>, JObj) of
                                       undefined ->
-					  case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
-					      undefined -> DP;
-					      Media ->
-						  Stream = wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID)),
-						  ?LOG("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
-						  [{"application", "set hold_music=" ++ Stream}|DP]
-					  end;
+                                          case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
+                                              undefined -> DP;
+                                              Media ->
+                                                  Stream = wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID)),
+                                                  ?LOG("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
+                                                  [{"application", "set hold_music=" ++ Stream}|DP]
+                                          end;
                                       Media ->
                                           Stream = wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID)),
                                           ?LOG("bridge has custom music-on-hold: ~s", [Stream]),
@@ -338,8 +338,8 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
 
 get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
     case wapi_dialplan:call_pickup_v(JObj) of
-	false -> {'error', <<"intercept failed to execute as JObj did not validate">>};
-	true ->
+        false -> {'error', <<"intercept failed to execute as JObj did not validate">>};
+        true ->
             Generators = [fun(DP) ->
                                   case wh_json:is_true(<<"Unbridged-Only">>, JObj) of
                                       false ->
@@ -375,28 +375,28 @@ get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
 
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
     case wapi_dialplan:tone_detect_v(JObj) of
-	false -> {'error', <<"tone detect failed to execute as JObj did not validate">>};
-	true ->
-	    Key = wh_json:get_value(<<"Tone-Detect-Name">>, JObj),
-	    Freqs = [ wh_util:to_list(V) || V <- wh_json:get_value(<<"Frequencies">>, JObj) ],
-	    FreqsStr = string:join(Freqs, ","),
-	    Flags = case wh_json:get_value(<<"Sniff-Direction">>, JObj, <<"read">>) of
-			<<"read">> -> <<"r">>;
-			<<"write">> -> <<"w">>
-		    end,
-	    Timeout = wh_json:get_value(<<"Timeout">>, JObj, <<"+1000">>),
-	    HitsNeeded = wh_json:get_value(<<"Hits-Needed">>, JObj, <<"1">>),
+        false -> {'error', <<"tone detect failed to execute as JObj did not validate">>};
+        true ->
+            Key = wh_json:get_value(<<"Tone-Detect-Name">>, JObj),
+            Freqs = [ wh_util:to_list(V) || V <- wh_json:get_value(<<"Frequencies">>, JObj) ],
+            FreqsStr = string:join(Freqs, ","),
+            Flags = case wh_json:get_value(<<"Sniff-Direction">>, JObj, <<"read">>) of
+                        <<"read">> -> <<"r">>;
+                        <<"write">> -> <<"w">>
+                    end,
+            Timeout = wh_json:get_value(<<"Timeout">>, JObj, <<"+1000">>),
+            HitsNeeded = wh_json:get_value(<<"Hits-Needed">>, JObj, <<"1">>),
 
-	    SuccessJObj = case wh_json:get_value(<<"On-Success">>, JObj, []) of
-			      [] -> [{<<"Application-Name">>, <<"park">>} | wapi_dialplan:extract_defaults(JObj)]; % default to parking the call
-			      AppJObj -> wh_json:from_list(AppJObj ++ wapi_dialplan:extract_defaults(JObj))
-			  end,
-	    {SuccessApp, SuccessAppData} = case get_fs_app(Node, UUID, SuccessJObj, wh_json:get_value(<<"Application-Name">>, SuccessJObj)) of
-					       {'error', _Str} -> {<<"park">>, <<>>}; % default to park if passed app isn't right
-					       {_, _}=Success -> Success
-					   end,
-	    Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessAppData, " ", HitsNeeded]),
-	    {<<"tone_detect">>, Data}
+            SuccessJObj = case wh_json:get_value(<<"On-Success">>, JObj, []) of
+                              [] -> [{<<"Application-Name">>, <<"park">>} | wapi_dialplan:extract_defaults(JObj)]; % default to parking the call
+                              AppJObj -> wh_json:from_list(AppJObj ++ wapi_dialplan:extract_defaults(JObj))
+                          end,
+            {SuccessApp, SuccessAppData} = case get_fs_app(Node, UUID, SuccessJObj, wh_json:get_value(<<"Application-Name">>, SuccessJObj)) of
+                                               {'error', _Str} -> {<<"park">>, <<>>}; % default to park if passed app isn't right
+                                               {_, _}=Success -> Success
+                                           end,
+            Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessAppData, " ", HitsNeeded]),
+            {<<"tone_detect">>, Data}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"set">>) ->
@@ -404,10 +404,10 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
         false -> {'error', <<"set failed to execute as JObj did not validate">>};
         true ->
             ChannelVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
-	    _ = [ set(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- ChannelVars],
+            _ = [ set(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- ChannelVars],
 
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
-	    _ = [ export(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- CallVars],
+            _ = [ export(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- CallVars],
 
             {<<"set">>, noop}
     end;
@@ -427,11 +427,11 @@ get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
         false -> {'error', <<"redirect failed to execute as JObj did not validate">>};
         true ->
             _ = case wh_json:get_value(<<"Redirect-Server">>, JObj) of
-		    undefined ->
-			ok;
-		    Server ->
-			set(Node, UUID, <<"sip_rh_X-Redirect-Server=", Server/binary>>)
-		end,
+                    undefined ->
+                        ok;
+                    Server ->
+                        set(Node, UUID, <<"sip_rh_X-Redirect-Server=", Server/binary>>)
+                end,
             {<<"redirect">>, wh_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
 
@@ -443,10 +443,10 @@ get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
 
 get_fs_app(_Node, _UUID, JObj, <<"conference">>) ->
     case wapi_dialplan:conference_v(JObj) of
-	false -> {'error', <<"conference failed to execute as JObj did not validate">>};
-	true ->
-	    ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-	    {<<"conference">>, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}
+        false -> {'error', <<"conference failed to execute as JObj did not validate">>};
+        true ->
+            ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
+            {<<"conference">>, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}
     end;
 
 get_fs_app(_Node, _UUID, _JObj, _App) ->
@@ -466,10 +466,10 @@ get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
                    ]);
 get_fs_kv(Key, Val, _) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
-	false ->
-	    list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "=", wh_util:to_list(Val)]);
-	{_, Prefix} ->
-	    list_to_binary([Prefix, "=", wh_util:to_list(Val)])
+        false ->
+            list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "=", wh_util:to_list(Val)]);
+        {_, Prefix} ->
+            list_to_binary([Prefix, "=", wh_util:to_list(Val)])
     end.
 
 %%--------------------------------------------------------------------
@@ -493,32 +493,32 @@ send_cmd(Node, UUID, <<"intercept">>, Args) ->
     Dialplan = Args ++ [{"application", "event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade,whistle_event_name=CHANNEL_EXECUTE_COMPLETE,whistle_application_name=intercept"}
                         ,{"application", "park  "}],
     _ = [begin
-	     App = lists:takewhile(fun($ ) -> false; (_) -> true end, V),
-	     Data = tl(lists:dropwhile(fun($ ) -> false; (_) -> true end, V)),
-	     _ = ecallmgr_util:fs_log(Node, "whistle queing command in 'xferext' extension: ~s ~s", [App, Data]),
-	     ?LOG("building xferext on node ~s: ~s(~s)", [Node, App, Data])
-	 end || {_, V} <- Dialplan],
+             App = lists:takewhile(fun($ ) -> false; (_) -> true end, V),
+             Data = tl(lists:dropwhile(fun($ ) -> false; (_) -> true end, V)),
+             _ = ecallmgr_util:fs_log(Node, "whistle queing command in 'xferext' extension: ~s ~s", [App, Data]),
+             ?LOG("building xferext on node ~s: ~s(~s)", [Node, App, Data])
+         end || {_, V} <- Dialplan],
     'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ Dialplan),
     ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
 send_cmd(Node, UUID, <<"bridge">>, Args) ->
     Dialplan = Args ++ [{"application", "event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade,whistle_event_name=CHANNEL_EXECUTE_COMPLETE,whistle_application_name=bridge"}
                         ,{"application", "park  "}],
     _ = [begin
-	     App = lists:takewhile(fun($ ) -> false; (_) -> true end, V),
-	     Data = tl(lists:dropwhile(fun($ ) -> false; (_) -> true end, V)),
-	     _ = ecallmgr_util:fs_log(Node, "whistle queing command in 'xferext' extension: ~s ~s", [App, Data]),
-	     ?LOG("building xferext on node ~s: ~s(~s)", [Node, App, Data])
-	 end || {_, V} <- Dialplan],
+             App = lists:takewhile(fun($ ) -> false; (_) -> true end, V),
+             Data = tl(lists:dropwhile(fun($ ) -> false; (_) -> true end, V)),
+             _ = ecallmgr_util:fs_log(Node, "whistle queing command in 'xferext' extension: ~s ~s", [App, Data]),
+             ?LOG("building xferext on node ~s: ~s(~s)", [Node, App, Data])
+         end || {_, V} <- Dialplan],
     'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ Dialplan),
     ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
 send_cmd(Node, UUID, AppName, Args) ->
     ?LOG("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
     _ = ecallmgr_util:fs_log(Node, "whistle executing ~s ~s", [AppName, Args]),
     freeswitch:sendmsg(Node, UUID, [
-				    {"call-command", "execute"}
-				    ,{"execute-app-name", wh_util:to_list(AppName)}
-				    ,{"execute-app-arg", wh_util:to_list(Args)}
-				   ]).
+                                    {"call-command", "execute"}
+                                    ,{"execute-app-name", wh_util:to_list(AppName)}
+                                    ,{"execute-app-arg", wh_util:to_list(Args)}
+                                   ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -532,12 +532,12 @@ send_cmd(Node, UUID, AppName, Args) ->
       JObj :: json_object().
 get_bridge_endpoint(JObj) ->
     case ecallmgr_fs_xml:build_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
-	{'error', 'timeout'} ->
+        {'error', 'timeout'} ->
             ?LOG("unable to build route to endpoint"),
             "";
-	EndPoint ->
-	    CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
-	    wh_util:to_list(list_to_binary([CVs, EndPoint]))
+        EndPoint ->
+            CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
+            wh_util:to_list(list_to_binary([CVs, EndPoint]))
     end.
 
 %%--------------------------------------------------------------------
@@ -548,13 +548,13 @@ get_bridge_endpoint(JObj) ->
 -spec stream_over_amqp/5 :: (atom(), ne_binary(), ne_binary(), json_object(), proplist()) -> no_return().
 stream_over_amqp(Node, UUID, File, JObj, Headers) ->
     DestQ = case wh_json:get_value(<<"Media-Transfer-Destination">>, JObj) of
-		undefined ->
-		    wh_json:get_value(<<"Server-ID">>, JObj);
-		<<"">> ->
-		    wh_json:get_value(<<"Server-ID">>, JObj);
-		Q ->
-		    Q
-	    end,
+                undefined ->
+                    wh_json:get_value(<<"Server-ID">>, JObj);
+                <<"">> ->
+                    wh_json:get_value(<<"Server-ID">>, JObj);
+                Q ->
+                    Q
+            end,
     amqp_stream(DestQ, fun stream_file/1, {undefined, File}, Headers, 1),
     send_store_call_event(Node, UUID, <<"complete">>).
 
@@ -568,21 +568,21 @@ stream_over_amqp(Node, UUID, File, JObj, Headers) ->
 amqp_stream(DestQ, F, State, Headers, Seq) ->
     ?LOG("streaming via AMQP to ~s", [DestQ]),
     case F(State) of
-	{ok, Data, State1} ->
-	    %% send msg
-	    Msg = [{<<"Media-Content">>, Data}
-		   ,{<<"Media-Sequence-ID">>, Seq}
-		   | Headers],
-	    {ok, JSON} = wapi_dialplan:store_amqp_resp(Msg),
-	    amqp_util:targeted_publish(DestQ, JSON, <<"application/json">>),
-	    amqp_stream(DestQ, F, State1, Headers, Seq+1);
-	eof ->
-	    Msg = [{<<"Media-Content">>, <<"eof">>}
-		   ,{<<"Media-Sequence-ID">>, Seq}
-		   | Headers],
-	    {ok, JSON} = wapi_dialplan:store_amqp_resp(Msg),
-	    amqp_util:targeted_publish(DestQ, JSON, <<"application/json">>),
-	    eof
+        {ok, Data, State1} ->
+            %% send msg
+            Msg = [{<<"Media-Content">>, Data}
+                   ,{<<"Media-Sequence-ID">>, Seq}
+                   | Headers],
+            {ok, JSON} = wapi_dialplan:store_amqp_resp(Msg),
+            amqp_util:targeted_publish(DestQ, JSON, <<"application/json">>),
+            amqp_stream(DestQ, F, State1, Headers, Seq+1);
+        eof ->
+            Msg = [{<<"Media-Content">>, <<"eof">>}
+                   ,{<<"Media-Sequence-ID">>, Seq}
+                   | Headers],
+            {ok, JSON} = wapi_dialplan:store_amqp_resp(Msg),
+            amqp_util:targeted_publish(DestQ, JSON, <<"application/json">>),
+            eof
     end.
 
 %%--------------------------------------------------------------------
@@ -596,36 +596,36 @@ stream_over_http(Node, UUID, File, Method, JObj) ->
     ?LOG("streaming via HTTP(~s) to ~s", [Method, Url]),
     AddHeaders = wh_json:to_proplist(wh_json:get_value(<<"Additional-Headers">>, JObj, ?EMPTY_JSON_OBJECT)),
     Headers = [{"Content-Length", filelib:file_size(File)}
-	       | [ {wh_util:to_list(K), V} || {K,V} <- AddHeaders] ],
+               | [ {wh_util:to_list(K), V} || {K,V} <- AddHeaders] ],
 
     Body = {fun stream_file/1, {undefined, File}},
     AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
     case ibrowse:send_req(Url, Headers, Method, Body) of
-	{ok, "504", _, _} ->
+        {ok, "504", _, _} ->
             stream_over_http(Node, UUID, File, Method, JObj);
-	{ok, StatusCode, RespHeaders, RespBody} ->
+        {ok, StatusCode, RespHeaders, RespBody} ->
             MediaTransResults = wh_json:from_list([{<<"Status-Code">>, wh_util:to_binary(StatusCode)}
-						   ,{<<"Headers">>, wh_json:from_list([ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- RespHeaders ])}
-						   ,{<<"Body">>, wh_util:to_binary(RespBody)}
-						  ]),
+                                                   ,{<<"Headers">>, wh_json:from_list([ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- RespHeaders ])}
+                                                   ,{<<"Body">>, wh_util:to_binary(RespBody)}
+                                                  ]),
             send_store_call_event(Node, UUID, MediaTransResults),
 
-	    JObj1 = wh_json:set_values([{<<"Media-Transfer-Results">>, MediaTransResults}
-					,{<<"Event-Name">>, <<"response">>}
-					,{<<"Event-Category">>, <<"call">>}
-				       ], JObj),
+            JObj1 = wh_json:set_values([{<<"Media-Transfer-Results">>, MediaTransResults}
+                                        ,{<<"Event-Name">>, <<"response">>}
+                                        ,{<<"Event-Category">>, <<"call">>}
+                                       ], JObj),
 
-	    case wapi_dialplan:store_http_resp(JObj1) of
-		{ok, Payload} ->
-		    ?LOG("ibrowse 'OK'ed with ~p publishing to ~s: ~s", [StatusCode, AppQ, Payload]),
-		    amqp_util:targeted_publish(AppQ, Payload, <<"application/json">>);
-		{'error', Msg} ->
-		    ?LOG("store via HTTP ~s errored: ~p", [Method, Msg])
-	    end;
-	{'error', Error} ->
-	    ?LOG("ibrowse error: ~p", [Error]);
-	{ibrowse_req_id, ReqId} ->
-	    ?LOG("ibrowse req id: ~p", [ReqId])
+            case wapi_dialplan:store_http_resp(JObj1) of
+                {ok, Payload} ->
+                    ?LOG("ibrowse 'OK'ed with ~p publishing to ~s: ~s", [StatusCode, AppQ, Payload]),
+                    amqp_util:targeted_publish(AppQ, Payload, <<"application/json">>);
+                {'error', Msg} ->
+                    ?LOG("store via HTTP ~s errored: ~p", [Method, Msg])
+            end;
+        {'error', Error} ->
+            ?LOG("ibrowse error: ~p", [Error]);
+        {ibrowse_req_id, ReqId} ->
+            ?LOG("ibrowse req id: ~p", [ReqId])
     end.
 
 %%--------------------------------------------------------------------
@@ -643,8 +643,8 @@ stream_file({Iod, _File}=State) ->
         {ok, Data} ->
             {ok, Data, State};
         eof ->
-	    'ok' = file:close(Iod),
-	    eof
+            'ok' = file:close(Iod),
+            eof
     end.
 
 %%--------------------------------------------------------------------
@@ -688,7 +688,7 @@ get_conference_flags(JObj) ->
     Flags = [
              <<Flag/binary, Delim/binary>>
                  || {Flag, Parameter} <- ?CONFERENCE_FLAGS, Delim <- [<<",">>]
-			,wh_util:to_boolean(wh_json:get_value(Parameter, JObj, false))
+                        ,wh_util:to_boolean(wh_json:get_value(Parameter, JObj, false))
             ],
     case list_to_binary(Flags) of
         <<>> ->
@@ -728,7 +728,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
                        [] -> EvtProp1;
                        CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
                    end,
-	wapi_call:publish_event(UUID, EvtProp2)
+        wapi_call:publish_event(UUID, EvtProp2)
     catch
         Type:_ ->
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -769,27 +769,27 @@ send_error_response(App, Msg, UUID, JObj) ->
 send_store_call_event(Node, UUID, MediaTransResults) ->
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
     Prop = try
-	       {ok, Dump} = freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)),
-	       ecallmgr_util:eventstr_to_proplist(Dump)
-	   catch
-	       _E:_R ->
-		   ?LOG_SYS("Failed get params from uuid_dump"),
-		   ?LOG_SYS("~p : ~p", [_E, _R]),
-		   ?LOG_SYS("sending less interesting call_event message"),
-		   []
-	   end,
+               {ok, Dump} = freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)),
+               ecallmgr_util:eventstr_to_proplist(Dump)
+           catch
+               _E:_R ->
+                   ?LOG_SYS("Failed get params from uuid_dump"),
+                   ?LOG_SYS("~p : ~p", [_E, _R]),
+                   ?LOG_SYS("sending less interesting call_event message"),
+                   []
+           end,
 
     EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
-		,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
-		,{<<"Call-ID">>, UUID}
-		,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop, <<>>)}
-		,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
-		,{<<"Application-Name">>, <<"store">>}
-		,{<<"Application-Response">>, MediaTransResults}
-		| wh_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
-	       ],
+                ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
+                ,{<<"Call-ID">>, UUID}
+                ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop, <<>>)}
+                ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
+                ,{<<"Application-Name">>, <<"store">>}
+                ,{<<"Application-Response">>, MediaTransResults}
+                | wh_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+               ],
     EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
-		   [] -> EvtProp1;
-		   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
-	       end,
+                   [] -> EvtProp1;
+                   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
+               end,
     wapi_call:publish_event(UUID, EvtProp2).
