@@ -46,9 +46,6 @@
                }
            }
        },
-       "call_forward": {
-           "type": "string"
-       },
        "vm_to_email_enabled": {
            "type": "boolean"
        }
