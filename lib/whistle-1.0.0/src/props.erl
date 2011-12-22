@@ -11,6 +11,7 @@
 
 -export([get_value/2, get_value/3, delete/2, is_defined/2]).
 -export([get_keys/1]).
+-export([unique/1]).
 
 -include_lib("whistle/include/wh_types.hrl").
 
@@ -29,15 +30,15 @@ get_value(Key, {struct, Prop}, Def) ->
     get_value(Key, Prop, Def);
 get_value(Key, Prop, Default) ->
     case lists:keyfind(Key, 1, Prop) of
-	false ->
-	    case lists:member(Key, Prop) of
-		true -> true;
-		false -> Default
-	    end;
-	{Key, V} -> % only return V if a two-tuple is found
-	    V;
-	Other when is_tuple(Other) -> % otherwise return the default
-	    Default
+        false ->
+            case lists:member(Key, Prop) of
+                true -> true;
+                false -> Default
+            end;
+        {Key, V} -> % only return V if a two-tuple is found
+            V;
+        Other when is_tuple(Other) -> % otherwise return the default
+            Default
     end.
 
 -spec get_keys/1 :: (Prop) -> [term(),...] | [] when
@@ -56,6 +57,16 @@ delete(K, Prop) ->
       Prop :: proplist().
 is_defined(Key, Prop) ->
     case lists:keyfind(Key, 1, Prop) of
-	{Key,_} -> true;
-	_ -> false
+        {Key,_} -> true;
+        _ -> false
     end.
+
+-spec unique/1 :: (proplist()) -> proplist().
+unique(List) ->
+    unique(List, []).                                                                                                                                                                                                                                                    
+
+-spec unique/2 :: (proplist(), proplist()) -> proplist().
+unique([], Uniques) ->
+    lists:reverse(Uniques);
+unique([{Key, _}=H|T], Uniques) ->
+    unique(lists:keydelete(Key, 1, T), [H|Uniques]).
