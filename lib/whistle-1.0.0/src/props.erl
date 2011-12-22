@@ -69,4 +69,4 @@ unique(List) ->
 unique([], Uniques) ->
     lists:reverse(Uniques);
 unique([{Key, _}=H|T], Uniques) ->
-    unique(lists:keydelete(Key, 1, T), [H|Uniques]).
+    unique(lists:filter(fun({K, _}) when K =:= Key -> false; (_) -> true end, T), [H|Uniques]).
