@@ -36,12 +36,14 @@
 %  LocalDateTime = DateTime()
 %  ErrDescr = atom(), unknown_tz
 -spec utc_to_local/2 :: (calendar:t_datetime(), binary() | list()) -> calendar:t_datetime() | {'error', 'unknown_tz'}.
+utc_to_local(UtcDateTime, "UTC") ->
+    UtcDateTime;
 utc_to_local(UtcDateTime, TZ) when is_list(TZ) ->
     case get_timezone(TZ) of
-	{shift, Shift} -> adjust_datetime(UtcDateTime, Shift);
-	{tzrule, TzRule} -> process_tz_rule(UtcDateTime, TzRule);
-	{stdname, _} -> {error, unknown_tz};
-	{error, _}=E -> E
+        {shift, Shift} -> adjust_datetime(UtcDateTime, Shift);
+        {tzrule, TzRule} -> process_tz_rule(UtcDateTime, TzRule);
+        {stdname, _} -> {error, unknown_tz};
+        {error, _}=E -> E
     end;
 utc_to_local(UtcDateTime, TZ) when is_binary(TZ) ->
     utc_to_local(UtcDateTime, binary_to_list(TZ)).
@@ -49,18 +51,18 @@ utc_to_local(UtcDateTime, TZ) when is_binary(TZ) ->
 process_tz_rule(UtcDateTime, {_, _, _, Shift, DstShift, _, _, _, _}=TzRule) ->
     LocalDateTime = adjust_datetime(UtcDateTime, Shift),
     case localtime_dst:check(LocalDateTime, TzRule) of
-	Res when (Res == is_in_dst) or (Res == time_not_exists) ->
-	    adjust_datetime(LocalDateTime, DstShift);
-	is_not_in_dst ->
-	    LocalDateTime;
-	ambiguous_time ->
-	    RecheckIt = adjust_datetime(LocalDateTime, DstShift),
-	    case localtime_dst:check(RecheckIt, TzRule) of
-		ambiguous_time ->
-		    RecheckIt;
-		_ ->
-		    LocalDateTime
-	    end
+        Res when (Res == is_in_dst) or (Res == time_not_exists) ->
+            adjust_datetime(LocalDateTime, DstShift);
+        is_not_in_dst ->
+            LocalDateTime;
+        ambiguous_time ->
+            RecheckIt = adjust_datetime(LocalDateTime, DstShift),
+            case localtime_dst:check(RecheckIt, TzRule) of
+                ambiguous_time ->
+                    RecheckIt;
+                _ ->
+                    LocalDateTime
+            end
     end.
 
 % local_to_utc(LocalDateTime, Timezone) -> UtcDateTime | tim_not_exists | {error, ErrDescr}
@@ -69,22 +71,24 @@ process_tz_rule(UtcDateTime, {_, _, _, Shift, DstShift, _, _, _, _}=TzRule) ->
 %  UtcDateTime = DateTime()
 %  ErrDescr = atom(), unknown_tz
 -spec local_to_utc/2 :: (calendar:t_datetime(), binary() | string()) -> calendar:t_datetime() | {'error', 'unknown_tz' | 'time_not_exists'} |
-									{'stdname', {string(), string()}}.
+                                                                        {'stdname', {string(), string()}}.
+local_to_utc(LocalDateTime, "UTC") ->
+    LocalDateTime;
 local_to_utc(LocalDateTime, Timezone) ->
     case get_timezone(Timezone) of
-	{shift, Shift} ->
-	    adjust_datetime(LocalDateTime, invert_shift(Shift));
-	{tzrule, {_, _, _, Shift, DstShift, _, _, _, _}=TzRule} ->
-	    UtcDateTime = adjust_datetime(LocalDateTime, invert_shift(Shift)),
-	    case localtime_dst:check(LocalDateTime, TzRule) of
-		is_in_dst ->
-		    adjust_datetime(UtcDateTime, invert_shift(DstShift));
-		Res when (Res == is_not_in_dst) or (Res == ambiguous_time) ->
-		    UtcDateTime;
-		time_not_exists ->
-		    {error, time_not_exists}
-	    end;
-	E -> E
+        {shift, Shift} ->
+            adjust_datetime(LocalDateTime, invert_shift(Shift));
+        {tzrule, {_, _, _, Shift, DstShift, _, _, _, _}=TzRule} ->
+            UtcDateTime = adjust_datetime(LocalDateTime, invert_shift(Shift)),
+            case localtime_dst:check(LocalDateTime, TzRule) of
+                is_in_dst ->
+                    adjust_datetime(UtcDateTime, invert_shift(DstShift));
+                Res when (Res == is_not_in_dst) or (Res == ambiguous_time) ->
+                    UtcDateTime;
+                time_not_exists ->
+                    {error, time_not_exists}
+            end;
+        E -> E
     end.
 
 % local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo) -> LocalDateTime | tim_not_exists | {error, ErrDescr}
@@ -111,26 +115,26 @@ local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo) ->
 %  DstName = String()
 %  ErrDesc = atom(), unknown_tz
 -spec tz_name/2 :: (calendar:t_datetime(), string()) -> {string(), string()} | 'undef' |
-							{{string(), string()} | 'undef', {string(), string()} | 'undef'} |
-							'unable_to_detect' | {'error', 'unknown_tz'} |
-							{'shift', integer()}.
+                                                        {{string(), string()} | 'undef', {string(), string()} | 'undef'} |
+                                                        'unable_to_detect' | {'error', 'unknown_tz'} |
+                                                        {'shift', integer()}.
 tz_name(_UtcDateTime, "UTC") ->
    {"UTC", "UTC"};
 tz_name(LocalDateTime, Timezone) ->
     case get_timezone(Timezone) of
-	{stdname, StdName} -> StdName;
-	{tzrule, {_, StdName, DstName, _Shift, _DstShift, _, _, _, _}=TzRule} ->
-	    case localtime_dst:check(LocalDateTime, TzRule) of
-		is_in_dst ->
-		    DstName;
-		is_not_in_dst ->
-		    StdName;
-		ambiguous_time ->
-		    {StdName, DstName};
-		time_not_exists ->
-		    unable_to_detect
-	    end;
-	E -> E
+        {stdname, StdName} -> StdName;
+        {tzrule, {_, StdName, DstName, _Shift, _DstShift, _, _, _, _}=TzRule} ->
+            case localtime_dst:check(LocalDateTime, TzRule) of
+                is_in_dst ->
+                    DstName;
+                is_not_in_dst ->
+                    StdName;
+                ambiguous_time ->
+                    {StdName, DstName};
+                time_not_exists ->
+                    unable_to_detect
+            end;
+        E -> E
     end.
 
 % tz_shift(LocalDateTime, Timezone) ->  Shift | {Shift, DstSift} | unable_to_detect | {error, ErrDesc}
@@ -147,19 +151,19 @@ tz_shift(_UtcDateTime, "UTC") ->
    0;
 tz_shift(LocalDateTime, Timezone) ->
     case get_timezone(Timezone) of
-	{shift, Shift} ->
-	    fmt_min(Shift);
-	{tzrule, {_, _StdName, _DstName, Shift, DstShift, _, _, _, _}=TzRule} ->
-	    case localtime_dst:check(LocalDateTime, TzRule) of
-		is_in_dst ->
-		    fmt_min(Shift + DstShift);
-		is_not_in_dst ->
-		    fmt_min(Shift);
-		ambiguous_time ->
-		    {fmt_min(Shift), fmt_min(Shift + DstShift)};
-		time_not_exists ->
-		    unable_to_detect
-	    end
+        {shift, Shift} ->
+            fmt_min(Shift);
+        {tzrule, {_, _StdName, _DstName, Shift, DstShift, _, _, _, _}=TzRule} ->
+            case localtime_dst:check(LocalDateTime, TzRule) of
+                is_in_dst ->
+                    fmt_min(Shift + DstShift);
+                is_not_in_dst ->
+                    fmt_min(Shift);
+                ambiguous_time ->
+                    {fmt_min(Shift), fmt_min(Shift + DstShift)};
+                time_not_exists ->
+                    unable_to_detect
+            end
     end.
 
 % the same as tz_shift/2, but calculates time difference between two local timezones
@@ -199,25 +203,25 @@ fmt_shift(0) ->
     0.
 
 -spec get_timezone/1 :: (string()) -> {'error', 'unknown_tz'} | {'stdname', {string(), string()}} |
-				      {'shift', integer()} | {'tzrule', tz_db_row()}.
+                                      {'shift', integer()} | {'tzrule', tz_db_row()}.
 get_timezone(TZ) ->
     Timezone = re:replace(TZ, "_", " ", [{return, list}, global]),
     case lists:keyfind(get_timezone_from_index(Timezone), 1, ?tz_database) of
-	false ->
-	    {error, unknown_tz};
-	{_Tz, StdName, undef, _Shift, _DstShift, undef, _DstStartTime, undef, _DstEndTime} ->
-	    {stdname, StdName};
-	{_Tz, _, _, Shift, _DstShift, undef, _DstStartTime, undef, _DstEndTime} ->
-	    {shift, Shift};
-	TzRule ->
-	    {tzrule, TzRule}
+        false ->
+            {error, unknown_tz};
+        {_Tz, StdName, undef, _Shift, _DstShift, undef, _DstStartTime, undef, _DstEndTime} ->
+            {stdname, StdName};
+        {_Tz, _, _, Shift, _DstShift, undef, _DstStartTime, undef, _DstEndTime} ->
+            {shift, Shift};
+        TzRule ->
+            {tzrule, TzRule}
     end.
 
 -spec get_timezone_from_index/1 :: (string()) -> string().
 get_timezone_from_index(TimeZone) ->
     case lists:keyfind(TimeZone, 1, ?tz_index)  of
-	false ->
-	    TimeZone;
-	{_, [TZName | _]} ->
+        false ->
+            TimeZone;
+        {_, [TZName | _]} ->
             TZName
     end.
