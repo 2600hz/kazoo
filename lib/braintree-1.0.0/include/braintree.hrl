@@ -4,7 +4,7 @@
 -type bt_result() :: {'ok'|'error', term()}.
 -type bt_xml() :: term().
 
--define(BT_DEBUG, 'false').
+-define(BT_DEBUG, whapps_config:get_is_true(<<"braintree">>, <<"debug">>, false)).
 
 -define(BT_XML_PROLOG, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>").
 -define(BT_API_VERSION, 2).
