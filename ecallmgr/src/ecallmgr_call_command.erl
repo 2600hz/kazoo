@@ -257,7 +257,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                                                put(callid, UUID),
                                                                S ! {self(), (catch get_bridge_endpoint(EP))}
                                                        end)
-                                                 || {_, EP} <- orddict:to_list(orddict:from_list(KeyedEPs))]
+                                                 || {_, EP} <- props:unique(KeyedEPs)]
                                      ], D =/= ""],
             Generators = [fun(DP) ->
                                   case wh_json:get_integer_value(<<"Timeout">>, JObj) of
