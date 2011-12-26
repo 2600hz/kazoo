@@ -11,21 +11,21 @@
 %% API
 -export([start_link/1, start_link/2]).
 -export([resource_consume/3, show_channels/1, fs_node/1, uuid_exists/2
-	 ,uuid_dump/2, hostname/1
-	]).
+         ,uuid_dump/2, hostname/1
+        ]).
 -export([distributed_presence/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("ecallmgr.hrl").
 
 -record(state, {
-	  node = 'undefined' :: atom()
-	  ,stats = #node_stats{} :: #node_stats{}
-	  ,options = [] :: proplist()
-	 }).
+          node = 'undefined' :: atom()
+          ,stats = #node_stats{} :: #node_stats{}
+          ,options = [] :: proplist()
+         }).
 
 -define(SERVER, ?MODULE).
 
@@ -40,12 +40,12 @@
 
 %% keep in sync with wh_api.hrl OPTIONAL_CHANNEL_QUERY_REQ_HEADERS
 -define(CALL_STATUS_HEADERS, [<<"Unique-ID">>, <<"Call-Direction">>, <<"Caller-Caller-ID-Name">>, <<"Caller-Caller-ID-Number">>
-				  ,<<"Caller-Network-Addr">>, <<"Caller-Destination-Number">>, <<"FreeSWITCH-Hostname">>
-			     ]).
+                                  ,<<"Caller-Network-Addr">>, <<"Caller-Destination-Number">>, <<"FreeSWITCH-Hostname">>
+                             ]).
 -define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, [<<"Call-ID">> | wapi_channel_query:optional_headers()])).
 
 -spec resource_consume/3 :: (pid(), ne_binary(), json_object()) -> {'resource_consumed', binary(), binary(), integer()} |
-								   {'resource_error', binary() | 'error'}.
+                                                                   {'resource_error', binary() | 'error'}.
 resource_consume(FsNodePid, Route, JObj) ->
     FsNodePid ! {resource_consume, self(), Route, JObj},
     receive Resp -> Resp
@@ -95,33 +95,33 @@ handle_call(hostname, _From, #state{node=Node}=State) ->
     {reply, {ok, Hostname}, State};
 handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
     spawn(fun() ->
-		  case freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
-		      {'ok', Result} -> ?LOG(UUID, "Result of uuid_exists: ~s", [Result]), gen_server:reply(From, wh_util:is_true(Result));
-		      _ -> ?LOG(UUID, "Failed to get result from uuid_exists", []), gen_server:reply(From, false)
-		  end
-	  end),
+                  case freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
+                      {'ok', Result} -> ?LOG(UUID, "Result of uuid_exists: ~s", [Result]), gen_server:reply(From, wh_util:is_true(Result));
+                      _ -> ?LOG(UUID, "Failed to get result from uuid_exists", []), gen_server:reply(From, false)
+                  end
+          end),
     {noreply, State};
 handle_call({uuid_dump, UUID}, From, #state{node=Node}=State) ->
     spawn(fun() ->
-		  case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
-		      {'ok', Result} -> 
+                  case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
+                      {'ok', Result} -> 
                           Props = ecallmgr_util:eventstr_to_proplist(Result),
                           gen_server:reply(From, {ok, Props});
-		      Error -> 
+                      Error -> 
                           ?LOG(UUID, "failed to get result from uuid_dump", []),
                           gen_server:reply(From, Error)
-		  end
-	  end),
+                  end
+          end),
     {noreply, State};
 handle_call(fs_node, _From, #state{node=Node}=State) ->
     {reply, Node, State};
 handle_call(show_channels, From, #state{node=Node}=State) ->
     spawn(fun() ->
-		  case freeswitch:api(Node, show, "channels") of
-		      {ok, Rows} -> gen_server:reply(From, convert_rows(Node, Rows));
-		      _ -> gen_server:reply(From, [])
-		  end
-	  end),
+                  case freeswitch:api(Node, show, "channels") of
+                      {ok, Rows} -> gen_server:reply(From, convert_rows(Node, Rows));
+                      _ -> gen_server:reply(From, [])
+                  end
+          end),
     {noreply, State}.
 
 handle_cast({distributed_presence, Presence, Event}, #state{node=Node}=State) ->
@@ -129,7 +129,7 @@ handle_cast({distributed_presence, Presence, Event}, #state{node=Node}=State) ->
                || {K, V} <- lists:foldr(fun(Header, Props) ->
                                                 proplists:delete(Header, Props)
                                         end, Event, ?FS_DEFAULT_HDRS)
-	      ],
+              ],
     EventName = wh_util:to_atom(Presence, true), %% Presence = <<"PRESENCE_", Type/binary>>
     _ = freeswitch:sendevent(Node, EventName, Headers),
     {noreply, State};
@@ -142,28 +142,28 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
 
     {foo, Node} ! register_event_handler,
     receive
-	ok ->
-	    Res = run_start_cmds(Node),
-	    spawn(fun() -> print_api_responses(Res) end),
+        ok ->
+            Res = run_start_cmds(Node),
+            spawn(fun() -> print_api_responses(Res) end),
 
-	    NodeData = extract_node_data(Node),
-	    Active = get_active_channels(Node),
+            NodeData = extract_node_data(Node),
+            Active = get_active_channels(Node),
 
-	    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
                                          ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
-					 ,'CUSTOM', 'sofia::register'
-					]),
+                                         ,'CUSTOM', 'sofia::register'
+                                        ]),
 
-	    {noreply, State#state{stats=(Stats#node_stats{
-					   created_channels = Active
-					   ,fs_uptime = props:get_value(uptime, NodeData, 0)
-					  })}, hibernate};
-	{error, Reason} ->
-	    {stop, Reason, State};
-	timeout ->
-	    {stop, timeout, State}
+            {noreply, State#state{stats=(Stats#node_stats{
+                                           created_channels = Active
+                                           ,fs_uptime = props:get_value(uptime, NodeData, 0)
+                                          })}, hibernate};
+        {error, Reason} ->
+            {stop, Reason, State};
+        timeout ->
+            {stop, timeout, State}
     after ?FS_TIMEOUT ->
-	    {stop, timeout, State}
+            {stop, timeout, State}
     end;
 
 %% If we start up while there are active channels, we'll have negative active_channels in our stats.
@@ -175,73 +175,65 @@ handle_info({event, [undefined | Data]}, #state{stats=Stats, node=Node}=State) -
     case props:get_value(<<"Event-Name">>, Data) of
         <<"PRESENCE_", _/binary>> = EvtName ->
             _ = case props:get_value(<<"Distributed-From">>, Data) of
-		    undefined ->
-			Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)} | Data],
-			[distributed_presence(Srv, EvtName, Headers)
-			 || Srv <- ecallmgr_fs_sup:node_handlers(),
-			    Srv =/= self()
-			];
-		    _Else ->
-			ok
-		end,
-	    {noreply, State, hibernate};
-	<<"HEARTBEAT">> ->
-	    {noreply, State#state{stats=Stats#node_stats{last_heartbeat=erlang:now()}}, hibernate};
-	<<"CUSTOM">> ->
-	    spawn(fun() -> process_custom_data(Data) end),
-	    {noreply, State, hibernate};
-	_ ->
-	    {noreply, State, hibernate}
+                    undefined ->
+                        Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)} | Data],
+                        [distributed_presence(Srv, EvtName, Headers)
+                         || Srv <- ecallmgr_fs_sup:node_handlers(),
+                            Srv =/= self()
+                        ];
+                    _Else ->
+                        ok
+                end,
+            {noreply, State, hibernate};
+        <<"HEARTBEAT">> ->
+            {noreply, State#state{stats=Stats#node_stats{last_heartbeat=erlang:now()}}, hibernate};
+        <<"CUSTOM">> ->
+            spawn(fun() -> process_custom_data(Data) end),
+            {noreply, State, hibernate};
+        _ ->
+            {noreply, State, hibernate}
     end;
 
 handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
     case props:get_value(<<"Event-Name">>, Data) of
-	<<"CHANNEL_CREATE">> ->
-	    ?LOG(UUID, "received channel create event", []),
-            spawn(fun() -> 
-                          ecallmgr_call_events:publish_msg(Node
-                                                           ,props:get_value(<<"Other-Leg-Unique-ID">>, Data)
-                                                           ,ecallmgr_call_events:swap_call_legs(Data))
-                  end),
-	    {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}, hibernate};
-	<<"CHANNEL_DESTROY">> ->
-	    ChanState = props:get_value(<<"Channel-State">>, Data),
-	    case ChanState of
-		<<"CS_NEW">> -> % ignore
-		    ?LOG(UUID, "ignoring channel destroy because of CS_NEW", []),
-		    {noreply, State, hibernate};
-		<<"CS_DESTROY">> ->
-		    ?LOG(UUID, "received channel destroyed", []),
-                    spawn(fun() -> 
-                                  ecallmgr_call_events:publish_msg(Node
-                                                                   ,props:get_value(<<"Other-Leg-Unique-ID">>, Data)
-                                                                   ,ecallmgr_call_events:swap_call_legs(Data))
-                          end),
-		    {noreply, State#state{stats=Stats#node_stats{destroyed_channels=De+1}}, hibernate}
-	    end;
-	<<"CHANNEL_HANGUP_COMPLETE">> ->
+        <<"CHANNEL_CREATE">> ->
+            ?LOG(UUID, "received channel create event", []),
+            spawn(fun() -> ecallmgr_call_control:add_leg(Data) end),
+            {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}, hibernate};
+        <<"CHANNEL_DESTROY">> ->
+            ChanState = props:get_value(<<"Channel-State">>, Data),
+            case ChanState of
+                <<"CS_NEW">> -> % ignore
+                    ?LOG(UUID, "ignoring channel destroy because of CS_NEW", []),
+                    {noreply, State, hibernate};
+                <<"CS_DESTROY">> ->
+                    ?LOG(UUID, "received channel destroyed", []),
+                    spawn(fun() -> ecallmgr_call_control:rm_leg(Data) end),
+                    {noreply, State#state{stats=Stats#node_stats{destroyed_channels=De+1}}, hibernate}
+            end;
+        <<"CHANNEL_HANGUP_COMPLETE">> ->
             spawn(fun() -> put(callid, UUID), ecallmgr_call_cdr:new_cdr(UUID, Data) end),
-	    {noreply, State};
+            {noreply, State};
         <<"PRESENCE_", _/binary>> = EvtName ->
             _ = case props:get_value(<<"Distributed-From">>, Data) of
-		    undefined ->
-			Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
-			[distributed_presence(Srv, EvtName, Headers)
-			 || Srv <- ecallmgr_fs_sup:node_handlers(),
-			    Srv =/= self()
-			];
-		    _Else ->
-			ok
-		end,
-	    {noreply, State, hibernate};
-	<<"CUSTOM">> ->
-	    spawn(fun() -> process_custom_data(Data) end),
-	    {noreply, State};
-	_ ->
-	    {noreply, State}
+                    undefined ->
+                        Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
+                        [distributed_presence(Srv, EvtName, Headers)
+                         || Srv <- ecallmgr_fs_sup:node_handlers(),
+                            Srv =/= self()
+                        ];
+                    _Else ->
+                        ok
+                end,
+            {noreply, State, hibernate};
+        <<"CUSTOM">> ->
+            spawn(fun() -> process_custom_data(Data) end),
+            {noreply, State};
+        _ ->
+            {noreply, State}
     end;
 handle_info({resource_request, Pid, <<"audio">>, ChanOptions}
-	    ,#state{options=Opts, stats=#node_stats{created_channels=Cr, destroyed_channels=De}}=State) ->
+            ,#state{options=Opts, stats=#node_stats{created_channels=Cr, destroyed_channels=De}}=State) ->
     ActiveChan = Cr - De,
     MaxChan = props:get_value(max_channels, Opts),
     AvailChan =  MaxChan - ActiveChan,
@@ -290,40 +282,40 @@ originate_channel(Node, Pid, Route, AvailChan, JObj) ->
     _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [OrigStr]),
     Result = freeswitch:bgapi(Node, originate, OrigStr),
     case Result of
-	{ok, JobId} ->
-	    receive
-		{bgok, JobId, X} ->
-		    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
-		    ?LOG_START(CallID, "originate on ~s with job id ~s received bgok ~s", [Node, JobId, X]),
-		    CtlQ = start_call_handling(Node, CallID),
-		    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
-		{bgerror, JobId, Y} ->
-		    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-		    ?LOG_SYS("~s failed to originate, ~p", [Node, ErrMsg]),
-		    Pid ! {resource_error, ErrMsg}
-	    after
-		9000 ->
-		    ?LOG_SYS("~s originate timed out", [Node]),
-		    Pid ! {resource_error, timeout}
-	    end;
-	{error, Y} ->
-	    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-	    ?LOG_SYS("~s failed to originate ~p", [Node, ErrMsg]),
-	    Pid ! {resource_error, ErrMsg};
-	timeout ->
-	    ?LOG_SYS("~s originate timed out", [Node]),
-	    Pid ! {resource_error, timeout}
+        {ok, JobId} ->
+            receive
+                {bgok, JobId, X} ->
+                    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
+                    ?LOG_START(CallID, "originate on ~s with job id ~s received bgok ~s", [Node, JobId, X]),
+                    CtlQ = start_call_handling(Node, CallID),
+                    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
+                {bgerror, JobId, Y} ->
+                    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
+                    ?LOG_SYS("~s failed to originate, ~p", [Node, ErrMsg]),
+                    Pid ! {resource_error, ErrMsg}
+            after
+                9000 ->
+                    ?LOG_SYS("~s originate timed out", [Node]),
+                    Pid ! {resource_error, timeout}
+            end;
+        {error, Y} ->
+            ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
+            ?LOG_SYS("~s failed to originate ~p", [Node, ErrMsg]),
+            Pid ! {resource_error, ErrMsg};
+        timeout ->
+            ?LOG_SYS("~s originate timed out", [Node]),
+            Pid ! {resource_error, timeout}
     end.
 
 -spec start_call_handling/2 :: (atom(), ne_binary()) -> ne_binary() | {'error', 'amqp_error'}.
 start_call_handling(Node, UUID) ->
     try
-	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID),
-	{ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
+        {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID),
+        {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
 
-	ecallmgr_call_control:amqp_queue(CtlPid)
+        ecallmgr_call_control:queue_name(CtlPid)
     catch
-	_:_ -> {error, amqp_error}
+        _:_ -> {error, amqp_error}
     end.
 
 -spec diagnostics/2 :: (pid(), tuple()) -> proplist().
@@ -334,36 +326,36 @@ diagnostics(Pid, Stats) ->
 channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) ->
     ?LOG("requested for ~p channels with ~p avail", [MinReq, AvailChan]),
     case MinReq > AvailChan of
-	true -> Pid ! {resource_response, FSHandlerPid, []};
-	false -> Pid ! {resource_response, FSHandlerPid, [{node, FSHandlerPid}
-							  ,{available_channels, AvailChan}
-							  ,{percent_utilization, Utilized}
-							 ]}
+        true -> Pid ! {resource_response, FSHandlerPid, []};
+        false -> Pid ! {resource_response, FSHandlerPid, [{node, FSHandlerPid}
+                                                          ,{available_channels, AvailChan}
+                                                          ,{percent_utilization, Utilized}
+                                                         ]}
     end.
 
 -spec extract_node_data/1 :: (atom()) -> [{'cpu',string()} |
-					{'sessions_max',integer()} |
-					{'sessions_per_thirty',integer()} |
-					{'sessions_since_startup',integer()} |
-					{'uptime',number()}
-					,...].
+                                        {'sessions_max',integer()} |
+                                        {'sessions_per_thirty',integer()} |
+                                        {'sessions_since_startup',integer()} |
+                                        {'uptime',number()}
+                                        ,...].
 extract_node_data(Node) ->
     {ok, Status} = freeswitch:api(Node, status),
     Lines = string:tokens(wh_util:to_list(Status), [$\n]),
     process_status(Lines).
 
 -spec process_status/1 :: ([nonempty_string(),...]) -> [{'cpu',string()} |
-							{'sessions_max',integer()} |
-							{'sessions_per_thirty',integer()} |
-							{'sessions_since_startup',integer()} |
-							{'uptime',number()}
-							,...].
+                                                        {'sessions_max',integer()} |
+                                                        {'sessions_per_thirty',integer()} |
+                                                        {'sessions_since_startup',integer()} |
+                                                        {'uptime',number()}
+                                                        ,...].
 process_status([Uptime, _, SessSince, Sess30, SessMax, CPU]) ->
     process_status([Uptime, SessSince, Sess30, SessMax, CPU]);
 process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->
     {match, [[Y],[D],[Hour],[Min],[Sec],[Milli],[Micro]]} = re:run(Uptime, "([\\d]+)", [{capture, [1], list}, global]),
     UpMicro = ?YR_TO_MICRO(Y) + ?DAY_TO_MICRO(D) + ?HR_TO_MICRO(Hour) + ?MIN_TO_MICRO(Min)
-	+ ?SEC_TO_MICRO(Sec) + ?MILLI_TO_MICRO(Milli) + wh_util:to_integer(Micro),
+        + ?SEC_TO_MICRO(Sec) + ?MILLI_TO_MICRO(Milli) + wh_util:to_integer(Micro),
     {match, SessSinceNum} = re:run(SessSince, "([\\d]+)", [{capture, [1], list}]),
     {match, Sess30Num} = re:run(Sess30, "([\\d]+)", [{capture, [1], list}]),
     {match, SessMaxNum} = re:run(SessMax, "([\\d]+)", [{capture, [1], list}]),
@@ -379,25 +371,25 @@ process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->
 process_custom_data(Data) ->
     put(callid, props:get_value(<<"call-id">>, Data)),
     Subclass = props:get_value(<<"Event-Subclass">>, Data),
-    ?LOG("custom event received ~s", [Subclass]),
     case Subclass of
-	<<"sofia::register">> ->
+        <<"sofia::register">> ->
+            ?LOG("received registration event"),
             publish_register_event(Data);
-	_ ->
+        _ ->
             ok
     end.
 
 publish_register_event(Data) ->
     ApiProp = lists:foldl(fun(K, Api) ->
-				  case props:get_value(wh_util:binary_to_lower(K), Data) of
-				      undefined ->
-					  case props:get_value(K, Data) of
-					      undefined -> Api;
-					      V -> [{K, V} | Api]
-					  end;
-				      V -> [{K, V} | Api]
-				  end
-			  end
+                                  case props:get_value(wh_util:binary_to_lower(K), Data) of
+                                      undefined ->
+                                          case props:get_value(K, Data) of
+                                              undefined -> Api;
+                                              V -> [{K, V} | Api]
+                                          end;
+                                      V -> [{K, V} | Api]
+                                  end
+                          end
                           ,[{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
                             ,{<<"Call-ID">>, get(callid)}
                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
@@ -407,16 +399,16 @@ publish_register_event(Data) ->
 
 get_originate_action(<<"transfer">>, JObj) ->
     case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of
-	undefined -> <<"error">>;
-	Route ->
-	    list_to_binary(["'m:^:", get_unset_vars(JObj), "transfer:", wh_util:to_e164(Route), " XML context_2' inline"])
+        undefined -> <<"error">>;
+        Route ->
+            list_to_binary(["'m:^:", get_unset_vars(JObj), "transfer:", wh_util:to_e164(Route), " XML context_2' inline"])
     end;
 get_originate_action(<<"bridge">>, JObj) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
     case ecallmgr_fs_xml:build_route(Data, wh_json:get_value(<<"Invite-Format">>, Data)) of
-	{error, timeout} -> <<"error">>;
-	EndPoint ->
-	    list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", EndPoint, "' inline"])
+        {error, timeout} -> <<"error">>;
+        EndPoint ->
+            list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", EndPoint, "' inline"])
     end;
 get_originate_action(_, _) ->
     <<"&park()">>.
@@ -443,12 +435,12 @@ run_start_cmds(Node) ->
 -spec get_active_channels/1 :: (atom()) -> integer().
 get_active_channels(Node) ->
     case freeswitch:api(Node, show, "channels") of
-	{ok, Chans} ->
-	    {ok, R} = re:compile("([\\d+])"),
-	    {match, Match} = re:run(Chans, R, [{capture, [1], list}]),
-	    wh_util:to_integer(lists:flatten(Match));
-	_ ->
-	    0
+        {ok, Chans} ->
+            {ok, R} = re:compile("([\\d+])"),
+            {match, Match} = re:run(Chans, R, [{capture, [1], list}]),
+            wh_util:to_integer(lists:flatten(Match));
+        _ ->
+            0
     end.
 
 -spec convert_rows/2 :: (atom(), binary()) -> [proplist(),...] | [].
@@ -465,17 +457,17 @@ return_rows(Node, [<<>>|Rs], Acc) ->
 return_rows(Node, [R|Rs], Acc) ->
     ?LOG("R: ~s", [R]),
     case binary:split(R, <<",">>) of
-	[_Total] ->
-	    ?LOG("Total: ~s", [_Total]),
-	    return_rows(Node, Rs, Acc);
-	[UUID|_] ->
-	    ?LOG("UUID: ~s", [UUID]),
-	    {ok, Dump} = freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)),
-	    DumpProp = ecallmgr_util:eventstr_to_proplist(Dump),
+        [_Total] ->
+            ?LOG("Total: ~s", [_Total]),
+            return_rows(Node, Rs, Acc);
+        [UUID|_] ->
+            ?LOG("UUID: ~s", [UUID]),
+            {ok, Dump} = freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)),
+            DumpProp = ecallmgr_util:eventstr_to_proplist(Dump),
 
-	    %% Pull wanted data from the converted DUMP proplist
-	    Prop = [{AMQPKey, props:get_value(FSKey, DumpProp)} || {FSKey, AMQPKey} <- ?CALL_STATUS_MAPPING],
-	    return_rows(Node, Rs, [ Prop | Acc ])
+            %% Pull wanted data from the converted DUMP proplist
+            Prop = [{AMQPKey, props:get_value(FSKey, DumpProp)} || {FSKey, AMQPKey} <- ?CALL_STATUS_MAPPING],
+            return_rows(Node, Rs, [ Prop | Acc ])
     end;
 return_rows(_Node, [], Acc) -> Acc.
 

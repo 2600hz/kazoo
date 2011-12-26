@@ -18,7 +18,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
 -define(FS_TIMEOUT, 5000).
@@ -27,10 +27,10 @@
 
 %% lookups [ {LPid, FS_ReqID, erlang:now()} ]
 -record(state, {
-	  node = 'undefined' :: atom()
-	  ,stats = #handler_stats{} :: #handler_stats{}
-	  ,lookups = [] :: [{pid(), ne_binary(), {integer(), integer(), integer()}},...] | []
-	 }).
+          node = 'undefined' :: atom()
+          ,stats = #handler_stats{} :: #handler_stats{}
+          ,lookups = [] :: [{pid(), ne_binary(), {integer(), integer(), integer()}},...] | []
+         }).
 
 %%%===================================================================
 %%% API
@@ -111,14 +111,14 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info/2 :: ('timeout', #state{}) -> handle_info_ret();
-		       ({'nodedown', atom()}, #state{}) -> {'noreply', #state{}};
+                       ({'nodedown', atom()}, #state{}) -> {'noreply', #state{}};
                        ({'is_node_up', non_neg_integer()}, #state{}) -> handle_info_ret();
-		       ({'fetch', atom(), _, _, _, binary(), proplist()}, #state{}) ->
-			       {'noreply', #state{}};
-		       ('shutdown', #state{}) -> {'stop', term(), #state{}};
-		       ({'diagnostics', pid()}, #state{}) -> {'noreply', #state{}};
-		       ({'DOWN', reference(), 'process', pid(), term()}, #state{}) -> {'noreply', #state{}};
-		       ({'EXIT', pid(), term()}, #state{}) -> {'noreply', #state{}}.
+                       ({'fetch', atom(), _, _, _, binary(), proplist()}, #state{}) ->
+                               {'noreply', #state{}};
+                       ('shutdown', #state{}) -> {'stop', term(), #state{}};
+                       ({'diagnostics', pid()}, #state{}) -> {'noreply', #state{}};
+                       ({'DOWN', reference(), 'process', pid(), term()}, #state{}) -> {'noreply', #state{}};
+                       ({'EXIT', pid(), term()}, #state{}) -> {'noreply', #state{}}.
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
     ?LOG("fetch unknown section: ~p So: ~p, K: ~p V: ~p ID: ~s", [_Section, _Something, _Key, _Value, ID]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
@@ -126,18 +126,18 @@ handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}
 
 handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
     case {props:get_value(<<"Event-Name">>, FSData), props:get_value(<<"Caller-Context">>, FSData)} of
-	{<<"REQUEST_PARAMS">>, ?WHISTLE_CONTEXT} ->
-	    {ok, LookupPid} = ecallmgr_fs_route_sup:start_req(Node, FSID, CallID, FSData),
-	    erlang:monitor(process, LookupPid),
+        {<<"REQUEST_PARAMS">>, ?WHISTLE_CONTEXT} ->
+            {ok, LookupPid} = ecallmgr_fs_route_sup:start_req(Node, FSID, CallID, FSData),
+            erlang:monitor(process, LookupPid),
 
-	    LookupsReq = Stats#handler_stats.lookups_requested + 1,
-	    ?LOG_START(CallID, "processing fetch request ~s (~b) in PID ~p", [FSID, LookupsReq, LookupPid]),
-	    {noreply, State#state{lookups=[{LookupPid, FSID, erlang:now()} | LUs]
-				  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}, hibernate};
-	{_Other, _Context} ->
-	    ?LOG("ignoring event ~s in context ~s", [_Other, _Context]),
-	    _ = freeswitch:fetch_reply(Node, FSID, ?EMPTYRESPONSE),
-	    {noreply, State, hibernate}
+            LookupsReq = Stats#handler_stats.lookups_requested + 1,
+            ?LOG_START(CallID, "processing fetch request ~s (~b) in PID ~p", [FSID, LookupsReq, LookupPid]),
+            {noreply, State#state{lookups=[{LookupPid, FSID, erlang:now()} | LUs]
+                                  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}, hibernate};
+        {_Other, _Context} ->
+            ?LOG("ignoring event ~s in context ~s", [_Other, _Context]),
+            _ = freeswitch:fetch_reply(Node, FSID, ?EMPTYRESPONSE),
+            {noreply, State, hibernate}
     end;
 
 handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
@@ -158,30 +158,30 @@ handle_info({is_node_up, Timeout}, State) when Timeout > ?FS_TIMEOUT ->
     handle_info({is_node_up, ?FS_TIMEOUT}, State);
 handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
     case ecallmgr_fs_handler:is_node_up(Node) of
-	true ->
-	    ?LOG("node ~p recovered, restarting", [self(), Node]),
-	    {noreply, State, 0};
-	false ->
-	    ?LOG("node ~p still down, retrying in ~p ms", [self(), Node, Timeout]),
-	    _Ref = erlang:send_after(Timeout, self(), {is_node_up, Timeout*2}),
-	    {noreply, State}
+        true ->
+            ?LOG("node ~p recovered, restarting", [self(), Node]),
+            {noreply, State, 0};
+        false ->
+            ?LOG("node ~p still down, retrying in ~p ms", [self(), Node, Timeout]),
+            _Ref = erlang:send_after(Timeout, self(), {is_node_up, Timeout*2}),
+            {noreply, State}
     end;
 
 handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
     lists:foreach(fun({Pid, _CallID, _StartTime}) ->
-			  case erlang:is_process_alive(Pid) of
-			      true -> Pid ! shutdown;
-			      false -> ok
-			  end
-		  end, LUs),
+                          case erlang:is_process_alive(Pid) of
+                              true -> Pid ! shutdown;
+                              false -> ok
+                          end
+                  end, LUs),
     ?LOG("commanded to shutdown node ~s", [Node]),
     {stop, normal, State};
 
 handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
     ActiveLUs = [ [{fs_route_id, ID}, {started, Started}] || {_, ID, Started} <- LUs],
     Resp = [{active_lookups, ActiveLUs}
-	    ,{amqp_host, amqp_mgr:get_host()}
-	    | ecallmgr_diagnostics:get_diagnostics(Stats) ],
+            ,{amqp_host, amqp_mgr:get_host()}
+            | ecallmgr_diagnostics:get_diagnostics(Stats) ],
     Pid ! Resp,
     {noreply, State};
 
@@ -190,15 +190,15 @@ handle_info(timeout, #state{node=Node}=State) ->
     erlang:monitor_node(Node, true),
     {foo, Node} ! Type,
     receive
-	ok ->
-	    ?LOG_SYS("bound to dialplan request on ~s", [Node]),
-	    {noreply, State};
-	{error, Reason} ->
-	    ?LOG_SYS("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
-	    {stop, Reason, State}
+        ok ->
+            ?LOG_SYS("bound to dialplan request on ~s", [Node]),
+            {noreply, State};
+        {error, Reason} ->
+            ?LOG_SYS("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
+            {stop, Reason, State}
     after ?FS_TIMEOUT ->
-	    ?LOG_SYS("timed out binding to dialplan requests on ~s", [Node]),
-	    {stop, timeout, State}
+            ?LOG_SYS("timed out binding to dialplan requests on ~s", [Node]),
+            {stop, timeout, State}
     end;
 
 handle_info(_Other, State) ->
@@ -246,20 +246,20 @@ init_route_req(Parent, Node, FSID, CallID, FSData) ->
 -spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
 process_route_req(Node, FSID, CallID, FSData) ->
     DefProp = [{<<"Msg-ID">>, FSID}
-	       ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"Unknown">>)}
-	       ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>)}
-	       ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
-	       ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
-	       ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
-	       ,{<<"Call-ID">>, CallID}
-	       ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
-	       | wh_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
+               ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"Unknown">>)}
+               ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>)}
+               ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
+               ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
+               ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
+               ,{<<"Call-ID">>, CallID}
+               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
+               | wh_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
     %% Server-ID will be over-written by the pool worker
 
     {ok, AuthZEnabled} = ecallmgr_util:get_setting(authz_enabled, true),
     case wh_util:is_true(AuthZEnabled) of
-	true -> authorize_and_route(Node, FSID, CallID, FSData, DefProp);
-	false -> route(Node, FSID, CallID, DefProp, undefined)
+        true -> authorize_and_route(Node, FSID, CallID, FSData, DefProp);
+        false -> route(Node, FSID, CallID, DefProp, undefined)
     end.
 
 -spec authorize_and_route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), proplist()) -> 'ok'.
@@ -283,34 +283,34 @@ authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->
 authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
     ?LOG("Checking authz_resp"),
     case ecallmgr_authz:is_authorized(AuthZPid) of
-	{false, _} ->
-	    ?LOG("Authz is false"),
-	    reply_forbidden(Node, FSID);
-	{true, CCVJObj} ->
-	    CCV = wh_json:to_proplist(CCVJObj),
-	    ?LOG("Authz is true"),
-	    true = wapi_route:resp_v(RespJObj),
-	    ?LOG("Valid route resp"),
-	    RouteCCV1 = lists:foldl(fun({K,V}, RouteCCV0) -> wh_json:set_value(K, V, RouteCCV0) end, RouteCCV, CCV),
+        {false, _} ->
+            ?LOG("Authz is false"),
+            reply_forbidden(Node, FSID);
+        {true, CCVJObj} ->
+            CCV = wh_json:to_proplist(CCVJObj),
+            ?LOG("Authz is true"),
+            true = wapi_route:resp_v(RespJObj),
+            ?LOG("Valid route resp"),
+            RouteCCV1 = lists:foldl(fun({K,V}, RouteCCV0) -> wh_json:set_value(K, V, RouteCCV0) end, RouteCCV, CCV),
 
-	    reply(Node, FSID, CallID, RespJObj, RouteCCV1, AuthZPid)
+            reply(Node, FSID, CallID, RespJObj, RouteCCV1, AuthZPid)
     end.
 
 %% Reply with a 402 for unauthzed calls
 -spec reply_forbidden/2 :: (atom(), ne_binary()) -> 'ok'.
 reply_forbidden(Node, FSID) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml([{<<"Method">>, <<"error">>}
-						,{<<"Route-Error-Code">>, <<"402">>}
-						,{<<"Route-Error-Message">>, <<"Payment Required">>}
-					       ]),
+                                                ,{<<"Route-Error-Code">>, <<"402">>}
+                                                ,{<<"Route-Error-Message">>, <<"Payment Required">>}
+                                               ]),
     case freeswitch:fetch_reply(Node, FSID, XML) of
-	ok ->
-	    %% only start control if freeswitch recv'd reply
-	    ?LOG_END("freeswitch accepted our route unauthz");
-	{error, Reason} ->
-	    ?LOG_END("freeswitch rejected our route unauthz, ~p", [Reason]);
-	timeout ->
-	    ?LOG_END("received no reply from freeswitch, timeout")
+        ok ->
+            %% only start control if freeswitch recv'd reply
+            ?LOG_END("freeswitch accepted our route unauthz");
+        {error, Reason} ->
+            ?LOG_END("freeswitch rejected our route unauthz, ~p", [Reason]);
+        timeout ->
+            ?LOG_END("received no reply from freeswitch, timeout")
     end.
 
 -spec reply/5 :: (atom(), ne_binary(), ne_binary(), json_object(), json_object()) -> 'ok'.
@@ -323,15 +323,15 @@ reply(Node, FSID, CallID, RespJObj, CCVs, AuthZPid) ->
     ServerQ = wh_json:get_value(<<"Server-ID">>, RespJObj),
 
     case freeswitch:fetch_reply(Node, FSID, XML) of
-	ok ->
-	    %% only start control if freeswitch recv'd reply
-	    ?LOG("freeswitch accepted our route (authzed), starting control and events"),
-	    start_control_and_events(Node, CallID, ServerQ, CCVs),
-	    ecallmgr_authz:authz_win(AuthZPid);
-	{error, Reason} ->
-	    ?LOG_END("freeswitch rejected our route response, ~p", [Reason]);
-	timeout ->
-	    ?LOG_END("received no reply from freeswitch, timeout")
+        ok ->
+            %% only start control if freeswitch recv'd reply
+            ?LOG("freeswitch accepted our route (authzed), starting control and events"),
+            start_control_and_events(Node, CallID, ServerQ, CCVs),
+            ecallmgr_authz:authz_win(AuthZPid);
+        {error, Reason} ->
+            ?LOG_END("freeswitch rejected our route response, ~p", [Reason]);
+        timeout ->
+            ?LOG_END("received no reply from freeswitch, timeout")
     end.
 
 -spec start_control_and_events/4 :: (Node, CallID, SendTo, CCVs) -> ok when
@@ -341,19 +341,19 @@ reply(Node, FSID, CallID, RespJObj, CCVs, AuthZPid) ->
       CCVs :: json_object().
 start_control_and_events(Node, CallID, SendTo, CCVs) ->
     try
-	{ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID),
-	{ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallID, CtlPid),
+        {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID),
+        {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallID, CtlPid),
 
-	CtlQ = ecallmgr_call_control:amqp_queue(CtlPid),
+        CtlQ = ecallmgr_call_control:queue_name(CtlPid),
 
-	CtlProp = [{<<"Msg-ID">>, CallID}
-		   ,{<<"Call-ID">>, CallID}
-		   ,{<<"Control-Queue">>, CtlQ}
+        CtlProp = [{<<"Msg-ID">>, CallID}
+                   ,{<<"Call-ID">>, CallID}
+                   ,{<<"Control-Queue">>, CtlQ}
                    ,{<<"Custom-Channel-Vars">>, CCVs}
-		   | wh_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
-	send_control_queue(SendTo, CtlProp)
+                   | wh_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
+        send_control_queue(SendTo, CtlProp)
     catch
-	_:Reason ->
+        _:Reason ->
             ?LOG_END("error during control handoff to whapp, ~p", [Reason]),
             {error, amqp_error}
     end.

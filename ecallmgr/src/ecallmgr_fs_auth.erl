@@ -15,7 +15,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
 -define(FS_TIMEOUT, 5000).
@@ -23,10 +23,10 @@
 -include("ecallmgr.hrl").
 
 -record(state, {
-	  node = undefined :: atom()
+          node = undefined :: atom()
           ,stats = #handler_stats{} :: #handler_stats{}
           ,lookups = [] :: [{pid(), binary(), {integer(), integer(), integer()}},...] | []
-	 }).
+         }).
 
 %%%===================================================================
 %%% API
@@ -108,18 +108,23 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
-    ?LOG_START(ID, "received fetch request for domain parameters (user creds) from ~s", [Node]),
+    case props:get_value(<<"sip_auth_method">>, Data) of
+        <<"REGISTER">> ->
+            ?LOG_START(ID, "received fetch request for sip registration creds from ~s", [Node]);
+        Else ->
+            ?LOG_START(ID, "received fetch request for ~s user creds from ~s", [Else, Node])
+    end,
     case {props:get_value(<<"Event-Name">>, Data), props:get_value(<<"action">>, Data)} of
-	{<<"REQUEST_PARAMS">>, <<"sip_auth">>} ->
-	    {ok, LookupPid} = ecallmgr_fs_auth_sup:start_req(Node, ID, Data),
-	    erlang:monitor(process, LookupPid),
+        {<<"REQUEST_PARAMS">>, <<"sip_auth">>} ->
+            {ok, LookupPid} = ecallmgr_fs_auth_sup:start_req(Node, ID, Data),
+            erlang:monitor(process, LookupPid),
 
-	    LookupsReq = Stats#handler_stats.lookups_requested + 1,
-	    {noreply, State#state{lookups=[{LookupPid, ID, erlang:now()} | LUs], stats=Stats#handler_stats{lookups_requested=LookupsReq}}, hibernate};
-	_Other ->
-	    _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
-	    ?LOG_END("ignoring request for ~p", [Node, _Other]),
-	    {noreply, State}
+            LookupsReq = Stats#handler_stats.lookups_requested + 1,
+            {noreply, State#state{lookups=[{LookupPid, ID, erlang:now()} | LUs], stats=Stats#handler_stats{lookups_requested=LookupsReq}}, hibernate};
+        _Other ->
+            _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+            ?LOG_END("ignoring request for ~p", [Node, _Other]),
+            {noreply, State}
     end;
 
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
@@ -138,22 +143,22 @@ handle_info({is_node_up, Timeout}, State) when Timeout > ?FS_TIMEOUT ->
     handle_info({is_node_up, ?FS_TIMEOUT}, State);
 handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
     case ecallmgr_fs_handler:is_node_up(Node) of
-	true ->
-	    ?LOG_SYS("node ~s recovered, rebinding", [Node]),
-	    {noreply, State, 0};
-	false ->
-	    ?LOG_SYS("node ~s still down, retrying in ~b ms", [Node, Timeout]),
-	    _Ref = erlang:send_after(Timeout, self(), {is_node_up, Timeout*2}),
-	    {noreply, State}
+        true ->
+            ?LOG_SYS("node ~s recovered, rebinding", [Node]),
+            {noreply, State, 0};
+        false ->
+            ?LOG_SYS("node ~s still down, retrying in ~b ms", [Node, Timeout]),
+            _Ref = erlang:send_after(Timeout, self(), {is_node_up, Timeout*2}),
+            {noreply, State}
     end;
 
 handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
     lists:foreach(fun({Pid, _CallID, _StartTime}) ->
-			  case erlang:is_process_alive(Pid) of
-			      true -> Pid ! shutdown;
-			      false -> ok
-			  end
-		  end, LUs),
+                          case erlang:is_process_alive(Pid) of
+                              true -> Pid ! shutdown;
+                              false -> ok
+                          end
+                  end, LUs),
     freeswitch:close(Node),
     ?LOG_SYS("asked to shut down for node ~s", [Node]),
     {stop, normal, State};
@@ -161,8 +166,8 @@ handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
 handle_info({diagnostics, Pid}, #state{lookups=LUs, stats=Stats}=State) ->
     ActiveLUs = [ [{fs_auth_id, ID}, {started, Started}] || {_, ID, Started} <- LUs ],
     Resp = [{active_lookups, ActiveLUs}
-	    | ecallmgr_diagnostics:get_diagnostics(Stats)
-	   ],
+            | ecallmgr_diagnostics:get_diagnostics(Stats)
+           ],
     Pid ! Resp,
     {noreply, State};
 
@@ -178,15 +183,15 @@ handle_info(timeout, #state{node=Node}=State) ->
     erlang:monitor_node(Node, true),
     {foo, Node} ! Type,
     receive
-	ok ->
-	    ?LOG_SYS("bound to directory request on ~s", [Node]),
-	    {noreply, State};
-	{error, Reason} ->
-	    ?LOG_SYS("failed to bind to directory requests on ~s, ~p", [Node, Reason]),
-	    {stop, Reason, State}
+        ok ->
+            ?LOG_SYS("bound to directory request on ~s", [Node]),
+            {noreply, State};
+        {error, Reason} ->
+            ?LOG_SYS("failed to bind to directory requests on ~s, ~p", [Node, Reason]),
+            {stop, Reason, State}
     after ?FS_TIMEOUT ->
-	    ?LOG_SYS("timed out binding to directory requests on ~s", [Node]),
-	    {stop, timeout, State}
+            ?LOG_SYS("timed out binding to directory requests on ~s", [Node]),
+            {stop, timeout, State}
     end;
 
 handle_info(_Info, State) ->
@@ -229,20 +234,20 @@ lookup_user(Node, ID, Data) ->
     Pid = spawn_link(fun() ->
                              put(callid, ID),
 
-			     %% build req for rabbit
-			     AuthRealm = props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Realm">>, Data)),
-			     AuthUser = props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data)),
+                             %% build req for rabbit
+                             AuthRealm = props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Realm">>, Data)),
+                             AuthUser = props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data)),
 
-			     AuthReq = [{<<"Msg-ID">>, ID}
-					,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
-					,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
-					,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
+                             AuthReq = [{<<"Msg-ID">>, ID}
+                                        ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
+                                        ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
+                                        ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
                                         ,{<<"Method">>, props:get_value(<<"sip_auth_method">>, Data)}
-					,{<<"Auth-User">>, AuthUser}
-					,{<<"Auth-Realm">>, AuthRealm}
-					| wh_api:default_headers(<<>>, <<"directory">>, <<"authn_req">>, ?APP_NAME, ?APP_VERSION)],
+                                        ,{<<"Auth-User">>, AuthUser}
+                                        ,{<<"Auth-Realm">>, AuthRealm}
+                                        | wh_api:default_headers(<<>>, <<"directory">>, <<"authn_req">>, ?APP_NAME, ?APP_VERSION)],
 
-			     ?LOG(ID, "looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, props:get_value(<<"Method">>, AuthReq)]),
+                             ?LOG(ID, "looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, props:get_value(<<"Method">>, AuthReq)]),
 
                              try
                                  {ok, AuthResp} = ecallmgr_amqp_pool:authn_req(AuthReq),
@@ -250,16 +255,16 @@ lookup_user(Node, ID, Data) ->
                                  true = wapi_authn:resp_v(AuthResp),
                                  ?LOG(ID, "received authn_resp", []),
                                  {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
-					       wh_json:set_value(<<"Auth-Realm">>, AuthRealm
-								 ,wh_json:set_value(<<"Auth-User">>, AuthUser, AuthResp))
-					      ),
+                                               wh_json:set_value(<<"Auth-Realm">>, AuthRealm
+                                                                 ,wh_json:set_value(<<"Auth-User">>, AuthUser, AuthResp))
+                                              ),
                                  ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml]),
                                  freeswitch:fetch_reply(Node, ID, Xml)
                              catch
                                  throw:_T ->
                                      ?LOG("auth request lookup failed: thrown ~w", [_T]);
-				 error:_E ->
-				     ?LOG("auth request lookup failed: error ~w", [_E])
+                                 error:_E ->
+                                     ?LOG("auth request lookup failed: error ~w", [_E])
                              end
-		     end),
+                     end),
     {ok, Pid}.

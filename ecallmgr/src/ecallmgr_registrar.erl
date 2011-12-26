@@ -37,7 +37,7 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				     ,{bindings, ?BINDINGS}]
+                                     ,{bindings, ?BINDINGS}]
                             ,[]).
 
 -spec lookup/3 :: (ne_binary(), ne_binary(), [ne_binary(),...]) -> proplist() | {'error', 'timeout'}.
@@ -50,7 +50,7 @@ handle_req(JObj, _Props) ->
     {ok, Cache} = ecallmgr_sup:cache_proc(),
     User = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
-    ?LOG_SYS("Received successful reg for ~s@~s, erasing cache", [User, Realm]),
+    ?LOG_SYS("Received successful registration for ~s@~s, erasing cache", [User, Realm]),
     wh_cache:erase_local(Cache, cache_key(Realm, User)).
 
 %%%===================================================================
@@ -121,12 +121,11 @@ handle_info({cache_registrations, Realm, User, RegFields}, State) ->
     {ok, Cache} = ecallmgr_sup:cache_proc(),
 
     wh_cache:store_local(Cache, cache_key(Realm, User), RegFields
-			 ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
-			),
+                         ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
+                        ),
     {noreply, State, hibernate};
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_,_) ->
@@ -166,23 +165,23 @@ lookup_reg(Realm, User, Fields) ->
     ?LOG("looking up registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),
     FilterFun = fun({K, _}=V, Acc) ->
-			case lists:member(K, Fields) of
-			    true -> [V | Acc];
-			    false -> Acc
-			end
-		end,
+                        case lists:member(K, Fields) of
+                            true -> [V | Acc];
+                            false -> Acc
+                        end
+                end,
 
     case wh_cache:fetch_local(Cache, cache_key(Realm, User)) of
-	{error, not_found} ->
-	    ?LOG_SYS("Valid cached registration not found, querying whapps"),
-	    RegProp = [{<<"Username">>, User}
-		       ,{<<"Realm">>, Realm}
-		       ,{<<"Fields">>, []}
-		       | wh_api:default_headers(?APP_NAME, ?APP_VERSION) ],
-	    try
-		case ecallmgr_amqp_pool:reg_query(RegProp, 1000) of
-		    {ok, RegJObj} ->
-			true = wapi_registration:query_resp_v(RegJObj),
+        {error, not_found} ->
+            ?LOG_SYS("Valid cached registration not found, querying whapps"),
+            RegProp = [{<<"Username">>, User}
+                       ,{<<"Realm">>, Realm}
+                       ,{<<"Fields">>, []}
+                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION) ],
+            try
+                case ecallmgr_amqp_pool:reg_query(RegProp, 1000) of
+                    {ok, RegJObj} ->
+                        true = wapi_registration:query_resp_v(RegJObj),
 
                         RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RegJObj, wh_json:new())),
 
