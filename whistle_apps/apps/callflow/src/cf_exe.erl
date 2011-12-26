@@ -19,7 +19,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("callflow.hrl").
 
@@ -57,11 +57,11 @@ start_link(Flow, ControlQ, CallId, Call) ->
     Bindings = [{call, [{callid, CallId}]}
                 ,{self, []}],
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, Bindings}
-				      ,{queue_name, ?QUEUE_NAME}
-				      ,{queue_options, ?QUEUE_OPTIONS}
-				      ,{consume_options, ?CONSUME_OPTIONS}
-				     ], [Flow, ControlQ, CallId, Call]).
+                                      ,{bindings, Bindings}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                     ], [Flow, ControlQ, CallId, Call]).
 
 -spec continue/1 :: (#cf_call{} | pid()) -> ok.
 -spec continue/2 :: (ne_binary(), #cf_call{} | pid()) -> ok.
@@ -273,18 +273,18 @@ handle_cast({channel_status_received, _}, #state{sanity_timer=RunningTRef}=State
     {noreply, State#state{status = <<"sane">>, sanity_timer=TRef}};
 handle_cast({add_leg, undefined}, State) ->
     {noreply, State};
-handle_cast({add_leg, CallId}, #state{other_legs=Legs}=State) ->
-    case lists:member(CallId, Legs) of
+handle_cast({add_leg, LegId}, #state{other_legs=Legs}=State) ->
+    case lists:member(LegId, Legs) of
         true -> {noreply, State};
         false ->
-            ?LOG("added leg ~s to call", [CallId]),
-            {noreply, State#state{other_legs=[CallId|Legs]}}
+            ?LOG("added leg ~s to call", [LegId]),
+            {noreply, State#state{other_legs=[LegId|Legs]}}
     end;
 handle_cast({rm_leg, undefined}, State) ->
     {noreply, State};
-handle_cast({rm_leg, CallId}, #state{other_legs=Legs}=State) ->
-    ?LOG("removed leg ~s from call", [CallId]),
-    {noreply, State#state{other_legs=lists:delete(CallId, Legs)}};
+handle_cast({rm_leg, LegId}, #state{other_legs=Legs}=State) ->
+    ?LOG("removed leg ~s from call", [LegId]),
+    {noreply, State#state{other_legs=lists:delete(LegId, Legs)}};
 handle_cast({update_callid, NewCallId}, #state{call_id=NewCallId}=State) ->
     ?LOG("ummm, no."),
     {noreply, State};
@@ -358,11 +358,11 @@ handle_event(JObj, #state{cf_module_pid=Pid, call_id=CallId}) ->
             {reply, [{cf_module_pid, Pid}]};
         {{<<"call_event">>, <<"call_status_resp">>}, _} ->
             {reply, [{cf_module_pid, Pid}]};
-        {{<<"call_event">>, <<"CHANNEL_CREATE">>}, CallId} ->
+        {{<<"call_event">>, <<"LEG_CREATED">>}, CallId} ->
             OLUI = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
             gen_server:cast(self(), {add_leg, OLUI}),
             {reply, [{cf_module_pid, Pid}]};
-        {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
+        {{<<"call_event">>, <<"LEG_DESTROYED">>}, CallId} ->
             OLUI = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
             gen_server:cast(self(), {rm_leg, OLUI}),
             {reply, [{cf_module_pid, Pid}]};
@@ -373,6 +373,8 @@ handle_event(JObj, #state{cf_module_pid=Pid, call_id=CallId}) ->
         {{<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, CallId} ->
             OLUI = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
             gen_server:cast(self(), {rm_leg, OLUI}),
+            {reply, [{cf_module_pid, Pid}]};
+        {{<<"error">>, _}, _} ->
             {reply, [{cf_module_pid, Pid}]};
         {_, CallId} ->
             {reply, [{cf_module_pid, Pid}]};
