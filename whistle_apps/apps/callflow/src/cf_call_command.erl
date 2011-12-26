@@ -59,9 +59,9 @@
 %% @end
 %%--------------------------------------------------------------------
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), [binary(),...]} |
-			      {'say', binary()} | {'say', binary(), binary()} |
-			      {'say', binary(), binary(), binary()} | {'say', binary(), binary(), binary(), binary()} |
-			      {'tones', json_objects()}.
+                              {'say', binary()} | {'say', binary(), binary()} |
+                              {'say', binary(), binary(), binary()} | {'say', binary(), binary(), binary(), binary()} |
+                              {'tones', json_objects()}.
 -export_type([audio_macro_prompt/0]).
 
 -spec audio_macro/2 :: (Prompts, Call) -> binary() when
@@ -80,9 +80,9 @@ audio_macro(Prompts, Call) ->
 audio_macro([], Call, Queue) ->
     NoopId = couch_mgr:get_uuid(),
     Prompts = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
-				  ,{<<"Msg-ID">>, NoopId}
-				  ,{<<"Call-ID">>, cf_exe:callid(Call)}
-				 ]) | Queue
+                                  ,{<<"Msg-ID">>, NoopId}
+                                  ,{<<"Call-ID">>, cf_exe:callid(Call)}
+                                 ]) | Queue
               ],
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, Prompts }
@@ -351,7 +351,7 @@ bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, #cf_call{channe
                ,{<<"Ringback">>, Ringback}
                ,{<<"Dial-Endpoint-Method">>, Strategy}
                ,{<<"Custom-Channel-Vars">>, CCVs}
-	      ],
+              ],
     send_command(Command, Call).
 
 b_bridge(Endpoints, Call) ->
@@ -406,10 +406,10 @@ b_play(Media, Terminators, Call) ->
       Call :: #cf_call{}.
 play_command(Media, Terminators, Call) ->
     wh_json:from_list([{<<"Application-Name">>, <<"play">>}
-		       ,{<<"Media-Name">>, Media}
-		       ,{<<"Terminators">>, Terminators}
-		       ,{<<"Call-ID">>, cf_exe:callid(Call)}
-		      ]).
+                       ,{<<"Media-Name">>, Media}
+                       ,{<<"Terminators">>, Terminators}
+                       ,{<<"Call-ID">>, cf_exe:callid(Call)}
+                      ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -544,9 +544,9 @@ tones(Tones, Call) ->
 tones_command(Tones, Call) ->
     CallId = cf_exe:callid(Call),
     wh_json:from_list([{<<"Application-Name">>, <<"tones">>}
-		       ,{<<"Tones">>, Tones}
+                       ,{<<"Tones">>, Tones}
                        ,{<<"Call-ID">>, CallId}
-		      ]).
+                      ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -703,16 +703,16 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
     CallId = cf_exe:callid(Call),
     Q = cf_exe:queue_name(Call),
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
-				   ,{<<"Call-ID">>, CallId}
-				   ,{<<"Msg-ID">>, NoopId}
-				   | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-				  ])
+                                   ,{<<"Call-ID">>, CallId}
+                                   ,{<<"Msg-ID">>, NoopId}
+                                   | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                                  ])
                 ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
-				    ,{<<"Media-Name">>, Media}
-				    ,{<<"Terminators">>, Terminators}
-				    ,{<<"Call-ID">>, CallId}
-				    | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-				   ])
+                                    ,{<<"Media-Name">>, Media}
+                                    ,{<<"Terminators">>, Terminators}
+                                    ,{<<"Call-ID">>, CallId}
+                                    | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                                   ])
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, Commands}
@@ -800,12 +800,12 @@ say(Say, Type, Method, Language,Call) ->
 say_command(Say, Type, Method, Language, Call) ->
     CallId = cf_exe:callid(Call),
     wh_json:from_list([{<<"Application-Name">>, <<"say">>}
-		       ,{<<"Say-Text">>, Say}
-		       ,{<<"Type">>, Type}
-		       ,{<<"Method">>, Method}
-		       ,{<<"Language">>, Language}
-		       ,{<<"Call-ID">>, CallId}
-		      ]).
+                       ,{<<"Say-Text">>, Say}
+                       ,{<<"Type">>, Type}
+                       ,{<<"Method">>, Method}
+                       ,{<<"Language">>, Language}
+                       ,{<<"Call-ID">>, CallId}
+                      ]).
 
 b_say(Say, Call) ->
     b_say(Say, <<"name_spelled">>, Call).
@@ -1051,7 +1051,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                 _ when After =:= infinity ->
                     collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
                 _ ->
-		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                    DiffMicro = timer:now_diff(erlang:now(), Start),
                     collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After - (DiffMicro div 1000))
             end;
         _ when After =:= infinity ->
@@ -1115,8 +1115,8 @@ wait_for_message(Application, Event, Type, Timeout) ->
                     {ok, JObj};
                 _ when Timeout =:= infinity ->
                     wait_for_message(Application, Event, Type, Timeout);
-		_ ->
-		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                _ ->
+                    DiffMicro = timer:now_diff(erlang:now(), Start),
                     wait_for_message(Application, Event, Type, Timeout - (DiffMicro div 1000))
             end;
         _ when Timeout =:= infinity ->
@@ -1171,8 +1171,8 @@ wait_for_application(Application, Event, Type, Timeout) ->
                     {ok, JObj};
                 _ when Timeout =:= infinity ->
                     wait_for_application(Application, Event, Type, Timeout);
-		_ ->
-		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                _ ->
+                    DiffMicro = timer:now_diff(erlang:now(), Start),
                     wait_for_application(Application, Event, Type, Timeout - (DiffMicro div 1000))
             end;
         _ when Timeout =:= infinity ->
@@ -1212,7 +1212,7 @@ wait_for_dtmf(Timeout) ->
                 _ when Timeout =:= infinity ->
                     wait_for_dtmf(Timeout);
                 _ ->
-		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                    DiffMicro = timer:now_diff(erlang:now(), Start),
                     wait_for_dtmf(Timeout - (DiffMicro div 1000))
             end;
         _ when Timeout =:= infinity ->
@@ -1247,7 +1247,7 @@ wait_for_bridge(Timeout, Call) ->
                          true -> ok;
                          false -> fail
                      end,
-            case {EventType, get_transfer_state(EventType, JObj)} of               
+            case {EventType, wh_util:get_transfer_state(JObj)} of               
                 {{<<"error">>, <<"dialplan">>, _}, _} ->
                     ?LOG("dialplan error: ~s", [wh_json:encode(JObj)]),
                     {error, JObj};
@@ -1323,7 +1323,7 @@ wait_for_bridge(Timeout, Call) ->
                 _M1 when Timeout =:= infinity ->
                     wait_for_bridge(Timeout, Call);
                 _M2 ->
-		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                    DiffMicro = timer:now_diff(erlang:now(), Start),
                     wait_for_bridge(Timeout - (DiffMicro div 1000), Call)
             end;
         _ when Timeout =:= infinity ->
@@ -1336,89 +1336,6 @@ wait_for_bridge(Timeout, Call) ->
     after
         Timeout ->
             {error, timeout}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec get_transfer_state/2 :: ({ne_binary(), ne_binary(), undefined | ne_binary()}, json_object()) -> undefined | transferer | transferee.
--spec do_get_transfer_state/2 :: (ne_binary() | undefined,  json_object()) ->  undefined | transferer | transferee.
-
-get_transfer_state({<<"call_event">>, <<"CHANNEL_DESTROY">>, _}, JObj) ->
-    do_get_transfer_state(<<"CHANNEL_DESTROY">>, JObj);
-get_transfer_state({<<"call_event">>, <<"CHANNEL_HANGUP">>, _}, JObj) ->
-    do_get_transfer_state(<<"CHANNEL_HANGUP">>, JObj);
-get_transfer_state({<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _}, JObj) ->
-    do_get_transfer_state(<<"CHANNEL_UNBRIDGE">>, JObj);
-get_transfer_state(_, _) ->
-    undefined.
-
-do_get_transfer_state(<<"CHANNEL_UNBRIDGE">>, JObj) ->
-    Timestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
-    Epoch = binary:part(wh_util:pad_binary(Timestamp, 10, <<"0">>), 0, 10),
-    Transfer = wh_json:get_value([<<"Transfer-History">>, Epoch], JObj),
-    Disposition = wh_json:get_value(<<"Disposition">>, JObj),
-    case {Disposition, Transfer} of
-        %% caller preforms a blind transfer
-        {<<"BLIND_TRANSFER">>, undefined} ->
-            ?LOG("channel was unbridged as a result of a blind transfer"),
-            transferer;
-        %% callee preforms a attended transfer (on C-leg)
-        {<<"ATTENDED_TRANSFER">>, undefined} ->
-            ?LOG("channel was unbridged as a result of an attended transfer, acquire control"),
-            transferee;
-        %% caller preforms a attended transfer
-        %% caller preforms a partial attended
-        {<<"ANSWER">>, undefined} ->
-            %% to be sure check if it was during a transfer, may not be necessary...
-            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
-                undefined ->
-                    ?LOG("channel was unbridged as a result of a transfer"),
-                    transferer;
-                _Else ->
-                    undefined
-            end;
-        %% just a catch for undefined Transfer History Item
-        %% IE: This unbridge was NOT part of the transfer history,
-        %%     otherwise it WAS and the next clause will handle it.
-        {_, undefined} ->
-            undefined;
-        %% callee preforms a blind transfer
-        %% callee preforms a partial attended
-        %% callee preforms a attended transfer
-        {_, _} ->
-            ?LOG("channel was unbridged as a result of a transfer"),
-            transferer
-    end;    
-do_get_transfer_state(_, JObj) ->
-    case wh_json:get_value(<<"Disposition">>, JObj) of
-        %% caller preforms a blind transfer
-        <<"BLIND_TRANSFER">> ->
-            ?LOG("channel was hungup as a result of a blind transfer"),                            
-            transferer;
-        %% callee preforms partial attended
-        %% callee preforms attended transfer
-        <<"ATTENDED_TRANSFER">> ->
-            ?LOG("channel was hungup as a result of an attended transfer, acquire control"),
-            transferee;
-        %% caller preforms a attended transfer
-        %% caller preforms a partial attended
-        <<"ANSWER">> ->
-            %% to be sure check if it was during a transfer, may not be necessary...
-            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
-                undefined ->
-                    ?LOG("channel was hungup as a result of a transfer"),
-                    trasferer;
-                _Else ->
-                    undefined
-            end;
-        %% missing events:
-        %% callee preforms blind transfer
-        _Else ->
-            undefined
     end.
 
 %%--------------------------------------------------------------------
@@ -1519,7 +1436,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                 _ when Timeout =:= infinity ->
                     wait_for_application_or_dtmf(Application, Timeout);
                 _ ->
-		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                    DiffMicro = timer:now_diff(erlang:now(), Start),
                     wait_for_application_or_dtmf(Application, Timeout - (DiffMicro div 1000))
             end;
         _ when Timeout =:= infinity ->
