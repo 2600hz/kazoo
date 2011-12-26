@@ -12,6 +12,9 @@
 
 %% API
 -export([start_link/0, start_proc/1]).
+-export([workers/0]).
+-export([find_worker/1]).
+-export([find_control_queue/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -34,6 +37,35 @@ start_link() ->
 
 start_proc(Args) ->
     supervisor:start_child(?SERVER, Args).
+
+-spec workers/0 :: () -> [pid(),...] | [].
+workers() ->
+    [ Pid || {_, Pid, worker, [Worker]} <- supervisor:which_children(?SERVER),
+             Worker =:= ecallmgr_call_events].
+
+-spec find_worker/1 :: (binary()) -> {error, not_found} | {ok, pid()}.
+-spec do_find_worker/2 :: (binary(), [] | [pid(),...]) -> {error, not_found} | {ok, pid()}.
+
+find_worker(CallID) ->
+    do_find_worker(workers(), CallID).
+
+do_find_worker([], _) ->
+    {error, not_found};
+do_find_worker([Srv|T], CallID) ->
+    case ecallmgr_call_events:callid(Srv) of
+        CallID ->
+            {ok, Srv};
+        _ ->
+            do_find_worker(T, CallID)
+    end.
+
+-spec find_control_queue/1 :: (binary()) -> {error, not_found} | {ok, pid()}.
+find_control_queue(CallID) ->    
+    case find_worker(CallID) of
+        {error, _}=E -> E;
+        {ok, Worker} ->
+            {ok, ecallmgr_call_events:queue_name(Worker)}
+    end.
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -58,7 +90,7 @@ init([]) ->
     Type = worker,
 
     AChild = {ecallmgr_call_events, {ecallmgr_call_events, start_link, []},
-	      Restart, Shutdown, Type, [ecallmgr_call_events]},
+              Restart, Shutdown, Type, [ecallmgr_call_events]},
 
     {ok, {{simple_one_for_one, 5, 10}, [AChild]}}.
 

@@ -23,7 +23,7 @@
 %%% size and the current App's status; if both are empty, we fire the command
 %%% immediately; otherwise we add the command to the CmdQ and loop.
 %%%
-%%% When receiving an {execute_complete, UUID, EvtName} tuple from
+%%% When receiving an {execute_complete, CALLID, EvtName} tuple from
 %%% the corresponding ecallmgr_call_events process tracking the call,
 %%% we convert the CurrApp name from Whistle parlance to FS, matching
 %%% it against what application name we got from FS via the events
@@ -46,13 +46,14 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2, handle_req/2, amqp_queue/1]).
-
+-export([start_link/2, handle_req/2]).
+-export([queue_name/1, callid/1]).
 -export([event_execute_complete/3]).
+-export([add_leg/1, rm_leg/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("ecallmgr.hrl").
 
@@ -62,14 +63,16 @@
 -type insert_at_options() :: 'now' | 'head' | 'tail' | 'flush'.
 
 -record(state, {
-	  node = 'undefined' :: atom()
-	 ,uuid = <<>> :: binary()
+          node = 'undefined' :: atom()
+         ,callid = <<>> :: binary()
          ,command_q = queue:new() :: queue()
          ,current_app = 'undefined' :: ne_binary() | 'undefined'
-	 ,start_time = erlang:now() :: wh_now()
-	 ,is_node_up = 'true' :: boolean()
+         ,start_time = erlang:now() :: wh_now()
+         ,is_node_up = 'true' :: boolean()
          ,keep_alive_ref = 'undefined' :: 'undefined' | reference()
-	 }).
+         ,other_legs = [] :: [] | [ne_binary(),...]
+         ,sanity_check_tref = undefined
+         }).
 
 -define(RESPONDERS, [{?MODULE, [{<<"call">>, <<"command">>}]}
                      ,{?MODULE, [{<<"conference">>, <<"command">>}]}]).
@@ -86,23 +89,58 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Node, UUID) ->
-    ?LOG(UUID, "starting call control on ~s", [Node]),
+start_link(Node, CallId) ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}]
-                            ,[Node, UUID]).
+                                      ,{bindings, ?BINDINGS}]
+                            ,[Node, CallId]).
 
-handle_req(JObj, Props) ->
-    Srv = props:get_value(server, Props),
-    gen_listener:cast(Srv, {dialplan, JObj}).
+-spec callid/1 :: (pid()) -> ne_binary().
+callid(Srv) ->
+    gen_server:call(Srv, {callid}).
 
--spec amqp_queue/1 :: (pid()) -> ne_binary().
-amqp_queue(Srv) ->
+-spec queue_name/1 :: (pid()) -> ne_binary().
+queue_name(Srv) ->
     gen_listener:queue_name(Srv).
 
 -spec event_execute_complete/3 :: (pid(), ne_binary(), ne_binary()) -> 'ok'.
-event_execute_complete(Srv, UUID, App) ->
-    gen_listener:cast(Srv, {event_execute_complete, UUID, App}).
+event_execute_complete(Srv, CallId, App) ->
+    gen_listener:cast(Srv, {event_execute_complete, CallId, App}).
+
+-spec add_leg/1 :: (proplist()) -> ok.
+add_leg(Props) ->
+    CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
+    put(callid, CallId),
+    case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
+        false -> ok;
+        {error, _} -> ok;
+        {ok, Srv} -> gen_listener:cast(Srv, {add_leg, Props})
+    end.
+
+-spec rm_leg/1 :: (proplist()) -> ok.
+rm_leg(Props) ->
+    spawn(fun() ->
+                  CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
+                  put(callid, CallId),
+                  case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
+                      false -> ok;
+                      {error, _} -> ok;
+                      {ok, Srv} -> gen_listener:cast(Srv, {rm_leg, Props})
+                  end
+          end),
+    spawn(fun() ->
+             CallId = props:get_value(<<"Caller-Unique-ID">>, Props),
+             put(callid, CallId),
+             case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
+                 false -> ok;
+                 {error, _} -> ok;
+                 {ok, Srv} -> gen_listener:cast(Srv, {rm_leg, Props})
+             end
+          end).
+
+-spec handle_req/2 :: (json_object(), proplist()) -> ok.
+handle_req(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    gen_listener:cast(Srv, {dialplan, JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -119,11 +157,13 @@ event_execute_complete(Srv, UUID, App) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Node, UUID]) ->
-    put(callid, UUID),
+init([Node, CallId]) ->
+    put(callid, CallId),
+    ?LOG_START("starting call control listener"),
     erlang:monitor_node(Node, true),
-    {ok, #state{node=Node, uuid=UUID, command_q = queue:new()
-		,start_time = erlang:now()}
+    TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
+    {ok, #state{node=Node, callid=CallId, command_q = queue:new()
+                ,start_time = erlang:now(), sanity_check_tref=TRef}
     }.
 
 %%--------------------------------------------------------------------
@@ -140,6 +180,8 @@ init([Node, UUID]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({callid}, _From, #state{callid=CallId}=State) ->
+    {reply, CallId, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -153,44 +195,92 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({add_leg, Props}, #state{other_legs=Legs, node=Node, callid=CallId}=State) ->
+    LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
+    case LegId =:= CallId orelse lists:member(LegId, Legs) of
+        true -> {noreply, State};
+        false ->
+            ?LOG("added leg ~s to call", [LegId]),
+            case ecallmgr_call_sup:start_event_process(Node, LegId, undefined) of
+                {ok, _Pid} ->
+                    ?LOG("started event listener for leg ~s as process ~p", [LegId, _Pid]),
+                    spawn(fun() ->
+                                  Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>, undefined
+                                                                            ,ecallmgr_call_events:swap_call_legs(Props)),
+                                  ecallmgr_call_events:publish_event(Event)
+                          end);
+                _Error -> 
+                    ?LOG("faild to start event listener for leg ~s: ~p", [LegId, _Error])
+            end,
+            {noreply, State#state{other_legs=[LegId|Legs]}}
+    end;
+handle_cast({rm_leg, Props}, #state{other_legs=Legs, callid=CallId, command_q=CmdQ, sanity_check_tref=SCTRef}=State) ->
+    LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
+    case lists:member(LegId, Legs) of
+        false when LegId =:= CallId -> 
+            ?LOG("our channel has been destroyed, executing any post-hangup commands"),
+            lists:foreach(fun(Cmd) -> execute_control_request(Cmd, State) end, post_hangup_commands(CmdQ)),
+            %% if our sanity check timer is running stop it, it will always return false
+            %% now that the channel is gone
+            catch (erlang:cancel_timer(SCTRef)), 
+            %% if the keep-alive timer is not already running start it
+            %% different then get_keep_alive_ref (which resets it)
+            KATRef = case State#state.keep_alive_ref of
+                         undefined ->
+                             erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired);
+                         Else ->
+                             Else
+                     end,
+            {noreply, State#state{keep_alive_ref=KATRef}, hibernate};
+        false -> 
+            {noreply, State};
+        true ->
+            ?LOG("removed leg ~s from call", [LegId]),
+            spawn(fun() ->
+                          Event = ecallmgr_call_events:create_event(<<"LEG_DESTROYED">>, undefined
+                                                                    ,ecallmgr_call_events:swap_call_legs(Props)),
+                          ecallmgr_call_events:publish_event(Event)
+                  end),
+            {noreply, State#state{other_legs=lists:delete(LegId, Legs)}}
+    end;
 handle_cast({dialplan, JObj}
-	    ,#state{keep_alive_ref=Ref, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
+            ,#state{keep_alive_ref=Ref, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
     NewCmdQ = try
                   insert_command(State, wh_util:to_atom(wh_json:get_value(<<"Insert-At">>, JObj, 'tail')), JObj)
-	      catch _T:_R ->
+              catch _T:_R ->
                       ?LOG("failed to insert command into control queue: ~p:~p", [_T, _R]),
                       CmdQ
               end,
     case INU andalso (not queue:is_empty(NewCmdQ)) andalso CurrApp =:= undefined of
-	true ->
-	    {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
-	    execute_control_request(Cmd, State),
-	    AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
-	    {noreply, State#state{command_q = NewCmdQ1, current_app = AppName, keep_alive_ref=get_keep_alive_ref(Ref)}, hibernate};
-	false ->
-	    {noreply, State#state{command_q = NewCmdQ, keep_alive_ref=get_keep_alive_ref(Ref)}, hibernate}
+        true ->
+            {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
+            execute_control_request(Cmd, State),
+            AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
+            {noreply, State#state{command_q = NewCmdQ1, current_app = AppName, keep_alive_ref=get_keep_alive_ref(Ref)}, hibernate};
+        false ->
+            {noreply, State#state{command_q = NewCmdQ, keep_alive_ref=get_keep_alive_ref(Ref)}, hibernate}
     end;
 
-handle_cast({event_execute_complete, UUID, EvtName}
-	    ,#state{uuid=UUID, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
+handle_cast({event_execute_complete, CallId, EvtName}
+            ,#state{callid=CallId, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
     case lists:member(EvtName, wh_api:convert_whistle_app_name(CurrApp)) of
         false ->
             {noreply, State};
         true ->
-            ?LOG("execution of ~s command complete", [CurrApp]),
-	    case INU andalso queue:out(CmdQ) of
-		false ->
-		    %% if the node is down, don't inject the next FS event
-                    ?LOG("not continuing until switch is avaliable"),
-		    {noreply, State#state{current_app=undefined}, hibernate};
-		{empty, _} ->
-                    ?LOG("reached end of queued call commands"),
-		    {noreply, State#state{current_app=undefined}, hibernate};
-		{{value, Cmd}, CmdQ1} ->
-		    execute_control_request(Cmd, State),
+            ?LOG("completed execution of command '~s'", [CurrApp]),
+            case INU andalso queue:out(CmdQ) of
+                false ->
+                    %% if the node is down, don't inject the next FS event
+                    ?LOG("not continuing until the media node becomes avaliable"),
+                    {noreply, State#state{current_app=undefined}, hibernate};
+                {empty, _} ->
+                    ?LOG("no call commands remain queued, hibernating"),
+                    {noreply, State#state{current_app=undefined}, hibernate};
+                {{value, Cmd}, CmdQ1} ->
+                    execute_control_request(Cmd, State),
                     AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
-		    {noreply, State#state{command_q = CmdQ1, current_app = AppName}, hibernate}
-	    end
+                    {noreply, State#state{command_q = CmdQ1, current_app = AppName}, hibernate}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -204,58 +294,63 @@ handle_cast({event_execute_complete, UUID, EvtName}
 %% @end
 %%--------------------------------------------------------------------
 handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
-    ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
+    ?LOG_SYS("lost connection to media node ~s, waiting for reconnection", [Node]),
     erlang:monitor_node(Node, false),
     _Ref = erlang:send_after(0, self(), {is_node_up, 100}),
     {noreply, State#state{is_node_up=false}, hibernate};
-
 handle_info({is_node_up, Timeout}, #state{node=Node, is_node_up=false}=State) ->
     case ecallmgr_util:is_node_up(Node) of
-	true ->
-	    erlang:monitor_node(Node, true),
+        true ->
+            erlang:monitor_node(Node, true),
             ?LOG("reconnected to node ~s", [Node]),
-	    {noreply, State#state{is_node_up=true}, hibernate};
-	false ->
-	    _Ref = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
-			  true ->
-			      ?LOG("node ~p down, waiting ~p to check again", [Node, ?MAX_TIMEOUT_FOR_NODE_RESTART]),
-			      erlang:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
-			  false ->
-			      ?LOG("node ~p down, waiting ~p to check again", [Node, Timeout]),
-			      erlang:send_after(Timeout, self(), {is_node_up, Timeout*2})
-		      end,
-	    {noreply, State}
+            {noreply, State#state{is_node_up=true}, hibernate};
+        false ->
+            _Ref = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
+                          true ->
+                              ?LOG("node ~p down, waiting ~p to check again", [Node, ?MAX_TIMEOUT_FOR_NODE_RESTART]),
+                              erlang:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
+                          false ->
+                              ?LOG("node ~p down, waiting ~p to check again", [Node, Timeout]),
+                              erlang:send_after(Timeout, self(), {is_node_up, Timeout*2})
+                      end,
+            {noreply, State}
     end;
-
-handle_info({force_queue_advance, UUID}, #state{uuid=UUID, command_q=CmdQ, is_node_up=INU, current_app=CurrApp}=State) ->
-    ?LOG("received control queue unconditional advance, skipping wait for ~s command completion", [CurrApp]),
+handle_info({force_queue_advance, CallId}, #state{callid=CallId, command_q=CmdQ, is_node_up=INU, current_app=CurrApp}=State) ->
+    ?LOG("received control queue unconditional advance, skipping wait for command completion of '~s'", [CurrApp]),
     case INU andalso queue:out(CmdQ) of
         false ->
             %% if the node is down, don't inject the next FS event
-            ?LOG("not continuing until switch is avaliable"),
+            ?LOG("not continuing until the media node becomes avaliable"),
             {noreply, State#state{current_app = undefined}, hibernate};
         {empty, _} ->
-            ?LOG("reached end of queued call commands"),
+            ?LOG("no call commands remain queued, hibernating"),
             {noreply, State#state{current_app = undefined}, hibernate};
         {{value, Cmd}, CmdQ1} ->
             execute_control_request(Cmd, State),
             AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
             {noreply, State#state{command_q = CmdQ1, current_app = AppName}, hibernate}
     end;
-
-handle_info({hangup, _EvtPid, UUID}, #state{uuid=UUID, command_q=CmdQ}=State) ->
-    ?LOG("recieved hangup notification"),
-    lists:foreach(fun(Cmd) -> execute_control_request(Cmd, State) end, post_hangup_commands(CmdQ)),
-    TRef = erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired),
-    {noreply, State#state{keep_alive_ref=TRef}, hibernate};
-
-handle_info(keep_alive_expired, #state{start_time=StartTime}=State) ->
-    ?LOG("KeepAlive expired, control queue was up for ~p microseconds", [timer:now_diff(erlang:now(), StartTime)]),
+handle_info(keep_alive_expired, State) ->
+    ?LOG("no new commands received after channel destruction, our job here is done"),
     {stop, normal, State};
-
+handle_info({sanity_check}, #state{node=Node, callid=CallId, keep_alive_ref=undefined}=State) ->
+    case freeswitch:api(Node, uuid_exists, wh_util:to_list(CallId)) of
+        {'ok', <<"true">>} -> 
+            ?LOG("listener passed sanity check, call is still up"),
+            TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
+            {'noreply', State#state{sanity_check_tref=TRef}};
+        _ ->
+            ?LOG("I must be crazy to be in a loony bin like this."),
+            {stop, normal, State#state{sanity_check_tref=undefined}}
+    end;
 handle_info(_Msg, State) ->
     {noreply, State}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
     {reply, [{server, self()}]}.
 
@@ -270,8 +365,10 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ?LOG("call control ~p termination", [_Reason]),
+terminate(_Reason, #state{start_time=StartTime,  sanity_check_tref=SCTRef, keep_alive_ref=KATRef}) ->
+    catch (erlang:cancel_timer(SCTRef)), 
+    catch (erlang:cancel_timer(KATRef)), 
+    ?LOG_END("control queue was up for ~p microseconds", [timer:now_diff(erlang:now(), StartTime)]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -287,36 +384,36 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% execute all commands in JObj immediately, irregardless of what is running (if anything).
 -spec insert_command/3 :: (#state{}, insert_at_options(), json_object()) -> queue().
-insert_command(#state{node=Node, uuid=UUID, command_q=CommandQ, is_node_up=IsNodeUp}=State, now, JObj) ->
+insert_command(#state{node=Node, callid=CallId, command_q=CommandQ, is_node_up=IsNodeUp}=State, now, JObj) ->
     AName = wh_json:get_value(<<"Application-Name">>, JObj),
-    ?LOG("received immediate call command ~s", [AName]),
+    ?LOG("received immediate call command '~s'", [AName]),
     case IsNodeUp andalso AName of
-	false ->
+        false ->
             ?LOG("node ~s is not avaliable", [Node]),
             ?LOG("sending execution error for command ~s", [AName]),
-	    {Mega,Sec,Micro} = erlang:now(),
-	    Prop = [ {<<"Event-Name">>, <<"CHANNEL_EXECUTE_ERROR">>}
-		     ,{<<"Event-Date-Timestamp">>, ( (Mega * 1000000 + Sec) * 1000000 + Micro )}
-		     ,{<<"Call-ID">>, UUID}
-		     ,{<<"Channel-Call-State">>, <<"ERROR">>}
-		     ,{<<"Custom-Channel-Vars">>, JObj}
-		   ],
-	    ecallmgr_call_events:publish_msg(Node, UUID, Prop),
-	    CommandQ;
-	<<"queue">> ->
-	    true = wapi_dialplan:queue_v(JObj),
-	    DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)),
-	    lists:foreach(fun(?EMPTY_JSON_OBJECT) -> ok;
-			     (CmdJObj) ->
-				  put(callid, UUID),
-				  AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
-				  true = wapi_dialplan:v(AppCmd),
+            {Mega,Sec,Micro} = erlang:now(),
+            Props = [ {<<"Event-Name">>, <<"CHANNEL_EXECUTE_ERROR">>}
+                     ,{<<"Event-Date-Timestamp">>, ( (Mega * 1000000 + Sec) * 1000000 + Micro )}
+                     ,{<<"Call-ID">>, CallId}
+                     ,{<<"Channel-Call-State">>, <<"ERROR">>}
+                     ,{<<"Custom-Channel-Vars">>, JObj}
+                   ],
+            wapi_call:publish_event(CallId, Props),
+            CommandQ;
+        <<"queue">> ->
+            true = wapi_dialplan:queue_v(JObj),
+            DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)),
+            lists:foreach(fun(?EMPTY_JSON_OBJECT) -> ok;
+                             (CmdJObj) ->
+                                  put(callid, CallId),
+                                  AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
+                                  true = wapi_dialplan:v(AppCmd),
                                   execute_control_request(CmdJObj, State)
-			  end, wh_json:get_value(<<"Commands">>, JObj)),
-	    CommandQ;
+                          end, wh_json:get_value(<<"Commands">>, JObj)),
+            CommandQ;
         _ ->
             execute_control_request(JObj, State),
-	    CommandQ
+            CommandQ
     end;
 insert_command(_State, flush, JObj) ->
     ?LOG("received control queue flush command, clearing all waiting commands"),
@@ -326,28 +423,28 @@ insert_command(#state{command_q=CommandQ}, head, JObj) ->
 insert_command(#state{command_q=CommandQ}, tail, JObj) ->
     insert_command_into_queue(CommandQ, tail, JObj);
 insert_command(Q, Pos, _) ->
-    ?LOG("received command for an unknown queue position ~p", [Pos]),
+    ?LOG("received command for an unknown queue position: ~p", [Pos]),
     Q.
 
 -spec insert_command_into_queue/3 :: (queue(), tail | head, json_object()) -> queue().
 insert_command_into_queue(Q, Position, JObj) ->
     InsertFun = queue_insert_fun(Position),
     case wh_json:get_value(<<"Application-Name">>, JObj) of
-	<<"queue">> -> %% list of commands that need to be added
-	    true = wapi_dialplan:queue_v(JObj),
-	    DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)), %% each command lacks the default headers
-	    lists:foldr(fun(?EMPTY_JSON_OBJECT, TmpQ) -> TmpQ;
-			   (CmdJObj, TmpQ) ->
-				AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
-				true = wapi_dialplan:v(AppCmd),
-                                ?LOG("inserting call command ~s at the ~s of the control queue"
-                                     ,[wh_json:get_value(<<"Application-Name">>, AppCmd), Position]),
-				InsertFun(AppCmd, TmpQ)
-			end, Q, wh_json:get_value(<<"Commands">>, JObj));
-	AppName ->
-	    true = wapi_dialplan:v(JObj),
-            ?LOG("inserting call command ~s at the ~s of the control queue", [AppName, Position]),
-	    InsertFun(JObj, Q)
+        <<"queue">> -> %% list of commands that need to be added
+            true = wapi_dialplan:queue_v(JObj),
+            DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)), %% each command lacks the default headers
+            lists:foldr(fun(?EMPTY_JSON_OBJECT, TmpQ) -> TmpQ;
+                           (CmdJObj, TmpQ) ->
+                                AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
+                                true = wapi_dialplan:v(AppCmd),
+                                ?LOG("inserting at the ~s of the control queue call command '~s'"
+                                     ,[Position, wh_json:get_value(<<"Application-Name">>, AppCmd)]),
+                                InsertFun(AppCmd, TmpQ)
+                        end, Q, wh_json:get_value(<<"Commands">>, JObj));
+        AppName ->
+            true = wapi_dialplan:v(JObj),
+            ?LOG("inserting at the ~s of the control queue call command '~s'", [Position, AppName]),
+            InsertFun(JObj, Q)
     end.
 
 queue_insert_fun(tail) ->
@@ -358,7 +455,7 @@ queue_insert_fun(head) ->
 -spec post_hangup_commands/1 :: (queue()) -> json_objects().
 post_hangup_commands(CmdQ) ->
     [ JObj || JObj <- queue:to_list(CmdQ),
-	      begin
+              begin
                   AppName = wh_json:get_value(<<"Application-Name">>, JObj),
                   case lists:member(AppName, ?POST_HANGUP_COMMANDS) of
                       true -> true;
@@ -370,58 +467,58 @@ post_hangup_commands(CmdQ) ->
     ].
 
 -spec execute_control_request/2 :: (json_object(), #state{}) -> 'ok'.
-execute_control_request(Cmd, #state{node=Node, uuid=UUID}) ->
-    put(callid, UUID),
+execute_control_request(Cmd, #state{node=Node, callid=CallId}) ->
+    put(callid, CallId),
 
     try
-        ?LOG("executing command ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)]),
+        ?LOG("executing call command '~s'", [wh_json:get_value(<<"Application-Name">>, Cmd)]),
         Mod = wh_util:to_atom(<<"ecallmgr_"
                                      ,(wh_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
                                      ,"_"
                                      ,(wh_json:get_value(<<"Event-Name">>, Cmd, <<>>))/binary
                                    >>),
-        Mod:exec_cmd(Node, UUID, Cmd, self())
+        Mod:exec_cmd(Node, CallId, Cmd, self())
     catch
-	_:{error,nosession} ->
-	    ?LOG("unable to execute command, no session"),
-	    send_error_resp(UUID, Cmd, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>),
-            self() ! {hangup, undefined, UUID},
-	    ok;
-	error:{badmatch, {error, ErrMsg}} ->
-	    ?LOG("invalid command ~s: ~p", [wh_json:get_value(<<"Application-Name">>, Cmd), ErrMsg]),
-	    ?LOG("stacktrace: ~w", [erlang:get_stacktrace()]),
-	    send_error_resp(UUID, Cmd),
-	    self() ! {force_queue_advance, UUID},
-	    ok;
+        _:{error,nosession} ->
+            ?LOG("unable to execute command, no session"),
+            send_error_resp(CallId, Cmd, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>),
+            self() ! {hangup, undefined, CallId},
+            ok;
+        error:{badmatch, {error, ErrMsg}} ->
+            ?LOG("invalid command ~s: ~p", [wh_json:get_value(<<"Application-Name">>, Cmd), ErrMsg]),
+            ?LOG("stacktrace: ~w", [erlang:get_stacktrace()]),
+            send_error_resp(CallId, Cmd),
+            self() ! {force_queue_advance, CallId},
+            ok;
         _A:_B ->
-	    ?LOG("exception (~s) while executing ~s: ~w", [_A, wh_json:get_value(<<"Application-Name">>, Cmd), _B]),
-	    ?LOG("stacktrace: ~w", [erlang:get_stacktrace()]),
-	    send_error_resp(UUID, Cmd),
-            self() ! {force_queue_advance, UUID},
+            ?LOG("exception (~s) while executing ~s: ~w", [_A, wh_json:get_value(<<"Application-Name">>, Cmd), _B]),
+            ?LOG("stacktrace: ~w", [erlang:get_stacktrace()]),
+            send_error_resp(CallId, Cmd),
+            self() ! {force_queue_advance, CallId},
             ok
     end.
 
 -spec send_error_resp/2 :: (ne_binary(), json_object()) -> 'ok'.
-send_error_resp(UUID, Cmd) ->
-    send_error_resp(UUID, Cmd, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>).
+send_error_resp(CallId, Cmd) ->
+    send_error_resp(CallId, Cmd, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>).
 
 -spec send_error_resp/3 :: (ne_binary(), json_object(), ne_binary()) -> 'ok'.
-send_error_resp(UUID, Cmd, Msg) ->
+send_error_resp(CallId, Cmd, Msg) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
-	    ,{<<"Error-Message">>, Msg}
-	    | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
-	   ],
+            ,{<<"Error-Message">>, Msg}
+            | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
+           ],
     {ok, Payload} = wapi_dialplan:error(Resp),
     ?LOG("sending execution error: ~s", [Payload]),
-    wapi_dialplan:publish_event(UUID, Payload).
+    wapi_dialplan:publish_event(CallId, Payload).
 
 -spec get_keep_alive_ref/1 :: ('undefined' | reference()) -> 'undefined' | reference().
 get_keep_alive_ref(undefined) -> undefined;
 get_keep_alive_ref(TRef) ->
     _ = case erlang:cancel_timer(TRef) of
-	    false -> ok;
-	    _ -> %% flush the receive buffer of expiration messages
-		receive keep_alive_expired -> ok
-		after 0 -> ok end
-	end,
+            false -> ok;
+            _ -> %% flush the receive buffer of expiration messages
+                receive keep_alive_expired -> ok
+                after 0 -> ok end
+        end,
     erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired).

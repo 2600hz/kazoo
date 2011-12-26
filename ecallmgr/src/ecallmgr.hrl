@@ -9,22 +9,24 @@
 -type fs_sendmsg_ret() :: 'ok' | {'error', binary()} | 'timeout'.
 
 -record(handler_stats, {lookups_success = 0 :: integer()
-			,lookups_failed = 0 :: integer()
+                        ,lookups_failed = 0 :: integer()
                         ,lookups_timeout = 0 :: integer()
                         ,lookups_requested = 0 :: integer()
-			,started = {0,0,0} :: wh_now()
-		       }).
+                        ,started = {0,0,0} :: wh_now()
+                       }).
 
 -record(node_stats, {started = {0,0,0} :: wh_now()
-		     ,last_heartbeat = {0,0,0} :: wh_now()
+                     ,last_heartbeat = {0,0,0} :: wh_now()
                      ,created_channels = 0 :: integer()
-		     ,destroyed_channels = 0 :: integer()
-		     ,fs_uptime = 0 :: integer() % in microseconds
-		    }).
+                     ,destroyed_channels = 0 :: integer()
+                     ,fs_uptime = 0 :: integer() % in microseconds
+                    }).
 
 -define(DEFAULT_DOMAIN, <<"trunks.2600hz.org">>).
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, 10000). % 10 seconds
 -define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>]). %% list of dialplan Application-Names that can execute after a call has hung up
+
+-define(SANITY_CHECK_PERIOD, 300000).
 
 -define(APP_NAME, <<"ecallmgr">>).
 -define(APP_VERSION, <<"0.8.0">>).
@@ -47,36 +49,36 @@
 %% [{AMQP-Header, FS-var-name}]
 %% so FS-var-name of "foo_var" would become "foo_var=foo_val" in the channel/call string
 -define(SPECIAL_CHANNEL_VARS, [
-			       {<<"Auto-Answer">>, <<"sip_auto_answer">>}
-			       ,{<<"Eavesdrop-Group">>, <<"eavesdrop_group">>}
-			       ,{<<"Outgoing-Caller-ID-Name">>, <<"origination_caller_id_name">>}
-			       ,{<<"Outgoing-Caller-ID-Number">>,<<"origination_caller_id_number">>}
-			       ,{<<"Outgoing-Callee-ID-Name">>, <<"origination_callee_id_name">>}
-			       ,{<<"Outgoing-Callee-ID-Number">>, <<"origination_callee_id_number">>}
-			       ,{<<"Auth-User">>, <<"sip_auth_username">>}
-			       ,{<<"Auth-Password">>, <<"sip_auth_password">>}
-			       ,{<<"Caller-ID-Name">>, <<"effective_caller_id_name">>}
-			       ,{<<"Caller-ID-Number">>, <<"effective_caller_id_number">>}
-			       ,{<<"Callee-ID-Name">>, <<"effective_callee_id_name">>}
-			       ,{<<"Callee-ID-Number">>, <<"effective_callee_id_number">>}
-			       ,{<<"Progress-Timeout">>, <<"progress_timeout">>}
-			       ,{<<"Rate">>, <<"rate">>}
-			       ,{<<"Rate-Increment">>, <<"rate_increment">>}
-			       ,{<<"Rate-Minimum">>, <<"rate_minimum">>}
-			       ,{<<"Surcharge">>, <<"surcharge">>}
-			       ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}
-			       ,{<<"Continue-On-Fail">>, <<"continue_on_fail">>}
-			       ,{<<"Endpoint-Timeout">>, <<"leg_timeout">>}
-			       ,{<<"Endpoint-Progress-Timeout">>, <<"leg_progress_timeout">>}
-			       ,{<<"Endpoint-Delay">>, <<"leg_delay_start">>}
-			       ,{<<"Endpoint-Ignore-Forward">>, <<"outbound_redirect_fatal">>}
-			       ,{<<"Overwrite-Channel-Vars">>, <<"local_var_clobber">>}
-			       ,{<<"Confirm-File">>, <<"group_confirm_file">>}
-			       ,{<<"Confirm-Key">>, <<"group_confirm_key">>}
-			       ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
-			       ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
-			       ,{<<"Presence-ID">>, <<"presence_id">>}
-			       %% ,{<<"Hold-Media">>, <<"hold_music">>}
-			      ]).
+                               {<<"Auto-Answer">>, <<"sip_auto_answer">>}
+                               ,{<<"Eavesdrop-Group">>, <<"eavesdrop_group">>}
+                               ,{<<"Outgoing-Caller-ID-Name">>, <<"origination_caller_id_name">>}
+                               ,{<<"Outgoing-Caller-ID-Number">>,<<"origination_caller_id_number">>}
+                               ,{<<"Outgoing-Callee-ID-Name">>, <<"origination_callee_id_name">>}
+                               ,{<<"Outgoing-Callee-ID-Number">>, <<"origination_callee_id_number">>}
+                               ,{<<"Auth-User">>, <<"sip_auth_username">>}
+                               ,{<<"Auth-Password">>, <<"sip_auth_password">>}
+                               ,{<<"Caller-ID-Name">>, <<"effective_caller_id_name">>}
+                               ,{<<"Caller-ID-Number">>, <<"effective_caller_id_number">>}
+                               ,{<<"Callee-ID-Name">>, <<"effective_callee_id_name">>}
+                               ,{<<"Callee-ID-Number">>, <<"effective_callee_id_number">>}
+                               ,{<<"Progress-Timeout">>, <<"progress_timeout">>}
+                               ,{<<"Rate">>, <<"rate">>}
+                               ,{<<"Rate-Increment">>, <<"rate_increment">>}
+                               ,{<<"Rate-Minimum">>, <<"rate_minimum">>}
+                               ,{<<"Surcharge">>, <<"surcharge">>}
+                               ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}
+                               ,{<<"Continue-On-Fail">>, <<"continue_on_fail">>}
+                               ,{<<"Endpoint-Timeout">>, <<"leg_timeout">>}
+                               ,{<<"Endpoint-Progress-Timeout">>, <<"leg_progress_timeout">>}
+                               ,{<<"Endpoint-Delay">>, <<"leg_delay_start">>}
+                               ,{<<"Endpoint-Ignore-Forward">>, <<"outbound_redirect_fatal">>}
+                               ,{<<"Overwrite-Channel-Vars">>, <<"local_var_clobber">>}
+                               ,{<<"Confirm-File">>, <<"group_confirm_file">>}
+                               ,{<<"Confirm-Key">>, <<"group_confirm_key">>}
+                               ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
+                               ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
+                               ,{<<"Presence-ID">>, <<"presence_id">>}
+                               %% ,{<<"Hold-Media">>, <<"hold_music">>}
+                              ]).
 
 -define(DEFAULT_RESPONSE_CODE, <<"488">>).
