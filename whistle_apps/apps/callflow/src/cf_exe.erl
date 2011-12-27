@@ -316,7 +316,11 @@ handle_info({call_sanity_check}, #state{call_id=CallId, call=Call}=State) ->
     spawn(fun() -> cf_call_command:channel_status(CallId, Call) end),
     {ok, TRef} = timer:send_after(2000, self(), {call_sanity_check}),
     {noreply, State#state{status = <<"testing">>, sanity_timer=TRef}};
-handle_info(timeout, State) ->
+handle_info(timeout, #state{call_id=CallId, ctrl_q=CtrlQ, call=#cf_call{cf_pid=Self}}=State) ->
+    spawn(fun() ->
+                  ControllerQ = queue_name(Self),
+                  send_controller_queue(ControllerQ, CallId, CtrlQ) 
+          end),
     {noreply, launch_cf_module(State)};
 handle_info(_, State) ->
     {noreply, State}.
@@ -445,3 +449,12 @@ send_command(Command, #state{call_id=CallId, ctrl_q=CtrlQ}) when is_binary(CallI
     wapi_dialplan:publish_command(CtrlQ, Prop);    
 send_command(_, _) ->
     ok.
+
+-spec send_controller_queue/3 :: (ne_binary(), ne_binary(), ne_binary()) -> ok.
+send_controller_queue(ControllerQ, CallId, CtrlQ) ->
+    Props = [{<<"Call-ID">>, CallId}
+            ,{<<"Controller-Queue">>, ControllerQ}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_call:publish_controller_queue(CtrlQ, Props).    
+    
