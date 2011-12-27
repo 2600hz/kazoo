@@ -21,6 +21,7 @@
 -export([swap_call_legs/1]).
 -export([create_event/3, publish_event/1]).
 -export([transfer/3]).
+-export([get_fs_var/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -225,7 +226,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec process_channel_event/2 :: (proplist(), #state{}) -> ok.
-process_channel_event(Props, #state{self=Self}) ->
+process_channel_event(Props, #state{self=Self, node=Node}) ->
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
                             props:get_value(<<"Unique-ID">>, Props)),
     put(callid, CallId),
@@ -236,7 +237,9 @@ process_channel_event(Props, #state{self=Self}) ->
         false -> 
             ok;
         true ->
-            Event = create_event(EventName, ApplicationName, Props),
+            %% TODO: the adding of the node to the props is for event_specific conference
+            %% clause until we can break the conference stuff into its own module
+            Event = create_event(EventName, ApplicationName, [{<<"Node">>, Node}|Props]),
             publish_event(Event)
     end,
     case EventName of 
@@ -251,8 +254,10 @@ process_channel_event(Props, #state{self=Self}) ->
 -spec create_event/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
 create_event(EventName, ApplicationName, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
-    Event = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
-             ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
+    {Mega,Sec,Micro} = erlang:now(),
+    Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
+    Event = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
+             ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
              ,{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
              ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
              ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
@@ -350,9 +355,12 @@ event_specific(<<"DTMF">>, _, Prop) ->
     [{<<"DTMF-Digit">>, Pressed}
      ,{<<"DTMF-Duration">>, Duration}
     ];
-event_specific(_, <<"conference">>, _) ->
-%%    MemberId = get_fs_var(Node, CallId, <<"conference_member_id">>, <<"0">>);
-    MemberId = <<"0">>,
+event_specific(_, <<"conference">>, Props) ->
+    %% TODO: This is a temporary workaround until we can break conferences
+    %% commands/events into their own module
+    CallId = props:get_value(<<"Caller-Unique-ID">>, Props),
+    Node = wh_util:to_atom(props:get_value(<<"Node">>, Props)),
+    MemberId = get_fs_var(Node, CallId, <<"conference_member_id">>, <<"0">>),
     [{<<"Application-Name">>, <<"conference">>}
      ,{<<"Application-Response">>, MemberId}
     ];
@@ -367,7 +375,7 @@ event_specific(_Evt, Application, Prop) ->
 
 -spec get_fs_var/4 :: (atom(), ne_binary(), ne_binary(), binary()) -> binary().
 get_fs_var(Node, CallId, Var, Default) ->
-    case freeswitch:api(Node, callid_getvar, wh_util:to_list(<<CallId/binary, " ", Var/binary>>)) of
+    case freeswitch:api(Node, uuid_getvar, wh_util:to_list(<<CallId/binary, " ", Var/binary>>)) of
         {'ok', <<"_undef_">>} -> Default;
         {'ok', <<"_none_">>} -> Default;
         {'ok', Value} -> Value;
