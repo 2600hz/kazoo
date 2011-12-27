@@ -93,7 +93,7 @@ retrieve(SlotNumber, ParkedCalls, CallerHost, #cf_call{to_user=ToUser, to_realm=
                     false;
                 CallerHost ->
                     ?LOG("pickup call id ~s", [ParkedCall]),
-                    cf_call_command:pick(ParkedCall),
+                    cf_call_command:pickup(ParkedCall, Call),
                     true;
                 OtherNode ->
                     IP = get_node_ip(OtherNode),
