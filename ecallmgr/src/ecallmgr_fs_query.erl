@@ -16,19 +16,19 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
-		     ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
-		     ,{{?MODULE, handle_channel_query}, [{<<"locate">>, <<"channel_req">>}]}
-		    ]).
+                     ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
+                     ,{{?MODULE, handle_channel_query}, [{<<"locate">>, <<"channel_req">>}]}
+                    ]).
 -define(BINDINGS, [{switch_lookups, []}
-		   ,{channel_query, []}
-		  ]).
+                   ,{channel_query, []}
+                  ]).
 
 -record(state, {}).
 
@@ -45,9 +45,9 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE,
-			    [{responders, ?RESPONDERS}
-			     ,{bindings, ?BINDINGS}
-			    ], []).
+                            [{responders, ?RESPONDERS}
+                             ,{bindings, ?BINDINGS}
+                            ], []).
 
 call_status(CallID) when not is_binary(CallID) ->
     call_status(wh_util:to_binary(CallID));
@@ -78,27 +78,27 @@ handle_channel_status(JObj, _Props) ->
     ?LOG_START("channel status request received"),
 
     case [ecallmgr_fs_node:hostname(NH) || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
-	[] -> ?LOG("no node found with channel ~s", [CallID]);
-	[{ok, Hostname}] ->
-	    ?LOG("call is on ~s", [Hostname]),
-	    Resp = [{<<"Call-ID">>, CallID}
+        [] -> ?LOG("no node found with channel ~s", [CallID]);
+        [{ok, Hostname}] ->
+            ?LOG("call is on ~s", [Hostname]),
+            Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Switch-Hostname">>, Hostname}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-	    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-	[{error, Err}] ->
-	    ?LOG("Hostname lookup failed, but call is active"),
-	    Resp = [{<<"Call-ID">>, CallID}
+            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+        [{error, Err}] ->
+            ?LOG("Hostname lookup failed, but call is active"),
+            Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Error-Msg">>, wh_util:to_binary(Err)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-	    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-	[timeout] ->
-	    Resp = [{<<"Call-ID">>, CallID}
+            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+        [timeout] ->
+            Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Error-Msg">>, <<"switch timeout">>}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-	    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
+            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
 -spec handle_call_status/2 :: (json_object(), proplist()) -> 'ok'.
@@ -106,7 +106,7 @@ handle_call_status(JObj, _Props) ->
     true = wapi_call:call_status_req_v(JObj),
     wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-io:format("lookup ~s~n", [CallID]),
+
     ?LOG("call status request received"),
 
     case [NH || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
@@ -122,9 +122,9 @@ io:format("lookup ~s~n", [CallID]),
                     wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
                 {ok, Props} ->
                     ?LOG("got channel info for ~s, forming response", [CallID]),
-                    Resp = create_call_status_resp(Props, props:get_value(<<"Channel-Call-UUID">>, Props) =:= CallID),
-                    io:format("~p~n", [[{<<"Control-Queue">>, <<"test">>}|Resp]]),
-                    wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), [{<<"Control-Queue">>, <<"test">>}|Resp])
+                    ChannelCallID = props:get_value(<<"Channel-Call-UUID">>, Props),
+                    Resp = create_call_status_resp(Props, ChannelCallID =:= CallID),
+                    wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
             end
     end.
 
@@ -138,21 +138,21 @@ handle_channel_query(JObj, _Props) ->
     ListOfChannels = [ecallmgr_fs_node:show_channels(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()],
 
     SearchParams = lists:foldl(fun(Field, Acc) ->
-				       case wh_json:get_value(Field, JObj) of
-					   undefined -> Acc;
-					   Value -> [{Field, Value} | Acc]
-				       end
-			       end, [], wapi_channel_query:optional_headers()),
+                                       case wh_json:get_value(Field, JObj) of
+                                           undefined -> Acc;
+                                           Value -> [{Field, Value} | Acc]
+                                       end
+                               end, [], wapi_channel_query:optional_headers()),
 
     case lists:foldl(fun(NodeChannels, Acc) ->
-			     filter_for_matching_uuids(SearchParams, NodeChannels, Acc)
-		     end, [], ListOfChannels) of
-	[] ->
-	    ?LOG("No channels found that meet search parameters"),
-	    ok;
-	Matching ->
-	    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-	    send_channel_query_resp(RespQ, Matching)
+                             filter_for_matching_uuids(SearchParams, NodeChannels, Acc)
+                     end, [], ListOfChannels) of
+        [] ->
+            ?LOG("No channels found that meet search parameters"),
+            ok;
+        Matching ->
+            RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+            send_channel_query_resp(RespQ, Matching)
     end.
 
 %%%===================================================================
@@ -253,32 +253,32 @@ code_change(_OldVsn, State, _Extra) ->
 filter_for_matching_uuids(_, [], UUIDs) -> UUIDs;
 filter_for_matching_uuids(SearchParams, [C|Cs], UUIDs) ->
     UUIDs1 = case lists:any(fun({<<"Call-ID">>,_}) -> false;
-			       ({Key, FSValue}) ->
-				    case wh_json:get_value(Key, SearchParams) of
-					FSValue -> true;
-					_ -> false
-				    end
-			    end, C) of
-		 true ->
-		     try
-			 [ make_jobj(C) | UUIDs]
-		     catch
-			 throw:_E ->
-			     ?LOG("Throw making jobj: ~p", [_E]),
-			     UUIDs;
-			 error:_E ->
-			     ?LOG("Error making jobj: ~p", [_E]),
-			     UUIDs
-		     end;
-		 false -> UUIDs
-	     end,
+                               ({Key, FSValue}) ->
+                                    case wh_json:get_value(Key, SearchParams) of
+                                        FSValue -> true;
+                                        _ -> false
+                                    end
+                            end, C) of
+                 true ->
+                     try
+                         [ make_jobj(C) | UUIDs]
+                     catch
+                         throw:_E ->
+                             ?LOG("Throw making jobj: ~p", [_E]),
+                             UUIDs;
+                         error:_E ->
+                             ?LOG("Error making jobj: ~p", [_E]),
+                             UUIDs
+                     end;
+                 false -> UUIDs
+             end,
     filter_for_matching_uuids(SearchParams, Cs, UUIDs1).
 
 -spec make_jobj/1 :: (proplist()) -> json_object().
 make_jobj(C) ->
     wh_json:from_list([{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, C)}
-		       ,{<<"Switch-Hostname">>, wh_json:get_value(<<"Hostname">>, C)}
-		      ]).
+                       ,{<<"Switch-Hostname">>, wh_json:get_value(<<"Hostname">>, C)}
+                      ]).
 
 send_channel_query_resp(RespQ, UUIDs) ->
     Resp = [{<<"Active-Calls">>, UUIDs}

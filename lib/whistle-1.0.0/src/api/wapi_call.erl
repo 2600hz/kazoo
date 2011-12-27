@@ -75,7 +75,7 @@
 -define(CALL_STATUS_REQ_TYPES, []).
 
 %% Call Status Response
--define(CALL_STATUS_RESP_HEADERS, [<<"Call-ID">>, <<"Status">>, <<"Control-Queue">>]).
+-define(CALL_STATUS_RESP_HEADERS, [<<"Call-ID">>, <<"Status">>]).
 -define(OPTIONAL_CALL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>, <<"Switch-Hostname">>
                                                 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                                 ,<<"Destination-Number">>, <<"Other-Leg-Unique-ID">>
