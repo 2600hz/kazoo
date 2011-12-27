@@ -47,10 +47,9 @@ handle_req(JObj, _Options) ->
 -spec execute_call_flow/4 :: (json_object(), ne_binary(), ne_binary(), #cf_call{}) -> ok.
 execute_call_flow(Flow, ControlQ, CallId, Call) ->
     CCVs = get_channel_ccvs(Call),
-%%    cf_call_command:set(CCVs, get_call_ccvs(Call), Call),
     ?LOG("call has been setup, passing control to callflow executer"),
-    R = cf_exe_sup:new(wh_json:get_value(<<"flow">>, Flow), ControlQ, CallId, Call#cf_call{channel_vars=CCVs}),
-    io:format("~p~n", [R]),
+    {ok, CFPid} = cf_exe_sup:new(wh_json:get_value(<<"flow">>, Flow), ControlQ, CallId, Call#cf_call{channel_vars=CCVs}),
+    cf_call_command:set(CCVs, get_call_ccvs(Call), Call#cf_call{cf_pid=CFPid}),
     ok.
 
 %%-----------------------------------------------------------------------------
