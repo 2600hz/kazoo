@@ -341,7 +341,7 @@ reply(Node, FSID, CallID, RespJObj, CCVs, AuthZPid) ->
       CCVs :: json_object().
 start_control_and_events(Node, CallID, SendTo, CCVs) ->
     try
-        {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID),
+        {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID, SendTo),
         {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallID),
 
         CtlQ = ecallmgr_call_control:queue_name(CtlPid),

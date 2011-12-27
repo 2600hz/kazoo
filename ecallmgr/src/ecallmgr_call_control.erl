@@ -46,7 +46,8 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2, handle_req/2, handle_call_events/2]).
+-export([start_link/3]).
+-export([handle_call_command/2, handle_conference_command/2, handle_call_events/2]).
 -export([queue_name/1, callid/1]).
 -export([event_execute_complete/3]).
 -export([add_leg/1, rm_leg/1]).
@@ -67,6 +68,7 @@
           node = 'undefined' :: atom()
          ,callid = <<>> :: binary()
          ,self = undefined :: undefined | pid()
+         ,controller_q = undefined :: undefined | ne_binary()
          ,evtpid = undefined :: undefined | pid()
          ,command_q = queue:new() :: queue()
          ,current_app = 'undefined' :: ne_binary() | 'undefined'
@@ -78,8 +80,8 @@
          ,sanity_check_tref = undefined
          }).
 
--define(RESPONDERS, [{?MODULE, [{<<"call">>, <<"command">>}]}
-                     ,{?MODULE, [{<<"conference">>, <<"command">>}]}
+-define(RESPONDERS, [{{?MODULE, handle_call_command}, [{<<"call">>, <<"command">>}]}
+                     ,{{?MODULE, handle_conference_command}, [{<<"conference">>, <<"command">>}]}
                      ,{{?MODULE, handle_call_events}, [{<<"call_event">>, <<"*">>}]}]).
 -define(QUEUE_NAME, <<"">>).
 -define(QUEUE_OPTIONS, []).
@@ -96,7 +98,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Node, CallId) ->
+start_link(Node, CallId, WhAppQ) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
     %% then transfered to A->D, but the route landed in a different 
@@ -104,13 +106,14 @@ start_link(Node, CallId) ->
     %% try to handlecall more than once on a UUID we had to leave the
     %% call_events running on another ecallmgr... fun fun
     Bindings = [{call, [{callid, CallId}]}
-                ,{dialplan, []}],
+                ,{dialplan, []}
+                ,{self, []}],
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
                                       ,{bindings, Bindings}
                                       ,{queue_name, ?QUEUE_NAME}
                                       ,{queue_options, ?QUEUE_OPTIONS}
                                       ,{consume_options, ?CONSUME_OPTIONS}
-                                     ], [Node, CallId]).
+                                     ], [Node, CallId, WhAppQ]).
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
@@ -158,6 +161,16 @@ rm_leg(Props) ->
                   end
           end).
 
+-spec handle_call_command/2 :: (json_object(), proplist()) -> ok.
+handle_call_command(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    gen_listener:cast(Srv, {dialplan, JObj}).
+
+-spec handle_conference_command/2 :: (json_object(), proplist()) -> ok.
+handle_conference_command(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    gen_listener:cast(Srv, {dialplan, JObj}).
+
 -spec handle_call_events/2 :: (json_object(), proplist()) -> ok.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value(server, Props),
@@ -182,14 +195,12 @@ handle_call_events(JObj, Props) ->
             gen_listener:cast(Srv, {Transfer, JObj});
         {<<"CHANNEL_BRIDGE">>, _} ->
             gen_listener:cast(Srv, {add_leg, JObj});
-        _ ->
+        {<<"controller_queue">>, _} ->
+            ControllerQ = wh_json:get_value(<<"Controller-Queue">>, JObj),
+            gen_listener:cast(Srv, {controller_queue, ControllerQ});
+        {_, _} ->
             ok
     end.
-
--spec handle_req/2 :: (json_object(), proplist()) -> ok.
-handle_req(JObj, Props) ->
-    Srv = props:get_value(server, Props),
-    gen_listener:cast(Srv, {dialplan, JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -206,13 +217,13 @@ handle_req(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Node, CallId]) ->
+init([Node, CallId, WhAppQ]) ->
     put(callid, CallId),
     ?LOG_START("starting call control listener"),
     erlang:monitor_node(Node, true),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
     {ok, #state{node=Node, callid=CallId, command_q=queue:new(), self=self()
-                ,start_time=erlang:now(), sanity_check_tref=TRef}
+                ,controller_q=WhAppQ, start_time=erlang:now(), sanity_check_tref=TRef}
     }.
 
 %%--------------------------------------------------------------------
@@ -246,6 +257,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({controller_queue, ControllerQ}, State) ->
+    ?LOG("updating controller queue to ~s", [ControllerQ]),
+    {noreply, State#state{controller_q=ControllerQ}};
 handle_cast({transferer, _}, #state{last_removed_leg=undefined, other_legs=[]}=State) ->    
     %% if the callee preforms a blind transfer then sometimes the new control
     %% listener is built so quickly that it receives the transferer event ment
@@ -253,9 +267,9 @@ handle_cast({transferer, _}, #state{last_removed_leg=undefined, other_legs=[]}=S
     %% nor removed any legs. This is just pain hackish but its working...
     ?LOG("ignoring transferer as it is a residual event for the other control listener"),
     {noreply, State};
-handle_cast({transferer, _}, #state{callid=CallId}=State) ->
+handle_cast({transferer, _}, #state{callid=CallId, controller_q=ControllerQ}=State) ->
     ?LOG("call control has been transfered"),
-    spawn(fun() -> publish_control_transfer(CallId) end),
+    spawn(fun() -> publish_control_transfer(ControllerQ, CallId) end),
     {stop, normal, State};
 handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCallId, self=Self}=State) ->
     %% TODO: once we are satisfied that this is not breaking anything we can reduce the verbosity...
@@ -622,7 +636,12 @@ publish_leg_addition(JObj) ->
                     ecallmgr_call_events:swap_call_legs(JObj)
             end,
     Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>, undefined, Props),
-    ecallmgr_call_events:publish_event(Event).
+    case props:get_value(<<"Call-ID">>, Event) of
+        undefined ->
+            ok;
+        _Else ->
+            ecallmgr_call_events:publish_event(Event)
+    end.
 
 -spec publish_leg_removal/1 :: (json_object()) -> ok.
 publish_leg_removal(JObj) ->
@@ -633,8 +652,9 @@ publish_leg_removal(JObj) ->
                     ecallmgr_call_events:swap_call_legs(JObj)
             end,
     Event = ecallmgr_call_events:create_event(<<"LEG_DESTROYED">>, undefined, Props),
-    case props:get_value(<<"Caller-Unique-ID">>, Props) of
-        undefined -> ok;
+    case props:get_value(<<"Call-ID">>, Event) of
+        undefined ->
+            ok;
         _Else ->
             ecallmgr_call_events:publish_event(Event)
     end.
@@ -649,11 +669,14 @@ publish_callid_update(PrevCallId, NewCallId, CtrlQ) ->
              ],
     wapi_call:publish_callid_update(PrevCallId, Update).
 
--spec publish_control_transfer/1 :: (ne_binary()) -> ok.
-publish_control_transfer(CallId) ->
-    ?LOG(CallId, "sending control transfer", []),
+-spec publish_control_transfer/2 :: (ne_binary(), ne_binary()) -> ok.
+publish_control_transfer(undefined, CallId) ->
+    ?LOG(CallId, "no whapp queue known for control transfer", []),    
+    ok;
+publish_control_transfer(ControllerQ, CallId) ->
+    ?LOG(CallId, "sending control transfer to queue ~s", [ControllerQ]),
     Transfer = [{<<"Call-ID">>, CallId}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
-    wapi_call:publish_control_transfer(CallId, Transfer).
+    wapi_call:publish_control_transfer(ControllerQ, Transfer).
     

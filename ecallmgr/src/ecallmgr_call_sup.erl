@@ -11,7 +11,9 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_control_process/2, start_event_process/2]).
+-export([start_link/0]).
+-export([start_control_process/2, start_control_process/3]).
+-export([start_event_process/2]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -39,7 +41,10 @@ start_event_process(Node, UUID) ->
     ecallmgr_call_event_sup:start_proc([Node, UUID]).
 
 start_control_process(Node, UUID) ->
-    ecallmgr_call_control_sup:start_proc([Node, UUID]).
+    ecallmgr_call_control_sup:start_proc([Node, UUID, undefined]).
+
+start_control_process(Node, UUID, SendTo) ->
+    ecallmgr_call_control_sup:start_proc([Node, UUID, SendTo]).
 
 %%%===================================================================
 %%% Supervisor callbacks

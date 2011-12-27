@@ -16,6 +16,8 @@
 -export([cdr/1, cdr_v/1]).
 -export([callid_update/1, callid_update_v/1]).
 -export([control_transfer/1, control_transfer_v/1]).
+-export([controller_queue/1, controller_queue_v/1]).
+
 
 -export([bind_q/2, unbind_q/2]).
 
@@ -27,6 +29,7 @@
 -export([publish_cdr/2, publish_cdr/3]).
 -export([publish_callid_update/2, publish_callid_update/3]).
 -export([publish_control_transfer/2, publish_control_transfer/3]).
+-export([publish_controller_queue/2, publish_controller_queue/3]).
 
 -export([get_status/1]).
 
@@ -118,6 +121,14 @@
                                   ,{<<"Event-Name">>, <<"control_transfer">>}
                                  ]).
 -define(CALL_CONTROL_TRANSFER_TYPES, []).
+
+%% Controller Queue Update
+-define(CONTROLLER_QUEUE_HEADERS, [<<"Call-ID">>, <<"Controller-Queue">>]).
+-define(OPTIONAL_CONTROLLER_QUEUE_HEADERS, []).
+-define(CONTROLLER_QUEUE_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                  ,{<<"Event-Name">>, <<"controller_queue">>}
+                                 ]).
+-define(CONTROLLER_QUEUE_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc Format a call event from the switch for the listener
@@ -279,6 +290,26 @@ control_transfer_v(Prop) when is_list(Prop) ->
 control_transfer_v(JObj) ->
     control_transfer_v(wh_json:to_proplist(JObj)).
 
+%%--------------------------------------------------------------------
+%% @doc Format a call id update from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec controller_queue/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+controller_queue(Prop) when is_list(Prop) ->
+    case controller_queue_v(Prop) of
+        true -> wh_api:build_message(Prop, ?CONTROLLER_QUEUE_HEADERS, ?OPTIONAL_CONTROLLER_QUEUE_HEADERS);
+        false -> {error, "Proplist failed validation for controller_queue"}
+    end;
+controller_queue(JObj) ->
+    controller_queue(wh_json:to_proplist(JObj)).
+
+-spec controller_queue_v/1 :: (api_terms()) -> boolean().
+controller_queue_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CONTROLLER_QUEUE_HEADERS, ?CONTROLLER_QUEUE_VALUES, ?CONTROLLER_QUEUE_TYPES);
+controller_queue_v(JObj) ->
+    controller_queue_v(wh_json:to_proplist(JObj)).
+
 
 
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
@@ -375,11 +406,19 @@ publish_callid_update(CallID, JObj, ContentType) ->
 
 -spec publish_control_transfer/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_control_transfer/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_control_transfer(CallID, JObj) ->
-    publish_control_transfer(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_control_transfer(CallID, JObj, ContentType) ->
+publish_control_transfer(TargetQ, JObj) ->
+    publish_control_transfer(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_control_transfer(TargetQ, JObj, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CALL_CONTROL_TRANSFER_VALUES, fun ?MODULE:control_transfer/1),
-    amqp_util:callevt_publish(CallID, Payload, event, ContentType).
+    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+
+-spec publish_controller_queue/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_controller_queue/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_controller_queue(TargetQ, JObj) ->
+    publish_controller_queue(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_controller_queue(TargetQ, JObj, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CONTROLLER_QUEUE_VALUES, fun ?MODULE:controller_queue/1),
+    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec get_status/1 :: (api_terms()) -> ne_binary().
 get_status(API) when is_list(API) ->
