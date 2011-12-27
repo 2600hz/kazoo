@@ -73,6 +73,7 @@
          ,is_node_up = 'true' :: boolean()
          ,keep_alive_ref = 'undefined' :: 'undefined' | reference()
          ,other_legs = [] :: [] | [ne_binary(),...]
+         ,last_removed_leg = undefined :: undefined | ne_binary()
          ,sanity_check_tref = undefined
          }).
 
@@ -132,7 +133,8 @@ add_leg(Props) ->
                   case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
                       false -> ok;
                       {error, _} -> ok;
-                      {ok, Srv} -> gen_listener:cast(Srv, {add_leg, Props})
+                      {ok, Srv} -> 
+                          gen_listener:cast(Srv, {add_leg, wh_json:from_list(Props)})
                   end
           end).
 
@@ -146,18 +148,8 @@ rm_leg(Props) ->
                   case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
                       false -> ok;
                       {error, _} -> ok;
-                      {ok, Srv} -> gen_listener:cast(Srv, {rm_leg, Props})
-                  end
-          end),
-    spawn(fun() ->
-                  %% If the leg being destroyed is actually the leg managed by call_control
-                  %% send the channel_destroyed event to the process
-                  CallId = props:get_value(<<"Caller-Unique-ID">>, Props),
-                  put(callid, CallId),
-                  case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
-                      false -> ok;
-                      {error, _} -> ok;
-                      {ok, Srv} -> gen_listener:cast(Srv, {channel_destroyed, Props})
+                      {ok, Srv} -> 
+                          gen_listener:cast(Srv, {rm_leg, wh_json:from_list(Props)})
                   end
           end).
 
@@ -171,21 +163,20 @@ handle_call_events(JObj, Props) ->
             Application = wh_json:get_value(<<"Raw-Application-Name">>, JObj),
             ?LOG("control queue ~p channel execute completion for '~s'", [Srv, Application]),
             gen_listener:cast(Srv, {event_execute_complete, CallId, Application});
-        {<<"CHANNEL_DESTROY">>, undefined} ->
-            ok;
-        {<<"CHANNEL_DESTROY">>, Transfer} ->
-            ?LOG("control queue ~p channel destroyed due to a transfer and we are the ~s", [Srv, Transfer]),
-            gen_listener:cast(Srv, {Transfer, JObj});
+        {<<"CHANNEL_DESTROY">>, _} ->
+            gen_listener:cast(Srv, {channel_destroyed, JObj});
         {<<"CHANNEL_HANGUP">>, undefined} ->
             ok;
         {<<"CHANNEL_HANGUP">>, Transfer} ->
             ?LOG("control queue ~p channel hangup due to a transfer and we are the ~s", [Srv, Transfer]),
             gen_listener:cast(Srv, {Transfer, JObj});
         {<<"CHANNEL_UNBRIDGE">>, undefined} ->
-            ok;
+            gen_listener:cast(Srv, {rm_leg, JObj});
         {<<"CHANNEL_UNBRIDGE">>, Transfer} ->
             ?LOG("control queue ~p channel unbridged due to a transfer and we are the ~s", [Srv, Transfer]),
             gen_listener:cast(Srv, {Transfer, JObj});
+        {<<"CHANNEL_BRIDGE">>, _} ->
+            gen_listener:cast(Srv, {add_leg, JObj});
         _ ->
             ok
     end.
@@ -248,12 +239,46 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({transferer, _}, #state{last_removed_leg=undefined, other_legs=[]}=State) ->    
+    %% if the callee preforms a blind transfer then sometimes the new control
+    %% listener is built so quickly that it receives the transferer event ment
+    %% to tear down the old one.  However, a new control listener will not have
+    %% nor removed any legs. This is just pain hackish but its working...
+    ?LOG("ignoring transferer as it is a residual event for the other control listener"),
+    {noreply, State};
 handle_cast({transferer, _}, State) ->
     ?LOG("call control has been transfered"),
     {stop, normal, State};
-handle_cast({add_leg, Props}, #state{other_legs=Legs, node=Node, callid=CallId}=State) ->
-    LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
-    case LegId =:= CallId orelse lists:member(LegId, Legs) of
+handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCallId}=State) ->
+    %% TODO: once we are satisfied that this is not breaking anything we can reduce the verbosity...
+    OtherLegCallId =  wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
+    case OtherLegCallId =/= undefined andalso freeswitch:api(Node, uuid_dump, wh_util:to_list(OtherLegCallId)) of
+        {ok, Result} ->
+            %% this next line makes the whole thing work...
+            ?LOG("OK, but... you asked for it. Hold on to your butts!"),
+            Props = ecallmgr_util:eventstr_to_proplist(Result),
+            NewCallId = props:get_value(<<"Channel-Call-UUID">>, Props),
+            ?LOG("updating callid to ~s", [NewCallId]),
+            put(callid, NewCallId),
+            ?LOG("removing call event bindings for ~s", [PrevCallId]),
+            gen_listener:rm_binding(self(), call, [{callid, PrevCallId}]),
+            ?LOG("binding to new call events"),
+            gen_listener:add_binding(self(), call, [{callid, NewCallId}]),
+            ?LOG("ensuring event listener for ~s exists", [NewCallId]),
+            ecallmgr_call_sup:start_event_process(Node, NewCallId),
+            ?LOG("....You did it. You crazy son of a bitch you did it."),
+            {noreply, State#state{callid=NewCallId, other_legs=lists:delete(NewCallId, Legs)}};
+        _ ->
+            {noreply, State}
+    end;
+handle_cast({add_leg, JObj}, #state{other_legs=Legs, node=Node, callid=CallId}=State) ->
+    LegId = case wh_json:get_value(<<"Event-Name">>, JObj) of
+                <<"CHANNEL_BRIDGE">> ->
+                    wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj);
+                _ ->
+                    wh_json:get_value(<<"Caller-Unique-ID">>, JObj)
+                end,
+    case is_atom(LegId) orelse lists:member(LegId, Legs) of
         true -> {noreply, State};
         false ->
             ?LOG("added leg ~s to call", [LegId]),
@@ -262,24 +287,30 @@ handle_cast({add_leg, Props}, #state{other_legs=Legs, node=Node, callid=CallId}=
                           ?LOG("ensuring event listener for leg ~s exists", [LegId]),
                           ecallmgr_call_sup:start_event_process(Node, LegId),
                           Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>, undefined
-                                                                    ,ecallmgr_call_events:swap_call_legs(Props)),
+                                                                    ,ecallmgr_call_events:swap_call_legs(JObj)),
                           ecallmgr_call_events:publish_event(Event)
                   end),
             {noreply, State#state{other_legs=[LegId|Legs]}}
     end;
-handle_cast({rm_leg, Props}, #state{other_legs=Legs}=State) ->
-    LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
+handle_cast({rm_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
+    LegId = case wh_json:get_value(<<"Event-Name">>, JObj) of
+                <<"CHANNEL_UNBRIDGE">> ->
+                    wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj);
+                _ ->
+                    wh_json:get_value(<<"Caller-Unique-ID">>, JObj)
+            end,
     case lists:member(LegId, Legs) of
         false -> 
             {noreply, State};
         true ->
             ?LOG("removed leg ~s from call", [LegId]),
             spawn(fun() ->
+                          put(callid, CallId),
                           Event = ecallmgr_call_events:create_event(<<"LEG_DESTROYED">>, undefined
-                                                                    ,ecallmgr_call_events:swap_call_legs(Props)),
+                                                                    ,ecallmgr_call_events:swap_call_legs(JObj)),
                           ecallmgr_call_events:publish_event(Event)
                   end),
-            {noreply, State#state{other_legs=lists:delete(LegId, Legs)}}
+            {noreply, State#state{other_legs=lists:delete(LegId, Legs), last_removed_leg=LegId}}
     end;
 handle_cast({channel_destroyed, _},  #state{command_q=CmdQ, sanity_check_tref=SCTRef}=State) ->
     ?LOG("our channel has been destroyed, executing any post-hangup commands"),
@@ -313,7 +344,6 @@ handle_cast({dialplan, JObj}
         false ->
             {noreply, State#state{command_q = NewCmdQ, keep_alive_ref=get_keep_alive_ref(Ref)}, hibernate}
     end;
-
 handle_cast({event_execute_complete, CallId, EvtName}
             ,#state{callid=CallId, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
     case lists:member(EvtName, wh_api:convert_whistle_app_name(CurrApp)) of
@@ -334,7 +364,9 @@ handle_cast({event_execute_complete, CallId, EvtName}
                     AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
                     {noreply, State#state{command_q = CmdQ1, current_app = AppName}, hibernate}
             end
-    end.
+    end;
+handle_cast(_Msg, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private

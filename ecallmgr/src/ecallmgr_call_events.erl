@@ -232,6 +232,13 @@ process_channel_event(Props, #state{self=Self}) ->
     Masqueraded = is_masquerade(Props),
     EventName = get_event_name(Props, Masqueraded),
     ApplicationName = get_event_application(Props, Masqueraded),
+    case should_publish(EventName, ApplicationName, Masqueraded) of
+        false -> 
+            ok;
+        true ->
+            Event = create_event(EventName, ApplicationName, Props),
+            publish_event(Event)
+    end,
     case EventName of 
         %% if we are processing a channel destroy event, it was for
         %% our channel, so we are done here...
@@ -239,14 +246,7 @@ process_channel_event(Props, #state{self=Self}) ->
             gen_server:cast(Self, {channel_destroyed, Props});
         _ ->
             ok
-    end,
-    case should_publish(EventName, ApplicationName, Masqueraded) of
-        false -> 
-            ok;
-        true ->
-            Event = create_event(EventName, ApplicationName, Props),
-            publish_event(Event)
-    end.
+    end.    
 
 -spec create_event/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
 create_event(EventName, ApplicationName, Props) ->
@@ -265,7 +265,8 @@ create_event(EventName, ApplicationName, Props) ->
              ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
              ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
              ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
-             ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props)}                        
+             ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props,
+                                                         props:get_value(<<"variable_holding_uuid">>, Props))}
              ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
              %% this sucks, its leaky but I dont see a better way around it since we need the raw application
              %% name in call_control... (see note in call_control on start_link for why we need to use AMQP 
@@ -396,10 +397,10 @@ get_transfer_history(Props) ->
 -spec create_trnsf_history_object/1 :: (list()) -> {binary, json_object} | undefined.
 create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
     [Transferee, Transferer] = binary:split(Props, <<"/">>),
-    Trans = [{<<"callid">>, CallId}
-             ,{<<"type">>, <<"attended">>}
-             ,{<<"transferee">>, Transferee}
-             ,{<<"transferer">>, Transferer}
+    Trans = [{<<"Call-ID">>, CallId}
+             ,{<<"Type">>, <<"attended">>}
+             ,{<<"Transferee">>, Transferee}
+             ,{<<"Transferer">>, Transferer}
             ],
     {Epoch, wh_json:from_list(Trans)};
 create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->            
@@ -408,9 +409,9 @@ create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
     %% so we have to put it together to take it apart... I KNOW! ARRRG
     Dialplan = lists:last(binary:split(wh_util:join_binary(Props, <<":">>), <<",">>)),
     [Exten | _] = binary:split(Dialplan, <<"/">>, [global]),    
-    Trans = [{<<"callid">>, CallId}
-             ,{<<"type">>, <<"blind">>}
-             ,{<<"extension">>, Exten}
+    Trans = [{<<"Call-ID">>, CallId}
+             ,{<<"Type">>, <<"blind">>}
+             ,{<<"Extension">>, Exten}
             ],
     {Epoch, wh_json:from_list(Trans)};        
 create_trnsf_history_object(_) ->
@@ -459,11 +460,13 @@ find_event_value([H|T], Props, Default) ->
         false -> Value
     end.
 
--spec swap_call_legs/1 :: (proplist()) -> proplist().
+-spec swap_call_legs/1 :: (proplist() | json_object()) -> proplist().
 -spec swap_call_legs/2 :: (proplist(), proplist()) -> proplist().
 
-swap_call_legs(Props) ->
-    swap_call_legs(Props, []).
+swap_call_legs(Props) when is_list(Props) ->
+    swap_call_legs(Props, []);
+swap_call_legs(JObj) ->
+    swap_call_legs(wh_json:to_proplist(JObj)).
 
 swap_call_legs([], Swap) ->
     Swap;
