@@ -50,6 +50,7 @@
 -export([queue_name/1, callid/1]).
 -export([event_execute_complete/3]).
 -export([add_leg/1, rm_leg/1]).
+-export([other_legs/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -113,11 +114,15 @@ start_link(Node, CallId) ->
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
-    gen_server:call(Srv, {callid}).
+    gen_listener:call(Srv, {callid}).
 
 -spec queue_name/1 :: (pid()) -> ne_binary().
 queue_name(Srv) ->
     gen_listener:queue_name(Srv).
+
+-spec other_legs/1 :: (pid()) -> [] | [ne_binary(),...].
+other_legs(Srv) ->
+    gen_listener:call(Srv, {other_legs}).
 
 -spec event_execute_complete/3 :: (pid(), ne_binary(), ne_binary()) -> 'ok'.
 event_execute_complete(Srv, CallId, App) ->
@@ -226,6 +231,8 @@ init([Node, CallId]) ->
 %%--------------------------------------------------------------------
 handle_call({callid}, _From, #state{callid=CallId}=State) ->
     {reply, CallId, State};
+handle_call({other_legs}, _From, #state{other_legs=Legs}=State) ->
+    {reply, Legs, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -246,10 +253,11 @@ handle_cast({transferer, _}, #state{last_removed_leg=undefined, other_legs=[]}=S
     %% nor removed any legs. This is just pain hackish but its working...
     ?LOG("ignoring transferer as it is a residual event for the other control listener"),
     {noreply, State};
-handle_cast({transferer, _}, State) ->
+handle_cast({transferer, _}, #state{callid=CallId}=State) ->
     ?LOG("call control has been transfered"),
+    spawn(fun() -> publish_control_transfer(CallId) end),
     {stop, normal, State};
-handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCallId}=State) ->
+handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCallId, self=Self}=State) ->
     %% TODO: once we are satisfied that this is not breaking anything we can reduce the verbosity...
     OtherLegCallId =  wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
     case OtherLegCallId =/= undefined andalso freeswitch:api(Node, uuid_dump, wh_util:to_list(OtherLegCallId)) of
@@ -258,13 +266,14 @@ handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCa
             ?LOG("OK, but... you asked for it. Hold on to your butts!"),
             Props = ecallmgr_util:eventstr_to_proplist(Result),
             NewCallId = props:get_value(<<"Channel-Call-UUID">>, Props),
+            spawn(fun() -> publish_callid_update(PrevCallId, NewCallId, queue_name(Self)) end),
             ?LOG("updating callid to ~s", [NewCallId]),
             put(callid, NewCallId),
             ?LOG("removing call event bindings for ~s", [PrevCallId]),
             gen_listener:rm_binding(self(), call, [{callid, PrevCallId}]),
             ?LOG("binding to new call events"),
             gen_listener:add_binding(self(), call, [{callid, NewCallId}]),
-            ?LOG("ensuring event listener for ~s exists", [NewCallId]),
+            ?LOG("ensuring event listener exists"),
             ecallmgr_call_sup:start_event_process(Node, NewCallId),
             ?LOG("....You did it. You crazy son of a bitch you did it."),
             {noreply, State#state{callid=NewCallId, other_legs=lists:delete(NewCallId, Legs)}};
@@ -284,12 +293,10 @@ handle_cast({add_leg, JObj}, #state{other_legs=Legs, node=Node, callid=CallId}=S
             ?LOG("added leg ~s to call", [LegId]),
             spawn(fun() ->
                           put(callid, CallId),
-                          ?LOG("ensuring event listener for leg ~s exists", [LegId]),
-                          ecallmgr_call_sup:start_event_process(Node, LegId),
-                          Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>, undefined
-                                                                    ,ecallmgr_call_events:swap_call_legs(JObj)),
-                          ecallmgr_call_events:publish_event(Event)
+                          publish_leg_addition(JObj)
                   end),
+            ?LOG("ensuring event listener for leg ~s exists", [LegId]),
+            ecallmgr_call_sup:start_event_process(Node, LegId),
             {noreply, State#state{other_legs=[LegId|Legs]}}
     end;
 handle_cast({rm_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
@@ -306,9 +313,7 @@ handle_cast({rm_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
             ?LOG("removed leg ~s from call", [LegId]),
             spawn(fun() ->
                           put(callid, CallId),
-                          Event = ecallmgr_call_events:create_event(<<"LEG_DESTROYED">>, undefined
-                                                                    ,ecallmgr_call_events:swap_call_legs(JObj)),
-                          ecallmgr_call_events:publish_event(Event)
+                          publish_leg_removal(JObj)
                   end),
             {noreply, State#state{other_legs=lists:delete(LegId, Legs), last_removed_leg=LegId}}
     end;
@@ -607,3 +612,48 @@ get_keep_alive_ref(TRef) ->
                 after 0 -> ok end
         end,
     erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired).
+
+-spec publish_leg_addition/1 :: (json_object()) -> ok.
+publish_leg_addition(JObj) ->
+    Props = case wh_json:get_value(<<"Event-Name">>, JObj) of
+                <<"CHANNEL_BRIDGE">> ->
+                    wh_json:to_proplist(JObj);
+                <<"CHANNEL_CREATE">> ->
+                    ecallmgr_call_events:swap_call_legs(JObj)
+            end,
+    Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>, undefined, Props),
+    ecallmgr_call_events:publish_event(Event).
+
+-spec publish_leg_removal/1 :: (json_object()) -> ok.
+publish_leg_removal(JObj) ->
+    Props = case wh_json:get_value(<<"Event-Name">>, JObj) of
+                <<"CHANNEL_UNBRIDGE">> ->
+                    wh_json:to_proplist(JObj);
+                <<"CHANNEL_DESTROY">> ->
+                    ecallmgr_call_events:swap_call_legs(JObj)
+            end,
+    Event = ecallmgr_call_events:create_event(<<"LEG_DESTROYED">>, undefined, Props),
+    case props:get_value(<<"Caller-Unique-ID">>, Props) of
+        undefined -> ok;
+        _Else ->
+            ecallmgr_call_events:publish_event(Event)
+    end.
+
+-spec publish_callid_update/3 :: (ne_binary(), ne_binary(), ne_binary()) -> ok.
+publish_callid_update(PrevCallId, NewCallId, CtrlQ) -> 
+    ?LOG(PrevCallId, "sending callid update to ~s", [NewCallId]),
+    Update = [{<<"Call-ID">>, NewCallId}
+              ,{<<"Replaces-Call-ID">>, PrevCallId}
+              ,{<<"Control-Queue">>, CtrlQ}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ],
+    wapi_call:publish_callid_update(PrevCallId, Update).
+
+-spec publish_control_transfer/1 :: (ne_binary()) -> ok.
+publish_control_transfer(CallId) ->
+    ?LOG(CallId, "sending control transfer", []),
+    Transfer = [{<<"Call-ID">>, CallId}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ],
+    wapi_call:publish_control_transfer(CallId, Transfer).
+    

@@ -1202,7 +1202,7 @@ wait_for_dtmf(Timeout) ->
                     ?LOG("channel was unbridged while waiting for DTMF"),
                     {error, channel_unbridge};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
-                    ?LOG("channel was hungup while waiting for DTMF"),
+                    ?LOG("channel was destroyed while waiting for DTMF"),
                     {error, channel_hungup};
                 { <<"error">>, _ } ->
                     ?LOG("channel execution error while waiting for DTMF"),
@@ -1240,89 +1240,33 @@ wait_for_bridge(Timeout, Call) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
-            EventType = get_event_type(JObj),
             AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
                                             wh_json:get_value(<<"Hangup-Cause">>, JObj)),
-            Result = case lists:member(AppResponse, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]) of
+            Result = case lists:member(AppResponse, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>
+                                                         ,<<"SUCCESS">>]) of
                          true -> ok;
                          false -> fail
                      end,
-            case {EventType, wh_util:get_transfer_state(JObj)} of               
-                {{<<"error">>, <<"dialplan">>, _}, _} ->
+            case get_event_type(JObj) of               
+                {<<"error">>, <<"dialplan">>, _} ->
                     ?LOG("dialplan error: ~s", [wh_json:encode(JObj)]),
                     {error, JObj};
 
-                {{<<"call_event">>, <<"CHANNEL_BRIDGE">>, _}, _} ->
+                {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
                     CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
                     ?LOG("channel bridged to ~s", [CallId]),
                     wait_for_bridge(infinity, Call);
 
-%%                {{<<"call_event">>, <<"CHANNEL_DESTROY">>, _}, transferer} ->
-%%                    cf_exe:transfer(Call);
-%%                {{<<"call_event">>, <<"CHANNEL_DESTROY">>, _}, transferee} ->
-%%                    ?LOG("~s", [wh_json:encode(JObj)]),
-%%
-%%                    CallId = case wh_json:get_value(<<"Disposition">>, JObj) of
-%%                                 <<"ATTENDED_TRANSFER">> ->
-%%                                     ?LOG("lookup last bridged to callid"),
-%%                                     hd(cf_exe:other_legs(Call));
-%%                                 _Else ->
-%%                                     ?LOG("lookup other leg callid"),
-%%                                     wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)
-%%                             end,
-%%                    ?LOG("getting call status for ~s", [CallId]),
-%%
-%%                    {ok, Status} = b_call_status(CallId, Call),
-%%                    NewCallId = wh_json:get_value(<<"Call-ID">>, Status),
-%%                    cf_exe:acquire_control(NewCallId, Call),
-%%
-%%                    wait_for_bridge(Timeout, Call);
-%%                {{<<"call_event">>, <<"CHANNEL_DESTROY">>, _}, undefined} ->
-%%                    ?LOG("bridge destroyed with result ~s catagorized as ~s", [AppResponse, Result]),
-%%                    {Result, JObj};
-
-                {{<<"call_event">>, <<"CHANNEL_HANGUP">>, _}, transferer} ->
-                    cf_exe:transfer(Call);
-                {{<<"call_event">>, <<"CHANNEL_HANGUP">>, _}, transferee} ->
-%%                    ?LOG("~s", [wh_json:encode(JObj)]),
-
-                    CallId = case wh_json:get_value(<<"Disposition">>, JObj) of
-                                 <<"ATTENDED_TRANSFER">> ->
-                                     ?LOG("lookup last bridged to callid"),
-                                     hd(cf_exe:other_legs(Call));
-                                 _Else ->
-                                     ?LOG("lookup other leg callid"),
-                                     wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)
-                             end,
-                    ?LOG("getting call status for ~s", [CallId]),
-
-                    {ok, Status} = b_call_status(CallId, Call),
-                    NewCallId = wh_json:get_value(<<"Call-ID">>, Status),
-                    cf_exe:acquire_control(NewCallId, Call),
-
-                    wait_for_bridge(Timeout, Call);
-                {{<<"call_event">>, <<"CHANNEL_HANGUP">>, _}, undefined} ->
-                    ?LOG("bridge hungup with result ~s catagorized as ~s", [AppResponse, Result]),
+                {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     {Result, JObj};
 
-                {{<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>}, _} ->
+                {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
                     ?LOG("bridge completed with result ~s catagorized as ~s", [AppResponse, Result]),                    
                     {Result, JObj};
 
-                {{<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _}, transferer} ->
-                    cf_exe:transfer(Call);
-                {{<<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _}, transferee} ->
-%%                    ?LOG("~s", [wh_json:encode(JObj)]),
-
-                    CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-                    {ok, Status} = b_call_status(CallId, Call),
-                    NewCallId = wh_json:get_value(<<"Call-ID">>, Status),
-                    cf_exe:acquire_control(NewCallId, Call),
+                _ when Timeout =:= infinity ->
                     wait_for_bridge(Timeout, Call);
-
-                _M1 when Timeout =:= infinity ->
-                    wait_for_bridge(Timeout, Call);
-                _M2 ->
+                _ ->
                     DiffMicro = timer:now_diff(erlang:now(), Start),
                     wait_for_bridge(Timeout - (DiffMicro div 1000), Call)
             end;
@@ -1373,7 +1317,7 @@ wait_for_unbridge() ->
             case whapps_util:get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
                     {ok, JObj};
-                { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
+                { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
                     {ok, JObj};
                 _ ->
                     wait_for_unbridge()

@@ -14,8 +14,7 @@
 -export([callid/1, queue_name/1, control_queue_name/1]).
 -export([continue/1, continue/2, branch/2, stop/1, transfer/1]).
 -export([get_branch_keys/1, get_all_branch_keys/1, attempt/1, attempt/2]).
--export([acquire_control/2]).
--export([other_legs/1]).
+-export([callid_update/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -39,7 +38,6 @@
                 ,ctrl_q = undefined :: undefined | ne_binary()
                 ,call_id = <<"0000000000">> :: ne_binary()
                 ,sanity_timer = undefined :: undefined | timer:tref()
-                ,other_legs = [] :: [ne_binary(),...] | []
                }).
                
 %%%===================================================================
@@ -91,12 +89,12 @@ transfer(#cf_call{cf_pid=Srv}) ->
 transfer(Srv) ->
     gen_server:cast(Srv, {transfer}).
 
--spec acquire_control/2 :: (ne_binary(), #cf_call{} | pid()) -> ok.
-acquire_control(CallId, #cf_call{cf_pid=Srv}) ->
-    acquire_control(CallId, Srv);
-acquire_control(CallId, Srv) ->
+-spec callid_update/3 :: (ne_binary(), ne_binary(), #cf_call{} | pid()) -> ok.
+callid_update(CallId, CtrlQ, #cf_call{cf_pid=Srv}) ->
+    callid_update(CallId, CtrlQ, Srv);
+callid_update(CallId, CtrlQ, Srv) ->
     put(callid, CallId),
-    gen_server:cast(Srv, {acquire_control, CallId}).
+    gen_server:cast(Srv, {callid_update, CallId, CtrlQ}).
 
 -spec callid/1 :: (#cf_call{} | pid()) -> ne_binary().
 callid(#cf_call{cf_pid=Srv}) ->
@@ -117,12 +115,6 @@ control_queue_name(#cf_call{cf_pid=Srv}) ->
     control_queue_name(Srv);
 control_queue_name(Srv) ->
     gen_server:call(Srv, {control_queue_name}).
-
--spec other_legs/1 :: (#cf_call{} | pid()) -> ne_binary().
-other_legs(#cf_call{cf_pid=Srv}) ->
-    other_legs(Srv);
-other_legs(Srv) ->
-    gen_server:call(Srv, {other_legs}).
 
 -spec get_branch_keys/1 :: (#cf_call{} | pid()) -> [ne_binary(),...].
 get_branch_keys(#cf_call{cf_pid=Srv}) ->
@@ -205,8 +197,6 @@ handle_call({callid}, _From, #state{call_id=CallId}=State) ->
     {reply, CallId, State};
 handle_call({control_queue_name}, _From, #state{ctrl_q=CtrlQ}=State) ->
     {reply, CtrlQ, State};
-handle_call({other_legs}, _From, #state{other_legs=CallIds}=State) ->
-    {reply, CallIds, State};
 handle_call({get_branch_keys}, _From, #state{flow = Flow}=State) ->
     {struct, Children} = wh_json:get_value(<<"children">>, Flow, ?EMPTY_JSON_OBJECT),
     Reply = {branch_keys, lists:delete(<<"_">>, proplists:get_keys(Children))},
@@ -262,7 +252,7 @@ handle_cast({continue, Key}, #state{flow=Flow}=State) ->
 handle_cast({stop}, State) ->
     {stop, normal, State};
 handle_cast({transfer}, State) ->
-    {stop, transfer, State};
+    {stop, {shutdown, transfer}, State};
 handle_cast({branch, NewFlow}, State) ->
     ?LOG("callflow has been branched"),
     {noreply, launch_cf_module(State#state{flow=NewFlow})};
@@ -271,30 +261,15 @@ handle_cast({channel_status_received, _}, #state{sanity_timer=RunningTRef}=State
     timer:cancel(RunningTRef),
     {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
     {noreply, State#state{status = <<"sane">>, sanity_timer=TRef}};
-handle_cast({add_leg, undefined}, State) ->
-    {noreply, State};
-handle_cast({add_leg, LegId}, #state{other_legs=Legs}=State) ->
-    case lists:member(LegId, Legs) of
-        true -> {noreply, State};
-        false ->
-            ?LOG("added leg ~s to call", [LegId]),
-            {noreply, State#state{other_legs=[LegId|Legs]}}
-    end;
-handle_cast({rm_leg, undefined}, State) ->
-    {noreply, State};
-handle_cast({rm_leg, LegId}, #state{other_legs=Legs}=State) ->
-    ?LOG("removed leg ~s from call", [LegId]),
-    {noreply, State#state{other_legs=lists:delete(LegId, Legs)}};
-handle_cast({update_callid, NewCallId}, #state{call_id=NewCallId}=State) ->
-    ?LOG("ummm, no."),
-    {noreply, State};
-handle_cast({acquire_control, NewCallId}, #state{call_id=PrevCallId, other_legs=Legs}=State) ->
-    ?LOG("attempting to acquire control of call ~s", [NewCallId]),
-    gen_listener:rm_binding(self(), call, [{callid, PrevCallId}]),
+handle_cast({callid_update, NewCallId, NewCtrlQ}, #state{call_id=PrevCallId}=State) ->
+    ?LOG("updating callid to ~s, catch you on the flip side", [NewCallId]),
     put(callid, NewCallId),
+    ?LOG("removing call event bindings for ~s", [PrevCallId]),
+    gen_listener:rm_binding(self(), call, [{callid, PrevCallId}]),
+    ?LOG("binding to new call events"),
     gen_listener:add_binding(self(), call, [{callid, NewCallId}]),
-    ?LOG("acquired control from ~s", [PrevCallId]),
-    {noreply, State#state{call_id=NewCallId, other_legs=lists:delete(NewCallId, Legs)}};
+    ?LOG("updating control q to ~s", [NewCtrlQ]),
+    {noreply, State#state{call_id=NewCallId, ctrl_q=NewCtrlQ}};
 handle_cast(_, State) ->
     {noreply, State}.
 
@@ -358,22 +333,14 @@ handle_event(JObj, #state{cf_module_pid=Pid, call_id=CallId}) ->
             {reply, [{cf_module_pid, Pid}]};
         {{<<"call_event">>, <<"call_status_resp">>}, _} ->
             {reply, [{cf_module_pid, Pid}]};
-        {{<<"call_event">>, <<"LEG_CREATED">>}, CallId} ->
-            OLUI = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-            gen_server:cast(self(), {add_leg, OLUI}),
-            {reply, [{cf_module_pid, Pid}]};
-        {{<<"call_event">>, <<"LEG_DESTROYED">>}, CallId} ->
-            OLUI = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-            gen_server:cast(self(), {rm_leg, OLUI}),
-            {reply, [{cf_module_pid, Pid}]};
-        {{<<"call_event">>, <<"CHANNEL_BRIDGE">>}, CallId} ->
-            OLUI = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-            gen_server:cast(self(), {add_leg, OLUI}),
-            {reply, [{cf_module_pid, Pid}]};
-        {{<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, CallId} ->
-            OLUI = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-            gen_server:cast(self(), {rm_leg, OLUI}),
-            {reply, [{cf_module_pid, Pid}]};
+        {{<<"call_event">>, <<"call_id_update">>},_} ->
+            NewCallId = wh_json:get_value(<<"Call-ID">>, JObj),
+            NewCtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj),
+            callid_update(NewCallId, NewCtrlQ, self()),
+            ignore;
+        {{<<"call_event">>, <<"control_transfer">>}, _} ->
+            transfer(self()),
+            ignore;
         {{<<"error">>, _}, _} ->
             {reply, [{cf_module_pid, Pid}]};
         {_, CallId} ->
@@ -394,7 +361,7 @@ handle_event(JObj, #state{cf_module_pid=Pid, call_id=CallId}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(transfer, #state{sanity_timer=TRef}) ->
+terminate({shutdown, transfer}, #state{sanity_timer=TRef}) ->
     timer:cancel(TRef),
     ?LOG_END("callflow execution has been transfered"),
     ok;
@@ -471,8 +438,10 @@ spawn_cf_module(CFModule, Data, CallId, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec send_command/2 :: (proplist(), #state{}) -> ok.
-send_command(Command, #state{call_id=CallId, ctrl_q=CtrlQ}) ->
+send_command(Command, #state{call_id=CallId, ctrl_q=CtrlQ}) when is_binary(CallId), is_binary(CtrlQ) ->
     Prop = Command ++ [{<<"Call-ID">>, CallId}
                        | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                       ],
-    wapi_dialplan:publish_command(CtrlQ, Prop).
+    wapi_dialplan:publish_command(CtrlQ, Prop);    
+send_command(_, _) ->
+    ok.

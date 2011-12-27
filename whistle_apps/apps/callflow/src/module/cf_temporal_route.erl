@@ -201,14 +201,11 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
 -spec get_temporal_route/2 :: (JObj, Call) -> #temporal{} when
       JObj :: json_object(),
       Call :: #cf_call{}.
-get_temporal_route(JObj, #cf_call{cf_pid=CFPid}) ->
+get_temporal_route(JObj, Call) ->
     ?LOG("loading temporal route"),
-
-    CFPid ! {get_branch_keys},
-    load_current_time(#temporal{routes =
-                                    receive {branch_keys, Keys} -> Keys after 1000 -> [] end
-                                ,timezone =
-                                    wh_json:get_value(<<"timezone">>, JObj, ?TEMPORAL_DEFAULT_TIMEZONE)
+    {branch_keys, Keys} = cf_exe:get_branch_keys(Call),
+    load_current_time(#temporal{routes = Keys
+                                ,timezone = wh_json:get_value(<<"timezone">>, JObj, ?TEMPORAL_DEFAULT_TIMEZONE)
                                }).
 
 %%--------------------------------------------------------------------
@@ -244,7 +241,7 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable, disable=Disable, reset=R
         {ok, Reset} ->
             reset_temporal_rules(Temporal, Rules, Call);
         {error, _} ->
-	    {ok, wh_json:new()};
+            {ok, wh_json:new()};
         {ok, _} ->
             temporal_route_menu(Temporal, Rules, Call)
     end.
@@ -361,7 +358,7 @@ enable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
 -spec load_current_time/1 :: (#temporal{}) -> #temporal{}.
 load_current_time(#temporal{timezone=Timezone}=Temporal)->
     {LocalDate, LocalTime} = localtime:utc_to_local(
-			       calendar:universal_time()
+                               calendar:universal_time()
                                ,wh_util:to_list(Timezone)
                               ),
     ?LOG("local time for ~s is {~w,~w}", [Timezone, LocalDate, LocalTime]),
@@ -806,22 +803,22 @@ iso_week_to_gregorian_date({Year, Week}) ->
 -spec iso_week_number/1 :: (wh_date()) -> wh_iso_week().
 iso_week_number(Date) ->
     case erlang:function_exported(calendar, iso_week_number, 1) of
-	true -> calendar:iso_week_number(Date);
-	false -> our_iso_week_number(Date)
+        true -> calendar:iso_week_number(Date);
+        false -> our_iso_week_number(Date)
     end.
 
 -spec day_of_the_week/1 :: (wh_date()) -> wh_day().
 day_of_the_week({Year, Month, Day}=Date) ->
     case erlang:function_exported(calendar, day_of_the_week, 1) of
-	true -> calendar:day_of_the_week(Date);
-	false -> our_day_of_the_week(Year, Month, Day)
+        true -> calendar:day_of_the_week(Date);
+        false -> our_day_of_the_week(Year, Month, Day)
     end.
 
 -spec day_of_the_week/3 :: (wh_year(), wh_month(), wh_day()) -> wh_day().
 day_of_the_week(Year, Month, Day) ->
     case erlang:function_exported(calendar, day_of_the_week, 3) of
-	true -> calendar:day_of_the_week(Year, Month, Day);
-	false -> our_day_of_the_week(Year, Month, Day)
+        true -> calendar:day_of_the_week(Year, Month, Day);
+        false -> our_day_of_the_week(Year, Month, Day)
     end.
 
 %% TAKEN FROM THE R14B02 SOURCE FOR calender.erl
@@ -830,21 +827,21 @@ our_iso_week_number({Year,_Month,_Day}=Date) ->
     W01_1_Year = gregorian_days_of_iso_w01_1(Year),
     W01_1_NextYear = gregorian_days_of_iso_w01_1(Year + 1),
     if W01_1_Year =< D andalso D < W01_1_NextYear ->
-	    % Current Year Week 01..52(,53)
-	    {Year, (D - W01_1_Year) div 7 + 1};
-	D < W01_1_Year ->
-	    % Previous Year 52 or 53
-	    PWN = case day_of_the_week(Year - 1, 1, 1) of
-		4 -> 53;
-		_ -> case day_of_the_week(Year - 1, 12, 31) of
-			4 -> 53;
-			_ -> 52
-		     end
-		end,
-	    {Year - 1, PWN};
-	W01_1_NextYear =< D ->
-	    % Next Year, Week 01
-	    {Year + 1, 1}
+            % Current Year Week 01..52(,53)
+            {Year, (D - W01_1_Year) div 7 + 1};
+        D < W01_1_Year ->
+            % Previous Year 52 or 53
+            PWN = case day_of_the_week(Year - 1, 1, 1) of
+                4 -> 53;
+                _ -> case day_of_the_week(Year - 1, 12, 31) of
+                        4 -> 53;
+                        _ -> 52
+                     end
+                end,
+            {Year - 1, PWN};
+        W01_1_NextYear =< D ->
+            % Next Year, Week 01
+            {Year + 1, 1}
     end.
 
 -spec gregorian_days_of_iso_w01_1/1 :: (calendar:year()) -> non_neg_integer().
@@ -852,9 +849,9 @@ gregorian_days_of_iso_w01_1(Year) ->
     D0101 = calendar:date_to_gregorian_days(Year, 1, 1),
     DOW = calendar:day_of_the_week(Year, 1, 1),
     if DOW =< 4 ->
-	D0101 - DOW + 1;
+        D0101 - DOW + 1;
     true ->
-	D0101 + 7 - DOW + 1
+        D0101 + 7 - DOW + 1
     end.
 
 %% day_of_the_week(Year, Month, Day)
