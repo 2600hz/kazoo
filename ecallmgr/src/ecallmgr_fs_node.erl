@@ -311,7 +311,7 @@ originate_channel(Node, Pid, Route, AvailChan, JObj) ->
 start_call_handling(Node, UUID) ->
     try
         {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID),
-        {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID, CtlPid),
+        {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID),
 
         ecallmgr_call_control:queue_name(CtlPid)
     catch

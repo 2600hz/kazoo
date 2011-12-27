@@ -46,7 +46,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2, handle_req/2]).
+-export([start_link/2, handle_req/2, handle_call_events/2]).
 -export([queue_name/1, callid/1]).
 -export([event_execute_complete/3]).
 -export([add_leg/1, rm_leg/1]).
@@ -65,6 +65,8 @@
 -record(state, {
           node = 'undefined' :: atom()
          ,callid = <<>> :: binary()
+         ,self = undefined :: undefined | pid()
+         ,evtpid = undefined :: undefined | pid()
          ,command_q = queue:new() :: queue()
          ,current_app = 'undefined' :: ne_binary() | 'undefined'
          ,start_time = erlang:now() :: wh_now()
@@ -75,8 +77,11 @@
          }).
 
 -define(RESPONDERS, [{?MODULE, [{<<"call">>, <<"command">>}]}
-                     ,{?MODULE, [{<<"conference">>, <<"command">>}]}]).
--define(BINDINGS, [{dialplan, []}]).
+                     ,{?MODULE, [{<<"conference">>, <<"command">>}]}
+                     ,{{?MODULE, handle_call_events}, [{<<"call_event">>, <<"*">>}]}]).
+-define(QUEUE_NAME, <<"">>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -90,9 +95,20 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Node, CallId) ->
+    %% We need to become completely decoupled from ecallmgr_call_events
+    %% because the call_events process might have been spun up with A->B
+    %% then transfered to A->D, but the route landed in a different 
+    %% ecallmgr.  Since our call_events will get a bad session if we
+    %% try to handlecall more than once on a UUID we had to leave the
+    %% call_events running on another ecallmgr... fun fun
+    Bindings = [{call, [{callid, CallId}]}
+                ,{dialplan, []}],
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}]
-                            ,[Node, CallId]).
+                                      ,{bindings, Bindings}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                     ], [Node, CallId]).
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
@@ -108,17 +124,23 @@ event_execute_complete(Srv, CallId, App) ->
 
 -spec add_leg/1 :: (proplist()) -> ok.
 add_leg(Props) ->
-    CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
-    put(callid, CallId),
-    case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
-        false -> ok;
-        {error, _} -> ok;
-        {ok, Srv} -> gen_listener:cast(Srv, {add_leg, Props})
-    end.
+    spawn(fun() ->
+                  %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
+                  %% by call_control, if so add the leg to it
+                  CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
+                  put(callid, CallId),
+                  case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
+                      false -> ok;
+                      {error, _} -> ok;
+                      {ok, Srv} -> gen_listener:cast(Srv, {add_leg, Props})
+                  end
+          end).
 
 -spec rm_leg/1 :: (proplist()) -> ok.
 rm_leg(Props) ->
     spawn(fun() ->
+                  %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
+                  %% by call_control, if so remove the leg from it
                   CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
                   put(callid, CallId),
                   case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
@@ -128,14 +150,45 @@ rm_leg(Props) ->
                   end
           end),
     spawn(fun() ->
-             CallId = props:get_value(<<"Caller-Unique-ID">>, Props),
-             put(callid, CallId),
-             case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
-                 false -> ok;
-                 {error, _} -> ok;
-                 {ok, Srv} -> gen_listener:cast(Srv, {rm_leg, Props})
-             end
+                  %% If the leg being destroyed is actually the leg managed by call_control
+                  %% send the channel_destroyed event to the process
+                  CallId = props:get_value(<<"Caller-Unique-ID">>, Props),
+                  put(callid, CallId),
+                  case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
+                      false -> ok;
+                      {error, _} -> ok;
+                      {ok, Srv} -> gen_listener:cast(Srv, {channel_destroyed, Props})
+                  end
           end).
+
+-spec handle_call_events/2 :: (json_object(), proplist()) -> ok.
+handle_call_events(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    put(callid, CallId),
+    case {wh_json:get_value(<<"Event-Name">>, JObj), wh_util:get_transfer_state(JObj)} of
+        {<<"CHANNEL_EXECUTE_COMPLETE">>, _} ->
+            Application = wh_json:get_value(<<"Raw-Application-Name">>, JObj),
+            ?LOG("control queue ~p channel execute completion for '~s'", [Srv, Application]),
+            gen_listener:cast(Srv, {event_execute_complete, CallId, Application});
+        {<<"CHANNEL_DESTROY">>, undefined} ->
+            ok;
+        {<<"CHANNEL_DESTROY">>, Transfer} ->
+            ?LOG("control queue ~p channel destroyed due to a transfer and we are the ~s", [Srv, Transfer]),
+            gen_listener:cast(Srv, {Transfer, JObj});
+        {<<"CHANNEL_HANGUP">>, undefined} ->
+            ok;
+        {<<"CHANNEL_HANGUP">>, Transfer} ->
+            ?LOG("control queue ~p channel hangup due to a transfer and we are the ~s", [Srv, Transfer]),
+            gen_listener:cast(Srv, {Transfer, JObj});
+        {<<"CHANNEL_UNBRIDGE">>, undefined} ->
+            ok;
+        {<<"CHANNEL_UNBRIDGE">>, Transfer} ->
+            ?LOG("control queue ~p channel unbridged due to a transfer and we are the ~s", [Srv, Transfer]),
+            gen_listener:cast(Srv, {Transfer, JObj});
+        _ ->
+            ok
+    end.
 
 -spec handle_req/2 :: (json_object(), proplist()) -> ok.
 handle_req(JObj, Props) ->
@@ -162,8 +215,8 @@ init([Node, CallId]) ->
     ?LOG_START("starting call control listener"),
     erlang:monitor_node(Node, true),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
-    {ok, #state{node=Node, callid=CallId, command_q = queue:new()
-                ,start_time = erlang:now(), sanity_check_tref=TRef}
+    {ok, #state{node=Node, callid=CallId, command_q=queue:new(), self=self()
+                ,start_time=erlang:now(), sanity_check_tref=TRef}
     }.
 
 %%--------------------------------------------------------------------
@@ -195,43 +248,28 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({transferer, _}, State) ->
+    ?LOG("call control has been transfered"),
+    {stop, normal, State};
 handle_cast({add_leg, Props}, #state{other_legs=Legs, node=Node, callid=CallId}=State) ->
     LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
     case LegId =:= CallId orelse lists:member(LegId, Legs) of
         true -> {noreply, State};
         false ->
             ?LOG("added leg ~s to call", [LegId]),
-            case ecallmgr_call_sup:start_event_process(Node, LegId, undefined) of
-                {ok, _Pid} ->
-                    ?LOG("started event listener for leg ~s as process ~p", [LegId, _Pid]),
-                    spawn(fun() ->
-                                  Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>, undefined
-                                                                            ,ecallmgr_call_events:swap_call_legs(Props)),
-                                  ecallmgr_call_events:publish_event(Event)
-                          end);
-                _Error -> 
-                    ?LOG("faild to start event listener for leg ~s: ~p", [LegId, _Error])
-            end,
+            spawn(fun() ->
+                          put(callid, CallId),
+                          ?LOG("ensuring event listener for leg ~s exists", [LegId]),
+                          ecallmgr_call_sup:start_event_process(Node, LegId),
+                          Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>, undefined
+                                                                    ,ecallmgr_call_events:swap_call_legs(Props)),
+                          ecallmgr_call_events:publish_event(Event)
+                  end),
             {noreply, State#state{other_legs=[LegId|Legs]}}
     end;
-handle_cast({rm_leg, Props}, #state{other_legs=Legs, callid=CallId, command_q=CmdQ, sanity_check_tref=SCTRef}=State) ->
+handle_cast({rm_leg, Props}, #state{other_legs=Legs}=State) ->
     LegId = props:get_value(<<"Caller-Unique-ID">>, Props),
     case lists:member(LegId, Legs) of
-        false when LegId =:= CallId -> 
-            ?LOG("our channel has been destroyed, executing any post-hangup commands"),
-            lists:foreach(fun(Cmd) -> execute_control_request(Cmd, State) end, post_hangup_commands(CmdQ)),
-            %% if our sanity check timer is running stop it, it will always return false
-            %% now that the channel is gone
-            catch (erlang:cancel_timer(SCTRef)), 
-            %% if the keep-alive timer is not already running start it
-            %% different then get_keep_alive_ref (which resets it)
-            KATRef = case State#state.keep_alive_ref of
-                         undefined ->
-                             erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired);
-                         Else ->
-                             Else
-                     end,
-            {noreply, State#state{keep_alive_ref=KATRef}, hibernate};
         false -> 
             {noreply, State};
         true ->
@@ -243,6 +281,21 @@ handle_cast({rm_leg, Props}, #state{other_legs=Legs, callid=CallId, command_q=Cm
                   end),
             {noreply, State#state{other_legs=lists:delete(LegId, Legs)}}
     end;
+handle_cast({channel_destroyed, _},  #state{command_q=CmdQ, sanity_check_tref=SCTRef}=State) ->
+    ?LOG("our channel has been destroyed, executing any post-hangup commands"),
+    lists:foreach(fun(Cmd) -> execute_control_request(Cmd, State) end, post_hangup_commands(CmdQ)),
+    %% if our sanity check timer is running stop it, it will always return false
+    %% now that the channel is gone
+    catch (erlang:cancel_timer(SCTRef)), 
+    %% if the keep-alive timer is not already running start it
+    %% different then get_keep_alive_ref (which resets it)
+    KATRef = case State#state.keep_alive_ref of
+                 undefined ->
+                     erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired);
+                 Else ->
+                     Else
+             end,
+    {noreply, State#state{keep_alive_ref=KATRef}, hibernate};    
 handle_cast({dialplan, JObj}
             ,#state{keep_alive_ref=Ref, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
     NewCmdQ = try
@@ -340,7 +393,7 @@ handle_info({sanity_check}, #state{node=Node, callid=CallId, keep_alive_ref=unde
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
             {'noreply', State#state{sanity_check_tref=TRef}};
         _ ->
-            ?LOG("I must be crazy to be in a loony bin like this."),
+            ?LOG("I must be crazy to be in a loony bin like this"),
             {stop, normal, State#state{sanity_check_tref=undefined}}
     end;
 handle_info(_Msg, State) ->

@@ -31,12 +31,13 @@
 %% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>, <<"Custom-Channel-Vars">>
-					  ,<<"Msg-ID">>, <<"Channel-State">>, <<"Call-Direction">>, <<"Transfer-History">>
-					  ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>, <<"Other-Leg-Caller-ID-Number">> %% BRIDGE
-					  ,<<"Other-Leg-Destination-Number">>,<<"Other-Leg-Unique-ID">> %% BRIDGE
-					  ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
+                                          ,<<"Msg-ID">>, <<"Channel-State">>, <<"Call-Direction">>, <<"Transfer-History">>
+                                          ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>, <<"Other-Leg-Caller-ID-Number">> %% BRIDGE
+                                          ,<<"Other-Leg-Destination-Number">>,<<"Other-Leg-Unique-ID">> %% BRIDGE
+                                          ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
                                           ,<<"Terminator">>, <<"Disposition">>, <<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
-				     ]).
+                                          ,<<"Raw-Application-Name">>
+                                     ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
@@ -44,17 +45,17 @@
 -define(CHANNEL_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_CHANNEL_STATUS_REQ_HEADERS, []).
 -define(CHANNEL_STATUS_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-			     ,{<<"Event-Name">>, <<"channel_status_req">>}
-			    ]).
+                             ,{<<"Event-Name">>, <<"channel_status_req">>}
+                            ]).
 -define(CHANNEL_STATUS_REQ_TYPES, []).
 
 %% Channel Status Response
 -define(CHANNEL_STATUS_RESP_HEADERS, [<<"Call-ID">>, <<"Status">>]).
 -define(OPTIONAL_CHANNEL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>, <<"Switch-Hostname">>]).
 -define(CHANNEL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-				  ,{<<"Event-Name">>, <<"channel_status_resp">>}
-				  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
-				 ]).
+                                  ,{<<"Event-Name">>, <<"channel_status_resp">>}
+                                  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
+                                 ]).
 -define(CHANNEL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Call Status Request
@@ -74,27 +75,27 @@
                                                 ,<<"Other-Leg-Destination-Number">>
                                            ]).
 -define(CALL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-				  ,{<<"Event-Name">>, <<"call_status_resp">>}
-				  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
-				 ]).
+                                  ,{<<"Event-Name">>, <<"call_status_resp">>}
+                                  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
+                                 ]).
 -define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Call CDR
 -define(CALL_CDR_HEADERS, [ <<"Call-ID">>]).
 -define(OPTIONAL_CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Custom-Channel-Vars">>
                                         ,<<"Remote-SDP">>, <<"Local-SDP">>, <<"Caller-ID-Name">>
-					,<<"Caller-ID-Number">>, <<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-					,<<"User-Agent">>, <<"Caller-ID-Type">>, <<"Other-Leg-Call-ID">>
+                                        ,<<"Caller-ID-Number">>, <<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+                                        ,<<"User-Agent">>, <<"Caller-ID-Type">>, <<"Other-Leg-Call-ID">>
                                         ,<<"Timestamp">>
                                         ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
                                         ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
                                         ,<<"Digits-Dialed">>
-				   ]).
+                                   ]).
 -define(CALL_CDR_VALUES, [{<<"Event-Category">>, <<"call_detail">>}
-			  ,{<<"Event-Name">>, <<"cdr">>}
-			  ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
-			  ,{<<"Caller-ID-Type">>, [<<"pid">>, <<"rpid">>, <<"from">>]}
-			 ]).
+                          ,{<<"Event-Name">>, <<"cdr">>}
+                          ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
+                          ,{<<"Caller-ID-Type">>, [<<"pid">>, <<"rpid">>, <<"from">>]}
+                         ]).
 -define(CALL_CDR_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 
@@ -106,8 +107,8 @@
 -spec event/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 event(Prop) when is_list(Prop) ->
     case event_v(Prop) of
-	true -> wh_api:build_message(Prop, ?CALL_EVENT_HEADERS, ?OPTIONAL_CALL_EVENT_HEADERS);
-	false -> {error, "Proplist failed validation for call_event"}
+        true -> wh_api:build_message(Prop, ?CALL_EVENT_HEADERS, ?OPTIONAL_CALL_EVENT_HEADERS);
+        false -> {error, "Proplist failed validation for call_event"}
     end;
 event(JObj) ->
     event(wh_json:to_proplist(JObj)).
@@ -126,8 +127,8 @@ event_v(JObj) ->
 -spec channel_status_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 channel_status_req(Prop) when is_list(Prop) ->
     case channel_status_req_v(Prop) of
-	true -> wh_api:build_message(Prop, ?CHANNEL_STATUS_REQ_HEADERS, ?OPTIONAL_CHANNEL_STATUS_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for channel status req"}
+        true -> wh_api:build_message(Prop, ?CHANNEL_STATUS_REQ_HEADERS, ?OPTIONAL_CHANNEL_STATUS_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for channel status req"}
     end;
 channel_status_req(JObj) ->
     channel_status_req(wh_json:to_proplist(JObj)).
@@ -146,8 +147,8 @@ channel_status_req_v(JObj) ->
 -spec channel_status_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 channel_status_resp(Prop) when is_list(Prop) ->
     case channel_status_resp_v(Prop) of
-	true -> wh_api:build_message(Prop, ?CHANNEL_STATUS_RESP_HEADERS, ?OPTIONAL_CHANNEL_STATUS_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for channel status resp"}
+        true -> wh_api:build_message(Prop, ?CHANNEL_STATUS_RESP_HEADERS, ?OPTIONAL_CHANNEL_STATUS_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for channel status resp"}
     end;
 channel_status_resp(JObj) ->
     channel_status_resp(wh_json:to_proplist(JObj)).
@@ -166,8 +167,8 @@ channel_status_resp_v(JObj) ->
 -spec call_status_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 call_status_req(Prop) when is_list(Prop) ->
     case call_status_req_v(Prop) of
-	true -> wh_api:build_message(Prop, ?CALL_STATUS_REQ_HEADERS, ?OPTIONAL_CALL_STATUS_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for call status req"}
+        true -> wh_api:build_message(Prop, ?CALL_STATUS_REQ_HEADERS, ?OPTIONAL_CALL_STATUS_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for call status req"}
     end;
 call_status_req(JObj) ->
     call_status_req(wh_json:to_proplist(JObj)).
@@ -186,8 +187,8 @@ call_status_req_v(JObj) ->
 -spec call_status_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 call_status_resp(Prop) when is_list(Prop) ->
     case call_status_resp_v(Prop) of
-	true -> wh_api:build_message(Prop, ?CALL_STATUS_RESP_HEADERS, ?OPTIONAL_CALL_STATUS_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for call status resp"}
+        true -> wh_api:build_message(Prop, ?CALL_STATUS_RESP_HEADERS, ?OPTIONAL_CALL_STATUS_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for call status resp"}
     end;
 call_status_resp(JObj) ->
     call_status_resp(wh_json:to_proplist(JObj)).
@@ -206,8 +207,8 @@ call_status_resp_v(JObj) ->
 -spec cdr/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 cdr(Prop) when is_list(Prop) ->
     case cdr_v(Prop) of
-	true -> wh_api:build_message(Prop, ?CALL_CDR_HEADERS, ?OPTIONAL_CALL_CDR_HEADERS);
-	false -> {error, "Proplist failed validation for call_cdr"}
+        true -> wh_api:build_message(Prop, ?CALL_CDR_HEADERS, ?OPTIONAL_CALL_CDR_HEADERS);
+        false -> {error, "Proplist failed validation for call_cdr"}
     end;
 cdr(JObj) ->
     cdr(wh_json:to_proplist(JObj)).
@@ -255,8 +256,8 @@ publish_event(CallID, Event, ContentType) ->
 -spec publish_channel_status_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_channel_status_req(API) ->
     case is_list(API) of
-	true -> publish_channel_status_req(props:get_value(<<"Call-ID">>, API), API);
-	false -> publish_channel_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
+        true -> publish_channel_status_req(props:get_value(<<"Call-ID">>, API), API);
+        false -> publish_channel_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
     end.
 publish_channel_status_req(CallID, JObj) ->
     publish_channel_status_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
@@ -277,8 +278,8 @@ publish_channel_status_resp(RespQ, Resp, ContentType) ->
 -spec publish_call_status_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_call_status_req(API) ->
     case is_list(API) of
-	true -> publish_call_status_req(props:get_value(<<"Call-ID">>, API), API);
-	false -> publish_call_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
+        true -> publish_call_status_req(props:get_value(<<"Call-ID">>, API), API);
+        false -> publish_call_status_req(wh_json:get_value(<<"Call-ID">>, API), API)
     end.
 publish_call_status_req(CallID, JObj) ->
     publish_call_status_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).

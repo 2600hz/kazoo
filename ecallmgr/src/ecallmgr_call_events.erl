@@ -17,10 +17,10 @@
 -define(NODE_CHECK_PERIOD, 1000).
 
 %% API
--export([start_link/3]).
+-export([start_link/2]).
 -export([swap_call_legs/1]).
--export([process_channel_event/1]).
 -export([create_event/3, publish_event/1]).
+-export([transfer/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -31,8 +31,8 @@
 
 -record(state, {
           node = undefined :: atom()
+          ,self = undefined :: undefined | pid()
           ,callid = <<>> :: binary()
-          ,ctlpid = undefined :: 'undefined' | pid()
           ,is_node_up = true :: boolean()
           ,failed_node_checks = 0 :: integer()
           ,node_down_tref = undefined
@@ -50,13 +50,16 @@
 %% @spec start_link() -> {'ok', Pid} | ignore | {'error', Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/3 :: (atom(), ne_binary(), undefined | pid()) -> {'ok', pid()}.
-start_link(Node, CallId, CtlPid) ->
-    gen_server:start_link(?MODULE, [Node, CallId, CtlPid], []).
+-spec start_link/2 :: (atom(), ne_binary()) -> {'ok', pid()}.
+start_link(Node, CallId) ->
+    gen_server:start_link(?MODULE, [Node, CallId], []).
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
     gen_server:call(Srv, {callid}).
+
+transfer(Srv, TransferType, Props) ->
+    gen_listener:cast(Srv, {TransferType, Props}).
 
 -spec queue_name/1 :: (pid()) -> ne_binary().
 queue_name(Srv) ->
@@ -77,13 +80,12 @@ queue_name(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([atom() | binary() | pid(),...]) -> {'ok', #state{}}.
-init([Node, CallId, CtlPid]) ->
-    process_flag(trap_exit, true),
+-spec init/1 :: ([atom() | binary()]) -> {'ok', #state{}}.
+init([Node, CallId]) ->
     put(callid, CallId),
     ?LOG_START("starting call events listener"),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
-    {'ok', #state{node=Node, callid=CallId, ctlpid=CtlPid, sanity_check_tref=TRef}, 0}.
+    {'ok', #state{node=Node, callid=CallId, sanity_check_tref=TRef, self=self()}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -117,6 +119,9 @@ handle_call(_Request, _From, State) ->
 handle_cast({channel_destroyed, _}, State) ->
     ?LOG("channel destroyed, goodbye and thanks for all the fish"),
     {stop, normal, State};
+handle_cast({transferer, _}, State) ->
+    ?LOG("call control has been transfered."),
+    {stop, normal, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -131,10 +136,12 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({call, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
-    spawn(fun() -> process_channel_event(Props) end),
+    process_channel_event(Props, State),
+%%    spawn(fun() -> process_channel_event(Props, State) end),
     {'noreply', State};
 handle_info({call_event, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
-    spawn(fun() -> process_channel_event(Props) end),
+    process_channel_event(Props, State),
+%%    spawn(fun() -> process_channel_event(Props, State) end),
     {'noreply', State};
 handle_info({nodedown, _}, #state{node=Node, is_node_up=true}=State) ->
     ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
@@ -159,6 +166,7 @@ handle_info(timeout, #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_F
     {stop, normal, State};
 handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC}=State) ->
     erlang:monitor_node(Node, true),
+    %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
     case freeswitch:handlecall(Node, CallId) of
         ok ->
             ?LOG("listening to channel events from ~s", [Node]),
@@ -180,8 +188,7 @@ handle_info({sanity_check}, #state{node=Node, callid=CallId}=State) ->
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
             {'noreply', State#state{sanity_check_tref=TRef}};
         _E ->
-            io:format("~p~n", [_E]),
-            ?LOG("But I tried, didn't I? Goddamnit, at least I did that."),
+            ?LOG("But I tried, didn't I? Goddamnit, at least I did that"),
             {stop, normal, State#state{sanity_check_tref=undefined}}
     end;
 handle_info(_Info, State) ->
@@ -201,7 +208,7 @@ handle_info(_Info, State) ->
 terminate(_Reason, #state{node_down_tref=NDTRef, sanity_check_tref=SCTRef}) ->   
     catch (erlang:cancel_timer(SCTRef)), 
     catch (erlang:cancel_timer(NDTRef)), 
-    ?LOG("terminating call events listener: ~s", [_Reason]).
+    ?LOG("terminating call events listener: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -217,11 +224,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_channel_event/1 :: (proplist()) -> ok.
-process_channel_event(Props) ->
-    %% pull everything we need out of the event, since
-    %% we might be processing events from external sources,
-    %% or call ids that we were not aware we were listening to (xfer)
+-spec process_channel_event/2 :: (proplist(), #state{}) -> ok.
+process_channel_event(Props, #state{self=Self}) ->
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
                             props:get_value(<<"Unique-ID">>, Props)),
     put(callid, CallId),
@@ -229,26 +233,10 @@ process_channel_event(Props) ->
     EventName = get_event_name(Props, Masqueraded),
     ApplicationName = get_event_application(Props, Masqueraded),
     case EventName of 
-        %% if we are processing a channel destroy event, find out if there
-        %% is an active call event worker and send them a message that
-        %% their channel has been destroyed
+        %% if we are processing a channel destroy event, it was for
+        %% our channel, so we are done here...
         <<"CHANNEL_DESTROY">> ->
-            case ecallmgr_call_event_sup:find_worker(CallId) of
-                {error, _} -> ok;
-                {ok, EvtSrv} ->
-                    gen_server:cast(EvtSrv, {channel_destroyed, Props})
-            end;
-        %% if we are processing a channel complete see if there is a
-        %% control queue listening for this call and relay the raw
-        %% application name to it as a command completed message
-        <<"CHANNEL_EXECUTE_COMPLETE">> ->
-            case ecallmgr_call_control_sup:find_worker(CallId) of
-                {error, _} -> ok;
-                {ok, CtrlSrv} ->
-                    RawApplication = props:get_value(<<"Application">>, Props, ApplicationName),
-                    ?LOG("sending control queue ~p execute completion for '~s'", [CtrlSrv, RawApplication]),
-                    ecallmgr_call_control:event_execute_complete(CtrlSrv, CallId, RawApplication)
-            end;
+            gen_server:cast(Self, {channel_destroyed, Props});
         _ ->
             ok
     end,
@@ -258,40 +246,6 @@ process_channel_event(Props) ->
         true ->
             Event = create_event(EventName, ApplicationName, Props),
             publish_event(Event)
-    end.
-
--spec is_masquerade/1 :: (proplist()) -> boolean().
-is_masquerade(Props) ->
-    case props:get_value(<<"Event-Subclass">>, Props) of
-        %% If this is a event created by whistle, then use
-        %% the flag it as masqueraded
-        <<"whistle::", _/binary>> ->
-            true;
-        %% otherwise proces as the genuine article 
-        _Else ->
-            false
-    end.
-
--spec get_event_name/2 :: (proplist(), boolean()) -> undefined | ne_binary().
-get_event_name(Props, Masqueraded) ->
-    case Masqueraded of
-        true ->
-            %% when the even is masqueraded override the actual event name
-            %% with what whistle wants the event to be
-            props:get_value(<<"whistle_event_name">>, Props);
-        false ->
-            props:get_value(<<"Event-Name">>, Props)
-    end.
-
--spec get_event_application/2 :: (proplist(), boolean()) -> undefined | ne_binary().
-get_event_application(Props, Masqueraded) ->
-    case Masqueraded of
-        %% when the even is masqueraded override the actual application
-        %% with what whistle wants the event to be
-        true ->
-            props:get_value(<<"whistle_application_name">>, Props);
-        false ->
-            props:get_value(<<"Application">>, Props)
     end.
 
 -spec create_event/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
@@ -313,6 +267,10 @@ create_event(EventName, ApplicationName, Props) ->
              ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
              ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props)}                        
              ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+             %% this sucks, its leaky but I dont see a better way around it since we need the raw application
+             %% name in call_control... (see note in call_control on start_link for why we need to use AMQP 
+             %% to communicate to it)
+             ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
              | event_specific(EventName, ApplicationName, Props) 
             ],
     wh_api:default_headers(<<>>, ?EVENT_CAT, EventName, ?APP_NAME, ?APP_VERSION) ++ Event.
@@ -332,6 +290,40 @@ publish_event(Props) ->
             ?LOG("publishing channel command ~s ~s", [ApplicationName, EventName])
     end,
     wapi_call:publish_event(CallId, Props).
+
+-spec is_masquerade/1 :: (proplist()) -> boolean().
+is_masquerade(Props) ->
+    case props:get_value(<<"Event-Subclass">>, Props) of
+        %% If this is a event created by whistle, then use
+        %% the flag it as masqueraded
+        <<"whistle::", _/binary>> ->
+            true;
+        %% otherwise process as the genuine article 
+        _Else ->
+            false
+    end.
+
+-spec get_event_name/2 :: (proplist(), boolean()) -> undefined | ne_binary().
+get_event_name(Props, Masqueraded) ->
+    case Masqueraded of
+        true ->
+            %% when the evet is masqueraded override the actual event name
+            %% with what whistle wants the event to be
+            props:get_value(<<"whistle_event_name">>, Props);
+        false ->
+            props:get_value(<<"Event-Name">>, Props)
+    end.
+
+-spec get_event_application/2 :: (proplist(), boolean()) -> undefined | ne_binary().
+get_event_application(Props, Masqueraded) ->
+    case Masqueraded of
+        %% when the evet is masqueraded override the actual application
+        %% with what whistle wants the event to be
+        true ->
+            props:get_value(<<"whistle_application_name">>, Props);
+        false ->
+            props:get_value(<<"Application">>, Props)
+    end.
 
 %% return a proplist of k/v pairs specific to the event
 -spec event_specific/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
@@ -404,23 +396,23 @@ get_transfer_history(Props) ->
 -spec create_trnsf_history_object/1 :: (list()) -> {binary, json_object} | undefined.
 create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
     [Transferee, Transferer] = binary:split(Props, <<"/">>),
-    Props = [{<<"callid">>, CallId}
+    Trans = [{<<"callid">>, CallId}
              ,{<<"type">>, <<"attended">>}
              ,{<<"transferee">>, Transferee}
              ,{<<"transferer">>, Transferer}
             ],
-    {Epoch, wh_json:from_list(Props)};
+    {Epoch, wh_json:from_list(Trans)};
 create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->            
     %% This looks confusing but FS uses the same delimiter to in the array
     %% as it does for inline dialplan actions (like those created during partial attended)
     %% so we have to put it together to take it apart... I KNOW! ARRRG
     Dialplan = lists:last(binary:split(wh_util:join_binary(Props, <<":">>), <<",">>)),
     [Exten | _] = binary:split(Dialplan, <<"/">>, [global]),    
-    Props = [{<<"callid">>, CallId}
+    Trans = [{<<"callid">>, CallId}
              ,{<<"type">>, <<"blind">>}
              ,{<<"extension">>, Exten}
             ],
-    {Epoch, wh_json:from_list(Props)};        
+    {Epoch, wh_json:from_list(Trans)};        
 create_trnsf_history_object(_) ->
     undefined.
 

@@ -19,6 +19,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-include("ecallmgr.hrl").
+
 -define(SERVER, ?MODULE).
 
 %%%===================================================================
@@ -35,8 +37,14 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_proc(Args) ->
-    supervisor:start_child(?SERVER, Args).
+start_proc([_, CallId]=Args) ->
+    case find_worker(CallId) of
+        {ok, Srv}=Ok -> 
+            ?LOG("recycling existing call events worker ~p", [Srv]),
+            Ok;
+        _ -> 
+            supervisor:start_child(?SERVER, Args)
+    end.
 
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->
@@ -46,22 +54,22 @@ workers() ->
 -spec find_worker/1 :: (binary()) -> {error, not_found} | {ok, pid()}.
 -spec do_find_worker/2 :: (binary(), [] | [pid(),...]) -> {error, not_found} | {ok, pid()}.
 
-find_worker(CallID) ->
-    do_find_worker(workers(), CallID).
+find_worker(CallId) ->
+    do_find_worker(workers(), CallId).
 
 do_find_worker([], _) ->
     {error, not_found};
-do_find_worker([Srv|T], CallID) ->
+do_find_worker([Srv|T], CallId) ->
     case ecallmgr_call_events:callid(Srv) of
-        CallID ->
+        CallId ->
             {ok, Srv};
         _ ->
-            do_find_worker(T, CallID)
+            do_find_worker(T, CallId)
     end.
 
 -spec find_control_queue/1 :: (binary()) -> {error, not_found} | {ok, pid()}.
-find_control_queue(CallID) ->    
-    case find_worker(CallID) of
+find_control_queue(CallId) ->    
+    case find_worker(CallId) of
         {error, _}=E -> E;
         {ok, Worker} ->
             {ok, ecallmgr_call_events:queue_name(Worker)}
