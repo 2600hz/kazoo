@@ -95,12 +95,12 @@ lookup_callflow(Number, AccountId) ->
 do_lookup_callflow(Number, Db) ->
     ?LOG("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
 %%    case wh_cache:fetch({cf_flow, Number, Db}) of
-%%	{ok, Flow} ->
-%%	    {ok, Flow, Number =:= ?NO_MATCH_CF};
-%%	{error, not_found} ->
+%%      {ok, Flow} ->
+%%          {ok, Flow, Number =:= ?NO_MATCH_CF};
+%%      {error, not_found} ->
             Options = [{<<"key">>, Number}, {<<"include_docs">>, true}],
-	    case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
-		{ok, []} when Number =/= ?NO_MATCH_CF ->
+            case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
+                {ok, []} when Number =/= ?NO_MATCH_CF ->
                     case lookup_callflow_patterns(Number, Db) of
                         {error, _} ->
                             do_lookup_callflow(?NO_MATCH_CF, Db);
@@ -109,20 +109,20 @@ do_lookup_callflow(Number, Db) ->
                             wh_cache:store({cf_flow, Number, Db}, F),
                             {ok, F, false}
                     end;
-		{ok, []} ->
+                {ok, []} ->
                     {error, not_found};
-		{ok, [{struct, _}=JObj]} ->
+                {ok, [{struct, _}=JObj]} ->
                     Flow = wh_json:get_value(<<"doc">>, JObj),
                     wh_cache:store({cf_flow, Number, Db}, Flow),
-		    {ok, Flow, Number =:= ?NO_MATCH_CF};
-		{ok, [{struct, _}=JObj | _Rest]} ->
-		    ?LOG("lookup resulted in more than one result, using the first"),
+                    {ok, Flow, Number =:= ?NO_MATCH_CF};
+                {ok, [{struct, _}=JObj | _Rest]} ->
+                    ?LOG("lookup resulted in more than one result, using the first"),
                     Flow = wh_json:get_value(<<"doc">>, JObj),
                     wh_cache:store({cf_flow, Number, Db}, Flow),
-		    {ok, Flow, Number =:= ?NO_MATCH_CF};
+                    {ok, Flow, Number =:= ?NO_MATCH_CF};
                 {error, _}=E ->
-		    E
-	    end.
+                    E
+            end.
 %%    end.
 
 %%-----------------------------------------------------------------------------
@@ -140,6 +140,7 @@ lookup_callflow_patterns(Number, Db) ->
         {ok, Patterns} ->
             case test_callflow_patterns(Patterns, Number, {undefined, <<>>}) of
                 {undefined, <<>>} -> {error, not_found};
+                {Flow, <<>>} -> {ok, {Flow, undefined}};
                 Match -> {ok, Match}
             end;
         {error, _}=E ->
@@ -161,10 +162,12 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
     case re:run(Number, Regex) of
         {match, [{Start,End}]} ->
             Match = binary:part(Number, Start, End),
+            Flow = wh_json:get_value(<<"doc">>, Pattern),
             case binary:part(Number, Start, End) of
-                Match when size(Match) > size(Capture) ->
-                    F = wh_json:get_value(<<"doc">>, Pattern),
-                    test_callflow_patterns(T, Number, {F, Match});
+                <<>> when Capture =:= <<>> ->
+                    test_callflow_patterns(T, Number, {Flow, <<>>});
+                Match when size(Match) > size(Capture); size(Match) =:= 0 ->
+                    test_callflow_patterns(T, Number, {Flow, Match});
                 _ ->
                     test_callflow_patterns(T, Number, Result)
             end;
@@ -172,10 +175,12 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
             %% find the largest matching group if present by sorting the position of the
             %% matching groups by list, reverse so head is largest, then take the head of the list
             {Start, End} = hd(lists:reverse(lists:keysort(2, tl(CaptureGroups)))),
+            Flow = wh_json:get_value(<<"doc">>, Pattern),
             case binary:part(Number, Start, End) of
+                <<>> when Capture =:= <<>> ->
+                    test_callflow_patterns(T, Number, {Flow, <<>>});
                 Match when size(Match) > size(Capture) ->
-                    F = wh_json:get_value(<<"doc">>, Pattern),
-                    test_callflow_patterns(T, Number, {F, Match});
+                    test_callflow_patterns(T, Number, {Flow, Match});
                 _ ->
                     test_callflow_patterns(T, Number, Result)
             end;
