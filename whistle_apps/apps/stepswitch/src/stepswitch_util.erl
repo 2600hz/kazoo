@@ -1,18 +1,16 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 15 Dec 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(stepswitch_util).
 
--export([lookup_number/1, build_loopback_request/4, evaluate_number/2
-	 ,evaluate_flags/2, build_bridge_request/3, respond_erroneously/2
-	 ,respond_bridged_to_resource/2, respond_resource_failed/3
-	 ,lookup_account_by_number/1, get_dialstring/2, wait_for_bridge/1
-	]).
+-export([lookup_number/1]).
+-export([build_bridge_request/3, build_loopback_request/4]).
+-export([evaluate_number/2, evaluate_flags/2]).
+-export([respond_erroneously/2, respond_bridged_to_resource/2, respond_resource_failed/3]).
+-export([lookup_account_by_number/1, get_dialstring/2, wait_for_bridge/1]).
 
 -include("stepswitch.hrl").
 
@@ -20,12 +18,12 @@
 lookup_number(Number) ->
     Num = wh_util:to_e164(wh_util:to_binary(Number)),
     case lookup_account_by_number(Num) of
-	{ok, AccountId, _}=Ok ->
-	    ?LOG("found number is associated to account ~s", [AccountId]),
-	    Ok;
-	{error, Reason}=E ->
-	    ?LOG("number is not associated to any account, ~w", [Reason]),
-	    E
+        {ok, AccountId, _}=Ok ->
+            ?LOG("found number is associated to account ~s", [AccountId]),
+            Ok;
+        {error, Reason}=E ->
+            ?LOG("number is not associated to any account, ~w", [Reason]),
+            E
     end.
 
 %%--------------------------------------------------------------------
@@ -38,43 +36,43 @@ cache_key_number(Number) ->
     {stepswitch_number, Number}.
 
 -spec lookup_account_by_number/1 :: (ne_binary()) -> {'ok', ne_binary(), boolean()} |
-						     {'error', atom()}.
+                                                     {'error', atom()}.
 -spec lookup_account_by_number/2 :: (ne_binary(), pid()) -> {'ok', ne_binary(), boolean()} |
-							    {'error', atom()}.
+                                                            {'error', atom()}.
 lookup_account_by_number(Number) ->
     ?LOG("lookup account for ~s", [Number]),
     {ok, Cache} = stepswitch_sup:cache_proc(),
     lookup_account_by_number(Number, Cache).
 lookup_account_by_number(Number, Cache) when is_pid(Cache) ->
     case wh_cache:fetch_local(Cache, cache_key_number(Number)) of
-	{ok, {AccountId, ForceOut}} ->
+        {ok, {AccountId, ForceOut}} ->
             {ok, AccountId, ForceOut};
-	{error, not_found} ->
+        {error, not_found} ->
             Options = [{<<"key">>, Number}],
-	    case couch_mgr:get_results(?ROUTES_DB, ?LIST_ROUTES_BY_NUMBER, Options) of
-		{error, _}=E ->
-		    E;
-		{ok, []} ->
-		    {error, not_found};
-		{ok, [JObj]} ->
+            case couch_mgr:get_results(?ROUTES_DB, ?LIST_ROUTES_BY_NUMBER, Options) of
+                {error, _}=E ->
+                    E;
+                {ok, []} ->
+                    {error, not_found};
+                {ok, [JObj]} ->
                     AccountId = wh_json:get_value(<<"id">>, JObj),
                     ForceOut = wh_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
                     wh_cache:store_local(Cache, cache_key_number(Number), {AccountId, ForceOut}),
-		    {ok, AccountId, ForceOut};
-		{ok, [JObj | _Rest]} ->
-		    whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
-						    ,"Alert: Number ~s found more than once in the ~s DB~n"
-						    ,"Fault: Number should be listed, at most, once~n"
-						    ,"Call-ID: ~s~n"
-						   ]
-				      ,[?MODULE, ?LINE, Number, ?ROUTES_DB, get(callid)]),
+                    {ok, AccountId, ForceOut};
+                {ok, [JObj | _Rest]} ->
+                    whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
+                                                    ,"Alert: Number ~s found more than once in the ~s DB~n"
+                                                    ,"Fault: Number should be listed, at most, once~n"
+                                                    ,"Call-ID: ~s~n"
+                                                   ]
+                                      ,[?MODULE, ?LINE, Number, ?ROUTES_DB, get(callid)]),
 
-		    ?LOG("number lookup resulted in more than one result, using the first"),
+                    ?LOG("number lookup resulted in more than one result, using the first"),
                     AccountId = wh_json:get_value(<<"id">>, JObj),
                     ForceOut = wh_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
                     wh_cache:store_local(Cache, cache_key_number(Number), {AccountId, ForceOut}),
-		    {ok, AccountId, ForceOut}
-	    end
+                    {ok, AccountId, ForceOut}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -146,12 +144,12 @@ respond_erroneously(ErrorResp, JObj) ->
 build_loopback_request(JObj, Number, LoopAccount, Q) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Endpoints = [wh_json:from_list([{<<"Invite-Format">>, <<"route">>}
-				    ,{<<"Route">>, list_to_binary(["loopback/", Number])}
-				    ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Offnet-Loopback-Number">>, Number}
-										    ,{<<"Offnet-Loopback-Account-ID">>, AccountId}
-										    ,{<<"Account-ID">>, LoopAccount}
-										   ])}
-				   ])],
+                                    ,{<<"Route">>, list_to_binary(["loopback/", Number])}
+                                    ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Offnet-Loopback-Number">>, Number}
+                                                                                    ,{<<"Offnet-Loopback-Account-ID">>, AccountId}
+                                                                                    ,{<<"Account-ID">>, LoopAccount}
+                                                                                   ])}
+                                   ])],
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
@@ -193,7 +191,7 @@ evaluate_number(Number, Resrcs) ->
 evaluate_flags(F1, Resrcs) ->
     [Resrc
      || #resrc{flags=F2}=Resrc <- Resrcs,
-	lists:all(fun(Flag) -> lists:member(Flag, F2) end, F1)
+        lists:all(fun(Flag) -> lists:member(Flag, F2) end, F1)
     ].
 
 %%--------------------------------------------------------------------
@@ -248,7 +246,7 @@ build_bridge_request(JObj, Endpoints, Q) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_bridge/1 :: (non_neg_integer()) -> {'ok' | 'fail' | 'hungup' | 'error' | 'rate_resp', json_object()} |
-						  {'error', 'timeout'}.
+                                                  {'error', 'timeout'}.
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
@@ -258,18 +256,18 @@ wait_for_bridge(Timeout) ->
                 { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
                     {ok, JObj};
                 { <<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">> } ->
-		    case wh_json:get_value(<<"Application-Response">>, JObj) of
-			<<"SUCCESS">> -> {ok, JObj};
-			_ -> {fail, JObj}
-		    end;
+                    case wh_json:get_value(<<"Application-Response">>, JObj) of
+                        <<"SUCCESS">> -> {ok, JObj};
+                        _ -> {fail, JObj}
+                    end;
                 { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
                     {hungup, JObj};
                 { _, _, <<"error">> } ->
                     {error, JObj};
-		{_, <<"rating_resp">>, <<"call_mgmt">>} ->
-		    {rate_resp, JObj};
+                {_, <<"rating_resp">>, <<"call_mgmt">>} ->
+                    {rate_resp, JObj};
                 _ ->
-		    DiffMicro = timer:now_diff(erlang:now(), Start),
+                    DiffMicro = timer:now_diff(erlang:now(), Start),
                     wait_for_bridge(Timeout - (DiffMicro div 1000))
             end;
         _ ->
@@ -353,11 +351,8 @@ evaluate_rules([Regex|T], Number) ->
 %% are for emergency services
 %% @end
 %%--------------------------------------------------------------------
--spec contains_emergency_endpoint/1 :: (Endpoints) -> boolean() when
-      Endpoints :: endpoints().
--spec contains_emergency_endpoint/2 :: (Endpoints, UseEmergency) -> boolean() when
-      Endpoints :: endpoints(),
-      UseEmergency :: boolean().
+-spec contains_emergency_endpoint/1 :: (endpoints()) -> boolean().
+-spec contains_emergency_endpoint/2 :: (endpoints(), boolean()) -> boolean().
 
 contains_emergency_endpoint(Endpoints) ->
     contains_emergency_endpoint(Endpoints, false).
@@ -374,10 +369,7 @@ contains_emergency_endpoint([{_, _, _, _, IsEmergency}|T], UseEmergency) ->
 %% off-net request, endpoints, and our AMQP Q
 %% @end
 %%--------------------------------------------------------------------
--spec build_endpoints/3 :: (Endpoints, Delay, Acc) -> proplist() when
-      Endpoints :: endpoints(),
-      Delay :: non_neg_integer(),
-      Acc :: proplist().
+-spec build_endpoints/3 :: (endpoints(), non_neg_integer(), proplist()) -> proplist().
 build_endpoints([], _, Acc) ->
     lists:reverse(Acc);
 build_endpoints([{_, GracePeriod, Number, [Gateway], _}|T], Delay, Acc0) ->
@@ -396,10 +388,7 @@ build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], Delay, Acc0) ->
 %% Build the endpoint for use in the route request
 %% @end
 %%--------------------------------------------------------------------
--spec build_endpoint/3 :: (Number, Gateway, Delay) -> json_object() when
-      Number :: binary(),
-      Gateway :: #gateway{},
-      Delay :: non_neg_integer().
+-spec build_endpoint/3 :: (ne_binary(), #gateway{}, non_neg_integer()) -> json_object().
 build_endpoint(Number, Gateway, Delay) ->
     Route = get_dialstring(Gateway, Number),
     ?LOG("using ~s on ~s delayed by ~b sec", [Route, Gateway#gateway.resource_id, Delay]),
@@ -428,11 +417,11 @@ build_endpoint(Number, Gateway, Delay) ->
 -spec get_dialstring/2 :: (#gateway{}, ne_binary()) -> ne_binary().
 get_dialstring(#gateway{route = undefined, prefix=Prefix, suffix=Suffix, server=Server}, Number) ->
     list_to_binary(["sip:"
-		    ,wh_util:to_binary(Prefix)
-		    ,Number
-		    ,wh_util:to_binary(Suffix)
-		    ,"@"
-		    ,wh_util:to_binary(Server)
-		   ]);
+                    ,wh_util:to_binary(Prefix)
+                    ,Number
+                    ,wh_util:to_binary(Suffix)
+                    ,"@"
+                    ,wh_util:to_binary(Server)
+                   ]);
 get_dialstring(#gateway{route=Route}, _) ->
     Route.
