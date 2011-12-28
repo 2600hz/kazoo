@@ -1,10 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Listener for whapp requests to query the underlying switches
 %%% @end
-%%% Created :  5 Oct 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_query).
 
@@ -26,8 +24,7 @@
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
                      ,{{?MODULE, handle_channel_query}, [{<<"locate">>, <<"channel_req">>}]}
                     ]).
--define(BINDINGS, [{switch_lookups, []}
-                   ,{channel_query, []}
+-define(BINDINGS, [{call, [{restrict_to, [switch_lookups, channel_status, call_status]}]}
                   ]).
 
 -record(state, {}).
@@ -130,7 +127,7 @@ handle_call_status(JObj, _Props) ->
 
 -spec handle_channel_query/2 :: (json_object(), proplist()) -> 'ok'.
 handle_channel_query(JObj, _Props) ->
-    true = wapi_channel_query:req_v(JObj),
+    true = wapi_call_query:req_v(JObj),
     wh_util:put_callid(JObj),
 
     ?LOG("Channel query received"),
@@ -138,11 +135,11 @@ handle_channel_query(JObj, _Props) ->
     ListOfChannels = [ecallmgr_fs_node:show_channels(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()],
 
     SearchParams = lists:foldl(fun(Field, Acc) ->
-                                       case wh_json:get_value(Field, JObj) of
-                                           undefined -> Acc;
-                                           Value -> [{Field, Value} | Acc]
-                                       end
-                               end, [], wapi_channel_query:optional_headers()),
+				       case wh_json:get_value(Field, JObj) of
+					   undefined -> Acc;
+					   Value -> [{Field, Value} | Acc]
+				       end
+			       end, [], wapi_call:optional_channel_headers()),
 
     case lists:foldl(fun(NodeChannels, Acc) ->
                              filter_for_matching_uuids(SearchParams, NodeChannels, Acc)
@@ -283,7 +280,7 @@ make_jobj(C) ->
 send_channel_query_resp(RespQ, UUIDs) ->
     Resp = [{<<"Active-Calls">>, UUIDs}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    wapi_channel_query:publish_resp(RespQ, Resp).
+    wapi_call:publish_channel_resp(RespQ, Resp).
 
 -spec create_call_status_resp/2 :: (proplist(), boolean()) -> proplist().
 create_call_status_resp(Props, true) ->

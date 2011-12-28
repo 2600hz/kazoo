@@ -110,10 +110,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
-                 ,{RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]
-                                   ,req_id=ReqId}=Context}}, State) ->
-    ?LOG(ReqId, "authenticating request", []),
-    Pid ! {binding_result, true, {RD, Context}},
+                 ,{RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]}=Context}}, State) ->
+    spawn(fun() ->
+		  crossbar_util:put_reqid(Context),
+		  ?LOG("authenticating request"),
+		  Pid ! {binding_result, true, {RD, Context}}
+	  end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.user_auth">>, Payload}, State) ->
@@ -206,8 +208,7 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (Paths) -> tuple(boolean(), http_methods()) when
-      Paths :: list().
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['PUT']};
 allowed_methods(_) ->
@@ -221,8 +222,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: (Paths) -> tuple(boolean(), []) when
-      Paths :: list().
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists(_) ->

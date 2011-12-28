@@ -48,7 +48,6 @@
 -type binding() :: {ne_binary(), [ne_binary(),...], queue()}. %% queue(pid() | atom())
 -type bindings() :: [binding(),...] | [].
 
-
 -record(state, {bindings = [] :: bindings()}).
 
 %%%===================================================================
@@ -163,10 +162,8 @@ handle_call({map, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) ->
                   Reply = lists:foldl(
                             fun({B, BParts, Ps}, Acc) ->
                                     case B =:= Routing orelse matches(BParts, RoutingParts) of
-                                        true ->
-                                            map_bind_results(Ps, Payload, Acc, Routing);
-                                        false ->
-                                            Acc
+                                        true -> map_bind_results(Ps, Payload, Acc, Routing);
+                                        false -> Acc
                                     end
                             end, [], Bs),
 		  ?TIMER_STOP("bindings.map"),
@@ -194,6 +191,7 @@ handle_call({fold, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) -
     {noreply, State};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=[]}=State) ->
     link(From),
+
     BParts = lists:reverse(binary:split(Binding, <<".">>, [global])),
     {reply, ok, State#state{bindings=[{Binding, BParts, queue:in(From, queue:new())}]}, hibernate};
 handle_call({bind, Binding}, {From, _Ref}, #state{bindings=Bs}=State) ->
@@ -366,26 +364,22 @@ matches(_, _) -> false.
 %% Results is the accumulated results list so far
 %% @end
 %%--------------------------------------------------------------------
--spec map_bind_results/4 :: (Pids, Payload, Results, Route) -> [{term() | 'timeout', term()}] when
-      Pids :: queue(),
-      Payload :: term(),
-      Results :: [binding_result(),...],
-      Route :: binary().
+-spec map_bind_results/4 :: (queue(), term(), [binding_result(),...], ne_binary()) -> [{term() | 'timeout', term()}].
 map_bind_results(Pids, Payload, Results, Route) ->
     S = self(),
-    [ receive {Pid, DS} -> DS end
-      || Pid <- [
-                 spawn(fun() ->
-                               P ! {binding_fired, self(), Route, Payload},
-                               case wait_for_map_binding() of
-                                   {ok,  Resp, Pay1} -> S ! {self(), {Resp, Pay1}};
-                                   timeout -> S ! {self(), {timeout, Payload}};
-                                   {error, E} -> S ! {self(), {error, E, P}}
-                               end
-                       end)
-                 || P <- queue:to_list(Pids)
-                ]
-    ] ++ Results.
+
+    SpawnedPids = [ spawn(fun() ->
+				  P ! {binding_fired, self(), Route, Payload},
+				  case wait_for_map_binding() of
+				      {ok,  Resp, Pay1} -> S ! {self(), {Resp, Pay1}};
+				      timeout -> S ! {self(), {timeout, Payload}};
+				      {error, E} -> S ! {self(), {error, E, P}}
+				  end
+			  end)
+		    || P <- queue:to_list(Pids)
+		  ],
+
+    [ receive {Pid, DS} -> DS end || Pid <- SpawnedPids ] ++ Results.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -400,7 +394,7 @@ wait_for_map_binding() ->
 	{binding_error, Error} -> {error, Error};
         heartbeat -> wait_for_map_binding()
     after
-        1000 -> timeout
+        300 -> timeout
     end.
 
 %%--------------------------------------------------------------------
@@ -411,42 +405,32 @@ wait_for_map_binding() ->
 %% previous payload being passed to the next invocation.
 %% @end
 %%--------------------------------------------------------------------
--spec fold_bind_results/3 :: (Pids, Payload, Route) -> term() when
-      Pids :: queue(),
-      Payload :: term(),
-      Route :: binary().
+-spec fold_bind_results/3 :: (queue() | [pid(),...] | [], term(), ne_binary()) -> term().
 fold_bind_results(_, {error, _}=E, _) -> E;
+fold_bind_results(Pids, Payload, Route) when is_list(Pids) ->
+    fold_bind_results(Pids, Payload, Route, length(Pids), []);
 fold_bind_results(Pids, Payload, Route) ->
-    fold_bind_results(Pids, Payload, Route, queue:len(Pids), queue:new()).
+    fold_bind_results(queue:to_list(Pids), Payload, Route, queue:len(Pids), []).
 
--spec fold_bind_results/5 :: (Pids, Payload, Route, PidsLen, ReRunQ) -> term() when
-      Pids :: queue(),
-      Payload :: term(),
-      Route :: binary(),
-      PidsLen :: non_neg_integer(),
-      ReRunQ :: queue().
-fold_bind_results(Pids, Payload, Route, PidsLen, ReRunQ) ->
-    case queue:out(Pids) of
-	{empty, _} ->
-	    case queue:len(ReRunQ) of
-		0 -> Payload; % no one to re-run, return
-		N when N < PidsLen ->
-		    %% one or more pids weren't ready to operate on Payload, let them have another go
-		    fold_bind_results(ReRunQ, Payload, Route, queue:len(ReRunQ), queue:new());
-		PidsLen ->
-		    %% If all Pids 'eoq'ed, ReRunQ will be the same queue, and Payload will be unchanged - exit the fold
-		    ?LOG("loop detected for ~s, returning", [Route]),
-		    Payload
-	    end;
-
-	{{value, P}, Pids1} ->
-	    P ! {binding_fired, self(), Route, Payload},
-            case wait_for_fold_binding() of
-                {ok, Pay1} -> fold_bind_results(Pids1, Pay1, Route);
-                eoq -> fold_bind_results(queue:in(P, Pids1), Payload, Route);
-                timeout -> fold_bind_results(Pids1, Payload, Route);
-		{error, _}=E -> E
-            end
+-spec fold_bind_results/5 :: ([pid(),...] | [], term(), ne_binary(), non_neg_integer(), [pid(),...] | []) -> term().
+fold_bind_results([P|Pids], Payload, Route, PidsLen, ReRunQ) ->
+    P ! {binding_fired, self(), Route, Payload},
+    case wait_for_fold_binding() of
+	{ok, Pay1} -> fold_bind_results(Pids, Pay1, Route, PidsLen, ReRunQ);
+	eoq -> fold_bind_results(Pids, Payload, Route, PidsLen, [P|ReRunQ]);
+	timeout -> fold_bind_results(Pids, Payload, Route, PidsLen, ReRunQ);
+	{error, _}=E -> E
+    end;
+fold_bind_results([], Payload, Route, PidsLen, ReRunQ) ->
+    case length(ReRunQ) of
+	0 -> Payload; % no one to re-run, return
+	N when N < PidsLen ->
+	    %% one or more pids weren't ready to operate on Payload, let them have another go
+	    fold_bind_results(lists:reverse(ReRunQ), Payload, Route, N, []);
+	PidsLen ->
+	    %% If all Pids 'eoq'ed, ReRunQ will be the same queue, and Payload will be unchanged - exit the fold
+	    ?LOG("loop detected for ~s, returning", [Route]),
+	    Payload
     end.
 
 %%--------------------------------------------------------------------
@@ -463,7 +447,7 @@ wait_for_fold_binding() ->
 	{binding_error, Error} -> {error, Error};
         heartbeat -> wait_for_fold_binding()
     after
-        1000 -> timeout
+        300 -> timeout
     end.
 
 %%--------------------------------------------------------------------
@@ -619,7 +603,6 @@ start_server(Fun) ->
     ?assertEqual(ok, ?MODULE:flush()),
 
     _ = [ spawn(fun() -> Fun(B) end) || B <- ?BINDINGS_MAP_FOLD ],
-
     timer:sleep(500).
 
 stop_server() ->
@@ -632,6 +615,7 @@ fold_and_route_test() ->
 			  ?LOG("fold: ~s: ~w -> ~p", [R, N, Res]),
 			  ?assertEqual({R, N}, {R, Res})
 		  end, ?ROUTINGS_MAP_FOLD),
+
     stop_server().
 
 
