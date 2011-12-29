@@ -72,7 +72,7 @@ fs_node(Srv) ->
 uuid_exists(Srv, UUID) ->
     gen_server:call(Srv, {uuid_exists, UUID}).
 
--spec uuid_dump/2 :: (pid(), binary()) -> proplist().
+-spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | {'error', atom()} | 'timeout'.
 uuid_dump(Srv, UUID) ->
     gen_server:call(Srv, {uuid_dump, UUID}).
 

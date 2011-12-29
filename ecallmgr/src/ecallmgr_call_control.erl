@@ -1,5 +1,4 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010, VoIP INC
 %%% @doc
 %%% Created when a call hits a fetch_handler in ecallmgr_route.
@@ -39,6 +38,11 @@
 %%% we can note the event happened, and continue looping as we were.
 %%%
 %%% @end
+%%%
+%%% @contributors
+%%% James Aimonetti <james@2600hz.org>
+%%% Karl Anderson <karl@2600hz.org>
+%%%
 %%% Created : 26 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_control).
@@ -67,17 +71,17 @@
 -record(state, {
           node = 'undefined' :: atom()
          ,callid = <<>> :: binary()
-         ,self = undefined :: undefined | pid()
-         ,controller_q = undefined :: undefined | ne_binary()
-         ,evtpid = undefined :: undefined | pid()
+         ,self = 'undefined' :: 'undefined' | pid()
+         ,controller_q = 'undefined' :: 'undefined' | ne_binary()
+         ,evtpid = 'undefined' :: 'undefined' | pid()
          ,command_q = queue:new() :: queue()
          ,current_app = 'undefined' :: ne_binary() | 'undefined'
          ,start_time = erlang:now() :: wh_now()
          ,is_node_up = 'true' :: boolean()
          ,keep_alive_ref = 'undefined' :: 'undefined' | reference()
          ,other_legs = [] :: [] | [ne_binary(),...]
-         ,last_removed_leg = undefined :: undefined | ne_binary()
-         ,sanity_check_tref = undefined
+         ,last_removed_leg = 'undefined' :: 'undefined' | ne_binary()
+         ,sanity_check_tref = 'undefined' :: 'undefined' | reference()
          }).
 
 -define(RESPONDERS, [{{?MODULE, handle_call_command}, [{<<"call">>, <<"command">>}]}
@@ -131,7 +135,7 @@ other_legs(Srv) ->
 event_execute_complete(Srv, CallId, App) ->
     gen_listener:cast(Srv, {event_execute_complete, CallId, App}).
 
--spec add_leg/1 :: (proplist()) -> ok.
+-spec add_leg/1 :: (proplist()) -> pid().
 add_leg(Props) ->
     spawn(fun() ->
                   %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
@@ -146,7 +150,7 @@ add_leg(Props) ->
                   end
           end).
 
--spec rm_leg/1 :: (proplist()) -> ok.
+-spec rm_leg/1 :: (proplist()) -> pid().
 rm_leg(Props) ->
     spawn(fun() ->
                   %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
@@ -288,7 +292,7 @@ handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCa
             ?LOG("binding to new call events"),
             gen_listener:add_binding(self(), call, [{callid, NewCallId}]),
             ?LOG("ensuring event listener exists"),
-            ecallmgr_call_sup:start_event_process(Node, NewCallId),
+            _ = ecallmgr_call_sup:start_event_process(Node, NewCallId),
             ?LOG("....You did it. You crazy son of a bitch you did it."),
             {noreply, State#state{callid=NewCallId, other_legs=lists:delete(NewCallId, Legs)}};
         _ ->
@@ -305,12 +309,12 @@ handle_cast({add_leg, JObj}, #state{other_legs=Legs, node=Node, callid=CallId}=S
         true -> {noreply, State};
         false ->
             ?LOG("added leg ~s to call", [LegId]),
-            spawn(fun() ->
-                          put(callid, CallId),
-                          publish_leg_addition(JObj)
-                  end),
+            _ = spawn(fun() ->
+			      _ = put(callid, CallId),
+			      publish_leg_addition(JObj)
+		      end),
             ?LOG("ensuring event listener for leg ~s exists", [LegId]),
-            ecallmgr_call_sup:start_event_process(Node, LegId),
+            _ = ecallmgr_call_sup:start_event_process(Node, LegId),
             {noreply, State#state{other_legs=[LegId|Legs]}}
     end;
 handle_cast({rm_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
@@ -325,10 +329,10 @@ handle_cast({rm_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
             {noreply, State};
         true ->
             ?LOG("removed leg ~s from call", [LegId]),
-            spawn(fun() ->
-                          put(callid, CallId),
-                          publish_leg_removal(JObj)
-                  end),
+            _ = spawn(fun() ->
+			      put(callid, CallId),
+			      publish_leg_removal(JObj)
+		      end),
             {noreply, State#state{other_legs=lists:delete(LegId, Legs), last_removed_leg=LegId}}
     end;
 handle_cast({channel_destroyed, _},  #state{command_q=CmdQ, sanity_check_tref=SCTRef}=State) ->
@@ -627,7 +631,7 @@ get_keep_alive_ref(TRef) ->
         end,
     erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired).
 
--spec publish_leg_addition/1 :: (json_object()) -> ok.
+-spec publish_leg_addition/1 :: (json_object()) -> 'ok'.
 publish_leg_addition(JObj) ->
     Props = case wh_json:get_value(<<"Event-Name">>, JObj) of
                 <<"CHANNEL_BRIDGE">> ->
@@ -643,7 +647,7 @@ publish_leg_addition(JObj) ->
             ecallmgr_call_events:publish_event(Event)
     end.
 
--spec publish_leg_removal/1 :: (json_object()) -> ok.
+-spec publish_leg_removal/1 :: (json_object()) -> 'ok'.
 publish_leg_removal(JObj) ->
     Props = case wh_json:get_value(<<"Event-Name">>, JObj) of
                 <<"CHANNEL_UNBRIDGE">> ->

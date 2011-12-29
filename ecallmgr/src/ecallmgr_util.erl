@@ -1,10 +1,16 @@
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2010, VoIP INC
 %%% @doc
 %%% Various utilities specific to ecallmgr. More general utilities go
 %%% in whistle_util.erl
 %%% @end
+%%%
+%%% @contributors
+%%% James Aimonetti <james@2600hz.org>
+%%% Karl Anderson <karl@2600hz.org>
+%%%
 %%% Created : 15 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%%-------------------------------------------------------------------
 
 -module(ecallmgr_util).
 
@@ -75,9 +81,8 @@ fix_value("Event-Date-Timestamp", TStamp) ->
 fix_value(_K, V) -> V.
 
 
--spec unserialize_fs_array/1 :: (undefined | binary()) -> list().
-unserialize_fs_array(undefined) ->
-    [];
+-spec unserialize_fs_array/1 :: ('undefined' | ne_binary()) -> [ne_binary(),...] | [].
+unserialize_fs_array(undefined) -> [];
 unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
     binary:split(Serialized, <<"|:">>, [global]).
 

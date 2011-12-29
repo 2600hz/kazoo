@@ -1,9 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Simple-One-For-One strategy for restarting call event processes
 %%% @end
+%%%
+%%% @contributors
+%%% James Aimonetti <james@2600hz.org>
+%%% Karl Anderson <karl@2600hz.org>
+%%%
 %%% Created :  2 Jan 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_control_sup).
@@ -15,6 +19,8 @@
 -export([workers/0]).
 -export([find_worker/1]).
 -export([find_control_queue/1]).
+
+-include("ecallmgr.hrl").
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -41,10 +47,11 @@ start_proc(Args) ->
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->
     [ Pid || {_, Pid, worker, [Worker]} <- supervisor:which_children(?SERVER),
-             Worker =:= ecallmgr_call_control].
+             Worker =:= ecallmgr_call_control
+    ].
 
--spec find_worker/1 :: (binary()) -> {error, not_found} | {ok, pid()}.
--spec do_find_worker/2 :: (binary(), [] | [pid(),...]) -> {error, not_found} | {ok, pid()}.
+-spec find_worker/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
+-spec do_find_worker/2 :: ([pid(),...] | [], ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
 
 find_worker(CallID) ->
     do_find_worker(workers(), CallID).
@@ -53,13 +60,11 @@ do_find_worker([], _) ->
     {error, not_found};
 do_find_worker([Srv|T], CallID) ->
     case ecallmgr_call_control:callid(Srv) of
-        CallID ->
-            {ok, Srv};
-        _ ->
-            do_find_worker(T, CallID)
+        CallID -> {ok, Srv};
+        _ -> do_find_worker(T, CallID)
     end.
 
--spec find_control_queue/1 :: (binary()) -> {error, not_found} | {ok, pid()}.
+-spec find_control_queue/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', ne_binary()}.
 find_control_queue(CallID) ->    
     case find_worker(CallID) of
         {error, _}=E -> E;

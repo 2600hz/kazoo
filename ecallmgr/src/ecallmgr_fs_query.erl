@@ -59,6 +59,12 @@ call_status(CallID) ->
                      ,{<<"Status">>, <<"active">>}
                      ,{<<"Error-Msg">>, wh_util:to_binary(E)}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)];
+		timeout ->
+		    ?LOG("failed to get channel info for ~s: timeout", [CallID]),
+                    [{<<"Call-ID">>, CallID}
+                     ,{<<"Status">>, <<"active">>}
+                     ,{<<"Error-Msg">>, <<"timeout querying the call">>}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)];
                 {ok, Props} ->
                     ?LOG("got channel info for ~s, forming response", [CallID]),
                     create_call_status_resp(Props, props:get_value(<<"Channel-Call-UUID">>, Props) =:= CallID)

@@ -1,10 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010, VoIP INC
 %%% @doc
 %%% Receive call events from freeSWITCH, publish to the call's event
 %%% queue
 %%% @end
+%%%
+%%% @contributors
+%%% James Aimonetti <james@2600hz.org>
+%%% Karl Anderson <karl@2600hz.org>
+%%%
 %%% Created : 25 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_events).
@@ -31,13 +35,13 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {
-          node = undefined :: atom()
-          ,self = undefined :: undefined | pid()
+          node = 'undefined' :: atom()
+          ,self = 'undefined' :: 'undefined' | pid()
           ,callid = <<>> :: binary()
-          ,is_node_up = true :: boolean()
+          ,is_node_up = 'true' :: boolean()
           ,failed_node_checks = 0 :: integer()
-          ,node_down_tref = undefined
-          ,sanity_check_tref = undefined
+          ,node_down_tref = 'undefined' :: 'undefined' | reference()
+          ,sanity_check_tref = 'undefined' :: 'undefined' | reference()
          }).
 
 %%%===================================================================
@@ -81,7 +85,7 @@ queue_name(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([atom() | binary()]) -> {'ok', #state{}}.
+-spec init/1 :: ([atom() | ne_binary()]) -> {'ok', #state{}, 0}.
 init([Node, CallId]) ->
     put(callid, CallId),
     ?LOG_START("starting call events listener"),
@@ -251,7 +255,7 @@ process_channel_event(Props, #state{self=Self, node=Node}) ->
             ok
     end.    
 
--spec create_event/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
+-spec create_event/3 :: (ne_binary(), ne_binary() | 'undefined', proplist()) -> proplist().
 create_event(EventName, ApplicationName, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
     {Mega,Sec,Micro} = erlang:now(),
@@ -279,9 +283,11 @@ create_event(EventName, ApplicationName, Props) ->
              ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
              | event_specific(EventName, ApplicationName, Props) 
             ],
-    wh_api:default_headers(<<>>, ?EVENT_CAT, EventName, ?APP_NAME, ?APP_VERSION) ++ Event.
+    [ KV || {_, V}=KV <- wh_api:default_headers(<<>>, ?EVENT_CAT, EventName, ?APP_NAME, ?APP_VERSION) ++ Event,
+	    V =/= undefined
+    ].
 
--spec publish_event/1 :: (proplist()) -> ok.
+-spec publish_event/1 :: (proplist()) -> 'ok'.
 publish_event(Props) ->
     %% call_control publishes channel create/destroy on the control
     %% events queue by calling create_event then this directly.
@@ -332,7 +338,7 @@ get_event_application(Props, Masqueraded) ->
     end.
 
 %% return a proplist of k/v pairs specific to the event
--spec event_specific/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
+-spec event_specific/3 :: (ne_binary(), 'undefined' | ne_binary(), proplist()) -> proplist().
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Prop) ->
     [{<<"Application-Name">>, props:get_value(<<"whistle_application_name">>, Prop)}
      ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop)}
@@ -398,11 +404,11 @@ should_publish(EventName, _, _) ->
 get_transfer_history(Props) ->
     SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
     Hist = [HistJObj 
-            || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory)
-                   ,(HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, [global]))) =/= undefined],
+            || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory),
+	       (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, [global]))) =/= undefined],
     wh_json:from_list(Hist).
 
--spec create_trnsf_history_object/1 :: (list()) -> {binary, json_object} | undefined.
+-spec create_trnsf_history_object/1 :: (list()) -> {ne_binary(), json_object()} | 'undefined'.
 create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
     [Transferee, Transferer] = binary:split(Props, <<"/">>),
     Trans = [{<<"Call-ID">>, CallId}
@@ -425,14 +431,14 @@ create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
 create_trnsf_history_object(_) ->
     undefined.
 
--spec get_channel_state/1 :: (proplist()) -> binary().
+-spec get_channel_state/1 :: (proplist()) -> ne_binary().
 get_channel_state(Prop) ->
     case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
         undefined -> <<"unknown">>;
         ChannelState -> ChannelState
     end.
 
--spec get_hangup_cause/1 :: (proplist()) -> undefined | ne_binary().
+-spec get_hangup_cause/1 :: (proplist()) -> 'undefined' | ne_binary().
 get_hangup_cause(Props) ->
     Causes = case props:get_value(<<"variable_current_application">>, Props) of
                  <<"bridge">> ->
@@ -442,19 +448,19 @@ get_hangup_cause(Props) ->
              end,
     find_event_value(Causes, Props).
 
--spec get_disposition/1 :: (proplist()) -> undefined | ne_binary().
+-spec get_disposition/1 :: (proplist()) -> 'undefined' | ne_binary().
 get_disposition(Props) ->
     find_event_value([<<"variable_endpoint_disposition">>
                           ,<<"variable_originate_disposition">>
                      ], Props).
 
--spec get_hangup_code/1 :: (proplist()) -> undefined | ne_binary().
+-spec get_hangup_code/1 :: (proplist()) -> 'undefined' | ne_binary().
 get_hangup_code(Props) ->
     find_event_value([<<"variable_proto_specific_hangup_cause">>
                           ,<<"variable_last_bridge_proto_specific_hangup_cause">>
                      ], Props).
     
--spec find_event_value/2 :: ([ne_binary(),...], proplist()) -> undefined | ne_binary().
+-spec find_event_value/2 :: ([ne_binary(),...], proplist()) -> 'undefined' | ne_binary().
 find_event_value(Keys, Props) ->
     find_event_value(Keys, Props, undefined).
 
