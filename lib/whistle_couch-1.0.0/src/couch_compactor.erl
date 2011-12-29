@@ -268,7 +268,7 @@ get_ports(_Node, pang) ->
     ?LOG_SYS("Using same ports as couch_mgr"),
     {couch_mgr:get_port(), couch_mgr:get_admin_port()}.
 
--spec get_conns/5 :: (nonempty_string(), non_neg_integer(), string(), string(), non_neg_integer()) -> {#server{}, #server{}}.
+-spec get_conns/5 :: (nonempty_string(), pos_integer(), string(), string(), pos_integer()) -> {#server{}, #server{}}.
 get_conns(Host, Port, User, Pass, AdminPort) ->
     {couch_util:get_new_connection(Host, Port, User, Pass),
      couch_util:get_new_connection(Host, AdminPort, User, Pass)}.

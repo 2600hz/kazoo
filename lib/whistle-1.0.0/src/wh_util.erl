@@ -465,9 +465,9 @@ is_ipv6(Address) when is_list(Address) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec get_transfer_state/1 :: (json_object()) -> undefined | transferer | transferee.
--spec get_transfer_state/2 :: ({ne_binary(), ne_binary()}, json_object()) -> undefined | transferer | transferee.
--spec do_get_transfer_state/2 :: (ne_binary() | undefined,  json_object()) ->  undefined | transferer | transferee.
+-spec get_transfer_state/1 :: (json_object()) -> 'undefined' | 'transferer' | 'transferee'.
+-spec get_transfer_state/2 :: ({ne_binary(), ne_binary()}, json_object()) -> 'undefined' | 'transferer' | 'transferee'.
+-spec do_get_transfer_state/2 :: (ne_binary() | 'undefined',  json_object()) ->  'undefined' | 'transferer' | 'transferee'.
 
 get_transfer_state(JObj) ->
     get_transfer_state(get_event_type(JObj), JObj).
@@ -482,7 +482,7 @@ get_transfer_state(_, _) ->
     undefined.
 
 do_get_transfer_state(<<"CHANNEL_UNBRIDGE">>, JObj) ->
-    Timestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
+    Timestamp = wh_json:get_binary_value(<<"Timestamp">>, JObj, <<>>),
     Epoch = binary:part(wh_util:pad_binary(Timestamp, 10, <<"0">>), 0, 10),
     Transfer = wh_json:get_value([<<"Transfer-History">>, Epoch], JObj),
     Disposition = wh_json:get_value(<<"Disposition">>, JObj),
