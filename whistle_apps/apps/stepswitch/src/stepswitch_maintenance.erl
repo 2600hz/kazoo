@@ -1,10 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% Preforms maintenance operations against the stepswitch dbs
 %%% @end
-%%% Created : 14 June 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(stepswitch_maintenance).
 
@@ -32,11 +30,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile/0 :: () -> 'done'.
--spec reconcile/1 :: (Account) -> 'done' when
-      Account :: string() | binary() | 'all'.
--spec reconcile/2 :: (AccountId, IsTSAccount) -> 'done' when
-      AccountId :: binary() | string() | 'all',
-      IsTSAccount :: 'undefined' | boolean().
+-spec reconcile/1 :: (string() | ne_binary() | all) -> 'done'.
+-spec reconcile/2 :: (string() | ne_binary() | all, undefined | boolean()) -> 'done'.
 
 reconcile() ->
     reconcile(all).
@@ -75,10 +70,10 @@ reconcile(AccountId, false) ->
 %% Lookup a number in the route db and return the account ID if known
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_number/1 :: (Number) -> tuple(ok, binary()) | tuple(error, atom()) when
-      Number :: string().
+-spec lookup_number/1 :: (string()) -> {ok, binary()} | {error, atom()}.
 lookup_number(Number) ->
-    gen_server:call(stepswitch_inbound, {lookup_number, Number}).
+    {ok, Srv} = stepswitch_sup:listener(),
+    gen_server:call(Srv, {lookup_number, Number}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -89,7 +84,8 @@ lookup_number(Number) ->
 %%--------------------------------------------------------------------
 -spec reload_resources/0 :: () -> ok.
 reload_resources() ->
-    gen_server:call(stepswitch_outbound, {reload_resrcs}).
+    {ok, Srv} = stepswitch_sup:listener(),
+    gen_server:call(Srv, {reload_resrcs}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -99,17 +95,16 @@ reload_resources() ->
 %% {Resource ID, Delay (in seconds), SIP URI}
 %% @end
 %%--------------------------------------------------------------------
--spec process_number/1 :: (Number) -> list()|tuple(error, atom()) when
-      Number :: string().
--spec process_number/2 :: (Number, Flags) -> list()|tuple(error, atom()) when
-      Number :: string(),
-      Flags :: list().
+-spec process_number/1 :: (string()) -> list() | {error, atom()}.
+-spec process_number/2 :: (string(), list()) -> list() | {error, atom()}.
 
 process_number(Number) ->
-    gen_server:call(stepswitch_outbound, {process_number, Number}).
+    {ok, Srv} = stepswitch_sup:listener(),
+    gen_server:call(Srv, {process_number, Number}).
 
 process_number(Number, Flags) ->
-    gen_server:call(stepswitch_outbound, {process_number, Number, Flags}).
+    {ok, Srv} = stepswitch_sup:listener(),
+    gen_server:call(Srv, {process_number, Number, Flags}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -121,11 +116,11 @@ process_number(Number, Flags) ->
 -spec reconcile_accounts/0 :: () -> ok.
 reconcile_accounts() ->
     _ = [begin
-	     Numbers = get_callflow_account_numbers(AccountId),
-	     reconcile_account_route(
-	       whapps_util:get_db_name(AccountId, raw), Numbers)
-	 end
-	 || AccountId <- whapps_util:get_all_accounts(encoded)],
+             Numbers = get_callflow_account_numbers(AccountId),
+             reconcile_account_route(
+               whapps_util:get_db_name(AccountId, raw), Numbers)
+         end
+         || AccountId <- whapps_util:get_all_accounts(encoded)],
     ok.
 
 %%--------------------------------------------------------------------
@@ -135,16 +130,16 @@ reconcile_accounts() ->
 %% external (TODO: currently just uses US rules).
 %% @end
 %%--------------------------------------------------------------------
--spec get_callflow_account_numbers/1 :: (AccountId) -> json_object() when
-      AccountId :: binary().
+-spec get_callflow_account_numbers/1 :: (ne_binary()) -> json_object().
 get_callflow_account_numbers(AccountId) ->
+    Regex = whapps_config:get_binary(<<"stepswitch">>, <<"reconcile_regex">>, <<"^\\+{0,1}1{0,1}(\\d{10})$">>),
     case couch_mgr:get_all_results(AccountId, ?CALLFLOW_VIEW) of
         {ok, Numbers} ->
             {struct, [{Num, ?EMPTY_JSON_OBJECT}
                       || Number <- Numbers
                              ,begin
                                   Num = wh_util:to_e164(wh_json:get_value(<<"key">>, Number)),
-                                  is_binary(Num) andalso re:run(Num, <<"^\\+{0,1}1{0,1}(\\d{10})$">>) =/= nomatch
+                                  is_binary(Num) andalso re:run(Num, Regex) =/= nomatch
                               end]};
         {error, _} ->
             ?EMPTY_JSON_OBJECT
@@ -158,16 +153,16 @@ get_callflow_account_numbers(AccountId) ->
 %% account db structure)
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_trunkstore/0 :: () -> ok | tuple(error, atom()).
+-spec reconcile_trunkstore/0 :: () -> ok | {error, atom()}.
 reconcile_trunkstore() ->
     case couch_mgr:all_docs(?TS_DB) of
         {ok, JObj} ->
             _ = [begin
-		     AccountId = wh_json:get_value(<<"id">>, Account),
-		     Numbers = get_trunkstore_account_numbers(AccountId),
-		     reconcile_account_route(AccountId, Numbers)
-		 end
-		 || Account <- JObj],
+                     AccountId = wh_json:get_value(<<"id">>, Account),
+                     Numbers = get_trunkstore_account_numbers(AccountId),
+                     reconcile_account_route(AccountId, Numbers)
+                 end
+                 || Account <- JObj],
             ok;
         {error, _}=E ->
             E
@@ -180,8 +175,7 @@ reconcile_trunkstore() ->
 %% it is a 'info_' document (IE: trunkstore account)
 %% @end
 %%--------------------------------------------------------------------
--spec is_trunkstore_account/1 :: (JObj) -> boolean() when
-      JObj :: json_object().
+-spec is_trunkstore_account/1 :: (json_object()) -> boolean().
 is_trunkstore_account(JObj) ->
     wh_json:get_value(<<"type">>, JObj) =:= <<"sys_info">>.
 
@@ -192,23 +186,22 @@ is_trunkstore_account(JObj) ->
 %% containing all numbers assigned to it
 %% @end
 %%--------------------------------------------------------------------
--spec get_trunkstore_account_numbers/1 :: (Account) -> json_object() when
-      Account :: binary().
+-spec get_trunkstore_account_numbers/1 :: (ne_binary()) -> json_object().
 get_trunkstore_account_numbers(Account) ->
     case couch_mgr:open_doc(?TS_DB, Account) of
         {ok, JObj} ->
-	    case is_trunkstore_account(JObj) of
-		true ->
+            case is_trunkstore_account(JObj) of
+                true ->
                     ?LOG("account ~s is a trunkstore doc...", [Account]),
-		    Assigned = [wh_json:get_value(<<"DIDs">>, Server, ?EMPTY_JSON_OBJECT)
-				|| Server <- wh_json:get_value(<<"servers">>, JObj, ?EMPTY_JSON_OBJECT)],
-		    Unassigned = [wh_json:get_value(<<"DIDs_Unassigned">>, JObj, ?EMPTY_JSON_OBJECT)],
-		    {struct, lists:foldr(fun({struct, Numbers}, Acc) ->
-						 Numbers ++ Acc;
-					    (_, Acc) -> Acc
-					 end, [], Assigned ++ Unassigned)};
-		false -> ?EMPTY_JSON_OBJECT
-	    end;
+                    Assigned = [wh_json:get_value(<<"DIDs">>, Server, ?EMPTY_JSON_OBJECT)
+                                || Server <- wh_json:get_value(<<"servers">>, JObj, ?EMPTY_JSON_OBJECT)],
+                    Unassigned = [wh_json:get_value(<<"DIDs_Unassigned">>, JObj, ?EMPTY_JSON_OBJECT)],
+                    {struct, lists:foldr(fun({struct, Numbers}, Acc) ->
+                                                 Numbers ++ Acc;
+                                            (_, Acc) -> Acc
+                                         end, [], Assigned ++ Unassigned)};
+                false -> ?EMPTY_JSON_OBJECT
+            end;
         {error, _} ->
             ?EMPTY_JSON_OBJECT
     end.
@@ -220,11 +213,8 @@ get_trunkstore_account_numbers(Account) ->
 %% provided numbers
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_account_route/2 :: (AccountId, Numbers) -> tuple(ok, json_object() | json_objects())
-                                                               | tuple(error, atom()) when
-      AccountId :: binary(),
-      Numbers :: json_object().
-
+-spec reconcile_account_route/2 :: (ne_binary(), json_object()) -> {ok, json_object() | json_objects()}
+                                                                       | {error, atom()}.
 reconcile_account_route(AccountId, ?EMPTY_JSON_OBJECT) ->
     case couch_mgr:lookup_doc_rev(?ROUTES_DB, AccountId) of
         {ok, Rev} ->

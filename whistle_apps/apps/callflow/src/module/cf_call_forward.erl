@@ -90,16 +90,16 @@ cf_menu(#callfwd{prompts=#prompts{main_menu_enabled=EnabledMenu, main_menu_disab
              end,
     {ok, _} = cf_call_command:b_flush(Call),
     case cf_call_command:b_play_and_collect_digit(Prompt, Call) of
-	{ok, Toggle} ->
+        {ok, Toggle} ->
             CF1 = cf_toggle(CF, Call),
             {ok, _} = update_callfwd(CF1, Call),
             cf_menu(CF1, Call);
         {ok, ChangeNum} ->
             CF1 = cf_update_number(CF, Call),
             {ok, _} = update_callfwd(CF1, Call),
-	    cf_menu(CF1, Call);
-	{ok, _} ->
-	    cf_menu(CF, Call)
+            cf_menu(CF1, Call);
+        {ok, _} ->
+            cf_menu(CF, Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -110,10 +110,10 @@ cf_menu(#callfwd{prompts=#prompts{main_menu_enabled=EnabledMenu, main_menu_disab
 %% @end
 %%--------------------------------------------------------------------
 -spec(cf_toggle/2 :: (CF :: #callfwd{}, Call :: #cf_call{}) -> #callfwd{}).
-cf_toggle(#callfwd{enabled=false}=CF, Call) ->
-    cf_activate(CF, Call);
-cf_toggle(#callfwd{enabled=true}=CF, Call) ->
-    cf_deactivate(CF, Call).
+cf_toggle(CF, #cf_call{capture_group=undefined}=Call) ->
+    cf_deactivate(CF, Call);
+cf_toggle(CF, Call) ->
+    cf_activate(CF, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -127,13 +127,13 @@ cf_activate(#callfwd{number=undefined}=CF, Call) ->
     cf_activate(cf_update_number(CF, Call), Call);
 cf_activate(#callfwd{number=Number, prompts=Prompts}=CF, #cf_call{capture_group=undefined}=Call) ->
     ?LOG("activating call forwarding"),
-    {ok, _} = cf_call_command:b_play(Prompts#prompts.has_been_enabled, Call),
-    {ok, _} = cf_call_command:b_say(Number, Call),
+    cf_call_command:play(Prompts#prompts.has_been_enabled, Call),
+    cf_call_command:say(Number, Call),
     CF#callfwd{enabled=true};
 cf_activate(#callfwd{prompts=Prompts}=CF, #cf_call{capture_group=CaptureGroup}=Call) ->
     ?LOG("activating call forwarding with number ~s", [CaptureGroup]),
-    {ok, _} = cf_call_command:b_play(Prompts#prompts.has_been_enabled, Call),
-    {ok, _} = cf_call_command:b_say(CaptureGroup, Call),
+    cf_call_command:play(Prompts#prompts.has_been_enabled, Call),
+    cf_call_command:say(CaptureGroup, Call),
     CF#callfwd{enabled=true, number=CaptureGroup}.
 
 %%--------------------------------------------------------------------
@@ -146,7 +146,7 @@ cf_activate(#callfwd{prompts=Prompts}=CF, #cf_call{capture_group=CaptureGroup}=C
 -spec(cf_deactivate/2 :: (CF :: #callfwd{}, Call :: #cf_call{}) -> #callfwd{}).
 cf_deactivate(#callfwd{prompts=Prompts}=CF, Call) ->
     ?LOG("deactivating call forwarding"),
-    {ok, _} = cf_call_command:b_play(Prompts#prompts.has_been_disabled, Call),
+    cf_call_command:play(Prompts#prompts.has_been_disabled, Call),
     CF#callfwd{enabled=false}.
 
 %%--------------------------------------------------------------------
@@ -160,7 +160,7 @@ cf_deactivate(#callfwd{prompts=Prompts}=CF, Call) ->
 cf_update_number(#callfwd{prompts=#prompts{saved=Saved, enter_forwarding_number=EnterNumber}}=CF
                  ,#cf_call{capture_group=undefined}=Call) ->
     {ok, Number} = cf_call_command:b_play_and_collect_digits(<<"3">>, <<"20">>, EnterNumber, <<"1">>, <<"8000">>, Call),
-    {ok, _} = cf_call_command:b_play(Saved, Call),
+    cf_call_command:play(Saved, Call),
     ?LOG("update call forwarding number with ~s", [Number]),
     CF#callfwd{number=Number};
 cf_update_number(CF, #cf_call{capture_group=CaptureGroup}) ->
@@ -213,7 +213,7 @@ get_call_forward(#cf_call{authorizing_id=AuthId, account_db=Db}) ->
             ?LOG("loaded call forwarding object from ~s", [Id]),
             #callfwd{doc_id = wh_json:get_value(<<"_id">>, JObj)
                      ,enabled = wh_json:is_true([<<"call_forward">>, <<"enabled">>], JObj)
-                     ,number = wh_json:get_ne_value([<<"call_forward">>, <<"number">>], JObj)
+                     ,number = wh_json:get_ne_value([<<"call_forward">>, <<"number">>], JObj, <<>>)
                      ,require_keypress = wh_json:is_true([<<"call_forward">>, <<"require_keypress">>], JObj, true)
                      ,keep_caller_id = wh_json:is_true([<<"call_forward">>, <<"keep_caller_id">>], JObj, true)
                     };

@@ -14,8 +14,8 @@
 -export([call_status_req/1, call_status_req_v/1]).
 -export([call_status_resp/1, call_status_resp_v/1]).
 -export([cdr/1, cdr_v/1]).
--export([rate_req/1, rate_req_v/1, rate_resp/1, rate_resp_v/1, rate_resp_rate/1
-	 ,required_rate_resp_rate_headers/0
+-export([rate_req/1, rate_req_v/1, rate_resp/1, rate_resp_v/1
+	 ,rate_resp_rate/1, required_rate_resp_rate_headers/0
 	]).
 -export([callid_update/1, callid_update_v/1]).
 -export([control_transfer/1, control_transfer_v/1]).
@@ -110,6 +110,31 @@
                          ]).
 -define(CALL_CDR_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
+%% Call ID Update
+-define(CALL_ID_UPDATE_HEADERS, [<<"Call-ID">>, <<"Replaces-Call-ID">>, <<"Control-Queue">>]).
+-define(OPTIONAL_CALL_ID_UPDATE_HEADERS, []).
+-define(CALL_ID_UPDATE_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                  ,{<<"Event-Name">>, <<"call_id_update">>}
+                                 ]).
+-define(CALL_ID_UPDATE_TYPES, []).
+
+%% Call Control Transfer
+-define(CALL_CONTROL_TRANSFER_HEADERS, [<<"Call-ID">>]).
+-define(OPTIONAL_CALL_CONTROL_TRANSFER_HEADERS, []).
+-define(CALL_CONTROL_TRANSFER_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                  ,{<<"Event-Name">>, <<"control_transfer">>}
+                                 ]).
+-define(CALL_CONTROL_TRANSFER_TYPES, []).
+
+%% Controller Queue Update
+-define(CONTROLLER_QUEUE_HEADERS, [<<"Call-ID">>, <<"Controller-Queue">>]).
+-define(OPTIONAL_CONTROLLER_QUEUE_HEADERS, []).
+-define(CONTROLLER_QUEUE_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                  ,{<<"Event-Name">>, <<"controller_queue">>}
+                                 ]).
+-define(CONTROLLER_QUEUE_TYPES, []).
+
+
 %% Routing key prefix for rating
 -define(KEY_RATING_REQ, <<"call.rating">>). %% Routing key to bind with in AMQP
 
@@ -137,29 +162,8 @@
 -define(RATING_RESP_RATE_VALUES, []).
 -define(RATING_RESP_RATE_TYPES, []).
 
-%% Call ID Update
--define(CALL_ID_UPDATE_HEADERS, [<<"Call-ID">>, <<"Replaces-Call-ID">>, <<"Control-Queue">>]).
--define(OPTIONAL_CALL_ID_UPDATE_HEADERS, []).
--define(CALL_ID_UPDATE_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                  ,{<<"Event-Name">>, <<"call_id_update">>}
-                                 ]).
--define(CALL_ID_UPDATE_TYPES, []).
-
-%% Call Control Transfer
--define(CALL_CONTROL_TRANSFER_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_CALL_CONTROL_TRANSFER_HEADERS, []).
--define(CALL_CONTROL_TRANSFER_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                  ,{<<"Event-Name">>, <<"control_transfer">>}
-                                 ]).
--define(CALL_CONTROL_TRANSFER_TYPES, []).
-
-%% Controller Queue Update
--define(CONTROLLER_QUEUE_HEADERS, [<<"Call-ID">>, <<"Controller-Queue">>]).
--define(OPTIONAL_CONTROLLER_QUEUE_HEADERS, []).
--define(CONTROLLER_QUEUE_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                  ,{<<"Event-Name">>, <<"controller_queue">>}
-                                 ]).
--define(CONTROLLER_QUEUE_TYPES, []).
+required_rate_resp_rate_headers() ->
+    ?RATING_RESP_RATE_HEADERS.
 
 %%--------------------------------------------------------------------
 %% @doc Format a call event from the switch for the listener
@@ -282,6 +286,66 @@ cdr_v(JObj) ->
     cdr_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Format a call id update from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec callid_update/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+callid_update(Prop) when is_list(Prop) ->
+    case callid_update_v(Prop) of
+        true -> wh_api:build_message(Prop, ?CALL_ID_UPDATE_HEADERS, ?OPTIONAL_CALL_ID_UPDATE_HEADERS);
+        false -> {error, "Proplist failed validation for callid_update"}
+    end;
+callid_update(JObj) ->
+    callid_update(wh_json:to_proplist(JObj)).
+
+-spec callid_update_v/1 :: (api_terms()) -> boolean().
+callid_update_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CALL_ID_UPDATE_HEADERS, ?CALL_ID_UPDATE_VALUES, ?CALL_ID_UPDATE_TYPES);
+callid_update_v(JObj) ->
+    callid_update_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Format a call id update from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec control_transfer/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+control_transfer(Prop) when is_list(Prop) ->
+    case control_transfer_v(Prop) of
+        true -> wh_api:build_message(Prop, ?CALL_CONTROL_TRANSFER_HEADERS, ?OPTIONAL_CALL_CONTROL_TRANSFER_HEADERS);
+        false -> {error, "Proplist failed validation for control_transfer"}
+    end;
+control_transfer(JObj) ->
+    control_transfer(wh_json:to_proplist(JObj)).
+
+-spec control_transfer_v/1 :: (api_terms()) -> boolean().
+control_transfer_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CALL_CONTROL_TRANSFER_HEADERS, ?CALL_CONTROL_TRANSFER_VALUES, ?CALL_CONTROL_TRANSFER_TYPES);
+control_transfer_v(JObj) ->
+    control_transfer_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Format a call id update from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec controller_queue/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+controller_queue(Prop) when is_list(Prop) ->
+    case controller_queue_v(Prop) of
+        true -> wh_api:build_message(Prop, ?CONTROLLER_QUEUE_HEADERS, ?OPTIONAL_CONTROLLER_QUEUE_HEADERS);
+        false -> {error, "Proplist failed validation for controller_queue"}
+    end;
+controller_queue(JObj) ->
+    controller_queue(wh_json:to_proplist(JObj)).
+
+-spec controller_queue_v/1 :: (api_terms()) -> boolean().
+controller_queue_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CONTROLLER_QUEUE_HEADERS, ?CONTROLLER_QUEUE_VALUES, ?CONTROLLER_QUEUE_TYPES);
+controller_queue_v(JObj) ->
+    controller_queue_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Rating request
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -349,73 +413,9 @@ rate_resp_rate_v(Prop) when is_list(Prop) ->
 rate_resp_rate_v(JObj) ->
     rate_resp_rate_v(wh_json:to_proplist(JObj)).
 
--spec required_rate_resp_rate_headers/0 :: () -> [ne_binary(),...].
-required_rate_resp_rate_headers() ->
-    ?RATING_RESP_RATE_HEADERS.
-
-%% @doc Format a call id update from the switch for the listener
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec callid_update/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
-callid_update(Prop) when is_list(Prop) ->
-    case callid_update_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CALL_ID_UPDATE_HEADERS, ?OPTIONAL_CALL_ID_UPDATE_HEADERS);
-        false -> {error, "Proplist failed validation for callid_update"}
-    end;
-callid_update(JObj) ->
-    callid_update(wh_json:to_proplist(JObj)).
-
--spec callid_update_v/1 :: (api_terms()) -> boolean().
-callid_update_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?CALL_ID_UPDATE_HEADERS, ?CALL_ID_UPDATE_VALUES, ?CALL_ID_UPDATE_TYPES);
-callid_update_v(JObj) ->
-    callid_update_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
-%% @doc Format a call id update from the switch for the listener
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec control_transfer/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
-control_transfer(Prop) when is_list(Prop) ->
-    case control_transfer_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CALL_CONTROL_TRANSFER_HEADERS, ?OPTIONAL_CALL_CONTROL_TRANSFER_HEADERS);
-        false -> {error, "Proplist failed validation for control_transfer"}
-    end;
-control_transfer(JObj) ->
-    control_transfer(wh_json:to_proplist(JObj)).
-
--spec control_transfer_v/1 :: (api_terms()) -> boolean().
-control_transfer_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?CALL_CONTROL_TRANSFER_HEADERS, ?CALL_CONTROL_TRANSFER_VALUES, ?CALL_CONTROL_TRANSFER_TYPES);
-control_transfer_v(JObj) ->
-    control_transfer_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
-%% @doc Format a call id update from the switch for the listener
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec controller_queue/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
-controller_queue(Prop) when is_list(Prop) ->
-    case controller_queue_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CONTROLLER_QUEUE_HEADERS, ?OPTIONAL_CONTROLLER_QUEUE_HEADERS);
-        false -> {error, "Proplist failed validation for controller_queue"}
-    end;
-controller_queue(JObj) ->
-    controller_queue(wh_json:to_proplist(JObj)).
-
--spec controller_queue_v/1 :: (api_terms()) -> boolean().
-controller_queue_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?CONTROLLER_QUEUE_HEADERS, ?CONTROLLER_QUEUE_VALUES, ?CONTROLLER_QUEUE_TYPES);
-controller_queue_v(JObj) ->
-    controller_queue_v(wh_json:to_proplist(JObj)).
-
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     CallID = props:get_value(callid, Props, <<"*">>),
-
     amqp_util:callevt_exchange(),
     amqp_util:callmgr_exchange(),
     amqp_util:resource_exchange(),
@@ -436,7 +436,7 @@ bind_q(Q, [cdr|T], CallID) ->
 bind_q(Q, [rating|T], CallID) ->
     amqp_util:bind_q_to_callmgr(Q, rating_key(CallID)),
     bind_q(Q, T, CallID);
-bind_q(Q, [call_status|T], CallID) ->
+bind_q(Q, [status|T], CallID) ->
     amqp_util:bind_q_to_callevt(Q, CallID, status_req),
     bind_q(Q, T, CallID);
 bind_q(Q, [switch_lookups|T], CallID) ->
@@ -517,28 +517,6 @@ publish_cdr(CallID, CDR, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(CDR, ?CALL_CDR_VALUES, fun ?MODULE:cdr/1),
     amqp_util:callevt_publish(CallID, Payload, cdr, ContentType).
 
--spec publish_rate_req/1 :: (api_terms()) -> 'ok'.
--spec publish_rate_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_rate_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_rate_req(API) ->
-    case is_list(API) of
-	true -> publish_rate_req(props:get_value(<<"Call-ID">>, API, <<"0000000000">>), API);
-	false -> publish_rate_req(wh_json:get_value(<<"Call-ID">>, API, <<"0000000000">>), API)
-    end.
-publish_rate_req(CallID, API) ->
-    publish_rate_req(CallID, API, ?DEFAULT_CONTENT_TYPE).
-publish_rate_req(CallID, API, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(API, ?RATING_REQ_VALUES, fun ?MODULE:rate_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, rating_key(CallID)).
-
--spec publish_rate_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_rate_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_rate_resp(Queue, JObj) ->
-    publish_rate_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_rate_resp(Queue, API, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(API, ?RATING_RESP_VALUES, fun ?MODULE:rate_resp/1),
-    amqp_util:targeted_publish(Queue, Payload, ContentType).
-
 -spec publish_callid_update/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_callid_update/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_callid_update(CallID, JObj) ->
@@ -562,6 +540,28 @@ publish_controller_queue(TargetQ, JObj) ->
 publish_controller_queue(TargetQ, JObj, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CONTROLLER_QUEUE_VALUES, fun ?MODULE:controller_queue/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+
+-spec publish_rate_req/1 :: (api_terms()) -> 'ok'.
+-spec publish_rate_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_rate_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_rate_req(API) ->
+    case is_list(API) of
+	true -> publish_rate_req(props:get_value(<<"Call-ID">>, API, <<"0000000000">>), API);
+	false -> publish_rate_req(wh_json:get_value(<<"Call-ID">>, API, <<"0000000000">>), API)
+    end.
+publish_rate_req(CallID, API) ->
+    publish_rate_req(CallID, API, ?DEFAULT_CONTENT_TYPE).
+publish_rate_req(CallID, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?RATING_REQ_VALUES, fun ?MODULE:rate_req/1),
+    amqp_util:callmgr_publish(Payload, ContentType, rating_key(CallID)).
+
+-spec publish_rate_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_rate_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_rate_resp(Queue, JObj) ->
+    publish_rate_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_rate_resp(Queue, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?RATING_RESP_VALUES, fun ?MODULE:rate_resp/1),
+    amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec get_status/1 :: (api_terms()) -> ne_binary().
 get_status(API) when is_list(API) ->

@@ -1,10 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
 %%% stepswitch routing WhApp
 %%% @end
-%%% Created :  14 June 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(stepswitch).
 

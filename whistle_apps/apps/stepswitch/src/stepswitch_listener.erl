@@ -1,13 +1,9 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
-%%% Listen for outbound route requests and processes them
-%%% against the resources db
 %%% @end
-%%% Created : 14 June 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(ss_outbound_listener).
+-module(stepswitch_listener).
 
 -behaviour(gen_listener).
 
@@ -18,14 +14,24 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
 
 -record(state, {
-	  last_doc_change = {<<>>, [<<>>]}
-	  ,resrcs = []
-	 }).
+          last_doc_change = {<<>>, [<<>>]}
+          ,resrcs = []
+         }).
+
+-define(BINDINGS, [{route, []}
+                   ,{offnet_resource, []}
+                  ]).
+-define(RESPONDERS, [{stepswitch_inbound, [{<<"dialplan">>, <<"route_req">>}]}
+                     ,{stepswitch_outbound, [{<<"resource">>, <<"offnet_req">>}]}
+                    ]).
+-define(QUEUE_NAME, ?RESOURCE_QUEUE_NAME).
+-define(QUEUE_OPTIONS, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
+-define(CONSUME_OPTIONS, [{exclustive, false}]).
 
 %%%===================================================================
 %%% API
@@ -39,13 +45,13 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{bindings, [{offnet_resource, []}]}
-				      ,{responders, [{ss_offnet_req, {<<"resource">>, <<"offnet_req">>}}]}
-				      ,{queue_name, ?RESOURCE_QUEUE_NAME}
-				      ,{queue_options, [{exclusive, false}, {auto_delete, true}, {nowait, false}]}
-				      ,{consume_options, [{exclustive, false}]}
-				      ,{basic_qos, 1}
-				     ], []).
+    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
+                                      ,{responders, ?RESPONDERS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                      ,{basic_qos, 1}
+                                     ], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -83,6 +89,12 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({lookup_number, Number}, From, State) ->
+    spawn(fun() ->
+                  gen_server:reply(From, stepswitch_util:lookup_number(Number))
+          end),
+    {noreply, State};
+
 handle_call({reload_resrcs}, _, State) ->
     Resrcs = get_resrcs(),
     {reply, ok, State#state{resrcs=Resrcs}, hibernate};
@@ -154,6 +166,12 @@ handle_info(_Info, State) ->
     ?LOG("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
 handle_event(_JObj, #state{resrcs=Rs}) ->
     {reply, [{resources, Rs}]}.
 
@@ -197,7 +215,7 @@ get_resrcs() ->
     case couch_mgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, [{<<"include_docs">>, 'true'}]) of
         {ok, Resrcs} ->
             _ = [couch_mgr:add_change_handler(?RESOURCES_DB, wh_json:get_value(<<"id">>, R))
-		 || R <- Resrcs],
+                 || R <- Resrcs],
             [create_resrc(wh_json:get_value(<<"doc">>, R))
              || R <- Resrcs, wh_util:is_true(wh_json:get_value([<<"doc">>, <<"enabled">>], R, 'true'))];
         {error, _}=E ->

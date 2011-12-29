@@ -1,10 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Listener for whapp requests to query the underlying switches
 %%% @end
-%%% Created :  5 Oct 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_query).
 
@@ -22,13 +20,11 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [
-		     {{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
+-define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
-		     ,{{?MODULE, handle_channel_query}, [{<<"locate">>, <<"channel_req">>}]}
-		    ]).
--define(BINDINGS, [
-		   {call, [{restrict_to, [switch_lookups, call_status]}]}
+                     ,{{?MODULE, handle_channel_query}, [{<<"locate">>, <<"channel_req">>}]}
+                    ]).
+-define(BINDINGS, [{call, [{restrict_to, [switch_lookups, channel_status, call_status]}]}
 		  ]).
 
 -record(state, {}).
@@ -143,7 +139,7 @@ handle_channel_query(JObj, _Props) ->
 					   undefined -> Acc;
 					   Value -> [{Field, Value} | Acc]
 				       end
-			       end, [], wapi_call:optional_channel_headers()),
+			       end, [], wapi_call_query:optional_channel_headers()),
 
     case lists:foldl(fun(NodeChannels, Acc) ->
                              filter_for_matching_uuids(SearchParams, NodeChannels, Acc)
