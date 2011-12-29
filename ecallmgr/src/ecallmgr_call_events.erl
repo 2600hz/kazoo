@@ -13,27 +13,32 @@
 -include("ecallmgr.hrl").
 
 -define(EVENT_CAT, <<"call_event">>).
--define(MAX_FAILED_NODE_CHECKS, 5).
--define(MAX_WAIT_FOR_EVENT, 10000). %% how long to wait for an event from FS before checking status of call
+-define(MAX_FAILED_NODE_CHECKS, 10).
+-define(NODE_CHECK_PERIOD, 1000).
 
 %% API
--export([start_link/3, publish_msg/3]).
+-export([start_link/2]).
+-export([swap_call_legs/1]).
+-export([create_event/3, publish_event/1]).
+-export([transfer/3]).
+-export([get_fs_var/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
+-export([queue_name/1, callid/1]).
 
 -define(SERVER, ?MODULE).
 
 -record(state, {
-	  node = undefined :: atom()
-          ,uuid = <<>> :: binary()
-          ,ctlpid = undefined :: 'undefined' | pid()
-	  ,is_node_up = true :: boolean()
-	  ,is_amqp_up = true :: boolean()
-	  ,queued_events = [] :: [proplist(),...] | []
-	  ,failed_node_checks = 0 :: integer()
-	 }).
+          node = undefined :: atom()
+          ,self = undefined :: undefined | pid()
+          ,callid = <<>> :: binary()
+          ,is_node_up = true :: boolean()
+          ,failed_node_checks = 0 :: integer()
+          ,node_down_tref = undefined
+          ,sanity_check_tref = undefined
+         }).
 
 %%%===================================================================
 %%% API
@@ -46,12 +51,20 @@
 %% @spec start_link() -> {'ok', Pid} | ignore | {'error', Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/3 :: (Node, UUID, CtlPid) -> {'ok', pid()} when
-      Node :: atom(),
-      UUID :: binary(),
-      CtlPid :: pid() | 'undefined'.
-start_link(Node, UUID, CtlPid) ->
-    gen_server:start_link(?MODULE, [Node, UUID, CtlPid], []).
+-spec start_link/2 :: (atom(), ne_binary()) -> {'ok', pid()}.
+start_link(Node, CallId) ->
+    gen_server:start_link(?MODULE, [Node, CallId], []).
+
+-spec callid/1 :: (pid()) -> ne_binary().
+callid(Srv) ->
+    gen_server:call(Srv, {callid}).
+
+transfer(Srv, TransferType, Props) ->
+    gen_listener:cast(Srv, {TransferType, Props}).
+
+-spec queue_name/1 :: (pid()) -> ne_binary().
+queue_name(Srv) ->
+    gen_listener:queue_name(Srv).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -68,15 +81,12 @@ start_link(Node, UUID, CtlPid) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([atom() | binary() | pid(),...]) -> {'ok', #state{}}.
-init([Node, UUID, CtlPid]) ->
-    process_flag(trap_exit, true),
-    put(callid, UUID),
-    self() ! startup,
-    ?LOG_START("starting new call events listener"),
-    is_pid(CtlPid) andalso link(CtlPid),
-    ?LOG("linked to control listener process ~p",[CtlPid]),
-    {'ok', #state{node=Node, uuid=UUID, ctlpid=CtlPid}}.
+-spec init/1 :: ([atom() | binary()]) -> {'ok', #state{}}.
+init([Node, CallId]) ->
+    put(callid, CallId),
+    ?LOG_START("starting call events listener"),
+    TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
+    {'ok', #state{node=Node, callid=CallId, sanity_check_tref=TRef, self=self()}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -92,6 +102,8 @@ init([Node, UUID, CtlPid]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({callid}, _From, #state{callid=CallId}=State) ->
+    {reply, CallId, State};
 handle_call(_Request, _From, State) ->
     {reply, 'ok', State}.
 
@@ -105,6 +117,12 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({channel_destroyed, _}, State) ->
+    ?LOG("channel destroyed, goodbye and thanks for all the fish"),
+    {stop, normal, State};
+handle_cast({transferer, _}, State) ->
+    ?LOG("call control has been transfered."),
+    {stop, normal, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -118,108 +136,62 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info/2 :: ('startup', #state{}) -> handle_info_ret();
-		       ({'nodedown', atom()}, #state{}) -> {'noreply', #state{}};
-                       ({'is_node_up', non_neg_integer()}, #state{}) -> handle_info_ret();
-		       ({'call', {'event', [binary() | proplist()]}}, #state{}) -> {'noreply', #state{}, 'hibernate'};
-		       ({'call_event', {'event', [binary() | proplist()]}}, #state{}) -> {'noreply', #state{}, 'hibernate'};
-		       ('call_hangup', #state{}) -> {'stop', 'normal', #state{}};
-		       ({'amqp_host_down', binary()}, #state{}) -> {'noreply', #state{}};
-		       ('is_amqp_up', #state{}) -> {'noreply', #state{}};
-		       ({#'basic.deliver'{}, #amqp_msg{}}, #state{}) -> {'noreply', #state{}, 'hibernate'} | {'stop', 'normal', #state{}};
-		       (#'basic.consume_ok'{}, #state{}) -> {'noreply', #state{}, 'hibernate'}.
-handle_info({call, {event, [UUID | Data]}}, #state{uuid=UUID, is_amqp_up=true, node=Node}=State) ->
-    spawn(fun() -> put(callid, UUID), publish_msg(Node, UUID, Data) end),
+handle_info({call, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
+    process_channel_event(Props, State),
+%%    spawn(fun() -> process_channel_event(Props, State) end),
     {'noreply', State};
-
-handle_info({call, {event, [UUID | Data]}}, #state{uuid=UUID, is_amqp_up=false, queued_events=QEs}=State) ->
-    {'noreply', State#state{queued_events = [Data | QEs]}, hibernate};
-
-handle_info({call_event, {event, [ UUID | Data ] } }, #state{node=Node, uuid=UUID, ctlpid=CtlPid, is_amqp_up=IsAmqpUp, queued_events=QEs}=State) ->
-    EvtName = props:get_value(<<"Event-Name">>, Data),
-    AppName = props:get_value(<<"Application">>, Data),
-
-    case EvtName of
-	<<"CHANNEL_BRIDGE">> ->
-	    case props:get_value(<<"Other-Leg-Unique-ID">>, Data) of
-		undefined -> 'ok';
-		OtherUUID ->
-		    ?LOG("event was a bridged to ~s", [OtherUUID]),
-		    _Pid = ecallmgr_call_sup:start_event_process(Node, OtherUUID, undefined),
-		    ?LOG("started event listener for other leg as process ~p", [_Pid])
-	    end;
-	_ -> 'ok'
-    end,
-
-    case IsAmqpUp of
-	true ->
-	    spawn(fun() -> put(callid, UUID), send_ctl_event(CtlPid, UUID, EvtName, Data), publish_msg(Node, UUID, Data) end),
-	    {'noreply', State};
-	false ->
-	    send_ctl_event(CtlPid, UUID, EvtName, AppName),
-	    {'noreply', State#state{queued_events = [Data | QEs]}, hibernate}
-    end;
-
-handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid, is_amqp_up=false, queued_events=Evts, node=Node}=State) ->
-    ?LOG("call hangup received, but AMQP is down, sending queued events separately"),
-    spawn(fun() -> put(callid, UUID), send_queued(Node, UUID, Evts) end),
-    shutdown(CtlPid, UUID),
-    {'stop', 'normal', State};
-
-handle_info(call_hangup, #state{uuid=UUID, ctlpid=CtlPid}=State) ->
-    ?LOG("normal call hangup received, going down"),
-    shutdown(CtlPid, UUID),
-    {'stop', 'normal', State};
-
-handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
+handle_info({call_event, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
+    process_channel_event(Props, State),
+%%    spawn(fun() -> process_channel_event(Props, State) end),
+    {'noreply', State};
+handle_info({nodedown, _}, #state{node=Node, is_node_up=true}=State) ->
     ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
     erlang:monitor_node(Node, false),
-    _Ref = erlang:send_after(0, self(), {is_node_up, 100}),
-    {'noreply', State#state{is_node_up=false}, hibernate};
-
-handle_info({is_node_up, Timeout}, #state{node=Node, uuid=UUID, is_node_up=false, failed_node_checks=FNC}=State) ->
-    case ecallmgr_util:is_node_up(Node, UUID) of
-	true ->
+    TRef = erlang:send_after(?NODE_CHECK_PERIOD, self(), {check_node_status}),
+    {'noreply', State#state{node_down_tref=TRef, is_node_up=false}, hibernate};
+handle_info({check_node_status}, #state{is_node_up=false, failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
+    ?LOG("node still not up after ~p checks, giving up", [FNC]),
+    {stop, normal, State};
+handle_info({check_node_status}, #state{node=Node, callid=CallId, is_node_up=false, failed_node_checks=FNC}=State) ->
+    case ecallmgr_util:is_node_up(Node, CallId) of
+        true ->
             ?LOG("reconnected to node ~s and call is active", [Node]),
-	    {'noreply', State#state{is_node_up=true, failed_node_checks=0}, hibernate};
-	false ->
-	    case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
-		true ->
-		    case FNC > ?MAX_FAILED_NODE_CHECKS of
-			true ->
-			    ?LOG("node ~p still not up after ~p checks, giving up", [Node, FNC]),
-			    self() ! call_hangup,
-			    {'noreply', State};
-			false ->
-			    ?LOG("node ~p still not up after ~p checks, trying again", [Node, FNC]),
-			    _Ref = erlang:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART}),
-			    {'noreply', State#state{is_node_up=false, failed_node_checks=FNC+1}, hibernate}
-		    end;
-		false ->
-		    ?LOG("node ~s still not up, waiting ~p seconds to test again", [Node, Timeout]),
-		    _Ref = erlang:send_after(Timeout, self(), {is_node_up, Timeout*2}),
-		    {'noreply', State}
-	    end
+            {'noreply', State#state{node_down_tref=undefined, is_node_up=true, failed_node_checks=0}, hibernate};
+        false ->
+            ?LOG("node ~s still not up, waiting ~pms to test again", [Node, ?NODE_CHECK_PERIOD]),
+            TRef = erlang:send_after(?NODE_CHECK_PERIOD, self(), {check_node_status}),
+            {'noreply', State#state{node_down_tref=TRef, failed_node_checks=FNC+1}}
     end;
-
-handle_info(startup, #state{node=Node, uuid=UUID}=State) ->
+handle_info(timeout, #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
+    ?LOG("unable to establish initial connectivity to the media node, laterz"),
+    {stop, normal, State};
+handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC}=State) ->
     erlang:monitor_node(Node, true),
-    case freeswitch:handlecall(Node, UUID) of
+    %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
+    case freeswitch:handlecall(Node, CallId) of
         ok ->
-            ?LOG("handling events from ~s", [Node]),
+            ?LOG("listening to channel events from ~s", [Node]),
             {'noreply', State, hibernate};
         timeout ->
-            ?LOG("timed out trying to handle events for ~s, trying again", [Node]),
-            self() ! startup,
-            {'noreply', State};
+            ?LOG("timed out trying to listen to channel events from ~s, trying again", [Node]),
+            {'noreply', State#state{failed_node_checks=FNC+1}, 1000};
         {'error', badsession} ->
-            ?LOG("bad session received when handling events for ~s", [Node]),
-            {'stop', 'normal', State};
+            ?LOG("bad session received when setting up listener for events from ~s", [Node]),
+            {stop, normal, State};
         _E ->
-            ?LOG("failed to handle call events for ~s: ~p", [Node, _E]),
-            {'stop', 'normal', State}
+            ?LOG("failed to setup listener for channel events from ~s: ~p", [Node, _E]),
+            {stop, normal, State}
     end;
-
+handle_info({sanity_check}, #state{node=Node, callid=CallId}=State) ->
+    case freeswitch:api(Node, uuid_exists, wh_util:to_list(CallId)) of
+        {'ok', <<"true">>} -> 
+            ?LOG("listener passed sanity check, call is still up"),
+            TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
+            {'noreply', State#state{sanity_check_tref=TRef}};
+        _E ->
+            ?LOG("But I tried, didn't I? Goddamnit, at least I did that"),
+            {stop, normal, State#state{sanity_check_tref=undefined}}
+    end;
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -234,9 +206,10 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{uuid=UUID, ctlpid=CtlPid}) ->
-    ?LOG("call events ~p termination", [_Reason]),
-    shutdown(CtlPid, UUID).
+terminate(_Reason, #state{node_down_tref=NDTRef, sanity_check_tref=SCTRef}) ->   
+    catch (erlang:cancel_timer(SCTRef)), 
+    catch (erlang:cancel_timer(NDTRef)), 
+    ?LOG("terminating call events listener: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -252,245 +225,262 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec shutdown/2 :: (pid() | 'undefined', ne_binary()) -> 'ok'.
-shutdown(undefined, _) -> 'ok';
-shutdown(CtlPid, UUID) ->
-    ?LOG("sending hangup for call ~s", [UUID]),
-    is_pid(CtlPid) andalso CtlPid ! {hangup, self(), UUID},
-    'ok'.
-
-%% let the ctl process know a command finished executing
--spec send_ctl_event/4 :: (CtlPid, UUID, EventName, Event) -> 'ok' when
-      CtlPid :: pid() | undefined,
-      UUID :: binary(),
-      EventName :: binary(),
-      Event :: proplist().
-send_ctl_event(undefined, _, _, _) -> 'ok';
-send_ctl_event(CtlPid, UUID, <<"CHANNEL_EXECUTE_COMPLETE">>, Props) when is_pid(CtlPid) ->
-    AppName = props:get_value(<<"Application">>, Props),
-
-    ?LOG("sending execution completion for ~s to control queue", [wh_util:binary_to_lower(AppName)]),
-    ecallmgr_call_control:event_execute_complete(CtlPid, UUID, AppName);
-send_ctl_event(CtlPid, UUID, <<"CUSTOM">>, Props) when is_pid(CtlPid) ->
-    case props:get_value(<<"Event-Subclass">>, Props) of
-	<<"whistle::noop">> ->
-	    ?LOG("sending execution completion for noop to control queue"),
-	    ecallmgr_call_control:event_execute_complete(CtlPid, UUID, <<"noop">>);
-	_ ->
-	    'ok'
-    end;
-send_ctl_event(_, _, _, _) -> 'ok'.
-
--spec publish_msg/3 :: (Node, UUID, Prop) -> 'ok' when
-      Node :: atom(),
-      UUID :: binary(),
-      Prop :: proplist().
-publish_msg(_, _, []) -> 'ok';
-publish_msg(Node, UUID, Prop) when is_list(Prop) ->
-    FSEvtName = props:get_value(<<"Event-Name">>, Prop),
-    FSAppName = props:get_value(<<"Application">>, Prop),
-
-    %% whistle generates custom events that should masquerade as standard events
-    %% for simplicity in the high level code (like bridge which "completes" during
-    %% transfers even though the bridge still continues).
-    EvtName = case FSEvtName of
-                  <<"CUSTOM">> ->
-                      props:get_value(<<"whistle_event_name">>, Prop);
-                  Evt ->
-                      Evt
-              end,
-
-    Prop1 = [{<<"Application-Response">>, application_response(FSAppName, Prop, Node, UUID)}
-             | props:delete(<<"Application-Response">>, Prop)],
-
-    %% suppress certain events (like bridge completion) as whistle will generate proper masquerades
-    %% at more appropriate times using custom events
-    case should_publish(FSEvtName, FSAppName, EvtName) of
+-spec process_channel_event/2 :: (proplist(), #state{}) -> ok.
+process_channel_event(Props, #state{self=Self, node=Node}) ->
+    CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
+                            props:get_value(<<"Unique-ID">>, Props)),
+    put(callid, CallId),
+    Masqueraded = is_masquerade(Props),
+    EventName = get_event_name(Props, Masqueraded),
+    ApplicationName = get_event_application(Props, Masqueraded),
+    case should_publish(EventName, ApplicationName, Masqueraded) of
+        false -> 
+            ok;
         true ->
-            AppName = case FSEvtName of
-                          <<"CUSTOM">> ->
-                              props:get_value(<<"whistle_application_name">>, Prop);
-                          _ ->
-                              case FSAppName of
-                                  <<"event">> ->
-                                      Args = ecallmgr_util:varstr_to_proplist(props:get_value(<<"Application-Data">>, Prop, <<>>)),
-                                      props:get_value(<<"whistle_application_name">>, Args);
-                                  App ->
-                                      App
-                              end
-                      end,
-            ?LOG("publishing call event ~s ~s", [wh_util:binary_to_lower(EvtName)
-                                                 ,wh_util:binary_to_lower(AppName)]),
-	    EvtProp0 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop1)}
-                        ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop1)}
-                        ,{<<"Call-ID">>, UUID}
-                        ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop1)}
-                        ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop1)}
-                        ,{<<"Channel-State">>, get_channel_state(Prop1)}
-		       | event_specific(EvtName, AppName, Prop1) ],
-	    EvtProp1 = wh_api:default_headers(<<>>, ?EVENT_CAT, EvtName, ?APP_NAME, ?APP_VERSION) ++ EvtProp0,
-	    EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop1) of
-			   [] -> EvtProp1;
-			   CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
-		       end,
-	    wapi_call:publish_event(UUID, EvtProp2);
-	_ ->
+            %% TODO: the adding of the node to the props is for event_specific conference
+            %% clause until we can break the conference stuff into its own module
+            Event = create_event(EventName, ApplicationName, [{<<"Node">>, Node}|Props]),
+            publish_event(Event)
+    end,
+    case EventName of 
+        %% if we are processing a channel destroy event, it was for
+        %% our channel, so we are done here...
+        <<"CHANNEL_DESTROY">> ->
+            gen_server:cast(Self, {channel_destroyed, Props});
+        _ ->
             ok
+    end.    
+
+-spec create_event/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
+create_event(EventName, ApplicationName, Props) ->
+    CCVs = ecallmgr_util:custom_channel_vars(Props),
+    {Mega,Sec,Micro} = erlang:now(),
+    Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
+    Event = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
+             ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
+             ,{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
+             ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
+             ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
+             ,{<<"Channel-State">>, get_channel_state(Props)}
+             ,{<<"Transfer-History">>, get_transfer_history(Props)}
+             ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
+             ,{<<"Hangup-Code">>, get_hangup_code(Props)}
+             ,{<<"Disposition">>, get_disposition(Props)}
+             ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
+             ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
+             ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
+             ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
+             ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props,
+                                                         props:get_value(<<"variable_holding_uuid">>, Props))}
+             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+             %% this sucks, its leaky but I dont see a better way around it since we need the raw application
+             %% name in call_control... (see note in call_control on start_link for why we need to use AMQP 
+             %% to communicate to it)
+             ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
+             | event_specific(EventName, ApplicationName, Props) 
+            ],
+    wh_api:default_headers(<<>>, ?EVENT_CAT, EventName, ?APP_NAME, ?APP_VERSION) ++ Event.
+
+-spec publish_event/1 :: (proplist()) -> ok.
+publish_event(Props) ->
+    %% call_control publishes channel create/destroy on the control
+    %% events queue by calling create_event then this directly.
+    EventName = props:get_value(<<"Event-Name">>, Props),
+    ApplicationName = props:get_value(<<"Application-Name">>, Props),
+    CallId = props:get_value(<<"Call-ID">>, Props),
+    put(callid, CallId),
+    case props:get_value(<<"Application-Name">>, Props) of
+        undefined ->
+            ?LOG("publishing channel event ~s", [EventName]);
+        ApplicationName -> 
+            ?LOG("publishing channel command ~s ~s", [ApplicationName, EventName])
+    end,
+    wapi_call:publish_event(CallId, Props).
+
+-spec is_masquerade/1 :: (proplist()) -> boolean().
+is_masquerade(Props) ->
+    case props:get_value(<<"Event-Subclass">>, Props) of
+        %% If this is a event created by whistle, then use
+        %% the flag it as masqueraded
+        <<"whistle::", _/binary>> ->
+            true;
+        %% otherwise process as the genuine article 
+        _Else ->
+            false
     end.
 
--spec get_channel_state/1 :: (Prop) -> binary() when
-      Prop :: proplist().
-get_channel_state(Prop) ->
-    case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
-        undefined -> <<"unknown">>;
-        ChannelState -> ChannelState
+-spec get_event_name/2 :: (proplist(), boolean()) -> undefined | ne_binary().
+get_event_name(Props, Masqueraded) ->
+    case Masqueraded of
+        true ->
+            %% when the evet is masqueraded override the actual event name
+            %% with what whistle wants the event to be
+            props:get_value(<<"whistle_event_name">>, Props);
+        false ->
+            props:get_value(<<"Event-Name">>, Props)
     end.
 
-% gets the appropriate application response value for the type of application
--spec application_response/4 :: (AppName, Prop, Node, UUID) -> binary() when
-      AppName :: binary(),
-      Prop :: proplist(),
-      Node :: atom(),
-      UUID :: binary().
-application_response(<<"play_and_get_digits">>, Prop, _Node, _UUID) ->
-    props:get_value(<<"variable_collected_digits">>, Prop, <<"">>);
-application_response(<<"bridge">>, Prop, _Node, _UUID) ->
-    props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>);
-application_response(<<"conference">>, _Prop, Node, UUID) ->
-    get_fs_var(Node, UUID, <<"conference_member_id">>, <<"0">>);
-application_response(_AppName, Prop, _Node, _UUID) ->
-    props:get_value(<<"Application-Response">>, Prop, <<"">>).
+-spec get_event_application/2 :: (proplist(), boolean()) -> undefined | ne_binary().
+get_event_application(Props, Masqueraded) ->
+    case Masqueraded of
+        %% when the evet is masqueraded override the actual application
+        %% with what whistle wants the event to be
+        true ->
+            props:get_value(<<"whistle_application_name">>, Props);
+        false ->
+            props:get_value(<<"Application">>, Props)
+    end.
 
 %% return a proplist of k/v pairs specific to the event
--spec event_specific/3 :: (EventName, Application, Prop) -> proplist() when
-      EventName :: binary(),
-      Application :: binary(),
-      Prop :: proplist().
+-spec event_specific/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Prop) ->
-    [{<<"Application-Name">>, props:get_value(<<"whistle_application_name">>, Prop, <<"">>)}
-     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop, <<"">>)}
+    [{<<"Application-Name">>, props:get_value(<<"whistle_application_name">>, Prop)}
+     ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop)}
     ];
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
     [{<<"Application-Name">>, <<"bridge">>}
-     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"">>)}
-     ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
-     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<"">>)}
-    ];
-event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, Application, Prop) ->
-    [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
-     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
-    ];
-event_specific(<<"CHANNEL_EXECUTE">>, Application, Prop) ->
-    [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
-     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop, <<"">>)}
-    ];
-event_specific(<<"CHANNEL_BRIDGE">>, _, Prop) ->
-    [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}];
-event_specific(<<"CHANNEL_UNBRIDGE">>, _, Prop) ->
-    [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Destination-Number">>,props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
-     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}];
-event_specific(<<"CHANNEL_HANGUP">>, _, Prop) ->
-    [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop, <<>>)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
-     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
-    ];
-event_specific(<<"CHANNEL_HANGUP_COMPLETE">>, _, Prop) ->
-    [{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Prop, <<>>)}
-     ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Prop)}
-     ,{<<"Hangup-Cause">>, props:get_value(<<"Hangup-Cause">>, Prop, <<>>)}
-     ,{<<"Hangup-Code">>, props:get_value(<<"variable_proto_specific_hangup_cause">>, Prop, <<>>)}
+     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
     ];
 event_specific(<<"RECORD_STOP">>, _, Prop) ->
     [{<<"Application-Name">>, <<"record">>}
-     ,{<<"Application-Response">>, props:get_value(<<"Record-File-Path">>, Prop, <<>>)}
-     ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Prop, <<>>)}
+     ,{<<"Application-Response">>, props:get_value(<<"Record-File-Path">>, Prop)}
+     ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Prop)}
     ];
 event_specific(<<"DETECTED_TONE">>, _, Prop) ->
-    [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Prop, <<>>)}];
+    [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Prop)}];
 event_specific(<<"DTMF">>, _, Prop) ->
-    Pressed = props:get_value(<<"DTMF-Digit">>, Prop, <<>>),
-    Duration = props:get_value(<<"DTMF-Duration">>, Prop, <<>>),
+    Pressed = props:get_value(<<"DTMF-Digit">>, Prop),
+    Duration = props:get_value(<<"DTMF-Duration">>, Prop),
     ?LOG("received DTMF ~s (~s)", [Pressed, Duration]),
     [{<<"DTMF-Digit">>, Pressed}
      ,{<<"DTMF-Duration">>, Duration}
     ];
-event_specific(_Evt, _App, _Prop) ->
-    [].
+event_specific(_, <<"conference">>, Props) ->
+    %% TODO: This is a temporary workaround until we can break conferences
+    %% commands/events into their own module
+    CallId = props:get_value(<<"Caller-Unique-ID">>, Props),
+    Node = wh_util:to_atom(props:get_value(<<"Node">>, Props)),
+    MemberId = get_fs_var(Node, CallId, <<"conference_member_id">>, <<"0">>),
+    [{<<"Application-Name">>, <<"conference">>}
+     ,{<<"Application-Response">>, MemberId}
+    ];
+event_specific(_, <<"play_and_get_digits">>, Prop) ->
+    [{<<"Application-Name">>, <<"play_and_collect_digits">>}
+     ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Prop, <<"">>)}
+    ];
+event_specific(_Evt, Application, Prop) ->
+    [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
+     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
+    ].
 
-%% if the call went down but we had queued events to send, try for up to 10 seconds to send them
-
--spec send_queued/3 :: (Node, UUID, Evts) -> 'ok' when
-      Node :: atom(),
-      UUID :: binary(),
-      Evts :: [proplist(),...].
-send_queued(Node, UUID, Evts) ->
-    send_queued(Node, UUID, lists:reverse(Evts), 0).
-
--spec send_queued/4 :: (Node, UUID, Evts, Tries) -> 'ok' when
-      Node :: atom(),
-      UUID :: binary(),
-      Evts :: list(proplist()),
-      Tries :: non_neg_integer().
-send_queued(_Node, UUID, [], _) ->
-    ?LOG(UUID, "no queued events to send", []);
-send_queued(_Node, UUID, _, 10=Tries) ->
-    ?LOG(UUID, "failed to send queued events after ~b times, going down", [Tries]);
-send_queued(Node, UUID, [_|_]=Evts, Tries) ->
-    case amqp_util:is_host_available() of
-	false ->
-	    receive after 1000 -> send_queued(Node, UUID, Evts, Tries + 1) end;
-	true ->
-	    ?LOG(UUID, "sending queued events on try ~b", [Tries]),
-	    _ = [ publish_msg(Node, UUID, E) || E <- Evts ],
-	    'ok'
-    end.
-
--spec get_fs_var/4 :: (Node, UUID, Var, Default) -> binary() when
-      Node :: atom(),
-      UUID :: binary(),
-      Var :: binary(),
-      Default :: binary().
-get_fs_var(Node, UUID, Var, Default) ->
-    case freeswitch:api(Node, uuid_getvar, wh_util:to_list(<<UUID/binary, " ", Var/binary>>)) of
+-spec get_fs_var/4 :: (atom(), ne_binary(), ne_binary(), binary()) -> binary().
+get_fs_var(Node, CallId, Var, Default) ->
+    case freeswitch:api(Node, uuid_getvar, wh_util:to_list(<<CallId/binary, " ", Var/binary>>)) of
         {'ok', <<"_undef_">>} -> Default;
         {'ok', <<"_none_">>} -> Default;
         {'ok', Value} -> Value;
         _ -> Default
     end.
 
--spec should_publish/3 :: (FSEvtName, FSAppName, EvtName) -> boolean() when
-      FSEvtName :: binary(),
-      FSAppName :: binary(),
-      EvtName :: binary().
-should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, _) ->
+-spec should_publish/3 :: (ne_binary(), ne_binary(), boolean()) -> boolean().
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, false) ->
+    ?LOG("suppressing bridge execute complete in favour the whistle masquerade of this event"),
     false;
-should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, _) ->
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, false) ->
+    ?LOG("suppressing intercept execute complete in favour the whistle masquerade of this event"),
     false;
 should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
     props:get_value(Application, ?SUPPORTED_APPLICATIONS) =/= undefined;
-should_publish(_, <<"event">>, _) ->
-    false;
-should_publish(_, _, EvtName) ->
-    lists:member(EvtName, ?FS_EVENTS).
+should_publish(EventName, _, _) ->
+    lists:member(EventName, ?FS_EVENTS).
+
+-spec get_transfer_history/1 :: (proplist()) -> json_object().
+get_transfer_history(Props) ->
+    SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
+    Hist = [HistJObj 
+            || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory)
+                   ,(HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, [global]))) =/= undefined],
+    wh_json:from_list(Hist).
+
+-spec create_trnsf_history_object/1 :: (list()) -> {binary, json_object} | undefined.
+create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
+    [Transferee, Transferer] = binary:split(Props, <<"/">>),
+    Trans = [{<<"Call-ID">>, CallId}
+             ,{<<"Type">>, <<"attended">>}
+             ,{<<"Transferee">>, Transferee}
+             ,{<<"Transferer">>, Transferer}
+            ],
+    {Epoch, wh_json:from_list(Trans)};
+create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->            
+    %% This looks confusing but FS uses the same delimiter to in the array
+    %% as it does for inline dialplan actions (like those created during partial attended)
+    %% so we have to put it together to take it apart... I KNOW! ARRRG
+    Dialplan = lists:last(binary:split(wh_util:join_binary(Props, <<":">>), <<",">>)),
+    [Exten | _] = binary:split(Dialplan, <<"/">>, [global]),    
+    Trans = [{<<"Call-ID">>, CallId}
+             ,{<<"Type">>, <<"blind">>}
+             ,{<<"Extension">>, Exten}
+            ],
+    {Epoch, wh_json:from_list(Trans)};        
+create_trnsf_history_object(_) ->
+    undefined.
+
+-spec get_channel_state/1 :: (proplist()) -> binary().
+get_channel_state(Prop) ->
+    case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
+        undefined -> <<"unknown">>;
+        ChannelState -> ChannelState
+    end.
+
+-spec get_hangup_cause/1 :: (proplist()) -> undefined | ne_binary().
+get_hangup_cause(Props) ->
+    Causes = case props:get_value(<<"variable_current_application">>, Props) of
+                 <<"bridge">> ->
+                     [<<"variable_bridge_hangup_cause">>, <<"variable_hangup_cause">>, <<"Hangup-Cause">>];
+                 _ ->
+                     [<<"variable_hangup_cause">>, <<"variable_bridge_hangup_cause">>, <<"Hangup-Cause">>]
+             end,
+    find_event_value(Causes, Props).
+
+-spec get_disposition/1 :: (proplist()) -> undefined | ne_binary().
+get_disposition(Props) ->
+    find_event_value([<<"variable_endpoint_disposition">>
+                          ,<<"variable_originate_disposition">>
+                     ], Props).
+
+-spec get_hangup_code/1 :: (proplist()) -> undefined | ne_binary().
+get_hangup_code(Props) ->
+    find_event_value([<<"variable_proto_specific_hangup_cause">>
+                          ,<<"variable_last_bridge_proto_specific_hangup_cause">>
+                     ], Props).
+    
+-spec find_event_value/2 :: ([ne_binary(),...], proplist()) -> undefined | ne_binary().
+find_event_value(Keys, Props) ->
+    find_event_value(Keys, Props, undefined).
+
+-spec find_event_value/3 :: ([ne_binary(),...], proplist(), term()) -> term().
+find_event_value([], _, Default) ->
+    Default;
+find_event_value([H|T], Props, Default) ->
+    Value = props:get_value(H, Props),
+    case wh_util:is_empty(Value) of
+        true -> find_event_value(T, Props, Default);
+        false -> Value
+    end.
+
+-spec swap_call_legs/1 :: (proplist() | json_object()) -> proplist().
+-spec swap_call_legs/2 :: (proplist(), proplist()) -> proplist().
+
+swap_call_legs(Props) when is_list(Props) ->
+    swap_call_legs(Props, []);
+swap_call_legs(JObj) ->
+    swap_call_legs(wh_json:to_proplist(JObj)).
+
+swap_call_legs([], Swap) ->
+    Swap;
+swap_call_legs([{<<"Caller-", Key/binary>>, Value}|T], Swap) ->
+    swap_call_legs(T, [{<<"Other-Leg-", Key/binary>>, Value}|Swap]);
+swap_call_legs([{<<"Other-Leg-", Key/binary>>, Value}|T], Swap) ->
+    swap_call_legs(T, [{<<"Caller-", Key/binary>>, Value}|Swap]);
+swap_call_legs([Prop|T], Swap) ->
+    swap_call_legs(T, [Prop|Swap]).

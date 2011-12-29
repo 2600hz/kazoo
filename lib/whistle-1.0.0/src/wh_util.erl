@@ -1,26 +1,29 @@
 -module(wh_util).
 
+-export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([is_e164/1, is_npan/1, is_1npan/1]).
 -export([to_integer/1, to_integer/2, to_float/1, to_float/2, to_number/1
-	 ,to_hex/1, to_list/1, to_binary/1
-	 ,to_atom/1, to_atom/2]).
+         ,to_hex/1, to_list/1, to_binary/1
+         ,to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
 -export([binary_to_lower/1, binary_to_upper/1, binary_join/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
 -export([current_tstamp/0, ensure_started/1]).
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
-	 ,pretty_print_datetime/1
-	]).
+         ,pretty_print_datetime/1
+        ]).
 -export([microseconds_to_seconds/1, put_callid/1, get_event_type/1]).
 -export([whistle_version/0, write_pid/1]).
 -export([is_ipv4/1, is_ipv6/1]).
 -export([get_hostname/0]).
+-export([get_transfer_state/1, get_transfer_state/2]).
 
 -include_lib("kernel/include/inet.hrl").
 -include_lib("proper/include/proper.hrl").
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, whistle_version}).
 
@@ -29,6 +32,23 @@ get_hostname() ->
     {ok, Host} = inet:gethostname(),
     {ok, #hostent{h_name=Hostname}} = inet:gethostbyname(Host),
     Hostname.
+
+-spec pad_binary/3 :: (binary(), non_neg_integer(), binary()) -> binary().
+pad_binary(Bin, Size, Value) when size(Bin) < Size ->
+    pad_binary(<<Bin/binary, Value/binary>>, Size, Value);
+pad_binary(Bin, _, _) ->
+    Bin.
+
+-spec join_binary/1 :: ([binary(),...]) -> binary().
+-spec join_binary/2 :: ([binary(),...], binary()) -> binary().
+
+join_binary(Bins) ->
+    join_binary(Bins, <<", ">>).
+
+join_binary([Bin], _) ->
+    Bin;
+join_binary([Bin|Rest], Sep) -> 
+    <<Bin/binary, Sep/binary, (join_binary(Rest, Sep))/binary>>.
 
 -spec call_response/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 -spec call_response/4 :: (ne_binary(), ne_binary(), ne_binary(), 'undefined' | binary()) -> 'ok'.
@@ -41,24 +61,24 @@ call_response(CallId, CtrlQ, Code, Cause) ->
     call_response(CallId, CtrlQ, Code, Cause, undefined).
 call_response(CallId, CtrlQ, Code, Cause, Media) ->
     Respond = wh_json:from_list([{<<"Application-Name">>, <<"respond">>}
-				 ,{<<"Response-Code">>, Code}
-				 ,{<<"Response-Message">>, Cause}
-				 ,{<<"Call-ID">>, CallId}
-				]),
+                                 ,{<<"Response-Code">>, Code}
+                                 ,{<<"Response-Message">>, Cause}
+                                 ,{<<"Call-ID">>, CallId}
+                                ]),
     call_response1(CallId, CtrlQ, Media, Respond).
 
 call_response1(CallId, CtrlQ, undefined, Respond) ->
     call_response1(CallId, CtrlQ, [Respond]);
 call_response1(CallId, CtrlQ, Media, Respond) ->
     call_response1(CallId, CtrlQ, [Respond
-				   ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
-						       ,{<<"Media-Name">>, Media}
-						       ,{<<"Call-ID">>, CallId}
-						      ])
-				   ,wh_json:from_list([{<<"Application-Name">>, <<"progress">>}
-						       ,{<<"Call-ID">>, CallId}
-						      ])
-				  ]).
+                                   ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
+                                                       ,{<<"Media-Name">>, Media}
+                                                       ,{<<"Call-ID">>, CallId}
+                                                      ])
+                                   ,wh_json:from_list([{<<"Application-Name">>, <<"progress">>}
+                                                       ,{<<"Call-ID">>, CallId}
+                                                      ])
+                                  ]).
 
 call_response1(CallId, CtrlQ, Commands) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
@@ -166,10 +186,10 @@ to_integer(X, S) when is_binary(X) ->
     to_integer(binary_to_list(X), S);
 to_integer(X, S) when is_list(X) ->
     try
-	list_to_integer(X)
+        list_to_integer(X)
     catch
-	error:badarg when S =:= notstrict ->
-	    round(list_to_float(X))
+        error:badarg when S =:= notstrict ->
+            round(list_to_float(X))
     end;
 to_integer(X, _) when is_integer(X) ->
     X.
@@ -183,9 +203,9 @@ to_float(X, S) when is_binary(X) ->
     to_float(binary_to_list(X), S);
 to_float(X, S) when is_list(X) ->
     try
-	list_to_float(X)
+        list_to_float(X)
     catch
-	error:badarg when S =:= notstrict -> list_to_integer(X)*1.0 %% "500" -> 500.0
+        error:badarg when S =:= notstrict -> list_to_integer(X)*1.0 %% "500" -> 500.0
     end;
 to_float(X, strict) when is_integer(X) ->
     error(badarg);
@@ -201,10 +221,10 @@ to_number(X) when is_binary(X) ->
     to_number(to_list(X));
 to_number(X) when is_list(X) ->
     try list_to_integer(X) of
-	Int -> Int
+        Int -> Int
     catch
-	error:badarg ->
-	    list_to_float(X)
+        error:badarg ->
+            list_to_float(X)
     end.
 
 -spec to_list/1 :: (X) -> list() when
@@ -365,22 +385,22 @@ current_tstamp() ->
 -spec whistle_version/0 :: () -> binary().
 whistle_version() ->
     case wh_cache:fetch(?WHISTLE_VERSION_CACHE_KEY) of
-	{ok, Version} ->  Version;
-	{error, _} ->
-	    VersionFile = filename:join([code:lib_dir(whistle), "..", "..", "VERSION"]),
-	    whistle_version(VersionFile)
+        {ok, Version} ->  Version;
+        {error, _} ->
+            VersionFile = filename:join([code:lib_dir(whistle), "..", "..", "VERSION"]),
+            whistle_version(VersionFile)
     end.
 
 -spec whistle_version/1 :: (binary() | string()) -> binary().
 whistle_version(FileName) ->
     case file:consult(FileName) of
-	{ok, [Version]} ->
-	    wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),
-	    Version;
-	_ ->
-	    Version = <<"not available">>,
-	    wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),
-	    Version
+        {ok, [Version]} ->
+            wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),
+            Version;
+        _ ->
+            Version = <<"not available">>,
+            wh_cache:store(?WHISTLE_VERSION_CACHE_KEY, Version),
+            Version
     end.
 
 -spec write_pid/1 :: (FileName) -> ok | {error, atom()} when
@@ -392,10 +412,10 @@ write_pid(FileName) ->
       App :: atom().
 ensure_started(App) when is_atom(App) ->
     case application:start(App) of
-	ok ->
-	    ok;
-	{error, {already_started, App}} ->
-	    ok
+        ok ->
+            ok;
+        {error, {already_started, App}} ->
+            ok
     end.
 
 %% there are 86400 seconds in a day
@@ -413,7 +433,7 @@ unix_seconds_to_gregorian_seconds(UnixSeconds) ->
 -spec pretty_print_datetime/1 :: (wh_datetime()) -> ne_binary().
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
-				   [Y, Mo, D, H, Mi, S])).
+                                   [Y, Mo, D, H, Mi, S])).
 
 -spec microseconds_to_seconds/1 :: (integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) ->
@@ -438,36 +458,124 @@ is_ipv6(Address) when is_list(Address) ->
         {error, _} -> false
     end.
 
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec get_transfer_state/1 :: (json_object()) -> undefined | transferer | transferee.
+-spec get_transfer_state/2 :: ({ne_binary(), ne_binary()}, json_object()) -> undefined | transferer | transferee.
+-spec do_get_transfer_state/2 :: (ne_binary() | undefined,  json_object()) ->  undefined | transferer | transferee.
+
+get_transfer_state(JObj) ->
+    get_transfer_state(get_event_type(JObj), JObj).
+
+get_transfer_state({<<"call_event">>, <<"CHANNEL_DESTROY">>}, JObj) ->
+    do_get_transfer_state(<<"CHANNEL_DESTROY">>, JObj);
+get_transfer_state({<<"call_event">>, <<"CHANNEL_HANGUP">>}, JObj) ->
+    do_get_transfer_state(<<"CHANNEL_HANGUP">>, JObj);
+get_transfer_state({<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, JObj) ->
+    do_get_transfer_state(<<"CHANNEL_UNBRIDGE">>, JObj);
+get_transfer_state(_, _) ->
+    undefined.
+
+do_get_transfer_state(<<"CHANNEL_UNBRIDGE">>, JObj) ->
+    Timestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
+    Epoch = binary:part(wh_util:pad_binary(Timestamp, 10, <<"0">>), 0, 10),
+    Transfer = wh_json:get_value([<<"Transfer-History">>, Epoch], JObj),
+    Disposition = wh_json:get_value(<<"Disposition">>, JObj),
+    case {Disposition, Transfer} of
+        %% caller preforms a blind transfer
+        {<<"BLIND_TRANSFER">>, undefined} ->
+            ?LOG("channel was unbridged as a result of a blind transfer"),
+            transferer;
+        %% callee preforms a attended transfer (on C-leg)
+        {<<"ATTENDED_TRANSFER">>, undefined} ->
+            ?LOG("channel was unbridged as a result of an attended transfer, acquire control"),
+            transferee;
+        %% caller preforms a attended transfer
+        %% caller preforms a partial attended
+        {<<"ANSWER">>, undefined} ->
+            %% to be sure check if it was during a transfer, may not be necessary...
+            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
+                undefined ->
+                    ?LOG("channel was unbridged as a result of a transfer"),
+                    transferer;
+                _Else ->
+                    undefined
+            end;
+        %% just a catch for undefined Transfer History Item
+        %% IE: This unbridge was NOT part of the transfer history,
+        %%     otherwise it WAS and the next clause will handle it.
+        {_, undefined} ->
+            undefined;
+        %% callee preforms a blind transfer
+        %% callee preforms a partial attended
+        %% callee preforms a attended transfer
+        {_, _} ->
+            ?LOG("channel was unbridged as a result of a transfer"),
+            transferer
+    end;    
+do_get_transfer_state(_, JObj) ->
+    case wh_json:get_value(<<"Disposition">>, JObj) of
+        %% caller preforms a blind transfer
+        <<"BLIND_TRANSFER">> ->
+            ?LOG("channel was hungup as a result of a blind transfer"),                            
+            transferer;
+        %% callee preforms partial attended
+        %% callee preforms attended transfer
+        <<"ATTENDED_TRANSFER">> ->
+            ?LOG("channel was hungup as a result of an attended transfer, acquire control"),
+            transferee;
+        %% caller preforms a attended transfer
+        %% caller preforms a partial attended
+        <<"ANSWER">> ->
+            %% to be sure check if it was during a transfer, may not be necessary...
+            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
+                undefined ->
+                    ?LOG("channel was hungup as a result of a transfer"),
+                    trasferer;
+                _Else ->
+                    undefined
+            end;
+        %% missing events:
+        %% callee preforms blind transfer
+        _Else ->
+            undefined
+    end.
+
 %% PROPER TESTING
 prop_to_integer() ->
     ?FORALL({F, I}, {float(), integer()},
-	    begin
-		Is = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
-		lists:all(fun([FN, N]) -> erlang:is_integer(to_integer(N)) andalso erlang:is_integer(to_integer(FN)) end, Is)
-	    end).
+            begin
+                Is = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
+                lists:all(fun([FN, N]) -> erlang:is_integer(to_integer(N)) andalso erlang:is_integer(to_integer(FN)) end, Is)
+            end).
 
 prop_to_number() ->
     ?FORALL({F, I}, {float(), integer()},
-	    begin
-		Is = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
-		lists:all(fun([FN, N]) -> erlang:is_number(to_number(N)) andalso erlang:is_number(to_number(FN)) end, Is)
-	    end).
+            begin
+                Is = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
+                lists:all(fun([FN, N]) -> erlang:is_number(to_number(N)) andalso erlang:is_number(to_number(FN)) end, Is)
+            end).
 
 prop_to_float() ->
     ?FORALL({F, I}, {float(), integer()},
-	    begin
-		Fs = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
-		lists:all(fun([FN, N]) -> erlang:is_float(to_float(N)) andalso erlang:is_float(to_float(FN)) end, Fs)
-	    end).
+            begin
+                Fs = [ [Fun(N), N] || Fun <- [ fun to_list/1, fun to_binary/1], N <- [F, I] ],
+                lists:all(fun([FN, N]) -> erlang:is_float(to_float(N)) andalso erlang:is_float(to_float(FN)) end, Fs)
+            end).
 
 prop_to_list() ->
     ?FORALL({A, L, B, I, F}, {atom(), list(), binary(), integer(), float()},
-	    lists:all(fun(X) -> is_list(to_list(X)) end, [A, L, B, I, F])).
+            lists:all(fun(X) -> is_list(to_list(X)) end, [A, L, B, I, F])).
 
 %-type iolist() :: maybe_improper_list(char() | binary() | iolist(), binary() | []).
 prop_to_binary() ->
     ?FORALL({A, L, B, I, F, IO}, {atom(), list(range(0,255)), binary(), integer(), float(), iolist()},
-	    lists:all(fun(X) -> is_binary(to_binary(X)) end, [A, L, B, I, F, IO])).
+            lists:all(fun(X) -> is_binary(to_binary(X)) end, [A, L, B, I, F, IO])).
 
 prop_iolist_t() ->
     ?FORALL(IO, iolist(), is_binary(to_binary(IO))).
@@ -475,39 +583,39 @@ prop_iolist_t() ->
 %% (AAABBBCCCC, 1AAABBBCCCC) -> AAABBBCCCCCC.
 prop_to_npan() ->
     ?FORALL(Number, range(1000000000,19999999999),
-	    begin
-		BinNum = to_binary(Number),
-		NPAN = to_npan(BinNum),
-		case byte_size(BinNum) of
-		    11 -> BinNum =:= <<"1", NPAN/binary>>;
-		    _ -> NPAN =:= BinNum
-		end
-	    end).
+            begin
+                BinNum = to_binary(Number),
+                NPAN = to_npan(BinNum),
+                case byte_size(BinNum) of
+                    11 -> BinNum =:= <<"1", NPAN/binary>>;
+                    _ -> NPAN =:= BinNum
+                end
+            end).
 
 %% (AAABBBCCCC, 1AAABBBCCCC) -> 1AAABBBCCCCCC.
 prop_to_1npan() ->
     ?FORALL(Number, range(1000000000,19999999999),
-	    begin
-		BinNum = to_binary(Number),
-		OneNPAN = to_1npan(BinNum),
-		case byte_size(BinNum) of
-		    11 -> OneNPAN =:= BinNum;
-		    _ -> OneNPAN =:= <<"1", BinNum/binary>>
-		end
-	    end).
+            begin
+                BinNum = to_binary(Number),
+                OneNPAN = to_1npan(BinNum),
+                case byte_size(BinNum) of
+                    11 -> OneNPAN =:= BinNum;
+                    _ -> OneNPAN =:= <<"1", BinNum/binary>>
+                end
+            end).
 
 %% (AAABBBCCCC, 1AAABBBCCCC) -> +1AAABBBCCCCCC.
 prop_to_e164() ->
     ?FORALL(Number, range(1000000000,19999999999),
-	    begin
-		BinNum = to_binary(Number),
-		E164 = to_e164(BinNum),
-		case byte_size(BinNum) of
-		    11 -> E164 =:= <<$+, BinNum/binary>>;
-		    10 -> E164 =:= <<$+, $1, BinNum/binary>>;
-		    _ -> E164 =:= BinNum
-		end
-	    end).
+            begin
+                BinNum = to_binary(Number),
+                E164 = to_e164(BinNum),
+                case byte_size(BinNum) of
+                    11 -> E164 =:= <<$+, BinNum/binary>>;
+                    10 -> E164 =:= <<$+, $1, BinNum/binary>>;
+                    _ -> E164 =:= BinNum
+                end
+            end).
 
 %% EUNIT TESTING
 
@@ -520,6 +628,9 @@ proper_test_() ->
       [
        ?_assertEqual([], proper:module(?MODULE, [{max_shrinks, 0}]))
       ]}}.
+
+pad_binary_test() ->
+    ?assertEqual(<<"1234500000">>, pad_binary(<<"12345">>, 10, <<"0">>)).
 
 to_e164_test() ->
     Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],

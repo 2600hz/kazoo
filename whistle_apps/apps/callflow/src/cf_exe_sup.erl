@@ -14,7 +14,7 @@
 -include("callflow.hrl").
 
 %% API
--export([start_link/0, start_proc/2]).
+-export([start_link/0, new/4]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -37,11 +37,9 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec start_proc/2 :: (Call, Flow) -> sup_startchild_ret() when
-      Call :: #cf_call{},
-      Flow :: json_object().
-start_proc(Call, Flow) ->
-    supervisor:start_child(?MODULE, [Call, Flow]).
+-spec new/4 :: (json_object(), ne_binary(), ne_binary(), #cf_call{}) -> sup_startchild_ret().
+new(Flow, ControlQ, CallId, Call) ->
+    supervisor:start_child(?MODULE, [Flow, ControlQ, CallId, Call]).
 
 %% ===================================================================
 %% Supervisor callbacks

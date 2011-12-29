@@ -12,24 +12,20 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [set/3]).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(_, #cf_call{capture_group=undefined, cf_pid=CFPid, call_id=CallId}) ->
-    put(callid, CallId),
-    CFPid ! { continue };
-handle(_, #cf_call{capture_group=Digits, account_id=AccountId, cf_pid=CFPid, call_id=CallId}=Call) ->
-    put(callid, CallId),
-    set(undefined, {struct, [{<<"Auto-Answer">>, <<"true">>}]}, Call),
+-spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+handle(_, #cf_call{capture_group=undefined}=Call) ->
+    cf_exe:continue(Call);
+handle(_, #cf_call{capture_group=Digits, account_id=AccountId}=Call) ->
+    cf_call_command:set(undefined, {struct, [{<<"Auto-Answer">>, <<"true">>}]}, Call),
     case cf_util:lookup_callflow(Digits, AccountId) of
         {ok, Flow, false} ->
-            CFPid ! {branch, wh_json:get_value(<<"flow">>, Flow, ?EMPTY_JSON_OBJECT)};
+            cf_exe:branch(wh_json:get_value(<<"flow">>, Flow, ?EMPTY_JSON_OBJECT), Call);
         _ ->
-            CFPid ! { continue }
+            cf_exe:continue(Call)
     end.

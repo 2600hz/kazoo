@@ -424,7 +424,7 @@ process_req({<<"conference">>, <<"add_caller">>}, JObj, #conf{service=Srv}) ->
     ?LOG("recieved AMQP request to add a caller to the conference"),
     add_caller(Srv, JObj);
 
-process_req({<<"call_event">>, <<"status_resp">>}, JObj, #conf{service=Srv, route=undefined}) ->
+process_req({<<"call_event">>, <<"channel_status_resp">>}, JObj, #conf{service=Srv, route=undefined}) ->
     %% Currently, when the conference has no focus and hence no route we will use the node of
     %% the first call status response. Since no callers can 'join' the conference till the
     %% route is known, the call status will be re-requested and the logic bellow applied
@@ -435,7 +435,7 @@ process_req({<<"call_event">>, <<"status_resp">>}, JObj, #conf{service=Srv, rout
             set_route(Srv, Node)
     end;
 
-process_req({<<"call_event">>, <<"status_resp">>}, JObj, #conf{focus=Focus}=Conf) ->
+process_req({<<"call_event">>, <<"channel_status_resp">>}, JObj, #conf{focus=Focus}=Conf) ->
     %% Determine the node the call is currently on
     %% - Bridge to the conference node
     %% - Join the conference
@@ -823,7 +823,7 @@ request_call_status(CallId, Q) ->
     ?LOG("requesting the status of participant ~s", [CallId]),
     Req = [{<<"Call-ID">>, CallId}
            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
-    wapi_call:publish_status_req(CallId, Req).
+    wapi_call:publish_channel_status_req(CallId, Req).
 
 %%--------------------------------------------------------------------
 %% @private

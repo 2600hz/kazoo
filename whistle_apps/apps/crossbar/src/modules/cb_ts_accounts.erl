@@ -276,9 +276,8 @@ resource_exists(_) ->
 -spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     read_ts_account_summary(Context);
-validate([], #cb_context{req_verb = <<"put">>, auth_doc=AuthDoc}=Context) ->
-    true = is_binary(AccountId = wh_json:get_value(<<"account_id">>, AuthDoc)),
-    create_ts_account(Context#cb_context{account_id=AccountId});
+validate([], #cb_context{req_verb = <<"put">>}=Context) ->
+    create_ts_account(Context);
 validate([TSAccountId], #cb_context{req_verb = <<"get">>}=Context) ->
     read_ts_account(TSAccountId, Context#cb_context{account_id=TSAccountId});
 validate([TSAccountId], #cb_context{req_verb = <<"put">>}=Context) ->
@@ -314,6 +313,7 @@ create_ts_account(#cb_context{req_data=JObj, account_id=AccountId}=Context) ->
                                               {ok, RealmAccountDb} = whapps_util:get_account_by_realm(AuthRealm),
                                               whapps_util:get_db_name(RealmAccountDb, raw)
                                       end,
+                                 true = is_binary(Id),
                                  wh_json:set_value(<<"_id">>, Id, J)
                          end
                         ,fun(J) -> wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, J) end

@@ -12,8 +12,6 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_bridge/5]).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -22,37 +20,25 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (Data, Call) -> {'stop' | 'continue'} when
-      Data :: json_object(),
-      Call :: #cf_call{}.
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) ->
-    put(callid, CallId),
+-spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+handle(Data, Call) ->
     Endpoints = get_endpoints(Data, Call),
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     ?LOG("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Call) of
+    case length(Endpoints) > 0 andalso cf_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Call) of
+        false ->
+            ?CF_ALERT({error, wh_json:new()}, "ring group has no endpoints", Call),
+            cf_exe:continue(Call);
         {ok, _} ->
             ?LOG("completed successful bridge to the ring group"),
-            CFPid ! { stop };
-        {fail, Reason} ->
-            {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-            Level = whapps_util:hangup_cause_to_alert_level(Cause),
-            whapps_util:alert(Level, ["Source: ~s(~p)~n"
-                                      ,"Alert: failed to bridge to device~n"
-                                      ,"Fault: ~p~n"
-                                      ,"~n~s"]
-                              ,[?MODULE, ?LINE, Reason, cf_util:call_info_to_string(Call)], AccountId),
-            ?LOG("failed to bridge to ring group ~s:~s", [Code, Cause]),
-            CFPid ! { continue };
-        {error, R} ->
-            ?LOG("failed to bridge to ring group ~p", [R]),
-            whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
-                                            ,"Alert: error bridging to ring group~n"
-                                            ,"Fault: ~p~n"
-                                            ,"~n~s"]
-                              ,[?MODULE, ?LINE, R, cf_util:call_info_to_string(Call)], AccountId),
-            CFPid ! { continue }
+            cf_exe:stop(Call);
+        {fail, _}=F ->
+            ?CF_ALERT(F, Call),
+            cf_util:handle_bridge_failure(F, Call);
+        {error, _}=E ->
+            ?CF_ALERT(E, "error bridging to ring group", Call),
+            cf_exe:continue(Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -62,9 +48,7 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) 
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints/2 :: (Data, Call) -> json_objects() when
-      Data :: json_object(),
-      Call :: #cf_call{}.
+-spec get_endpoints/2 :: (json_object(), #cf_call{}) -> json_objects().
 get_endpoints(Data, Call) ->
     lists:foldr(fun(Member, Acc) ->
                         EndpointId = wh_json:get_value(<<"id">>, Member),

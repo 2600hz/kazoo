@@ -27,8 +27,9 @@
 
 -export([conference_v/1, error_v/1]).
 
--export([publish_action/2, publish_action/3, publish_event/2, publish_event/3]).
-
+-export([publish_action/2, publish_action/3]).
+-export([publish_event/2, publish_event/3]).
+-export([publish_command/2, publish_command/3]).
 -export([bind_q/2, unbind_q/1]).
 
 -include("wapi_dialplan.hrl").
@@ -586,6 +587,31 @@ error_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ERROR_RESP_HEADERS, [{<<"Event-Name">>, <<"dialplan">>} | ?ERROR_RESP_VALUES], ?ERROR_RESP_TYPES);
 error_v(JObj) ->
     error_v(wh_json:to_proplist(JObj)).
+
+%% Takes a generic API JObj, determines what type it is, and calls the appropriate validator
+-spec publish_command/2 :: (ne_binary(), proplist() | json_object()) -> ok.
+-spec publish_command/3 :: (ne_binary(), proplist() | json_object(), ne_binary()) -> ok.
+
+publish_command(CtrlQ, Prop) when is_list(Prop) ->
+    publish_command(CtrlQ, Prop, props:get_value(<<"Application-Name">>, Prop));
+publish_command(CtrlQ, JObj) ->
+    publish_command(CtrlQ, wh_json:to_proplist(JObj)).
+
+publish_command(CtrlQ, Prop, DPApp) ->
+    try
+	BuildMsgFun = wh_util:to_atom(<<DPApp/binary>>),
+	?LOG("vfun: ~s", [BuildMsgFun]),
+	?LOG("keyfind: ~p", [lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info(exports))]),
+	case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info(exports)) of
+	    false -> throw({invalid_dialplan_object, Prop});
+	    {_, 1} -> 
+                {ok, Payload} = ?MODULE:BuildMsgFun(Prop),                    
+                amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE)                
+	end
+    catch
+	_:R ->
+	    throw({R, Prop})
+    end.
 
 %% sending DP actions to CallControl Queue
 publish_action(Queue, JSON) ->

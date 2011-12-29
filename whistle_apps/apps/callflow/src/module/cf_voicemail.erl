@@ -18,10 +18,10 @@
 -define(MAILBOX_DEFAULT_SIZE, 0).
 -define(MAILBOX_DEFAULT_MSG_MAX_LENGTH, 0).
 
--import(cf_call_command, [answer/1, play/2, b_play/2, say/3, tones/2, b_record/2
+-import(cf_call_command, [answer/1, play/2, b_play/2, tones/2, b_record/2
                           ,b_store/3, b_play_and_collect_digits/5, b_play_and_collect_digit/2
-                          ,noop/1, b_flush/1, wait_for_dtmf/1, wait_for_application_or_dtmf/2
-                          ,audio_macro/2, flush_dtmf/1
+                          ,noop/1, b_flush/1, wait_for_application_or_dtmf/2
+                          ,audio_macro/2
                          ]).
 
 -record(keys, {
@@ -129,22 +129,19 @@
 %% connect a caller to check_voicemail or compose_voicemail.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (Data, Call) -> no_return() when
-      Data :: json_object(),
-      Call :: #cf_call{}.
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId}=Call) ->
-    put(callid, CallId),
+-spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+handle(Data, Call) ->
     case wh_json:get_value(<<"action">>, Data, <<"compose">>) of
         <<"compose">> ->
-            answer(Call),
-            _ = compose_voicemail(get_mailbox_profile(Data, Call), Call),
-            CFPid ! {stop};
+            cf_call_command:answer(Call),
+            compose_voicemail(get_mailbox_profile(Data, Call), Call),
+            cf_exe:stop(Call);
         <<"check">> ->
-            answer(Call),
+            cf_call_command:answer(Call),
             check_mailbox(get_mailbox_profile(Data, Call), Call),
-            CFPid ! {stop};
+            cf_exe:stop(Call);
         _ ->
-            CFPid ! {continue}
+            cf_exe:continue(Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -680,10 +677,11 @@ change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=
       AttachmentName :: binary(),
       Box :: #mailbox{},
       Call :: #cf_call{}.
-new_message(AttachmentName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, call_id=CallID
+new_message(AttachmentName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db
                                                              ,from=From, from_user=FromU, from_realm=FromR
                                                              ,to=To, to_user=ToU, to_realm=ToR
 							     ,cid_name=CIDName, cid_number=CIDNumber}=Call) ->
+    CallID = cf_exe:callid(Call),
     MediaId = message_media_doc(Db, Box),
     {ok, StoreJObj} = store_recording(AttachmentName, MediaId, Call),
 
@@ -802,7 +800,7 @@ get_mailbox_profile(Data, #cf_call{capture_group=CG, account_db=Db, request_user
                      ,exists = true
                     };
         {error, R} ->
-            ?LOG("failed to load voicemail box ~s, ~w", [Id, R]),
+            ?LOG("failed to load voicemail box ~s, ~p", [Id, R]),
             #mailbox{}
     end.
 

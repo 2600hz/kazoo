@@ -144,6 +144,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.braintree">>, Pa
 handle_info({binding_fired, Pid, <<"v1_resource.validate.braintree">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:binding_heartbeat(Pid),
+
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
@@ -152,6 +154,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.braintree">>, [RD, Cont
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, Context | [<<"customer">>]=Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:binding_heartbeat(Pid),
+
                   Customer = crossbar_util:fetch(braintree, Context),
                   Context1 = case braintree_customer:update(Customer) of
                                  {ok, #bt_customer{}=C} ->
@@ -169,28 +173,28 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, #cb_context{account_id=AcctID, req_data=ReqData}=Context | [<<"credits">>]=Params]}, State) ->
     spawn(fun() ->
-		  _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_util:put_reqid(Context),
                   _ = crossbar_util:binding_heartbeat(Pid),
 
-		  Units = wapi_money:dollars_to_units(wh_json:get_float_value(<<"amount">>, ReqData)),
-		  ?LOG("Putting ~p units", [Units]),
+                  Units = wapi_money:dollars_to_units(wh_json:get_float_value(<<"amount">>, ReqData)),
+                  ?LOG("Putting ~p units", [Units]),
 
-		  Transaction = wh_json:from_list([
-						   {<<"amount">>, Units}
-						   ,{<<"pvt_type">>, <<"credit">>}
-						   ]),
+                  Transaction = wh_json:from_list([
+                                                   {<<"amount">>, Units}
+                                                   ,{<<"pvt_type">>, <<"credit">>}
+                                                   ]),
 
-		  #cb_context{resp_status=success, doc=Saved} = crossbar_doc:save(Context#cb_context{doc=Transaction, db_name=whapps_util:get_db_name(AcctID, encoded)}),
+                  #cb_context{resp_status=success, doc=Saved} = crossbar_doc:save(Context#cb_context{doc=Transaction, db_name=whapps_util:get_db_name(AcctID, encoded)}),
 
-		  Id = wh_json:get_value(<<"_id">>, Saved),
+                  Id = wh_json:get_value(<<"_id">>, Saved),
 
-		  ?LOG("publishing credit API for transaction ~s for ~p units", [Id, Units]),
+                  ?LOG("publishing credit API for transaction ~s for ~p units", [Id, Units]),
 
-		  wapi_money:publish_credit([{<<"Account-ID">>, AcctID}
-					     ,{<<"Amount">>, Units}
-					     ,{<<"Transaction-ID">>, Id}
-					     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-					    ]),
+                  wapi_money:publish_credit([{<<"Account-ID">>, AcctID}
+                                             ,{<<"Amount">>, Units}
+                                             ,{<<"Transaction-ID">>, Id}
+                                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                            ]),
                   Pid ! {binding_result, true, [RD, Context, Params]}
           end),
     {noreply, State};
@@ -565,10 +569,10 @@ validate([<<"credits">>], #cb_context{req_verb = <<"get">>, account_id=AccountId
     %% TODO: request current balance from jonny5 and put it here
     DB = whapps_util:get_db_name(AccountId, encoded),
     Units = case couch_mgr:get_results(DB, <<"transactions/credit_remaining">>, [{<<"reduce">>, true}]) of
-		{ok, []} -> ?LOG("No results"), 0;
-		{ok, [ViewRes|_]} -> ?LOG("Found obj ~p", [ViewRes]), wh_json:get_value(<<"value">>, ViewRes, 0);
-		{error, _E} -> ?LOG("Error loading view: ~p", [_E]), 0
-	    end,
+                {ok, []} -> ?LOG("No results"), 0;
+                {ok, [ViewRes|_]} -> ?LOG("Found obj ~p", [ViewRes]), wh_json:get_value(<<"value">>, ViewRes, 0);
+                {error, _E} -> ?LOG("Error loading view: ~p", [_E]), 0
+            end,
 
     crossbar_util:response(wh_json:from_list([{<<"amount">>, wapi_money:units_to_dollars(Units)}
                                               ,{<<"billing_account_id">>, wh_json:get_value(<<"billing_account_id">>, JObj, AccountId)}

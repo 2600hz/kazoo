@@ -18,16 +18,15 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, #cf_call{call_id=CallId, account_db=AccountDb, cf_pid=CFPid}) ->
-    put(callid, CallId),
+-spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+handle(Data, #cf_call{account_db=AccountDb}=Call) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(AccountDb, Id) of
         {ok, JObj} ->
             ?LOG("branching to callflow ~s", [Id]),
             Flow = wh_json:get_value(<<"flow">>, JObj, ?EMPTY_JSON_OBJECT),
-            CFPid ! {branch, Flow};
+            cf_exe:branch(Flow, Call);
         {error, R} ->
             ?LOG("could not branch to callflow ~s, ~p", [Id, R]),
-            CFPid ! {continue}
+            cf_exe:continue(Call)
     end.

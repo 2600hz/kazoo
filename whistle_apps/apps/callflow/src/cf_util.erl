@@ -3,6 +3,7 @@
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
 -export([call_info_to_string/1]).
 -export([lookup_callflow/1, lookup_callflow/2]).
+-export([handle_bridge_failure/2]).
 
 -include("callflow.hrl").
 
@@ -49,8 +50,7 @@ ignore_early_media(Endpoints) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec call_info_to_string/1 :: (#cf_call{}) -> io_lib:chars().
-call_info_to_string(#cf_call{account_id=AccountId, flow_id=FlowId, call_id=CallId, cid_name=CIDName, cid_number=CIDNumber
-                             ,request=Request, from=From, to=To, inception=Inception, authorizing_id=AuthorizingId }) ->
+call_info_to_string(Call) ->
     Format = ["Call-ID: ~s~n"
               ,"Callflow: ~s~n"
               ,"Account ID: ~s~n"
@@ -60,9 +60,17 @@ call_info_to_string(#cf_call{account_id=AccountId, flow_id=FlowId, call_id=CallI
               ,"CID: ~s ~s~n"
               ,"Innception: ~s~n"
               ,"Authorizing ID: ~s~n"],
-    io_lib:format(lists:flatten(Format)
-                  ,[CallId, FlowId, AccountId, Request, To, From
-                    ,CIDNumber, CIDName, Inception, AuthorizingId]).
+    Args = [cf_exe:callid(Call)
+            ,Call#cf_call.flow_id
+            ,Call#cf_call.account_id
+            ,Call#cf_call.request
+            ,Call#cf_call.to
+            ,Call#cf_call.from
+            ,Call#cf_call.cid_number, Call#cf_call.cid_name
+            ,Call#cf_call.inception
+            ,Call#cf_call.authorizing_id
+           ],
+    io_lib:format(lists:flatten(Format), Args).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -173,6 +181,32 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
             end;
         _ ->
             test_callflow_patterns(T, Number, Result)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Look for children branches to handle the failure replies of
+%% certain actions, like cf_offnet and cf_resources
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_bridge_failure/2 :: ({fail, json_object} | ne_binary(), #cf_call{}) -> ok | no_found.
+
+handle_bridge_failure({fail, Reason}, Call) ->
+    {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
+    ?LOG("attempting failure branch ~s:~s", [Code, Cause]),
+    case (handle_bridge_failure(Cause, Call) =:= ok)
+        orelse (handle_bridge_failure(Code, Call) =:= ok) of
+        true -> ok;
+        false -> cf_exe:continue(Call)
+    end;
+handle_bridge_failure(Failure, Call) ->
+    case cf_exe:attempt(Failure, Call) of
+        {attempt_resp, ok} ->
+            ?LOG("found child branch to handle failure: ~s", [Failure]),
+            ok;
+        {attempt_resp, _} ->
+            not_found
     end.
 
 -ifdef(TEST).

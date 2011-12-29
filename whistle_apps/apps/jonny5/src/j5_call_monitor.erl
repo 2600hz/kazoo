@@ -163,7 +163,7 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref
     {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
 
 handle_cast({call_event, {<<"call_event">>, <<"status_resp">>}, JObj}, #state{timer_ref=Ref}=State) ->
-    case {wapi_call:status_resp_v(JObj), wapi_call:get_status(JObj)} of
+    case {wapi_call:channel_status_resp_v(JObj), wapi_call:get_status(JObj)} of
 	{true, <<"active">>} ->
 	    ?LOG("Received active status_resp"),
 	    {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
@@ -209,7 +209,7 @@ handle_info({timeout, CallStatusRef, call_status}, #state{timer_ref=CallStatusRe
 			       | wh_api:default_headers(gen_listener:queue_name(Self), ?APP_NAME, ?APP_VERSION)
 			      ],
 
-		  wapi_call:publish_status_req(CallID, StatusReq)
+		  wapi_call:publish_channel_status_req(CallID, StatusReq)
 	  end),
 
     {noreply, State#state{timer_ref=start_status_timer()}};

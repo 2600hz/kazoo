@@ -12,17 +12,14 @@
 
 -export([handle/2]).
 
--import(cf_call_command, [b_play/3]).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec(handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> no_return()).
-handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) ->
-    put(callid, CallId),
+-spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+handle(Data, #cf_call{account_id=AccountId}=Call) ->
     Media = case wh_json:get_value(<<"id">>, Data) of
                 <<"/system_media", _/binary>> = Path -> Path;
                 <<"system_media", _/binary>> = Path -> Path;
@@ -31,5 +28,5 @@ handle(Data, #cf_call{cf_pid=CFPid, call_id=CallId, account_id=AccountId}=Call) 
                     <<$/, (wh_util:to_binary(AccountId))/binary, $/, Path/binary>>
             end,
     ?LOG("playing media ~s", [Media]),
-    b_play(Media, wh_json:get_value(<<"terminators">>, Data), Call),
-    CFPid ! {continue}.
+    cf_call_command:b_play(Media, wh_json:get_value(<<"terminators">>, Data), Call),
+    cf_exe:continue(Call).
