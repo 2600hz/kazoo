@@ -19,8 +19,9 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle/2 :: (json_object(), #cf_call{}) -> ok.
-handle(Data, #cf_call{account_id=AccountId, request_user=ReqNum, owner_id=OwnerId, authorizing_id=AuthId}=Call) ->
-    {ECIDNum, ECIDName} = cf_attributes:caller_id(AuthId, OwnerId, <<"emergency">>, Call),
+handle(Data, #cf_call{account_id=AccountId, request_user=ReqNum}=Call) ->
+    {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
+    {CIDNum, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
     Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Resource-Type">>, <<"audio">>}
            ,{<<"To-DID">>, ReqNum}
@@ -32,53 +33,43 @@ handle(Data, #cf_call{account_id=AccountId, request_user=ReqNum, owner_id=OwnerI
            ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, Data)}
            ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
            ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
-           ,{<<"Presence-ID">>, cf_attributes:presence_id(AuthId, Call)}
+           ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
+           ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+           ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
            | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)],
     wapi_offnet_resource:publish_req(Req),
-    case wait_for_offnet(60000, Call) of
-        {ok, _} ->
-            ?LOG("completed successful offnet bridge"),
+    case wait_for_offnet() of
+        {<<"SUCCESS">>, _} ->
+            ?LOG("completed successful offnet request"),
             cf_exe:stop(Call);
-        {fail, _}=F ->
-            ?CF_ALERT(F, Call),
-            cf_util:handle_bridge_failure(F, Call);            
-        {error, _}=E ->
-            ?CF_ALERT(E, "offnet_resource error", Call),
-            cf_exe:continue(Call)
+        {<<"ERROR">>, Msg} ->
+            ?LOG("offnet request error: ~p", [Msg]),
+            cf_exe:continue(Call);
+        {Cause, Code} ->
+            cf_util:handle_bridge_failure(Cause, Code, Call)
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Consume Erlang messages and return on resource completion message
+%% Consume Erlang messages and return on offnet response
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_offnet/2 :: (non_neg_integer(), #cf_call{}) -> {ok | fail, json_object()}
-                                                                  | {error, channel_hungup | execution_failed | timeout}.
-wait_for_offnet(Timeout, Call) ->
-    Start = erlang:now(),
+-spec wait_for_offnet/0 :: () -> {ne_binary(), ne_binary() | undefined}.
+wait_for_offnet() ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case wh_util:get_event_type(JObj) of
                 { <<"resource">>, <<"offnet_resp">> } ->
-                    cf_call_command:wait_for_bridge(infinity, Call);
-                { <<"resource">>, <<"resource_error">> } ->
-                    {fail, JObj};
-                { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
-                    {error, channel_hungup};
-                { <<"error">>, _ } ->
-                    {error, execution_failed};
+                    {wh_json:get_value(<<"Response-Message">>, JObj)
+                     ,wh_json:get_value(<<"Error-Message">>, JObj
+                                        ,wh_json:get_value(<<"Response-Code">>, JObj))};
                 _ ->
-		    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_offnet(Timeout - (DiffMicro div 1000), Call)
+                    wait_for_offnet()
             end;
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_offnet(Timeout - (DiffMicro div 1000), Call)
-    after
-        Timeout ->
-            {error, timeout}
+            wait_for_offnet()
     end.
