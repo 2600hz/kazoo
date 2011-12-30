@@ -34,12 +34,8 @@ handle_req(JObj, Props) ->
                  _ ->
                      Flags = wh_json:get_value(<<"Flags">>, JObj),
                      Resources = props:get_value(resources, Props), 
-                     case find_endpoints(Number, Flags, Resources) of
-                         {[], _} ->
-                             {error, no_resources};
-                         {Endpoints, Emergency} ->
-                             bridge_to_endpoints(Endpoints, Emergency, CtrlQ, JObj)
-                     end
+                     {Endpoints, Emergency} = find_endpoints(Number, Flags, Resources),
+                     bridge_to_endpoints(Endpoints, Emergency, CtrlQ, JObj)
              end,
     wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
                                       ,response(Result, JObj)).
@@ -54,6 +50,8 @@ handle_req(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bridge_to_endpoints/4 :: (proplist(), boolean(), ne_binary(), json_object()) -> ok.
+bridge_to_endpoints([], _, _, _) ->
+    {error, no_resources};
 bridge_to_endpoints(Endpoints, Emergency, CtrlQ, JObj) ->
     ?LOG("number not found in another account...to the cloud!"),
     Q = create_queue(JObj),
@@ -99,7 +97,7 @@ bridge_to_endpoints(Endpoints, Emergency, CtrlQ, JObj) ->
 %% macro).  This function will block until that callflow is complete.
 %% @end
 %%--------------------------------------------------------------------
--spec execute_local_extension/4 :: (ne_binary, ne_binary(), ne_binary(), json_object()) -> ok.
+-spec execute_local_extension/4 :: (ne_binary(), ne_binary(), ne_binary(), json_object()) -> ok.
 execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
     ?LOG("number belongs to another account, executing callflow from that account"),
     Q = create_queue(JObj),
@@ -110,7 +108,6 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Caller-ID-Number">>, CIDNum}
             ,{<<"Caller-ID-Name">>, CIDName}
-            ,{<<"Originating-Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj)}
            ],
     ?LOG("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Command = [{<<"Call-ID">>, get(callid)}
@@ -383,11 +380,12 @@ response({fail, BridgeResp}, JObj) ->
     ?LOG_END("resources for outbound request failed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, wh_json:get_value(<<"Hangup-Cause">>, BridgeResp)}
+     ,{<<"Response-Message">>, wh_json:get_value(<<"Application-Response">>, BridgeResp
+                                                 ,wh_json:get_value(<<"Hangup-Cause">>, BridgeResp, <<"ERROR">>))}
      ,{<<"Response-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
-response({error, not_found}, JObj) ->
+response({error, no_resources}, JObj) ->
     ?LOG_END("no avaliable resources"),
     ErrorMsg = <<"no avaliable resources">>,
     To = wh_json:get_value(<<"To-DID">>, JObj),
