@@ -307,9 +307,10 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                           ,fun(DP) ->
                                    case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
                                        {struct, Props} ->
-                                           [{"application", wh_util:to_list(<<"set ", Var/binary, "=", (wh_util:to_binary(V))/binary>>)}
+                                           [{"application", <<"set ", Var/binary, "=", (wh_util:to_binary(V))/binary>>}
                                             || {K, V} <- Props,
-                                               (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= undefined] ++ DP;
+                                               (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= undefined
+                                           ] ++ DP;
                                        _ ->
                                            DP
                                    end
@@ -363,7 +364,9 @@ get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
                           ,fun(DP) ->
                                    [{"application", "export failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
                                     ,{"application", "export uuid_bridge_continue_on_cancel=true"}
-                                    ,{"application", "export continue_on_fail=true"}|DP]
+                                    ,{"application", "export continue_on_fail=true"}
+                                    |DP
+                                   ]
                            end
                           ,fun(DP) ->
                                    Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
@@ -371,7 +374,7 @@ get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
                                              true -> <<"-bleg ", Target/binary>>;
                                              false -> Target
                                          end,
-                                   [{"application", "intercept " ++ wh_util:to_list(Arg)}|DP]
+                                   [{"application", <<"intercept ", Arg/binary>>}|DP]
                            end
                           ,fun(DP) ->
                                    [{"application", create_masquerade_event(<<"intercept">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
@@ -391,20 +394,7 @@ get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
                                   case wh_json:is_true(<<"Reset">>, JObj) of
                                       false -> ok;
                                       true ->
-                                          case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
-                                              {'ok', Result} -> 
-                                                  Props = ecallmgr_util:eventstr_to_proplist(Result),
-                                                  lists:foldr(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, _}, Acc) -> 
-                                                                      [{"application", "unset " 
-                                                                        ++ wh_util:to_list(<<?CHANNEL_VAR_PREFIX, Key/binary>>)}|Acc];
-                                                                   ({<<?CHANNEL_VAR_PREFIX, _/binary>> = Key, _}, Acc) -> 
-                                                                      [{"application", "unset " ++ wh_util:to_list(Key)}|Acc];
-                                                                   (_, Acc) -> Acc
-                                                                end, DP, Props);
-                                              _Error -> 
-                                                  ?LOG(UUID, "failed to get result from uuid_dump", []),
-                                                  DP
-                                          end
+                                          create_dialplan_move_ccvs(<<"Execute-Extension-Original-">>, Node, UUID, DP)
                                   end
                           end
                           ,fun(DP) ->
@@ -412,15 +402,20 @@ get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
                                        ?EMPTY_JSON_OBJECT -> DP;
                                        CCVs ->
                                            ChannelVars = wh_json:to_proplist(CCVs),
-                                           [{"application", "set " ++ wh_util:to_list(get_fs_kv(K, V, UUID))} 
+                                           [{"application", <<"set ", (get_fs_kv(K, V, UUID))/binary>>} 
                                             || {K, V} <- ChannelVars] ++ DP
                                    end
                            end
                           ,fun(DP) ->
-                                   [{"application", "execute_extension " ++ wh_json:get_string_value(<<"Extension">>, JObj)}|DP]
+                                   [{"application", <<"set ", ?CHANNEL_VAR_PREFIX, "Executing-Extension=true">>}
+                                    ,{"application", <<"execute_extension ", (wh_json:get_value(<<"Extension">>, JObj))/binary>>}
+                                    |DP
+                                   ]
                            end
                           ,fun(DP) ->
-                                   [{"application", create_masquerade_event(<<"execute_extension">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
+                                   [{"application", <<"unset ", ?CHANNEL_VAR_PREFIX, "Executing-Extension">>}
+                                    ,{"application", create_masquerade_event(<<"execute_extension">>
+                                                                                 ,<<"CHANNEL_EXECUTE_COMPLETE">>)}
                                     ,{"application", "park "}
                                     |DP
                                    ]
@@ -451,7 +446,8 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
                                   wh_json:from_list(AppJObj ++ wapi_dialplan:extract_defaults(JObj))
                           end,
             
-            {SuccessApp, SuccessData} = case get_fs_app(Node, UUID, SuccessJObj, wh_json:get_value(<<"Application-Name">>, SuccessJObj)) of 
+            {SuccessApp, SuccessData} = case get_fs_app(Node, UUID, SuccessJObj
+                                                        ,wh_json:get_value(<<"Application-Name">>, SuccessJObj)) of 
                                             %% default to park if passed app isn't right
                                             {'error', _Str} -> 
                                                 {<<"park">>, <<>>};
@@ -459,7 +455,10 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
                                                 Success
                                         end,
 
-            Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessData, " ", HitsNeeded]),
+            Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout
+                                   ," ", SuccessApp, " ", SuccessData, " ", HitsNeeded
+                                  ]),
+
             {<<"tone_detect">>, Data}
     end;
 
@@ -549,12 +548,13 @@ send_cmd(Node, UUID, <<"hangup">>, _) ->
     _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
     freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
 send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
-    io:format("~p~n", [Dialplan]),
-    _ = [begin
-             _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),
-             ?LOG("building xferext on node ~s: ~s", [Node, V])
-         end || {_, V} <- Dialplan],
-    ok = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ Dialplan),
+    XferExt = [begin
+                   _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),
+                   ?LOG("building xferext on node ~s: ~s", [Node, V]),
+                   {wh_util:to_list(K), wh_util:to_list(V)}    
+               end || {K, V} <- Dialplan],
+    io:format("~p~n", [XferExt]),    
+    ok = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ XferExt),
     ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
 send_cmd(Node, UUID, AppName, Args) ->
     ?LOG("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
@@ -848,20 +848,27 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                end,
     wapi_call:publish_event(UUID, EvtProp2).
 
--spec reset_custom_channel_vars/2 :: (atom(), ne_binary()) -> ok | error.
-reset_custom_channel_vars(Node, CallId) ->
-    case freeswitch:api(Node, uuid_dump, wh_util:to_list(CallId)) of
+-spec create_dialplan_move_ccvs/4 :: (ne_binary(), atom(), ne_binary(), proplist()) -> proplist().
+create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
+    case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
         {'ok', Result} -> 
             Props = ecallmgr_util:eventstr_to_proplist(Result),
-            lists:foreach(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, _}) -> 
-                                  send_cmd(Node, CallId, "unset", <<?CHANNEL_VAR_PREFIX, Key/binary>>);
-                             ({<<?CHANNEL_VAR_PREFIX, _/binary>> = Key, _}) -> 
-                                  send_cmd(Node, CallId, "unset", Key);
-                             (_) -> ok
-                          end, Props),
-            ok;
+            lists:foldr(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, Val}, Acc) -> 
+                                [{"application"
+                                  ,<<"unset ", ?CHANNEL_VAR_PREFIX, Key/binary>>}
+                                 ,{"application"
+                                   ,<<"set ",?CHANNEL_VAR_PREFIX, Root/binary ,Key/binary, "=", Val/binary>>}
+                                 |Acc
+                                ];
+                           ({<<?CHANNEL_VAR_PREFIX, K/binary>> = Key, Val}, Acc) -> 
+                                [{"application", <<"unset ", Key/binary>>}
+                                 ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, Root/binary, K/binary, "=", Val/binary>>}
+                                 |Acc];
+                           (_, Acc) -> 
+                                Acc
+                        end, DP, Props);
         _Error -> 
-            ?LOG(CallId, "failed to get result from uuid_dump", []),
-            error
+            ?LOG(UUID, "failed to get result from uuid_dump", []),
+            DP
     end.
-    
+        
