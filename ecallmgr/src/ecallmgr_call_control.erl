@@ -585,7 +585,10 @@ execute_control_request(Cmd, #state{node=Node, callid=CallId}) ->
     catch
         _:{error,nosession} ->
             ?LOG("unable to execute command, no session"),
-            send_error_resp(CallId, Cmd, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>),
+            send_error_resp(CallId, Cmd, <<"Session "
+                                           ,CallId/binary
+                                           ," not found for "
+                                           ,(wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>),
             self() ! {hangup, undefined, CallId},
             ok;
         error:{badmatch, {error, ErrMsg}} ->
@@ -595,7 +598,7 @@ execute_control_request(Cmd, #state{node=Node, callid=CallId}) ->
             self() ! {force_queue_advance, CallId},
             ok;
         _A:_B ->
-            ?LOG("exception (~s) while executing ~s: ~w", [_A, wh_json:get_value(<<"Application-Name">>, Cmd), _B]),
+            ?LOG("exception (~s) while executing ~s: ~p", [_A, wh_json:get_value(<<"Application-Name">>, Cmd), _B]),
             ?LOG("stacktrace: ~w", [erlang:get_stacktrace()]),
             send_error_resp(CallId, Cmd),
             self() ! {force_queue_advance, CallId},
