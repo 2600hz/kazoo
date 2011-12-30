@@ -246,8 +246,10 @@ init_route_req(Parent, Node, FSID, CallID, FSData) ->
 -spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
 process_route_req(Node, FSID, CallID, FSData) ->
     DefProp = [{<<"Msg-ID">>, FSID}
-               ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"Unknown">>)}
-               ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>)}
+               ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, FSData, 
+                                                       props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"Unknown">>))}
+               ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, FSData, 
+                                                         props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>))}
                ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
                ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
                ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
