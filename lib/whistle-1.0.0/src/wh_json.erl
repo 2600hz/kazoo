@@ -27,12 +27,14 @@
 
 -export([normalize_jobj/1, normalize/1, is_json_object/1, is_valid_json_object/1, is_json_term/1]).
 
--export([encode/1, decode/1]).
+-export([encode/1]).
+-export([decode/1, decode/2]).
 
 %% not for public use
 -export([prune/2, no_prune/2]).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("proper/include/proper.hrl").
 
 -spec new/0 :: () -> ?EMPTY_JSON_OBJECT.
@@ -44,7 +46,12 @@ encode(JObj) ->
     mochijson2:encode(JObj).
 
 -spec decode/1 :: (iolist() | ne_binary()) -> json_object().
-decode(JSON) ->
+-spec decode/2 :: (iolist() | ne_binary(), ne_binary()) -> json_object().
+
+decode(Thing) ->
+    decode(Thing, ?DEFAULT_CONTENT_TYPE).
+
+decode(JSON, <<"application/json">>) ->
     mochijson2:decode(JSON).
 
 -spec is_empty/1 :: (term()) -> boolean().
@@ -58,11 +65,11 @@ is_json_object(_) -> false.
 -spec is_valid_json_object/1 :: (term()) -> boolean().
 is_valid_json_object(MaybeJObj) ->
     try
- 	lists:all(fun(K) -> is_json_term(?MODULE:get_value([K], MaybeJObj)) end,
-		  ?MODULE:get_keys(MaybeJObj))
+        lists:all(fun(K) -> is_json_term(?MODULE:get_value([K], MaybeJObj)) end,
+                  ?MODULE:get_keys(MaybeJObj))
     catch
-	throw:_ -> false;
-	error:_ -> false
+        throw:_ -> false;
+        error:_ -> false
     end.
 
 -spec is_json_term/1 :: (json_term()) -> boolean().
@@ -101,8 +108,8 @@ from_list(L) when is_list(L) ->
       JObj2 :: json_object().
 merge_jobjs(JObj1, JObj2) ->
     lists:foldl(fun(K, Acc) ->
-			wh_json:set_value(K, wh_json:get_value(K, JObj1), Acc)
-		end, JObj2, ?MODULE:get_keys(JObj1)).
+                        wh_json:set_value(K, wh_json:get_value(K, JObj1), Acc)
+                end, JObj2, ?MODULE:get_keys(JObj1)).
 
 -spec to_proplist/1 :: (json_object() | json_objects()) -> proplist() | [proplist(),...].
 -spec to_proplist/2 :: (term(), json_object()) -> proplist().
@@ -112,8 +119,8 @@ to_proplist(Objects) when is_list(Objects)->
     [to_proplist(O) || O <- Objects];
 to_proplist(MaybeJObj) ->
     case is_json_object(MaybeJObj) of
-	true -> [ {K, get_value(K, MaybeJObj)} || K <- ?MODULE:get_keys(MaybeJObj)];
-	false -> MaybeJObj
+        true -> [ {K, get_value(K, MaybeJObj)} || K <- ?MODULE:get_keys(MaybeJObj)];
+        false -> MaybeJObj
     end.
 
 %% convert everything starting at a specific key
@@ -279,9 +286,9 @@ get_value(Key, JObj) ->
 
 get_value([Key|Ks], [{struct, _}|_]=L, Default) ->
     try
-	get_value1(Ks, lists:nth(Key, L), Default)
+        get_value1(Ks, lists:nth(Key, L), Default)
     catch
-	error:badarith -> Default
+        error:badarith -> Default
     end;
 get_value(Key, L, Default) when is_list(L) ->
     get_value1(Key, {struct, L}, Default);
@@ -296,8 +303,8 @@ get_value1([K|Ks], {struct, Props}, Default) ->
     get_value1(Ks, props:get_value(K, Props, Default), Default);
 get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
     case try lists:nth(wh_util:to_integer(K), JObjs) catch _:_ -> undefined end of
-	undefined -> Default;
-	JObj1 -> get_value1(Ks, JObj1, Default)
+        undefined -> Default;
+        JObj1 -> get_value1(Ks, JObj1, Default)
     end;
 get_value1(_, _, Default) -> Default.
 
@@ -401,56 +408,56 @@ prune([], JObj) ->
     JObj;
 prune([K], {struct, Doc}) ->
     case lists:keydelete(K, 1, Doc) of
-	[] -> ?EMPTY_JSON_OBJECT;
-	L -> {struct, L}
+        [] -> ?EMPTY_JSON_OBJECT;
+        L -> {struct, L}
     end;
 prune([K|T], {struct, Doc}=JObj) ->
     case props:get_value(K, Doc) of
-	undefined -> JObj;
-	V ->
-	    case prune(T, V) of
-		?EMPTY_JSON_OBJECT ->
-		    {struct, lists:keydelete(K, 1, Doc)};
-		[] ->
-		    {struct, lists:keydelete(K, 1, Doc)};
-		V1 ->
-		    {struct, [{K, V1} | lists:keydelete(K, 1, Doc)]}
-	    end
+        undefined -> JObj;
+        V ->
+            case prune(T, V) of
+                ?EMPTY_JSON_OBJECT ->
+                    {struct, lists:keydelete(K, 1, Doc)};
+                [] ->
+                    {struct, lists:keydelete(K, 1, Doc)};
+                V1 ->
+                    {struct, [{K, V1} | lists:keydelete(K, 1, Doc)]}
+            end
     end;
 prune(_, []) -> [];
 prune([K|T], [_|_]=JObjs) ->
     V = lists:nth(K, JObjs),
     case prune(T, V) of
-	?EMPTY_JSON_OBJECT ->
-	    replace_in_list(K, undefined, JObjs, []);
-	V ->
-	    replace_in_list(K, undefined, JObjs, []);
-	V1 ->
-	    replace_in_list(K, V1, JObjs, [])
+        ?EMPTY_JSON_OBJECT ->
+            replace_in_list(K, undefined, JObjs, []);
+        V ->
+            replace_in_list(K, undefined, JObjs, []);
+        V1 ->
+            replace_in_list(K, V1, JObjs, [])
     end.
 
 no_prune([], JObj) ->
     JObj;
 no_prune([K], {struct, Doc}) ->
     case lists:keydelete(K, 1, Doc) of
-	[] -> ?EMPTY_JSON_OBJECT;
-	L -> {struct, L}
+        [] -> ?EMPTY_JSON_OBJECT;
+        L -> {struct, L}
     end;
 no_prune([K|T], {struct, Doc}=JObj) ->
    case props:get_value(K, Doc) of
-	undefined -> JObj;
-	V ->
-	    {struct, [{K, no_prune(T, V)} | lists:keydelete(K, 1, Doc)]}
+        undefined -> JObj;
+        V ->
+            {struct, [{K, no_prune(T, V)} | lists:keydelete(K, 1, Doc)]}
     end;
 no_prune(_, []) -> [];
 no_prune([K|T], [_|_]=JObjs) when is_integer(K) ->
     V = lists:nth(K, JObjs),
     V1 = no_prune(T, V),
     case V1 =:= V of
-	true ->
-	    replace_in_list(K, undefined, JObjs, []);
-	false ->
-	    replace_in_list(K, V1, JObjs, [])
+        true ->
+            replace_in_list(K, undefined, JObjs, []);
+        false ->
+            replace_in_list(K, V1, JObjs, [])
     end.
 
 replace_in_list(N, _, _, _) when N < 1 ->
@@ -506,39 +513,39 @@ prop_is_json_object() ->
 
 prop_from_list() ->
     ?FORALL(Prop, wh_proplist(),
- 	    ?WHENFAIL(io:format("Failed prop_from_list with ~p~n", [Prop]),
- 		      ?MODULE:is_json_object(?MODULE:from_list(Prop)))
- 	   ).
+            ?WHENFAIL(io:format("Failed prop_from_list with ~p~n", [Prop]),
+                      ?MODULE:is_json_object(?MODULE:from_list(Prop)))
+           ).
 
 prop_get_value() ->
     ?FORALL(Prop, json_proplist(),
-	    ?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop]),
-		      begin
-			  JObj = from_list(Prop),
-			  case length(Prop) > 0 andalso hd(Prop) of
-			      {K,V} ->
-				  V =:= get_value([K], JObj);
-			      false -> wh_json:new() =:= JObj;
-			      A ->
-				  true =:= get_value([A], JObj)
-			  end
-		      end)).
+            ?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop]),
+                      begin
+                          JObj = from_list(Prop),
+                          case length(Prop) > 0 andalso hd(Prop) of
+                              {K,V} ->
+                                  V =:= get_value([K], JObj);
+                              false -> wh_json:new() =:= JObj;
+                              A ->
+                                  true =:= get_value([A], JObj)
+                          end
+                      end)).
 
 prop_set_value() ->
     ?FORALL({JObj, Key, Value}, {json_object(), json_string(), json_term()},
-	    ?WHENFAIL(io:format("Failed prop_set_value with ~p:~p -> ~p~n", [Key, Value, JObj]),
-		      begin
-			  JObj1 = wh_json:set_value(Key, Value, JObj),
-			  Value =:= wh_json:get_value(Key, JObj1)
-		      end)).
+            ?WHENFAIL(io:format("Failed prop_set_value with ~p:~p -> ~p~n", [Key, Value, JObj]),
+                      begin
+                          JObj1 = wh_json:set_value(Key, Value, JObj),
+                          Value =:= wh_json:get_value(Key, JObj1)
+                      end)).
 
 prop_to_proplist() ->
     ?FORALL(Prop, wh_proplist(),
       ?WHENFAIL(io:format("Failed prop_to_proplist ~p~n", [Prop]),
-		begin
-		    JObj = from_list(Prop),
-		    lists:all(fun(K) -> wh_json:get_value(K, JObj) =/= undefined end, props:get_keys(Prop))
-		end)).
+                begin
+                    JObj = from_list(Prop),
+                    lists:all(fun(K) -> wh_json:get_value(K, JObj) =/= undefined end, props:get_keys(Prop))
+                end)).
 
 %% EUNIT TESTING
 -ifdef(TEST).
@@ -550,10 +557,10 @@ prop_to_proplist() ->
 -define(D4, [?D1, ?D2, ?D3]).
 
 -define(D6, {struct, [{<<"d2k1">>, 1}
-		      ,{<<"d2k2">>, 3.14}
-		      ,{<<"sub_d1">>, {struct, [{<<"d1k1">>, "d1v1"}]}}
-		     ]
-	    }).
+                      ,{<<"d2k2">>, 3.14}
+                      ,{<<"sub_d1">>, {struct, [{<<"d1k1">>, "d1v1"}]}}
+                     ]
+            }).
 -define(D7, {struct, [{<<"d1k1">>, <<"d1v1">>}]}).
 
 is_json_object_proper_test_() ->
@@ -636,14 +643,14 @@ is_json_object_test() ->
 -define(D1_AFTER_K3_V2, {struct, [{<<"d1k3">>, ["d1v3.1", "d1v3.3"]}, {<<"d1k1">>, "d1v1"}, {<<"d1k2">>, d1v2}]}).
 
 -define(D6_AFTER_SUB, {struct, [{<<"sub_d1">>, {struct, []}}
-				,{<<"d2k1">>, 1}
-				,{<<"d2k2">>, 3.14}
-			       ]
-			 }).
+                                ,{<<"d2k1">>, 1}
+                                ,{<<"d2k2">>, 3.14}
+                               ]
+                         }).
 -define(D6_AFTER_SUB_PRUNE, {struct, [{<<"d2k1">>, 1}
-				      ,{<<"d2k2">>, 3.14}
-				     ]
-			    }).
+                                      ,{<<"d2k2">>, 3.14}
+                                     ]
+                            }).
 
 -define(P1, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]).
 -define(P2, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, {struct, ?P1}}]).
@@ -777,10 +784,10 @@ get_values_test() ->
     ?assertEqual(true, are_all_there(?D1, ["d1v1", d1v2, ["d1v3.1", "d1v3.2", "d1v3.3"]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
 
 -define(CODEC_JOBJ, {struct, [{<<"k1">>, <<"v1">>}
-			      ,{<<"k2">>, {struct, []}}
-			      ,{<<"k3">>, {struct, [{<<"k3.1">>, <<"v3.1">>}]}}
-			      ,{<<"k4">>, [1,2,3]}
-			     ]}).
+                              ,{<<"k2">>, {struct, []}}
+                              ,{<<"k3">>, {struct, [{<<"k3.1">>, <<"v3.1">>}]}}
+                              ,{<<"k4">>, [1,2,3]}
+                             ]}).
 codec_test() ->
     ?assertEqual(?CODEC_JOBJ, decode(encode(?CODEC_JOBJ))).
 
