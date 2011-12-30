@@ -365,7 +365,7 @@ handle_cast({dialplan, JObj}
     end;
 handle_cast({event_execute_complete, CallId, EvtName}
             ,#state{callid=CallId, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
-    case lists:member(EvtName, wh_api:convert_whistle_app_name(CurrApp)) of
+    case lists:member(EvtName, ecallmgr_util:convert_whistle_app_name(CurrApp)) of
         false ->
             {noreply, State};
         true ->

@@ -1,11 +1,10 @@
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2010 VoIP INC
 %%% @doc
 %%% Various utilities specific to ecallmgr. More general utilities go
 %%% in whistle_util.erl
 %%% @end
-%%% Created : 15 Nov 2010 by James Aimonetti <james@2600hz.org>
-
+%%%-------------------------------------------------------------------
 -module(ecallmgr_util).
 
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
@@ -14,6 +13,7 @@
 -export([fs_log/3, put_callid/1]).
 -export([media_path/2, media_path/3]).
 -export([unserialize_fs_array/1]).
+-export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 
 -include("ecallmgr.hrl").
 
@@ -21,28 +21,28 @@
 -spec get_sip_to/1 :: (proplist()) -> ne_binary().
 get_sip_to(Prop) ->
     list_to_binary([props:get_value(<<"sip_to_user">>, Prop, props:get_value(<<"variable_sip_to_user">>, Prop, "nouser"))
-		    , "@"
-		    , props:get_value(<<"sip_to_host">>, Prop, props:get_value(<<"variable_sip_to_host">>, Prop, "nodomain"))
-		   ]).
+                    , "@"
+                    , props:get_value(<<"sip_to_host">>, Prop, props:get_value(<<"variable_sip_to_host">>, Prop, ?DEFAULT_DOMAIN))
+                   ]).
 
 %% retrieves the sip address for the 'from' field
 -spec get_sip_from/1 :: (proplist()) -> ne_binary().
 get_sip_from(Prop) ->
     list_to_binary([
-		    props:get_value(<<"sip_from_user">>, Prop, props:get_value(<<"variable_sip_from_user">>, Prop, "nouser"))
-		    ,"@"
-		    , props:get_value(<<"sip_from_host">>, Prop, props:get_value(<<"variable_sip_from_host">>, Prop, "nodomain"))
-		   ]).
+                    props:get_value(<<"sip_from_user">>, Prop, props:get_value(<<"variable_sip_from_user">>, Prop, "nouser"))
+                    ,"@"
+                    , props:get_value(<<"sip_from_host">>, Prop, props:get_value(<<"variable_sip_from_host">>, Prop, ?DEFAULT_DOMAIN))
+                   ]).
 
 %% retrieves the sip address for the 'request' field
 -spec get_sip_request/1 :: (proplist()) -> ne_binary().
 get_sip_request(Prop) ->
     list_to_binary([
-		    props:get_value(<<"Caller-Destination-Number">>, Prop, props:get_value(<<"variable_sip_req_user">>, Prop, "nouser"))
-		    ,"@"
+                    props:get_value(<<"Caller-Destination-Number">>, Prop, props:get_value(<<"variable_sip_req_user">>, Prop, "nouser"))
+                    ,"@"
                     ,props:get_value(<<"variable_sip_auth_realm">>, Prop
-                               ,props:get_value( list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"]), Prop, "nodomain"))
-		   ]).
+                               ,props:get_value( list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"]), Prop, ?DEFAULT_DOMAIN))
+                   ]).
 
 -spec get_orig_ip/1 :: (proplist()) -> ne_binary().
 get_orig_ip(Prop) ->
@@ -52,11 +52,11 @@ get_orig_ip(Prop) ->
 -spec custom_channel_vars/1 :: (proplist()) -> proplist().
 custom_channel_vars(Prop) ->
     lists:foldl(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
-		   ({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
-		   ({<<"variable_sip_h_Referred-By">>, V}, Acc) -> [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
-		   ({<<"variable_sip_refer_to">>, V}, Acc) -> [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
-		   (_, Acc) -> Acc
-		end, [], Prop).
+                   ({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
+                   ({<<"variable_sip_h_Referred-By">>, V}, Acc) -> [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+                   ({<<"variable_sip_refer_to">>, V}, Acc) -> [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+                   (_, Acc) -> Acc
+                end, [], Prop).
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
@@ -117,9 +117,9 @@ is_node_up(Node) ->
 -spec is_node_up/2 :: (atom(), ne_binary()) -> boolean().
 is_node_up(Node, UUID) ->
     case ecallmgr_fs_handler:is_node_up(Node) andalso freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
-	{'ok', IsUp} -> wh_util:is_true(IsUp);
-	timeout -> timer:sleep(100), is_node_up(Node, UUID);
-	_ -> false
+        {'ok', IsUp} -> wh_util:is_true(IsUp);
+        timeout -> timer:sleep(100), is_node_up(Node, UUID);
+        _ -> false
     end.
 
 -spec fs_log/3 :: (atom(), nonempty_string(), list()) -> fs_api_ret().
@@ -135,8 +135,8 @@ fs_log(Node, Format, Args) ->
 -spec put_callid/1 :: (json_object()) -> 'undefined' | term().
 put_callid(JObj) ->
     case props:get_value(<<"Call-ID">>, JObj) of
-	undefined -> put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>));
-	CallID -> put(callid, CallID)
+        undefined -> put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>));
+        CallID -> put(callid, CallID)
     end.
 
 %%--------------------------------------------------------------------
@@ -160,10 +160,10 @@ media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID) ->
 media_path(MediaName, Type, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
         {'error', _E} ->
-	    ?LOG("Failed to get media ~s: ~p", [MediaName, _E]),
+            ?LOG("Failed to get media ~s: ~p", [MediaName, _E]),
             MediaName;
         {ok, Url} ->
-	    ?LOG("Recevied URL: ~s", [Url]),
+            ?LOG("Recevied URL: ~s", [Url]),
             get_fs_playback(Url)
     end.
 
@@ -178,3 +178,15 @@ get_fs_playback(<<"http://", _/binary>>=Url) ->
     <<"shell_stream://", (wh_util:to_binary(RemoteAudioScript))/binary, " ", Url/binary>>;
 get_fs_playback(Url) ->
     Url.
+
+%% given a proplist of a FS event, return the Whistle-equivalent app name(s).
+%% a FS event could have multiple Whistle equivalents
+-spec convert_fs_evt_name/1 :: (ne_binary()) -> [ne_binary(),...] | [].
+convert_fs_evt_name(EvtName) ->
+    [ WhAppEvt || {FSEvt, WhAppEvt} <- ?FS_APPLICATION_NAMES, FSEvt =:= EvtName].
+
+%% given a Whistle Dialplan Application name, return the FS-equivalent event name
+%% A Whistle Dialplan Application name is 1-to-1 with the FS-equivalent
+-spec convert_whistle_app_name/1 :: (ne_binary()) -> [ne_binary(),...] | [].
+convert_whistle_app_name(App) ->
+    [EvtName || {EvtName, AppName} <- ?FS_APPLICATION_NAMES, App =:= AppName].

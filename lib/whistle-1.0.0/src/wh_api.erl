@@ -1,6 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, VoIP INC
+%%% @copyright (C) 2010 VoIP INC
 %%% @doc
 %%% Whistle API Helpers
 %%%
@@ -14,7 +13,6 @@
 %%% for creating a JSON message.
 %%%
 %%% @end
-%%% Created : 19 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(wh_api).
 
@@ -29,21 +27,18 @@
 -export([conference_participants_req/1, conference_participants_resp/1, conference_play_req/1, conference_deaf_req/1,
          conference_undeaf_req/1, conference_mute_req/1, conference_unmute_req/1, conference_kick_req/1,
          conference_move_req/1, conference_discovery_req/1
-	]).
+        ]).
 
 -export([error_resp_v/1]).
 
 -export([conference_participants_req_v/1, conference_participants_resp_v/1, conference_play_req_v/1, conference_deaf_req_v/1
          ,conference_undeaf_req_v/1, conference_mute_req_v/1, conference_unmute_req_v/1, conference_kick_req_v/1
          ,conference_move_req_v/1, conference_discovery_req_v/1
-	]).
+        ]).
 
 %% Other AMQP API validators can use these helpers
 -export([build_message/3, build_message_specific/3, build_message_specific_headers/3
-	 ,validate/4, validate_message/4]).
-
-%% FS-specific routines
--export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
+         ,validate/4, validate_message/4]).
 
 -include("wh_api.hrl").
 -include("../include/wh_log.hrl").
@@ -164,7 +159,7 @@ is_empty(_) -> false.
 extract_defaults(Prop) when is_list(Prop) ->
     %% not measurable faster over the foldl, but cleaner (imo)
     [ {H, V} || H <- ?DEFAULT_HEADERS ++ ?OPTIONAL_DEFAULT_HEADERS,
-		(V = props:get_value(H, Prop)) =/= undefined
+                (V = props:get_value(H, Prop)) =/= undefined
     ];
 extract_defaults(JObj) ->
     extract_defaults(wh_json:to_proplist(JObj)).
@@ -180,8 +175,8 @@ error_resp({struct, Prop}) ->
     error_resp(Prop);
 error_resp(Prop) ->
     case error_resp_v(Prop) of
-	true -> build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for error_resp"}
+        true -> build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for error_resp"}
     end.
 
 -spec error_resp_v/1 :: (Prop) -> boolean() when
@@ -203,8 +198,8 @@ conference_discovery_req({struct, Prop}) ->
     conference_discovery_req(Prop);
 conference_discovery_req(Prop) ->
     case conference_discovery_req_v(Prop) of
-	true -> build_message(Prop, ?CONF_DISCOVERY_REQ_HEADERS, ?OPTIONAL_CONF_DISCOVERY_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for conference_discovery_req"}
+        true -> build_message(Prop, ?CONF_DISCOVERY_REQ_HEADERS, ?OPTIONAL_CONF_DISCOVERY_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for conference_discovery_req"}
     end.
 
 -spec conference_discovery_req_v/1 :: (Prop) -> boolean() when
@@ -226,8 +221,8 @@ conference_participants_req({struct, Prop}) ->
     conference_participants_req(Prop);
 conference_participants_req(Prop) ->
     case conference_participants_req_v(Prop) of
-	true -> build_message(Prop, ?CONF_PARTICIPANTS_REQ_HEADERS, ?OPTIONAL_CONF_PARTICIPANTS_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for conference_participants_req"}
+        true -> build_message(Prop, ?CONF_PARTICIPANTS_REQ_HEADERS, ?OPTIONAL_CONF_PARTICIPANTS_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for conference_participants_req"}
     end.
 
 -spec conference_participants_req_v/1 :: (Prop) -> boolean() when
@@ -248,8 +243,8 @@ conference_participants_resp({struct, Prop}) ->
     conference_participants_resp(Prop);
 conference_participants_resp(Prop) ->
     case conference_participants_resp_v(Prop) of
-	true -> build_message(Prop, ?CONF_PARTICIPANTS_RESP_HEADERS, ?OPTIONAL_CONF_PARTICIPANTS_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for conference_participants_resp"}
+        true -> build_message(Prop, ?CONF_PARTICIPANTS_RESP_HEADERS, ?OPTIONAL_CONF_PARTICIPANTS_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for conference_participants_resp"}
     end.
 
 -spec conference_participants_resp_v/1 :: (Prop) -> boolean() when
@@ -271,8 +266,8 @@ conference_play_req({struct, Prop}) ->
     conference_play_req(Prop);
 conference_play_req(Prop) ->
     case conference_play_req_v(Prop) of
-	true -> build_message(Prop, ?CONF_PLAY_REQ_HEADERS, ?OPTIONAL_CONF_PLAY_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for conference_play_req"}
+        true -> build_message(Prop, ?CONF_PLAY_REQ_HEADERS, ?OPTIONAL_CONF_PLAY_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for conference_play_req"}
     end.
 
 -spec conference_play_req_v/1 :: (Prop) -> boolean() when
@@ -293,8 +288,8 @@ conference_deaf_req({struct, Prop}) ->
     conference_deaf_req(Prop);
 conference_deaf_req(Prop) ->
     case conference_deaf_req_v(Prop) of
-	true -> build_message(Prop, ?CONF_DEAF_REQ_HEADERS, ?OPTIONAL_CONF_DEAF_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for conference_deaf_req"}
+        true -> build_message(Prop, ?CONF_DEAF_REQ_HEADERS, ?OPTIONAL_CONF_DEAF_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for conference_deaf_req"}
     end.
 
 -spec conference_deaf_req_v/1 :: (Prop) -> boolean() when
@@ -316,8 +311,8 @@ conference_undeaf_req({struct, Prop}) ->
     conference_undeaf_req(Prop);
 conference_undeaf_req(Prop) ->
     case conference_undeaf_req_v(Prop) of
-	true -> build_message(Prop, ?CONF_UNDEAF_REQ_HEADERS, ?OPTIONAL_CONF_UNDEAF_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for conference_undeaf_req"}
+        true -> build_message(Prop, ?CONF_UNDEAF_REQ_HEADERS, ?OPTIONAL_CONF_UNDEAF_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for conference_undeaf_req"}
     end.
 
 -spec conference_undeaf_req_v/1 :: (Prop) -> boolean() when
@@ -339,8 +334,8 @@ conference_mute_req({struct, Prop}) ->
     conference_mute_req(Prop);
 conference_mute_req(Prop) ->
     case conference_mute_req_v(Prop) of
-	true -> build_message(Prop, ?CONF_MUTE_REQ_HEADERS, ?OPTIONAL_CONF_MUTE_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for conference_mute_req"}
+        true -> build_message(Prop, ?CONF_MUTE_REQ_HEADERS, ?OPTIONAL_CONF_MUTE_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for conference_mute_req"}
     end.
 
 -spec conference_mute_req_v/1 :: (Prop) -> boolean() when
@@ -362,8 +357,8 @@ conference_unmute_req({struct, Prop}) ->
     conference_unmute_req(Prop);
 conference_unmute_req(Prop) ->
     case conference_unmute_req_v(Prop) of
-	true -> build_message(Prop, ?CONF_UNMUTE_REQ_HEADERS, ?OPTIONAL_CONF_UNMUTE_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for conference_unmute_req"}
+        true -> build_message(Prop, ?CONF_UNMUTE_REQ_HEADERS, ?OPTIONAL_CONF_UNMUTE_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for conference_unmute_req"}
     end.
 
 -spec conference_unmute_req_v/1 :: (Prop) -> boolean() when
@@ -384,8 +379,8 @@ conference_kick_req({struct, Prop}) ->
     conference_kick_req(Prop);
 conference_kick_req(Prop) ->
     case conference_kick_req_v(Prop) of
-	true -> build_message(Prop, ?CONF_KICK_REQ_HEADERS, ?OPTIONAL_CONF_KICK_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for conference_kick_req"}
+        true -> build_message(Prop, ?CONF_KICK_REQ_HEADERS, ?OPTIONAL_CONF_KICK_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for conference_kick_req"}
     end.
 
 -spec conference_kick_req_v/1 :: (Prop) -> boolean() when
@@ -407,8 +402,8 @@ conference_move_req({struct, Prop}) ->
     conference_move_req(Prop);
 conference_move_req(Prop) ->
     case conference_move_req_v(Prop) of
-	true -> build_message(Prop, ?CONF_MOVE_REQ_HEADERS, ?OPTIONAL_CONF_MOVE_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for conference_move_req"}
+        true -> build_message(Prop, ?CONF_MOVE_REQ_HEADERS, ?OPTIONAL_CONF_MOVE_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for conference_move_req"}
     end.
 
 -spec conference_move_req_v/1 :: (Prop) -> boolean() when
@@ -417,18 +412,6 @@ conference_move_req_v({struct, Prop}) ->
     conference_move_req_v(Prop);
 conference_move_req_v(Prop) ->
     validate(Prop, ?CONF_MOVE_REQ_HEADERS, ?CONF_MOVE_REQ_VALUES, ?CONF_MOVE_REQ_TYPES).
-
-%% given a proplist of a FS event, return the Whistle-equivalent app name(s).
-%% a FS event could have multiple Whistle equivalents
--spec convert_fs_evt_name/1 :: (ne_binary()) -> [ne_binary(),...] | [].
-convert_fs_evt_name(EvtName) ->
-    [ WhAppEvt || {FSEvt, WhAppEvt} <- ?SUPPORTED_APPLICATIONS, FSEvt =:= EvtName].
-
-%% given a Whistle Dialplan Application name, return the FS-equivalent event name
-%% A Whistle Dialplan Application name is 1-to-1 with the FS-equivalent
--spec convert_whistle_app_name/1 :: (ne_binary()) -> [ne_binary(),...] | [].
-convert_whistle_app_name(App) ->
-    [EvtName || {EvtName, AppName} <- ?SUPPORTED_APPLICATIONS, App =:= AppName].
 
 %%%===================================================================
 %%% Internal functions
@@ -446,8 +429,8 @@ validate(Prop, ReqH, Vals, Types) ->
 -spec validate_message/4 :: (proplist(), [ne_binary(),...] | [], proplist(), proplist()) -> boolean().
 validate_message(Prop, ReqH, Vals, Types) ->
     has_all(Prop, ReqH) andalso
-	values_check(Prop, Vals) andalso
-	type_check(Prop, Types).
+        values_check(Prop, Vals) andalso
+        type_check(Prop, Types).
 
 -spec build_message/3 :: (Prop, ReqHeaders, OptHeaders) -> {'ok', iolist()} | {'error', string()} when
       Prop :: proplist(),
@@ -455,15 +438,15 @@ validate_message(Prop, ReqH, Vals, Types) ->
       OptHeaders:: [binary(),...] | [].
 build_message(Prop, ReqH, OptH) ->
     case defaults(Prop) of
-	{error, _Reason}=Error ->
+        {error, _Reason}=Error ->
             ?LOG("API message does not have the default headers ~s: ~p"
                  ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
-	    Error;
-	HeadAndProp ->
-	    case build_message_specific_headers(HeadAndProp, ReqH, OptH) of
-		{ok, FinalHeaders} -> headers_to_json(FinalHeaders);
-		Err -> Err
-	    end
+            Error;
+        HeadAndProp ->
+            case build_message_specific_headers(HeadAndProp, ReqH, OptH) of
+                {ok, FinalHeaders} -> headers_to_json(FinalHeaders);
+                Err -> Err
+            end
     end.
 
 -spec build_message_specific_headers/3 :: (Msg, ReqHeaders, OptHeaders) -> {'ok', proplist()} | {'error', string()} when
@@ -472,13 +455,13 @@ build_message(Prop, ReqH, OptH) ->
       OptHeaders :: [binary(),...] | [].
 build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
-	{error, _Reason} = Error ->
+        {error, _Reason} = Error ->
             ?LOG("API message does not have the required headers ~s: ~p"
                  ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
-	    Error;
-	{Headers1, Prop1} ->
-	    {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
-	    {ok, Headers2}
+            Error;
+        {Headers1, Prop1} ->
+            {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
+            {ok, Headers2}
     end;
 build_message_specific_headers(Prop, ReqH, OptH) ->
     build_message_specific_headers({[], Prop}, ReqH, OptH).
@@ -489,13 +472,13 @@ build_message_specific_headers(Prop, ReqH, OptH) ->
       OptHeaders :: [binary(),...] | [].
 build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
-	{error, _Reason} = Error ->
+        {error, _Reason} = Error ->
             ?LOG("API message does not have the required headers ~s: ~p"
                  ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
-	    Error;
-	{Headers1, Prop1} ->
-	    {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
-	    headers_to_json(Headers2)
+            Error;
+        {Headers1, Prop1} ->
+            {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
+            headers_to_json(Headers2)
     end;
 build_message_specific(Prop, ReqH, OptH) ->
     build_message_specific({[], Prop}, ReqH, OptH).
@@ -504,9 +487,9 @@ build_message_specific(Prop, ReqH, OptH) ->
       HeadersProp :: proplist().
 headers_to_json(HeadersProp) ->
     try
-	{ok, mochijson2:encode({struct, HeadersProp})}
+        {ok, mochijson2:encode({struct, HeadersProp})}
     catch
-	_What:_Why -> {error, io_lib:format("WHISTLE TO_JSON ERROR(~p): ~p~n~p", [_What, _Why, HeadersProp])}
+        _What:_Why -> {error, io_lib:format("WHISTLE TO_JSON ERROR(~p): ~p~n~p", [_What, _Why, HeadersProp])}
     end.
 
 %% Checks Prop for all default headers, throws error if one is missing
@@ -517,10 +500,10 @@ defaults(Prop) ->
     defaults(Prop, []).
 defaults(Prop, Headers) ->
     case update_required_headers(Prop, ?DEFAULT_HEADERS, Headers) of
-	{error, _Reason} = Error ->
-	    Error;
-	{Headers1, Prop1} ->
-	    update_optional_headers(Prop1, ?OPTIONAL_DEFAULT_HEADERS, Headers1)
+        {error, _Reason} = Error ->
+            Error;
+        {Headers1, Prop1} ->
+            update_optional_headers(Prop1, ?OPTIONAL_DEFAULT_HEADERS, Headers1)
     end.
 
 -spec update_required_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} | {'error', string()} when
@@ -529,10 +512,10 @@ defaults(Prop, Headers) ->
       Headers :: proplist().
 update_required_headers(Prop, Fields, Headers) ->
     case has_all(Prop, Fields) of
-	true ->
-	    add_headers(Prop, Fields, Headers);
-	false ->
-	    {error, "All required headers not defined"}
+        true ->
+            add_headers(Prop, Fields, Headers);
+        false ->
+            {error, "All required headers not defined"}
     end.
 
 -spec update_optional_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} when
@@ -541,10 +524,10 @@ update_required_headers(Prop, Fields, Headers) ->
       Headers :: proplist().
 update_optional_headers(Prop, Fields, Headers) ->
     case has_any(Prop, Fields) of
-	true ->
-	    add_optional_headers(Prop, Fields, Headers);
-	false ->
-	    {Headers, Prop}
+        true ->
+            add_optional_headers(Prop, Fields, Headers);
+        false ->
+            {Headers, Prop}
     end.
 
 %% add [Header] from Prop to HeadProp
@@ -554,8 +537,8 @@ update_optional_headers(Prop, Fields, Headers) ->
       Headers :: proplist().
 add_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
-			{[{K, props:get_value(K, KVs)} | Headers1], props:delete(K, KVs)}
-		end, {Headers, Prop}, Fields).
+                        {[{K, props:get_value(K, KVs)} | Headers1], props:delete(K, KVs)}
+                end, {Headers, Prop}, Fields).
 
 -spec add_optional_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} when
       Prop :: proplist(),
@@ -563,25 +546,25 @@ add_headers(Prop, Fields, Headers) ->
       Headers :: proplist().
 add_optional_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
-			case props:get_value(K, KVs) of
-			    undefined ->
-				{Headers1, KVs};
-			    V ->
-				{[{K, V} | Headers1], props:delete(K, KVs)}
-			end
-		end, {Headers, Prop}, Fields).
+                        case props:get_value(K, KVs) of
+                            undefined ->
+                                {Headers1, KVs};
+                            V ->
+                                {[{K, V} | Headers1], props:delete(K, KVs)}
+                        end
+                end, {Headers, Prop}, Fields).
 
 %% Checks Prop against a list of required headers, returns true | false
 -spec has_all/2 :: (proplist(), [ne_binary(),...] | []) -> boolean().
 has_all(Prop, Headers) ->
     lists:all(fun(Header) ->
-		      case props:is_defined(Header, Prop) of
-			  true -> true;
-			  false ->
-			      ?LOG("failed to find key '~s' on API message", [Header]),
-			      false
-		      end
-	      end, Headers).
+                      case props:is_defined(Header, Prop) of
+                          true -> true;
+                          false ->
+                              ?LOG("failed to find key '~s' on API message", [Header]),
+                              false
+                      end
+              end, Headers).
 
 %% Checks Prop against a list of optional headers, returns true | false if at least one if found
 -spec has_any/2 :: (proplist(), [ne_binary(),...] | []) -> boolean().
@@ -592,46 +575,46 @@ has_any(Prop, Headers) ->
 %% and Event-Name). We don't care if a key is defined in Values and not in Prop; that is handled by has_all/1
 values_check(Prop, Values) ->
     lists:all(fun({Key, Vs}) when is_list(Vs) ->
-		      case props:get_value(Key, Prop) of
-			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
-			  V -> case lists:member(V, Vs) of
-				   true -> true;
-				   false ->
+                      case props:get_value(Key, Prop) of
+                          undefined -> true; % isn't defined in Prop, has_all will error if req'd
+                          V -> case lists:member(V, Vs) of
+                                   true -> true;
+                                   false ->
                                        ?LOG("API key '~s' value '~p' is not one of the values: ~p"
                                             ,[Key, V, Vs]),
-				       false
-			       end
-		      end;
-		 ({Key, V}) ->
-		      case props:get_value(Key, Prop) of
-			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
-			  V -> true;
-			  _Val ->
+                                       false
+                               end
+                      end;
+                 ({Key, V}) ->
+                      case props:get_value(Key, Prop) of
+                          undefined -> true; % isn't defined in Prop, has_all will error if req'd
+                          V -> true;
+                          _Val ->
                               ?LOG("API key '~s' value '~p' is not '~p'"
                                    ,[Key, _Val, V]),
-			      false
-		      end
-	      end, Values).
+                              false
+                      end
+              end, Values).
 
 %% checks Prop against a list of {Key, Fun}, running the value of Key through Fun, which returns a
 %% boolean.
 type_check(Prop, Types) ->
     lists:all(fun({Key, Fun}) ->
-		      case props:get_value(Key, Prop) of
-			  undefined -> true; % isn't defined in Prop, has_all will error if req'd
-			  Value -> try case Fun(Value) of % returns boolean
-					   true -> true;
-					   false ->
+                      case props:get_value(Key, Prop) of
+                          undefined -> true; % isn't defined in Prop, has_all will error if req'd
+                          Value -> try case Fun(Value) of % returns boolean
+                                           true -> true;
+                                           false ->
                                                ?LOG("API key '~s' value '~p' failed validation fun", [Key, Value]),
-					       false
-				       end
-				   catch 
+                                               false
+                                       end
+                                   catch 
                                        _:R -> 
                                            ?LOG("API key '~s' value '~p' caused validation fun exception: ~p", [Key, Value, R]),
                                            false
-				   end
-		      end
-	      end, Types).
+                                   end
+                      end
+              end, Types).
 
 %% EUNIT TESTING
 
@@ -640,9 +623,9 @@ type_check(Prop, Types) ->
 
 has_all_test() ->
     Prop = [{<<"k1">>, <<"v1">>}
-	    ,{<<"k2">>, <<"v2">>}
-	    ,{<<"k3">>, <<"v3">>}
-	    ],
+            ,{<<"k2">>, <<"v2">>}
+            ,{<<"k3">>, <<"v3">>}
+            ],
     Headers = [<<"k1">>, <<"k2">>, <<"k3">>],
     ?assertEqual(true, has_all(Prop, Headers)),
     ?assertEqual(false, has_all(Prop, [<<"k4">> | Headers])),
@@ -650,9 +633,9 @@ has_all_test() ->
 
 has_any_test() ->
     Prop = [{<<"k1">>, <<"v1">>}
-	    ,{<<"k2">>, <<"v2">>}
-	    ,{<<"k3">>, <<"v3">>}
-	   ],
+            ,{<<"k2">>, <<"v2">>}
+            ,{<<"k3">>, <<"v3">>}
+           ],
     Headers = [<<"k1">>, <<"k2">>, <<"k3">>],
     ?assertEqual(true, has_any(Prop, Headers)),
     ?assertEqual(false, has_any(Prop, [<<"k4">>])),

@@ -369,7 +369,7 @@ event_specific(_, <<"play_and_get_digits">>, Prop) ->
      ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Prop, <<"">>)}
     ];
 event_specific(_Evt, Application, Prop) ->
-    [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
+    [{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
      ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
     ].
 
@@ -389,8 +389,11 @@ should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, false) ->
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, false) ->
     ?LOG("suppressing intercept execute complete in favour the whistle masquerade of this event"),
     false;
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>, false) ->
+    ?LOG("suppressing execute_extension execute complete in favour the whistle masquerade of this event"),
+    false;
 should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
-    props:get_value(Application, ?SUPPORTED_APPLICATIONS) =/= undefined;
+    props:get_value(Application, ?FS_APPLICATION_NAMES) =/= undefined;
 should_publish(EventName, _, _) ->
     lists:member(EventName, ?FS_EVENTS).
 

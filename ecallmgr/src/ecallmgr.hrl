@@ -22,7 +22,7 @@
                      ,fs_uptime = 0 :: integer() % in microseconds
                     }).
 
--define(DEFAULT_DOMAIN, <<"trunks.2600hz.org">>).
+-define(DEFAULT_DOMAIN, <<"whistle.2600hz.org">>).
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, 10000). % 10 seconds
 -define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>]). %% list of dialplan Application-Names that can execute after a call has hung up
 
@@ -44,6 +44,10 @@
              ,{'load', \"mod_shout\"}
              ,{'load', \"mod_shell_stream\"}
 ]}.">>).
+
+%% We pass Application custom channel variables with our own prefix
+%% When an event occurs, we include all prefixed vars in the API message
+-define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 
 %% Call and Channel Vars that have a special prefix instead of the standard CHANNEL_VAR_PREFIX prefix
 %% [{AMQP-Header, FS-var-name}]
@@ -80,5 +84,57 @@
                                ,{<<"Presence-ID">>, <<"presence_id">>}
                                %% ,{<<"Hold-Media">>, <<"hold_music">>}
                               ]).
+
+%% [{FreeSWITCH-App-Name, Whistle-App-Name}]
+%% Dialplan-related applications
+%% convert from FS-named applications to Whistle-named Dialplan applications
+-define(FS_APPLICATION_NAMES, [{<<"playback">>, <<"play">>}
+                               ,{<<"hangup">>, <<"hangup">>}
+                               ,{<<"record">>, <<"record">>}
+                               ,{<<"playback">>, <<"tones">>}
+                               ,{<<"park">>, <<"park">>}
+                               ,{<<"set">>, <<"set">>}
+                               ,{<<"export">>, <<"set">>}
+                               ,{<<"say">>, <<"say">>}
+                               ,{<<"sleep">>, <<"sleep">>}
+                               ,{<<"respond">>, <<"respond">>}
+                               ,{<<"bridge">>, <<"bridge">>}
+                               ,{<<"signal_bridge">>, <<"bridge">>}
+                               ,{<<"answer">>, <<"answer">>}
+                               ,{<<"pre_answer">>, <<"progress">>}
+                               ,{<<"tone_detect">>, <<"tone_detect">>}
+                               ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
+                               ,{<<"respond">>, <<"respond">>}
+                               ,{<<"redirect">>, <<"redirect">>}
+                               ,{<<"conference">>, <<"conference">>}
+                               ,{<<"noop">>, <<"noop">>}
+                               ,{<<"execute_extension">>, <<"execute_extension">>}
+                              ]).
+
+-define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
+                        ,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
+                        ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>, <<"RECORD_STOP">>, <<"CHANNEL_CREATE">>
+                        %%                      ,<<"CUSTOM">>
+                        ,<<"CHANNEL_DESTROY">>, <<"CHANNEL_EXECUTE_ERROR">>, <<"CHANNEL_PROGRESS_MEDIA">> %% custom error
+                   ]).
+
+-define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>
+                              ,<<"FreeSWITCH-IPv4">>, <<"FreeSWITCH-IPv6">>, <<"Event-Date-Local">>
+                              ,<<"Event-Date-GMT">>, <<"Event-Date-Timestamp">>, <<"Event-Calling-File">>
+                              ,<<"Event-Calling-Function">>, <<"Event-Calling-Line-Number">>]).
+
+-define(FS_CHANNEL_STATES, [{<<"CS_NEW">>, <<"new">>}
+                            ,{<<"CS_INIT">>, <<"initialize">>}
+                            ,{<<"CS_ROUTING">>, <<"routing">>}
+                            ,{<<"CS_SOFT_EXECUTE">>, <<"soft_execute">>}
+                            ,{<<"CS_EXECUTE">>, <<"execute">>}
+                            ,{<<"CS_EXCHANGE_MEDIA">>, <<"exchange_media">>}
+                            ,{<<"CS_PARK">>, <<"park">>}
+                            ,{<<"CS_CONSUME_MEDIA">>, <<"consume_media">>}
+                            ,{<<"CS_HIBERNATE">>, <<"hibernate">>}
+                            ,{<<"CS_RESET">>, <<"reset">>}
+                            ,{<<"CS_HANGUP">>, <<"hangup">>}
+                            ,{<<"CS_REPORTING">>, <<"reporting">>}
+                            ,{<<"CS_DESTROY">>, <<"destroy">>}]).
 
 -define(DEFAULT_RESPONSE_CODE, <<"488">>).

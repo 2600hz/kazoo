@@ -13,6 +13,8 @@
 -export([channel_status_resp/1, channel_status_resp_v/1]).
 -export([call_status_req/1, call_status_req_v/1]).
 -export([call_status_resp/1, call_status_resp_v/1]).
+-export([channel_query_req/1, channel_query_req_v/1]).
+-export([channel_query_resp/1, channel_query_resp_v/1]).
 -export([cdr/1, cdr_v/1]).
 -export([callid_update/1, callid_update_v/1]).
 -export([control_transfer/1, control_transfer_v/1]).
@@ -34,7 +36,8 @@
 -export([publish_controller_queue/2, publish_controller_queue/3]).
 -export([publish_rate_req/1, publish_rate_req/2, publish_rate_req/3]).
 -export([publish_rate_resp/2, publish_rate_resp/3]).
-
+-export([publish_channel_query_req/2, publish_channel_query_req/3]).
+-export([publish_channel_query_resp/2, publish_channel_query_resp/3]).
 -export([optional_channel_headers/0, required_rate_resp_rate_headers/0]).
 
 -export([get_status/1]).
@@ -94,6 +97,25 @@
                                  ]).
 -define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
+%% Channel Query Request
+-define(CHANNEL_QUERY_REQ_HEADERS, []).
+-define(OPTIONAL_CHANNEL_QUERY_REQ_HEADERS, [<<"Call-Direction">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                                 ,<<"IP-Address">>, <<"Destination-Number">>, <<"Switch-Hostname">>
+                                            ]).
+-define(CHANNEL_QUERY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                                   ,{<<"Event-Name">>, <<"channel_query_req">>}
+                                   ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
+                                     ]).
+-define(CHANNEL_QUERY_REQ_TYPES, []).
+
+%% Channel Query Response
+-define(CHANNEL_QUERY_RESP_HEADERS, [<<"Active-Calls">>]).
+-define(OPTIONAL_CHANNEL_QUERY_RESP_HEADERS, []).
+-define(CHANNEL_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"call">>}
+                                    ,{<<"Event-Name">>, <<"channel_query_resp">>}
+                                   ]).
+-define(CHANNEL_QUERY_RESP_TYPES, []).
+
 %% Call CDR
 -define(CALL_CDR_HEADERS, [ <<"Call-ID">>]).
 -define(OPTIONAL_CALL_CDR_HEADERS, [<<"Hangup-Cause">>, <<"Handling-Server-Name">>, <<"Custom-Channel-Vars">>
@@ -116,7 +138,7 @@
 -define(CALL_ID_UPDATE_HEADERS, [<<"Call-ID">>, <<"Replaces-Call-ID">>, <<"Control-Queue">>]).
 -define(OPTIONAL_CALL_ID_UPDATE_HEADERS, []).
 -define(CALL_ID_UPDATE_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                  ,{<<"Event-Name">>, <<"call_id_update">>}
+                                ,{<<"Event-Name">>, <<"call_id_update">>}
                                  ]).
 -define(CALL_ID_UPDATE_TYPES, []).
 
@@ -124,7 +146,7 @@
 -define(CALL_CONTROL_TRANSFER_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_CALL_CONTROL_TRANSFER_HEADERS, []).
 -define(CALL_CONTROL_TRANSFER_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                  ,{<<"Event-Name">>, <<"control_transfer">>}
+                                       ,{<<"Event-Name">>, <<"control_transfer">>}
                                  ]).
 -define(CALL_CONTROL_TRANSFER_TYPES, []).
 
@@ -141,21 +163,22 @@
 
 %% AMQP fields for Rating Request
 -define(RATING_REQ_HEADERS, [<<"To-DID">>]).
--define(OPTIONAL_RATING_REQ_HEADERS, [<<"Call-ID">>, <<"From-DID">>, <<"Account-ID">>, <<"Options">>, <<"Direction">>]).
+-define(OPTIONAL_RATING_REQ_HEADERS, [<<"Call-ID">>, <<"Account-ID">>, <<"From-DID">>
+                                          ,<<"Options">>, <<"Direction">>, <<"Control-Queue">>]).
 -define(RATING_REQ_VALUES, [{<<"Event-Category">>, <<"call_mgmt">>}
-			    ,{<<"Event-Name">>, <<"rating_req">>}
-			    ,{<<"Direction">>, [<<"inbound">>, <<"outbound">>]}
-			   ]).
+                            ,{<<"Event-Name">>, <<"rating_req">>}
+                            ,{<<"Direction">>, [<<"inbound">>, <<"outbound">>]}
+                           ]).
 -define(RATING_REQ_TYPES, [
-			   {<<"Options">>, fun is_list/1}
-			  ]).
+                           {<<"Options">>, fun is_list/1}
+                          ]).
 
 %% AMQP fields for Rating Response
 -define(RATING_RESP_HEADERS, [<<"Rates">>]).
 -define(OPTIONAL_RATING_RESP_HEADERS, []).
 -define(RATING_RESP_VALUES, [{<<"Event-Category">>, <<"call_mgmt">>}
-			     ,{<<"Event-Name">>, <<"rating_resp">>}
-			    ]).
+                             ,{<<"Event-Name">>, <<"rating_resp">>}
+                            ]).
 -define(RATING_RESP_TYPES, []).
 
 -define(RATING_RESP_RATE_HEADERS, [<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>, <<"Base-Cost">>]).
@@ -269,6 +292,48 @@ call_status_resp_v(Prop) when is_list(Prop) ->
 call_status_resp_v(JObj) ->
     call_status_resp_v(wh_json:to_proplist(JObj)).
 
+
+%%--------------------------------------------------------------------
+%% @doc Channel Query Request - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec channel_query_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+channel_query_req(Prop) when is_list(Prop) ->    
+    case channel_query_req_v(Prop) of
+        true ->
+            wh_api:build_message(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for channel_query_req_req"}
+    end;
+channel_query_req(JObj) ->
+    channel_query_req(wh_json:to_proplist(JObj)).
+
+-spec channel_query_req_v/1 :: (api_terms()) -> boolean().
+channel_query_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?CHANNEL_QUERY_REQ_VALUES, ?CHANNEL_QUERY_REQ_TYPES);
+channel_query_req_v(JObj) ->
+    channel_query_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Channel Query Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec channel_query_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+channel_query_resp(Prop) when is_list(Prop) ->
+    case channel_query_resp_v(Prop) of
+        true -> wh_api:build_message(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?OPTIONAL_CHANNEL_QUERY_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for resource_resp"}
+    end;
+channel_query_resp(JObj) ->
+    channel_query_resp(wh_json:to_proplist(JObj)).
+
+-spec channel_query_resp_v/1 :: (api_terms()) -> boolean().
+channel_query_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?CHANNEL_QUERY_RESP_VALUES, ?CHANNEL_QUERY_RESP_TYPES);
+channel_query_resp_v(JObj) ->
+    channel_query_resp_v(wh_json:to_proplist(JObj)).
+
 %%--------------------------------------------------------------------
 %% @doc Format a CDR for a call
 %% Takes proplist, creates JSON string or error
@@ -357,8 +422,8 @@ controller_queue_v(JObj) ->
 -spec rate_req/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
 rate_req(Prop) when is_list(Prop) ->
     case rate_req_v(Prop) of
-	true -> wh_api:build_message(Prop, ?RATING_REQ_HEADERS, ?OPTIONAL_RATING_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for rate_req"}
+        true -> wh_api:build_message(Prop, ?RATING_REQ_HEADERS, ?OPTIONAL_RATING_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for rate_req"}
     end;
 rate_req(JObj) ->
     rate_req(wh_json:to_proplist(JObj)).
@@ -377,15 +442,15 @@ rate_req_v(JObj) ->
 -spec rate_resp/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
 rate_resp(Prop) when is_list(Prop) ->
     Rates = [ begin
-		  {ok, RateProp} = rate_resp_rate(Rate),
-		  wh_json:from_list(RateProp)
-	      end || Rate <- props:get_value(<<"Rates">>, Prop, [])
-	    ],
+                  {ok, RateProp} = rate_resp_rate(Rate),
+                  wh_json:from_list(RateProp)
+              end || Rate <- props:get_value(<<"Rates">>, Prop, [])
+            ],
     Prop1 = [{<<"Rates">>, Rates} | props:delete(<<"Rates">>, Prop)],
 
     case rate_resp_v(Prop1) of
-	true -> wh_api:build_message(Prop1, ?RATING_RESP_HEADERS, ?OPTIONAL_RATING_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for rate_resp"}
+        true -> wh_api:build_message(Prop1, ?RATING_RESP_HEADERS, ?OPTIONAL_RATING_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for rate_resp"}
     end;
 rate_resp(JObj) ->
     rate_resp(wh_json:to_proplist(JObj)).
@@ -393,7 +458,7 @@ rate_resp(JObj) ->
 -spec rate_resp_v/1 :: (proplist() | json_object()) -> boolean().
 rate_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?RATING_RESP_HEADERS, ?RATING_RESP_VALUES, ?RATING_RESP_TYPES) andalso
-	lists:all(fun rate_resp_rate_v/1, props:get_value(<<"Rates">>, Prop, []));
+        lists:all(fun rate_resp_rate_v/1, props:get_value(<<"Rates">>, Prop, []));
 rate_resp_v(JObj) ->
     rate_resp_v(wh_json:to_proplist(JObj)).
 
@@ -405,8 +470,8 @@ rate_resp_v(JObj) ->
 -spec rate_resp_rate/1 :: (proplist() | json_object()) -> {'ok', proplist()} | {'error', string()}.
 rate_resp_rate(Prop) when is_list(Prop) ->
     case rate_resp_rate_v(Prop) of
-	true -> wh_api:build_message_specific_headers(Prop, ?RATING_RESP_RATE_HEADERS, ?OPTIONAL_RATING_RESP_RATE_HEADERS);
-	false -> {error, "Proplist failed validation for rate_resp_rate"}
+        true -> wh_api:build_message_specific_headers(Prop, ?RATING_RESP_RATE_HEADERS, ?OPTIONAL_RATING_RESP_RATE_HEADERS);
+        false -> {error, "Proplist failed validation for rate_resp_rate"}
     end;
 rate_resp_rate(JObj) ->
     rate_resp_rate(wh_json:to_proplist(JObj)).
@@ -440,10 +505,10 @@ bind_q(Q, [cdr|T], CallID) ->
 bind_q(Q, [rating|T], CallID) ->
     amqp_util:bind_q_to_callmgr(Q, rating_key(CallID)),
     bind_q(Q, T, CallID);
-bind_q(Q, [status|T], CallID) ->
+bind_q(Q, [status_req|T], CallID) ->
     amqp_util:bind_q_to_callevt(Q, CallID, status_req),
     bind_q(Q, T, CallID);
-bind_q(Q, [switch_lookups|T], CallID) ->
+bind_q(Q, [query_req|T], CallID) ->
     amqp_util:bind_q_to_resource(Q, ?KEY_CHANNEL_QUERY),
     bind_q(Q, T, CallID);
 bind_q(Q, [_|T], CallID) ->
@@ -550,8 +615,8 @@ publish_controller_queue(TargetQ, JObj, ContentType) ->
 -spec publish_rate_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_rate_req(API) ->
     case is_list(API) of
-	true -> publish_rate_req(props:get_value(<<"Call-ID">>, API, <<"0000000000">>), API);
-	false -> publish_rate_req(wh_json:get_value(<<"Call-ID">>, API, <<"0000000000">>), API)
+        true -> publish_rate_req(props:get_value(<<"Call-ID">>, API, <<"0000000000">>), API);
+        false -> publish_rate_req(wh_json:get_value(<<"Call-ID">>, API, <<"0000000000">>), API)
     end.
 publish_rate_req(CallID, API) ->
     publish_rate_req(CallID, API, ?DEFAULT_CONTENT_TYPE).
@@ -566,6 +631,23 @@ publish_rate_resp(Queue, JObj) ->
 publish_rate_resp(Queue, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?RATING_RESP_VALUES, fun ?MODULE:rate_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+-spec publish_channel_query_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_channel_query_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_channel_query_req(CallID, JObj) ->
+    publish_channel_query_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_channel_query_req(CallID, Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?CHANNEL_QUERY_REQ_VALUES, fun ?MODULE:channel_query_req/1),
+    amqp_util:callevt_publish(CallID, Payload, ContentType).
+
+-spec publish_channel_query_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_channel_query_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_channel_query_resp(RespQ, JObj) ->
+    
+    publish_channel_query_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_channel_query_resp(RespQ, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?CHANNEL_QUERY_RESP_VALUES, fun ?MODULE:channel_query_resp/1),
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec get_status/1 :: (api_terms()) -> ne_binary().
 get_status(API) when is_list(API) ->
