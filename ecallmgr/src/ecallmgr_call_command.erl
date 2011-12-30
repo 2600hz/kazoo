@@ -1,12 +1,9 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010 VoIP INC
 %%% @doc
 %%% Execute call commands
 %%% @end
-%%% Created : 27 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
-
 -module(ecallmgr_call_command).
 
 -export([exec_cmd/4]).
@@ -17,11 +14,7 @@
 -type io_device() :: pid() | fd().
 -type file_stream_state() :: {'undefined' | io_device(), binary()}.
 
--spec exec_cmd/4 :: (Node, UUID, JObj, ControlPID) -> 'ok' | 'timeout' | {'error', 'invalid_callid' | 'failed'} when
-      Node :: atom(),
-      UUID :: binary(),
-      JObj :: json_object(),
-      ControlPID :: pid().
+-spec exec_cmd/4 :: (atom(), ne_binary(), json_object(), pid()) -> 'ok' | 'timeout' | {'error', 'invalid_callid' | 'failed'}.
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of
@@ -245,12 +238,14 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                 _Else ->
                                     "|"
                             end,
+
             KeyedEPs = [{[wh_json:get_value(<<"Invite-Format">>, Endpoint)
                          ,wh_json:get_value(<<"To-User">>, Endpoint)
                          ,wh_json:get_value(<<"To-Realm">>, Endpoint)
                          ,wh_json:get_value(<<"To-DID">>, Endpoint)
                          ,wh_json:get_value(<<"Route">>, Endpoint)], Endpoint}
                        || Endpoint <- Endpoints],
+
             S = self(),
             DialStrings = [D || D <- [receive {Pid, DS} -> DS end
                                       || Pid <- [spawn(fun() ->
@@ -259,6 +254,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                                        end)
                                                  || {_, EP} <- props:unique(KeyedEPs)]
                                      ], D =/= ""],
+
             Generators = [fun(DP) ->
                                   case wh_json:get_integer_value(<<"Timeout">>, JObj) of
                                       undefined ->
@@ -267,72 +263,80 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                           ?LOG("bridge will be attempted for ~p seconds", [TO]),
                                           [{"application", "set call_timeout=" ++ wh_util:to_list(TO)}|DP]
                                   end
-                          end,
-                          fun(DP) ->
-                                  case wh_json:get_value(<<"Ringback">>, JObj) of
-                                      undefined ->
-                                          {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)"),
-                                          [{"application", "set ringback=" ++ wh_util:to_list(RBSetting)}|DP];
-                                      Ringback ->
+                          end
+                          ,fun(DP) ->
+                                   case wh_json:get_value(<<"Ringback">>, JObj) of
+                                       undefined ->
+                                           {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)"),
+                                           [{"application", "set ringback=" ++ wh_util:to_list(RBSetting)}|DP];
+                                       Ringback ->
                                           Stream = wh_util:to_list(ecallmgr_util:media_path(Ringback, extant, UUID)),
-                                          ?LOG("bridge has custom ringback: ~s", [Stream]),
-                                          [{"application", "set ringback=" ++ Stream},
-                                           {"application", "set instant_ringback=true"}|DP]
-                                  end
-                          end,
-                          fun(DP) ->
-                                  case wh_json:get_value(<<"Hold-Media">>, JObj) of
-                                      undefined ->
-                                          case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
-                                              undefined -> DP;
-                                              Media ->
-                                                  Stream = wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID)),
-                                                  ?LOG("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
-                                                  [{"application", "set hold_music=" ++ Stream}|DP]
-                                          end;
-                                      Media ->
-                                          Stream = wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID)),
-                                          ?LOG("bridge has custom music-on-hold: ~s", [Stream]),
-                                          [{"application", "set hold_music=" ++ Stream}|DP]
-                                  end
-                          end,
-                          fun(DP) ->
-                                  case wh_json:get_value(<<"Media">>, JObj) of
-                                      <<"process">> ->
-                                          ?LOG("bridge will process media through host switch"),
-                                          [{"application", "set bypass_media=false"}|DP];
-                                      <<"bypass">> ->
-                                          ?LOG("bridge will connect the media peer-to-peer"),
-                                          [{"application", "set bypass_media=true"}|DP];
-                                      _ ->
-                                          DP
-                                  end
-                          end,
-                          fun(DP) ->
-                                  case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
-                                      {struct, Props} ->
-                                          [{"application", wh_util:to_list(<<"set ", Var/binary, "=", (wh_util:to_binary(V))/binary>>)}
+                                           ?LOG("bridge has custom ringback: ~s", [Stream]),
+                                           [{"application", "set ringback=" ++ Stream},
+                                            {"application", "set instant_ringback=true"}|DP]
+                                   end
+                           end
+                          ,fun(DP) ->
+                                   case wh_json:get_value(<<"Hold-Media">>, JObj) of
+                                       undefined ->
+                                           case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
+                                               undefined -> DP;
+                                               Media ->
+                                                   Stream = wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID)),
+                                                   ?LOG("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
+                                                   [{"application", "set hold_music=" ++ Stream}|DP]
+                                           end;
+                                       Media ->
+                                           Stream = wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID)),
+                                           ?LOG("bridge has custom music-on-hold: ~s", [Stream]),
+                                           [{"application", "set hold_music=" ++ Stream}|DP]
+                                   end
+                           end
+                          ,fun(DP) ->
+                                   case wh_json:get_value(<<"Media">>, JObj) of
+                                       <<"process">> ->
+                                           ?LOG("bridge will process media through host switch"),
+                                           [{"application", "set bypass_media=false"}|DP];
+                                       <<"bypass">> ->
+                                           ?LOG("bridge will connect the media peer-to-peer"),
+                                           [{"application", "set bypass_media=true"}|DP];
+                                       _ ->
+                                           DP
+                                   end
+                           end
+                          ,fun(DP) ->
+                                   case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
+                                       {struct, Props} ->
+                                           [{"application", wh_util:to_list(<<"set ", Var/binary, "=", (wh_util:to_binary(V))/binary>>)}
                                             || {K, V} <- Props,
                                                (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= undefined] ++ DP;
-                                      _ ->
-                                          DP
-                                  end
-                          end,
-                         fun(DP) ->
-                                 [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
-                                  ,{"application", "set continue_on_fail=true"}|DP]
-                         end,
-                         fun(DP) ->
-                                 BridgeCmd = lists:flatten(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)])
-                                     ++ string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
-                                 [{"application", BridgeCmd}|DP]
-                         end],
+                                       _ ->
+                                           DP
+                                   end
+                           end
+                          ,fun(DP) ->
+                                   [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
+                                    ,{"application", "set continue_on_fail=true"}|DP]
+                           end
+                          ,fun(DP) ->
+                                   BridgeCmd = lists:flatten(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)])
+                                       ++ string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
+                                   [{"application", BridgeCmd}|DP]
+                           end
+                          ,fun(DP) ->
+                                   [{"application", create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
+                                    ,{"application", "park "}
+                                    |DP
+                                   ]
+                           end
+                         ],
+
             case DialStrings of
                 [] ->
                     {error, <<"registrar returned no endpoints">>};
                 _ ->
                     ?LOG("creating bridge dialplan"),
-                    {<<"bridge">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
+                    {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
             end
     end;
 
@@ -347,30 +351,82 @@ get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
                                       true ->
                                           [{"application", "set intercept_unbridged_only=true"}|DP]
                                   end
-                          end,
-                          fun(DP) ->
-                                  case wh_json:is_true(<<"Unanswered-Only">>, JObj) of
-                                      false ->
-                                          DP;
+                          end
+                          ,fun(DP) ->
+                                   case wh_json:is_true(<<"Unanswered-Only">>, JObj) of
+                                       false ->
+                                           DP;
+                                       true ->
+                                           [{"application", "set intercept_unanswered_only=true"}|DP]
+                                   end
+                           end
+                          ,fun(DP) ->
+                                   [{"application", "export failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
+                                    ,{"application", "export uuid_bridge_continue_on_cancel=true"}
+                                    ,{"application", "export continue_on_fail=true"}|DP]
+                           end
+                          ,fun(DP) ->
+                                   Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
+                                   Arg = case wh_json:is_true(<<"Other-Leg">>, JObj) of
+                                             true -> <<"-bleg ", Target/binary>>;
+                                             false -> Target
+                                         end,
+                                   [{"application", "intercept " ++ wh_util:to_list(Arg)}|DP]
+                           end
+                          ,fun(DP) ->
+                                   [{"application", create_masquerade_event(<<"intercept">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
+                                    ,{"application", "park "}
+                                    |DP
+                                   ]
+                           end
+                         ],
+            {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
+    end;
+
+get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
+    case wapi_dialplan:execute_extension_v(JObj) of
+        false -> {'error', <<"execute extension failed to execute as JObj did not validate">>};
+        true ->
+            Generators = [fun(DP) ->
+                                  case wh_json:is_true(<<"Reset">>, JObj) of
+                                      false -> ok;
                                       true ->
-                                          [{"application", "set intercept_unanswered_only=true"}|DP]
+                                          case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
+                                              {'ok', Result} -> 
+                                                  Props = ecallmgr_util:eventstr_to_proplist(Result),
+                                                  lists:foldr(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, _}, Acc) -> 
+                                                                      [{"application", "unset " 
+                                                                        ++ wh_util:to_list(<<?CHANNEL_VAR_PREFIX, Key/binary>>)}|Acc];
+                                                                   ({<<?CHANNEL_VAR_PREFIX, _/binary>> = Key, _}, Acc) -> 
+                                                                      [{"application", "unset " ++ wh_util:to_list(Key)}|Acc];
+                                                                   (_, Acc) -> Acc
+                                                                end, DP, Props);
+                                              _Error -> 
+                                                  ?LOG(UUID, "failed to get result from uuid_dump", []),
+                                                  DP
+                                          end
                                   end
-                          end,
-                          fun(DP) ->
-                                  [{"application", "export failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
-                                   ,{"application", "export uuid_bridge_continue_on_cancel=true"}
-                                   ,{"application", "export continue_on_fail=true"}|DP]
-                          end,
-                          fun(DP) ->
-                                  Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
-                                  Arg = case wh_json:is_true(<<"Other-Leg">>, JObj) of
-                                            true -> <<"-bleg ", Target/binary>>;
-                                            false -> Target
-                                        end,
-                                  [{"application", "intercept " ++ wh_util:to_list(Arg)}|DP]
-                          end],
-            Dialplan = lists:foldr(fun(F, DP) -> F(DP) end, [], Generators),
-            {<<"intercept">>, Dialplan}
+                          end
+                          ,fun(DP) ->
+                                   case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT) of 
+                                       ?EMPTY_JSON_OBJECT -> DP;
+                                       CCVs ->
+                                           ChannelVars = wh_json:to_proplist(CCVs),
+                                           [{"application", "set " ++ wh_util:to_list(get_fs_kv(K, V, UUID))} 
+                                            || {K, V} <- ChannelVars] ++ DP
+                                   end
+                           end
+                          ,fun(DP) ->
+                                   [{"application", "execute_extension " ++ wh_json:get_string_value(<<"Extension">>, JObj)}|DP]
+                           end
+                          ,fun(DP) ->
+                                   [{"application", create_masquerade_event(<<"execute_extension">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
+                                    ,{"application", "park "}
+                                    |DP
+                                   ]
+                           end
+                          ],
+            {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
@@ -388,14 +444,22 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
             HitsNeeded = wh_json:get_value(<<"Hits-Needed">>, JObj, <<"1">>),
 
             SuccessJObj = case wh_json:get_value(<<"On-Success">>, JObj, []) of
-                              [] -> [{<<"Application-Name">>, <<"park">>} | wapi_dialplan:extract_defaults(JObj)]; % default to parking the call
-                              AppJObj -> wh_json:from_list(AppJObj ++ wapi_dialplan:extract_defaults(JObj))
+                              %% default to parking the call
+                              [] -> 
+                                  [{<<"Application-Name">>, <<"park">>} | wapi_dialplan:extract_defaults(JObj)];
+                              AppJObj -> 
+                                  wh_json:from_list(AppJObj ++ wapi_dialplan:extract_defaults(JObj))
                           end,
-            {SuccessApp, SuccessAppData} = case get_fs_app(Node, UUID, SuccessJObj, wh_json:get_value(<<"Application-Name">>, SuccessJObj)) of
-                                               {'error', _Str} -> {<<"park">>, <<>>}; % default to park if passed app isn't right
-                                               {_, _}=Success -> Success
-                                           end,
-            Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessAppData, " ", HitsNeeded]),
+            
+            {SuccessApp, SuccessData} = case get_fs_app(Node, UUID, SuccessJObj, wh_json:get_value(<<"Application-Name">>, SuccessJObj)) of 
+                                            %% default to park if passed app isn't right
+                                            {'error', _Str} -> 
+                                                {<<"park">>, <<>>};
+                                            {_, _}=Success -> 
+                                                Success
+                                        end,
+
+            Data = list_to_binary([Key, " ", FreqsStr, " ", Flags, " ", Timeout, " ", SuccessApp, " ", SuccessData, " ", HitsNeeded]),
             {<<"tone_detect">>, Data}
     end;
 
@@ -478,47 +542,38 @@ get_fs_kv(Key, Val, _) ->
 %% send the SendMsg proplist to the freeswitch node
 %% @end
 %%--------------------------------------------------------------------
-
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
--spec send_cmd/4 :: (Node, UUID, AppName, Args) -> send_cmd_ret() when
-      Node :: atom(),
-      UUID :: binary(),
-      AppName :: binary() | string(),
-      Args :: binary() | string() | proplist().
+-spec send_cmd/4 :: (atom(), ne_binary(), ne_binary() | string(), ne_binary() | string()) -> send_cmd_ret().
 send_cmd(Node, UUID, <<"hangup">>, _) ->
     ?LOG("terminate call on node ~s", [Node]),
     _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
     freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
-send_cmd(Node, UUID, <<"intercept">>, Args) ->
-    Dialplan = Args ++ [{"application", "event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade,whistle_event_name=CHANNEL_EXECUTE_COMPLETE,whistle_application_name=intercept"}
-                        ,{"application", "park  "}],
+send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
+    io:format("~p~n", [Dialplan]),
     _ = [begin
-             App = lists:takewhile(fun($ ) -> false; (_) -> true end, V),
-             Data = tl(lists:dropwhile(fun($ ) -> false; (_) -> true end, V)),
-             _ = ecallmgr_util:fs_log(Node, "whistle queing command in 'xferext' extension: ~s ~s", [App, Data]),
-             ?LOG("building xferext on node ~s: ~s(~s)", [Node, App, Data])
+             _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),
+             ?LOG("building xferext on node ~s: ~s", [Node, V])
          end || {_, V} <- Dialplan],
-    'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ Dialplan),
-    ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
-send_cmd(Node, UUID, <<"bridge">>, Args) ->
-    Dialplan = Args ++ [{"application", "event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade,whistle_event_name=CHANNEL_EXECUTE_COMPLETE,whistle_application_name=bridge"}
-                        ,{"application", "park  "}],
-    _ = [begin
-             App = lists:takewhile(fun($ ) -> false; (_) -> true end, V),
-             Data = tl(lists:dropwhile(fun($ ) -> false; (_) -> true end, V)),
-             _ = ecallmgr_util:fs_log(Node, "whistle queing command in 'xferext' extension: ~s ~s", [App, Data]),
-             ?LOG("building xferext on node ~s: ~s(~s)", [Node, App, Data])
-         end || {_, V} <- Dialplan],
-    'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ Dialplan),
+    ok = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ Dialplan),
     ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
 send_cmd(Node, UUID, AppName, Args) ->
     ?LOG("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
     _ = ecallmgr_util:fs_log(Node, "whistle executing ~s ~s", [AppName, Args]),
-    freeswitch:sendmsg(Node, UUID, [
-                                    {"call-command", "execute"}
+    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                     ,{"execute-app-name", wh_util:to_list(AppName)}
                                     ,{"execute-app-arg", wh_util:to_list(Args)}
                                    ]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec create_masquerade_event/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+create_masquerade_event(Application, EventName) ->
+    wh_util:to_list(<<"event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade"
+                      ,",whistle_event_name=", EventName/binary
+                      ,",whistle_application_name=", Application/binary>>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -528,8 +583,7 @@ send_cmd(Node, UUID, AppName, Args) ->
 %%                              ,origination_caller_id_number=Num]Endpoint)
 %% @end
 %%--------------------------------------------------------------------
--spec get_bridge_endpoint/1 :: (JObj) -> string() when
-      JObj :: json_object().
+-spec get_bridge_endpoint/1 :: (json_object()) -> string().
 get_bridge_endpoint(JObj) ->
     case ecallmgr_fs_xml:build_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
         {'error', 'timeout'} ->
@@ -793,3 +847,21 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                    CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
                end,
     wapi_call:publish_event(UUID, EvtProp2).
+
+-spec reset_custom_channel_vars/2 :: (atom(), ne_binary()) -> ok | error.
+reset_custom_channel_vars(Node, CallId) ->
+    case freeswitch:api(Node, uuid_dump, wh_util:to_list(CallId)) of
+        {'ok', Result} -> 
+            Props = ecallmgr_util:eventstr_to_proplist(Result),
+            lists:foreach(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, _}) -> 
+                                  send_cmd(Node, CallId, "unset", <<?CHANNEL_VAR_PREFIX, Key/binary>>);
+                             ({<<?CHANNEL_VAR_PREFIX, _/binary>> = Key, _}) -> 
+                                  send_cmd(Node, CallId, "unset", Key);
+                             (_) -> ok
+                          end, Props),
+            ok;
+        _Error -> 
+            ?LOG(CallId, "failed to get result from uuid_dump", []),
+            error
+    end.
+    
