@@ -553,7 +553,6 @@ send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
                    ?LOG("building xferext on node ~s: ~s", [Node, V]),
                    {wh_util:to_list(K), wh_util:to_list(V)}    
                end || {K, V} <- Dialplan],
-    io:format("~p~n", [XferExt]),    
     ok = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ XferExt),
     ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
 send_cmd(Node, UUID, AppName, Args) ->
