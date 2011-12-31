@@ -20,28 +20,31 @@
 %% retrieves the sip address for the 'to' field
 -spec get_sip_to/1 :: (proplist()) -> ne_binary().
 get_sip_to(Prop) ->
-    list_to_binary([props:get_value(<<"sip_to_user">>, Prop, props:get_value(<<"variable_sip_to_user">>, Prop, "nouser"))
-                    , "@"
-                    , props:get_value(<<"sip_to_host">>, Prop, props:get_value(<<"variable_sip_to_host">>, Prop, ?DEFAULT_DOMAIN))
+    list_to_binary([props:get_value(<<"sip_to_user">>, Prop
+                                    ,props:get_value(<<"variable_sip_to_user">>, Prop, "nouser"))
+                    ,"@"
+                    ,props:get_value(<<"sip_to_host">>, Prop
+                                      ,props:get_value(<<"variable_sip_to_host">>, Prop, ?DEFAULT_DOMAIN))
                    ]).
 
 %% retrieves the sip address for the 'from' field
 -spec get_sip_from/1 :: (proplist()) -> ne_binary().
 get_sip_from(Prop) ->
-    list_to_binary([
-                    props:get_value(<<"sip_from_user">>, Prop, props:get_value(<<"variable_sip_from_user">>, Prop, "nouser"))
+    list_to_binary([props:get_value(<<"sip_from_user">>, Prop
+                                    ,props:get_value(<<"variable_sip_from_user">>, Prop, "nouser"))
                     ,"@"
-                    , props:get_value(<<"sip_from_host">>, Prop, props:get_value(<<"variable_sip_from_host">>, Prop, ?DEFAULT_DOMAIN))
+                    ,props:get_value(<<"sip_from_host">>, Prop
+                                      ,props:get_value(<<"variable_sip_from_host">>, Prop, ?DEFAULT_DOMAIN))
                    ]).
 
 %% retrieves the sip address for the 'request' field
 -spec get_sip_request/1 :: (proplist()) -> ne_binary().
 get_sip_request(Prop) ->
-    list_to_binary([
-                    props:get_value(<<"Caller-Destination-Number">>, Prop, props:get_value(<<"variable_sip_req_user">>, Prop, "nouser"))
+    list_to_binary([props:get_value(<<"Hunt-Destination-Number">>, Prop                    
+                                    ,props:get_value(<<"Caller-Destination-Number">>, Prop, "nouser"))
                     ,"@"
-                    ,props:get_value(<<"variable_sip_auth_realm">>, Prop
-                               ,props:get_value( list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"]), Prop, ?DEFAULT_DOMAIN))
+                    ,props:get_value(list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"]), Prop
+                                                 ,props:get_value(<<"variable_sip_auth_realm">>, Prop, ?DEFAULT_DOMAIN))
                    ]).
 
 -spec get_orig_ip/1 :: (proplist()) -> ne_binary().
