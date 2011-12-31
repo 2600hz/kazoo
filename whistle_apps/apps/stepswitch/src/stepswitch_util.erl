@@ -24,10 +24,10 @@ lookup_number(Number) ->
     Num = wh_util:to_e164(wh_util:to_binary(Number)),
     case lookup_account_by_number(Num) of
         {ok, AccountId, _}=Ok ->
-            ?LOG("found number is associated to account ~s", [AccountId]),
+            ?LOG("~s is associated with account ~s", [Num, AccountId]),
             Ok;
         {error, Reason}=E ->
-            ?LOG("number is not associated to any account, ~w", [Reason]),
+            ?LOG("~s is not associated with any account, ~p", [Num, Reason]),
             E
     end.
 
@@ -42,7 +42,6 @@ lookup_number(Number) ->
 -spec lookup_account_by_number/2 :: (ne_binary(), pid()) -> {'ok', ne_binary(), boolean()} |
                                                             {'error', atom()}.
 lookup_account_by_number(Number) ->
-    ?LOG("lookup account for ~s", [Number]),
     {ok, Cache} = stepswitch_sup:cache_proc(),
     lookup_account_by_number(Number, Cache).
 lookup_account_by_number(Number, Cache) when is_pid(Cache) ->

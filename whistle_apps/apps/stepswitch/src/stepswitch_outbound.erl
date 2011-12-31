@@ -26,8 +26,23 @@ handle_req(JObj, Props) ->
     ?LOG_START("received outbound request"),
     <<"audio">> = wh_json:get_value(<<"Resource-Type">>, JObj),
     Number = wh_json:get_value(<<"To-DID">>, JObj),
-    ?LOG("outbound request to ~s for account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
+    ?LOG("outbound request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
     CtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj),
+    Result = attempt_to_fullfill_req(Number, CtrlQ, JObj, Props),
+    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
+                                      ,response(Result, JObj)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec attempt_to_fullfill_req/4 :: (ne_binary(), ne_binary(), json_object(), proplist()) -> {error, json_object()}
+                                                                                                | {error, timeout}
+                                                                                                | {ok, json_object()}
+                                                                                                | {fail, json_object()}.
+attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
     Result = case stepswitch_util:lookup_number(Number) of
                  {ok, AccountId, false} ->
                      execute_local_extension(Number, AccountId, CtrlQ, JObj);
@@ -37,8 +52,13 @@ handle_req(JObj, Props) ->
                      {Endpoints, Emergency} = find_endpoints(Number, Flags, Resources),
                      bridge_to_endpoints(Endpoints, Emergency, CtrlQ, JObj)
              end,
-    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
-                                      ,response(Result, JObj)).
+    case {Result, correct_shortdial(JObj)} of
+        {{error, no_resources}, undefined} -> Result;
+        {{error, no_resources}, CorrectedNumber} -> 
+            ?LOG("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
+            attempt_to_fullfill_req(CorrectedNumber, CtrlQ, JObj, Props);
+        _Else -> Result
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -50,10 +70,11 @@ handle_req(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bridge_to_endpoints/4 :: (proplist(), boolean(), ne_binary(), json_object()) -> ok.
+
 bridge_to_endpoints([], _, _, _) ->
     {error, no_resources};
 bridge_to_endpoints(Endpoints, Emergency, CtrlQ, JObj) ->
-    ?LOG("number not found in another account...to the cloud!"),
+    ?LOG("found resources that handle the number...to the cloud!"),
     Q = create_queue(JObj),
     CCVs = wh_json:set_value(<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)
                              ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
@@ -108,6 +129,8 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Caller-ID-Number">>, CIDNum}
             ,{<<"Caller-ID-Name">>, CIDName}
+            ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
+            ,{<<"Callee-ID-Name">>, get_account_name(Number, AccountId)}
            ],
     ?LOG("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Command = [{<<"Call-ID">>, get(callid)}
@@ -264,6 +287,7 @@ get_event_type(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec find_endpoints/3 :: (ne_binary, [] | [ne_binary(),...], endpoints()) -> {proplist(), boolean()}.
+
 find_endpoints(Number, Flags, Resources) ->
     Endpoints = case Flags of
                     'undefined' -> 
@@ -323,12 +347,13 @@ build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], Delay, Acc0) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec build_endpoint/3 :: (ne_binary(), #gateway{}, non_neg_integer()) -> json_object().
-build_endpoint(Number, Gateway, Delay) ->
+build_endpoint(Number, Gateway, _Delay) ->
     Route = get_dialstring(Gateway, Number),
-    ?LOG("using ~s on ~s delayed by ~b sec", [Route, Gateway#gateway.resource_id, Delay]),
+    ?LOG("found resource ~s (~s)", [Gateway#gateway.resource_id, Route]),
     CCVs = [{<<"Resource-ID">>, Gateway#gateway.resource_id}],
     Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"Route">>, get_dialstring(Gateway, Number)}
+            ,{<<"Callee-ID-Name">>, wh_util:to_binary(Number)}
             ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
             ,{<<"Caller-ID-Type">>, Gateway#gateway.caller_id_type}
             ,{<<"Bypass-Media">>, Gateway#gateway.bypass_media}
@@ -432,3 +457,41 @@ response({error, Error}, JObj) ->
      ,{<<"Error-Message">>, ErrorMsg}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% if the given number is shorter then a known caller id then try 
+%% to pad the front of the dialed number with values from the 
+%% callerid.
+%% @end
+%%--------------------------------------------------------------------
+-spec correct_shortdial/1 :: (json_object()) -> ne_binary() | fail.
+correct_shortdial(JObj) ->
+    Number = wh_json:get_value(<<"To-DID">>, JObj),
+    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj
+                               ,wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj)),
+    MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
+    case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
+        Length when Length =< MaxCorrection ->
+            wh_util:to_e164(<<(binary:part(CIDNum, 0, Length))/binary, Number/binary>>);
+        _ ->
+            undefined
+    end.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% this function is used when the number dialed in on-net to try to
+%% get the name of the account for the callee-id
+%% @end
+%%--------------------------------------------------------------------
+-spec get_account_name/2 :: (ne_binary() | integer(), ne_binary()) -> ne_binary().
+get_account_name(Number, AccountId) when not is_binary(Number) ->
+    get_account_name(wh_util:to_binary(Number), AccountId);
+get_account_name(Number, AccountId) ->
+    case couch_mgr:open_doc(<<"accounts">>, AccountId) of
+        {ok, JObj} ->
+            wh_json:get_ne_value(<<"name">>, JObj, Number);
+        _ ->
+            Number
+    end.
