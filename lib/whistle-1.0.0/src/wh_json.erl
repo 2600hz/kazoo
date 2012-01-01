@@ -16,7 +16,7 @@
 -export([get_string_value/2, get_string_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
--export([filter/2, filter/3, map/2]).
+-export([filter/2, filter/3, map/2, find/2, find/3]).
 -export([get_ne_value/2, get_ne_value/3]).
 -export([get_value/2, get_value/3, get_values/1]).
 -export([get_keys/1, get_keys/2]).
@@ -279,12 +279,32 @@ get_ne_value(Key, JObj, Default) ->
         false -> Value
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Find first json object that has a non_empty value for Key.
+%% Returns the value at Key
+%% @end
+%%--------------------------------------------------------------------
+-spec find/2 :: (ne_binary() | [ne_binary(),...], json_objects()) -> term().
+-spec find/3 :: (ne_binary() | [ne_binary(),...], json_objects(), term()) -> term().
+
+find(Key, Docs) ->
+    find(Key, Docs, undefined).
+
+find(Key, JObjs, Default) ->
+    case lists:dropwhile(fun(JObj) -> wh_json:get_ne_value(Key, JObj) =:= undefined end, JObjs) of
+	[] -> Default;
+	[JObj|_] -> wh_json:get_ne_value(Key, JObj)
+    end.
+
+
 -spec get_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> json_term().
 -spec get_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), json_term()) -> json_term().
 get_value(Key, JObj) ->
     get_value(Key, JObj, undefined).
 
-get_value([Key|Ks], [{struct, _}|_]=L, Default) ->
+get_value([Key|Ks], [{struct, _}|_]=L, Default) when is_list(L) ->
     try
         get_value1(Ks, lists:nth(Key, L), Default)
     catch
