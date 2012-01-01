@@ -50,7 +50,7 @@ handle_req(JObj, _Props) ->
             Docs = [VMBox, UserJObj, AcctObj],
 
             Props = [{email_address, Email}
-                     | get_template_props(JObj, [VMBox, UserJObj, AcctObj])
+                     | get_template_props(JObj, Docs)
                     ],
 
             {ok, TxtBody} = render_template(wh_json:find(<<"vm_to_email_template">>, Docs), ?DEFAULT_TEXT_TMPL, Props),
