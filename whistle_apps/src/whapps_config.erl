@@ -331,7 +331,6 @@ do_set(Category, Node, Key, Value) ->
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
 
     UpdateFun = fun(J) ->
-                        ?LOG("setting configuration ~s(~s) ~s: ~p", [Category, Node, Key, Value]),
                         NodeConfig = wh_json:get_value(Node, J, wh_json:new()),
                         wh_json:set_value(Key, Value, NodeConfig)
                 end,
