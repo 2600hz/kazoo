@@ -19,6 +19,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3]).
 
+-include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 
 -define(SERVER, ?MODULE).
@@ -36,76 +37,76 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [?MODULE], []).
 
 start_link(Name) ->
-    gen_server:start_link({local, Name}, ?MODULE, [], []).
+    gen_server:start_link({local, Name}, ?MODULE, [Name], []).
 
 start_local_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link(?MODULE, [local], []).
 
 %% T - seconds to store the pair
--spec(store/2 :: (K :: term(), V :: term()) -> ok).
--spec(store/3 :: (K :: term(), V :: term(), T :: integer()) -> ok).
+-spec store/2 :: (term(), term()) -> 'ok'.
+-spec store/3 :: (term(), term(), pos_integer() | 'infinity') -> 'ok'.
 store(K, V) ->
     store(K, V, ?EXPIRES).
 store(K, V, T) ->
     gen_server:cast(?SERVER, {store, K, V, T}).
 
--spec(peek/1 :: (K :: term()) -> tuple(ok, term()) | tuple(error, not_found)).
+-spec peek/1 :: (term()) -> {'ok', term()} | {'error', 'not_found'}.
 peek(K) ->
     gen_server:call(?SERVER, {peek, K}).
 
--spec(fetch/1 :: (K :: term()) -> tuple(ok, term()) | tuple(error, not_found)).
+-spec fetch/1 :: (term()) -> {'ok', term()} | {'error', 'not_found'}.
 fetch(K) ->
     gen_server:call(?SERVER, {fetch, K}).
 
--spec(erase/1 :: (K :: term()) -> ok).
+-spec erase/1 :: (term()) -> 'ok'.
 erase(K) ->
     gen_server:cast(?SERVER, {erase, K}).
 
--spec(flush/0 :: () -> ok).
+-spec flush/0 :: () -> 'ok'.
 flush() ->
     gen_server:cast(?SERVER, {flush}).
 
--spec(fetch_keys/0 :: () -> list(term())).
+-spec fetch_keys/0 :: () -> [term(),...] | [].
 fetch_keys() ->
     gen_server:call(?SERVER, fetch_keys).
 
--spec(filter/1 :: (Pred :: fun()) -> proplist()).
-filter(Pred) when is_function(Pred) ->
+-spec filter/1 :: (fun((term(), term()) -> boolean())) -> proplist().
+filter(Pred) when is_function(Pred, 2) ->
     gen_server:call(?SERVER, {filter, Pred}).
 
 %% Local cache API
--spec(store_local/3 :: (Srv :: pid(), K :: term(), V :: term()) -> ok).
--spec(store_local/4 :: (Srv :: pid(), K :: term(), V :: term(), T :: integer()) -> ok).
+-spec store_local/3 :: (pid(), term(), term()) -> 'ok'.
+-spec store_local/4 :: (pid(), term(), term(), integer()) -> 'ok'.
 store_local(Srv, K, V) when is_pid(Srv) ->
     store_local(Srv, K, V, ?EXPIRES).
 store_local(Srv, K, V, T) when is_pid(Srv) ->
     gen_server:cast(Srv, {store, K, V, T}).
 
--spec(peek_local/2 :: (Srv :: pid(), K :: term()) -> tuple(ok, term()) | tuple(error, not_found)).
+-spec peek_local/2 :: (pid(), term()) -> {'ok', term()} | {'error', 'not_found'}.
 peek_local(Srv, K) when is_pid(Srv) ->
     gen_server:call(Srv, {peek, K}).
 
--spec(fetch_local/2 :: (Srv :: pid(), K :: term()) -> tuple(ok, term()) | tuple(error, not_found)).
+-spec fetch_local/2 :: (pid(), term()) -> {'ok', term()} | {'error', 'not_found'}.
 fetch_local(Srv, K) when is_pid(Srv) ->
     gen_server:call(Srv, {fetch, K}).
 
--spec(erase_local/2 :: (Srv :: pid(), K :: term()) -> ok).
+-spec erase_local/2 :: (pid(), term()) -> 'ok'.
 erase_local(Srv, K) when is_pid(Srv) ->
     gen_server:cast(Srv, {erase, K}).
 
--spec(flush_local/1 :: (Srv :: pid()) -> ok).
+-spec flush_local/1 :: (pid()) -> 'ok'.
 flush_local(Srv) when is_pid(Srv) ->
     gen_server:cast(Srv, {flush}).
 
--spec(fetch_keys_local/1 :: (Srv :: pid()) -> list(term())).
+-spec fetch_keys_local/1 :: (pid()) -> [term(),...] | [].
 fetch_keys_local(Srv) when is_pid(Srv) ->
     gen_server:call(Srv, fetch_keys).
 
--spec(filter_local/2 :: (Srv :: pid(), Pred :: fun()) -> proplist()).
-filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred) ->
+-spec filter_local/2 :: (pid(), fun((term(), term()) -> boolean())) -> proplist().
+filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred, 2) ->
     gen_server:call(Srv, {filter, Pred}).
 
 %%%===================================================================
@@ -123,8 +124,10 @@ filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
+init([Name]) ->
     {ok, _} = timer:send_interval(1000, flush),
+    put(callid, Name),
+    ?LOG("Started new cache proc"),
     {ok, dict:new()}.
 
 %%--------------------------------------------------------------------
