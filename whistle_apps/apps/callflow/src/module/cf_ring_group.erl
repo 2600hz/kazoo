@@ -25,8 +25,9 @@ handle(Data, Call) ->
     Endpoints = get_endpoints(Data, Call),
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
+    Ringback = wh_json:get_value(<<"ringback">>, Data),
     ?LOG("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case length(Endpoints) > 0 andalso cf_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Call) of
+    case length(Endpoints) > 0 andalso cf_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
         false ->
             ?CF_ALERT({error, wh_json:new()}, "ring group has no endpoints", Call),
             cf_exe:continue(Call);
@@ -56,8 +57,7 @@ get_endpoints(Data, Call) ->
                         case cf_endpoint:build(EndpointId, Properties, Call) of
                             {ok, Endpoint} -> 
                                 Endpoint ++ Acc;
-                            {error, _}=E -> 
-                                io:format("~p~n", [E]),
+                            {error, _} -> 
                                 Acc
                         end
                 end, [], wh_json:get_value([<<"endpoints">>], Data, [])).
