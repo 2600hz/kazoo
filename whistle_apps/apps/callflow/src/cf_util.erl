@@ -1,6 +1,7 @@
 -module(cf_util).
 
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
+-export([correct_media_path/2]).
 -export([call_info_to_string/1]).
 -export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
@@ -42,6 +43,28 @@ ignore_early_media(Endpoints) ->
                                      or Acc
                          end, false, Endpoints),
     wh_util:to_binary(Ignore).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% given a media path that is just a media id correct it to include
+%% the account id
+%% @end
+%%--------------------------------------------------------------------
+-spec correct_media_path/2 :: (undefined | ne_binary(), #cf_call{}) -> undefined | ne_binary().
+correct_media_path(undefined, _) ->
+    undefined;
+correct_media_path(<<"silence_stream://", _/binary>> = Media, _) ->
+    Media;
+correct_media_path(<<"tone_stream://", _/binary>> = Media, _) ->
+    Media;
+correct_media_path(Media, #cf_call{account_id=AccountId}) ->
+    case binary:match(Media, <<"/">>) of
+        nomatch ->
+            <<$/, AccountId/binary, $/, Media/binary>>;
+        _Else ->
+            Media
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public

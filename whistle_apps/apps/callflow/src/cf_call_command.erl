@@ -348,7 +348,7 @@ bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, #cf_call{channe
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, Timeout}
                ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-               ,{<<"Ringback">>, Ringback}
+               ,{<<"Ringback">>, cf_util:correct_media_path(Ringback, Call)}
                ,{<<"Dial-Endpoint-Method">>, Strategy}
                ,{<<"Custom-Channel-Vars">>, CCVs}
               ],
