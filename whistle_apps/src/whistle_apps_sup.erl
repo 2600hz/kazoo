@@ -22,9 +22,10 @@ start_link() ->
 
 -spec config_cache_proc/0 :: () -> {'ok', pid()}.
 config_cache_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-		Mod =:= config_cache],
-    {ok, P}.
+    {ok, whereis(config_cache)}.
+    %% [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+    %% 		Mod =:= config_cache],
+    %% {ok, P}.
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -33,8 +34,9 @@ config_cache_proc() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}
 	   , [?CHILD(wh_cache, worker)
-	      ,?CHILD(wh_timer, worker)
               ,?CACHE(config_cache)
+	      ,?CHILD(whistle_couch_sup, worker)
+	      %% ,?CHILD(wh_timer, worker)
 	      ,?CHILD(whapps_sup, supervisor)
 	      ,?CHILD(whapps_controller, worker)
 	     ]

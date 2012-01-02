@@ -9,7 +9,7 @@
 
 -include("whistle_apps.hrl").
 
--export([get/2, get/3]).
+-export([get/2, get/3, get_all_kvs/1]).
 -export([get_string/2, get_string/3]).
 -export([get_binary/2, get_binary/3]).
 -export([get_atom/2, get_atom/3]).
@@ -138,6 +138,7 @@ get(Category, Key, Default) when not is_binary(Key)->
     get(Category, wh_util:to_binary(Key), Default);
 get(Category, Key, Default) ->
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
+    ?LOG("get/3: cache: ~p", [Cache]),
     case fetch_category(Category, Cache) of
         {ok, JObj} ->
             Node = wh_util:to_binary(node()),
@@ -161,6 +162,38 @@ get(Category, Key, Default) ->
             ?LOG("missing category ~s(~s) ~s: ~p", [Category, "default", Key, Default]),
             Default
     end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% get all Key-Value pairs for a given category
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_all_kvs/1 :: (ne_binary()) -> proplist().
+get_all_kvs(Category) ->
+    {ok, Cache} = whistle_apps_sup:config_cache_proc(),
+    case fetch_category(Category, Cache) of
+        {error, _} ->
+            ?LOG("missing category ~s(~s)", [Category, "default"]),
+	    [];
+        {ok, JObj} ->
+            Node = wh_util:to_binary(node()),
+            case wh_json:get_value(Node, JObj) of
+                undefined ->
+                    case wh_json:get_value(<<"default">>, JObj) of
+                        undefined ->
+                            ?LOG("missing category ~s(~s)", [Category, Node]),
+			    [];
+                        DefJObj ->
+                            ?LOG("fetched configs ~s(~s)", [Category, "default"]),
+			    wh_json:to_proplist(DefJObj)
+                    end;
+                NodeJObj ->
+                    ?LOG("fetched configs ~s(~s)", [Category, Node]),
+                    wh_json:to_proplist(NodeJObj)
+            end
+    end.
+    
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -223,7 +256,7 @@ fetch_category(Category, Cache) ->
                ,fun fetch_db_config/2
                ,fun(Cat, C) -> wh_cache:peek_local(C, {?MODULE, Cat}) end],
     lists:foldr(fun(_, {ok, _}=Acc) -> Acc;
-                   (F, _) -> F(Category, Cache)
+                   (F, _) -> ?LOG("running fun"), F(Category, Cache)
                 end, {error, not_found}, Lookups).
 
 %%-----------------------------------------------------------------------------
@@ -233,9 +266,7 @@ fetch_category(Category, Cache) ->
 %% cache it
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_db_config/2 :: (Category, Cache) -> {ok, json_object()} | {error, not_found} when
-      Category :: binary(),
-      Cache :: pid().
+-spec fetch_db_config/2 :: (ne_binary(), pid()) -> {'ok', json_object()} | {'error', 'not_found'}.
 fetch_db_config(Category, Cache) ->
     case couch_mgr:open_doc(?CONFIG_DB, Category) of
         {ok, JObj}=Ok ->
@@ -298,7 +329,9 @@ do_set(Category, Node, Key, Value) when not is_binary(Node) ->
 do_set(Category, Node, Key, Value) when not is_binary(Key) ->
     do_set(Category, Node, wh_util:to_binary(Key), Value);
 do_set(Category, Node, Key, Value) ->
+    ?LOG("DoSet: ~s on ~s for ~s:~p", [Category, Node, Key, Value]),
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
+    ?LOG("Found cache: ~p", [Cache]),
     UpdateFun = fun(J) ->
                         ?LOG("setting configuration ~s(~s) ~s: ~p", [Category, Node, Key, Value]),
                         NodeConfig = wh_json:get_value(Node, J, wh_json:new()),
@@ -314,15 +347,28 @@ do_set(Category, Node, Key, Value) ->
 %%-----------------------------------------------------------------------------
 -spec update_category_node/4 :: (ne_binary(), ne_binary(), fun((json_object()) -> json_object()) , pid()) -> {'ok', json_object()}.
 update_category_node(Category, Node, UpdateFun , Cache) ->
-    case couch_mgr:open_doc(?CONFIG_DB, Category) of
+    case is_pid(whereis(couch_mgr)) andalso couch_mgr:open_doc(?CONFIG_DB, Category) of
         {ok, JObj} ->
             case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
                 JObj -> {ok, JObj};
                 UpdatedCat -> update_category(Category, UpdatedCat, Cache)
             end;
-        {error, _} ->
+        {error, _E} ->
+	    ?LOG("Failed to find category in DB: ~p", [_E]),
             NewCat = wh_json:set_value(Node, UpdateFun(wh_json:new()), wh_json:new()),
-            update_category(Category, NewCat, Cache)
+            update_category(Category, NewCat, Cache);
+	false ->
+	    ?LOG("couch_mgr hasn't started; just cache the json object"),
+	    case wh_cache:peek_local(Cache, {?MODULE, Category}) of
+		{ok, JObj} ->
+		    case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
+			JObj -> {ok, JObj};
+			UpdatedCat -> cache_jobj(Cache, Category, UpdatedCat)
+		    end;
+		{error, not_found} ->
+		    NewCat = wh_json:set_value(Node, UpdateFun(wh_json:new()), wh_json:new()),
+		    cache_jobj(Cache, Category, NewCat)
+	    end
     end.
 
 %%-----------------------------------------------------------------------------
@@ -337,8 +383,11 @@ update_category(Category, JObj, Cache) ->
     JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),
     {ok, SavedJObj} = couch_mgr:ensure_saved(?CONFIG_DB, JObj1),
     ?LOG("Saved cat ~s to db ~s", [Category, ?CONFIG_DB]),
-    wh_cache:store_local(Cache, {?MODULE, Category}, SavedJObj),
-    {ok, SavedJObj}.
+    cache_jobj(Cache, Category, SavedJObj).
+
+cache_jobj(Cache, Category, JObj) ->
+    wh_cache:store_local(Cache, {?MODULE, Category}, JObj),
+    {ok, JObj}.
 
 %%-----------------------------------------------------------------------------
 %% @private
