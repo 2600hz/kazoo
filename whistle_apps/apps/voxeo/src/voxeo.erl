@@ -29,8 +29,7 @@ start_deps() ->
     wh_util:ensure_started(public_key), %% needed by SSL application
     wh_util:ensure_started(ssl), %% for auth with XMPP
     wh_util:ensure_started(exmpp), % XMPP service
-    wh_util:ensure_started(whistle_amqp), % amqp wrapper
-    wh_util:ensure_started(whistle_couch). % couch wrapper
+    wh_util:ensure_started(whistle_amqp). % amqp wrapper
 
 %% @spec stop() -> ok
 %% @doc Stop the basicapp server.

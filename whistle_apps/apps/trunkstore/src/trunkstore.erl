@@ -22,7 +22,6 @@ start_deps() ->
     wh_util:ensure_started(sasl),
     wh_util:ensure_started(crypto),
     wh_util:ensure_started(whistle_amqp),
-    wh_util:ensure_started(whistle_couch),
     wh_util:ensure_started(ibrowse).
 
 %% @spec stop() -> ok

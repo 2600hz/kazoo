@@ -53,8 +53,7 @@ start_deps() ->
     wh_util:ensure_started(mochiweb),
     application:set_env(webmachine, webmachine_logger_module, webmachine_logger),
     wh_util:ensure_started(webmachine),
-    wh_util:ensure_started(whistle_amqp), % amqp wrapper
-    wh_util:ensure_started(whistle_couch). % couch wrapper
+    wh_util:ensure_started(whistle_amqp). % amqp wrapper
 
 %%--------------------------------------------------------------------
 %% @private
