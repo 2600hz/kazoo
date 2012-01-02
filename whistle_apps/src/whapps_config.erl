@@ -138,7 +138,6 @@ get(Category, Key, Default) when not is_binary(Key)->
     get(Category, wh_util:to_binary(Key), Default);
 get(Category, Key, Default) ->
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
-    ?LOG("get/3: cache: ~p", [Cache]),
     case fetch_category(Category, Cache) of
         {ok, JObj} ->
             Node = wh_util:to_binary(node()),
@@ -256,7 +255,7 @@ fetch_category(Category, Cache) ->
                ,fun fetch_db_config/2
                ,fun(Cat, C) -> wh_cache:peek_local(C, {?MODULE, Cat}) end],
     lists:foldr(fun(_, {ok, _}=Acc) -> Acc;
-                   (F, _) -> ?LOG("running fun"), F(Category, Cache)
+                   (F, _) -> F(Category, Cache)
                 end, {error, not_found}, Lookups).
 
 %%-----------------------------------------------------------------------------
@@ -329,14 +328,14 @@ do_set(Category, Node, Key, Value) when not is_binary(Node) ->
 do_set(Category, Node, Key, Value) when not is_binary(Key) ->
     do_set(Category, Node, wh_util:to_binary(Key), Value);
 do_set(Category, Node, Key, Value) ->
-    ?LOG("DoSet: ~s on ~s for ~s:~p", [Category, Node, Key, Value]),
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
-    ?LOG("Found cache: ~p", [Cache]),
+
     UpdateFun = fun(J) ->
                         ?LOG("setting configuration ~s(~s) ~s: ~p", [Category, Node, Key, Value]),
                         NodeConfig = wh_json:get_value(Node, J, wh_json:new()),
                         wh_json:set_value(Key, Value, NodeConfig)
                 end,
+
     update_category_node(Category, Node, UpdateFun, Cache).
 
 %%-----------------------------------------------------------------------------
@@ -354,7 +353,7 @@ update_category_node(Category, Node, UpdateFun , Cache) ->
                 UpdatedCat -> update_category(Category, UpdatedCat, Cache)
             end;
         {error, _E} ->
-	    ?LOG("Failed to find category in DB: ~p", [_E]),
+	    ?LOG("failed to find category in DB: ~p", [_E]),
             NewCat = wh_json:set_value(Node, UpdateFun(wh_json:new()), wh_json:new()),
             update_category(Category, NewCat, Cache);
 	false ->
@@ -382,7 +381,7 @@ update_category(Category, JObj, Cache) ->
     ?LOG("updating configuration category ~s", [Category]),
     JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),
     {ok, SavedJObj} = couch_mgr:ensure_saved(?CONFIG_DB, JObj1),
-    ?LOG("Saved cat ~s to db ~s", [Category, ?CONFIG_DB]),
+    ?LOG("saved cat ~s to db ~s", [Category, ?CONFIG_DB]),
     cache_jobj(Cache, Category, SavedJObj).
 
 cache_jobj(Cache, Category, JObj) ->

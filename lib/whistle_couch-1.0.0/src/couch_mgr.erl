@@ -66,7 +66,7 @@
 -spec load_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
 load_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
-    ?LOG_SYS("Read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
+    ?LOG_SYS("read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	?MODULE:save_doc(DbName, wh_json:decode(Bin)) %% if it crashes on the match, the catch will let us know
@@ -89,7 +89,7 @@ load_doc_from_file(DbName, App, File) ->
 -spec update_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
 update_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
-    ?LOG_SYS("Update db ~s from CouchDB file: ~s", [DbName, Path]),
+    ?LOG_SYS("update db ~s from CouchDB file: ~s", [DbName, Path]),
     try
 	{ok, Bin} = file:read_file(Path),
 	JObj = wh_json:decode(Bin),
@@ -540,15 +540,15 @@ get_url(H, {User, Pwd}, P) ->
 		   ]).
 
 add_change_handler(DBName, DocID) ->
-    ?LOG_SYS("Add change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
+    ?LOG_SYS("add change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
     gen_server:cast(?SERVER, {add_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID), self()}).
 
 add_change_handler(DBName, DocID, Pid) ->
-    ?LOG_SYS("Add change handler for Pid: ~p for DB: ~s and Doc: ~s", [Pid, DBName, DocID]),
+    ?LOG_SYS("add change handler for Pid: ~p for DB: ~s and Doc: ~s", [Pid, DBName, DocID]),
     gen_server:cast(?SERVER, {add_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID), Pid}).
 
 rm_change_handler(DBName, DocID) ->
-    ?LOG_SYS("RM change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
+    ?LOG_SYS("rm change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
     gen_server:call(?SERVER, {rm_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID)}).
 
 %%%===================================================================
@@ -566,7 +566,7 @@ rm_change_handler(DBName, DocID) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([]) -> {'ok', #state{}, 0}.
+-spec init/1 :: ([]) -> {'ok', #state{}}.
 init([]) ->
     process_flag(trap_exit, true),
     ?LOG("starting couch_mgr"),
@@ -596,7 +596,7 @@ handle_call(get_admin_port, _From, #state{host={_,_,P}}=State) ->
     {reply, P, State};
 
 handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={OldHost,_,_}}=State) ->
-    ?LOG_SYS("Updating host from ~p to ~p", [OldHost, Host]),
+    ?LOG_SYS("updating host from ~p to ~p", [OldHost, Host]),
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
 
@@ -612,7 +612,7 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={O
 			   }};
 
 handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
-    ?LOG_SYS("Setting host for the first time to ~p", [Host]),
+    ?LOG_SYS("setting host for the first time to ~p", [Host]),
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
 
@@ -639,7 +639,7 @@ handle_call(get_creds, _, #state{creds=Cred}=State) ->
 handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH}=State) ->
     spawn(fun() ->
 		  {ok, {Srv, _}} = dict:find(DBName, CH),
-		  ?LOG_SYS("Found CH(~p): Rm listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
+		  ?LOG_SYS("found CH(~p): Rm listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
 		  change_handler:rm_listener(Srv, Pid, DocID)
 	  end),
     {reply, ok, State}.
@@ -657,12 +657,12 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
     case dict:find(DBName, CH) of
 	{ok, {Srv, _}} ->
-	    ?LOG_SYS("Found CH(~p): Adding listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
+	    ?LOG_SYS("found CH(~p): Adding listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
 	    change_handler:add_listener(Srv, Pid, DocID),
 	    {noreply, State};
 	error ->
 	    {ok, Srv} = change_handler:start_link(couch_util:get_db(S, DBName), []),
-	    ?LOG_SYS("Started CH(~p): added listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
+	    ?LOG_SYS("started CH(~p): added listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
 	    SrvRef = erlang:monitor(process, Srv),
 	    change_handler:add_listener(Srv, Pid, DocID),
 	    {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
@@ -678,15 +678,15 @@ handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH,
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, process, Srv, complete}, #state{change_handlers=CH}=State) ->
-    ?LOG_SYS("Srv ~p down after complete", [Srv]),
+    ?LOG_SYS("srv ~p down after complete", [Srv]),
     erlang:demonitor(Ref, [flush]),
     {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
 handle_info({'DOWN', Ref, process, Srv, {error,connection_closed}}, #state{change_handlers=CH}=State) ->
-    ?LOG_SYS("Srv ~p down after conn closed", [Srv]),
+    ?LOG_SYS("srv ~p down after conn closed", [Srv]),
     erlang:demonitor(Ref, [flush]),
     {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unexpected message ~p", [_Info]),
+    ?LOG_SYS("unexpected message ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -727,10 +727,10 @@ code_change(_OldVsn, State, _Extra) ->
 init_state() ->
     case couch_config:fetch(couch_host) of
 	undefined ->
-	    ?LOG("Starting conns with default_couch_host"),
+	    ?LOG("starting conns with default_couch_host"),
 	    init_state_from_config(couch_config:fetch(default_couch_host));
 	HostData ->
-	    ?LOG("Starting conns with couch_host"),
+	    ?LOG("starting conns with couch_host"),
 	    init_state_from_config(HostData)
     end.
 
@@ -748,7 +748,7 @@ init_state_from_config({H, Port, User, Pass, AdminPort}) ->
     Conn = couch_util:get_new_connection(H, wh_util:to_integer(Port), User, Pass),
     AdminConn = couch_util:get_new_connection(H, wh_util:to_integer(AdminPort), User, Pass),
 
-    ?LOG_SYS("Returning state record"),
+    ?LOG_SYS("returning state record"),
     #state{connection=Conn
 	   ,admin_connection=AdminConn
 	   ,host={H, wh_util:to_integer(Port), wh_util:to_integer(AdminPort)}

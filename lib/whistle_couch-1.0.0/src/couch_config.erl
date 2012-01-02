@@ -25,41 +25,35 @@
 
 -spec start_link/0 :: () -> 'ignore'.
 start_link() ->
-    ?LOG("loading couch configs"),
     _ = load_config(?CONFIG_FILE_PATH),
     ?LOG("loaded couch configs"),
     ignore.
 
 -spec load_config/1 :: (file:name()) -> 'ok' | {'error', 'enoent'}.
 load_config(Path) ->
-    ?LOG("Loading ~s", [Path]),
+    ?LOG("loading ~s", [Path]),
     case file:consult(Path) of
 	{ok, Startup} ->
 	    _ = [cache_from_file(T) || T <- Startup],
 	    ok;
-	{error, enoent} ->
-	    ?LOG("no file"),
-	    {error, enoent}
+	{error, enoent}=E ->
+	    E
     end.
 
 %% convert 3..n-tuples to 2 tuples with the value being (3..n)-1 tuples
 %% so {key, v1, v2, v3} becomes {key, {v1, v2, v3}}
 %% subsequent writes back to the file will store in the new format
 cache_from_file({Key, Value}) ->
-    ?LOG("store ~p:~p", [Key, Value]),
     store(Key, Value);
 cache_from_file(T) when is_tuple(T) ->
     [Key|V] = erlang:tuple_to_list(T),
     Value = erlang:list_to_tuple(V),
-    ?LOG("store ~p:~p", [Key, Value]),
     store(Key, Value).
 
 -spec write_config/1 :: (file:name()) -> 'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 write_config(Path) ->
-    ?LOG_SYS("writing cached config to ~s", [Path]),
     Contents = lists:foldl(fun(I, Acc) -> [io_lib:format("~p.~n", [I]) | Acc] end
 			   , "", whapps_config:get_all_kvs(?CONFIG_CAT)),
-    ?LOG("Writing to config: ~s", [Contents]),
     file:write_file(Path, Contents).
 
 fetch(Key) ->
@@ -68,7 +62,6 @@ fetch(Key) ->
 fetch(Key, Cache) when is_pid(Cache) ->
     fetch(Key, undefined, Cache);
 fetch(Key, Default) ->
-    ?LOG("w_c: fetching ~s(~s): ~p", [?CONFIG_CAT, Key, Default]),
     whapps_config:get(?CONFIG_CAT, Key, Default).
 
 fetch(Key, Default, Cache) ->
@@ -81,5 +74,6 @@ fetch(Key, Default, Cache) ->
 store(Key, Value) ->
     whapps_config:set(?CONFIG_CAT, Key, Value).
 
+-spec store/3 :: (term(), term(), pid()) -> 'ok'.
 store(Key, Value, Cache) when is_pid(Cache) ->
     wh_cache:store_local(Cache, {?MODULE, Key}, Value, ?MILLISECONDS_IN_DAY).
