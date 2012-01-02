@@ -32,6 +32,7 @@ cache_proc() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
 				  ?CACHE(wh_couch_cache)
+				  ,?CHILD(couch_config, worker) % load configs from file into Cache/DB
 				  ,?CHILD(couch_mgr, worker)
 				  ,?CHILD(change_mgr_sup, supervisor)
 				  ,?CHILD(couch_compactor, worker)

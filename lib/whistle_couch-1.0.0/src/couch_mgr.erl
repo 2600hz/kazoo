@@ -464,7 +464,7 @@ get_keys(JObj) ->
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [whereis(wh_couch_cache)], []).
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% set the host to connect to
 -spec set_host/1 :: (string()) -> 'ok' | {'error', term()}.
@@ -521,7 +521,7 @@ get_node_cookie() ->
 
 -spec set_node_cookie/1 :: (atom()) -> 'ok'.
 set_node_cookie(Cookie) when is_atom(Cookie) ->
-    couch_config:store(bigcouch_cookie, Cookie, infinity).
+    couch_config:store(bigcouch_cookie, Cookie).
 
 -spec get_url/0 :: () -> ne_binary() | 'undefined'.
 -spec get_admin_url/0 :: () -> ne_binary() | 'undefined'.
@@ -566,10 +566,11 @@ rm_change_handler(DBName, DocID) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([pid(),...]) -> {'ok', #state{}, 0}.
-init([CachePid]) ->
+-spec init/1 :: ([]) -> {'ok', #state{}, 0}.
+init([]) ->
     process_flag(trap_exit, true),
-    {ok, init_state(CachePid), 0}.
+    ?LOG("starting couch_mgr"),
+    {ok, init_state()}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -599,7 +600,7 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={O
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
 
-    couch_config:store(couch_config, {Host, Port, User, Pass, AdminPort}, infinity),
+    couch_config:store(couch_config, {Host, Port, User, Pass, AdminPort}),
 
     spawn(fun() -> save_config() end),
 
@@ -615,7 +616,7 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
 
-    couch_config:store(couch_config, {Host, Port, User, Pass, AdminPort}, infinity),
+    couch_config:store(couch_config, {Host, Port, User, Pass, AdminPort}),
 
     spawn(fun() -> save_config() end),
 
@@ -684,9 +685,6 @@ handle_info({'DOWN', Ref, process, Srv, {error,connection_closed}}, #state{chang
     ?LOG_SYS("Srv ~p down after conn closed", [Srv]),
     erlang:demonitor(Ref, [flush]),
     {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
-handle_info(timeout, State) ->
-    spawn(fun save_config/0),
-    {noreply, State};
 handle_info(_Info, State) ->
     ?LOG_SYS("Unexpected message ~p", [_Info]),
     {noreply, State}.
@@ -725,22 +723,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec init_state/1 :: (pid()) -> #state{}.
-init_state(CachePid) ->
-    ok = couch_config:load_config(?CONFIG_FILE_PATH, CachePid),
-    ?LOG("Loaded config"),
-
-    Cookie = case couch_config:fetch(bigcouch_cookie, CachePid) of
-		 undefined -> monster;
-		 C -> C
-	     end,
-    ?LOG("bigcouch cookie: ~s", [Cookie]),
-    couch_config:store(bigcouch_cookie, Cookie, infinity, CachePid),
-
-    case couch_config:fetch(couch_host, CachePid) of
+-spec init_state/0 :: () -> #state{}.
+init_state() ->
+    case couch_config:fetch(couch_host) of
 	undefined ->
 	    ?LOG("Starting conns with default_couch_host"),
-	    init_state_from_config(couch_config:fetch(default_couch_host, CachePid));
+	    init_state_from_config(couch_config:fetch(default_couch_host));
 	HostData ->
 	    ?LOG("Starting conns with couch_host"),
 	    init_state_from_config(HostData)
@@ -776,7 +764,7 @@ init_state_from_config({H, Port, User, Pass, AdminPort}) ->
 save_config() ->
     couch_config:write_config(?CONFIG_FILE_PATH).
 
--spec remove_ref/2 :: (Ref :: reference(), CH :: dict()) -> dict().
+-spec remove_ref/2 :: (reference(), dict()) -> dict().
 remove_ref(Ref, CH) ->
     dict:filter(fun(_, {_, Ref1}) when Ref1 =:= Ref -> false;
 		   (_, _) -> true end, CH).

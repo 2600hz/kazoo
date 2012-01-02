@@ -14,49 +14,52 @@
 %%%-------------------------------------------------------------------
 -module(couch_config).
 
--export([load_config/1, load_config/2, write_config/1, write_config/2]).
--export([fetch/1, fetch/2, fetch/3]).
--export([store/2, store/3, store/4]).
+-export([start_link/0]).
+-export([load_config/1, write_config/1]).
+-export([fetch/1, fetch/2]).
+-export([store/2, store/3]).
 
 -include("wh_couch.hrl").
 
+-define(CONFIG_CAT, <<"whistle_couch">>).
+
+-spec start_link/0 :: () -> 'ignore'.
+start_link() ->
+    ?LOG("loading couch configs"),
+    _ = load_config(?CONFIG_FILE_PATH),
+    ?LOG("loaded couch configs"),
+    ignore.
+
 -spec load_config/1 :: (file:name()) -> 'ok' | {'error', 'enoent'}.
 load_config(Path) ->
-    {ok, Cache} = whistle_couch_sup:cache_proc(),
-    load_config(Path, Cache).
-
--spec load_config/2 :: (file:name(), pid()) -> 'ok' | {'error', 'enoent'}.
-load_config(Path, Cache) when is_pid(Cache) ->
     ?LOG("Loading ~s", [Path]),
     case file:consult(Path) of
 	{ok, Startup} ->
-	    _ = [cache_from_file(Cache, T) || T <- Startup],
+	    _ = [cache_from_file(T) || T <- Startup],
 	    ok;
 	{error, enoent} ->
-	    ?LOG("No file"),
+	    ?LOG("no file"),
 	    {error, enoent}
     end.
 
 %% convert 3..n-tuples to 2 tuples with the value being (3..n)-1 tuples
 %% so {key, v1, v2, v3} becomes {key, {v1, v2, v3}}
 %% subsequent writes back to the file will store in the new format
-cache_from_file(Cache, {K, V}) ->
-    wh_cache:store_local(Cache, cache_key(K), V);
-cache_from_file(Cache, T) when is_tuple(T) ->
-    [K|V] = erlang:tuple_to_list(T),
-    wh_cache:store_local(Cache, cache_key(K), erlang:list_to_tuple(V)).
-
--spec write_config/2 :: (file:name(), iodata()) -> 'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
-write_config(Path, Contents) ->
-    file:write_file(Path, Contents).
+cache_from_file({Key, Value}) ->
+    ?LOG("store ~p:~p", [Key, Value]),
+    store(Key, Value);
+cache_from_file(T) when is_tuple(T) ->
+    [Key|V] = erlang:tuple_to_list(T),
+    Value = erlang:list_to_tuple(V),
+    ?LOG("store ~p:~p", [Key, Value]),
+    store(Key, Value).
 
 -spec write_config/1 :: (file:name()) -> 'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 write_config(Path) ->
     ?LOG_SYS("writing cached config to ~s", [Path]),
-    {ok, Cache} = whistle_couch_sup:cache_proc(),
-    KVs = wh_cache:filter_local(Cache, fun(K, _) -> is_cache_key(K) end),
     Contents = lists:foldl(fun(I, Acc) -> [io_lib:format("~p.~n", [I]) | Acc] end
-			   , "", [{get_key_from_cache_key(CK),V} || {CK, V} <- KVs]),
+			   , "", whapps_config:get_all_kvs(?CONFIG_CAT)),
+    ?LOG("Writing to config: ~s", [Contents]),
     file:write_file(Path, Contents).
 
 fetch(Key) ->
@@ -65,39 +68,18 @@ fetch(Key) ->
 fetch(Key, Cache) when is_pid(Cache) ->
     fetch(Key, undefined, Cache);
 fetch(Key, Default) ->
-    {ok, Cache} = whistle_couch_sup:cache_proc(),
-    fetch(Key, Default, Cache).
+    ?LOG("w_c: fetching ~s(~s): ~p", [?CONFIG_CAT, Key, Default]),
+    whapps_config:get(?CONFIG_CAT, Key, Default).
 
 fetch(Key, Default, Cache) ->
-    case wh_cache:fetch_local(Cache, cache_key(Key)) of
-	{ok, Val} -> Val;
-	_ -> Default
+    case wh_cache:fetch_local(Cache, {?MODULE, Key}) of
+	{error, not_found} -> Default;
+	{ok, V} -> V
     end.
 
 -spec store/2 :: (term(), term()) -> 'ok'.
--spec store/3 :: (term(), term(), non_neg_integer() | 'infinity') -> 'ok'.
--spec store/4 :: (term(), term(), non_neg_integer() | 'infinity', pid()) -> 'ok'.
 store(Key, Value) ->
-    {ok, Cache} = whistle_couch_sup:cache_proc(),
-    store(Key, Value, infinity, Cache).
+    whapps_config:set(?CONFIG_CAT, Key, Value).
 
-store(Key, Value, Timeout) ->
-    {ok, Cache} = whistle_couch_sup:cache_proc(),
-    store(Key, Value, Timeout, Cache).
-
-store(Key, Value, Timeout, Cache) when is_pid(Cache) ->
-    wh_cache:store_local(Cache, cache_key(Key), Value, Timeout).
-
--spec cache_key/1 :: (K) -> {?MODULE, K}.
-cache_key(K) ->
-    {?MODULE, K}.
-
--spec is_cache_key/1 :: (term()) -> boolean().
-is_cache_key({?MODULE, _}) ->
-    true;
-is_cache_key(_) ->
-    false.
-
--spec get_key_from_cache_key/1 :: ({?MODULE, K}) -> K.
-get_key_from_cache_key({?MODULE, K}) ->
-    K.
+store(Key, Value, Cache) when is_pid(Cache) ->
+    wh_cache:store_local(Cache, {?MODULE, Key}, Value, ?MILLISECONDS_IN_DAY).

@@ -24,10 +24,7 @@ start_link() ->
     proc_lib:start_link(?MODULE, init, [self()], infinity, []).
 
 init(Parent) ->
-    %% since the supervisor is blocking while we start, use this method instead of the super's cache_proc/0
-    Cache = whereis(wh_couch_cache),
-
-    case {couch_config:fetch(compact_automatically, Cache), couch_config:fetch(conflict_strategy, Cache)} of
+    case {couch_config:fetch(compact_automatically), couch_config:fetch(conflict_strategy)} of
 	{true, undefined} ->
 	    ?LOG_SYS("Just compacting"),
 	    proc_lib:init_ack(Parent, {ok, self()}),
@@ -200,13 +197,14 @@ get_db_design_docs(Conn, DBEncoded) ->
 
 -spec get_db_shards/2 :: (#server{}, ne_binary()) -> [ne_binary()].
 get_db_shards(AdminConn, DBEncoded) ->
-    case couch_config:fetch({shards, DBEncoded}) of
+    {ok, Cache} = whistle_couch_sup:cache_proc(),
+    case couch_config:fetch({shards, DBEncoded}, Cache) of
 	undefined ->
 	    case couch_util:db_info(AdminConn) of
 		{ok, []} -> ?LOG("No shards found on admin conn? That's odd"), [];
 		{ok, Shards} ->
 		    Encoded = [ ShardEncoded || Shard <- Shards, is_a_shard(ShardEncoded=binary:replace(Shard, <<"/">>, <<"%2f">>, [global]), DBEncoded) ],
-		    couch_config:store({shards, DBEncoded}, Encoded, ?MILLISECONDS_IN_DAY),
+		    couch_config:store({shards, DBEncoded}, Encoded, Cache),
 		    ?LOG("Cached encoded shards for ~s", [DBEncoded]),
 		    Encoded
 	    end;
@@ -268,7 +266,7 @@ get_ports(_Node, pang) ->
     ?LOG_SYS("Using same ports as couch_mgr"),
     {couch_mgr:get_port(), couch_mgr:get_admin_port()}.
 
--spec get_conns/5 :: (nonempty_string(), non_neg_integer(), string(), string(), non_neg_integer()) -> {#server{}, #server{}}.
+-spec get_conns/5 :: (nonempty_string(), pos_integer(), string(), string(), pos_integer()) -> {#server{}, #server{}}.
 get_conns(Host, Port, User, Pass, AdminPort) ->
     {couch_util:get_new_connection(Host, Port, User, Pass),
      couch_util:get_new_connection(Host, AdminPort, User, Pass)}.
