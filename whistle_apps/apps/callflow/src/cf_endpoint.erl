@@ -13,6 +13,8 @@
 -export([build/2, build/3]).
 -export([get/2]).
 
+-define(NON_DIRECT_MODULES, [cf_ring_group]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -23,17 +25,10 @@
 %% like devices, ring groups, and resources.
 %% @end
 %%--------------------------------------------------------------------
--spec build/2 :: (undefined | ne_binary() | json_object(), #cf_call{}) -> {'ok', json_objects()} | {'error', term()}.
--spec build/3 :: (undefined | ne_binary() | json_object(), undefined | json_object(), #cf_call{}) -> {'ok', json_objects()} | {'error', term()}.
--spec build/4 :: (undefined | ne_binary() | json_object()
-                  ,undefined | json_object()
-                  ,{undefined| ne_binary(), undefined | ne_binary(), undefined | ne_binary()}
-                  ,#cf_call{}) -> {'ok', json_objects()} | {'error', term()}.
--spec build/5 :: (undefined | ne_binary() | json_object()
-                  ,undefined | json_object()
-                  ,{undefined| ne_binary(), undefined | ne_binary(), undefined | ne_binary()}
-                  ,boolean()
-                  ,#cf_call{}) -> {'ok', json_objects()} | {'error', term()}.
+-spec build/2 :: (undefined | ne_binary() | json_object(), #cf_call{}) -> {'ok', json_objects()} 
+                                                                              | {'error', term()}.
+-spec build/3 :: (undefined | ne_binary() | json_object(), undefined | json_object(), #cf_call{}) -> {'ok', json_objects()} 
+                                                                                                         | {'error', term()}.
 
 build(EndpointId, Call) ->
     build(EndpointId, ?EMPTY_JSON_OBJECT, Call).
@@ -49,37 +44,63 @@ build(EndpointId, Properties, Call) when is_binary(EndpointId) ->
         {error, _}=E ->
             E
     end;
-build(Endpoint, Properties, #cf_call{account_id=AccountId}=Call) ->
+build(Endpoint, Properties, #cf_call{owner_id=OwnerId, authorizing_id=AuthorizingId}=Call) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
-    OwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
-    build(Endpoint, Properties, {OwnerId, EndpointId, AccountId}, Call).
-
-
-build(Endpoint, Properties, Hierarchy, Call) ->
+    EndpointOwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
     CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
-    build(Endpoint, Properties, Hierarchy, CanCallSelf, Call).
+    case {EndpointId, EndpointOwnerId, CanCallSelf} of
+        {_, _, true} -> 
+            create_endpoints(Endpoint, Properties, Call);
+        {AuthorizingId, _, false} when is_binary(AuthorizingId) -> 
+            {error, endpoint_called_self};
+        {_, OwnerId, false} when is_binary(OwnerId) -> 
+            {error, owner_called_self};
+        {_, _, false} -> 
+            create_endpoints(Endpoint, Properties, Call)
+    end.
 
-build(_Endpoint, _Properties, {OwnerId, _, _}, false, #cf_call{owner_id=OwnerId}) when is_binary(OwnerId) ->
-    ?LOG("call originated from same user ~s, skipping", [OwnerId]),
-    {error, owner_called_self};
-build(_Endpoint, _Properties, {_, EndpointId, _}, false, #cf_call{authorizing_id=EndpointId}) when is_binary(EndpointId) ->
-    ?LOG("call originated from same endpoint ~s, skipping", [EndpointId]),
-    {error, endpoint_called_self};
-build(Endpoint, Properties, {OwnerId, EndpointId, _},  _, Call) ->
-    Fwd = cf_attributes:call_forward(EndpointId, OwnerId, Call),
-    case {Fwd, wh_json:is_false(<<"substitute">>, Fwd)} of
-        %% if the call forward object is undefined then there is no fwd'n
-        {undefined, _} ->
-            {ok, [create_sip_endpoint(Endpoint, Properties, Call)]};
-        %% if the call forwarding was not undefined (see above) and substitute is
-        %% not explicitly set to false then only ring the fwd'd number
-        {_, false} ->
-            {ok, [create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call)]};
-        %% if the call forwarding was not undefined (see above) and substitute is
-        %% explicitly set to false then ring the fwd'd number and the device
-        {_, true} ->
-            {ok, [create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call)
-                  ,create_sip_endpoint(Endpoint, Properties, Call)]}
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% creates the actual endpoint json objects for use in the whistle
+%% bridge API.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_endpoints/3 :: (json_object(), json_object(), #cf_call{}) -> {ok, json_objects()}
+                                                                              | {error, no_endpoints}.
+create_endpoints(Endpoint, Properties, Call) ->
+    Fwd = cf_attributes:call_forward(Endpoint, Call),
+    Substitue = wh_json:is_false(<<"substitute">>, Fwd),
+    IgnoreFwd = wh_json:is_true(<<"direct_calls_only">>, Fwd) 
+        andalso lists:member(wh_json:get_value(<<"source">>, Properties), ?NON_DIRECT_MODULES),
+    Endpoints = case {IgnoreFwd, Substitue, Fwd} of
+                    %% if the call forward object is undefined then there is no fwd'n
+                    {_, _, undefined} ->
+                        [catch(create_sip_endpoint(Endpoint, Properties, Call))];
+                    %% if ignore ring groups is true and susbtitues is true (hence false via is_false)
+                    %% then there are no endpoints to ring
+                    {true, false, _} ->
+                        [];
+                    %% if ignore ring groups is true and susbtitues is false (hence true via is_false)
+                    %% then try to ring just the device
+                    {true, true, _} ->
+                        [catch(create_sip_endpoint(Endpoint, Properties, Call))];
+                    %% if we are not ignoring ring groups and and substitute is not set to false
+                    %% (hence false via is_false) then only ring the fwd'd number
+                    {false, false, _} ->
+                        [catch(create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call))];
+                    %% if we are not ignoring ring groups and and substitute is set to false
+                    %% (hence true via is_false) then only ring the fwd'd number
+                    {false, true, _} ->
+                        [catch(create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call))
+                         ,catch(create_sip_endpoint(Endpoint, Properties, Call))]
+                end,
+    case lists:filter(fun wh_json:is_json_object/1, Endpoints) of
+        [] ->
+            {error, no_endpoints};
+        Else ->
+            {ok, Else}
     end.
 
 %%--------------------------------------------------------------------

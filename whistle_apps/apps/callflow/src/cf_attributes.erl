@@ -274,14 +274,14 @@ moh_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=Ca
             ?LOG("unable to find moh attribute ~s", [Attribute]),
             undefined;
         {Id, Value} when Attribute =:= <<"media_id">> ->
-            MediaId = <<$/, AccountId/binary, $/, Value/binary>>,
+            MediaId = cf_util:correct_media_path(Value, Call),
             ?LOG("found moh attribute ~s on ~s: '~p'", [Attribute, Id, MediaId]),
             MediaId;
         {Id, Value} ->
             ?LOG("found moh attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
             Value
     end.
-
+ 
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
