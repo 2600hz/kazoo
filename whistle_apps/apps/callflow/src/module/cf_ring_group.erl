@@ -52,8 +52,12 @@ handle(Data, Call) ->
 get_endpoints(Data, Call) ->
     lists:foldr(fun(Member, Acc) ->
                         EndpointId = wh_json:get_value(<<"id">>, Member),
-                        case cf_endpoint:build(EndpointId, Member, Call) of
-                            {ok, Endpoint} -> Endpoint ++ Acc;
-                            {error, _} -> Acc
+                        Properties = wh_json:set_value(<<"source">>, ?MODULE, Member),
+                        case cf_endpoint:build(EndpointId, Properties, Call) of
+                            {ok, Endpoint} -> 
+                                Endpoint ++ Acc;
+                            {error, _}=E -> 
+                                io:format("~p~n", [E]),
+                                Acc
                         end
                 end, [], wh_json:get_value([<<"endpoints">>], Data, [])).
