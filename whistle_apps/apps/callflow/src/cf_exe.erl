@@ -314,7 +314,7 @@ handle_info({call_sanity_check}, #state{status = <<"testing">>, call=#cf_call{ac
 handle_info({call_sanity_check}, #state{call_id=CallId, call=Call}=State) ->
     ?LOG("ensuring call is active, requesting controlling channel status"),
     spawn(fun() -> cf_call_command:channel_status(CallId, Call) end),
-    {ok, TRef} = timer:send_after(2000, self(), {call_sanity_check}),
+    {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
     {noreply, State#state{status = <<"testing">>, sanity_timer=TRef}};
 handle_info(timeout, #state{call_id=CallId, ctrl_q=CtrlQ, call=#cf_call{cf_pid=Self}}=State) ->
     spawn(fun() ->
