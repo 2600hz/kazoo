@@ -197,6 +197,9 @@ get_fs_app(_Node, _UUID, _JObj, <<"answer">>) ->
 get_fs_app(_Node, _UUID, _JObj, <<"progress">>) ->
     {<<"pre_answer">>, <<>>};
 
+get_fs_app(_Node, _UUID, _JObj, <<"hold">>) ->
+    {<<"endless_playback">>, <<"${hold_music}">>};
+
 get_fs_app(_Node, _UUID, _JObj, <<"park">>) ->
     {<<"park">>, <<>>};
 
@@ -270,10 +273,12 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                            {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)"),
                                            [{"application", "set ringback=" ++ wh_util:to_list(RBSetting)}|DP];
                                        Ringback ->
-                                          Stream = wh_util:to_list(ecallmgr_util:media_path(Ringback, extant, UUID)),
+                                           Stream = ecallmgr_util:media_path(Ringback, extant, UUID),
                                            ?LOG("bridge has custom ringback: ~s", [Stream]),
-                                           [{"application", "set ringback=" ++ Stream},
-                                            {"application", "set instant_ringback=true"}|DP]
+                                           [{"application", <<"set ringback=", Stream/binary>>},
+                                            {"application", "set instant_ringback=true"}
+                                            |DP
+                                           ]
                                    end
                            end
                           ,fun(DP) ->
@@ -282,14 +287,14 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                            case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
                                                undefined -> DP;
                                                Media ->
-                                                   Stream = wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID)),
+                                                   Stream = ecallmgr_util:media_path(Media, extant, UUID),
                                                    ?LOG("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
-                                                   [{"application", "set hold_music=" ++ Stream}|DP]
+                                                   [{"application", <<"set hold_music=", Stream/binary>>}|DP]
                                            end;
                                        Media ->
-                                           Stream = wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID)),
+                                           Stream = ecallmgr_util:media_path(Media, extant, UUID),
                                            ?LOG("bridge has custom music-on-hold: ~s", [Stream]),
-                                           [{"application", "set hold_music=" ++ Stream}|DP]
+                                           [{"application", <<"set hold_music=", Stream/binary>>}|DP]
                                    end
                            end
                           ,fun(DP) ->
@@ -315,9 +320,25 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                            DP
                                    end
                            end
+                          ,fun(DP) -> 
+                                   case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
+                                       {'ok', Result} -> 
+                                           Props = ecallmgr_util:eventstr_to_proplist(Result),
+                                           case props:get_value(<<"variable_hold_music">>, Props) of
+                                               undefined ->
+                                                   [{"application", "set import=hold_music"}|DP];
+                                               _E ->
+                                                   DP
+                                           end;
+                                       _ ->
+                                           DP
+                                   end
+                           end
                           ,fun(DP) ->
                                    [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
-                                    ,{"application", "set continue_on_fail=true"}|DP]
+                                    ,{"application", "set continue_on_fail=true"}
+                                    |DP
+                                   ]
                            end
                           ,fun(DP) ->
                                    BridgeCmd = lists:flatten(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)])

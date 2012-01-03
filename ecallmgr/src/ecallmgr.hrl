@@ -109,6 +109,7 @@
                                ,{<<"conference">>, <<"conference">>}
                                ,{<<"noop">>, <<"noop">>}
                                ,{<<"execute_extension">>, <<"execute_extension">>}
+                               ,{<<"playback">>, <<"hold">>}
                               ]).
 
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>

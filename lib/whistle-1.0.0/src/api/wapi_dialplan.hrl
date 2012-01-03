@@ -162,6 +162,16 @@
                            ]).
 -define(HANGUP_REQ_TYPES, []).
 
+%% Hold
+-define(HOLD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_HOLD_REQ_HEADERS, [<<"Insert-At">>]).
+-define(HOLD_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"hold">>}
+                          ,?INSERT_AT_TUPLE
+                         ]).
+-define(HOLD_REQ_TYPES, []).
+
 %% Park
 -define(PARK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_PARK_REQ_HEADERS, [<<"Insert-At">>]).
