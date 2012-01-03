@@ -22,6 +22,7 @@
 -export([play/1, play_v/1]).
 -export([record/1, record_v/1]).
 -export([answer/1, answer_v/1]).
+-export([hold/1, hold_v/1]).
 -export([park/1, park_v/1]).
 -export([play_and_collect_digits/1, play_and_collect_digits_v/1]).
 -export([call_pickup/1, call_pickup_v/1]).
@@ -357,6 +358,26 @@ hangup_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?HANGUP_REQ_HEADERS, ?HANGUP_REQ_VALUES, ?HANGUP_REQ_TYPES);
 hangup_v(JObj) ->
     hangup_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Hold a call - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec hold/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+hold(Prop) when is_list(Prop) ->
+    case hold_v(Prop) of
+        true -> wh_api:build_message(Prop, ?HOLD_REQ_HEADERS, ?OPTIONAL_HOLD_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for hold_req"}
+    end;
+hold(JObj) ->
+    hold(wh_json:to_proplist(JObj)).
+
+-spec hold_v/1 :: (proplist() | json_object()) -> boolean().
+hold_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?HOLD_REQ_HEADERS, ?HOLD_REQ_VALUES, ?HOLD_REQ_TYPES);
+hold_v(JObj) ->
+    hold_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Park a call - see wiki

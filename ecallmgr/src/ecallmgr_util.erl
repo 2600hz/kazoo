@@ -164,10 +164,10 @@ media_path(MediaName, Type, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
         {'error', _E} ->
             ?LOG("Failed to get media ~s: ~p", [MediaName, _E]),
-            MediaName;
+            wh_util:to_binary(MediaName);
         {ok, Url} ->
             ?LOG("Recevied URL: ~s", [Url]),
-            get_fs_playback(Url)
+            wh_util:to_binary(get_fs_playback(Url))
     end.
 
 %%--------------------------------------------------------------------
