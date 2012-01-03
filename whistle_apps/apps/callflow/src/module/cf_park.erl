@@ -32,6 +32,7 @@ handle(Data, #cf_call{channel_vars=CCVs}=Call) ->
                 <<"park">> ->
                     ?LOG("action is to park the call"),
                     park_call(SlotNumber, ParkedCalls, undefined, Call),
+                    cf_call_command:hold(Call),
                     cf_exe:transfer(Call);
                 <<"retrieve">> ->
                     ?LOG("action is to retrieve a parked call"),
@@ -50,6 +51,7 @@ handle(Data, #cf_call{channel_vars=CCVs}=Call) ->
         {match, [Replaces]} ->
             ?LOG("call was the result of an attended-transfer completion, updating call id"),
             update_call_id(Replaces, ParkedCalls, Call),
+            cf_call_command:hold(Call),
             cf_exe:transfer(Call)
     end.
 
@@ -140,6 +142,7 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
             cf_call_command:b_answer(Call),
             cf_call_command:b_say(wh_util:to_binary(SlotNumber), Call);
         _ ->
+            cf_call_command:hold(Call),
             ok
     end.
 
