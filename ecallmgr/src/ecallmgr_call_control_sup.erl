@@ -19,6 +19,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-include("ecallmgr.hrl").
+
 -define(SERVER, ?MODULE).
 
 %%%===================================================================
@@ -43,8 +45,8 @@ workers() ->
     [ Pid || {_, Pid, worker, [Worker]} <- supervisor:which_children(?SERVER),
              Worker =:= ecallmgr_call_control].
 
--spec find_worker/1 :: (binary()) -> {error, not_found} | {ok, pid()}.
--spec do_find_worker/2 :: (binary(), [] | [pid(),...]) -> {error, not_found} | {ok, pid()}.
+-spec find_worker/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
+-spec do_find_worker/2 :: ([] | [pid(),...], ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
 
 find_worker(CallID) ->
     do_find_worker(workers(), CallID).
@@ -53,13 +55,11 @@ do_find_worker([], _) ->
     {error, not_found};
 do_find_worker([Srv|T], CallID) ->
     case ecallmgr_call_control:callid(Srv) of
-        CallID ->
-            {ok, Srv};
-        _ ->
-            do_find_worker(T, CallID)
+        CallID -> {ok, Srv};
+        _ -> do_find_worker(T, CallID)
     end.
 
--spec find_control_queue/1 :: (binary()) -> {error, not_found} | {ok, pid()}.
+-spec find_control_queue/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', ne_binary()}.
 find_control_queue(CallID) ->    
     case find_worker(CallID) of
         {error, _}=E -> E;

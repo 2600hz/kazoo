@@ -738,7 +738,7 @@ set_terminators(Node, UUID, Ts) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set/3 :: (atom(), ne_binary(), binary()) -> send_cmd_ret().
+-spec set/3 :: (atom(), ne_binary(), ne_binary()) -> send_cmd_ret().
 set(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "set", Arg).
 
