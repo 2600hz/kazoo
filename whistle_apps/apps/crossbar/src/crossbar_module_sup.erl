@@ -9,6 +9,7 @@
 -behaviour(supervisor).
 
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 %% API
 -export([start_link/0, upgrade/0, start_mod/1, start_mod/2, stop_mod/1]).
@@ -60,7 +61,7 @@ upgrade() ->
 %% ===================================================================
 
 init([]) ->
-    StartModules = whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, []),
+    StartModules = whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, []),
     Children = [begin
                     ?LOG("initializing crossbar module ~s", [M]),
                     ?CHILD(wh_util:to_atom(M, true), worker, [])

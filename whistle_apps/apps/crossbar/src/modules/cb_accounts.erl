@@ -14,7 +14,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, create_account/1, get_realm_from_db/1]).
+-export([start_link/0, create_account/1, get_realm_from_db/1, ensure_parent_set/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -30,6 +30,8 @@
 -define(AGG_VIEW_CHILDREN, <<"accounts/listing_by_children">>).
 -define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 -define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
+
+-define(PVT_TYPE, <<"account">>).
 
 %%%===================================================================
 %%% API
@@ -53,6 +55,52 @@ get_realm_from_db(DBName) ->
 	{error, _}=E -> E
     end.
 
+%% Iterate through all account docs in the accounts DB and ensure each
+%% has a parent
+-spec ensure_parent_set/0 :: () -> 'ok' | {'error', 'no_accounts' | atom()}.
+ensure_parent_set() ->
+    case couch_mgr:get_results(?ACCOUNTS_AGG_DB, ?AGG_VIEW_SUMMARY, [{<<"include_docs">>, true}]) of
+	{ok, []} -> {error, no_accounts};
+	{ok, AcctJObjs} ->
+	    DefaultParentID = find_default_parent(AcctJObjs),
+	    ?LOG("Default Parent ID: ~s", [DefaultParentID]),
+	    [ ensure_parent_set(DefaultParentID, wh_json:get_value(<<"id">>, AcctJObj))
+	      || AcctJObj <- AcctJObjs,
+		 wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
+		 wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj, []) =:= [] % empty tree (should have at least the parent)
+	    ],
+	    ok;
+	{error, _}=E -> E
+    end.
+
+-spec ensure_parent_set/2 :: (ne_binary(), ne_binary()) -> 'ok' | #cb_context{}.
+ensure_parent_set(DefaultParentID, AccountID) ->
+    case update_tree(AccountID, DefaultParentID, #cb_context{db_name=?ACCOUNTS_AGG_DB}) of
+	#cb_context{resp_status=success}=Context ->
+	    ?LOG("updating tree of ~s", [AccountID]),
+	    crossbar_doc:save(Context);
+	_Context ->
+	    ?LOG("failed to update tree for ~s", [AccountID])
+    end.
+
+-spec find_default_parent/1 :: (json_objects()) -> ne_binary().
+find_default_parent(AcctJObjs) ->
+    case whapps_config:get(?CONFIG_CAT, <<"default_parent">>) of
+	undefined ->
+	    First = hd(AcctJObjs),
+	    {_, OldestAcctID} = lists:foldl(fun(AcctJObj, {Created, _}=Eldest) ->
+						    case wh_json:get_integer_value([<<"doc">>, <<"pvt_created">>], AcctJObj) of
+							Older when Older < Created  -> {Older, wh_json:get_value(<<"id">>, AcctJObj)};
+							_ -> Eldest
+						    end
+					    end
+					    ,{wh_json:get_integer_value([<<"doc">>, <<"pvt_created">>], First), wh_json:get_value(<<"id">>, First)}
+					    ,AcctJObjs),
+	    whapps_config:set(?CONFIG_CAT, <<"default_parent">>, OldestAcctID),
+	    OldestAcctID;
+	Default -> Default
+    end.
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -69,7 +117,8 @@ get_realm_from_db(DBName) ->
 %% @end
 %%--------------------------------------------------------------------
 init(_) ->
-    {ok, ok, 0}.
+    self() ! {rebind, all},
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -210,7 +259,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
                       %% Ensure the DB that we are about to delete is an account
                       {ok, JObj} = couch_mgr:open_doc(DbName, AccountId),
 
-                      <<"account">> = wh_json:get_value(<<"pvt_type">>, JObj),
+                      ?PVT_TYPE = wh_json:get_value(<<"pvt_type">>, JObj),
 		      ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
 
                       #cb_context{resp_status=success} = crossbar_doc:delete(Context),
@@ -237,13 +286,13 @@ handle_info({binding_flushed, Binding}, State) ->
     erlang:send_after(100, self(), {rebind, Binding}),
     {noreply, State};
 
-handle_info({rebind, Binding}, State) ->
-    ?LOG("Rebinding ~s", [Binding]),
-    crossbar_bindings:bind(Binding),
+handle_info({rebind, all}, State) ->
+    _ = bind_to_crossbar(),
     {noreply, State};
 
-handle_info(timeout, State) ->
-    bind_to_crossbar(),
+handle_info({rebind, Binding}, State) ->
+    ?LOG("Rebinding ~s", [Binding]),
+    _ = crossbar_bindings:bind(Binding),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -301,7 +350,7 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
@@ -396,7 +445,7 @@ load_account_summary(AccountId, Context) ->
 -spec create_account/1 :: (#cb_context{}) -> #cb_context{}.
 -spec create_account/2 :: (#cb_context{}, 'undefined' | ne_binary()) -> #cb_context{}.
 create_account(Context) ->
-    create_account(Context, undefined).
+    create_account(Context, whapps_config:get(?CONFIG_CAT, <<"default_parent">>)).
 
 create_account(#cb_context{req_data=JObj}=Context, ParentId) ->
     case is_valid_doc(JObj) of
@@ -424,7 +473,7 @@ create_account(#cb_context{req_data=JObj}=Context, ParentId) ->
 %% Load an account document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_account/2 :: (AccountId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_account/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_account(AccountId, Context) ->
     crossbar_doc:load(AccountId, Context).
 
@@ -435,7 +484,7 @@ load_account(AccountId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_account/2 :: (AccountId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_account/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_account(AccountId, #cb_context{req_data=Data}=Context) ->
     case is_valid_doc(Data) of
         {errors, Fields} ->
@@ -568,7 +617,7 @@ is_valid_doc(JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% Updates AccountID's parent's tree with the AccountID as a descendant
 %% @end
 %%--------------------------------------------------------------------
 -spec update_tree/3 :: (ne_binary(), ne_binary() | 'undefined', #cb_context{}) -> #cb_context{}.
@@ -581,10 +630,10 @@ update_tree(AccountId, ParentId, Context) ->
             case load_descendants(AccountId, Context) of
                 #cb_context{resp_status=success, doc=[]} ->
                     crossbar_util:response_bad_identifier(AccountId, Context);
-                #cb_context{resp_status=success, doc=Docs}=Context1 when is_list(Docs) ->
+                #cb_context{resp_status=success, doc=DescDocs}=Context1 when is_list(DescDocs) ->
                     Tree = wh_json:get_value(<<"pvt_tree">>, Parent, []) ++ [ParentId, AccountId],
-                    Updater = fun(Update, Acc) -> update_doc_tree(Tree, Update, Acc) end,
-                    Updates = lists:foldr(Updater, [], Docs),
+                    Updater = fun(Desc, Acc) -> update_doc_tree(Tree, Desc, Acc) end,
+                    Updates = lists:foldr(Updater, [], DescDocs),
                     Context1#cb_context{doc=Updates};
 		Context1 -> Context1
             end;
@@ -599,19 +648,19 @@ update_tree(AccountId, ParentId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_doc_tree/3 :: ([ne_binary(),...], json_object(), json_objects()) -> json_objects().
-update_doc_tree(ParentTree, JObj, Acc) ->
+update_doc_tree([_|_]=ParentTree, JObj, Acc) ->
     AccountId = wh_json:get_value(<<"id">>, JObj),
     ParentId = lists:last(ParentTree),
 
     case crossbar_doc:load(AccountId, #cb_context{db_name=?ACCOUNTS_AGG_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
-            Tree = wh_json:get_value(<<"pvt_tree">>, Doc, []),
             MyTree =
-                case lists:dropwhile(fun(E)-> E =/= ParentId end, Tree) of
+                case lists:dropwhile(fun(E)-> E =/= ParentId end, wh_json:get_value(<<"pvt_tree">>, Doc, [])) of
                     [] -> ParentTree;
-                    List -> ParentTree ++ tl(List)
+                    [_|List] -> ParentTree ++ List
                 end,
-            [wh_json:set_value(<<"pvt_tree">>, [E || E <- MyTree, E =/= AccountId], Doc) | Acc];
+	    Trimmed = [E || E <- MyTree, E =/= AccountId],
+            [wh_json:set_value(<<"pvt_tree">>, Trimmed, Doc) | Acc];
         _Else ->
             Acc
     end.
@@ -643,22 +692,31 @@ set_private_fields(JObj0, Context, ParentId) ->
     end.
 
 add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, <<"account">>, JObj).
+    wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
 
 add_pvt_api_key(JObj, _) ->
     wh_json:set_value(<<"pvt_api_key">>, wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(32))), JObj).
 
 add_pvt_tree(JObj, #cb_context{auth_doc=undefined}) ->
-    wh_json:set_value(<<"pvt_tree">>, [], JObj);
+    case whapps_config:get(?CONFIG_CAT, <<"default_parent">>) of
+	undefined ->
+	    ?LOG("there really should be a parent unless this is the first ever account"),
+	    wh_json:set_value(<<"pvt_tree">>, [], JObj);
+	ParentId ->
+	    ?LOG("setting tree to [~s]", [ParentId]),
+	    wh_json:set_value(<<"pvt_tree">>, [ParentId], JObj)
+    end;
 add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
     AuthAccId = wh_json:get_value(<<"account_id">>, Token),
     case is_binary(AuthAccId) andalso couch_mgr:open_doc(whapps_util:get_db_name(AuthAccId, encoded), AuthAccId) of
         {ok, AuthJObj} ->
-            ParentTree = wh_json:get_value(<<"pvt_tree">>, AuthJObj, []),
-            wh_json:set_value(<<"pvt_tree">>, ParentTree ++ [AuthAccId], JObj);
+	    Tree = wh_json:get_value(<<"pvt_tree">>, AuthJObj, []) ++ [AuthAccId],
+	    ?LOG("setting parent tree to ~p", [Tree]),
+            wh_json:set_value(<<"pvt_tree">>, Tree, JObj);
         false ->
-            wh_json:set_value(<<"pvt_tree">>, [], JObj);
+	    add_pvt_tree(JObj, #cb_context{auth_doc=undefined});
         _ ->
+	    ?LOG("setting parent tree to [~s]", [AuthAccId]),
             wh_json:set_value(<<"pvt_tree">>, [AuthAccId], JObj)
     end.
 

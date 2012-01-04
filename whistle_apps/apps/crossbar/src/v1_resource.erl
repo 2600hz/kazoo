@@ -22,15 +22,12 @@
 -include("crossbar.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
 
--define(NAME, <<"v1_resource">>).
-
 %%%===================================================================
 %%% WebMachine API
 %%%===================================================================
+-spec init/1 :: (proplist()) -> {'ok', #cb_context{}}.
 init(Opts) ->
-    ?TIMER_START("v1.init begin"),
-    {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{start=now()}, Opts}),
-    ?TIMER_TICK("v1.init end"),
+    {#cb_context{}=Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{}, Opts}),
     {ok, Context}.
     %% {{trace, "/tmp"}, Context}.
     %% wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp"). % in your running shell to look at trace files

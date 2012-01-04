@@ -51,8 +51,8 @@ workers() ->
     [ Pid || {_, Pid, worker, [Worker]} <- supervisor:which_children(?SERVER),
              Worker =:= ecallmgr_call_events].
 
--spec find_worker/1 :: (binary()) -> {error, not_found} | {ok, pid()}.
--spec do_find_worker/2 :: (binary(), [] | [pid(),...]) -> {error, not_found} | {ok, pid()}.
+-spec find_worker/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
+-spec do_find_worker/2 :: ([] | [pid(),...], ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
 
 find_worker(CallId) ->
     do_find_worker(workers(), CallId).
@@ -61,13 +61,11 @@ do_find_worker([], _) ->
     {error, not_found};
 do_find_worker([Srv|T], CallId) ->
     case ecallmgr_call_events:callid(Srv) of
-        CallId ->
-            {ok, Srv};
-        _ ->
-            do_find_worker(T, CallId)
+        CallId -> {ok, Srv};
+        _ -> do_find_worker(T, CallId)
     end.
 
--spec find_control_queue/1 :: (binary()) -> {error, not_found} | {ok, pid()}.
+-spec find_control_queue/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', ne_binary()}.
 find_control_queue(CallId) ->    
     case find_worker(CallId) of
         {error, _}=E -> E;

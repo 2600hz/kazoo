@@ -30,7 +30,7 @@
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(current_doc_vsn/0 :: () -> <<_:8>>).
+-spec current_doc_vsn/0 :: () -> <<_:8>>.
 current_doc_vsn() ->
     ?CROSSBAR_DOC_VSN.
 
@@ -43,7 +43,7 @@ current_doc_vsn() ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(load/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load(_DocId, #cb_context{db_name = <<>>}=Context) ->
     crossbar_util:response_db_missing(Context);
 load(DocId, #cb_context{db_name=DB}=Context) ->
@@ -81,7 +81,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(load_from_file/2 :: (Db :: binary(), File :: binary()) -> no_return()).
+-spec load_from_file/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
 load_from_file(Db, File) ->
     couch_mgr:load_doc_from_file(Db, crossbar, File).
 
@@ -95,7 +95,7 @@ load_from_file(Db, File) ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(load_merge/3 :: (DocId :: binary(), Data :: json_object(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_merge/3 :: (ne_binary(), json_object(), #cb_context{}) -> #cb_context{}.
 load_merge(_DocId, _Data, #cb_context{db_name = <<>>}=Context) ->
     ?LOG("db missing from #cb_context for doc ~s", [_DocId]),
     crossbar_util:response_db_missing(Context);
@@ -125,9 +125,9 @@ load_merge(DocId, DataJObj, #cb_context{db_name=DBName}=Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(load_view/3 :: (View :: binary(), Options :: proplist(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_view/3 :: (ne_binary(), proplist(), #cb_context{}) -> #cb_context{}.
 load_view(_View, _Options, #cb_context{db_name = <<>>}=Context) ->
-    ?LOG("db missing from #cb_context for view ~s", [view_name_to_binary(_View)]),
+    ?LOG("db missing from #cb_context for view ~s", [_View]),
     crossbar_util:response_db_missing(Context);
 load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
     {HasFilter, ViewOptions} = case has_filter(RJ) of
@@ -139,13 +139,13 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
                                end,
     case couch_mgr:get_results(DB, View, ViewOptions) of
 	{error, invalid_view_name} ->
-	    ?LOG("loading view ~s from ~s failed: invalid view", [view_name_to_binary(View), DB]),
+	    ?LOG("loading view ~s from ~s failed: invalid view", [View, DB]),
             crossbar_util:response_missing_view(Context);
 	{error, not_found} ->
-	    ?LOG("loading view ~s from ~s failed: not found", [view_name_to_binary(View), DB]),
+	    ?LOG("loading view ~s from ~s failed: not found", [View, DB]),
 	    crossbar_util:response_missing_view(Context);
         {ok, Docs} when HasFilter ->
-	    ?LOG("loaded view ~s from ~s, running query filter", [view_name_to_binary(View), DB]),
+	    ?LOG("loaded view ~s from ~s, running query filter", [View, DB]),
             Filtered = [Doc || Doc <- Docs, Doc =/= undefined, filter_doc(wh_json:get_value(<<"doc">>, Doc), RJ)],
             Context#cb_context{
 	      doc=Filtered
@@ -153,14 +153,14 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
 	      ,resp_etag=rev_to_etag(Filtered)
 	     };
 	{ok, Docs} ->
-	    ?LOG("loaded view ~s from ~s", [view_name_to_binary(View), DB]),
+	    ?LOG("loaded view ~s from ~s", [View, DB]),
             Context#cb_context{
 	      doc=Docs
 	      ,resp_status=success
 	      ,resp_etag=rev_to_etag(Docs)
 	     };
         _Else ->
-	    ?LOG("loading view ~s from ~s failed: unexpected ~p", [view_name_to_binary(View), DB, _Else]),
+	    ?LOG("loading view ~s from ~s failed: unexpected ~p", [View, DB, _Else]),
             Context#cb_context{doc=wh_json:new()}
     end.
 
@@ -181,7 +181,8 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
             Context1#cb_context{resp_data=
                                     lists:filter(fun(undefined) -> false;
                                                     (_) -> true
-                                                 end, lists:foldr(Filter, [], Doc))};
+                                                 end, lists:foldr(Filter, [], Doc))
+			       };
         Else ->
             Else
     end.
@@ -300,8 +301,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec ensure_saved/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec ensure_saved/1 :: (#cb_context{}) -> #cb_context{}.
 ensure_saved(#cb_context{db_name = <<>>}=Context) ->
     ?LOG("DB undefined, cannot ensure save"),
     crossbar_util:response_db_missing(Context);
@@ -335,12 +335,11 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
             Context
     end.
 
--spec send_document_change/3 :: (Action, Db, Doc) -> pid() when
-      Action :: wapi_conf:conf_action(),
-      Db :: ne_binary(),
-      Doc :: json_object().
+-spec send_document_change/3 :: (wapi_conf:conf_action(), ne_binary(), json_object() | json_objects()) -> pid().
 send_document_change(Action, Db, Doc) when not is_binary(Action) ->
     send_document_change(wh_util:to_binary(Action), Db, Doc);
+send_document_change(Action, Db, Docs) when is_list(Docs) ->
+    [send_document_change(Action, Db, Doc) || Doc <- Docs];
 send_document_change(Action, Db, Doc) ->
     CallID = get(callid),
     spawn(fun() ->
@@ -368,7 +367,7 @@ send_document_change(Action, Db, Doc) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(save_attachment/4 :: (DocId :: binary(), AName :: binary(), Contents :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec save_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 save_attachment(DocId, AName, Contents, Context) ->
     save_attachment(DocId, AName, Contents, Context, []).
 
@@ -380,7 +379,7 @@ save_attachment(DocId, AName, Contents, Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(save_attachment/5 :: (DocId :: binary(), AName :: binary(), Contents :: binary(), Context :: #cb_context{}, Options :: proplist()) -> #cb_context{}).
+-spec save_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), #cb_context{}, proplist()) -> #cb_context{}.
 save_attachment(_DocId, _AName, _, #cb_context{db_name = <<>>}=Context, _) ->
     ?LOG("Saving attachment ~s to doc ~s failed: no db specified", [_AName, _DocId]),
     crossbar_util:response_db_missing(Context);
@@ -480,7 +479,7 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context, permanent) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec(delete_attachment/3 :: (DocId :: binary(), AName :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec delete_attachment/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 delete_attachment(_DocId, _AName, #cb_context{db_name = <<>>}=Context) ->
     ?LOG("deleting attachment ~s from doc ~s failed: no db", [_AName, _DocId]),
     crossbar_util:response_db_missing(Context);
@@ -570,7 +569,9 @@ rev_to_etag(JObj) ->
 %% parameters on all crossbar documents
 %% @end
 %%--------------------------------------------------------------------
--spec update_pvt_parameters/2 :: (json_object(), #cb_context{}) -> json_object().
+-spec update_pvt_parameters/2 :: (json_object() | json_objects(), #cb_context{}) -> json_object() | json_objects().
+update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
+    [update_pvt_parameters(JObj, Context) || JObj <- JObjs];
 update_pvt_parameters(JObj0, #cb_context{db_name=DBName}) ->
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName) end, JObj0, ?PVT_FUNS).
 
@@ -600,18 +601,6 @@ add_pvt_created(JObj, _) ->
 add_pvt_modified(JObj, _) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Standardize the view data structure as a binary for use in the
-%% logs
-%% @end
-%%--------------------------------------------------------------------
--spec view_name_to_binary/1 :: ({binary() | string(), binary() | string()} | binary() | string()) -> binary().
-view_name_to_binary(View) when is_binary(View) -> View;
-view_name_to_binary({Cat, View}) -> list_to_binary([Cat, "/", View]);
-view_name_to_binary(View) -> wh_util:to_binary(View).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -55,6 +55,7 @@ get_host() ->
 publish(BP, AM) ->
     gen_server:call(?SERVER, {publish, BP, AM}).
 
+-spec consume/1 :: (amqp_host:consume_records()) -> 'ok' | {'ok', pid() | ne_binary()} | {'error', atom()}.
 consume(BC) ->
     gen_server:call(?SERVER, {consume, BC}).
 

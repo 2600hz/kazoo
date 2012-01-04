@@ -67,23 +67,23 @@
 -record(state, {
           node = 'undefined' :: atom()
          ,callid = <<>> :: binary()
-         ,self = undefined :: undefined | pid()
-         ,controller_q = undefined :: undefined | ne_binary()
-         ,evtpid = undefined :: undefined | pid()
+         ,self = 'undefined' :: 'undefined' | pid()
+         ,controller_q = 'undefined' :: 'undefined' | ne_binary()
+         ,evtpid = 'undefined' :: 'undefined' | pid()
          ,command_q = queue:new() :: queue()
          ,current_app = 'undefined' :: ne_binary() | 'undefined'
          ,start_time = erlang:now() :: wh_now()
          ,is_node_up = 'true' :: boolean()
          ,keep_alive_ref = 'undefined' :: 'undefined' | reference()
          ,other_legs = [] :: [] | [ne_binary(),...]
-         ,last_removed_leg = undefined :: undefined | ne_binary()
-         ,sanity_check_tref = undefined
+         ,last_removed_leg = 'undefined' :: 'undefined' | ne_binary()
+         ,sanity_check_tref = 'undefined'
          }).
 
 -define(RESPONDERS, [{{?MODULE, handle_call_command}, [{<<"call">>, <<"command">>}]}
                      ,{{?MODULE, handle_conference_command}, [{<<"conference">>, <<"command">>}]}
                      ,{{?MODULE, handle_call_events}, [{<<"call_event">>, <<"*">>}]}]).
--define(QUEUE_NAME, <<"">>).
+-define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
@@ -131,7 +131,7 @@ other_legs(Srv) ->
 event_execute_complete(Srv, CallId, App) ->
     gen_listener:cast(Srv, {event_execute_complete, CallId, App}).
 
--spec add_leg/1 :: (proplist()) -> ok.
+-spec add_leg/1 :: (proplist()) -> pid().
 add_leg(Props) ->
     spawn(fun() ->
                   %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
@@ -146,7 +146,7 @@ add_leg(Props) ->
                   end
           end).
 
--spec rm_leg/1 :: (proplist()) -> ok.
+-spec rm_leg/1 :: (proplist()) -> pid().
 rm_leg(Props) ->
     spawn(fun() ->
                   %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
@@ -161,17 +161,17 @@ rm_leg(Props) ->
                   end
           end).
 
--spec handle_call_command/2 :: (json_object(), proplist()) -> ok.
+-spec handle_call_command/2 :: (json_object(), proplist()) -> 'ok'.
 handle_call_command(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {dialplan, JObj}).
 
--spec handle_conference_command/2 :: (json_object(), proplist()) -> ok.
+-spec handle_conference_command/2 :: (json_object(), proplist()) -> 'ok'.
 handle_conference_command(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {dialplan, JObj}).
 
--spec handle_call_events/2 :: (json_object(), proplist()) -> ok.
+-spec handle_call_events/2 :: (json_object(), proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value(server, Props),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -288,7 +288,7 @@ handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCa
             ?LOG("binding to new call events"),
             gen_listener:add_binding(self(), call, [{callid, NewCallId}]),
             ?LOG("ensuring event listener exists"),
-            ecallmgr_call_sup:start_event_process(Node, NewCallId),
+            _ = ecallmgr_call_sup:start_event_process(Node, NewCallId),
             ?LOG("....You did it. You crazy son of a bitch you did it."),
             {noreply, State#state{callid=NewCallId, other_legs=lists:delete(NewCallId, Legs)}};
         _ ->
@@ -310,7 +310,7 @@ handle_cast({add_leg, JObj}, #state{other_legs=Legs, node=Node, callid=CallId}=S
                           publish_leg_addition(JObj)
                   end),
             ?LOG("ensuring event listener for leg ~s exists", [LegId]),
-            ecallmgr_call_sup:start_event_process(Node, LegId),
+            _ = ecallmgr_call_sup:start_event_process(Node, LegId),
             {noreply, State#state{other_legs=[LegId|Legs]}}
     end;
 handle_cast({rm_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
@@ -630,7 +630,7 @@ get_keep_alive_ref(TRef) ->
         end,
     erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired).
 
--spec publish_leg_addition/1 :: (json_object()) -> ok.
+-spec publish_leg_addition/1 :: (json_object()) -> 'ok'.
 publish_leg_addition(JObj) ->
     Props = case wh_json:get_value(<<"Event-Name">>, JObj) of
                 <<"CHANNEL_BRIDGE">> ->
@@ -640,13 +640,11 @@ publish_leg_addition(JObj) ->
             end,
     Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>, undefined, Props),
     case props:get_value(<<"Call-ID">>, Event) of
-        undefined ->
-            ok;
-        _Else ->
-            ecallmgr_call_events:publish_event(Event)
+        undefined -> ok;
+        _Else -> ecallmgr_call_events:publish_event(Event)
     end.
 
--spec publish_leg_removal/1 :: (json_object()) -> ok.
+-spec publish_leg_removal/1 :: (json_object()) -> 'ok'.
 publish_leg_removal(JObj) ->
     Props = case wh_json:get_value(<<"Event-Name">>, JObj) of
                 <<"CHANNEL_UNBRIDGE">> ->
@@ -662,7 +660,7 @@ publish_leg_removal(JObj) ->
             ecallmgr_call_events:publish_event(Event)
     end.
 
--spec publish_callid_update/3 :: (ne_binary(), ne_binary(), ne_binary()) -> ok.
+-spec publish_callid_update/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 publish_callid_update(PrevCallId, NewCallId, CtrlQ) -> 
     ?LOG(PrevCallId, "sending callid update to ~s", [NewCallId]),
     Update = [{<<"Call-ID">>, NewCallId}
@@ -672,7 +670,7 @@ publish_callid_update(PrevCallId, NewCallId, CtrlQ) ->
              ],
     wapi_call:publish_callid_update(PrevCallId, Update).
 
--spec publish_control_transfer/2 :: (ne_binary(), ne_binary()) -> ok.
+-spec publish_control_transfer/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 publish_control_transfer(undefined, CallId) ->
     ?LOG(CallId, "no whapp queue known for control transfer", []),    
     ok;

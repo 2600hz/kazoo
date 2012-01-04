@@ -112,7 +112,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
                  ,{RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]}=Context}}, State) ->
     spawn(fun() ->
-		  crossbar_util:put_reqid(Context),
+		  _ = crossbar_util:put_reqid(Context),
 		  ?LOG("authenticating request"),
 		  Pid ! {binding_result, true, {RD, Context}}
 	  end),

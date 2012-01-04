@@ -164,7 +164,7 @@ all_docs(#server{}=Conn, DbName, Options) ->
     {'ok', View} = couchbeam:all_docs(get_db(Conn, DbName), Options),
     do_fetch_results(View).
 
--spec get_results/4 :: (#server{}, ne_binary(), ne_binary(), proplist()) -> {'ok', json_objects()} | {'error', atom()}.
+-spec get_results/4 :: (#server{}, ne_binary(), ne_binary(), proplist()) -> {'ok', json_objects() | [ne_binary(),...]} | {'error', atom()}.
 get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = get_db(Conn, DbName),
     View = get_view(Db, DesignDoc, ViewOptions),
