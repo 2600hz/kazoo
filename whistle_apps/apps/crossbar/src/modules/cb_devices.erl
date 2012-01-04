@@ -384,7 +384,7 @@ load_device_status(#cb_context{db_name=Db}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects().
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -470,7 +470,7 @@ wait_for_reg_resp([_|T], Acc) ->
 %% Do awesome provisioning
 %% @end
 %%--------------------------------------------------------------------
--spec do_awesome_provision/2 :: (undefined | ne_binary(), #cb_context{}) -> 'ok'.
+-spec do_awesome_provision/2 :: ('undefined' | ne_binary(), #cb_context{}) -> 'ok'.
 do_awesome_provision(undefined, _) ->
     ok;
 do_awesome_provision(Url, #cb_context{doc=JObj, db_name=Db}) ->
@@ -494,7 +494,7 @@ do_awesome_provision(Url, #cb_context{doc=JObj, db_name=Db}) ->
     end,
     ok.
 
--spec provision_device_line/3 :: ([ne_binary(),...], json_object, json_object()) -> json_object().
+-spec provision_device_line/3 :: ([ne_binary(),...], json_object(), json_object()) -> json_object().
 provision_device_line(BaseKey, Device, Template) ->
     Mappings = [{[<<"username">>, <<"value">>], [<<"sip">>, <<"username">>]}
                 ,{[<<"authname">>, <<"value">>], [<<"sip">>, <<"username">>]}
@@ -503,7 +503,7 @@ provision_device_line(BaseKey, Device, Template) ->
                ],
     provision_device_line(BaseKey, Device, Template, Mappings).
 
--spec provision_device_line/4 :: ([ne_binary(),...], json_object, json_object(), proplist()) -> json_object().
+-spec provision_device_line/4 :: ([ne_binary(),...], json_object(), json_object(), [{json_strings(), json_strings()},...]) -> json_object().
 provision_device_line(_, _, Template, []) ->
     Template;
 provision_device_line(BaseKey, Device, Template, [{TemplateKey, DeviceKey}|T]) ->

@@ -347,15 +347,15 @@ get_provision_defaults(#cb_context{req_data=JObj}=Context) ->
 
     case ibrowse:send_req(UrlString, Headers, get, Body, HTTPOptions) of
         {ok, "200", _, Response} ->
-            ?LOG("Great success! Acquired provisioning template.", []),
+            ?LOG("Great success! Acquired provisioning template."),
             JResp = wh_json:decode(Response),
             Context#cb_context{
                 doc = wh_json:set_value(<<"template">>, JResp, JObj)
                 ,resp_status = success
             };
         _ ->
-            ?LOG("Error! Could not acquiring provisioning template.", []),
-            crossbar:response(error, "Error retrieving content from external site", 500, Context)
+            ?LOG("Error! Could not acquiring provisioning template."),
+            crossbar_util:response(error, <<"Error retrieving content from external site">>, 500, Context)
     end.
 
 %%--------------------------------------------------------------------

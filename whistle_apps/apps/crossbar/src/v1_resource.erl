@@ -27,8 +27,9 @@
 %%%===================================================================
 -spec init/1 :: (proplist()) -> {'ok', #cb_context{}}.
 init(Opts) ->
-    {#cb_context{}=Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{}, Opts}),
+    {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{}, Opts}),
     {ok, Context}.
+
     %% {{trace, "/tmp"}, Context}.
     %% wmtrace_resource:add_dispatch_rule("wmtrace", "/tmp"). % in your running shell to look at trace files
     %% binds http://host/wmtrace and stores the files in /tmp
@@ -65,7 +66,7 @@ allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     Verb = get_http_verb(RD, ReqJSON),
     ?LOG("method using for request: ~s", [Verb]),
 
-    Tokens = lists:map(fun wh_util:to_binary/1, wrq:path_tokens(RD)),
+    Tokens = [wh_util:to_binary(Token) || Token <- wrq:path_tokens(RD)],
 
     case parse_path_tokens(Tokens) of
         [{Mod, Params}|_] = Nouns ->
@@ -300,16 +301,14 @@ to_binary(RD, #cb_context{resp_data=RespData}=Context) ->
 %% is returned.
 %% @end
 %%--------------------------------------------------------------------
--spec parse_path_tokens/1 :: (Tokens) -> [{binary(), [binary(),...]},...] | [] when
-      Tokens :: [binary(),...] | [].
+
+-type cb_mod_with_tokens() :: {ne_binary(), path_tokens()}.
+-spec parse_path_tokens/1 :: (json_strings()) -> [cb_mod_with_tokens(),...] | [].
 parse_path_tokens(Tokens) ->
     Loaded = [ wh_util:to_binary(Mod) || {Mod, _, _, _} <- supervisor:which_children(crossbar_module_sup) ],
     parse_path_tokens(Tokens, Loaded, []).
 
--spec parse_path_tokens/3 :: (Tokens, Loaded, Events) -> [{binary(), [binary(),...]},...] | [] when
-      Tokens :: [binary(),...] | [],
-      Loaded :: [binary(),...],
-      Events :: [{binary(), [binary(),...]},...] | [].
+-spec parse_path_tokens/3 :: (json_strings(), json_strings(), [cb_mod_with_tokens(),...] | []) -> [cb_mod_with_tokens(),...] | [].
 parse_path_tokens([], _Loaded, Events) ->
     Events;
 parse_path_tokens([Mod|T], Loaded, Events) ->
