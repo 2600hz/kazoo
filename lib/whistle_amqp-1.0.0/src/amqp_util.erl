@@ -375,71 +375,58 @@ new_exchange(Exchange, Type, Options) ->
 %% Create AMQP queues
 %% @end
 %%------------------------------------------------------------------------------
--spec new_targeted_queue/0 :: () -> binary() | {'error', 'amqp_error'}.
--spec new_targeted_queue/1 :: (Queue) -> binary() | {'error', 'amqp_error'} when
-      Queue :: binary().
+-spec new_targeted_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_targeted_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
 new_targeted_queue() ->
     new_targeted_queue(<<>>).
 
 new_targeted_queue(Queue) ->
     new_queue(Queue, [{nowait, false}]).
 
--spec new_callevt_queue/1 :: (CallID) -> binary() | {'error', 'amqp_error'} when
-      CallID :: binary().
+-spec new_callevt_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
 new_callevt_queue(<<>>) ->
     new_queue(<<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callevt_queue(CallID) ->
     new_queue(list_to_binary([?EXCHANGE_CALLEVT, ".", encode(CallID)])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
--spec new_callctl_queue/1 :: (CallID) -> binary() | {'error', 'amqp_error'} when
-      CallID :: binary().
+-spec new_callctl_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
 new_callctl_queue(<<>>) ->
     new_queue(<<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callctl_queue(CallID) ->
     new_queue(list_to_binary([?EXCHANGE_CALLCTL, ".", encode(CallID)])
 	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
--spec new_resource_queue/0 :: () -> binary() | {'error', 'amqp_error'}.
--spec new_resource_queue/1 :: (Queue) -> binary() | {'error', 'amqp_error'} when
-      Queue :: binary().
+-spec new_resource_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_resource_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
 new_resource_queue() ->
     new_resource_queue(?RESOURCE_QUEUE_NAME).
 new_resource_queue(Queue) ->
     new_queue(Queue, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
--spec new_callmgr_queue/1 :: (Queue) -> binary() | {'error', 'amqp_error'} when
-      Queue :: binary().
--spec new_callmgr_queue/2 :: (Queue, Options) -> binary() | {'error', 'amqp_error'} when
-      Queue :: binary(),
-      Options :: proplist().
+-spec new_callmgr_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_callmgr_queue/2 :: (binary(), proplist()) -> ne_binary() | {'error', 'amqp_error'}.
 new_callmgr_queue(Queue) ->
     new_callmgr_queue(Queue, []).
 new_callmgr_queue(Queue, Opts) ->
     new_queue(Queue, Opts).
 
--spec new_configuration_queue/1 :: (Queue) -> binary() | {'error', 'amqp_error'} when
-      Queue :: binary().
--spec new_configuration_queue/2 :: (Queue, Options) -> binary() | {'error', 'amqp_error'} when
-      Queue :: binary(),
-      Options :: proplist().
+-spec new_configuration_queue/1 :: (ne_binary()) -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_configuration_queue/2 :: (ne_binary(), proplist()) -> ne_binary() | {'error', 'amqp_error'}.
 new_configuration_queue(Queue) ->
     new_configuration_queue(Queue, []).
 new_configuration_queue(Queue, Options) ->
     new_queue(Queue, Options).
 
--spec new_monitor_queue/0 :: () -> binary() | {'error', 'amqp_error'}.
--spec new_monitor_queue/1 :: (Queue :: binary()) -> binary() | {'error', 'amqp_error'}.
+-spec new_monitor_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_monitor_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
 new_monitor_queue() ->
     new_monitor_queue(<<>>).
 new_monitor_queue(Queue) ->
     new_queue(Queue, [{exclusive, false}, {auto_delete, true}]).
 
--spec new_conference_queue/1 :: (Queue) -> binary() | {'error', 'amqp_error'} when
-      Queue :: discovery | binary().
--spec new_conference_queue/2 :: (Queue, Options) -> binary() | {'error', 'amqp_error'} when
-      Queue :: discovery | binary(),
-      Options :: proplist().
+-spec new_conference_queue/1 :: (ne_binary() | 'discovery') -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_conference_queue/2 :: (ne_binary() | 'discovery', proplist()) -> ne_binary() | {'error', 'amqp_error'}.
 new_conference_queue(discovery) ->
     new_queue(?CONF_DISCOVERY_QUEUE_NAME, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_conference_queue(ConfId) ->
@@ -451,14 +438,11 @@ new_conference_queue(ConfId, Options) ->
     new_queue(<<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Options).
 
 %% Declare a queue and returns the queue Name
--spec new_queue/0 :: () -> binary() | {'error', 'amqp_error'}.
--spec new_queue/1 :: (Queue) -> binary() | {'error', 'amqp_error'} when
-      Queue :: binary().
--spec new_queue/2 :: (Queue, Options) -> binary() | {'error', 'amqp_error'} when
-      Queue :: binary(),
-      Options :: proplist().
+-spec new_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_queue/2 :: (binary(), proplist()) -> ne_binary() | {'error', 'amqp_error'}.
 new_queue() ->
-    new_queue(<<>>). % let's the client lib create a random queue name
+    new_queue(<<>>). % lets the client lib create a random queue name
 new_queue(Queue) ->
     new_queue(Queue, []).
 new_queue(Queue, Options) when is_binary(Queue) ->
@@ -526,38 +510,30 @@ queue_delete(Queue, Prop) ->
 %% Bind a Queue to an Exchange (with optional Routing Key)
 %% @end
 %%------------------------------------------------------------------------------
--spec bind_q_to_targeted/1 :: (Queue) -> 'ok' | {'error', term()} when
-      Queue :: binary().
+-spec bind_q_to_targeted/1 :: (ne_binary()) -> 'ok' | {'error', atom()}.
 bind_q_to_targeted(Queue) ->
     bind_q_to_exchange(Queue, Queue, ?EXCHANGE_TARGETED).
 bind_q_to_targeted(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TARGETED).
 
--spec bind_q_to_whapps/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', term()}.
--spec bind_q_to_whapps/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok' | {'error', term()}.
+-spec bind_q_to_whapps/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
+-spec bind_q_to_whapps/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok' | {'error', atom()}.
 bind_q_to_whapps(Queue, Routing) ->
     bind_q_to_whapps(Queue, Routing, []).
 bind_q_to_whapps(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_WHAPPS, Options).
 
--spec bind_q_to_callctl/1 :: (Queue) -> 'ok' | {'error', term()} when
-      Queue :: binary().
--spec bind_q_to_callctl/2 :: (Queue, Routing) -> 'ok' | {'error', term()} when
-      Queue :: binary(),
-      Routing :: binary().
+-spec bind_q_to_callctl/1 :: (ne_binary()) -> 'ok' | {'error', atom()}.
+-spec bind_q_to_callctl/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
 bind_q_to_callctl(Queue) ->
     bind_q_to_callctl(Queue, Queue).
 bind_q_to_callctl(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLCTL).
 
 %% to receive all call events or cdrs, regardless of callid, pass <<"*">> for CallID
--spec bind_q_to_callevt/2 :: (Queue, CallID) -> 'ok' | {'error', term()} when
-      Queue :: binary(),
-      CallID :: media_req | binary().
--spec bind_q_to_callevt/3 :: (Queue, CallID, Type) -> 'ok' | {'error', term()} when
-      Queue :: binary(),
-      CallID :: binary(),
-      Type :: events | status_req | cdr | other.
+-spec bind_q_to_callevt/2 :: (ne_binary(), ne_binary() | 'media_req') -> 'ok' | {'error', atom()}.
+-spec bind_q_to_callevt/3 :: (ne_binary(), ne_binary(), Type) -> 'ok' | {'error', atom()} when
+      Type :: 'events' | 'status_req' | 'cdr' | 'other'.
 bind_q_to_callevt(Queue, media_req) ->
     bind_q_to_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
 bind_q_to_callevt(Queue, CallID) ->
@@ -572,41 +548,28 @@ bind_q_to_callevt(Queue, CallID, cdr) ->
 bind_q_to_callevt(Queue, Routing, other) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
--spec bind_q_to_resource/1 :: (Queue) -> 'ok' | {'error', term()} when
-      Queue :: binary().
--spec bind_q_to_resource/2 :: (Queue, Routing) -> 'ok' | {'error', term()} when
-      Queue :: binary(),
-      Routing :: binary().
+-spec bind_q_to_resource/1 :: (ne_binary()) -> 'ok' | {'error', atom()}.
+-spec bind_q_to_resource/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
 bind_q_to_resource(Queue) ->
     bind_q_to_resource(Queue, <<"#">>).
 bind_q_to_resource(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).
 
--spec bind_q_to_callmgr/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', term()}.
+-spec bind_q_to_callmgr/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
 bind_q_to_callmgr(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CALLMGR).
 
--spec bind_q_to_configuration/2 :: (Queue, Routing) -> ok | {error, term()} when
-      Queue :: binary(),
-      Routing :: binary().
+-spec bind_q_to_configuration/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
 bind_q_to_configuration(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_CONFIGURATION).
 
--spec bind_q_to_monitor/2 :: (Queue, Routing) -> ok | {error, term()} when
-      Queue :: binary(),
-      Routing :: binary().
+-spec bind_q_to_monitor/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
 bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
--spec bind_q_to_conference/2 :: (Queue, Routing) -> 'ok' | {'error', term()} when
-      Queue :: binary(),
-      Routing :: discovery | service | events.
--spec bind_q_to_conference/3 :: (Queue, Routing, ConfId) -> 'ok' | {'error', term()} when
-      Queue :: binary(),
-      Routing :: discovery | service | events,
-      ConfId :: undefined | binary().
-
-
+-type conf_routing_type() :: 'discovery' | 'service' | 'events'.
+-spec bind_q_to_conference/2 :: (ne_binary(), conf_routing_type()) -> 'ok' | {'error', atom()}.
+-spec bind_q_to_conference/3 :: (ne_binary(), conf_routing_type(), 'undefined' | ne_binary()) -> 'ok' | {'error', atom()}.
 bind_q_to_conference(Queue, discovery) ->
     bind_q_to_conference(Queue, discovery, undefined);
 bind_q_to_conference(Queue, service) ->
@@ -621,15 +584,8 @@ bind_q_to_conference(Queue, service, ConfId) ->
 bind_q_to_conference(Queue, events, ConfId) ->
     bind_q_to_exchange(Queue, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE, [{nowait, false}]).
 
--spec bind_q_to_exchange/3 :: (Queue, Routing, Exchange) -> 'ok' | {'error', term()} when
-      Queue :: binary(),
-      Routing :: binary(),
-      Exchange :: binary().
--spec bind_q_to_exchange/4 :: (Queue, Routing, Exchange, Options) -> 'ok' | {'error', term()} when
-      Queue :: binary(),
-      Routing :: binary(),
-      Exchange :: binary(),
-      Options :: proplist().
+-spec bind_q_to_exchange/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
+-spec bind_q_to_exchange/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> 'ok' | {'error', atom()}.
 bind_q_to_exchange(Queue, _Routing, _Exchange) when not is_binary(Queue) ->
     {error, invalid_queue_name};
 bind_q_to_exchange(Queue, Routing, Exchange) ->
@@ -646,9 +602,6 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
         ok ->
             ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
             ok;
-        {ok, #'queue.bind_ok'{}} ->
-            ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
-            ok;
 	{error, _E}=Else ->
             ?AMQP_DEBUG andalso ?LOG("failed to bind queue ~s: ~p", [Queue, Else]),
             Else
@@ -660,13 +613,9 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
 %% Unbind a Queue from an Exchange
 %% @end
 %%------------------------------------------------------------------------------
--spec unbind_q_from_callevt/2 :: (Queue, CallID) -> 'ok' | {'error', term()} when
-      Queue :: binary(),
-      CallID :: media_req | binary().
--spec unbind_q_from_callevt/3 :: (Queue, CallID, Type) -> 'ok' | {'error', term()} when
-      Queue :: binary(),
-      CallID :: binary(),
-      Type :: events | status_req | cdr | other.
+-spec unbind_q_from_callevt/2 :: (ne_binary(), ne_binary() | 'media_req') -> 'ok' | {'error', atom()}.
+-spec unbind_q_from_callevt/3 :: (ne_binary(), ne_binary(), Type) -> 'ok' | {'error', atom()} when
+      Type :: 'events' | 'status_req' | 'cdr' | 'other'.
 unbind_q_from_callevt(Queue, media_req) ->
     unbind_q_from_exchange(Queue, ?KEY_CALL_MEDIA_REQ, ?EXCHANGE_CALLEVT);
 unbind_q_from_callevt(Queue, CallID) ->
@@ -699,8 +648,7 @@ unbind_q_from_targeted(Queue) ->
 unbind_q_from_whapps(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_WHAPPS).
 
-unbind_q_from_exchange(Queue, _Routing, _Exchange) when not is_binary(Queue) ->
-    {error, invalid_queue_name};
+-spec unbind_q_from_exchange/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
 unbind_q_from_exchange(Queue, Routing, Exchange) ->
     QU = #'queue.unbind'{
       queue = Queue
@@ -718,16 +666,11 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
 %% @end
 %%------------------------------------------------------------------------------
 %% create a consumer for a Queue
--spec basic_consume/1 :: (Queue) -> 'ok' when
-      Queue :: binary().
--spec basic_consume/2 :: (Queue, Options) -> 'ok' when
-      Queue :: binary(),
-      Options :: proplist().
+-spec basic_consume/1 :: (ne_binary()) -> 'ok' | {'error', atom()}.
+-spec basic_consume/2 :: (ne_binary(), proplist()) -> 'ok' | {'error', atom()}.
 basic_consume(Queue) ->
     basic_consume(Queue, []).
 
-basic_consume(Queue, _Options) when not is_binary(Queue) ->
-    {error, invalid_queue_name};
 basic_consume(Queue, Options) ->
     BC = #'basic.consume'{
       queue = Queue
@@ -741,7 +684,7 @@ basic_consume(Queue, Options) ->
 	{error, E}=Err ->
             ?AMQP_DEBUG andalso ?LOG("error when trying to consume on ~s: ~p", [Queue, E]),
 	    Err;
-        {Pid, ok} when is_pid(Pid) ->
+        {ok, Pid} when is_pid(Pid) ->
             ?AMQP_DEBUG andalso ?LOG("started consume of queue(~p) ~s", [Options, Queue]),
             ok;
         Else ->
@@ -756,6 +699,7 @@ basic_consume(Queue, Options) ->
 %% but it does mean the server will not send any more messages for that consumer.
 %% @end
 %%------------------------------------------------------------------------------
+-spec basic_cancel/1 :: (ne_binary()) -> 'ok'.
 basic_cancel(Queue) ->
     ?AMQP_DEBUG andalso ?LOG("cancel consume for queue ~s", [Queue]),
     amqp_mgr:consume(#'basic.cancel'{consumer_tag = Queue, nowait = false}).
@@ -766,6 +710,8 @@ basic_cancel(Queue) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
+-spec access_request/0 :: () -> #'access.request'{}.
+-spec access_request/1 :: (proplist()) -> #'access.request'{}.
 access_request() ->
     access_request([]).
 access_request(Options) ->
@@ -784,6 +730,7 @@ access_request(Options) ->
 %% Determines if the content is flaged as type JSON
 %% @end
 %%------------------------------------------------------------------------------
+-spec is_json/1 :: (#'P_basic'{}) -> boolean().
 is_json(#'P_basic'{content_type=CT}) ->
     CT =:= ?DEFAULT_CONTENT_TYPE.
 
@@ -794,6 +741,7 @@ is_json(#'P_basic'{content_type=CT}) ->
 %% delivered via the Deliver or Get-'Ok' methods.
 %% @end
 %%------------------------------------------------------------------------------
+-spec basic_ack/1 :: (integer()) -> 'ok'.
 basic_ack(DTag) ->
     ?AMQP_DEBUG andalso ?LOG("basic ack of ~s", [DTag]),
     amqp_mgr:consume(#'basic.ack'{delivery_tag=DTag}).
@@ -805,6 +753,7 @@ basic_ack(DTag) ->
 %% Reject one or more incoming messages.
 %% @end
 %%------------------------------------------------------------------------------
+-spec basic_nack/1 :: (integer()) -> 'ok'.
 basic_nack(DTag) ->
     ?AMQP_DEBUG andalso ?LOG("basic nack of ~s", [DTag]),
     amqp_mgr:consume(#'basic.nack'{delivery_tag=DTag}).
@@ -868,7 +817,7 @@ do_encode(<<$., Rest/binary>>, Acc) ->
 do_encode(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
     do_encode(Rest, <<Acc/binary, $%, (hexdigit(Hi))/binary, (hexdigit(Lo))/binary>>).
 
--spec hexdigit/1 :: (byte()) -> ne_binary().
+-spec hexdigit/1 :: (byte()) -> <<_:8>>.
 hexdigit(C) when C < 10 ->
     <<($0 + C)>>;
 hexdigit(C) when C < 16 ->

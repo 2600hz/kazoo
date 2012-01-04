@@ -169,7 +169,7 @@ compact_shard(AdminConn, Shard, DesignDocs) ->
 
     ?LOG("design cleanup"),
     _ = [ couch_util:design_compact(AdminConn, Shard, Design) || Design <- DesignDocs ],
-    ok = timer:sleep(?SLEEP_BETWEEN_COMPACTION),
+    ok = timer:sleep(couch_config:fetch(<<"sleep_between_compaction">>, ?SLEEP_BETWEEN_COMPACTION)),
     ok.
 
 -spec wait_for_compaction/2 :: (#server{}, ne_binary()) -> 'ok'.
@@ -179,14 +179,15 @@ wait_for_compaction(AdminConn, Shard) ->
 	    case wh_json:is_true(<<"compact_running">>, ShardData, false) of
 		true ->
 		    ?LOG("compaction running for shard"),
-		    ok = timer:sleep(?SLEEP_BETWEEN_POLL),
+		    ok = timer:sleep(couch_config:fetch(<<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL)),
 		    wait_for_compaction(AdminConn, Shard);
 		false ->
 		    ?LOG("compaction is not running for shard"),
 		    ok
 	    end;
-	_ ->
-	    ok = timer:sleep(?SLEEP_BETWEEN_POLL),
+	{error, _E} ->
+	    ?LOG("failed to query shard for compaction status: ~p", [_E]),
+	    ok = timer:sleep(couch_config:fetch(<<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL)),
 	    wait_for_compaction(AdminConn, Shard)
     end.
 

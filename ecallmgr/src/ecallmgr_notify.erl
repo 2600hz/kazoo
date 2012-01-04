@@ -19,14 +19,14 @@
          terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
--define(MWI_BODY, "Messages-Waiting: ~s~nVoice-Message: ~b/~b (~b/~b)~nMessage-Account: ~s~n").
+-define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: sip:~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
 
 -define(RESPONDERS, [
-		     {?MODULE, [{<<"notification">>, <<"mwi">>}]}
-		    ]).
+                     {?MODULE, [{<<"notification">>, <<"mwi">>}]}
+                    ]).
 -define(BINDINGS, [
-		   {notifications, [{notices, [sip_notify]}]}
-		  ]).
+                   {notifications, [{notices, [sip_notify]}]}
+                  ]).
 
 -define(QUEUE_NAME, <<"ecallmgr_notify">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
@@ -46,13 +46,13 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE,
-			    [{responders, ?RESPONDERS}
-			     ,{bindings, ?BINDINGS}
-			     ,{queue_name, ?QUEUE_NAME}
-			     ,{queue_options, ?QUEUE_OPTIONS}
-			     ,{consume_options, ?CONSUME_OPTIONS}
-			     ,{basic_qos, 1}
-			    ], []).
+                            [{responders, ?RESPONDERS}
+                             ,{bindings, ?BINDINGS}
+                             ,{queue_name, ?QUEUE_NAME}
+                             ,{queue_options, ?QUEUE_OPTIONS}
+                             ,{consume_options, ?CONSUME_OPTIONS}
+                             ,{basic_qos, 1}
+                            ], []).
 
 -spec handle_req/2 :: (json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
@@ -68,12 +68,12 @@ handle_req(JObj, _Props) ->
             ?LOG_END("mwi timed out looking up contact for ~s@~s", [User, Realm]);
         Endpoint ->
             NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
-            Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end,
-                                             NewMessages
+            Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end
+                                             ,<<User/binary, "@", Realm/binary>>
+                                             ,NewMessages
                                              ,wh_json:get_integer_value(<<"Messages-Saved">>, JObj, 0)
                                              ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
                                              ,wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
-                                             ,<<User/binary, "@", Realm/binary>>
                                             ]),
             ?LOG("created mwi notify body ~s", [Body]),
             Headers = [{"profile", ?DEFAULT_FS_PROFILE}
@@ -96,11 +96,11 @@ handle_req(JObj, _Props) ->
       Saved :: integer() | binary().
 send_mwi(User, Realm, New, Saved) ->
     JObj = wh_json:from_list([{<<"Notify-User">>, wh_util:to_binary(User)}
-			      ,{<<"Notify-Realm">>, wh_util:to_binary(Realm)}
-			      ,{<<"Messages-New">>, wh_util:to_binary(New)}
-			      ,{<<"Messages-Saved">>, wh_util:to_binary(Saved)}
-			      | wh_api:default_headers(<<>>, <<"notification">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
-			     ]),
+                              ,{<<"Notify-Realm">>, wh_util:to_binary(Realm)}
+                              ,{<<"Messages-New">>, wh_util:to_binary(New)}
+                              ,{<<"Messages-Saved">>, wh_util:to_binary(Saved)}
+                              | wh_api:default_headers(<<>>, <<"notification">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
+                             ]),
     handle_req(JObj, []).
 
 %%%===================================================================

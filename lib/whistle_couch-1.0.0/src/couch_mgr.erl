@@ -436,8 +436,8 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_results/2 :: (ne_binary(), ne_binary()) -> {'ok', json_objects()} | {'error', atom()}.
--spec get_results/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', json_objects()} | {'error', atom()}.
+-spec get_all_results/2 :: (ne_binary(), ne_binary()) -> {'ok', json_objects() | [ne_binary(),...]} | {'error', atom()}.
+-spec get_results/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', json_objects() | [ne_binary(),...]} | {'error', atom()}.
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 get_results(DbName, DesignDoc, ViewOptions) ->

@@ -13,7 +13,7 @@
 
 -include("ecallmgr.hrl").
 
--spec(exec_cmd/4 :: (Node :: atom(), UUID :: binary(), JObj :: json_object(), ControlPID :: pid()) -> ok | timeout | tuple(error, bad_reply | string())).
+-spec exec_cmd/4 :: (atom(), ne_binary(), json_object(), pid()) -> 'ok' | 'timeout' | {'error', 'bad_reply' | string()}.
 exec_cmd(Node, CallId, JObj, _) ->
     AppName = wh_json:get_value(<<"Application-Name">>, JObj),
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
@@ -31,9 +31,7 @@ exec_cmd(Node, CallId, JObj, _) ->
     end.
 
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
--spec(get_fs_app/4 ::
-        (Node :: atom(), ConfName :: binary(), JObj :: json_object(), Application :: binary()) ->
-                           binary() | tuple(error, string())).
+-spec get_fs_app/4 :: (atom(), ne_binary(), json_object(), ne_binary()) -> ne_binary() | {'error', string()}.
 get_fs_app(_Node, ConfName, _JObj, _Application) when not is_binary(ConfName) ->
     {error, "invalid conference id"};
 get_fs_app(_Node, _ConfName, JObj, <<"participants">>) ->
@@ -48,7 +46,7 @@ get_fs_app(_Node, ConfName, JObj, <<"play">>) ->
 	false ->
             {error, "conference play failed to execute as JObj did not validate."};
 	true ->
-            Media = <<$', (media_path(wh_json:get_value(<<"Media-Name">>, JObj), ConfName))/binary, $'>>,
+            Media = list_to_binary(["'", media_path(wh_json:get_value(<<"Media-Name">>, JObj), ConfName), "'"]),
             case wh_json:get_value(<<"Participant-ID">>, JObj) of
                 ParticipantId when is_binary(ParticipantId) ->
                     <<"play ", Media/binary, " ", ParticipantId/binary>>;
@@ -106,14 +104,14 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %%% Internal helper functions
 %%%===================================================================
 %% send the SendMsg proplist to the freeswitch node
--spec api/3 :: (Node :: atom(), AppName :: binary() | string(), Args :: binary() | string()) -> {'ok', binary()} | 'timeout' | {'error', string()}.
+-spec api/3 :: (atom(), ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) -> {'ok', ne_binary()} | 'timeout' | {'error', string()}.
 api(Node, AppName, Args) ->
     App = wh_util:to_atom(AppName, true),
     Arg = wh_util:to_list(Args),
     ?LOG_SYS("FS-API -> Node: ~p Api: ~s ~s", [Node, App, Arg]),
     freeswitch:api(Node, App, Arg, 5000).
 
--spec media_path/2 :: (MediaName :: binary(), UUID :: binary()) -> binary().
+-spec media_path/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 media_path(MediaName, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, UUID) of
         {error, _} ->
@@ -122,7 +120,7 @@ media_path(MediaName, UUID) ->
             get_fs_playback(Url)
     end.
 
--spec get_fs_playback/1 :: (Url :: binary()) -> binary().
+-spec get_fs_playback/1 :: (ne_binary()) -> ne_binary().
 get_fs_playback(Url) when byte_size(Url) >= 4 ->
     case binary:part(Url, 0, 4) of
         <<"http">> ->
@@ -135,7 +133,7 @@ get_fs_playback(Url) when byte_size(Url) >= 4 ->
 get_fs_playback(Url) ->
     Url.
 
--spec participants_response/4 :: (Participants :: binary(), ConfName :: binary(), CallId :: binary(), ServerId :: binary()) -> no_return().
+-spec participants_response/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 participants_response(Participants, ConfName, CallId, ServerId) ->
     ParticipantList = try parse_participants(Participants) catch _:_ -> [] end,
     Response = [
@@ -148,15 +146,16 @@ participants_response(Participants, ConfName, CallId, ServerId) ->
     {ok, Payload} = wh_api:conference_participants_resp(Response),
     amqp_util:conference_publish(Payload, events, ConfName).
 
+-spec parse_participants/1 :: (nonempty_string() | ne_binary()) -> json_objects().
 parse_participants(Participants) ->
     CSV = wh_util:to_list(Participants),
     lists:foldr(fun(Line, Acc) ->
                         [wh_json:from_list(parse_participant(Line))|Acc]
                 end, [], string:tokens(CSV, "\n")).
 
+-spec parse_participant/1 :: (nonempty_string()) -> proplist().
 parse_participant(Line) ->
-    [Id, _, CallId, CidName, CidNum, Status, VolIn, _, VolOut, Energy] =
-        string:tokens(Line, ";"),
+    [Id, _, CallId, CidName, CidNum, Status, VolIn, _, VolOut, Energy] = string:tokens(Line, ";"),
     [
       {<<"Participant-ID">>, wh_util:to_binary(Id)}
      ,{<<"Call-ID">>, wh_util:to_binary(CallId)}

@@ -56,7 +56,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init(_) ->
-    {ok, ok, 0}.
+    _ = setup_couch(),
+    _ = bind_to_crossbar(),
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -98,7 +100,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.registrations">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
@@ -156,11 +157,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.registrations">>,
 	  end),
     {noreply, State};
 
-handle_info(timeout, State) ->
-    setup_couch(),
-    bind_to_crossbar(),
-    {noreply, State};
-
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -192,11 +188,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec setup_couch/0 :: () -> no_return().
+-spec setup_couch/0 :: () -> 'ok'.
 setup_couch() ->
     ok.
 
--spec bind_to_crossbar/0 :: () ->  no_return().
+-spec bind_to_crossbar/0 :: () -> 'ok' | {'error', 'exists'}.
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.registrations">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.registrations">>),
@@ -214,7 +210,7 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (list()) -> {boolean(), http_methods()}.
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_RegID]) ->
@@ -233,7 +229,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: (list()) -> {boolean(), []}.
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -250,7 +246,7 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/3 :: (list(), #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
+-spec validate/3 :: (path_tokens(), #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
 validate([], _, #cb_context{req_verb = <<"get">>, db_name=DbName}=Context) ->
     {ok, JObjs} = couch_mgr:get_all_results(DbName, <<"devices/sip_credentials">>),
     AccountUsers = [ list_to_tuple(wh_json:get_value(<<"key">>, JObj)) || JObj <- JObjs],
@@ -272,6 +268,5 @@ validate([RegID], _, #cb_context{req_verb = <<"post">>, req_data=Data}=Context) 
 validate([RegID], _, #cb_context{req_verb = <<"delete">>}=Context) ->
     crossbar_doc:delete(crossbar_doc:load(RegID, Context#cb_context{db_name=?REG_DB}));
 
-validate(Params, _, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context) ->
-    logger:format_log(info, "CB_REG.validate: P: ~p~nV: ~s Ns: ~p~nData: ~p~nContext: ~p~n", [Params, Verb, Nouns, D, Context]),
+validate(_Params, _, Context) ->
     crossbar_util:response_faulty_request(Context).

@@ -61,7 +61,8 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init(_) ->
-    {ok, ok, 0}.
+    _ = bind_to_crossbar(),
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -185,10 +186,6 @@ handle_info({binding_fired, Pid, _false, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
-handle_info(timeout, State) ->
-    bind_to_crossbar(),
-    {noreply, State};
-
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -227,7 +224,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  no_return()).
+-spec bind_to_crossbar/0 :: () ->  'ok' | {'error', 'exists'}.
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.vmboxes">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.vmboxes">>),
@@ -242,6 +239,7 @@ bind_to_crossbar() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec content_types_provided/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
 content_types_provided([_,?MESSAGES_RESOURCE, _, ?BIN_DATA], #cb_context{req_verb = <<"get">>}=Context) ->
     CTP = [{to_binary, ?MEDIA_MIME_TYPES}],
     Context#cb_context{content_types_provided=CTP};
@@ -256,7 +254,7 @@ content_types_provided(_, Context) -> Context.
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
@@ -278,8 +276,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: (Paths) -> {boolean(), []} when
-      Paths :: [binary(),...] | [].
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -302,9 +299,7 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: (Params, Context) -> #cb_context{} when
-      Params :: [binary(),...] | [],
-      Context :: #cb_context{}.
+-spec validate/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     load_vmbox_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
@@ -479,7 +474,7 @@ load_message_binary(VMBoxId, VMId, #cb_context{req_data=ReqData, db_name=Db, res
 	    Folder ->
 		?LOG("Moving message to ~s", [Folder]),
 		spawn(fun() ->
-			      crossbar_util:put_reqid(Context),
+			      _ = crossbar_util:put_reqid(Context),
 			      Context1 = update_message1(VMBoxId, VMId, Context),
 			      #cb_context{resp_status=success}=crossbar_doc:save(Context1),
 			      ?LOG("Saved message to new folder ~s", [Folder]),
@@ -514,7 +509,7 @@ delete_message(VMBoxId, MediaId, #cb_context{db_name=Db}=Context) ->
 	    {ok, D} = couch_mgr:open_doc(Db, MediaId),
 	    couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deleted">>, true, D)),
 
-	    spawn(fun() -> crossbar_util:put_reqid(Context), update_mwi(VMBox1, Db) end),
+	    _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context), update_mwi(VMBox1, Db) end),
 
 	    Context1#cb_context{doc=VMBox1};
 	_ ->
@@ -575,12 +570,14 @@ get_message_index(MediaId, Messages) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_index/3 :: (ne_binary(), json_objects(), pos_integer()) -> pos_integer().
+-spec find_index/3 :: (ne_binary(), json_objects(), pos_integer()) -> integer().
 find_index(MediaId, [Message | Ms], Index) ->
     case wh_json:get_value(<<"media_id">>, Message) =:= MediaId of
 	true -> Index;
 	false -> find_index(MediaId, Ms, Index + 1)
-    end.
+    end;
+find_index(_, [], _) ->
+    -1.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -604,7 +601,7 @@ update_message1(VMBoxId, MediaId, #cb_context{req_data=ReqData}=Context) ->
 
     Context1 = #cb_context{doc=VMBox} = crossbar_doc:load(VMBoxId, Context),
 
-    Messages = wh_json:get_value(<<"messages">>, VMBox),
+    Messages = wh_json:get_value(<<"messages">>, VMBox, []),
 
     case get_message_index(MediaId, Messages) of
   	Index when Index > 0 ->

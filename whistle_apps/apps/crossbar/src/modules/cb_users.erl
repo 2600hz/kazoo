@@ -296,7 +296,7 @@ create_user(#cb_context{req_data=JObj}=Context) ->
 %% Load a user document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec(load_user/2 :: (UserId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec load_user/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_user(UserId, Context) ->
     Doc = crossbar_doc:load(UserId, Context),
     case wh_json:get_value(<<"pvt_deleted">>, Doc, false) of

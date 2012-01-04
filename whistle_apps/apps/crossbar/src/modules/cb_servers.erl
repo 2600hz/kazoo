@@ -20,7 +20,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
@@ -41,7 +41,7 @@
                 ,databag_path_tmpl = 'undefined' :: atom()
                 ,databag_mapping = [] :: proplist()
                 ,delete_tmpl = 'undefined' :: atom()
-	       }).
+               }).
 
 %%%===================================================================
 %%% API
@@ -76,7 +76,7 @@ reload() ->
 %% @end
 %%--------------------------------------------------------------------
 init(_) ->
-    {ok, init_state()}.
+    {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -154,16 +154,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.content_types_provided.servers">
 
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.servers">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.servers">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.servers">>, [RD, Context | Params]}, State) ->
@@ -172,7 +172,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.servers">>, [RD, Contex
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, Context | [_, <<"deployment">>]=Params]}, State) ->
@@ -185,7 +185,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, Co
                                  Else -> Else
                              end,
                   Pid ! {binding_result, true, [RD, Context2, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, Context | Params]}, State) ->
@@ -193,7 +193,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.servers">>, [RD, Co
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Context | [_, <<"deployment">>]=Params]}, State) ->
@@ -201,7 +201,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Con
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = execute_deploy_command(Context, State),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
@@ -210,7 +210,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, #cb
                   Id = wh_util:to_binary(wh_util:to_hex(crypto:md5([wh_json:get_value(<<"ip">>, Doc), wh_json:get_value(<<"ssh_port">>, Doc)]))),
                   Context1 = crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(<<"_id">>, Id, Doc)}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.servers">>, [RD, Context | Params]}, State) ->
@@ -224,12 +224,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.servers">>, [RD, 
                           Pid ! {binding_result, true, [RD, Else, Params]}
                   end
 
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
+
+handle_info(timeout, _) ->
+    bind_to_crossbar(),
+    {noreply, init_state()};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -257,47 +261,57 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change/3 :: (_,_,_) -> {'ok', #state{}}.
-code_change(_OldVsn, _State, _Extra) ->
-    _ = bind_to_crossbar(),
-    {ok, init_state()}.
-
--spec init_state/0 :: () -> #state{}.
-init_state() ->
-    case get_configs() of
-	{ok, Terms} ->
-	    ?LOG_SYS("loaded config from ~s", [?SERVER_CONF]),
-	    #state{data_bag_tmpl =
-		       compile_template(props:get_value(data_bag_tmpl, Terms), cb_servers_data_bag)
-		   ,databag_mapping =
-		       props:get_value(databag_mapping, Terms, [])
-		   ,databag_path_tmpl =
-		       compile_template(props:get_value(databag_path_tmpl, Terms), cb_servers_databag_path_tmpl)
-		   ,role_tmpl =
-		       compile_template(props:get_value(role_tmpl, Terms), cb_servers_role_tmpl)
-		   ,role_path_tmpl =
-		       compile_template(props:get_value(role_path_tmpl, Terms), cb_servers_role_path_tmpl)
-		   ,prod_deploy_tmpl =
-		       compile_template(props:get_value(prod_deploy_tmpl, Terms), cb_servers_prod_deploy_tmpl)
-		   ,dev_deploy_tmpl =
-		       compile_template(props:get_value(dev_deploy_tmpl, Terms), cb_servers_dev_deploy_tmpl)
-		   ,dev_role =
-		       wh_util:to_binary(props:get_value(dev_role, Terms, <<"all_in_one">>))
-		   ,delete_tmpl =
-		       compile_template(props:get_value(delete_tmpl, Terms), cb_server_delete_tmpl)
-		  };
-	{error, _} ->
-	    ?LOG_SYS("could not read config from ~s", [?SERVER_CONF]),
-	    #state{}
-    end.
-
--spec get_configs/0 :: () -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
-						   | {integer(), module(), term()}}.
-get_configs() ->
-    file:consult(lists:flatten(?SERVER_CONF)).
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec init_state/0 :: () -> #state{}.
+init_state() ->
+    case get_configs() of
+        {ok, Terms} ->
+            ?LOG_SYS("loaded config from ~s", [?SERVER_CONF]),
+            #state{data_bag_tmpl =
+                       compile_template(props:get_value(data_bag_tmpl, Terms), cb_servers_data_bag)
+                   ,databag_mapping =
+                       props:get_value(databag_mapping, Terms, [])
+                   ,databag_path_tmpl =
+                       compile_template(props:get_value(databag_path_tmpl, Terms), cb_servers_databag_path_tmpl)
+                   ,role_tmpl =
+                       compile_template(props:get_value(role_tmpl, Terms), cb_servers_role_tmpl)
+                   ,role_path_tmpl =
+                       compile_template(props:get_value(role_path_tmpl, Terms), cb_servers_role_path_tmpl)
+                   ,prod_deploy_tmpl =
+                       compile_template(props:get_value(prod_deploy_tmpl, Terms), cb_servers_prod_deploy_tmpl)
+                   ,dev_deploy_tmpl =
+                       compile_template(props:get_value(dev_deploy_tmpl, Terms), cb_servers_dev_deploy_tmpl)
+                   ,dev_role =
+                       wh_util:to_binary(props:get_value(dev_role, Terms, <<"all_in_one">>))
+                   ,delete_tmpl =
+                       compile_template(props:get_value(delete_tmpl, Terms), cb_server_delete_tmpl)
+                  };
+        {error, _} ->
+            ?LOG_SYS("could not read config from ~s", [?SERVER_CONF]),
+            #state{}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec get_configs/0 :: () -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
+                                                   | {integer(), module(), term()}}.
+get_configs() ->
+    file:consult(lists:flatten(?SERVER_CONF)).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -429,7 +443,7 @@ validate(_, _, Context) ->
 %%--------------------------------------------------------------------
 -spec load_server_summary/1 :: (#cb_context{}) -> #cb_context{}.
 load_server_summary(Context) ->
-	crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+        crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -441,7 +455,7 @@ load_server_summary(Context) ->
 create_server(#cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+            crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {ok, _} ->
             Funs = [fun(Obj) -> wh_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, Obj) end,
                     fun(Obj) -> wh_json:set_value(<<"pvt_deploy_log">>, [], Obj) end,
@@ -470,7 +484,7 @@ load_server(ServerId, Context) ->
 update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
+            crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {ok, _} ->
             crossbar_doc:load_merge(ServerId, JObj, Context)
     end.
@@ -571,7 +585,7 @@ get_command_tmpl(#cb_context{doc=JObj}, #state{dev_role=DevRole}=State) ->
 %%--------------------------------------------------------------------
 -spec template_props/2 :: (#cb_context{}, #state{}) -> [{ne_binary(), ne_binary() | proplist() | json_objects()},...].
 template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context
-	       ,#state{databag_mapping=Mappings, role_path_tmpl=RolePathTmpl, databag_path_tmpl=DatabagPathTmpl}=State) ->
+               ,#state{databag_mapping=Mappings, role_path_tmpl=RolePathTmpl, databag_path_tmpl=DatabagPathTmpl}=State) ->
     Server = wh_json:to_proplist(JObj),
     Servers = case couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]) of
                   {ok, Srvs} ->
@@ -739,7 +753,7 @@ mark_deploy_complete(Db, ServerId) ->
 %% to the priv directory of this module
 %% @end
 %%--------------------------------------------------------------------
--spec compile_template/2 :: (nonempty_string() | binary() | 'undefined', atom()) -> ne_binary() | string().
+-spec compile_template/2 :: (nonempty_string() | ne_binary() | 'undefined', Name) -> Name | 'undefined'.
 compile_template(undefined, _) -> 'undefined';
 compile_template(Template, Name) when not is_binary(Template) ->
     Path = case string:substr(Template, 1, 1) of
@@ -759,7 +773,7 @@ compile_template(Template, Name) ->
 %% Compiles template string or path, normalizing the return
 %% @end
 %%--------------------------------------------------------------------
--spec do_compile_template/2 :: (ne_binary() | string(), Name) -> 'undefined' | Name.
+-spec do_compile_template/2 :: (ne_binary() | nonempty_string(), Name) -> 'undefined' | Name.
 do_compile_template(Template, Name) ->
     case erlydtl:compile(Template, Name) of
         ok ->

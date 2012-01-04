@@ -4,6 +4,8 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include("crossbar_types.hrl").
 
+-define(CONFIG_CAT, <<"crossbar">>).
+
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 
 -define(SIP_AGG_DB, <<"sip_auth">>).

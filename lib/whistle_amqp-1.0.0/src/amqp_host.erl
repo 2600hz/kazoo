@@ -38,7 +38,9 @@
 -type consumer_data() :: {pid(), reference(), binary(), reference()}.
 
 -type consume_records() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{} | #'queue.delete'{} |
-			   #'basic.consume'{} | #'basic.cancel'{}.
+			   #'basic.consume'{} | #'basic.cancel'{} | #'basic.ack'{} | #'basic.nack'{} |
+			   #'basic.qos'{}.
+-export_type([consume_records/0]).
 
 -record(state, {
 	  connection = 'undefined' :: 'undefined' | {pid(), reference()}
@@ -76,10 +78,7 @@ publish(Srv, From, BasicPub, AmqpMsg) ->
 %% and calling process can link. This means if a channel dies, the process
 %% will receive the exit signal and vice-versa.
 %% Should help get unused Channels to die
--spec consume/3 :: (Srv, From, Msg) -> 'ok' when
-      Srv :: pid(),
-      From :: {pid(), reference()},
-      Msg :: consume_records().
+-spec consume/3 :: (pid(), {pid(), reference()}, consume_records()) -> 'ok'.
 consume(Srv, From, Msg) ->
     gen_server:cast(Srv, {consume, From, Msg}).
 
@@ -182,7 +181,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 
 		    case try_to_subscribe(C, BasicConsume, FromPid) of
 			{ok, Tag} ->
-			    gen_server:reply(From, {C, ok}),
+			    gen_server:reply(From, {ok, C}),
 			    {noreply, State#state{consumers=dict:store(FromPid, {C,R,Tag,FromRef}, Consumers)}, hibernate};
 			{error, _E}=Err ->
 			    gen_server:reply(From, Err),
@@ -203,7 +202,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 
 	    case try_to_subscribe(C, BasicConsume, FromPid) of
 		{ok, Tag} ->
-		    gen_server:reply(From, {C, ok}),
+		    gen_server:reply(From, {ok, C}),
 		    {noreply, State#state{consumers=dict:store(FromPid, {C,R,Tag,FromRef}, Consumers)}, hibernate};
 		{error, _E}=Err ->
 		    gen_server:reply(From, Err),
@@ -211,7 +210,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
 	    end;
 	{ok, {C,_,Tag,_}} ->
 	    ?LOG("Already consuming on ch: ~p for proc: ~p on tag ~s", [C, FromPid, Tag]),
-	    gen_server:reply(From, {C, ok}),
+	    gen_server:reply(From, {ok, C}),
 	    {noreply, State, hibernate}
     end;
 
