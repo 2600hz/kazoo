@@ -22,6 +22,7 @@
 -export([get_keys/1, get_keys/2]).
 -export([set_value/3, set_values/2, new/0]).
 -export([delete_key/2, delete_key/3]).
+-export([merge_recursive/2]).
 
 -export([from_list/1, merge_jobjs/2]).
 
@@ -110,6 +111,18 @@ merge_jobjs(JObj1, JObj2) ->
     lists:foldl(fun(K, Acc) ->
                         wh_json:set_value(K, wh_json:get_value(K, JObj1), Acc)
                 end, JObj2, ?MODULE:get_keys(JObj1)).
+
+-spec merge_recursive/2 :: (json_object(), json_object()) -> json_object().
+merge_recursive(JObj1, JObj2) ->
+    merge_recursive([], JObj1, JObj2).
+
+-spec merge_recursive/3 :: ([ne_binary(),...] | [], json_object(), json_object()) -> json_object().
+merge_recursive(Keys, JObj1, {struct, KVs}=JObj2) ->
+    lists:foldr(fun(Key, J) ->
+                              merge_recursive([Key|Keys], J, wh_json:get_value(Key, JObj2))
+                end, JObj1, props:get_keys(KVs));
+merge_recursive(Keys, JObj1, Value) ->
+    wh_json:set_value(lists:reverse(Keys), Value, JObj1).
 
 -spec to_proplist/1 :: (json_object() | json_objects()) -> proplist() | [proplist(),...].
 -spec to_proplist/2 :: (term(), json_object()) -> proplist().
