@@ -76,6 +76,7 @@ reload() ->
 %% @end
 %%--------------------------------------------------------------------
 init(_) ->
+    _ = bind_to_crossbar(),
     {ok, init_state()}.
 
 %%--------------------------------------------------------------------
@@ -739,7 +740,7 @@ mark_deploy_complete(Db, ServerId) ->
 %% to the priv directory of this module
 %% @end
 %%--------------------------------------------------------------------
--spec compile_template/2 :: (nonempty_string() | binary() | 'undefined', atom()) -> ne_binary() | string().
+-spec compile_template/2 :: (nonempty_string() | ne_binary() | 'undefined', Name) -> Name | 'undefined'.
 compile_template(undefined, _) -> 'undefined';
 compile_template(Template, Name) when not is_binary(Template) ->
     Path = case string:substr(Template, 1, 1) of
@@ -759,7 +760,7 @@ compile_template(Template, Name) ->
 %% Compiles template string or path, normalizing the return
 %% @end
 %%--------------------------------------------------------------------
--spec do_compile_template/2 :: (ne_binary() | string(), Name) -> 'undefined' | Name.
+-spec do_compile_template/2 :: (ne_binary() | nonempty_string(), Name) -> 'undefined' | Name.
 do_compile_template(Template, Name) ->
     case erlydtl:compile(Template, Name) of
         ok ->
