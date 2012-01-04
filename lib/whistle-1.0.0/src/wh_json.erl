@@ -104,24 +104,22 @@ from_list(L) when is_list(L) ->
 
 %% only a top-level merge
 %% merges JObj1 into JObj2
--spec merge_jobjs/2 :: (JObj1, JObj2) -> json_object() when
-      JObj1 :: json_object(),
-      JObj2 :: json_object().
+-spec merge_jobjs/2 :: (json_object(), json_object()) -> json_object().
 merge_jobjs(JObj1, JObj2) ->
     lists:foldl(fun(K, Acc) ->
                         wh_json:set_value(K, wh_json:get_value(K, JObj1), Acc)
                 end, JObj2, ?MODULE:get_keys(JObj1)).
 
 -spec merge_recursive/2 :: (json_object(), json_object()) -> json_object().
+-spec merge_recursive/3 :: (json_object(), json_object() | json_term(), json_strings()) -> json_object().
 merge_recursive(JObj1, JObj2) ->
-    merge_recursive([], JObj1, JObj2).
+    merge_recursive(JObj1, JObj2, []).
 
--spec merge_recursive/3 :: ([ne_binary(),...] | [], json_object(), json_object()) -> json_object().
-merge_recursive(Keys, JObj1, {struct, KVs}=JObj2) ->
+merge_recursive(JObj1, JObj2, Keys) when is_tuple(JObj2) ->
     lists:foldr(fun(Key, J) ->
-                              merge_recursive([Key|Keys], J, wh_json:get_value(Key, JObj2))
-                end, JObj1, props:get_keys(KVs));
-merge_recursive(Keys, JObj1, Value) ->
+			merge_recursive(J, wh_json:get_value(Key, JObj2), [Key|Keys])
+                end, JObj1, ?MODULE:get_keys(JObj2));
+merge_recursive(JObj1, Value, Keys) ->
     wh_json:set_value(lists:reverse(Keys), Value, JObj1).
 
 -spec to_proplist/1 :: (json_object() | json_objects()) -> proplist() | [proplist(),...].
@@ -280,8 +278,8 @@ get_ne_value(Key, JObj, Default) ->
 %% Returns the value at Key
 %% @end
 %%--------------------------------------------------------------------
--spec find/2 :: (ne_binary() | [ne_binary(),...], json_objects()) -> json_term() | 'undefined'.
--spec find/3 :: (ne_binary() | [ne_binary(),...], json_objects(), Default) -> json_term() | Default.
+-spec find/2 :: (json_string() | json_strings(), json_objects()) -> json_term() | 'undefined'.
+-spec find/3 :: (json_string() | json_strings(), json_objects(), Default) -> json_term() | Default.
 
 find(Key, Docs) ->
     find(Key, Docs, undefined).
@@ -594,6 +592,16 @@ merge_jobjs_test() ->
     ?assertEqual(true, undefined =/= wh_json:get_value(<<"d1k1">>, JObj)),
     ?assertEqual(true, undefined =/= wh_json:get_value(<<"d2k1">>, JObj)),
     ?assertEqual(true, undefined =/= wh_json:get_value(<<"sub_d1">>, JObj)),
+    ?assertEqual(true, undefined =:= wh_json:get_value(<<"missing_k">>, JObj)).
+
+merge_recursive_test() ->
+    JObj = merge_recursive(?D1, wh_json:set_value(<<"d1k2">>, d2k2, ?D2)),
+    ?assertEqual(true, undefined =/= ?MODULE:get_value(<<"d1k1">>, JObj)),
+    ?assertEqual(true, undefined =/= ?MODULE:get_value(<<"d2k1">>, JObj)),
+    ?assertEqual(true, undefined =/= ?MODULE:get_value([<<"d1k3">>, 2], JObj)),
+    ?assertEqual(true, undefined =/= ?MODULE:get_value(<<"sub_d1">>, JObj)),
+    ?assertEqual(true, undefined =/= ?MODULE:get_value([<<"sub_d1">>, <<"d1k1">>], JObj)),
+    ?assertEqual(true, d2k2 =:= wh_json:get_value(<<"d1k2">>, JObj)), %% second JObj takes precedence
     ?assertEqual(true, undefined =:= wh_json:get_value(<<"missing_k">>, JObj)).
 
 get_binary_value_test() ->
