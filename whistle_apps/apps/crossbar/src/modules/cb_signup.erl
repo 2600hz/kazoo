@@ -42,12 +42,12 @@
 
 -record(state, {cleanup_interval = 18000 :: integer() %% once every 5 hours (in seconds)
                 ,signup_lifespan = ?SECONDS_IN_DAY :: integer() %% 24 hours (in seconds)
-                ,register_cmd = undefined :: undefined | atom()
-                ,activation_email_plain = undefined
-                ,activation_email_html = undefined
-                ,activation_email_from = undefined
-                ,activation_email_subject = undefined
-                ,cleanup_timer
+                ,register_cmd = 'undefined' :: 'undefined' | atom()
+                ,activation_email_plain = 'undefined' :: 'undefined' | atom()
+                ,activation_email_html = 'undefined' :: 'undefined' | atom()
+                ,activation_email_from = 'undefined' :: 'undefined' | atom()
+                ,activation_email_subject = 'undefined' :: 'undefined' | atom()
+                ,cleanup_timer = 'undefined' :: 'undefined' | reference()
                }).
 
 %%%===================================================================
@@ -92,8 +92,8 @@ init(_) ->
         {ok, _} -> ok
     end,
 
-    State = init_state(),
-    {ok, TRef} = timer:send_interval(State#state.cleanup_interval * 1000, cleanup),
+    #state{cleanup_interval=CleanupInterval}=State = init_state(),
+    {ok, TRef} = erlang:send_after(CleanupInterval * 1000, cleanup),
     {ok, State#state{cleanup_timer=TRef}}.
 
 %%--------------------------------------------------------------------
@@ -213,15 +213,15 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.signup">>, [RD, #cb
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.signup">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  case crossbar_doc:save(Context#cb_context{db_name=?SIGNUP_DB}) of
-                      #cb_context{resp_status=success}=Context1 ->
-                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=[]}, Params]},
-                          send_activation_email(RD, Context1, State),
-                          exec_register_command(RD, Context1, State);
-                      _ ->
-                          Context1 = crossbar_util:response_db_fatal(Context),
-                          Pid ! {binding_result, true, [RD, Context1, Params]}
-                  end
+                  _ = case crossbar_doc:save(Context#cb_context{db_name=?SIGNUP_DB}) of
+			  #cb_context{resp_status=success}=Context1 ->
+			      Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=[]}, Params]},
+			      _ = send_activation_email(RD, Context1, State),
+			      exec_register_command(RD, Context1, State);
+			  _ ->
+			      Context1 = crossbar_util:response_db_fatal(Context),
+			      Pid ! {binding_result, true, [RD, Context1, Params]}
+		      end
 	  end),
     {noreply, State};
 
@@ -229,9 +229,11 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
-handle_info(cleanup, State) ->
+handle_info(cleanup, #state{cleanup_interval=CleanupInterval}=State) ->
     cleanup_signups(State),
-    {noreply, State};
+
+    {ok, TRef} = erlang:send_after(CleanupInterval * 1000, cleanup),
+    {noreply, State#state{cleanup_timer=TRef}};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -258,21 +260,22 @@ terminate(_Reason, _State) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec code_change/3 :: (_, tuple(), _) -> {'ok', #state{}}.
+-spec code_change/3 :: (_, #state{}, _) -> {'ok', #state{}}.
 code_change(_OldVsn, #state{cleanup_timer=CurTRef}, _Extra) ->
-    _ = timer:cancel(CurTRef),
+    _ = erlang:cancel_timer(CurTRef),
     _ = bind_to_crossbar(),
     {ok, init_state()}.
 
+-spec init_state/0 :: () -> #state{}.
 init_state() ->
     case get_configs() of
 	{ok, Terms} ->
 	    ?LOG_SYS("loaded config from ~s", [?SIGNUP_CONF]),
 	    Defaults = #state{},
 	    #state{cleanup_interval =
-		       props:get_value(cleanup_interval, Terms, Defaults#state.cleanup_interval)
+		       props:get_integer_value(cleanup_interval, Terms, Defaults#state.cleanup_interval)
 		   ,signup_lifespan =
-		       props:get_value(signup_lifespan, Terms, Defaults#state.signup_lifespan)
+		       props:get_integer_value(signup_lifespan, Terms, Defaults#state.signup_lifespan)
 		   ,register_cmd =
 		       compile_template(props:get_value(register_cmd, Terms), cb_signup_register_cmd)
 		   ,activation_email_plain =
@@ -541,7 +544,7 @@ activate_user(Account, User) ->
 %% then exectute it now.
 %% @end
 %%--------------------------------------------------------------------
--spec exec_register_command/3 :: (#wm_reqdata{}, #cb_context{}, #state{}) -> no_return().
+-spec exec_register_command/3 :: (#wm_reqdata{}, #cb_context{}, #state{}) -> 'ok' | string().
 exec_register_command(_, _, #state{register_cmd=undefined}) ->
     ok;
 exec_register_command(RD, Context, #state{register_cmd=CmdTmpl}) ->
@@ -555,7 +558,7 @@ exec_register_command(RD, Context, #state{register_cmd=CmdTmpl}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_activation_email/3 :: (#wm_reqdata{}, #cb_context{}, #state{}) -> no_return().
+-spec send_activation_email/3 :: (#wm_reqdata{}, #cb_context{}, #state{}) -> {'ok', pid()} | {'error', term()}.
 send_activation_email(RD, #cb_context{doc=JObj, req_id=ReqId}=Context, #state{activation_email_subject=SubjectTmpl
                                                                 ,activation_email_from=FromTmpl}=State) ->
     Props = template_props(RD, Context),
@@ -681,11 +684,11 @@ cleanup_signups(#state{signup_lifespan=Lifespan}) ->
                                                                       ,{<<"include_docs">>, true}
 								     ]) of
         {ok, Expired} ->
-            [spawn(fun() ->
-                           timer:sleep(random:uniform(500) * 1000),
-                           delete_signup(wh_json:get_value(<<"doc">>, JObj))
-                   end)
-             || JObj <- Expired],
+            _ = [spawn(fun() ->
+			       timer:sleep(random:uniform(500) * 1000),
+			       delete_signup(wh_json:get_value(<<"doc">>, JObj))
+		       end)
+		 || JObj <- Expired],
 	    ok;
         _Else ->
             ok
@@ -711,7 +714,8 @@ delete_signup(JObj) ->
 %% to the priv directory of this module
 %% @end
 %%--------------------------------------------------------------------
--spec compile_template/2 :: ('undefined' | string() | binary(), atom()) -> 'undefined' | atom().
+-type template_name() :: 'cb_signup_email_from' | 'cb_signup_email_html' | 'cb_signup_email_plain' | 'cb_signup_email_subject' | 'cb_signup_register_cmd'.
+-spec compile_template/2 :: ('undefined' | string() | ne_binary(), template_name()) -> 'undefined' | template_name().
 compile_template(undefined, _) ->
     undefined;
 compile_template(Template, Name) when not is_binary(Template) ->
@@ -733,7 +737,7 @@ compile_template(Template, Name) ->
 %% Compiles template string or path, normalizing the return
 %% @end
 %%--------------------------------------------------------------------
--spec do_compile_template/2 :: (nonempty_string() | ne_binary(), Name) -> 'undefined' | Name.
+-spec do_compile_template/2 :: (nonempty_string() | ne_binary(), template_name()) -> 'undefined' | template_name().
 do_compile_template(Template, Name) ->
     case erlydtl:compile(Template, Name) of
         {ok, Name} ->

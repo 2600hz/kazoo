@@ -173,7 +173,6 @@ handle_call({map, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) ->
 handle_call({fold, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) ->
     spawn(fun() ->
                   put(callid, ReqId),
-		  ?TIMER_START(list_to_binary(["bindings.fold ", Routing])),
                   ?LOG("running fold for binding ~s", [Routing]),
 
 		  RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
@@ -185,7 +184,7 @@ handle_call({fold, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) -
                                         false -> Acc
                                     end
                             end, Payload, Bs),
-		  ?TIMER_STOP("bindings.fold"),
+
                   gen_server:reply(From, Reply)
           end),
     {noreply, State};
@@ -266,7 +265,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{bindings=Bs}) ->
     ?LOG_SYS("Terminating: ~p", [_Reason]),
-    lists:foreach(fun flush_binding/1, Bs).
+    spawn(fun() -> lists:foreach(fun flush_binding/1, Bs) end).
 
 %%--------------------------------------------------------------------
 %% @private

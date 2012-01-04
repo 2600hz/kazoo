@@ -12,6 +12,7 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 %% API
 -export([start_link/0, upgrade/0]).
@@ -76,16 +77,16 @@ upgrade() ->
       Args :: [].
 init([]) ->
     {ok, Dispatch} = file:consult(?DISPATCH_FILE),
-    IP = whapps_config:get_string(<<"crossbar">>, <<"ip">>, <<"0.0.0.0">>),
-    Port = whapps_config:get_string(<<"crossbar">>, <<"port">>, <<"8000">>),
-    Name = whapps_config:get_string(<<"crossbar">>, <<"service_name">>, <<"crossbar">>),
+    IP = whapps_config:get_string(?CONFIG_CAT, <<"ip">>, <<"0.0.0.0">>),
+    Port = whapps_config:get_string(?CONFIG_CAT, <<"port">>, <<"8000">>),
+    Name = whapps_config:get_string(?CONFIG_CAT, <<"service_name">>, <<"crossbar">>),
     WebConfig = [{ip, IP}
                  ,{port, Port}
                  ,{name, Name}
                  ,{dispatch, Dispatch}
-                 ,{log_dir, whapps_config:get_string(<<"crossbar">>, <<"log_dir">>, ?DEFAULT_LOG_DIR)}
-                 ,{ssl, whapps_config:get_is_true(<<"crossbar">>, <<"ssl">>, false)}
-                 ,{ssl_opts, wh_json:to_proplist(whapps_config:get(<<"crossbar">>, <<"ssl_opts">>, wh_json:new()))}],
+                 ,{log_dir, whapps_config:get_string(?CONFIG_CAT, <<"log_dir">>, ?DEFAULT_LOG_DIR)}
+                 ,{ssl, whapps_config:get_is_true(?CONFIG_CAT, <<"ssl">>, false)}
+                 ,{ssl_opts, wh_json:to_proplist(whapps_config:get(?CONFIG_CAT, <<"ssl_opts">>, wh_json:new()))}],
     ?LOG("starting webmachine ~s:~s as ~s", [IP, Port, Name]),
     Web = ?CHILD(webmachine_mochiweb, worker, WebConfig),
     ModuleSup = ?CHILD(crossbar_module_sup, supervisor),
