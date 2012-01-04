@@ -192,7 +192,7 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     {noreply, State};
 
 handle_info(timeout, State) ->
-    bind_to_crossbar(),
+    _ = bind_to_crossbar(),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -233,7 +233,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec bind_to_crossbar/0 :: () -> 'ok' | {'error', 'exists'}.
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.devices">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.devices">>),
@@ -249,7 +249,7 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([<<"status">>]) ->
@@ -267,7 +267,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -284,7 +284,7 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/3 :: ([ne_binary(),...] | [], #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
+-spec validate/3 :: (path_tokens(), #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
 validate([], _, #cb_context{req_verb = <<"get">>}=Context) ->
     load_device_summary(Context);
 validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
@@ -346,7 +346,7 @@ load_device(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_device/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_device/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_device(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {errors, Fields} ->
@@ -503,7 +503,7 @@ provision_device_line(BaseKey, Device, Template) ->
                ],
     provision_device_line(BaseKey, Device, Template, Mappings).
 
--spec provision_device_line/4 :: ([ne_binary(),...], json_object(), json_object(), [{json_strings(), json_strings()},...]) -> json_object().
+-spec provision_device_line/4 :: (json_strings(), json_object(), json_object(), [{json_strings(), json_strings()},...] | []) -> json_object().
 provision_device_line(_, _, Template, []) ->
     Template;
 provision_device_line(BaseKey, Device, Template, [{TemplateKey, DeviceKey}|T]) ->
@@ -537,5 +537,4 @@ send_awesome_provisioning_request(ProvisionRequest, MACAddress, Url) ->
             ?LOG("SUCCESS! BOOM! ~s", [Response]);
         {ok, Code, _, Response} ->
             ?LOG("ERROR! OH NO! ~s. ~s", [Code, Response])
-    end,
-    ok.
+    end.
