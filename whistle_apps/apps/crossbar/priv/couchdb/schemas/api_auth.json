@@ -1,0 +1,16 @@
+{
+   "_id":"api_auth",
+   "$schema":"http://json-schema.org/draft-03/schema#",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Provides an auth-token via an Account API key",
+   "properties":{
+      "name":{
+         "description":"The Accounts API key",
+         "required":"true",
+         "type":"string",
+         "minLength":64,
+         "maxLength":64
+      }
+   },
+   "additionalProperties": false
+}

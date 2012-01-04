@@ -1,0 +1,307 @@
+{
+   "_id":"users",
+   "$schema":"http://json-schema.org/draft-03/schema#",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Schema for a user",
+   "properties":{
+      "name":{
+         "description":"A friendly name for the user",
+         "required":"true",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      },
+      "enabled":{
+         "description":"Determines if the user is currently enabled",
+         "type":"boolean",
+         "default":true
+      },
+      "username":{
+         "description":"The GUI login username",
+         "type":"string",
+         "minLength":1,
+         "maxLength":32
+      },
+      "first_name":{
+         "description":"The first name of the user",
+         "type":"string",
+         "minLength":1,
+         "maxLength":32
+      },
+      "last_name":{
+         "description":"The last name of the user",
+         "type":"string",
+         "minLength":1,
+         "maxLength":32
+      },
+      "email":{
+         "description":"The email of the user",
+         "type":"string",
+         "minLength":1,
+         "maxLength":32
+      },
+      "vm_to_email_enabled":{
+         "description":"Determines if the user would like voicemails emailed to them",
+         "type":"boolean",
+         "default":true
+      },
+      "verified":{
+         "description":"Determines if the user has been verified",
+         "type":"boolean",
+         "default":false
+      },
+      "priv_level":{
+         "description":"The privilege level of the user",
+         "type":"string",
+         "enum":[
+            "user",
+            "admin"
+         ]
+      },
+      "apps":{
+         "description":"The applications the user has enabled in the GUI",
+         "type":"object",
+         "enum":[
+            "cluster",
+            "voip",
+            "userportal",
+            "connectivity"
+         ],
+         "properties":{
+            "label":{
+               "description":"The display name of the application",
+               "type":"string",
+               "pattern":"^[0-9A-Za-z_]*$",
+               "maxLength":25
+            },
+            "icon":{
+               "description":"The display icon of the application",
+               "type":"string",
+               "pattern":"^[0-9A-Za-z_]*$",
+               "maxLength":25
+            },
+            "api_url":{
+               "description":"The API url of the application",
+               "type":"string",
+               "maxLength":64
+            }
+         },
+         "default":{
+
+         }
+      },
+      "caller_id":{
+         "description":"The caller ID parameters for the user",
+         "type":"object",
+         "enum":[
+            "internal",
+            "external",
+            "emergency"
+         ],
+         "properties":{
+            "name":{
+               "description":"The caller id name for the object type",
+               "type":"string",
+               "maxLength":15,
+               "pattern":"^[0-9A-Za-z ,]*$"
+            },
+            "number":{
+               "description":"The caller id number for the object type",
+               "type":"string",
+               "maxLength":15
+            }
+         },
+         "default":{
+
+         }
+      },
+      "caller_id_options":{
+         "description":"The caller ID option parameters for the user",
+         "type":"object",
+         "properties":{
+            "reformat":{
+               "description":"A regular expression that if can reformat the displayed caller id",
+               "type":"string",
+               "maxLength":64
+            }
+         },
+         "default":{
+
+         }
+      },
+      "media":{
+         "description":"The media parameters for the user",
+         "type":"object",
+         "properties":{
+            "audio":{
+               "description":"The user audio media parameters",
+               "type":"object",
+               "properties":{
+                  "codecs":{
+                     "description":"A list of audio codecs to use",
+                     "type":"array",
+                     "enum":[
+                        "G729",
+                        "PCMU",
+                        "PCMA",
+                        "G722_16",
+                        "G722_32",
+                        "CELT_48",
+                        "CELT_64"
+                     ],
+                     "default":[
+                        "PCMU"
+                     ]
+                  }
+               }
+            },
+            "video":{
+               "description":"The user video media parameters",
+               "type":"object",
+               "properties":{
+                  "codecs":{
+                     "description":"A list of video codecs to use",
+                     "type":"array",
+                     "enum":[
+                        "H261",
+                        "H263",
+                        "H264"
+                     ],
+                     "default":[
+
+                     ]
+                  }
+               }
+            }
+         },
+         "default":{
+
+         }
+      },
+      "music_on_hold":{
+         "description":"The user music on hold parameters",
+         "type":"object",
+         "properties":{
+            "media_id":{
+               "description":"The ID of a media object that should be used as the user music on hold",
+               "type":"string",
+               "minLength":32,
+               "maxLength":32
+            }
+         },
+         "default":{
+
+         }
+      },
+      "hotdesk":{
+         "description":"The user hotdesk parameters",
+         "type":"object",
+         "properties":{
+            "enabled":{
+               "description":"Determines if the user has hotdesking enabled",
+               "type":"boolean",
+               "default":false
+            },
+            "id":{
+               "description":"The users hotdesk id",
+               "type":"string",
+               "maxLength":15
+            },
+            "require_pin":{
+               "description":"Determines if user requires a pin to change the hotdesk state",
+               "type":"boolean",
+               "default":true
+            },
+            "pin":{
+               "description":"The users hotdesk pin number",
+               "type":"string",
+               "minLength":4,
+               "maxLength":15
+            },
+            "keep_logged_in_elsewhere":{
+               "description":"Determines if user should be able to login to mutliple phones simultaneously",
+               "type":"boolean",
+               "default":false
+            }
+         }
+      },
+      "call_forward":{
+         "description":"The user call forward parameters",
+         "type":"object",
+         "properties":{
+            "enabled":{
+               "description":"Determines if the call forwarding should be used",
+               "type":"boolean",
+               "default":false
+            },
+            "number":{
+               "description":"The number to forward calls to",
+               "type":"string",
+               "maxLength":15
+            },
+            "substitute":{
+               "description":"Determines if the call forwarding replaces the user",
+               "type":"boolean",
+               "default":true
+            },
+            "require_keypress":{
+               "description":"Determines if the callee is prompted to press 1 to accept the call",
+               "type":"boolean",
+               "default":true
+            },
+            "keep_caller_id":{
+               "description":"Determines if the caller id is kept when the call is forwarded, if not the users caller id is used",
+               "type":"boolean",
+               "default":false
+            },
+            "direct_calls_only":{
+               "description":"Determines if the calls that are not directly sent to the user should be forwarded",
+               "type":"boolean",
+               "default":false
+            },
+            "ignore_early_media":{
+               "description":"The option to determine if early media from the call forwarded number should ignored",
+               "type":"boolean",
+               "default":true
+            }
+         },
+         "default":{
+
+         }
+      },
+      "vm_to_email":{
+         "description":"The Voicemail to Email Parameters",
+         "type":"object",
+         "properties":{
+            "vm_to_email_template":{
+               "description":"The subject line template",
+               "type":"string",
+               "maxLength":64
+            },
+            "html_vm_to_email_template":{
+               "description":"The html template",
+               "type":"string",
+               "maxLength":128
+            },
+            "support_number":{
+               "description":"The support number provided to the templates",
+               "type":"string",
+               "maxLength":128
+            },
+            "support_email":{
+               "description":"The support email provided to the templates",
+               "type":"string",
+               "maxLength":32
+            },
+            "from_address":{
+               "description":"The from address used when sending the email",
+               "type":"string",
+               "maxLength":32
+            }
+         },
+         "default":{
+
+         }
+      }
+   }
+}

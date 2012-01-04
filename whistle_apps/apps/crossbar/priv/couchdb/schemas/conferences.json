@@ -1,0 +1,134 @@
+{
+   "_id":"conferences",
+   "$schema":"http://json-schema.org/draft-03/schema#",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Schema for conferences",
+   "properties":{
+      "name":{
+         "description":"A friendly name for the conference",
+         "required":"true",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      },
+      "member":{
+         "description":"Defines the discovery properties for a member",
+         "type":"object",
+         "properties":{
+            "pins":{
+               "description":"Defines the pin number(s) for members",
+               "type":"array",
+               "items":[
+                  {
+                     "type":"string"
+                  }
+               ],
+               "default":[
+
+               ]
+            },
+            "numbers":{
+               "description":"Defines the conference number(s) for members",
+               "type":"array",
+               "items":[
+                  {
+                     "type":"string"
+                  }
+               ],
+               "default":[
+
+               ]
+            }
+         },
+         "default":{
+
+         }
+      },
+      "moderator":{
+         "description":"Defines the discovery properties for a moderator",
+         "type":"object",
+         "properties":{
+            "pins":{
+               "description":"Defines the pin number(s) for moderators",
+               "type":"array",
+               "items":[
+                  {
+                     "type":"string"
+                  }
+               ],
+               "default":[
+
+               ]
+            },
+            "numbers":{
+               "description":"Defines the conference number(s) for moderators",
+               "type":"array",
+               "items":[
+                  {
+                     "type":"string"
+                  }
+               ],
+               "default":[
+
+               ]
+            }
+         },
+         "default":{
+
+         }
+      },
+      "conference_numbers":{
+         "description":"Defines conference numbers that can be used by members or moderators",
+         "type":"array",
+         "items":[
+            {
+               "type":"string"
+            }
+         ],
+         "default":[
+
+         ]
+      },
+      "member_play_name":{
+         "description":"Determines if a member should be prompted to record their name on entry for later playback",
+         "type":"boolean",
+         "default":false
+      },
+      "member_join_muted":{
+         "description":"Determines if a member will join muted",
+         "type":"boolean",
+         "default":true
+      },
+      "member_join_deaf":{
+         "description":"Determines if a member will join deaf",
+         "type":"boolean",
+         "default":false
+      },
+      "moderator_join_muted":{
+         "description":"Determines if a moderator will join muted",
+         "type":"boolean",
+         "default":false
+      },
+      "moderator_join_deaf":{
+         "description":"Determines if a moderator will join deaf",
+         "type":"boolean",
+         "default":false
+      },
+      "require_moderator":{
+         "description":"Determines if a moderator is required before the conference will begin",
+         "type":"boolean",
+         "default":false
+      },
+      "wait_for_moderator":{
+         "description":"Determines if members are allowed to remain on the line while waiting for a moderator",
+         "type":"boolean",
+         "default":true
+      },
+      "max_members":{
+         "description":"Sets the maximum number of members that can join a conference",
+         "type":"integer",
+         "minimum":1,
+         "default":15
+      }
+   }
+}
