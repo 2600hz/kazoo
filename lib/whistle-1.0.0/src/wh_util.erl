@@ -301,6 +301,7 @@ is_empty(<<>>) -> true;
 is_empty(<<"0">>) -> true;
 is_empty(<<"false">>) -> true;
 is_empty(<<"NULL">>) -> true;
+is_empty(null) -> true;
 is_empty(false) -> true;
 is_empty(undefined) -> true;
 is_empty(?EMPTY_JSON_OBJECT) -> true;
