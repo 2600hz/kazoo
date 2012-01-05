@@ -37,7 +37,7 @@
 
 -type error_result() :: {ne_binary(), ne_binary()}.
 -type error_results() :: [error_result(),...].
--type results() :: {ok, json_object()} | error_results().
+-type results() :: {pass, json_object()} | {fail, json_object()}.
 -type attribute_results() :: true | error_results().
 -type error_acc() :: [] | [{[ne_binary(),...], ne_binary() },...].
 -type jkey_acc() :: [] | [ne_binary(),...].
@@ -96,9 +96,9 @@ format_errors([{K, V}|T], JObj) ->
 %%   },
 %%   ...
 %% }
--spec are_valid_properties/2 :: (json_object(), json_object()) -> results().
--spec are_valid_properties/3 :: (json_object(), [] | [ne_binary(),...], json_object()) -> results().
--spec are_valid_properties/4 :: (json_object(), jkey_acc(), error_acc(), json_object()) -> results().
+-spec are_valid_properties/2 :: (json_object(), json_object()) -> attribute_results().
+-spec are_valid_properties/3 :: (json_object(), [] | [ne_binary(),...], json_object()) -> attribute_results().
+-spec are_valid_properties/4 :: (json_object(), jkey_acc(), error_acc(), json_object()) -> attribute_results().
 
 are_valid_properties(JObj, Schema) ->
     PropertiesJObj = wh_json:get_value(<<"properties">>, Schema, wh_json:new()),
@@ -136,8 +136,8 @@ are_valid_properties(JObj, Path, Errors, [{Property, AttributesJObj}|T]) ->
 %% JObj = {..., "name":"Mal Reynolds",...}
 %% Key = "name"
 %% AttributesJObj = {"type":"string"}
--spec are_valid_attributes/3 :: (json_object(), jkey_acc(), json_object()) -> results().
--spec are_valid_attributes/5 :: (json_object(), jkey_acc(), json_object(), error_acc(), proplist()) -> results().
+-spec are_valid_attributes/3 :: (json_object(), jkey_acc(), json_object()) -> attribute_results().
+-spec are_valid_attributes/5 :: (json_object(), jkey_acc(), json_object(), error_acc(), proplist()) -> attribute_results().
 
 are_valid_attributes(JObj, Key, AttributesJObj) ->
     %% 5.7 - testing here for required saves lots of work....
@@ -413,20 +413,25 @@ is_valid_attribute({<<"divisibleBy">>, DivBy, _}, JObj, Key) ->
     end;
 
 %% 5.25
-is_valid_attribute({<<"disallow">>, Types, _}, JObj, Key) when is_list(Types) ->
-    case is_one_of_disallowed_types(JObj, Key, Types) of
-        false -> 
-            {pass, JObj};
-        E -> 
-            {fail, E}
+is_valid_attribute({<<"disallow">>, [], _}, JObj, _) ->
+    {pass, JObj};
+is_valid_attribute({<<"disallow">>, [Disallow|Disallows], AttrJObj}, JObj, Key) ->
+    case is_valid_attribute({<<"disallow">>, Disallow, wh_json:new()}, JObj, Key) of
+        {pass, _} -> is_valid_attribute({<<"disallow">>, Disallows, AttrJObj}, JObj, Key);
+        {fail, _}=E -> E 
     end;
-is_valid_attribute({<<"disallow">>, Type, _}, JObj, Key) ->
+is_valid_attribute({<<"disallow">>, Disallow, _}, JObj, Key) when is_binary(Disallow) ->
     Instance = wh_json:get_value(Key, JObj),
-    case is_disallowed_type(Key, Instance, Type) of
+    case check_valid_type(Instance, Disallow, true) of
+        true ->
+            {fail, {Key, list_to_binary([<<"disallow:Value is of disallowed type ">>, Disallow])}};
         false -> 
-            {pass, JObj};
-        E -> 
-            {fail, E}
+            {pass, JObj}
+    end;
+is_valid_attribute({<<"disallow">>, DisallowSchema, _}, JObj, Key) ->
+    case are_valid_attributes(JObj, Key, DisallowSchema) of
+        {pass, _} -> {fail, {Key, <<"disallow:Value matched one of the disallowed types">>}};
+        {fail, _}-> {pass, JObj}
     end;
 
 %% 5.26
@@ -453,22 +458,14 @@ is_valid_attribute({<<"$schema">>, _, _}, JObj, _) ->
 is_valid_attribute(_, JObj, _) ->
     {pass, JObj}. %% ignorable attribute, like 'title'
 
-
-
 %%
 %%% Helper functions
 %%
 -spec are_unique_items/1 :: (list()) -> 'true' | ne_binary().
 -spec are_unique_items/2 :: (list(), undefined | ne_binary()) -> 'true' | ne_binary().
 
-are_unique_items(Instance, TryUnique) ->
-    case wh_util:is_true(TryUnique) of
-        true -> are_unique_items(Instance);
-        false -> <<"Set improperly (should be set to 'true'">>
-    end.
-
-are_unique_items(Vals) ->
-    try lists:usort(fun are_same_items/2, Vals) of
+are_unique_items(Instance) ->
+    try lists:usort(fun are_same_items/2, Instance) of
         _E -> true
     catch
         throw:{duplicate_found, A} ->
@@ -477,6 +474,12 @@ are_unique_items(Vals) ->
             %% some one failed (likely wh_json:get_keys/1)
             %% which means they probably weren't equal
             true
+    end.
+
+are_unique_items(Instance, TryUnique) ->
+    case wh_util:is_true(TryUnique) of
+        true -> are_unique_items(Instance);
+        false -> <<"Set improperly (should be set to 'true'">>
     end.
 
 %% will throw an exception if A and B are identical
@@ -549,33 +552,6 @@ are_objects(A, B) when is_tuple(A) andalso is_tuple(B) ->
     end;
 are_objects(_, _) ->
     false.
-
--spec is_one_of_disallowed_types/3 :: ([ne_binary(),...] | [], binary() | list() | number(), ne_binary() | [ne_binary(),...]) -> 'false' | error_results().
-
--spec is_disallowed_type/3 :: (ne_binary(), binary() | list() | number(), ne_binary() | [ne_binary(),...] | json_object()) -> 'false' | error_results().
-
-
-is_one_of_disallowed_types([], _, _) ->
-    false;
-is_one_of_disallowed_types([Type|Types], Key, Val) ->
-    case is_disallowed_type(Key, Val, Type) of
-        false -> is_one_of_disallowed_types(Types, Key, Val);
-        E -> E
-    end.
-
-is_disallowed_type(Key, _Val, <<"any">>) -> {Key, <<"disallow:Value disallowed because schema disallows all">>};
-is_disallowed_type(Key, Val, Type) when is_binary(Type) ->
-    case check_valid_type(Val, Type, false) of
-        true -> false;
-        false -> [{Key, list_to_binary([<<"disallow:Value is of disallowed type ">>, Type])}]
-    end;
-is_disallowed_type(Key, Val, TypeSchema) ->
-    case are_valid_attributes(wh_json:set_value(Key, Val, wh_json:new()), Key, TypeSchema) of
-        {fail, _} -> [{Key, list_to_binary([<<"disallow:Value is of disallowed type ">>
-                                           ,wh_json:get_value(<<"type">>, TypeSchema, <<"any">>)
-                                      ])}];
-        _ -> false
-    end.
 
 %% If we are testing a value to be of a type, ShouldBe is true; meaning we expect the value to be of the type.
 %% If ShouldBe is false (as when calling is_disallowed_type/3), then we expect the value to not be of the type.
@@ -740,14 +716,6 @@ are_valid_items(_Items, _SchemaItemsJObj) ->
     _ItemType = wh_json:get_value(<<"type">>, _SchemaItemsJObj, <<"any">>),
     _ItemSchemaJObj = wh_json:get_value(<<"items">>, _SchemaItemsJObj, wh_json:new()),
     true.
-
--spec is_required_attribute/1 :: (json_object()) -> boolean().
-is_required_attribute(AttributesJObj) ->
-    wh_json:is_true(<<"required">>, AttributesJObj, false).
-
--spec is_optional_attribute/1 :: (json_object()) -> boolean().
-is_optional_attribute(AttributesJObj) ->
-    wh_json:is_true(<<"optional">>, AttributesJObj, true).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -1106,7 +1074,6 @@ validate_test(Succeed, Fail, Schema) ->
                                                 not passed(Result)
                                             end)],
               Results = lists:flatten(Validation),
-              io:format("SUC: ~p~n", [Results]),
               ?assertEqual(true, Results =:= [])
           end || Elem <- Succeed],
     _ = [ begin
@@ -1117,7 +1084,6 @@ validate_test(Succeed, Fail, Schema) ->
                                                 not passed(Result)
                                             end)],
               Results = lists:flatten(Validation),
-              io:format("FAIL: ~p~n", [Results]),
               ?assertEqual(true, Results =/= [])
           end || Elem <- Fail].
 
