@@ -121,9 +121,26 @@ are_valid_properties(_, _, Errors, []) ->
     {fail, lists:flatten(Errors)};
 are_valid_properties(JObj, Path, Errors, [{Property, AttributesJObj}|T]) ->
     Key = Path ++ [Property],
-    JObj1 = case wh_json:get_value(Key, JObj) of
+    %% extend json schema to optionally use the default if the provided
+    %% value is 'empty'
+    ValueFun = case wh_json:is_false(<<"empty">>, AttributesJObj) of
+                  true -> fun wh_json:get_ne_value/2;
+                  false -> fun wh_json:get_value/2
+              end,
+    JObj1 = case ValueFun(Key, JObj) of
                 undefined ->
-                    case wh_json:get_value(<<"default">>, AttributesJObj) of
+                    %% Try to ensure the default value is properly interpreted,
+                    %% for example if simply using get_value on temporal routes
+                    %% the default integer is interpreted as a float.
+                    DefaultFun = case wh_json:get_value(<<"type">>, AttributesJObj) of
+                                     <<"string">> -> fun wh_json:get_binary_value/2;
+                                     <<"number">> -> fun wh_json:get_number_value/2;
+                                     <<"integer">> -> fun wh_json:get_integer_value/2;
+                                     <<"float">> -> fun wh_json:get_float_value/2;
+                                     <<"boolean">> -> fun wh_json:is_true/2;
+                                     _ -> fun wh_json:get_value/2
+                                 end,
+                    case DefaultFun(<<"default">>, AttributesJObj) of
                         undefined ->
                             JObj;
                         Default ->
@@ -239,18 +256,17 @@ is_valid_attribute({<<"dependencies">>, _, _}, JObj, _Key) ->
 %% 5.9 / 5.11
 is_valid_attribute({<<"minimum">>, Min, AttrsJObj}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
-    Exclusive = wh_json:is_true(<<"exclusiveMinimum">>, AttrsJObj),
     try {check_valid_type(Instance, <<"number">>), wh_util:to_number(Min)} of
         {false, _} ->
             {pass, JObj};
-        {true, Int} when Exclusive andalso (Instance > Int) -> 
-            {pass, JObj};
-        {true, Int} when (not Exclusive) andalso (Instance >= Int) -> 
-            {pass, JObj};
-        {true, Int} when Exclusive -> 
-            {fail, {Key, list_to_binary([<<"minimum:Value must be at least ">>, wh_util:to_binary(Int + 1)])}};
-        {true, Int} -> 
-            {fail, {Key, list_to_binary([<<"minimum:Value must be at least ">>, wh_util:to_binary(Int)])}}
+        {true, Int} ->
+            Num = wh_util:to_number(Instance),
+            case wh_json:is_true(<<"exclusiveMinimum">>, AttrsJObj) of
+                true when (Num > Int) -> {pass, JObj};
+                false when (Num >= Int) -> {pass, JObj};
+                _ ->
+                    {fail, {Key, list_to_binary([<<"minimum:Value must be at least ">>, wh_util:to_binary(Int)])}}
+            end
     catch
         error:badarg ->
             {fail, {Key, <<"minimum:Either the value or the schema minimum for this key is not a number">>}};
@@ -261,18 +277,17 @@ is_valid_attribute({<<"minimum">>, Min, AttrsJObj}, JObj, Key) ->
 %% 5.10 / 5.12
 is_valid_attribute({<<"maximum">>, Max, AttrsJObj}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
-    Exclusive = wh_json:is_true(<<"exclusiveMaximum">>, AttrsJObj),
     try {check_valid_type(Instance, <<"number">>), wh_util:to_number(Max)} of
         {false, _} ->
             {pass, JObj};
-        {true, Int} when Exclusive andalso (Instance < Int) -> 
-            {pass, JObj};
-        {true, Int} when (not Exclusive) andalso (Instance =< Int) -> 
-            {pass, JObj};
-        {true, Int} when Exclusive -> 
-            {fail, {Key, list_to_binary([<<"maximum:Value must be at most ">>, wh_util:to_binary(Int - 1)])}};
         {true, Int} -> 
-            {fail, {Key, list_to_binary([<<"maximum:Value must be at most ">>, wh_util:to_binary(Int)])}}
+            Num = wh_util:to_number(Instance),
+            case wh_json:is_true(<<"exclusiveMaximum">>, AttrsJObj) of
+                true when (Num < Int) -> {pass, JObj};
+                false when (Num =< Int) -> {pass, JObj};
+                _ ->
+                    {fail, {Key, list_to_binary([<<"maximum:Value must be at most ">>, wh_util:to_binary(Int)])}}
+            end
     catch
         error:badarg ->
             {fail, {Key, <<"maximum:Either the value or the schema maximum for this key is not a number">>}};
@@ -368,14 +383,25 @@ is_valid_attribute({<<"maxLength">>, Max, _}, JObj, Key) ->
 %% 5.19
 is_valid_attribute({<<"enum">>, Enums, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
-    try lists:any(fun(Enum) -> are_same_items(Enum, Instance) end, Enums) of
+    case check_valid_type(Instance, <<"array">>) of
         false -> 
-            {fail, {Key, <<"enum:Value not found in enumerated list of values">>}}
-    catch
-        throw:{duplicate_found,_} -> 
             {pass, JObj};
-        error:function_clause ->
-            {fail, {Key, <<"enum:Schema enum is not a list of values">>}}                                 
+        true when length(Instance) =:= 0 ->
+            {pass, JObj};
+        true -> 
+            case lists:all(fun(Elem) -> 
+                                   try [are_same_items(Enum, Elem) || Enum <- Enums] of
+                                       [] -> true;
+                                       _ -> false
+                                   catch
+                                       throw:{duplicate_found, _} -> true
+                                   end
+                           end, Instance) of
+                true ->
+                    {pass, JObj};
+                false ->
+                    {fail, {Key, <<"enum:Value not found in enumerated list of values">>}}
+            end
     end;
 
 %% 5.23
@@ -960,9 +986,9 @@ max_length_test() ->
 %% Section 5.19 - enum
 %%     Enumeration of all possible values that are valid for the instance property
 enum_test() ->
-    Schema = "{ \"enum\": [\"foobar\", 3.1416]}",
-    Succeed = [?STR1, ?PI],
-    Fail = [?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?STR2, ?ARR1, ?ARR2, ?OBJ1],
+    Schema = "{ \"enum\": [\"foobar\", \"barfoo\"]}",
+    Succeed = [?STR1, ?PI, ?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?STR2, ?ARR1, ?ARR2, ?ARR3, ?OBJ1],
+    Fail = [?ARR4, ?ARR5, ?ARR6, ?ARR7, ?ARR8],
 
     validate_test(Succeed, Fail, Schema).
 
