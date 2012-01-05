@@ -232,7 +232,7 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     {noreply, State};
 
 handle_info(timeout, _) ->
-    bind_to_crossbar(),
+    _ = bind_to_crossbar(),
     {noreply, init_state()};
 
 handle_info(_Info, State) ->
@@ -338,8 +338,10 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 -spec content_types_provided/1 :: (#cb_context{}) -> #cb_context{}.
 content_types_provided(#cb_context{req_verb = <<"get">>, content_types_provided=CTP}=Context) ->
-    Context#cb_context{content_types_provided=[{to_binary, ["text/plain"] ++ props:get_value(to_binary, CTP, [])}
-                                               | proplists:delete(to_binary,CTP)]};
+    Context#cb_context{content_types_provided=[{to_binary, ["text/plain" |  props:get_value(to_binary, CTP, [])]}
+                                               | props:delete(to_binary,CTP)
+					      ]
+		      };
 content_types_provided(Context) -> Context.
 
 %%--------------------------------------------------------------------

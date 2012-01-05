@@ -445,7 +445,18 @@ load_account_summary(AccountId, Context) ->
 -spec create_account/1 :: (#cb_context{}) -> #cb_context{}.
 -spec create_account/2 :: (#cb_context{}, 'undefined' | ne_binary()) -> #cb_context{}.
 create_account(Context) ->
-    create_account(Context, whapps_config:get(?CONFIG_CAT, <<"default_parent">>)).
+    P = case whapps_config:get(?CONFIG_CAT, <<"default_parent">>) of
+	    undefined ->
+		case couch_mgr:get_results(?ACCOUNTS_AGG_DB, ?AGG_VIEW_SUMMARY, [{<<"include_docs">>, true}]) of
+		    {ok, [_|_]=AcctJObjs} ->
+			ParentId = find_default_parent(AcctJObjs),
+			whapps_config:set(?CONFIG_CAT, <<"default_parent">>, ParentId),
+			ParentId;
+		    _ -> undefined
+		end;
+	    ParentId -> ParentId
+	end,
+    create_account(Context, P).
 
 create_account(#cb_context{req_data=Data}=Context, ParentId) ->
     UniqueRealm = is_unique_realm(undefined, Context),

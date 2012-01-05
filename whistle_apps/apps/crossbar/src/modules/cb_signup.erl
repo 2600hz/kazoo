@@ -230,7 +230,7 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     {noreply, State};
 
 handle_info(cleanup, #state{cleanup_interval=CleanupInterval}=State) ->
-    cleanup_signups(State),
+    _ = cleanup_signups(State),
 
     {ok, TRef} = erlang:send_after(CleanupInterval * 1000, cleanup),
     {noreply, State#state{cleanup_timer=TRef}};

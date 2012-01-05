@@ -23,6 +23,7 @@
 -export([get_keys/1, get_keys/2]).
 -export([set_value/3, set_values/2, new/0]).
 -export([delete_key/2, delete_key/3]).
+-export([merge_recursive/2]).
 
 -export([from_list/1, merge_jobjs/2]).
 
@@ -104,13 +105,23 @@ from_list(L) when is_list(L) ->
 
 %% only a top-level merge
 %% merges JObj1 into JObj2
--spec merge_jobjs/2 :: (JObj1, JObj2) -> json_object() when
-      JObj1 :: json_object(),
-      JObj2 :: json_object().
+-spec merge_jobjs/2 :: (json_object(), json_object()) -> json_object().
 merge_jobjs(JObj1, JObj2) ->
     lists:foldl(fun(K, Acc) ->
                         wh_json:set_value(K, wh_json:get_value(K, JObj1), Acc)
                 end, JObj2, ?MODULE:get_keys(JObj1)).
+
+-spec merge_recursive/2 :: (json_object(), json_object()) -> json_object().
+-spec merge_recursive/3 :: (json_object(), json_object() | json_term(), json_strings()) -> json_object().
+merge_recursive(JObj1, JObj2) ->
+    merge_recursive(JObj1, JObj2, []).
+
+merge_recursive(JObj1, JObj2, Keys) when is_tuple(JObj2) ->
+    lists:foldr(fun(Key, J) ->
+			merge_recursive(J, wh_json:get_value(Key, JObj2), [Key|Keys])
+                end, JObj1, ?MODULE:get_keys(JObj2));
+merge_recursive(JObj1, Value, Keys) ->
+    wh_json:set_value(lists:reverse(Keys), Value, JObj1).
 
 -spec to_proplist/1 :: (json_object() | json_objects()) -> proplist() | [proplist(),...].
 -spec to_proplist/2 :: (term(), json_object()) -> proplist().
@@ -163,85 +174,64 @@ get_string_value(Key, JObj, Default) when is_list(Default) ->
         Value -> wh_util:to_list(Value)
     end.
 
--spec get_binary_value/2 :: (Key, JObj) -> 'undefined' | binary() when
-      Key :: term(),
-      JObj :: json_object() | json_objects().
+-spec get_binary_value/2 :: (json_string(), json_object() | json_objects()) -> 'undefined' | binary().
 get_binary_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
         Value -> wh_util:to_binary(Value)
     end.
 
--spec get_binary_value/3 :: (Key, JObj, Default) -> binary() when
-      Key :: term(),
-      JObj :: json_object() | json_objects(),
-      Default :: binary().
-get_binary_value(Key, JObj, Default) when is_binary(Default) ->
+-spec get_binary_value/3 :: (json_string(), json_object() | json_objects(), Default) -> binary() | Default.
+get_binary_value(Key, JObj, Default) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> Default;
         Value -> wh_util:to_binary(Value)
     end.
 
--spec get_integer_value/2 :: (Key, JObj) -> 'undefined' | integer() when
-      Key :: term(),
-      JObj :: json_object() | json_objects().
+-spec get_integer_value/2 :: (json_string(), json_object() | json_objects()) -> 'undefined' | integer().
 get_integer_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
         Value -> wh_util:to_integer(Value)
     end.
 
--spec get_integer_value/3 :: (Key, JObj, Default) -> integer() when
-      Key :: term(),
-      JObj :: json_object() | json_objects(),
-      Default :: integer().
-get_integer_value(Key, JObj, Default) when is_integer(Default) ->
+-spec get_integer_value/3 :: (json_string(), json_object() | json_objects(), Default) -> integer() | Default.
+get_integer_value(Key, JObj, Default) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> Default;
         Value -> wh_util:to_integer(Value)
     end.
 
--spec get_number_value/2 :: (Key, JObj) -> 'undefined' | number() when
-      Key :: term(),
-      JObj :: json_object() | json_objects().
+-spec get_number_value/2 :: (json_string(), json_object() | json_objects()) -> 'undefined' | number().
 get_number_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
         Value -> wh_util:to_number(Value)
     end.
 
--spec get_number_value/3 :: (Key, JObj, Default) -> number() when
-      Key :: term(),
-      JObj :: json_object() | json_objects(),
-      Default :: number().
+-spec get_number_value/3 :: (json_string(), json_object() | json_objects(), Default) -> number() | Default.
 get_number_value(Key, JObj, Default) when is_number(Default) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> Default;
         Value -> wh_util:to_number(Value)
     end.
 
--spec get_float_value/2 :: (Key, JObj) -> 'undefined' | float() when
-      Key :: term(),
-      JObj :: json_object() | json_objects().
+-spec get_float_value/2 :: (json_string(), json_object() | json_objects()) -> 'undefined' | float().
 get_float_value(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
         Value -> wh_util:to_float(Value)
     end.
 
--spec get_float_value/3 :: (Key, JObj, Default) -> float() when
-      Key :: term(),
-      JObj :: json_object() | json_objects(),
-      Default :: float().
+-spec get_float_value/3 :: (json_string(), json_object() | json_objects(), Default) -> float() | Default.
 get_float_value(Key, JObj, Default) when is_float(Default) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> Default;
         Value -> wh_util:to_float(Value)
     end.
 
--spec is_false/2 :: (Key, JObj) -> boolean() when
-      Key :: term(),
-      JObj :: json_object() | json_objects().
+-spec is_false/2 :: (json_string(), json_object() | json_objects()) -> boolean().
+-spec is_false/3 :: (json_string(), json_object() | json_objects(), Default) -> boolean() | Default.
 is_false(Key, JObj) ->
     wh_util:is_false(wh_json:get_value(Key, JObj)).
 
@@ -251,9 +241,8 @@ is_false(Key, JObj, Default) ->
         V -> wh_util:is_false(V)
     end.
 
--spec is_true/2 :: (Key, JObj) -> boolean() when
-      Key :: term(),
-      JObj :: json_object() | json_objects().
+-spec is_true/2 :: (json_string(), json_object() | json_objects()) -> boolean().
+-spec is_true/3 :: (json_string(), json_object() | json_objects(), Default) -> boolean() | Default.
 is_true(Key, JObj) ->
     wh_util:is_true(wh_json:get_value(Key, JObj)).
 
@@ -263,9 +252,7 @@ is_true(Key, JObj, Default) ->
         V -> wh_util:is_true(V)
     end.
 
--spec get_binary_boolean/2 :: (Key, JObj) -> 'undefined' | binary() when
-      Key :: term(),
-      JObj :: json_object() | json_objects().
+-spec get_binary_boolean/2 :: (json_string(), json_object() | json_objects()) -> 'undefined' | ne_binary().
 get_binary_boolean(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
@@ -306,8 +293,8 @@ get_ne_value(Key, JObj, Default) ->
 %% Returns the value at Key
 %% @end
 %%--------------------------------------------------------------------
--spec find/2 :: (ne_binary() | [ne_binary(),...], json_objects()) -> term().
--spec find/3 :: (ne_binary() | [ne_binary(),...], json_objects(), term()) -> term().
+-spec find/2 :: (json_string() | json_strings(), json_objects()) -> json_term() | 'undefined'.
+-spec find/3 :: (json_string() | json_strings(), json_objects(), Default) -> json_term() | Default.
 
 find(Key, Docs) ->
     find(Key, Docs, undefined).
@@ -319,8 +306,8 @@ find(Key, JObjs, Default) ->
     end.
 
 
--spec get_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> json_term().
--spec get_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), json_term()) -> json_term().
+-spec get_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> json_term() | 'undefined'.
+-spec get_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), Default) -> json_term() | Default.
 get_value(Key, JObj) ->
     get_value(Key, JObj, undefined).
 
@@ -335,7 +322,7 @@ get_value(Key, L, Default) when is_list(L) ->
 get_value(K, Doc, Default) ->
     get_value1(K, Doc, Default).
 
--spec get_value1/3 :: (json_string() | json_strings(), json_object() | json_objects(), json_term()) -> json_term().
+-spec get_value1/3 :: (json_string() | json_strings(), json_object() | json_objects(), Default) -> json_term() | Default.
 get_value1([], JObj, _Default) -> JObj;
 get_value1(Key, JObj, Default) when not is_list(Key)->
     get_value1([Key], JObj, Default);
@@ -620,6 +607,16 @@ merge_jobjs_test() ->
     ?assertEqual(true, undefined =/= wh_json:get_value(<<"d1k1">>, JObj)),
     ?assertEqual(true, undefined =/= wh_json:get_value(<<"d2k1">>, JObj)),
     ?assertEqual(true, undefined =/= wh_json:get_value(<<"sub_d1">>, JObj)),
+    ?assertEqual(true, undefined =:= wh_json:get_value(<<"missing_k">>, JObj)).
+
+merge_recursive_test() ->
+    JObj = merge_recursive(?D1, wh_json:set_value(<<"d1k2">>, d2k2, ?D2)),
+    ?assertEqual(true, undefined =/= ?MODULE:get_value(<<"d1k1">>, JObj)),
+    ?assertEqual(true, undefined =/= ?MODULE:get_value(<<"d2k1">>, JObj)),
+    ?assertEqual(true, undefined =/= ?MODULE:get_value([<<"d1k3">>, 2], JObj)),
+    ?assertEqual(true, undefined =/= ?MODULE:get_value(<<"sub_d1">>, JObj)),
+    ?assertEqual(true, undefined =/= ?MODULE:get_value([<<"sub_d1">>, <<"d1k1">>], JObj)),
+    ?assertEqual(true, d2k2 =:= wh_json:get_value(<<"d1k2">>, JObj)), %% second JObj takes precedence
     ?assertEqual(true, undefined =:= wh_json:get_value(<<"missing_k">>, JObj)).
 
 get_binary_value_test() ->
