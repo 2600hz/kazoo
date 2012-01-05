@@ -18,7 +18,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
@@ -105,16 +105,16 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.devices">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.devices">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Context | Params]}, State) ->
@@ -123,7 +123,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Contex
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Context | Params]}, State) ->
@@ -147,7 +147,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Co
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
                   end
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Context | Params]}, State) ->
@@ -164,7 +164,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Con
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
                   end
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
@@ -184,7 +184,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, 
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
                   end
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -318,15 +318,15 @@ load_device_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_device/1 :: (#cb_context{}) -> #cb_context{}.
-create_device(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
+create_device(#cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"devices">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             Context#cb_context{
-                 doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
-                ,resp_status=success
-            }
+              doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
+              ,resp_status=success
+             }
     end.
 
 %%--------------------------------------------------------------------
@@ -347,11 +347,11 @@ load_device(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_device/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_device(DocId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
+update_device(DocId, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"devices">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -366,16 +366,16 @@ update_device(DocId, #cb_context{req_data=JObj}=Context) ->
 load_device_status(#cb_context{db_name=Db}=Context) ->
     {ok, JObjs} = couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]),
     AccountDevices = lists:foldl(fun(JObj, Acc) -> [{wh_json:get_value([<<"doc">>, <<"sip">>, <<"realm">>], JObj),
-						     wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], JObj)} | Acc] end, [], JObjs),
+                                                     wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], JObj)} | Acc] end, [], JObjs),
     RegDevices = lookup_regs(AccountDevices),
     Result = case RegDevices of
-		 [] -> wh_json:new();
-		 [_|_] -> {ok, Devices} = couch_mgr:get_results(Db, <<"devices/sip_credentials">>, [{<<"keys">>, RegDevices}]),
-			  lists:foldl(fun(JObj, Acc) ->
-					      RegDevice = wh_json:set_value(<<"device_id">>, wh_json:get_value(<<"id">>, JObj), wh_json:new()),
-					      [wh_json:set_value(<<"registered">>, true, RegDevice)| Acc]
-				      end, [], Devices)
-	     end,
+                 [] -> wh_json:new();
+                 [_|_] -> {ok, Devices} = couch_mgr:get_results(Db, <<"devices/sip_credentials">>, [{<<"keys">>, RegDevices}]),
+                          lists:foldl(fun(JObj, Acc) ->
+                                              RegDevice = wh_json:set_value(<<"device_id">>, wh_json:get_value(<<"id">>, JObj), wh_json:new()),
+                                              [wh_json:set_value(<<"registered">>, true, RegDevice)| Acc]
+                                      end, [], Devices)
+             end,
     crossbar_util:response(Result, Context).
 
 %%--------------------------------------------------------------------
@@ -387,16 +387,6 @@ load_device_status(#cb_context{db_name=Db}=Context) ->
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Validates JObj against their schema
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-     crossbar_schema:do_validate(JObj, device).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -434,16 +424,16 @@ lookup_registration(Realm, User, Q) ->
 wait_for_reg_resp([], Acc) -> Acc;
 wait_for_reg_resp([_|T], Acc) ->
     try
-	receive
-	    {amqp_host_down, _} ->
-		?LOG("lost AMQP connection"),
+        receive
+            {amqp_host_down, _} ->
+                ?LOG("lost AMQP connection"),
                 Acc;
-	    {amqp_lost_channel,no_connection} ->
-		?LOG("lost AMQP connection"),
+            {amqp_lost_channel,no_connection} ->
+                ?LOG("lost AMQP connection"),
                 Acc;
-	    {_, #amqp_msg{payload = Payload}} ->
-		Resp = mochijson2:decode(Payload),
-		true = wapi_registration:query_resp_v(Resp),
+            {_, #amqp_msg{payload = Payload}} ->
+                Resp = mochijson2:decode(Payload),
+                true = wapi_registration:query_resp_v(Resp),
                 Realm = wh_json:get_value([<<"Fields">>, <<"Realm">>], Resp),
                 User = wh_json:get_value([<<"Fields">>, <<"Username">>], Resp),
                 case lists:member([Realm, User], Acc) of
@@ -452,16 +442,16 @@ wait_for_reg_resp([_|T], Acc) ->
                     false ->
                         wait_for_reg_resp(T, [[Realm, User] | Acc])
                 end;
-	    #'basic.consume_ok'{} ->
-		wait_for_reg_resp([ok|T], Acc)
-	after
-	    500 ->
-		?LOG("timeout for registration query"),
-		Acc
-	end
+            #'basic.consume_ok'{} ->
+                wait_for_reg_resp([ok|T], Acc)
+        after
+            500 ->
+                ?LOG("timeout for registration query"),
+                Acc
+        end
     catch
-	_:_ ->
-	    wait_for_reg_resp([ok|T], Acc)
+        _:_ ->
+            wait_for_reg_resp([ok|T], Acc)
     end.
 
 %%--------------------------------------------------------------------

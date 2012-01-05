@@ -17,7 +17,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
@@ -112,24 +112,24 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
                  ,{RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]}=Context}}, State) ->
     spawn(fun() ->
-		  _ = crossbar_util:put_reqid(Context),
-		  ?LOG("authenticating request"),
-		  Pid ! {binding_result, true, {RD, Context}}
-	  end),
+                  _ = crossbar_util:put_reqid(Context),
+                  ?LOG("authenticating request"),
+                  Pid ! {binding_result, true, {RD, Context}}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.user_auth">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.user_auth">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.user_auth">>, [RD, Context | Params]}, State) ->
@@ -138,7 +138,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.user_auth">>, [RD, Cont
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.user_auth">>, [RD, Context | Params]}, State) ->
@@ -147,7 +147,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.user_auth">>, [RD, C
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = create_token(RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -240,13 +240,18 @@ resource_exists(_) ->
 -spec validate/2 :: (Params, Context) -> #cb_context{} when
       Params :: list(),
       Context :: #cb_context{}.
-validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
-    ?LOG("Auth User: ~p", [JObj]),
-    authorize_user(Context
-		   ,wh_json:get_value(<<"realm">>, JObj)
-                   ,wh_json:get_value(<<"credentials">>, JObj)
-                   ,wh_json:get_value(<<"method">>, JObj, <<"md5">>)
-                  );
+validate([], #cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"user_auth">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            ?LOG("Auth User: ~p", [JObj]),
+            authorize_user(Context
+                           ,wh_json:get_value(<<"realm">>, JObj)
+                           ,wh_json:get_value(<<"credentials">>, JObj)
+                           ,wh_json:get_value(<<"method">>, JObj, <<"md5">>)
+                          )
+    end;
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -281,10 +286,10 @@ authorize_user(Context, _, <<>>, _) ->
     crossbar_util:response_invalid_data([<<"credentials">>], Context);
 authorize_user(Context, Realm, Credentials, Method) ->
     case whapps_util:get_account_by_realm(Realm) of
-	{ok, AccountDb} ->
+        {ok, AccountDb} ->
             ?LOG("realm ~s belongs to account ~s", [Realm, whapps_util:get_db_name(AccountDb, raw)]),
             authorize_user(Context, Realm, Credentials, Method, AccountDb);
-	{error, not_found} ->
+        {error, not_found} ->
             ?LOG("could not find account with realm ~s", [Realm]),
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end.

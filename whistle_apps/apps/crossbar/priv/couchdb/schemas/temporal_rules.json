@@ -53,6 +53,7 @@
          "enum":[
             "monday",
             "tuesday",
+            "wednesday",
             "wensday",
             "thursday",
             "friday",
@@ -82,6 +83,7 @@
       "start_date":{
          "description":"The date that any recurrence should be calculated as starting on",
          "type":"integer",
+         "empty": false,
          "default":62586115200
       }
    }

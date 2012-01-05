@@ -24,19 +24,13 @@
       "featurecode":{
          "description":"When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature",
          "type":"object",
-         "required":"true",
          "properties":{
             "name":{
-               "type":"string",
-               "required":true
+               "type":"string"
             },
             "number":{
-               "type":"string",
-               "required":true
+               "type":"string"
             }
-         },
-         "default":{
-
          }
       },
       "flow":{

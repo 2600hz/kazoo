@@ -4,13 +4,6 @@
    "id":"http://json-schema.org/draft-03/schema#",
    "description":"Schema for a user",
    "properties":{
-      "name":{
-         "description":"A friendly name for the user",
-         "required":"true",
-         "type":"string",
-         "minLength":1,
-         "maxLength":128
-      },
       "enabled":{
          "description":"Determines if the user is currently enabled",
          "type":"boolean",
@@ -18,18 +11,21 @@
       },
       "username":{
          "description":"The GUI login username",
+         "required":"true",
          "type":"string",
          "minLength":1,
          "maxLength":32
       },
       "first_name":{
          "description":"The first name of the user",
+         "required":"true",
          "type":"string",
          "minLength":1,
          "maxLength":32
       },
       "last_name":{
          "description":"The last name of the user",
+         "required":"true",
          "type":"string",
          "minLength":1,
          "maxLength":32
@@ -91,24 +87,59 @@
          }
       },
       "caller_id":{
-         "description":"The caller ID parameters for the user",
+         "description":"The default caller ID parameters",
          "type":"object",
-         "enum":[
-            "internal",
-            "external",
-            "emergency"
-         ],
          "properties":{
-            "name":{
-               "description":"The caller id name for the object type",
-               "type":"string",
-               "maxLength":15,
-               "pattern":"^[0-9A-Za-z ,]*$"
+            "internal":{
+               "description":"The default caller ID used when dialing internal extensions",
+               "type":"object",
+               "properties":{
+                  "name":{
+                     "description":"The caller id name for the object type",
+                     "type":"string",
+                     "maxLength":15,
+                     "pattern":"^[0-9A-Za-z ,]*$"
+                  },
+                  "number":{
+                     "description":"The caller id number for the object type",
+                     "type":"string",
+                     "maxLength":15
+                  }
+               }
             },
-            "number":{
-               "description":"The caller id number for the object type",
-               "type":"string",
-               "maxLength":15
+            "external":{
+               "description":"The default caller ID used when dialing external numbers",
+               "type":"object",
+               "properties":{
+                  "name":{
+                     "description":"The caller id name for the object type",
+                     "type":"string",
+                     "maxLength":15,
+                     "pattern":"^[0-9A-Za-z ,]*$"
+                  },
+                  "number":{
+                     "description":"The caller id number for the object type",
+                     "type":"string",
+                     "maxLength":15
+                  }
+               }
+            },
+            "emergency":{
+               "description":"The caller ID used when external, internal, or emergency is not defined",
+               "type":"object",
+               "properties":{
+                  "name":{
+                     "description":"The caller id name for the object type",
+                     "type":"string",
+                     "maxLength":15,
+                     "pattern":"^[0-9A-Za-z ,]*$"
+                  },
+                  "number":{
+                     "description":"The caller id number for the object type",
+                     "type":"string",
+                     "maxLength":15
+                  }
+               }
             }
          },
          "default":{

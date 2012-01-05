@@ -19,7 +19,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -110,6 +110,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, Context}}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
                   case account_is_descendant(Context)
                       andalso allowed_if_sys_admin_mod(Context) of
                       true ->
@@ -179,7 +180,7 @@ account_is_descendant(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
     case props:get_value(<<"accounts">>, Nouns) of
         %% if the URL did not have the accounts noun then this module denies access
         undefined ->
-	    ?LOG("No accounts in Nouns: ~p", [Nouns]),
+            ?LOG("No accounts in Nouns: ~p", [Nouns]),
             false;
         Params ->
             %% the request that this module process the first element of after 'accounts'

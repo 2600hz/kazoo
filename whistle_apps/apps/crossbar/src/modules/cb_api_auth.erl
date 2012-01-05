@@ -247,8 +247,13 @@ resource_exists(_) ->
 -spec validate/2 :: (Params, Context) -> #cb_context{} when
       Params :: list(),
       Context :: #cb_context{}.
-validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
-    authorize_api_key(Context, wh_json:get_value(<<"api_key">>, JObj));
+validate([], #cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"api_auth">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            authorize_api_key(Context, wh_json:get_value(<<"api_key">>, JObj))
+    end;
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
