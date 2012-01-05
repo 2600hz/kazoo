@@ -9,6 +9,7 @@
 -module(crossbar).
 
 -include("../include/crossbar.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -export([start_link/0, stop/0]).
 
@@ -68,8 +69,8 @@ refresh() ->
     started.
 
 do_refresh() ->
-    refresh(?SIP_AGG_DB),
-    refresh(?SCHEMAS_DB),
+    refresh(?SIP_AUTH),
+    refresh(?SYS_SCHEMA),
     refresh(?ACCOUNTS_AGG_DB),
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2000),
@@ -78,11 +79,11 @@ do_refresh() ->
 
 refresh(Account) when not is_binary(Account) ->
     refresh(wh_util:to_binary(Account));
-refresh(?SIP_AGG_DB) ->
-    couch_mgr:db_create(?SIP_AGG_DB);
-refresh(?SCHEMAS_DB) ->
-    couch_mgr:db_create(?SCHEMAS_DB),
-    couch_mgr:revise_docs_from_folder(?SCHEMAS_DB, crossbar, "schemas");
+refresh(?SIP_AUTH) ->
+    couch_mgr:db_create(?SIP_AUTH);
+refresh(?SYS_SCHEMA) ->
+    couch_mgr:db_create(?SYS_SCHEMA),
+    couch_mgr:revise_docs_from_folder(?SYS_SCHEMA, crossbar, "schemas");
 refresh(?ACCOUNTS_AGG_DB) ->
     couch_mgr:db_create(?ACCOUNTS_AGG_DB),
     couch_mgr:revise_doc_from_file(?ACCOUNTS_AGG_DB, crossbar, ?ACCOUNTS_AGG_VIEW_FILE),
@@ -110,11 +111,11 @@ aggregate_device(undefined) ->
     ok;
 aggregate_device(Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
-    case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
+    case couch_mgr:lookup_doc_rev(?SIP_AUTH, DeviceId) of
         {ok, Rev} ->
-            couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Device));
+            couch_mgr:ensure_saved(?SIP_AUTH, wh_json:set_value(<<"_rev">>, Rev, Device));
         {error, not_found} ->
-            couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Device))
+            couch_mgr:ensure_saved(?SIP_AUTH, wh_json:delete_key(<<"_rev">>, Device))
     end,
     ok.
 

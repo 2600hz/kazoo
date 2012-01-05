@@ -34,6 +34,8 @@
 -compile([export_all]).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -type error_result() :: {ne_binary(), ne_binary()}.
 -type error_results() :: [error_result(),...].
@@ -41,8 +43,6 @@
 -type attribute_results() :: true | error_results().
 -type error_acc() :: [] | [{[ne_binary(),...], ne_binary() },...].
 -type jkey_acc() :: [] | [ne_binary(),...].
-
--define(SCHEMA_DB, <<"schemas">>).
 
 -define(SIMPLE_TYPES, [<<"string">>,<<"number">>,<<"integer">>,<<"boolean">>,<<"object">>
                            ,<<"array">>,<<"null">>,<<"any">>]).
@@ -60,17 +60,23 @@
 -spec is_valid/2 :: (json_object(), ne_binary() | json_object()) -> results().
 is_valid(JObj, Schema) when is_binary(Schema) ->
     %% TODO: cache the schema?
-    case couch_mgr:open_doc(?SCHEMA_DB, Schema) of
+    case couch_mgr:open_doc(?SYS_SCHEMA, Schema) of
         {ok, SchemaJObj} ->
             is_valid(JObj, SchemaJObj);
-        {error, _} ->
+        {error, R} ->
+            ?LOG("unable to find ~s schema, assuming it passed: ~p", [Schema, R]),
             {pass, JObj}
     end;
 is_valid(JObj, Schema) ->
     case are_valid_properties(JObj, Schema) of
-        {pass, _}=Ok -> Ok;
+        {pass, _}=Ok -> 
+            ?LOG("json validated against ~s schema", [wh_json:get_value(<<"_id">>, Schema)]),
+            Ok;
         {fail, Errors} ->
-            {fail, format_errors(Errors)}
+            E = format_errors(Errors),
+            ?LOG("json failed validation against ~s schema: ~s", [wh_json:get_value(<<"_id">>, Schema)
+                                                                  ,wh_json:encode(E)]),
+            {fail, E}
     end.
 
 
