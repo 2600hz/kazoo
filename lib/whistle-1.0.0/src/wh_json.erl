@@ -11,6 +11,7 @@
 -export([to_proplist/1, to_proplist/2]).
 -export([get_binary_boolean/2]).
 -export([get_integer_value/2, get_integer_value/3]).
+-export([get_number_value/2, get_number_value/3]).
 -export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
 -export([get_string_value/2, get_string_value/3]).
@@ -200,6 +201,25 @@ get_integer_value(Key, JObj, Default) when is_integer(Default) ->
         Value -> wh_util:to_integer(Value)
     end.
 
+-spec get_number_value/2 :: (Key, JObj) -> 'undefined' | number() when
+      Key :: term(),
+      JObj :: json_object() | json_objects().
+get_number_value(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> wh_util:to_number(Value)
+    end.
+
+-spec get_number_value/3 :: (Key, JObj, Default) -> number() when
+      Key :: term(),
+      JObj :: json_object() | json_objects(),
+      Default :: number().
+get_number_value(Key, JObj, Default) when is_number(Default) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> Default;
+        Value -> wh_util:to_number(Value)
+    end.
+
 -spec get_float_value/2 :: (Key, JObj) -> 'undefined' | float() when
       Key :: term(),
       JObj :: json_object() | json_objects().
@@ -294,8 +314,8 @@ find(Key, Docs) ->
 
 find(Key, JObjs, Default) ->
     case lists:dropwhile(fun(JObj) -> wh_json:get_ne_value(Key, JObj) =:= undefined end, JObjs) of
-	[] -> Default;
-	[JObj|_] -> wh_json:get_ne_value(Key, JObj)
+        [] -> Default;
+        [JObj|_] -> wh_json:get_ne_value(Key, JObj)
     end.
 
 
