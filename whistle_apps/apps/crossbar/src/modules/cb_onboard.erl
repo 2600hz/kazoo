@@ -23,6 +23,7 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
+-define(OB_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".onboard">>).
 -define(DEFAULT_FLOW, "{\"data\": { \"id\": \"~s\" }, \"module\": \"user\", \"children\": { \"_\": { \"data\": { \"id\": \"~s\" }, \"module\": \"voicemail\", \"children\": {}}}}").
 
 %%%===================================================================
@@ -256,6 +257,15 @@ validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will loop over all the 'extensions' and collect
+%% valid context's for users, voicemailboxes, devices, and callflows.
+%% Any errors will also be collected.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_extensions/3 :: (json_object(), #cb_context{}, {proplist(), json_object()}) -> {proplist(), json_object()}. 
 create_extensions(JObj, Context, Results) ->
     Extensions = wh_json:get_value(<<"extensions">>, JObj, []),
     create_extensions(Extensions, 1, Context, Results).
@@ -263,7 +273,7 @@ create_extensions(JObj, Context, Results) ->
 create_extensions([], _, _, Results) ->
     Results;
 create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
-    Generators = [fun(R) -> create_callflow(Exten, Iteration, Context, R) end
+    Generators = [fun(R) -> create_exten_callflow(Exten, Iteration, Context, R) end
                   ,fun(R) -> create_vmbox(Exten, Iteration, Context, R) end
                   ,fun(R) -> create_device(Exten, Iteration, Context, R) end
                   ,fun(R) -> create_user(Exten, Iteration, Context, R) end
@@ -276,13 +286,31 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
             create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], Failures})
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will use the bindings to validate and create a context
+%% record to generate an account.  Any failure will be added to the error 
+%% json object.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_account/3 :: (json_object(), #cb_context{}, {proplist(), json_object()}) -> {proplist(), json_object()}. 
 create_account(JObj, Context, {Pass, Fail}) ->
     Account = wh_json:get_value(<<"account">>, JObj, wh_json:new()),
     Generators = [fun(J) ->
                           Id = couch_mgr:get_uuid(), 
-%%                          Id = <<"cabec61564090095a58143046664131d">>,
                           wh_json:set_value(<<"_id">>, Id, J) 
-                  end],
+                  end
+                  ,fun(J) ->
+                           case wh_json:get_value(<<"first_name">>, J) of
+                               undefined -> 
+                                   RealmSuffix = whapps_config:get_binary(?OB_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
+                                   Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"realm_strength">>, 3),
+                                   wh_json:set_value(<<"realm">>, list_to_binary([rand_chars(Strength), ".", RealmSuffix]), J);
+                               _ -> J
+                           end
+                   end
+                 ],
     Payload = [undefined
                ,Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Account, Generators)
                                    ,req_nouns=[{<<"accounts">>, []}]}
@@ -294,6 +322,16 @@ create_account(JObj, Context, {Pass, Fail}) ->
             {Pass, wh_json:set_value(<<"account">>, Errors, Fail)}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will use the bindings to validate and create a context
+%% record to generate a user.  Any failure will be added to the error 
+%% json object.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_user/4 :: (json_object(), pos_integer(), #cb_context{}, {proplist(), json_object()}) 
+                       -> {proplist(), json_object()}. 
 create_user(JObj, Iteration, Context, {Pass, Fail}) ->
     User = wh_json:get_value(<<"user">>, JObj, wh_json:new()),
     Generators = [fun(J) ->
@@ -347,14 +385,24 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
             {Pass, wh_json:set_value(<<"user">>, Errors, Fail)}
     end.
 
-create_device(JObj, _, Context, {Pass, Fail}) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will use the bindings to validate and create a context
+%% record to generate a device.  Any failure will be added to the error 
+%% json object.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_device/4 :: (json_object(), pos_integer(), #cb_context{}, {proplist(), json_object()}) 
+                         -> {proplist(), json_object()}. 
+create_device(JObj, Iteration, Context, {Pass, Fail}) ->
     Device = wh_json:get_value(<<"device">>, JObj, wh_json:new()),
     Generators = [fun(J) -> 
                           Id = couch_mgr:get_uuid(),
                           wh_json:set_value(<<"_id">>, Id, J) 
                   end
                   ,fun(J) -> 
-                           User = get_context_obj(<<"users">>, Pass),
+                           User = get_context_jobj(<<"users">>, Pass),
                            case wh_json:get_value(<<"_id">>, User) of
                                undefined -> J;
                                OwnerId ->
@@ -364,9 +412,9 @@ create_device(JObj, _, Context, {Pass, Fail}) ->
                   ,fun(J) -> 
                            case wh_json:get_ne_value(<<"name">>, J) of
                                undefined ->
-                                   User = get_context_obj(<<"users">>, Pass),
-                                   FirstName = wh_json:get_value(<<"first_name">>, User),
-                                   LastName = wh_json:get_value(<<"last_name">>, User),
+                                   User = get_context_jobj(<<"users">>, Pass),
+                                   FirstName = wh_json:get_value(<<"first_name">>, User, <<"User">>),
+                                   LastName = wh_json:get_value(<<"last_name">>, User, wh_util:to_binary(Iteration)),
                                    Name = list_to_binary([FirstName, " ", LastName, "'s Device"]),
                                    wh_json:set_value(<<"name">>, Name, J);
                                _ ->
@@ -376,8 +424,9 @@ create_device(JObj, _, Context, {Pass, Fail}) ->
                   ,fun(J) -> 
                            case wh_json:get_ne_value([<<"sip">>, <<"username">>], J) of
                                undefined ->
+                                   Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"device_username_strength">>, 3),
                                    wh_json:set_value([<<"sip">>, <<"username">>]
-                                                     ,list_to_binary(["user_", rand_chars(3)]), J);
+                                                     ,list_to_binary(["user_", rand_chars(Strength)]), J);
                                _ ->
                                    J
                            end
@@ -385,8 +434,9 @@ create_device(JObj, _, Context, {Pass, Fail}) ->
                   ,fun(J) -> 
                            case wh_json:get_ne_value([<<"sip">>, <<"password">>], J) of
                                undefined ->
+                                   Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"device_pwd_strength">>, 6),
                                    wh_json:set_value([<<"sip">>, <<"password">>]
-                                                     ,rand_chars(6), J);
+                                                     ,rand_chars(Strength), J);
                                _ ->
                                    J
                            end
@@ -402,26 +452,45 @@ create_device(JObj, _, Context, {Pass, Fail}) ->
             {Pass, wh_json:set_value(<<"device">>, Errors, Fail)}
     end.
 
-create_vmbox(JObj, _, Context, {Pass, Fail}) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will use the bindings to validate and create a context
+%% record to generate a vmbox.  Any failure will be added to the error 
+%% json object.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_vmbox/4 :: (json_object(), pos_integer(), #cb_context{}, {proplist(), json_object()}) 
+                        -> {proplist(), json_object()}. 
+create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
     VMBox = wh_json:get_value(<<"vmbox">>, JObj, wh_json:new()),
     Generators = [fun(J) -> 
                           Id = couch_mgr:get_uuid(),
                           wh_json:set_value(<<"_id">>, Id, J) 
                   end
                   ,fun(J) -> 
-                           User = get_context_obj(<<"user">>, Pass),
+                           User = get_context_jobj(<<"users">>, Pass),
                            case wh_json:get_value(<<"_id">>, User) of
                                undefined -> J;
                                OwnerId ->
                                    wh_json:set_value(<<"owner_id">>, OwnerId, J)
                            end
                    end
+                  ,fun(J) ->  
+                           case wh_json:get_ne_value(<<"mailbox">>, J) of
+                               undefined ->
+                                   StartExten = whapps_config:get_integer(?OB_CONFIG_CAT, <<"default_vm_start_exten">>, 3000),
+                                   wh_json:set_value(<<"mailbox">>, wh_util:to_binary(StartExten + Iteration), J);
+                               _ ->
+                                   J
+                           end
+                   end
                   ,fun(J) -> 
                            case wh_json:get_ne_value(<<"name">>, J) of
                                undefined ->
-                                   User = get_context_obj(<<"users">>, Pass),
-                                   FirstName = wh_json:get_value(<<"first_name">>, User),
-                                   LastName = wh_json:get_value(<<"last_name">>, User),
+                                   User = get_context_jobj(<<"users">>, Pass),
+                                   FirstName = wh_json:get_value(<<"first_name">>, User, <<"User">>),
+                                   LastName = wh_json:get_value(<<"last_name">>, User, wh_util:to_binary(Iteration)),
                                    Name = list_to_binary([FirstName, " ", LastName, "'s Voicemail"]),
                                    wh_json:set_value(<<"name">>, Name, J);
                                _ ->
@@ -439,14 +508,26 @@ create_vmbox(JObj, _, Context, {Pass, Fail}) ->
             {Pass, wh_json:set_value(<<"vmbox">>, Errors, Fail)}
     end.
 
-create_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will use the bindings to validate and create a context
+%% record to generate a extension callflow.  Any failure will be added 
+%% to the error json object.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_exten_callflow/4 :: (json_object(), pos_integer(), #cb_context{}, {proplist(), json_object()}) 
+                                 -> {proplist(), json_object()}. 
+create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
     Callflow = wh_json:get_value(<<"callflow">>, JObj, wh_json:new()),
     Generators = [fun(J) -> 
-                          User = get_context_obj(<<"users">>, Pass),
-                          VMBox = get_context_obj(<<"vmboxes">>, Pass),
-                          Flow = wh_json:decode(io_lib:format(?DEFAULT_FLOW, [wh_json:get_value(<<"_id">>, User)
-                                                                              ,wh_json:get_value(<<"_id">>, VMBox)
-                                                                             ])),
+                          User = get_context_jobj(<<"users">>, Pass),
+                          VMBox = get_context_jobj(<<"vmboxes">>, Pass),
+                          DefaultFlow = whapps_config:get_string(?OB_CONFIG_CAT, <<"default_extension_callflow">>
+                                                                     ,wh_util:to_binary(?DEFAULT_FLOW)),
+                          Flow = wh_json:decode(io_lib:format(DefaultFlow, [wh_json:get_value(<<"_id">>, User)
+                                                                            ,wh_json:get_value(<<"_id">>, VMBox)
+                                                                           ])),
                           wh_json:set_value(<<"flow">>, Flow, J) 
                   end
                   ,fun(J) ->
@@ -456,7 +537,8 @@ create_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
                   ,fun(J) ->
                            case wh_json:get_value(<<"numbers">>, J, []) of
                                [] ->
-                                   wh_json:set_value(<<"numbers">>, [wh_util:to_binary(2000 + Iteration)], J);
+                                   StartExten = whapps_config:get_integer(?OB_CONFIG_CAT, <<"default_callflow_start_exten">>, 2000),
+                                   wh_json:set_value(<<"numbers">>, [wh_util:to_binary(StartExten + Iteration)], J);
                                _ -> J
                            end     
                    end
@@ -470,6 +552,17 @@ create_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
         [_, #cb_context{resp_data=Errors} | _] ->
             {Pass, wh_json:set_value(<<"callflow">>, Errors, Fail)}
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will loop over the prevously generated context records
+%% providing each to the respective 'put' binding in order to create
+%% the objects.  Starts with the account :)
+%% @end
+%%--------------------------------------------------------------------
+-spec populate_new_account/2 :: (proplist(), #cb_context{}) -> #cb_context{}.
+-spec populate_new_account/3 :: (proplist(), ne_binary(), json_object()) -> json_object().
 
 populate_new_account(Props, _) ->
     Payload = [undefined
@@ -496,7 +589,15 @@ populate_new_account([{Event, Context}|Props], AccountDb, Errors) ->
             populate_new_account(Props, AccountDb, [Error|Errors])
     end.
 
-get_context_obj(Key, Pass) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Helper function to get the create object out of the successful 
+%% context records for a specific key.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_context_jobj/2 :: (ne_binary(), proplist()) -> json_object().
+get_context_jobj(Key, Pass) ->
     case props:get_value(Key, Pass) of
         #cb_context{doc=JObj} ->
             JObj;
@@ -504,5 +605,12 @@ get_context_obj(Key, Pass) ->
             wh_json:new()
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Helper function to generate random strings
+%% @end
+%%--------------------------------------------------------------------
+-spec rand_chars/1 :: (pos_integer()) -> ne_binary().
 rand_chars(Count) ->
     wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(Count))).
