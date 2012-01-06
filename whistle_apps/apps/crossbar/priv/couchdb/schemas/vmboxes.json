@@ -32,7 +32,7 @@
       "require_pin":{
          "description":"Determines if a pin is required to check the voicemail from the users devices",
          "type":"boolean",
-         "default":true
+         "default":false
       },
       "check_if_owner":{
          "description":"Determines if when the user calls their own voicemail they should be prompted to sign in",

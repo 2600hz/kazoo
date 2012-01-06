@@ -52,7 +52,8 @@
          "enum":[
             "user",
             "admin"
-         ]
+         ],
+         "default": "user"
       },
       "apps":{
          "description":"The applications the user has enabled in the GUI",
@@ -254,6 +255,9 @@
                "type":"boolean",
                "default":false
             }
+         },
+         "default":{
+
          }
       },
       "call_forward":{
@@ -283,7 +287,7 @@
             "keep_caller_id":{
                "description":"Determines if the caller id is kept when the call is forwarded, if not the users caller id is used",
                "type":"boolean",
-               "default":false
+               "default":true
             },
             "direct_calls_only":{
                "description":"Determines if the calls that are not directly sent to the user should be forwarded",

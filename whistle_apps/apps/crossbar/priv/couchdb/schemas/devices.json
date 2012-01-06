@@ -131,8 +131,7 @@
             },
             "ignore_early_media":{
                "description":"The option to determine if early media from the device should always be ignored",
-               "type":"boolean",
-               "default":false
+               "type":"boolean"
             },
             "progress_timeout":{
                "description":"The progress timeout to apply to the device",
@@ -241,7 +240,7 @@
             "keep_caller_id":{
                "description":"Determines if the caller id is kept when the call is forwarded, if not the devices caller id is used",
                "type":"boolean",
-               "default":false
+               "default":true
             },
             "direct_calls_only":{
                "description":"Determines if the calls that are not directly sent to the device should be forwarded",
