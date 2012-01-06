@@ -19,6 +19,7 @@
       },
       "mailbox":{
          "description":"The voicemail box number",
+         "required":"true",
          "type":"string",
          "minLength":2,
          "maxLength":6

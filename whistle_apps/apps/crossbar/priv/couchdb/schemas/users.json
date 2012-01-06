@@ -11,7 +11,6 @@
       },
       "username":{
          "description":"The GUI login username",
-         "required":"true",
          "type":"string",
          "minLength":1,
          "maxLength":32
@@ -242,7 +241,7 @@
             "require_pin":{
                "description":"Determines if user requires a pin to change the hotdesk state",
                "type":"boolean",
-               "default":true
+               "default":false
             },
             "pin":{
                "description":"The users hotdesk pin number",
