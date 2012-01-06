@@ -390,7 +390,7 @@ flatrates_available(DB, AcctId) ->
 trunk_type(DB, AcctId, CallID) ->
     case couch_mgr:get_results(DB, <<"trunks/trunk_type">>, [ {<<"key">>, [AcctId, CallID]}, {<<"group">>, true}]) of
 	{ok, []} -> non_existant;
-	{ok, [TypeJObj] } -> wh_json:get_atom_value(<<"value">>, TypeJObj)
+	{ok, [TypeJObj] } -> wh_util:to_atom(wh_json:get_value(<<"value">>, TypeJObj))
     end.
 
 %% should be the diffs from the last account update to now
