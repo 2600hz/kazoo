@@ -86,13 +86,15 @@ register_return_handler() ->
 -spec init/1 :: ([]) -> {'ok', #state{}}.
 init([]) ->
     Init = get_config(),
-    gen_server:cast(self(), {start_conn, props:get_value(amqp_uri, Init, ?DEFAULT_AMQP_URI)}),
+    Uri = props:get_value(amqp_uri, Init, ?DEFAULT_AMQP_URI),
 
-    %% Start a connection to the AMQP broker server
-    ?LOG_SYS("starting amqp manager server"),
-    process_flag(trap_exit, true),
-
-    {ok, #state{}}.
+    case start_amqp_host(Uri) of
+	{ok, State} ->
+	    ?LOG_SYS("starting amqp manager server"),
+	    process_flag(trap_exit, true),
+	    {ok, State#state{amqp_uri=Uri}};
+	{error, E} -> {stop, E}
+    end.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -158,18 +160,12 @@ send_req(HPid, From, Fun) ->
 handle_cast({start_conn, ""}, State) ->
     handle_cast({start_conn, ?DEFAULT_AMQP_URI}, State);
 
-handle_cast({start_conn, Uri}, State) ->
+handle_cast({start_conn, Uri}, _State) ->
     ?LOG_SYS("Starting connection with uri: ~s", [Uri]),
 
-    case amqp_uri:parse(Uri) of
-	{ok, Settings} ->
-	    case start_amqp_host(Settings, State) of
-		{ok, State1} -> {noreply, State1#state{amqp_uri=Uri}};
-		{error, E} ->
-		    {stop, E, normal}
-	    end;
-	{error, {Info, _}} ->
-	    {stop, Info, normal}
+    case start_amqp_host(Uri) of
+	{ok, State1} -> {noreply, State1#state{amqp_uri=Uri}};
+	{error, E} -> {stop, E, normal}
     end.
 
 %%--------------------------------------------------------------------
@@ -234,7 +230,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
--spec get_new_connection/1 :: (#'amqp_params_direct'{} | #'amqp_params_network'{}) -> {'ok', pid()} | {'error', 'econnrefused'}.
+-spec get_new_connection/1 :: (#'amqp_params_direct'{} | #'amqp_params_network'{}) -> {'ok', pid()} | {'error', 'econnrefused' | 'broker_not_found_on_node'}.
 get_new_connection(ConnP) ->
     case amqp_connection:start(ConnP) of
 	{ok, Connection}=OK ->
@@ -255,19 +251,34 @@ stop_amqp_host(#state{handler_pid=HPid, handler_ref=HRef}) ->
     _ = net_kernel:monitor_nodes(false),
     spawn(fun() -> amqp_host:stop(HPid) end).
 
+-spec start_amqp_host/1 :: (string() | binary()) -> {'ok', #state{}} | {'error', 'econnrefused'}.
 -spec start_amqp_host/2 :: (#'amqp_params_direct'{} | #'amqp_params_network'{}, #state{}) -> {'ok', #state{}} | {'error', 'econnrefused'}.
+start_amqp_host(Uri) ->
+    case amqp_uri:parse(Uri) of
+	{ok, Settings} ->
+	    start_amqp_host(Settings, #state{});
+	{error, {Info, _}} ->
+	    {error, Info}
+    end.
 start_amqp_host(ConnP, State) ->
     case get_new_connection(ConnP) of
 	{error,_}=E ->
 	    E;
 	{ok, Conn} ->
-	    {ok, HPid} = amqp_host_sup:start_host(wh_amqp_params:host(ConnP), Conn),
-	    HRef = erlang:monitor(process, HPid),
-	    ConnRef = erlang:monitor(process, Conn),
+	    case amqp_host_sup:start_host(wh_amqp_params:host(ConnP), Conn) of
+		{ok, HPid} ->
+		    HRef = erlang:monitor(process, HPid),
+		    ConnRef = erlang:monitor(process, Conn),
 
-	    {ok, State#state{handler_pid=HPid, handler_ref=HRef, conn_ref=ConnRef
-			     ,conn_params=ConnP, timeout=?START_TIMEOUT
-			    }}
+		    ?LOG("Started amqp_host ~p", [HPid]),
+
+		    {ok, State#state{handler_pid=HPid, handler_ref=HRef, conn_ref=ConnRef
+				     ,conn_params=ConnP, timeout=?START_TIMEOUT
+				    }};
+		E ->
+		    ?LOG("Error starting amqp_host ~p", [E]),
+		    E
+	    end
     end.
 
 -spec get_config/0 :: () -> proplist().
