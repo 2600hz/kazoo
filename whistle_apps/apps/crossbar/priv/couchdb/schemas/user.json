@@ -1,0 +1,68 @@
+{
+   "_id": "user",
+   "description": "",
+   "properties": {
+       "first_name": {
+           "type": "string"
+       },
+       "last_name": {
+           "type": "string"
+       },
+       "email": {
+           "type": "string",
+           "pattern": "^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,4}$"
+       },
+       "username": {
+           "type": "string"
+       },
+       "password": {
+           "type": "string"
+       },
+       "verified": {
+           "type": "boolean"
+       },
+       "lang": {
+           "type": "string"
+       },
+       "timezone": {
+           "type": "string"
+       },
+       "caller_id": {
+           "type": "object",
+           "properties": {
+               "name": {
+                   "type": "string"
+               },
+               "number": {
+                   "type": "string"
+               }
+           }
+       },
+       "caller_id_options": {
+           "type": "object",
+           "properties": {
+               "reformat": {
+                   "type": "regex"
+               }
+           }
+       },
+       "vm_to_email_enabled": {
+           "type": "boolean"
+       },
+       "directories":{
+	   "type":"array"
+	   ,"items":{
+	       "type":"object"
+	       ,"properties":{
+		   "directory_id":{
+		       "type":"string"
+		   }
+		   ,"callflow_id":{
+		       "type":"string"
+		   }
+	       }
+	   }
+	   ,"description":"Provides the mappings for what directory the user is a part of, and what callflow to invoke if the user is selected by the caller."
+       }
+   }
+}

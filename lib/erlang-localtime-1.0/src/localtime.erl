@@ -35,7 +35,7 @@
 %  Timezone = String()
 %  LocalDateTime = DateTime()
 %  ErrDescr = atom(), unknown_tz
--spec utc_to_local/2 :: (calendar:t_datetime(), binary() | list()) -> calendar:t_datetime() | {'error', 'unknown_tz'}.
+-spec utc_to_local/2 :: (calendar:t_datetime(), binary() | nonempty_string()) -> calendar:t_datetime() | {'error', 'unknown_tz'}.
 utc_to_local(UtcDateTime, "UTC") ->
     UtcDateTime;
 utc_to_local(UtcDateTime, TZ) when is_list(TZ) ->
@@ -70,8 +70,8 @@ process_tz_rule(UtcDateTime, {_, _, _, Shift, DstShift, _, _, _, _}=TzRule) ->
 %  Timezone = String()
 %  UtcDateTime = DateTime()
 %  ErrDescr = atom(), unknown_tz
--spec local_to_utc/2 :: (calendar:t_datetime(), binary() | string()) -> calendar:t_datetime() | {'error', 'unknown_tz' | 'time_not_exists'} |
-                                                                        {'stdname', {string(), string()}}.
+-spec local_to_utc/2 :: (calendar:t_datetime(), binary() | nonempty_string()) -> calendar:t_datetime() | {'error', 'unknown_tz' | 'time_not_exists'} |
+										 {'stdname', {string(), string()}}.
 local_to_utc(LocalDateTime, "UTC") ->
     LocalDateTime;
 local_to_utc(LocalDateTime, Timezone) ->
@@ -146,7 +146,9 @@ tz_name(LocalDateTime, Timezone) ->
 %  Hours = Minutes = Integer(),
 %  {Shift, DstShift} - returns, when shift is ambiguous
 %  ErrDesc = atom(), unknown_tz
--spec tz_shift/2 :: (calendar:t_datetime(), string()) -> integer().
+-spec tz_shift/2 :: (calendar:t_datetime(), nonempty_string() | binary()) -> 0 | fmt_min_ret() | 'unable_to_detect' | {fmt_min_ret(), fmt_min_ret()} | {'error', 'unknown_tz'}.
+tz_shift(DT, TZ) when is_binary(TZ) ->
+    tz_shift(DT, binary_to_list(TZ));
 tz_shift(_UtcDateTime, "UTC") ->
    0;
 tz_shift(LocalDateTime, Timezone) ->
@@ -163,11 +165,16 @@ tz_shift(LocalDateTime, Timezone) ->
                     {fmt_min(Shift), fmt_min(Shift + DstShift)};
                 time_not_exists ->
                     unable_to_detect
-            end
+            end;
+	{error, unknown_tz}=E -> E
     end.
 
 % the same as tz_shift/2, but calculates time difference between two local timezones
--spec tz_shift/3 :: (calendar:t_datetime(), string(), string()) -> fmt_min_ret().
+-spec tz_shift/3 :: (calendar:t_datetime(), nonempty_string() | binary(), nonempty_string() | binary()) -> fmt_min_ret().
+tz_shift(DT, TzFrom, TzTo) when is_binary(TzFrom) ->
+    tz_shift(DT, binary_to_list(TzFrom), TzTo);
+tz_shift(DT, TzFrom, TzTo) when is_binary(TzTo) ->
+    tz_shift(DT, TzFrom, binary_to_list(TzTo));
 tz_shift(LocalDateTime, TimezoneFrom, TimezoneTo) ->
     FromShift = fmt_shift(tz_shift(LocalDateTime, TimezoneFrom)),
     DateTimeTo = localtime:local_to_local(LocalDateTime, TimezoneFrom, TimezoneTo),
@@ -178,7 +185,7 @@ tz_shift(LocalDateTime, TimezoneFrom, TimezoneTo) ->
 % privates
 % =======================================================================
 
--spec adjust_datetime/2 :: (calendar:t_datetime(), integer()) -> calendar:t_datetime().
+-spec adjust_datetime/2 :: (calendar:t_datetime(), non_neg_integer()) -> calendar:t_datetime().
 adjust_datetime(DateTime, Minutes) ->
    Seconds = calendar:datetime_to_gregorian_seconds(DateTime) + Minutes * 60,
    calendar:gregorian_seconds_to_datetime(Seconds).
@@ -187,14 +194,14 @@ adjust_datetime(DateTime, Minutes) ->
 invert_shift(Minutes) ->
    -Minutes.
 
--type fmt_min_ret() :: {'-' | '+', integer(), integer()}.
+-type fmt_min_ret() :: {'-' | '+', non_neg_integer(), non_neg_integer()}.
 -spec fmt_min/1 :: (integer()) -> fmt_min_ret().
 fmt_min(Shift) when Shift < 0 ->
    {'-', abs(Shift) div 60, abs(Shift) rem 60};
 fmt_min(Shift) ->
    {'+', Shift div 60, Shift rem 60}.
 
--spec fmt_shift/1 :: ({'+' | '-', integer(), integer()} | 0) -> integer().
+-spec fmt_shift/1 :: ({'+' | '-', non_neg_integer(), non_neg_integer()} | 0) -> integer().
 fmt_shift({'+', H, M}) ->
    H * 60 + M;
 fmt_shift({'-', H, M}) ->
@@ -202,8 +209,10 @@ fmt_shift({'-', H, M}) ->
 fmt_shift(0) ->
     0.
 
--spec get_timezone/1 :: (string()) -> {'error', 'unknown_tz'} | {'stdname', {string(), string()}} |
-                                      {'shift', integer()} | {'tzrule', tz_db_row()}.
+-spec get_timezone/1 :: (nonempty_string() | binary()) -> {'error', 'unknown_tz'} | {'stdname', {string(), string()}} |
+							  {'shift', integer()} | {'tzrule', tz_db_row()}.
+get_timezone(TZ) when is_binary(TZ) ->
+    get_timezone(binary_to_list(TZ));
 get_timezone(TZ) ->
     Timezone = re:replace(TZ, "_", " ", [{return, list}, global]),
     case lists:keyfind(get_timezone_from_index(Timezone), 1, ?tz_database) of
@@ -217,7 +226,9 @@ get_timezone(TZ) ->
             {tzrule, TzRule}
     end.
 
--spec get_timezone_from_index/1 :: (string()) -> string().
+-spec get_timezone_from_index/1 :: (string() | binary()) -> string().
+get_timezone_from_index(TZ) when is_binary(TZ) ->
+    get_timezone(binary_to_list(TZ));
 get_timezone_from_index(TimeZone) ->
     case lists:keyfind(TimeZone, 1, ?tz_index)  of
         false ->
