@@ -49,8 +49,8 @@ attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
                  _ ->
                      Flags = wh_json:get_value(<<"Flags">>, JObj),
                      Resources = props:get_value(resources, Props), 
-                     {Endpoints, Emergency} = find_endpoints(Number, Flags, Resources),
-                     bridge_to_endpoints(Endpoints, Emergency, CtrlQ, JObj)
+                     {Endpoints, IsEmergency} = find_endpoints(Number, Flags, Resources),
+                     bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj)
              end,
     case {Result, correct_shortdial(JObj)} of
         {{error, no_resources}, undefined} -> Result;
@@ -73,19 +73,19 @@ attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
 
 bridge_to_endpoints([], _, _, _) ->
     {error, no_resources};
-bridge_to_endpoints(Endpoints, Emergency, CtrlQ, JObj) ->
+bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     ?LOG("found resources that handle the number...to the cloud!"),
     Q = create_queue(JObj),
     CCVs = wh_json:set_value(<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)
                              ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
-    {CIDNum, CIDName} = case Emergency of
+    {CIDNum, CIDName} = case IsEmergency of
                             'true' ->
                                 ?LOG("outbound call is using an emergency route, attempting to set CID accordingly"),
                                 {wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj,
                                                    wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
                                  wh_json:get_value(<<"Emergency-Caller-ID-Name">>, JObj,
                                                    wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj))};
-                            false  ->
+                            'false'  ->
                                 {wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj),
                                  wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
                         end,
@@ -184,10 +184,10 @@ wait_for_execute_extension() ->
 %% response then set the CCVs accordingly.
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_bridge/1 :: (infinity | pos_integer()) -> {error, json_object()}
-                                                               | {error, timeout}
-                                                               | {ok, json_object()}
-                                                               | {fail, json_object()}.
+-spec wait_for_bridge/1 :: ('infinity' | pos_integer()) -> {'error', json_object()} |
+							   {'error', 'timeout'} |
+							   {'ok', json_object()} |
+							   {'fail', json_object()}.
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
