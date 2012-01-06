@@ -446,16 +446,16 @@ load_account_summary(AccountId, Context) ->
 -spec create_account/2 :: (#cb_context{}, 'undefined' | ne_binary()) -> #cb_context{}.
 create_account(Context) ->
     P = case whapps_config:get(?CONFIG_CAT, <<"default_parent">>) of
-	    undefined ->
-		case couch_mgr:get_results(?ACCOUNTS_AGG_DB, ?AGG_VIEW_SUMMARY, [{<<"include_docs">>, true}]) of
-		    {ok, [_|_]=AcctJObjs} ->
-			ParentId = find_default_parent(AcctJObjs),
-			whapps_config:set(?CONFIG_CAT, <<"default_parent">>, ParentId),
-			ParentId;
-		    _ -> undefined
-		end;
-	    ParentId -> ParentId
-	end,
+            undefined ->
+                case couch_mgr:get_results(?ACCOUNTS_AGG_DB, ?AGG_VIEW_SUMMARY, [{<<"include_docs">>, true}]) of
+                    {ok, [_|_]=AcctJObjs} ->
+                        ParentId = find_default_parent(AcctJObjs),
+                        whapps_config:set(?CONFIG_CAT, <<"default_parent">>, ParentId),
+                        ParentId;
+                    _ -> undefined
+                end;
+            ParentId -> ParentId
+        end,
     create_account(Context, P).
 
 create_account(#cb_context{req_data=Data}=Context, ParentId) ->
@@ -757,7 +757,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
     Db = whapps_util:get_db_name(DbName, encoded),
     case couch_mgr:db_create(Db) of
         false ->
-            ?LOG_SYS("Failed to create database: ~s", [DbName]),
+            ?LOG_SYS("Failed to create database: ~s", [Db]),
             crossbar_util:response_db_fatal(Context);
         true ->
             ?LOG_SYS("Created DB for account id ~s", [DbName]),
@@ -765,7 +765,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
             case crossbar_doc:save(Context#cb_context{db_name=Db, doc=JObj}) of
                 #cb_context{resp_status=success}=Context1 ->
                     _ = crossbar_bindings:map(<<"account.created">>, Db),
-                    couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
+                    couch_mgr:revise_docs_from_folder(Db, crossbar, "account", false),
                     couch_mgr:revise_doc_from_file(Db, crossbar, ?MAINTENANCE_VIEW_FILE),
                     couch_mgr:ensure_saved(?ACCOUNTS_AGG_DB, Context1#cb_context.doc),
                     Context1;
