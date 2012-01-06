@@ -243,6 +243,7 @@ resource_exists(_) ->
 -spec validate/2 :: ([ne_binary(),...] | [], #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
     Generators = [fun(R) -> create_extensions(JObj, Context, R) end
+                  ,fun(R) -> create_phone_numbers(JObj, Context, R) end
                   ,fun(R) -> create_account(JObj, Context, R) end
                  ],
     case lists:foldr(fun(F, Acc) -> F(Acc) end, {[], wh_json:new()}, Generators) of
@@ -320,6 +321,43 @@ create_account(JObj, Context, {Pass, Fail}) ->
             {[{<<"accounts">>, Context1}|Pass], Fail};
         [_, #cb_context{resp_data=Errors} | _] ->
             {Pass, wh_json:set_value(<<"account">>, Errors, Fail)}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will use the bindings to validate and create a context
+%% record to generate an account.  Any failure will be added to the error 
+%% json object.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_phone_numbers/3 :: (json_object(), #cb_context{}, {proplist(), json_object()}) -> {proplist(), json_object()}. 
+
+create_phone_numbers(JObj, Context, Results) ->
+    PhoneNumbers = wh_json:get_value(<<"phone_numbers">>, JObj),
+    lists:foldr(fun(Number, R) ->
+                        create_phone_number(Number
+                                            ,wh_json:get_value([<<"phone_numbers">>, Number], JObj)
+                                            ,Context, R)
+                end, Results, wh_json:get_keys(PhoneNumbers)).
+
+create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
+    Payload = [undefined
+               ,Context#cb_context{req_data=Properties
+                                   ,db_name = <<"--">>}
+               ,Number
+              ],
+    Existing = get_context_jobj(<<"phone_numbers">>, Pass),
+    case crossbar_bindings:fold(<<"v1_resource.validate.phone_numbers">>, Payload) of
+        [_, #cb_context{resp_status=success}=Context1 | _] when Existing =:= ?EMPTY_JSON_OBJECT ->
+            {[{<<"phone_numbers">>, Context1#cb_context{storage=Number}}|Pass], Fail};
+        [_, #cb_context{resp_status=success, doc=JObj}=Context1 | _] ->
+            {[{<<"phone_numbers">>, Context1#cb_context{storage=Number
+                                                        ,doc=wh_json:merge_recursive(JObj, Existing)
+                                                       }}
+              |proplists:delete(<<"phone_numbers">>, Pass)], Fail};
+        [_, #cb_context{resp_data=Errors} | _] ->
+            {Pass, wh_json:set_value([<<"phone_numbers">>, Number], Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -572,12 +610,23 @@ populate_new_account(Props, _) ->
         [_, #cb_context{resp_status=success, db_name=AccountDb}=Context | _] ->
             populate_new_account(proplists:delete(<<"accounts">>, Props), AccountDb, []),
             Context;
-        [_, #cb_context{resp_data=Error} | _] ->
-            complete_failure
+        [_, ErrorContext | _] ->
+            ErrorContext
     end.
 
 populate_new_account([], _, Errors) ->
     Errors;
+populate_new_account([{<<"phone_numbers">>, #cb_context{storage=Number}=Context}|Props], AccountDb, Errors) ->
+    Payload = [undefined
+               ,Context#cb_context{db_name=AccountDb}
+               ,Number
+              ],
+    case crossbar_bindings:fold(<<"v1_resource.execute.put.phone_numbers">>, Payload) of
+        [_, #cb_context{resp_status=success} | _] ->
+            populate_new_account(Props, AccountDb, Errors);
+        [_, #cb_context{resp_data=Error} | _] ->
+            populate_new_account(Props, AccountDb, [Error|Errors])
+    end;
 populate_new_account([{Event, Context}|Props], AccountDb, Errors) ->
     Payload = [undefined
                ,Context#cb_context{db_name=AccountDb}
