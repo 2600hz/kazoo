@@ -38,28 +38,25 @@
           ,failover = ?EMPTY_JSON_OBJECT :: json_object()
 	 }).
 
--spec init/1 :: (RouteReqJObj) -> #state{} when
-      RouteReqJObj :: json_object().
+-spec init/1 :: (json_object()) -> #state{}.
 init(RouteReqJObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
     put(callid, CallID),
     ?LOG("Init done"),
     #state{aleg_callid=CallID, route_req_jobj=RouteReqJObj, acctid=wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj)}.
 
--spec start_amqp/1 :: (State) -> #state{} when
-      State :: #state{}.
+-spec start_amqp/1 :: (#state{}) -> #state{}.
 start_amqp(#state{}=State) ->
     Q = amqp_util:new_queue(),
 
     %% Bind the queue to an exchange
     _ = amqp_util:bind_q_to_targeted(Q),
-    amqp_util:basic_consume(Q, [{exclusive, false}]),
+    _ = amqp_util:basic_consume(Q, [{exclusive, false}]),
 
     ?LOG("Started AMQP with queue ~s", [Q]),
     State#state{my_q=Q}.
 
--spec send_park/1 :: (State) -> #state{} when
-      State :: #state{}.
+-spec send_park/1 :: (#state{}) -> #state{}.
 send_park(#state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
@@ -70,11 +67,10 @@ send_park(#state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
 
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
     _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
-    amqp_util:basic_consume(Q, [{exclusive, false}]), %% need to verify if this step is needed
+    _ = amqp_util:basic_consume(Q, [{exclusive, false}]), %% need to verify if this step is needed
     State.
 
--spec wait_for_win/1 :: (State) -> {'won' | 'lost', #state{}} when
-      State :: #state{}.
+-spec wait_for_win/1 :: (#state{}) -> {'won' | 'lost', #state{}}.
 wait_for_win(#state{aleg_callid=CallID}=State) ->
     receive
 	#'basic.consume_ok'{} -> wait_for_win(State);
@@ -93,11 +89,8 @@ wait_for_win(#state{aleg_callid=CallID}=State) ->
 	    {lost, State}
     end.
 
--spec wait_for_bridge/1 :: (State) -> tuple(bridged | error | hangup | timeout, #state{}) when
-      State :: #state{}.
--spec wait_for_bridge/2 :: (State, Timeout) -> tuple(bridged | error | hangup | timeout, #state{}) when
-      State :: #state{},
-      Timeout :: integer().
+-spec wait_for_bridge/1 :: (#state{}) -> {'bridged' | 'error' | 'hangup' | 'timeout', #state{}}.
+-spec wait_for_bridge/2 :: (#state{}, integer()) -> {'bridged' | 'error' | 'hangup' | 'timeout', #state{}}.
 wait_for_bridge(State) ->
     wait_for_bridge(State, ?WAIT_FOR_BRIDGE_TIMEOUT).
 wait_for_bridge(State, Timeout) ->
@@ -120,9 +113,7 @@ wait_for_bridge(State, Timeout) ->
 	    {timeout, State}
     end.
 
--spec process_event_for_bridge/2 :: (State, JObj) -> ignore | tuple(bridged | error | hangup, #state{}) when
-      State :: #state{},
-      JObj :: json_object().
+-spec process_event_for_bridge/2 :: (#state{}, json_object()) -> 'ignore' | {'bridged' | 'error' | 'hangup', #state{}}.
 process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State, JObj) ->
     case { wh_json:get_value(<<"Application-Name">>, JObj)
 	   ,wh_json:get_value(<<"Event-Name">>, JObj)
@@ -134,7 +125,7 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
 	    ?LOG(BLeg, "Bridged from ~s successful", [ALeg]),
 
 	    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
-	    amqp_util:basic_consume(Q),
+	    _ = amqp_util:basic_consume(Q),
 	    {bridged, State#state{bleg_callid=BLeg}};
 
 	{ _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
@@ -143,7 +134,7 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
 	    ?LOG(BLeg, "Bridged from ~s successful", [ALeg]),
 
 	    _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
-	    amqp_util:basic_consume(Q),
+	    _ = amqp_util:basic_consume(Q),
 	    {bridged, State#state{bleg_callid=BLeg}};
 
 	{ _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->

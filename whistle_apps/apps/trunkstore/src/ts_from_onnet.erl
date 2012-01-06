@@ -62,6 +62,30 @@ onnet_data(State) ->
 				      ,wh_json:get_value(<<"sip_headers">>, AcctOptions)
 				     ]),
 
+    EmergencyCallerID = case ts_util:caller_id([
+						wh_json:get_value(<<"emergency_caller_id">>, DIDOptions)
+						,wh_json:get_value(<<"emergency_caller_id">>, SrvOptions)
+						,wh_json:get_value(<<"emergency_caller_id">>, AcctOptions)
+					       ]) of
+			    {undefined, undefined} -> [];
+			    {ECIDName, ECIDNum} ->
+				[{<<"Emergency-Caller-ID-Name">>, ECIDName}
+				 ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
+				 ]
+			end,
+    CallerID = case ts_util:caller_id([
+				       wh_json:get_value(<<"caller_id">>, DIDOptions)
+				       ,wh_json:get_value(<<"caller_id">>, SrvOptions)
+				       ,wh_json:get_value(<<"caller_id">>, AcctOptions)
+				      ]) of
+		   {undefined, undefined} -> EmergencyCallerID;
+		   {CIDName, CIDNum} ->
+		       [{<<"Outgoing-Caller-ID-Name">>, CIDName}
+			,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+			| EmergencyCallerID
+		       ]
+	       end,
+
     DIDFlags = wh_json:get_value(<<"options">>, DIDOptions, []),
 
     case ts_credit:reserve(ToDID, CallID, AcctID, outbound, DIDFlags) of
@@ -71,22 +95,27 @@ onnet_data(State) ->
         {ok, RateData} ->
 	    Q = ts_callflow:get_my_queue(State),
 
-            Command = [
-                       {<<"Call-ID">>, CallID}
-                       ,{<<"Resource-Type">>, <<"audio">>}
-                       ,{<<"To-DID">>, ToDID}
-                       ,{<<"Account-ID">>, AcctID}
-                       ,{<<"Application-Name">>, <<"bridge">>}
-                       ,{<<"Flags">>, DIDFlags}
-                       ,{<<"Media">>, MediaHandling}
-                       ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
-                       ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
-                       ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
-                       ,{<<"SIP-Headers">>, SIPHeaders}
-                       ,{<<"Custom-Channel-Vars">>, {struct, [{<<"Inception">>, <<"on-net">>}
-							      | RateData]}}
-                       | wh_api:default_headers(Q, <<"resource">>, <<"offnet_req">>, ?APP_NAME, ?APP_VERSION)
-                      ],
+            Command = [ KV
+			|| {_,V}=KV <- CallerID ++ EmergencyCallerID ++
+			       [
+				{<<"Call-ID">>, CallID}
+				,{<<"Resource-Type">>, <<"audio">>}
+				,{<<"To-DID">>, ToDID}
+				,{<<"Account-ID">>, AcctID}
+				,{<<"Application-Name">>, <<"bridge">>}
+				,{<<"Flags">>, DIDFlags}
+				,{<<"Media">>, MediaHandling}
+				,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
+				,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
+				,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
+				,{<<"SIP-Headers">>, SIPHeaders}
+				,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"on-net">>}
+										| RateData])}
+				| wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+			       ],
+			   V =/= undefined,
+			   V =/= <<>>
+		      ],
 
             try
                 send_park(State, Command)
