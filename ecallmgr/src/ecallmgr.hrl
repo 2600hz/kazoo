@@ -1,9 +1,10 @@
+-ifndef(ECALLMGR_HRL).
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/freeswitch_xml.hrl").
 -include_lib("whistle/src/wh_api.hrl").
--include_lib("whistle/include/wh_log.hrl").
 
 -type fs_api_ret() :: {'ok', binary()} | {'error', binary()} | 'timeout'.
 -type fs_sendmsg_ret() :: 'ok' | {'error', binary()} | 'timeout'.
@@ -139,3 +140,6 @@
                             ,{<<"CS_DESTROY">>, <<"destroy">>}]).
 
 -define(DEFAULT_RESPONSE_CODE, <<"488">>).
+
+-define(ECALLMGR_HRL, true).
+-endif.
