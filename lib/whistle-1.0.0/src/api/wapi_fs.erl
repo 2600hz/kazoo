@@ -1,10 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011 VoIP INC
 %%% @doc
 %%% FS passthrough API
 %%% @end
-%%% Created : 17 Oct 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(wapi_fs).
 
@@ -12,11 +10,14 @@
 
 -include("../wh_api.hrl").
 
+%% The AMQP passthrough of FS commands - whitelist commands allowed (exluding any prefixed by uuid_ which are auto-allowed)
+-define(FS_COMMAND_WHITELIST, [<<"set">>, <<"hangup">>, <<"bridge">>]).
+
 -define(FS_REQ_HEADERS, [<<"Application-Name">>, <<"Args">>]).
 -define(OPTIONAL_FS_REQ_HEADERS, [<<"Insert-At">>]).
 -define(FS_REQ_VALUES, [{<<"Event-Category">>, <<"fs">>}
-			,{<<"Event-Name">>, <<"command">>}
-		       ]).
+                        ,{<<"Event-Name">>, <<"command">>}
+                       ]).
 -define(FS_REQ_TYPES, [{<<"Application-Name">>, fun(<<"uuid_", _/binary>>) -> true; (App) -> lists:member(App, ?FS_COMMAND_WHITELIST) end}]).
 
 %%--------------------------------------------------------------------
@@ -28,8 +29,8 @@
 -spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
-	true -> wh_api:build_message(Prop, ?FS_REQ_HEADERS, ?OPTIONAL_FS_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for fs_req"}
+        true -> wh_api:build_message(Prop, ?FS_REQ_HEADERS, ?OPTIONAL_FS_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for fs_req"}
     end;
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).

@@ -33,11 +33,11 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
--spec(start_app/1 :: (App :: atom()) -> tuple(ok, pid() | undefined) | tuple(ok, pid() | undefined, term()) | tuple(error, term())).
+-spec start_app/1 :: (atom()) -> {'ok', pid() | 'undefined'} | {'ok', pid() | 'undefined', term()} | {'error', term()}.
 start_app(App) ->
     supervisor:start_child(?MODULE, ?CHILD(App, supervisor)).
 
--spec(restart_app/1 :: (App :: atom()) -> tuple(ok, pid() | undefined) | tuple(ok, pid() | undefined, term()) | tuple(error, term())).
+-spec restart_app/1 :: (atom()) -> {'ok', pid() | 'undefined'} | {'ok', pid() | 'undefined', term()} | {'error', term()}.
 restart_app(App) ->
     ok = supervisor:terminate_child(?MODULE, App),
     supervisor:restart_child(?MODULE, App).

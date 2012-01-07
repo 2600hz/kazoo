@@ -26,8 +26,7 @@ start_deps() ->
     whistle_apps_deps:ensure(?MODULE),
     ensure_started(sasl), % logging
     ensure_started(crypto), % random
-    ensure_started(whistle_amqp), % amqp wrapper
-    ensure_started(whistle_couch). % couch wrapper
+    ensure_started(whistle_amqp). % amqp wrapper
 
 %% @spec stop() -> ok
 %% @doc Stop the promocalling server.

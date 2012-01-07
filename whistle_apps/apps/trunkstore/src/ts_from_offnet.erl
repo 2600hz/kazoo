@@ -268,8 +268,7 @@ get_endpoint_data(JObj) ->
 					  | Invite ])}
     end.
 
--spec routing_data/1 :: (ToDID) -> proplist() when
-      ToDID :: binary().
+-spec routing_data/1 :: (ne_binary()) -> proplist().
 routing_data(ToDID) ->
     {ok, Settings} = ts_util:lookup_did(ToDID),
 
@@ -367,8 +366,6 @@ routing_data(ToDID) ->
 			 ,{<<"To-Realm">>, AuthR}
 			 ,{<<"To-DID">>, ToDID}
 			 ,{<<"Route-Options">>, RouteOpts}
-			 %% ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
-			 %% ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
 		       ],
 	   V =/= undefined,
 	   V =/= <<>>

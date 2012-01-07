@@ -1,9 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Originally authored by James Aimonetti <james@2600hz.org>
+%%% Renders a custom account email template, or the system default,
+%%% and sends the email with voicemail attachment to the user.
 %%% @end
+%%%
+%%% @contributors
+%%% James Aimonetti <james@2600hz.org>
+%%% Karl Anderson <karl@2600hz.org>
+%%%
 %%% Created : 22 Dec 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(notify_vm).
@@ -24,7 +29,7 @@ init() ->
     {ok, ?DEFAULT_SUBJ_TMPL} = erlydtl:compile(whapps_config:get(?MODULE, default_subject_template), ?DEFAULT_SUBJ_TMPL),
     ?LOG_SYS("init done for vm-to-email").
 
--spec handle_req/2 :: (json_object(), proplist()) -> ok.
+-spec handle_req/2 :: (json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:voicemail_v(JObj),
     whapps_util:put_callid(JObj),
@@ -45,12 +50,12 @@ handle_req(JObj, _Props) ->
             Docs = [VMBox, UserJObj, AcctObj],
 
             Props = [{email_address, Email}
-                     | get_template_props(JObj, [VMBox, UserJObj, AcctObj])
+                     | get_template_props(JObj, Docs)
                     ],
 
-            {ok, TxtBody} = render_template(find(<<"vm_to_email_template">>, Docs), ?DEFAULT_TEXT_TMPL, Props),
-            {ok, HTMLBody} = render_template(find(<<"html_vm_to_email_template">>, Docs), ?DEFAULT_HTML_TMPL, Props),
-            {ok, Subject} = render_template(find(<<"subject_vm_to_email_template">>, Docs), ?DEFAULT_SUBJ_TMPL, Props),
+            {ok, TxtBody} = render_template(wh_json:find(<<"vm_to_email_template">>, Docs), ?DEFAULT_TEXT_TMPL, Props),
+            {ok, HTMLBody} = render_template(wh_json:find(<<"html_vm_to_email_template">>, Docs), ?DEFAULT_HTML_TMPL, Props),
+            {ok, Subject} = render_template(wh_json:find(<<"subject_vm_to_email_template">>, Docs), ?DEFAULT_SUBJ_TMPL, Props),
 
             send_vm_to_email(TxtBody, HTMLBody, Subject, [ KV || {_, V}=KV <- Props, V =/= undefined ])
     end.
@@ -70,14 +75,14 @@ get_template_props(Event, Docs) ->
     DateCalled = wh_util:to_integer(wh_json:get_value(<<"Voicemail-Timestamp">>, Event)),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    SupportNumber = find([<<"vm_to_email">>, <<"support_number">>], Docs
-                         ,whapps_config:get(?MODULE, <<"default_support_number">>, <<"(415) 886 - 7900">>)),    
-    SupportEmail = find([<<"vm_to_email">>, <<"support_email">>], Docs
-                        ,whapps_config:get(?MODULE, <<"default_support_email">>, <<"support@2600hz.com">>)),
-    FromAddress = find([<<"vm_to_email">>, <<"from_address">>], Docs
-                       ,whapps_config:get(?MODULE, <<"default_from">>, <<"no_reply@2600hz.com">>)),
+    SupportNumber = wh_json:find([<<"vm_to_email">>, <<"support_number">>], Docs
+				 ,whapps_config:get(?MODULE, <<"default_support_number">>, <<"(415) 886 - 7900">>)),    
+    SupportEmail = wh_json:find([<<"vm_to_email">>, <<"support_email">>], Docs
+				,whapps_config:get(?MODULE, <<"default_support_email">>, <<"support@2600hz.com">>)),
+    FromAddress = wh_json:find([<<"vm_to_email">>, <<"from_address">>], Docs
+			       ,whapps_config:get(?MODULE, <<"default_from">>, <<"no_reply@2600hz.com">>)),
 
-    Timezone = wh_util:to_list(find(<<"timezone">>, Docs, <<"UTC">>)),
+    Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
 
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
@@ -104,7 +109,7 @@ get_template_props(Event, Docs) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec send_vm_to_email/4 :: (iolist(), iolist(), iolist(), proplist()) -> ok.
+-spec send_vm_to_email/4 :: (iolist(), iolist(), iolist(), proplist()) -> 'ok'.
 send_vm_to_email(TxtBody, HTMLBody, Subject, Props) ->
     DB = props:get_value(account_db, Props),
     DocId = props:get_value(voicemail_media, Props),
@@ -192,43 +197,24 @@ pretty_print_did(Other) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% create the props used by the template render function
-%% @end
-%%--------------------------------------------------------------------
--spec find/2 :: (ne_binary | [ne_binary(),...], json_objects()) -> term().
--spec find/3 :: (ne_binary | [ne_binary(),...], json_objects(), term()) -> term().
-
-find(Key, Docs) ->
-    find(Key, Docs, undefined).
-
-find(_, [], Default) ->
-    Default;
-find(Key, [JObj|T], Default) ->
-    case wh_json:get_ne_value(Key, JObj) of
-        undefined -> find(Key, T, Default);
-        Else -> Else
-    end. 
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec render_template/3 :: (ne_binary(), atom(), proplist()) -> {ok, iolist()} | {error, term()}.
+-spec render_template/3 :: (ne_binary() | 'undefined', atom(), proplist()) -> {'ok', iolist()} | {'error', term()}.
 render_template(undefined, DefaultTemplate, Props) ->
     ?LOG("rendering default ~s template", [DefaultTemplate]),
     DefaultTemplate:render(Props);
 render_template(Template, DefaultTemplate, Props) ->
     try                                       
-        CustomTemplate = wh_util:to_atom(<<(props:get_value(account_db, Props))/binary, "_"
-                                           ,(wh_json:to_binary(DefaultTemplate))/binary>>, true),
+        CustomTemplate = wh_util:to_atom(list_to_binary([props:get_value(account_db, Props), "_"
+							,wh_json:to_binary(DefaultTemplate)]), true
+					),
         ?LOG("compiling custom ~s template", [DefaultTemplate]),
         {ok, CustomTemplate} = erlydtl:compile(Template, CustomTemplate),
         ?LOG("rendering custom template ~s", [CustomTemplate]),
         CustomTemplate:render(Props)
     catch
-        _:E ->
-            ?LOG("error compiling custom ~s template: ~p", [DefaultTemplate, E]),
+        _:_E ->
+            ?LOG("error compiling custom ~s template: ~p", [DefaultTemplate, _E]),
             render_template(undefined, DefaultTemplate, Props)
     end.

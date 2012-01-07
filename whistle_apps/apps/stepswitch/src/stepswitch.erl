@@ -53,6 +53,4 @@ start_deps() ->
     whistle_apps_deps:ensure(),
     wh_util:ensure_started(sasl),
     wh_util:ensure_started(crypto),
-    wh_util:ensure_started(whistle_amqp),
-    wh_util:ensure_started(couchbeam),
-    wh_util:ensure_started(whistle_couch).
+    wh_util:ensure_started(whistle_amqp).

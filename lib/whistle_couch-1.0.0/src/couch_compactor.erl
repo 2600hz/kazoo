@@ -24,23 +24,20 @@ start_link() ->
     proc_lib:start_link(?MODULE, init, [self()], infinity, []).
 
 init(Parent) ->
-    %% since the supervisor is blocking while we start, use this method instead of the super's cache_proc/0
-    Cache = whereis(wh_couch_cache),
-
-    case {couch_config:fetch(compact_automatically, Cache), couch_config:fetch(conflict_strategy, Cache)} of
+    case {couch_config:fetch(compact_automatically), couch_config:fetch(conflict_strategy)} of
 	{true, undefined} ->
-	    ?LOG_SYS("Just compacting"),
+	    ?LOG_SYS("just compacting"),
 	    proc_lib:init_ack(Parent, {ok, self()}),
 	    compact_all();
 	{true, Strategy} ->
-	    ?LOG_SYS("Compacting and removing conflicts"),
+	    ?LOG_SYS("compacting and removing conflicts"),
 	    proc_lib:init_ack(Parent, {ok, self()}),
 	    compact_all(Strategy);
 	{false, _Strategy} ->
-	    ?LOG_SYS("Auto-compaction not enabled"),
+	    ?LOG_SYS("auto-compaction not enabled"),
 	    proc_lib:init_ack(Parent, ignore);
 	{undefined, _Strategy} ->
-	    ?LOG_SYS("Auto-compaction not enabled"),
+	    ?LOG_SYS("auto-compaction not enabled"),
 	    proc_lib:init_ack(Parent, ignore),
 	    couch_config:store(compact_automatically, false)
     end.
@@ -49,17 +46,17 @@ init(Parent) ->
 -spec compact_all/1 :: (couch_conflict:resolution_strategy()) -> 'done'.
 -spec compact_all/2 :: (couch_conflict:resolution_strategy(), couch_conflict:merge_fun()) -> 'done'.
 compact_all() ->
-    ?LOG_SYS("Compacting all nodes"),
+    ?LOG_SYS("compacting all nodes"),
     {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
     _ = [ compact_node(wh_json:get_value(<<"id">>, Node)) || Node <- Nodes],
     done.
 compact_all(ConflictStrategy) ->
-    ?LOG_SYS("Compacting all nodes"),
+    ?LOG_SYS("compacting all nodes"),
     {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
     _ = [ compact_node(wh_json:get_value(<<"id">>, Node), ConflictStrategy) || Node <- Nodes],
     done.
 compact_all(ConflictStrategy, F) ->
-    ?LOG_SYS("Compacting all nodes"),
+    ?LOG_SYS("compacting all nodes"),
     {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
     _ = [ compact_node(wh_json:get_value(<<"id">>, Node), ConflictStrategy, F) || Node <- Nodes],
     done.
@@ -71,22 +68,22 @@ compact_node(Node) when is_atom(Node) ->
     compact_node(wh_util:to_binary(Node));
 compact_node(NodeBin) ->
     put(callid, NodeBin),
-    ?LOG("Compacting node"),
+    ?LOG("compacting node"),
 
     {Conn, AdminConn} = get_node_connections(NodeBin),
     {ok, DBs} = couch_util:db_info(Conn),
-    ?LOG("Found ~b DBs to compact", [length(DBs)]),
+    ?LOG("found ~b DBs to compact", [length(DBs)]),
     _ = [ compact_node_db(NodeBin, DB, Conn, AdminConn) || DB <- DBs ],
     done.
 compact_node(Node, ConflictStrategy) when is_atom(Node) ->
     compact_node(wh_util:to_binary(Node), ConflictStrategy);
 compact_node(NodeBin, ConflictStrategy) ->
     put(callid, NodeBin),
-    ?LOG("Compacting node"),
+    ?LOG("compacting node"),
 
     {Conn, _AdminConn} = get_node_connections(NodeBin),
     {ok, DBs} = couch_util:db_info(Conn),
-    ?LOG("Found ~b DBs to compact", [length(DBs)]),
+    ?LOG("found ~b DBs to compact", [length(DBs)]),
 
     _ = [ compact_db(NodeBin, DB, ConflictStrategy) || DB <- DBs ],
     done.
@@ -94,11 +91,11 @@ compact_node(Node, ConflictStrategy, F) when is_atom(Node) ->
     compact_node(wh_util:to_binary(Node), ConflictStrategy, F);
 compact_node(NodeBin, ConflictStrategy, F) ->
     put(callid, NodeBin),
-    ?LOG("Compacting node"),
+    ?LOG("compacting node"),
 
     {Conn, _AdminConn} = get_node_connections(NodeBin),
     {ok, DBs} = couch_util:db_info(Conn),
-    ?LOG("Found ~b DBs to compact", [length(DBs)]),
+    ?LOG("found ~b DBs to compact", [length(DBs)]),
 
     _ = [ compact_db(NodeBin, DB, ConflictStrategy, F) || DB <- DBs ],
     done.
@@ -149,11 +146,11 @@ compact_db(NodeBin, DB, ConflictStrategy, F) ->
 compact_node_db(NodeBin, DB, Conn, AdminConn) ->
     DBEncoded = binary:replace(DB, <<"/">>, <<"%2f">>, [global]),
     put(callid, <<NodeBin/binary, "-", DBEncoded/binary>>),
-    ?LOG("Starting DB compaction"),
+    ?LOG("starting DB compaction"),
 
     case get_db_shards(AdminConn, DBEncoded) of
 	[] ->
-	    ?LOG("No shards found matching ~s", [DBEncoded]);
+	    ?LOG("no shards found matching ~s", [DBEncoded]);
 	Shards ->
 	    DesignDocs = get_db_design_docs(Conn, DBEncoded),
 	    _ = [ compact_shard(AdminConn, Shard, DesignDocs) || Shard <- Shards ],
@@ -163,16 +160,16 @@ compact_node_db(NodeBin, DB, Conn, AdminConn) ->
 -spec compact_shard/3 :: (#server{}, ne_binary(), [ne_binary(),...] | []) -> 'ok'.
 compact_shard(AdminConn, Shard, DesignDocs) ->
     wait_for_compaction(AdminConn, Shard),
-    ?LOG("Compacting shard ~s", [Shard]),
+    ?LOG("compacting shard ~s", [Shard]),
     couch_util:db_compact(AdminConn, Shard),
     wait_for_compaction(AdminConn, Shard),
 
-    ?LOG("View cleanup"),
+    ?LOG("view cleanup"),
     couch_util:db_view_cleanup(AdminConn, Shard),
 
-    ?LOG("Design cleanup"),
+    ?LOG("design cleanup"),
     _ = [ couch_util:design_compact(AdminConn, Shard, Design) || Design <- DesignDocs ],
-    ok = timer:sleep(?SLEEP_BETWEEN_COMPACTION),
+    ok = timer:sleep(couch_config:fetch(<<"sleep_between_compaction">>, ?SLEEP_BETWEEN_COMPACTION)),
     ok.
 
 -spec wait_for_compaction/2 :: (#server{}, ne_binary()) -> 'ok'.
@@ -181,15 +178,16 @@ wait_for_compaction(AdminConn, Shard) ->
 	{ok, ShardData} ->
 	    case wh_json:is_true(<<"compact_running">>, ShardData, false) of
 		true ->
-		    ?LOG("Compaction running for shard"),
-		    ok = timer:sleep(?SLEEP_BETWEEN_POLL),
+		    ?LOG("compaction running for shard"),
+		    ok = timer:sleep(couch_config:fetch(<<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL)),
 		    wait_for_compaction(AdminConn, Shard);
 		false ->
-		    ?LOG("Compaction is not running for shard"),
+		    ?LOG("compaction is not running for shard"),
 		    ok
 	    end;
-	_ ->
-	    ok = timer:sleep(?SLEEP_BETWEEN_POLL),
+	{error, _E} ->
+	    ?LOG("failed to query shard for compaction status: ~p", [_E]),
+	    ok = timer:sleep(couch_config:fetch(<<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL)),
 	    wait_for_compaction(AdminConn, Shard)
     end.
 
@@ -200,18 +198,19 @@ get_db_design_docs(Conn, DBEncoded) ->
 
 -spec get_db_shards/2 :: (#server{}, ne_binary()) -> [ne_binary()].
 get_db_shards(AdminConn, DBEncoded) ->
-    case couch_config:fetch({shards, DBEncoded}) of
+    {ok, Cache} = whistle_couch_sup:cache_proc(),
+    case couch_config:fetch({shards, DBEncoded}, Cache) of
 	undefined ->
 	    case couch_util:db_info(AdminConn) of
-		{ok, []} -> ?LOG("No shards found on admin conn? That's odd"), [];
+		{ok, []} -> ?LOG("no shards found on admin conn? That's odd"), [];
 		{ok, Shards} ->
 		    Encoded = [ ShardEncoded || Shard <- Shards, is_a_shard(ShardEncoded=binary:replace(Shard, <<"/">>, <<"%2f">>, [global]), DBEncoded) ],
-		    couch_config:store({shards, DBEncoded}, Encoded, ?MILLISECONDS_IN_DAY),
-		    ?LOG("Cached encoded shards for ~s", [DBEncoded]),
+		    couch_config:store({shards, DBEncoded}, Encoded, Cache),
+		    ?LOG("cached encoded shards for ~s", [DBEncoded]),
 		    Encoded
 	    end;
 	Encoded ->
-	    ?LOG("Pulled encoded shards from cache for ~s", [DBEncoded]),
+	    ?LOG("pulled encoded shards from cache for ~s", [DBEncoded]),
 	    Encoded
     end.
 
@@ -224,7 +223,7 @@ get_node_connections(NodeBin) ->
     [_Name, H] = binary:split(NodeBin, <<"@">>),
     Host = wh_util:to_list(H),
     Node = wh_util:to_atom(NodeBin, true),
-    ?LOG_SYS("Trying to contact host ~s (node ~s)", [Host, _Name]),
+    ?LOG_SYS("trying to contact host ~s (node ~s)", [Host, _Name]),
 
     {User,Pass} = couch_mgr:get_creds(),
     {Port,AdminPort} = get_ports(Node),
@@ -235,37 +234,37 @@ get_node_connections(NodeBin) ->
 -spec get_ports/2 :: (atom(), 'pong' | 'pang') -> {non_neg_integer(), non_neg_integer()}.
 get_ports(Node) ->
     Cookie = couch_config:fetch(bigcouch_cookie),
-    ?LOG_SYS("Using cookie ~s on node ~s", [Cookie, Node]),
+    ?LOG_SYS("using cookie ~s on node ~s", [Cookie, Node]),
     try
 	erlang:set_cookie(Node, Cookie),
 	get_ports(Node, net_adm:ping(Node))
     catch
 	_:_R ->
-	    ?LOG("Failed to get the ports for ~s: ~p", [Node, _R]),
+	    ?LOG("failed to get the ports for ~s: ~p", [Node, _R]),
 	    {?DEFAULT_PORT, ?DEFAULT_ADMIN_PORT}
     end.
 
 get_ports(Node, pong) ->
-    ?LOG_SYS("Trying to find ports from node ~s", [Node]),
+    ?LOG_SYS("trying to find ports from node ~s", [Node]),
     Port = case rpc:call(Node, couch_config, get, ["chttpd", "port"]) of
 	       {badrpc, _} ->
-		   ?LOG_SYS("Failed to get port from RPC"),
+		   ?LOG_SYS("failed to get port from RPC"),
 		   couch_mgr:get_port();
 	       P ->
-		   ?LOG_SYS("Got port ~s", [P]),
+		   ?LOG_SYS("got port ~s", [P]),
 		   wh_util:to_integer(P)
 	   end,
     AdminPort = case rpc:call(Node, couch_config, get, ["httpd", "port"]) of
 		    {badrpc, _} ->
-			?LOG_SYS("Failed to get admin port from RPC"),
+			?LOG_SYS("failed to get admin port from RPC"),
 			couch_mgr:get_admin_port();
 		    AP ->
-			?LOG_SYS("Got admin port ~s", [AP]),
+			?LOG_SYS("got admin port ~s", [AP]),
 			wh_util:to_integer(AP)
 		end,
     {Port, AdminPort};
 get_ports(_Node, pang) ->
-    ?LOG_SYS("Using same ports as couch_mgr"),
+    ?LOG_SYS("using same ports as couch_mgr"),
     {couch_mgr:get_port(), couch_mgr:get_admin_port()}.
 
 -spec get_conns/5 :: (nonempty_string(), pos_integer(), string(), string(), pos_integer()) -> {#server{}, #server{}}.

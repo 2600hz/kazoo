@@ -123,7 +123,7 @@ handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined 
             {noreply, State#state{lookups=[{LookupPid, ID, erlang:now()} | LUs], stats=Stats#handler_stats{lookups_requested=LookupsReq}}, hibernate};
         _Other ->
             _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
-            ?LOG_END("ignoring request for ~p", [Node, _Other]),
+            ?LOG_END("ignoring request from ~s for ~p", [Node, _Other]),
             {noreply, State}
     end;
 

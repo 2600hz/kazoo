@@ -29,9 +29,7 @@ start_deps() ->
     monitor_deps:ensure(),
     ensure_started(sasl),
     ensure_started(crypto),
-    ensure_started(whistle_amqp),
-    ensure_started(couchbeam),
-    ensure_started(whistle_couch).
+    ensure_started(whistle_amqp).
 
 %% @spec stop() -> ok
 %% @doc Stop the monitor server.

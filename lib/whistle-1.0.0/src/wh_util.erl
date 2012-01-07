@@ -458,7 +458,6 @@ is_ipv6(Address) when is_list(Address) ->
         {error, _} -> false
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -467,7 +466,7 @@ is_ipv6(Address) when is_list(Address) ->
 %%--------------------------------------------------------------------
 -spec get_transfer_state/1 :: (json_object()) -> 'undefined' | 'transferer' | 'transferee'.
 -spec get_transfer_state/2 :: ({ne_binary(), ne_binary()}, json_object()) -> 'undefined' | 'transferer' | 'transferee'.
--spec do_get_transfer_state/2 :: (ne_binary() | 'undefined',  json_object()) ->  'undefined' | 'transferer' | 'transferee'.
+-spec do_get_transfer_state/2 :: (ne_binary(),  json_object()) ->  'undefined' | 'transferer' | 'transferee'.
 
 get_transfer_state(JObj) ->
     get_transfer_state(get_event_type(JObj), JObj).

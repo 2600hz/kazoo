@@ -23,24 +23,21 @@
 
 %% Cascading settings
 -export([sip_headers/1, failover/1, progress_timeout/1, bypass_media/1, delay/1
-	 ,ignore_early_media/1, ep_timeout/1]).
+	 ,ignore_early_media/1, ep_timeout/1, caller_id/1]).
 
 -include("ts.hrl").
 -include_lib("kernel/include/inet.hrl"). %% for hostent record, used in find_ip/1
 
--spec(find_ip/1 :: (Domain :: binary() | list()) -> list()).
+-spec find_ip/1 :: (ne_binary() | nonempty_string()) -> nonempty_string().
 find_ip(Domain) when is_binary(Domain) ->
     find_ip(binary_to_list(Domain));
 find_ip(Domain) when is_list(Domain) ->
     case inet_parse:address(Domain) of
 	{ok, _I} ->
-	    io:format("ts_util: is an ip: ~p (~p)~n", [Domain, _I]),
 	    Domain;
-	Huh ->
-	    io:format("ts_util: is a domain: ~p (~p)~n", [Domain, Huh]),
+	_Huh ->
 	    case inet:gethostbyname(Domain, inet) of %% eventually we'll want to support both IPv4 and IPv6
 		{error, _Err} ->
-		    io:format("ts_util: err getting hostname: ~p~n", [_Err]),
 		    Domain;
 		{ok, Hostent} when is_record(Hostent, hostent) ->
 		    case Hostent#hostent.h_addr_list of
@@ -64,7 +61,7 @@ is_ipv6(Address) ->
 
 %% FilterOn: CallID | flat_rate | per_min
 %% Remove active call entries based on what Filter criteria is passed in
--spec(filter_active_calls/2 :: (FilterOn :: binary() | flat_rate | per_min, ActiveCalls :: active_calls()) -> active_calls()).
+-spec filter_active_calls/2 :: (ne_binary() | 'flat_rate' | 'per_min', active_calls()) -> active_calls().
 filter_active_calls(flat_rate, ActiveCalls) ->
     lists:filter(fun({_,flat_rate}) -> false; (_) -> true end, ActiveCalls);
 filter_active_calls(per_min, ActiveCalls) ->
@@ -72,17 +69,17 @@ filter_active_calls(per_min, ActiveCalls) ->
 filter_active_calls(CallID, ActiveCalls) ->
     lists:filter(fun({CallID1,_}) when CallID =:= CallID1 -> false;
 		    (CallID1) when CallID =:= CallID1 -> false;
-		    (_) -> true end, ActiveCalls).
+		    (_) -> true
+		 end, ActiveCalls).
 
--spec get_media_handling/1 :: (L) -> ne_binary() when
-      L :: ['undefined' | json_object() | ne_binary(),...].
+-spec get_media_handling/1 :: (['undefined' | json_object() | ne_binary(),...]) -> <<_:48,_:_*8>>.
 get_media_handling(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"process">>;
         _ -> <<"bypass">>
     end.
 
--spec(constrain_weight/1 :: (W :: binary() | integer()) -> integer()).
+-spec constrain_weight/1 :: (ne_binary() | integer()) -> integer().
 constrain_weight(W) when not is_integer(W) ->
     constrain_weight(wh_util:to_integer(W));
 constrain_weight(W) when W > 100 -> 100;
@@ -102,8 +99,7 @@ get_base_channel_vars(#route_flags{}=Flags) ->
 	_ -> [{<<"Failover-Route">>, <<"true">>} | ChannelVars0]
     end.
 
-
--spec(todays_db_name/1 :: (Prefix :: string() | binary()) -> binary()).
+-spec todays_db_name/1 :: (ne_binary()) -> ne_binary().
 todays_db_name(Prefix) ->
     {{Y,M,D}, _} = calendar:universal_time(),
     wh_util:to_binary(io_lib:format(wh_util:to_list(Prefix) ++ "%2F~4B%2F~2..0B%2F~2..0B", [Y,M,D])).
@@ -112,7 +108,7 @@ todays_db_name(Prefix) ->
 calculate_cost(R, RI, RM, Sur, Secs) ->
     whapps_util:calculate_cost(R, RI, RM, Sur, Secs).
 
--spec(lookup_did/1 :: (DID :: binary()) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec lookup_did/1 :: (ne_binary()) -> {'ok', json_object()} | {'error', 'no_did_found' | atom()}.
 lookup_did(DID) ->
     Options = [{<<"key">>, DID}],
     case wh_cache:fetch({lookup_did, DID}) of
@@ -140,7 +136,7 @@ lookup_did(DID) ->
 	    end
     end.
 
--spec(lookup_user_flags/2 :: (Name :: binary(), Realm :: binary()) -> tuple(ok, json_object()) | tuple(error, term())).
+-spec lookup_user_flags/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
 lookup_user_flags(Name, Realm) ->
     %% wh_timer:tick("lookup_user_flags/2"),
     case wh_cache:fetch({lookup_user_flags, Realm, Name}) of
@@ -158,11 +154,11 @@ lookup_user_flags(Name, Realm) ->
 	    end
     end.
 
--spec(get_call_duration/1 :: (JObj :: json_object()) -> integer()).
+-spec get_call_duration/1 :: (json_object()) -> integer().
 get_call_duration(JObj) ->
     wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj)).
 
--spec(get_rate_factors/1 :: (JObj :: json_object()) -> tuple(float(), pos_integer(), pos_integer(), float())).
+-spec get_rate_factors/1 :: (json_object()) -> {float(), pos_integer(), pos_integer(), float()}.
 get_rate_factors(JObj) ->
     CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     { wh_util:to_float(wh_json:get_value(<<"Rate">>, CCV, 0.0))
@@ -171,7 +167,7 @@ get_rate_factors(JObj) ->
       ,wh_util:to_float(wh_json:get_value(<<"Surcharge">>, CCV, 0.0))
     }.
 
--spec(invite_format/2 :: (Format :: binary(), To :: binary()) -> proplist()).
+-spec invite_format/2 :: (ne_binary(), ne_binary()) -> proplist().
 invite_format(<<"e.164">>, To) ->
     [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, wh_util:to_e164(To)}];
 invite_format(<<"e164">>, To) ->
@@ -187,8 +183,18 @@ invite_format(<<"npan">>, To) ->
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>} ].
 
--spec sip_headers/1 :: (L) -> 'undefined' | json_object() when
-      L :: ['undefined' | json_object(),...] | [].
+-spec caller_id/1 :: (['undefined' | json_object(),...] | []) -> {'undefined' | ne_binary(), 'undefined' | ne_binary()}.
+caller_id([]) ->
+    {undefined, undefined};
+caller_id([undefined|T]) ->
+    caller_id(T);
+caller_id([CID|T]) ->
+    case {wh_json:get_value(<<"cid_name">>, CID), wh_json:get_value(<<"cid_number">>, CID)} of
+	{undefined, undefined} -> caller_id(T);
+	CallerID -> CallerID
+    end.
+
+-spec sip_headers/1 :: (['undefined' | json_object(),...] | []) -> 'undefined' | json_object().
 sip_headers([]) ->
     undefined;
 sip_headers(L) when is_list(L) ->
@@ -197,43 +203,34 @@ sip_headers(L) when is_list(L) ->
 	_ -> undefined
     end.
 
--spec failover/1 :: (L) -> json_object() when
-      L :: [json_object() | binary(),...].
+-spec failover/1 :: ([json_object() | binary(),...]) -> json_object().
 %% cascade from DID to Srv to Acct
 failover(L) ->
     case simple_extract(L) of
-	B when is_binary(B) ->
-	    ?EMPTY_JSON_OBJECT;
-	Other ->
-	    Other
+	B when is_binary(B) -> wh_json:new();
+	Other -> Other
     end.
 
--spec progress_timeout/1 :: (L) -> 'undefined' | json_object() | binary() when
-      L :: ['undefined' | json_object() | binary(),...].
+-spec progress_timeout/1 :: (['undefined' | json_object() | ne_binary(),...]) -> 'undefined' | json_object() | ne_binary().
 progress_timeout(L) -> simple_extract(L).
 
--spec bypass_media/1 :: (L) -> ne_binary() when
-      L :: ['undefined' | json_object() | binary(),...].
+-spec bypass_media/1 :: (['undefined' | json_object() | ne_binary(),...]) -> <<_:32,_:_*8>>.
 bypass_media(L) ->
     case simple_extract(L) of
         <<"process">> -> <<"false">>;
         _ -> <<"true">>
     end.
 
--spec delay/1 :: (L) -> 'undefined' | json_object() | binary() when
-      L :: ['undefined' | json_object() | binary(),...].
+-spec delay/1 :: (['undefined' | json_object() | ne_binary(),...]) -> 'undefined' | json_object() | ne_binary().
 delay(L) -> simple_extract(L).
 
--spec ignore_early_media/1 :: (L) -> 'undefined' | json_object() | binary() when
-      L :: ['undefined' | json_object() | binary(),...].
+-spec ignore_early_media/1 :: (['undefined' | json_object() | ne_binary(),...]) -> 'undefined' | json_object() | ne_binary().
 ignore_early_media(L) -> simple_extract(L).
 
--spec ep_timeout/1 :: (L) -> 'undefined' | json_object() | binary() when
-      L :: ['undefined' | json_object() | binary(),...].
+-spec ep_timeout/1 :: (['undefined' | json_object() | ne_binary(),...]) -> 'undefined' | json_object() | ne_binary().
 ep_timeout(L) -> simple_extract(L).
 
--spec simple_extract/1 :: (L) -> 'undefined' | json_object() | ne_binary() when
-      L :: ['undefined' | json_object() | ne_binary(),...].
+-spec simple_extract/1 :: (['undefined' | json_object() | ne_binary(),...]) -> 'undefined' | json_object() | ne_binary().
 simple_extract([undefined|T]) ->
     simple_extract(T);
 simple_extract([B | T]) when is_binary(B) ->
@@ -249,8 +246,7 @@ simple_extract([JObj | T]) ->
 simple_extract([]) ->
     undefined.
 
--spec is_flat_rate_eligible/1 :: (E164) -> boolean() when
-      E164 :: binary().
+-spec is_flat_rate_eligible/1 :: (ne_binary()) -> boolean().
 is_flat_rate_eligible(E164) ->
     {Black, White} = case wh_cache:fetch({?MODULE, flat_rate_regexes}) of
 			 {error, not_found} ->
@@ -289,11 +285,9 @@ load_flat_rate_regexes() ->
 	    BW
     end.
 
--spec is_valid_ts_account/1 :: (binary()) -> boolean().
+-spec is_valid_ts_account/1 :: (ne_binary()) -> boolean().
 is_valid_ts_account(Account) ->
     case couch_mgr:lookup_doc_rev(?TS_DB, Account) of
-        {ok, _Rev} ->
-            true;
-        _ ->
-            false
+        {ok, _Rev} -> true;
+        _ -> false
     end.

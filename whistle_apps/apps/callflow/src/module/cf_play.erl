@@ -27,6 +27,10 @@ handle(Data, #cf_call{account_id=AccountId}=Call) ->
                     ?LOG("prepending media ID with /~s/", [AccountId]),
                     <<$/, (wh_util:to_binary(AccountId))/binary, $/, Path/binary>>
             end,
+    case wh_json:is_false(<<"answer">>, Data) of
+        true -> ok;
+        false -> cf_call_command:answer(Call)
+    end,
     ?LOG("playing media ~s", [Media]),
     cf_call_command:b_play(Media, wh_json:get_value(<<"terminators">>, Data), Call),
     cf_exe:continue(Call).

@@ -17,6 +17,7 @@
 -export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
 -export([call_status/1, call_status/2, channel_status/1, channel_status/2]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6]).
+-export([hold/1]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([store/3, store/4, store/5]).
@@ -348,7 +349,7 @@ bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, #cf_call{channe
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, Timeout}
                ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-               ,{<<"Ringback">>, Ringback}
+               ,{<<"Ringback">>, cf_util:correct_media_path(Ringback, Call)}
                ,{<<"Dial-Endpoint-Method">>, Strategy}
                ,{<<"Custom-Channel-Vars">>, CCVs}
               ],
@@ -370,6 +371,20 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
         Else ->
             Else
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level wh_api request to park the channel
+%% @end
+%%--------------------------------------------------------------------
+-spec hold/1 :: (#cf_call{}) -> 'ok'.
+
+hold(Call) ->
+    Command = [{<<"Application-Name">>, <<"hold">>}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    send_command(Command, Call).
 
 %%--------------------------------------------------------------------
 %% @public

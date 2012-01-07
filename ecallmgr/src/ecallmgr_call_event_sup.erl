@@ -53,7 +53,7 @@ workers() ->
     ].
 
 -spec find_worker/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
--spec do_find_worker/2 :: ([pid(),...] | [], ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
+-spec do_find_worker/2 :: ([] | [pid(),...], ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
 
 find_worker(CallId) ->
     do_find_worker(workers(), CallId).

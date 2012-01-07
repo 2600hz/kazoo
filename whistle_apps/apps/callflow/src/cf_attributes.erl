@@ -19,7 +19,7 @@
 -export([owner_id/2, fetch_owner_id/2]).
 -export([owned_by/2, owned_by/3, fetch_owned_by/2, fetch_owned_by/3]).
 -export([friendly_name/2, friendly_name/3]).
--export([presence_id/2]).
+-export([presence_id/1, presence_id/2]).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -82,17 +82,12 @@ call_forward(EndpointId, OwnerId, #cf_call{account_db=Db}) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec caller_id/2 :: (ne_binary() | json_object(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
+-spec caller_id/2 :: (ne_binary(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
 -spec caller_id/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
 -spec caller_id/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
 
-caller_id(Endpoint, #cf_call{inception=Inception}=Call) ->
-    case Inception of
-        <<"off-net">> ->
-            caller_id(Endpoint, <<"external">>, Call);
-        _ ->
-            caller_id(Endpoint, <<"internal">>, Call)
-    end.
+caller_id(Attribute, #cf_call{authorizing_id=EndpointId, owner_id=OwnerId}=Call) ->
+    caller_id(EndpointId, OwnerId, Attribute, Call).
 
 caller_id(Endpoint, Attribute, Call) when is_tuple(Endpoint) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
@@ -279,14 +274,14 @@ moh_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=Ca
             ?LOG("unable to find moh attribute ~s", [Attribute]),
             undefined;
         {Id, Value} when Attribute =:= <<"media_id">> ->
-            MediaId = <<$/, AccountId/binary, $/, Value/binary>>,
+            MediaId = cf_util:correct_media_path(Value, Call),
             ?LOG("found moh attribute ~s on ~s: '~p'", [Attribute, Id, MediaId]),
             MediaId;
         {Id, Value} ->
             ?LOG("found moh attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
             Value
     end.
-
+ 
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
@@ -382,7 +377,12 @@ friendly_name(EndpointId, OwnerId, #cf_call{cid_name=CIDName}=Call) ->
 %% This function will return the precense id for the endpoint
 %% @end
 %%--------------------------------------------------------------------
+-spec presence_id/1 :: (#cf_call{}) -> undefined | ne_binary().
 -spec presence_id/2 :: (undefined | ne_binary() | json_object(), #cf_call{}) -> undefined | ne_binary().
+
+presence_id(#cf_call{authorizing_id=AuthId}=Call) ->
+    presence_id(AuthId, Call).
+
 presence_id(undefined, _) ->
     undefined;
 presence_id(EndpointId, Call) when is_binary(EndpointId) ->

@@ -133,7 +133,9 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Co
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc1}=Context1 ->
                           DeviceId = wh_json:get_value(<<"_id">>, Doc1),
-                          _ = provision(Doc1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>)),
+                          spawn(fun() ->
+                             do_awesome_provision(whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>), Context1)
+                          end),
                           case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
                               {ok, Rev} ->
                                   couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1)),
@@ -154,7 +156,9 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Con
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc1}=Context1 ->
-                          _ = provision(Doc1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>)),
+                          spawn(fun() ->
+                             do_awesome_provision(whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>), Context1)
+                          end),
                           couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
@@ -188,7 +192,7 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     {noreply, State};
 
 handle_info(timeout, State) ->
-    bind_to_crossbar(),
+    _ = bind_to_crossbar(),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -229,7 +233,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () -> no_return()).
+-spec bind_to_crossbar/0 :: () -> 'ok' | {'error', 'exists'}.
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.devices">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.devices">>),
@@ -245,7 +249,7 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([<<"status">>]) ->
@@ -263,7 +267,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -280,7 +284,7 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/3 :: ([ne_binary(),...] | [], #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
+-spec validate/3 :: (path_tokens(), #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
 validate([], _, #cb_context{req_verb = <<"get">>}=Context) ->
     load_device_summary(Context);
 validate([], _, #cb_context{req_verb = <<"put">>}=Context) ->
@@ -342,7 +346,7 @@ load_device(DocId, Context) ->
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec(update_device/2 :: (DocId :: binary(), Context :: #cb_context{}) -> #cb_context{}).
+-spec update_device/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_device(DocId, #cb_context{req_data=JObj}=Context) ->
     case is_valid_doc(JObj) of
         {errors, Fields} ->
@@ -380,7 +384,7 @@ load_device_status(#cb_context{db_name=Db}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (JObj :: json_object(), Acc :: json_objects()) -> json_objects().
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -463,38 +467,74 @@ wait_for_reg_resp([_|T], Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Spawn the function to post data to a provisioning server, if
-%% provided with URL
+%% Do awesome provisioning
 %% @end
 %%--------------------------------------------------------------------
--spec provision/2 :: (json_object(), ne_binary() | 'undefined') -> 'ok' | pid().
-provision(_, undefined) -> ok;
-provision(JObj, Url) ->
-    spawn(fun() -> do_provision(JObj, Url) end).
+-spec do_awesome_provision/2 :: ('undefined' | ne_binary(), #cb_context{}) -> 'ok'.
+do_awesome_provision(undefined, _) ->
+    ok;
+do_awesome_provision(Url, #cb_context{doc=JObj, db_name=Db}) ->
+    TemplateOverrides = wh_json:get_value([<<"provision">>, <<"template">>], JObj, wh_json:new()),
+    TemplateId = wh_json:get_value([<<"provision">>, <<"id">>], JObj),
+    case is_binary(TemplateId) andalso couch_mgr:open_doc(Db, TemplateId) of
+        false ->
+             ?LOG("unknown template id ~s", [TemplateId]),
+             ok;
+        {error, _R} ->
+             ?LOG("could not fetch template doc ~s: ~p", [TemplateId, _R]),
+             ok;
+        {ok, TemplateJObj} ->
+            TemplateBase = wh_json:get_value(<<"template">>, TemplateJObj),
+            Template = wh_json:merge_recursive(TemplateBase, TemplateOverrides),
+            ProvisionRequest = provision_device_line([<<"data">>, <<"globals">>, <<"globals">>, <<"lineloop|line_1">>]
+                                                    ,JObj, Template),
+            MACAddress = re:replace(wh_json:get_string_value(<<"mac_address">>, JObj, "")
+                                    ,"[^0-9a-fA-F]", "", [{return, list}, global]),
+            send_awesome_provisioning_request(ProvisionRequest, MACAddress, Url)
+    end,
+    ok.
+
+-spec provision_device_line/3 :: ([ne_binary(),...], json_object(), json_object()) -> json_object().
+provision_device_line(BaseKey, Device, Template) ->
+    Mappings = [{[<<"username">>, <<"value">>], [<<"sip">>, <<"username">>]}
+                ,{[<<"authname">>, <<"value">>], [<<"sip">>, <<"username">>]}
+                ,{[<<"secret">>, <<"value">>], [<<"sip">>, <<"password">>]}
+                ,{[<<"server_host">>, <<"value">>], [<<"sip">>, <<"realm">>]}
+               ],
+    provision_device_line(BaseKey, Device, Template, Mappings).
+
+-spec provision_device_line/4 :: (json_strings(), json_object(), json_object(), [{json_strings(), json_strings()},...] | []) -> json_object().
+provision_device_line(_, _, Template, []) ->
+    Template;
+provision_device_line(BaseKey, Device, Template, [{TemplateKey, DeviceKey}|T]) ->
+    case wh_json:get_ne_value(DeviceKey, Device) of
+        undefined -> provision_device_line(BaseKey, Device, Template, T);
+        Value when is_list(TemplateKey) ->
+            NewTemplate = wh_json:set_value(BaseKey ++ TemplateKey, Value, Template),
+            provision_device_line(BaseKey, Device, NewTemplate, T);
+        Value ->
+            NewTemplate = wh_json:set_value(BaseKey ++ [TemplateKey], Value, Template),
+            provision_device_line(BaseKey, Device, NewTemplate, T)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% post data to a provisiong server
+%% Send awesome provisioning request
 %% @end
 %%--------------------------------------------------------------------
-
--spec do_provision/2 :: (json_object(), ne_binary()) -> 'ok'.
-do_provision(JObj, Url) ->
-    Headers = [{K, V}
-               || {K, V} <- [{"Host", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_host">>)}
-                             ,{"Referer", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_referer">>)}
-                             ,{"User-Agent", wh_util:to_list(erlang:node())}
-                             ,{"Content-Type", "application/x-www-form-urlencoded"}]
-                      ,V =/= undefined],
+-spec send_awesome_provisioning_request/3 :: (json_object(), ne_binary(), ne_binary()) -> 'ok'.
+send_awesome_provisioning_request(ProvisionRequest, MACAddress, Url) ->
+    UrlString = lists:flatten([Url, MACAddress]),
+    Headers = [{"User-Agent", wh_util:to_list(erlang:node())}
+               ,{"Content-Type", "application/json"}
+              ],
+    Body = wh_json:encode(ProvisionRequest),
     HTTPOptions = [],
-    Body = [{"api[realm]", wh_json:get_string_value([<<"sip">>, <<"realm">>], JObj)}
-            ,{"mac", re:replace(wh_json:get_string_value(<<"mac_address">>, JObj, ""), "[^0-9a-fA-F]", "", [{return, list}, global])}
-            ,{"label", wh_json:get_string_value(<<"name">>, JObj)}
-            ,{"sip[username]", wh_json:get_string_value([<<"sip">>, <<"username">>], JObj)}
-            ,{"sip[password]", wh_json:get_string_value([<<"sip">>, <<"password">>], JObj)}
-            ,{"submit", "true"}],
-    Encoded = mochiweb_util:urlencode(Body),
-    ?LOG("posting to ~s with ~s", [Url, Encoded]),
-    ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions),
-    ok.
+    ?LOG("provisioning via ~s with settings ~s", [UrlString, Body]),
+    case ibrowse:send_req(UrlString, Headers, post, Body, HTTPOptions) of
+        {ok, "200", _, Response} ->
+            ?LOG("SUCCESS! BOOM! ~s", [Response]);
+        {ok, Code, _, Response} ->
+            ?LOG("ERROR! OH NO! ~s. ~s", [Code, Response])
+    end.

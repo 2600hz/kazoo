@@ -48,6 +48,21 @@
        },
        "vm_to_email_enabled": {
            "type": "boolean"
+       },
+       "directories":{
+	   "type":"array"
+	   ,"items":{
+	       "type":"object"
+	       ,"properties":{
+		   "directory_id":{
+		       "type":"string"
+		   }
+		   ,"callflow_id":{
+		       "type":"string"
+		   }
+	       }
+	   }
+	   ,"description":"Provides the mappings for what directory the user is a part of, and what callflow to invoke if the user is selected by the caller."
        }
    }
 }

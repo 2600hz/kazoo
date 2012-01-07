@@ -1,20 +1,20 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
+%%% @author Jon Blanton  <jon@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%% Users module
+%%% Provision template module
 %%%
-%%% Handle client requests for user documents
+%%% Handle client requests for provisioner template documents
 %%%
 %%% @end
-%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 20 Dec 2011 by Jon Blanton <jon@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cb_users).
+-module(cb_provisioner_templates).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, create_user/1]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -24,8 +24,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CB_LIST, <<"users/crossbar_listing">>).
--define(GROUP_BY_USERNAME, <<"users/group_by_username">>).
+-define(CB_LIST, <<"provisioner_templates/crossbar_listing">>).
 
 %%%===================================================================
 %%% API
@@ -100,46 +99,46 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.users">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.provisioner_templates">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.users">>, Payload}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.provisioner_templates">>, Payload}, State) ->
     spawn(fun() ->
 		  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.provisioner_templates">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.users">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.provisioner_templates">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(hash_password(Context)),
+                  Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.users">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.provisioner_templates">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(hash_password(Context)),
+                  Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
 	  end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.users">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.provisioner_templates">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
@@ -193,12 +192,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% for the keys we need to consume.
 %% @end
 %%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  no_return()).
+-spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.users">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.users">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.provisioner_templates">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.provisioner_templates">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.provisioner_templates">>),
+    crossbar_bindings:bind(<<"v1_resource.execute.#.provisioner_templates">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -209,7 +208,7 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
@@ -225,7 +224,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: (list()) -> {boolean(), []}.
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -242,90 +241,141 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: ([binary(),...] | [], #cb_context{}) -> #cb_context{}.
+-spec validate/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_user_summary(Context);
+    load_provisioner_template_summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_user(Context);
-validate([UserId], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_user(UserId, Context);
-validate([UserId], #cb_context{req_verb = <<"post">>}=Context) ->
-    update_user(UserId, Context);
-validate([UserId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_user(UserId, Context);
-validate(_UserId, Context) ->
+    create_provisioner_template(Context);
+validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
+    load_provisioner_template(DocId, Context);
+validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
+    update_provisioner_template(DocId, Context);
+validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
+    load_provisioner_template(DocId, Context);
+validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
-%% account summary.
+%% Attempt to load list of provision templates, each summarized.  Or a specific
+%% provision template summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_user_summary/1 :: (#cb_context{}) -> #cb_context{}.
-load_user_summary(Context) ->
+-spec load_provisioner_template_summary/1 :: (#cb_context{}) -> #cb_context{}.
+load_provisioner_template_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new user document with the data provided, if it is valid
+%% Create a new provision template document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create_user/1 :: (#cb_context{}) -> #cb_context{}.
-create_user(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
-            case is_unique_username(undefined, Context) of
-                true ->
-                    Context#cb_context{
-                      doc=wh_json:set_value(<<"pvt_type">>, <<"user">>, JObj)
-                      ,resp_status=success
-                     };
-                false ->
-                    crossbar_util:response_invalid_data([<<"username">>], Context)
-            end
+-spec create_provisioner_template/1 :: (#cb_context{}) -> #cb_context{}.
+create_provisioner_template(Context) ->
+    case get_provision_defaults(Context) of
+        #cb_context{doc=Doc, resp_status=success}=Context1 ->
+            Pvts = [fun(J) -> wh_json:set_value(<<"pvt_type">>, <<"provisioner_template">>, J) end
+                    ,fun(J) -> wh_json:set_value(<<"pvt_vsn">>, <<"1">>, J) end
+                   ],
+
+            Context1#cb_context{
+                doc = lists:foldr(fun(F, J) -> F(J) end, Doc, Pvts)
+            };
+        Else ->
+            Else
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load a user document from the database
+%% Load a provision template document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_user/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-load_user(UserId, Context) ->
-    Doc = crossbar_doc:load(UserId, Context),
-    case wh_json:get_value(<<"pvt_deleted">>, Doc, false) of
-	true ->
-	    crossbar_util:response_bad_identifier(UserId, Context);
-	false ->
-	    Doc
-    end.
+-spec load_provisioner_template/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+load_provisioner_template(DocId, Context) ->
+    cond_remove_image(crossbar_doc:load(DocId, Context)).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing user document with the data provided, if it is
+%% Update an existing provision template document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
--spec update_user/2 :: (binary(), #cb_context{}) -> #cb_context{}.
-update_user(UserId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
-            case is_unique_username(UserId, Context) of
-                true ->
-                    crossbar_doc:load_merge(UserId, JObj, Context);
-                false ->
-                    crossbar_util:response_invalid_data([<<"username">>], Context)
-            end
+-spec update_provisioner_template/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+update_provisioner_template(DocId, #cb_context{req_data=JObj}=Context) ->
+    #cb_context{doc=Doc} = crossbar_doc:load(DocId, Context),
+
+    JObj1 = case wh_json:get_value(<<"image">>, JObj) of
+                undefined ->
+                    wh_json:set_value(<<"image">>, wh_json:get_value(<<"image">>, Doc, wh_json:new()), JObj);
+                _ ->
+                    JObj
+            end,
+
+    cond_remove_image(crossbar_doc:load_merge(DocId, JObj1, Context)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This doesn't belong here, needs to be in an external library. Make request to
+%% get provisioning defaults
+%% @end
+%%--------------------------------------------------------------------
+-spec get_provision_defaults/1 :: (#cb_context{}) -> #cb_context{}.
+get_provision_defaults(#cb_context{req_data=JObj}=Context) ->
+    Url = [whapps_config:get_string(<<"crossbar.provisioner_templates">>, <<"provisioner_template_url">>)
+           ,"?request=data"
+           ,"&brand=", mochiweb_util:quote_plus(wh_json:get_string_value([<<"properties">>, <<"brand">>], JObj))
+           ,"&model=", mochiweb_util:quote_plus(wh_json:get_string_value([<<"properties">>, <<"model">>], JObj))
+           ,"&product=", mochiweb_util:quote_plus(wh_json:get_string_value([<<"properties">>, <<"product">>], JObj))
+          ],
+
+    UrlString = lists:flatten(Url),
+
+    Headers = [{"Host", whapps_config:get_string(<<"crossbar.provisioner_templates">>, <<"provisioner_template_host">>)}
+               ,{"Referer", whapps_config:get_string(<<"crossbar.provisioner_templates">>, <<"provisioner_template_referer">>)}
+               ,{"User-Agent", wh_util:to_list(erlang:node())}
+              ],
+
+    Body = [],
+    HTTPOptions = [],
+
+    ?LOG("Attempting to pull provisioning configs from ~s", [UrlString]),
+
+    case ibrowse:send_req(UrlString, Headers, get, Body, HTTPOptions) of
+        {ok, "200", _, Response} ->
+            ?LOG("Great success! Acquired provisioning template."),
+            JResp = wh_json:decode(Response),
+            Context#cb_context{
+                doc = wh_json:set_value(<<"template">>, JResp, JObj)
+                ,resp_status = success
+            };
+        _ ->
+            ?LOG("Error! Could not acquiring provisioning template."),
+            crossbar_util:response(error, <<"Error retrieving content from external site">>, 500, Context)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Conditionally removes image key from response
+%% @end
+%%--------------------------------------------------------------------
+-spec cond_remove_image/1 :: (#cb_context{}) -> #cb_context{}.
+cond_remove_image(#cb_context{resp_data=JResp, resp_status='success', query_json=Query}=Context) ->
+    case wh_json:is_true(<<"withoutImage">>, Query, false) of
+        true ->
+            Context#cb_context{
+                resp_data = wh_json:delete_key(<<"image">>, JResp)
+            };
+        false ->
+            Context
+    end;
+cond_remove_image(Context) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -333,60 +383,6 @@ update_user(UserId, #cb_context{req_data=JObj}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: json_object(), Acc :: json_objects()) -> json_objects()).
+-spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, user).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will determine if the password parameter is present
-%% and if so create the hashes then remove it.
-%% @end
-%%--------------------------------------------------------------------
--spec hash_password/1 :: (#cb_context{}) -> #cb_context{}.
-hash_password(#cb_context{doc=JObj}=Context) ->
-    case wh_json:get_value(<<"password">>, JObj) of
-        undefined ->
-            Context;
-        Password ->
-	    {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
-
-	    JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
-					,{<<"pvt_sha1_auth">>, SHA1}
-				       ], JObj),
-            Context#cb_context{doc=wh_json:delete_key(<<"password">>, JObj1)}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will determine if the username in the request is
-%% unique or belongs to the request being made
-%% @end
-%%--------------------------------------------------------------------
--spec is_unique_username/2 :: (ne_binary() | 'undefined', #cb_context{}) -> boolean().
-is_unique_username(UserId, #cb_context{req_data=ReqData}=Context) ->
-    Username = wh_json:get_value(<<"username">>, ReqData),
-    JObj = case crossbar_doc:load_view(?GROUP_BY_USERNAME, [{<<"key">>, Username}, {<<"reduce">>, <<"true">>}], Context) of
-               #cb_context{resp_status=success, doc=[J]} -> J;
-               _ -> wh_json:new()
-           end,
-    Assignments = wh_json:get_value(<<"value">>, JObj, []),
-    case UserId of
-        undefined ->
-            Assignments =:= [];
-        Id ->
-            Assignments =:= [] orelse Assignments =:= [[Id]]
-    end.

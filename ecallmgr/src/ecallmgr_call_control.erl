@@ -87,7 +87,7 @@
 -define(RESPONDERS, [{{?MODULE, handle_call_command}, [{<<"call">>, <<"command">>}]}
                      ,{{?MODULE, handle_conference_command}, [{<<"conference">>, <<"command">>}]}
                      ,{{?MODULE, handle_call_events}, [{<<"call_event">>, <<"*">>}]}]).
--define(QUEUE_NAME, <<"">>).
+-define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
@@ -165,17 +165,17 @@ rm_leg(Props) ->
                   end
           end).
 
--spec handle_call_command/2 :: (json_object(), proplist()) -> ok.
+-spec handle_call_command/2 :: (json_object(), proplist()) -> 'ok'.
 handle_call_command(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {dialplan, JObj}).
 
--spec handle_conference_command/2 :: (json_object(), proplist()) -> ok.
+-spec handle_conference_command/2 :: (json_object(), proplist()) -> 'ok'.
 handle_conference_command(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {dialplan, JObj}).
 
--spec handle_call_events/2 :: (json_object(), proplist()) -> ok.
+-spec handle_call_events/2 :: (json_object(), proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value(server, Props),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -310,9 +310,9 @@ handle_cast({add_leg, JObj}, #state{other_legs=Legs, node=Node, callid=CallId}=S
         false ->
             ?LOG("added leg ~s to call", [LegId]),
             _ = spawn(fun() ->
-			      _ = put(callid, CallId),
-			      publish_leg_addition(JObj)
-		      end),
+                              _ = put(callid, CallId),
+                              publish_leg_addition(JObj)
+                      end),
             ?LOG("ensuring event listener for leg ~s exists", [LegId]),
             _ = ecallmgr_call_sup:start_event_process(Node, LegId),
             {noreply, State#state{other_legs=[LegId|Legs]}}
@@ -330,9 +330,9 @@ handle_cast({rm_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
         true ->
             ?LOG("removed leg ~s from call", [LegId]),
             _ = spawn(fun() ->
-			      put(callid, CallId),
-			      publish_leg_removal(JObj)
-		      end),
+                              put(callid, CallId),
+                              publish_leg_removal(JObj)
+                      end),
             {noreply, State#state{other_legs=lists:delete(LegId, Legs), last_removed_leg=LegId}}
     end;
 handle_cast({channel_destroyed, _},  #state{command_q=CmdQ, sanity_check_tref=SCTRef}=State) ->
@@ -369,7 +369,7 @@ handle_cast({dialplan, JObj}
     end;
 handle_cast({event_execute_complete, CallId, EvtName}
             ,#state{callid=CallId, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
-    case lists:member(EvtName, wh_api:convert_whistle_app_name(CurrApp)) of
+    case lists:member(EvtName, ecallmgr_util:convert_whistle_app_name(CurrApp)) of
         false ->
             {noreply, State};
         true ->
@@ -589,7 +589,10 @@ execute_control_request(Cmd, #state{node=Node, callid=CallId}) ->
     catch
         _:{error,nosession} ->
             ?LOG("unable to execute command, no session"),
-            send_error_resp(CallId, Cmd, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>),
+            send_error_resp(CallId, Cmd, <<"Session "
+                                           ,CallId/binary
+                                           ," not found for "
+                                           ,(wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>),
             self() ! {hangup, undefined, CallId},
             ok;
         error:{badmatch, {error, ErrMsg}} ->
@@ -599,7 +602,7 @@ execute_control_request(Cmd, #state{node=Node, callid=CallId}) ->
             self() ! {force_queue_advance, CallId},
             ok;
         _A:_B ->
-            ?LOG("exception (~s) while executing ~s: ~w", [_A, wh_json:get_value(<<"Application-Name">>, Cmd), _B]),
+            ?LOG("exception (~s) while executing ~s: ~p", [_A, wh_json:get_value(<<"Application-Name">>, Cmd), _B]),
             ?LOG("stacktrace: ~w", [erlang:get_stacktrace()]),
             send_error_resp(CallId, Cmd),
             self() ! {force_queue_advance, CallId},
@@ -641,10 +644,8 @@ publish_leg_addition(JObj) ->
             end,
     Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>, undefined, Props),
     case props:get_value(<<"Call-ID">>, Event) of
-        undefined ->
-            ok;
-        _Else ->
-            ecallmgr_call_events:publish_event(Event)
+        undefined -> ok;
+        _Else -> ecallmgr_call_events:publish_event(Event)
     end.
 
 -spec publish_leg_removal/1 :: (json_object()) -> 'ok'.
@@ -663,7 +664,7 @@ publish_leg_removal(JObj) ->
             ecallmgr_call_events:publish_event(Event)
     end.
 
--spec publish_callid_update/3 :: (ne_binary(), ne_binary(), ne_binary()) -> ok.
+-spec publish_callid_update/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 publish_callid_update(PrevCallId, NewCallId, CtrlQ) -> 
     ?LOG(PrevCallId, "sending callid update to ~s", [NewCallId]),
     Update = [{<<"Call-ID">>, NewCallId}
@@ -673,7 +674,7 @@ publish_callid_update(PrevCallId, NewCallId, CtrlQ) ->
              ],
     wapi_call:publish_callid_update(PrevCallId, Update).
 
--spec publish_control_transfer/2 :: (ne_binary(), ne_binary()) -> ok.
+-spec publish_control_transfer/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 publish_control_transfer(undefined, CallId) ->
     ?LOG(CallId, "no whapp queue known for control transfer", []),    
     ok;

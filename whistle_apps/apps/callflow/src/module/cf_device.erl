@@ -45,7 +45,8 @@ handle(Data, Call) ->
                                                                   | {error, term()}.
 bridge_to_endpoints(Data, Call) ->
     EndpointId = wh_json:get_value(<<"id">>, Data),
-    case cf_endpoint:build(EndpointId, Data, Call) of
+    Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
+    case cf_endpoint:build(EndpointId, Params, Call) of
         {error, _}=E ->
             E;
         {ok, Endpoints} ->

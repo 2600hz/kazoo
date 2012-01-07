@@ -1,9 +1,10 @@
 -module(cf_util).
 
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
+-export([correct_media_path/2]).
 -export([call_info_to_string/1]).
 -export([lookup_callflow/1, lookup_callflow/2]).
--export([handle_bridge_failure/2]).
+-export([handle_bridge_failure/2, handle_bridge_failure/3]).
 
 -include("callflow.hrl").
 
@@ -42,6 +43,28 @@ ignore_early_media(Endpoints) ->
                                      or Acc
                          end, false, Endpoints),
     wh_util:to_binary(Ignore).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% given a media path that is just a media id correct it to include
+%% the account id
+%% @end
+%%--------------------------------------------------------------------
+-spec correct_media_path/2 :: (undefined | ne_binary(), #cf_call{}) -> undefined | ne_binary().
+correct_media_path(undefined, _) ->
+    undefined;
+correct_media_path(<<"silence_stream://", _/binary>> = Media, _) ->
+    Media;
+correct_media_path(<<"tone_stream://", _/binary>> = Media, _) ->
+    Media;
+correct_media_path(Media, #cf_call{account_id=AccountId}) ->
+    case binary:match(Media, <<"/">>) of
+        nomatch ->
+            <<$/, AccountId/binary, $/, Media/binary>>;
+        _Else ->
+            Media
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -195,16 +218,14 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
 %% certain actions, like cf_offnet and cf_resources
 %% @end
 %%--------------------------------------------------------------------
--spec handle_bridge_failure/2 :: ({fail, json_object} | ne_binary(), #cf_call{}) -> ok | no_found.
+-spec handle_bridge_failure/2 :: ({fail, json_object} | ne_binary() | undefined, #cf_call{}) -> ok | no_found.
+-spec handle_bridge_failure/3 :: (ne_binary() | undefined, ne_binary() | undefined, #cf_call{}) -> ok | no_found.
 
 handle_bridge_failure({fail, Reason}, Call) ->
     {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-    ?LOG("attempting failure branch ~s:~s", [Code, Cause]),
-    case (handle_bridge_failure(Cause, Call) =:= ok)
-        orelse (handle_bridge_failure(Code, Call) =:= ok) of
-        true -> ok;
-        false -> cf_exe:continue(Call)
-    end;
+    handle_bridge_failure(Cause, Code, Call);
+handle_bridge_failure(undefined, _) ->
+    not_found;
 handle_bridge_failure(Failure, Call) ->
     case cf_exe:attempt(Failure, Call) of
         {attempt_resp, ok} ->
@@ -213,6 +234,15 @@ handle_bridge_failure(Failure, Call) ->
         {attempt_resp, _} ->
             not_found
     end.
+
+handle_bridge_failure(Cause, Code, Call) ->
+    ?LOG("attempting to find failure branch for ~s:~s", [Code, Cause]),
+    case (handle_bridge_failure(Cause, Call) =:= ok)
+        orelse (handle_bridge_failure(Code, Call) =:= ok) of
+        true -> ok;
+        false -> cf_exe:continue(Call)
+    end.
+
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

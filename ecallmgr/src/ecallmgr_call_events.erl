@@ -39,7 +39,7 @@
           ,self = 'undefined' :: 'undefined' | pid()
           ,callid = <<>> :: binary()
           ,is_node_up = 'true' :: boolean()
-          ,failed_node_checks = 0 :: integer()
+          ,failed_node_checks = 0 :: non_neg_integer()
           ,node_down_tref = 'undefined' :: 'undefined' | reference()
           ,sanity_check_tref = 'undefined' :: 'undefined' | reference()
          }).
@@ -255,37 +255,37 @@ process_channel_event(Props, #state{self=Self, node=Node}) ->
             ok
     end.    
 
--spec create_event/3 :: (ne_binary(), ne_binary() | 'undefined', proplist()) -> proplist().
+-spec create_event/3 :: (ne_binary(), 'undefined' | ne_binary(), proplist()) -> proplist().
 create_event(EventName, ApplicationName, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
     {Mega,Sec,Micro} = erlang:now(),
     Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
-    Event = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
-             ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
-             ,{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
-             ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
-             ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
-             ,{<<"Channel-State">>, get_channel_state(Props)}
-             ,{<<"Transfer-History">>, get_transfer_history(Props)}
-             ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
-             ,{<<"Hangup-Code">>, get_hangup_code(Props)}
-             ,{<<"Disposition">>, get_disposition(Props)}
-             ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
-             ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
-             ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
-             ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
-             ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props,
-                                                         props:get_value(<<"variable_holding_uuid">>, Props))}
-             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-             %% this sucks, its leaky but I dont see a better way around it since we need the raw application
-             %% name in call_control... (see note in call_control on start_link for why we need to use AMQP 
-             %% to communicate to it)
-             ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
-             | event_specific(EventName, ApplicationName, Props) 
-            ],
-    [ KV || {_, V}=KV <- wh_api:default_headers(<<>>, ?EVENT_CAT, EventName, ?APP_NAME, ?APP_VERSION) ++ Event,
-	    V =/= undefined
-    ].
+
+    Event = [ KV || {_, V}=KV <- [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
+                                  ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
+                                  ,{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
+                                  ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
+                                  ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
+                                  ,{<<"Channel-State">>, get_channel_state(Props)}
+                                  ,{<<"Transfer-History">>, get_transfer_history(Props)}
+                                  ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
+                                  ,{<<"Hangup-Code">>, get_hangup_code(Props)}
+                                  ,{<<"Disposition">>, get_disposition(Props)}
+                                  ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
+                                  ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
+                                  ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
+                                  ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
+                                  ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props,
+                                                                               props:get_value(<<"variable_holding_uuid">>, Props))}
+                                  ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                                  %% this sucks, its leaky but I dont see a better way around it since we need the raw application
+                                  %% name in call_control... (see note in call_control on start_link for why we need to use AMQP 
+                                  %% to communicate to it)
+                                  ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
+                                  | event_specific(EventName, ApplicationName, Props) 
+                                 ],
+                    V =/= undefined],
+    wh_api:default_headers(<<>>, ?EVENT_CAT, EventName, ?APP_NAME, ?APP_VERSION) ++ Event.
 
 -spec publish_event/1 :: (proplist()) -> 'ok'.
 publish_event(Props) ->
@@ -375,7 +375,7 @@ event_specific(_, <<"play_and_get_digits">>, Prop) ->
      ,{<<"Application-Response">>, props:get_value(<<"variable_collected_digits">>, Prop, <<"">>)}
     ];
 event_specific(_Evt, Application, Prop) ->
-    [{<<"Application-Name">>, props:get_value(Application, ?SUPPORTED_APPLICATIONS)}
+    [{<<"Application-Name">>, props:get_value(Application, ?FS_APPLICATION_NAMES)}
      ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
     ].
 
@@ -395,8 +395,11 @@ should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, false) ->
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, false) ->
     ?LOG("suppressing intercept execute complete in favour the whistle masquerade of this event"),
     false;
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>, false) ->
+    ?LOG("suppressing execute_extension execute complete in favour the whistle masquerade of this event"),
+    false;
 should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
-    props:get_value(Application, ?SUPPORTED_APPLICATIONS) =/= undefined;
+    props:get_value(Application, ?FS_APPLICATION_NAMES) =/= undefined;
 should_publish(EventName, _, _) ->
     lists:member(EventName, ?FS_EVENTS).
 
@@ -405,7 +408,7 @@ get_transfer_history(Props) ->
     SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
     Hist = [HistJObj 
             || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory),
-	       (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, [global]))) =/= undefined],
+               (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, [global]))) =/= undefined],
     wh_json:from_list(Hist).
 
 -spec create_trnsf_history_object/1 :: (list()) -> {ne_binary(), json_object()} | 'undefined'.

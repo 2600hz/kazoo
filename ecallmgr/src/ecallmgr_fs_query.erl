@@ -10,7 +10,6 @@
 
 %% API
 -export([start_link/0, handle_channel_query/2, handle_channel_status/2, handle_call_status/2]).
--export([call_status/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -22,10 +21,13 @@
 
 -define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
-                     ,{{?MODULE, handle_channel_query}, [{<<"locate">>, <<"channel_req">>}]}
+                     ,{{?MODULE, handle_channel_query}, [{<<"call_event">>, <<"channel_query_req">>}]}
                     ]).
--define(BINDINGS, [{call, [{restrict_to, [switch_lookups, channel_status, call_status]}]}
-		  ]).
+
+-define(BINDINGS, [{call, [{restrict_to, [query_req, status_req]}]}]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 -record(state, {}).
 
@@ -41,36 +43,12 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE,
-                            [{responders, ?RESPONDERS}
-                             ,{bindings, ?BINDINGS}
-                            ], []).
-
-call_status(CallID) when not is_binary(CallID) ->
-    call_status(wh_util:to_binary(CallID));
-call_status(CallID) ->
-    case [NH || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
-        [] -> ?LOG("no node found with call having leg ~s", [CallID]);
-        [NodeHandler] ->
-            case ecallmgr_fs_node:uuid_dump(NodeHandler, CallID) of
-                {error, E} ->
-                    ?LOG("failed to get channel info for ~s: ~p", [CallID, E]),
-                    [{<<"Call-ID">>, CallID}
-                     ,{<<"Status">>, <<"active">>}
-                     ,{<<"Error-Msg">>, wh_util:to_binary(E)}
-                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)];
-		timeout ->
-		    ?LOG("failed to get channel info for ~s: timeout", [CallID]),
-                    [{<<"Call-ID">>, CallID}
-                     ,{<<"Status">>, <<"active">>}
-                     ,{<<"Error-Msg">>, <<"timeout querying the call">>}
-                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)];
-                {ok, Props} ->
-                    ?LOG("got channel info for ~s, forming response", [CallID]),
-                    create_call_status_resp(Props, props:get_value(<<"Channel-Call-UUID">>, Props) =:= CallID)
-            end
-    end.
-
+    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                     ], []).
 
 -spec handle_channel_status/2 :: (json_object(), proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
@@ -141,11 +119,11 @@ handle_channel_query(JObj, _Props) ->
     ListOfChannels = [ecallmgr_fs_node:show_channels(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()],
 
     SearchParams = lists:foldl(fun(Field, Acc) ->
-				       case wh_json:get_value(Field, JObj) of
-					   undefined -> Acc;
-					   Value -> [{Field, Value} | Acc]
-				       end
-			       end, [], wapi_call_query:optional_channel_headers()),
+                                       case wh_json:get_value(Field, JObj) of
+                                           undefined -> Acc;
+                                           Value -> [{Field, Value} | Acc]
+                                       end
+                               end, [], wapi_call:optional_channel_headers()),
 
     case lists:foldl(fun(NodeChannels, Acc) ->
                              filter_for_matching_uuids(SearchParams, NodeChannels, Acc)

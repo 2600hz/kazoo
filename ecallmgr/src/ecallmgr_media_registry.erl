@@ -17,7 +17,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("ecallmgr.hrl").
 
@@ -88,57 +88,57 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({register_local_media, MediaName, CallId}, {Pid, _Ref}, Dict) ->
     Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when Pid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
-				true;
-			   (_, _) -> false
-			end, Dict),
+                                true;
+                           (_, _) -> false
+                        end, Dict),
     case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
-	false ->
-	    link(Pid),
-	    Path = binary:replace(generate_local_path(MediaName), <<".wav">>, <<".mp3">>),
-	    {ok, RecvSrv} = ecallmgr_shout_sup:start_recv(Path),
-	    Url = ecallmgr_shout:get_recv_url(RecvSrv),
-	    {reply, Url, dict:store({Pid, CallId, MediaName, RecvSrv}, Path, Dict), hibernate};
-	[{_, Path}] ->
-	    {reply, Path, Dict}
+        false ->
+            link(Pid),
+            Path = binary:replace(generate_local_path(MediaName), <<".wav">>, <<".mp3">>),
+            {ok, RecvSrv} = ecallmgr_shout_sup:start_recv(Path),
+            Url = ecallmgr_shout:get_recv_url(RecvSrv),
+            {reply, Url, dict:store({Pid, CallId, MediaName, RecvSrv}, Path, Dict), hibernate};
+        [{_, Path}] ->
+            {reply, Path, Dict}
     end;
 
 handle_call({lookup_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
     ?LOG(CallId, "Lookup local media: ~s", [MediaName]),
     Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when FromPid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
-				true;
-			   (_, _) -> false
-			end, Dict),
+                                true;
+                           (_, _) -> false
+                        end, Dict),
     case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
         false ->
             {reply, {error, not_local}, Dict};
-	[{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
-	    spawn(fun() ->
-			  process_flag(trap_exit, true),
-			  link(RecvSrv),
-			  link(FromPid),
-			  _ = wait_for_fs_media(Path, RecvSrv, FromPid),
-			  gen_server:reply(From, {ok, Path})
-		  end),
-	    {noreply, Dict}
+        [{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
+            spawn(fun() ->
+                          process_flag(trap_exit, true),
+                          link(RecvSrv),
+                          link(FromPid),
+                          _ = wait_for_fs_media(Path, RecvSrv, FromPid),
+                          gen_server:reply(From, {ok, Path})
+                  end),
+            {noreply, Dict}
     end;
 
 handle_call({is_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
     ?LOG(CallId, "Is local: ~s", [MediaName]),
     Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when FromPid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
-				true;
-			   (_, _) -> false
-			end, Dict),
+                                true;
+                           (_, _) -> false
+                        end, Dict),
     case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
         false ->
             {reply, {error, not_local}, Dict};
-	[{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
-	    spawn(fun() ->
-			  process_flag(trap_exit, true),
-			  link(RecvSrv),
-			  link(FromPid),
-			  gen_server:reply(From, wait_for_fs_media(Path, RecvSrv, FromPid))
-		  end),
-	    {noreply, Dict}
+        [{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
+            spawn(fun() ->
+                          process_flag(trap_exit, true),
+                          link(RecvSrv),
+                          link(FromPid),
+                          gen_server:reply(From, wait_for_fs_media(Path, RecvSrv, FromPid))
+                  end),
+            {noreply, Dict}
     end;
 
 handle_call(_Request, _From, Dict) ->
@@ -173,14 +173,14 @@ handle_info({'DOWN', _Ref, process, Pid, _Reason}, Dict) ->
 
 handle_info({'EXIT', Pid, _Reason}, Dict) ->
     {noreply, dict:filter(fun({Pid1, CallId, _Name, _RecvSrv}, Path) ->
-				  case Pid =/= Pid1 of
-				      true -> true;
-				      false ->
-					  ?LOG(CallId, "Pid ~p exited, Reason ~p, cleaning up ~p...", [Pid, _Reason, Path]),
-					  _ = file:delete(Path),
-					  false
-				  end
-			  end, Dict), hibernate};
+                                  case Pid =/= Pid1 of
+                                      true -> true;
+                                      false ->
+                                          ?LOG(CallId, "Pid ~p exited, Reason ~p, cleaning up ~p...", [Pid, _Reason, Path]),
+                                          _ = file:delete(Path),
+                                          false
+                                  end
+                          end, Dict), hibernate};
 
 handle_info(_Info, Dict) ->
     ?LOG("Unhandled message: ~p", [self(), _Info]),
@@ -222,8 +222,8 @@ generate_local_path(MediaName) ->
 request_media(MediaName, Type, CallID) ->
     case gen_server:call(?MODULE, {lookup_local, MediaName, CallID}, infinity) of
         {ok, Path} ->
-	    {ok, Srv} = ecallmgr_shout_sup:start_srv(Path),
-	    Url = ecallmgr_shout:get_srv_url(Srv),
+            {ok, Srv} = ecallmgr_shout_sup:start_srv(Path),
+            Url = ecallmgr_shout:get_srv_url(Srv),
             {ok, Url};
         {error, _} ->
             lookup_remote(MediaName, Type, CallID)
@@ -233,7 +233,7 @@ lookup_remote(MediaName, extant, CallID) ->
     Request = [
                 {<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, <<"extant">>}
-	       ,{<<"Call-ID">>, CallID}
+               ,{<<"Call-ID">>, CallID}
                | wh_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     lookup_remote(MediaName, Request);
@@ -241,7 +241,7 @@ lookup_remote(MediaName, new, CallID) ->
     Request = [
                 {<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, <<"new">>}
-	       ,{<<"Call-ID">>, CallID}
+               ,{<<"Call-ID">>, CallID}
                | wh_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     lookup_remote(MediaName, Request).
@@ -249,34 +249,34 @@ lookup_remote(MediaName, new, CallID) ->
 -spec lookup_remote/2 :: (ne_binary(), proplist()) -> {'ok', ne_binary()} | {'error', 'not_local'}.
 lookup_remote(MediaName, Request) ->
     try
-	{ok, MediaResp} = ecallmgr_amqp_pool:media_req(Request, 1000),
-	true = wapi_media:resp_v(MediaResp),
-	MediaName = wh_json:get_value(<<"Media-Name">>, MediaResp),
+        {ok, MediaResp} = ecallmgr_amqp_pool:media_req(Request, 2000),
+        true = wapi_media:resp_v(MediaResp),
+        MediaName = wh_json:get_value(<<"Media-Name">>, MediaResp),
 
-	{ok, wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}
+        {ok, wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}
     catch
-	_:B ->
-	    {error, B}
+        _:B ->
+            {error, B}
     end.
 
 wait_for_fs_media(Path, RecvSrv, FromPid) ->
     case erlang:is_process_alive(RecvSrv) of
-	true ->
-	    ?LOG("Waiting for ~p to die for ~s", [RecvSrv, Path]),
-	    receive
-		{'EXIT', RecvSrv, Reason} ->
-		    ?LOG("SHOUT srv ~p went down(~p) for ~s", [RecvSrv, Reason, Path]),
-		    {ok, Path};
-		{'EXIT', FromPid, Reason} ->
-		    ?LOG("Caller ~p went down(~p) waiting for ~p(~s)", [FromPid, Reason, RecvSrv, Path]),
-		    exit(timeout);
-		_Other ->
-		    ?LOG("Received unhandled message: ~p", [_Other]),
-		    wait_for_fs_media(Path, RecvSrv, FromPid)
-	    after ?TIMEOUT_MEDIA_TRANSFER ->
-		    ?LOG("Waited long enough for ~p, going down with timeout", [RecvSrv]),
-		    exit(timeout)
-	    end;
-	false ->
-	    {ok, Path}
+        true ->
+            ?LOG("Waiting for ~p to die for ~s", [RecvSrv, Path]),
+            receive
+                {'EXIT', RecvSrv, Reason} ->
+                    ?LOG("SHOUT srv ~p went down(~p) for ~s", [RecvSrv, Reason, Path]),
+                    {ok, Path};
+                {'EXIT', FromPid, Reason} ->
+                    ?LOG("Caller ~p went down(~p) waiting for ~p(~s)", [FromPid, Reason, RecvSrv, Path]),
+                    exit(timeout);
+                _Other ->
+                    ?LOG("Received unhandled message: ~p", [_Other]),
+                    wait_for_fs_media(Path, RecvSrv, FromPid)
+            after ?TIMEOUT_MEDIA_TRANSFER ->
+                    ?LOG("Waited long enough for ~p, going down with timeout", [RecvSrv]),
+                    exit(timeout)
+            end;
+        false ->
+            {ok, Path}
     end.
