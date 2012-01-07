@@ -277,7 +277,9 @@ load_callflow_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec create_callflow/1 :: (#cb_context{}) -> #cb_context{}.
 create_callflow(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"callflows">>) of
+    Numbers = [wh_util:to_e164(Number) || Number <- wh_json:get_value(<<"numbers">>, Data, [])],
+    Data1 = wh_json:set_value(<<"numbers">>, Numbers, Data),
+    case wh_json_validator:is_valid(Data1, <<"callflows">>) of
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
@@ -312,7 +314,9 @@ load_callflow(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec update_callflow/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_callflow(DocId, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"callflows">>) of
+    Numbers = [wh_util:to_e164(Number) || Number <- wh_json:get_value(<<"numbers">>, Data, [])],
+    Data1 = wh_json:set_value(<<"numbers">>, Numbers, Data),
+    case wh_json_validator:is_valid(Data1, <<"callflows">>) of
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
