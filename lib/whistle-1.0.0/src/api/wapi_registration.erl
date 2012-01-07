@@ -15,45 +15,43 @@
 -export([success_keys/0]).
 
 -export([publish_success/1, publish_success/2, publish_query_req/1, publish_query_req/2
-	 ,publish_query_resp/2, publish_query_resp/3
-	]).
+         ,publish_query_resp/2, publish_query_resp/3
+        ]).
 
 -include("../wh_api.hrl").
 
 %% Registration Success
--define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"From-User">>, <<"From-Host">>, <<"Contact">>, <<"RPid">>
-				 ,<<"Expires">>, <<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
-				 , <<"Username">>, <<"Realm">>
-			    ]).
+-define(REG_SUCCESS_HEADERS, [<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Username">>, <<"Realm">>]).
 -define(OPTIONAL_REG_SUCCESS_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
-					   ,<<"FreeSWITCH-Hostname">>
-				      ]).
+                                           ,<<"From-User">>, <<"From-Host">>, <<"FreeSWITCH-Hostname">>, <<"RPid">>
+                                           ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
+                                      ]).
 -define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
-			    ,{<<"Event-Name">>, <<"reg_success">>}
-			   ]).
+                            ,{<<"Event-Name">>, <<"reg_success">>}
+                           ]).
 -define(REG_SUCCESS_TYPES, []).
 
 %% Query Registrations
 -define(REG_QUERY_HEADERS, [<<"Username">>, <<"Realm">>]).
 -define(OPTIONAL_REG_QUERY_HEADERS, [<<"Fields">>]).
 -define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
-			   ,{<<"Event-Name">>, <<"reg_query">>}
-			  ]).
+                           ,{<<"Event-Name">>, <<"reg_query">>}
+                          ]).
 -define(REG_QUERY_TYPES, [{<<"Fields">>, fun(Fs) when is_list(Fs) ->
-						 Allowed = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
-						 lists:foldl(fun(F, true) -> lists:member(F, Allowed);
-								(_, false) -> false
-							     end, true, Fs);
-					    (_) -> false
-					 end}
-			 ]).
+                                                 Allowed = ?OPTIONAL_REG_SUCCESS_HEADERS ++ ?REG_SUCCESS_HEADERS,
+                                                 lists:foldl(fun(F, true) -> lists:member(F, Allowed);
+                                                                (_, false) -> false
+                                                             end, true, Fs);
+                                            (_) -> false
+                                         end}
+                         ]).
 
 %% Registration Query Response
 -define(REG_QUERY_RESP_HEADERS, [<<"Fields">>]).
 -define(OPTIONAL_REG_QUERY_RESP_HEADERS, []).
 -define(REG_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
-				,{<<"Event-Name">>, <<"reg_query_resp">>}
-			       ]).
+                                ,{<<"Event-Name">>, <<"reg_query_resp">>}
+                               ]).
 -define(REG_QUERY_RESP_TYPES, []).
 
 %%--------------------------------------------------------------------
@@ -64,8 +62,8 @@
 -spec success/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 success(Prop) when is_list(Prop) ->
     case success_v(Prop) of
-	true -> wh_api:build_message(Prop, ?REG_SUCCESS_HEADERS, ?OPTIONAL_REG_SUCCESS_HEADERS);
-	false -> {error, "Proplist failed validation for reg_success"}
+        true -> wh_api:build_message(Prop, ?REG_SUCCESS_HEADERS, ?OPTIONAL_REG_SUCCESS_HEADERS);
+        false -> {error, "Proplist failed validation for reg_success"}
     end;
 success(JObj) ->
     success(wh_json:to_proplist(JObj)).
@@ -84,8 +82,8 @@ success_v(JObj) ->
 -spec query_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 query_req(Prop) when is_list(Prop) ->
     case query_req_v(Prop) of
-	true -> wh_api:build_message(Prop, ?REG_QUERY_HEADERS, ?OPTIONAL_REG_QUERY_HEADERS);
-	false -> {error, "Proplist failed validation for reg_query"}
+        true -> wh_api:build_message(Prop, ?REG_QUERY_HEADERS, ?OPTIONAL_REG_QUERY_HEADERS);
+        false -> {error, "Proplist failed validation for reg_query"}
     end;
 query_req(JObj) ->
     query_req(wh_json:to_proplist(JObj)).
@@ -104,8 +102,8 @@ query_req_v(JObj) ->
 -spec query_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 query_resp(Prop) when is_list(Prop) ->
     case query_resp_v(Prop) of
-	true -> wh_api:build_message(Prop, ?REG_QUERY_RESP_HEADERS, ?OPTIONAL_REG_QUERY_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for reg_query_resp"}
+        true -> wh_api:build_message(Prop, ?REG_QUERY_RESP_HEADERS, ?OPTIONAL_REG_QUERY_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for reg_query_resp"}
     end;
 query_resp(JObj) ->
     query_resp(wh_json:to_proplist(JObj)).
@@ -187,13 +185,13 @@ get_success_routing(JObj) ->
 %% "key.success.realm.user"
 get_success_binding(Props) ->
     User = case props:get_value(user, Props) of
-	       undefined -> ".*";
-	       U -> [".", amqp_util:encode(U)]
-	   end,
+               undefined -> ".*";
+               U -> [".", amqp_util:encode(U)]
+           end,
     Realm = case props:get_value(realm, Props) of
-		undefined -> ".*";
-		R -> [".", amqp_util:encode(R)]
-	    end,
+                undefined -> ".*";
+                R -> [".", amqp_util:encode(R)]
+            end,
 
     iolist_to_binary([?KEY_REG_SUCCESS, Realm, User]).
 
