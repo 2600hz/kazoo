@@ -1,0 +1,8 @@
+{
+    "_id": "webhooks",
+    "id": "http://json-schema.org/draft-03/schema#",
+    "description": "Configure a callback URI to respond to AMQP requests",
+    "properties": {
+        
+    }
+}
