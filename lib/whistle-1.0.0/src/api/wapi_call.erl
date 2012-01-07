@@ -253,6 +253,9 @@ channel_status_resp_v(Prop) when is_list(Prop) ->
 channel_status_resp_v(JObj) ->
     channel_status_resp_v(wh_json:to_proplist(JObj)).
 
+optional_channel_headers() ->
+    ?OPTIONAL_CALL_STATUS_RESP_HEADERS.
+
 %%--------------------------------------------------------------------
 %% @doc Inquire into the status of a call
 %% Takes proplist, creates JSON string or error

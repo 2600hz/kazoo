@@ -1,3 +1,5 @@
+-ifndef(WH_API_HEADERS).
+
 -ifndef(WHISTLE_TYPES_INCLUDED).
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
@@ -197,3 +199,5 @@
                            ,{<<"deaf">>, <<"Deaf">>}
                            ,{<<"moderator">>, <<"Moderator">>}
                            ]).
+-define(WH_API_HEADERS, true).
+-endif.

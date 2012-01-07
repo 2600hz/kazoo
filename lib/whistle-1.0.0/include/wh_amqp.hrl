@@ -5,6 +5,8 @@
 %%% @end
 %%% Created :  3 Nov 2010 by James Aimonetti <james@2600hz.org>
 
+-ifndef(WH_AMQP_HRL).
+
 -define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
 
 %% routing keys to use in the callmgr exchange
@@ -45,3 +47,6 @@
 
 -define(AMQP_RECONNECT_INIT_TIMEOUT, 500).
 -define(AMQP_RECONNECT_MAX_TIMEOUT, 5000).
+
+-define(WH_AMQP_HRL, true).
+-endif.
