@@ -347,15 +347,9 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
                                    ,db_name = <<"--">>}
                ,Number
               ],
-    Existing = get_context_jobj(<<"phone_numbers">>, Pass),
     case crossbar_bindings:fold(<<"v1_resource.validate.phone_numbers">>, Payload) of
-        [_, #cb_context{resp_status=success}=Context1 | _] when Existing =:= ?EMPTY_JSON_OBJECT ->
+        [_, #cb_context{resp_status=success}=Context1 | _] ->
             {[{<<"phone_numbers">>, Context1#cb_context{storage=Number}}|Pass], Fail};
-        [_, #cb_context{resp_status=success, doc=JObj}=Context1 | _] ->
-            {[{<<"phone_numbers">>, Context1#cb_context{storage=Number
-                                                        ,doc=wh_json:merge_recursive(JObj, Existing)
-                                                       }}
-              |proplists:delete(<<"phone_numbers">>, Pass)], Fail};
         [_, #cb_context{resp_data=Errors} | _] ->
             {Pass, wh_json:set_value([<<"phone_numbers">>, Number], Errors, Fail)}
     end.
@@ -575,7 +569,9 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
                   ,fun(J) ->
                            case wh_json:get_value(<<"numbers">>, J, []) of
                                [] ->
-                                   StartExten = whapps_config:get_integer(?OB_CONFIG_CAT, <<"default_callflow_start_exten">>, 2000),
+                                   StartExten = whapps_config:get_integer(?OB_CONFIG_CAT
+                                                                          ,<<"default_callflow_start_exten">>
+                                                                          ,2000),
                                    wh_json:set_value(<<"numbers">>, [wh_util:to_binary(StartExten + Iteration)], J);
                                _ -> J
                            end     
@@ -618,7 +614,8 @@ populate_new_account([], _, Errors) ->
     Errors;
 populate_new_account([{<<"phone_numbers">>, #cb_context{storage=Number}=Context}|Props], AccountDb, Errors) ->
     Payload = [undefined
-               ,Context#cb_context{db_name=AccountDb}
+               ,Context#cb_context{db_name=AccountDb
+                                   ,account_id=whapps_util:get_db_name(AccountDb, raw)}
                ,Number
               ],
     case crossbar_bindings:fold(<<"v1_resource.execute.put.phone_numbers">>, Payload) of
