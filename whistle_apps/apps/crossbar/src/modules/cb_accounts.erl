@@ -730,8 +730,8 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
         false ->
             ?LOG("Check failed for db_exists on ~s", [AccountId]),
             Context#cb_context{
-                 db_name = <<>>
-                ,account_id = <<>>
+                 db_name = undefined
+                ,account_id = undefined
             };
         true ->
             ?LOG("Check succeeded for db_exists on ~s", [AccountId]),

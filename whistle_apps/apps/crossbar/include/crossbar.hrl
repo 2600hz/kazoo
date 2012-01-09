@@ -38,8 +38,8 @@
           ,req_files = [] :: [{binary(), json_object()},...] | []
           ,req_data = [] :: mochijson()  % the "data" from the request JSON envelope
           ,query_json = ?EMPTY_JSON_OBJECT :: json_object()
-          ,account_id = <<>> :: binary()
-          ,db_name = <<>> :: binary()
+          ,account_id = undefined :: undefined | binary()
+          ,db_name = undefined :: undefined | binary()
           ,doc = ?EMPTY_JSON_OBJECT :: json_object() | json_objects()
           ,resp_expires = {{1999,1,1},{0,0,0}} :: wh_datetime()
           ,resp_etag = 'undefined' :: 'undefined' | 'automatic' | string()
