@@ -10,10 +10,12 @@
 -module(wh_number_manager).
 
 -export([find/1, find/2]).
--export([get_account/1, set_account/2]).
--export([get_number/2, save_number/3]).
+-export([assign_number_to_account/2]).
+-export([get_public_fields/2, set_public_fields/3]).
+-export([lookup_account_by_number/1]).
 
 -include("../include/wh_number_manager.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -42,7 +44,7 @@ find(Number, Quanity) ->
 %% if necessary
 %% @end
 %%--------------------------------------------------------------------
-set_account(Number, AccountId) ->
+assign_number_to_account(Number, AccountId) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
     try
@@ -77,7 +79,7 @@ set_account(Number, AccountId) ->
                    ],
         case couch_mgr:save_doc(Db, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters)) of
             {ok, JObj2} -> 
-                add_number_to_account(JObj2, AccountId),
+                add_number_to_account(Num, AccountId),
                 {ok, wh_json:public_fields(JObj2)};
             {error, _}=E -> 
                 E
@@ -93,8 +95,20 @@ set_account(Number, AccountId) ->
 %% assignment
 %% @end
 %%--------------------------------------------------------------------
-get_account(Number) ->
-    ok.
+-spec lookup_account_by_number/1 :: (ne_binary()) -> {ok, ne_binary(), boolean()} |
+                                                     {error, term()}.
+lookup_account_by_number(Number) ->
+    Num = wnm_util:normalize_number(Number),
+    Db = wnm_util:number_to_db_name(Num),
+    DefaultAccount = whapps_config:get_non_empty(?WNM_CONFIG_CAT, <<"default_account">>, <<>>),
+    case couch_mgr:open_doc(Db, Num) of
+        {ok, JObj} ->
+            {ok, wh_json:get_value(<<"pvt_assigned_to">>, JObj, DefaultAccount)
+             ,wh_json:is_true(<<"force_outbound">>, JObj, false)};
+        {error, _} when DefaultAccount =/= undefined -> 
+            {ok, DefaultAccount, false};
+        {error, _}=E -> E
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -102,7 +116,7 @@ get_account(Number) ->
 %% Update the user configurable fields
 %% @end
 %%--------------------------------------------------------------------
-get_number(Number, AccountId) ->
+get_public_fields(Number, AccountId) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
     case couch_mgr:open_doc(Db, Num) of
@@ -123,7 +137,7 @@ get_number(Number, AccountId) ->
 %% Update the user configurable fields
 %% @end
 %%--------------------------------------------------------------------
-save_number(Number, AccountId, PublicJObj) ->
+set_public_fields(Number, AccountId, PublicJObj) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
     try
@@ -137,7 +151,7 @@ save_number(Number, AccountId, PublicJObj) ->
                end,
         case couch_mgr:save_doc(Db, wh_json:merge_jobjs(wh_json:private_fields(JObj1), PublicJObj)) of
             {ok, JObj2} -> 
-                add_number_to_account(JObj2, AccountId),
+                add_number_to_account(Num, AccountId),
                 {ok, wh_json:public_fields(JObj2)};
             {error, _}=E -> 
                 E
@@ -186,7 +200,6 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
             prepare_find_results(Numbers, ModuleName, ModuleResults, Found)
     end.    
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -221,5 +234,53 @@ store_discovery(Number, ModuleName, ModuleData) ->
             Else
     end.
 
-add_number_to_account(JObj, AccountId) ->
-    ok.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Adds a number to the list kept on the account defintion doc, then
+%% aggregates the new document to the accounts db.
+%% @end
+%%--------------------------------------------------------------------
+-spec add_number_to_account/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} |
+                                                               {error, term()}.
+add_number_to_account(Number, AccountId) ->
+    Db = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_doc(Db, AccountId) of
+        {ok, JObj} ->
+            Numbers = wh_json:get_value(<<"pvt_wnm_numbers">>, JObj, []),
+            case couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_wnm_numbers">>
+                                                              ,[Number|lists:delete(Number,Numbers)]
+                                                          ,JObj)) of
+                {ok, AccountDef} ->
+                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, AccountDef);
+                Else ->
+                    Else
+            end;
+        Else ->
+            Else
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Removes a number from the list kept on the account defintion doc, then
+%% aggregates the new document to the accounts db.
+%% @end
+%%--------------------------------------------------------------------
+-spec remove_number_from_account/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} |
+                                                                    {error, term()}.
+remove_number_from_account(Number, AccountId) ->
+    Db = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_doc(Db, AccountId) of
+        {ok, JObj} ->
+            Numbers = wh_json:get_value(<<"pvt_wnm_numbers">>, JObj, []),
+            case couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_wnm_numbers">>
+                                                              ,lists:delete(Number,Numbers), JObj)) of
+                {ok, AccountDef} ->
+                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, AccountDef);
+                Else ->
+                    Else
+            end;
+        Else ->
+            Else
+    end.
