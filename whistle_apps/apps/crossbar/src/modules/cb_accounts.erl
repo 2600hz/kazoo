@@ -553,8 +553,7 @@ update_parent(AccountId, #cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec load_children/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_children(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_CHILDREN, [
-                                                {<<"startkey">>, [AccountId]}
+    crossbar_doc:load_view(?AGG_VIEW_CHILDREN, [{<<"startkey">>, [AccountId]}
                                                 ,{<<"endkey">>, [AccountId, wh_json:new()]}
                                                ], Context, fun normalize_view_results/2).
 
@@ -566,8 +565,7 @@ load_children(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_descendants/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_descendants(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [
-                                                   {<<"startkey">>, [AccountId]}
+    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [{<<"startkey">>, [AccountId]}
                                                    ,{<<"endkey">>, [AccountId, wh_json:new()]}
                                                   ], Context, fun normalize_view_results/2).
 
@@ -579,8 +577,7 @@ load_descendants(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_siblings/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_siblings(AccountId, Context) ->
-    case crossbar_doc:load_view(?AGG_VIEW_PARENT, [
-                                                   {<<"startkey">>, AccountId}
+    case crossbar_doc:load_view(?AGG_VIEW_PARENT, [{<<"startkey">>, AccountId}
                                                    ,{<<"endkey">>, AccountId}
                                                   ], Context) of
         #cb_context{resp_status=success, doc=[JObj|_]} ->
