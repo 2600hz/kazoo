@@ -19,7 +19,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2
-	 ,handle_event/2, terminate/2, code_change/3]).
+         ,handle_event/2, terminate/2, code_change/3]).
 
 -include("webhooks.hrl").
 
@@ -27,9 +27,9 @@
 
 -record(state, {acctdb = 'undefined' :: 'undefined' | ne_binary()
                ,acctid = 'undefined' :: 'undefined' | ne_binary()
-	       ,webhook = 'undefined' :: 'undefined' | json_object()
+               ,webhook = 'undefined' :: 'undefined' | json_object()
                ,realm = 'undefined' :: 'undefined' | ne_binary()
-	       }).
+               }).
 
 %%%===================================================================
 %%% API
@@ -44,8 +44,8 @@
 %%--------------------------------------------------------------------
 start_link(AcctDB, Webhooks) ->
     gen_listener:start_link(?MODULE, [{responders, [{?MODULE, {<<"*">>, <<"*">>}}]}
-				      ,{bindings, [{self, []}]}
-				     ], [AcctDB, Webhooks]).
+                                      ,{bindings, [{self, []}]}
+                                     ], [AcctDB, Webhooks]).
 
 handle_req(JObj, Props) ->
     wh_util:put_callid(JObj),
@@ -90,24 +90,24 @@ init([AcctDB, Webhook]) ->
 
     Self = self(),
     spawn(fun() ->
-		  BindOptions = case wh_json:get_value(<<"bind_options">>, Webhook, []) of
-				    Prop when is_list(Prop) -> Prop;
-				    JObj -> wh_json:to_proplist(JObj) % maybe [{restrict_to, [call, events]},...] or other json-y type
-				end,
+                  BindOptions = case wh_json:get_value(<<"bind_options">>, Webhook, []) of
+                                    Prop when is_list(Prop) -> Prop;
+                                    JObj -> wh_json:to_proplist(JObj) % maybe [{restrict_to, [call, events]},...] or other json-y type
+                                end,
 
-		  gen_listener:add_binding(Self
-					   ,wh_json:get_value(<<"bind_event">>, Webhook)
-					   ,[{realm, Realm}, {acctid, AcctID} | BindOptions]
-					  )
-	  end),
+                  gen_listener:add_binding(Self
+                                           ,wh_json:get_value(<<"bind_event">>, Webhook)
+                                           ,[{realm, Realm}, {acctid, AcctID} | BindOptions]
+                                          )
+          end),
 
     ?LOG("Starting webhook listener for ~s (~s)", [AcctID, Realm]),
 
     {ok, #state{acctdb=AcctDB
-		,acctid=AcctID
-		,realm=Realm
-		,webhook=Webhook
-	       }}.
+                ,acctid=AcctID
+                ,realm=Realm
+                ,webhook=Webhook
+               }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -189,28 +189,30 @@ try_send_req(_, _, _, R) when R =< 0 ->
     {error, retries_exceeded};
 try_send_req(Uri, Method, ReqJObj, Retries) ->
     try
-	case ibrowse:send_req(wh_util:to_list(Uri)
-			      ,[{"content-type", "application/json"}
-				,{"accept", "application/json"}
-			       ]
-			      ,Method, wh_json:encode(ReqJObj)) of
-	    {ok, Status, ResponseHeaders, ResponseBody} ->
-		?LOG("Resp status: ~s", [Status]),
-		_ = [?LOG("Resp header: ~s: ~s", [K,V]) || {K,V} <- ResponseHeaders],
-		?LOG("Resp body: ~s", [ResponseBody]),
+        case ibrowse:send_req(wh_util:to_list(Uri)
+                              ,[{"content-type", "application/json"}
+                                ,{"accept", "application/json"}
+                               ]
+                              ,Method
+                              ,wh_json:encode(ReqJObj)
+                             ) of
+            {ok, Status, ResponseHeaders, ResponseBody} ->
+                ?LOG("Resp status: ~s", [Status]),
+                _ = [?LOG("Resp header: ~s: ~s", [K,V]) || {K,V} <- ResponseHeaders],
+                ?LOG("Resp body: ~s", [ResponseBody]),
 
-		case wh_util:to_binary(props:get_value("Content-Type", ResponseHeaders)) of
-		    <<"application/xml">> -> {ok, decode_xml(ResponseBody)};
-		    _ -> {ok, wh_json:decode(ResponseBody)}
-		end;
-	    {error, Reason} ->
-		?LOG("Request failed: ~p", [Reason]),
-		try_send_req(Uri, Method, ReqJObj, Retries-1)
-	end
+                case wh_util:to_binary(props:get_value("Content-Type", ResponseHeaders)) of
+                    <<"application/xml">> -> {ok, decode_xml(ResponseBody)};
+                    _ -> {ok, wh_json:decode(ResponseBody)}
+                end;
+            {error, Reason} ->
+                ?LOG("Request failed: ~p", [Reason]),
+                try_send_req(Uri, Method, ReqJObj, Retries-1)
+        end
     catch
-	T:R ->
-	    ?LOG("Caught ~s:~p", [T, R]),
-	    try_send_req(Uri, Method, ReqJObj, Retries-1)
+        T:R ->
+            ?LOG("Caught ~s:~p", [T, R]),
+            try_send_req(Uri, Method, ReqJObj, Retries-1)
     end.
 
 -spec get_method_atom/1 :: (<<_:24,_:_*8>>) -> 'put' | 'post' | 'get'.
@@ -223,7 +225,7 @@ decode_xml(_Body) ->
     %% eventually support TwiML and other XML-based formats
     throw({not_supported, xml}).
 
-try_send_resp(ReqJObj, HTTPJObj, Q, Binding) ->
+try_send_resp(ReqJObj, HTTPJObj, MyQ, Binding) ->
     DefaultJObj = wh_json:from_list(wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)),
     RespJObj = wh_json:merge_jobj(DefaultJObj, HTTPJObj),
 
