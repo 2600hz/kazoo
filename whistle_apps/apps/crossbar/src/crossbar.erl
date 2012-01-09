@@ -9,7 +9,6 @@
 -module(crossbar).
 
 -include("../include/crossbar.hrl").
--include_lib("whistle/include/wh_databases.hrl").
 
 -export([start_link/0, stop/0]).
 
@@ -69,9 +68,9 @@ refresh() ->
     started.
 
 do_refresh() ->
-    refresh(?SIP_AUTH),
-    refresh(?SYS_SCHEMA),
-    refresh(?ACCOUNTS_AGG_DB),
+    refresh(?WH_SIP_DB),
+    refresh(?WH_SCHEMA_DB),
+    refresh(?WH_ACCOUNTS_DB),
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2000),
                           refresh(AccountDb)
@@ -79,26 +78,26 @@ do_refresh() ->
 
 refresh(Account) when not is_binary(Account) ->
     refresh(wh_util:to_binary(Account));
-refresh(?SIP_AUTH) ->
-    couch_mgr:db_create(?SIP_AUTH);
-refresh(?SYS_SCHEMA) ->
-    couch_mgr:db_create(?SYS_SCHEMA),
-    couch_mgr:revise_docs_from_folder(?SYS_SCHEMA, crossbar, "schemas");
-refresh(?ACCOUNTS_AGG_DB) ->
-    couch_mgr:db_create(?ACCOUNTS_AGG_DB),
-    couch_mgr:revise_doc_from_file(?ACCOUNTS_AGG_DB, crossbar, ?ACCOUNTS_AGG_VIEW_FILE),
-    couch_mgr:revise_doc_from_file(?ACCOUNTS_AGG_DB, crossbar, ?MAINTENANCE_VIEW_FILE),
+refresh(?WH_SIP_DB) ->
+    couch_mgr:db_create(?WH_SIP_DB);
+refresh(?WH_SCHEMA_DB) ->
+    couch_mgr:db_create(?WH_SCHEMA_DB),
+    couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, crossbar, "schemas");
+refresh(?WH_ACCOUNTS_DB) ->
+    couch_mgr:db_create(?WH_ACCOUNTS_DB),
+    couch_mgr:revise_doc_from_file(?WH_ACCOUNTS_DB, crossbar, ?ACCOUNTS_AGG_VIEW_FILE),
+    couch_mgr:revise_doc_from_file(?WH_ACCOUNTS_DB, crossbar, ?MAINTENANCE_VIEW_FILE),
     ok;
 refresh(Account) ->
-    AccountDb = whapps_util:get_db_name(Account, encoded),
-    AccountId = whapps_util:get_db_name(Account, raw),
+    AccountDb = wh_util:format_account_id(Account, encoded),
+    AccountId = wh_util:format_account_id(Account, raw),
     couch_mgr:revise_docs_from_folder(AccountDb, crossbar, "account"),
     couch_mgr:revise_doc_from_file(AccountDb, crossbar, ?MAINTENANCE_VIEW_FILE),
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {error, not_found} ->
             ?LOG("account ~s is missing its local account definition!", [AccountId]);
         {ok, JObj} ->
-            couch_mgr:ensure_saved(?ACCOUNTS_AGG_DB, JObj)
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj)
     end,
     case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, [{<<"include_docs">>, true}]) of
         {ok, Devices} ->
@@ -111,19 +110,19 @@ aggregate_device(undefined) ->
     ok;
 aggregate_device(Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
-    case couch_mgr:lookup_doc_rev(?SIP_AUTH, DeviceId) of
+    case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
         {ok, Rev} ->
-            couch_mgr:ensure_saved(?SIP_AUTH, wh_json:set_value(<<"_rev">>, Rev, Device));
+            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Device));
         {error, not_found} ->
-            couch_mgr:ensure_saved(?SIP_AUTH, wh_json:delete_key(<<"_rev">>, Device))
+            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Device))
     end,
     ok.
 
 -spec init_first_account/0 :: () -> {'error', 'accounts_exist' | 'db_create_failed' | 'user_create_failed' | ne_binary()} |
                                     {ok, {ne_binary(), ne_binary()}}.
 init_first_account() ->
-    refresh(?ACCOUNTS_AGG_DB),
-    case couch_mgr:all_docs(?ACCOUNTS_AGG_DB) of
+    refresh(?WH_ACCOUNTS_DB),
+    case couch_mgr:all_docs(?WH_ACCOUNTS_DB) of
         {ok, Docs} ->
             case [AcctDoc || AcctDoc <- Docs, erlang:binary_part(wh_json:get_value(<<"id">>, AcctDoc, <<>>), 0, 8) =/= <<"_design/">>] of
                 [] -> init_first_account_for_reals();
@@ -138,7 +137,7 @@ init_first_account_for_reals() ->
     DbName = wh_util:to_binary(couch_mgr:get_uuid()),
     put(callid, DbName),
 
-    Db = whapps_util:get_db_name(DbName, encoded),
+    Db = wh_util:format_account_id(DbName, encoded),
 
     JObj = wh_json:from_list([{<<"name">>, <<"Master Account">>}
                               ,{<<"realm">>, list_to_binary([<<"admin.">>, net_adm:localhost()])}
@@ -156,7 +155,7 @@ init_first_account_for_reals() ->
                 _ = couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
                 _ = couch_mgr:revise_doc_from_file(Db, crossbar, ?MAINTENANCE_VIEW_FILE),
                 #cb_context{resp_status=success, doc=AcctDoc} = crossbar_doc:save(DbContext#cb_context{db_name = Db, req_verb = <<"put">>}),
-                {ok, _} = couch_mgr:save_doc(?ACCOUNTS_AGG_DB, wh_json:delete_key(<<"_rev">>, AcctDoc)),
+                {ok, _} = couch_mgr:save_doc(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, AcctDoc)),
                 create_init_user(Db)
             catch
                 error:{badmatch, #cb_context{resp_status=Status,resp_error_msg=Msg,resp_error_code=Code,resp_data=JTerm}} ->
@@ -174,7 +173,7 @@ init_first_account_for_reals() ->
 
 -spec revert_init/2 :: (ne_binary(), ne_binary()) -> boolean().
 revert_init(Db, DbName) ->
-    _ = couch_mgr:del_doc(?ACCOUNTS_AGG_DB, DbName),
+    _ = couch_mgr:del_doc(?WH_ACCOUNTS_DB, DbName),
     couch_mgr:db_delete(Db).
 
 -spec create_init_user/1 :: (ne_binary()) -> {'ok', {ne_binary(), ne_binary()}}.
@@ -207,7 +206,7 @@ purge_doc_type(Type, Account) when not is_binary(Type) ->
 purge_doc_type(Type, Account) when not is_binary(Account) ->
     purge_doc_type(Type, wh_util:to_binary(Account));
 purge_doc_type(Type, Account) ->
-    Db = whapps_util:get_db_name(Account, encoded),
+    Db = wh_util:format_account_id(Account, encoded),
     case couch_mgr:get_results(Db, {<<"maintenance">>, <<"listing_by_type">>}, [{<<"key">>, Type}, {<<"include_docs">>, true}]) of
         {ok, JObjs} ->
             couch_mgr:del_docs(Db, [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]);

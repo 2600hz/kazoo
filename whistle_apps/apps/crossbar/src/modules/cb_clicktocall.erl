@@ -30,7 +30,7 @@
 -define(HISTORY, <<"history">>).
 -define(CB_LIST, <<"click2call/crossbar_listing">>).
 -define(PVT_TYPE, <<"click2call">>).
--define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, <<"connect">>]}, {<<"accounts">>, [_]}]).
+-define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, <<"connect">>]}, {?WH_ACCOUNTS_DB, [_]}]).
 
 %%%===================================================================
 %%% API

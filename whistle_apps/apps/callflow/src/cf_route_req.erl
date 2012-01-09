@@ -46,7 +46,7 @@ handle_req(JObj, Options) ->
                             ,to_realm = ToRealm
                             ,inception = wh_json:get_value(<<"Inception">>, CVs)
                             ,account_id = AccountId
-                            ,account_db = whapps_util:get_db_name(AccountId, encoded)
+                            ,account_db = wh_util:format_account_id(AccountId, encoded)
                             ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CVs)
                             ,channel_vars = CVs
                             ,inception_during_transfer = wh_json:is_true(<<"During-Transfer">>, JObj)

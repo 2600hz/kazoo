@@ -278,7 +278,7 @@ load_conference_summary(Context) ->
                                                                           [undefined|Acc]
                                                                   end
                                                           end);
-        {<<"accounts">>, _} ->
+        {?WH_ACCOUNTS_DB, _} ->
             crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
         _ ->
             crossbar_util:response_faulty_request(Context)

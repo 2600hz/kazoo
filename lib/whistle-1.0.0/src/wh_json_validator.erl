@@ -60,7 +60,7 @@
 -spec is_valid/2 :: (json_object(), ne_binary() | json_object()) -> results().
 is_valid(JObj, Schema) when is_binary(Schema) ->
     %% TODO: cache the schema?
-    case couch_mgr:open_doc(?SYS_SCHEMA, Schema) of
+    case couch_mgr:open_doc(?WH_SCHEMA_DB, Schema) of
         {ok, SchemaJObj} ->
             is_valid(JObj, SchemaJObj);
         {error, R} ->

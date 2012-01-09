@@ -314,11 +314,11 @@ create_account(JObj, Context, {Pass, Fail}) ->
                  ],
     Payload = [undefined
                ,Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Account, Generators)
-                                   ,req_nouns=[{<<"accounts">>, []}]}
+                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]}
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.accounts">>, Payload) of
         [_, #cb_context{resp_status=success}=Context1 | _] ->
-            {[{<<"accounts">>, Context1}|Pass], Fail};
+            {[{?WH_ACCOUNTS_DB, Context1}|Pass], Fail};
         [_, #cb_context{resp_data=Errors} | _] ->
             {Pass, wh_json:set_value(<<"account">>, Errors, Fail)}
     end.
@@ -600,11 +600,11 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
 
 populate_new_account(Props, _) ->
     Payload = [undefined
-               ,props:get_value(<<"accounts">>, Props)
+               ,props:get_value(?WH_ACCOUNTS_DB, Props)
               ],
     case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, Payload) of
         [_, #cb_context{resp_status=success, db_name=AccountDb}=Context | _] ->
-            populate_new_account(proplists:delete(<<"accounts">>, Props), AccountDb, []),
+            populate_new_account(proplists:delete(?WH_ACCOUNTS_DB, Props), AccountDb, []),
             Context;
         [_, ErrorContext | _] ->
             ErrorContext
@@ -615,7 +615,7 @@ populate_new_account([], _, Errors) ->
 populate_new_account([{<<"phone_numbers">>, #cb_context{storage=Number}=Context}|Props], AccountDb, Errors) ->
     Payload = [undefined
                ,Context#cb_context{db_name=AccountDb
-                                   ,account_id=whapps_util:get_db_name(AccountDb, raw)}
+                                   ,account_id=wh_util:format_account_id(AccountDb, raw)}
                ,Number
               ],
     case crossbar_bindings:fold(<<"v1_resource.execute.put.phone_numbers">>, Payload) of

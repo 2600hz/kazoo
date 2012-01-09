@@ -287,7 +287,7 @@ authorize_user(Context, _, <<>>, _) ->
 authorize_user(Context, Realm, Credentials, Method) ->
     case whapps_util:get_account_by_realm(Realm) of
         {ok, AccountDb} ->
-            ?LOG("realm ~s belongs to account ~s", [Realm, whapps_util:get_db_name(AccountDb, raw)]),
+            ?LOG("realm ~s belongs to account ~s", [Realm, wh_util:format_account_id(AccountDb, raw)]),
             authorize_user(Context, Realm, Credentials, Method, AccountDb);
         {error, not_found} ->
             ?LOG("could not find account with realm ~s", [Realm]),

@@ -364,7 +364,7 @@ update_phone_number(Account, Number, ExistingJObj, #cb_context{doc=NewJObj, req_
     NumberJObj = wh_json:merge_jobjs(crossbar_doc:private_fields(ExistingJObj), NewJObj),
     case crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(get_key(Number), NumberJObj, Account)}) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
-            couch_mgr:ensure_saved(?ACCOUNTS_AGG_DB, JObj),
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
             Context1#cb_context{resp_data=crossbar_doc:public_fields(NumberJObj)};
         Else ->
             Else
@@ -372,7 +372,7 @@ update_phone_number(Account, Number, ExistingJObj, #cb_context{doc=NewJObj, req_
 update_phone_number(Account, Number, undefined, #cb_context{doc=NumberJObj, req_verb = <<"put">>}=Context) ->
     case crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(get_key(Number), NumberJObj, Account)}) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
-            couch_mgr:ensure_saved(?ACCOUNTS_AGG_DB, JObj),
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
             Context1#cb_context{resp_data=crossbar_doc:public_fields(NumberJObj)};
         Else ->
             Else
@@ -384,7 +384,7 @@ update_phone_number(_, Number, undefined, #cb_context{req_verb = <<"delete">>}=C
 update_phone_number(Account, Number, _, #cb_context{req_verb = <<"delete">>}=Context) ->
     case crossbar_doc:save(Context#cb_context{doc=wh_json:delete_key(get_key(Number), Account)}) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
-            couch_mgr:ensure_saved(?ACCOUNTS_AGG_DB, JObj),
+            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
             Context1#cb_context{resp_data=[]};
         Else ->
             Else

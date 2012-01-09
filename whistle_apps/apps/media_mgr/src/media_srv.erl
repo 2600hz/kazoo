@@ -292,7 +292,7 @@ find_attachment([<<>>, Db, Doc, Attachment]) ->
 find_attachment([Db, Doc, first]) ->
     DbName = case couch_mgr:db_exists(Db) of
                  true -> Db;
-                 false -> whapps_util:get_db_name(Db, encoded)
+                 false -> wh_util:format_account_id(Db, encoded)
              end,
     case couch_mgr:open_doc(DbName, Doc) of
 	{ok, JObj} ->
@@ -309,7 +309,7 @@ find_attachment([Db, Doc, first]) ->
 find_attachment([Db, Doc, Attachment]) ->
     DbName = case couch_mgr:db_exists(Db) of
                  true -> Db;
-                 false -> whapps_util:get_db_name(Db, encoded)
+                 false -> wh_util:format_account_id(Db, encoded)
              end,
     case couch_mgr:open_doc(DbName, Doc) of
         {ok, JObj} ->

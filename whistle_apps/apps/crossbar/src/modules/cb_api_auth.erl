@@ -31,7 +31,7 @@
 
 -define(TOKEN_DB, <<"token_auth">>).
 
--define(AGG_DB, <<"accounts">>).
+-define(AGG_DB, ?WH_ACCOUNTS_DB).
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_API, <<"accounts/listing_by_api">>).
 

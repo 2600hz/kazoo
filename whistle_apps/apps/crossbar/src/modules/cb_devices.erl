@@ -136,12 +136,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Co
                           spawn(fun() ->
                              do_awesome_provision(whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>), Context1)
                           end),
-                          case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
+                          case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
                               {ok, Rev} ->
-                                  couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1)),
+                                  couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1)),
                                   Pid ! {binding_result, true, [RD, Context1, Params]};
                               {error, not_found} ->
-                                  couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
+                                  couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
                                   Pid ! {binding_result, true, [RD, Context1, Params]}
                           end;
                       Else ->
@@ -159,7 +159,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Con
                           spawn(fun() ->
                              do_awesome_provision(whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>), Context1)
                           end),
-                          couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
+                          couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
@@ -174,9 +174,9 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, 
                   case crossbar_doc:delete(Context) of
                       #cb_context{resp_status=success}=Context1 ->
                           DeviceId = wh_json:get_value(<<"_id">>, Doc),
-                          case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
+                          case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
                               {ok, Rev} ->
-                                  couch_mgr:del_doc(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Doc));
+                                  couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc));
                               {error, not_found} ->
                                   ok
                           end,

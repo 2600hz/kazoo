@@ -224,9 +224,9 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec validate/2 :: ([ne_binary(),...] | [], #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    summary(Context#cb_context{db_name = ?SYS_SCHEMA});
+    summary(Context#cb_context{db_name = ?WH_SCHEMA_DB});
 validate([Id], #cb_context{req_verb = <<"get">>}=Context) ->
-    read(Id, Context#cb_context{db_name = ?SYS_SCHEMA});
+    read(Id, Context#cb_context{db_name = ?WH_SCHEMA_DB});
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 

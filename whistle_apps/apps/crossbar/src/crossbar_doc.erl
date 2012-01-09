@@ -587,7 +587,7 @@ add_pvt_account_db(JObj, DBName) ->
     wh_json:set_value(<<"pvt_account_db">>, DBName, JObj).
 
 add_pvt_account_id(JObj, DBName) ->
-    wh_json:set_value(<<"pvt_account_id">>, whapps_util:get_db_name(DBName, raw), JObj).
+    wh_json:set_value(<<"pvt_account_id">>, wh_util:format_account_id(DBName, raw), JObj).
 
 add_pvt_created(JObj, _) ->
     case wh_json:get_value(<<"_rev">>, JObj) of

@@ -124,7 +124,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
                  ,{RD, #cb_context{req_nouns=[{<<"servers">>, [_,<<"deployment">>]},
-                                              {<<"accounts">>,[_]}]
+                                              {?WH_ACCOUNTS_DB,[_]}]
                                    ,req_verb = <<"post">>
                                    ,req_id=ReqId}=Context}}, State) ->
     ?LOG(ReqId, "authorizing request", []),
@@ -133,7 +133,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
 
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
                  ,{RD, #cb_context{req_nouns=[{<<"servers">>, [_,<<"deployment">>]},
-                                              {<<"accounts">>,[_]}]
+                                              {?WH_ACCOUNTS_DB,[_]}]
                                    ,req_verb = <<"post">>
                                    ,req_id=ReqId}=Context}}, State) ->
     ?LOG(ReqId, "authenticate request", []),
@@ -595,7 +595,7 @@ template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context
                        || Srv <- Srvs];
                   {error, _} -> []
               end,
-    Account = case couch_mgr:open_doc(Db, whapps_util:get_db_name(Db, raw)) of
+    Account = case couch_mgr:open_doc(Db, wh_util:format_account_id(Db, raw)) of
                   {ok, A} -> wh_json:to_proplist(A);
                   {error, _} -> []
               end,

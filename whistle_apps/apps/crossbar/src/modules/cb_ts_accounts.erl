@@ -311,7 +311,7 @@ create_ts_account(#cb_context{req_data=JObj, account_id=AccountId}=Context) ->
                                           true ->
                                               AuthRealm = wh_json:get_value([<<"account">>, <<"auth_realm">>], JObj),
                                               {ok, RealmAccountDb} = whapps_util:get_account_by_realm(AuthRealm),
-                                              whapps_util:get_db_name(RealmAccountDb, raw)
+                                              wh_util:format_account_id(RealmAccountDb, raw)
                                       end,
                                  true = is_binary(Id),
                                  wh_json:set_value(<<"_id">>, Id, J)

@@ -410,7 +410,7 @@ update_doc(Key, Value, Id, Db) ->
 -spec get_menu_profile/2 :: (json_object(), #cf_call{}) -> #menu{}.
 get_menu_profile(Data, #cf_call{account_id=AccountId}) ->
     Id = wh_json:get_value(<<"id">>, Data),
-    Db = whapps_util:get_db_name(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             ?LOG("loaded menu route ~s", [Id]),

@@ -267,7 +267,7 @@ fetch_category(Category, Cache) ->
 %%-----------------------------------------------------------------------------
 -spec fetch_db_config/2 :: (ne_binary(), pid()) -> {'ok', json_object()} | {'error', 'not_found'}.
 fetch_db_config(Category, Cache) ->
-    case couch_mgr:open_doc(?CONFIG_DB, Category) of
+    case couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj}=Ok ->
             wh_cache:store_local(Cache, {?MODULE, Category}, JObj),
             Ok;
@@ -345,7 +345,7 @@ do_set(Category, Node, Key, Value) ->
 %%-----------------------------------------------------------------------------
 -spec update_category_node/4 :: (ne_binary(), ne_binary(), fun((json_object()) -> json_object()) , pid()) -> {'ok', json_object()}.
 update_category_node(Category, Node, UpdateFun , Cache) ->
-    case is_pid(whereis(couch_mgr)) andalso couch_mgr:open_doc(?CONFIG_DB, Category) of
+    case is_pid(whereis(couch_mgr)) andalso couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj} ->
             case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
                 JObj -> {ok, JObj};
@@ -379,8 +379,8 @@ update_category_node(Category, Node, UpdateFun , Cache) ->
 update_category(Category, JObj, Cache) ->
     ?LOG("updating configuration category ~s", [Category]),
     JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),
-    {ok, SavedJObj} = couch_mgr:ensure_saved(?CONFIG_DB, JObj1),
-    ?LOG("saved cat ~s to db ~s", [Category, ?CONFIG_DB]),
+    {ok, SavedJObj} = couch_mgr:ensure_saved(?WH_CONFIG_DB, JObj1),
+    ?LOG("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
     cache_jobj(Cache, Category, SavedJObj).
 
 cache_jobj(Cache, Category, JObj) ->

@@ -318,7 +318,7 @@ wait_for_handoff(AccountId, ConfId, Caller) ->
             ?LOG("no conference service is running, starting new"),
             %% TODO: If I had more time this doc should come from validate_conference_id...
             {ok, Conference} =
-                couch_mgr:open_doc(whapps_util:get_db_name(AccountId, encoded), ConfId),
+                couch_mgr:open_doc(wh_util:format_account_id(AccountId, encoded), ConfId),
             {ok, _} = conf_service_sup:start_service(ConfId, Conference, {struct, Caller}),
             wait_for_handoff(AccountId, ConfId, Caller);
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type = <<"application/json">>}, payload=Payload}} ->
@@ -374,7 +374,7 @@ validate_conference_id(#search{prompts=Prompts, loop_count=Loop}=Search) when Lo
 validate_conference_id(#search{conf_id=undefined, prompts=Prompts, account_id=AccountId, loop_count=Loop}=Search) ->
     ?LOG("requesting conference number from caller"),
     {ok, ConfNum} = play_and_collect_digits(Prompts#prompts.request_id, Search),
-    Db = whapps_util:get_db_name(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, [{<<"key">>, ConfNum}]) of
         {ok, [JObj]} ->
             ConfId = wh_json:get_value(<<"id">>, JObj),
@@ -399,7 +399,7 @@ validate_conference_id(#search{conf_id=undefined, prompts=Prompts, account_id=Ac
             validate_conference_id(Search#search{conf_id=undefined, loop_count=Loop + 1})
     end;
 validate_conference_id(#search{conf_id=ConfId, account_id=AccountId, loop_count=Loop}=Search) ->
-    Db = whapps_util:get_db_name(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(Db, ConfId) of
         {ok, JObj} ->
             ?LOG("validated provided conference id, ~s", [ConfId]),

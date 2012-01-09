@@ -489,7 +489,7 @@ correct_shortdial(JObj) ->
 get_account_name(Number, AccountId) when not is_binary(Number) ->
     get_account_name(wh_util:to_binary(Number), AccountId);
 get_account_name(Number, AccountId) ->
-    case couch_mgr:open_doc(<<"accounts">>, AccountId) of
+    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
         {ok, JObj} ->
             wh_json:get_ne_value(<<"name">>, JObj, Number);
         _ ->

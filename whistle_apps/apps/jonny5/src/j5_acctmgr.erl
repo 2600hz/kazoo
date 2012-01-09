@@ -164,7 +164,7 @@ init([AcctID]) ->
 
 	    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"ts">>, AcctID),
 
-	    LedgerDB = whapps_util:get_db_name(AcctID, encoded),
+	    LedgerDB = wh_util:format_account_id(AcctID, encoded),
 	    couch_mgr:db_create(LedgerDB),
 
 	    {ok, #state{prepay=try_update_value(Prepay, 0)
@@ -186,14 +186,14 @@ init([AcctID]) ->
 			,max_inbound=try_update_value(Inbound, 0)
 			,acct_id=AcctID, acct_type=account
 			,start_time=StartTime, sync_ref=SyncRef
-			,ledger_db=whapps_util:get_db_name(AcctID, encoded)
+			,ledger_db=wh_util:format_account_id(AcctID, encoded)
 		       }};
 	{TwoWay, Inbound, Prepay, ts} ->
 	    ?LOG_SYS("Init for ts ~s complete", [AcctID]),
 
 	    {ok, Rev} = couch_mgr:lookup_doc_rev(<<"ts">>, AcctID),
 
-	    LedgerDB = whapps_util:get_db_name(AcctID, encoded),
+	    LedgerDB = wh_util:format_account_id(AcctID, encoded),
 	    couch_mgr:db_create(LedgerDB),
 
 	    {ok, #state{prepay=try_update_value(Prepay, 0)
@@ -316,7 +316,7 @@ handle_cast({money, _Evt, _JObj}, #state{prepay=Prepay, acct_id=AcctId}=State) -
     NewPre = j5_util:current_usage(AcctId),
 
     ?LOG("Old prepay value: ~p", [Prepay]),
-    ?LOG("New prepay (from DB ~s): ~p", [whapps_util:get_db_name(AcctId, encoded), NewPre]),
+    ?LOG("New prepay (from DB ~s): ~p", [wh_util:format_account_id(AcctId, encoded), NewPre]),
 
     {noreply, State#state{prepay=try_update_value(NewPre, Prepay)}};
 
@@ -489,7 +489,7 @@ code_change(_OldVsn, State, _Extra) ->
 								    ,'account' | 'ts'
 								   }.
 get_trunks_available(AcctID, account) ->
-    case couch_mgr:get_results(whapps_util:get_db_name(AcctID, encoded), <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(wh_util:format_account_id(AcctID, encoded), <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
 	{ok, []} ->
 	    ?LOG("No results from view, trying ts doc"),
 	    get_trunks_available(AcctID, ts);

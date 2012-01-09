@@ -1,5 +1,6 @@
 -module(wh_util).
 
+-export([format_account_id/1, format_account_id/2]).
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([call_response/3, call_response/4, call_response/5]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
@@ -27,6 +28,43 @@
 
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, whistle_version}).
 
+-spec format_account_id/1 :: ([binary(),...] | binary() | json_object()) -> binary().
+-spec format_account_id/2 :: ([binary(),...] | binary() | json_object(), unencoded | encoded | raw) -> binary().
+
+format_account_id(Doc) -> format_account_id(Doc, unencoded).
+
+format_account_id({struct, _}=Doc, Encoding) ->
+    format_account_id([wh_json:get_value(["_id"], Doc)], Encoding);
+format_account_id([AccountId], Encoding) ->
+    format_account_id(AccountId, Encoding);
+format_account_id(AccountId, Encoding) when not is_binary(AccountId) ->
+    format_account_id(wh_util:to_binary(AccountId), Encoding);
+format_account_id(<<"accounts">>, _) ->
+    <<"accounts">>;
+%% unencode the account db name
+format_account_id(<<"account/", _/binary>>=DbName, unencoded) ->
+    DbName;
+format_account_id(<<"account%2F", _/binary>>=DbName, unencoded) ->
+    binary:replace(DbName, <<"%2F">>, <<"/">>, [global]);
+format_account_id(AccountId, unencoded) ->
+    [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
+    wh_util:to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
+%% encode the account db name
+format_account_id(<<"account%2F", _/binary>>=DbName, encoded) ->
+    DbName;
+format_account_id(<<"account/", _/binary>>=DbName, encoded) ->
+    binary:replace(DbName, <<"/">>, <<"%2F">>, [global]);
+format_account_id(AccountId, encoded) when is_binary(AccountId) ->
+    [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
+    wh_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
+%% get just the account ID from the account db name
+format_account_id(<<"account%2F", AccountId/binary>>, raw) ->
+    binary:replace(AccountId, <<"%2F">>, <<>>, [global]);
+format_account_id(<<"account/", AccountId/binary>>, raw) ->
+    binary:replace(AccountId, <<"/">>, <<>>, [global]);
+format_account_id(AccountId, raw) ->
+    AccountId.
+
 -spec get_hostname/0 :: () -> string().
 get_hostname() ->
     {ok, Host} = inet:gethostname(),
@@ -47,7 +85,7 @@ join_binary(Bins) ->
 
 join_binary([Bin], _) ->
     Bin;
-join_binary([Bin|Rest], Sep) -> 
+join_binary([Bin|Rest], Sep) ->
     <<Bin/binary, Sep/binary, (join_binary(Rest, Sep))/binary>>.
 
 -spec call_response/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
@@ -461,7 +499,7 @@ is_ipv6(Address) when is_list(Address) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_transfer_state/1 :: (json_object()) -> 'undefined' | 'transferer' | 'transferee'.
@@ -516,12 +554,12 @@ do_get_transfer_state(<<"CHANNEL_UNBRIDGE">>, JObj) ->
         {_, _} ->
             ?LOG("channel was unbridged as a result of a transfer"),
             transferer
-    end;    
+    end;
 do_get_transfer_state(_, JObj) ->
     case wh_json:get_value(<<"Disposition">>, JObj) of
         %% caller preforms a blind transfer
         <<"BLIND_TRANSFER">> ->
-            ?LOG("channel was hungup as a result of a blind transfer"),                            
+            ?LOG("channel was hungup as a result of a blind transfer"),
             transferer;
         %% callee preforms partial attended
         %% callee preforms attended transfer
@@ -571,7 +609,7 @@ prop_to_list() ->
     ?FORALL({A, L, B, I, F}, {atom(), list(), binary(), integer(), float()},
             lists:all(fun(X) -> is_list(to_list(X)) end, [A, L, B, I, F])).
 
-%-type iolist() :: maybe_improper_list(char() | binary() | iolist(), binary() | []).
+                                                %-type iolist() :: maybe_improper_list(char() | binary() | iolist(), binary() | []).
 prop_to_binary() ->
     ?FORALL({A, L, B, I, F, IO}, {atom(), list(range(0,255)), binary(), integer(), float(), iolist()},
             lists:all(fun(X) -> is_binary(to_binary(X)) end, [A, L, B, I, F, IO])).

@@ -24,7 +24,7 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
--define(ACCOUNTS_DB, <<"accounts">>).
+-define(ACCOUNTS_DB, ?WH_ACCOUNTS_DB).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 -define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"limits">>]).
 
@@ -102,7 +102,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
-                 ,{RD, #cb_context{req_nouns=[{<<"accounts">>,[]}], req_verb=Verb}=Context}}, State) ->
+                 ,{RD, #cb_context{req_nouns=[{?WH_ACCOUNTS_DB,[]}], req_verb=Verb}=Context}}, State) ->
     %% Only sys-admins can do this?
     Pid ! {binding_result, Verb =:= <<"put">>, {RD, Context}},
     {noreply, State};
@@ -177,7 +177,7 @@ bind_to_crossbar() ->
       Context :: #cb_context{}.
 account_is_descendant(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
     %% get the accounts/.... component from the URL
-    case props:get_value(<<"accounts">>, Nouns) of
+    case props:get_value(?WH_ACCOUNTS_DB, Nouns) of
         %% if the URL did not have the accounts noun then this module denies access
         undefined ->
             ?LOG("No accounts in Nouns: ~p", [Nouns]),
