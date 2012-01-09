@@ -24,6 +24,8 @@
 
 -define(SERVER, ?MODULE).
 
+-define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 8}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -97,6 +99,22 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
+                 ,{RD, #cb_context{req_nouns=[{<<"phone_numbers">>,[]}]
+                                   ,req_id=ReqId, req_verb = <<"get">>}=Context}}, State) ->
+    ?LOG(ReqId, "authorizing request", []),
+    Pid ! {binding_result, true, {RD, Context}},
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
+                 ,{RD, #cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}=Context}}, State) ->
+    spawn(fun() ->
+                  _ = crossbar_util:put_reqid(Context),
+                  ?LOG("authenticating request"),
+                  Pid ! {binding_result, true, {RD, Context}}
+          end),
+    {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.phone_numbers">>, Payload}, State) ->
     spawn(fun() ->
                   {Result, Payload1} = allowed_methods(Payload),
@@ -120,20 +138,29 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.phone_numbers">>, [RD, 
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.phone_numbers">>, [RD, Context | [Number]]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.phone_numbers">>
+                 ,[RD, #cb_context{account_id=AccountId, doc=JObj}=Context | [Number]]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = update_phone_number(Number, Context),
+                  Result = wh_number_manager:set_public_fields(Number, AccountId, JObj),
+                  Context1 = set_response(Result, Number, Context),
                   Pid ! {binding_result, true, [RD, Context1, [Number]]}
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>, [RD, Context | [Number]]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
+                 ,[RD, #cb_context{account_id=AccountId, doc=JObj}=Context | [Number]]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = update_phone_number(Number, Context),
+                  Context1 = case wh_number_manager:assign_number_to_account(Number, AccountId) of
+                                 {ok, _} ->
+                                     Result = wh_number_manager:set_public_fields(Number, AccountId, JObj),
+                                     set_response(Result, Number, Context);
+                                 Else ->
+                                     set_response(Else, Number, Context)
+                             end,
                   Pid ! {binding_result, true, [RD, Context1, [Number]]}
           end),
     {noreply, State};
@@ -142,8 +169,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.phone_numbers">>,
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = update_phone_number(Number, Context),
-                  Pid ! {binding_result, true, [RD, Context1, [Number]]}
+                  Pid ! {binding_result, true, [RD, Context, [Number]]}
           end),
     {noreply, State};
 
@@ -195,6 +221,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.phone_numbers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.phone_numbers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.phone_numbers">>),
@@ -213,7 +241,7 @@ bind_to_crossbar() ->
 allowed_methods([]) ->
     {true, ['GET']};
 allowed_methods([_]) ->
-    {true, ['GET', 'PUT', 'POST', 'DELETE']};
+    {true, ['GET', 'PUT', 'POST']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -243,6 +271,8 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate/2 :: ([ne_binary(),...] | [], #cb_context{}) -> #cb_context{}.
+validate([], #cb_context{req_verb = <<"get">>, account_id=undefined}=Context) ->
+    find_numbers(Context);
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
 validate([Number], #cb_context{req_verb = <<"get">>}=Context) ->
@@ -259,6 +289,26 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec find_numbers/1 :: (#cb_context{}) -> #cb_context{}.
+find_numbers(#cb_context{query_json=Data}=Context) ->
+    Schema = wh_json:decode(?FIND_NUMBER_SCHEMA),
+    case wh_json_validator:is_valid(Data, Schema) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
+            Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),
+            Context#cb_context{resp_status=success
+                               ,resp_data=wh_number_manager:find(Prefix, Quantity)
+                              }
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Attempt to load a summarized listing of all instances of this
 %% resource.
 %% @end
@@ -267,12 +317,12 @@ validate(_, Context) ->
 summary(#cb_context{account_id=AccountId}=Context) ->
     case crossbar_doc:load(AccountId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
-            Numbers = wh_json:get_value(get_key(), JObj, wh_json:new()),
-            crossbar_util:response(wh_json:get_keys(Numbers), Context1);
+            crossbar_util:response(wh_json:get_value(<<"pvt_wnm_numbers">>, JObj, [])
+                                   ,Context1);
         Else ->
             Else
     end.
-
+ 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -298,17 +348,8 @@ create(_, #cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Number, #cb_context{account_id=AccountId}=Context) ->
-    case crossbar_doc:load(AccountId, Context) of
-        #cb_context{resp_status=success, doc=JObj}=Context1 ->
-            case wh_json:get_value(get_key(Number), JObj) of
-                undefined -> 
-                    crossbar_util:response_bad_identifier(Number, Context1);
-                NumberJObj ->
-                    crossbar_util:response(crossbar_doc:public_fields(NumberJObj), Context1)
-            end;
-        Else ->
-            Else
-    end.
+    Result = wh_number_manager:get_public_fields(Number, AccountId),
+    set_response(Result, Number, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -346,75 +387,20 @@ delete(_, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_phone_number/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
--spec update_phone_number/4 :: (json_object(), ne_binary(), undefined | json_object(), #cb_context{}) -> #cb_context{}.
-
-update_phone_number(Number, #cb_context{account_id=AccountId}=Context) ->
-    case crossbar_doc:load(AccountId, Context) of
-        #cb_context{resp_status=success, doc=Account} ->
-            ExistingJObj = wh_json:get_value(get_key(Number), Account),
-            update_phone_number(Account, Number, ExistingJObj, Context);
-        Else ->
-            Else
-    end.
-
-update_phone_number(_, Number, undefined, #cb_context{req_verb = <<"post">>}=Context) ->
-    crossbar_util:response_bad_identifier(Number, Context);
-update_phone_number(Account, Number, ExistingJObj, #cb_context{doc=NewJObj, req_verb = <<"post">>}=Context) ->
-    NumberJObj = wh_json:merge_jobjs(crossbar_doc:private_fields(ExistingJObj), NewJObj),
-    case crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(get_key(Number), NumberJObj, Account)}) of
-        #cb_context{resp_status=success, doc=JObj}=Context1 ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
-            Context1#cb_context{resp_data=crossbar_doc:public_fields(NumberJObj)};
-        Else ->
-            Else
-    end;
-update_phone_number(Account, Number, undefined, #cb_context{doc=NumberJObj, req_verb = <<"put">>}=Context) ->
-    case crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(get_key(Number), NumberJObj, Account)}) of
-        #cb_context{resp_status=success, doc=JObj}=Context1 ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
-            Context1#cb_context{resp_data=crossbar_doc:public_fields(NumberJObj)};
-        Else ->
-            Else
-    end;
-update_phone_number(_, _, _, #cb_context{req_verb = <<"put">>}=Context) ->
+-spec set_response/3 :: ({ok, json_object()} | {error, term()}, ne_binary(), #cb_context{}) -> #cb_context{}.
+set_response({error, reserved}, _, Context) ->
     crossbar_util:response_conflicting_docs(Context);
-update_phone_number(_, Number, undefined, #cb_context{req_verb = <<"delete">>}=Context) ->
-    crossbar_util:response_bad_identifier(Number, Context);        
-update_phone_number(Account, Number, _, #cb_context{req_verb = <<"delete">>}=Context) ->
-    case crossbar_doc:save(Context#cb_context{doc=wh_json:delete_key(get_key(Number), Account)}) of
-        #cb_context{resp_status=success, doc=JObj}=Context1 ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
-            Context1#cb_context{resp_data=[]};
-        Else ->
-            Else
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec format_number/1 :: (ne_binary()) -> ne_binary().
-format_number(Number) ->
-    Num = case binary:match(Number, <<"%">>) of
-              nomatch -> Number;
-              _ -> mochiweb_util:unquote(Number)
-          end,
-    wh_util:to_e164(wh_util:to_binary(Num)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec get_key/0 :: () -> ne_binary().
--spec get_key/1 :: (ne_binary()) -> [ne_binary(),...].
-
-get_key() ->
-    <<"pvt_phone_numbers">>.
-
-get_key(Number) ->
-    [get_key(), format_number(Number)].
+set_response({error, unavailable}, _, Context) ->
+    crossbar_util:response_conflicting_docs(Context);
+set_response({error, unathorized}, Number, Context) ->
+    crossbar_util:response_bad_identifier(Number, Context);
+set_response({error, unknown_carrier}, _, Context) ->
+    crossbar_util:response_db_fatal(Context);
+set_response({error, db_not_reachable}, _, Context) ->
+    crossbar_util:response_datastore_timeout(Context);
+set_response({error, not_found}, Number, Context) ->
+    crossbar_util:response_bad_identifier(Number, Context);
+set_response({ok, Doc}, _, Context) ->
+    crossbar_util:response(Doc, Context);
+set_response(_Else, _, Context) ->
+    crossbar_util:response_db_fatal(Context).
