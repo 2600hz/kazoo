@@ -1,4 +1,4 @@
--module(loop_start_app).
+-module(whistle_number_manager_app).
 
 -behaviour(application).
 
@@ -10,7 +10,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    loop_start_sup:start_link().
+    whistle_number_manager_sup:start_link().
 
 stop(_State) ->
     ok.

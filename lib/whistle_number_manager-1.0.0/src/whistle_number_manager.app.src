@@ -1,4 +1,4 @@
-{application, loop_start,
+{application, whistle_number_manager,
  [
   {description, ""},
   {vsn, "1"},
@@ -7,6 +7,6 @@
                   kernel,
                   stdlib
                  ]},
-  {mod, { loop_start_app, []}},
+  {mod, { whistle_number_manager_app, []}},
   {env, []}
  ]}.

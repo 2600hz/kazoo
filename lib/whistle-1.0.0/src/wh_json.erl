@@ -28,6 +28,7 @@
 -export([from_list/1, merge_jobjs/2]).
 
 -export([normalize_jobj/1, normalize/1, is_json_object/1, is_valid_json_object/1, is_json_term/1]).
+-export([public_fields/1, private_fields/1, is_private_key/1]).
 
 -export([encode/1]).
 -export([decode/1, decode/2]).
@@ -118,7 +119,7 @@ merge_recursive(JObj1, JObj2) ->
 
 merge_recursive(JObj1, JObj2, Keys) when is_tuple(JObj2) ->
     lists:foldr(fun(Key, J) ->
-			merge_recursive(J, wh_json:get_value(Key, JObj2), [Key|Keys])
+                        merge_recursive(J, wh_json:get_value(Key, JObj2), [Key|Keys])
                 end, JObj1, ?MODULE:get_keys(JObj2));
 merge_recursive(JObj1, Value, Keys) ->
     wh_json:set_value(lists:reverse(Keys), Value, JObj1).
@@ -530,6 +531,49 @@ normalize_key_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
 normalize_key_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
 normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 normalize_key_char(C) -> C.
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will filter any private fields out of the provided
+%% json proplist
+%% @end
+%%--------------------------------------------------------------------
+-spec public_fields/1 :: (json_object() | json_objects()) -> json_object() | json_objects().
+public_fields([_|_]=JObjs)->
+    lists:map(fun public_fields/1, JObjs);
+public_fields(JObj) ->
+    PubJObj = wh_json:filter(fun({K, _}) -> not is_private_key(K) end, JObj),
+    case wh_json:get_value(<<"_id">>, JObj) of
+        undefined -> PubJObj;
+        Id -> wh_json:set_value(<<"id">>, Id, PubJObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will filter any public fields out of the provided
+%% json proplist
+%% @end
+%%--------------------------------------------------------------------
+-spec private_fields/1 :: (json_object() | json_objects()) -> json_object() | json_objects().
+private_fields([_|_]=JObjs)->
+    lists:map(fun public_fields/1, JObjs);
+private_fields(JObj) ->
+    wh_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will return a boolean, true if the provided key is
+%% considered private; otherwise false
+%% @end
+%%--------------------------------------------------------------------
+-spec is_private_key/1 :: (binary()) -> boolean().
+is_private_key(<<"_", _/binary>>) -> true;
+is_private_key(<<"pvt_", _/binary>>) -> true;
+is_private_key(_) -> false.
 
 %% PropEr Testing
 prop_is_json_object() ->

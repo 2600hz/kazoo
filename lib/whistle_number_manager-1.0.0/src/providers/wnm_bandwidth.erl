@@ -7,35 +7,40 @@
 %%% @end
 %%% Created : 08 Jan 2012 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(bandwidth).
+-module(wnm_bandwidth).
 
--export([search_numbers/1, search_numbers/2]).
+-export([find_numbers/2]).
+-export([acquire_number/3]).
 
--include("../../include/loopstart.hrl").
+-include("../../include/wh_number_manager.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
--include_lib("whistle/include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
 -define(BW_XML_PROLOG, "<?xml version=\"1.0\"?>").
 -define(BW_XML_NAMESPACE, [{'xmlns:xsi', "http://www.w3.org/2001/XMLSchema-instance"}
                            ,{'xmlns:xsd', "http://www.w3.org/2001/XMLSchema"}
                            ,{'xmlns', "http://www.bandwidth.com/api/"}]).
--define(BW_NUMBER_URL, whapp_config:get_string(<<"loopstart">>
+-define(BW_NUMBER_URL, whapps_config:get_string(?WNM_CONFIG_CAT
                                                    ,<<"bandwidth.numbers_api_url">>
                                                    ,<<"https://api.bandwidth.com/public/v2/numbers.api">>)).
--define(BW_CDR_URL, whapp_config:get_string(<<"loopstart">>
+-define(BW_CDR_URL, whapps_config:get_string(?WNM_CONFIG_CAT
                                                 ,<<"bandwidth.cdrs_api_url">>
                                                 ,<<"https://api.bandwidth.com/api/public/v2/cdrs.api">>)).
--define(BW_DEBUG, whapp_config:get_is_true(<<"loopstart">>, <<"bandwidth.debug">>, false)).
+-define(BW_DEBUG, whapps_config:get_is_true(?WNM_CONFIG_CAT, <<"bandwidth.debug">>, false)).
 
-search_numbers(Partial) ->
-    search_numbers(Partial, 1).
-
-search_numbers(<<"+", Rest/binary>>, Quanity) ->
-    search_numbers(Rest, Quanity);
-search_numbers(<<"1", Rest/binary>>, Quanity) ->
-    search_numbers(Rest, Quanity);
-search_numbers(<<NPA:3/binary>>, Quanity) ->
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Query the Bandwidth.com system for a quanity of avaliable numbers
+%% in a rate center
+%% @end
+%%--------------------------------------------------------------------
+-spec find_numbers/2 :: (ne_binary(), pos_integer()) -> {ok, json_object} | {error, term()}.
+find_numbers(<<"+", Rest/binary>>, Quanity) ->
+    find_numbers(Rest, Quanity);
+find_numbers(<<"1", Rest/binary>>, Quanity) ->
+    find_numbers(Rest, Quanity);
+find_numbers(<<NPA:3/binary>>, Quanity) ->
     Props = [{'areaCode', [wh_util:to_list(NPA)]}
              ,{'maxQuantity', [wh_util:to_list(Quanity)]}], 
     case make_numbers_request('areaCodeNumberSearch', Props) of
@@ -50,7 +55,7 @@ search_numbers(<<NPA:3/binary>>, Quanity) ->
                     || Number <- xmerl_xpath:string(TelephoneNumbers, Xml)],
             {ok, wh_json:from_list(Resp)}
     end;
-search_numbers(Search, Quanity) ->
+find_numbers(Search, Quanity) ->
     NpaNxx = binary:part(Search, 0, (case size(Search) of L when L < 6 -> L; _ -> 6 end)),
     Props = [{'npaNxx', [wh_util:to_list(NpaNxx)]}
              ,{'maxQuantity', [wh_util:to_list(Quanity)]}], 
@@ -67,9 +72,34 @@ search_numbers(Search, Quanity) ->
             {ok, wh_json:from_list(Resp)}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Acquire a given number from the carrier
+%% @end
+%%--------------------------------------------------------------------
+-spec acquire_number/3 :: (ne_binary(), ne_binary(), json_object()) -> {ok, ne_binary(), json_object()}
+                                                                           | {error, ne_binary()}.
+acquire_number(_, <<"avaliable">>, JObj) ->
+    {ok, <<"in_service">>, JObj};
+acquire_number(_, <<"discovery">>, JObj) ->
+    {ok, <<"in_service">>, JObj};
+acquire_number(_, <<"claim">>, JObj) ->
+    {ok, <<"in_service">>, JObj};
+acquire_number(_, _, _) ->
+    {error, unavaliable}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Make a REST request to Bandwidth.com Numbers API to preform the
+%% given verb (purchase, search, provision, ect).
+%% @end
+%%--------------------------------------------------------------------
+-spec make_numbers_request/2 :: (atom(), proplist()) -> {ok, term()} | {error, term()}.
 make_numbers_request(Verb, Props) ->
     ?LOG("making ~s request to bandwidth.com ~s", [Verb, ?BW_NUMBER_URL]),
-    DevKey = whapp_config:get_string(<<"loopstart">>, <<"bandwidth.developer_key">>, <<>>),
+    DevKey = whapps_config:get_string(?WNM_CONFIG_CAT, <<"bandwidth.developer_key">>, <<>>),
     Request = [{'developerKey', [DevKey]}
                | Props],
     Body = xmerl:export_simple([{Verb, ?BW_XML_NAMESPACE, Request}]
@@ -101,12 +131,6 @@ make_numbers_request(Verb, Props) ->
                                               ,[append]),
             ?LOG("bandwidth.com request error: 404 (not found)"),
             {error, not_found};
-        {ok, "426", _, _Response} ->
-            ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
-                                              ,io_lib:format("Response:~n426~n~s~n", [_Response])
-                                              ,[append]),
-            ?LOG("bandwidth.com request error: 426 (upgrade required)"),
-            {error, upgrade_required};
         {ok, "500", _, _Response} ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n500~n~s~n", [_Response])
@@ -136,6 +160,13 @@ make_numbers_request(Verb, Props) ->
             E
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert a number search response XML entity to json
+%% @end
+%%--------------------------------------------------------------------
+-spec number_search_response_to_json/1 :: (term()) -> {ok, json_object}.
 number_search_response_to_json(Xml) ->
     Props = [{<<"number_id">>, get_xml_value("numberID/text()", Xml)}
              ,{<<"ten_digit">>, get_xml_value("tenDigit/text()", Xml)}
@@ -147,6 +178,13 @@ number_search_response_to_json(Xml) ->
             ],
     wh_json:from_list([{K, V} || {K, V} <- Props, V =/= undefined]).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert a rate center XML entity to json
+%% @end
+%%--------------------------------------------------------------------
+-spec rate_center_to_json/1 :: (list()) -> {ok, json_object}.
 rate_center_to_json([]) ->
     wh_json:new();
 rate_center_to_json([Xml]) ->
@@ -155,7 +193,14 @@ rate_center_to_json([Xml]) ->
              ,{<<"state">>, get_xml_value("state/text()", Xml)}
             ],
     wh_json:from_list([{K, V} || {K, V} <- Props, V =/= undefined]).
-    
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Generic helper to get the text value of a XML path
+%% @end
+%%--------------------------------------------------------------------
+-spec get_xml_value/2 :: (string(), term()) -> undefined | binary().    
 get_xml_value(Path, Xml) ->
     case xmerl_xpath:string(Path, Xml) of
         [#xmlText{value=Value}] ->
@@ -165,7 +210,14 @@ get_xml_value(Path, Xml) ->
              || #xmlText{value=Value} <- Values];
         _ -> undefined
     end.
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determine if the request was successful, and if not extract any
+%% error text
+%% @end
+%%--------------------------------------------------------------------
+-spec verify_response/1 :: (term()) -> {ok, term()} | {error, undefined | binary() | [binary(),...]}.
 verify_response(Xml) ->
     case get_xml_value("/*/status/text()", Xml) of
         <<"success">> -> 

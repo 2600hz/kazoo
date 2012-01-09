@@ -1,5 +1,5 @@
 
--module(loop_start_sup).
+-module(whistle_number_manager_sup).
 
 -behaviour(supervisor).
 
