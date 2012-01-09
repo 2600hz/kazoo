@@ -18,7 +18,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -107,61 +107,61 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
     AccountId = wh_json:get_value(<<"account_id">>, AuthDoc, <<"0000000000">>),
 
     _ = case props:get_value(<<"ts_accounts">>, Nouns) of
-	    [] when Verb =:= <<"put">> ->
-		?LOG(ReqId, "authorizing request to create a new trunkstore doc", []),
-		Pid ! {binding_result, true, {RD, Context}};
-	    [AccountId] ->
+            [] when Verb =:= <<"put">> ->
+                ?LOG(ReqId, "authorizing request to create a new trunkstore doc", []),
+                Pid ! {binding_result, true, {RD, Context}};
+            [AccountId] ->
             ?LOG(ReqId, "authorizing request to trunkstore doc ~s", [AccountId]),
-		Pid ! {binding_result, true, {RD, Context}};
-	    _Args ->
-		?LOG(ReqId, "unhandled args for ts_accounts: ~p", [_Args]),
-		Pid ! {binding_result, false, {RD, Context}}
-	end,
+                Pid ! {binding_result, true, {RD, Context}};
+            _Args ->
+                ?LOG(ReqId, "unhandled args for ts_accounts: ~p", [_Args]),
+                Pid ! {binding_result, false, {RD, Context}}
+        end,
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.ts_accounts">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.ts_accounts">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.ts_accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, Context#cb_context{db_name=?TS_DB}),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context#cb_context{db_name=?TS_DB}),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.ts_accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
+                  crossbar_util:binding_heartbeat(Pid),
                   #cb_context{doc=Doc} = Context1 = crossbar_doc:save(Context),
                   timer:sleep(1000),
                   try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc), true) catch _:_ -> ok end,
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_accounts">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
+                  crossbar_util:binding_heartbeat(Pid),
                   #cb_context{doc=Doc} = Context1 = crossbar_doc:save(Context),
                   timer:sleep(1000),
                   try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc), true) catch _:_ -> ok end,
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.ts_accounts">>, [RD, Context | Params]}, State) ->
@@ -173,7 +173,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.ts_accounts">>, [
                   %% dirty were the instructions for this module but someone PLEASE fix this later!
                   timer:sleep(1000),
                   try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc), true) catch _:_ -> ok end
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -298,11 +298,11 @@ validate(_, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_ts_account/1 :: (#cb_context{}) -> #cb_context{}.
-create_ts_account(#cb_context{req_data=JObj, account_id=AccountId}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
+create_ts_account(#cb_context{req_data=Data, account_id=AccountId}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"ts_accounts">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             Updaters = [fun(J) -> wh_json:set_value(<<"type">>, <<"sys_info">>, J) end
                         ,fun(J) ->
                                  Id = case wh_util:is_empty(AccountId) of
@@ -341,11 +341,11 @@ read_ts_account(TSAccountId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_ts_account/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_ts_account(TSAccountId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
+update_ts_account(TSAccountId, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"ts_accounts">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             crossbar_doc:load_merge(TSAccountId, wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj), Context)
     end.
 
@@ -387,14 +387,3 @@ check_ts_account(TSAccountId, #cb_context{db_name=Db}=Context) ->
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, ts_account).

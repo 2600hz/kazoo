@@ -21,7 +21,6 @@
 -include("whistle_apps.hrl").
 
 -define(REPLICATE_ENCODING, encoded).
--define(AGG_DB, ?WH_ACCOUNTS_DB).
 -define(AGG_LIST_BY_REALM, <<"accounts/listing_by_realm">>).
 
 %%--------------------------------------------------------------------
@@ -130,7 +129,7 @@ is_acct_db(_) -> false.
 -spec get_account_by_realm/1 :: (Realm) -> {ok, binary()}| {error, not_found} when
       Realm :: binary().
 get_account_by_realm(Realm) ->
-    case couch_mgr:get_results(?AGG_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
         {ok, [{struct, _}=V|_]} ->
             {ok, wh_json:get_value([<<"value">>, <<"account_db">>], V)};
         _ -> {error, not_found}

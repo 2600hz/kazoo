@@ -340,8 +340,8 @@ bind_to_crossbar() ->
 content_types_provided(#cb_context{req_verb = <<"get">>, content_types_provided=CTP}=Context) ->
     Context#cb_context{content_types_provided=[{to_binary, ["text/plain" |  props:get_value(to_binary, CTP, [])]}
                                                | props:delete(to_binary,CTP)
-					      ]
-		      };
+                                              ]
+                      };
 content_types_provided(Context) -> Context.
 
 %%--------------------------------------------------------------------
@@ -454,11 +454,11 @@ load_server_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_server/1 :: (#cb_context{}) -> #cb_context{}.
-create_server(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-            crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
+create_server(#cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"servers">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             Funs = [fun(Obj) -> wh_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, Obj) end,
                     fun(Obj) -> wh_json:set_value(<<"pvt_deploy_log">>, [], Obj) end,
                     fun(Obj) -> wh_json:set_value(<<"pvt_type">>, <<"server">>, Obj) end],
@@ -483,11 +483,11 @@ load_server(ServerId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_server/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-            crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
+update_server(ServerId, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"servers">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             crossbar_doc:load_merge(ServerId, JObj, Context)
     end.
 
@@ -500,17 +500,6 @@ update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, server).
 
 %%--------------------------------------------------------------------
 %% @private

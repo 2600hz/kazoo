@@ -9,20 +9,15 @@
 -define(CONFIG_CAT, <<"crossbar">>).
 
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
-
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
-
--define(SCHEMAS_DB, <<"crossbar_schemas">>).
 
 -define(APP_NAME, <<"crossbar">>).
 -define(APP_VERSION, <<"0.8.0">>).
 
 -define(CONTENT_PROVIDED, [{to_json, ["application/json","application/x-json"]}]).
-
 -define(CONTENT_ACCEPTED, [{from_json, ["application/json","application/x-json"]}
                            ,{from_form, ["application/x-www-form-urlencoded"]}
                            ,{from_binary, []}]).
-
 -define(ALLOWED_METHODS, ['GET'
                           ,'POST'
                           ,'PUT'

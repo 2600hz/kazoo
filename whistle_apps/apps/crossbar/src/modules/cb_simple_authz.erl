@@ -24,7 +24,6 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
--define(ACCOUNTS_DB, ?WH_ACCOUNTS_DB).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 -define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"limits">>]).
 
@@ -193,7 +192,7 @@ account_is_descendant(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
             ?LOG("checking if account ~s is a descendant of ~s", [ReqAccountId, AuthAccountId]),
             Opts = [{<<"startkey">>, [ReqAccountId]}
                     ,{<<"endkey">>, [ReqAccountId, ?EMPTY_JSON_OBJECT ]}],
-            case couch_mgr:get_results(?ACCOUNTS_DB, ?VIEW_SUMMARY, Opts) of
+            case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?VIEW_SUMMARY, Opts) of
                 %% if the requested account doesnt exist, then decline the request
                 {ok, []} ->
                     ?LOG("the requested account was not found, not authorizing"),
@@ -239,7 +238,7 @@ allowed_if_sys_admin_mod(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns}) ->
         true ->
             ?LOG("the request contains a system administration module"),
             AccountId = wh_json:get_value(<<"account_id">>, AuthDoc),
-            case couch_mgr:open_doc(?ACCOUNTS_DB, AccountId) of
+            case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
                 {ok, JObj} ->
                     %% more logging was called for
                     case wh_json:is_true(<<"pvt_superduper_admin">>, JObj) of

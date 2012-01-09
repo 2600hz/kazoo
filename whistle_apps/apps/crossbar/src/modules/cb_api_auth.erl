@@ -30,8 +30,6 @@
 -define(SERVER, ?MODULE).
 
 -define(TOKEN_DB, <<"token_auth">>).
-
--define(AGG_DB, ?WH_ACCOUNTS_DB).
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_API, <<"accounts/listing_by_api">>).
 
@@ -276,7 +274,7 @@ authorize_api_key(Context, <<"">>) ->
     ?LOG("request has no api key"),
     crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
 authorize_api_key(Context, ApiKey) ->
-    case crossbar_doc:load_view(?AGG_VIEW_API, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?AGG_DB}) of
+    case crossbar_doc:load_view(?AGG_VIEW_API, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?WH_ACCOUNTS_DB}) of
         #cb_context{resp_status=success, doc=[JObj|_]}->
             ?LOG("found more account with ~s, using ~s", [ApiKey, wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
