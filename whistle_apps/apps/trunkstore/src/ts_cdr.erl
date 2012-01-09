@@ -86,13 +86,9 @@ find_route_used(<<"outbound">>, ToUri, Routes) ->
 		end, ?EMPTY_JSON_OBJECT, Routes);
 find_route_used(<<"inbound">>, _, _) -> ?EMPTY_JSON_OBJECT.
 
--spec fetch_cdr/2 :: (CallID, DB) -> {'error', 'not_found'} | {'ok', json_object()} when
-      CallID :: binary(),
-      DB :: binary().
+-spec fetch_cdr/2 :: (ne_binary(), ne_binary()) -> {'error', 'not_found'} | {'ok', json_object()}.
 fetch_cdr(CallID, DB) ->
     case couch_mgr:open_doc(DB, CallID) of
-	{error, _} ->
-	    {error, not_found};
-	{ok, _}=Resp ->
-	    Resp
+	{error, _} -> {error, not_found};
+	{ok, _}=Resp -> Resp
     end.
