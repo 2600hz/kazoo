@@ -1165,8 +1165,16 @@ wait_for_application(Application, Event, Type, Timeout) ->
         {amqp_msg, {struct, _}=JObj} ->
             case get_event_type(JObj) of
                 { <<"error">>, _, _ } ->
-                    ?LOG("channel execution error while waiting for ~s", [Application]),
-                    {error, JObj};
+                    case wh_json:get_value(<<"Error-Message">>, JObj) of
+                        <<"Could not execute dialplan action: ", Application/binary>> ->
+                            ?LOG("channel execution error while waiting for ~s", [Application]),
+                            {error, JObj};
+                        _ when Timeout =:= infinity ->
+                            wait_for_application(Application, Event, Type, Timeout);
+                        _ ->
+                            DiffMicro = timer:now_diff(erlang:now(), Start),
+                            wait_for_application(Application, Event, Type, Timeout - (DiffMicro div 1000))
+                    end;
                 { Type, Event, Application } ->
                     {ok, JObj};
                 _ when Timeout =:= infinity ->
