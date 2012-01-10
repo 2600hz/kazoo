@@ -265,6 +265,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
                       #cb_context{resp_status=success} = crossbar_doc:delete(Context),
                       ?LOG_SYS("deleted ~s in ~s", [DbName, AccountId]),
 
+                      ok = wh_number_manager:free_numbers(AccountId),
+
                       case couch_mgr:db_delete(DbName) of
                           true -> Pid ! {binding_result, true, [RD, Context, Params]};
                           false -> Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]}
