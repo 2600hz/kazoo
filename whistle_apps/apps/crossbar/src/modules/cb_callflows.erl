@@ -22,8 +22,6 @@
 -define(SERVER, ?MODULE).
 
 -define(CALLFLOWS_LIST, <<"callflows/listing_by_id">>).
--define(FIXTURE_LIST, [<<"611.callflow.json">>]).
-
 -define(CB_LIST, <<"callflows/crossbar_listing">>).
 
 %%-----------------------------------------------------------------------------
@@ -140,13 +138,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"account.created">>, DBName}, State) ->
-    spawn(fun() ->
-                  _ = couch_mgr:revise_views_from_folder(DBName, callflow),
-                  Pid ! {binding_result, true, []}
-          end),
-    {noreply, State};
-
 handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
@@ -198,8 +189,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.callflows">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.callflows">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.callflows">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.callflows">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.callflows">>).
 
 %------------------------------------------------------------------------------
 % @private
