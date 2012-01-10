@@ -658,7 +658,7 @@ create_role(Account, #cb_context{db_name=Db}, #state{role_tmpl=RoleTmpl}) ->
 -spec write_databag/4 :: (proplist(), proplist(), json_object(), atom()) -> ne_binary().
 write_databag(_, _, _, undefined) -> <<>>;
 write_databag(Account, Server, JObj, PathTmpl) ->
-    JSON = mochijson2:encode(crossbar_doc:public_fields(JObj)),
+    JSON = wh_json:encode(wh_json:public_fields(JObj)),
     Props = [{<<"account">>, Account}
              ,{<<"server">>, Server}],
     {ok, P} = PathTmpl:render(Props),
@@ -698,7 +698,7 @@ create_databag([H|T], Mapping, JObj) ->
 -spec write_role/4 :: (proplist(), proplist(), json_object(), atom()) -> binary().
 write_role(_, _, _, undefined) -> <<>>;
 write_role(Account, Server, JObj, PathTmpl) ->
-    JSON = mochijson2:encode(crossbar_doc:public_fields(JObj)),
+    JSON = wh_json:encode(wh_json:public_fields(JObj)),
     Props = [{<<"account">>, Account}
              ,{<<"server">>, Server}],
     {ok, P} = PathTmpl:render(Props),
