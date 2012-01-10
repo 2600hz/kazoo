@@ -226,7 +226,7 @@ decode_xml(_Body) ->
     throw({not_supported, xml}).
 
 try_send_resp(ReqJObj, HTTPJObj, MyQ, Binding) ->
-    DefaultJObj = wh_json:from_list(wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)),
+    DefaultJObj = wh_json:from_list(wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)),
     RespJObj = wh_json:merge_jobj(DefaultJObj, HTTPJObj),
 
     ?LOG("Disambiguating on binding ~s", [Binding]),
