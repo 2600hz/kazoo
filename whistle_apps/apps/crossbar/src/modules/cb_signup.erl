@@ -93,8 +93,8 @@ init(_) ->
     end,
 
     #state{cleanup_interval=CleanupInterval}=State = init_state(),
-    {ok, TRef} = erlang:send_after(CleanupInterval * 1000, self(), cleanup),
 
+    TRef = erlang:send_after(CleanupInterval * 1000, self(), cleanup),
     {ok, State#state{cleanup_timer=TRef}}.
 
 %%--------------------------------------------------------------------
