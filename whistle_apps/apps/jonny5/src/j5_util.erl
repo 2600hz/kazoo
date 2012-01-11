@@ -67,7 +67,7 @@ cache_account_handler_key(AcctID) ->
 
 -spec preload_accounts/0 :: () -> [{'ok', pid()},...].
 preload_accounts() ->
-    {ok, Accts} = couch_mgr:get_results(<<"accounts">>, <<"accounts/listing_by_id">>, []),
+    {ok, Accts} = couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_id">>, []),
     ?LOG_SYS("Loading ~b accounts", [length(Accts)]),
     preload_accounts(Accts).
 
@@ -134,8 +134,8 @@ write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType
 					 ,{<<"call_type">>, CallType}
 					 ,{<<"call_duration">>, Duration}
 					 ,{<<"amount">>, Units}
-					 ,{<<"pvt_account_id">>, whapps_util:get_db_name(AcctID, raw)}
-					 ,{<<"pvt_account_db">>, whapps_util:get_db_name(AcctID, encoded)}
+					 ,{<<"pvt_account_id">>, wh_util:format_account_id(AcctID, raw)}
+					 ,{<<"pvt_account_db">>, wh_util:format_account_id(AcctID, encoded)}
 					 ,{<<"pvt_type">>, DocType}
 					 ,{<<"pvt_created">>, Timestamp}
 					 ,{<<"pvt_modified">>, Timestamp}
@@ -165,7 +165,7 @@ mk_id(Prefix, Suffix) ->
 
 -spec current_usage/1 :: (ne_binary()) -> integer().
 current_usage(AcctID) ->
-    DB = whapps_util:get_db_name(AcctID, encoded),
+    DB = wh_util:format_account_id(AcctID, encoded),
     case couch_mgr:get_results(DB, <<"transactions/credit_remaining">>, [{<<"reduce">>, true}]) of
 	{ok, []} -> 0;
 	{ok, [ViewRes|_]} -> wh_json:get_value(<<"value">>, ViewRes, 0);

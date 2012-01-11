@@ -17,8 +17,8 @@
 -export([jobj_to_list/1]).
 
 -define(PVT_FUNS, [fun add_pvt_vsn/3, fun add_pvt_account_id/3, fun add_pvt_account_db/3
-		   ,fun add_pvt_created/3, fun add_pvt_modified/3, fun add_pvt_type/3
-		  ]).
+                   ,fun add_pvt_created/3, fun add_pvt_modified/3, fun add_pvt_type/3
+                  ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -45,7 +45,7 @@ add_pvt_account_db(JObj, DBName, _) ->
     wh_json:set_value(<<"pvt_account_db">>, DBName, JObj).
 
 add_pvt_account_id(JObj, DBName, _) ->
-    wh_json:set_value(<<"pvt_account_id">>, whapps_util:get_db_name(DBName, raw), JObj).
+    wh_json:set_value(<<"pvt_account_id">>, wh_util:format_account_id(DBName, raw), JObj).
 
 add_pvt_type(JObj, _, Options) ->
     case Type = proplists:get_value(type, Options, undefined) of

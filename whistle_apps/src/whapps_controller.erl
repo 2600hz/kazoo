@@ -73,7 +73,7 @@ running_apps() ->
     [ App || {App, _, _, _} <- supervisor:which_children(whapps_sup) ].
 
 initialize_whapps() ->
-    couch_mgr:db_create(?CONFIG_DB),
+    couch_mgr:db_create(?WH_CONFIG_DB),
     case whapps_config:get(?MODULE, <<"cookie">>) of
         undefined -> ok;
         Cookie ->

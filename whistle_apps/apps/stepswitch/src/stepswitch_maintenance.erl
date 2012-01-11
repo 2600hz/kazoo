@@ -56,12 +56,12 @@ reconcile(AccountId, TSAccount) when not is_binary(AccountId) ->
     reconcile(wh_util:to_binary(AccountId), TSAccount);
 reconcile(AccountId, true) ->
     Numbers = get_trunkstore_account_numbers(AccountId),
-    _ = reconcile_account_route(whapps_util:get_db_name(AccountId, raw), Numbers),
+    _ = reconcile_account_route(wh_util:format_account_id(AccountId, raw), Numbers),
     done;
 reconcile(AccountId, false) ->
-    Db = whapps_util:get_db_name(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, encoded),
     Numbers = get_callflow_account_numbers(Db),
-    _ = reconcile_account_route(whapps_util:get_db_name(AccountId, raw), Numbers),
+    _ = reconcile_account_route(wh_util:format_account_id(AccountId, raw), Numbers),
     done.
 
 %%--------------------------------------------------------------------
@@ -118,7 +118,7 @@ reconcile_accounts() ->
     _ = [begin
              Numbers = get_callflow_account_numbers(AccountId),
              reconcile_account_route(
-               whapps_util:get_db_name(AccountId, raw), Numbers)
+               wh_util:format_account_id(AccountId, raw), Numbers)
          end
          || AccountId <- whapps_util:get_all_accounts(encoded)],
     ok.

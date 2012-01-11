@@ -1,0 +1,53 @@
+{
+   "_id":"servers",
+   "$schema":"http://json-schema.org/draft-03/schema#",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Schema for a server",
+   "properties":{
+      "hostname":{
+         "description":"The servers hostname",
+         "required":"true",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      },
+      "ip":{
+         "description":"The servers ip address",
+         "required":"true",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      },
+      "password":{
+         "description":"The servers initial ssh password",
+         "required":"true",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      },
+      "ssh_port":{
+         "description":"The servers initial ssh port",
+         "required":"true",
+         "type":"string",
+         "minLength":2,
+         "maxLength":5
+      },
+      "roles":{
+         "description":"The roles the server will fulfill",
+         "required":"true",
+         "type":"array"
+      },
+      "type":{
+         "description":"The server type",
+         "type":"string",
+         "minLength":1,
+         "maxLength":32
+      },
+      "os":{
+         "description":"The server operating system",
+         "type":"string",
+         "minLength":1,
+         "maxLength":32
+      }
+   }
+}

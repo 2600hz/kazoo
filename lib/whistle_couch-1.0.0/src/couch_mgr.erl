@@ -22,8 +22,11 @@
 
 %% Document manipulation
 -export([save_doc/2, save_doc/3, save_docs/2, save_docs/3, open_doc/2, open_doc/3, del_doc/2, del_docs/2, lookup_doc_rev/2]).
--export([add_change_handler/2, add_change_handler/3, rm_change_handler/2, load_doc_from_file/3, update_doc_from_file/3, revise_doc_from_file/3]).
--export([revise_docs_from_folder/3, revise_views_from_folder/2, ensure_saved/2]).
+-export([add_change_handler/2, add_change_handler/3, rm_change_handler/2]).
+-export([load_doc_from_file/3, update_doc_from_file/3]).
+-export([revise_doc_from_file/3]).
+-export([revise_docs_from_folder/3, revise_docs_from_folder/4]).
+-export([revise_views_from_folder/2, ensure_saved/2]).
 
 -export([all_docs/1, all_design_docs/1, admin_all_docs/1]).
 -export([all_docs/2, all_design_docs/2, admin_all_docs/2]).
@@ -37,7 +40,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("wh_couch.hrl").
 
@@ -48,11 +51,11 @@
 %% Change handler {DBName :: string(), {Srv :: pid(), SrvRef :: reference()}
 -record(state, {
           host = {"", ?DEFAULT_PORT, ?DEFAULT_ADMIN_PORT} :: {nonempty_string(), pos_integer(), pos_integer()}
-	  ,connection = #server{} :: #server{}
-	  ,admin_connection = #server{} :: #server{}
-	  ,creds = {"", ""} :: {string(), string()} % {User, Pass}
-	  ,change_handlers = dict:new() :: dict()
-	 }).
+          ,connection = #server{} :: #server{}
+          ,admin_connection = #server{} :: #server{}
+          ,creds = {"", ""} :: {string(), string()} % {User, Pass}
+          ,change_handlers = dict:new() :: dict()
+         }).
 
 %%%===================================================================
 %%% Couch Functions
@@ -68,14 +71,14 @@ load_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
     ?LOG_SYS("read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
     try
-	{ok, Bin} = file:read_file(Path),
-	?MODULE:save_doc(DbName, wh_json:decode(Bin)) %% if it crashes on the match, the catch will let us know
+        {ok, Bin} = file:read_file(Path),
+        ?MODULE:save_doc(DbName, wh_json:decode(Bin)) %% if it crashes on the match, the catch will let us know
     catch
         _Type:{badmatch,{error,Reason}} ->
-	    ?LOG_SYS("badmatch error: ~p", [Reason]),
+            ?LOG_SYS("badmatch error: ~p", [Reason]),
             {error, Reason};
- 	_Type:Reason ->
-	    ?LOG_SYS("exception: ~p", [Reason]),
+        _Type:Reason ->
+            ?LOG_SYS("exception: ~p", [Reason]),
             {error, Reason}
     end.
 
@@ -91,16 +94,16 @@ update_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
     ?LOG_SYS("update db ~s from CouchDB file: ~s", [DbName, Path]),
     try
-	{ok, Bin} = file:read_file(Path),
-	JObj = wh_json:decode(Bin),
-	{ok, Rev} = ?MODULE:lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)),
-	?MODULE:save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj))
+        {ok, Bin} = file:read_file(Path),
+        JObj = wh_json:decode(Bin),
+        {ok, Rev} = ?MODULE:lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)),
+        ?MODULE:save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj))
     catch
         _Type:{badmatch,{error,Reason}} ->
-	    ?LOG_SYS("bad match: ~p", [Reason]),
+            ?LOG_SYS("bad match: ~p", [Reason]),
             {error, Reason};
- 	_Type:Reason ->
-	    ?LOG_SYS("exception: ~p", [Reason]),
+        _Type:Reason ->
+            ?LOG_SYS("exception: ~p", [Reason]),
             {error, Reason}
     end.
 
@@ -115,11 +118,11 @@ update_doc_from_file(DbName, App, File) ->
 revise_doc_from_file(DbName, App, File) ->
     case ?MODULE:update_doc_from_file(DbName, App, File) of
         {error, _E} ->
-	    ?LOG_SYS("failed to update doc: ~p", [_E]),
+            ?LOG_SYS("failed to update doc: ~p", [_E]),
             ?MODULE:load_doc_from_file(DbName, App, File);
         {ok, _}=Resp ->
-	    ?LOG_SYS("revised ~s", [File]),
-	    Resp
+            ?LOG_SYS("revised ~s", [File]),
+            Resp
     end.
 
 %%--------------------------------------------------------------------
@@ -141,31 +144,36 @@ revise_views_from_folder(DbName, App) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec revise_docs_from_folder/3 :: (ne_binary(), atom(), ne_binary() | nonempty_string()) -> 'ok'.
-revise_docs_from_folder(DbName, App, Folder) ->
-    Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
-    do_revise_docs_from_folder(DbName, Files).
+-spec revise_docs_from_folder/4 :: (ne_binary(), atom(), ne_binary() | nonempty_string(), boolean()) -> 'ok'.
 
--spec do_revise_docs_from_folder/2 :: (ne_binary(), [ne_binary() | nonempty_string(),...]) -> 'ok'.
-do_revise_docs_from_folder(_, []) -> ok;
-do_revise_docs_from_folder(DbName, [H|T]) ->
+revise_docs_from_folder(DbName, App, Folder) ->
+    revise_docs_from_folder(DbName, App, Folder, true).
+
+revise_docs_from_folder(DbName, App, Folder, Sleep) ->
+    Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
+    do_revise_docs_from_folder(DbName, Sleep, Files).
+
+-spec do_revise_docs_from_folder/3 :: (ne_binary(), boolean(), [ne_binary() | nonempty_string(),...]) -> 'ok'.
+do_revise_docs_from_folder(_, _, []) -> ok;
+do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
     try
         {ok, Bin} = file:read_file(H),
         JObj = wh_json:decode(Bin),
-        timer:sleep(250),
+        Sleep andalso timer:sleep(250),
         case lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)) of
             {ok, Rev} ->
-                ?LOG_SYS("update doc from file ~s in ~s", [H, DbName]),
+                ?LOG("update doc from file ~s in ~s", [H, DbName]),
                 save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj));
             {error, not_found} ->
-                ?LOG_SYS("import doc from file ~s in ~s", [H, DbName]),
+                ?LOG("import doc from file ~s in ~s", [H, DbName]),
                 save_doc(DbName, JObj);
             {error, Reason} ->
-                ?LOG_SYS("failed to load doc ~s into ~s, ~p", [H, DbName, Reason])
+                ?LOG("failed to load doc ~s into ~s, ~p", [H, DbName, Reason])
         end,
-        do_revise_docs_from_folder(DbName, T)
+        do_revise_docs_from_folder(DbName, Sleep, T)
     catch
         _:_ ->
-            do_revise_docs_from_folder(DbName, T)
+            do_revise_docs_from_folder(DbName, Sleep, T)
     end.
 
 %%--------------------------------------------------------------------
@@ -536,8 +544,8 @@ get_url(H, {[], []}, P) ->
     list_to_binary(["http://", H, ":", wh_util:to_binary(P), "/"]);
 get_url(H, {User, Pwd}, P) ->
     list_to_binary(["http://", wh_util:to_binary(User), ":", wh_util:to_binary(Pwd)
-		    ,"@", H, ":", wh_util:to_binary(P), "/"
-		   ]).
+                    ,"@", H, ":", wh_util:to_binary(P), "/"
+                   ]).
 
 add_change_handler(DBName, DocID) ->
     ?LOG_SYS("add change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
@@ -605,11 +613,11 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={O
     spawn(fun() -> save_config() end),
 
     {reply, ok, State#state{host={Host, Port, AdminPort}
-			    ,connection=Conn
-			    ,admin_connection=AdminConn
-			    ,change_handlers=dict:new()
-			    ,creds={User,Pass}
-			   }};
+                            ,connection=Conn
+                            ,admin_connection=AdminConn
+                            ,change_handlers=dict:new()
+                            ,creds={User,Pass}
+                           }};
 
 handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
     ?LOG_SYS("setting host for the first time to ~p", [Host]),
@@ -621,11 +629,11 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
     spawn(fun() -> save_config() end),
 
     {reply, ok, State#state{host={Host,Port,AdminPort}
-			    ,connection=Conn
-			    ,admin_connection=AdminConn
-			    ,change_handlers=dict:new()
-			    ,creds={User,Pass}
-			   }};
+                            ,connection=Conn
+                            ,admin_connection=AdminConn
+                            ,change_handlers=dict:new()
+                            ,creds={User,Pass}
+                           }};
 
 handle_call(get_conn, _, #state{connection=S}=State) ->
     {reply, S, State};
@@ -638,10 +646,10 @@ handle_call(get_creds, _, #state{creds=Cred}=State) ->
 
 handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH}=State) ->
     spawn(fun() ->
-		  {ok, {Srv, _}} = dict:find(DBName, CH),
-		  ?LOG_SYS("found CH(~p): Rm listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
-		  change_handler:rm_listener(Srv, Pid, DocID)
-	  end),
+                  {ok, {Srv, _}} = dict:find(DBName, CH),
+                  ?LOG_SYS("found CH(~p): Rm listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
+                  change_handler:rm_listener(Srv, Pid, DocID)
+          end),
     {reply, ok, State}.
 
 %%--------------------------------------------------------------------
@@ -656,16 +664,16 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 %%--------------------------------------------------------------------
 handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
     case dict:find(DBName, CH) of
-	{ok, {Srv, _}} ->
-	    ?LOG_SYS("found CH(~p): Adding listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
-	    change_handler:add_listener(Srv, Pid, DocID),
-	    {noreply, State};
-	error ->
-	    {ok, Srv} = change_handler:start_link(couch_util:get_db(S, DBName), []),
-	    ?LOG_SYS("started CH(~p): added listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
-	    SrvRef = erlang:monitor(process, Srv),
-	    change_handler:add_listener(Srv, Pid, DocID),
-	    {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
+        {ok, {Srv, _}} ->
+            ?LOG_SYS("found CH(~p): Adding listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
+            change_handler:add_listener(Srv, Pid, DocID),
+            {noreply, State};
+        error ->
+            {ok, Srv} = change_handler:start_link(couch_util:get_db(S, DBName), []),
+            ?LOG_SYS("started CH(~p): added listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
+            SrvRef = erlang:monitor(process, Srv),
+            change_handler:add_listener(Srv, Pid, DocID),
+            {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
     end.
 %%--------------------------------------------------------------------
 %% @private
@@ -726,12 +734,12 @@ code_change(_OldVsn, State, _Extra) ->
 -spec init_state/0 :: () -> #state{}.
 init_state() ->
     case couch_config:fetch(couch_host) of
-	undefined ->
-	    ?LOG("starting conns with default_couch_host"),
-	    init_state_from_config(couch_config:fetch(default_couch_host));
-	HostData ->
-	    ?LOG("starting conns with couch_host"),
-	    init_state_from_config(HostData)
+        undefined ->
+            ?LOG("starting conns with default_couch_host"),
+            init_state_from_config(couch_config:fetch(default_couch_host));
+        HostData ->
+            ?LOG("starting conns with couch_host"),
+            init_state_from_config(HostData)
     end.
 
 init_state_from_config(undefined) ->
@@ -750,10 +758,10 @@ init_state_from_config({H, Port, User, Pass, AdminPort}) ->
 
     ?LOG_SYS("returning state record"),
     #state{connection=Conn
-	   ,admin_connection=AdminConn
-	   ,host={H, wh_util:to_integer(Port), wh_util:to_integer(AdminPort)}
-	   ,creds={User, Pass}
-	  }.
+           ,admin_connection=AdminConn
+           ,host={H, wh_util:to_integer(Port), wh_util:to_integer(AdminPort)}
+           ,creds={User, Pass}
+          }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -767,4 +775,4 @@ save_config() ->
 -spec remove_ref/2 :: (reference(), dict()) -> dict().
 remove_ref(Ref, CH) ->
     dict:filter(fun(_, {_, Ref1}) when Ref1 =:= Ref -> false;
-		   (_, _) -> true end, CH).
+                   (_, _) -> true end, CH).

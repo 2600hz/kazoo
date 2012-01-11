@@ -18,7 +18,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -100,16 +100,16 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.resources">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.resources">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.resources">>, [RD, Context | Params]}, State) ->
@@ -118,7 +118,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.resources">>, [RD, Cont
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.resources">>, [RD, Context | Params]}, State) ->
@@ -126,7 +126,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.resources">>, [RD, 
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.resources">>, [RD, Context | Params]}, State) ->
@@ -134,7 +134,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.resources">>, [RD, C
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.resources">>, [RD, Context | Params]}, State) ->
@@ -142,7 +142,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.resources">>, [RD
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 
@@ -273,11 +273,11 @@ load_resource_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_resource/1 :: (#cb_context{}) -> #cb_context{}.
-create_resource(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
+create_resource(#cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"local_resources">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)
                 ,resp_status=success
@@ -302,11 +302,11 @@ load_resource(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_resource/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_resource(DocId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
+update_resource(DocId, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"local_resources">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -319,14 +319,3 @@ update_resource(DocId, #cb_context{req_data=JObj}=Context) ->
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, resource).

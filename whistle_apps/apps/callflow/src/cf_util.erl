@@ -111,7 +111,7 @@ lookup_callflow(Number, AccountId) ->
     case wh_util:is_empty(Number) of
         true -> {error, invalid_number};
         false ->
-            Db = whapps_util:get_db_name(AccountId, encoded),
+            Db = wh_util:format_account_id(AccountId, encoded),
             do_lookup_callflow(wh_util:to_binary(Number), Db)
     end.
 

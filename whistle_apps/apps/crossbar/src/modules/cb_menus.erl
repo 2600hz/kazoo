@@ -18,7 +18,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -101,16 +101,16 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.menus">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.menus">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.menus">>, [RD, Context | Params]}, State) ->
@@ -127,7 +127,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.menus">>, [RD, Cont
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.menus">>, [RD, Context | Params]}, State) ->
@@ -135,7 +135,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.menus">>, [RD, Conte
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.menus">>, [RD, Context | Params]}, State) ->
@@ -143,7 +143,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.menus">>, [RD, Co
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -273,18 +273,18 @@ load_menu_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_menu/1 :: (#cb_context{}) -> #cb_context{}.
-create_menu(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
+create_menu(#cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"menus">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             Pvts = [fun(J) -> wh_json:set_value(<<"pvt_type">>, <<"menu">>, J) end
                     ,fun(J) ->wh_json:set_value(<<"pvt_vsn">>, <<"2">>, J) end
                    ],
             Context#cb_context{
-	      doc=lists:foldr(fun(F, J) -> F(J) end, JObj, Pvts)
-	      ,resp_status=success
-	     }
+              doc=lists:foldr(fun(F, J) -> F(J) end, JObj, Pvts)
+              ,resp_status=success
+             }
     end.
 
 %%--------------------------------------------------------------------
@@ -305,11 +305,11 @@ load_menu(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_menu/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_menu(DocId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
+update_menu(DocId, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"menus">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -322,14 +322,3 @@ update_menu(DocId, #cb_context{req_data=JObj}=Context) ->
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, menu).

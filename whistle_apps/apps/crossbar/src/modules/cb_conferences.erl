@@ -18,7 +18,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -100,16 +100,16 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.conferences">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.conferences">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.conferences">>, [RD, Context | Params]}, State) ->
@@ -118,7 +118,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.conferences">>, [RD, Co
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.conferences">>, [RD, Context | Params]}, State) ->
@@ -126,7 +126,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.conferences">>, [RD
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.conferences">>, [RD, Context | Params]}, State) ->
@@ -134,7 +134,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.conferences">>, [RD,
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.conferences">>, [RD, Context | Params]}, State) ->
@@ -142,7 +142,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.conferences">>, [
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -267,7 +267,7 @@ load_conference_summary(Context) ->
     Nouns = Context#cb_context.req_nouns,
     LastNoun  = lists:nth(2, Nouns),
     case LastNoun of
-	{<<"users">>, [UserId]} ->
+        {<<"users">>, [UserId]} ->
             crossbar_doc:load_view(?CB_LIST, [], Context, fun(JObj, Acc) ->
                                                                   case wh_json:get_value([<<"value">>, <<"owner_id">>], JObj) of
                                                                       undefined ->
@@ -278,7 +278,7 @@ load_conference_summary(Context) ->
                                                                           [undefined|Acc]
                                                                   end
                                                           end);
-        {<<"accounts">>, _} ->
+        {?WH_ACCOUNTS_DB, _} ->
             crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
         _ ->
             crossbar_util:response_faulty_request(Context)
@@ -291,15 +291,14 @@ load_conference_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_conference/1 :: (#cb_context{}) -> #cb_context{}.
-create_conference(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
-            Context#cb_context{
-	      doc=wh_json:set_value(<<"pvt_type">>, <<"conference">>, JObj)
-	      ,resp_status=success
-	     }
+create_conference(#cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"conferences">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            Context#cb_context{resp_status=success
+                               ,doc=wh_json:set_value(<<"pvt_type">>, <<"conference">>, JObj)
+                              }
     end.
 
 %%--------------------------------------------------------------------
@@ -320,11 +319,11 @@ load_conference(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_conference/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_conference(DocId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
+update_conference(DocId, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"conferences">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -337,13 +336,3 @@ update_conference(DocId, #cb_context{req_data=JObj}=Context) ->
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, conference).
