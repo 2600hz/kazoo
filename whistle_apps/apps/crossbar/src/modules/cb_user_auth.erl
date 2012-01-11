@@ -237,18 +237,81 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: (Params, Context) -> #cb_context{} when
-      Params :: list(),
-      Context :: #cb_context{}.
+-spec validate/2 :: (list(), #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
-    ?LOG("Auth User: ~p", [JObj]),
-    authorize_user(Context
-		   ,wh_json:get_value(<<"realm">>, JObj)
-                   ,wh_json:get_value(<<"credentials">>, JObj)
-                   ,wh_json:get_value(<<"method">>, JObj, <<"md5">>)
-                  );
+    Credentials = wh_json:get_value(<<"credentials">>, JObj),
+    Method = wh_json:get_value(<<"method">>, JObj, <<"md5">>),
+    case wh_json:get_value(<<"realm">>, JObj) of
+        undefined ->
+            ?LOG("realm not found, using name to auth..."),
+            AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
+            ?LOG("attemping to authorizing with account name: ~s", [AccountName]),
+            authorize_user_with_account_name(Context
+                                             ,AccountName
+                                             ,Credentials
+                                             ,Method
+                                            );
+        Realm ->
+            ?LOG("realm found, using realm to auth..."),
+            authorize_user_with_realm(Context
+                                      ,Realm
+                                      ,Credentials
+                                      ,Method
+                                     )
+    end;
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalize the account name by converting the name to lower case
+%% and then removing all non-alphanumeric characters.
+%%
+%% This can possibly return an empty binary.
+%% @end
+%%--------------------------------------------------------------------
+-spec normalize_account_name/1 :: (ne_binary()) -> binary().
+normalize_account_name(AccountName) ->
+    << <<Char>> || <<Char>> <= wh_util:binary_to_lower(AccountName)
+                   ,(Char >= $a andalso Char =< $z) orelse (Char >= $0 andalso Char =< $9) >>.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to lookup and compare the user creds finding the account by
+%% realm.
+%% @end
+%%--------------------------------------------------------------------
+-spec authorize_user_with_realm/4 :: (#cb_context{}, ne_binary(), ne_binary(), ne_binary()) -> #cb_context{}.
+authorize_user_with_realm(Context, Realm, Credentials, Method) ->
+    case whapps_util:get_account_by_realm(Realm) of
+        {ok, AccountDb} ->
+            ?LOG("realm ~s belongs to account ~s", [Realm, whapps_util:get_db_name(AccountDb, raw)]),
+            authorize_user(Context, Credentials, Method, AccountDb);
+        {error, not_found} ->
+            ?LOG("could not find account with realm ~s", [Realm]),
+            crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to lookup and compare the user creds finding the account by
+%% user.
+%% @end
+%%--------------------------------------------------------------------
+-spec authorize_user_with_account_name/4 :: (#cb_context{}, binary(), ne_binary(), ne_binary()) -> #cb_context{}.
+authorize_user_with_account_name(Context, <<>>, _, _) ->
+    ?LOG("no account name present, failing to authorize"),
+    crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
+authorize_user_with_account_name(Context, AccountName, Credentials, Method) ->
+    case whapps_util:get_accounts_by_name(AccountName) of
+        {ok, AccountDbs} ->
+            authorize_user(Context, Credentials, Method, AccountDbs);
+        {error, not_found} ->
+            crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -256,41 +319,24 @@ validate(_, Context) ->
 %% This function determines if the credentials are valid based on the
 %% provided hash method
 %%
+%% Attempt to lookup and compare the user creds in the provided accounts.
+%%
 %% Failure here returns 401
 %% @end
 %%--------------------------------------------------------------------
--spec authorize_user/4 :: (Context, Realm, Credentials, Method) -> #cb_context{} when
-      Context :: #cb_context{},
-      Realm :: binary(),
-      Credentials :: binary(),
-      Method :: binary().
-authorize_user(Context, _, Credentials, _) when not is_binary(Credentials) ->
-    ?LOG("credentials is not the correct format"),
-    crossbar_util:response_invalid_data([<<"credentials">>], Context);
-authorize_user(Context, Realm, _, _) when not is_binary(Realm) ->
-    ?LOG("realm is not the correct format"),
-    crossbar_util:response_invalid_data([<<"realm">>], Context);
-authorize_user(Context, <<>>, <<>>, _) ->
-    ?LOG("request has no realm or credentials"),
-    crossbar_util:response_invalid_data([<<"realm">>, <<"credentials">>], Context);
-authorize_user(Context, <<>>, _, _) ->
-    ?LOG("request has no realm"),
-    crossbar_util:response_invalid_data([<<"realm">>], Context);
-authorize_user(Context, _, <<>>, _) ->
-    ?LOG("request has no credentials"),
-    crossbar_util:response_invalid_data([<<"credentials">>], Context);
-authorize_user(Context, Realm, Credentials, Method) ->
-    case whapps_util:get_account_by_realm(Realm) of
-	{ok, AccountDb} ->
-            ?LOG("realm ~s belongs to account ~s", [Realm, whapps_util:get_db_name(AccountDb, raw)]),
-            authorize_user(Context, Realm, Credentials, Method, AccountDb);
-	{error, not_found} ->
-            ?LOG("could not find account with realm ~s", [Realm]),
-            crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
-    end.
-
-authorize_user(Context, _, Credentials, <<"md5">>, AcctDB) ->
-    case crossbar_doc:load_view(?ACCT_MD5_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=AcctDB}) of
+-spec authorize_user/4 :: (#cb_context{}, ne_binary(), ne_binary(), ne_binary() | [] | [ne_binary(),...] ) -> #cb_context{}.
+authorize_user(Context, _, _, []) ->
+    ?LOG("no account(s) specified"),
+    crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
+authorize_user(Context, Credentials, Method, [AccountDb|AccountDbs]) ->
+    case authorize_user(Context, Credentials, Method, AccountDb) of
+        #cb_context{resp_status=success}=Context1 ->
+            Context1;
+        _ ->
+            authorize_user(Context, Credentials, Method, AccountDbs)
+    end;
+authorize_user(Context, Credentials, <<"md5">>, AccountDb) ->
+    case crossbar_doc:load_view(?ACCT_MD5_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=AccountDb}) of
         #cb_context{resp_status=success, doc=[JObj|_]} ->
             ?LOG("found more that one user with MD5 ~s, using ~s", [Credentials, wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
@@ -301,8 +347,8 @@ authorize_user(Context, _, Credentials, <<"md5">>, AcctDB) ->
             ?LOG("credentials do not belong to any user"),
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
-authorize_user(Context, _, Credentials, <<"sha">>, AcctDB) ->
-    case crossbar_doc:load_view(?ACCT_SHA1_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=AcctDB}) of
+authorize_user(Context, Credentials, <<"sha">>, AccountDb) ->
+    case crossbar_doc:load_view(?ACCT_SHA1_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=AccountDb}) of
         #cb_context{resp_status=success, doc=[JObj|_]} ->
             ?LOG("found more that one user with SHA1 ~s, using ~s", [Credentials, wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
@@ -313,7 +359,7 @@ authorize_user(Context, _, Credentials, <<"sha">>, AcctDB) ->
             ?LOG("credentials do not belong to any user"),
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
-authorize_user(Context, _, _, _, _) ->
+authorize_user(Context, _, _, _) ->
     crossbar_util:response(error, <<"invalid credentials">>, 401, Context).
 
 %%--------------------------------------------------------------------
@@ -322,9 +368,7 @@ authorize_user(Context, _, _, _, _) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec create_token/2 :: (RD, Context) -> #cb_context{} when
-      RD :: #wm_reqdata{},
-      Context :: #cb_context{}.
+-spec create_token/2 :: (#wm_reqdata{}, #cb_context{}) -> #cb_context{}.
 create_token(_, #cb_context{doc = ?EMPTY_JSON_OBJECT}=Context) ->
     crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
 create_token(RD, #cb_context{doc=JObj}=Context) ->

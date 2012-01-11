@@ -13,7 +13,8 @@
 -export([replicate_from_accounts/2, replicate_from_account/3]).
 -export([revise_whapp_views_in_accounts/1]).
 -export([get_all_accounts/0, get_all_accounts/1]).
--export([get_account_by_realm/1, calculate_cost/5]).
+-export([get_account_by_realm/1,get_accounts_by_name/1]).
+-export([calculate_cost/5]).
 -export([get_event_type/1, put_callid/1]).
 -export([get_call_termination_reason/1]).
 -export([alert/3, alert/4]).
@@ -25,6 +26,7 @@
 -define(REPLICATE_ENCODING, encoded).
 -define(AGG_DB, <<"accounts">>).
 -define(AGG_LIST_BY_REALM, <<"accounts/listing_by_realm">>).
+-define(AGG_LIST_BY_NAME, <<"accounts/listing_by_name">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -175,13 +177,27 @@ is_acct_db(_) -> false.
 %% @doc Realms are one->one with accounts.
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_by_realm/1 :: (Realm) -> {ok, binary()}| {error, not_found} when
-      Realm :: binary().
+-spec get_account_by_realm/1 :: (ne_binary()) -> {ok, ne_binary()} | {error, not_found}.
 get_account_by_realm(Realm) ->
     case couch_mgr:get_results(?AGG_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
-	{ok, [{struct, _}=V|_]} ->
-	    {ok, wh_json:get_value([<<"value">>, <<"account_db">>], V)};
-	_ -> {error, not_found}
+        {ok, [{struct, _}=V|_]} ->
+            {ok, wh_json:get_value([<<"value">>, <<"account_db">>], V)};
+        _ -> {error, not_found}
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Names are one->many with accounts since account names are not
+%% unique.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_accounts_by_name/1 :: (ne_binary()) -> {ok, [ne_binary(),...]} | {error, not_found}.
+get_accounts_by_name(Name) ->
+    case couch_mgr:get_results(?AGG_DB, ?AGG_LIST_BY_NAME, [{<<"key">>, Name}]) of
+        {ok, JObjs} ->
+            {ok, [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs]};
+        _ ->
+            {error, not_found}
     end.
 
 %%--------------------------------------------------------------------
@@ -372,8 +388,8 @@ calculate_cost(_, _, _, _, 0) -> 0.0;
 calculate_cost(R, 0, RM, Sur, Secs) -> calculate_cost(R, 60, RM, Sur, Secs);
 calculate_cost(R, RI, RM, Sur, Secs) ->
     case Secs =< RM of
-	true -> Sur + ((RM / 60) * R);
-	false -> Sur + ((RM / 60) * R) + ( wh_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R))
+    true -> Sur + ((RM / 60) * R);
+    false -> Sur + ((RM / 60) * R) + ( wh_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R))
     end.
 
 hangup_cause_to_alert_level(<<"UNALLOCATED_NUMBER">>) ->
