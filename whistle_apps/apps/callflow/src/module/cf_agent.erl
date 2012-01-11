@@ -84,7 +84,7 @@ find_agent(Data, Retries, #cf_call{account_db=Db}=Call) ->
     case prompt_and_get_pin(Prompts, Data, Call) of
         {ok, Pin} -> % Pin = <<"315">>
             ?LOG("got ~s for pin", [Pin]),
-            case couch_mgr:get_results(Db, <<"agent/listing_by_pin">>, [{<<"include_docs">>, true}, {<<"key">>, Pin}]) of
+            case couch_mgr:get_results(Db, <<"agents/listing_by_pin">>, [{<<"include_docs">>, true}, {<<"key">>, Pin}]) of
                 {ok, []} ->
                     ?LOG("no agent found with pin"),
                     #prompts{invalid_pin_prompt=InvalidPinPrompt}=Prompts,
