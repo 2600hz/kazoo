@@ -15,6 +15,7 @@
 -spec handle/2 :: (json_object(), #cf_call{}) -> 'ok'.
 handle(Data, #cf_call{call_kvs=KVs}=Call) ->
     ShouldRecord = wh_json:is_true(<<"record_call">>, Data, true),
+    ?LOG("Will record: ~s", [ShouldRecord]),
 
     Skills = wh_json:from_list(orddict:to_list(KVs)),
     Req = [{<<"Call-Id">>, cf_exe:callid(Call)}
@@ -24,5 +25,6 @@ handle(Data, #cf_call{call_kvs=KVs}=Call) ->
            | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)
           ],
     wapi_acd:agent_connect(Req),
+    ?LOG("waiting for hangup"),
     cf_call_command:wait_for_hangup(),
     cf_exe:continue(Call).

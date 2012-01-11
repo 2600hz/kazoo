@@ -15,8 +15,7 @@
 
 -spec handle/2 :: (json_object(), #cf_call{}) -> 'ok'.
 handle(Data, #cf_call{call_kvs=KVs}=Call) ->
-    NewKVs = wh_json:get_value(<<"kvs">>, Data, wh_json:new()),
-    cf_exe:continue(Call#cf_call{call_kvs=merge(NewKVs, KVs)}).
+    cf_exe:continue(Call#cf_call{call_kvs=merge(Data, KVs)}).
 
 -spec merge/2 :: (json_object(), orddict:orddict()) -> orddict:orddict().
 merge(New, Old) ->
