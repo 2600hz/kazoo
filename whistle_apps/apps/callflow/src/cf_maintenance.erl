@@ -34,7 +34,7 @@ refresh() ->
 refresh(Account) when not is_binary(Account) ->
     refresh(wh_util:to_binary(Account));
 refresh(Account) ->
-    AccountDb = whapps_util:get_db_name(Account, encoded),
+    AccountDb = wh_util:format_account_id(Account, encoded),
     couch_mgr:revise_views_from_folder(AccountDb, callflow).
 
 %%--------------------------------------------------------------------
@@ -52,7 +52,7 @@ migrate_menus() ->
     [ migrate_menus(Account) || Account <- whapps_util:get_all_accounts(raw) ].
 
 migrate_menus(Account) ->
-    Db = whapps_util:get_db_name(Account, encoded),
+    Db = wh_util:format_account_id(Account, encoded),
     log("migrating all menus in ~s", [Db]),
     case couch_mgr:get_results(Db, {<<"menus">>, <<"crossbar_listing">>}, [{<<"include_docs">>, true}]) of
         {ok, []} ->

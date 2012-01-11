@@ -18,7 +18,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -104,25 +104,25 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.ts_users">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.ts_users">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.ts_users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, Context#cb_context{db_name=?TS_DB}),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context#cb_context{db_name=?TS_DB}),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.ts_users">>, [RD, Context | Params]}, State) ->
@@ -130,7 +130,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.ts_users">>, [RD, C
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_users">>, [RD, Context | Params]}, State) ->
@@ -138,7 +138,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.ts_users">>, [RD, Co
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.ts_users">>, [RD, Context | Params]}, State) ->
@@ -146,7 +146,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.ts_users">>, [RD,
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -267,15 +267,10 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec create_ts_user/1 :: (#cb_context{}) -> #cb_context{}.
 create_ts_user(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
-            JObj1 = wh_json:set_value(<<"_id">>, list_to_binary([<<"user_">>, wh_json:get_binary_value(<<"userID">>, JObj,<<>>)]), JObj),
-            Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"ts_user">>, JObj1)
-                               ,resp_status=success
-                              }
-    end.
+    JObj1 = wh_json:set_value(<<"_id">>, list_to_binary([<<"user_">>, wh_json:get_binary_value(<<"userID">>, JObj,<<>>)]), JObj),
+    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"ts_user">>, JObj1)
+                       ,resp_status=success
+                      }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -304,12 +299,7 @@ read_ts_user(TSUserId, Context) ->
 %%--------------------------------------------------------------------
 -spec update_ts_user/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_ts_user(TSUserId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
-            crossbar_doc:load_merge(<<"user_", TSUserId/binary>>, JObj, Context)
-    end.
+    crossbar_doc:load_merge(<<"user_", TSUserId/binary>>, JObj, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -331,14 +321,3 @@ read_ts_user_summary(Context) ->
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, ts_user).

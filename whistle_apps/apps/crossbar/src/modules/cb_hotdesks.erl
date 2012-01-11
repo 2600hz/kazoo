@@ -18,7 +18,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -102,16 +102,16 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.hotdesks">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.hotdesks">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.hotdesks">>, [RD, Context | Params]}, State) ->
@@ -119,7 +119,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.hotdesks">>, [RD, Conte
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -173,8 +173,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.hotdesks">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.hotdesks">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.hotdesks">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.hotdesks">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.get.hotdesks">>).
 
 %%--------------------------------------------------------------------
 %% @private

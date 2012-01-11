@@ -11,6 +11,7 @@
 -export([to_proplist/1, to_proplist/2]).
 -export([get_binary_boolean/2]).
 -export([get_integer_value/2, get_integer_value/3]).
+-export([get_number_value/2, get_number_value/3]).
 -export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
 -export([get_string_value/2, get_string_value/3]).
@@ -27,6 +28,7 @@
 -export([from_list/1, merge_jobjs/2]).
 
 -export([normalize_jobj/1, normalize/1, is_json_object/1, is_valid_json_object/1, is_json_term/1]).
+-export([public_fields/1, private_fields/1, is_private_key/1]).
 
 -export([encode/1]).
 -export([decode/1, decode/2]).
@@ -117,7 +119,7 @@ merge_recursive(JObj1, JObj2) ->
 
 merge_recursive(JObj1, JObj2, Keys) when is_tuple(JObj2) ->
     lists:foldr(fun(Key, J) ->
-			merge_recursive(J, wh_json:get_value(Key, JObj2), [Key|Keys])
+                        merge_recursive(J, wh_json:get_value(Key, JObj2), [Key|Keys])
                 end, JObj1, ?MODULE:get_keys(JObj2));
 merge_recursive(JObj1, Value, Keys) ->
     wh_json:set_value(lists:reverse(Keys), Value, JObj1).
@@ -199,6 +201,20 @@ get_integer_value(Key, JObj, Default) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> Default;
         Value -> wh_util:to_integer(Value)
+    end.
+
+-spec get_number_value/2 :: (json_string(), json_object() | json_objects()) -> 'undefined' | number().
+get_number_value(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Value -> wh_util:to_number(Value)
+    end.
+
+-spec get_number_value/3 :: (json_string(), json_object() | json_objects(), Default) -> number() | Default.
+get_number_value(Key, JObj, Default) when is_number(Default) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> Default;
+        Value -> wh_util:to_number(Value)
     end.
 
 -spec get_float_value/2 :: (json_string(), json_object() | json_objects()) -> 'undefined' | float().
@@ -286,8 +302,8 @@ find(Key, Docs) ->
 
 find(Key, JObjs, Default) ->
     case lists:dropwhile(fun(JObj) -> wh_json:get_ne_value(Key, JObj) =:= undefined end, JObjs) of
-	[] -> Default;
-	[JObj|_] -> wh_json:get_ne_value(Key, JObj)
+        [] -> Default;
+        [JObj|_] -> wh_json:get_ne_value(Key, JObj)
     end.
 
 
@@ -515,6 +531,49 @@ normalize_key_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
 normalize_key_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
 normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 normalize_key_char(C) -> C.
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will filter any private fields out of the provided
+%% json proplist
+%% @end
+%%--------------------------------------------------------------------
+-spec public_fields/1 :: (json_object() | json_objects()) -> json_object() | json_objects().
+public_fields([_|_]=JObjs)->
+    lists:map(fun public_fields/1, JObjs);
+public_fields(JObj) ->
+    PubJObj = wh_json:filter(fun({K, _}) -> not is_private_key(K) end, JObj),
+    case wh_json:get_value(<<"_id">>, JObj) of
+        undefined -> PubJObj;
+        Id -> wh_json:set_value(<<"id">>, Id, PubJObj)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will filter any public fields out of the provided
+%% json proplist
+%% @end
+%%--------------------------------------------------------------------
+-spec private_fields/1 :: (json_object() | json_objects()) -> json_object() | json_objects().
+private_fields([_|_]=JObjs)->
+    lists:map(fun public_fields/1, JObjs);
+private_fields(JObj) ->
+    wh_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function will return a boolean, true if the provided key is
+%% considered private; otherwise false
+%% @end
+%%--------------------------------------------------------------------
+-spec is_private_key/1 :: (binary()) -> boolean().
+is_private_key(<<"_", _/binary>>) -> true;
+is_private_key(<<"pvt_", _/binary>>) -> true;
+is_private_key(_) -> false.
 
 %% PropEr Testing
 prop_is_json_object() ->

@@ -1,0 +1,62 @@
+{
+   "_id":"callflows",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Call flows describe steps to take in order to process a phone call. They are trees of information related to a phone call such as \"answer, play file, record file\" etc. that are logically grouped together and ordered.",
+   "properties":{
+      "numbers":{
+         "description":"A list of static numbers that the callflow should execute for",
+         "type":"array",
+         "items":[
+            {
+               "type":"string"
+            }
+         ]
+      },
+      "patterns":{
+         "description":"A list of regular expressions that the callflow should execute for, with optional capture groups",
+         "type":"array",
+         "items":[
+            {
+               "type":"string"
+            }
+         ]
+      },
+      "featurecode":{
+         "description":"When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature",
+         "type":"object",
+         "properties":{
+            "name":{
+               "type":"string"
+            },
+            "number":{
+               "type":"string"
+            }
+         }
+      },
+      "flow":{
+         "description":"A callflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
+         "type":"object",
+         "required":"true",
+         "properties":{
+            "module":{
+               "type":"string",
+               "required":true,
+               "maxLength":15
+            },
+            "data":{
+               "type":"object",
+               "required":true,
+               "default":{
+
+               }
+            },
+            "children":{
+               "type":"#/flow",
+               "default":{
+
+               }
+            }
+         }
+      }
+   }
+}

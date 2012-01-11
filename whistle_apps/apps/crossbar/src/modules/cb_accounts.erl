@@ -49,56 +49,56 @@ start_link() ->
 
 -spec get_realm_from_db/1 :: (ne_binary()) -> {'ok', ne_binary()} | {'error', atom()}.
 get_realm_from_db(DBName) ->
-    Doc = whapps_util:get_db_name(DBName, raw),
+    Doc = wh_util:format_account_id(DBName, raw),
     case couch_mgr:open_doc(DBName, Doc) of
-	{ok, JObj} -> {ok, wh_json:get_value(<<"realm">>, JObj)};
-	{error, _}=E -> E
+        {ok, JObj} -> {ok, wh_json:get_value(<<"realm">>, JObj)};
+        {error, _}=E -> E
     end.
 
 %% Iterate through all account docs in the accounts DB and ensure each
 %% has a parent
 -spec ensure_parent_set/0 :: () -> 'ok' | {'error', 'no_accounts' | atom()}.
 ensure_parent_set() ->
-    case couch_mgr:get_results(?ACCOUNTS_AGG_DB, ?AGG_VIEW_SUMMARY, [{<<"include_docs">>, true}]) of
-	{ok, []} -> {error, no_accounts};
-	{ok, AcctJObjs} ->
-	    DefaultParentID = find_default_parent(AcctJObjs),
-	    ?LOG("Default Parent ID: ~s", [DefaultParentID]),
-	    [ ensure_parent_set(DefaultParentID, wh_json:get_value(<<"id">>, AcctJObj))
-	      || AcctJObj <- AcctJObjs,
-		 wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
-		 wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj, []) =:= [] % empty tree (should have at least the parent)
-	    ],
-	    ok;
-	{error, _}=E -> E
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_SUMMARY, [{<<"include_docs">>, true}]) of
+        {ok, []} -> {error, no_accounts};
+        {ok, AcctJObjs} ->
+            DefaultParentID = find_default_parent(AcctJObjs),
+            ?LOG("Default Parent ID: ~s", [DefaultParentID]),
+            [ ensure_parent_set(DefaultParentID, wh_json:get_value(<<"id">>, AcctJObj))
+              || AcctJObj <- AcctJObjs,
+                 wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
+                 wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj, []) =:= [] % empty tree (should have at least the parent)
+            ],
+            ok;
+        {error, _}=E -> E
     end.
 
 -spec ensure_parent_set/2 :: (ne_binary(), ne_binary()) -> 'ok' | #cb_context{}.
 ensure_parent_set(DefaultParentID, AccountID) ->
-    case update_tree(AccountID, DefaultParentID, #cb_context{db_name=?ACCOUNTS_AGG_DB}) of
-	#cb_context{resp_status=success}=Context ->
-	    ?LOG("updating tree of ~s", [AccountID]),
-	    crossbar_doc:save(Context);
-	_Context ->
-	    ?LOG("failed to update tree for ~s", [AccountID])
+    case update_tree(AccountID, DefaultParentID, #cb_context{db_name=?WH_ACCOUNTS_DB}) of
+        #cb_context{resp_status=success}=Context ->
+            ?LOG("updating tree of ~s", [AccountID]),
+            crossbar_doc:save(Context);
+        _Context ->
+            ?LOG("failed to update tree for ~s", [AccountID])
     end.
 
 -spec find_default_parent/1 :: (json_objects()) -> ne_binary().
 find_default_parent(AcctJObjs) ->
     case whapps_config:get(?CONFIG_CAT, <<"default_parent">>) of
-	undefined ->
-	    First = hd(AcctJObjs),
-	    {_, OldestAcctID} = lists:foldl(fun(AcctJObj, {Created, _}=Eldest) ->
-						    case wh_json:get_integer_value([<<"doc">>, <<"pvt_created">>], AcctJObj) of
-							Older when Older < Created  -> {Older, wh_json:get_value(<<"id">>, AcctJObj)};
-							_ -> Eldest
-						    end
-					    end
-					    ,{wh_json:get_integer_value([<<"doc">>, <<"pvt_created">>], First), wh_json:get_value(<<"id">>, First)}
-					    ,AcctJObjs),
-	    whapps_config:set(?CONFIG_CAT, <<"default_parent">>, OldestAcctID),
-	    OldestAcctID;
-	Default -> Default
+        undefined ->
+            First = hd(AcctJObjs),
+            {_, OldestAcctID} = lists:foldl(fun(AcctJObj, {Created, _}=Eldest) ->
+                                                    case wh_json:get_integer_value([<<"doc">>, <<"pvt_created">>], AcctJObj) of
+                                                        Older when Older < Created  -> {Older, wh_json:get_value(<<"id">>, AcctJObj)};
+                                                        _ -> Eldest
+                                                    end
+                                            end
+                                            ,{wh_json:get_integer_value([<<"doc">>, <<"pvt_created">>], First), wh_json:get_value(<<"id">>, First)}
+                                            ,AcctJObjs),
+            whapps_config:set(?CONFIG_CAT, <<"default_parent">>, OldestAcctID),
+            OldestAcctID;
+        Default -> Default
     end.
 
 %%%===================================================================
@@ -174,13 +174,13 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Pay
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_context{req_nouns=[{<<"accounts">>, _}]}=Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}]}=Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   %% Do all of our prep-work out of the agg db
                   %% later we will switch to save to the client db
-                  Context1 = validate(Params, Context#cb_context{db_name=?ACCOUNTS_AGG_DB}),
+                  Context1 = validate(Params, Context#cb_context{db_name=?WH_ACCOUNTS_DB}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
@@ -197,7 +197,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, C
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  case crossbar_doc:save(Context#cb_context{db_name=whapps_util:get_db_name(AccountId, encoded)}) of
+                  case crossbar_doc:save(Context#cb_context{db_name=wh_util:format_account_id(AccountId, encoded)}) of
                       #cb_context{resp_status=success}=Context1 ->
                           Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data = wh_json:new()}, Params]};
                       Else ->
@@ -214,7 +214,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, #
                   %% since we are not replicating, the accounts rev and the account rev on
                   %% this doc can drift.... so set it to account save, then set it to
                   %% accounts for the final operation... good times
-                  AccountDb = whapps_util:get_db_name(AccountId, encoded),
+                  AccountDb = wh_util:format_account_id(AccountId, encoded),
                   AccountsRev = wh_json:get_value(<<"_rev">>, Doc, <<>>),
                   case couch_mgr:lookup_doc_rev(AccountDb, AccountId) of
                       {ok, Rev} ->
@@ -222,7 +222,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, #
                                                                     ,doc=wh_json:set_value(<<"_rev">>, Rev, Doc)
                                                                    }) of
                               #cb_context{resp_status=success, doc=Doc1}=Context1 ->
-                                  couch_mgr:ensure_saved(?ACCOUNTS_AGG_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
+                                  couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
                                   Pid ! {binding_result, true, [RD, Context1, Params]};
                               Else ->
                                   Pid ! {binding_result, true, [RD, Else, Params]}
@@ -232,7 +232,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, #
                                                                     ,doc=wh_json:delete_key(<<"_rev">>, Doc)
                                                                    }) of
                               #cb_context{resp_status=success, doc=Doc1}=Context1 ->
-                                  couch_mgr:ensure_saved(?ACCOUNTS_AGG_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
+                                  couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
                                   Pid ! {binding_result, true, [RD, Context1, Params]};
                               Else ->
                                   Pid ! {binding_result, true, [RD, Else, Params]}
@@ -254,16 +254,18 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   %% dont use the account id in cb_context as it may not represent the db_name...
-                  DbName = whapps_util:get_db_name(AccountId, encoded),
+                  DbName = wh_util:format_account_id(AccountId, encoded),
                   try
                       %% Ensure the DB that we are about to delete is an account
                       {ok, JObj} = couch_mgr:open_doc(DbName, AccountId),
 
                       ?PVT_TYPE = wh_json:get_value(<<"pvt_type">>, JObj),
-		      ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
+                      ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
 
                       #cb_context{resp_status=success} = crossbar_doc:delete(Context),
-		      ?LOG_SYS("deleted ~s in ~s", [DbName, AccountId]),
+                      ?LOG_SYS("deleted ~s in ~s", [DbName, AccountId]),
+
+                      ok = wh_number_manager:free_numbers(AccountId),
 
                       case couch_mgr:db_delete(DbName) of
                           true -> Pid ! {binding_result, true, [RD, Context, Params]};
@@ -271,7 +273,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
                       end
                   catch
                       _:_E ->
-			  ?LOG_SYS("Exception while deleting account: ~p", [_E]),
+                          ?LOG_SYS("Exception while deleting account: ~p", [_E]),
                           Pid ! {binding_result, true, [RD, crossbar_util:response_bad_identifier(AccountId, Context), Params]}
                   end
           end),
@@ -380,7 +382,6 @@ resource_exists([_, Path]) ->
     Valid = lists:member(Path, [<<"parent">>, <<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]),
     {Valid, []};
 resource_exists(_T) ->
-    io:format("~p~n", [_T]),
     {false, []}.
 
 %%--------------------------------------------------------------------
@@ -432,9 +433,9 @@ load_account_summary([], Context) ->
     crossbar_doc:load_view(?AGG_VIEW_SUMMARY, [], Context, fun normalize_view_results/2);
 load_account_summary(AccountId, Context) ->
     crossbar_doc:load_view(?AGG_VIEW_SUMMARY, [
-					       {<<"startkey">>, [AccountId]}
-					       ,{<<"endkey">>, [AccountId, wh_json:new()]}
-					      ], Context, fun normalize_view_results/2).
+                                               {<<"startkey">>, [AccountId]}
+                                               ,{<<"endkey">>, [AccountId, wh_json:new()]}
+                                              ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -446,36 +447,34 @@ load_account_summary(AccountId, Context) ->
 -spec create_account/2 :: (#cb_context{}, 'undefined' | ne_binary()) -> #cb_context{}.
 create_account(Context) ->
     P = case whapps_config:get(?CONFIG_CAT, <<"default_parent">>) of
-	    undefined ->
-		case couch_mgr:get_results(?ACCOUNTS_AGG_DB, ?AGG_VIEW_SUMMARY, [{<<"include_docs">>, true}]) of
-		    {ok, [_|_]=AcctJObjs} ->
-			ParentId = find_default_parent(AcctJObjs),
-			whapps_config:set(?CONFIG_CAT, <<"default_parent">>, ParentId),
-			ParentId;
-		    _ -> undefined
-		end;
-	    ParentId -> ParentId
-	end,
+            undefined ->
+                case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_SUMMARY, [{<<"include_docs">>, true}]) of
+                    {ok, [_|_]=AcctJObjs} ->
+                        ParentId = find_default_parent(AcctJObjs),
+                        whapps_config:set(?CONFIG_CAT, <<"default_parent">>, ParentId),
+                        ParentId;
+                    _ -> undefined
+                end;
+            ParentId -> ParentId
+        end,
     create_account(Context, P).
 
-create_account(#cb_context{req_data=JObj}=Context, ParentId) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    ?LOG_SYS("Invalid JSON failed on fields ~p", [Fields]),
-            crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
-	    ?LOG_SYS("JSON is valid"),
-            case is_unique_realm(undefined, Context) of
-                true ->
-		    ?LOG_SYS("Realm ~s is valid and unique", [wh_json:get_value(<<"realm">>, JObj)]),
-                    Context#cb_context{
-                      doc=set_private_fields(JObj, Context, ParentId)
-                      ,resp_status=success
-                     };
-                false ->
-		    ?LOG_SYS("Invalid or non-unique realm: ~s", [wh_json:get_value(<<"realm">>, JObj)]),
-                    crossbar_util:response_invalid_data([<<"realm">>], Context)
-            end
+create_account(#cb_context{req_data=Data}=Context, ParentId) ->
+    UniqueRealm = is_unique_realm(undefined, Context),
+    case wh_json_validator:is_valid(Data, ?WH_ACCOUNTS_DB) of
+        {fail, Errors} when UniqueRealm ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {fail, Errors} ->
+            E = wh_json:set_value([<<"realm">>, <<"unique">>], <<"Realm is not unique for this system">>, Errors),
+            crossbar_util:response_invalid_data(E, Context);
+        {pass, _} when not UniqueRealm ->
+            E = wh_json:set_value([<<"realm">>, <<"unique">>], <<"Realm is not unique for this system">>, wh_json:new()),
+            crossbar_util:response_invalid_data(E, Context);
+        {pass, JObj} ->
+            Context#cb_context{
+              doc=set_private_fields(JObj, Context, ParentId)
+              ,resp_status=success
+             }
     end.
 
 %%--------------------------------------------------------------------
@@ -497,20 +496,18 @@ load_account(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec update_account/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update_account(AccountId, #cb_context{req_data=Data}=Context) ->
-    case is_valid_doc(Data) of
-        {errors, Fields} ->
-	    ?LOG_SYS("Failed to validate JSON"),
-             crossbar_util:response_invalid_data(Fields, Context);
-        {ok, _} ->
-            case is_unique_realm(AccountId, Context) of
-                true ->
-		    %% Update the aggregate accounts DB (/accounts/AB/CB)
-		    ?LOG_SYS("Realm is valid for ~s", [AccountId]),
-		    crossbar_doc:load_merge(AccountId, Data, Context);
-                false ->
-		    ?LOG_SYS("Realm isn't valid for ~s", [AccountId]),
-                    crossbar_util:response_invalid_data([<<"realm">>], Context)
-            end
+    UniqueRealm = is_unique_realm(AccountId, Context),
+    case wh_json_validator:is_valid(Data, ?WH_ACCOUNTS_DB) of
+        {fail, Errors} when UniqueRealm ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {fail, Errors} ->
+            E = wh_json:set_value([<<"realm">>, <<"unique">>], <<"Realm is not unique for this system">>, Errors),
+            crossbar_util:response_invalid_data(E, Context);
+        {pass, _} when not UniqueRealm ->
+            E = wh_json:set_value([<<"realm">>, <<"unique">>], <<"Realm is not unique for this system">>, wh_json:new()),
+            crossbar_util:response_invalid_data(E, Context);
+        {pass, JObj} ->
+            crossbar_doc:load_merge(AccountId, JObj, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -521,11 +518,10 @@ update_account(AccountId, #cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec load_parent/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_parent(AccountId, Context) ->
-    case crossbar_doc:load_view(?AGG_VIEW_PARENT, [
-						   {<<"startkey">>, AccountId}
-						   ,{<<"endkey">>, AccountId}
-						  ], Context) of
-	#cb_context{resp_status=success, doc=[JObj|_]} ->
+    case crossbar_doc:load_view(?AGG_VIEW_PARENT, [{<<"startkey">>, AccountId}
+                                                   ,{<<"endkey">>, AccountId}
+                                                  ], Context) of
+        #cb_context{resp_status=success, doc=[JObj|_]} ->
             Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
             load_account_summary(Parent, Context);
         _Else ->
@@ -558,10 +554,9 @@ update_parent(AccountId, #cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec load_children/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_children(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_CHILDREN, [
-						{<<"startkey">>, [AccountId]}
-						,{<<"endkey">>, [AccountId, wh_json:new()]}
-					       ], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?AGG_VIEW_CHILDREN, [{<<"startkey">>, [AccountId]}
+                                                ,{<<"endkey">>, [AccountId, wh_json:new()]}
+                                               ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -571,10 +566,9 @@ load_children(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_descendants/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_descendants(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [
-						   {<<"startkey">>, [AccountId]}
-						   ,{<<"endkey">>, [AccountId, wh_json:new()]}
-						  ], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS, [{<<"startkey">>, [AccountId]}
+                                                   ,{<<"endkey">>, [AccountId, wh_json:new()]}
+                                                  ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -584,11 +578,10 @@ load_descendants(AccountId, Context) ->
 %%--------------------------------------------------------------------
 -spec load_siblings/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_siblings(AccountId, Context) ->
-    case crossbar_doc:load_view(?AGG_VIEW_PARENT, [
-						   {<<"startkey">>, AccountId}
-						   ,{<<"endkey">>, AccountId}
-						  ], Context) of
-	#cb_context{resp_status=success, doc=[JObj|_]} ->
+    case crossbar_doc:load_view(?AGG_VIEW_PARENT, [{<<"startkey">>, AccountId}
+                                                   ,{<<"endkey">>, AccountId}
+                                                  ], Context) of
+        #cb_context{resp_status=success, doc=[JObj|_]} ->
             Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
             load_children(Parent, Context);
         _Else ->
@@ -618,16 +611,6 @@ is_valid_parent(_JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Validates JObj against their schema
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> {'ok', []} | crossbar_schema:errors().
-is_valid_doc(JObj) ->
-     crossbar_schema:do_validate(JObj, account).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Updates AccountID's parent's tree with the AccountID as a descendant
 %% @end
 %%--------------------------------------------------------------------
@@ -646,7 +629,7 @@ update_tree(AccountId, ParentId, Context) ->
                     Updater = fun(Desc, Acc) -> update_doc_tree(Tree, Desc, Acc) end,
                     Updates = lists:foldr(Updater, [], DescDocs),
                     Context1#cb_context{doc=Updates};
-		Context1 -> Context1
+                Context1 -> Context1
             end;
         Else ->
             Else
@@ -663,14 +646,14 @@ update_doc_tree([_|_]=ParentTree, JObj, Acc) ->
     AccountId = wh_json:get_value(<<"id">>, JObj),
     ParentId = lists:last(ParentTree),
 
-    case crossbar_doc:load(AccountId, #cb_context{db_name=?ACCOUNTS_AGG_DB}) of
+    case crossbar_doc:load(AccountId, #cb_context{db_name=?WH_ACCOUNTS_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
             MyTree =
                 case lists:dropwhile(fun(E)-> E =/= ParentId end, wh_json:get_value(<<"pvt_tree">>, Doc, [])) of
                     [] -> ParentTree;
                     [_|List] -> ParentTree ++ List
                 end,
-	    Trimmed = [E || E <- MyTree, E =/= AccountId],
+            Trimmed = [E || E <- MyTree, E =/= AccountId],
             [wh_json:set_value(<<"pvt_tree">>, Trimmed, Doc) | Acc];
         _Else ->
             Acc
@@ -689,7 +672,7 @@ set_private_fields(JObj0, Context, undefined) ->
                         Fun(JObj1, Context)
                 end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, fun add_pvt_tree/2]);
 set_private_fields(JObj0, Context, ParentId) ->
-    case is_binary(ParentId) andalso couch_mgr:open_doc(whapps_util:get_db_name(ParentId, encoded), ParentId) of
+    case is_binary(ParentId) andalso couch_mgr:open_doc(wh_util:format_account_id(ParentId, encoded), ParentId) of
         {ok, ParentJObj} ->
             Tree = wh_json:get_value(<<"pvt_tree">>, ParentJObj, []) ++ [ParentId],
             AddPvtTree = fun(JObj, _) -> wh_json:set_value(<<"pvt_tree">>, Tree, JObj) end,
@@ -710,24 +693,24 @@ add_pvt_api_key(JObj, _) ->
 
 add_pvt_tree(JObj, #cb_context{auth_doc=undefined}) ->
     case whapps_config:get(?CONFIG_CAT, <<"default_parent">>) of
-	undefined ->
-	    ?LOG("there really should be a parent unless this is the first ever account"),
-	    wh_json:set_value(<<"pvt_tree">>, [], JObj);
-	ParentId ->
-	    ?LOG("setting tree to [~s]", [ParentId]),
-	    wh_json:set_value(<<"pvt_tree">>, [ParentId], JObj)
+        undefined ->
+            ?LOG("there really should be a parent unless this is the first ever account"),
+            wh_json:set_value(<<"pvt_tree">>, [], JObj);
+        ParentId ->
+            ?LOG("setting tree to [~s]", [ParentId]),
+            wh_json:set_value(<<"pvt_tree">>, [ParentId], JObj)
     end;
 add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
     AuthAccId = wh_json:get_value(<<"account_id">>, Token),
-    case is_binary(AuthAccId) andalso couch_mgr:open_doc(whapps_util:get_db_name(AuthAccId, encoded), AuthAccId) of
+    case is_binary(AuthAccId) andalso couch_mgr:open_doc(wh_util:format_account_id(AuthAccId, encoded), AuthAccId) of
         {ok, AuthJObj} ->
-	    Tree = wh_json:get_value(<<"pvt_tree">>, AuthJObj, []) ++ [AuthAccId],
-	    ?LOG("setting parent tree to ~p", [Tree]),
+            Tree = wh_json:get_value(<<"pvt_tree">>, AuthJObj, []) ++ [AuthAccId],
+            ?LOG("setting parent tree to ~p", [Tree]),
             wh_json:set_value(<<"pvt_tree">>, Tree, JObj);
         false ->
-	    add_pvt_tree(JObj, #cb_context{auth_doc=undefined});
+            add_pvt_tree(JObj, #cb_context{auth_doc=undefined});
         _ ->
-	    ?LOG("setting parent tree to [~s]", [AuthAccId]),
+            ?LOG("setting parent tree to [~s]", [AuthAccId]),
             wh_json:set_value(<<"pvt_tree">>, [AuthAccId], JObj)
     end.
 
@@ -742,21 +725,27 @@ add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
 load_account_db([AccountId|_], Context) ->
     load_account_db(AccountId, Context);
 load_account_db(AccountId, Context) when is_binary(AccountId) ->
-    DbName = whapps_util:get_db_name(AccountId, encoded),
-    ?LOG_SYS("Account determined that db name: ~s", [DbName]),
-    case couch_mgr:db_exists(DbName) of
-        false ->
-	    ?LOG("Check failed for db_exists on ~s", [AccountId]),
-            Context#cb_context{
-                 db_name = <<>>
-                ,account_id = <<>>
-            };
-        true ->
-	    ?LOG("Check succeeded for db_exists on ~s", [AccountId]),
-            Context#cb_context{
-                db_name = DbName
-               ,account_id = AccountId
-            }
+    {ok, Srv} = crossbar_sup:cache_proc(),
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    ?LOG_SYS("account determined that db name: ~s", [AccountDb]),
+    case wh_cache:peek(Srv, {crossbar, exists, AccountId}) of
+        {ok, true} -> 
+            ?LOG("check succeeded for db_exists on ~s", [AccountId]),
+            Context#cb_context{db_name = AccountDb
+                               ,account_id = AccountId
+                              };
+        _ ->
+            case couch_mgr:db_exists(AccountDb) of
+                false ->
+                    ?LOG("check failed for db_exists on ~s", [AccountId]),
+                    crossbar_util:response_db_missing(Context);
+                true ->
+                    wh_cache:store(Srv, {crossbar, exists, AccountId}, true, ?CACHE_TTL),
+                    ?LOG("check succeeded for db_exists on ~s", [AccountId]),
+                    Context#cb_context{db_name = AccountDb
+                                       ,account_id = AccountId
+                                      }
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -768,24 +757,24 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
 %%--------------------------------------------------------------------
 -spec create_new_account_db/1 :: (#cb_context{}) -> #cb_context{}.
 create_new_account_db(#cb_context{doc=Doc}=Context) ->
-    DbName = wh_json:get_value(<<"_id">>, Doc, couch_mgr:get_uuid()),
-    Db = whapps_util:get_db_name(DbName, encoded),
-    case couch_mgr:db_create(Db) of
+    AccountId = wh_json:get_value(<<"_id">>, Doc, couch_mgr:get_uuid()),
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:db_create(AccountDb) of
         false ->
-	    ?LOG_SYS("Failed to create database: ~s", [DbName]),
+            ?LOG_SYS("Failed to create database: ~s", [AccountDb]),
             crossbar_util:response_db_fatal(Context);
         true ->
-	    ?LOG_SYS("Created DB for account id ~s", [DbName]),
-            JObj = wh_json:set_value(<<"_id">>, DbName, Doc),
-            case crossbar_doc:save(Context#cb_context{db_name=Db, doc=JObj}) of
+            ?LOG_SYS("Created DB for account id ~s", [AccountId]),
+            JObj = wh_json:set_value(<<"_id">>, AccountId, Doc),
+            case crossbar_doc:save(Context#cb_context{db_name=AccountDb, account_id=AccountId, doc=JObj}) of
                 #cb_context{resp_status=success}=Context1 ->
-                    _ = crossbar_bindings:map(<<"account.created">>, Db),
-                    couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
-                    couch_mgr:revise_doc_from_file(Db, crossbar, ?MAINTENANCE_VIEW_FILE),
-                    couch_mgr:ensure_saved(?ACCOUNTS_AGG_DB, Context1#cb_context.doc),
+                    _ = crossbar_bindings:map(<<"account.created">>, Context1),
+                    couch_mgr:revise_docs_from_folder(AccountDb, crossbar, "account", false),
+                    couch_mgr:revise_doc_from_file(AccountDb, crossbar, ?MAINTENANCE_VIEW_FILE),
+                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Context1#cb_context.doc),
                     Context1;
                 Else ->
-		    ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
+                    ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
                     Else
             end
     end.
@@ -801,21 +790,30 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
 is_unique_realm(AccountId, #cb_context{req_data=JObj}=Context) ->
     is_unique_realm(AccountId, Context, wh_json:get_value(<<"realm">>, JObj)).
 
-is_unique_realm(_, _, undefined) -> false;
+is_unique_realm(_, _, undefined) -> 
+    ?LOG("invalid or non-unique realm: undefined"),
+    false;
 is_unique_realm(undefined, _, Realm) ->
     %% unique if Realm doesn't exist in agg DB
-    case couch_mgr:get_results(?ACCOUNTS_AGG_DB, ?AGG_VIEW_REALM, [{<<"key">>, Realm}]) of
-	{ok, []} -> true;
-	{ok, [_|_]} -> false
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_REALM, [{<<"key">>, Realm}]) of
+        {ok, []} -> 
+            ?LOG("realm ~s is valid and unique", [Realm]),
+            true;
+        {ok, [_|_]} -> 
+            ?LOG("invalid or non-unique realm: ~s", [Realm]),
+            false
     end;
 
 is_unique_realm(AccountId, Context, Realm) ->
-    {ok, Doc} = couch_mgr:open_doc(?ACCOUNTS_AGG_DB, AccountId),
+    {ok, Doc} = couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId),
     %% Unique if, for this account, request and account's realm are same
     %% or request Realm doesn't exist in DB (cf is_unique_realm(undefined ...)
     case wh_json:get_value(<<"realm">>, Doc) of
-	Realm -> true;
-	_ -> is_unique_realm(undefined, Context, Realm)
+        Realm -> 
+            ?LOG("realm ~s is valid and unique", [Realm]),
+            true;
+        _ -> 
+            is_unique_realm(undefined, Context, Realm)
     end.
 
 %% for testing purpose, don't forget to export !

@@ -298,7 +298,7 @@ validate([], #cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context, _) ->
     ?LOG("valid shared auth request received, creating response"),
     AccountId = wh_json:get_value(<<"account_id">>, JObj),
     UserId = wh_json:get_value(<<"owner_id">>, JObj),
-    Db = whapps_util:get_db_name(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(Db, AccountId) of
         {ok, Account} ->
             case couch_mgr:open_doc(Db, UserId) of
@@ -415,7 +415,7 @@ import_missing_account(_, undefined) ->
     false;
 import_missing_account(AccountId, Account) ->
     %% check if the acount datbase exists
-    Db = whapps_util:get_db_name(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:db_exists(Db) of
         %% if the account database exists make sure it has the account
         %% definition, because when couch is acting up it can skip this
@@ -474,7 +474,7 @@ import_missing_user(_, _, undefined) ->
     ?LOG("shared auth reply did not define an user object"),
     false;
 import_missing_user(AccountId, UserId, User) ->
-    Db = whapps_util:get_db_name(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:lookup_doc_rev(Db, UserId) of
         {ok, _} ->
             ?LOG("remote user ~s already exists locally in account ~s", [UserId, AccountId]),

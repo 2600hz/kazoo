@@ -7,7 +7,6 @@
 -module(stepswitch_util).
 
 -export([lookup_number/1]).
--export([lookup_account_by_number/1]).
 -export([evaluate_number/2]).
 -export([evaluate_flags/2]).
 
@@ -21,58 +20,19 @@
 %%--------------------------------------------------------------------
 -spec lookup_number/1 :: (ne_binary()) -> {'ok', ne_binary(), boolean()} | {'error', term()}.
 lookup_number(Number) ->
-    Num = wh_util:to_e164(wh_util:to_binary(Number)),
-    case lookup_account_by_number(Num) of
-        {ok, AccountId, _}=Ok ->
-            ?LOG("~s is associated with account ~s", [Num, AccountId]),
-            Ok;
-        {error, Reason}=E ->
-            ?LOG("~s is not associated with any account, ~p", [Num, Reason]),
-            E
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% lookup the account ID by number
-%% @end
-%%--------------------------------------------------------------------
--spec lookup_account_by_number/1 :: (ne_binary()) -> {'ok', ne_binary(), boolean()} |
-                                                     {'error', atom()}.
--spec lookup_account_by_number/2 :: (ne_binary(), pid()) -> {'ok', ne_binary(), boolean()} |
-                                                            {'error', atom()}.
-lookup_account_by_number(Number) ->
+    Num = wnm_util:normalize_number(Number),
     {ok, Cache} = stepswitch_sup:cache_proc(),
-    lookup_account_by_number(Number, Cache).
-lookup_account_by_number(Number, Cache) when is_pid(Cache) ->
     case wh_cache:fetch_local(Cache, cache_key_number(Number)) of
-        {ok, {AccountId, ForceOut}} ->
-            {ok, AccountId, ForceOut};
+        {ok, {AccountId, ForceOut}} -> {ok, AccountId, ForceOut};
         {error, not_found} ->
-            Options = [{<<"key">>, Number}],
-            case couch_mgr:get_results(?ROUTES_DB, ?LIST_ROUTES_BY_NUMBER, Options) of
-                {error, _}=E ->
-                    E;
-                {ok, []} ->
-                    {error, not_found};
-                {ok, [JObj]} ->
-                    AccountId = wh_json:get_value(<<"id">>, JObj),
-                    ForceOut = wh_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
+            case wh_number_manager:lookup_account_by_number(Num) of
+                {ok, AccountId, ForceOut}=Ok ->
                     wh_cache:store_local(Cache, cache_key_number(Number), {AccountId, ForceOut}),
-                    {ok, AccountId, ForceOut};
-                {ok, [JObj | _Rest]} ->
-                    whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
-                                                    ,"Alert: Number ~s found more than once in the ~s DB~n"
-                                                    ,"Fault: Number should be listed, at most, once~n"
-                                                    ,"Call-ID: ~s~n"
-                                                   ]
-                                      ,[?MODULE, ?LINE, Number, ?ROUTES_DB, get(callid)]),
-
-                    ?LOG("number lookup resulted in more than one result, using the first"),
-                    AccountId = wh_json:get_value(<<"id">>, JObj),
-                    ForceOut = wh_util:is_true(wh_json:get_value([<<"value">>, <<"force_outbound">>], JObj, false)),
-                    wh_cache:store_local(Cache, cache_key_number(Number), {AccountId, ForceOut}),
-                    {ok, AccountId, ForceOut}
+                    ?LOG("~s is associated with account ~s", [Num, AccountId]),            
+                    Ok;
+                {error, Reason}=E ->
+                    ?LOG("~s is not associated with any account, ~p", [Num, Reason]),
+                    E
             end
     end.
 
