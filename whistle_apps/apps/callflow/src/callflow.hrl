@@ -92,4 +92,5 @@
             ,last_action = 'undefined' :: 'undefined' | atom()          %% Previous action
             ,capture_group = 'undefined' :: 'undefined' | binary()      %% If the callflow was found using a pattern this is the capture group
             ,inception_during_transfer = 'false' :: boolean()         %% If the hunt for this callflow was intiated during transfer
+            ,call_kvs = orddict:new() :: orddict:orddict() %% allows callflows to set values that propogate to children
            }).
