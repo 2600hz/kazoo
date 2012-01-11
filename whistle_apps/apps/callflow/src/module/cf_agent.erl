@@ -42,12 +42,10 @@ handle(Data, Call) ->
     end.
 
 publish_agent_unavailable(AgentJObj, Call) ->
-    ok.
-    %send_unavailable(AgentJObj, Call).
+    send_unavailable(AgentJObj, Call).
 
 publish_agent_available(AgentJObj, Call) ->
-    ok.
-    %send_available(AgentJObj, Call).
+    send_available(AgentJObj, Call).
 
 send_unavailable(AgentJObj, Call) ->
     Req = [{<<"Agent-ID">>, wh_json:get_value(<<"_id">>, AgentJObj)}
@@ -60,6 +58,7 @@ send_available(AgentJObj, Call) ->
            ,{<<"Skills">>, wh_json:get_value(<<"skills">>, AgentJObj, [])}
            ,{<<"Call-ID">>, cf_exe:callid(Call)}
            | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)],
+
     wapi_acd:publish_agent_online(Req).
 
 put_on_hold(Call) ->
