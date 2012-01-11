@@ -21,5 +21,6 @@ handle(Data, #cf_call{call_kvs=KVs}=Call) ->
 -spec merge/2 :: (json_object(), orddict:orddict()) -> orddict:orddict().
 merge(New, Old) ->
     lists:foldl(fun({K,NewV}, AccDict) ->
+                        ?LOG("adding ~p : ~p", [K, NewV]),
                         orddict:update(K, fun(_) -> NewV end, NewV, AccDict)
                 end, Old, wh_json:to_proplist(New)).
