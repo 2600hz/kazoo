@@ -34,9 +34,10 @@ handle(Data, Call) ->
             publish_agent_available(AgentJObj, Call),
             cf_call_command:wait_for_hangup(),
             ?LOG("agent hungup"),
-            publish_agent_unavailable(AgentJObj, Call);
+            publish_agent_unavailable(AgentJObj, Call),
+            cf_exe:continue(Call);
         {error, _} ->
-            cf_call_command:hangup(Call)
+            cf_exe:continue(Call)
     end.
 
 publish_agent_unavailable(AgentJObj, Call) ->
@@ -80,6 +81,7 @@ find_agent(_Data, 0, Call) ->
     cf_call_command:play(RetriesPrompt, Call),
     {error, retries_exceeded};
 find_agent(Data, Retries, #cf_call{account_db=Db}=Call) ->
+    ?LOG("retries left: ~b", [Retries]),
     Prompts = #prompts{},
     case prompt_and_get_pin(Prompts, Data, Call) of
         {ok, Pin} -> % Pin = <<"315">>
@@ -99,7 +101,7 @@ find_agent(Data, Retries, #cf_call{account_db=Db}=Call) ->
                     cf_call_command:b_play(InvalidPinPrompt, Call),
                     find_agent(Data, Retries-1, Call)
             end;
-        {error, _E} ->
+        {error, _E}=E ->
             ?LOG("error getting pin: ~p", [_E]),
-            cf_call_command:hangup(Call)
+            E
     end.
