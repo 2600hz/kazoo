@@ -14,6 +14,8 @@
 -define(APP_NAME, <<"crossbar">>).
 -define(APP_VERSION, <<"0.8.0">>).
 
+-define(CACHE_TTL, whapps_config:get_integer(<<"crossbar">>, <<"cache_ttl">>, 300)).
+
 -define(CONTENT_PROVIDED, [{to_json, ["application/json","application/x-json"]}]).
 -define(CONTENT_ACCEPTED, [{from_json, ["application/json","application/x-json"]}
                            ,{from_form, ["application/x-www-form-urlencoded"]}
@@ -31,6 +33,7 @@
           ,allowed_methods = ?ALLOWED_METHODS :: [atom(),...] | []
           ,allow_methods = ?ALLOWED_METHODS :: [atom(),...] | []
           ,auth_token = <<>> :: binary()
+          ,auth_account_id = undefined :: undefined | ne_binary()
           ,auth_doc = 'undefined' :: json_object() | 'undefined'
           ,req_verb = <<"get">> :: binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>, <<"head">>
           ,req_nouns = [{<<"404">>, []}] :: [{binary(), list()},...] | []

@@ -173,7 +173,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.hotdesks">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.hotdesks">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.hotdesks">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.get.hotdesks">>),
+    crossbar_bindings:bind(<<"v1_resource.execute.get.hotdesks">>).
 
 %%--------------------------------------------------------------------
 %% @private

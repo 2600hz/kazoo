@@ -105,12 +105,11 @@ load_merge(DocId, DataJObj, #cb_context{db_name=DBName}=Context) ->
             ?LOG("loaded doc ~s from ~s, merging", [DocId, DBName]),
             PrivJObj = private_fields(Doc),
             Doc1 = wh_json:merge_jobjs(PrivJObj, DataJObj),
-            Context1#cb_context{
-              doc=Doc1
-              ,resp_status=success
-              ,resp_data=public_fields(Doc1)
-              ,resp_etag=rev_to_etag(Doc1)
-             };
+            Context1#cb_context{doc=Doc1
+                                ,resp_status=success
+                                ,resp_data=public_fields(Doc1)
+                                ,resp_etag=rev_to_etag(Doc1)
+                               };
         Else ->
             ?LOG("loading doc ~s from ~s failed unexpectedly", [DocId, DBName]),
             Else
@@ -130,13 +129,12 @@ load_view(_View, _Options, #cb_context{db_name=undefined}=Context) ->
     ?LOG("db missing from #cb_context for view ~s", [_View]),
     crossbar_util:response_db_missing(Context);
 load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
-    {HasFilter, ViewOptions} = case has_filter(RJ) of
-                                   true ->
-                                       {true
-                                        ,[{<<"include_docs">>, true} | props:delete(<<"include_docs">>, Options)]};
-                                   false ->
-                                       {false, Options}
-                               end,
+    HasFilter = has_filter(RJ),
+    ViewOptions = case HasFilter of
+                      false -> Options;
+                      true -> 
+                          [{<<"include_docs">>, true} | props:delete(<<"include_docs">>, Options)]
+                  end,
     case couch_mgr:get_results(DB, View, ViewOptions) of
         {error, invalid_view_name} ->
             ?LOG("loading view ~s from ~s failed: invalid view", [View, DB]),
@@ -146,7 +144,8 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
             crossbar_util:response_missing_view(Context);
         {ok, Docs} when HasFilter ->
             ?LOG("loaded view ~s from ~s, running query filter", [View, DB]),
-            Filtered = [Doc || Doc <- Docs, Doc =/= undefined, filter_doc(wh_json:get_value(<<"doc">>, Doc), RJ)],
+            Filtered = [Doc || Doc <- Docs, Doc =/= undefined
+                                   ,filter_doc(wh_json:get_value(<<"doc">>, Doc), RJ)],
             Context#cb_context{
               doc=Filtered
               ,resp_status=success
@@ -234,13 +233,11 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
         {ok, AttachBin} ->
             ?LOG("loaded attachment ~s from doc ~s from db ~s", [AName, DocId, DB]),
             #cb_context{resp_status=success, doc=Doc} = Context1 = load(DocId, Context),
-
-            Context1#cb_context{
-              resp_status=success
-              ,doc=Doc
-              ,resp_data=AttachBin
-              ,resp_etag=rev_to_etag(Doc)
-             };
+            Context1#cb_context{resp_status=success
+                                ,doc=Doc
+                                ,resp_data=AttachBin
+                                ,resp_etag=rev_to_etag(Doc)
+                               };
         _Else ->
             ?LOG("loading attachment ~s from doc ~s from db ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
             Context
@@ -263,30 +260,28 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:save_doc(DB, JObj0) of
         {error, db_not_reachable} ->
-            ?LOG("Failed to save json: db not reachable"),
+            ?LOG("failed to save json: db not reachable"),
             crossbar_util:response_datastore_timeout(Context);
         {error, conflict} ->
-            ?LOG("Failed to save json: conflicts with existing doc"),
+            ?LOG("failed to save json: conflicts with existing doc"),
             crossbar_util:response_conflicting_docs(Context);
         {ok, JObj1} when Verb =:= <<"put">> ->
-            ?LOG("Saved a put request, setting location headers"),
+            ?LOG("saved a put request, setting location headers"),
             send_document_change(created, DB, JObj1),
-            Context#cb_context{
-                 doc=JObj1
-                ,resp_status=success
-                ,resp_headers=[{"Location", wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
-                ,resp_data=public_fields(JObj1)
-                ,resp_etag=rev_to_etag(JObj1)
-            };
+            Context#cb_context{doc=JObj1
+                               ,resp_status=success
+                               ,resp_headers=[{"Location", wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
+                               ,resp_data=public_fields(JObj1)
+                               ,resp_etag=rev_to_etag(JObj1)
+                              };
         {ok, JObj2} ->
-            ?LOG("Saved json doc"),
+            ?LOG("saved json doc"),
             send_document_change(edited, DB, JObj2),
-            Context#cb_context{
-                 doc=JObj2
-                ,resp_status=success
-                ,resp_data=public_fields(JObj2)
-                ,resp_etag=rev_to_etag(JObj2)
-            };
+            Context#cb_context{doc=JObj2
+                               ,resp_status=success
+                               ,resp_data=public_fields(JObj2)
+                               ,resp_etag=rev_to_etag(JObj2)
+                              };
         _Else ->
             ?LOG("Save failed: unexpected return from datastore: ~p", [_Else]),
             Context
@@ -314,22 +309,20 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
         {ok, JObj1} when Verb =:= <<"put">> ->
             ?LOG("Saved a put request, setting location headers"),
             send_document_change(created, DB, JObj1),
-            Context#cb_context{
-                 doc=JObj1
-                ,resp_status=success
-                ,resp_headers=[{"Location", wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
-                ,resp_data=public_fields(JObj1)
-                ,resp_etag=rev_to_etag(JObj1)
-            };
+            Context#cb_context{doc=JObj1
+                               ,resp_status=success
+                               ,resp_headers=[{"Location", wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
+                               ,resp_data=public_fields(JObj1)
+                               ,resp_etag=rev_to_etag(JObj1)
+                              };
         {ok, JObj2} ->
             ?LOG("Saved json doc"),
             send_document_change(edited, DB, JObj2),
-            Context#cb_context{
-                 doc=JObj2
-                ,resp_status=success
-                ,resp_data=public_fields(JObj2)
-                ,resp_etag=rev_to_etag(JObj2)
-            };
+            Context#cb_context{doc=JObj2
+                               ,resp_status=success
+                               ,resp_data=public_fields(JObj2)
+                               ,resp_etag=rev_to_etag(JObj2)
+                              };
         _Else ->
             ?LOG("Save failed: unexpected return from datastore: ~p", [_Else]),
             Context
@@ -400,11 +393,10 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
         {ok, _Res} ->
             ?LOG("Saved attachment ~s to doc ~s to db ~s", [AName, DocId, DB]),
             {ok, Rev1} = couch_mgr:lookup_doc_rev(DB, DocId),
-            Context#cb_context{
-              resp_status=success
-              ,resp_data=[]
-              ,resp_etag=rev_to_etag(Rev1)
-            };
+            Context#cb_context{resp_status=success
+                               ,resp_data=[]
+                               ,resp_etag=rev_to_etag(Rev1)
+                              };
         _Else ->
             ?LOG("Saving attachment ~s to doc ~s to db ~s failed: unexpected: ~p", [AName, DocId, DB, _Else]),
             crossbar_util:response_datastore_conn_refused(Context)
@@ -440,11 +432,10 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
         {ok, _Doc} ->
             ?LOG("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
             send_document_change(deleted, DB, JObj1),
-            Context#cb_context{
-               doc = wh_json:new()
-              ,resp_status=success
-              ,resp_data=[]
-             };
+            Context#cb_context{doc = wh_json:new()
+                               ,resp_status=success
+                               ,resp_data=[]
+                              };
         _Else ->
             ?LOG("deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
             Context
@@ -460,11 +451,11 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context, permanent) ->
             crossbar_util:response_datastore_timeout(Context);
         {ok, _Doc} ->
             ?LOG("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
-            Context#cb_context{
-               doc = wh_json:new()
-              ,resp_status=success
-              ,resp_data=[]
-             };
+            send_document_change(deleted, DB, wh_json:set_value(<<"pvt_deleted">>, true, JObj)),
+            Context#cb_context{doc = wh_json:new()
+                               ,resp_status=success
+                               ,resp_data=[]
+                              };
         _Else ->
             ?LOG("permanently deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
             Context
@@ -494,11 +485,10 @@ delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
         {ok, _Res} ->
             ?LOG("deleted attachment ~s from doc ~s from ~s", [AName, DocId, DB]),
             {ok, Rev} = couch_mgr:lookup_doc_rev(DB, DocId),
-            Context#cb_context{
-              resp_status=success
-              ,resp_data=[]
-              ,resp_etag=rev_to_etag(Rev)
-            };
+            Context#cb_context{resp_status=success
+                               ,resp_data=[]
+                               ,resp_etag=rev_to_etag(Rev)
+                              };
         _Else ->
             ?LOG("deleting attachment ~s from doc ~s from ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
             Context

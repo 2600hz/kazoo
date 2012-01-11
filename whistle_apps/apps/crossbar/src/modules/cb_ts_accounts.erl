@@ -114,7 +114,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
             ?LOG(ReqId, "authorizing request to trunkstore doc ~s", [AccountId]),
                 Pid ! {binding_result, true, {RD, Context}};
             _Args ->
-                ?LOG(ReqId, "unhandled args for ts_accounts: ~p", [_Args]),
+                ?LOG(ReqId, "unauthorized args for ts_accounts: ~p", [_Args]),
                 Pid ! {binding_result, false, {RD, Context}}
         end,
     {noreply, State};

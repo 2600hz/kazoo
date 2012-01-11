@@ -23,8 +23,8 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
--define(PVT_FUNS, [fun add_pvt_type/2]).
--define(CB_LIST, <<"templates/crossbar_listing">>).
+
+-define(DB_PREFIX, "template/").
 
 %%%===================================================================
 %%% API
@@ -120,7 +120,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.templates">>
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, load_template_db(Params, Context)),
+                  Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
@@ -133,11 +133,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.templates">>, [RD, Cont
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.templates">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.templates">>, [RD, Context | [TemplateName]=Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = create_new_template_db(Context),
+                  Context1 = create_template_db(TemplateName, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
@@ -145,8 +145,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.templates">>, [RD, C
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.templates">>, [RD, Context | [TemplateName]=Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  %% dont use the template id in cb_context as it may not represent the db_name...
-                  DbName = format_template_name(TemplateName),
+                  crossbar_util:binding_heartbeat(Pid),
+                  DbName = format_template_name(TemplateName, encoded),
                   case couch_mgr:db_delete(DbName) of
                       true -> 
                           Pid ! {binding_result, true, [RD, Context, Params]};
@@ -155,6 +155,15 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.templates">>, [RD
                   end
           end),
     {noreply, State};
+
+handle_info({binding_fired, Pid, <<"account.created">>, #cb_context{doc=JObj, account_id=AccountId, db_name=AccountDb}=Context}, State) -> 
+    spawn(fun() ->
+                  _ = crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  import_template(wh_json:get_value(<<"role">>, JObj), AccountId, AccountDb)
+          end),
+    {noreply, State};
+
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
@@ -207,7 +216,8 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.templates">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.templates">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.templates">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.templates">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.templates">>),
+    crossbar_bindings:bind(<<"account.created">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -220,9 +230,9 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods/1 :: ([ne_binary(),...] | []) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
-    {true, ['GET', 'PUT']};
+    {true, ['GET']};
 allowed_methods([_]) ->
-    {true, ['DELETE']};
+    {true, ['PUT', 'DELETE']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -254,59 +264,17 @@ resource_exists(_) ->
 -spec validate/2 :: ([ne_binary(),...] | [], #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create(Context);
-validate([Id], #cb_context{req_verb = <<"delete">>}=Context) ->
-    read(Id, Context);
+validate([TemplateName], #cb_context{req_verb = <<"put">>}=Context) ->
+    case load_template_db(TemplateName, Context) of
+        #cb_context{resp_status=success} ->
+            crossbar_util:response_conflicting_docs(Context);
+        _Else ->
+            crossbar_util:response(wh_json:new(), Context)
+    end;
+validate([TemplateName], #cb_context{req_verb = <<"delete">>}=Context) ->
+    load_template_db(TemplateName, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create/1 :: (#cb_context{}) -> #cb_context{}.
-create(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"templates">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            Context#cb_context{doc=JObj1, resp_status=success}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
-%% @end
-%%--------------------------------------------------------------------
--spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing instance with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update(Id, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"templates">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            crossbar_doc:load_merge(Id, JObj1, Context)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -317,29 +285,16 @@ update(Id, #cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec summary/1 :: (#cb_context{}) -> #cb_context{}.
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the resuts of a view
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
-normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% These are the pvt funs that add the necessary pvt fields to every
-%% instance
-%% @end
-%%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (json_object(), #cb_context{}) -> json_object().
-add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, <<"template">>, JObj).
-
+    case couch_mgr:db_info() of
+        {ok, Dbs} ->
+            Context#cb_context{resp_status=success
+                               ,resp_data = [format_template_name(Db, raw) || Db <- Dbs,
+                                            (fun(<<?DB_PREFIX, _/binary>>) -> true;
+                                                (_) -> false end)(Db)]
+                              };
+        _ ->
+            crossbar_util:response_missing_view(Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -349,22 +304,112 @@ add_pvt_type(JObj, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_template_db/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-load_template_db([TemplateName], Context) when is_binary(TemplateName) ->
-    DbName = format_template_name(TemplateName),
+load_template_db([TemplateName], Context) ->
+    load_template_db(TemplateName, Context);
+load_template_db(TemplateName, Context) ->
+    DbName = format_template_name(TemplateName, encoded),
     case couch_mgr:db_exists(DbName) of
         false ->
             ?LOG("check failed for template db ~s", [DbName]),
-            Context#cb_context{
-                 db_name = undefined
-                ,account_id = undefined
-            };
+            crossbar_util:response_db_missing(Context);
         true ->
             ?LOG("check succeeded for template db ~s", [DbName]),
-            Context#cb_context{
-                db_name = DbName
-               ,account_id = TemplateName
-            }
+            Context#cb_context{resp_status=success
+                               ,db_name = DbName
+                               ,account_id = TemplateName
+                              }
     end.
 
-format_template_name(TemplateName) ->
-    <<"template/", TemplateName/binary>>.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Format the template/db name into a raw, unencoded or encoded form.
+%% @end
+%%--------------------------------------------------------------------
+-spec format_template_name/2 :: (ne_binary(), unencoded | encoded | raw) -> ne_binary().
+format_template_name(<<"template/", _/binary>> = TemplateName, unencoded) ->
+    TemplateName;
+format_template_name(<<"template%2F", TemplateName/binary>>, unencoded) ->
+    <<"template/", TemplateName/binary>>;
+format_template_name(TemplateName, unencoded) ->
+    <<"template/", TemplateName/binary>>;
+format_template_name(<<"template%2F", _/binary>> = TemplateName, encoded) ->
+    TemplateName;
+format_template_name(<<"template/", TemplateName/binary>>, encoded) ->
+    <<"template%2F", TemplateName/binary>>;
+format_template_name(TemplateName, encoded) ->
+    <<"template%2F", TemplateName/binary>>;
+format_template_name(<<"template%2F", TemplateName/binary>>, raw) ->
+    TemplateName;
+format_template_name(<<"template/", TemplateName/binary>>, raw) ->
+    TemplateName; 
+format_template_name(TemplateName, raw) ->
+    TemplateName.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Create a new template database and load it with views so it can be
+%% used as an 'account'
+%% @end
+%%--------------------------------------------------------------------
+-spec create_template_db/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+create_template_db(TemplateName, Context) ->
+    TemplateDb = format_template_name(TemplateName, encoded),
+    case couch_mgr:db_create(TemplateDb) of
+        false ->
+            ?LOG_SYS("failed to create database: ~s", [TemplateDb]),
+            crossbar_util:response_db_fatal(Context);
+        true ->
+            ?LOG_SYS("created DB for template ~s", [TemplateName]),
+            couch_mgr:revise_docs_from_folder(TemplateDb, crossbar, "account", false),
+            couch_mgr:revise_doc_from_file(TemplateDb, crossbar, ?MAINTENANCE_VIEW_FILE),
+            Context#cb_context{resp_status=success}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% If a valid template database is provided import the non-design
+%% documents into the account
+%% @end
+%%--------------------------------------------------------------------
+-spec import_template/3 :: (undefined | ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+import_template(undefined, _, _) ->
+    ok;
+import_template(TemplateName, AccountId, AccountDb) ->
+    TemplateDb = format_template_name(TemplateName, encoded),
+    case couch_mgr:all_docs(TemplateDb) of
+        {ok, Docs} ->
+            Ids = [Id || Doc <- Docs,
+                         begin
+                             Id = wh_json:get_value(<<"id">>, Doc),
+                             (fun(<<"_design/", _/binary>>) -> false;
+                                 (_) -> true end)(Id)
+                         end],
+            import_template_docs(Ids, TemplateDb, AccountId, AccountDb);
+        _ ->
+            ok
+    end.            
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Given a list of IDs in the template database, import them into the
+%% account database, correcting the pvt fields.
+%% @end
+%%--------------------------------------------------------------------
+-spec import_template_docs/4 :: ([] | [ne_binary(),...], ne_binary(), ne_binary(), ne_binary()) -> ok.
+import_template_docs([], _, _, _) ->
+    ok;
+import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->
+    case couch_mgr:open_doc(TemplateDb, Id) of
+        {ok, JObj} ->
+            Correctors = [fun(J) -> wh_json:set_value(<<"pvt_account_id">>, AccountId, J) end
+                          ,fun(J) -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, J) end
+                         ],
+            couch_mgr:ensure_saved(AccountDb, lists:foldr(fun(F, J) -> F(J) end, JObj, Correctors)),
+            import_template_docs(Ids, TemplateDb, AccountId, AccountDb);
+        {error, _} ->
+            import_template_docs(Ids, TemplateDb, AccountId, AccountDb)
+    end.

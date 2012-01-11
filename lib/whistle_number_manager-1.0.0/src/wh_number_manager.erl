@@ -13,6 +13,7 @@
 -export([assign_number_to_account/2]).
 -export([get_public_fields/2, set_public_fields/3]).
 -export([lookup_account_by_number/1]).
+-export([free_numbers/1]).
 
 -include("../include/wh_number_manager.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
@@ -159,6 +160,9 @@ set_public_fields(Number, AccountId, PublicJObj) ->
     catch
         throw:Reason -> {error, Reason}
     end.
+
+free_numbers(AccountId) ->
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private

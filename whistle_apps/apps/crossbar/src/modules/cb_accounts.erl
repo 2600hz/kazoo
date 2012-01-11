@@ -382,7 +382,6 @@ resource_exists([_, Path]) ->
     Valid = lists:member(Path, [<<"parent">>, <<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]),
     {Valid, []};
 resource_exists(_T) ->
-    io:format("~p~n", [_T]),
     {false, []}.
 
 %%--------------------------------------------------------------------
@@ -726,21 +725,27 @@ add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
 load_account_db([AccountId|_], Context) ->
     load_account_db(AccountId, Context);
 load_account_db(AccountId, Context) when is_binary(AccountId) ->
-    DbName = wh_util:format_account_id(AccountId, encoded),
-    ?LOG_SYS("Account determined that db name: ~s", [DbName]),
-    case couch_mgr:db_exists(DbName) of
-        false ->
-            ?LOG("Check failed for db_exists on ~s", [AccountId]),
-            Context#cb_context{
-                 db_name = undefined
-                ,account_id = undefined
-            };
-        true ->
-            ?LOG("Check succeeded for db_exists on ~s", [AccountId]),
-            Context#cb_context{
-                db_name = DbName
-               ,account_id = AccountId
-            }
+    {ok, Srv} = crossbar_sup:cache_proc(),
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    ?LOG_SYS("account determined that db name: ~s", [AccountDb]),
+    case wh_cache:peek(Srv, {crossbar, exists, AccountId}) of
+        {ok, true} -> 
+            ?LOG("check succeeded for db_exists on ~s", [AccountId]),
+            Context#cb_context{db_name = AccountDb
+                               ,account_id = AccountId
+                              };
+        _ ->
+            case couch_mgr:db_exists(AccountDb) of
+                false ->
+                    ?LOG("check failed for db_exists on ~s", [AccountId]),
+                    crossbar_util:response_db_missing(Context);
+                true ->
+                    wh_cache:store(Srv, {crossbar, exists, AccountId}, true, ?CACHE_TTL),
+                    ?LOG("check succeeded for db_exists on ~s", [AccountId]),
+                    Context#cb_context{db_name = AccountDb
+                                       ,account_id = AccountId
+                                      }
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -752,20 +757,20 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
 %%--------------------------------------------------------------------
 -spec create_new_account_db/1 :: (#cb_context{}) -> #cb_context{}.
 create_new_account_db(#cb_context{doc=Doc}=Context) ->
-    DbName = wh_json:get_value(<<"_id">>, Doc, couch_mgr:get_uuid()),
-    Db = wh_util:format_account_id(DbName, encoded),
-    case couch_mgr:db_create(Db) of
+    AccountId = wh_json:get_value(<<"_id">>, Doc, couch_mgr:get_uuid()),
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:db_create(AccountDb) of
         false ->
-            ?LOG_SYS("Failed to create database: ~s", [Db]),
+            ?LOG_SYS("Failed to create database: ~s", [AccountDb]),
             crossbar_util:response_db_fatal(Context);
         true ->
-            ?LOG_SYS("Created DB for account id ~s", [DbName]),
-            JObj = wh_json:set_value(<<"_id">>, DbName, Doc),
-            case crossbar_doc:save(Context#cb_context{db_name=Db, doc=JObj}) of
+            ?LOG_SYS("Created DB for account id ~s", [AccountId]),
+            JObj = wh_json:set_value(<<"_id">>, AccountId, Doc),
+            case crossbar_doc:save(Context#cb_context{db_name=AccountDb, account_id=AccountId, doc=JObj}) of
                 #cb_context{resp_status=success}=Context1 ->
-                    _ = crossbar_bindings:map(<<"account.created">>, Db),
-                    couch_mgr:revise_docs_from_folder(Db, crossbar, "account", false),
-                    couch_mgr:revise_doc_from_file(Db, crossbar, ?MAINTENANCE_VIEW_FILE),
+                    _ = crossbar_bindings:map(<<"account.created">>, Context1),
+                    couch_mgr:revise_docs_from_folder(AccountDb, crossbar, "account", false),
+                    couch_mgr:revise_doc_from_file(AccountDb, crossbar, ?MAINTENANCE_VIEW_FILE),
                     couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Context1#cb_context.doc),
                     Context1;
                 Else ->
