@@ -48,13 +48,14 @@ publish_agent_available(AgentJObj, Call) ->
     send_available(AgentJObj, Call).
 
 send_unavailable(AgentJObj, Call) ->
-    Req = [{<<"Agent-ID">>, wh_json:get_value(<<"_id">>, AgentJObj)}
+    Req = [{<<"Agent-ID">>, wh_json:get_value(<<"id">>, AgentJObj)}
            ,{<<"Call-ID">>, cf_exe:callid(Call)}
            | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)],
     wapi_acd:publish_agent_offline(Req).
 
 send_available(AgentJObj, Call) ->
-    Req = [{<<"Agent-ID">>, wh_json:get_value(<<"_id">>, AgentJObj)}
+    ?LOG("agent: ~p", [AgentJObj]),
+    Req = [{<<"Agent-ID">>, wh_json:get_value(<<"id">>, AgentJObj)}
            ,{<<"Skills">>, wh_json:get_value(<<"skills">>, AgentJObj, [])}
            ,{<<"Call-ID">>, cf_exe:callid(Call)}
            | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)],
