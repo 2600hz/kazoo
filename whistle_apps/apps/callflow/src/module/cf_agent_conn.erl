@@ -18,7 +18,7 @@ handle(Data, #cf_call{call_kvs=KVs}=Call) ->
     ?LOG("Will record: ~s", [ShouldRecord]),
 
     Skills = wh_json:from_list(orddict:to_list(KVs)),
-    Req = [{<<"Call-Id">>, cf_exe:callid(Call)}
+    Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
            ,{<<"Skills-Needed">>, Skills}
            ,{<<"Record-Call">>, ShouldRecord}
