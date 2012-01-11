@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2010-2011, VoIP INC
@@ -351,7 +352,7 @@ handle_event(JObj, #state{cf_module_pid=Pid, call_id=CallId}) ->
             {reply, [{cf_module_pid, Pid}]};
         {_, _Else} ->
             ?LOG("received event from call ~s while relaying for ~s, dropping", [_Else, CallId]),
-            ignore
+            {reply, [{cf_module_pid, Pid}]}
     end.
 
 %%--------------------------------------------------------------------
