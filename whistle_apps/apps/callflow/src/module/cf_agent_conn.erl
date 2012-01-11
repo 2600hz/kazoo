@@ -14,7 +14,7 @@
 
 -spec handle/2 :: (json_object(), #cf_call{}) -> 'ok'.
 handle(Data, #cf_call{call_kvs=KVs}=Call) ->
-    ShouldRecord = wh_json:get_boolean_value(<<"record_call">>, Data, true),
+    ShouldRecord = wh_json:is_true(<<"record_call">>, Data, true),
 
     Skills = wh_json:from_list(orddict:to_list(KVs)),
     Req = [{<<"Call-Id">>, cf_exe:callid(Call)}
