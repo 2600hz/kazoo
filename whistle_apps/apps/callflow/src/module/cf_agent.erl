@@ -54,7 +54,6 @@ send_unavailable(AgentJObj, Call) ->
     wapi_acd:publish_agent_offline(Req).
 
 send_available(AgentJObj, Call) ->
-    ?LOG("agent: ~p", [AgentJObj]),
     Req = [{<<"Agent-ID">>, wh_json:get_value(<<"id">>, AgentJObj)}
            ,{<<"Skills">>, wh_json:get_value(<<"skills">>, AgentJObj, [])}
            ,{<<"Call-ID">>, cf_exe:callid(Call)}
@@ -67,7 +66,6 @@ put_on_hold(Call) ->
 
 play_welcome(Call) ->
     #prompts{welcome_prompt=WelcomePrompt} = #prompts{},
-    
     cf_call_command:play(WelcomePrompt, Call).
 
 prompt_and_get_pin(#prompts{pin_prompt=PinPrompt}, Data, Call) ->
