@@ -66,8 +66,8 @@ start_link(Flow, ControlQ, CallId, Call) ->
 continue(Srv) ->
     continue(<<"_">>, Srv).
 
-continue(Key, #cf_call{cf_pid=Srv}) ->
-    continue(Key, Srv);
+continue(Key, #cf_call{cf_pid=Srv}=Call) ->
+    gen_server:cast(Srv, {continue, Key, Call});
 continue(Key, Srv) ->
     gen_server:cast(Srv, {continue, Key}).
 
@@ -234,6 +234,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({continue, Key, #cf_call{}=Call}, State) ->
+    ?LOG("threading new cf_call{}"),
+    handle_cast({continue, Key}, State#state{call=Call});
 handle_cast({continue, Key}, #state{flow=Flow}=State) ->
     ?LOG("continuing to child ~s", [Key]),
     case wh_json:get_value([<<"children">>, Key], Flow) of
