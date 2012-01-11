@@ -41,7 +41,6 @@
                               ]).
 -define(AGENT_CONNECT_TYPES, []).
 
-
 -spec agent_online/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 agent_online(Prop) when is_list(Prop) ->
         case agent_online_v(Prop) of

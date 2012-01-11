@@ -34,7 +34,7 @@
 format_account_id(Doc) -> format_account_id(Doc, unencoded).
 
 format_account_id({struct, _}=Doc, Encoding) ->
-    format_account_id([wh_json:get_value(["_id"], Doc)], Encoding);
+    format_account_id([wh_json:get_value([<<"_id">>], Doc)], Encoding);
 format_account_id([AccountId], Encoding) ->
     format_account_id(AccountId, Encoding);
 format_account_id(AccountId, Encoding) when not is_binary(AccountId) ->
