@@ -24,7 +24,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
@@ -93,7 +93,7 @@ init(_) ->
     end,
 
     #state{cleanup_interval=CleanupInterval}=State = init_state(),
-    {ok, TRef} = erlang:send_after(CleanupInterval * 1000, cleanup),
+    {ok, TRef} = erlang:send_after(CleanupInterval * 1000, self(), cleanup),
     {ok, State#state{cleanup_timer=TRef}}.
 
 %%--------------------------------------------------------------------
@@ -170,16 +170,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
 
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.signup">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.signup">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.signup">>, [RD, Context | Params]}, State) ->
@@ -199,30 +199,30 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.signup">>, [RD, #cb
                       {ok, Account, User} ->
                           delete_signup(JObj),
                           Context1 = Context#cb_context{resp_status=success
-							,resp_data=wh_json:from_list([{<<"account">>, Account}
-										      ,{<<"user">>, User}
-										     ])},
-			  Pid ! {binding_result, true, [RD, Context1, Params]};
+                                                        ,resp_data=wh_json:from_list([{<<"account">>, Account}
+                                                                                      ,{<<"user">>, User}
+                                                                                     ])},
+                          Pid ! {binding_result, true, [RD, Context1, Params]};
                       _Else ->
                           Context1 = crossbar_util:response_db_fatal(Context),
                           Pid ! {binding_result, true, [RD, Context1, Params]}
                   end
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.signup">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   _ = case crossbar_doc:save(Context#cb_context{db_name=?SIGNUP_DB}) of
-			  #cb_context{resp_status=success}=Context1 ->
-			      Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=[]}, Params]},
-			      _ = send_activation_email(RD, Context1, State),
-			      exec_register_command(RD, Context1, State);
-			  _ ->
-			      Context1 = crossbar_util:response_db_fatal(Context),
-			      Pid ! {binding_result, true, [RD, Context1, Params]}
-		      end
-	  end),
+                          #cb_context{resp_status=success}=Context1 ->
+                              Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=[]}, Params]},
+                              _ = send_activation_email(RD, Context1, State),
+                              exec_register_command(RD, Context1, State);
+                          _ ->
+                              Context1 = crossbar_util:response_db_fatal(Context),
+                              Pid ! {binding_result, true, [RD, Context1, Params]}
+                      end
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -269,31 +269,31 @@ code_change(_OldVsn, #state{cleanup_timer=CurTRef}, _Extra) ->
 -spec init_state/0 :: () -> #state{}.
 init_state() ->
     case get_configs() of
-	{ok, Terms} ->
-	    ?LOG_SYS("loaded config from ~s", [?SIGNUP_CONF]),
-	    Defaults = #state{},
-	    #state{cleanup_interval =
-		       props:get_integer_value(cleanup_interval, Terms, Defaults#state.cleanup_interval)
-		   ,signup_lifespan =
-		       props:get_integer_value(signup_lifespan, Terms, Defaults#state.signup_lifespan)
-		   ,register_cmd =
-		       compile_template(props:get_value(register_cmd, Terms), cb_signup_register_cmd)
-		   ,activation_email_plain =
-		       compile_template(props:get_value(activation_email_plain, Terms), cb_signup_email_plain)
-		   ,activation_email_html =
-		       compile_template(props:get_value(activation_email_html, Terms), cb_signup_email_html)
-		   ,activation_email_from =
-		       compile_template(props:get_value(activation_email_from, Terms), cb_signup_email_from)
-		   ,activation_email_subject =
-		       compile_template(props:get_value(activation_email_subject, Terms), cb_signup_email_subject)
-		  };
-	{error, _} ->
-	    ?LOG_SYS("could not read config from ~s", [?SIGNUP_CONF]),
-	    #state{}
+        {ok, Terms} ->
+            ?LOG_SYS("loaded config from ~s", [?SIGNUP_CONF]),
+            Defaults = #state{},
+            #state{cleanup_interval =
+                       props:get_integer_value(cleanup_interval, Terms, Defaults#state.cleanup_interval)
+                   ,signup_lifespan =
+                       props:get_integer_value(signup_lifespan, Terms, Defaults#state.signup_lifespan)
+                   ,register_cmd =
+                       compile_template(props:get_value(register_cmd, Terms), cb_signup_register_cmd)
+                   ,activation_email_plain =
+                       compile_template(props:get_value(activation_email_plain, Terms), cb_signup_email_plain)
+                   ,activation_email_html =
+                       compile_template(props:get_value(activation_email_html, Terms), cb_signup_email_html)
+                   ,activation_email_from =
+                       compile_template(props:get_value(activation_email_from, Terms), cb_signup_email_from)
+                   ,activation_email_subject =
+                       compile_template(props:get_value(activation_email_subject, Terms), cb_signup_email_subject)
+                  };
+        {error, _} ->
+            ?LOG_SYS("could not read config from ~s", [?SIGNUP_CONF]),
+            #state{}
     end.
 
 -spec get_configs/0 :: () -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
-						   | {integer(), module(), term()}}.
+                                                   | {integer(), module(), term()}}.
 get_configs() ->
     file:consult(lists:flatten(?SIGNUP_CONF)).
 
@@ -519,7 +519,7 @@ activate_account(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_user/2 :: (json_object(), 'undefined' | json_object()) -> {'ok', json_object(), json_object()} |
-									 {'error', 'user_undefined' | 'creation_failed'}.
+                                                                         {'error', 'user_undefined' | 'creation_failed'}.
 activate_user(_, undefined) ->
     {error, user_undefined};
 activate_user(Account, User) ->
@@ -573,18 +573,18 @@ send_activation_email(RD, #cb_context{doc=JObj, req_id=ReqId}=Context, #state{ac
                    <<"no_reply@", (wh_util:to_binary(net_adm:localhost()))/binary>>
            end,
     Email = {<<"multipart">>, <<"alternative">> %% Content Type / Sub Type
-		 ,[ %% Headers
-		    {<<"From">>, From},
-		    {<<"To">>, To},
-		    {<<"Subject">>, Subject}
-		  ]
-	     ,[] %% Parameters
+                 ,[ %% Headers
+                    {<<"From">>, From},
+                    {<<"To">>, To},
+                    {<<"Subject">>, Subject}
+                  ]
+             ,[] %% Parameters
              ,create_body(State, Props, [])
-	    },
+            },
     Encoded = mimemail:encode(Email),
     ?LOG("sending activation email to ~s", [To]),
     gen_smtp_client:send({From, [To], Encoded}, [{relay, "localhost"}]
-			 ,fun(X) -> ?LOG(ReqId, "sending email to ~s resulted in ~p", [To, X]) end).
+                         ,fun(X) -> ?LOG(ReqId, "sending email to ~s resulted in ~p", [To, X]) end).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -601,7 +601,7 @@ create_body(#state{activation_email_html=Tmpl}=State, Props, Body) when Tmpl =/=
                     ,[{<<"Content-Type">>, <<"text/html">>}]
                     ,[]
                     ,iolist_to_binary(Content)
-		   },
+                   },
              create_body(State#state{activation_email_html=undefined}, Props, [Part|Body]);
         _ ->
              create_body(State#state{activation_email_html=undefined}, Props, Body)
@@ -613,7 +613,7 @@ create_body(#state{activation_email_plain=Tmpl}=State, Props, Body) when Tmpl =/
                     ,[{<<"Content-Type">>, <<"text/plain">>}]
                     ,[]
                     ,iolist_to_binary(Content)
-		   },
+                   },
              create_body(State#state{activation_email_plain=undefined}, Props, [Part|Body]);
         _ ->
              create_body(State#state{activation_email_plain=undefined}, Props, Body)
@@ -630,9 +630,9 @@ create_body(_, _, Body) ->
 -spec template_props/2 :: (#wm_reqdata{}, #cb_context{}) -> [{ne_binary(), proplist() | ne_binary()},...].
 template_props(RD, #cb_context{doc=JObj, req_data=Data}) ->
     Port = case wrq:port(RD) of
-	       80 -> "";
-	       P -> [":", wh_util:to_list(P)]
-	   end,
+               80 -> "";
+               P -> [":", wh_util:to_list(P)]
+           end,
     ApiHost = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
     %% remove the redundant request data
     Req1 = wh_json:delete_key(<<"account">>, Data),
@@ -682,14 +682,14 @@ cleanup_signups(#state{signup_lifespan=Lifespan}) ->
     case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_CREATED, [{<<"startkey">>, 0}
                                                                       ,{<<"endkey">>, Expiration}
                                                                       ,{<<"include_docs">>, true}
-								     ]) of
+                                                                     ]) of
         {ok, Expired} ->
             _ = [spawn(fun() ->
-			       timer:sleep(random:uniform(500) * 1000),
-			       delete_signup(wh_json:get_value(<<"doc">>, JObj))
-		       end)
-		 || JObj <- Expired],
-	    ok;
+                               timer:sleep(random:uniform(500) * 1000),
+                               delete_signup(wh_json:get_value(<<"doc">>, JObj))
+                       end)
+                 || JObj <- Expired],
+            ok;
         _Else ->
             ok
     end.
