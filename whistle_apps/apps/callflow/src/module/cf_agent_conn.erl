@@ -24,7 +24,7 @@ handle(Data, #cf_call{call_kvs=KVs}=Call) ->
            ,{<<"Record-Call">>, ShouldRecord}
            | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)
           ],
-    wapi_acd:agent_connect(Req),
+    wapi_acd:publish_agent_connect(Req),
     ?LOG("waiting for hangup"),
     cf_call_command:wait_for_hangup(),
     cf_exe:continue(Call).
