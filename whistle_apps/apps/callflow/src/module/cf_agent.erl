@@ -27,6 +27,7 @@
 
 -spec handle/2 :: (json_object(), #cf_call{}) -> 'ok'.
 handle(Data, Call) ->
+    cf_call_command:answer(Call),
     case find_agent(Data, wh_json:get_integer_value(<<"pin_retries">>, Data, 3), Call) of
         {ok, AgentJObj} ->
             play_welcome(Call),
