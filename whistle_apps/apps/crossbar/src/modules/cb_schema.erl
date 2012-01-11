@@ -18,13 +18,13 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -define(SERVER, ?MODULE).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
--define(SCHEMA_DB, <<"crossbar_schemas">>).
 
 %%%===================================================================
 %%% API
@@ -106,24 +106,24 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>, {RD, #cb_context{r
 
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.schema">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.schema">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.schema">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  Context1 = validate(Params, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -224,9 +224,9 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec validate/2 :: ([ne_binary(),...] | [], #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    summary(Context#cb_context{db_name = ?SCHEMA_DB});
+    summary(Context#cb_context{db_name = ?WH_SCHEMA_DB});
 validate([Id], #cb_context{req_verb = <<"get">>}=Context) ->
-    read(Id, Context#cb_context{db_name = ?SCHEMA_DB});
+    read(Id, Context#cb_context{db_name = ?WH_SCHEMA_DB});
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -260,6 +260,6 @@ summary(Context) ->
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     case wh_json:get_value(<<"id">>, JObj) of
-	<<"_design/", _/binary>> -> Acc;
-	ID -> [ID | Acc]
+        <<"_design/", _/binary>> -> Acc;
+        ID -> [ID | Acc]
     end.

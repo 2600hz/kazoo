@@ -3,6 +3,7 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -define(APP_NAME, <<"jonny5">>).
 -define(APP_VERSION, <<"0.2.0">>).

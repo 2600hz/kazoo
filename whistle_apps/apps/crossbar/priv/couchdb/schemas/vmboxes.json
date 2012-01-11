@@ -1,0 +1,158 @@
+{
+   "_id":"vmboxes",
+   "$schema":"http://json-schema.org/draft-03/schema#",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Schema for a voicemail box",
+   "properties":{
+      "name":{
+         "description":"A friendly name for the voicemail box",
+         "required":"true",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      },
+      "owner_id":{
+         "description":"The ID of the user object that 'owns' the voicemail box",
+         "type":"string",
+         "minLength":32,
+         "maxLength":32
+      },
+      "mailbox":{
+         "description":"The voicemail box number",
+         "required":"true",
+         "type":"string",
+         "minLength":2,
+         "maxLength":6
+      },
+      "pin":{
+         "description":"The pin number for the voicemail box",
+         "type":"string",
+         "minLength":4,
+         "maxLength":6
+      },
+      "require_pin":{
+         "description":"Determines if a pin is required to check the voicemail from the users devices",
+         "type":"boolean",
+         "default":false
+      },
+      "check_if_owner":{
+         "description":"Determines if when the user calls their own voicemail they should be prompted to sign in",
+         "type":"boolean",
+         "default":true
+      },
+      "is_setup":{
+         "description":"Determines if the user has completed the initial configuration",
+         "type":"boolean",
+         "default":false
+      },
+      "skip_greeting":{
+         "description":"Determines if the greeting should be skipped",
+         "type":"boolean",
+         "default":false
+      },
+      "skip_instructions":{
+         "description":"Determines if the instructions after the greeting and prior to composing a message should be played",
+         "type":"boolean",
+         "default":false
+      },
+      "media":{
+         "description":"The media (prompt) parameters",
+         "type":"object",
+         "properties":{
+            "unavailable":{
+               "description":"The ID of a media object that should be used as the unavailable greeting",
+               "type":"string",
+               "minLength":32,
+               "maxLength":32
+            }
+         },
+         "default":{
+
+         }
+      },
+      "vm_to_email":{
+         "description":"The Voicemail to Email Parameters",
+         "type":"object",
+         "properties":{
+            "vm_to_email_template":{
+               "description":"The subject line template",
+               "type":"string",
+               "maxLength":64
+            },
+            "html_vm_to_email_template":{
+               "description":"The html template",
+               "type":"string",
+               "maxLength":128
+            },
+            "support_number":{
+               "description":"The support number provided to the templates",
+               "type":"string",
+               "maxLength":128
+            },
+            "support_email":{
+               "description":"The support email provided to the templates",
+               "type":"string",
+               "maxLength":32
+            },
+            "from_address":{
+               "description":"The from address used when sending the email",
+               "type":"string",
+               "maxLength":32
+            }
+         },
+         "default":{
+
+         }
+      },
+      "messages":{
+         "description":"The messages that have been left in the voicemail box",
+         "type":"array",
+         "items":{
+            "properties":{
+               "timestamp":{
+                  "description":"The UTC timestamp, in gregorian seconds, that the voicemail was left on",
+                  "type":"string"
+               },
+               "from":{
+                  "description":"The SIP from header",
+                  "type":"string",
+                  "maxLength":128
+               },
+               "to":{
+                  "description":"The SIP to header",
+                  "type":"string",
+                  "maxLength":128
+               },
+               "caller_id_number":{
+                  "description":"The reported caller id number",
+                  "type":"string",
+                  "maxLength":15
+               },
+               "caller_id_name":{
+                  "description":"The reported caller id name",
+                  "type":"string",
+                  "maxLength":15
+               },
+               "folder":{
+                  "description":"The folder the message belongs to",
+                  "type":"string",
+                  "enum":[
+                     "deleted",
+                     "saved",
+                     "new"
+                  ]
+               },
+               "media_id":{
+                  "description":"The ID of the message media object",
+                  "type":"string",
+                  "minLength":32,
+                  "maxLength":32
+               }
+            }
+         },
+         "default":[
+
+         ]
+      }
+   }
+}

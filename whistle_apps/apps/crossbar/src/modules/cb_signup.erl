@@ -524,7 +524,7 @@ activate_user(_, undefined) ->
     {error, user_undefined};
 activate_user(Account, User) ->
     AccountId = wh_json:get_value(<<"id">>, Account),
-    Db = whapps_util:get_db_name(AccountId, encoded),
+    Db = wh_util:format_account_id(AccountId, encoded),
     Event = <<"v1_resource.execute.put.users">>,
     Payload = [undefined, #cb_context{doc=User, db_name=Db}, [[]]],
     case crossbar_bindings:fold(Event, Payload) of

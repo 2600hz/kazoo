@@ -52,7 +52,7 @@ start_link() ->
 handle_cdr(JObj, _Props) ->
     true  = wapi_call:cdr_v(JObj),
 
-    AccountDb = whapps_util:get_db_name(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
+    AccountDb = wh_util:format_account_id(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
 
     Db = case couch_mgr:db_exists(AccountDb) of
 	     true -> AccountDb;

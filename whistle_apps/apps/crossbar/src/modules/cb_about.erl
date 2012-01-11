@@ -16,7 +16,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include_lib("crossbar.hrl").
 -define(SERVER, ?MODULE).
@@ -95,38 +95,34 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 %% -type binding_fired() :: {'binding_fired', pid(), ne_binary(), list()}.
 %% -spec handle_info/2 :: (binding_fired(), State) -> {noreply, State};
-%% 		       ('timeout', State) -> {noreply, State};
+%%                     ('timeout', State) -> {noreply, State};
 -spec handle_info/2 :: (_, State) -> {noreply, State}.
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.about">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.about">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.about">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  Context1 = validate(Params, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.about">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-		  Pid ! {binding_result, true, [RD, Context, Params]}
-	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"account.created">>, _Payload}, State) ->
-    Pid ! {binding_result, true, []},
+                  Pid ! {binding_result, true, [RD, Context, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _B, Payload}, State) ->
@@ -181,8 +177,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.about">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.about">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.about">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.about">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.get.about">>).
 
 %%--------------------------------------------------------------------
 %% @private

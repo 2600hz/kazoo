@@ -124,7 +124,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
                  ,{RD, #cb_context{req_nouns=[{<<"servers">>, [_,<<"deployment">>]},
-                                              {<<"accounts">>,[_]}]
+                                              {?WH_ACCOUNTS_DB,[_]}]
                                    ,req_verb = <<"post">>
                                    ,req_id=ReqId}=Context}}, State) ->
     ?LOG(ReqId, "authorizing request", []),
@@ -133,7 +133,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
 
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
                  ,{RD, #cb_context{req_nouns=[{<<"servers">>, [_,<<"deployment">>]},
-                                              {<<"accounts">>,[_]}]
+                                              {?WH_ACCOUNTS_DB,[_]}]
                                    ,req_verb = <<"post">>
                                    ,req_id=ReqId}=Context}}, State) ->
     ?LOG(ReqId, "authenticate request", []),
@@ -340,8 +340,8 @@ bind_to_crossbar() ->
 content_types_provided(#cb_context{req_verb = <<"get">>, content_types_provided=CTP}=Context) ->
     Context#cb_context{content_types_provided=[{to_binary, ["text/plain" |  props:get_value(to_binary, CTP, [])]}
                                                | props:delete(to_binary,CTP)
-					      ]
-		      };
+                                              ]
+                      };
 content_types_provided(Context) -> Context.
 
 %%--------------------------------------------------------------------
@@ -454,11 +454,11 @@ load_server_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_server/1 :: (#cb_context{}) -> #cb_context{}.
-create_server(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-            crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
+create_server(#cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"servers">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             Funs = [fun(Obj) -> wh_json:set_value(<<"pvt_deploy_status">>, <<"never_run">>, Obj) end,
                     fun(Obj) -> wh_json:set_value(<<"pvt_deploy_log">>, [], Obj) end,
                     fun(Obj) -> wh_json:set_value(<<"pvt_type">>, <<"server">>, Obj) end],
@@ -483,11 +483,11 @@ load_server(ServerId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_server/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-            crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
+update_server(ServerId, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"servers">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             crossbar_doc:load_merge(ServerId, JObj, Context)
     end.
 
@@ -500,17 +500,6 @@ update_server(ServerId, #cb_context{req_data=JObj}=Context) ->
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, server).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -595,7 +584,7 @@ template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context
                        || Srv <- Srvs];
                   {error, _} -> []
               end,
-    Account = case couch_mgr:open_doc(Db, whapps_util:get_db_name(Db, raw)) of
+    Account = case couch_mgr:open_doc(Db, wh_util:format_account_id(Db, raw)) of
                   {ok, A} -> wh_json:to_proplist(A);
                   {error, _} -> []
               end,
@@ -669,7 +658,7 @@ create_role(Account, #cb_context{db_name=Db}, #state{role_tmpl=RoleTmpl}) ->
 -spec write_databag/4 :: (proplist(), proplist(), json_object(), atom()) -> ne_binary().
 write_databag(_, _, _, undefined) -> <<>>;
 write_databag(Account, Server, JObj, PathTmpl) ->
-    JSON = mochijson2:encode(crossbar_doc:public_fields(JObj)),
+    JSON = wh_json:encode(wh_json:public_fields(JObj)),
     Props = [{<<"account">>, Account}
              ,{<<"server">>, Server}],
     {ok, P} = PathTmpl:render(Props),
@@ -709,7 +698,7 @@ create_databag([H|T], Mapping, JObj) ->
 -spec write_role/4 :: (proplist(), proplist(), json_object(), atom()) -> binary().
 write_role(_, _, _, undefined) -> <<>>;
 write_role(Account, Server, JObj, PathTmpl) ->
-    JSON = mochijson2:encode(crossbar_doc:public_fields(JObj)),
+    JSON = wh_json:encode(wh_json:public_fields(JObj)),
     Props = [{<<"account">>, Account}
              ,{<<"server">>, Server}],
     {ok, P} = PathTmpl:render(Props),

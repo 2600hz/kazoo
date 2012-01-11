@@ -53,7 +53,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(AcctID, Webhooks) ->
-    QueueName = list_to_binary([whapps_util:get_db_name(AcctID, raw), <<"-webhooks">>]),
+    QueueName = list_to_binary([wh_util:format_account_id(AcctID, raw), <<"-webhooks">>]),
     gen_listener:start_link(?MODULE, [{responders, []}
 				      ,{bindings, [{self, []}]}
 				      ,{queue_name, Raw}
@@ -78,7 +78,7 @@ start_link(AcctID, Webhooks) ->
 %% @end
 %%--------------------------------------------------------------------
 init([AcctDB, Webhooks]) ->
-    AcctID = whapps_util:get_db_name(AcctDB, raw),
+    AcctID = wh_util:format_account_id(AcctDB, raw),
     put(callid, AcctID),
 
     gen_listener:cast(self(), start_bindings),

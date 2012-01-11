@@ -16,6 +16,7 @@
 -export([get_integer/2, get_integer/3]).
 -export([get_is_false/2, get_is_false/3]).
 -export([get_is_true/2, get_is_true/3]).
+-export([get_non_empty/2, get_non_empty/3]).
 -export([set/3, set_default/3]).
 -export([flush/0, import/1]).
 
@@ -121,6 +122,24 @@ get_is_true(Category, Key, Default) ->
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
+%% get a configuration key for a given category and cast it as a is_true
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_non_empty/2 :: (config_category(), config_key()) -> boolean() | 'undefined'.
+-spec get_non_empty/3 :: (config_category(), config_key(), Default) -> boolean() | Default.
+get_non_empty(Category, Key) ->
+    get_non_empty(Category, Key, undefined).
+
+get_non_empty(Category, Key, Default) ->
+    Value = get(Category, Key, Default),
+    case wh_util:is_empty(Value) of
+        true -> undefined;
+        false -> Value
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
 %% get a configuration key for a given category
 %%
 %% Also, when looking up the key see if there is a value specific to this
@@ -174,7 +193,7 @@ get_all_kvs(Category) ->
     case fetch_category(Category, Cache) of
         {error, _} ->
             ?LOG("missing category ~s(~s)", [Category, "default"]),
-	    [];
+            [];
         {ok, JObj} ->
             Node = wh_util:to_binary(node()),
             case wh_json:get_value(Node, JObj) of
@@ -182,10 +201,10 @@ get_all_kvs(Category) ->
                     case wh_json:get_value(<<"default">>, JObj) of
                         undefined ->
                             ?LOG("missing category ~s(~s)", [Category, Node]),
-			    [];
+                            [];
                         DefJObj ->
                             ?LOG("fetched configs ~s(~s)", [Category, "default"]),
-			    wh_json:to_proplist(DefJObj)
+                            wh_json:to_proplist(DefJObj)
                     end;
                 NodeJObj ->
                     ?LOG("fetched configs ~s(~s)", [Category, Node]),
@@ -267,7 +286,7 @@ fetch_category(Category, Cache) ->
 %%-----------------------------------------------------------------------------
 -spec fetch_db_config/2 :: (ne_binary(), pid()) -> {'ok', json_object()} | {'error', 'not_found'}.
 fetch_db_config(Category, Cache) ->
-    case couch_mgr:open_doc(?CONFIG_DB, Category) of
+    case couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj}=Ok ->
             wh_cache:store_local(Cache, {?MODULE, Category}, JObj),
             Ok;
@@ -345,28 +364,28 @@ do_set(Category, Node, Key, Value) ->
 %%-----------------------------------------------------------------------------
 -spec update_category_node/4 :: (ne_binary(), ne_binary(), fun((json_object()) -> json_object()) , pid()) -> {'ok', json_object()}.
 update_category_node(Category, Node, UpdateFun , Cache) ->
-    case is_pid(whereis(couch_mgr)) andalso couch_mgr:open_doc(?CONFIG_DB, Category) of
+    case is_pid(whereis(couch_mgr)) andalso couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj} ->
             case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
                 JObj -> {ok, JObj};
                 UpdatedCat -> update_category(Category, UpdatedCat, Cache)
             end;
         {error, _E} ->
-	    ?LOG("failed to find category in DB: ~p", [_E]),
+            ?LOG("failed to find category in DB: ~p", [_E]),
             NewCat = wh_json:set_value(Node, UpdateFun(wh_json:new()), wh_json:new()),
             update_category(Category, NewCat, Cache);
-	false ->
-	    ?LOG("couch_mgr hasn't started; just cache the json object"),
-	    case wh_cache:peek_local(Cache, {?MODULE, Category}) of
-		{ok, JObj} ->
-		    case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
-			JObj -> {ok, JObj};
-			UpdatedCat -> cache_jobj(Cache, Category, UpdatedCat)
-		    end;
-		{error, not_found} ->
-		    NewCat = wh_json:set_value(Node, UpdateFun(wh_json:new()), wh_json:new()),
-		    cache_jobj(Cache, Category, NewCat)
-	    end
+        false ->
+            ?LOG("couch_mgr hasn't started; just cache the json object"),
+            case wh_cache:peek_local(Cache, {?MODULE, Category}) of
+                {ok, JObj} ->
+                    case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
+                        JObj -> {ok, JObj};
+                        UpdatedCat -> cache_jobj(Cache, Category, UpdatedCat)
+                    end;
+                {error, not_found} ->
+                    NewCat = wh_json:set_value(Node, UpdateFun(wh_json:new()), wh_json:new()),
+                    cache_jobj(Cache, Category, NewCat)
+            end
     end.
 
 %%-----------------------------------------------------------------------------
@@ -379,8 +398,8 @@ update_category_node(Category, Node, UpdateFun , Cache) ->
 update_category(Category, JObj, Cache) ->
     ?LOG("updating configuration category ~s", [Category]),
     JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),
-    {ok, SavedJObj} = couch_mgr:ensure_saved(?CONFIG_DB, JObj1),
-    ?LOG("saved cat ~s to db ~s", [Category, ?CONFIG_DB]),
+    {ok, SavedJObj} = couch_mgr:ensure_saved(?WH_CONFIG_DB, JObj1),
+    ?LOG("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
     cache_jobj(Cache, Category, SavedJObj).
 
 cache_jobj(Cache, Category, JObj) ->

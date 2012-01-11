@@ -46,7 +46,7 @@ handle_req(JObj, _Props) ->
             ?LOG_END("voicemail to email disabled for ~s", [_Email]);
         {Email, true} ->
             ?LOG("VM->Email enabled for user, sending to ~s", [Email]),
-            {ok, AcctObj} = couch_mgr:open_doc(AcctDB, whapps_util:get_db_name(AcctDB, raw)),
+            {ok, AcctObj} = couch_mgr:open_doc(AcctDB, wh_util:format_account_id(AcctDB, raw)),
             Docs = [VMBox, UserJObj, AcctObj],
 
             Props = [{email_address, Email}

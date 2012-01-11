@@ -184,7 +184,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, #
                                                    ,{<<"pvt_type">>, <<"credit">>}
                                                    ]),
 
-                  #cb_context{resp_status=success, doc=Saved} = crossbar_doc:save(Context#cb_context{doc=Transaction, db_name=whapps_util:get_db_name(AcctID, encoded)}),
+                  #cb_context{resp_status=success, doc=Saved} = crossbar_doc:save(Context#cb_context{doc=Transaction, db_name=wh_util:format_account_id(AcctID, encoded)}),
 
                   Id = wh_json:get_value(<<"_id">>, Saved),
 
@@ -567,7 +567,7 @@ validate([<<"transactions">>, TransactionId], #cb_context{req_verb = <<"get">>}=
 %% CREDIT SPECIFIC API
 validate([<<"credits">>], #cb_context{req_verb = <<"get">>, account_id=AccountId, doc=JObj}=Context) ->
     %% TODO: request current balance from jonny5 and put it here
-    DB = whapps_util:get_db_name(AccountId, encoded),
+    DB = wh_util:format_account_id(AccountId, encoded),
     Units = case couch_mgr:get_results(DB, <<"transactions/credit_remaining">>, [{<<"reduce">>, true}]) of
                 {ok, []} -> ?LOG("No results"), 0;
                 {ok, [ViewRes|_]} -> ?LOG("Found obj ~p", [ViewRes]), wh_json:get_value(<<"value">>, ViewRes, 0);

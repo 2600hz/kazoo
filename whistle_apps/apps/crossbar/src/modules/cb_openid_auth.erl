@@ -414,7 +414,7 @@ get_identity(IdentityUrl, <<"google">>, _QS) ->
       Identifier :: binary(),
       Provider :: binary().
 find_account(Identifier, Provider) ->
-    case couch_mgr:get_results(<<"accounts">>, {<<"accounts">>, <<"listing_by_openid">>}, [{<<"key">>, [Identifier, Provider]}]) of
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, {?WH_ACCOUNTS_DB, <<"listing_by_openid">>}, [{<<"key">>, [Identifier, Provider]}]) of
         {ok, []} ->
             {error, not_registered};
         {ok, [JObj]} ->

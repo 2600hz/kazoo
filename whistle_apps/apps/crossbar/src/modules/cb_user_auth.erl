@@ -17,7 +17,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
@@ -112,24 +112,24 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
                  ,{RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]}=Context}}, State) ->
     spawn(fun() ->
-		  _ = crossbar_util:put_reqid(Context),
-		  ?LOG("authenticating request"),
-		  Pid ! {binding_result, true, {RD, Context}}
-	  end),
+                  _ = crossbar_util:put_reqid(Context),
+                  ?LOG("authenticating request"),
+                  Pid ! {binding_result, true, {RD, Context}}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.user_auth">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.user_auth">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.user_auth">>, [RD, Context | Params]}, State) ->
@@ -138,7 +138,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.user_auth">>, [RD, Cont
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.user_auth">>, [RD, Context | Params]}, State) ->
@@ -147,7 +147,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.user_auth">>, [RD, C
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = create_token(RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -238,26 +238,31 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate/2 :: (list(), #cb_context{}) -> #cb_context{}.
-validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
-    Credentials = wh_json:get_value(<<"credentials">>, JObj),
-    Method = wh_json:get_value(<<"method">>, JObj, <<"md5">>),
-    case wh_json:get_value(<<"realm">>, JObj) of
-        undefined ->
-            ?LOG("realm not found, using name to auth..."),
-            AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
-            ?LOG("attemping to authorizing with account name: ~s", [AccountName]),
-            authorize_user_with_account_name(Context
-                                             ,AccountName
-                                             ,Credentials
-                                             ,Method
-                                            );
-        Realm ->
-            ?LOG("realm found, using realm to auth..."),
-            authorize_user_with_realm(Context
-                                      ,Realm
-                                      ,Credentials
-                                      ,Method
-                                     )
+validate([], #cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"user_auth">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            Credentials = wh_json:get_value(<<"credentials">>, JObj),
+            Method = wh_json:get_value(<<"method">>, JObj, <<"md5">>),
+            case wh_json:get_value(<<"realm">>, JObj) of
+                undefined ->
+                    ?LOG("realm not found, using name to auth..."),
+                    AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
+                    ?LOG("attemping to authorizing with account name: ~s", [AccountName]),
+                    authorize_user_with_account_name(Context
+                                                     ,AccountName
+                                                     ,Credentials
+                                                     ,Method
+                                                    );
+                Realm ->
+                    ?LOG("realm found, using realm to auth..."),
+                    authorize_user_with_realm(Context
+                                              ,Realm
+                                              ,Credentials
+                                              ,Method
+                                             )
+            end
     end;
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).

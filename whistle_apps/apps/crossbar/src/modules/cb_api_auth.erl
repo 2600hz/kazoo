@@ -30,8 +30,6 @@
 -define(SERVER, ?MODULE).
 
 -define(TOKEN_DB, <<"token_auth">>).
-
--define(AGG_DB, <<"accounts">>).
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_API, <<"accounts/listing_by_api">>).
 
@@ -247,8 +245,13 @@ resource_exists(_) ->
 -spec validate/2 :: (Params, Context) -> #cb_context{} when
       Params :: list(),
       Context :: #cb_context{}.
-validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
-    authorize_api_key(Context, wh_json:get_value(<<"api_key">>, JObj));
+validate([], #cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"api_auth">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            authorize_api_key(Context, wh_json:get_value(<<"api_key">>, JObj))
+    end;
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -271,7 +274,7 @@ authorize_api_key(Context, <<"">>) ->
     ?LOG("request has no api key"),
     crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
 authorize_api_key(Context, ApiKey) ->
-    case crossbar_doc:load_view(?AGG_VIEW_API, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?AGG_DB}) of
+    case crossbar_doc:load_view(?AGG_VIEW_API, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?WH_ACCOUNTS_DB}) of
         #cb_context{resp_status=success, doc=[JObj|_]}->
             ?LOG("found more account with ~s, using ~s", [ApiKey, wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};

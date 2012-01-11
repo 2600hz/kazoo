@@ -36,7 +36,7 @@ handle_req(JObj, _Prop) ->
 inbound_handler(JObj) ->
     inbound_handler(JObj, get_dest_number(JObj)).
 inbound_handler(JObj, Number) ->
-    case stepswitch_util:lookup_account_by_number(Number) of
+    case wh_number_manager:lookup_account_by_number(Number) of
         {ok, AccountId, _} ->
             ?LOG("number associated with account ~s", [AccountId]),
             relay_route_req(
