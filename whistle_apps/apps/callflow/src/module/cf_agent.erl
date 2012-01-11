@@ -57,6 +57,7 @@ send_available(AgentJObj, Call) ->
     Req = [{<<"Agent-ID">>, wh_json:get_value(<<"id">>, AgentJObj)}
            ,{<<"Skills">>, wh_json:get_value(<<"skills">>, AgentJObj, [])}
            ,{<<"Call-ID">>, cf_exe:callid(Call)}
+           ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
            | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)],
 
     wapi_acd:publish_agent_online(Req).
