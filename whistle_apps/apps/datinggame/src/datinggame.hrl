@@ -8,7 +8,7 @@
           id = <<>> :: binary()
           ,call_id = <<>> :: binary()
           ,control_queue = <<>> :: binary()
-          ,signed_in = erlang:now() :: integer()
+          ,signed_in = wh_util:current_tstamp() :: integer()
           ,skills = wh_json:new() :: json_object()
          }).
 

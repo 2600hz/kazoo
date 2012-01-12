@@ -46,8 +46,8 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Srv, #dg_agent{call_id=CallID}=Agent, #dg_customer{call_id=CCallID}=Customer) ->
-    Bindings = [{call, [{callid, CallID}]}
-                ,{call, [{callid, CCallID}]}
+    Bindings = [{call, [{callid, CallID}, {restrict_to, [events]}]}
+                ,{call, [{callid, CCallID}], {restrict_to, [events]}}
                 ,{self, []}
                ],
     gen_listener:start_link(?MODULE
@@ -126,13 +126,13 @@ handle_cast({event, JObj}, #state{waiting_for=Waiting}=State) ->
             ?LOG("ignoring event"),
             {noreply, State};
         {hangup, CallID} ->
-            % see who hung up
+            %% see who hung up
             ?LOG("call-id ~s hungup", [CallID]),
             {stop, normal, State}
     end;
 
-handle_cast(connect, #state{agent=Agent, customer=Customer}=State) ->
-    connect_agent(Agent, Customer),
+handle_cast(connect_call, #state{agent=Agent, customer=Customer}=State) ->
+    ok = connect_agent(Agent, Customer),
     ?LOG("sent connection request"),
     {noreply, State};
 
@@ -186,8 +186,8 @@ code_change(_OldVsn, State, _Extra) ->
 new_recording_name() ->
     <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
 
--spec connect_agent/2 :: (#dg_agent{}, #dg_customer{}) -> 'ok' | {'error', _}.
-connect_agent(#dg_agent{call_id=ACallID, control_queue=CtlQ}=Agent, #dg_customer{call_id=CCallID}=Customer) ->
+-spec connect_agent/2 :: (#dg_agent{}, #dg_customer{}) -> 'ok'.
+connect_agent(#dg_agent{call_id=ACallID, control_queue=CtlQ}, #dg_customer{call_id=CCallID}) ->
     connect(CtlQ, ACallID, CCallID).
 
 connect(CtlQ, ACallID, CCallID) ->
