@@ -22,11 +22,8 @@
          terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
-
--define(TOKEN_DB, <<"token_auth">>).
 
 %%%===================================================================
 %%% API

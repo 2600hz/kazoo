@@ -3,7 +3,6 @@
 -export([init/1, content_types_provided/2, resource_exists/2]).
 -export([last_modified/2, generate_etag/2, content/2, encodings_provided/2]).
 
--include_lib("webmachine/include/webmachine.hrl").
 -include_lib("kernel/include/file.hrl").
 -include("crossbar.hrl").
 

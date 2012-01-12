@@ -3,10 +3,12 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
-
+-include_lib("webmachine/include/webmachine.hrl").
 -include("crossbar_types.hrl").
 
 -define(CONFIG_CAT, <<"crossbar">>).
+
+-define(TOKEN_DB, <<"token_auth">>).
 
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).

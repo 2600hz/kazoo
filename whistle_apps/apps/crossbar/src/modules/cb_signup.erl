@@ -27,7 +27,6 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 

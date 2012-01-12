@@ -8,12 +8,12 @@
 %%%-------------------------------------------------------------------
 -module(crossbar).
 
--include("../include/crossbar.hrl").
-
 -export([start_link/0, stop/0]).
 
 -export([refresh/0, refresh/1, init_first_account/0]).
 -export([purge_doc_type/2]).
+
+-include("../include/crossbar.hrl").
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 

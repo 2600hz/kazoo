@@ -20,7 +20,6 @@
 -export([process_post/2, delete_resource/2]).
 
 -include("crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 
 %%%===================================================================
 %%% WebMachine API

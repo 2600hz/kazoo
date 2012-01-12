@@ -145,7 +145,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.braintree">>, [RD, Cont
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   _ = crossbar_util:binding_heartbeat(Pid),
-
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
@@ -155,8 +154,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   _ = crossbar_util:binding_heartbeat(Pid),
-
                   Customer = crossbar_util:fetch(braintree, Context),
+                  create_placeholder_account(Context),
                   Context1 = case braintree_customer:update(Customer) of
                                  {ok, #bt_customer{}=C} ->
                                      Response = braintree_customer:record_to_json(C),
@@ -481,6 +480,7 @@ validate([<<"cards">>], #cb_context{req_verb = <<"get">>, account_id=AccountId}=
     end;
 validate([<<"cards">>], #cb_context{req_verb = <<"put">>, req_data=JObj, account_id=AccountId}=Context) ->
     Card = (braintree_card:json_to_record(JObj))#bt_card{customer_id=wh_util:to_list(AccountId)},
+    io:format("~p~n", [Card]),
     crossbar_util:response([], crossbar_util:store(braintree, Card, Context));
 validate([<<"cards">>, CardId], #cb_context{req_verb = <<"get">>, account_id=Account}=Context) ->
     AccountId = wh_util:to_list(Account),
