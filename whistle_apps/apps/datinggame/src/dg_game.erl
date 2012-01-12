@@ -60,7 +60,9 @@ start_link(Srv, #dg_agent{call_id=CallID}=Agent, #dg_customer{call_id=CCallID}=C
                             ,[Srv, Agent, Customer]).
 
 handle_req(JObj, Props) ->
-    gen_listener:cast(props:get_value(server, Props), {event, JObj}).
+    Srv = props:get_value(server, Props),
+    ?LOG("sending event to ~p", [Srv]),
+    gen_listener:cast(Srv, {event, JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -116,15 +118,22 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({event, JObj}, #state{waiting_for=Waiting}=State) ->
-    case process_event(wh_util:get_event_type(JObj), JObj, Waiting) of
-        ignore -> {noreply, State};
+    EvtType = wh_util:get_event_type(JObj),
+    ?LOG("recv evt ~p", [EvtType]),
+
+    case process_event(EvtType, JObj, Waiting) of
+        ignore ->
+            ?LOG("ignoring event"),
+            {noreply, State};
         {hangup, CallID} ->
             % see who hung up
+            ?LOG("call-id ~s hungup", [CallID]),
             {stop, normal, State}
     end;
 
 handle_cast(connect, #state{agent=Agent, customer=Customer}=State) ->
     connect_agent(Agent, Customer),
+    ?LOG("sent connection request"),
     {noreply, State};
 
 handle_cast(_Msg, State) ->
