@@ -243,6 +243,7 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
             false
     end.
 
+is_superduper_admin(undefined) -> false;
 is_superduper_admin(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     case crossbar_util:open_doc(AccountDb, AccountId) of
