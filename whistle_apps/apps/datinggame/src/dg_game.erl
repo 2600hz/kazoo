@@ -196,6 +196,7 @@ connect(CtlQ, ACallID, CCallID) ->
                                   wh_json:from_list([{<<"Application-Name">>, <<"answer">>}])
                                   ,wh_json:from_list([{<<"Application-Name">>, <<"call_pickup">>}
                                                       ,{<<"Target-Call-ID">>, CCallID}
+                                                      ,{<<"Call-ID">>, ACallID}
                                                      ])
                                  ]}
                ],
