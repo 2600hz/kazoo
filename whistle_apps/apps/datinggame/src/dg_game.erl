@@ -191,19 +191,15 @@ connect_agent(#dg_agent{call_id=ACallID, control_queue=CtlQ}, #dg_customer{call_
     connect(CtlQ, ACallID, CCallID).
 
 connect(CtlQ, ACallID, CCallID) ->
-    Command = [{<<"Application-Name">>, <<"queue">>}
-               ,{<<"Insert-At">>, <<"flush">>}
-               ,{<<"Commands">>, [
-                                  wh_json:from_list([{<<"Application-Name">>, <<"answer">>}
-                                                     ,{<<"Call-ID">>, ACallID}
-                                                    ])
-                                  ,wh_json:from_list([{<<"Application-Name">>, <<"call_pickup">>}
-                                                      ,{<<"Target-Call-ID">>, CCallID}
-                                                      ,{<<"Call-ID">>, ACallID}
-                                                     ])
-                                 ]}
-               ],
-    send_command(Command, ACallID, CtlQ).
+    Cmd1 = wh_json:from_list([{<<"Application-Name">>, <<"answer">>}
+                              ,{<<"Call-ID">>, ACallID}
+                             ]),
+    Cmd2 = wh_json:from_list([{<<"Application-Name">>, <<"call_pickup">>}
+                              ,{<<"Target-Call-ID">>, CCallID}
+                              ,{<<"Call-ID">>, ACallID}
+                             ]),
+    send_command(Cmd1, ACallID, CtlQ),
+    send_command(Cmd2, ACallID, CtlQ).
 
 send_command(Command, CallID, CtrlQ) ->
     Prop = Command ++ [{<<"Call-ID">>, CallID}
