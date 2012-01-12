@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, add_agent/2, rm_agent/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -22,9 +22,8 @@
 -define(SERVER, ?MODULE).
 -define(BINDINGS, [{acd, []}
                   ]).
--define(RESPONDERS, [{dg_agent, [{<<"acd">>, <<"agent_online">>}
-                                 ,{<<"acd">>, <<"agent_offline">>}
-                                ]}
+-define(RESPONDERS, [{{dg_agent, handle_online}, [{<<"acd">>, <<"agent_online">>}]}
+                     ,{{dg_agent, handle_offline}, [{<<"acd">>, <<"agent_offline">>}]}
                      ,{dg_customer, [{<<"acd">>, <<"agent_connect">>}]}
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -33,7 +32,7 @@
 
 -record(state, {
           agents_available = queue:new() :: queue()
-         ,agents_busy = dict:new() :: dict()
+         ,agents_busy = dict:new() :: dict() %% [ {Agent-Call-Id, {#dg_agent{}, #dg_cust{}}} ]
          }).
 
 %%%===================================================================
@@ -55,6 +54,12 @@ start_link() ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                       ]
                                       , []).
+
+add_agent(Srv, #dg_agent{}=Agent) when is_pid(Srv) ->
+    gen_listener:cast(Srv, {add_agent, Agent}).
+
+rm_agent(Srv, #dg_agent{}=Agent) when is_pid(Srv) ->
+    gen_listener:cast(Srv, {rm_agent, Agent}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -102,6 +107,16 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({add_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Online}=State) ->
+    ?LOG("new agent added: ~s", [_CallID]),
+    {norepy, State#state{agents_available=queue:in(Agent, Online)}};
+
+handle_cast({rm_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Online, agents_busy=Busy}=State) ->
+    ?LOG("rm agent: ~s", [_CallID]),
+    Online1 = rm_agent_from_online(Agent, Online),
+    Busy1 = rm_agent_from_busy(Agent, Busy),
+    {noreply, State#state{agents_available=Online1, agents_busy=Busy1}};
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -118,8 +133,8 @@ handle_cast(_Msg, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
-handle_event(_JObj, _State) ->
-    {reply, []}.
+handle_event(_JObj, #state{agents_available=Online, agents_busy=Busy}) ->
+    {reply, [{available, Online}, {busy, Busy}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -149,3 +164,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec rm_agent_from_online/2 :: (#dg_agent{}, queue()) -> queue().
+rm_agent_from_online(#dg_agent{call_id=CallId}, Online) ->
+    queue:filter(fun(#dg_agent{call_id=Acall_id}) ->
+                         CallId =/= Acall_id
+                 end, Online).
+
+-spec rm_agent_from_busy/2 :: (#dg_agent{}, dict()) -> dict().
+rm_agent_from_busy(#dg_agent{call_id=CallID}, Busy) ->
+    dict:erase(CallID, Busy).

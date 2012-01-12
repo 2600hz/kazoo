@@ -8,12 +8,27 @@
 %%%-------------------------------------------------------------------
 -module(dg_agent).
 
--export([init/0, handle_req/2]).
+-export([init/0, handle_offline/2, handle_online/2]).
 
 -include("datinggame.hrl").
 
 init() ->
     'ok'.
 
-handle_req(JObj, Props) ->
-    ok.
+handle_online(JObj, Props) ->
+    Agent = #dg_agent{id = wh_json:get_value(<<"Agent-ID">>, JObj)
+                      ,call_id = wh_json:get_value(<<"Call-ID">>, JObj)
+                      ,control_queue = wh_json:get_value(<<"Control-Queue">>, JObj)
+                      ,skills = wh_json:get_value(<<"Skills">>, JObj, wh_json:new())
+                      },
+
+    Srv = props:get_value(server, Props),
+    datinggame_listener:add_agent(Srv, Agent).
+
+handle_offline(JObj, Props) ->
+    Agent = #dg_agent{id = wh_json:get_value(<<"Agent-ID">>, JObj)
+                      ,call_id = wh_json:get_value(<<"Call-ID">>, JObj)
+                      },
+
+    Srv = props:get_value(server, Props),
+    datinggame_listener:rm_agent(Srv, Agent).
