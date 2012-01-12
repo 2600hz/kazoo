@@ -192,6 +192,7 @@ connect_agent(#dg_agent{call_id=ACallID, control_queue=CtlQ}, #dg_customer{call_
 
 connect(CtlQ, ACallID, CCallID) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
+               ,{<<"Insert-At">>, <<"flush">>}
                ,{<<"Commands">>, [
                                   wh_json:from_list([{<<"Application-Name">>, <<"answer">>}
                                                      ,{<<"Call-ID">>, ACallID}
