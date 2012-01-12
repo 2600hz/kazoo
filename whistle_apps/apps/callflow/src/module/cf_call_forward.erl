@@ -59,7 +59,7 @@
 handle(Data, Call) ->
     case get_call_forward(Call) of
         {error, #callfwd{prompts=Prompts}} ->
-            {ok, _} = cf_call_command:b_play(Prompts#prompts.feature_not_avaliable, Call),
+            catch({ok, _} = cf_call_command:b_play(Prompts#prompts.feature_not_avaliable, Call)),
             cf_exe:stop(Call);
         CF ->
             cf_call_command:answer(Call),
@@ -127,13 +127,21 @@ cf_activate(#callfwd{number=undefined}=CF, Call) ->
     cf_activate(cf_update_number(CF, Call), Call);
 cf_activate(#callfwd{number=Number, prompts=Prompts}=CF, #cf_call{capture_group=undefined}=Call) ->
     ?LOG("activating call forwarding"),
-    cf_call_command:play(Prompts#prompts.has_been_enabled, Call),
-    cf_call_command:say(Number, Call),
+    try
+        {ok, _} = cf_call_command:b_play(Prompts#prompts.has_been_enabled, Call),
+        {ok, _} = cf_call_command:b_say(Number, Call)
+    catch
+        _:_ -> ok
+    end,
     CF#callfwd{enabled=true};
 cf_activate(#callfwd{prompts=Prompts}=CF, #cf_call{capture_group=CaptureGroup}=Call) ->
     ?LOG("activating call forwarding with number ~s", [CaptureGroup]),
-    cf_call_command:play(Prompts#prompts.has_been_enabled, Call),
-    cf_call_command:say(CaptureGroup, Call),
+    try
+        {ok, _} = cf_call_command:b_play(Prompts#prompts.has_been_enabled, Call),
+        {ok, _} = cf_call_command:b_say(CaptureGroup, Call)
+    catch
+        _:_ -> ok
+    end,
     CF#callfwd{enabled=true, number=CaptureGroup}.
 
 %%--------------------------------------------------------------------
@@ -146,7 +154,7 @@ cf_activate(#callfwd{prompts=Prompts}=CF, #cf_call{capture_group=CaptureGroup}=C
 -spec(cf_deactivate/2 :: (CF :: #callfwd{}, Call :: #cf_call{}) -> #callfwd{}).
 cf_deactivate(#callfwd{prompts=Prompts}=CF, Call) ->
     ?LOG("deactivating call forwarding"),
-    cf_call_command:play(Prompts#prompts.has_been_disabled, Call),
+    catch({ok, _} = cf_call_command:b_play(Prompts#prompts.has_been_disabled, Call)),
     CF#callfwd{enabled=false}.
 
 %%--------------------------------------------------------------------
@@ -160,7 +168,7 @@ cf_deactivate(#callfwd{prompts=Prompts}=CF, Call) ->
 cf_update_number(#callfwd{prompts=#prompts{saved=Saved, enter_forwarding_number=EnterNumber}}=CF
                  ,#cf_call{capture_group=undefined}=Call) ->
     {ok, Number} = cf_call_command:b_play_and_collect_digits(<<"3">>, <<"20">>, EnterNumber, <<"1">>, <<"8000">>, Call),
-    cf_call_command:play(Saved, Call),
+    cf_call_command:b_play(Saved, Call),
     ?LOG("update call forwarding number with ~s", [Number]),
     CF#callfwd{number=Number};
 cf_update_number(CF, #cf_call{capture_group=CaptureGroup}) ->
