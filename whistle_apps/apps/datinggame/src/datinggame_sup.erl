@@ -13,7 +13,7 @@
 
 %% API
 -export([start_link/0]).
--export([cache_proc/0, listener/0]).
+-export([cache_proc/0, listener_proc/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -43,8 +43,8 @@ cache_proc() ->
                 Mod =:= datinggame_cache],
     {ok, P}.
 
--spec listener/0 :: () -> {'ok', pid()}.
-listener() ->
+-spec listener_proc/0 :: () -> {'ok', pid()}.
+listener_proc() ->
     [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
                 Mod =:= datinggame_listener],
     {ok, P}.
