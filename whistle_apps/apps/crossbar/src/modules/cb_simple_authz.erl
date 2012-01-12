@@ -246,7 +246,13 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
             false
     end.
 
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns true if the request contains a system admin module.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_superduper_admin/1 :: (undefined | ne_binary()) -> boolean().
 is_superduper_admin(undefined) ->
     false;
 is_superduper_admin(AccountId) ->
