@@ -122,6 +122,7 @@ handle_cast({event, JObj}, #state{waiting_for=Waiting}=State) ->
             % see who hung up
             {stop, normal, State}
     end;
+
 handle_cast(connect, #state{agent=Agent, customer=Customer}=State) ->
     connect_agent(Agent, Customer),
     {noreply, State};

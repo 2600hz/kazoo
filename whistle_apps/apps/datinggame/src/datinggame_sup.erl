@@ -21,7 +21,9 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
 -define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
--define(CHILDREN, [{datinggame_listener, worker}]).
+-define(CHILDREN, [{dg_game_sup, supervisor}
+                   ,{datinggame_listener, worker}
+                  ]).
 
 %% ===================================================================
 %% API functions
