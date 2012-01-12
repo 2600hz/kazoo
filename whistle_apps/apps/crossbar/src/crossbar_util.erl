@@ -29,7 +29,6 @@
 -export([store/3, fetch/2, get_abs_url/2]).
 
 -include("../include/crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

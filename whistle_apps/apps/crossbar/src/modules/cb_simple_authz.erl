@@ -198,23 +198,29 @@ account_is_descendant(false, #cb_context{auth_account_id=AuthAccountId, req_noun
             %% with a complex key (whose alternate value is useful to use on retrieval)
             ?LOG("checking if account ~s is a descendant of ~s", [ReqAccountId, AuthAccountId]),
             ReqAccountDb = wh_util:format_account_id(ReqAccountId, encoded),
-            case crossbar_util:open_doc(ReqAccountDb, ReqAccountId) of
-                %% if the requested account exists, the second component of the key
-                %% is the parent tree, make sure the authorized account id is in that tree
-                {ok, JObj} ->
-                    Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
-                    case lists:member(AuthAccountId, Tree) of
-                        true ->
-                            ?LOG("authorizing requested account is a descendant of the auth token"),
-                            true;
-                        false ->
-                            ?LOG("not authorizing, requested account is not a descendant of the auth token"),
+            case ReqAccountId =:= AuthAccountId of
+                true -> 
+                    ?LOG("authorizing, requested account is the same as the auth token account"),
+                    true;
+                false ->
+                    case crossbar_util:open_doc(ReqAccountDb, ReqAccountId) of
+                        %% if the requested account exists, the second component of the key
+                        %% is the parent tree, make sure the authorized account id is in that tree
+                        {ok, JObj} ->
+                            Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
+                            case lists:member(AuthAccountId, Tree) of
+                                true ->
+                                    ?LOG("authorizing requested account is a descendant of the auth token"),
+                                    true;
+                                false ->
+                                    ?LOG("not authorizing, requested account is not a descendant of the auth token"),
+                                    false
+                            end;
+                        %% anything else and they are not allowed
+                        {error, _} ->
+                            ?LOG("not authorizing, error during lookup"),
                             false
-                    end;
-                %% anything else and they are not allowed
-                {error, _} ->
-                    ?LOG("not authorizing, error during lookup"),
-                    false
+                    end
             end
     end.
 

@@ -10,16 +10,14 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("crossbar/include/crossbar.hrl").
-
 %% API
 -export([start_link/0, upgrade/0]).
 -export([cache_proc/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
+
+-include_lib("crossbar/include/crossbar.hrl").
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).

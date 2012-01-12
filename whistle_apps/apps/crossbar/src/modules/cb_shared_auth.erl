@@ -28,18 +28,16 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(TOKEN_DB, <<"token_auth">>).
 -define(SHARED_AUTH_CONF, list_to_binary([code:lib_dir(crossbar, priv), "/shared_auth/shared_auth.conf"])).
 
 -record(state, {xbar_url = 'undefined' :: 'undefined' | string()
-	       }).
+               }).
 
 %%%===================================================================
 %%% API
@@ -137,16 +135,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
 
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.shared_auth">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.shared_auth">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.shared_auth">>, [RD, Context | Params]}, #state{xbar_url=XBarUrl}=State) ->
@@ -155,7 +153,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.shared_auth">>, [RD, Co
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context, XBarUrl),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.shared_auth">>, [RD, Context | Params]}, State) ->
@@ -164,7 +162,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.shared_auth">>, [RD,
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = create_local_token(RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -328,27 +326,27 @@ create_local_token(RD, #cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
     AccountId = wh_json:get_value([<<"account">>, <<"_id">>], JObj, <<>>),
     OwnerId = wh_json:get_value([<<"user">>, <<"_id">>], JObj, <<>>),
     Token = wh_json:from_list([{<<"account_id">>, AccountId}
-			       ,{<<"owner_id">>, OwnerId}
-			       ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-			       ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-			       ,{<<"method">>, wh_util:to_binary(?MODULE)}
-			       ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
-			       ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-			       ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
-			       ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-			       ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-			       ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-			       ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
-			       ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
-			       ,{<<"shared_token">>, SharedToken}
-			      ]),
+                               ,{<<"owner_id">>, OwnerId}
+                               ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                               ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                               ,{<<"method">>, wh_util:to_binary(?MODULE)}
+                               ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
+                               ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+                               ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
+                               ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+                               ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+                               ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+                               ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
+                               ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+                               ,{<<"shared_token">>, SharedToken}
+                              ]),
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->
             AuthToken = wh_json:get_value(<<"_id">>, Doc),
             ?LOG("created new local auth token ~s", [AuthToken]),
             crossbar_util:response(wh_json:from_list([{<<"account_id">>, AccountId}
-						      ,{<<"owner_id">>, OwnerId}
-						     ])
+                                                      ,{<<"owner_id">>, OwnerId}
+                                                     ])
                                    ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, R} ->
             ?LOG("could not create new local auth token, ~p", [R]),
@@ -363,21 +361,21 @@ create_local_token(RD, #cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate_shared_token/2 :: ('undefined' | ne_binary(), nonempty_string())
-				     -> {'ok', string() | binary()} | {'error', atom()} | {'forbidden', 'shared_token_rejected'}.
+                                     -> {'ok', string() | binary()} | {'error', atom()} | {'forbidden', 'shared_token_rejected'}.
 authenticate_shared_token(undefined, _) ->
     {forbidden, missing_shared_token};
 authenticate_shared_token(SharedToken, XBarUrl) ->
     Url = lists:flatten(XBarUrl, "/shared_auth"),
     Headers = [{"Accept", "application/json"}
-	       ,{"X-Auth-Token", wh_util:to_list(SharedToken)}
-	      ],
+               ,{"X-Auth-Token", wh_util:to_list(SharedToken)}
+              ],
     ?LOG("validating shared token ~s via ~s", [SharedToken, Url]),
     case ibrowse:send_req(Url, Headers, get) of
-	{ok, "200", _, Resp} ->
+        {ok, "200", _, Resp} ->
             {ok, Resp};
-	{ok, "401", _, _} ->
+        {ok, "401", _, _} ->
             {forbidden, shared_token_rejected};
-	Resp ->
+        Resp ->
             {error, Resp}
     end.
 

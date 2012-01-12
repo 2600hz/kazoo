@@ -1,3 +1,4 @@
+
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010 James Aimonetti
 %%% @doc
@@ -8,14 +9,13 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_log.hrl").
--include_lib("crossbar/include/crossbar.hrl").
-
 %% API
 -export([start_link/0, upgrade/0, start_mod/1, start_mod/2, stop_mod/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
+
+-include_lib("crossbar/include/crossbar.hrl").
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type, Args), {I, {I, start_link, Args}, permanent, 5000, Type, [I]}).
