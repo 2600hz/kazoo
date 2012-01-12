@@ -480,7 +480,6 @@ validate([<<"cards">>], #cb_context{req_verb = <<"get">>, account_id=AccountId}=
     end;
 validate([<<"cards">>], #cb_context{req_verb = <<"put">>, req_data=JObj, account_id=AccountId}=Context) ->
     Card = (braintree_card:json_to_record(JObj))#bt_card{customer_id=wh_util:to_list(AccountId)},
-    io:format("~p~n", [Card]),
     crossbar_util:response([], crossbar_util:store(braintree, Card, Context));
 validate([<<"cards">>, CardId], #cb_context{req_verb = <<"get">>, account_id=Account}=Context) ->
     AccountId = wh_util:to_list(Account),
