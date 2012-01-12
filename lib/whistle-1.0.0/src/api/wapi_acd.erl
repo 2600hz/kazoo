@@ -89,10 +89,10 @@ agent_connect_v(JObj) ->
 
 bind_q(Q, _Props) ->
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, <<"acd.*">>).
+    amqp_util:bind_q_to_callmgr(Q, <<"acd.#">>).
 
 unbind_q(Q, _Props) ->
-    amqp_util:unbind_q_from_callmgr(Q, <<"acd.*">>).
+    amqp_util:unbind_q_from_callmgr(Q, <<"acd.#">>).
 
 -spec publish_agent_online/1 :: (api_terms()) -> 'ok'.
 -spec publish_agent_online/2 :: (api_terms(), binary()) -> 'ok'.

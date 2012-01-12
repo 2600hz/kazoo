@@ -109,7 +109,7 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({add_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Online}=State) ->
     ?LOG("new agent added: ~s", [_CallID]),
-    {norepy, State#state{agents_available=queue:in(Agent, Online)}};
+    {noreply, State#state{agents_available=queue:in(Agent, Online)}};
 
 handle_cast({rm_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Online, agents_busy=Busy}=State) ->
     ?LOG("rm agent: ~s", [_CallID]),
