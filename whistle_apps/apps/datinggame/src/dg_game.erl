@@ -193,7 +193,9 @@ connect_agent(#dg_agent{call_id=ACallID, control_queue=CtlQ}, #dg_customer{call_
 connect(CtlQ, ACallID, CCallID) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, [
-                                  wh_json:from_list([{<<"Application-Name">>, <<"answer">>}])
+                                  wh_json:from_list([{<<"Application-Name">>, <<"answer">>}
+                                                     ,{<<"Call-ID">>, ACallID}
+                                                    ])
                                   ,wh_json:from_list([{<<"Application-Name">>, <<"call_pickup">>}
                                                       ,{<<"Target-Call-ID">>, CCallID}
                                                       ,{<<"Call-ID">>, ACallID}
