@@ -30,12 +30,16 @@ find_numbers(Number, Quanity) ->
                                                           ,{<<"endkey">>, [<<"avaliable">>, <<Number/binary, "\ufff0">>]}
                                                           ,{<<"limit">>, Quanity}
                                                          ]) of
-        {ok, []} -> {error, non_avaliable};
+        {ok, []} -> 
+            ?LOG("found no avaliable local numbers"),
+            {error, non_avaliable};
         {ok, JObjs} ->
+            ?LOG("found ~p avaliable local numbers", [length(JObjs)]),
             {ok, wh_json:from_list([{wh_json:get_value(<<"id">>, JObj), wh_json:new()}
                                     || JObj <- JObjs
                                    ])};
-        {error, _}=E ->
+        {error, R}=E ->
+            ?LOG("failed to lookup avaliable local numbers: ~p", [R]),
             E
     end.
 
