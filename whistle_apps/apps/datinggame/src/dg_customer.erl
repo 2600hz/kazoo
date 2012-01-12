@@ -17,4 +17,11 @@ init() ->
     ok.
 
 handle_req(JObj, Props) ->
-    ok.
+    Customer = #dg_customer{
+      call_id = wh_json:get_value(<<"Call-ID">>, JObj)
+      ,control_queue = wh_json:get_value(<<"Control-Queue">>, JObj)
+      ,skills_needed = wh_json:get_value(<<"Skills-Needed">>, JObj, wh_json:new())
+      ,record_call = wh_json:is_true(<<"Record-Call">>, JObj, true)
+     },
+    Srv = props:get_value(server, Props),
+    datinggame_listener:agent_connect(Srv, Customer).

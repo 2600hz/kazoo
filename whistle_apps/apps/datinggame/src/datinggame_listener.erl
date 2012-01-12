@@ -11,7 +11,10 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, add_agent/2, rm_agent/2]).
+-export([start_link/0, add_agent/2, rm_agent/2, agent_connect/2]).
+
+-export([agents_available/0, agents_busy/0, customers_waiting/0]).
+-export([agents_available/1, agents_busy/1, customers_waiting/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -20,6 +23,7 @@
 -include("datinggame.hrl").
 
 -define(SERVER, ?MODULE).
+
 -define(BINDINGS, [{acd, []}
                   ]).
 -define(RESPONDERS, [{{dg_agent, handle_online}, [{<<"acd">>, <<"agent_online">>}]}
@@ -33,6 +37,7 @@
 -record(state, {
           agents_available = queue:new() :: queue()
          ,agents_busy = dict:new() :: dict() %% [ {Agent-Call-Id, {#dg_agent{}, #dg_cust{}}} ]
+         ,customers_waiting = queue:new() :: queue()
          }).
 
 %%%===================================================================
@@ -55,11 +60,29 @@ start_link() ->
                                       ]
                                       , []).
 
+-spec add_agent/2 :: (pid(), #dg_agent{}) -> 'ok'.
 add_agent(Srv, #dg_agent{}=Agent) when is_pid(Srv) ->
     gen_listener:cast(Srv, {add_agent, Agent}).
 
 rm_agent(Srv, #dg_agent{}=Agent) when is_pid(Srv) ->
     gen_listener:cast(Srv, {rm_agent, Agent}).
+
+agent_connect(Srv, #dg_customer{}=Customer) when is_pid(Srv) ->
+    gen_listener:cast(Srv, {connect, Customer}).
+
+agents_available() ->
+    agents_available(datinggame_sup:listener_proc()).
+agents_busy() ->
+    agents_busy(datinggame_sup:listener_proc()).
+customers_waiting() ->
+    customers_waiting(datinggame_sup:listener_proc()).
+
+agents_available(Srv) ->
+    gen_listener:call(Srv, agents_available).
+agents_busy(Srv) ->
+    gen_listener:call(Srv, agents_busy).
+customers_waiting(Srv) ->
+    gen_listener:call(Srv, customers_waiting).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -93,6 +116,24 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(agents_available, From, #state{agents_available=Available}=State) ->
+    spawn(fun() ->
+                  Resp = queue:to_list(Available),
+                  gen_server:reply(From, Resp)
+          end),
+    {noreply, State};
+handle_call(agents_busy, From, #state{agents_busy=Busy}=State) ->
+    spawn(fun() ->
+                  Resp = dict:to_list(Busy),
+                  gen_server:reply(From, Resp)
+          end),
+    {noreply, State};
+handle_call(customers_waiting, From, #state{customers_waiting=Waiting}=State) ->
+    spawn(fun() ->
+                  Resp = queue:to_list(Waiting),
+                  gen_server:reply(From, Resp)
+          end),
+    {noreply, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -107,8 +148,41 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(connect_agent, #state{agents_available=Available
+                                  ,agents_busy=Busy
+                                  ,customers_waiting=Waiting
+                                 }=State) ->
+    case queue:is_empty(Waiting) of
+        true ->
+            ?LOG("no customers waiting"),
+            {noreply, State};
+        false ->
+            case queue:is_empty(Available) of
+                true ->
+                    ?LOG("no agents available at the moment"),
+                    {noreply, State};
+                false ->
+                    {{value, #dg_agent{call_id=CallID}=Agent}, Available1} = queue:out(Available),
+                    {{value, #dg_customer{call_id=_CCallID}=Customer}, Waiting1} = queue:out(Waiting),
+
+                    {ok, _Pid} = dg_game_sup:start_game(self(), Agent, Customer),
+                    ?LOG("the game has started in ~p for agent ~s and customer ~s", [_Pid, CallID, _CCallID]),
+
+                    {noreply, State#state{agents_available=Available1
+                                          ,agents_busy=dict:store(CallID, {Agent, Customer}, Busy)
+                                          ,customers_waiting=Waiting1
+                                         }}
+            end
+    end;
+
+handle_cast({connect, #dg_customer{call_id=_CustCallID}=Customer}, #state{customers_waiting=Waiting}=State) ->
+    play_hold_music(Customer),
+    gen_listener:cast(self(), connect_agent),
+    {noreply, State#state{customers_waiting=queue:in(Customer, Waiting)}};
+
 handle_cast({add_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Online}=State) ->
     ?LOG("new agent added: ~s", [_CallID]),
+    gen_listener:cast(self(), connect_agent),
     {noreply, State#state{agents_available=queue:in(Agent, Online)}};
 
 handle_cast({rm_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Online, agents_busy=Busy}=State) ->
@@ -173,3 +247,9 @@ rm_agent_from_online(#dg_agent{call_id=CallId}, Online) ->
 -spec rm_agent_from_busy/2 :: (#dg_agent{}, dict()) -> dict().
 rm_agent_from_busy(#dg_agent{call_id=CallID}, Busy) ->
     dict:erase(CallID, Busy).
+
+play_hold_music(#dg_customer{call_id=CallID, control_queue=CtlQ}) ->
+    Command = [{<<"Application-Name">>, <<"hold">>}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    dg_game:send_command(Command, CallID, CtlQ).

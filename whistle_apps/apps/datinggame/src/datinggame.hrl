@@ -11,3 +11,20 @@
           ,signed_in = erlang:now() :: integer()
           ,skills = wh_json:new() :: json_object()
          }).
+
+-record(dg_customer, {
+          call_id = <<>> :: binary()
+         ,control_queue = <<>> :: binary()
+         ,skills_needed = wh_json:new() :: json_object()
+         ,record_call = true :: boolean()
+         }).
+
+-define(APP_NAME, <<"dating_game">>).
+-define(APP_VERSION, <<"0.1.0">>).
+
+-define(ANY_DIGIT, [
+                     <<"1">>, <<"2">>, <<"3">>
+                    ,<<"4">>, <<"5">>, <<"6">>
+                    ,<<"7">>, <<"8">>, <<"9">>
+                    ,<<"*">>, <<"0">>, <<"#">>
+                   ]).
