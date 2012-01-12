@@ -728,7 +728,7 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
     {ok, Srv} = crossbar_sup:cache_proc(),
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     ?LOG_SYS("account determined that db name: ~s", [AccountDb]),
-    case wh_cache:peek(Srv, {crossbar, exists, AccountId}) of
+    case wh_cache:peek_local(Srv, {crossbar, exists, AccountId}) of
         {ok, true} -> 
             ?LOG("check succeeded for db_exists on ~s", [AccountId]),
             Context#cb_context{db_name = AccountDb
@@ -740,7 +740,7 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
                     ?LOG("check failed for db_exists on ~s", [AccountId]),
                     crossbar_util:response_db_missing(Context);
                 true ->
-                    wh_cache:store(Srv, {crossbar, exists, AccountId}, true, ?CACHE_TTL),
+                    wh_cache:store_local(Srv, {crossbar, exists, AccountId}, true, ?CACHE_TTL),
                     ?LOG("check succeeded for db_exists on ~s", [AccountId]),
                     Context#cb_context{db_name = AccountDb
                                        ,account_id = AccountId
