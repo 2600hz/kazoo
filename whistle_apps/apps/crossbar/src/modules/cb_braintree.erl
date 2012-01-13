@@ -150,7 +150,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.braintree">>, [RD, Cont
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, Context | [<<"customer">>]=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>
+                 ,[RD, #cb_context{account_id=AccountId}=Context | [<<"customer">>]=Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   _ = crossbar_util:binding_heartbeat(Pid),
@@ -158,7 +159,9 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
                   create_placeholder_account(Context),
                   Context1 = case braintree_customer:update(Customer) of
                                  {ok, #bt_customer{}=C} ->
+                                     crossbar_util:enable_account(AccountId),
                                      Response = braintree_customer:record_to_json(C),
+                                     disable_cardless_accounts(wh_json:get_value(<<"credit_cards">>, Response, []), Context),
                                      crossbar_util:response(Response, Context);
                                  {error, #bt_api_error{}=ApiError} ->
                                      Response = braintree_util:bt_api_error_to_json(ApiError),
@@ -207,6 +210,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, C
                   Context1 = case braintree_card:create(Card) of
                                  {ok, #bt_card{}=C} ->
                                      Response = braintree_card:record_to_json(C),
+                                     disable_cardless_accounts(Response, Context),
                                      crossbar_util:response(Response, Context);
                                  {error, #bt_api_error{}=ApiError} ->
                                      Response = braintree_util:bt_api_error_to_json(ApiError),
@@ -226,6 +230,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
                   Context1 = case braintree_card:update(Card) of
                                  {ok, #bt_card{}=C} ->
                                      Response = braintree_card:record_to_json(C),
+                                     disable_cardless_accounts(Response, Context),
                                      crossbar_util:response(Response, Context);
                                  {error, #bt_api_error{}=ApiError} ->
                                      Response = braintree_util:bt_api_error_to_json(ApiError),
@@ -246,6 +251,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.braintree">>, [RD
                   Context1 = case braintree_card:delete(CardId) of
                                  {ok, #bt_card{}=C} ->
                                      Response = braintree_card:record_to_json(C),
+                                     disable_cardless_accounts(Response, Context),
                                      crossbar_util:response(Response, Context);
                                  {error, #bt_api_error{}=ApiError} ->
                                      Response = braintree_util:bt_api_error_to_json(ApiError),
@@ -454,17 +460,31 @@ validate([<<"customer">>], #cb_context{req_verb = <<"get">>, account_id=AccountI
     case braintree_customer:find(AccountId) of
         {ok, #bt_customer{}=C} ->
             Response = braintree_customer:record_to_json(C),
+            disable_cardless_accounts(wh_json:get_value(<<"credit_cards">>, Response, []), Context),
             crossbar_util:response(Response, Context);
         {error, #bt_api_error{}=ApiError} ->
             Response = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
         {error, not_found} ->
+            disable_cardless_accounts([], Context),
             create_placeholder_account(Context);
         {error, _} ->
             crossbar_util:response_db_fatal(Context)
     end;
 validate([<<"customer">>], #cb_context{req_verb = <<"post">>, req_data=JObj, account_id=AccountId}=Context) ->
-    Customer = braintree_customer:json_to_record(wh_json:set_value(<<"id">>, AccountId, JObj)),
+    Generators = [fun(J) ->
+                          case wh_json:get_value(<<"credit_card">>, J) of
+                              undefined -> J;
+                              _Else ->
+                                  Id = couch_mgr:get_uuid(),
+                                  wh_json:set_value([<<"credit_card">>, <<"id">>], Id, J) 
+                          end
+                  end
+                  ,fun(J) ->
+                           wh_json:set_value(<<"id">>, AccountId, J) 
+                   end
+                 ],
+    Customer = braintree_customer:json_to_record(lists:foldr(fun(F, J) -> F(J) end, JObj, Generators)),
     crossbar_util:response([], crossbar_util:store(braintree, Customer, Context));
 
 %% CARD API
@@ -472,6 +492,7 @@ validate([<<"cards">>], #cb_context{req_verb = <<"get">>, account_id=AccountId}=
     case braintree_customer:find(AccountId) of
         {ok, #bt_customer{credit_cards=Cards}} ->
             Response = [braintree_card:record_to_json(Card) || Card <- Cards],
+            disable_cardless_accounts(Response, Context),
             crossbar_util:response(Response, Context);
         {error, #bt_api_error{}=ApiError} ->
             Response = braintree_util:bt_api_error_to_json(ApiError),
@@ -594,6 +615,19 @@ validate([<<"credits">>], #cb_context{req_verb = <<"put">>, account_id=AccountId
 
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Any account that does not have a credit card is disabled, also
+%% disabling all decendants... BRING THE HAMMER
+%% @end
+%%--------------------------------------------------------------------
+-spec disable_cardless_accounts/2 :: (list(), #cb_context{}) -> #cb_context{}.
+disable_cardless_accounts([], #cb_context{account_id=AccountId}) ->
+    crossbar_util:disable_account(AccountId);
+disable_cardless_accounts(_, #cb_context{account_id=AccountId}) ->
+    crossbar_util:enable_account(AccountId).
 
 %%--------------------------------------------------------------------
 %% @private
