@@ -62,6 +62,7 @@ start_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}, MediaName) ->
     Command = [{<<"Application-Name">>, <<"record">>}
                ,{<<"Media-Name">>, MediaName}
                ,{<<"Terminators">>, []}
+               ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, CallID, CtrlQ).
 
