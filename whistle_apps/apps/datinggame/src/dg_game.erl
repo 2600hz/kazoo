@@ -163,6 +163,7 @@ handle_cast({event, JObj}, #state{agent=Agent
                 false ->
                     ?LOG("agent hungup or disconnected"),
                     dg_util:hangup(Customer),
+                    dg_util:hangup(Agent),
                     datinggame_listener:rm_agent(Srv, Agent),
                     {stop, normal, State}
             end;
