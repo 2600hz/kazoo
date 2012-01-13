@@ -46,7 +46,7 @@
           ,hunt_deny = <<>> :: binary()
           ,hunt_allow = <<>> :: binary()
           ,record_pin = <<>> :: binary()
-          ,greeting_id = undefined :: binary()
+          ,greeting_id = 'undefined' :: 'undefined' | ne_binary()
           ,prompts = #prompts{} :: #prompts{}
           ,keys = #keys{} :: #keys{}
          }).

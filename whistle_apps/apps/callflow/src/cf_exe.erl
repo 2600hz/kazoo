@@ -116,13 +116,13 @@ control_queue_name(#cf_call{cf_pid=Srv}) ->
 control_queue_name(Srv) ->
     gen_server:call(Srv, {control_queue_name}).
 
--spec get_branch_keys/1 :: (#cf_call{} | pid()) -> [ne_binary(),...].
+-spec get_branch_keys/1 :: (#cf_call{} | pid()) -> {branch_keys, [ne_binary(),...]}.
 get_branch_keys(#cf_call{cf_pid=Srv}) ->
     get_branch_keys(Srv);
 get_branch_keys(Srv) ->
     gen_server:call(Srv, {get_branch_keys}).
 
--spec get_all_branch_keys/1 :: (#cf_call{} | pid()) -> [ne_binary(),...].
+-spec get_all_branch_keys/1 :: (#cf_call{} | pid()) -> {branch_keys, [ne_binary(),...]}.
 get_all_branch_keys(#cf_call{cf_pid=Srv}) ->
     get_all_branch_keys(Srv);
 get_all_branch_keys(Srv) ->
