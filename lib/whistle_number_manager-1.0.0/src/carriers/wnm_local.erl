@@ -11,6 +11,7 @@
 
 -export([find_numbers/2]).
 -export([acquire_number/3]).
+-export([release_number/2]).
 
 -include("../../include/wh_number_manager.hrl").
 
@@ -57,3 +58,13 @@ acquire_number(_, <<"claim">>, JObj) ->
     {ok, <<"in_service">>, JObj};
 acquire_number(_, _, _) ->
     {error, unavaliable}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Release a number from the routing table
+%% @end
+%%--------------------------------------------------------------------
+-spec release_number/2 :: (ne_binary(), json_object()) -> {ok, json_object()}.
+release_number(_, JObj) ->
+    {ok, JObj}.

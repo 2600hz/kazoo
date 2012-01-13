@@ -198,9 +198,79 @@ set_public_fields(Number, AccountId, PublicJObj) ->
         throw:Reason -> {error, Reason}
     end.
 
-free_numbers(AccountId) ->
-    ok.
+release_number(Number, AccountId) ->
+    Num = wnm_util:normalize_number(Number),
+    Db = wnm_util:number_to_db_name(Num),
+    try
+        JObj1 = case couch_mgr:open_doc(Db, Num) of
+                   {error, R1} -> 
+                        ?LOG("failed to open number DB: ~p", [R1]),
+                        throw(not_found);
+                   {ok, J} -> J
+               end,
+        {Module, ModuleData} = case wnm_util:get_carrier_module(JObj1) of
+                                   {error, not_specified} -> 
+                                       ?LOG("carrier module not specified on number document"),
+                                       throw(unknown_carrier);
+                                   {error, unknown_module} -> 
+                                       ?LOG("carrier module specified on number document does not exist"),
+                                       throw(unknown_carrier);
+                                   {ok, Mod, Data1} -> 
+                                       {Mod, Data1}
+                               end,
+        case wh_json:get_value(<<"pvt_number_state">>, JObj1, <<"unknown">>) of
+            <<"in_service">> -> 
+                case wh_json:get_value(<<"pvt_assigned_to">>, JObj1) of
+                    AccountId -> 
+                        ?LOG("allowing account to free their in service numbers"),
+                        ok;
+                    _ ->
+                        ?LOG("number is in service for another account"),
+                        throw(unathorized)
+                end;
+            _Else -> 
+                ?LOG("number is not in service"),
+                throw(unavailable)
+        end,
+        NewModuleData = case Module:release_number(Num, ModuleData) of
+                            {error, Error} -> 
+                                ?LOG("module failed to release number: ~p", [Error]),
+                                throw(Error);
+                            {ok, Data2} -> 
+                                Data2
+                        end,
+        Updaters = [fun(J) -> wh_json:set_value(<<"pvt_number_state">>, <<"released">>, J) end
+                    ,fun(J) -> wh_json:set_value(<<"pvt_module_data">>, NewModuleData, J) end
+                    ,fun(J) -> wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), J) end
+                    ,fun(J) -> wh_json:delete_key(<<"pvt_assigned_to">>, J) end
+                    ,fun(J) -> wh_json:set_value(<<"pvt_previously_assigned_to">>, AccountId, J) end
+                   ],
+        case couch_mgr:save_doc(Db, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters)) of
+            {ok, _} -> 
+                remove_number_from_account(Num, AccountId),
+                ok;
+            {error, R2}=E -> 
+                ?LOG("failed to save number document with new assignment: ~p", [R2]),
+                E
+        end
+    catch
+        throw:not_found ->
+            remove_number_from_account(Num, AccountId),
+            ok;
+        _:_ ->
+            {error, fault}
+    end.
 
+free_numbers(AccountId) ->
+    Db = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_doc(Db, AccountId) of        
+        {ok, JObj} ->
+                 [ok = release_number(Number, AccountId) 
+                  || Number <- wh_json:get_value(<<"pvt_wnm_numbers">>, JObj, [])],
+                 ok;
+        _ -> ok
+    end.
+        
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

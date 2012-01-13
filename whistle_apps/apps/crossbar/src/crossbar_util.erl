@@ -22,6 +22,7 @@
 -export([response_db_missing/1]).
 -export([response_db_fatal/1]).
 -export([binding_heartbeat/1, binding_heartbeat/2]).
+-export([get_account_realm/1, get_account_realm/2]).
 -export([put_reqid/1]).
 -export([cache_doc/2, cache_view/3]).
 -export([flush_doc_cache/2]).
@@ -288,6 +289,29 @@ store(Key, Data, #cb_context{storage=Storage}=Context) ->
 -spec fetch/2 :: (term(), #cb_context{}) -> term().
 fetch(Key, #cb_context{storage=Storage}) ->
     props:get_value(Key, Storage).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieves the account realm
+%% @end
+%%--------------------------------------------------------------------
+-spec get_account_realm/1 :: (ne_binary() | #cb_context{}) -> undefined | ne_binary().
+-spec get_account_realm/2 :: (ne_binary(), ne_binary()) -> undefined | ne_binary().
+
+get_account_realm(#cb_context{db_name=Db, account_id=AccountId}) ->
+    get_account_realm(Db, AccountId);
+get_account_realm(AccountId) ->
+    get_account_realm(wh_util:format_account_id(AccountId, encoded), AccountId).
+
+get_account_realm(Db, AccountId) ->
+    case couch_mgr:open_doc(Db, AccountId) of
+        {ok, JObj} ->
+            wh_json:get_ne_value(<<"realm">>, JObj);
+        {error, R} ->
+            ?LOG("error while looking up account realm: ~p", [R]),
+            undefined
+    end.
 
 -spec cache_view/3 :: (ne_binary(), proplist(), json_object()) -> false | ok.
 cache_view(Db, ViewOptions, JObj) ->
