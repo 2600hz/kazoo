@@ -514,14 +514,12 @@ wait_for_reg_resp([_|T], Acc) ->
 is_sip_creds_unique(_, _, undefined) ->
     true;
 is_sip_creds_unique(AccountDb, undefined, Username) ->
-    io:format("~p~n", [Username]),
     case couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, [{<<"key">>, Username}]) of
         {ok, []} -> true;
         {error, not_found} -> true;
         _ -> false
     end;
 is_sip_creds_unique(_, Realm, Username) ->
-    io:format("~p ~p~n", [Realm, Username]),
     ViewOptions = [{<<"key">>, [Realm, Username]}],
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {ok, []} -> true;
