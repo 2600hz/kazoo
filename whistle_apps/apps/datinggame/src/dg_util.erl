@@ -64,8 +64,6 @@ start_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}, MediaName) ->
                ,{<<"Terminators">>, []}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Time-Limit">>, <<"28800">>} % 8 hours
-               ,{<<"Silence-Threshold">>, <<>>}
-               ,{<<"Silence-Hits">>, <<>>}
               ],
     send_command(Command, CallID, CtrlQ).
 

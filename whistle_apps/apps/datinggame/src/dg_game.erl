@@ -31,6 +31,7 @@
          ,customer = #dg_customer{} :: #dg_customer{}
          ,recording_name = <<>> :: binary()
          ,server_pid = undefined :: undefined | pid()
+         ,store_sent = false :: boolean()
          }).
 
 %%%===================================================================
@@ -121,6 +122,7 @@ handle_cast({event, JObj}, #state{agent=Agent
                                   ,customer=(#dg_customer{call_id=CCID})=Customer
                                   ,server_pid=Srv
                                   ,recording_name=MediaName
+                                  ,store_sent=StoreSent
                                  }=State) ->
     EvtType = wh_util:get_event_type(JObj),
     ?LOG("recv evt ~p", [EvtType]),
@@ -141,19 +143,12 @@ handle_cast({event, JObj}, #state{agent=Agent
                     ?LOG(CallID, "customer leg ~s unbridged, freeing agent", [CCID]),
                     datinggame_listener:free_agent(Srv, Agent),
 
-                    RecordingURL = new_session_doc(Agent, Customer, MediaName),
-                    ?LOG(CallID, "storing recording ~s to ~s", [MediaName, RecordingURL]),
-
-                    dg_util:store_recording(Agent, MediaName, RecordingURL),
+                    store_recording(Agent, Customer, MediaName, StoreSent),
                     {stop, normal, State};
                 false ->
                     ?LOG(CCID, "agent leg ~s unbridged, that's odd", [Agent#dg_agent.call_id]),
+                    store_recording(Agent, Customer, MediaName, StoreSent),
                     dg_util:hangup(Customer),
-
-                    RecordingURL = new_session_doc(Agent, Customer, MediaName),
-                    ?LOG(CallID, "storing recording ~s to ~s", [MediaName, RecordingURL]),
-
-                    dg_util:store_recording(Agent, MediaName, RecordingURL),
 
                     datinggame_listener:rm_agent(Srv, Agent),
                     {stop, normal, State}
@@ -164,10 +159,12 @@ handle_cast({event, JObj}, #state{agent=Agent
             case CallID =:= CCID of
                 true ->
                     ?LOG("customer hungup, freeing agent"),
+                    store_recording(Agent, Customer, MediaName, StoreSent),
                     datinggame_listener:free_agent(Srv, Agent),
                     {stop, normal, State};
                 false ->
                     ?LOG("agent hungup or disconnected"),
+                    store_recording(Agent, Customer, MediaName, StoreSent),
                     dg_util:hangup(Customer),
                     dg_util:hangup(Agent),
                     datinggame_listener:rm_agent(Srv, Agent),
@@ -334,3 +331,10 @@ get_new_attachment_url(DB, MediaID, MediaName, undefined) ->
     list_to_binary([couch_mgr:get_url(), DB, "/", MediaID, "/", MediaName]);
 get_new_attachment_url(DB, MediaID, MediaName, Rev) ->
     list_to_binary([couch_mgr:get_url(), DB, "/", MediaID, "/", MediaName, <<"?rev=">>, Rev]).
+
+store_recording(#dg_agent{call_id=CallID}=Agent, Customer, MediaName, false) ->
+    RecordingURL = new_session_doc(Agent, Customer, MediaName),
+    ?LOG(CallID, "storing recording ~s to ~s", [MediaName, RecordingURL]),
+    dg_util:store_recording(Agent, MediaName, RecordingURL);
+store_recording(#dg_agent{call_id=_CallID}, _Customer, _MediaName, true) ->
+    ?LOG(_CallID, "recording of ~s already sent a store command", [_MediaName]).
