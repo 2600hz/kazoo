@@ -243,11 +243,6 @@ handle_cast({rm_agent, #dg_agent{call_id=CallID}=Agent}, #state{agents_available
     {_, Busy1} = rm_agent_from_dict(Agent, Busy),
     {_, Pending1} = rm_agent_from_dict(Agent, Pending),
 
-    Self = self(),
-    spawn(fun() ->
-                  gen_listener:rm_binding(Self, call, [{callid, CallID},{restrict_to, [events]}])
-          end),
-
     {noreply, State#state{agents_available=rm_agent_from_online(Agent, Available)
                           ,agents_busy=Busy1
                           ,agents_pending=Pending1
@@ -275,6 +270,7 @@ handle_info({'DOWN', _Ref, process, Pid, Reason}, #state{agents_busy=Busy}=State
         {#dg_agent{call_id=CallID}=Agent, Busy1} ->
             ?LOG(CallID, "agent being freed", []),
             datinggame_listener:free_agent(self(), Agent),
+
             {noreply, State#state{agents_busy=Busy1}}
     end;
 handle_info(_Info, State) ->

@@ -43,7 +43,10 @@ handle_offline(JObj, Props) ->
 handle_event(JObj, Props) ->
     case wh_json:get_value(<<"Event-Name">>, JObj) of
         <<"CHANNEL_HANGUP">> ->
-            datinggame_listener:rm_agent(props:get_value(server, Props), wh_json:get_value(<<"Call-ID">>, JObj));
+            CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+            Srv = props:get_value(server, Props),
+            gen_listener:rm_binding(Srv, call, [{callid, CallID},{restrict_to, [events]}]),
+            datinggame_listener:rm_agent(Srv, CallID);
         _ ->
             ok
     end.
