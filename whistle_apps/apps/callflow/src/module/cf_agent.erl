@@ -33,25 +33,13 @@ handle(Data, Call) ->
             play_welcome(Call),
             put_on_hold(Call),
             publish_agent_available(AgentJObj, Call),
-            cf_call_command:wait_for_hangup(),
-            ?LOG("agent hungup"),
-            publish_agent_unavailable(AgentJObj, Call),
-            cf_exe:continue(Call);
+            cf_exe:transfer(Call);
         {error, _} ->
             cf_exe:continue(Call)
     end.
 
-publish_agent_unavailable(AgentJObj, Call) ->
-    send_unavailable(AgentJObj, Call).
-
 publish_agent_available(AgentJObj, Call) ->
     send_available(AgentJObj, Call).
-
-send_unavailable(AgentJObj, Call) ->
-    Req = [{<<"Agent-ID">>, wh_json:get_value(<<"id">>, AgentJObj)}
-           ,{<<"Call-ID">>, cf_exe:callid(Call)}
-           | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)],
-    wapi_acd:publish_agent_offline(Req).
 
 send_available(AgentJObj, Call) ->
     Req = [{<<"Agent-ID">>, wh_json:get_value(<<"id">>, AgentJObj)}
