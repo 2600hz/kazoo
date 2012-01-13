@@ -14,6 +14,7 @@
 -export([get_binary/2, get_binary/3]).
 -export([get_atom/2, get_atom/3]).
 -export([get_integer/2, get_integer/3]).
+-export([get_float/2, get_float/3]).
 -export([get_is_false/2, get_is_false/3]).
 -export([get_is_true/2, get_is_true/3]).
 -export([get_non_empty/2, get_non_empty/3]).
@@ -86,6 +87,22 @@ get_integer(Category, Key) ->
     end.
 get_integer(Category, Key, Default) ->
     wh_util:to_integer(get(Category, Key, Default)).
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% get a configuration key for a given category and cast it as a float
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_float/2 :: (config_category(), config_key()) -> float() | 'undefined'.
+-spec get_float/3 :: (config_category(), config_key(), Default) -> float() | Default.
+get_float(Category, Key) ->
+    case get(Category, Key) of
+        undefined -> undefined;
+        Else -> wh_util:to_float(Else)
+    end.
+get_float(Category, Key, Default) ->
+    wh_util:to_float(get(Category, Key, Default)).
 
 %%-----------------------------------------------------------------------------
 %% @public
