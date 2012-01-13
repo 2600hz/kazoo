@@ -222,7 +222,7 @@ connect(CtlQ, ACallID, CCallID) ->
     Cmd =
         [{<<"Application-Name">>, <<"queue">>},
          {<<"Commands">>, [
-                           wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
+                           wh_json:from_list([{<<"Application-Name">>, <<"answer">>}
                                               ,{<<"Insert-At">>, <<"now">>}
                                              ])
                            ,wh_json:from_list([{<<"Application-Name">>, <<"call_pickup">>}
