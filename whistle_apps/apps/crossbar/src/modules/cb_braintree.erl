@@ -170,7 +170,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>, [RD, 
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, #cb_context{account_id=AcctID, req_data=ReqData}=Context | [<<"credits">>]=Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>
+                 ,[RD, #cb_context{account_id=AcctID, req_data=ReqData}=Context | [<<"credits">>]=Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   _ = crossbar_util:binding_heartbeat(Pid),
@@ -178,12 +179,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>, [RD, #
                   Units = wapi_money:dollars_to_units(wh_json:get_float_value(<<"amount">>, ReqData)),
                   ?LOG("Putting ~p units", [Units]),
 
-                  Transaction = wh_json:from_list([
-                                                   {<<"amount">>, Units}
+                  Transaction = wh_json:from_list([{<<"amount">>, Units}
                                                    ,{<<"pvt_type">>, <<"credit">>}
                                                    ]),
 
-                  #cb_context{resp_status=success, doc=Saved} = crossbar_doc:save(Context#cb_context{doc=Transaction, db_name=wh_util:format_account_id(AcctID, encoded)}),
+                  #cb_context{resp_status=success, doc=Saved} = 
+                      crossbar_doc:save(Context#cb_context{doc=Transaction, db_name=wh_util:format_account_id(AcctID, encoded)}),
 
                   Id = wh_json:get_value(<<"_id">>, Saved),
 
