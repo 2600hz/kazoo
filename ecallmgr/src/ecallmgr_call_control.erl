@@ -359,14 +359,17 @@ handle_cast({dialplan, JObj}
             {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
             execute_control_request(Cmd, State),
             AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
+            ?LOG("new app name: ~s", [AppName]),
             {noreply, State#state{command_q = NewCmdQ1, current_app = AppName, keep_alive_ref=get_keep_alive_ref(Ref)}, hibernate};
         false ->
+            ?LOG("curr app remains: ~s", [CurrApp]),
             {noreply, State#state{command_q = NewCmdQ, keep_alive_ref=get_keep_alive_ref(Ref)}, hibernate}
     end;
 handle_cast({event_execute_complete, CallId, EvtName}
             ,#state{callid=CallId, command_q=CmdQ, current_app=CurrApp, is_node_up=INU}=State) ->
     case lists:member(EvtName, ecallmgr_util:convert_whistle_app_name(CurrApp)) of
         false ->
+            ?LOG("exec_complete for ~s not related to ~s", [EvtName, CurrApp]),
             {noreply, State};
         true ->
             ?LOG("completed execution of command '~s'", [CurrApp]),
@@ -381,6 +384,7 @@ handle_cast({event_execute_complete, CallId, EvtName}
                 {{value, Cmd}, CmdQ1} ->
                     execute_control_request(Cmd, State),
                     AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
+                    ?LOG("new app name: ~s", [AppName]),
                     {noreply, State#state{command_q = CmdQ1, current_app = AppName}, hibernate}
             end
     end;
