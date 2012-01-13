@@ -6,17 +6,33 @@
 %%% @end
 %%% Created : 15 Aug 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cf_maintenance).
+-module(callflow_maintenance).
 
+-export([blocking_refresh/0]).
 -export([refresh/0, refresh/1]).
 -export([migrate_menus/0, migrate_menus/1]).
 
 -include("callflow.hrl").
 
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Verify that an application is running
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec blocking_refresh/0 :: () -> 'ok'.
+blocking_refresh() ->
+    lists:foreach(fun(AccountDb) ->
+                          timer:sleep(2000),
+                          refresh(AccountDb)
+                  end, whapps_util:get_all_accounts()),
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh/0 :: () -> 'started'.
