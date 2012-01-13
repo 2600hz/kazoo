@@ -214,6 +214,7 @@ handle_cast({update_agent, JObj}, #state{agents_available=Available, agents_pend
     end;
 
 handle_cast({connect, #dg_customer{call_id=_CustCallID}=Customer}, #state{customers_waiting=Waiting}=State) ->
+    ?LOG(_CustCallID, "customer connect recevied, putting in waiting queue", []),
     dg_util:hold_call(Customer),
     gen_listener:cast(self(), connect_agent),
     {noreply, State#state{customers_waiting=queue:in(Customer, Waiting)}};
@@ -222,11 +223,13 @@ handle_cast({add_agent, #dg_agent{call_id=CallID}=Agent}, #state{agents_pending=
     ?LOG(CallID, "new agent added, waiting on channel_status_req: ~s", [CallID]),
     {noreply, State#state{agents_pending=dict:store(CallID, Agent, Pending)}};
 
-handle_cast({free_agent, #dg_agent{}=Agent}, #state{agents_busy=Busy}=State) ->
+handle_cast({free_agent, #dg_agent{call_id=CallID}=Agent}, #state{agents_available=Available, agents_busy=Busy}=State) ->
     {_, Busy1} = rm_agent_from_dict(Agent, Busy),
-    datinggame_listener:add_agent(self(), Agent),
+    ?LOG(CallID, "free agent: rm from busy dict", []),
+    gen_listener:cast(self(), connect_agent),
     dg_util:hold_call(Agent),
-    {noreply, State#state{agents_busy=Busy1}};
+    ?LOG(CallID, "free agent: putting agent back on hold", []),
+    {noreply, State#state{agents_busy=Busy1, agents_available=queue:in(Agent, Available)}};
 
 handle_cast({rm_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Available, agents_busy=Busy, agents_pending=Pending}=State) ->
     ?LOG(_CallID, "rm agent: ~s", [_CallID]),
@@ -251,15 +254,15 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', _Ref, process, _Pid, normal}, State) ->
-    ?LOG("the game is gone: ~p", [_Pid]),
-    {noreply, State};
 handle_info({'DOWN', _Ref, process, Pid, Reason}, #state{agents_busy=Busy}=State) ->
-    ?LOG("the game has gone awry: ~p", [Reason]),
+    ?LOG("the game has gone: ~p", [Reason]),
     case rm_agent_from_dict(Pid, Busy) of
-        {undefined, _} -> {noreply, State};
-        {Agent, Busy1} ->
-            datinggame_listener:add_agent(self(), Agent),
+        {undefined, _} ->
+            ?LOG("dg_game pid not found in busy dict"),
+            {noreply, State};
+        {#dg_agent{call_id=CallID}=Agent, Busy1} ->
+            ?LOG(CallID, "agent being freed", []),
+            datinggame_listener:free_agent(self(), Agent),
             {noreply, State#state{agents_busy=Busy1}}
     end;
 handle_info(_Info, State) ->
