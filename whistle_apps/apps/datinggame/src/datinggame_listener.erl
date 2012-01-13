@@ -80,8 +80,8 @@ connect_agent(Srv, #dg_customer{}=Customer) when is_pid(Srv) ->
     gen_listener:cast(Srv, {connect, Customer}).
 
 -spec free_agent/2 :: (pid(), #dg_agent{}) -> 'ok'.
-free_agent(Srv, #dg_agent{}=Customer) when is_pid(Srv) ->
-    gen_listener:cast(Srv, {free, Customer}).
+free_agent(Srv, #dg_agent{}=Agent) when is_pid(Srv) ->
+    gen_listener:cast(Srv, {free_agent, Agent}).
 
 agents_available() ->
     {ok, Srv} = datinggame_sup:listener_proc(),
