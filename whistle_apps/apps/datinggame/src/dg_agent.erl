@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(dg_agent).
 
--export([init/0, handle_offline/2, handle_online/2]).
+-export([init/0, handle_offline/2, handle_online/2, handle_event/2]).
 
 -include("datinggame.hrl").
 
@@ -39,3 +39,11 @@ handle_offline(JObj, Props) ->
 
     Srv = props:get_value(server, Props),
     datinggame_listener:rm_agent(Srv, Agent).
+
+handle_event(JObj, Props) ->
+    case wh_json:get_value(<<"Event-Name">>, JObj) of
+        <<"CHANNEL_HANGUP">> ->
+            datinggame_listener:rm_agent(props:get_value(server, Props), wh_json:get_value(<<"Call-ID">>, JObj));
+        _ ->
+            ok
+    end.

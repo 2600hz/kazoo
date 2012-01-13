@@ -34,6 +34,7 @@
 -define(RESPONDERS, [{{dg_agent, handle_online}, [{<<"acd">>, <<"agent_online">>}]}
                      ,{{dg_agent, handle_offline}, [{<<"acd">>, <<"agent_offline">>}]}
                      ,{dg_customer, [{<<"acd">>, <<"agent_connect">>}]}
+                     ,{{dg_agent, handle_event}, [{<<"call_event">>, <<"*">>}]}
                      ,{{?MODULE, handle_channel_status_resp}, [{<<"call_event">>, <<"channel_status_resp">>}]}
                     ]).
 -define(QUEUE_NAME, <<>>).
@@ -71,7 +72,9 @@ start_link() ->
 add_agent(Srv, #dg_agent{}=Agent) when is_pid(Srv) ->
     gen_listener:cast(Srv, {add_agent, Agent}).
 
--spec rm_agent/2 :: (pid(), #dg_agent{}) -> 'ok'.
+-spec rm_agent/2 :: (pid(), #dg_agent{} | ne_binary()) -> 'ok'.
+rm_agent(Srv, CallID) when is_binary(CallID) ->
+    gen_listener:cast(Srv, {rm_agent, #dg_agent{call_id=CallID}});
 rm_agent(Srv, #dg_agent{}=Agent) when is_pid(Srv) ->
     gen_listener:cast(Srv, {rm_agent, Agent}).
 
@@ -221,6 +224,10 @@ handle_cast({connect, #dg_customer{call_id=_CustCallID}=Customer}, #state{custom
 
 handle_cast({add_agent, #dg_agent{call_id=CallID}=Agent}, #state{agents_pending=Pending}=State) ->
     ?LOG(CallID, "new agent added, waiting on channel_status_req: ~s", [CallID]),
+    Self = self(),
+    spawn(fun() ->
+                  gen_listener:add_binding(Self, call, [{callid, CallID}, {retrict_to, [events]}])
+          end),
     {noreply, State#state{agents_pending=dict:store(CallID, Agent, Pending)}};
 
 handle_cast({free_agent, #dg_agent{call_id=CallID}=Agent}, #state{agents_available=Available, agents_busy=Busy}=State) ->
@@ -231,10 +238,15 @@ handle_cast({free_agent, #dg_agent{call_id=CallID}=Agent}, #state{agents_availab
     ?LOG(CallID, "free agent: putting agent back on hold", []),
     {noreply, State#state{agents_busy=Busy1, agents_available=queue:in(Agent, Available)}};
 
-handle_cast({rm_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Available, agents_busy=Busy, agents_pending=Pending}=State) ->
-    ?LOG(_CallID, "rm agent: ~s", [_CallID]),
+handle_cast({rm_agent, #dg_agent{call_id=CallID}=Agent}, #state{agents_available=Available, agents_busy=Busy, agents_pending=Pending}=State) ->
+    ?LOG(CallID, "rm agent: ~s", [CallID]),
     {_, Busy1} = rm_agent_from_dict(Agent, Busy),
     {_, Pending1} = rm_agent_from_dict(Agent, Pending),
+
+    Self = self(),
+    spawn(fun() ->
+                  gen_listener:rm_binding(Self, call, [{callid, CallID}])
+          end),
 
     {noreply, State#state{agents_available=rm_agent_from_online(Agent, Available)
                           ,agents_busy=Busy1
