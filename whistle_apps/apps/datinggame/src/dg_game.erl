@@ -136,12 +136,12 @@ handle_cast({event, JObj}, #state{agent=Agent
             case CallID =:= CCID of
                 true ->
                     ?LOG("customer hungup, freeing agent"),
-                    gen_listener:free_agent(Srv, Agent),
+                    datinggame_listener:free_agent(Srv, Agent),
                     {stop, normal, State};
                 false ->
                     ?LOG("agent hungup or disconnected"),
                     send_command([{<<"Application-Name">>, <<"hangup">>}], CCID, CtlQ),
-                    gen_listener:rm_agent(Srv, Agent),
+                    datinggame_listener:rm_agent(Srv, Agent),
                     {stop, normal, State}
             end
     end;
@@ -242,5 +242,8 @@ process_event({<<"call_event">>, <<"CHANNEL_HANGUP">>}, JObj) ->
     ?LOG(CallID, "hangup cause: ~s", [wh_json:get_value(<<"Hangup-Cause">>, JObj)]),
     {hangup, CallID};
 process_event({_EvtCat, _EvtName}, _JObj) ->
-    ?LOG("ignoring evt ~s:~s", [_EvtCat, _EvtName]),
+    _CallID = wh_json:get_value(<<"Call-ID">>, _JObj),
+    ?LOG(_CallID, "ignoring evt ~s:~s", [_EvtCat, _EvtName]),
+    ?LOG(_CallID, "media app name: ~s", [wh_json:get_value(<<"Application-Response">>, _JObj)]),
+    ?LOG(_CallID, "media app response: ~s", [wh_json:get_value(<<"Application-Name">>, _JObj)]),
     ignore.
