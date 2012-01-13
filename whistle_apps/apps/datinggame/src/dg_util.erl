@@ -31,6 +31,7 @@ pickup_call(#dg_agent{call_id=ACallID, control_queue=CtrlQ}, #dg_customer{call_i
     Command = [{<<"Application-Name">>, <<"call_pickup">>}
                ,{<<"Target-Call-ID">>, CCallID}
                ,{<<"Call-ID">>, ACallID}
+               ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, ACallID, CtrlQ).
 
@@ -48,12 +49,13 @@ hold_call(CallID, Q) ->
     send_command(Command, CallID, Q).
 
 -spec hangup/1 :: (#dg_customer{} | #dg_agent{} | ne_binary()) -> 'ok'.
-hangup(#dg_customer{call_id=CallID}) ->
-    hangup(CallID);
-hangup(#dg_agent{call_id=CallID}) ->
-    hangup(CallID);
-hangup(CallID) when is_binary(CallID) ->
-    send_command([{<<"Application-Name">>, <<"hangup">>}], CallID, <<>>).
+hangup(#dg_customer{call_id=CallID, control_queue=CtrlQ}) ->
+    hangup(CallID, CtrlQ);
+hangup(#dg_agent{call_id=CallID, control_queue=CtrlQ}) ->
+    hangup(CallID, CtrlQ).
+
+hangup(CallID, CtrlQ) when is_binary(CallID) ->
+    send_command([{<<"Application-Name">>, <<"hangup">>}], CallID, CtrlQ).
 
 -spec send_command/3 :: (proplist(), ne_binary(), binary()) -> 'ok'.
 send_command(Command, CallID, CtrlQ) ->
