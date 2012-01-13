@@ -256,21 +256,30 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
                   %% dont use the account id in cb_context as it may not represent the db_name...
                   DbName = wh_util:format_account_id(AccountId, encoded),
                   try
-                      %% Ensure the DB that we are about to delete is an account
-                      {ok, JObj} = couch_mgr:open_doc(DbName, AccountId),
-
-                      ?PVT_TYPE = wh_json:get_value(<<"pvt_type">>, JObj),
-                      ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
-
-                      #cb_context{resp_status=success} = crossbar_doc:delete(Context),
-                      ?LOG_SYS("deleted ~s in ~s", [DbName, AccountId]),
-
                       ok = wh_number_manager:free_numbers(AccountId),
 
-                      case couch_mgr:db_delete(DbName) of
-                          true -> Pid ! {binding_result, true, [RD, Context, Params]};
-                          false -> Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), Params]}
-                      end
+                      %% Ensure the DB that we are about to delete is an account
+                      case couch_mgr:open_doc(DbName, AccountId) of
+                          {ok, JObj1} ->
+                              ?PVT_TYPE = wh_json:get_value(<<"pvt_type">>, JObj1),
+                              ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
+                              
+                              couch_mgr:db_delete(DbName),
+                              
+                              #cb_context{resp_status=success} = crossbar_doc:delete(Context#cb_context{db_name=DbName
+                                                                                                        ,doc=JObj1
+                                                                                                       }),
+                              ?LOG_SYS("deleted ~s in ~s", [DbName, AccountId]);
+                          _ -> ok
+                      end,
+                      case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+                          {ok, JObj2} ->
+                              crossbar_doc:delete(Context#cb_context{db_name=?WH_ACCOUNTS_DB
+                                                                     ,doc=JObj2
+                                                                    });
+                          _ -> ok
+                      end,
+                      Pid ! {binding_result, true, [RD, Context, Params]}
                   catch
                       _:_E ->
                           ?LOG_SYS("Exception while deleting account: ~p", [_E]),
