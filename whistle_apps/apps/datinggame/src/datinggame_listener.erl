@@ -188,7 +188,7 @@ handle_cast(connect_agent, #state{agents_available=Available
                     {{value, #dg_customer{call_id=_CCallID}=Customer}, Waiting1} = queue:out(Waiting),
 
                     {ok, Pid} = dg_game_sup:start_game(self(), Agent, Customer),
-                    ?LOG("the game has started in ~p for agent ~s and customer ~s", [Pid, CallID, _CCallID]),
+                    ?LOG(CallID, "the game has started in ~p for agent ~s and customer ~s", [Pid, CallID, _CCallID]),
                     erlang:monitor(process, Pid),
 
                     {noreply, State#state{agents_available=Available1
@@ -202,14 +202,14 @@ handle_cast({update_agent, JObj}, #state{agents_available=Available, agents_pend
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     case dict:find(CallID, Pending) of
         {ok, Agent} ->
-            ?LOG("updating agent with call id ~s", [CallID]),
+            ?LOG(CallID, "updating agent with call id ~s", [CallID]),
             gen_listener:cast(self(), connect_agent),
 
             {noreply, State#state{agents_available=queue:in(update_agent(Agent, JObj), Available)
                                   ,agents_pending=dict:erase(CallID, Pending)
                                  }};
         error ->
-            ?LOG("no agent with call-id ~s found pending", [CallID]),
+            ?LOG(CallID, "no agent with call-id ~s found pending", [CallID]),
             {noreply, State}
     end;
 
@@ -219,7 +219,7 @@ handle_cast({connect, #dg_customer{call_id=_CustCallID}=Customer}, #state{custom
     {noreply, State#state{customers_waiting=queue:in(Customer, Waiting)}};
 
 handle_cast({add_agent, #dg_agent{call_id=CallID}=Agent}, #state{agents_pending=Pending}=State) ->
-    ?LOG("new agent added, waiting on channel_status_req: ~s", [CallID]),
+    ?LOG(CallID, "new agent added, waiting on channel_status_req: ~s", [CallID]),
     {noreply, State#state{agents_pending=dict:store(CallID, Agent, Pending)}};
 
 handle_cast({free_agent, #dg_agent{}=Agent}, #state{agents_busy=Busy}=State) ->
@@ -228,7 +228,7 @@ handle_cast({free_agent, #dg_agent{}=Agent}, #state{agents_busy=Busy}=State) ->
     {noreply, State#state{agents_busy=Busy1}};
 
 handle_cast({rm_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Available, agents_busy=Busy, agents_pending=Pending}=State) ->
-    ?LOG("rm agent: ~s", [_CallID]),
+    ?LOG(_CallID, "rm agent: ~s", [_CallID]),
     {_, Busy1} = rm_agent_from_dict(Agent, Busy),
     {_, Pending1} = rm_agent_from_dict(Agent, Pending),
 
@@ -265,8 +265,8 @@ handle_info(_Info, State) ->
     ?LOG("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
-handle_event(_JObj, #state{agents_available=Online, agents_busy=Busy}) ->
-    {reply, [{available, Online}, {busy, Busy}]}.
+handle_event(_JObj, _State) ->
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -322,7 +322,7 @@ rm_agent_from_dict(GamePid, Busy) when is_pid(GamePid) ->
             {undefined, Busy};
         1 ->
             [{CallID, {Agent, _, _}}] = dict:to_list(EndGame),
-            ?LOG("rm agent from busy by pid ~p: ~s", [GamePid, CallID]),
+            ?LOG(CallID, "rm agent from busy by pid ~p: ~s", [GamePid, CallID]),
             {Agent, dict:erase(CallID, Busy)}
     end.
 
@@ -333,11 +333,11 @@ play_hold_music(#dg_customer{call_id=CallID, control_queue=CtlQ}) ->
     dg_game:send_command(Command, CallID, CtlQ).
 
 -spec update_agent/2 :: (#dg_agent{}, json_object()) -> #dg_agent{}.
-update_agent(Agent, JObj) ->
+update_agent(#dg_agent{call_id=_CallID}=Agent, JObj) ->
     Hostname = wh_json:get_ne_value(<<"Switch-Hostname">>, JObj),
 
-    ?LOG("update agent:"),
-    ?LOG("switch hostname: ~s", [Hostname]),
+    ?LOG(_CallID, "update agent:"),
+    ?LOG(_CallID, "switch hostname: ~s", [Hostname]),
 
     Agent#dg_agent{
       switch_hostname=Hostname
