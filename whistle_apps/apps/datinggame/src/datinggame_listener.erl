@@ -84,16 +84,20 @@ free_agent(Srv, #dg_agent{}=Customer) when is_pid(Srv) ->
     gen_listener:cast(Srv, {free, Customer}).
 
 agents_available() ->
-    agents_available(datinggame_sup:listener_proc()).
-agents_busy() ->
-    agents_busy(datinggame_sup:listener_proc()).
-customers_waiting() ->
-    customers_waiting(datinggame_sup:listener_proc()).
-
+    {ok, Srv} = datinggame_sup:listener_proc(),
+    agents_available(Srv).
 agents_available(Srv) ->
     gen_listener:call(Srv, agents_available).
+
+agents_busy() ->
+    {ok, Srv} = datinggame_sup:listener_proc(),
+    agents_busy(Srv).
 agents_busy(Srv) ->
     gen_listener:call(Srv, agents_busy).
+
+customers_waiting() ->
+    {ok, Srv} = datinggame_sup:listener_proc(),
+    customers_waiting(Srv).
 customers_waiting(Srv) ->
     gen_listener:call(Srv, customers_waiting).
 
