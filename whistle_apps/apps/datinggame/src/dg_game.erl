@@ -241,8 +241,15 @@ process_event({<<"call_event">>, <<"CHANNEL_HANGUP">>}, JObj) ->
     ?LOG(CallID, "hangup cause: ~s", [wh_json:get_value(<<"Hangup-Cause">>, JObj)]),
     {hangup, CallID};
 process_event({<<"call_event">>, <<"channel_status_resp">>}, JObj) ->
-    ?LOG(wh_json:get_value(<<"Call-ID">>, JObj), "channel_status_resp received", []),
-    {channel_status, JObj};
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    ?LOG(CallID, "channel_status_resp received", []),
+
+    case wh_json:get_value(<<"Status">>, JObj) of
+        <<"active">> -> {channel_status, JObj};
+        _S ->
+            ?LOG(CallID, "channel status is ~s", [_S]),
+            {hangup, CallID}
+    end;
 process_event({_EvtCat, _EvtName}, _JObj) ->
     _CallID = wh_json:get_value(<<"Call-ID">>, _JObj),
     ?LOG(_CallID, "ignoring evt ~s:~s", [_EvtCat, _EvtName]),
@@ -253,6 +260,7 @@ process_event({_EvtCat, _EvtName}, _JObj) ->
 -spec update_customer/2 :: (#dg_customer{}, json_object()) -> #dg_customer{}.
 update_customer(Customer, JObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+
     Hostname = wh_json:get_ne_value(<<"Switch-Hostname">>, JObj),
 
     ?LOG(CallID, "update customer:", []),
