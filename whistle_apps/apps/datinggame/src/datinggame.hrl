@@ -8,8 +8,9 @@
           id = <<>> :: binary()
           ,call_id = <<>> :: binary()
           ,control_queue = <<>> :: binary()
-          ,signed_in = wh_util:current_tstamp() :: integer()
+          ,signed_in = wh_util:current_tstamp() :: pos_integer()
           ,skills = wh_json:new() :: json_object()
+          ,switch_hostname = <<>> :: binary() %% what switch is the call on
          }).
 
 -record(dg_customer, {
@@ -17,6 +18,8 @@
          ,control_queue = <<>> :: binary()
          ,skills_needed = wh_json:new() :: json_object()
          ,record_call = true :: boolean()
+         ,wait_started = wh_util:current_tstamp() :: pos_integer()
+         ,switch_hostname = <<>> :: binary() %% what switch is the call on
          }).
 
 -define(APP_NAME, <<"dating_game">>).

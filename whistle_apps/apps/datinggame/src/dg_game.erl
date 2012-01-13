@@ -79,8 +79,15 @@ handle_req(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Srv, Agent, Customer]) ->
-    gen_listener:cast(self(), connect_call),
-    ?LOG("the game has started"),
+    Self = self(),
+    spawn(fun() ->
+                  Queue = gen_listener:queue_name(Self),
+                  dg_util:channel_status(Queue, Customer),
+                  ?LOG("sent request for customer channel_status")
+          end),
+
+    ?LOG("the game is afoot"),
+
     {ok, #state{
        server_pid = Srv
        ,agent = Agent
@@ -117,7 +124,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({event, JObj}, #state{agent=Agent
-                                  ,customer=(#dg_customer{call_id=CCID, control_queue=CtlQ})
+                                  ,customer=(#dg_customer{call_id=CCID, control_queue=CtlQ})=Customer
                                   ,server_pid=Srv
                                  }=State) ->
     EvtType = wh_util:get_event_type(JObj),
@@ -143,7 +150,10 @@ handle_cast({event, JObj}, #state{agent=Agent
                     send_command([{<<"Application-Name">>, <<"hangup">>}], CCID, CtlQ),
                     datinggame_listener:rm_agent(Srv, Agent),
                     {stop, normal, State}
-            end
+            end;
+        {channel_status, JObj} ->
+            gen_listener:cast(self(), connect_call),
+            {noreply, State#state{customer=update_customer(Customer, JObj)}}
     end;
 
 handle_cast(connect_call, #state{agent=Agent, customer=Customer}=State) ->
@@ -223,6 +233,7 @@ send_command(Command, CallID, CtrlQ) ->
 -spec process_event/2 :: ({ne_binary(), ne_binary()}, json_object()) -> 
                                  {'connect', ne_binary()} |
                                  {'hangup', ne_binary()} |
+                                 {'channel_status', json_object()} |
                                  'ignore'.
 process_event({<<"call_event">>, <<"CHANNEL_BRIDGE">>}, JObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -241,9 +252,24 @@ process_event({<<"call_event">>, <<"CHANNEL_HANGUP">>}, JObj) ->
     ?LOG(CallID, "hangup code: ~s", [wh_json:get_value(<<"Hangup-Code">>, JObj)]),
     ?LOG(CallID, "hangup cause: ~s", [wh_json:get_value(<<"Hangup-Cause">>, JObj)]),
     {hangup, CallID};
+process_event({<<"call_event">>, <<"channel_status_resp">>}, JObj) ->
+    ?LOG(wh_json:get_value(<<"Call-ID">>, JObj), "channel_status_resp received", []),
+    {channel_status, JObj};
 process_event({_EvtCat, _EvtName}, _JObj) ->
     _CallID = wh_json:get_value(<<"Call-ID">>, _JObj),
     ?LOG(_CallID, "ignoring evt ~s:~s", [_EvtCat, _EvtName]),
     ?LOG(_CallID, "media app name: ~s", [wh_json:get_value(<<"Application-Name">>, _JObj)]),
     ?LOG(_CallID, "media app response: ~s", [wh_json:get_value(<<"Application-Response">>, _JObj)]),
     ignore.
+
+-spec update_customer/2 :: (#dg_customer{}, json_object()) -> #dg_customer{}.
+update_customer(Customer, JObj) ->
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    Hostname = wh_json:get_ne_value(<<"Switch-Hostname">>, JObj),
+
+    ?LOG(CallID, "update customer:", []),
+    ?LOG(CallID, "switch hostname: ~s", [Hostname]),
+
+    Customer#dg_customer{
+      switch_hostname=Hostname
+     }.

@@ -13,8 +13,12 @@
 %% API
 -export([start_link/0, add_agent/2, rm_agent/2, free_agent/2, connect_agent/2]).
 
+%% Data inspection
 -export([agents_available/0, agents_busy/0, customers_waiting/0]).
 -export([agents_available/1, agents_busy/1, customers_waiting/1]).
+
+%% Internal AMQP handlers
+-export([handle_channel_status_resp/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -25,10 +29,12 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{acd, []}
+                   ,{self, []} % for channel status responses
                   ]).
 -define(RESPONDERS, [{{dg_agent, handle_online}, [{<<"acd">>, <<"agent_online">>}]}
                      ,{{dg_agent, handle_offline}, [{<<"acd">>, <<"agent_offline">>}]}
                      ,{dg_customer, [{<<"acd">>, <<"agent_connect">>}]}
+                     ,{{?MODULE, handle_channel_status_resp}, [{<<"call_event">>, <<"channel_status_resp">>}]}
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
@@ -37,6 +43,7 @@
 -record(state, {
           agents_available = queue:new() :: queue()
          ,agents_busy = dict:new() :: dict() %% [ {Agent-Call-Id, {#dg_agent{}, #dg_cust{}, GamePid}} ]
+         ,agents_pending = dict:new() :: dict() %% [ {Agent-Call-Id, #dg_agent{}} ] - holds agents who's channel_status_req hasn't been responded to
          ,customers_waiting = queue:new() :: queue()
          }).
 
@@ -89,6 +96,11 @@ agents_busy(Srv) ->
     gen_listener:call(Srv, agents_busy).
 customers_waiting(Srv) ->
     gen_listener:call(Srv, customers_waiting).
+
+-spec handle_channel_status_resp/2 :: (json_object(), proplist()) -> 'ok'.
+handle_channel_status_resp(JObj, Props) ->
+    Srv = props:get_value(server, Props),
+    gen_listener:cast(Srv, {update_agent, JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -182,26 +194,44 @@ handle_cast(connect_agent, #state{agents_available=Available
             end
     end;
 
+handle_cast({update_agent, JObj}, #state{agents_available=Available, agents_pending=Pending}=State) ->
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    case dict:find(CallID, Pending) of
+        {ok, Agent} ->
+            ?LOG("updating agent with call id ~s", [CallID]),
+            gen_listener:cast(self(), connect_agent),
+
+            {noreply, State#state{agents_available=queue:in(update_agent(Agent, JObj), Available)
+                                  ,agents_pending=dict:erase(CallID, Pending)
+                                 }};
+        error ->
+            ?LOG("no agent with call-id ~s found pending", [CallID]),
+            {noreply, State}
+    end;
+
 handle_cast({connect, #dg_customer{call_id=_CustCallID}=Customer}, #state{customers_waiting=Waiting}=State) ->
     play_hold_music(Customer),
     gen_listener:cast(self(), connect_agent),
     {noreply, State#state{customers_waiting=queue:in(Customer, Waiting)}};
 
-handle_cast({add_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Online}=State) ->
-    ?LOG("new agent added: ~s", [_CallID]),
-    gen_listener:cast(self(), connect_agent),
-    {noreply, State#state{agents_available=queue:in(Agent, Online)}};
+handle_cast({add_agent, #dg_agent{call_id=CallID}=Agent}, #state{agents_pending=Pending}=State) ->
+    ?LOG("new agent added, waiting on channel_status_req: ~s", [CallID]),
+    {noreply, State#state{agents_pending=dict:store(CallID, Agent, Pending)}};
 
 handle_cast({free_agent, #dg_agent{}=Agent}, #state{agents_busy=Busy}=State) ->
-    {_, Busy1} = rm_agent_from_busy(Agent, Busy),
+    {_, Busy1} = rm_agent_from_dict(Agent, Busy),
     datinggame_listener:add_agent(self(), Agent),
     {noreply, State#state{agents_busy=Busy1}};
 
-handle_cast({rm_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Online, agents_busy=Busy}=State) ->
+handle_cast({rm_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Available, agents_busy=Busy, agents_pending=Pending}=State) ->
     ?LOG("rm agent: ~s", [_CallID]),
-    Online1 = rm_agent_from_online(Agent, Online),
-    {_, Busy1} = rm_agent_from_busy(Agent, Busy),
-    {noreply, State#state{agents_available=Online1, agents_busy=Busy1}};
+    {_, Busy1} = rm_agent_from_dict(Agent, Busy),
+    {_, Pending1} = rm_agent_from_dict(Agent, Pending),
+
+    {noreply, State#state{agents_available=rm_agent_from_online(Agent, Available)
+                          ,agents_busy=Busy1
+                          ,agents_pending=Pending1
+                         }};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -221,7 +251,7 @@ handle_info({'DOWN', _Ref, process, _Pid, normal}, State) ->
     {noreply, State};
 handle_info({'DOWN', _Ref, process, Pid, Reason}, #state{agents_busy=Busy}=State) ->
     ?LOG("the game has gone awry: ~p", [Reason]),
-    case rm_agent_from_busy(Pid, Busy) of
+    case rm_agent_from_dict(Pid, Busy) of
         {undefined, _} -> {noreply, State};
         {Agent, Busy1} ->
             datinggame_listener:add_agent(self(), Agent),
@@ -268,17 +298,17 @@ rm_agent_from_online(#dg_agent{call_id=CallId}, Online) ->
                          CallId =/= Acall_id
                  end, Online).
 
--spec rm_agent_from_busy/2 :: (#dg_agent{} | ne_binary() | pid(), dict()) -> {#dg_agent{} | 'undefined', dict()}.
-rm_agent_from_busy(#dg_agent{call_id=CallID}=Agent, Busy) ->
+-spec rm_agent_from_dict/2 :: (#dg_agent{} | ne_binary() | pid(), dict()) -> {#dg_agent{} | 'undefined', dict()}.
+rm_agent_from_dict(#dg_agent{call_id=CallID}=Agent, Busy) ->
     {Agent, dict:erase(CallID, Busy)};
-rm_agent_from_busy(CallID, Busy) when is_binary(CallID) ->
+rm_agent_from_dict(CallID, Busy) when is_binary(CallID) ->
     case dict:find(CallID, Busy) of
         {ok, {Agent, _, _}} ->
             {Agent, dict:erase(CallID, Busy)};
         _ ->
             {undefined, Busy}
     end;
-rm_agent_from_busy(GamePid, Busy) when is_pid(GamePid) ->
+rm_agent_from_dict(GamePid, Busy) when is_pid(GamePid) ->
     EndGame = dict:filter(fun(_, {_,_,Pid}) ->
                                   GamePid =:= Pid
                           end, Busy),
@@ -291,10 +321,20 @@ rm_agent_from_busy(GamePid, Busy) when is_pid(GamePid) ->
             ?LOG("rm agent from busy by pid ~p: ~s", [GamePid, CallID]),
             {Agent, dict:erase(CallID, Busy)}
     end.
-                             
 
 play_hold_music(#dg_customer{call_id=CallID, control_queue=CtlQ}) ->
     Command = [{<<"Application-Name">>, <<"hold">>}
                ,{<<"Insert-At">>, <<"now">>}
               ],
     dg_game:send_command(Command, CallID, CtlQ).
+
+-spec update_agent/2 :: (#dg_agent{}, json_object()) -> #dg_agent{}.
+update_agent(Agent, JObj) ->
+    Hostname = wh_json:get_ne_value(<<"Switch-Hostname">>, JObj),
+
+    ?LOG("update agent:"),
+    ?LOG("switch hostname: ~s", [Hostname]),
+
+    Agent#dg_agent{
+      switch_hostname=Hostname
+     }.
