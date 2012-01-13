@@ -46,8 +46,8 @@
 %%--------------------------------------------------------------------
 start_link(Srv, #dg_agent{call_id=ACallID}=Agent, #dg_customer{call_id=CCallID}=Customer) ->
     Bindings = [{call, [{callid, ACallID}, {restrict_to, [events]}]}
-                ,{call, [{callid, CCallID}], {restrict_to, [events]}}
                 ,{self, []}
+                ,{call, [{callid, CCallID}], {restrict_to, [events]}}
                ],
     gen_listener:start_link(?MODULE
                             ,[{responders, ?RESPONDERS}
@@ -79,14 +79,8 @@ handle_req(JObj, Props) ->
 init([Srv, #dg_agent{call_id=CallID}=Agent, Customer]) ->
     put(callid, CallID),
 
-    Self = self(),
-    spawn(fun() ->
-                  Queue = gen_listener:queue_name(Self),
-                  dg_util:channel_status(Customer, Queue),
-                  ?LOG("sent request for customer channel_status")
-          end),
-
     ?LOG("the game is afoot"),
+    gen_listener:cast(self(), connect_call),
 
     {ok, #state{
        server_pid = Srv
@@ -241,6 +235,15 @@ new_recording_name() ->
     <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
 
 -spec connect_agent/2 :: (#dg_agent{}, #dg_customer{}) -> 'ok'.
+connect_agent(_Agent, #dg_customer{switch_hostname = <<>>}=Customer) ->
+    ?LOG("no switch hostname known for customer, let's ask"),
+    Self = self(),
+    _ = spawn(fun() ->
+                      Queue = gen_listener:queue_name(Self),
+                      dg_util:channel_status(Customer, Queue),
+                      ?LOG("sent request for customer channel_status")
+              end),
+    ok;
 connect_agent(#dg_agent{switch_hostname=AgentHost}=Agent, #dg_customer{switch_hostname=CustomerHost}=Customer) ->
     case AgentHost of
         CustomerHost ->
