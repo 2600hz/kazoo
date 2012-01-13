@@ -365,13 +365,13 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
 %%--------------------------------------------------------------------
 -spec create_braintree_cards/3 :: (json_object(), #cb_context{}, {proplist(), json_object()}) -> {proplist(), json_object()}. 
 create_braintree_cards(JObj, Context, {Pass, Fail}) ->
-    CreditCard = wh_json:get_value(<<"credit_card">>, JObj, wh_json:new()),
     Account = get_context_jobj(<<"accounts">>, Pass),
     case wh_json:get_value(<<"_id">>, Account) of
         undefined ->
             Error = wh_json:set_value([<<"account_id">>, <<"required">>], <<"account failed validation">>, wh_json:new()),
-            {Pass, wh_json:set_value(<<"credit_card">>, Error, Fail)};
+            {Pass, wh_json:set_value(<<"braintree">>, Error, Fail)};
         AccountId ->
+            CreditCard = wh_json:get_value(<<"braintree">>, JObj, wh_json:new()),
             {First, Last} = case binary:split(wh_json:get_value(<<"cardholder_name">>, CreditCard, <<>>), <<" ">>) of
                                 [F, L] -> {F, L};
                                 [F] -> {F, <<"account">>};
@@ -404,7 +404,7 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
                 [_, #cb_context{resp_status=success}=Context1 | _] ->
                     {[{<<"braintree">>, Context1}|Pass], Fail};
                 [_, #cb_context{resp_data=Errors} | _] ->
-                    {Pass, wh_json:set_value(<<"credit_card">>, Errors, Fail)}
+                    {Pass, wh_json:set_value(<<"braintree">>, Errors, Fail)}
             end
     end.
 

@@ -109,10 +109,13 @@ make_numbers_request(Verb, Props) ->
                ,{"User-Agent", "Loop Start Erlang Library 0.0.1"}
                ,{"X-BWC-IN-Control-Processing-Type", "process"}
                ,{"Content-Type", "text/xml"}],
-    HTTPOptions = [{ssl,[{verify,0}]}],
+    HTTPOptions = [{ssl,[{verify,0}]}
+                   ,{inactivity_timeout, 180000}
+                   ,{connect_timeout, 180000}
+                  ],
     ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                       ,io_lib:format("Request:~n~s ~s~n~s~n", [post, ?BW_NUMBER_URL, Body])),
-    case ibrowse:send_req(?BW_NUMBER_URL, Headers, post, unicode:characters_to_binary(Body), HTTPOptions) of
+    case ibrowse:send_req(?BW_NUMBER_URL, Headers, post, unicode:characters_to_binary(Body), HTTPOptions, 180000) of
         {ok, "401", _, _Response} ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n401~n~s~n", [_Response])
