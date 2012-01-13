@@ -78,7 +78,9 @@ handle_req(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Srv, Agent, Customer]) ->
+init([Srv, #dg_agent{call_id=CallID}=Agent, Customer]) ->
+    put(callid, CallID),
+
     Self = self(),
     spawn(fun() ->
                   Queue = gen_listener:queue_name(Self),
