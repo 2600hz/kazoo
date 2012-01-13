@@ -139,6 +139,19 @@ handle_cast({event, JObj}, #state{agent=Agent
         {connect, CallID} ->
             ?LOG("bridge on ~s", [CallID]),
             {noreply, State};
+        {unbridge, CallID} ->
+            ?LOG(CallID, "leg has been unbridged", []),
+            case CallID =/= CCID of
+                true ->
+                    ?LOG(CallID, "customer leg ~s unbridged, freeing agent", [CCID]),
+                    datinggame_listener:free_agent(Srv, Agent),
+                    {stop, normal, State};
+                false ->
+                    ?LOG(CCID, "agent leg ~s unbridged, that's odd", [Agent#dg_agent.call_id]),
+                                        dg_util:hangup(Customer),
+                    datinggame_listener:rm_agent(Srv, Agent),
+                    {stop, normal, State}
+            end;
         {hangup, CallID} ->
             %% see who hung up
             ?LOG("call-id ~s hungup", [CallID]),
