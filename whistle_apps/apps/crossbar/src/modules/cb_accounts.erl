@@ -24,6 +24,7 @@
 
 -define(SERVER, ?MODULE).
 
+
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 -define(AGG_VIEW_PARENT, <<"accounts/listing_by_parent">>).
@@ -464,7 +465,8 @@ create_account(Context) ->
                         ParentId;
                     _ -> undefined
                 end;
-            ParentId -> ParentId
+            ParentId -> 
+                ParentId
         end,
     create_account(Context, P).
 
@@ -654,7 +656,6 @@ update_tree(AccountId, ParentId, Context) ->
 update_doc_tree([_|_]=ParentTree, JObj, Acc) ->
     AccountId = wh_json:get_value(<<"id">>, JObj),
     ParentId = lists:last(ParentTree),
-
     case crossbar_doc:load(AccountId, #cb_context{db_name=?WH_ACCOUNTS_DB}) of
         #cb_context{resp_status=success, doc=Doc} ->
             MyTree =
@@ -684,10 +685,12 @@ set_private_fields(JObj0, Context, ParentId) ->
     case is_binary(ParentId) andalso couch_mgr:open_doc(wh_util:format_account_id(ParentId, encoded), ParentId) of
         {ok, ParentJObj} ->
             Tree = wh_json:get_value(<<"pvt_tree">>, ParentJObj, []) ++ [ParentId],
+            Enabled = wh_json:is_false(<<"pvt_enabled">>, ParentJObj) =/= true,
             AddPvtTree = fun(JObj, _) -> wh_json:set_value(<<"pvt_tree">>, Tree, JObj) end,
+            AddPvtEnabled = fun(JObj, _) -> wh_json:set_value(<<"pvt_enabled">>, Enabled, JObj) end,
             lists:foldl(fun(Fun, JObj1) ->
                                 Fun(JObj1, Context)
-                        end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, AddPvtTree]);
+                        end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, AddPvtTree, AddPvtEnabled]);
         false ->
             set_private_fields(JObj0, Context, undefined);
         _ ->
@@ -714,13 +717,17 @@ add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
     case is_binary(AuthAccId) andalso couch_mgr:open_doc(wh_util:format_account_id(AuthAccId, encoded), AuthAccId) of
         {ok, AuthJObj} ->
             Tree = wh_json:get_value(<<"pvt_tree">>, AuthJObj, []) ++ [AuthAccId],
+            Enabled = wh_json:is_false(<<"pvt_enabled">>, AuthJObj) =/= true,
             ?LOG("setting parent tree to ~p", [Tree]),
-            wh_json:set_value(<<"pvt_tree">>, Tree, JObj);
+            ?LOG("setting initial pvt_enabled to ~s", [Enabled]),
+            wh_json:set_value(<<"pvt_tree">>, Tree
+                              ,wh_json:set_value(<<"pvt_enabled">>, Enabled, JObj));
         false ->
             add_pvt_tree(JObj, #cb_context{auth_doc=undefined});
         _ ->
             ?LOG("setting parent tree to [~s]", [AuthAccId]),
-            wh_json:set_value(<<"pvt_tree">>, [AuthAccId], JObj)
+            wh_json:set_value(<<"pvt_tree">>, [AuthAccId]
+                              ,wh_json:set_value(<<"pvt_enabled">>, false, JObj))
     end.
 
 %%--------------------------------------------------------------------
@@ -768,6 +775,13 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
 create_new_account_db(#cb_context{doc=Doc}=Context) ->
     AccountId = wh_json:get_value(<<"_id">>, Doc, couch_mgr:get_uuid()),
     AccountDb = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
+        true -> ok;
+        false ->
+            couch_mgr:db_create(?WH_ACCOUNTS_DB),
+            couch_mgr:revise_doc_from_file(?WH_ACCOUNTS_DB, crossbar, ?ACCOUNTS_AGG_VIEW_FILE),
+            couch_mgr:revise_doc_from_file(?WH_ACCOUNTS_DB, crossbar, ?MAINTENANCE_VIEW_FILE)
+    end,
     case couch_mgr:db_create(AccountDb) of
         false ->
             ?LOG_SYS("Failed to create database: ~s", [AccountDb]),
@@ -780,6 +794,9 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
                     _ = crossbar_bindings:map(<<"account.created">>, Context1),
                     couch_mgr:revise_docs_from_folder(AccountDb, crossbar, "account", false),
                     couch_mgr:revise_doc_from_file(AccountDb, crossbar, ?MAINTENANCE_VIEW_FILE),
+                    %% This view should be added by the callflow whapp but until refresh requests are made
+                    %% via AMQP we need to do it here
+                    couch_mgr:revise_views_from_folder(AccountDb, callflow),
                     couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Context1#cb_context.doc),
                     Context1;
                 Else ->
