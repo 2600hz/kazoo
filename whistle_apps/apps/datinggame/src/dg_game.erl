@@ -84,7 +84,7 @@ init([Srv, #dg_agent{call_id=CallID}=Agent, Customer]) ->
     Self = self(),
     spawn(fun() ->
                   Queue = gen_listener:queue_name(Self),
-                  dg_util:channel_status(Queue, Customer),
+                  dg_util:channel_status(Customer, Queue),
                   ?LOG("sent request for customer channel_status")
           end),
 
