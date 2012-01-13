@@ -16,6 +16,7 @@
 init() ->
     ok.
 
+-spec handle_req/2 :: (json_object(), proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     Customer = #dg_customer{
       call_id = wh_json:get_value(<<"Call-ID">>, JObj)
@@ -24,4 +25,4 @@ handle_req(JObj, Props) ->
       ,record_call = wh_json:is_true(<<"Record-Call">>, JObj, true)
      },
     Srv = props:get_value(server, Props),
-    datinggame_listener:agent_connect(Srv, Customer).
+    datinggame_listener:connect_agent(Srv, Customer).
