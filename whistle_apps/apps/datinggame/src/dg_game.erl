@@ -31,7 +31,6 @@
          ,customer = #dg_customer{} :: #dg_customer{}
          ,recording_name = <<>> :: binary()
          ,server_pid = undefined :: undefined | pid()
-         ,waiting_for = connect :: 'connect' | 'customer_hangup'
          }).
 
 %%%===================================================================
@@ -117,18 +116,33 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({event, JObj}, #state{waiting_for=Waiting}=State) ->
+handle_cast({event, JObj}, #state{agent=Agent
+                                  ,customer=(#dg_customer{call_id=CCID, control_queue=CtlQ})
+                                  ,server_pid=Srv
+                                 }=State) ->
     EvtType = wh_util:get_event_type(JObj),
     ?LOG("recv evt ~p", [EvtType]),
 
-    case process_event(EvtType, JObj, Waiting) of
+    case process_event(EvtType, JObj) of
         ignore ->
             ?LOG("ignoring event"),
+            {noreply, State};
+        {connect, CallID} ->
+            ?LOG("bridge on ~s", [CallID]),
             {noreply, State};
         {hangup, CallID} ->
             %% see who hung up
             ?LOG("call-id ~s hungup", [CallID]),
-            {stop, normal, State}
+            case CallID =:= CCID of
+                true ->
+                    ?LOG("customer hungup, freeing agent"),
+                    gen_listener:free_agent(Srv, Agent),
+                    {stop, normal, State};
+                false ->
+                    ?LOG("agent hungup or disconnected"),
+                    send_command([{<<"Application-Name">>, <<"hangup">>}], CCID, CtlQ),
+                    {stop, normal, State}
+            end
     end;
 
 handle_cast(connect_call, #state{agent=Agent, customer=Customer}=State) ->
@@ -191,27 +205,41 @@ connect_agent(#dg_agent{call_id=ACallID, control_queue=CtlQ}, #dg_customer{call_
     connect(CtlQ, ACallID, CCallID).
 
 connect(CtlQ, ACallID, CCallID) ->
-    Cmd1 = wh_json:from_list([{<<"Application-Name">>, <<"answer">>}
-                              ,{<<"Call-ID">>, ACallID}
-                             ]),
-    Cmd2 = wh_json:from_list([{<<"Application-Name">>, <<"call_pickup">>}
-                              ,{<<"Target-Call-ID">>, CCallID}
-                              ,{<<"Call-ID">>, ACallID}
-                             ]),
-    send_command(Cmd1, ACallID, CtlQ),
-    send_command(Cmd2, ACallID, CtlQ).
+    Cmd = [{<<"Application-Name">>, <<"call_pickup">>}
+            ,{<<"Insert-At">>, <<"now">>}
+            ,{<<"Target-Call-ID">>, CCallID}
+            ,{<<"Call-ID">>, ACallID}
+           ],
+    send_command(Cmd, ACallID, CtlQ).
 
+-spec send_command/3 :: (proplist(), ne_binary(), ne_binary()) -> 'ok'.
 send_command(Command, CallID, CtrlQ) ->
     Prop = Command ++ [{<<"Call-ID">>, CallID}
                        | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                       ],
     wapi_dialplan:publish_command(CtrlQ, Prop).
 
-
--spec process_event/3 :: ({ne_binary(), ne_binary()}, json_object(), 'connect' | 'customer_hangup') -> {'hangup', ne_binary()} |
-                                                                                                       'ignore'.
-process_event({<<"call_event">>, <<"CHANNEL_HANGUP">> }, JObj, _) ->
-    {hangup, wh_json:get_value(<<"Call-ID">>, JObj)};
-process_event({_EvtCat, _EvtName}, _JObj, _WaitFor) ->
-    ?LOG("ignoring evt ~s:~s in state ~s", [_EvtCat, _EvtName, _WaitFor]),
+-spec process_event/2 :: ({ne_binary(), ne_binary()}, json_object()) -> 
+                                 {'connect', ne_binary()} |
+                                 {'hangup', ne_binary()} |
+                                 'ignore'.
+process_event({<<"call_event">>, <<"CHANNEL_BRIDGE">>}, JObj) ->
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    ?LOG(CallID, "bridge event received", []),
+    ?LOG(CallID, "bridge other leg id: ~s", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]),
+    {connect, wh_json:get_value(<<"Call-ID">>, JObj)};
+process_event({<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, JObj) ->
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    ?LOG(CallID, "unbridge event received", []),
+    ?LOG(CallID, "unbridge code: ~s", [wh_json:get_value(<<"Hangup-Code">>, JObj)]),
+    ?LOG(CallID, "unbridge cause: ~s", [wh_json:get_value(<<"Hangup-Cause">>, JObj)]),
+    {unbridge, CallID};
+process_event({<<"call_event">>, <<"CHANNEL_HANGUP">>}, JObj) ->
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    ?LOG(CallID, "hangup event received", []),
+    ?LOG(CallID, "hangup code: ~s", [wh_json:get_value(<<"Hangup-Code">>, JObj)]),
+    ?LOG(CallID, "hangup cause: ~s", [wh_json:get_value(<<"Hangup-Cause">>, JObj)]),
+    {hangup, CallID};
+process_event({_EvtCat, _EvtName}, _JObj) ->
+    ?LOG("ignoring evt ~s:~s", [_EvtCat, _EvtName]),
     ignore.
