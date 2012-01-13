@@ -244,6 +244,7 @@ connect_agent(Agent, Customer) ->
                                  {'connected', ne_binary()} |
                                  {'hangup', ne_binary()} |
                                  {'channel_status', json_object()} |
+                                 {'unbridge', ne_binary()} |
                                  'ignore'.
 process_event({<<"call_event">>, <<"CHANNEL_BRIDGE">>}, JObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -292,7 +293,7 @@ update_customer(Customer, JObj) ->
       switch_hostname=Hostname
      }.
 
--spec new_session_doc/3 :: (#dg_agent{}, ne_binary(), ne_binary()) -> ne_binary().
+-spec new_session_doc/3 :: (#dg_agent{}, #dg_customer{}, ne_binary()) -> ne_binary().
 new_session_doc(#dg_agent{id=ID, call_id=ACallID, account_db=DB}, #dg_customer{call_id=CCallID}, MediaName) ->
     MediaID = list_to_binary([ACallID, "-", CCallID]),
     JObj = wh_json:from_list([{<<"_id">>, MediaID}

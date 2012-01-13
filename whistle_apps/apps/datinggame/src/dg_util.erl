@@ -10,7 +10,7 @@
 
 -export([channel_status/2, send_command/3
          ,hold_call/1, hold_call/2, pickup_call/2
-         ,hangup/1, start_recording/2
+         ,hangup/1, start_recording/2, store_recording/3
         ]).
 
 -include("datinggame.hrl").
@@ -26,7 +26,7 @@ channel_status(CallID, Q) when is_binary(CallID) ->
               ],
     wapi_call:publish_channel_status_req(CallID, Command).
 
--spec pickup_call/2 :: (#dg_customer{}, #dg_agent{}) -> 'ok'.
+-spec pickup_call/2 :: (#dg_agent{}, #dg_customer{}) -> 'ok'.
 pickup_call(#dg_agent{call_id=ACallID, control_queue=CtrlQ}, #dg_customer{call_id=CCallID}) ->
     Command = [{<<"Application-Name">>, <<"call_pickup">>}
                ,{<<"Target-Call-ID">>, CCallID}
@@ -48,7 +48,7 @@ hold_call(CallID, Q) ->
               ],
     send_command(Command, CallID, Q).
 
--spec hangup/1 :: (#dg_customer{} | #dg_agent{} | ne_binary()) -> 'ok'.
+-spec hangup/1 :: (#dg_customer{} | #dg_agent{}) -> 'ok'.
 hangup(#dg_customer{call_id=CallID, control_queue=CtrlQ}) ->
     hangup(CallID, CtrlQ);
 hangup(#dg_agent{call_id=CallID, control_queue=CtrlQ}) ->
@@ -57,14 +57,14 @@ hangup(#dg_agent{call_id=CallID, control_queue=CtrlQ}) ->
 hangup(CallID, CtrlQ) when is_binary(CallID) ->
     send_command([{<<"Application-Name">>, <<"hangup">>}], CallID, CtrlQ).
 
-start_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}=Agent, MediaName) ->
+start_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}, MediaName) ->
     Command = [{<<"Application-Name">>, <<"record">>}
                ,{<<"Media-Name">>, MediaName}
                ,{<<"Terminators">>, []}
               ],
     send_command(Command, CallID, CtrlQ).
 
-store_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}=Agent, MediaName, CouchURL) ->
+store_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}, MediaName, CouchURL) ->
     Command = [{<<"Application-Name">>, <<"store">>}
                ,{<<"Media-Name">>, MediaName}
                ,{<<"Media-Transfer-Method">>, <<"put">>}
