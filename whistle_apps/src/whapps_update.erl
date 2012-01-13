@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
@@ -14,7 +14,8 @@
 
 run() ->
     couch_mgr:db_delete(<<"crossbar_schemas">>),
-    crossbar:blocking_refresh(),
+    crossbar_maintenance:blocking_refresh(),
+    callflow_maintenance:blocking_refresh(),
     whapps_config:flush(),
     XbarUpdates = [fun(L) -> lists:delete(<<"cb_cdr">>, L) end
                    ,fun(L) -> lists:delete(<<"cb_signups">>, L) end
