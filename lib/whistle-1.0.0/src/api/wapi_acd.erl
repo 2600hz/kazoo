@@ -34,7 +34,7 @@
                               ]).
 -define(AGENT_OFFLINE_TYPES, []).
 
--define(AGENT_CONNECT_HEADERS, [<<"Control-Queue">>, <<"Call-ID">>]).
+-define(AGENT_CONNECT_HEADERS, [<<"Control-Queue">>, <<"Call-ID">>, <<"To-User">>, <<"To-Realm">>]).
 -define(OPTIONAL_AGENT_CONNECT_HEADERS, [<<"Skills-Needed">>, <<"Record-Call">>]).
 -define(AGENT_CONNECT_VALUES, [{<<"Event-Category">>, <<"acd">>}
                               ,{<<"Event-Name">>, <<"agent_connect">>}

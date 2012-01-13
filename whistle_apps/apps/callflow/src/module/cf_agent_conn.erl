@@ -13,7 +13,7 @@
 -include("../callflow.hrl").
 
 -spec handle/2 :: (json_object(), #cf_call{}) -> 'ok'.
-handle(Data, #cf_call{call_kvs=KVs}=Call) ->
+handle(Data, #cf_call{call_kvs=KVs, to_user=ToUser, to_realm=ToRealm}=Call) ->
     ShouldRecord = wh_json:is_true(<<"record_call">>, Data, true),
     ?LOG("Will record: ~s", [ShouldRecord]),
 
@@ -22,6 +22,8 @@ handle(Data, #cf_call{call_kvs=KVs}=Call) ->
            ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
            ,{<<"Skills-Needed">>, Skills}
            ,{<<"Record-Call">>, ShouldRecord}
+           ,{<<"To-User">>, ToUser}
+           ,{<<"To-Realm">>, ToRealm}
            | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)
           ],
     wapi_acd:publish_agent_connect(Req),
