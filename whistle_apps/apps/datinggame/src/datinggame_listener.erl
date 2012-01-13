@@ -245,7 +245,7 @@ handle_cast({rm_agent, #dg_agent{call_id=CallID}=Agent}, #state{agents_available
 
     Self = self(),
     spawn(fun() ->
-                  gen_listener:rm_binding(Self, call, [{callid, CallID}])
+                  gen_listener:rm_binding(Self, call, [{callid, CallID},{restrict_to, [events]}])
           end),
 
     {noreply, State#state{agents_available=rm_agent_from_online(Agent, Available)
