@@ -510,7 +510,9 @@ wait_for_reg_resp([_|T], Acc) ->
 %% Check if the device sip creds are unique
 %% @end
 %%--------------------------------------------------------------------
--spec is_sip_creds_unique/3 :: (ne_binary(), undefined | ne_binary(), undefined | ne_binary() ) -> boolean().
+-spec is_sip_creds_unique/3 :: (undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary() ) -> boolean().
+is_sip_creds_unique(undefined, _, _) ->
+    true;
 is_sip_creds_unique(_, _, undefined) ->
     true;
 is_sip_creds_unique(AccountDb, undefined, Username) ->
@@ -566,7 +568,8 @@ provision_device_line(BaseKey, Device, Template) ->
                ],
     provision_device_line(BaseKey, Device, Template, Mappings).
 
--spec provision_device_line/4 :: (json_strings(), json_object(), json_object(), [{json_strings(), json_strings()},...] | []) -> json_object().
+-spec provision_device_line/4 :: (json_strings(), json_object(), json_object(), [{json_strings(), json_strings()},...] | []) 
+                                 -> json_object().
 provision_device_line(_, _, Template, []) ->
     Template;
 provision_device_line(BaseKey, Device, Template, [{TemplateKey, DeviceKey}|T]) ->
