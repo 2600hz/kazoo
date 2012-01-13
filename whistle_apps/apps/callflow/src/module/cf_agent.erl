@@ -33,7 +33,7 @@ handle(Data, Call) ->
             play_welcome(Call),
             put_on_hold(Call),
             publish_agent_available(AgentJObj, Call),
-            cf_exe:transfer(Call);
+            cf_exe:stop(Call);
         {error, _} ->
             cf_exe:continue(Call)
     end.
