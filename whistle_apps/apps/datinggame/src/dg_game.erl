@@ -244,6 +244,6 @@ process_event({<<"call_event">>, <<"CHANNEL_HANGUP">>}, JObj) ->
 process_event({_EvtCat, _EvtName}, _JObj) ->
     _CallID = wh_json:get_value(<<"Call-ID">>, _JObj),
     ?LOG(_CallID, "ignoring evt ~s:~s", [_EvtCat, _EvtName]),
-    ?LOG(_CallID, "media app name: ~s", [wh_json:get_value(<<"Application-Response">>, _JObj)]),
-    ?LOG(_CallID, "media app response: ~s", [wh_json:get_value(<<"Application-Name">>, _JObj)]),
+    ?LOG(_CallID, "media app name: ~s", [wh_json:get_value(<<"Application-Name">>, _JObj)]),
+    ?LOG(_CallID, "media app response: ~s", [wh_json:get_value(<<"Application-Response">>, _JObj)]),
     ignore.
