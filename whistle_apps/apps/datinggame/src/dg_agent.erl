@@ -20,6 +20,7 @@ handle_online(JObj, Props) ->
                       ,call_id = wh_json:get_value(<<"Call-ID">>, JObj)
                       ,control_queue = wh_json:get_value(<<"Control-Queue">>, JObj)
                       ,skills = wh_json:get_value(<<"Skills">>, JObj, wh_json:new())
+                      ,account_db = wh_json:get_value(<<"Account-DB">>, JObj)
                       },
 
     Srv = props:get_value(server, Props),

@@ -10,7 +10,7 @@
 
 -export([channel_status/2, send_command/3
          ,hold_call/1, hold_call/2, pickup_call/2
-         ,hangup/1
+         ,hangup/1, start_recording/2
         ]).
 
 -include("datinggame.hrl").
@@ -56,6 +56,23 @@ hangup(#dg_agent{call_id=CallID, control_queue=CtrlQ}) ->
 
 hangup(CallID, CtrlQ) when is_binary(CallID) ->
     send_command([{<<"Application-Name">>, <<"hangup">>}], CallID, CtrlQ).
+
+start_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}=Agent, MediaName) ->
+    Command = [{<<"Application-Name">>, <<"record">>}
+               ,{<<"Media-Name">>, MediaName}
+               ,{<<"Terminators">>, []}
+              ],
+    send_command(Command, CallID, CtrlQ).
+
+store_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}=Agent, MediaName, CouchURL) ->
+    Command = [{<<"Application-Name">>, <<"store">>}
+               ,{<<"Media-Name">>, MediaName}
+               ,{<<"Media-Transfer-Method">>, <<"put">>}
+               ,{<<"Media-Transfer-Destination">>, CouchURL}
+               ,{<<"Additional-Headers">>, []}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    send_command(Command, CallID, CtrlQ).
 
 -spec send_command/3 :: (proplist(), ne_binary(), binary()) -> 'ok'.
 send_command(Command, CallID, CtrlQ) ->

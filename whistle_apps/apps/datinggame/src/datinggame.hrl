@@ -11,6 +11,7 @@
           ,signed_in = wh_util:current_tstamp() :: pos_integer()
           ,skills = wh_json:new() :: json_object()
           ,switch_hostname = <<>> :: binary() %% what switch is the call on
+          ,account_db = <<>> :: binary()
          }).
 
 -record(dg_customer, {

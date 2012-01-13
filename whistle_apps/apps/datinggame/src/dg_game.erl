@@ -128,6 +128,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({event, JObj}, #state{agent=Agent
                                   ,customer=(#dg_customer{call_id=CCID})=Customer
                                   ,server_pid=Srv
+                                  ,recording_name=MediaName
                                  }=State) ->
     EvtType = wh_util:get_event_type(JObj),
     ?LOG("recv evt ~p", [EvtType]),
@@ -136,8 +137,10 @@ handle_cast({event, JObj}, #state{agent=Agent
         ignore ->
             ?LOG("ignoring event"),
             {noreply, State};
-        {connect, CallID} ->
-            ?LOG("bridge on ~s", [CallID]),
+        {connected, _CallID} ->
+            ?LOG("bridge on ~s", [_CallID]),
+            dg_util:start_recording(Agent, MediaName),
+            ?LOG("beginning recording to ~s", [MediaName]),
             {noreply, State};
         {unbridge, CallID} ->
             ?LOG(CallID, "leg has been unbridged", []),
@@ -145,6 +148,11 @@ handle_cast({event, JObj}, #state{agent=Agent
                 true ->
                     ?LOG(CallID, "customer leg ~s unbridged, freeing agent", [CCID]),
                     datinggame_listener:free_agent(Srv, Agent),
+
+                    RecordingURL = new_session_doc(Agent, Customer, MediaName),
+                    ?LOG(CallID, "storing recording ~s to ~s", [MediaName, RecordingURL]),
+
+                    dg_util:store_recording(Agent, MediaName, RecordingURL),
                     {stop, normal, State};
                 false ->
                     ?LOG(CCID, "agent leg ~s unbridged, that's odd", [Agent#dg_agent.call_id]),
@@ -233,7 +241,7 @@ connect_agent(Agent, Customer) ->
     dg_util:pickup_call(Agent, Customer).
 
 -spec process_event/2 :: ({ne_binary(), ne_binary()}, json_object()) -> 
-                                 {'connect', ne_binary()} |
+                                 {'connected', ne_binary()} |
                                  {'hangup', ne_binary()} |
                                  {'channel_status', json_object()} |
                                  'ignore'.
@@ -241,7 +249,7 @@ process_event({<<"call_event">>, <<"CHANNEL_BRIDGE">>}, JObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG(CallID, "bridge event received", []),
     ?LOG(CallID, "bridge other leg id: ~s", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]),
-    {connect, wh_json:get_value(<<"Call-ID">>, JObj)};
+    {connected, wh_json:get_value(<<"Call-ID">>, JObj)};
 process_event({<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, JObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG(CallID, "unbridge event received", []),
@@ -283,3 +291,24 @@ update_customer(Customer, JObj) ->
     Customer#dg_customer{
       switch_hostname=Hostname
      }.
+
+-spec new_session_doc/3 :: (#dg_agent{}, ne_binary(), ne_binary()) -> ne_binary().
+new_session_doc(#dg_agent{id=ID, call_id=ACallID, account_db=DB}, #dg_customer{call_id=CCallID}, MediaName) ->
+    MediaID = list_to_binary([ACallID, "-", CCallID]),
+    JObj = wh_json:from_list([{<<"_id">>, MediaID}
+                              ,{<<"agent_id">>, ID}
+                              ,{<<"agent_callid">>, ACallID}
+                              ,{<<"customer_callid">>, CCallID}
+                              ,{<<"pvt_type">>, <<"acd_recording">>}
+                              ,{<<"app_name">>, ?APP_NAME}
+                              ,{<<"app_version">>, ?APP_VERSION}
+                              ,{<<"media_name">>, MediaName}
+                             ]),
+    {ok, JObj1} = couch_mgr:save_doc(DB, JObj),
+    get_new_attachment_url(DB, MediaID, MediaName, wh_json:get_value(<<"_rev">>, JObj1)).
+
+-spec get_new_attachment_url/4 :: (ne_binary(), ne_binary(), ne_binary(), 'undefined' | ne_binary()) -> ne_binary().
+get_new_attachment_url(DB, MediaID, MediaName, undefined) ->
+    list_to_binary([couch_mgr:get_url(), DB, "/", MediaID, "/", MediaName]);
+get_new_attachment_url(DB, MediaID, MediaName, Rev) ->
+    list_to_binary([couch_mgr:get_url(), DB, "/", MediaID, "/", MediaName, <<"?rev=">>, Rev]).
