@@ -47,7 +47,7 @@
 start_link(Srv, #dg_agent{call_id=ACallID}=Agent, #dg_customer{call_id=CCallID}=Customer) ->
     Bindings = [{call, [{callid, ACallID}, {restrict_to, [events]}]}
                 ,{self, []}
-                ,{call, [{callid, CCallID}], {restrict_to, [events]}}
+                ,{call, [{callid, CCallID}, {restrict_to, [events]}]}
                ],
     gen_listener:start_link(?MODULE
                             ,[{responders, ?RESPONDERS}
