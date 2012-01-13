@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, add_agent/2, rm_agent/2, agent_connect/2]).
+-export([start_link/0, add_agent/2, rm_agent/2, free_agent/2, connect_agent/2]).
 
 -export([agents_available/0, agents_busy/0, customers_waiting/0]).
 -export([agents_available/1, agents_busy/1, customers_waiting/1]).
@@ -36,7 +36,7 @@
 
 -record(state, {
           agents_available = queue:new() :: queue()
-         ,agents_busy = dict:new() :: dict() %% [ {Agent-Call-Id, {#dg_agent{}, #dg_cust{}}} ]
+         ,agents_busy = dict:new() :: dict() %% [ {Agent-Call-Id, {#dg_agent{}, #dg_cust{}, GamePid}} ]
          ,customers_waiting = queue:new() :: queue()
          }).
 
@@ -64,11 +64,17 @@ start_link() ->
 add_agent(Srv, #dg_agent{}=Agent) when is_pid(Srv) ->
     gen_listener:cast(Srv, {add_agent, Agent}).
 
+-spec rm_agent/2 :: (pid(), #dg_agent{}) -> 'ok'.
 rm_agent(Srv, #dg_agent{}=Agent) when is_pid(Srv) ->
     gen_listener:cast(Srv, {rm_agent, Agent}).
 
-agent_connect(Srv, #dg_customer{}=Customer) when is_pid(Srv) ->
+-spec connect_agent/2 :: (pid(), #dg_customer{}) -> 'ok'.
+connect_agent(Srv, #dg_customer{}=Customer) when is_pid(Srv) ->
     gen_listener:cast(Srv, {connect, Customer}).
+
+-spec free_agent/2 :: (pid(), #dg_agent{}) -> 'ok'.
+free_agent(Srv, #dg_agent{}=Customer) when is_pid(Srv) ->
+    gen_listener:cast(Srv, {free, Customer}).
 
 agents_available() ->
     agents_available(datinggame_sup:listener_proc()).
@@ -165,11 +171,12 @@ handle_cast(connect_agent, #state{agents_available=Available
                     {{value, #dg_agent{call_id=CallID}=Agent}, Available1} = queue:out(Available),
                     {{value, #dg_customer{call_id=_CCallID}=Customer}, Waiting1} = queue:out(Waiting),
 
-                    {ok, _Pid} = dg_game_sup:start_game(self(), Agent, Customer),
-                    ?LOG("the game has started in ~p for agent ~s and customer ~s", [_Pid, CallID, _CCallID]),
+                    {ok, Pid} = dg_game_sup:start_game(self(), Agent, Customer),
+                    ?LOG("the game has started in ~p for agent ~s and customer ~s", [Pid, CallID, _CCallID]),
+                    erlang:monitor(process, Pid),
 
                     {noreply, State#state{agents_available=Available1
-                                          ,agents_busy=dict:store(CallID, {Agent, Customer}, Busy)
+                                          ,agents_busy=dict:store(CallID, {Agent, Customer, Pid}, Busy)
                                           ,customers_waiting=Waiting1
                                          }}
             end
@@ -185,10 +192,15 @@ handle_cast({add_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_availab
     gen_listener:cast(self(), connect_agent),
     {noreply, State#state{agents_available=queue:in(Agent, Online)}};
 
+handle_cast({free_agent, #dg_agent{}=Agent}, #state{agents_busy=Busy}=State) ->
+    {_, Busy1} = rm_agent_from_busy(Agent, Busy),
+    datinggame_listener:add_agent(self(), Agent),
+    {noreply, State#state{agents_busy=Busy1}};
+
 handle_cast({rm_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Online, agents_busy=Busy}=State) ->
     ?LOG("rm agent: ~s", [_CallID]),
     Online1 = rm_agent_from_online(Agent, Online),
-    Busy1 = rm_agent_from_busy(Agent, Busy),
+    {_, Busy1} = rm_agent_from_busy(Agent, Busy),
     {noreply, State#state{agents_available=Online1, agents_busy=Busy1}};
 
 handle_cast(_Msg, State) ->
@@ -204,7 +216,19 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'DOWN', _Ref, process, _Pid, normal}, State) ->
+    ?LOG("the game is gone: ~p", [_Pid]),
+    {noreply, State};
+handle_info({'DOWN', _Ref, process, Pid, Reason}, #state{agents_busy=Busy}=State) ->
+    ?LOG("the game has gone awry: ~p", [Reason]),
+    case rm_agent_from_busy(Pid, Busy) of
+        {undefined, _} -> {noreply, State};
+        {Agent, Busy1} ->
+            datinggame_listener:add_agent(self(), Agent),
+            {noreply, State#state{agents_busy=Busy1}}
+    end;
 handle_info(_Info, State) ->
+    ?LOG("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, #state{agents_available=Online, agents_busy=Busy}) ->
@@ -244,9 +268,30 @@ rm_agent_from_online(#dg_agent{call_id=CallId}, Online) ->
                          CallId =/= Acall_id
                  end, Online).
 
--spec rm_agent_from_busy/2 :: (#dg_agent{}, dict()) -> dict().
-rm_agent_from_busy(#dg_agent{call_id=CallID}, Busy) ->
-    dict:erase(CallID, Busy).
+-spec rm_agent_from_busy/2 :: (#dg_agent{} | ne_binary() | pid(), dict()) -> {#dg_agent{} | 'undefined', dict()}.
+rm_agent_from_busy(#dg_agent{call_id=CallID}=Agent, Busy) ->
+    {Agent, dict:erase(CallID, Busy)};
+rm_agent_from_busy(CallID, Busy) when is_binary(CallID) ->
+    case dict:find(CallID, Busy) of
+        {ok, {Agent, _, _}} ->
+            {Agent, dict:erase(CallID, Busy)};
+        _ ->
+            {undefined, Busy}
+    end;
+rm_agent_from_busy(GamePid, Busy) when is_pid(GamePid) ->
+    EndGame = dict:filter(fun(_, {_,_,Pid}) ->
+                                  GamePid =:= Pid
+                          end, Busy),
+    case dict:size(EndGame) of
+        0 ->
+            ?LOG("can't rm agent from busy by pid ~p", [GamePid]),
+            {undefined, Busy};
+        1 ->
+            [{CallID, {Agent, _, _}}] = dict:to_list(EndGame),
+            ?LOG("rm agent from busy by pid ~p: ~s", [GamePid, CallID]),
+            {Agent, dict:erase(CallID, Busy)}
+    end.
+                             
 
 play_hold_music(#dg_customer{call_id=CallID, control_queue=CtlQ}) ->
     Command = [{<<"Application-Name">>, <<"hold">>}
