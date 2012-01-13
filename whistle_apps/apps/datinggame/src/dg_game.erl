@@ -155,6 +155,7 @@ handle_cast({event, JObj}, #state{agent=Agent
             end;
         {channel_status, JObj} ->
             gen_listener:cast(self(), connect_call),
+            ?LOG("channel status resp recv"),
             {noreply, State#state{customer=update_customer(Customer, JObj)}}
     end;
 
