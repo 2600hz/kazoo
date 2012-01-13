@@ -141,6 +141,7 @@ handle_cast({event, JObj}, #state{agent=Agent
                 false ->
                     ?LOG("agent hungup or disconnected"),
                     send_command([{<<"Application-Name">>, <<"hangup">>}], CCID, CtlQ),
+                    gen_listener:rm_agent(Srv, Agent),
                     {stop, normal, State}
             end
     end;
