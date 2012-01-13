@@ -44,8 +44,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Srv, #dg_agent{call_id=CallID}=Agent, #dg_customer{call_id=CCallID}=Customer) ->
-    Bindings = [{call, [{callid, CallID}, {restrict_to, [events]}]}
+start_link(Srv, #dg_agent{call_id=ACallID}=Agent, #dg_customer{call_id=CCallID}=Customer) ->
+    Bindings = [{call, [{callid, ACallID}, {restrict_to, [events]}]}
                 ,{call, [{callid, CCallID}], {restrict_to, [events]}}
                 ,{self, []}
                ],
@@ -59,9 +59,7 @@ start_link(Srv, #dg_agent{call_id=CallID}=Agent, #dg_customer{call_id=CCallID}=C
                             ,[Srv, Agent, Customer]).
 
 handle_req(JObj, Props) ->
-    Srv = props:get_value(server, Props),
-    ?LOG("sending event to ~p", [Srv]),
-    gen_listener:cast(Srv, {event, JObj}).
+    gen_listener:cast(props:get_value(server, Props), {event, JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -156,7 +154,13 @@ handle_cast({event, JObj}, #state{agent=Agent
                     {stop, normal, State};
                 false ->
                     ?LOG(CCID, "agent leg ~s unbridged, that's odd", [Agent#dg_agent.call_id]),
-                                        dg_util:hangup(Customer),
+                    dg_util:hangup(Customer),
+
+                    RecordingURL = new_session_doc(Agent, Customer, MediaName),
+                    ?LOG(CallID, "storing recording ~s to ~s", [MediaName, RecordingURL]),
+
+                    dg_util:store_recording(Agent, MediaName, RecordingURL),
+
                     datinggame_listener:rm_agent(Srv, Agent),
                     {stop, normal, State}
             end;
@@ -237,8 +241,22 @@ new_recording_name() ->
     <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
 
 -spec connect_agent/2 :: (#dg_agent{}, #dg_customer{}) -> 'ok'.
-connect_agent(Agent, Customer) ->
-    dg_util:pickup_call(Agent, Customer).
+connect_agent(#dg_agent{switch_hostname=AgentHost}=Agent, #dg_customer{switch_hostname=CustomerHost}=Customer) ->
+    case AgentHost of
+        CustomerHost ->
+            ?LOG("both agent and customer are on media switch ~s", [AgentHost]),
+            dg_util:pickup_call(Agent, Customer);
+        _ ->
+            ?LOG("agent is on media switch ~s, customer on ~s", [AgentHost, CustomerHost]),
+            IP = dg_util:get_node_ip(CustomerHost),
+            #dg_customer{user=ToUser, realm=ToRealm} = Customer,
+
+            Contact = <<"sip:", ToUser/binary, "@", ToRealm/binary>>,
+            Server = <<"sip:", IP/binary, ":5060">>,
+
+            ?LOG("redirect using contact: ~s and server: ~s", [Contact, Server]),
+            dg_util:redirect(Contact, Server, Agent)
+    end.
 
 -spec process_event/2 :: ({ne_binary(), ne_binary()}, json_object()) -> 
                                  {'connected', ne_binary()} |

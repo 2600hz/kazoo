@@ -23,6 +23,8 @@ handle_req(JObj, Props) ->
       ,control_queue = wh_json:get_value(<<"Control-Queue">>, JObj)
       ,skills_needed = wh_json:get_value(<<"Skills-Needed">>, JObj, wh_json:new())
       ,record_call = wh_json:is_true(<<"Record-Call">>, JObj, true)
+      ,user = wh_json:get_value(<<"To-User">>, JObj)
+      ,realm = wh_json:get_value(<<"To-Realm">>, JObj)
      },
     Srv = props:get_value(server, Props),
     datinggame_listener:connect_agent(Srv, Customer).

@@ -11,6 +11,7 @@
 -export([channel_status/2, send_command/3
          ,hold_call/1, hold_call/2, pickup_call/2
          ,hangup/1, start_recording/2, store_recording/3
+         ,get_node_ip/1, redirect/3
         ]).
 
 -include("datinggame.hrl").
@@ -80,3 +81,23 @@ send_command(Command, CallID, CtrlQ) ->
                        | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                       ],
     wapi_dialplan:publish_command(CtrlQ, Prop).
+
+-spec get_node_ip/1 :: (ne_binary()) -> ne_binary().
+get_node_ip(Node) ->
+    {ok, Addresses} = inet:getaddrs(wh_util:to_list(Node), inet),
+    {A, B, C, D} = hd(Addresses),
+    <<(wh_util:to_binary(A))/binary, "."
+      ,(wh_util:to_binary(B))/binary, "."
+      ,(wh_util:to_binary(C))/binary, "."
+      ,(wh_util:to_binary(D))/binary>>.
+
+redirect(Contact, Server, #dg_agent{call_id=CallID, control_queue=CtrlQ}) ->
+    ?LOG("redirect to ~s on ~s", [Contact, Server]),
+    Command = [{<<"Redirect-Contact">>, Contact}
+               ,{<<"Redirect-Server">>, Server}
+               ,{<<"Application-Name">>, <<"redirect">>}
+               ,{<<"Call-ID">>, CallID}
+              ],
+    send_command(Command, CallID, CtrlQ),
+    timer:sleep(2000),
+    ok.

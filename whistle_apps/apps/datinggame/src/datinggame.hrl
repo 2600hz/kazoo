@@ -21,6 +21,8 @@
          ,record_call = true :: boolean()
          ,wait_started = wh_util:current_tstamp() :: pos_integer()
          ,switch_hostname = <<>> :: binary() %% what switch is the call on
+         ,user = <<>> :: binary()
+         ,realm = <<>> :: binary()
          }).
 
 -define(APP_NAME, <<"dating_game">>).
