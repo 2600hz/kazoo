@@ -41,11 +41,12 @@ handle(Data, Call) ->
 publish_agent_available(AgentJObj, Call) ->
     send_available(AgentJObj, Call).
 
-send_available(AgentJObj, Call) ->
+send_available(AgentJObj, #cf_call{account_db=DB}=Call) ->
     Req = [{<<"Agent-ID">>, wh_json:get_value(<<"id">>, AgentJObj)}
            ,{<<"Skills">>, wh_json:get_value(<<"skills">>, AgentJObj, [])}
            ,{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
+           ,{<<"Account-DB">>, DB}
            | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)],
 
     wapi_acd:publish_agent_online(Req).

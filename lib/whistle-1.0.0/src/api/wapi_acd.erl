@@ -20,7 +20,7 @@
 
 -include("../wh_api.hrl").
 
--define(AGENT_ONLINE_HEADERS, [<<"Agent-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
+-define(AGENT_ONLINE_HEADERS, [<<"Agent-ID">>, <<"Call-ID">>, <<"Control-Queue">>, <<"Account-DB">>]).
 -define(OPTIONAL_AGENT_ONLINE_HEADERS, [<<"Skills">>]).
 -define(AGENT_ONLINE_VALUES, [{<<"Event-Category">>, <<"acd">>}
                               ,{<<"Event-Name">>, <<"agent_online">>}
