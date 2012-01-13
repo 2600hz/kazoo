@@ -214,7 +214,7 @@ handle_cast({update_agent, JObj}, #state{agents_available=Available, agents_pend
     end;
 
 handle_cast({connect, #dg_customer{call_id=_CustCallID}=Customer}, #state{customers_waiting=Waiting}=State) ->
-    play_hold_music(Customer),
+    dg_util:hold_call(Customer),
     gen_listener:cast(self(), connect_agent),
     {noreply, State#state{customers_waiting=queue:in(Customer, Waiting)}};
 
@@ -225,6 +225,7 @@ handle_cast({add_agent, #dg_agent{call_id=CallID}=Agent}, #state{agents_pending=
 handle_cast({free_agent, #dg_agent{}=Agent}, #state{agents_busy=Busy}=State) ->
     {_, Busy1} = rm_agent_from_dict(Agent, Busy),
     datinggame_listener:add_agent(self(), Agent),
+    dg_util:hold_call(Agent),
     {noreply, State#state{agents_busy=Busy1}};
 
 handle_cast({rm_agent, #dg_agent{call_id=_CallID}=Agent}, #state{agents_available=Available, agents_busy=Busy, agents_pending=Pending}=State) ->
@@ -325,12 +326,6 @@ rm_agent_from_dict(GamePid, Busy) when is_pid(GamePid) ->
             ?LOG(CallID, "rm agent from busy by pid ~p: ~s", [GamePid, CallID]),
             {Agent, dict:erase(CallID, Busy)}
     end.
-
-play_hold_music(#dg_customer{call_id=CallID, control_queue=CtlQ}) ->
-    Command = [{<<"Application-Name">>, <<"hold">>}
-               ,{<<"Insert-At">>, <<"now">>}
-              ],
-    dg_game:send_command(Command, CallID, CtlQ).
 
 -spec update_agent/2 :: (#dg_agent{}, json_object()) -> #dg_agent{}.
 update_agent(#dg_agent{call_id=_CallID}=Agent, JObj) ->

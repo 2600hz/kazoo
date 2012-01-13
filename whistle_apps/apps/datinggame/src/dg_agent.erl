@@ -26,7 +26,7 @@ handle_online(JObj, Props) ->
     Queue = props:get_value(queue, Props),
 
     %% send request for channel status for the agent
-    dg_util:channel_status(Queue, Agent),
+    dg_util:channel_status(Agent, Queue),
 
     datinggame_listener:add_agent(Srv, Agent).
     

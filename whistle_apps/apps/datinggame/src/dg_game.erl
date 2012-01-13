@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/3, handle_req/2, send_command/3]).
+-export([start_link/3, handle_req/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -126,7 +126,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({event, JObj}, #state{agent=Agent
-                                  ,customer=(#dg_customer{call_id=CCID, control_queue=CtlQ})=Customer
+                                  ,customer=(#dg_customer{call_id=CCID})=Customer
                                   ,server_pid=Srv
                                  }=State) ->
     EvtType = wh_util:get_event_type(JObj),
@@ -149,7 +149,7 @@ handle_cast({event, JObj}, #state{agent=Agent
                     {stop, normal, State};
                 false ->
                     ?LOG("agent hungup or disconnected"),
-                    send_command([{<<"Application-Name">>, <<"hangup">>}], CCID, CtlQ),
+                    dg_util:hangup(Customer),
                     datinggame_listener:rm_agent(Srv, Agent),
                     {stop, normal, State}
             end;
@@ -219,19 +219,20 @@ connect_agent(#dg_agent{call_id=ACallID, control_queue=CtlQ}, #dg_customer{call_
     connect(CtlQ, ACallID, CCallID).
 
 connect(CtlQ, ACallID, CCallID) ->
-    Cmd = [{<<"Application-Name">>, <<"call_pickup">>}
-            ,{<<"Insert-At">>, <<"now">>}
-            ,{<<"Target-Call-ID">>, CCallID}
-            ,{<<"Call-ID">>, ACallID}
-           ],
-    send_command(Cmd, ACallID, CtlQ).
-
--spec send_command/3 :: (proplist(), ne_binary(), ne_binary()) -> 'ok'.
-send_command(Command, CallID, CtrlQ) ->
-    Prop = Command ++ [{<<"Call-ID">>, CallID}
-                       | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-                      ],
-    wapi_dialplan:publish_command(CtrlQ, Prop).
+    Cmd =
+        [{<<"Application-Name">>, <<"queue">>},
+         {<<"Commands">>, [
+                           wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
+                                              ,{<<"Insert-At">>, <<"now">>}
+                                             ])
+                           ,wh_json:from_list([{<<"Application-Name">>, <<"call_pickup">>}
+                                               ,{<<"Insert-At">>, <<"flush">>}
+                                               ,{<<"Target-Call-ID">>, CCallID}
+                                               ,{<<"Call-ID">>, ACallID}
+                                              ])
+                          ]}
+        ],
+    dg_util:send_command(Cmd, ACallID, CtlQ).
 
 -spec process_event/2 :: ({ne_binary(), ne_binary()}, json_object()) -> 
                                  {'connect', ne_binary()} |
