@@ -215,24 +215,8 @@ new_recording_name() ->
     <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
 
 -spec connect_agent/2 :: (#dg_agent{}, #dg_customer{}) -> 'ok'.
-connect_agent(#dg_agent{call_id=ACallID, control_queue=CtlQ}, #dg_customer{call_id=CCallID}) ->
-    connect(CtlQ, ACallID, CCallID).
-
-connect(CtlQ, ACallID, CCallID) ->
-    Cmd =
-        [{<<"Application-Name">>, <<"queue">>},
-         {<<"Commands">>, [
-                           wh_json:from_list([{<<"Application-Name">>, <<"answer">>}
-                                              ,{<<"Insert-At">>, <<"now">>}
-                                             ])
-                           ,wh_json:from_list([{<<"Application-Name">>, <<"call_pickup">>}
-                                               ,{<<"Insert-At">>, <<"flush">>}
-                                               ,{<<"Target-Call-ID">>, CCallID}
-                                               ,{<<"Call-ID">>, ACallID}
-                                              ])
-                          ]}
-        ],
-    dg_util:send_command(Cmd, ACallID, CtlQ).
+connect_agent(Agent, Customer) ->
+    dg_util:pickup_call(Agent, Customer).
 
 -spec process_event/2 :: ({ne_binary(), ne_binary()}, json_object()) -> 
                                  {'connect', ne_binary()} |

@@ -9,7 +9,7 @@
 -module(dg_util).
 
 -export([channel_status/2, send_command/3
-         ,hold_call/1, hold_call/2, pickup_call/3
+         ,hold_call/1, hold_call/2, pickup_call/2
          ,hangup/1
         ]).
 
@@ -26,10 +26,11 @@ channel_status(CallID, Q) when is_binary(CallID) ->
               ],
     wapi_call:publish_channel_status_req(CallID, Command).
 
--spec pickup_call/3 :: (#dg_customer{}, #dg_agent{}, ne_binary()) -> 'ok'.
-pickup_call(#dg_customer{call_id=CCallID}, #dg_agent{call_id=ACallID}, CtrlQ) ->
+-spec pickup_call/2 :: (#dg_customer{}, #dg_agent{}) -> 'ok'.
+pickup_call(#dg_agent{call_id=ACallID, control_queue=CtrlQ}, #dg_customer{call_id=CCallID}) ->
     Command = [{<<"Application-Name">>, <<"call_pickup">>}
                ,{<<"Target-Call-ID">>, CCallID}
+               ,{<<"Call-ID">>, ACallID}
               ],
     send_command(Command, ACallID, CtrlQ).
 
