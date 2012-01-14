@@ -49,8 +49,8 @@ start_link() ->
 get_realm_from_db(DBName) ->
     Doc = whapps_util:get_db_name(DBName, raw),
     case couch_mgr:open_doc(DBName, Doc) of
-	{ok, JObj} -> {ok, wh_json:get_value(<<"realm">>, JObj)};
-	{error, _}=E -> E
+        {ok, JObj} -> {ok, wh_json:get_value(<<"realm">>, JObj)};
+        {error, _}=E -> E
     end.
 
 %%%===================================================================
@@ -211,10 +211,10 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
                       {ok, JObj} = couch_mgr:open_doc(DbName, AccountId),
 
                       <<"account">> = wh_json:get_value(<<"pvt_type">>, JObj),
-		      ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
+                      ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
 
                       #cb_context{resp_status=success} = crossbar_doc:delete(Context),
-		      ?LOG_SYS("deleted ~s in ~s", [DbName, AccountId]),
+                      ?LOG_SYS("deleted ~s in ~s", [DbName, AccountId]),
 
                       case couch_mgr:db_delete(DbName) of
                           true -> Pid ! {binding_result, true, [RD, Context, Params]};
@@ -222,7 +222,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
                       end
                   catch
                       _:_E ->
-			  ?LOG_SYS("Exception while deleting account: ~p", [_E]),
+                          ?LOG_SYS("Exception while deleting account: ~p", [_E]),
                           Pid ! {binding_result, true, [RD, crossbar_util:response_bad_identifier(AccountId, Context), Params]}
                   end
           end),
@@ -390,19 +390,19 @@ create_account(Context) ->
 create_account(#cb_context{req_data=JObj}=Context, ParentId) ->
     case is_valid_doc(JObj) of
         {errors, Fields} ->
-	    ?LOG_SYS("Invalid JSON failed on fields ~p", [Fields]),
+            ?LOG_SYS("Invalid JSON failed on fields ~p", [Fields]),
             crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
         {ok, _} ->
-	    ?LOG_SYS("JSON is valid"),
+            ?LOG_SYS("JSON is valid"),
             case is_unique_realm(undefined, Context) of
                 true ->
-		    ?LOG_SYS("Realm ~s is valid and unique", [wh_json:get_value(<<"realm">>, JObj)]),
+                    ?LOG_SYS("Realm ~s is valid and unique", [wh_json:get_value(<<"realm">>, JObj)]),
                     Context#cb_context{
                       doc=set_private_fields(JObj, Context, ParentId)
                       ,resp_status=success
                      };
                 false ->
-		    ?LOG_SYS("Invalid or non-unique realm: ~s", [wh_json:get_value(<<"realm">>, JObj)]),
+                    ?LOG_SYS("Invalid or non-unique realm: ~s", [wh_json:get_value(<<"realm">>, JObj)]),
                     crossbar_util:response_invalid_data([<<"realm">>], Context)
             end
     end.
@@ -428,16 +428,16 @@ load_account(AccountId, Context) ->
 update_account(AccountId, #cb_context{req_data=Data}=Context) ->
     case is_valid_doc(Data) of
         {errors, Fields} ->
-	    ?LOG_SYS("Failed to validate JSON"),
+            ?LOG_SYS("Failed to validate JSON"),
              crossbar_util:response_invalid_data(Fields, Context);
         {ok, _} ->
             case is_unique_realm(AccountId, Context) of
                 true ->
-		    %% Update the aggregate accounts DB (/accounts/AB/CB)
-		    ?LOG_SYS("Realm is valid for ~s", [AccountId]),
-		    crossbar_doc:load_merge(AccountId, Data, Context);
+                    %% Update the aggregate accounts DB (/accounts/AB/CB)
+                    ?LOG_SYS("Realm is valid for ~s", [AccountId]),
+                    crossbar_doc:load_merge(AccountId, Data, Context);
                 false ->
-		    ?LOG_SYS("Realm isn't valid for ~s", [AccountId]),
+                    ?LOG_SYS("Realm isn't valid for ~s", [AccountId]),
                     crossbar_util:response_invalid_data([<<"realm">>], Context)
             end
     end.
@@ -516,10 +516,10 @@ load_descendants(AccountId, Context) ->
 -spec load_siblings/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_siblings(AccountId, Context) ->
     case crossbar_doc:load_view(?AGG_VIEW_PARENT, [
-						   {<<"startkey">>, AccountId}
-						   ,{<<"endkey">>, AccountId}
-						  ], Context) of
-	#cb_context{resp_status=success, doc=[JObj|_]} ->
+                                                   {<<"startkey">>, AccountId}
+                                                   ,{<<"endkey">>, AccountId}
+                                                  ], Context) of
+        #cb_context{resp_status=success, doc=[JObj|_]} ->
             Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
             load_children(Parent, Context);
         _Else ->
@@ -671,13 +671,13 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
     ?LOG_SYS("Account determined that db name: ~s", [DbName]),
     case couch_mgr:db_exists(DbName) of
         false ->
-	    ?LOG("Check failed for db_exists on ~s", [AccountId]),
+            ?LOG("Check failed for db_exists on ~s", [AccountId]),
             Context#cb_context{
                  db_name = <<>>
                 ,account_id = <<>>
             };
         true ->
-	    ?LOG("Check succeeded for db_exists on ~s", [AccountId]),
+            ?LOG("Check succeeded for db_exists on ~s", [AccountId]),
             Context#cb_context{
                 db_name = DbName
                ,account_id = AccountId
@@ -695,22 +695,30 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
 create_new_account_db(#cb_context{doc=Doc}=Context) ->
     DbName = wh_json:get_value(<<"_id">>, Doc, couch_mgr:get_uuid()),
     Db = whapps_util:get_db_name(DbName, encoded),
+    case couch_mgr:db_exists(?ACCOUNTS_AGG_DB) of
+        true -> ok;
+        false ->
+            couch_mgr:db_create(?ACCOUNTS_AGG_DB),
+            couch_mgr:revise_doc_from_file(?ACCOUNTS_AGG_DB, crossbar, ?ACCOUNTS_AGG_VIEW_FILE),
+            couch_mgr:revise_doc_from_file(?ACCOUNTS_AGG_DB, crossbar, ?MAINTENANCE_VIEW_FILE)
+    end,
     case couch_mgr:db_create(Db) of
         false ->
-	    ?LOG_SYS("Failed to create database: ~s", [DbName]),
+            ?LOG_SYS("Failed to create database: ~s", [DbName]),
             crossbar_util:response_db_fatal(Context);
         true ->
-	    ?LOG_SYS("Created DB for account id ~s", [DbName]),
+            ?LOG_SYS("Created DB for account id ~s", [DbName]),
             JObj = wh_json:set_value(<<"_id">>, DbName, Doc),
             case crossbar_doc:save(Context#cb_context{db_name=Db, doc=JObj}) of
                 #cb_context{resp_status=success}=Context1 ->
                     _ = crossbar_bindings:map(<<"account.created">>, Db),
                     couch_mgr:revise_docs_from_folder(Db, crossbar, "account"),
                     couch_mgr:revise_doc_from_file(Db, crossbar, ?MAINTENANCE_VIEW_FILE),
+                    couch_mgr:revise_views_from_folder(Db, callflow),
                     couch_mgr:ensure_saved(?ACCOUNTS_AGG_DB, Context1#cb_context.doc),
                     Context1;
                 Else ->
-		    ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
+                    ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
                     Else
             end
     end.
@@ -730,8 +738,8 @@ is_unique_realm(_, _, undefined) -> false;
 is_unique_realm(undefined, _, Realm) ->
     %% unique if Realm doesn't exist in agg DB
     case couch_mgr:get_results(?ACCOUNTS_AGG_DB, ?AGG_VIEW_REALM, [{<<"key">>, Realm}]) of
-	{ok, []} -> true;
-	{ok, [_|_]} -> false
+        {ok, []} -> true;
+        {ok, [_|_]} -> false
     end;
 
 is_unique_realm(AccountId, Context, Realm) ->
@@ -739,8 +747,8 @@ is_unique_realm(AccountId, Context, Realm) ->
     %% Unique if, for this account, request and account's realm are same
     %% or request Realm doesn't exist in DB (cf is_unique_realm(undefined ...)
     case wh_json:get_value(<<"realm">>, Doc) of
-	Realm -> true;
-	_ -> is_unique_realm(undefined, Context, Realm)
+        Realm -> true;
+        _ -> is_unique_realm(undefined, Context, Realm)
     end.
 
 %% for testing purpose, don't forget to export !
