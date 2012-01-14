@@ -102,6 +102,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
                  ,{RD, #cb_context{req_nouns=[{?WH_ACCOUNTS_DB,[]}], req_verb=Verb, auth_account_id=AuthAccountId}=Context}}, State) ->
+    crossbar_util:binding_heartbeat(Pid),
     case is_superduper_admin(AuthAccountId) of
         true ->
             Pid ! {binding_result, true, {RD, Context}};
