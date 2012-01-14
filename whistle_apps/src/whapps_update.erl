@@ -16,6 +16,7 @@ run() ->
     couch_mgr:db_delete(<<"crossbar_schemas">>),
     crossbar_maintenance:blocking_refresh(),
     callflow_maintenance:blocking_refresh(),
+    whistle_number_manager_maintenance:reconcile(all),
     whapps_config:flush(),
     XbarUpdates = [fun(L) -> lists:delete(<<"cb_cdr">>, L) end
                    ,fun(L) -> lists:delete(<<"cb_signups">>, L) end

@@ -10,6 +10,7 @@
 -module(wh_number_manager).
 
 -export([find/1, find/2]).
+-export([reconcile_number/2]).
 -export([assign_number_to_account/2]).
 -export([get_public_fields/2, set_public_fields/3]).
 -export([lookup_account_by_number/1]).
@@ -38,6 +39,44 @@ find(Number, Quanity) ->
     Results = [{Module, catch(Module:find_numbers(Num, Quanity))} 
                || Module <- wnm_util:list_carrier_modules()],
     prepare_find_results(Results, []).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Assign a number to an account, creating it as a local number if
+%% missing
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile_number/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} |
+                                                          {error, term()}.
+reconcile_number(Number, AccountId) ->
+    Regex = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"reconcile_regex">>, <<"^\\+{0,1}1{0,1}(\\d{10})$">>),
+    Num = wnm_util:normalize_number(Number),
+    ?LOG("attempting to reconcile number '~s' with account '~s'", [Num, AccountId]),
+    try 
+        case re:run(Num, Regex) of
+            nomatch ->
+                ?LOG("number '~s' is not reconcilable", [Num]),
+                throw(not_reconcilable);
+            _ ->
+                ?LOG("number '~s' can be reconciled, proceeding", [Num]),
+                ok
+        end,
+        JObj = case store_discovery(Num, <<"wnm_local">>, wh_json:new(), {<<"reserved">>, AccountId}) of
+                    {ok, J1} -> J1;
+                    {error, {conflict, J2}} -> J2;
+                    {error, R} -> throw(R)
+                end,
+        case wh_json:get_value(<<"pvt_assigned_to">>, JObj) of
+            AccountId -> 
+                ?LOG("number already exists and is routed to the account"),
+                {ok, wh_json:public_fields(JObj)};
+            _ ->
+                assign_number_to_account(Num, AccountId)
+        end
+    catch
+        throw:Reason -> {error, Reason}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -325,12 +364,25 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec store_discovery/3 :: (ne_binary(), ne_binary(), json_object()) -> {ok, json_object()} | {error, term()}.
+-spec store_discovery/4 :: (ne_binary(), ne_binary(), json_object(), ne_binary()) -> {ok, json_object()} | {error, term()}.
+
 store_discovery(Number, ModuleName, ModuleData) ->
+    store_discovery(Number, ModuleName, ModuleData, <<"discovery">>).
+
+store_discovery(Number, ModuleName, ModuleData, State) ->
     Db = wnm_util:number_to_db_name(Number),
     Generators = [fun(J) -> wh_json:set_value(<<"_id">>, Number, J) end
                   ,fun(J) -> wh_json:set_value(<<"pvt_module_name">>, ModuleName, J) end
                   ,fun(J) -> wh_json:set_value(<<"pvt_module_data">>, ModuleData, J) end
-                  ,fun(J) -> wh_json:set_value(<<"pvt_number_state">>, <<"discovery">>, J) end
+                  ,fun(J) ->
+                           case State of
+                               {<<"reserved">>, AccountId} ->
+                                   wh_json:set_value(<<"pvt_number_state">>, <<"reserved">>
+                                                         ,wh_json:set_value(<<"pvt_reserved_for">>, AccountId, J));
+                               Else ->
+                                   wh_json:set_value(<<"pvt_number_state">>, Else, J)
+                           end
+                   end
                   ,fun(J) -> wh_json:set_value(<<"pvt_db_name">>, Db, J) end
                   ,fun(J) -> wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), J) end 
                   ,fun(J) -> wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), J) end
