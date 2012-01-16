@@ -16,23 +16,25 @@
 -include("../../include/wh_number_manager.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
+-define(WNM_BW_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".bandwidth">>).
+
 -define(SERVER, ?MODULE).
 -define(BW_XML_PROLOG, "<?xml version=\"1.0\"?>").
 -define(BW_XML_NAMESPACE, [{'xmlns:xsi', "http://www.w3.org/2001/XMLSchema-instance"}
                            ,{'xmlns:xsd', "http://www.w3.org/2001/XMLSchema"}
                            ,{'xmlns', "http://www.bandwidth.com/api/"}]).
--define(BW_NUMBER_URL, whapps_config:get_string(?WNM_CONFIG_CAT
-                                                   ,<<"bandwidth.numbers_api_url">>
+-define(BW_NUMBER_URL, whapps_config:get_string(?WNM_BW_CONFIG_CAT
+                                                   ,<<"numbers_api_url">>
                                                    ,<<"https://api.bandwidth.com/public/v2/numbers.api">>)).
--define(BW_CDR_URL, whapps_config:get_string(?WNM_CONFIG_CAT
-                                                ,<<"bandwidth.cdrs_api_url">>
+-define(BW_CDR_URL, whapps_config:get_string(?WNM_BW_CONFIG_CAT
+                                                ,<<"cdrs_api_url">>
                                                 ,<<"https://api.bandwidth.com/api/public/v2/cdrs.api">>)).
--define(BW_DEBUG, whapps_config:get_is_true(?WNM_CONFIG_CAT, <<"bandwidth.debug">>, false)).
+-define(BW_DEBUG, whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"debug">>, false)).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Query the Bandwidth.com system for a quanity of avaliable numbers
+%% Query the Bandwidth.com system for a quanity of available numbers
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
@@ -81,15 +83,19 @@ find_numbers(Search, Quanity) ->
 %%--------------------------------------------------------------------
 -spec acquire_number/3 :: (ne_binary(), ne_binary(), json_object()) -> {ok, ne_binary(), json_object()} |
                                                                        {error, ne_binary()}.
-acquire_number(_, <<"avaliable">>, JObj) ->
+acquire_number(_, <<"available">>, JObj) ->
     {ok, <<"in_service">>, JObj};
 acquire_number(_, <<"discovery">>, JObj) ->
-%%    order_number(JObj);
-    {ok, <<"in_service">>, JObj};
+    case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, <<"true">>) of
+        true -> 
+            order_number(JObj);
+        false ->
+            {ok, <<"in_service">>, JObj}
+    end;
 acquire_number(_, <<"claim">>, JObj) ->
     {ok, <<"in_service">>, JObj};
 acquire_number(_, _, _) ->
-    {error, unavaliable}.
+    {error, unavailable}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -111,8 +117,8 @@ release_number(_, JObj) ->
                                            {error, ne_binary()}.
 order_number(JObj) ->
     Id = wh_json:get_string_value(<<"number_id">>, JObj),
-    Endpoint = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"bandwidth.endpoint">>, <<"">>),
-    OrderNamePrefix = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"bandwidth.order_name_prefix">>, <<"Whistle">>),
+    Endpoint = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"endpoint">>, <<"">>),
+    OrderNamePrefix = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Whistle">>),
     OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
     AcquireFor = wh_json:get_ne_value(<<"acquire_for">>, JObj, <<"no_subscriber">>), 
     Props = [{'orderName', [wh_util:to_list(OrderName)]}
@@ -139,7 +145,7 @@ order_number(JObj) ->
 -spec make_numbers_request/2 :: (atom(), proplist()) -> {ok, term()} | {error, term()}.
 make_numbers_request(Verb, Props) ->
     ?LOG("making ~s request to bandwidth.com ~s", [Verb, ?BW_NUMBER_URL]),
-    DevKey = whapps_config:get_string(?WNM_CONFIG_CAT, <<"bandwidth.developer_key">>, <<>>),
+    DevKey = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"developer_key">>, <<>>),
     Request = [{'developerKey', [DevKey]}
                | Props],
     Body = xmerl:export_simple([{Verb, ?BW_XML_NAMESPACE, Request}]
