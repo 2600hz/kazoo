@@ -7,7 +7,7 @@
                                 ,<<"in_service">>, <<"disconnected">>, <<"cancelled">>]).
 -define(WNM_AVALIABLE_STATES, [<<"discovery">>, <<"available">>]).
 
--define(WNM_DEAFULT_CARRIER_MODULES, [<<"wnm_bandwidth">>]).
+-define(WNM_DEAFULT_CARRIER_MODULES, [<<"wnm_local">>]).
 
 -define(WNM_DB_PREFIX, <<"numbers/">>).
 -define(WNM_DOC_VSN, <<"1">>).
