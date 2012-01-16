@@ -136,7 +136,7 @@ is_1npan(DID) ->
 %% +18001234567 -> +18001234567
 -spec to_e164/1 :: (ne_binary()) -> ne_binary().
 to_e164(<<"011", N/binary>>) ->
-    to_e164(N);
+    <<$+, N/binary>>;
 to_e164(<<"+1", _/binary>> = E164) when erlang:byte_size(E164) =:= 12 ->
     E164;
 %% 18001234567 -> +18001234567
