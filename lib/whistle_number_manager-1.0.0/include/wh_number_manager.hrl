@@ -3,9 +3,9 @@
 
 -define(WNM_CONFIG_CAT, <<"number_manager">>).
 
--define(WNM_NUMBER_STATUS, [<<"discovery">>, <<"avaliable">>, <<"reserved">>, <<"released">>
+-define(WNM_NUMBER_STATUS, [<<"discovery">>, <<"available">>, <<"reserved">>, <<"released">>
                                 ,<<"in_service">>, <<"disconnected">>, <<"cancelled">>]).
--define(WNM_AVALIABLE_STATES, [<<"discovery">>, <<"avaliable">>]).
+-define(WNM_AVALIABLE_STATES, [<<"discovery">>, <<"available">>]).
 
 -define(WNM_DEAFULT_CARRIER_MODULES, [<<"wnm_bandwidth">>]).
 

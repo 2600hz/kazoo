@@ -24,7 +24,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Query the various providers for avaliable numbers.
+%% Query the various providers for available numbers.
 %% @end
 %%--------------------------------------------------------------------
 -spec find/1 :: (ne_binary()) -> [] | [ne_binary(),...].
@@ -323,7 +323,7 @@ free_numbers(AccountId) ->
 
 prepare_find_results([], Found) ->
     Results = lists:flatten(Found),
-    ?LOG("discovered ~p avaliable numbers", [length(Results)]),
+    ?LOG("discovered ~p available numbers", [length(Results)]),
     Results;
 prepare_find_results([{Module, {ok, ModuleResults}}|T], Found) ->
     case wh_json:get_keys(ModuleResults) of
@@ -347,7 +347,7 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
                 true -> 
                     prepare_find_results(Numbers, ModuleName, ModuleResults, [Number|Found]);
                 false -> 
-                    ?LOG("the discovery '~s' is not avaliable: ~s", [Number, State]),
+                    ?LOG("the discovery '~s' is not available: ~s", [Number, State]),
                     prepare_find_results(Numbers, ModuleName, ModuleResults, Found)
             end;
         {ok, _} ->

@@ -160,7 +160,7 @@ create_slot(Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Returns the provided slot number or the next avaliable if none
+%% Returns the provided slot number or the next available if none
 %% was provided
 %% @end
 %%--------------------------------------------------------------------

@@ -102,7 +102,7 @@ wait_for_resource(Timeout) ->
                     Error = get_value(<<"Failure-Message">>, Msg),
                     {error, Error};
                 { <<"originate">>, <<"resource_error">> } ->
-                    {error, resources_unavaliable};
+                    {error, resources_unavailable};
                 _ ->
                     wait_for_resource(Timeout)
             end

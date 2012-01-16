@@ -20,7 +20,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Given a number doc determine if the carrier module is avaliable
+%% Given a number doc determine if the carrier module is available
 %% and if return the name as well as the data
 %% @end
 %%--------------------------------------------------------------------
@@ -41,7 +41,7 @@ get_carrier_module(JObj) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Create a list of all avaliable carrier modules
+%% Create a list of all available carrier modules
 %% @end
 %%--------------------------------------------------------------------
 -spec list_carrier_modules/0 :: () -> [] | [atom(),...].
