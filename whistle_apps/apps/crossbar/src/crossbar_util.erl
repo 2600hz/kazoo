@@ -22,6 +22,8 @@
 -export([response_db_missing/1]).
 -export([response_db_fatal/1]).
 -export([binding_heartbeat/1, binding_heartbeat/2]).
+-export([get_account_realm/1, get_account_realm/2]).
+-export([disable_account/1, enable_account/1, change_pvt_enabled/2]).
 -export([put_reqid/1]).
 -export([cache_doc/2, cache_view/3]).
 -export([flush_doc_cache/2]).
@@ -289,6 +291,97 @@ store(Key, Data, #cb_context{storage=Storage}=Context) ->
 fetch(Key, #cb_context{storage=Storage}) ->
     props:get_value(Key, Storage).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieves the account realm
+%% @end
+%%--------------------------------------------------------------------
+-spec get_account_realm/1 :: (ne_binary() | #cb_context{}) -> undefined | ne_binary().
+-spec get_account_realm/2 :: (undefined | ne_binary(), ne_binary()) -> undefined | ne_binary().
+
+get_account_realm(#cb_context{db_name=Db, account_id=AccountId}) ->
+    get_account_realm(Db, AccountId);
+get_account_realm(AccountId) ->
+    get_account_realm(wh_util:format_account_id(AccountId, encoded), AccountId).
+
+get_account_realm(undefined, _) ->
+    undefined;
+get_account_realm(Db, AccountId) ->
+    case couch_mgr:open_doc(Db, AccountId) of
+        {ok, JObj} ->
+            wh_json:get_ne_value(<<"realm">>, JObj);
+        {error, R} ->
+            ?LOG("error while looking up account realm: ~p", [R]),
+            undefined
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Flag all descendants of the account id as disabled
+%% @end
+%%--------------------------------------------------------------------
+-spec disable_account/1 :: (undefined | ne_binary()) -> ok.
+disable_account(undefined) ->
+    ok;
+disable_account(AccountId) ->
+    ViewOptions = [{<<"startkey">>, [AccountId]}, {<<"endkey">>, [AccountId, wh_json:new()]}],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
+        {ok, JObjs} ->
+            [change_pvt_enabled(false, wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
+            ok;
+        {error, R}=E ->
+            ?LOG("unable to disable descendants of ~s: ~p", [AccountId, R]),
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Flag all descendants of the account id as enabled
+%% @end
+%%--------------------------------------------------------------------
+-spec enable_account/1 :: (undefined | ne_binary()) -> ok.
+enable_account(undefined) ->
+    ok;
+enable_account(AccountId) ->
+    ViewOptions = [{<<"startkey">>, [AccountId]}, {<<"endkey">>, [AccountId, wh_json:new()]}],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
+        {ok, JObjs} ->
+            [change_pvt_enabled(true, wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
+            ok;
+        {error, R}=E ->
+            ?LOG("unable to enable descendants of ~s: ~p", [AccountId, R]),
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Update all descendants of the account id pvt_enabled flag with State
+%% @end
+%%--------------------------------------------------------------------
+change_pvt_enabled(_, undefined) ->
+    ok;
+change_pvt_enabled(State, AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    try 
+      {ok, JObj1} = couch_mgr:open_doc(AccountDb, AccountId),
+      ?LOG("set pvt_enabled to ~s on account ~s", [State, AccountId]),
+      {ok, JObj2} = couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_enabled">>, State, JObj1)),
+      case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
+          {ok, Rev} ->
+              couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, JObj2));
+          _Else ->
+              couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, JObj2))
+      end
+    catch
+        _:R ->
+            ?LOG("unable to set pvt_enabled to ~s on account ~s: ~p", [State, AccountId, R]),
+            {error, R}
+    end.
+    
 -spec cache_view/3 :: (ne_binary(), proplist(), json_object()) -> false | ok.
 cache_view(Db, ViewOptions, JObj) ->
     {ok, Srv} = crossbar_sup:cache_proc(),

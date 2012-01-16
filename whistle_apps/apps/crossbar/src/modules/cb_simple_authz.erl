@@ -102,6 +102,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
                  ,{RD, #cb_context{req_nouns=[{?WH_ACCOUNTS_DB,[]}], req_verb=Verb, auth_account_id=AuthAccountId}=Context}}, State) ->
+    crossbar_util:binding_heartbeat(Pid),
     case is_superduper_admin(AuthAccountId) of
         true ->
             Pid ! {binding_result, true, {RD, Context}};
@@ -246,7 +247,15 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
             false
     end.
 
-is_superduper_admin(undefined) -> false;
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns true if the request contains a system admin module.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_superduper_admin/1 :: (undefined | ne_binary()) -> boolean().
+is_superduper_admin(undefined) ->
+    false;
 is_superduper_admin(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     case crossbar_util:open_doc(AccountDb, AccountId) of

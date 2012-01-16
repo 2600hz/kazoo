@@ -11,6 +11,7 @@
 
 -export([find_numbers/2]).
 -export([acquire_number/3]).
+-export([release_number/2]).
 
 -include("../../include/wh_number_manager.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
@@ -73,22 +74,61 @@ find_numbers(Search, Quanity) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number/3 :: (ne_binary(), ne_binary(), json_object()) -> {ok, ne_binary(), json_object()}
-                                                                           | {error, ne_binary()}.
+-spec acquire_number/3 :: (ne_binary(), ne_binary(), json_object()) -> {ok, ne_binary(), json_object()} |
+                                                                       {error, ne_binary()}.
 acquire_number(_, <<"avaliable">>, JObj) ->
     {ok, <<"in_service">>, JObj};
 acquire_number(_, <<"discovery">>, JObj) ->
+%%    order_number(JObj);
     {ok, <<"in_service">>, JObj};
 acquire_number(_, <<"claim">>, JObj) ->
     {ok, <<"in_service">>, JObj};
 acquire_number(_, _, _) ->
     {error, unavaliable}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Release a number from the routing table
+%% @end
+%%--------------------------------------------------------------------
+-spec release_number/2 :: (ne_binary(), json_object()) -> {ok, json_object()}.
+release_number(_, JObj) ->
+    {ok, JObj}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Order a number given the discovery json object
+%% @end
+%%--------------------------------------------------------------------
+-spec order_number/1 :: (json_object()) -> {ok, ne_binary(), json_object()} |
+                                           {error, ne_binary()}.
+order_number(JObj) ->
+    Id = wh_json:get_string_value(<<"number_id">>, JObj),
+    Endpoint = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"bandwidth.endpoint">>, <<"">>),
+    OrderNamePrefix = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"bandwidth.order_name_prefix">>, <<"Whistle">>),
+    OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
+    AcquireFor = wh_json:get_ne_value(<<"acquire_for">>, JObj, <<"no_subscriber">>), 
+    Props = [{'orderName', [wh_util:to_list(OrderName)]}
+             ,{'extRefID', [wh_util:to_list(AcquireFor)]}
+             ,{'numberIDs', [{'id', [Id]}]}
+             ,{'subscriber', [wh_util:to_list(AcquireFor)]}
+             ,{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}
+            ],
+    case make_numbers_request('basicNumberOrder', Props) of
+        {error, _}=E -> 
+            E;
+        {ok, Xml} ->
+            Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
+            {ok, <<"in_service">>, number_order_response_to_json(Response)}
+    end.
+        
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -106,7 +146,7 @@ make_numbers_request(Verb, Props) ->
                                ,xmerl_xml
                                ,[{prolog, ?BW_XML_PROLOG}]),
     Headers = [{"Accept", "*/*"}
-               ,{"User-Agent", "Loop Start Erlang Library 0.0.1"}
+               ,{"User-Agent", "Whistle Number Manager 1.0.0"}
                ,{"X-BWC-IN-Control-Processing-Type", "process"}
                ,{"Content-Type", "text/xml"}],
     HTTPOptions = [{ssl,[{verify,0}]}
@@ -150,8 +190,15 @@ make_numbers_request(Verb, Props) ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n~p~n~s~n", [Code, Response])
                                               ,[append]),
-            {Xml, _} = xmerl_scan:string(Response),
-            verify_response(Xml);
+            ?LOG("received response from bandwidth.com"),
+            try
+                {Xml, _} = xmerl_scan:string(Response),
+                verify_response(Xml)
+            catch
+                _:R ->
+                    ?LOG("failed to decode xml: ~p", [R]),
+                    {error, empty_response}
+            end;
         {ok, Code, _, _Response} ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n~p~n~s~n", [Code, _Response])
@@ -166,10 +213,38 @@ make_numbers_request(Verb, Props) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Convert a number order response to json
+%% @end
+%%--------------------------------------------------------------------
+-spec number_order_response_to_json/1 :: (term()) -> json_object().
+number_order_response_to_json([]) ->
+    wh_json:new();
+number_order_response_to_json([Xml]) ->
+    number_order_response_to_json(Xml);
+number_order_response_to_json(Xml) ->
+    Props = [{<<"order_id">>, get_xml_value("orderID/text()", Xml)}
+             ,{<<"order_number">>, get_xml_value("orderNumber/text()", Xml)}
+             ,{<<"order_name">>, get_xml_value("orderName/text()", Xml)}
+             ,{<<"ext_ref_id">>, get_xml_value("extRefID/text()", Xml)}
+             ,{<<"accountID">>, get_xml_value("accountID/text()", Xml)}
+             ,{<<"accountName">>, get_xml_value("accountName/text()", Xml)}
+             ,{<<"quantity">>, get_xml_value("quantity/text()", Xml)}
+             ,{<<"number">>, number_search_response_to_json(
+                               xmerl_xpath:string("telephoneNumbers/telephoneNumber", Xml))}
+            ],
+    wh_json:from_list([{K, V} || {K, V} <- Props, V =/= undefined]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Convert a number search response XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_search_response_to_json/1 :: (term()) -> {ok, json_object}.
+-spec number_search_response_to_json/1 :: (term()) -> json_object().
+number_search_response_to_json([]) ->
+    wh_json:new();
+number_search_response_to_json([Xml]) ->
+    number_search_response_to_json(Xml);
 number_search_response_to_json(Xml) ->
     Props = [{<<"number_id">>, get_xml_value("numberID/text()", Xml)}
              ,{<<"ten_digit">>, get_xml_value("tenDigit/text()", Xml)}
@@ -187,10 +262,12 @@ number_search_response_to_json(Xml) ->
 %% Convert a rate center XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec rate_center_to_json/1 :: (list()) -> {ok, json_object}.
+-spec rate_center_to_json/1 :: (list()) -> json_object().
 rate_center_to_json([]) ->
     wh_json:new();
 rate_center_to_json([Xml]) ->
+    rate_center_to_json(Xml);
+rate_center_to_json(Xml) ->
     Props = [{<<"name">>, get_xml_value("name/text()", Xml)}
              ,{<<"lata">>, get_xml_value("lata/text()", Xml)}
              ,{<<"state">>, get_xml_value("state/text()", Xml)}
@@ -205,14 +282,19 @@ rate_center_to_json([Xml]) ->
 %%--------------------------------------------------------------------
 -spec get_xml_value/2 :: (string(), term()) -> undefined | binary().    
 get_xml_value(Path, Xml) ->
-    case xmerl_xpath:string(Path, Xml) of
+    try xmerl_xpath:string(Path, Xml) of
         [#xmlText{value=Value}] ->
             wh_util:to_binary(Value);
         [#xmlText{}|_]=Values ->
             [wh_util:to_binary(Value) 
              || #xmlText{value=Value} <- Values];
         _ -> undefined
+    catch
+        E:R ->
+            ?LOG("~s getting value of '~s': ~p", [E, Path, R]),
+            undefined
     end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -224,7 +306,9 @@ get_xml_value(Path, Xml) ->
 verify_response(Xml) ->
     case get_xml_value("/*/status/text()", Xml) of
         <<"success">> -> 
+            ?LOG("request was successful"),
             {ok, Xml};
         _ ->
+            ?LOG("request failed"),
             {error, get_xml_value("/*/errors/error/message/text()", Xml)}
     end.

@@ -24,22 +24,19 @@ cache_user_key(Realm, User) -> {?MODULE, sip_credentials, Realm, User}.
 %% look up a cached registration by realm and optionally username
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_registrations/1 :: (Realm) -> {'ok', json_objects()} when
-      Realm :: binary().
+-spec lookup_registrations/1 :: (ne_binary()) -> {'ok', json_objects()}.
 lookup_registrations(Realm) when not is_binary(Realm) ->
     lookup_registrations(wh_util:to_binary(Realm));
 lookup_registrations(Realm) ->
     {ok, Cache} = registrar_sup:cache_proc(),
     Registrations = wh_cache:filter_local(Cache, fun({?MODULE, registration, Realm1, _}, _) when Realm =:= Realm1 ->
                                                  true;
-					    (_K, _V) ->
+                                            (_K, _V) ->
                                                  false
-					 end),
+                                         end),
     {'ok', Registrations}.
 
--spec lookup_registration/2 :: (Realm, Username) -> {'ok', json_object()} | {'error', 'not_found'} when
-      Realm :: binary(),
-      Username :: binary().
+-spec lookup_registration/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found'}.
 lookup_registration(Realm, Username) when not is_binary(Realm) ->
     lookup_registration(wh_util:to_binary(Realm), Username);
 lookup_registration(Realm, Username) when not is_binary(Username) ->
@@ -59,9 +56,9 @@ fetch_all_registrations() ->
     {ok, Cache} = registrar_sup:cache_proc(),
     Registrations = wh_cache:filter_local(Cache, fun({?MODULE, registration, _, _}, _) ->
                                                  true;
-					    (_K, _V) ->
+                                            (_K, _V) ->
                                                  false
-					 end),
+                                         end),
     {'ok', Registrations}.
 
 %%-----------------------------------------------------------------------------
@@ -70,11 +67,12 @@ fetch_all_registrations() ->
 %% calculate expiration time
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_expires/1 :: (JObj) -> binary() when
-      JObj :: json_object().
+-spec get_expires/1 :: (ne_binary()) -> binary().
 get_expires(JObj) ->
+    Multiplier = whapps_config:get_float(?CONFIG_CAT, <<"expires_multiplier">>, 1.25),
+    Fudge = whapps_config:get_float(?CONFIG_CAT, <<"expires_fudge_factor">>, 120),
     Expiry = wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
-    round(Expiry * 1.25) + 120.
+    round(Expiry * Multiplier) + Fudge.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -82,8 +80,7 @@ get_expires(JObj) ->
 %% hash a registration contact string
 %% @end
 %%-----------------------------------------------------------------------------
--spec hash_contact/1 :: (Contact) -> binary() when
-      Contact :: binary().
+-spec hash_contact/1 :: (ne_binary()) -> binary().
 hash_contact(Contact) ->
     wh_util:to_binary(wh_util:to_hex(erlang:md5(Contact))).
 
@@ -93,72 +90,69 @@ hash_contact(Contact) ->
 %% look up the user and realm in the database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_auth_user/2 :: (Name, Realm) -> {'ok', json_object()} | {'error', 'not_found'} when
-      Name :: binary(),
-      Realm :: binary().
+-spec lookup_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found'}.
 lookup_auth_user(Name, Realm) ->
     ?LOG("looking up auth creds for ~s@~s", [Name, Realm]),
     {ok, Cache} = registrar_sup:cache_proc(),
     CacheKey = cache_user_key(Realm, Name),
     case wh_cache:fetch_local(Cache, CacheKey) of
-	{'error', not_found} ->
+        {'error', not_found} ->
             case get_auth_user(Name, Realm) of
                 {'ok', UserJObj} ->
+                    CacheTTL = whapps_config:get_integer(?CONFIG_CAT, <<"credentials_cache_ttl">>, 300),
                     ?LOG("storing ~s@~s in cache", [Name, Realm]),
-                    wh_cache:store_local(Cache, CacheKey, UserJObj),
+                    wh_cache:store_local(Cache, CacheKey, UserJObj, CacheTTL),
                     {'ok', UserJObj};
                 {error, _}=E ->
                     E
             end;
-	{'ok', _}=OK ->
-	    ?LOG("pulling auth user from cache"),
-	    OK
+        {'ok', _}=OK ->
+            ?LOG("pulling auth user from cache"),
+            OK
     end.
 
--spec get_auth_user/2 :: (Name, Realm) -> {'ok', json_object()} | {'error', 'not_found'} when
-      Name :: binary(),
-      Realm :: binary().
+-spec get_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found'}.
 get_auth_user(Name, Realm) ->
     case whapps_util:get_account_by_realm(Realm) of
-	{'error', E} ->
-	    ?LOG("failed to lookup realm ~s in accounts: ~p", [Realm, E]),
-	    get_auth_user_in_agg(Name, Realm);
-	{'ok', []} ->
-	    ?LOG("failed to find realm ~s in accounts", [Realm]),
-	    get_auth_user_in_agg(Name, Realm);
-	{'ok', AccountDB} ->
-	    get_auth_user_in_account(Name, Realm, AccountDB)
+        {'error', E} ->
+            ?LOG("failed to lookup realm ~s in accounts: ~p", [Realm, E]),
+            get_auth_user_in_agg(Name, Realm);
+        {'ok', []} ->
+            ?LOG("failed to find realm ~s in accounts", [Realm]),
+            get_auth_user_in_agg(Name, Realm);
+        {'ok', AccountDB} ->
+            get_auth_user_in_account(Name, Realm, AccountDB)
     end.
 
--spec get_auth_user_in_agg/2 :: (Name, Realm) -> {'ok', json_object()} | {'error', 'not_found'} when
-      Name :: binary(),
-      Realm :: binary().
+-spec get_auth_user_in_agg/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found'}.
 get_auth_user_in_agg(Name, Realm) ->
-    case couch_mgr:get_results(?AUTH_DB, <<"credentials/lookup">>, [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}]) of
-	{'error', R} ->
-	    ?LOG_END("failed to look up SIP credentials ~p in aggregate", [R]),
-	    {'error', 'not_found'};
-	{'ok', []} ->
-	    ?LOG("~s@~s not found in aggregate", [Name, Realm]),
-	    {'error', 'not_found'};
-	{'ok', [User|_]} ->
-	    ?LOG("~s@~s found in aggregate", [Name, Realm]),
-	    {'ok', User}
+    UseAggregate = whapps_config:get_is_true(?CONFIG_CAT, <<"use_aggregate">>, false),
+    ViewOptions = [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}],
+    case UseAggregate andalso couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
+        false ->
+            ?LOG_END("SIP credential aggregate db is disabled"),
+            {'error', 'not_found'};            
+        {'error', R} ->
+            ?LOG_END("failed to look up SIP credentials ~p in aggregate", [R]),
+            {'error', 'not_found'};
+        {'ok', []} ->
+            ?LOG("~s@~s not found in aggregate", [Name, Realm]),
+            {'error', 'not_found'};
+        {'ok', [User|_]} ->
+            ?LOG("~s@~s found in aggregate", [Name, Realm]),
+            {'ok', User}
     end.
 
--spec get_auth_user_in_account/3 :: (Name, Realm, AccountDB) -> {'ok', json_object()} | {'error', 'not_found'} when
-      Name :: binary(),
-      Realm :: binary(),
-      AccountDB :: binary().
+-spec get_auth_user_in_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found'}.
 get_auth_user_in_account(Name, Realm, AccountDB) ->
-    case couch_mgr:get_results(AccountDB, <<"devices/sip_credentials">>, [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}]) of
-	{'error', R} ->
-	    ?LOG("failed to look up SIP credentials in ~s: ~p", [AccountDB, R]),
-	    get_auth_user_in_agg(Name, Realm);
-	{'ok', []} ->
-	    ?LOG("~s@~s not found in ~s", [Name, Realm, AccountDB]),
-	    get_auth_user_in_agg(Name, Realm);
-	{'ok', [User|_]} ->
-	    ?LOG("~s@~s found in account db: ~s", [Name, Realm, AccountDB]),
-	    {'ok', User}
+    case couch_mgr:get_results(AccountDB, <<"devices/sip_credentials">>, [{<<"key">>, Name}, {<<"include_docs">>, true}]) of
+        {'error', R} ->
+            ?LOG("failed to look up SIP credentials in ~s: ~p", [AccountDB, R]),
+            get_auth_user_in_agg(Name, Realm);
+        {'ok', []} ->
+            ?LOG("~s@~s not found in ~s", [Name, Realm, AccountDB]),
+            get_auth_user_in_agg(Name, Realm);
+        {'ok', [User|_]} ->
+            ?LOG("~s@~s found in account db: ~s", [Name, Realm, AccountDB]),
+            {'ok', User}
     end.

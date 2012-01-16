@@ -108,22 +108,34 @@ handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Con
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
-                  timer:sleep(1000),
-                  try stepswitch_maintenance:reconcile(Context1#cb_context.account_id, false) catch _:_ -> ok end
+                  Context1 = case crossbar_doc:save(Context) of
+                                #cb_context{account_id=AccountId, doc=JObj, resp_status=success}=C ->
+                                     spawn(fun() -> 
+                                                   [wh_number_manager:reconcile_number(Number, AccountId)
+                                                    || Number <- wh_json:get_value(<<"numbers">>, JObj, [])]
+                                           end),
+                                    C;
+                                Else ->
+                                    Else
+                            end,
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
-                  timer:sleep(1000),
-                  try stepswitch_maintenance:reconcile(Context1#cb_context.account_id, false) catch _:_ -> ok end
+                  Context1 = case crossbar_doc:save(Context) of
+                                #cb_context{account_id=AccountId, doc=JObj, resp_status=success}=C ->
+                                     spawn(fun() -> 
+                                                   [wh_number_manager:reconcile_number(Number, AccountId)
+                                                    || Number <- wh_json:get_value(<<"numbers">>, JObj, [])]
+                                           end),
+                                    C;
+                                Else ->
+                                    Else
+                            end,
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
 
@@ -131,10 +143,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
-                  timer:sleep(1000),
-                  try stepswitch_maintenance:reconcile(Context1#cb_context.account_id, false) catch _:_ -> ok end
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
 

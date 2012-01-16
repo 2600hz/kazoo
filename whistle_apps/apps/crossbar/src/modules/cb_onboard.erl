@@ -304,7 +304,7 @@ create_account(JObj, Context, {Pass, Fail}) ->
                           wh_json:set_value(<<"_id">>, Id, J) 
                   end
                   ,fun(J) ->
-                           case wh_json:get_value(<<"first_name">>, J) of
+                           case wh_json:get_ne_value(<<"realm">>, J) of
                                undefined -> 
                                    RealmSuffix = whapps_config:get_binary(?OB_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
                                    Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"realm_strength">>, 3),
@@ -371,31 +371,16 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
             Error = wh_json:set_value([<<"account_id">>, <<"required">>], <<"account failed validation">>, wh_json:new()),
             {Pass, wh_json:set_value(<<"braintree">>, Error, Fail)};
         AccountId ->
-            CreditCard = wh_json:get_value(<<"braintree">>, JObj, wh_json:new()),
-            {First, Last} = case binary:split(wh_json:get_value(<<"cardholder_name">>, CreditCard, <<>>), <<" ">>) of
-                                [F, L] -> {F, L};
-                                [F] -> {F, <<"account">>};
-                                _ -> {<<"new">>, <<"account">>}
-                            end,
+            Customer = wh_json:get_value(<<"braintree">>, JObj, wh_json:new()),
             Generators = [fun(J) ->
-                                  Id = couch_mgr:get_uuid(),
-                                  wh_json:set_value(<<"id">>, Id, J) 
+                                  case wh_json:get_ne_value(<<"credit_card">>, J) of
+                                      undefined -> wh_json:set_value(<<"credit_card">>, wh_json:new(), J);
+                                      _Else -> J
+                                  end
                           end
-                          ,fun(J) -> wh_json:set_value(<<"make_default">>, true, J) end
-                          ,fun(J) -> wh_json:set_value([<<"billing_address">>, <<"first_name">>], First, J) end
-                          ,fun(J) -> wh_json:set_value([<<"billing_address">>, <<"last_name">>], Last, J) end
                          ],
-            Customer = [{<<"id">>, AccountId}
-                        ,{<<"first_name">>, First}
-                        ,{<<"last_name">>, Last}
-                        ,{<<"email">>, wh_json:get_value(<<"email">>, Account)}
-                        ,{<<"company">>, wh_json:get_value(<<"name">>, Account, <<"new account">>)}
-                        ,{<<"website">>, wh_json:get_value(<<"realm">>, Account)}
-                        ,{<<"phone">>, wh_json:get_value(<<"phone_number">>, Account)}
-                        ,{<<"credit_card">>, lists:foldr(fun(F, J) -> F(J) end, CreditCard, Generators)}
-                       ],
             Payload = [undefined
-                       ,Context#cb_context{req_data=wh_json:from_list(Customer)
+                       ,Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Customer, Generators)
                                            ,account_id=AccountId
                                            ,req_verb = <<"post">>}
                        ,<<"customer">>
@@ -430,7 +415,7 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
                       (J) -> J
                    end
                   ,fun(J) ->
-                           case wh_json:get_value(<<"credentials">>, J) of
+                           case wh_json:get_ne_value(<<"credentials">>, J) of
                                undefined -> J;
                                Creds -> 
                                    wh_json:set_value(<<"pvt_md5_auth">>, Creds, 
@@ -447,14 +432,14 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
                            end
                    end
                   ,fun(J) ->
-                           case wh_json:get_value(<<"first_name">>, J) of
+                           case wh_json:get_ne_value(<<"first_name">>, J) of
                                undefined -> 
                                    wh_json:set_value(<<"first_name">>, <<"User">>, J);
                                _ -> J
                            end
                    end
                   ,fun(J) ->
-                           case wh_json:get_value(<<"last_name">>, J) of
+                           case wh_json:get_ne_value(<<"last_name">>, J) of
                                undefined -> 
                                    wh_json:set_value(<<"last_name">>, wh_util:to_binary(Iteration), J);
                                _ -> J
@@ -686,9 +671,10 @@ populate_new_account([{<<"phone_numbers">>, #cb_context{storage=Number}=Context}
     end;
 
 populate_new_account([{<<"braintree">>, Context}|Props], AccountDb, Results) ->
+    AccountId = wh_util:format_account_id(AccountDb, raw),
     Payload = [undefined
                ,Context#cb_context{db_name=AccountDb
-                                   ,account_id=wh_util:format_account_id(AccountDb, raw)
+                                   ,account_id=AccountId
                                    ,req_verb = <<"post">>}
                ,<<"customer">>
               ],
@@ -696,6 +682,7 @@ populate_new_account([{<<"braintree">>, Context}|Props], AccountDb, Results) ->
         [_, #cb_context{resp_status=success} | _] ->
             populate_new_account(Props, AccountDb, Results);
         [_, #cb_context{resp_error_msg=ErrMsg, resp_error_code=ErrCode, resp_data=ErrData} | _] ->
+            crossbar_util:disable_account(AccountId),
             Error = wh_json:from_list([{<<"error">>, ErrCode}, {<<"message">>, ErrMsg}, {<<"data">>, ErrData}]),
             populate_new_account(Props, AccountDb
                                  ,wh_json:set_value([<<"errors">>, <<"braintree">>], Error, Results))
