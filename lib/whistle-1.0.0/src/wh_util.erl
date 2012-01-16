@@ -45,6 +45,8 @@ pad_binary(Bin, _, _) ->
 join_binary(Bins) ->
     join_binary(Bins, <<", ">>).
 
+join_binary([], _) ->
+    <<>>;
 join_binary([Bin], _) ->
     Bin;
 join_binary([Bin|Rest], Sep) -> 
