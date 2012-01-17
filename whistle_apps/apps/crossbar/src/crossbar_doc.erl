@@ -135,7 +135,7 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
                       true -> 
                           [{<<"include_docs">>, true} | props:delete(<<"include_docs">>, Options)]
                   end,
-    case couch_mgr:get_results(DB, View, ViewOptions) of
+    case couch_mgr:get_results(DB, View, [{<<"stale">>, <<"update_after">>}|ViewOptions]) of
         {error, invalid_view_name} ->
             ?LOG("loading view ~s from ~s failed: invalid view", [View, DB]),
             crossbar_util:response_missing_view(Context);
