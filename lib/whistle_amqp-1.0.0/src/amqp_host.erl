@@ -428,7 +428,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.nack'{}=BasicNack}, #state{conn
 handle_cast({misc_req, From, #'exchange.declare'{}=ED}
             ,#state{misc_channel={C,_}, use_federation=UseFederation}=State) ->
     spawn(fun() ->
-                  ?LOG("sending exchange.declare to ~p", [C]),
+                  ?LOG("sending exchange.declare to ~p (federated: ~s)", [C, UseFederation]),
                   case amqp_channel:call(C, exchange_declare(ED, UseFederation)) of
                       #'exchange.declare_ok'{} ->
                           ?LOG("exchange declared"),
