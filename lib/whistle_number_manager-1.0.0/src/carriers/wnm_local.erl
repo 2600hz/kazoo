@@ -18,7 +18,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Query the local system for a quanity of avaliable numbers
+%% Query the local system for a quanity of available numbers
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
@@ -27,20 +27,20 @@ find_numbers(Number, Quanity) when size(Number) < 5 ->
     find_numbers(<<"+1", Number/binary>>, Quanity);
 find_numbers(Number, Quanity) ->
     Db = wnm_util:number_to_db_name(Number),
-    case couch_mgr:get_results(Db, <<"numbers/status">>, [{<<"startkey">>, [<<"avaliable">>, Number]}
-                                                          ,{<<"endkey">>, [<<"avaliable">>, <<Number/binary, "\ufff0">>]}
+    case couch_mgr:get_results(Db, <<"numbers/status">>, [{<<"startkey">>, [<<"available">>, Number]}
+                                                          ,{<<"endkey">>, [<<"available">>, <<Number/binary, "\ufff0">>]}
                                                           ,{<<"limit">>, Quanity}
                                                          ]) of
         {ok, []} -> 
-            ?LOG("found no avaliable local numbers"),
-            {error, non_avaliable};
+            ?LOG("found no available local numbers"),
+            {error, non_available};
         {ok, JObjs} ->
-            ?LOG("found ~p avaliable local numbers", [length(JObjs)]),
+            ?LOG("found ~p available local numbers", [length(JObjs)]),
             {ok, wh_json:from_list([{wh_json:get_value(<<"id">>, JObj), wh_json:new()}
                                     || JObj <- JObjs
                                    ])};
         {error, R}=E ->
-            ?LOG("failed to lookup avaliable local numbers: ~p", [R]),
+            ?LOG("failed to lookup available local numbers: ~p", [R]),
             E
     end.
 
@@ -52,12 +52,12 @@ find_numbers(Number, Quanity) ->
 %%--------------------------------------------------------------------
 -spec acquire_number/3 :: (ne_binary(), ne_binary(), json_object()) -> {ok, ne_binary(), json_object()}
                                                                            | {error, ne_binary()}.
-acquire_number(_, <<"avaliable">>, JObj) ->
+acquire_number(_, <<"available">>, JObj) ->
     {ok, <<"in_service">>, JObj};
 acquire_number(_, <<"claim">>, JObj) ->
     {ok, <<"in_service">>, JObj};
 acquire_number(_, _, _) ->
-    {error, unavaliable}.
+    {error, unavailable}.
 
 %%--------------------------------------------------------------------
 %% @private

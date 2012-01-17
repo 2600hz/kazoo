@@ -20,8 +20,8 @@
                       ?GET_CONFIG(<<"has_been_enabled_prompt">>, <<"/system_media/cf-now_forwarded_to">>)
                   ,has_been_disabled = 
                       ?GET_CONFIG(<<"has_been_disabled_prompt">>, <<"/system_media/cf-disabled">>)
-                  ,feature_not_avaliable =
-                      ?GET_CONFIG(<<"feature_not_avaliable">>, <<"/system_media/cf-not_available">>)
+                  ,feature_not_available =
+                      ?GET_CONFIG(<<"feature_not_available">>, <<"/system_media/cf-not_available">>)
                   ,enter_forwarding_number =
                       ?GET_CONFIG(<<"enter_forwarding_number_prompt">>, <<"/system_media/cf-enter_number">>)
                   ,main_menu_enabled = 
@@ -59,7 +59,7 @@
 handle(Data, Call) ->
     case get_call_forward(Call) of
         {error, #callfwd{prompts=Prompts}} ->
-            catch({ok, _} = cf_call_command:b_play(Prompts#prompts.feature_not_avaliable, Call)),
+            catch({ok, _} = cf_call_command:b_play(Prompts#prompts.feature_not_available, Call)),
             cf_exe:stop(Call);
         CF ->
             cf_call_command:answer(Call),

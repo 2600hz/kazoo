@@ -396,7 +396,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %% @private
 %% this function determines if the callflow module specified at the 
-%% current node is 'avaliable' and attempts to launch it if so. 
+%% current node is 'available' and attempts to launch it if so. 
 %% Otherwise it will advance to the next child in the flow
 %% @doc
 %% @end

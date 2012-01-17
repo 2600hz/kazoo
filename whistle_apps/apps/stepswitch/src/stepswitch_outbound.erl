@@ -411,8 +411,8 @@ response({fail, BridgeResp}, JObj) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 response({error, no_resources}, JObj) ->
-    ?LOG_END("no avaliable resources"),
-    ErrorMsg = <<"no avaliable resources">>,
+    ?LOG_END("no available resources"),
+    ErrorMsg = <<"no available resources">>,
     To = wh_json:get_value(<<"To-DID">>, JObj),
     whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
                                     ,"Alert: could not process ~s~n"

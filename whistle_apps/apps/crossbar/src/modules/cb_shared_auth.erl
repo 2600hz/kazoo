@@ -291,7 +291,7 @@ validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context, XBarUrl) 
     end;
 validate([], #cb_context{auth_doc=undefined, req_verb = <<"get">>}=Context, _) ->
     ?LOG("valid shared auth request received but there is no authorizing doc (noauth running?)"),
-    crossbar_util:response(error, <<"authentication information is not avaliable">>, 401, Context);
+    crossbar_util:response(error, <<"authentication information is not available">>, 401, Context);
 validate([], #cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context, _) ->
     ?LOG("valid shared auth request received, creating response"),
     AccountId = wh_json:get_value(<<"account_id">>, JObj),

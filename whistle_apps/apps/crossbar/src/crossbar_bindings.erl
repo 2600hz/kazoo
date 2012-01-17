@@ -367,10 +367,11 @@ matches(_, _) -> false.
 -spec map_bind_results/4 :: (queue(), term(), [binding_result(),...], ne_binary()) -> [{term() | 'timeout', term()}].
 map_bind_results(Pids, Payload, Results, Route) ->
     S = self(),
-
+    ReqId = get(callid),
     SpawnedPids = [ spawn(fun() ->
+                                  put(callid, ReqId),
                                   P ! {binding_fired, self(), Route, Payload},
-                                  case wait_for_map_binding() of
+                                  case wait_for_map_binding(P, Route) of
                                       {ok,  Resp, Pay1} -> S ! {self(), {Resp, Pay1}};
                                       timeout -> S ! {self(), {timeout, Payload}};
                                       {error, E} -> S ! {self(), {error, E, P}}
@@ -387,14 +388,19 @@ map_bind_results(Pids, Payload, Results, Route) ->
 %% Run a receive loop if we recieve hearbeat, otherwise collect binding results
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_map_binding/0 :: () -> {'ok', atom(), term()} | 'timeout' | {'error', atom()}.
-wait_for_map_binding() ->
+-spec wait_for_map_binding/2 :: (pid(), ne_binary()) -> {'ok', atom(), term()} | 'timeout' | {'error', atom()}.
+wait_for_map_binding(P, Route) ->
     receive
-        {binding_result, Resp, Pay} -> {ok, Resp, Pay};
-        {binding_error, Error} -> {error, Error};
-        heartbeat -> wait_for_map_binding()
+        {binding_result, Resp, Pay} -> 
+            {ok, Resp, Pay};
+        {binding_error, Error} -> 
+            ?LOG("receieved binding error from ~p: ~p", [P, Error]),
+            {error, Error};
+        heartbeat -> wait_for_map_binding(P, Route)
     after
-        300 -> timeout
+        300 ->
+            ?LOG("map '~s' timed out waiting for ~p", [Route, P]), 
+            timeout
     end.
 
 %%--------------------------------------------------------------------
@@ -415,7 +421,7 @@ fold_bind_results(Pids, Payload, Route) ->
 -spec fold_bind_results/5 :: ([pid(),...] | [], term(), ne_binary(), non_neg_integer(), [pid(),...] | []) -> term().
 fold_bind_results([P|Pids], Payload, Route, PidsLen, ReRunQ) ->
     P ! {binding_fired, self(), Route, Payload},
-    case wait_for_fold_binding() of
+    case wait_for_fold_binding(P, Route) of
         {ok, Pay1} -> fold_bind_results(Pids, Pay1, Route, PidsLen, ReRunQ);
         eoq -> fold_bind_results(Pids, Payload, Route, PidsLen, [P|ReRunQ]);
         timeout -> fold_bind_results(Pids, Payload, Route, PidsLen, ReRunQ);
@@ -439,15 +445,19 @@ fold_bind_results([], Payload, Route, PidsLen, ReRunQ) ->
 %% Run a receive loop if we recieve hearbeat, otherwise collect binding results
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_fold_binding/0 :: () -> {'ok', term()} | 'timeout' | 'eoq' | {'error', atom()}.
-wait_for_fold_binding() ->
+-spec wait_for_fold_binding/2 :: (pid(), ne_binary()) -> {'ok', term()} | 'timeout' | 'eoq' | {'error', atom()}.
+wait_for_fold_binding(P, Route) ->
     receive
         {binding_result, eoq, _} -> eoq;
         {binding_result, _, Pay} -> {ok, Pay};
-        {binding_error, Error} -> {error, Error};
-        heartbeat -> wait_for_fold_binding()
+        {binding_error, Error} -> 
+            ?LOG("receieved binding error from ~p: ~p", [P, Error]),
+            {error, Error};
+        heartbeat -> wait_for_fold_binding(P, Route)
     after
-        300 -> timeout
+        300 ->
+            ?LOG("fold '~s' timed out waiting for ~p", [Route, P]), 
+            timeout
     end.
 
 %%--------------------------------------------------------------------

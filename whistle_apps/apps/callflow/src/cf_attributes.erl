@@ -392,9 +392,9 @@ presence_id(EndpointId, Call) when is_binary(EndpointId) ->
         {error, _} ->
             undefined
     end;
-presence_id(Endpoint, #cf_call{request_user=RUser, request_realm=RRealm}) ->
+presence_id(Endpoint, #cf_call{request_user=RUser, request_realm=RRealm, account_id=AccountId}) ->
     <<(wh_json:get_value([<<"sip">>, <<"username">>], Endpoint, RUser))/binary
-      ,$@, (wh_json:get_value([<<"sip">>, <<"realm">>], Endpoint, RRealm))/binary>>.
+      ,$@, (cf_util:get_sip_realm(Endpoint, AccountId, RRealm))/binary>>.
 
 %%-----------------------------------------------------------------------------
 %% @private

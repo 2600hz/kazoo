@@ -386,7 +386,7 @@ update_device(DocId, #cb_context{req_data=Req, db_name=Db}=Context) ->
            end,
     Username = wh_json:get_ne_value([<<"sip">>, <<"username">>], Data),
     Realm = wh_json:get_ne_value([<<"sip">>, <<"realm">>], Data),
-    IsCredsUnique = is_sip_creds_unique(Db, Realm, Username),
+    IsCredsUnique = is_sip_creds_unique(Db, Realm, Username, DocId),
     case wh_json_validator:is_valid(Data, <<"devices">>) of
         {fail, Errors} when not IsCredsUnique ->
             E = wh_json:set_value([<<"sip">>, <<"username">>, <<"unique">>]
@@ -495,7 +495,7 @@ wait_for_reg_resp([_|T], Acc) ->
             #'basic.consume_ok'{} ->
                 wait_for_reg_resp([ok|T], Acc)
         after
-            500 ->
+            1000 ->
                 ?LOG("timeout for registration query"),
                 Acc
         end
@@ -511,20 +511,30 @@ wait_for_reg_resp([_|T], Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_sip_creds_unique/3 :: (undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary() ) -> boolean().
-is_sip_creds_unique(undefined, _, _) ->
+-spec is_sip_creds_unique/4 :: (undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary()) 
+                               -> boolean().
+
+is_sip_creds_unique(AccountDb, Realm, Username) ->
+    is_sip_creds_unique(AccountDb, Realm, Username, undefined).
+
+%% no account id and no doc id (ie initial create with no account)
+is_sip_creds_unique(undefined, _, _, undefined) ->
     true;
-is_sip_creds_unique(_, _, undefined) ->
+is_sip_creds_unique(_, _, undefined, undefined) ->
     true;
-is_sip_creds_unique(AccountDb, undefined, Username) ->
+is_sip_creds_unique(AccountDb, undefined, Username, DocId) ->
     case couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, [{<<"key">>, Username}]) of
         {ok, []} -> true;
+        {ok, [JObj]} -> 
+            wh_json:get_value(<<"id">>, JObj) =:= DocId;
         {error, not_found} -> true;
         _ -> false
     end;
-is_sip_creds_unique(_, Realm, Username) ->
+is_sip_creds_unique(_, Realm, Username, DocId) ->
     ViewOptions = [{<<"key">>, [Realm, Username]}],
     case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         {ok, []} -> true;
+        {ok, [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= DocId;
         {error, not_found} -> true;
         _ -> false
     end.
