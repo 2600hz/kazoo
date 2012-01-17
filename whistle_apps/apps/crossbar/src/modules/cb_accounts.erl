@@ -798,6 +798,20 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
                     %% via AMQP we need to do it here
                     couch_mgr:revise_views_from_folder(AccountDb, callflow),
                     couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Context1#cb_context.doc),
+
+                    Credit = whapps_config:get(<<"crossbar.accounts">>, <<"starting_credit">>, 0.0),
+                    Units = wapi_money:dollars_to_units(wh_util:to_float(Credit)),
+                    ?LOG("Putting ~p units", [Units]),
+                    Transaction = wh_json:from_list([{<<"amount">>, Units}
+                                                     ,{<<"pvt_type">>, <<"credit">>}
+                                                     ,{<<"pvt_description">>, <<"initial account balance">>}
+                                                    ]),
+                    
+                    case crossbar_doc:save(Context#cb_context{doc=Transaction, db_name=AccountDb}) of
+                        #cb_context{resp_status=success} -> ok;
+                        #cb_context{resp_error_msg=Err} -> ?LOG("failed to save credit doc: ~p", [Err])
+                    end,
+
                     Context1;
                 Else ->
                     ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
