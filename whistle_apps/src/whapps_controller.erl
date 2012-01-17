@@ -35,20 +35,20 @@ start_app(App) when not is_atom(App) ->
 start_app(App) when is_atom(App) ->
     ?LOG_SYS("attempting to start whapp ~s", [App]),
     case lists:keyfind(App, 1, supervisor:which_children(whapps_sup)) of
-	{App, _, _, _} -> exists;
-	false ->
-	    try
-		{ok, _} = whapps_sup:start_app(App),
+        {App, _, _, _} -> exists;
+        false ->
+            try
+                {ok, _} = whapps_sup:start_app(App),
                 whapps_util:alert(<<"info">>, "Source: ~s(~p)~nAlert: started whapp ~s", [?MODULE, ?LINE, App]),
-		ok
-	    catch
-		E:R ->
+                ok
+            catch
+                E:R ->
                     whapps_util:alert(<<"critical">>, "Source: ~s(~p)~nAlert: failed to start whapp ~s~nFault: ~p"
                                       ,[?MODULE, ?LINE, App, R]),
-		    ?LOG_SYS("Failed to load ~s", [App]),
-		    ?LOG_SYS("~p: ~p", [E, R]),
-		    error
-	    end
+                    ?LOG_SYS("Failed to load ~s", [App]),
+                    ?LOG_SYS("~p: ~p", [E, R]),
+                    error
+            end
     end.
 
 -spec stop_app/1 :: (App) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'} when
@@ -80,6 +80,12 @@ initialize_whapps() ->
             ?LOG("changing the erlang cookie to ~s", [Cookie]),
             erlang:set_cookie(node(), wh_util:to_atom(Cookie, true))
     end,
+
+    case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
+        false -> whapps_update:run();
+        true -> ok
+    end,
+
     WhApps = whapps_config:get(?MODULE, <<"whapps">>, []),
     lists:foreach(fun(WhApp) -> start_app(WhApp) end, WhApps).
 
