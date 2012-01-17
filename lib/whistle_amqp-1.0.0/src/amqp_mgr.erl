@@ -201,6 +201,16 @@ handle_info({reconnect, Timeout}, #state{conn_ref=undefined
             {noreply, State}
     end;
 
+handle_info({'DOWN', ConnRef, process, _Pid, {shutdown, {internal_error, 541,<<>>}}}
+            ,#state{conn_params=ConnP, conn_ref=ConnRef}=State) ->
+    ?LOG_SYS("connection to ~s (process ~p) went down, error 541", [wh_amqp_params:host(ConnP), _Pid]),
+    erlang:demonitor(ConnRef, [flush]),
+    _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
+    _ = stop_amqp_host(State),
+    {noreply, State#state{conn_ref=undefined, handler_pid=undefined
+                          ,handler_ref=undefined, use_federation = false
+                         }, hibernate};
+
 handle_info({'DOWN', ConnRef, process, _Pid, _Reason}, #state{conn_params=ConnP, conn_ref=ConnRef}=State) ->
     ?LOG_SYS("connection to ~s (process ~p) went down, ~w", [wh_amqp_params:host(ConnP), _Pid, _Reason]),
     erlang:demonitor(ConnRef, [flush]),

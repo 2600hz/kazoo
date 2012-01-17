@@ -5,7 +5,7 @@
 
 %% When federating, what is the name of the upstream set, which contains the
 %% list of servers this broker is connecting to
--define(RABBITMQ_UPSTREAM_SET, "2600hz_upstream").
+-define(RABBITMQ_UPSTREAM_SET, <<"2600hz_upstream">>).
 
 %%% See http://www.rabbitmq.com/releases/rabbitmq-erlang-client/v2.7.0/doc/
 

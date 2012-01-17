@@ -428,16 +428,19 @@ handle_cast({consume, {FromPid, _}=From, #'basic.nack'{}=BasicNack}, #state{conn
 handle_cast({misc_req, From, #'exchange.declare'{}=ED}
             ,#state{misc_channel={C,_}, use_federation=UseFederation}=State) ->
     spawn(fun() ->
+                  ?LOG("sending exchange.declare to ~p", [C]),
                   case amqp_channel:call(C, exchange_declare(ED, UseFederation)) of
-                      #'exchange.declare_ok'{} -> gen_server:reply(From, ok);
-                      {error, _E}=Err -> gen_server:reply(From, Err);
-                      E -> gen_server:reply(From, {error, E})
+                      #'exchange.declare_ok'{} ->
+                          ?LOG("exchange declared"),
+                          gen_server:reply(From, ok);
+                      {error, _E}=Err ->
+                          ?LOG("error declaring exchange: ~p", [_E]),
+                          gen_server:reply(From, Err);
+                      E ->
+                          ?LOG("error declaring exchange: ~p", [E]),
+                          gen_server:reply(From, {error, E})
                   end
           end),
-    {noreply, State};
-
-handle_cast({misc_req, From, Req1, Req2}, #state{misc_channel={C,_}}=State) ->
-    spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, Req1, Req2)) end),
     {noreply, State};
 
 handle_cast(_Msg, State) ->
@@ -467,7 +470,7 @@ handle_info(timeout, {Host, Conn, UseFederation}) ->
     Ref = erlang:monitor(process, Conn),
     case start_channel(Conn) of
         {Channel, _} = PubChan when is_pid(Channel) ->
-            load_exchanges(Channel, UseFederation),
+            _ = load_exchanges(),
             amqp_channel:register_return_handler(Channel, self()),
             {noreply, #state{
                connection = {Conn, Ref}
@@ -508,6 +511,9 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), #state{}) -> 'ok'.
+terminate(_Reason, {_H, _Conn, _UseF}) ->
+    ?LOG("amqp host failed to startup: ~p", [_Reason]),
+    ?LOG("params: ~s on conn ~p, use federation: ~s", [_H, _Conn, _UseF]);
 terminate(_Reason, #state{consumers=Consumers, amqp_h=Host}) ->
     spawn(fun() -> notify_consumers({amqp_host_down, Host}, Consumers) end),
     ?LOG_SYS("amqp host for ~s terminated ~p", [Host, _Reason]).
@@ -560,15 +566,13 @@ start_channel(Connection, Pid) ->
             E
     end.
 
--spec load_exchanges/2 :: (pid(), boolean()) -> 'ok'.
-load_exchanges(Channel, UseFederation) ->
-    lists:foreach(fun({Ex, Type}) ->
-                          ED = exchange_declare(#'exchange.declare'{
-                                                   exchange = Ex
-                                                   ,type = Type
-                                                  }, UseFederation),
-                          #'exchange.declare_ok'{} = amqp_channel:call(Channel, ED)
-                  end, ?KNOWN_EXCHANGES).
+-spec load_exchanges/0 :: () -> pid().
+load_exchanges() ->
+    spawn(fun() ->
+                  lists:foreach(fun({Ex, Type}) ->
+                                        amqp_util:new_exchange(Ex, Type)
+                                end, ?KNOWN_EXCHANGES)
+          end).
 
 -spec remove_ref/2 :: (reference(), #state{}) -> #state{}.
 remove_ref(Ref, #state{connection={Conn, _}, publish_channel={C,Ref}}=State) ->
@@ -647,7 +651,10 @@ exchange_declare(ED, false) ->
     ED;
 exchange_declare(#'exchange.declare'{type=Type}=ED, true) ->
 %    -record('exchange.declare', {ticket = 0, exchange, type = <<"direct">>, passive = false, durable = false, auto_delete = false, internal = false, nowait = false, arguments = []}).
-    ED#'exchange.declare'{
-       type = "x-federation"
-      ,arguments = [{"type", Type}, {"upstream-set", ?RABBITMQ_UPSTREAM_SET}]
-     }.
+    ED1 = ED#'exchange.declare'{
+       type = <<"x-federation">>
+      ,arguments = [{<<"type">>, longstr, Type}
+                    ,{<<"upstream-set">>, longstr, ?RABBITMQ_UPSTREAM_SET}
+                   ]
+     },
+    ED1.
