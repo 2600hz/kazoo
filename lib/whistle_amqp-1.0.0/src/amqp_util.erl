@@ -39,8 +39,8 @@
 -export([new_conference_queue/1, new_conference_queue/2]).
 
 -export([new_queue/0, new_queue/1, new_queue/2, basic_consume/1, basic_consume/2
-	 ,basic_publish/3, basic_publish/4, basic_cancel/1, queue_delete/1, queue_delete/2
-	 ,new_exchange/2, new_exchange/3]).
+         ,basic_publish/3, basic_publish/4, basic_cancel/1, queue_delete/1, queue_delete/2
+         ,new_exchange/2, new_exchange/3]).
 
 -export([access_request/0, access_request/1, basic_ack/1, basic_nack/1, basic_qos/1]).
 
@@ -52,27 +52,24 @@
                      (C >= $0 andalso C =< $9) orelse
                      (C =:= $- orelse C =:= $~ orelse C =:= $_))).
 
+-type amqp_payload() :: iolist() | ne_binary().
+
 %%------------------------------------------------------------------------------
 %% @public
 %% @doc
 %% Publish AMQP messages
 %% @end
 %%------------------------------------------------------------------------------
--spec targeted_publish/2 :: (Queue, Payload) -> 'ok' when
-      Queue :: ne_binary(),
-      Payload :: iolist().
--spec targeted_publish/3 :: (Queue, Payload, ContentType) -> 'ok' when
-      Queue :: ne_binary(),
-      Payload :: iolist(),
-      ContentType :: ne_binary().
+-spec targeted_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
+-spec targeted_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
 targeted_publish(Queue, Payload) ->
     targeted_publish(Queue, Payload, ?DEFAULT_CONTENT_TYPE).
 targeted_publish(Queue, Payload, ContentType) ->
     basic_publish(?EXCHANGE_TARGETED, Queue, Payload, ContentType).
 
--spec whapps_publish/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec whapps_publish/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
--spec whapps_publish/4 :: (ne_binary(), iolist(), ne_binary(), proplist()) -> 'ok'.
+-spec whapps_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
+-spec whapps_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec whapps_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), proplist()) -> 'ok'.
 whapps_publish(Routing, Payload) ->
     whapps_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
 whapps_publish(Routing, Payload, ContentType) ->
@@ -80,17 +77,13 @@ whapps_publish(Routing, Payload, ContentType) ->
 whapps_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_WHAPPS, Routing, Payload, ContentType, Opts).
 
--spec callmgr_publish/3 :: (Payload, ContentType, RoutingKey) -> 'ok' when
-      Payload :: iolist(),
-      ContentType :: ne_binary(),
-      RoutingKey :: ne_binary().
+-spec callmgr_publish/3 :: (amqp_payload(), ne_binary(), ne_binary()) -> 'ok'.
 %% TODO: The routing key on this function should be the first argument for consistency
 callmgr_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
 
-
--spec configuration_publish/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec configuration_publish/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
+-spec configuration_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
+-spec configuration_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
 configuration_publish(RoutingKey, Payload) ->
     configuration_publish(RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 configuration_publish(RoutingKey, Payload, ContentType) ->
@@ -101,7 +94,7 @@ configuration_publish(RoutingKey, Payload, ContentType) ->
       Db :: ne_binary(),
       Type :: ne_binary(),
       Id :: ne_binary(),
-      Payload :: iolist().
+      Payload :: amqp_payload().
 document_change_publish(Action, Db, Type, Id, JSON) ->
     document_change_publish(Action, Db, Type, Id, JSON, ?DEFAULT_CONTENT_TYPE).
 document_change_publish(Action, Db, Type, Id, Payload, ContentType) ->
@@ -129,14 +122,14 @@ document_routing_key(Action, Db, Type, Id) ->
 
 -spec callctl_publish/2 :: (CtrlQ, Payload) -> 'ok' when
       CtrlQ :: ne_binary(),
-      Payload :: iolist().
+      Payload :: amqp_payload().
 -spec callctl_publish/3 :: (CtrlQ, Payload, ContentType) -> 'ok' when
       CtrlQ :: ne_binary(),
-      Payload :: iolist(),
+      Payload :: amqp_payload(),
       ContentType :: ne_binary().
 -spec callctl_publish/4 :: (CtrlQ, Payload, ContentType, Props) -> 'ok' when
       CtrlQ :: ne_binary(),
-      Payload :: iolist(),
+      Payload :: amqp_payload(),
       ContentType :: ne_binary(),
       Props :: proplist().
 callctl_publish(CtrlQ, Payload) ->
@@ -146,13 +139,10 @@ callctl_publish(CtrlQ, Payload, ContentType) ->
 callctl_publish(CtrlQ, Payload, ContentType, Props) ->
     basic_publish(?EXCHANGE_CALLCTL, CtrlQ, Payload, ContentType, Props).
 
--spec callevt_publish/1 :: (Payload) -> 'ok' when
-      Payload :: iolist().
--spec callevt_publish/3 :: (CallID, Payload, Type) -> 'ok' when
-      CallID :: ne_binary() | iolist(),
-      Payload :: iolist() | ne_binary(),
+-spec callevt_publish/1 :: (amqp_payload()) -> 'ok'.
+-spec callevt_publish/3 :: (amqp_payload(), amqp_payload(), Type) -> 'ok' when
       Type :: 'media_req' | 'event' | 'status_req' | 'cdr' | ne_binary().
--spec callevt_publish/4 :: (ne_binary(), iolist(), Type, ne_binary()) -> 'ok' when
+-spec callevt_publish/4 :: (ne_binary(), amqp_payload(), Type, ne_binary()) -> 'ok' when
       Type :: 'status_req' | 'event' | ne_binary().
 callevt_publish(Payload) ->
     callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, media_req).
@@ -181,16 +171,9 @@ callevt_publish(CallID, Payload, event, ContentType) ->
 callevt_publish(CallID, Payload, cdr, ContentType) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, Payload, ContentType).
 
-
--spec resource_publish/1 :: (Payload) -> 'ok' when
-      Payload :: iolist().
--spec resource_publish/2 :: (Payload, ContentType) -> 'ok' when
-      Payload :: iolist(),
-      ContentType :: ne_binary().
--spec resource_publish/3 :: (Payload, RoutingKey, ContentType) -> 'ok' when
-      Payload :: iolist(),
-      RoutingKey :: ne_binary(),
-      ContentType :: ne_binary().
+-spec resource_publish/1 :: (amqp_payload()) -> 'ok'.
+-spec resource_publish/2 :: (amqp_payload(), ne_binary()) -> 'ok'.
+-spec resource_publish/3 :: (amqp_payload(), ne_binary(), ne_binary()) -> 'ok'.
 resource_publish(Payload) ->
     resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
 resource_publish(Payload, ContentType) ->
@@ -198,43 +181,33 @@ resource_publish(Payload, ContentType) ->
 resource_publish(Payload, RoutingKey, ContentType) ->
     basic_publish(?EXCHANGE_RESOURCE, RoutingKey, Payload, ContentType).
 
--spec originate_resource_publish/1 :: (Payload) -> 'ok' when
-      Payload :: iolist().
--spec originate_resource_publish/2 :: (Payload, ContentType) -> 'ok' when
-      Payload :: iolist(),
-      ContentType :: ne_binary().
+-spec originate_resource_publish/1 :: (amqp_payload()) -> 'ok'.
+-spec originate_resource_publish/2 :: (amqp_payload(), ne_binary()) -> 'ok'.
 originate_resource_publish(Payload) ->
     originate_resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
 originate_resource_publish(Payload, ContentType) ->
    basic_publish(?EXCHANGE_RESOURCE, ?KEY_ORGN_RESOURCE_REQ, Payload, ContentType).
 
--spec offnet_resource_publish/1 :: (Payload) -> 'ok' when
-      Payload :: iolist().
--spec offnet_resource_publish/2 :: (Payload, ContentType) -> 'ok' when
-      Payload :: iolist(),
-      ContentType :: ne_binary().
+-spec offnet_resource_publish/1 :: (amqp_payload()) -> 'ok'.
+-spec offnet_resource_publish/2 :: (amqp_payload(), ne_binary()) -> 'ok'.
 offnet_resource_publish(Payload) ->
     offnet_resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
 offnet_resource_publish(Payload, ContentType) ->
     basic_publish(?EXCHANGE_RESOURCE, ?KEY_OFFNET_RESOURCE_REQ, Payload, ContentType).
 
 %% monitor
--spec monitor_publish/3 :: (Payload, ContentType, RoutingKey) -> 'ok' when
-      Payload :: iolist(),
-      ContentType :: ne_binary(),
-      RoutingKey :: ne_binary().
+-spec monitor_publish/3 :: (amqp_payload(), ne_binary(), ne_binary()) -> 'ok'.
 monitor_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_MONITOR, RoutingKey, Payload, ContentType).
 
--spec conference_publish/2 :: (Payload, Queue) -> 'ok' when
-      Payload :: iolist(),
+-spec conference_publish/2 :: (amqp_payload(), Queue) -> 'ok' when
       Queue :: 'discovery' | 'events' | 'service'.
 -spec conference_publish/3 :: (Payload, Queue, ConfId) -> 'ok' when
-      Payload :: iolist(),
+      Payload :: amqp_payload(),
       Queue :: 'events' | 'service',
       ConfId :: ne_binary().
 -spec conference_publish/4 :: (Payload, Queue, ConfId, Options) -> 'ok' when
-      Payload :: iolist(),
+      Payload :: amqp_payload(),
       Queue :: 'discovery' | 'events' | 'service',
       ConfId :: 'undefined' | ne_binary(),
       Options :: proplist().
@@ -260,32 +233,22 @@ conference_publish(Payload, service, ConfId, Options) ->
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
 
--spec basic_publish/3 :: (Exchange, Queue, Payload) -> 'ok' when
-      Exchange :: ne_binary(),
-      Queue :: ne_binary(),
-      Payload :: iolist().
--spec basic_publish/4 :: (Exchange, Queue, Payload, ContentType) -> 'ok' when
-      Exchange :: ne_binary(),
-      Queue :: ne_binary(),
-      Payload :: iolist(),
-      ContentType :: ne_binary().
--spec basic_publish/5 :: (Exchange, Queue, Payload, ContentType, Prop) -> 'ok' when
-      Exchange :: ne_binary(),
-      Queue :: ne_binary(),
-      Payload :: iolist() | ne_binary(),
-      ContentType :: ne_binary(),
-      Prop :: proplist().
-
-basic_publish(_Exchange, Queue, _Payload) when not is_binary(Queue) ->
-    {error, invalid_queue_name};
+-spec basic_publish/3 :: (ne_binary(), ne_binary(), amqp_payload()) -> 'ok'.
+-spec basic_publish/4 :: (ne_binary(), ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec basic_publish/5 :: (ne_binary(), ne_binary(), amqp_payload(), ne_binary(), proplist()) -> 'ok'.
 basic_publish(Exchange, Queue, Payload) ->
     basic_publish(Exchange, Queue, Payload, ?DEFAULT_CONTENT_TYPE).
+
 basic_publish(Exchange, Queue, Payload, ContentType) ->
     basic_publish(Exchange, Queue, Payload, ContentType, []).
 
 basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_list(Payload) ->
     basic_publish(Exchange, Queue, iolist_to_binary(Payload), ContentType, Prop);
-basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_binary(Payload) ->
+basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_binary(Payload),
+                                                                is_binary(Exchange),
+                                                                is_binary(Queue),
+                                                                is_binary(ContentType),
+                                                                is_list(Prop) ->
     BP = #'basic.publish'{
       exchange = Exchange
       ,routing_key = Queue
@@ -346,13 +309,8 @@ conference_exchange() ->
     new_exchange(?EXCHANGE_CONFERENCE, ?TYPE_CONFERENCE).
 
 %% A generic Exchange maker
--spec new_exchange/2 :: (Exchange, Type) -> 'ok' when
-      Exchange :: ne_binary(),
-      Type :: ne_binary().
--spec new_exchange/3 :: (Exchange, Type, Options) -> 'ok' when
-      Exchange :: ne_binary(),
-      Type :: ne_binary(),
-      Options :: proplist().
+-spec new_exchange/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+-spec new_exchange/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok'.
 new_exchange(Exchange, Type) ->
     new_exchange(Exchange, Type, []).
 new_exchange(Exchange, Type, Options) ->
@@ -388,14 +346,14 @@ new_callevt_queue(<<>>) ->
     new_queue(<<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callevt_queue(CallID) ->
     new_queue(list_to_binary([?EXCHANGE_CALLEVT, ".", encode(CallID)])
-	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
+              ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 -spec new_callctl_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
 new_callctl_queue(<<>>) ->
     new_queue(<<>>, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
 new_callctl_queue(CallID) ->
     new_queue(list_to_binary([?EXCHANGE_CALLCTL, ".", encode(CallID)])
-	      ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
+              ,[{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 -spec new_resource_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
 -spec new_resource_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
@@ -456,12 +414,12 @@ new_queue(Queue, Options) when is_binary(Queue) ->
       ,arguments = props:get_value(arguments, Options, [])
      },
     case amqp_mgr:consume(QD) of
-	{'ok', Q} ->
+        {'ok', Q} ->
             ?AMQP_DEBUG andalso ?LOG("create queue(~p) ~s)", [Options, Queue]),
             Q;
-	{error, _Other} ->
+        {error, _Other} ->
             ?AMQP_DEBUG andalso ?LOG("error creating queue(~p): ~p", [Options, _Other]),
-	    {'error', 'amqp_error'}
+            {'error', 'amqp_error'}
     end.
 
 %%------------------------------------------------------------------------------
@@ -602,7 +560,7 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
         ok ->
             ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
             ok;
-	{error, _E}=Else ->
+        {error, _E}=Else ->
             ?AMQP_DEBUG andalso ?LOG("failed to bind queue ~s: ~p", [Queue, Else]),
             Else
     end.
@@ -681,9 +639,9 @@ basic_consume(Queue, Options) ->
       ,nowait = props:get_value(nowait, Options, false)
      },
     case amqp_mgr:consume(BC) of
-	{error, E}=Err ->
+        {error, E}=Err ->
             ?AMQP_DEBUG andalso ?LOG("error when trying to consume on ~s: ~p", [Queue, E]),
-	    Err;
+            Err;
         {ok, Pid} when is_pid(Pid) ->
             ?AMQP_DEBUG andalso ?LOG("started consume of queue(~p) ~s", [Options, Queue]),
             ok;
