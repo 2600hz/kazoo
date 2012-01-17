@@ -5,7 +5,7 @@
 -export([call_info_to_string/1]).
 -export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
-
+-export([get_sip_realm/2, get_sip_realm/3]).
 -include("callflow.hrl").
 
 -spec alpha_to_dialpad/1 :: (Value) -> binary() when
@@ -243,6 +243,21 @@ handle_bridge_failure(Cause, Code, Call) ->
         false -> cf_exe:continue(Call)
     end.
 
+-spec get_sip_realm/2 :: (json_object(), ne_binary()) -> undefined | ne_binary().
+-spec get_sip_realm/3 :: (json_object(), ne_binary(), Default) -> Default | ne_binary().
+
+get_sip_realm(SIPJObj, AccountId) ->
+    get_sip_realm(SIPJObj, AccountId, undefined).
+
+get_sip_realm(SIPJObj, AccountId, Default) ->
+    case wh_json:get_ne_value([<<"sip">>, <<"realm">>], SIPJObj) of
+        undefined -> 
+            case wh_util:get_account_realm(AccountId) of
+                undefined -> Default;
+                Else -> Else
+            end;
+        Realm -> Realm
+    end.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

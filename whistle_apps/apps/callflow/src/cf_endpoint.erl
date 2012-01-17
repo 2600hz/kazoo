@@ -136,7 +136,7 @@ get(EndpointId, #cf_call{account_db=Db}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_sip_endpoint/3 :: (json_object(), json_object(), #cf_call{}) -> json_object().
-create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_id=OwnerId
+create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_id=OwnerId, account_id=AccountId
                                                    ,request_user=RUser, cid_name=CIDName, cid_number=CIDNum}=Call) ->
     {CalleeNum, CalleeName} = cf_attributes:callee_id(Endpoint, Call),
     {IntCIDNumber, IntCIDName} = case cf_attributes:caller_id(AuthId, OwnerId, <<"internal">>, Call) of
@@ -154,7 +154,7 @@ create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_
                                  end,
     Prop = [{<<"Invite-Format">>, wh_json:get_value([<<"sip">>, <<"invite_format">>], Endpoint, <<"username">>)}
             ,{<<"To-User">>, wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)}
-            ,{<<"To-Realm">>, wh_json:get_value([<<"sip">>, <<"realm">>], Endpoint)}
+            ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, AccountId)}
             ,{<<"To-DID">>, wh_json:get_value([<<"sip">>, <<"number">>], Endpoint, RUser)}
             ,{<<"Route">>, wh_json:get_value([<<"sip">>, <<"route">>], Endpoint)}
             ,{<<"Outgoing-Caller-ID-Number">>, IntCIDNumber}
