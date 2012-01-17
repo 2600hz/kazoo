@@ -164,8 +164,13 @@ lookup_account_by_number(Number) ->
     case couch_mgr:open_doc(Db, Num) of
         {ok, JObj} ->
             ?LOG("found number"),
-            {ok, wh_json:get_value(<<"pvt_assigned_to">>, JObj, DefaultAccount)
-             ,wh_json:is_true(<<"force_outbound">>, JObj, false)};
+            AssignedTo = wh_json:get_value(<<"pvt_assigned_to">>, JObj, DefaultAccount),
+            case wh_util:is_account_enabled(AssignedTo) of
+                true ->
+                    {ok, AssignedTo, wh_json:is_true(<<"force_outbound">>, JObj, false)};
+                false ->
+                    {error, not_found}
+            end;
         {error, R1} when DefaultAccount =/= undefined -> 
             ?LOG("failed to lookup number, using default account ~s: ~p", [DefaultAccount, R1]),
             {ok, DefaultAccount, false};

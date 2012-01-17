@@ -87,7 +87,9 @@ is_account_enabled(undefined) ->
     true;
 is_account_enabled(AccountId) ->
     case wh_cache:peek({?MODULE, is_account_enabled, AccountId}) of
-        {ok, Enabled} -> Enabled;
+        {ok, Enabled} -> 
+            ?LOG("account ~s enabled flag is ~s", [AccountId, Enabled]),
+            Enabled;
         {error, not_found} ->
             case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
                 {ok, JObj} ->
