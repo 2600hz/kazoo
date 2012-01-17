@@ -176,7 +176,7 @@ handle_call_events(JObj, Props) ->
     Srv = props:get_value(server, Props),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
-    case {wh_json:get_value(<<"Event-Name">>, JObj), wh_util:get_transfer_state(JObj)} of
+    case {wh_json:get_value(<<"Event-Name">>, JObj), get_transfer_state(JObj)} of
         {<<"CHANNEL_EXECUTE_COMPLETE">>, _} ->
             Application = wh_json:get_value(<<"Raw-Application-Name">>, JObj),
             ?LOG("control queue ~p channel execute completion for '~s'", [Srv, Application]),
@@ -444,7 +444,7 @@ handle_info({sanity_check}, #state{node=Node, callid=CallId, keep_alive_ref=unde
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
             {'noreply', State#state{sanity_check_tref=TRef}};
         _ ->
-            ?LOG("I must be crazy to be in a loony bin like this"),
+            ?LOG("call uuid does not exist, executing post-hangup events and terminating"),
             {stop, normal, State#state{sanity_check_tref=undefined}}
     end;
 handle_info(_Msg, State) ->
@@ -681,3 +681,83 @@ publish_control_transfer(ControllerQ, CallId) ->
                ],
     wapi_call:publish_control_transfer(ControllerQ, Transfer).
     
+-spec get_transfer_state/1 :: (json_object()) -> 'undefined' | 'transferer' | 'transferee'.
+-spec get_transfer_state/2 :: ({ne_binary(), ne_binary()}, json_object()) -> 'undefined' | 'transferer' | 'transferee'.
+-spec do_get_transfer_state/2 :: (ne_binary(),  json_object()) ->  'undefined' | 'transferer' | 'transferee'.
+
+get_transfer_state(JObj) ->
+    get_transfer_state(wh_util:get_event_type(JObj), JObj).
+
+get_transfer_state({<<"call_event">>, <<"CHANNEL_DESTROY">>}, JObj) ->
+    do_get_transfer_state(<<"CHANNEL_DESTROY">>, JObj);
+get_transfer_state({<<"call_event">>, <<"CHANNEL_HANGUP">>}, JObj) ->
+    do_get_transfer_state(<<"CHANNEL_HANGUP">>, JObj);
+get_transfer_state({<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, JObj) ->
+    do_get_transfer_state(<<"CHANNEL_UNBRIDGE">>, JObj);
+get_transfer_state(_, _) ->
+    undefined.
+
+do_get_transfer_state(<<"CHANNEL_UNBRIDGE">>, JObj) ->
+    Timestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
+    Epoch = binary:part(wh_util:pad_binary(Timestamp, 10, <<"0">>), 0, 10),
+    Transfer = wh_json:get_value([<<"Transfer-History">>, Epoch], JObj),
+    Disposition = wh_json:get_value(<<"Disposition">>, JObj),
+    case {Disposition, Transfer} of
+        %% caller preforms a blind transfer
+        {<<"BLIND_TRANSFER">>, undefined} ->
+            ?LOG("channel was unbridged as a result of a blind transfer"),
+            transferer;
+        %% callee preforms a attended transfer (on C-leg)
+        {<<"ATTENDED_TRANSFER">>, undefined} ->
+            ?LOG("channel was unbridged as a result of an attended transfer, acquire control"),
+            transferee;
+        %% caller preforms a attended transfer
+        %% caller preforms a partial attended
+        {<<"ANSWER">>, undefined} ->
+            %% to be sure check if it was during a transfer, may not be necessary...
+            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
+                undefined ->
+                    ?LOG("channel was unbridged as a result of a transfer"),
+                    transferer;
+                _Else ->
+                    undefined
+            end;
+        %% just a catch for undefined Transfer History Item
+        %% IE: This unbridge was NOT part of the transfer history,
+        %%     otherwise it WAS and the next clause will handle it.
+        {_, undefined} ->
+            undefined;
+        %% callee preforms a blind transfer
+        %% callee preforms a partial attended
+        %% callee preforms a attended transfer
+        {_, _} ->
+            ?LOG("channel was unbridged as a result of a transfer"),
+            transferer
+    end;
+do_get_transfer_state(_, JObj) ->
+    case wh_json:get_value(<<"Disposition">>, JObj) of
+        %% caller preforms a blind transfer
+        <<"BLIND_TRANSFER">> ->
+            ?LOG("channel was hungup as a result of a blind transfer"),
+            transferer;
+        %% callee preforms partial attended
+        %% callee preforms attended transfer
+        <<"ATTENDED_TRANSFER">> ->
+            ?LOG("channel was hungup as a result of an attended transfer, acquire control"),
+            transferee;
+        %% caller preforms a attended transfer
+        %% caller preforms a partial attended
+        <<"ANSWER">> ->
+            %% to be sure check if it was during a transfer, may not be necessary...
+            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
+                undefined ->
+                    ?LOG("channel was hungup as a result of a transfer"),
+                    trasferer;
+                _Else ->
+                    undefined
+            end;
+        %% missing events:
+        %% callee preforms blind transfer
+        _Else ->
+            undefined
+    end.
