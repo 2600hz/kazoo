@@ -276,8 +276,7 @@ handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCa
     OtherLegCallId =  wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
     case OtherLegCallId =/= undefined andalso freeswitch:api(Node, uuid_dump, wh_util:to_list(OtherLegCallId)) of
         {ok, Result} ->
-            %% this next line makes the whole thing work...
-            ?LOG("OK, but... you asked for it. Hold on to your butts!"),
+            ?LOG("this call control process is a transferee, updating call id..."),
             Props = ecallmgr_util:eventstr_to_proplist(Result),
             NewCallId = props:get_value(<<"Channel-Call-UUID">>, Props),
             spawn(fun() -> publish_callid_update(PrevCallId, NewCallId, queue_name(Self)) end),
@@ -289,7 +288,7 @@ handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCa
             gen_listener:add_binding(self(), call, [{callid, NewCallId}]),
             ?LOG("ensuring event listener exists"),
             _ = ecallmgr_call_sup:start_event_process(Node, NewCallId),
-            ?LOG("....You did it. You crazy son of a bitch you did it."),
+            ?LOG("...call id updated, continuing post-transfer"),
             {noreply, State#state{callid=NewCallId, other_legs=lists:delete(NewCallId, Legs)}};
         _ ->
             {noreply, State}
