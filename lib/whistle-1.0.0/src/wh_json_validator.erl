@@ -39,10 +39,10 @@
 
 -type error_result() :: {ne_binary(), ne_binary()}.
 -type error_results() :: [error_result(),...].
--type results() :: {pass, json_object()} | {fail, json_object()}.
--type attribute_results() :: true | error_results().
+-type results() :: {'pass', json_object()} | {'fail', json_object()}.
+-type attribute_results() :: 'true' | error_results().
 -type error_acc() :: [] | [{[ne_binary(),...], ne_binary() },...].
--type jkey_acc() :: [] | [ne_binary(),...].
+-type jkey_acc() :: [] | [json_string(),...].
 
 -define(SIMPLE_TYPES, [<<"string">>,<<"number">>,<<"integer">>,<<"boolean">>,<<"object">>
                            ,<<"array">>,<<"null">>,<<"any">>]).
@@ -194,8 +194,8 @@ are_valid_attributes(JObj, Key, AttributesJObj, Errors, [{AttributeKey, Attribut
 %% "type" : string | number | integer | float | boolean | array | object | null | any | user-defined
 %%          The last two (any and user-defined) are automatically considered valid
 %%
--spec is_valid_attribute/3 :: ({ne_binary, term(), json_object}, json_object(), jkey_acc()) ->
-                                      {pass, json_object()} | {fail, {jkey_acc(), ne_binary()}}.
+-spec is_valid_attribute/3 :: ({json_string(), term(), json_object()}, json_object(), jkey_acc()) ->
+                                      {'pass', json_object()} | {'fail', {jkey_acc(), ne_binary()}}.
 
 %% 5.1
 is_valid_attribute({<<"type">>, [], _}, _, Key) ->
@@ -1100,9 +1100,10 @@ validate_test(Succeed, Fail, Schema) ->
 
     _ = [ begin
               Validation = [Result || {AttName, AttValue} <- S
-                                          ,(begin 
+                                          ,(begin
                                                 Result = is_valid_attribute({AttName, AttValue, SJObj}
-                                                                            ,{struct, [{<<"eunit">>, Elem}]}, <<"eunit">>),
+                                                                            ,wh_json:set_value(<<"eunit">>, Elem, wh_json:new())
+                                                                            ,<<"eunit">>),
                                                 not passed(Result)
                                             end)],
               Results = lists:flatten(Validation),
@@ -1112,7 +1113,8 @@ validate_test(Succeed, Fail, Schema) ->
               Validation = [Result || {AttName, AttValue} <- S
                                           ,(begin 
                                                 Result = is_valid_attribute({AttName, AttValue, SJObj}
-                                                                            ,{struct, [{<<"eunit">>, Elem}]}, <<"eunit">>),
+                                                                            ,wh_json:set_value(<<"eunit">>, Elem, wh_json:new())
+                                                                            ,<<"eunit">>),
                                                 not passed(Result)
                                             end)],
               Results = lists:flatten(Validation),
