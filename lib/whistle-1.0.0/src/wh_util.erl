@@ -1,6 +1,7 @@
 -module(wh_util).
 
 -export([format_account_id/1, format_account_id/2]).
+-export([get_account_realm/1, get_account_realm/2]).
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([call_response/3, call_response/4, call_response/5]).
 -export([is_account_enabled/1]).
@@ -102,6 +103,30 @@ is_account_enabled(AccountId) ->
                     false
             end
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieves the account realm
+%% @end
+%%--------------------------------------------------------------------
+-spec get_account_realm/1 :: (undefined | ne_binary()) -> undefined | ne_binary().
+-spec get_account_realm/2 :: (undefined | ne_binary(), ne_binary()) -> undefined | ne_binary().
+
+get_account_realm(AccountId) ->
+    get_account_realm(wh_util:format_account_id(AccountId, encoded), AccountId).
+
+get_account_realm(undefined, _) ->
+    undefined;
+get_account_realm(Db, AccountId) ->
+    case couch_mgr:open_doc(Db, AccountId) of
+        {ok, JObj} ->
+            wh_json:get_ne_value(<<"realm">>, JObj);
+        {error, R} ->
+            ?LOG("error while looking up account realm: ~p", [R]),
+            undefined
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -238,16 +263,20 @@ is_1npan(DID) ->
 
 %% +18001234567 -> +18001234567
 -spec to_e164/1 :: (ne_binary()) -> ne_binary().
+to_e164(<<$+, _/binary>> = N) ->
+    N;
 to_e164(<<"011", N/binary>>) ->
     <<$+, N/binary>>;
-to_e164(<<"+1", _/binary>> = E164) when erlang:byte_size(E164) =:= 12 ->
-    E164;
+to_e164(<<"00", N/binary>>) ->
+    <<$+, N/binary>>;
+to_e164(<<"+1", _/binary>> = N) when erlang:byte_size(N) =:= 12 ->
+    N;
 %% 18001234567 -> +18001234567
-to_e164(<<$1, _/binary>> = NPAN1) when erlang:byte_size(NPAN1) =:= 11 ->
-    << $+, NPAN1/binary>>;
+to_e164(<<$1, _/binary>> = N) when erlang:byte_size(N) =:= 11 ->
+    << $+, N/binary>>;
 %% 8001234567 -> +18001234567
-to_e164(NPAN) when erlang:byte_size(NPAN) =:= 10 ->
-    <<$+, $1, NPAN/binary>>;
+to_e164(N) when erlang:byte_size(N) =:= 10 ->
+    <<$+, $1, N/binary>>;
 to_e164(Other) ->
     Other.
 
