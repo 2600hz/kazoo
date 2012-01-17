@@ -797,7 +797,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
                     %% This view should be added by the callflow whapp but until refresh requests are made
                     %% via AMQP we need to do it here
                     couch_mgr:revise_views_from_folder(AccountDb, callflow),
-                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Context1#cb_context.doc),
+                    _ = crossbar_doc:ensure_saved(Context1#cb_context{db_name=?WH_ACCOUNTS_DB, doc=JObj}),
 
                     Credit = whapps_config:get(<<"crossbar.accounts">>, <<"starting_credit">>, 0.0),
                     Units = wapi_money:dollars_to_units(wh_util:to_float(Credit)),
