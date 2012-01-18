@@ -81,7 +81,7 @@ queue_name(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([atom() | binary()]) -> {'ok', #state{}, 0}.
+-spec init/1 :: ([atom() | ne_binary(),...]) -> {'ok', #state{}, 0}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
     ?LOG_START("starting call events listener"),
@@ -257,29 +257,29 @@ create_event(EventName, ApplicationName, Props) ->
     {Mega,Sec,Micro} = erlang:now(),
     Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
     Event = [ KV || {_, V}=KV <- [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
-				  ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
-				  ,{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
-				  ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
-				  ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
-				  ,{<<"Channel-State">>, get_channel_state(Props)}
-				  ,{<<"Transfer-History">>, get_transfer_history(Props)}
-				  ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
-				  ,{<<"Hangup-Code">>, get_hangup_code(Props)}
-				  ,{<<"Disposition">>, get_disposition(Props)}
-				  ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
-				  ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
-				  ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
-				  ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
-				  ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props,
-									       props:get_value(<<"variable_holding_uuid">>, Props))}
-				  ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-				  %% this sucks, its leaky but I dont see a better way around it since we need the raw application
-				  %% name in call_control... (see note in call_control on start_link for why we need to use AMQP 
-				  %% to communicate to it)
-				  ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
-				  | event_specific(EventName, ApplicationName, Props) 
-				 ],
-		    V =/= undefined],
+                                  ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
+                                  ,{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
+                                  ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
+                                  ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Props)}
+                                  ,{<<"Channel-State">>, get_channel_state(Props)}
+                                  ,{<<"Transfer-History">>, get_transfer_history(Props)}
+                                  ,{<<"Hangup-Cause">>, get_hangup_cause(Props)}
+                                  ,{<<"Hangup-Code">>, get_hangup_code(Props)}
+                                  ,{<<"Disposition">>, get_disposition(Props)}
+                                  ,{<<"Other-Leg-Direction">>, props:get_value(<<"Other-Leg-Direction">>, Props)}
+                                  ,{<<"Other-Leg-Caller-ID-Name">>, props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)}
+                                  ,{<<"Other-Leg-Caller-ID-Number">>, props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
+                                  ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
+                                  ,{<<"Other-Leg-Unique-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props,
+                                                                               props:get_value(<<"variable_holding_uuid">>, Props))}
+                                  ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                                  %% this sucks, its leaky but I dont see a better way around it since we need the raw application
+                                  %% name in call_control... (see note in call_control on start_link for why we need to use AMQP 
+                                  %% to communicate to it)
+                                  ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
+                                  | event_specific(EventName, ApplicationName, Props) 
+                                 ],
+                    V =/= undefined],
     wh_api:default_headers(<<>>, ?EVENT_CAT, EventName, ?APP_NAME, ?APP_VERSION) ++ Event.
 
 -spec publish_event/1 :: (proplist()) -> 'ok'.

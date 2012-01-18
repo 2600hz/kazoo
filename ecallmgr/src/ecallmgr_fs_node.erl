@@ -52,7 +52,7 @@ resource_consume(FsNodePid, Route, JObj) ->
     after   10000 -> {resource_error, timeout}
     end.
 
--spec distributed_presence/3 :: (pid(), ne_binary(), proplist()) -> ok.
+-spec distributed_presence/3 :: (pid(), ne_binary(), proplist()) -> 'ok'.
 distributed_presence(Srv, Type, Event) ->
     gen_server:cast(Srv, {distributed_presence, Type, Event}).
 
@@ -68,19 +68,19 @@ hostname(Srv) ->
 fs_node(Srv) ->
     gen_server:call(Srv, fs_node).
 
--spec uuid_exists/2 :: (pid(), binary()) -> boolean().
+-spec uuid_exists/2 :: (pid(), ne_binary()) -> boolean().
 uuid_exists(Srv, UUID) ->
     gen_server:call(Srv, {uuid_exists, UUID}).
 
--spec uuid_dump/2 :: (pid(), binary()) -> proplist().
+-spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | {'error', ne_binary()} | 'timeout'.
 uuid_dump(Srv, UUID) ->
     gen_server:call(Srv, {uuid_dump, UUID}).
 
--spec start_link/1 :: (Node :: atom()) -> {'ok', pid()} | {'error', term()}.
+-spec start_link/1 :: (atom()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node) ->
     gen_server:start_link(?SERVER, [Node, []], []).
 
--spec start_link/2 :: (Node :: atom(), Options :: proplist()) -> {'ok', pid()} | {error, term()}.
+-spec start_link/2 :: (atom(), proplist()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 

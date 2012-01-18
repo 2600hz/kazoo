@@ -78,7 +78,7 @@ fix_value("Event-Date-Timestamp", TStamp) ->
 fix_value(_K, V) -> V.
 
 
--spec unserialize_fs_array/1 :: (undefined | binary()) -> list().
+-spec unserialize_fs_array/1 :: ('undefined' | ne_binary()) -> [ne_binary(),...].
 unserialize_fs_array(undefined) ->
     [];
 unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
