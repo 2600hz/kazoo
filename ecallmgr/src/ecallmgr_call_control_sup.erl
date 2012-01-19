@@ -51,12 +51,12 @@ workers() ->
 find_worker(CallID) ->
     do_find_worker(workers(), CallID).
 
-do_find_worker([], _) ->
+do_find_worker([], _CallId) ->
     {error, not_found};
 do_find_worker([Srv|T], CallID) ->
-    case ecallmgr_call_control:callid(Srv) of
+    case catch(ecallmgr_call_control:callid(Srv)) of
         CallID -> {ok, Srv};
-        _ -> do_find_worker(T, CallID)
+        _E -> do_find_worker(T, CallID)
     end.
 
 -spec find_control_queue/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', ne_binary()}.
