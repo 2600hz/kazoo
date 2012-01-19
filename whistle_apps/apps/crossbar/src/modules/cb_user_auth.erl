@@ -275,7 +275,7 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_account_name/1 :: (ne_binary()) -> binary().
 normalize_account_name(AccountName) ->
-    << <<Char>> || <<Char>> <= wh_util:binary_to_lower(AccountName)
+    << <<Char>> || <<Char>> <= wh_util:to_lower_binary(AccountName)
                    ,(Char >= $a andalso Char =< $z) orelse (Char >= $0 andalso Char =< $9) >>.
 
 %%--------------------------------------------------------------------

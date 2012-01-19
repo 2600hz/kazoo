@@ -473,7 +473,7 @@ correct_shortdial(Number, CIDNum) ->
     MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length > 0 ->
-            wh_util:to_e164(<<(binary:part(CIDNum, 0, Length))/binary, Number/binary>>);
+            wnm_util:to_e164(<<(binary:part(CIDNum, 0, Length))/binary, Number/binary>>);
         _ ->
             undefined
     end.

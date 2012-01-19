@@ -41,8 +41,8 @@ handle_req2(JObj, Props) ->
 
     DateTime = now_to_datetime(Timestamp - BillingSec),
 
-    ToE164 = wh_util:to_e164(get_to_user(JObj)),
-    FromE164 = wh_util:to_e164(get_from_user(JObj)),
+    ToE164 = wnm_util:to_e164(get_to_user(JObj)),
+    FromE164 = wnm_util:to_e164(get_from_user(JObj)),
 
     AccountCode = get_account_code(JObj),
 
@@ -72,8 +72,8 @@ handle_req(JObj, Props) ->
 
     DateTime = now_to_datetime(Timestamp - BillingSec),
 
-    ToE164 = wh_util:to_e164(get_to_user(JObj)),
-    FromE164 = wh_util:to_e164(get_from_user(JObj)),
+    ToE164 = wnm_util:to_e164(get_to_user(JObj)),
+    FromE164 = wnm_util:to_e164(get_from_user(JObj)),
 
     AccountCode = get_account_code(JObj),
 

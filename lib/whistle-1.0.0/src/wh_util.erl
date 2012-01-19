@@ -8,7 +8,7 @@
          ,to_hex/1, to_list/1, to_binary/1
          ,to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
--export([binary_to_lower/1, to_upper_binary/1, binary_join/2]).
+-export([to_lower_binary/1, to_upper_binary/1, binary_join/2]).
 
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
@@ -27,9 +27,6 @@
 -export([whistle_version/0, write_pid/1]).
 -export([is_ipv4/1, is_ipv6/1]).
 -export([get_hostname/0]).
-
--export([to_e164/1, to_npan/1, to_1npan/1]).
--export([is_e164/1, is_npan/1, is_1npan/1]).
 
 -include_lib("kernel/include/inet.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
@@ -276,32 +273,6 @@ get_xml_value(Path, Xml) ->
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
 
--spec is_e164/1 :: (ne_binary()) -> boolean().
--spec is_npan/1 :: (ne_binary()) -> boolean().
--spec is_1npan/1 :: (ne_binary()) -> boolean().
-
-is_e164(DID) ->
-    wnm_util:is_e164(DID).
-
-is_npan(DID) ->
-    wnm_util:is_npan(DID).
-
-is_1npan(DID) ->
-    wnm_util:is_1npan(DID).
-%% +18001234567 -> +18001234567
--spec to_e164/1 :: (ne_binary()) -> ne_binary().
-to_e164(DID) ->
-    wnm_util:to_e164(DID).
-
-%% end up with 8001234567 from 1NPAN and E.164
--spec to_npan/1 :: (ne_binary()) -> ne_binary().
-to_npan(DID) ->
-    wnm_util:to_npan(DID).
-
--spec to_1npan/1 :: (ne_binary()) -> ne_binary().
-to_1npan(DID) ->
-    wnm_util:to_1npan(DID).
-
 -spec to_integer/1 :: (string() | binary() | integer() | float()) -> integer().
 -spec to_integer/2 :: (string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
 to_integer(X) ->
@@ -444,13 +415,13 @@ is_proplist(Term) when is_list(Term) ->
 is_proplist(_) ->
     false.
 
--spec binary_to_lower/1 :: (term()) -> undefined | binary().
-binary_to_lower(undefined) ->
+-spec to_lower_binary/1 :: (term()) -> undefined | binary().
+to_lower_binary(undefined) ->
     undefined;
-binary_to_lower(Bin) when is_binary(Bin) ->
+to_lower_binary(Bin) when is_binary(Bin) ->
     << <<(binary_to_lower_char(B))>> || <<B>> <= Bin>>;
-binary_to_lower(Else) ->
-    binary_to_lower(to_binary(Else)).
+to_lower_binary(Else) ->
+    to_lower_binary(to_binary(Else)).
     
 -spec binary_to_lower_char/1 :: (C) -> char() when
       C :: char().

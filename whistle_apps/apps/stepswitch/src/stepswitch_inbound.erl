@@ -65,7 +65,7 @@ get_dest_number(JObj) ->
                [ToUser, _] ->
                    ToUser
            end,
-    wh_util:to_e164(User).
+    wnm_util:to_e164(User).
 
 %%--------------------------------------------------------------------
 %% @private

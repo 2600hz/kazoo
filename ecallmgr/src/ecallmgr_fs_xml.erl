@@ -126,11 +126,11 @@ build_route(RouteJObj, DIDFormat) ->
 
 -spec format_did/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 format_did(DID, <<"e164">>) ->
-    wh_util:to_e164(DID);
+    wnm_util:to_e164(DID);
 format_did(DID, <<"npan">>) ->
-    wh_util:to_npan(DID);
+    wnm_util:to_npan(DID);
 format_did(DID, <<"1npan">>) ->
-    wh_util:to_1npan(DID).
+    wnm_util:to_1npan(DID).
 
 -spec get_leg_vars/1 :: (json_object() | proplist()) -> iolist().
 get_leg_vars([_|_]=Prop) ->

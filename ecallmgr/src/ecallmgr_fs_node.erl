@@ -405,7 +405,7 @@ process_custom_data(Data) ->
 
 publish_register_event(Data) ->
     ApiProp = lists:foldl(fun(K, Api) ->
-                                  case props:get_value(wh_util:binary_to_lower(K), Data) of
+                                  case props:get_value(wh_util:to_lower_binary(K), Data) of
                                       undefined ->
                                           case props:get_value(K, Data) of
                                               undefined -> Api;
@@ -463,7 +463,7 @@ get_originate_action(<<"transfer">>, JObj) ->
     case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of
         undefined -> <<"error">>;
         Route ->
-            list_to_binary(["'m:^:", get_unset_vars(JObj), "transfer:", wh_util:to_e164(Route), " XML context_2' inline"])
+            list_to_binary(["'m:^:", get_unset_vars(JObj), "transfer:", wnm_util:to_e164(Route), " XML context_2' inline"])
     end;
 get_originate_action(<<"bridge">>, JObj) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
