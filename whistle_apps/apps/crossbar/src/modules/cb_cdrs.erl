@@ -18,12 +18,12 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
--define(CB_LIST_BY_USER, <<"cdrs/listing_by_user">>).
+-define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 
 %%%===================================================================
@@ -100,25 +100,25 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.cdrs">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.cdrs">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.cdrs">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  _BPid = crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  _BPid = crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.cdrs">>, [RD, Context | Params]}, State) ->
@@ -241,18 +241,20 @@ load_cdr_summary(#cb_context{req_nouns=Nouns}=Context) ->
 	[_, {?WH_ACCOUNTS_DB, _AID} | _] ->
 	    ?LOG("loading cdrs for account ~s", [_AID]),
             crossbar_doc:load_view(?CB_LIST
-                                   ,[]
+                                   ,[{<<"stale">>, <<"update_after">>}]
                                    ,Context
                                    ,fun normalize_view_results/2);
-	[_, {<<"users">>, [UserId] } | _] ->
-	    ?LOG("loading cdrs for user ~s", [UserId]),
+        [_, {<<"users">>, [UserId] } | _] ->
+            ?LOG("loading cdrs for user ~s", [UserId]),
             crossbar_doc:load_view(?CB_LIST_BY_USER
-                                   ,[{<<"key">>, UserId}]
+                                   ,[{<<"key">>, UserId}
+                                     ,{<<"stale">>, <<"update_after">>}
+                                    ]
                                    ,Context
                                    ,fun normalize_view_results/2);
-	_ ->
-	    ?LOG("invalid URL chain for cdr summary request"),
-	    crossbar_util:response_faulty_request(Context)
+        _ ->
+            ?LOG("invalid URL chain for cdr summary request"),
+            crossbar_util:response_faulty_request(Context)
     end.
 
 %%--------------------------------------------------------------------
