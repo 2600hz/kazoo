@@ -145,7 +145,8 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
                     true -> Size;
                     false -> ?CHUNKSIZE
                 end,
-    ?LOG("chunksize: ~p", [Size]),
+    ?LOG("filesize: ~p", [Size]),
+    ?LOG("chunksize: ~p", [ChunkSize]),
 
     Extension = case ContentTypeExt =:= undefined andalso filename:extension(Attachment) of
                     false -> ContentTypeExt; % if content type is known
