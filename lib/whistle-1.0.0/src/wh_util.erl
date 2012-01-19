@@ -225,8 +225,7 @@ call_response1(CallId, CtrlQ, Commands) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (JObj) -> binary() | 'undefined' when
-      JObj :: json_object().
+-spec put_callid/1 :: (json_object()) -> ne_binary() | 'undefined'.
 put_callid(JObj) ->
     erlang:put(callid, wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
 
@@ -237,14 +236,12 @@ put_callid(JObj) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (JObj) -> {binary(), binary()} when
-      JObj :: json_object().
+-spec get_event_type/1 :: (json_object()) -> {ne_binary() | 'undefined', ne_binary() | 'undefined'}.
 get_event_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
 
 %% must be a term that can be changed to a list
--spec to_hex/1 :: (S) -> string() when
-      S :: term().
+-spec to_hex/1 :: (binary() | string()) -> string().
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
 

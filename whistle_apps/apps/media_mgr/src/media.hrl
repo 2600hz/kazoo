@@ -1,3 +1,4 @@
+-include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_media.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
