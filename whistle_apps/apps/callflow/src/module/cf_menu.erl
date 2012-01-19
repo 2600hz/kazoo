@@ -46,7 +46,7 @@
           ,hunt_deny = <<>> :: binary()
           ,hunt_allow = <<>> :: binary()
           ,record_pin = <<>> :: binary()
-          ,greeting_id = undefined :: binary()
+          ,greeting_id = 'undefined' :: 'undefined' | ne_binary()
           ,prompts = #prompts{} :: #prompts{}
           ,keys = #keys{} :: #keys{}
          }).
@@ -80,7 +80,7 @@ menu_loop(#menu{retries=Retries, prompts=Prompts}, Call) when Retries =< 0 ->
         {attempt_resp, ok} ->
             ok;
         {attempt_resp, {error, _}} ->
-            Keys = cf_exe:get_all_branch_keys(Call), 
+            {branch_keys, Keys} = cf_exe:get_all_branch_keys(Call), 
             case lists:member(<<"_">>, Keys) of
                 false ->
                     cf_call_command:b_play(Prompts#prompts.goodbye, Call);
@@ -134,9 +134,9 @@ try_match_digits(Digits, Menu, Call) ->
     ?LOG("trying to match digits ~s", [Digits]),
     is_callflow_child(Digits, Menu, Call)
         orelse (is_hunt_enabled(Digits, Menu, Call)
-		andalso is_hunt_allowed(Digits, Menu, Call)
-		andalso not is_hunt_denied(Digits, Menu, Call)
-		andalso hunt_for_callflow(Digits, Menu, Call)).
+                andalso is_hunt_allowed(Digits, Menu, Call)
+                andalso not is_hunt_denied(Digits, Menu, Call)
+                andalso hunt_for_callflow(Digits, Menu, Call)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -258,10 +258,10 @@ record_greeting(AttachmentName, #menu{prompts=#prompts{record_prompt=RecordGreet
                                 ,Call),
     {ok, _} = cf_call_command:b_record(AttachmentName, Call),
     case review_recording(AttachmentName, Menu, Call) of
-	{ok, record} ->
-	    record_greeting(tmp_file(), Menu, Call);
-	{ok, save} ->
-	    {ok, _} = store_recording(AttachmentName, MediaId, Call),
+        {ok, record} ->
+            record_greeting(tmp_file(), Menu, Call);
+        {ok, save} ->
+            {ok, _} = store_recording(AttachmentName, MediaId, Call),
             cf_call_command:b_play(Saved, Call),
             Menu;
         {ok, no_selection} ->
@@ -345,13 +345,13 @@ review_recording(MediaName, #menu{prompts=Prompts, keys=#keys{listen=ListenKey, 
     case cf_call_command:b_play_and_collect_digit(Prompts#prompts.review_recording, Call) of
         {ok, ListenKey} ->
             cf_call_command:b_play(MediaName, Call),
-	    review_recording(MediaName, Menu, Call);
-	{ok, RecordKey} ->
-	    {ok, record};
-	{ok, SaveKey} ->
-	    {ok, save};
+            review_recording(MediaName, Menu, Call);
+        {ok, RecordKey} ->
+            {ok, record};
+        {ok, SaveKey} ->
+            {ok, save};
         {ok, _} ->
-	    review_recording(MediaName, Menu, Call);
+            review_recording(MediaName, Menu, Call);
         {error, _} ->
             {ok, no_selection}
     end.

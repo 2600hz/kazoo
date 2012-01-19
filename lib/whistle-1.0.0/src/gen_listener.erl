@@ -38,7 +38,7 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2
          ,code_change/3
-	]).
+        ]).
 
 %% gen_server API
 -export([call/2, call/3, cast/2, reply/2]).
@@ -68,23 +68,23 @@ behaviour_info(_) ->
 -type responder_callback_mappings() :: [responder_callback_mapping(),...] | [].
 
 -type start_params() :: [{responders, responders()} |
-			 {bindings, bindings()} |
-			 {queue_name, binary()} |
-			 {queue_options, proplist()} |
-			 {consume_options, proplist()} |
-			 {basic_qos, non_neg_integer()}
-			 ,...] | [].
+                         {bindings, bindings()} |
+                         {queue_name, binary()} |
+                         {queue_options, proplist()} |
+                         {consume_options, proplist()} |
+                         {basic_qos, non_neg_integer()}
+                         ,...] | [].
 
 -record(state, {
-	  queue = <<>> :: binary()
+          queue = <<>> :: binary()
          ,is_consuming = 'false' :: boolean()
-	 ,responders = [] :: responders() %% { {EvtCat, EvtName}, Module }
+         ,responders = [] :: responders() %% { {EvtCat, EvtName}, Module }
          ,bindings = [] :: bindings() %% authentication | {authentication, [{key, value},...]}
          ,params = [] :: proplist()
-	 ,module = 'undefined' :: atom()
+         ,module = 'undefined' :: atom()
          ,module_state = 'undefined' :: term()
          ,active_responders = [] :: [pid(),...] | [] %% list of pids processing requests
-	 }).
+         }).
 
 -define(TIMEOUT_RETRY_CONN, 1000).
 
@@ -167,16 +167,16 @@ init([Module, Params, InitArgs]) ->
     put(callid, wh_util:to_binary(Module)), %% identify the client module for this gen_listener
 
     ModState = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
-		   {ok, MS} ->
-		       MS;
-		   {ok, MS, hibernate} ->
-		       MS;
-		   {ok, MS, Timeout} when is_integer(Timeout) andalso Timeout > -1 ->
-		       erlang:send_after(Timeout, self(), timeout),
-		       MS;
-		   Err ->
-		       throw(Err)
-	       end,
+                   {ok, MS} ->
+                       MS;
+                   {ok, MS, hibernate} ->
+                       MS;
+                   {ok, MS, Timeout} when is_integer(Timeout) andalso Timeout > -1 ->
+                       erlang:send_after(Timeout, self(), timeout),
+                       MS;
+                   Err ->
+                       throw(Err)
+               end,
 
     Responders = props:get_value(responders, Params, []),
     Bindings = props:get_value(bindings, Params, []),
@@ -187,16 +187,17 @@ init([Module, Params, InitArgs]) ->
 
     Self = self(),
     spawn(fun() -> [add_responder(Self, Mod, Evts) || {Mod, Evts} <- Responders] end),
-    spawn(fun() -> [add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings] end),
+
+    _ = [create_binding(Type, BindProps, Q) || {Type, BindProps} <- Bindings],
 
     {ok, #state{queue=Q, module=Module, module_state=ModState
-		,responders=[], bindings=Bindings
-		,params=lists:keydelete(responders, 1, lists:keydelete(bindings, 1, Params))}
+                ,responders=[], bindings=Bindings
+                ,params=lists:keydelete(responders, 1, lists:keydelete(bindings, 1, Params))}
      ,hibernate}.
 
 -type gen_l_handle_call_ret() :: {'reply', term(), #state{}, gen_server_timeout()} |
-				 {'noreply', #state{}, gen_server_timeout()} |
-				 {'stop', term(), #state{}} | {'stop', term(), term(), #state{}}.
+                                 {'noreply', #state{}, gen_server_timeout()} |
+                                 {'stop', term(), #state{}} | {'stop', term(), term(), #state{}}.
 
 -spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> gen_l_handle_call_ret().
 handle_call(queue_name, _From, #state{queue=Q}=State) ->
@@ -205,21 +206,21 @@ handle_call(responders, _From, #state{responders=Rs}=State) ->
     {reply, Rs, State};
 handle_call(Request, From, #state{module=Module, module_state=ModState}=State) ->
     case catch Module:handle_call(Request, From, ModState) of
-	{reply, Reply, ModState1} ->
-	    {reply, Reply, State#state{module_state=ModState1}, hibernate};
-	{reply, Reply, ModState1, Timeout} ->
-	    {reply, Reply, State#state{module_state=ModState1}, Timeout};
-	{noreply, ModState1} ->
-	    {noreply, State#state{module_state=ModState1}, hibernate};
-	{noreply, ModState1, Timeout} ->
-	    {noreply, State#state{module_state=ModState1}, Timeout};
-	{stop, Reason, ModState1} ->
-	    {stop, Reason, State#state{module_state=ModState1}};
-	{stop, Reason, Reply, ModState1} ->
-	    {stop, Reason, Reply, State#state{module_state=ModState1}};
-	{'EXIT', Why} ->
-	    ?LOG("exception: ~p", [Why]),
-	    {stop, Why, State}
+        {reply, Reply, ModState1} ->
+            {reply, Reply, State#state{module_state=ModState1}, hibernate};
+        {reply, Reply, ModState1, Timeout} ->
+            {reply, Reply, State#state{module_state=ModState1}, Timeout};
+        {noreply, ModState1} ->
+            {noreply, State#state{module_state=ModState1}, hibernate};
+        {noreply, ModState1, Timeout} ->
+            {noreply, State#state{module_state=ModState1}, Timeout};
+        {stop, Reason, ModState1} ->
+            {stop, Reason, State#state{module_state=ModState1}};
+        {stop, Reason, Reply, ModState1} ->
+            {stop, Reason, Reply, State#state{module_state=ModState1}};
+        {'EXIT', Why} ->
+            ?LOG("exception: ~p", [Why]),
+            {stop, Why, State}
     end.
 
 -spec handle_cast/2 :: (term(), #state{}) -> handle_cast_ret().
@@ -239,134 +240,108 @@ handle_cast({add_responder, Responder, Keys}, #state{responders=Responders}=Stat
 handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State) ->
     {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}, hibernate};
 
-handle_cast({add_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
+handle_cast({add_binding, Binding, Props}, #state{queue=Q}=State) ->
     ?LOG("adding binding ~s, ~p", [Binding, Props]),
-    Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
-    try
-        ApiMod = wh_util:to_atom(Wapi),
-	ApiMod:bind_q(Q, Props),
-	{noreply, State}
-    catch
-	error:badarg ->
-	    ?LOG_SYS("api module ~s not found", [Wapi]),
-	    case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
-		non_existing ->
-		    ?LOG_SYS("beam file not found for ~s, trying old method", [Wapi]),
-		    queue_bindings:add_binding_to_q(Q, Binding, Props),
-		    {noreply, State};
-		_Path ->
-		    ?LOG_SYS("beam file found: ~s", [_Path]),
-		    wh_util:to_atom(Wapi, true), %% put atom into atom table
-		    handle_cast(Req, State)
-	    end;
-	error:undef ->
-	    ?LOG_SYS("Module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
-	    ?LOG_SYS("Trying old school add_binding for ~s", [Binding]),
-	    queue_bindings:add_binding_to_q(Q, Binding, Props),
-	    {noreply, State};
-        E:R ->
-            io:format("~p ~p~n", [E, R]),
-	    io:format("~p~n", [erlang:get_stacktrace()]),
-            {noreply, State}
-    end;
+    create_binding(Binding, Props, Q),
+    {noreply, State};
 
 handle_cast({rm_binding, Binding}=Req, #state{queue=Q}=State) ->
     Wapi = <<"wapi_", (wh_util:to_binary(Binding))/binary>>,
     try
-	ApiMod = wh_util:to_atom(Wapi),
-	ApiMod:unbind_q(Q),
-	{noreply, State}
+        ApiMod = wh_util:to_atom(Wapi),
+        ApiMod:unbind_q(Q),
+        {noreply, State}
     catch
-	error:badarg ->
-	    ?LOG_SYS("Atom ~s not found", [Wapi]),
-	    case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
-		non_existing ->
-		    {noreply, State};
-		_Path ->
-		    ?LOG_SYS("beam file found: ~s", [_Path]),
-		    wh_util:to_atom(Wapi, true),
-		    handle_cast(Req, State)
-	    end;
-	error:undef ->
-	    ?LOG_SYS("Module ~s doesn't exist or unbind_q/1 isn't exported", [Wapi]),
-	    queue_bindings:rm_binding_from_q(Q, Binding),
-	    {noreply, State}
+        error:badarg ->
+            ?LOG_SYS("Atom ~s not found", [Wapi]),
+            case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
+                non_existing ->
+                    {noreply, State};
+                _Path ->
+                    ?LOG_SYS("beam file found: ~s", [_Path]),
+                    wh_util:to_atom(Wapi, true),
+                    handle_cast(Req, State)
+            end;
+        error:undef ->
+            ?LOG_SYS("Module ~s doesn't exist or unbind_q/1 isn't exported", [Wapi]),
+            queue_bindings:rm_binding_from_q(Q, Binding),
+            {noreply, State}
     end;
 
 handle_cast({rm_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
     Wapi = <<"wapi_", (wh_util:to_binary(Binding))/binary>>,
     try
-	ApiMod = wh_util:to_atom(Wapi),
-	ApiMod:unbind_q(Q, Props),
-	{noreply, State}
+        ApiMod = wh_util:to_atom(Wapi),
+        ApiMod:unbind_q(Q, Props),
+        {noreply, State}
     catch
-	error:badarg ->
-	    ?LOG_SYS("Atom ~s not found", [Wapi]),
-	    case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
-		non_existing ->
-		    {noreply, State};
-		_Path ->
-		    ?LOG_SYS("beam file found: ~s", [_Path]),
-		    wh_util:to_atom(Wapi, true),
-		    handle_cast(Req, State)
-	    end;
-	error:undef ->
-	    ?LOG_SYS("Module ~s doesn't exist or unbind_q/2 isn't exported", [Wapi]),
-	    queue_bindings:rm_binding_from_q(Q, Binding, Props),
-	    {noreply, State}
+        error:badarg ->
+            ?LOG_SYS("Atom ~s not found", [Wapi]),
+            case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
+                non_existing ->
+                    {noreply, State};
+                _Path ->
+                    ?LOG_SYS("beam file found: ~s", [_Path]),
+                    wh_util:to_atom(Wapi, true),
+                    handle_cast(Req, State)
+            end;
+        error:undef ->
+            ?LOG_SYS("Module ~s doesn't exist or unbind_q/2 isn't exported", [Wapi]),
+            queue_bindings:rm_binding_from_q(Q, Binding, Props),
+            {noreply, State}
     end;
 
 handle_cast(Message, #state{module=Module, module_state=ModState}=State) ->
     case catch Module:handle_cast(Message, ModState) of
-	{noreply, ModState1} ->
-	    {noreply, State#state{module_state=ModState1}, hibernate};
-	{noreply, ModState1, Timeout} ->
-	    {noreply, State#state{module_state=ModState1}, Timeout};
-	{stop, Reason, ModState1} ->
-	    {stop, Reason, State#state{module_state=ModState1}};
-	{'EXIT', Why} ->
-	    ?LOG("exception: ~p", [Why]),
-	    {stop, Why, State}
+        {noreply, ModState1} ->
+            {noreply, State#state{module_state=ModState1}, hibernate};
+        {noreply, ModState1, Timeout} ->
+            {noreply, State#state{module_state=ModState1}, Timeout};
+        {stop, Reason, ModState1} ->
+            {stop, Reason, State#state{module_state=ModState1}};
+        {'EXIT', Why} ->
+            ?LOG("exception: ~p", [Why]),
+            {stop, Why, State}
     end.
 
 -spec handle_info/2 :: (term(), #state{}) -> handle_info_ret().
 handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, #state{active_responders=ARs}=State) ->
     case catch handle_event(Payload, CT, State) of
-	Pid when is_pid(Pid) ->
-	    {noreply, State#state{active_responders=[Pid | ARs]}, hibernate};
+        Pid when is_pid(Pid) ->
+            {noreply, State#state{active_responders=[Pid | ARs]}, hibernate};
         ignore ->
             {noreply, State};
-	{'EXIT', Why} ->
-	    ?LOG("exception: ~p", [Why]),
-	    {stop, Why, State}
+        {'EXIT', Why} ->
+            ?LOG("exception: ~p", [Why]),
+            {stop, Why, State}
     end;
 
 handle_info({'EXIT', Pid, _Reason}=Message, #state{active_responders=ARs}=State) ->
     case lists:member(Pid, ARs) of
-	true -> {noreply, State#state{active_responders=lists:delete(Pid, ARs)}, hibernate};
-	false -> handle_callback_info(Message, State)
+        true -> {noreply, State#state{active_responders=lists:delete(Pid, ARs)}, hibernate};
+        false -> handle_callback_info(Message, State)
     end;
 
 handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=State) ->
     ?LOG("amqp host down msg: ~p", [_H]),
     case amqp_util:is_host_available() of
-	true ->
-	    ?LOG("Host is available, let's try wiring up"),
-	    case start_amqp(Params) of
-		{ok, Q} ->
-		    Self = self(),
-		    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
-		    spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
-		    {noreply, State#state{queue=Q, is_consuming=false}, hibernate};
-		{error, _} ->
-		    ?LOG("Failed to start amqp, waiting another second"),
-		    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
-		    {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
-	    end;
-	false ->
-	    ?LOG("No AMQP host ready, waiting another second"),
-	    erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
-	    {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
+        true ->
+            ?LOG("Host is available, let's try wiring up"),
+            case start_amqp(Params) of
+                {ok, Q} ->
+                    Self = self(),
+                    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
+                    spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
+                    {noreply, State#state{queue=Q, is_consuming=false}, hibernate};
+                {error, _} ->
+                    ?LOG("Failed to start amqp, waiting another second"),
+                    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
+                    {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
+            end;
+        false ->
+            ?LOG("No AMQP host ready, waiting another second"),
+            erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
+            {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
     end;
 
 handle_info({amqp_lost_channel, no_connection}, State) ->
@@ -390,15 +365,15 @@ handle_info(Message, State) ->
 
 handle_callback_info(Message, #state{module=Module, module_state=ModState}=State) ->
     case catch Module:handle_info(Message, ModState) of
-	{noreply, ModState1} ->
-	    {noreply, State#state{module_state=ModState1}, hibernate};
-	{noreply, ModState1, Timeout} ->
-	    {noreply, State#state{module_state=ModState1}, Timeout};
-	{stop, Reason, ModState1} ->
-	    {stop, Reason, State#state{module_state=ModState1}};
-	{'EXIT', Why} ->
-	    ?LOG("exception: ~p", [Why]),
-	    {stop, Why, State}
+        {noreply, ModState1} ->
+            {noreply, State#state{module_state=ModState1}, hibernate};
+        {noreply, ModState1, Timeout} ->
+            {noreply, State#state{module_state=ModState1}, Timeout};
+        {stop, Reason, ModState1} ->
+            {stop, Reason, State#state{module_state=ModState1}};
+        {'EXIT', Why} ->
+            ?LOG("exception: ~p", [Why]),
+            {stop, Why, State}
     end.
 
 code_change(_OldVersion, State, _Extra) ->
@@ -420,10 +395,10 @@ handle_event(Payload, <<"application/erlang">>, State) ->
 -spec process_req/2 :: (#state{}, json_object()) -> pid().
 process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj) ->
     Props1 = case catch Module:handle_event(JObj, ModState) of
-		 {reply, Props} when is_list(Props) -> [{server, self()}, {queue, Queue} | Props];
-		 {'EXIT', _Why} -> [{server, self()}, {queue, Queue}];
+                 {reply, Props} when is_list(Props) -> [{server, self()}, {queue, Queue} | Props];
+                 {'EXIT', _Why} -> [{server, self()}, {queue, Queue}];
                  ignore -> ignore
-	     end,
+             end,
     case Props1 of
         ignore -> ignore;
         _Else ->
@@ -435,11 +410,11 @@ process_req(Props, Responders, JObj) ->
     Key = wh_util:get_event_type(JObj),
 
     Handlers = [spawn_monitor(fun() ->
-				      _ = wh_util:put_callid(JObj),
-				      Responder:Fun(JObj, Props)
-			      end) || {Evt, {Responder, Fun}} <- Responders,
-				      maybe_event_matches_key(Key, Evt)
-	       ],
+                                      _ = wh_util:put_callid(JObj),
+                                      Responder:Fun(JObj, Props)
+                              end) || {Evt, {Responder, Fun}} <- Responders,
+                                      maybe_event_matches_key(Key, Evt)
+               ],
     wait_for_handlers(Handlers).
 
 %% allow wildcard (<<"*">>) in the Key to match either (or both) Category and Name
@@ -455,8 +430,8 @@ maybe_event_matches_key(_A, _B) -> false.
 -spec wait_for_handlers/1 :: ([{pid(), reference()},...] | []) -> 'ok'.
 wait_for_handlers([{Pid, Ref} | Hs]) ->
     receive
-	{'DOWN', Ref, process, Pid, _Reason} ->
-	    wait_for_handlers(Hs)
+        {'DOWN', Ref, process, Pid, _Reason} ->
+            wait_for_handlers(Hs)
     end;
 wait_for_handlers([]) -> ok.
 
@@ -465,15 +440,15 @@ start_amqp(Props) ->
     QueueProps = props:get_value(queue_options, Props, []),
     QueueName = props:get_value(queue_name, Props, <<>>),
     case catch amqp_util:new_queue(QueueName, QueueProps) of
-	{error, amqp_error}=E -> ?LOG("Failed to start new queue"), E;
-	{'EXIT', _Why} -> ?LOG("Exit: ~p", [_Why]), {error, amqp_error};
-	Queue ->
-	    ConsumeProps = props:get_value(consume_options, Props, []),
+        {error, amqp_error}=E -> ?LOG("Failed to start new queue"), E;
+        {'EXIT', _Why} -> ?LOG("Exit: ~p", [_Why]), {error, amqp_error};
+        Queue ->
+            ConsumeProps = props:get_value(consume_options, Props, []),
 
-	    set_qos(props:get_value(basic_qos, Props)),
-	    amqp_util:basic_consume(Queue, ConsumeProps),
-	    ?LOG("Consuming on ~s", [Queue]),
-	    {ok, Queue}
+            set_qos(props:get_value(basic_qos, Props)),
+            amqp_util:basic_consume(Queue, ConsumeProps),
+            ?LOG("Consuming on ~s", [Queue]),
+            {ok, Queue}
     end.
 
 -spec stop_amqp/2 :: (binary(), bindings()) -> 'ok'.
@@ -486,3 +461,30 @@ stop_amqp(Q, Bindings) ->
 -spec set_qos/1 :: ('undefined' | non_neg_integer()) -> 'ok'.
 set_qos(undefined) -> ok;
 set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
+
+-spec create_binding/3 :: (binding(), proplist(), ne_binary()) -> any().
+create_binding(Binding, Props, Q) ->
+    Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
+    try
+        ApiMod = wh_util:to_atom(Wapi),
+        ApiMod:bind_q(Q, Props)
+    catch
+        error:badarg ->
+            ?LOG_SYS("api module ~s not found", [Wapi]),
+            case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
+                non_existing ->
+                    ?LOG_SYS("beam file not found for ~s, trying old method", [Wapi]),
+                    queue_bindings:add_binding_to_q(Q, Binding, Props);
+                _Path ->
+                    ?LOG_SYS("beam file found: ~s", [_Path]),
+                    wh_util:to_atom(Wapi, true), %% put atom into atom table
+                    create_binding(Binding, Props, Q)
+            end;
+        error:undef ->
+            ?LOG_SYS("Module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
+            ?LOG_SYS("Trying old school add_binding for ~s", [Binding]),
+            queue_bindings:add_binding_to_q(Q, Binding, Props);
+        E:R ->
+            io:format("~p ~p~n", [E, R]),
+            io:format("~p~n", [erlang:get_stacktrace()])
+    end.

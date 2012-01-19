@@ -136,13 +136,18 @@ handle_cast(stop, State) ->
 handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=MediaName, content_type_extension=ContentTypeExt
                             ,lsocket=LSocket, send_to=SendTo, stream_type=StreamType}=S) ->
     {ok, PortNo} = inet:port(LSocket),
+
     {ok, Content} = fetch_attachment(Db, Doc, Attachment),
+    ?LOG("attachment binary fetched"),
 
     Size = byte_size(Content),
     ChunkSize = case ?CHUNKSIZE > Size of
                     true -> Size;
                     false -> ?CHUNKSIZE
                 end,
+
+    ?LOG("filesize: ~p", [Size]),
+    ?LOG("chunksize: ~p", [ChunkSize]),
 
     Extension = case ContentTypeExt =:= undefined andalso filename:extension(Attachment) of
                     false -> ContentTypeExt; % if content type is known
@@ -151,14 +156,19 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
                     <<$., Ext/binary>> -> Ext;
                     _ -> ContentTypeExt
                 end,
+    ?LOG("extension: ~s", [Extension]),
 
     Hostname = wh_util:get_hostname(),
+    ?LOG("hostname: ~s", [Hostname]),
 
     CallID = get(callid),
     {Resp, Header, CT, StreamUrl} = case Extension of
                                         <<"mp3">> ->
                                             Self = self(),
-                                            spawn(fun() -> put(callid, CallID), start_shout_acceptor(Self, LSocket) end),
+
+                                            _Acceptor = spawn(fun() -> put(callid, CallID), start_shout_acceptor(Self, LSocket) end),
+                                            ?LOG("spawned shout server for mp3: ~p", [_Acceptor]),
+
                                             Url = list_to_binary(["shout://", Hostname, ":", integer_to_list(PortNo), "/stream.mp3"]),
 
                                             {
@@ -169,7 +179,10 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
                                             };
                                         <<"wav">> ->
                                             Self = self(),
-                                            spawn(fun() -> put(callid, CallID), start_stream_acceptor(Self, LSocket) end),
+
+                                            _Acceptor = spawn(fun() -> put(callid, CallID), start_stream_acceptor(Self, LSocket) end),
+                                            ?LOG("spawned shout server for wav: ~p", [_Acceptor]),
+
                                             {
                                               get_http_response_headers(?CONTENT_TYPE_WAV, Size)
                                               ,undefined
@@ -178,12 +191,15 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
                                             }
                                     end,
 
+    ?LOG("sending media_resp AMQP"),
+
     lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
 
     MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
                             ,shout_response=Resp, shout_header=Header, continuous=(StreamType =:= continuous), pad_response=(CT =:= ?CONTENT_TYPE_MP3)},
 
     MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
+    ?LOG("spawned media_loop: ~p", [MediaLoop]),
 
     {noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}, hibernate};
 

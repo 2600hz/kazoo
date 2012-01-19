@@ -67,8 +67,8 @@ start_link(Flow, ControlQ, CallId, Call) ->
 continue(Srv) ->
     continue(<<"_">>, Srv).
 
-continue(Key, #cf_call{cf_pid=Srv}) ->
-    continue(Key, Srv);
+continue(Key, #cf_call{cf_pid=Srv}=Call) ->
+    gen_server:cast(Srv, {continue, Key, Call});
 continue(Key, Srv) ->
     gen_server:cast(Srv, {continue, Key}).
 
@@ -117,13 +117,13 @@ control_queue_name(#cf_call{cf_pid=Srv}) ->
 control_queue_name(Srv) ->
     gen_server:call(Srv, {control_queue_name}).
 
--spec get_branch_keys/1 :: (#cf_call{} | pid()) -> [ne_binary(),...].
+-spec get_branch_keys/1 :: (#cf_call{} | pid()) -> {branch_keys, [ne_binary(),...]}.
 get_branch_keys(#cf_call{cf_pid=Srv}) ->
     get_branch_keys(Srv);
 get_branch_keys(Srv) ->
     gen_server:call(Srv, {get_branch_keys}).
 
--spec get_all_branch_keys/1 :: (#cf_call{} | pid()) -> [ne_binary(),...].
+-spec get_all_branch_keys/1 :: (#cf_call{} | pid()) -> {branch_keys, [ne_binary(),...]}.
 get_all_branch_keys(#cf_call{cf_pid=Srv}) ->
     get_all_branch_keys(Srv);
 get_all_branch_keys(Srv) ->
@@ -235,6 +235,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({continue, Key, #cf_call{}=Call}, State) ->
+    ?LOG("threading new cf_call{}"),
+    handle_cast({continue, Key}, State#state{call=Call});
 handle_cast({continue, Key}, #state{flow=Flow}=State) ->
     ?LOG("continuing to child ~s", [Key]),
     case wh_json:get_value([<<"children">>, Key], Flow) of
