@@ -276,9 +276,11 @@ record_greeting(AttachmentName, #menu{prompts=#prompts{record_prompt=RecordGreet
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_prompt/2 :: (#menu{}, #cf_call{}) -> binary().
+-spec get_prompt/2 :: (#menu{}, #cf_call{}) -> ne_binary().
 get_prompt(#menu{greeting_id=undefined, prompts=Prompts}, _) ->
     Prompts#prompts.generic_prompt;
+get_prompt(#menu{greeting_id = <<"local_stream://", _/binary>> = ID}, _) ->
+    ID;
 get_prompt(#menu{greeting_id=Id}, #cf_call{account_db=Db}) ->
     <<$/, Db/binary, $/, Id/binary>>.
 

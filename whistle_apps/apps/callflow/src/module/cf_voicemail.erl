@@ -286,6 +286,8 @@ play_greeting(#mailbox{prompts=#prompts{person_at_exten=PersonAtExten, not_avail
                  ,{say,  Mailbox}
                  ,{play, NotAvailable}
                 ], Call);
+play_greeting(#mailbox{unavailable_media_id = <<"local_stream://", _/binary>> = Id}, Call) ->
+    play(Id, Call);
 play_greeting(#mailbox{unavailable_media_id=Id}, #cf_call{account_db=Db}=Call) ->
     play(<<$/, Db/binary, $/, Id/binary>>, Call).
 
