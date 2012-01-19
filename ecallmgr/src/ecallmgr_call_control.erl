@@ -600,14 +600,18 @@ execute_control_request(Cmd, #state{node=Node, callid=CallId}) ->
             self() ! {hangup, undefined, CallId},
             ok;
         error:{badmatch, {error, ErrMsg}} ->
+            ST = erlang:get_stacktrace(),
             ?LOG("invalid command ~s: ~p", [wh_json:get_value(<<"Application-Name">>, Cmd), ErrMsg]),
-            ?LOG("stacktrace: ~w", [erlang:get_stacktrace()]),
+            ?LOG("stacktrace:"),
+            _ = [?LOG("~p", [Line]) || Line <- ST],
             send_error_resp(CallId, Cmd),
             self() ! {force_queue_advance, CallId},
             ok;
         _A:_B ->
+            ST = erlang:get_stacktrace(),
             ?LOG("exception (~s) while executing ~s: ~p", [_A, wh_json:get_value(<<"Application-Name">>, Cmd), _B]),
-            ?LOG("stacktrace: ~w", [erlang:get_stacktrace()]),
+            ?LOG("stacktrace:"),
+            _ = [?LOG("~p", [Line]) || Line <- ST],
             send_error_resp(CallId, Cmd),
             self() ! {force_queue_advance, CallId},
             ok
