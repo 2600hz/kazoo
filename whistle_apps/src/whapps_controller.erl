@@ -28,8 +28,7 @@ start_link() ->
     spawn(fun() -> initialize_whapps() end),
     ignore.
 
--spec start_app/1 :: (App) -> ok | error | exists when
-      App :: atom() | string() | binary().
+-spec start_app/1 :: (atom() | nonempty_string() | ne_binary()) -> 'ok' | 'error' | 'exists'.
 start_app(App) when not is_atom(App) ->
     start_app(wh_util:to_atom(App, true));
 start_app(App) when is_atom(App) ->
@@ -51,8 +50,7 @@ start_app(App) when is_atom(App) ->
             end
     end.
 
--spec stop_app/1 :: (App) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'} when
-      App :: atom() | string() | binary().
+-spec stop_app/1 :: (atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 stop_app(App) when not is_atom(App) ->
     stop_app(wh_util:to_atom(App));
 stop_app(App) ->
@@ -60,8 +58,7 @@ stop_app(App) ->
     whapps_util:alert(<<"notice">>, "Source: ~s(~p)~nAlert: stopping whapp ~s", [?MODULE, ?LINE, App]),
     whapps_sup:stop_app(App).
 
--spec restart_app/1 :: (App) -> {ok, pid() | undefined} | {ok, pid() | undefined, term()} | {error, term()} when
-      App :: atom() | string() | binary().
+-spec restart_app/1 :: (atom() | nonempty_string() | ne_binary()) -> {'ok', pid() | 'undefined'} | {'ok', pid() | 'undefined', term()} | {'error', term()}.
 restart_app(App) when not is_atom(App) ->
     restart_app(wh_util:to_atom(App));
 restart_app(App) when is_atom(App) ->
