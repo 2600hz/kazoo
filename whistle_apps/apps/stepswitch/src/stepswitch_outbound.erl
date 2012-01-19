@@ -52,7 +52,9 @@ attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
                      {Endpoints, IsEmergency} = find_endpoints(Number, Flags, Resources),
                      bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj)
              end,
-    case {Result, correct_shortdial(JObj)} of
+    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj
+                               ,wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj)),
+    case {Result, correct_shortdial(Number, CIDNum)} of
         {{error, no_resources}, undefined} -> Result;
         {{error, no_resources}, CorrectedNumber} -> 
             ?LOG("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
@@ -185,9 +187,9 @@ wait_for_execute_extension() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_bridge/1 :: ('infinity' | pos_integer()) -> {'error', json_object()} |
-							   {'error', 'timeout'} |
-							   {'ok', json_object()} |
-							   {'fail', json_object()}.
+                                                           {'error', 'timeout'} |
+                                                           {'ok', json_object()} |
+                                                           {'fail', json_object()}.
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
@@ -466,11 +468,8 @@ response({error, Error}, JObj) ->
 %% callerid.
 %% @end
 %%--------------------------------------------------------------------
--spec correct_shortdial/1 :: (json_object()) -> ne_binary() | fail.
-correct_shortdial(JObj) ->
-    Number = wh_json:get_value(<<"To-DID">>, JObj),
-    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj
-                               ,wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj)),
+-spec correct_shortdial/2 :: (ne_binary(), ne_binary()) -> ne_binary() | fail.
+correct_shortdial(Number, CIDNum) ->
     MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length > 0 ->
