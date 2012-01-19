@@ -238,26 +238,39 @@ response_db_fatal(Context) ->
 -spec binding_heartbeat/1 :: (pid()) -> pid().
 -spec binding_heartbeat/2 :: (pid(), non_neg_integer() | 'infinity') -> pid().
 binding_heartbeat(BPid) ->
-    binding_heartbeat(BPid, 3600000). % one hour
+    binding_heartbeat(BPid, 300000). % five minutes
 binding_heartbeat(BPid, Timeout) ->
     PPid = self(),
-    ?LOG("starting binding heartbeat for ~p", [PPid]),
+    ReqId = get(callid),
+    ?LOG("starting binding heartbeat for ~p", [BPid]),
+    BPid ! heartbeat,
     spawn(fun() ->
+                  put(callid, ReqId),
                   Ref = erlang:monitor(process, PPid),
-                  {ok, Tref} = timer:send_interval(250, BPid, heartbeat),
-                  ok = receive
-                           {'DOWN', Ref, process, _, normal} ->
-                               ok;
-                           {'DOWN', Ref, process, _, Reason} ->
-                               ?LOG("bound client (~p) down for non-normal reason: ~p", [PPid, Reason]),
-                               BPid ! {binding_error, Reason};
-                           _ -> ok
-                       after Timeout ->
-                               ?LOG("bound client (~p) too slow, timed out after ~p", [PPid, Timeout]),
-                               ok
-                       end,
-                  timer:cancel(Tref)
+                  erlang:send_after(100, self(), heartbeat),
+                  wait_for_binding_heartbeat(Timeout, Ref, BPid)
           end).
+
+wait_for_binding_heartbeat(Timeout, Ref, BPid) ->
+    BPid ! heartbeat,
+    Start = erlang:now(),
+    receive
+        {'DOWN', Ref, process, _, normal} ->
+            ok;
+        {'DOWN', Ref, process, Pid, Reason} ->
+            ?LOG("bound client (~p) down for non-normal reason: ~p", [Pid, Reason]),
+            BPid ! {binding_error, Reason};
+        heartbeat ->
+            erlang:send_after(100, self(), heartbeat),
+            DiffMicro = timer:now_diff(erlang:now(), Start),
+            wait_for_binding_heartbeat(Timeout - (DiffMicro div 1000), Ref, BPid);
+        _ -> 
+            DiffMicro = timer:now_diff(erlang:now(), Start),
+            wait_for_binding_heartbeat(Timeout - (DiffMicro div 1000), Ref, BPid)
+    after Timeout ->
+            ?LOG("bound client too slow, timed out"),
+            BPid ! {binding_error, timeout}
+    end.    
 
 %%--------------------------------------------------------------------
 %% @public

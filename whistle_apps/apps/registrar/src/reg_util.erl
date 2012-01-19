@@ -99,16 +99,26 @@ lookup_auth_user(Name, Realm) ->
         {'error', not_found} ->
             case get_auth_user(Name, Realm) of
                 {'ok', UserJObj} ->
-                    CacheTTL = whapps_config:get_integer(?CONFIG_CAT, <<"credentials_cache_ttl">>, 300),
-                    ?LOG("storing ~s@~s in cache", [Name, Realm]),
-                    wh_cache:store_local(Cache, CacheKey, UserJObj, CacheTTL),
-                    {'ok', UserJObj};
+                    case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], UserJObj)) of
+                        true -> 
+                            CacheTTL = whapps_config:get_integer(?CONFIG_CAT, <<"credentials_cache_ttl">>, 300),
+                            ?LOG("storing ~s@~s in cache", [Name, Realm]),
+                            wh_cache:store_local(Cache, CacheKey, UserJObj, CacheTTL),
+                            {'ok', UserJObj};
+                        false -> 
+                            {error, not_found}
+                    end;
                 {error, _}=E ->
                     E
             end;
-        {'ok', _}=OK ->
-            ?LOG("pulling auth user from cache"),
-            OK
+        {'ok', UserJObj}=OK ->
+            case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], UserJObj)) of
+                true -> 
+                    ?LOG("pulling auth user from cache"),
+                    OK;      
+                false -> 
+                    {error, not_found}
+            end
     end.
 
 -spec get_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found'}.

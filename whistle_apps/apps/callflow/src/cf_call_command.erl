@@ -266,9 +266,9 @@ b_hangup(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec call_status/1 :: (#cf_call{}) -> 'ok'.
--spec call_status/2 :: (undefined | ne_binary(), #cf_call{}) -> 'ok'.
--spec b_call_status/1 :: (#cf_call{}) -> {'ok', 'channel_hungup'}.
--spec b_call_status/2 :: (undefined | ne_binary(), #cf_call{}) -> {'ok', 'channel_hungup'}.
+-spec call_status/2 :: ('undefined' | ne_binary(), #cf_call{}) -> 'ok'.
+-spec b_call_status/1 :: (#cf_call{}) -> cf_api_std_return().
+-spec b_call_status/2 :: ('undefined' | ne_binary(), #cf_call{}) -> cf_api_std_return().
 
 call_status(Call) ->
     call_status(cf_exe:callid(Call), Call).
@@ -297,8 +297,8 @@ b_call_status(CallId, Call) ->
 %%--------------------------------------------------------------------
 -spec channel_status/1 :: (#cf_call{}) -> 'ok'.
 -spec channel_status/2 :: (undefined | ne_binary(), #cf_call{}) -> 'ok'.
--spec b_channel_status/1 :: (#cf_call{}) -> {'ok', 'channel_hungup'}.
--spec b_channel_status/2 :: (undefined | ne_binary(), #cf_call{}) -> {'ok', 'channel_hungup'}.
+-spec b_channel_status/1 :: (#cf_call{}) -> cf_api_std_return().
+-spec b_channel_status/2 :: (undefined | ne_binary(), #cf_call{}) -> cf_api_std_return().
 
 channel_status(Call) ->
     channel_status(cf_exe:callid(Call), Call).
@@ -433,17 +433,17 @@ play_command(Media, Terminators, Call) ->
 %% A list of keys can be used as the terminator or a silence threshold.
 %% @end
 %%--------------------------------------------------------------------
--spec record/2 :: (MediaName :: binary(), Call :: #cf_call{}) -> 'ok'.
--spec record/3 :: (MediaName :: binary(), Terminators :: [binary(),...], Call :: #cf_call{}) -> 'ok'.
--spec record/4 :: (MediaName :: binary(), Terminators :: [binary(),...], TimeLimit :: binary(), Call :: #cf_call{}) -> 'ok'.
--spec record/5 :: (MediaName :: binary(), Terminators :: [binary(),...], TimeLimit :: binary(), SilenceThreshold :: binary(), Call :: #cf_call{}) -> 'ok'.
--spec record/6 :: (MediaName :: binary(), Terminators :: [binary(),...], TimeLimit :: binary(), SilenceThreshold :: binary(), SilenceHits :: binary(), Call :: #cf_call{}) -> 'ok'.
+-spec record/2 :: (ne_binary(), Call :: #cf_call{}) -> 'ok'.
+-spec record/3 :: (ne_binary(), Terminators :: [binary(),...], Call :: #cf_call{}) -> 'ok'.
+-spec record/4 :: (ne_binary(), Terminators :: [binary(),...], TimeLimit :: binary(), Call :: #cf_call{}) -> 'ok'.
+-spec record/5 :: (ne_binary(), Terminators :: [binary(),...], TimeLimit :: binary(), SilenceThreshold :: binary(), Call :: #cf_call{}) -> 'ok'.
+-spec record/6 :: (ne_binary(), Terminators :: [binary(),...], TimeLimit :: binary(), SilenceThreshold :: binary(), SilenceHits :: binary(), Call :: #cf_call{}) -> 'ok'.
 
--spec b_record/2 :: (MediaName :: binary(), Call :: #cf_call{}) -> cf_api_std_return().
--spec b_record/3 :: (MediaName :: binary(), Terminators :: [binary(),...], Call :: #cf_call{}) -> cf_api_std_return().
--spec b_record/4 :: (MediaName :: binary(), Terminators :: [binary(),...], TimeLimit :: binary(), Call :: #cf_call{}) -> cf_api_std_return().
--spec b_record/5 :: (MediaName :: binary(), Terminators :: [binary(),...], TimeLimit :: binary(), SilenceThreshold :: binary(), Call :: #cf_call{}) -> cf_api_std_return().
--spec b_record/6 :: (MediaName :: binary(), Terminators :: [binary(),...], TimeLimit :: binary(), SilenceThreshold :: binary(), SilenceHits :: binary(), Call :: #cf_call{}) -> cf_api_std_return().
+-spec b_record/2 :: (ne_binary(), Call :: #cf_call{}) -> cf_api_std_return().
+-spec b_record/3 :: (ne_binary(), Terminators :: [binary(),...], Call :: #cf_call{}) -> cf_api_std_return().
+-spec b_record/4 :: (ne_binary(), Terminators :: [binary(),...], TimeLimit :: binary(), Call :: #cf_call{}) -> cf_api_std_return().
+-spec b_record/5 :: (ne_binary(), Terminators :: [binary(),...], TimeLimit :: binary(), SilenceThreshold :: binary(), Call :: #cf_call{}) -> cf_api_std_return().
+-spec b_record/6 :: (ne_binary(), Terminators :: [binary(),...], TimeLimit :: binary(), SilenceThreshold :: binary(), SilenceHits :: binary(), Call :: #cf_call{}) -> cf_api_std_return().
 
 record(MediaName, Call) ->
     record(MediaName, ?ANY_DIGIT, Call).
@@ -481,17 +481,14 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 %% Produces the low level wh_api request to store the file
 %% @end
 %%--------------------------------------------------------------------
--spec store/3 :: (MediaName, Transfer, Call) -> 'ok' when
-      MediaName :: binary(),
+-spec store/3 :: (ne_binary(), Transfer, Call) -> 'ok' when
       Transfer :: binary(),
       Call :: #cf_call{}.
--spec store/4 :: (MediaName, Transfer, Method, Call) -> 'ok' when
-      MediaName :: binary(),
+-spec store/4 :: (ne_binary(), Transfer, Method, Call) -> 'ok' when
       Transfer :: binary(),
       Method :: binary(),
       Call :: #cf_call{}.
--spec store/5 :: (MediaName, Transfer, Method, Headers, Call) -> 'ok' when
-      MediaName :: binary(),
+-spec store/5 :: (ne_binary(), Transfer, Method, Headers, Call) -> 'ok' when
       Transfer :: binary(),
       Method :: binary(),
       Headers :: json_objects(),
@@ -499,17 +496,14 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 
 -type b_store_return() :: {'error', 'timeout' | json_object()} | {'ok', json_object()}.
 
--spec b_store/3 :: (MediaName, Transfer, Call) -> b_store_return() when
-      MediaName :: binary(),
+-spec b_store/3 :: (ne_binary(), Transfer, Call) -> b_store_return() when
       Transfer :: binary(),
       Call :: #cf_call{}.
--spec b_store/4 :: (MediaName, Transfer, Method, Call) -> b_store_return() when
-      MediaName :: binary(),
+-spec b_store/4 :: (ne_binary(), Transfer, Method, Call) -> b_store_return() when
       Transfer :: binary(),
       Method :: binary(),
       Call :: #cf_call{}.
--spec b_store/5 :: (MediaName, Transfer, Method, Headers, Call) -> b_store_return() when
-      MediaName :: binary(),
+-spec b_store/5 :: (ne_binary(), Transfer, Method, Headers, Call) -> b_store_return() when
       Transfer :: binary(),
       Method :: binary(),
       Headers :: json_objects(),
@@ -1256,20 +1250,18 @@ wait_for_dtmf(Timeout) ->
 %% Waits for and determines the status of the bridge command
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_bridge/2 :: (Timeout, Call) -> cf_api_bridge_return() when
-      Timeout :: 'infinity' | integer(),
-      Call :: #cf_call{}.
+-spec wait_for_bridge/2 :: ('infinity' | pos_integer(), #cf_call{}) -> cf_api_bridge_return().
 wait_for_bridge(Timeout, Call) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
             AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
                                             wh_json:get_value(<<"Hangup-Cause">>, JObj)),
-            Result = case lists:member(AppResponse, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>
-                                                         ,<<"SUCCESS">>]) of
+            Result = case lists:member(AppResponse, ?SUCCESSFUL_HANGUPS) of
                          true -> ok;
                          false -> fail
                      end,
+
             case get_event_type(JObj) of               
                 {<<"error">>, <<"dialplan">>, _} ->
                     ?LOG("dialplan error: ~s", [wh_json:encode(JObj)]),
@@ -1284,8 +1276,8 @@ wait_for_bridge(Timeout, Call) ->
                     {Result, JObj};
 
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-                    ?LOG("bridge completed with result ~s catagorized as ~s", [AppResponse, Result]),                    
-                    {Result, JObj};
+                    ?LOG("bridge completed with result ~s catagorized as ~s", [AppResponse, Result]),                     
+                   {Result, JObj};
 
                 _ when Timeout =:= infinity ->
                     wait_for_bridge(Timeout, Call);

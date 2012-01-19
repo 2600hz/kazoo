@@ -52,7 +52,7 @@ resource_consume(FsNodePid, Route, JObj) ->
     after   10000 -> {resource_error, timeout}
     end.
 
--spec distributed_presence/3 :: (pid(), ne_binary(), proplist()) -> ok.
+-spec distributed_presence/3 :: (pid(), ne_binary(), proplist()) -> 'ok'.
 distributed_presence(Srv, Type, Event) ->
     gen_server:cast(Srv, {distributed_presence, Type, Event}).
 
@@ -68,25 +68,30 @@ hostname(Srv) ->
 fs_node(Srv) ->
     gen_server:call(Srv, fs_node).
 
--spec uuid_exists/2 :: (pid(), binary()) -> boolean().
+-spec uuid_exists/2 :: (pid(), ne_binary()) -> boolean().
 uuid_exists(Srv, UUID) ->
     gen_server:call(Srv, {uuid_exists, UUID}).
 
--spec uuid_dump/2 :: (pid(), binary()) -> proplist().
+-spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | {'error', ne_binary()} | 'timeout'.
 uuid_dump(Srv, UUID) ->
     gen_server:call(Srv, {uuid_dump, UUID}).
 
--spec start_link/1 :: (Node :: atom()) -> {'ok', pid()} | {'error', term()}.
+-spec start_link/1 :: (atom()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node) ->
     gen_server:start_link(?SERVER, [Node, []], []).
 
--spec start_link/2 :: (Node :: atom(), Options :: proplist()) -> {'ok', pid()} | {error, term()}.
+-spec start_link/2 :: (atom(), proplist()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
 init([Node, Options]) ->
-    ?LOG_SYS("starting new fs node ~s", [Node]),
+    put(callid, wh_util:to_binary(Node)),
+    ?LOG_SYS("starting new fs node"),
+
+    process_flag(trap_exit, true),
+
     Stats = #node_stats{started = erlang:now()},
+    erlang:monitor_node(Node, true),
     {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
 
 -spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> {'noreply', #state{}} | {'reply', atom(), #state{}}.
@@ -136,35 +141,6 @@ handle_cast({distributed_presence, Presence, Event}, #state{node=Node}=State) ->
 
 handle_cast(_Req, State) ->
     {noreply, State}.
-
-handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
-    erlang:monitor_node(Node, true),
-
-    {foo, Node} ! register_event_handler,
-    receive
-        ok ->
-            Res = run_start_cmds(Node),
-            spawn(fun() -> print_api_responses(Res) end),
-
-            NodeData = extract_node_data(Node),
-            Active = get_active_channels(Node),
-
-            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
-                                         ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
-                                         ,'CUSTOM', 'sofia::register'
-                                        ]),
-
-            {noreply, State#state{stats=(Stats#node_stats{
-                                           created_channels = Active
-                                           ,fs_uptime = props:get_value(uptime, NodeData, 0)
-                                          })}, hibernate};
-        {error, Reason} ->
-            {stop, Reason, State};
-        timeout ->
-            {stop, timeout, State}
-    after ?FS_TIMEOUT ->
-            {stop, timeout, State}
-    end;
 
 %% If we start up while there are active channels, we'll have negative active_channels in our stats.
 %% The first clause fixes that situation
@@ -258,12 +234,56 @@ handle_info({diagnostics, Pid}, #state{stats=Stats}=State) ->
     spawn(fun() -> diagnostics(Pid, Stats) end),
     {noreply, State};
 
+handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
+    {foo, Node} ! register_event_handler,
+    receive
+        ok ->
+            ?LOG("event handler registered"),
+            Res = run_start_cmds(Node),
+            spawn(fun() -> print_api_responses(Res) end),
+
+            NodeData = extract_node_data(Node),
+            Active = get_active_channels(Node),
+
+            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+                                         ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
+                                         ,'CUSTOM', 'sofia::register'
+                                        ]),
+            ?LOG("bound to switch events"),
+
+            {noreply, State#state{stats=(Stats#node_stats{
+                                           created_channels = Active
+                                           ,fs_uptime = props:get_value(uptime, NodeData, 0)
+                                          })}, hibernate};
+        {error, Reason} ->
+            ?LOG("error when trying to register event handler: ~p", [Reason]),
+            {stop, Reason, State};
+        timeout ->
+            ?LOG("timeout when trying to register event handler"),
+            {stop, timeout, State}
+    after ?FS_TIMEOUT ->
+            ?LOG("fs timeout when trying to register event handler"),
+            {stop, timeout, State}
+    end;
+
+handle_info({'EXIT', _Pid, noconnection}, State) ->
+    ?LOG("noconnection received for node, pid: ~p", [_Pid]),
+    {stop, normal, State};
+
+handle_info({nodedown, Node}, #state{node=Node}=State) ->
+    ?LOG("nodedown received"),
+    {stop, normal, State};
+
+handle_info(nodedown, State) ->
+    ?LOG("nodedown received"),
+    {stop, normal, State};
+
 handle_info(_Msg, State) ->
+    ?LOG("unhandled message: ~p", [_Msg]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
-    ?LOG_SYS("fs node ~p termination", [_Reason]),
-    ok.
+    ?LOG_SYS("fs node ~p termination", [_Reason]).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.

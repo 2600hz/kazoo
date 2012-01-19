@@ -788,7 +788,7 @@ add_caller(Srv, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Finds an avaliable conference resource, eventually... Currently
+%% Finds an available conference resource, eventually... Currently
 %% it requests the call status of the given call-id.  The response
 %% will contain the node the call is currently on which we will
 %% adopt as our conference focus.  This works because a special case

@@ -11,7 +11,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_host/2]).
+-export([start_link/0, start_host/3]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -32,8 +32,8 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_host(Host, Conn) ->
-    supervisor:start_child(?SERVER, [Host, Conn]).
+start_host(Host, Conn, UseFederation) ->
+    supervisor:start_child(?SERVER, [Host, Conn, UseFederation]).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -64,7 +64,7 @@ init([]) ->
     Type = worker,
 
     AChild = {amqp_host, {amqp_host, start_link, []},
-	      Restart, Shutdown, Type, [amqp_host]},
+              Restart, Shutdown, Type, [amqp_host]},
 
     {ok, {SupFlags, [AChild]}}.
 

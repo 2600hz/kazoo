@@ -49,12 +49,12 @@ handle_req2(JObj, Props) ->
     ?LOG(CallID, "CDR from ~s to ~s with account code ~s", [FromE164, ToE164, AccountCode]),
 
     CallRecord = #'p:CallRecord'{'CustomerID'=AccountCode
-				 ,'OriginatingNumber'=FromE164
-				 ,'DestinationNumber'=ToE164
-				 ,'StartTime'=DateTime
-				 ,'Duration'=wh_util:to_binary(BillingSec)
-				 ,'UniqueID'=CallID
-				 ,'CallType'=?DTH_CALL_TYPE_OTHER},
+                                 ,'OriginatingNumber'=FromE164
+                                 ,'DestinationNumber'=ToE164
+                                 ,'StartTime'=DateTime
+                                 ,'Duration'=wh_util:to_binary(BillingSec)
+                                 ,'UniqueID'=CallID
+                                 ,'CallType'=?DTH_CALL_TYPE_OTHER},
     WsdlModel = props:get_value(wsdl, Props),
     detergent:call(WsdlModel, "SubmitCallRecord", [CallRecord]).
 
@@ -80,14 +80,14 @@ handle_req(JObj, Props) ->
     ?LOG(CallID, "CDR from ~s to ~s with account code ~s", [FromE164, ToE164, AccountCode]),
 
     XML = iolist_to_binary(io_lib:format(?DTH_SUBMITCALLRECORD
-					 ,[AccountCode
-					   ,FromE164
-					   ,ToE164
-					   ,DateTime
-					   ,wh_util:to_binary(BillingSec)
-					   ,CallID
-					   ,?DTH_CALL_TYPE_OTHER
-					  ])),
+                                         ,[AccountCode
+                                           ,FromE164
+                                           ,ToE164
+                                           ,DateTime
+                                           ,wh_util:to_binary(BillingSec)
+                                           ,CallID
+                                           ,?DTH_CALL_TYPE_OTHER
+                                          ])),
 
     ?LOG(CallID, "XML to send: ~s", [XML]),
 
@@ -95,56 +95,58 @@ handle_req(JObj, Props) ->
 
 send_xml(XML, Props) ->
     Headers = [{"Content-Type", "text/xml; charset=utf-8"}
-	       ,{"Content-Length", binary:referenced_byte_size(XML)}
-	       ,{"SOAPAction", "http://tempuri.org/SubmitCallRecord"}
-	      ],
+               ,{"Content-Length", binary:referenced_byte_size(XML)}
+               ,{"SOAPAction", "http://tempuri.org/SubmitCallRecord"}
+              ],
 
     case ibrowse:send_req(props:get_value(cdr_url, Props), Headers, post, XML) of
-	{ok, "200", _, RespXML} ->
-	    ?LOG_END("XML sent to DTH successfully: ~s", [RespXML]);
-	_Resp ->
-	    ?LOG("Error with request: ~p", [_Resp])
+        {ok, "200", _, RespXML} ->
+            ?LOG_END("XML sent to DTH successfully: ~s", [RespXML]);
+        _Resp ->
+            ?LOG("Error with request: ~p", [_Resp])
     end.
 
 now_to_datetime(Secs) ->
     {{YY,MM,DD},{Hour,Min,Sec}} = calendar:gregorian_seconds_to_datetime(Secs),
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",
-				   [YY, MM, DD, Hour, Min, Sec])).
+                                   [YY, MM, DD, Hour, Min, Sec])).
 
 -spec get_to_user/1 :: (json_object()) -> binary().
 get_to_user(JObj) ->
-    case wh_json:get_value(<<"To-Uri">>, JObj) of
-	undefined ->
-	    case wh_json:get_value(<<"Callee-ID-Number">>, JObj) of
-		undefined -> <<"+00000000000">>;
-		To -> To
-	    end;
-	ToUri ->
-	    [To, _ToRealm] = binary:split(ToUri, <<"@">>),
-	    To
+    case wh_json:get_value(<<"Callee-ID-Number">>, JObj) of
+        undefined ->
+            case wh_json:get_value(<<"To-Uri">>, JObj) of
+                undefined -> <<"+00000000000">>;
+                ToUri ->
+                    [To, _ToRealm] = binary:split(ToUri, <<"@">>),
+                    To
+            end;
+        To ->
+            To
     end.
 
 -spec get_from_user/1 :: (json_object()) -> binary().
 get_from_user(JObj) ->
-    case wh_json:get_value(<<"From-Uri">>, JObj) of
-	undefined ->
-	    case wh_json:get_value(<<"Caller-ID-Number">>, JObj) of
-		undefined -> <<"+00000000000">>;
-		From -> From
-	    end;
-	FromUri ->
-	    [From, _FromRealm] = binary:split(FromUri, <<"@">>),
-	    From
+    case wh_json:get_value(<<"Caller-ID-Number">>, JObj) of
+        undefined ->
+            case wh_json:get_value(<<"From-Uri">>, JObj) of
+                undefined -> <<"+00000000000">>;
+                FromUri ->
+                    [From, _FromRealm] = binary:split(FromUri, <<"@">>),
+                    From
+            end;
+        From ->
+            From
     end.
 
 -spec get_account_code/1 :: (json_object()) -> binary().
 get_account_code(JObj) ->
     AccountID = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
-		    AID when erlang:byte_size(AID) < 18 -> AID;
-		    AID -> binary:part(AID, {erlang:byte_size(AID), -17})
-		end,
+                    AID when erlang:byte_size(AID) < 18 -> AID;
+                    AID -> binary:part(AID, {erlang:byte_size(AID), -17})
+                end,
     case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception">>], JObj) of
-	<<"off-net">> -> << AccountID/binary, "-IN">>;
-	_ -> AccountID
+        <<"off-net">> -> << AccountID/binary, "-IN">>;
+        _ -> AccountID
     end.
 

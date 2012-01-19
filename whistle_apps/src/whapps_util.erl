@@ -183,8 +183,7 @@ put_callid(JObj) ->
 %% this returns the cause and code for the call termination
 %% @end
 %%--------------------------------------------------------------------
--spec get_call_termination_reason/1 :: (JObj) -> {binary(), binary()} when
-      JObj :: json_object().
+-spec get_call_termination_reason/1 :: (json_object()) -> {binary(), binary()}.
 get_call_termination_reason(JObj) ->
     Cause = case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
                <<>> ->

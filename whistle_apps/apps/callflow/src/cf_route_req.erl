@@ -60,7 +60,7 @@ handle_req(JObj, Options) ->
 %% attempt to fulfill authorized call requests
 %% @end
 %%-----------------------------------------------------------------------------
--spec fulfill_call_request/3 :: (#cf_call{}, ne_binary(), json_object()) -> ok.
+-spec fulfill_call_request/3 :: (json_object(), ne_binary(), #cf_call{}) -> 'ok'.
 fulfill_call_request(JObj, CallId, #cf_call{account_id=AccountId}=Call) ->
     case cf_util:lookup_callflow(Call) of
         {ok, Flow, NoMatch} ->

@@ -65,8 +65,13 @@ start_link(Node, _Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node]) ->
+    put(callid, wh_util:to_binary(Node)),
+
     ?LOG_SYS("starting new fs route listener for ~s", [Node]),
     process_flag(trap_exit, true),
+
+    erlang:monitor_node(Node, true),
+
     Stats = #handler_stats{started = erlang:now()},
     {ok, #state{node=Node, stats=Stats}, 0}.
 
@@ -144,6 +149,10 @@ handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
     ?LOG("lookup task ~p went down, ~p", [LU, _Reason]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
 
+handle_info({'EXIT', _Pid, noconnection}, State) ->
+    ?LOG("noconnection received for node, pid: ~p", [_Pid]),
+    {stop, normal, State};
+
 handle_info({'EXIT', LU, _Reason}, #state{lookups=LUs}=State) ->
     ?LOG("lookup task ~p exited, ~p", [LU, _Reason]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
@@ -187,7 +196,7 @@ handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
 
 handle_info(timeout, #state{node=Node}=State) ->
     Type = {bind, dialplan},
-    erlang:monitor_node(Node, true),
+
     {foo, Node} ! Type,
     receive
         ok ->

@@ -26,9 +26,9 @@ run() ->
                    ,fun(L) -> [<<"cb_onboard">> | lists:delete(<<"cb_onboard">>, L)] end
                   ],
     StartModules = whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, []),
-    whapps_config:set_default(<<"crossbar">>
-                          ,<<"autoload_modules">>
-                          ,lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
-    whapps_controller:stop_app(crossbar),
-    whapps_controller:start_app(crossbar),
-    ok.
+    _ = whapps_config:set_default(<<"crossbar">>
+                                      ,<<"autoload_modules">>
+                                      ,lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)
+                                 ),
+    _ = whapps_controller:stop_app(crossbar),
+    whapps_controller:start_app(crossbar).

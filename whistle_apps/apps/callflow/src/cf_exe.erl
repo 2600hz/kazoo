@@ -27,17 +27,17 @@
 -define(CALL_SANITY_CHECK, 30000).
 
 -define(RESPONDERS, [{{?MODULE, relay_amqp}, [{<<"*">>, <<"*">>}]}]).
--define(QUEUE_NAME, <<"">>).
+-define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
 -record(state, {call = #cf_call{} :: #cf_call{}
-                ,flow = ?EMPTY_JSON_OBJECT :: json_object()
-                ,cf_module_pid = undefined :: undefined | pid()
+                ,flow = wh_json:new() :: json_object()
+                ,cf_module_pid = 'undefined' :: 'undefined' | pid()
                 ,status = <<"sane">> :: ne_binary()
-                ,ctrl_q = undefined :: undefined | ne_binary()
+                ,ctrl_q = 'undefined' :: 'undefined' | ne_binary()
                 ,call_id = <<"0000000000">> :: ne_binary()
-                ,sanity_timer = undefined :: undefined | timer:tref()
+                ,sanity_timer = 'undefined' :: 'undefined' | timer:tref()
                }).
                
 %%%===================================================================
@@ -53,7 +53,8 @@
 %%--------------------------------------------------------------------
 start_link(Flow, ControlQ, CallId, Call) ->    
     Bindings = [{call, [{callid, CallId}]}
-                ,{self, []}],
+                ,{self, []}
+               ],
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
                                       ,{bindings, Bindings}
                                       ,{queue_name, ?QUEUE_NAME}
@@ -61,8 +62,8 @@ start_link(Flow, ControlQ, CallId, Call) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Flow, ControlQ, CallId, Call]).
 
--spec continue/1 :: (#cf_call{} | pid()) -> ok.
--spec continue/2 :: (ne_binary(), #cf_call{} | pid()) -> ok.
+-spec continue/1 :: (#cf_call{} | pid()) -> 'ok'.
+-spec continue/2 :: (ne_binary(), #cf_call{} | pid()) -> 'ok'.
 continue(Srv) ->
     continue(<<"_">>, Srv).
 
@@ -71,25 +72,25 @@ continue(Key, #cf_call{cf_pid=Srv}=Call) ->
 continue(Key, Srv) ->
     gen_server:cast(Srv, {continue, Key}).
 
--spec branch/2 :: (json_object(), #cf_call{} | pid()) -> ok.
+-spec branch/2 :: (json_object(), #cf_call{} | pid()) -> 'ok'.
 branch(Flow, #cf_call{cf_pid=Srv}) ->
     branch(Flow, Srv);
 branch(Flow, Srv) ->
     gen_server:cast(Srv, {branch, Flow}).
 
--spec stop/1 :: (#cf_call{} | pid()) -> ok.
+-spec stop/1 :: (#cf_call{} | pid()) -> 'ok'.
 stop(#cf_call{cf_pid=Srv}) ->
     stop(Srv);
 stop(Srv) ->
     gen_server:cast(Srv, {stop}).
 
--spec transfer/1 :: (#cf_call{} | pid()) -> ok.
+-spec transfer/1 :: (#cf_call{} | pid()) -> 'ok'.
 transfer(#cf_call{cf_pid=Srv}) ->
     transfer(Srv);
 transfer(Srv) ->
     gen_server:cast(Srv, {transfer}).
 
--spec callid_update/3 :: (ne_binary(), ne_binary(), #cf_call{} | pid()) -> ok.
+-spec callid_update/3 :: (ne_binary(), ne_binary(), #cf_call{} | pid()) -> 'ok'.
 callid_update(CallId, CtrlQ, #cf_call{cf_pid=Srv}) ->
     callid_update(CallId, CtrlQ, Srv);
 callid_update(CallId, CtrlQ, Srv) ->
@@ -261,7 +262,7 @@ handle_cast({branch, NewFlow}, State) ->
     {noreply, launch_cf_module(State#state{flow=NewFlow})};
 handle_cast({channel_status_received, _}, #state{sanity_timer=RunningTRef}=State) ->
     ?LOG("callflow executer is sane... for now"),
-    timer:cancel(RunningTRef),
+    _ = timer:cancel(RunningTRef),
     {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
     {noreply, State#state{status = <<"sane">>, sanity_timer=TRef}};
 handle_cast({callid_update, NewCallId, NewCtrlQ}, #state{call_id=PrevCallId}=State) ->
@@ -369,11 +370,11 @@ handle_event(JObj, #state{cf_module_pid=Pid, call_id=CallId}) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate({shutdown, transfer}, #state{sanity_timer=TRef}) ->
-    timer:cancel(TRef),
+    _ = timer:cancel(TRef),
     ?LOG_END("callflow execution has been transfered"),
     ok;
 terminate(_Reason, #state{sanity_timer=TRef}=State) ->
-    timer:cancel(TRef),
+    _ = timer:cancel(TRef),
     Command = [{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Insert-At">>, <<"now">>}
               ],
@@ -399,7 +400,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %% @private
 %% this function determines if the callflow module specified at the 
-%% current node is 'avaliable' and attempts to launch it if so. 
+%% current node is 'available' and attempts to launch it if so. 
 %% Otherwise it will advance to the next child in the flow
 %% @doc
 %% @end

@@ -124,8 +124,8 @@ merge_recursive(JObj1, JObj2, Keys) when is_tuple(JObj2) ->
 merge_recursive(JObj1, Value, Keys) ->
     wh_json:set_value(lists:reverse(Keys), Value, JObj1).
 
--spec to_proplist/1 :: (json_object() | json_objects()) -> proplist() | [proplist(),...].
--spec to_proplist/2 :: (term(), json_object()) -> proplist().
+-spec to_proplist/1 :: (json_object() | json_objects()) -> json_proplist() | [json_proplist(),...].
+-spec to_proplist/2 :: (term(), json_object()) -> json_proplist().
 %% Convert a json object to a proplist
 %% only top-level conversion is supported
 to_proplist(Objects) when is_list(Objects)->
