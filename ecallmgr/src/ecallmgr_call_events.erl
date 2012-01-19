@@ -57,7 +57,7 @@ start_link(Node, CallId) ->
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
-    gen_server:call(Srv, {callid}).
+    gen_server:call(Srv, {callid}, 100).
 
 transfer(Srv, TransferType, Props) ->
     gen_listener:cast(Srv, {TransferType, Props}).
