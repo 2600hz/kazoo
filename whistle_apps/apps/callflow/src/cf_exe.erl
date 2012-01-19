@@ -266,8 +266,8 @@ handle_cast({channel_status_received, _}, #state{sanity_timer=RunningTRef}=State
     {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
     {noreply, State#state{status = <<"sane">>, sanity_timer=TRef}};
 handle_cast({callid_update, NewCallId, NewCtrlQ}, #state{call_id=PrevCallId}=State) ->
-    ?LOG("updating callid to ~s, catch you on the flip side", [NewCallId]),
     put(callid, NewCallId),
+    ?LOG(PrevCallId, "updating callid to ~s, catch you on the flip side", [NewCallId]),
     ?LOG("removing call event bindings for ~s", [PrevCallId]),
     gen_listener:rm_binding(self(), call, [{callid, PrevCallId}]),
     ?LOG("binding to new call events"),
