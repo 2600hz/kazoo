@@ -208,6 +208,7 @@ handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_
         _ ->
             {noreply, State}
     end;
+
 handle_info({resource_request, Pid, <<"audio">>, ChanOptions}
             ,#state{options=Opts, stats=#node_stats{created_channels=Cr, destroyed_channels=De}}=State) ->
     ActiveChan = Cr - De,
@@ -395,6 +396,9 @@ process_custom_data(Data) ->
         <<"sofia::register">> ->
             ?LOG("received registration event"),
             publish_register_event(Data);
+        <<"sofia::transfer">> ->
+            ?LOG("received transfer event"),
+            process_transfer_event(props:get_value(<<"Type">>, Data), Data);
         _ ->
             ok
     end.
@@ -416,6 +420,44 @@ publish_register_event(Data) ->
                           ,wapi_registration:success_keys()),
     ?LOG("sending successful registration"),
     wapi_registration:publish_success(ApiProp).
+
+-spec process_transfer_event/2 :: (ne_binary(), proplist()) -> ok.
+process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
+    TransfererCtrlUUId = case props:get_value(<<"Transferor-Direction">>, Data) of
+                             <<"inbound">> ->
+                                 props:get_value(<<"Transferor-UUID">>, Data);
+                             _ ->
+                                 props:get_value(<<"Transferee-UUID">>, Data)
+    end,
+    case ecallmgr_call_control_sup:find_worker(TransfererCtrlUUId) of
+        {ok, Pid1} -> 
+            ?LOG(TransfererCtrlUUId, "sending transferer notice to ecallmgr_call_control ~p", [Pid1]),
+            ecallmgr_call_control:transferer(Pid1, Data);
+        {error, not_found} -> 
+            ok
+    end;
+process_transfer_event(_, Data) ->
+    TransfererCtrlUUId = case props:get_value(<<"Transferor-Direction">>, Data) of
+                             <<"inbound">> ->
+                                 props:get_value(<<"Transferor-UUID">>, Data);
+                             _ ->
+                                 props:get_value(<<"Transferee-UUID">>, Data)
+    end,
+    case ecallmgr_call_control_sup:find_worker(TransfererCtrlUUId) of
+        {ok, Pid1} -> 
+            ?LOG(TransfererCtrlUUId, "sending transferer notice to ecallmgr_call_control ~p", [Pid1]),
+            ecallmgr_call_control:transferer(Pid1, Data);
+        {error, not_found} -> 
+            ok
+    end,
+    TransfereeCtrlUUId = props:get_value(<<"Replaces">>, Data),
+    case ecallmgr_call_control_sup:find_worker(TransfereeCtrlUUId) of
+        {ok, Pid2} -> 
+            ?LOG(TransfereeCtrlUUId, "sending transferee notice to ecallmgr_call_control ~p", [Pid2]),
+            ecallmgr_call_control:transferee(Pid2, Data);
+        {error, not_found} ->
+            ok
+    end.    
 
 get_originate_action(<<"transfer">>, JObj) ->
     case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of

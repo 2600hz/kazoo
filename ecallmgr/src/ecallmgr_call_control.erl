@@ -52,6 +52,7 @@
 -export([event_execute_complete/3]).
 -export([add_leg/1, rm_leg/1]).
 -export([other_legs/1]).
+-export([transferer/2, transferee/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -117,7 +118,7 @@ start_link(Node, CallId, WhAppQ) ->
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
-    gen_listener:call(Srv, {callid}).
+    gen_server:call(Srv, {callid}, 100).
 
 -spec queue_name/1 :: (pid()) -> ne_binary().
 queue_name(Srv) ->
@@ -125,11 +126,11 @@ queue_name(Srv) ->
 
 -spec other_legs/1 :: (pid()) -> [] | [ne_binary(),...].
 other_legs(Srv) ->
-    gen_listener:call(Srv, {other_legs}).
+    gen_server:call(Srv, {other_legs}, 100).
 
 -spec event_execute_complete/3 :: (pid(), ne_binary(), ne_binary()) -> 'ok'.
 event_execute_complete(Srv, CallId, App) ->
-    gen_listener:cast(Srv, {event_execute_complete, CallId, App}).
+    gen_server:cast(Srv, {event_execute_complete, CallId, App}).
 
 -spec add_leg/1 :: (proplist()) -> pid().
 add_leg(Props) ->
@@ -142,7 +143,7 @@ add_leg(Props) ->
                       false -> ok;
                       {error, _} -> ok;
                       {ok, Srv} -> 
-                          gen_listener:cast(Srv, {add_leg, wh_json:from_list(Props)})
+                          gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)})
                   end
           end).
 
@@ -157,48 +158,48 @@ rm_leg(Props) ->
                       false -> ok;
                       {error, _} -> ok;
                       {ok, Srv} -> 
-                          gen_listener:cast(Srv, {rm_leg, wh_json:from_list(Props)})
+                          gen_server:cast(Srv, {rm_leg, wh_json:from_list(Props)})
                   end
           end).
+
+-spec transferer/2 :: (pid(), proplist()) -> 'ok'.
+transferer(Srv, Props) ->
+    gen_server:cast(Srv, {transferer, wh_json:from_list(Props)}).
+
+-spec transferee/2 :: (pid(), proplist()) -> 'ok'.
+transferee(Srv, Props) ->
+    gen_server:cast(Srv, {transferee, wh_json:from_list(Props)}).
 
 -spec handle_call_command/2 :: (json_object(), proplist()) -> 'ok'.
 handle_call_command(JObj, Props) ->
     Srv = props:get_value(server, Props),
-    gen_listener:cast(Srv, {dialplan, JObj}).
+    gen_server:cast(Srv, {dialplan, JObj}).
 
 -spec handle_conference_command/2 :: (json_object(), proplist()) -> 'ok'.
 handle_conference_command(JObj, Props) ->
     Srv = props:get_value(server, Props),
-    gen_listener:cast(Srv, {dialplan, JObj}).
+    gen_server:cast(Srv, {dialplan, JObj}).
 
 -spec handle_call_events/2 :: (json_object(), proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value(server, Props),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
-    case {wh_json:get_value(<<"Event-Name">>, JObj), get_transfer_state(JObj)} of
-        {<<"CHANNEL_EXECUTE_COMPLETE">>, _} ->
+    case wh_json:get_value(<<"Event-Name">>, JObj) of
+        <<"CHANNEL_EXECUTE_COMPLETE">> ->
             Application = wh_json:get_value(<<"Raw-Application-Name">>, JObj),
             ?LOG("control queue ~p channel execute completion for '~s'", [Srv, Application]),
-            gen_listener:cast(Srv, {event_execute_complete, CallId, Application});
-        {<<"CHANNEL_DESTROY">>, _} ->
-            gen_listener:cast(Srv, {channel_destroyed, JObj});
-        {<<"CHANNEL_HANGUP">>, undefined} ->
-            ok;
-        {<<"CHANNEL_HANGUP">>, Transfer} ->
-            ?LOG("control queue ~p channel hangup due to a transfer and we are the ~s", [Srv, Transfer]),
-            gen_listener:cast(Srv, {Transfer, JObj});
-        {<<"CHANNEL_UNBRIDGE">>, undefined} ->
-            gen_listener:cast(Srv, {rm_leg, JObj});
-        {<<"CHANNEL_UNBRIDGE">>, Transfer} ->
-            ?LOG("control queue ~p channel unbridged due to a transfer and we are the ~s", [Srv, Transfer]),
-            gen_listener:cast(Srv, {Transfer, JObj});
-        {<<"CHANNEL_BRIDGE">>, _} ->
-            gen_listener:cast(Srv, {add_leg, JObj});
-        {<<"controller_queue">>, _} ->
+            gen_server:cast(Srv, {event_execute_complete, CallId, Application});
+        <<"CHANNEL_DESTROY">> ->
+            gen_server:cast(Srv, {channel_destroyed, JObj});
+        <<"CHANNEL_UNBRIDGE">> ->
+            gen_server:cast(Srv, {rm_leg, JObj});
+        <<"CHANNEL_BRIDGE">> ->
+            gen_server:cast(Srv, {add_leg, JObj});
+        <<"controller_queue">> ->
             ControllerQ = wh_json:get_value(<<"Controller-Queue">>, JObj),
-            gen_listener:cast(Srv, {controller_queue, ControllerQ});
-        {_, _} ->
+            gen_server:cast(Srv, {controller_queue, ControllerQ});
+        _ ->
             ok
     end.
 
@@ -272,15 +273,21 @@ handle_cast({transferer, _}, #state{callid=CallId, controller_q=ControllerQ}=Sta
     spawn(fun() -> publish_control_transfer(ControllerQ, CallId) end),
     {stop, normal, State};
 handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCallId, self=Self}=State) ->
-    %% TODO: once we are satisfied that this is not breaking anything we can reduce the verbosity...
-    OtherLegCallId =  wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-    case OtherLegCallId =/= undefined andalso freeswitch:api(Node, uuid_dump, wh_util:to_list(OtherLegCallId)) of
-        {ok, Result} ->
-            ?LOG("this call control process is a transferee, updating call id..."),
-            Props = ecallmgr_util:eventstr_to_proplist(Result),
-            NewCallId = props:get_value(<<"Channel-Call-UUID">>, Props),
+    ?LOG("this call control process is a transferee, updating call id..."),
+    NewCallId = case {wh_json:get_value(<<"Bridge-With">>, JObj), wh_json:get_value(<<"Transferee-UUID">>, JObj)} of
+                    {undefined, CallId} -> CallId;
+                    {CallId, _} -> CallId
+                end,
+    case NewCallId of
+        undefined ->
+            ?LOG("could not determin new call id"),
+            {noreply, State};
+        PrevCallId ->
+            ?LOG("new callid is the same as the old callid"),
+            {noreply, State};
+        _Else ->            
             spawn(fun() -> publish_callid_update(PrevCallId, NewCallId, queue_name(Self)) end),
-            ?LOG("updating callid to ~s", [NewCallId]),
+            ?LOG(PrevCallId, "updating callid to ~s", [NewCallId]),
             put(callid, NewCallId),
             ?LOG("removing call event bindings for ~s", [PrevCallId]),
             gen_listener:rm_binding(self(), call, [{callid, PrevCallId}]),
@@ -289,9 +296,7 @@ handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCa
             ?LOG("ensuring event listener exists"),
             _ = ecallmgr_call_sup:start_event_process(Node, NewCallId),
             ?LOG("...call id updated, continuing post-transfer"),
-            {noreply, State#state{callid=NewCallId, other_legs=lists:delete(NewCallId, Legs)}};
-        _ ->
-            {noreply, State}
+            {noreply, State#state{callid=NewCallId, other_legs=lists:delete(NewCallId, Legs)}}
     end;
 handle_cast({add_leg, JObj}, #state{other_legs=Legs, node=Node, callid=CallId}=State) ->
     LegId = case wh_json:get_value(<<"Event-Name">>, JObj) of
@@ -683,84 +688,3 @@ publish_control_transfer(ControllerQ, CallId) ->
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ],
     wapi_call:publish_control_transfer(ControllerQ, Transfer).
-    
--spec get_transfer_state/1 :: (json_object()) -> 'undefined' | 'transferer' | 'transferee'.
--spec get_transfer_state/2 :: ({ne_binary(), ne_binary()}, json_object()) -> 'undefined' | 'transferer' | 'transferee'.
--spec do_get_transfer_state/2 :: (ne_binary(),  json_object()) ->  'undefined' | 'transferer' | 'transferee'.
-
-get_transfer_state(JObj) ->
-    get_transfer_state(wh_util:get_event_type(JObj), JObj).
-
-get_transfer_state({<<"call_event">>, <<"CHANNEL_DESTROY">>}, JObj) ->
-    do_get_transfer_state(<<"CHANNEL_DESTROY">>, JObj);
-get_transfer_state({<<"call_event">>, <<"CHANNEL_HANGUP">>}, JObj) ->
-    do_get_transfer_state(<<"CHANNEL_HANGUP">>, JObj);
-get_transfer_state({<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, JObj) ->
-    do_get_transfer_state(<<"CHANNEL_UNBRIDGE">>, JObj);
-get_transfer_state(_, _) ->
-    undefined.
-
-do_get_transfer_state(<<"CHANNEL_UNBRIDGE">>, JObj) ->
-    Timestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
-    Epoch = binary:part(wh_util:pad_binary(Timestamp, 10, <<"0">>), 0, 10),
-    Transfer = wh_json:get_value([<<"Transfer-History">>, Epoch], JObj),
-    Disposition = wh_json:get_value(<<"Disposition">>, JObj),
-    case {Disposition, Transfer} of
-        %% caller preforms a blind transfer
-        {<<"BLIND_TRANSFER">>, undefined} ->
-            ?LOG("channel was unbridged as a result of a blind transfer"),
-            transferer;
-        %% callee preforms a attended transfer (on C-leg)
-        {<<"ATTENDED_TRANSFER">>, undefined} ->
-            ?LOG("channel was unbridged as a result of an attended transfer, acquire control"),
-            transferee;
-        %% caller preforms a attended transfer
-        %% caller preforms a partial attended
-        {<<"ANSWER">>, undefined} ->
-            %% to be sure check if it was during a transfer, may not be necessary...
-            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
-                undefined ->
-                    ?LOG("channel was unbridged as a result of a transfer"),
-                    transferer;
-                _Else ->
-                    undefined
-            end;
-        %% just a catch for undefined Transfer History Item
-        %% IE: This unbridge was NOT part of the transfer history,
-        %%     otherwise it WAS and the next clause will handle it.
-        {_, undefined} ->
-            undefined;
-        %% callee preforms a blind transfer
-        %% callee preforms a partial attended
-        %% callee preforms a attended transfer
-        {_, _} ->
-            ?LOG("channel was unbridged as a result of a transfer"),
-            transferer
-    end;
-do_get_transfer_state(_, JObj) ->
-    case wh_json:get_value(<<"Disposition">>, JObj) of
-        %% caller preforms a blind transfer
-        <<"BLIND_TRANSFER">> ->
-            ?LOG("channel was hungup as a result of a blind transfer"),
-            transferer;
-        %% callee preforms partial attended
-        %% callee preforms attended transfer
-        <<"ATTENDED_TRANSFER">> ->
-            ?LOG("channel was hungup as a result of an attended transfer, acquire control"),
-            transferee;
-        %% caller preforms a attended transfer
-        %% caller preforms a partial attended
-        <<"ANSWER">> ->
-            %% to be sure check if it was during a transfer, may not be necessary...
-            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
-                undefined ->
-                    ?LOG("channel was hungup as a result of a transfer"),
-                    trasferer;
-                _Else ->
-                    undefined
-            end;
-        %% missing events:
-        %% callee preforms blind transfer
-        _Else ->
-            undefined
-    end.
