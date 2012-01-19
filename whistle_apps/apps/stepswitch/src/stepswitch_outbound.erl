@@ -52,7 +52,9 @@ attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
                      {Endpoints, IsEmergency} = find_endpoints(Number, Flags, Resources),
                      bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj)
              end,
-    case {Result, correct_shortdial(JObj)} of
+    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj
+                               ,wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj)),
+    case {Result, correct_shortdial(Number, CIDNum)} of
         {{error, no_resources}, undefined} -> Result;
         {{error, no_resources}, CorrectedNumber} -> 
             ?LOG("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
@@ -185,9 +187,9 @@ wait_for_execute_extension() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_bridge/1 :: ('infinity' | pos_integer()) -> {'error', json_object()} |
-							   {'error', 'timeout'} |
-							   {'ok', json_object()} |
-							   {'fail', json_object()}.
+                                                           {'error', 'timeout'} |
+                                                           {'ok', json_object()} |
+                                                           {'fail', json_object()}.
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
@@ -411,8 +413,8 @@ response({fail, BridgeResp}, JObj) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 response({error, no_resources}, JObj) ->
-    ?LOG_END("no avaliable resources"),
-    ErrorMsg = <<"no avaliable resources">>,
+    ?LOG_END("no available resources"),
+    ErrorMsg = <<"no available resources">>,
     To = wh_json:get_value(<<"To-DID">>, JObj),
     whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
                                     ,"Alert: could not process ~s~n"
@@ -466,11 +468,8 @@ response({error, Error}, JObj) ->
 %% callerid.
 %% @end
 %%--------------------------------------------------------------------
--spec correct_shortdial/1 :: (json_object()) -> ne_binary() | fail.
-correct_shortdial(JObj) ->
-    Number = wh_json:get_value(<<"To-DID">>, JObj),
-    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj
-                               ,wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj)),
+-spec correct_shortdial/2 :: (ne_binary(), ne_binary()) -> ne_binary() | fail.
+correct_shortdial(Number, CIDNum) ->
     MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length > 0 ->
@@ -489,7 +488,7 @@ correct_shortdial(JObj) ->
 get_account_name(Number, AccountId) when not is_binary(Number) ->
     get_account_name(wh_util:to_binary(Number), AccountId);
 get_account_name(Number, AccountId) ->
-    case couch_mgr:open_doc(<<"accounts">>, AccountId) of
+    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
         {ok, JObj} ->
             wh_json:get_ne_value(<<"name">>, JObj, Number);
         _ ->

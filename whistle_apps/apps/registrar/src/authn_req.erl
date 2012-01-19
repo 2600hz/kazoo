@@ -82,7 +82,7 @@ get_account_id(AuthDoc) ->
         undefined ->
             case wh_json:get_value(<<"pvt_account_db">>, AuthDoc) of
                 undefined -> undefined;
-                AcctDb -> whapps_util:get_db_name(AcctDb, raw)
+                AcctDb -> wh_util:format_account_id(AcctDb, raw)
             end;
         AcctId -> AcctId
     end.

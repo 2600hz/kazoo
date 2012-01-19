@@ -15,7 +15,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -96,25 +96,25 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.temporal_rules">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.temporal_rules">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.temporal_rules">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.temporal_rules">>, [RD, Context | Params]}, State) ->
@@ -122,7 +122,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.temporal_rules">>, 
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.temporal_rules">>, [RD, Context | Params]}, State) ->
@@ -130,7 +130,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.temporal_rules">>, [
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.temporal_rules">>, [RD, Context | Params]}, State) ->
@@ -138,7 +138,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.temporal_rules">>
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -268,11 +268,11 @@ load_temporal_rule_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_temporal_rule/1 :: (#cb_context{}) -> #cb_context{}.
-create_temporal_rule(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
+create_temporal_rule(#cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"temporal_rules">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"temporal_rule">>, JObj)
                 ,resp_status=success
@@ -297,11 +297,11 @@ load_temporal_rule(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_temporal_rule/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_temporal_rule(DocId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
+update_temporal_rule(DocId, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"temporal_rules">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -314,15 +314,3 @@ update_temporal_rule(DocId, #cb_context{req_data=JObj}=Context) ->
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, temporal_rule).
-

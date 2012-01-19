@@ -61,7 +61,7 @@ start_link(Node, CallId) ->
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
-    gen_server:call(Srv, {callid}).
+    gen_server:call(Srv, {callid}, 100).
 
 transfer(Srv, TransferType, Props) ->
     gen_listener:cast(Srv, {TransferType, Props}).
@@ -85,8 +85,8 @@ queue_name(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([atom() | ne_binary()]) -> {'ok', #state{}, 0}.
-init([Node, CallId]) ->
+-spec init/1 :: ([atom() | ne_binary(),...]) -> {'ok', #state{}, 0}.
+init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
     ?LOG_START("starting call events listener"),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),

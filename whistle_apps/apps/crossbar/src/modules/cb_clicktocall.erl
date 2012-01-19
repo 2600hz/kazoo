@@ -21,7 +21,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -30,7 +30,7 @@
 -define(HISTORY, <<"history">>).
 -define(CB_LIST, <<"click2call/crossbar_listing">>).
 -define(PVT_TYPE, <<"click2call">>).
--define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, <<"connect">>]}, {<<"accounts">>, [_]}]).
+-define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, <<"connect">>]}, {?WH_ACCOUNTS_DB, [_]}]).
 
 %%%===================================================================
 %%% API
@@ -106,46 +106,46 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.clicktocall">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.clicktocall">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.clicktocall">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-		  Pid ! {binding_result, true, [RD, Context, Params]}
-	  end),
+                  Pid ! {binding_result, true, [RD, Context, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.clicktocall">>, [RD, #cb_context{resp_data=HistoryItem}=Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
-		  Context0 = crossbar_doc:save(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context0 = crossbar_doc:save(Context),
                   Context1 = case Context#cb_context.req_nouns of
                                  ?CONNECT_C2C_URL ->
                                      Context#cb_context{resp_data=HistoryItem};
                                  _Else ->
                                      Context0
                              end,
-     		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.clicktocall">>, [RD, Context | Params]}, State) ->
@@ -153,7 +153,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.clicktocall">>, [RD,
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.clicktocall">>, [RD, Context | Params]}, State) ->
@@ -161,7 +161,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.clicktocall">>, [
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
@@ -305,17 +305,6 @@ validate(_, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, clicktocall).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
@@ -338,19 +327,24 @@ load_c2c_history(C2CId, Context) ->
             Else
     end.
 
-create_c2c(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-	{ok, _} ->
+create_c2c(#cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"clicktocall">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             Context#cb_context{
-	      doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:set_value(<<"pvt_history">>, [], JObj))
-	      ,resp_status=success
-	     }
+              doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:set_value(<<"pvt_history">>, [], JObj))
+              ,resp_status=success
+             }
     end.
 
-update_c2c(C2CId, #cb_context{req_data=Doc}=Context) ->
-    crossbar_doc:load_merge(C2CId, Doc, Context).
+update_c2c(C2CId, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"clicktocall">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            crossbar_doc:load_merge(C2CId, JObj, Context)
+    end.
 
 establish_c2c(C2CId, Context) ->
     case crossbar_doc:load(C2CId, Context) of
@@ -420,7 +414,7 @@ originate_call(Contact, JObj, AccountId) ->
 -spec wait_for_originate/0 :: () -> {success, binary()} | {error, binary()} | {timeout}.
 wait_for_originate() ->
     receive
-	{_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
+        {_, #amqp_msg{props = Props, payload = Payload}} when Props#'P_basic'.content_type == <<"application/json">> ->
             try
                 JObj = mochijson2:decode(Payload),
                 case whapps_util:get_event_type(JObj) of
@@ -441,9 +435,9 @@ wait_for_originate() ->
         _ ->
             wait_for_originate()
     after
-	15000 ->
+        15000 ->
             ?LOG("cannot establish click to call, timeout"),
-	    {timeout}
+            {timeout}
     end.
 
 -spec get_c2c_contact/1 :: ('undefined' | nonempty_string() | ne_binary()) -> 'undefined' | ne_binary().

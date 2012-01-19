@@ -23,15 +23,13 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 
 -define(SIGNUP_DB, <<"signups">>).
--define(TOKEN_DB, <<"token_auth">>).
 
 -define(IdPs, [<<"google">>]).
 
@@ -140,16 +138,16 @@ handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
 
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.openid_auth">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.openid_auth">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.openid_auth">>, [RD, Context | Params]}, State) ->
@@ -158,7 +156,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.openid_auth">>, [RD, Co
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD, Context | [Provider]=Params]}
@@ -200,7 +198,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD,
                           E = wh_util:to_binary(Error),
                           Pid ! {binding_result, true, [RD, crossbar_util:response(fatal, E, Context), Params]}
                   end
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD, Context | [<<"checkauth">>, CacheKey]=Params]}
@@ -256,7 +254,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD,
                           E = wh_util:to_binary(Error),
                           Pid ! {binding_result, true, [RD, crossbar_util:response(error, E, 400, Context), Params]}
                   end
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -414,7 +412,7 @@ get_identity(IdentityUrl, <<"google">>, _QS) ->
       Identifier :: binary(),
       Provider :: binary().
 find_account(Identifier, Provider) ->
-    case couch_mgr:get_results(<<"accounts">>, {<<"accounts">>, <<"listing_by_openid">>}, [{<<"key">>, [Identifier, Provider]}]) of
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, {?WH_ACCOUNTS_DB, <<"listing_by_openid">>}, [{<<"key">>, [Identifier, Provider]}]) of
         {ok, []} ->
             {error, not_registered};
         {ok, [JObj]} ->
@@ -439,28 +437,28 @@ find_account(Identifier, Provider) ->
       Context :: #cb_context{}.
 create_token(IdentityUrl, AccountId, RD, Context) ->
     Token = wh_json:from_list( [{<<"account_id">>, AccountId}
-				%%,{<<"owner_id">>, OwnerId}
-				,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-				,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-				,{<<"method">>, wh_util:to_binary(?MODULE)}
-				,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
-				,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-				,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
-				,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-				,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-				,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-				,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
-				,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
-				,{<<"openid_identity_url">>, wh_util:to_binary(IdentityUrl)}
-				%%,{<<"openid_provider">>, wh_util:to_binary(IdentityUrl)}
-			       ]),
+                                %%,{<<"owner_id">>, OwnerId}
+                                ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                                ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                                ,{<<"method">>, wh_util:to_binary(?MODULE)}
+                                ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
+                                ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+                                ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
+                                ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+                                ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+                                ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+                                ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
+                                ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+                                ,{<<"openid_identity_url">>, wh_util:to_binary(IdentityUrl)}
+                                %%,{<<"openid_provider">>, wh_util:to_binary(IdentityUrl)}
+                               ]),
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->
             AuthToken = wh_json:get_value(<<"_id">>, Doc),
             ?LOG("created new local auth token ~s", [AuthToken]),
             crossbar_util:response(wh_json:from_list([{<<"account_id">>, AccountId}
-						      ,{<<"owner_id">>, <<>>}
-						     ])
+                                                      ,{<<"owner_id">>, <<>>}
+                                                     ])
                                    ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, R} ->
             ?LOG("could not create new local auth token, ~p", [R]),
@@ -492,10 +490,10 @@ extract_attributes(QS) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec extract_attribute/4 :: ([{nonempty_string(), ne_binary()},...]
-			      ,[{nonempty_string(), nonempty_string()},...] | []
-			      ,[{nonempty_string(), nonempty_string()},...] | []
-			      ,[{ne_binary(), binary()},...] | [])
-			     -> [{ne_binary(), binary()},...] | [].
+                              ,[{nonempty_string(), nonempty_string()},...] | []
+                              ,[{nonempty_string(), nonempty_string()},...] | []
+                              ,[{ne_binary(), binary()},...] | [])
+                             -> [{ne_binary(), binary()},...] | [].
 extract_attribute(_, _, [], Props) -> Props;
 extract_attribute(Attributes, QS, [{K, V}|T], Acc) ->
     case props:get_value(V, Attributes) of

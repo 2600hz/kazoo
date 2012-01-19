@@ -18,7 +18,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -102,25 +102,25 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.users">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.users">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.users">>, [RD, Context | Params]}, State) ->
@@ -128,7 +128,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.users">>, [RD, Cont
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(hash_password(Context)),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.users">>, [RD, Context | Params]}, State) ->
@@ -136,7 +136,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.users">>, [RD, Conte
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(hash_password(Context)),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.users">>, [RD, Context | Params]}, State) ->
@@ -144,7 +144,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.users">>, [RD, Co
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -274,20 +274,22 @@ load_user_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_user/1 :: (#cb_context{}) -> #cb_context{}.
-create_user(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
-            case is_unique_username(undefined, Context) of
-                true ->
-                    Context#cb_context{
-                      doc=wh_json:set_value(<<"pvt_type">>, <<"user">>, JObj)
-                      ,resp_status=success
-                     };
-                false ->
-                    crossbar_util:response_invalid_data([<<"username">>], Context)
-            end
+create_user(#cb_context{req_data=Data}=Context) ->
+    UniqueUsername = is_unique_username(undefined, Context),
+    case wh_json_validator:is_valid(Data, <<"users">>) of
+        {fail, Errors} when UniqueUsername ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {fail, Errors} ->
+            E = wh_json:set_value([<<"username">>, <<"unique">>], <<"Username is not unique for this account">>, Errors),
+            crossbar_util:response_invalid_data(E, Context);
+        {pass, _} when not UniqueUsername ->
+            E = wh_json:set_value([<<"username">>, <<"unique">>], <<"Username is not unique for this account">>, wh_json:new()),
+            crossbar_util:response_invalid_data(E, Context);
+        {pass, JObj} ->
+            Context#cb_context{
+              doc=wh_json:set_value(<<"pvt_type">>, <<"user">>, JObj)
+              ,resp_status=success
+             }
     end.
 
 %%--------------------------------------------------------------------
@@ -298,13 +300,7 @@ create_user(#cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec load_user/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_user(UserId, Context) ->
-    Doc = crossbar_doc:load(UserId, Context),
-    case wh_json:get_value(<<"pvt_deleted">>, Doc, false) of
-	true ->
-	    crossbar_util:response_bad_identifier(UserId, Context);
-	false ->
-	    Doc
-    end.
+    crossbar_doc:load(UserId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -314,17 +310,19 @@ load_user(UserId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_user/2 :: (binary(), #cb_context{}) -> #cb_context{}.
-update_user(UserId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
-            case is_unique_username(UserId, Context) of
-                true ->
-                    crossbar_doc:load_merge(UserId, JObj, Context);
-                false ->
-                    crossbar_util:response_invalid_data([<<"username">>], Context)
-            end
+update_user(UserId, #cb_context{req_data=Data}=Context) ->
+    UniqueUsername = is_unique_username(UserId, Context),
+    case wh_json_validator:is_valid(Data, <<"users">>) of
+        {fail, Errors} when UniqueUsername ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {fail, Errors} ->
+            E = wh_json:set_value([<<"username">>, <<"unique">>], <<"Username is not unique for this account">>, Errors),
+            crossbar_util:response_invalid_data(E, Context);
+        {pass, _} when not UniqueUsername ->
+            E = wh_json:set_value([<<"username">>, <<"unique">>], <<"Username is not unique for this account">>, wh_json:new()),
+            crossbar_util:response_invalid_data(E, Context);
+        {pass, JObj} ->
+            crossbar_doc:load_merge(UserId, JObj, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -340,17 +338,6 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% NOTICE: This is very temporary, placeholder until the schema work is
-%% complete!
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, user).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% This function will determine if the password parameter is present
 %% and if so create the hashes then remove it.
 %% @end
@@ -361,11 +348,11 @@ hash_password(#cb_context{doc=JObj}=Context) ->
         undefined ->
             Context;
         Password ->
-	    {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
+            {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
 
-	    JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
-					,{<<"pvt_sha1_auth">>, SHA1}
-				       ], JObj),
+            JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
+                                        ,{<<"pvt_sha1_auth">>, SHA1}
+                                       ], JObj),
             Context#cb_context{doc=wh_json:delete_key(<<"password">>, JObj1)}
     end.
 

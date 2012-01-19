@@ -18,7 +18,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -101,24 +101,24 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.skels">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.skels">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.skels">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  Context1 = validate(Params, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.skels">>, [RD, Context | Params]}, State) ->
@@ -126,7 +126,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.skels">>, [RD, Cont
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.skels">>, [RD, Context | Params]}, State) ->
@@ -134,7 +134,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.skels">>, [RD, Conte
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.skels">>, [RD, Context | Params]}, State) ->
@@ -142,7 +142,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.skels">>, [RD, Co
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -261,11 +261,11 @@ validate(_, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create/1 :: (#cb_context{}) -> #cb_context{}.
-create(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
+create(#cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"skels">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
                                              {F(J, C), C}
                                      end, {JObj, Context}, ?PVT_FUNS),
@@ -290,11 +290,11 @@ read(Id, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update(Id, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
+update(Id, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"skels">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
                                              {F(J, C), C}
                                      end, {JObj, Context}, ?PVT_FUNS),
@@ -321,15 +321,6 @@ summary(Context) ->
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Validate against schema doc in DB
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, skels).    
 
 %%--------------------------------------------------------------------
 %% @private

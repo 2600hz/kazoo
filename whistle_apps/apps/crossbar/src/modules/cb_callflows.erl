@@ -22,8 +22,6 @@
 -define(SERVER, ?MODULE).
 
 -define(CALLFLOWS_LIST, <<"callflows/listing_by_id">>).
--define(FIXTURE_LIST, [<<"611.callflow.json">>]).
-
 -define(CB_LIST, <<"callflows/crossbar_listing">>).
 
 %%-----------------------------------------------------------------------------
@@ -93,9 +91,9 @@ handle_info ({binding_fired, Pid, <<"v1_resource.allowed_methods.callflows">>, P
 
 handle_info ({binding_fired, Pid, <<"v1_resource.resource_exists.callflows">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Context | Params]}, State) ->
@@ -104,46 +102,48 @@ handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Con
                   _ = crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
-                  timer:sleep(1000),
-                  try stepswitch_maintenance:reconcile(Context1#cb_context.account_id, false) catch _:_ -> ok end
-	  end),
+                  Context1 = case crossbar_doc:save(Context) of
+                                #cb_context{account_id=AccountId, doc=JObj, resp_status=success}=C ->
+                                     spawn(fun() -> 
+                                                   [wh_number_manager:reconcile_number(Number, AccountId)
+                                                    || Number <- wh_json:get_value(<<"numbers">>, JObj, [])]
+                                           end),
+                                    C;
+                                Else ->
+                                    Else
+                            end,
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
-                  timer:sleep(1000),
-                  try stepswitch_maintenance:reconcile(Context1#cb_context.account_id, false) catch _:_ -> ok end
-	  end),
+                  Context1 = case crossbar_doc:save(Context) of
+                                #cb_context{account_id=AccountId, doc=JObj, resp_status=success}=C ->
+                                     spawn(fun() -> 
+                                                   [wh_number_manager:reconcile_number(Number, AccountId)
+                                                    || Number <- wh_json:get_value(<<"numbers">>, JObj, [])]
+                                           end),
+                                    C;
+                                Else ->
+                                    Else
+                            end,
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]},
-                  %% TODO: Dont couple to another (unrelated) whapp, see WHISTLE-375
-                  timer:sleep(1000),
-                  try stepswitch_maintenance:reconcile(Context1#cb_context.account_id, false) catch _:_ -> ok end
-	  end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"account.created">>, DBName}, State) ->
-    spawn(fun() ->
-                  _ = couch_mgr:revise_views_from_folder(DBName, callflow),
-                  Pid ! {binding_result, true, []}
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
 
@@ -198,8 +198,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.callflows">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.callflows">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.callflows">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.#.callflows">>),
-    crossbar_bindings:bind(<<"account.created">>).
+    crossbar_bindings:bind(<<"v1_resource.execute.#.callflows">>).
 
 %------------------------------------------------------------------------------
 % @private
@@ -276,11 +275,13 @@ load_callflow_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_callflow/1 :: (#cb_context{}) -> #cb_context{}.
-create_callflow(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
+create_callflow(#cb_context{req_data=Data}=Context) ->
+    Numbers = [wh_util:to_e164(Number) || Number <- wh_json:get_value(<<"numbers">>, Data, [])],
+    Data1 = wh_json:set_value(<<"numbers">>, Numbers, Data),
+    case wh_json_validator:is_valid(Data1, <<"callflows">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             Context#cb_context{
                  doc=wh_json:set_value(<<"pvt_type">>, <<"callflow">>, JObj)
                 ,resp_status=success
@@ -311,11 +312,13 @@ load_callflow(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_callflow/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_callflow(DocId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, []} ->
+update_callflow(DocId, #cb_context{req_data=Data}=Context) ->
+    Numbers = [wh_util:to_e164(Number) || Number <- wh_json:get_value(<<"numbers">>, Data, [])],
+    Data1 = wh_json:set_value(<<"numbers">>, Numbers, Data),
+    case wh_json_validator:is_valid(Data1, <<"callflows">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -332,16 +335,6 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, callflow).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% collect addional informat about the objects referenced in the flow
 %% @end
 %%--------------------------------------------------------------------
@@ -350,13 +343,13 @@ get_metadata(undefined, _, JObj) ->
     JObj;
 get_metadata(Flow, Db, JObj) ->
     JObj1 = case wh_json:get_value([<<"data">>, <<"id">>], Flow) of
-		%% this node has no id, dont change the metadata
+                %% this node has no id, dont change the metadata
                 undefined -> JObj;
-		%% node has an id, try to update the metadata
+                %% node has an id, try to update the metadata
                 Id -> create_metadata(Db, Id, JObj)
             end,
     case wh_json:get_value(<<"children">>, Flow) of
-	undefined -> JObj1;
+        undefined -> JObj1;
         Children ->
             %% iterate through each child, collecting metadata on the
             %% branch name (things like temporal routes)

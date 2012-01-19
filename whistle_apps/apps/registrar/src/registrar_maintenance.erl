@@ -22,6 +22,7 @@
 local_summary() ->
     {ok, Registrations} = reg_util:fetch_all_registrations(),
     do_summary(Registrations, fun print_summary/1),
+    io:format("~nTotal registrations: ~b~n", [length(Registrations)]),
     ok.
 
 -spec local_summary/1 :: (Realm) -> ok when
@@ -31,6 +32,7 @@ local_summary(Realm) when not is_binary(Realm) ->
 local_summary(Realm) ->
     {ok, Registrations} = reg_util:lookup_registrations(Realm),
     do_summary(Registrations, fun print_summary/1),
+    io:format("~nTotal registrations: ~b~n", [length(Registrations)]),
     ok.
 
 -spec local_summary/2 :: (Realm, Username) -> ok when

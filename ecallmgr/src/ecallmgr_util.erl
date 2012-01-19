@@ -83,9 +83,9 @@ fix_value("Event-Date-Timestamp", TStamp) ->
     wh_util:microseconds_to_seconds(wh_util:to_integer(TStamp));
 fix_value(_K, V) -> V.
 
-
--spec unserialize_fs_array/1 :: ('undefined' | ne_binary()) -> [ne_binary(),...] | [].
-unserialize_fs_array(undefined) -> [];
+-spec unserialize_fs_array/1 :: ('undefined' | ne_binary()) -> [ne_binary(),...].
+unserialize_fs_array(undefined) ->
+    [];
 unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
     binary:split(Serialized, <<"|:">>, [global]).
 
@@ -165,6 +165,8 @@ media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID) ->
     Media;
 media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID) ->
     Media;
+media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID) ->
+    FSPath;
 media_path(MediaName, Type, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
         {'error', _E} ->

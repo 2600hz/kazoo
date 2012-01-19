@@ -44,7 +44,7 @@ handle_req(JObj, _Options) ->
 %% cf_exe_sup tree.
 %% @end
 %%-----------------------------------------------------------------------------
--spec execute_call_flow/4 :: (json_object(), ne_binary(), ne_binary(), #cf_call{}) -> ok.
+-spec execute_call_flow/4 :: (json_object(), ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
 execute_call_flow(Flow, ControlQ, CallId, Call) ->
     CCVs = get_channel_ccvs(Call),
     ?LOG("call has been setup, passing control to callflow executer"),

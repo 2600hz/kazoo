@@ -25,11 +25,10 @@
 %% like devices, ring groups, and resources.
 %% @end
 %%--------------------------------------------------------------------
--spec build/2 :: (undefined | ne_binary() | json_object(), #cf_call{}) -> {'ok', json_objects()} 
-                                                                              | {'error', term()}.
--spec build/3 :: (undefined | ne_binary() | json_object(), undefined | json_object(), #cf_call{}) -> {'ok', json_objects()} 
-                                                                                                         | {'error', term()}.
-
+-spec build/2 :: ('undefined' | ne_binary() | json_object(), #cf_call{}) -> {'ok', json_objects()} | 
+                                                                            {'error', term()}.
+-spec build/3 :: ('undefined' | ne_binary() | json_object(), 'undefined' | json_object(), #cf_call{}) -> {'ok', json_objects()} |
+                                                                                                         {'error', term()}.
 build(EndpointId, Call) ->
     build(EndpointId, ?EMPTY_JSON_OBJECT, Call).
 
@@ -67,8 +66,8 @@ build(Endpoint, Properties, #cf_call{owner_id=OwnerId, authorizing_id=Authorizin
 %% bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoints/3 :: (json_object(), json_object(), #cf_call{}) -> {ok, json_objects()}
-                                                                              | {error, no_endpoints}.
+-spec create_endpoints/3 :: (json_object(), json_object(), #cf_call{}) -> {'ok', json_objects()}
+                                                                              | {'error', 'no_endpoints'}.
 create_endpoints(Endpoint, Properties, Call) ->
     Fwd = cf_attributes:call_forward(Endpoint, Call),
     Substitue = wh_json:is_false(<<"substitute">>, Fwd),
@@ -109,7 +108,7 @@ create_endpoints(Endpoint, Properties, Call) ->
 %% Fetches a endpoint defintion from the database or cache
 %% @end
 %%--------------------------------------------------------------------
--spec get/2 :: (undefined | ne_binary(), #cf_call{}) -> {ok, json_object} | {error, term()}.
+-spec get/2 :: ('undefined' | ne_binary(), #cf_call{}) -> {'ok', json_object()} | {'error', term()}.
 get(undefined, _Call) ->
     {error, invalid_endpoint_id};
 get(EndpointId, #cf_call{account_db=Db}) ->
@@ -136,7 +135,7 @@ get(EndpointId, #cf_call{account_db=Db}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_sip_endpoint/3 :: (json_object(), json_object(), #cf_call{}) -> json_object().
-create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_id=OwnerId
+create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_id=OwnerId, account_id=AccountId
                                                    ,request_user=RUser, cid_name=CIDName, cid_number=CIDNum}=Call) ->
     {CalleeNum, CalleeName} = cf_attributes:callee_id(Endpoint, Call),
     {IntCIDNumber, IntCIDName} = case cf_attributes:caller_id(AuthId, OwnerId, <<"internal">>, Call) of
@@ -154,7 +153,7 @@ create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_
                                  end,
     Prop = [{<<"Invite-Format">>, wh_json:get_value([<<"sip">>, <<"invite_format">>], Endpoint, <<"username">>)}
             ,{<<"To-User">>, wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)}
-            ,{<<"To-Realm">>, wh_json:get_value([<<"sip">>, <<"realm">>], Endpoint)}
+            ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, AccountId)}
             ,{<<"To-DID">>, wh_json:get_value([<<"sip">>, <<"number">>], Endpoint, RUser)}
             ,{<<"Route">>, wh_json:get_value([<<"sip">>, <<"route">>], Endpoint)}
             ,{<<"Outgoing-Caller-ID-Number">>, IntCIDNumber}

@@ -81,7 +81,7 @@ get_switch_hostname(CallId, Call) ->
 %% Determine the appropriate action to retrieve a parked call
 %% @end
 %%--------------------------------------------------------------------
--spec retrieve/4 :: (ne_binary(), json_object(), json_object(), #cf_call{}) -> boolean().
+-spec retrieve/4 :: (ne_binary(), json_object(), ne_binary() | 'undefined', #cf_call{}) -> boolean().
 retrieve(SlotNumber, ParkedCalls, CallerHost, #cf_call{to_user=ToUser, to_realm=ToRealm}=Call) ->
     case wh_json:get_value([<<"slots">>, SlotNumber], ParkedCalls) of
         undefined ->
@@ -160,7 +160,7 @@ create_slot(Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Returns the provided slot number or the next avaliable if none
+%% Returns the provided slot number or the next available if none
 %% was provided
 %% @end
 %%--------------------------------------------------------------------

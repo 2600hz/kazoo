@@ -1,0 +1,325 @@
+{
+   "_id":"devices",
+   "$schema":"http://json-schema.org/draft-03/schema#",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Schema for a device",
+   "properties":{
+      "name":{
+         "description":"A friendly name for the device",
+         "required":"true",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      },
+      "owner_id":{
+         "description":"The ID of the user object that 'owns' the device",
+         "type":"string",
+         "minLength":32,
+         "maxLength":32
+      },
+      "enabled":{
+         "description":"Determines if the device is currently enabled",
+         "type":"boolean",
+         "default":true
+      },
+      "caller_id":{
+         "description":"The default caller ID parameters",
+         "type":"object",
+         "properties":{
+            "internal":{
+               "description":"The default caller ID used when dialing internal extensions",
+               "type":"object",
+               "properties":{
+                  "name":{
+                     "description":"The caller id name for the object type",
+                     "type":"string",
+                     "maxLength":15,
+                     "pattern":"^[0-9A-Za-z ,]*$"
+                  },
+                  "number":{
+                     "description":"The caller id number for the object type",
+                     "type":"string",
+                     "maxLength":15
+                  }
+               }
+            },
+            "external":{
+               "description":"The default caller ID used when dialing external numbers",
+               "type":"object",
+               "properties":{
+                  "name":{
+                     "description":"The caller id name for the object type",
+                     "type":"string",
+                     "maxLength":15,
+                     "pattern":"^[0-9A-Za-z ,]*$"
+                  },
+                  "number":{
+                     "description":"The caller id number for the object type",
+                     "type":"string",
+                     "maxLength":15
+                  }
+               }
+            },
+            "emergency":{
+               "description":"The caller ID used when external, internal, or emergency is not defined",
+               "type":"object",
+               "properties":{
+                  "name":{
+                     "description":"The caller id name for the object type",
+                     "type":"string",
+                     "maxLength":15,
+                     "pattern":"^[0-9A-Za-z ,]*$"
+                  },
+                  "number":{
+                     "description":"The caller id number for the object type",
+                     "type":"string",
+                     "maxLength":15
+                  }
+               }
+            }
+         },
+         "default":{
+
+         }
+      },
+      "caller_id_options":{
+         "description":"The caller ID option parameters for the device",
+         "type":"object",
+         "properties":{
+            "reformat":{
+               "description":"A regular expression that if can reformat the displayed caller id",
+               "type":"string",
+               "maxLength":64
+            }
+         },
+         "default":{
+
+         }
+      },
+      "ringtones":{
+         "description":"The ringtones used for external and internal calls",
+         "type":"object",
+         "properties":{
+            "external":{
+               "description":"The alert info SIP header added when the call is from external sources",
+               "type":"string",
+               "maxLength":32
+            },
+            "internal":{
+               "description":"The alert info SIP header added when the call is from internal sources",
+               "type":"string",
+               "maxLength":32
+            }
+         },
+         "default":{
+
+         }
+      },
+      "media":{
+         "description":"The media parameters for the device",
+         "type":"object",
+         "properties":{
+            "bypass_media":{
+               "description":"The device bypass media mode",
+               "type":"string",
+               "enum":[
+                  "true",
+                  "false",
+                  "auto"
+               ],
+               "default":"auto"
+            },
+            "ignore_early_media":{
+               "description":"The option to determine if early media from the device should always be ignored",
+               "type":"boolean"
+            },
+            "progress_timeout":{
+               "description":"The progress timeout to apply to the device",
+               "type":"integer"
+            },
+            "audio":{
+               "description":"The device audio media parameters",
+               "type":"object",
+               "properties":{
+                  "codecs":{
+                     "description":"A list of audio codecs to use",
+                     "type":"array",
+                     "enum":[
+                        "G729",
+                        "PCMU",
+                        "PCMA",
+                        "G722_16",
+                        "G722_32",
+                        "CELT_48",
+                        "CELT_64"
+                     ],
+                     "default":[
+                        "PCMU"
+                     ]
+                  }
+               }
+            },
+            "video":{
+               "description":"The device video media parameters",
+               "type":"object",
+               "properties":{
+                  "codecs":{
+                     "description":"A list of video codecs to use",
+                     "type":"array",
+                     "enum":[
+                        "H261",
+                        "H263",
+                        "H264"
+                     ],
+                     "default":[
+
+                     ]
+                  }
+               }
+            },
+            "fax":{
+               "description":"The device fax media parameters",
+               "type":"object",
+               "properties":{
+                  "option":{
+                     "description":"The fax mode to option",
+                     "type":"string",
+                     "enum":[
+                        "true",
+                        "false",
+                        "auto"
+                     ],
+                     "default":"auto"
+                  }
+               }
+            }
+         },
+         "default":{
+
+         }
+      },
+      "music_on_hold":{
+         "description":"The device music on hold parameters",
+         "type":"object",
+         "properties":{
+            "media_id":{
+               "description":"The ID of a media object that should be used as the device music on hold",
+               "type":"string",
+               "minLength":32,
+               "maxLength":32
+            }
+         },
+         "default":{
+
+         }
+      },
+      "call_forward":{
+         "description":"The device call forward parameters",
+         "type":"object",
+         "properties":{
+            "enabled":{
+               "description":"Determines if the call forwarding should be used",
+               "type":"boolean",
+               "default":false
+            },
+            "number":{
+               "description":"The number to forward calls to",
+               "type":"string",
+               "maxLength":15
+            },
+            "substitute":{
+               "description":"Determines if the call forwarding replaces the device",
+               "type":"boolean",
+               "default":true
+            },
+            "require_keypress":{
+               "description":"Determines if the callee is prompted to press 1 to accept the call",
+               "type":"boolean",
+               "default":true
+            },
+            "keep_caller_id":{
+               "description":"Determines if the caller id is kept when the call is forwarded, if not the devices caller id is used",
+               "type":"boolean",
+               "default":true
+            },
+            "direct_calls_only":{
+               "description":"Determines if the calls that are not directly sent to the device should be forwarded",
+               "type":"boolean",
+               "default":false
+            },
+            "ignore_early_media":{
+               "description":"The option to determine if early media from the call forwarded number should ignored",
+               "type":"boolean",
+               "default":true
+            }
+         },
+         "default":{
+
+         }
+      },
+      "sip":{
+         "type":"object",
+         "properties":{
+            "realm":{
+               "type":"string",
+               "description":"The realm this device should use, overriding the account realm"
+            },
+            "route":{
+               "type":"string",
+               "description":"The SIP URL used if the invite format is 'route'"
+            },
+            "number":{
+               "type":"string",
+               "description":"The number used if the invite format is 1npan, npan, or e164 (if not set the dialed number is used)"
+            },
+            "method":{
+               "type":"string",
+               "description":"Type of auth",
+               "required":true,
+               "enum":[
+                  "password"
+               ],
+               "default":"password"
+            },
+            "username":{
+               "type":"string",
+               "description":"SIP authentication username",
+               "minLength":5,
+               "maxLength":32
+            },
+            "password":{
+               "type":"string",
+               "description":"SIP authentication password",
+               "minLength":5,
+               "maxLength":32
+            },
+            "invite_format":{
+               "type":"string",
+               "required":true,
+               "enum":[
+                  "username",
+                  "npan",
+                  "1npan",
+                  "e164",
+                  "route"
+               ],
+               "default":"username"
+            },
+            "custom_sip_headers":{
+               "type":"object",
+               "default":{
+
+               }
+            },
+            "registration_expiration":{
+               "type":"integer",
+               "description":"The time in seconds to force registrations to expire",
+               "default":300
+            }
+         },
+         "default":{
+
+         }
+      }
+   }
+}

@@ -20,7 +20,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (json_object(), #cf_call{}) -> 'ok'.
 handle(Data, Call) ->
     UserId = wh_json:get_ne_value(<<"id">>, Data),
     Endpoints = get_endpoints(UserId, Call),
@@ -50,7 +50,7 @@ handle(Data, Call) ->
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints/2 :: (undefined | ne_binary(), #cf_call{}) -> json_objects().
+-spec get_endpoints/2 :: ('undefined' | ne_binary(), #cf_call{}) -> json_objects().
 get_endpoints(undefined, _) ->
     [];
 get_endpoints(UserId, Call) ->

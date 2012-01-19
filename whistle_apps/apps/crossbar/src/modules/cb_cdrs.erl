@@ -21,7 +21,6 @@
 	 terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_user">>).
@@ -239,7 +238,7 @@ validate(_, Context) ->
 -spec load_cdr_summary/1 :: (#cb_context{}) -> #cb_context{}.
 load_cdr_summary(#cb_context{req_nouns=Nouns}=Context) ->
     case Nouns of
-	[_, {<<"accounts">>, _AID} | _] ->
+	[_, {?WH_ACCOUNTS_DB, _AID} | _] ->
 	    ?LOG("loading cdrs for account ~s", [_AID]),
             crossbar_doc:load_view(?CB_LIST
                                    ,[]

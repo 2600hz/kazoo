@@ -1,20 +1,20 @@
 {
-    "_id": "limit",
-    "id": "http://json-schema.org/draft-03/schema#",
-    "description": "Limit an account's ability to place concurrent calls using flat rate trunks",
-    "properties": {
-	"trunks": {
-            "type":"integer"
- 	    ,"required":true
-	    ,"default":0
-	    ,"minimum":0
-	    ,"description":"The number of two-way, flat-rate trunks"
-	},
-	"inbound_trunks":{
-            "type":"integer"
-	    ,"default":0
-	    ,"minimum":0
-	    ,"description":"The number of inbound-only, flat-rate trunks"
-	}
-    }
+   "_id":"limits",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Limit an account's ability to place concurrent calls using flat rate trunks",
+   "properties":{
+      "trunks":{
+         "type":"integer",
+         "required":true,
+         "default":0,
+         "minimum":0,
+         "description":"The number of two-way, flat-rate trunks"
+      },
+      "inbound_trunks":{
+         "type":"integer",
+         "default":0,
+         "minimum":0,
+         "description":"The number of inbound-only, flat-rate trunks"
+      }
+   }
 }

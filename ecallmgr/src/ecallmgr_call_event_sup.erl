@@ -61,7 +61,7 @@ find_worker(CallId) ->
 do_find_worker([], _) ->
     {error, not_found};
 do_find_worker([Srv|T], CallId) ->
-    case ecallmgr_call_events:callid(Srv) of
+    case catch(ecallmgr_call_events:callid(Srv)) of
         CallId -> {ok, Srv};
         _ -> do_find_worker(T, CallId)
     end.

@@ -1,0 +1,69 @@
+{
+   "_id":"menus",
+   "$schema":"http://json-schema.org/draft-03/schema#",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Schema for a menus",
+   "properties":{
+      "name":{
+         "description":"A friendly name for the menu",
+         "required":"true",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      },
+      "retries":{
+         "description":"The number of times a menu should be played until a valid entry is collected",
+         "type":"integer",
+         "default":3,
+         "minimum":1,
+         "maximum":10
+      },
+      "max_extension_length":{
+         "description":"The maximum number of digits that can be collected",
+         "type":"integer",
+         "default":3,
+         "minimum":1,
+         "maximum":6
+      },
+      "record_pin":{
+         "description":"The pin number used to record the menu prompt",
+         "type":"string",
+         "minLength":3,
+         "maxLength":6
+      },
+      "hunt":{
+         "description":"Determines if the callers can dial internal extensions directly",
+         "type":"boolean",
+         "default":true
+      },
+      "timeout":{
+         "type":"integer",
+         "minimum":3
+      },
+      "hunt_deny":{
+         "type":"string",
+         "minLength":1,
+         "maxLength":32
+      },
+      "hunt_allow":{
+         "type":"string",
+         "minLength":1,
+         "maxLength":32
+      },
+      "media":{
+         "description":"The media (prompt) parameters",
+         "type":"object",
+         "properties":{
+            "greeting":{
+               "description":"The ID of a media object that should be used as the menu greeting",
+               "type":"string",
+               "minLength":32,
+               "maxLength":32
+            }
+         },
+         "default":{
+
+         }
+      }
+   }
+}

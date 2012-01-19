@@ -45,7 +45,7 @@ handle(Data, Call) ->
 -spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), #cf_call{}) -> ok.
 bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Call) ->
     Endpoint = [create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
-    case cf_call_command:b_bridge(Endpoint, imeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
+    case cf_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
             ?LOG("completed successful bridge to resource"),
             cf_exe:stop(Call);
@@ -113,8 +113,8 @@ find_endpoints(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
                    ,wh_json:get_value([<<"value">>], Resource, [])
                    ,get_caller_id_type(Resource, Call)}
                   || Resource <- Resources
-			 ,Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), ReqNum)
-			 ,Number =/= []
+                         ,Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), ReqNum)
+                         ,Number =/= []
                  ]};
         {error, R}=E ->
             ?LOG("search failed ~w", [R]),

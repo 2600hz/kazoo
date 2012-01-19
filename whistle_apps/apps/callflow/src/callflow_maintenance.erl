@@ -6,17 +6,33 @@
 %%% @end
 %%% Created : 15 Aug 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cf_maintenance).
+-module(callflow_maintenance).
 
+-export([blocking_refresh/0]).
 -export([refresh/0, refresh/1]).
 -export([migrate_menus/0, migrate_menus/1]).
 
 -include("callflow.hrl").
 
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Verify that an application is running
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec blocking_refresh/0 :: () -> 'ok'.
+blocking_refresh() ->
+    lists:foreach(fun(AccountDb) ->
+                          timer:sleep(2000),
+                          refresh(AccountDb)
+                  end, whapps_util:get_all_accounts()),
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh/0 :: () -> 'started'.
@@ -34,7 +50,7 @@ refresh() ->
 refresh(Account) when not is_binary(Account) ->
     refresh(wh_util:to_binary(Account));
 refresh(Account) ->
-    AccountDb = whapps_util:get_db_name(Account, encoded),
+    AccountDb = wh_util:format_account_id(Account, encoded),
     couch_mgr:revise_views_from_folder(AccountDb, callflow).
 
 %%--------------------------------------------------------------------
@@ -52,7 +68,7 @@ migrate_menus() ->
     [ migrate_menus(Account) || Account <- whapps_util:get_all_accounts(raw) ].
 
 migrate_menus(Account) ->
-    Db = whapps_util:get_db_name(Account, encoded),
+    Db = wh_util:format_account_id(Account, encoded),
     log("migrating all menus in ~s", [Db]),
     case couch_mgr:get_results(Db, {<<"menus">>, <<"crossbar_listing">>}, [{<<"include_docs">>, true}]) of
         {ok, []} ->

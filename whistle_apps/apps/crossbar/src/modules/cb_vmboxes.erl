@@ -19,7 +19,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -107,78 +107,78 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.content_types_provided.vmboxes">>, {RD, Context, Params}}, State) ->
     spawn(fun() ->
-		  Context1 = content_types_provided(Params, Context),
-		  Pid ! {binding_result, true, {RD, Context1, Params}}
-	  end),
+                  Context1 = content_types_provided(Params, Context),
+                  Pid ! {binding_result, true, {RD, Context1, Params}}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.vmboxes">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.vmboxes">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.vmboxes">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.vmboxes">>, [RD, Context | Params]}, State) ->
     case Params of
-	[_VMBoxId, ?MESSAGES_RESOURCE, _MediaId, ?BIN_DATA] ->
-	    spawn(fun() ->
+        [_VMBoxId, ?MESSAGES_RESOURCE, _MediaId, ?BIN_DATA] ->
+            spawn(fun() ->
                           _ = crossbar_util:put_reqid(Context),
-			  Pid ! {binding_result, true, [RD, Context, Params]}
-		  end);
-	_ ->
-	    spawn(fun() ->
-			  Pid ! {binding_result, true, [RD, Context, Params]}
-		  end)
+                          Pid ! {binding_result, true, [RD, Context, Params]}
+                  end);
+        _ ->
+            spawn(fun() ->
+                          Pid ! {binding_result, true, [RD, Context, Params]}
+                  end)
     end,
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.vmboxes">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  Context1 = crossbar_doc:save(Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  Context1 = crossbar_doc:save(Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.vmboxes">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  Context1 = crossbar_doc:save(Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  Context1 = crossbar_doc:save(Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.vmboxes">>, [RD, Context | Params]}, State) ->
     case Params of
-	[_, ?MESSAGES_RESOURCE, _] ->
-	    spawn(fun() ->
+        [_, ?MESSAGES_RESOURCE, _] ->
+            spawn(fun() ->
                           _ = crossbar_util:put_reqid(Context),
-			  Context1 = crossbar_doc:save(Context),
-			  Pid ! {binding_result, true, [RD, Context1, Params]}
-		  end);
-	_ ->
-	    spawn(fun() ->
+                          Context1 = crossbar_doc:save(Context),
+                          Pid ! {binding_result, true, [RD, Context1, Params]}
+                  end);
+        _ ->
+            spawn(fun() ->
                           _ = crossbar_util:put_reqid(Context),
-			  Context1 = crossbar_doc:delete(Context),
-			  Pid ! {binding_result, true, [RD, Context1, Params]}
-		  end)
+                          Context1 = crossbar_doc:delete(Context),
+                          Pid ! {binding_result, true, [RD, Context1, Params]}
+                  end)
     end,
     {noreply, State};
 
@@ -342,15 +342,15 @@ load_vmbox_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_vmbox/1 :: (#cb_context{}) -> #cb_context{}.
-create_vmbox(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
+create_vmbox(#cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"vmboxes">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             Context#cb_context{
-	      doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
-	      ,resp_status=success
-	     }
+              doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
+              ,resp_status=success
+             }
     end.
 
 %%--------------------------------------------------------------------
@@ -371,13 +371,13 @@ load_vmbox(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_vmbox/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_vmbox(DocId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
+update_vmbox(DocId, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"vmboxes">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
-    end.
+    end. 
 
 %%--------------------------------------------------------------------
 %% @private
@@ -392,28 +392,18 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-    crossbar_schema:do_validate(JObj, vmbox).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Get messages summary for a given mailbox
 %% @end
 %%--------------------------------------------------------------------
 -spec load_message_summary/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_message_summary(DocId, Context) ->
     case load_messages(DocId, Context) of
-	[] ->            
-	    crossbar_util:response([], Context);
-	[?EMPTY_JSON_OBJECT] ->
-	    crossbar_util:response([], Context);
-	Messages ->
-	    crossbar_util:response(Messages,Context)
+        [] ->            
+            crossbar_util:response([], Context);
+        [?EMPTY_JSON_OBJECT] ->
+            crossbar_util:response([], Context);
+        Messages ->
+            crossbar_util:response(Messages,Context)
     end.
 
 
@@ -437,10 +427,10 @@ load_messages(DocId, Context) ->
 -spec load_message/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 load_message(DocId, MediaId, Context) ->
     case lists:filter(fun(M) -> wh_json:get_value(<<"media_id">>, M) =:= MediaId end, load_messages(DocId, Context)) of
-	[M] ->
-	    crossbar_util:response(M,Context);
-	_ ->
-	    crossbar_util:response_bad_identifier(MediaId, Context)
+        [M] ->
+            crossbar_util:response(M,Context);
+        _ ->
+            crossbar_util:response_bad_identifier(MediaId, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -461,34 +451,34 @@ load_message_binary(VMBoxId, VMId, #cb_context{req_data=ReqData, db_name=Db, res
     {ok, VMBoxJObj} = couch_mgr:open_doc(Db, VMBoxId),
 
     Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
-				   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
-				   ,wh_json:get_value(<<"media_type">>, VMJObj)
-				   ,wh_json:get_value(<<"timezone">>, VMBoxJObj)
-				  ),
+                                   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
+                                   ,wh_json:get_value(<<"media_type">>, VMJObj)
+                                   ,wh_json:get_value(<<"timezone">>, VMBoxJObj)
+                                  ),
     ?LOG("Sending file with filename ~s", [Filename]),
 
     Ctx = crossbar_doc:load_attachment(VMId, AttachmentId, Context),
 
     _ = case wh_json:get_value(<<"folder">>, ReqData) of
-	    undefined -> ok;
-	    Folder ->
-		?LOG("Moving message to ~s", [Folder]),
-		spawn(fun() ->
-			      _ = crossbar_util:put_reqid(Context),
-			      Context1 = update_message1(VMBoxId, VMId, Context),
-			      #cb_context{resp_status=success}=crossbar_doc:save(Context1),
-			      ?LOG("Saved message to new folder ~s", [Folder]),
-			      update_mwi(VMBoxJObj, Db)
-		      end)
-	end,
+            undefined -> ok;
+            Folder ->
+                ?LOG("Moving message to ~s", [Folder]),
+                spawn(fun() ->
+                              _ = crossbar_util:put_reqid(Context),
+                              Context1 = update_message1(VMBoxId, VMId, Context),
+                              #cb_context{resp_status=success}=crossbar_doc:save(Context1),
+                              ?LOG("Saved message to new folder ~s", [Folder]),
+                              update_mwi(VMBoxJObj, Db)
+                      end)
+        end,
 
     Ctx#cb_context{resp_headers = [
-				   {<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], VMJObj)},
-				   {<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>},
-				   {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], VMJObj))}
-				   | RespHeaders
-				  ]
-		  }.
+                                   {<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], VMJObj)},
+                                   {<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>},
+                                   {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], VMJObj))}
+                                   | RespHeaders
+                                  ]
+                  }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -502,18 +492,18 @@ delete_message(VMBoxId, MediaId, #cb_context{db_name=Db}=Context) ->
     Messages = wh_json:get_value(<<"messages">>, VMBox, []),
 
     case get_message_index(MediaId, Messages) of
-	Index when Index > 0 ->
-	    VMBox1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], <<"deleted">>, VMBox),
+        Index when Index > 0 ->
+            VMBox1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], <<"deleted">>, VMBox),
 
-	    %% let's not forget the associated private_media doc
-	    {ok, D} = couch_mgr:open_doc(Db, MediaId),
-	    couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deleted">>, true, D)),
+            %% let's not forget the associated private_media doc
+            {ok, D} = couch_mgr:open_doc(Db, MediaId),
+            couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deleted">>, true, D)),
 
-	    _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context), update_mwi(VMBox1, Db) end),
+            _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context), update_mwi(VMBox1, Db) end),
 
-	    Context1#cb_context{doc=VMBox1};
-	_ ->
-	    crossbar_util:response_bad_identifier(MediaId, Context)
+            Context1#cb_context{doc=VMBox1};
+        _ ->
+            crossbar_util:response_bad_identifier(MediaId, Context)
     end.
 
 -spec update_mwi/2 :: (json_object(), ne_binary()) -> 'ok'.
@@ -545,7 +535,7 @@ update_mwi(VMBox, DB) ->
                                                        ,{<<"Notify-Realm">>, Realm}
                                                        | CommonHeaders
                                                       ]),
-			  catch wapi_notifications:publish_mwi_update(Command)
+                          catch wapi_notifications:publish_mwi_update(Command)
                   end, Devices).
 
 -spec count_messages/2 :: (json_objects(), ne_binary()) -> non_neg_integer().
@@ -573,8 +563,8 @@ get_message_index(MediaId, Messages) ->
 -spec find_index/3 :: (ne_binary(), json_objects(), pos_integer()) -> integer().
 find_index(MediaId, [Message | Ms], Index) ->
     case wh_json:get_value(<<"media_id">>, Message) =:= MediaId of
-	true -> Index;
-	false -> find_index(MediaId, Ms, Index + 1)
+        true -> Index;
+        false -> find_index(MediaId, Ms, Index + 1)
     end;
 find_index(_, [], _) ->
     -1.
@@ -587,13 +577,13 @@ find_index(_, [], _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_message/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-update_message(DocId, MediaId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
-	    update_message1(DocId, MediaId, Context)
-    end.
+update_message(DocId, MediaId, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"vmboxes">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            update_message1(DocId, MediaId, Context#cb_context{doc=JObj})
+    end. 
 
 -spec update_message1/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 update_message1(VMBoxId, MediaId, #cb_context{req_data=ReqData}=Context) ->
@@ -604,11 +594,11 @@ update_message1(VMBoxId, MediaId, #cb_context{req_data=ReqData}=Context) ->
     Messages = wh_json:get_value(<<"messages">>, VMBox, []),
 
     case get_message_index(MediaId, Messages) of
-  	Index when Index > 0 ->
-	    VMBox1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], RequestedValue, VMBox),
-	    Context1#cb_context{doc=VMBox1};
-	_Idx ->
-	    crossbar_util:response_bad_identifier(MediaId, Context)
+        Index when Index > 0 ->
+            VMBox1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], RequestedValue, VMBox),
+            Context1#cb_context{doc=VMBox1};
+        _Idx ->
+            crossbar_util:response_bad_identifier(MediaId, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -623,13 +613,13 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     UTCDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(GregorianSeconds)),
     
     LocalTime = case localtime:utc_to_local(UTCDateTime, wh_util:to_list(Timezone)) of
-		    {{_,_,_},{_,_,_}}=LT -> ?LOG("Converted to TZ: ~s", [Timezone]), LT;
-		    _ -> ?LOG("Bad TZ: ~p", [Timezone]), UTCDateTime
-		end,
+                    {{_,_,_},{_,_,_}}=LT -> ?LOG("Converted to TZ: ~s", [Timezone]), LT;
+                    _ -> ?LOG("Bad TZ: ~p", [Timezone]), UTCDateTime
+                end,
 
     Date = wh_util:pretty_print_datetime(LocalTime),
 
     case CallerId of
-	undefined -> list_to_binary(["unknown_", Date, ".", Ext]);
-	_ -> list_to_binary([CallerId, "_", Date, ".", Ext])
+        undefined -> list_to_binary(["unknown_", Date, ".", Ext]);
+        _ -> list_to_binary([CallerId, "_", Date, ".", Ext])
     end.

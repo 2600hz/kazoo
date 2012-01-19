@@ -18,15 +18,11 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
-
--define(DEVICES_LIST, <<"devices/listing_by_id">>).
--define(FIXTURE_LIST, [<<"611.device.json">>]). %% fixtures to load into each account DB
 
 -define(CB_LIST, <<"devices/crossbar_listing">>).
 
@@ -105,16 +101,16 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.devices">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.devices">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Context | Params]}, State) ->
@@ -123,7 +119,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.devices">>, [RD, Contex
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, RD, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Context | Params]}, State) ->
@@ -133,21 +129,27 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Co
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc1}=Context1 ->
                           DeviceId = wh_json:get_value(<<"_id">>, Doc1),
-                          spawn(fun() ->
-                             do_awesome_provision(whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>), Context1)
-                          end),
-                          case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
+                          IsRealmDefined = wh_util:is_empty(wh_json:get_value([<<"sip">>, <<"realm">>], Doc1)),
+                          case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
+                              {ok, Rev} when IsRealmDefined ->
+                                  ?LOG("removing device from sip auth aggregate as it is using the account realm"),
+                                  couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1));
                               {ok, Rev} ->
-                                  couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1)),
-                                  Pid ! {binding_result, true, [RD, Context1, Params]};
+                                  ?LOG("updating device in sip auth aggregate"),
+                                  couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1));
                               {error, not_found} ->
-                                  couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
-                                  Pid ! {binding_result, true, [RD, Context1, Params]}
-                          end;
+                                  ?LOG("adding device to the sip auth aggregate"),
+                                  couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
+                          end,
+                          spawn(fun() ->
+                                        Url = whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>),
+                                        do_awesome_provision(Url, Context1)
+                          end),
+                          Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
                   end
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Context | Params]}, State) ->
@@ -156,15 +158,21 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Con
                   crossbar_util:binding_heartbeat(Pid),
                   case crossbar_doc:save(Context) of
                       #cb_context{resp_status=success, doc=Doc1}=Context1 ->
+                          case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
+                              undefined -> ok;
+                              _Else ->
+                                  ?LOG("adding device to the sip auth aggregate"),
+                                  couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
+                          end,    
                           spawn(fun() ->
-                             do_awesome_provision(whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>), Context1)
+                                        Url = whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>),
+                                        do_awesome_provision(Url, Context1)
                           end),
-                          couch_mgr:ensure_saved(?SIP_AGG_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
                   end
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
@@ -174,9 +182,9 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, 
                   case crossbar_doc:delete(Context) of
                       #cb_context{resp_status=success}=Context1 ->
                           DeviceId = wh_json:get_value(<<"_id">>, Doc),
-                          case couch_mgr:lookup_doc_rev(?SIP_AGG_DB, DeviceId) of
+                          case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
                               {ok, Rev} ->
-                                  couch_mgr:del_doc(?SIP_AGG_DB, wh_json:set_value(<<"_rev">>, Rev, Doc));
+                                  couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc));
                               {error, not_found} ->
                                   ok
                           end,
@@ -184,7 +192,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.devices">>, [RD, 
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
                   end
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -318,15 +326,35 @@ load_device_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_device/1 :: (#cb_context{}) -> #cb_context{}.
-create_device(#cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
-            Context#cb_context{
-                 doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
-                ,resp_status=success
-            }
+create_device(#cb_context{req_data=Req, db_name=Db}=Context) ->
+    SIPRealm = wh_json:get_ne_value([<<"sip">>, <<"realm">>], Req, <<>>),
+    AccountRealm = crossbar_util:get_account_realm(Context),
+    Data = case AccountRealm =:= SIPRealm of
+               true ->
+                   wh_json:delete_key([<<"sip">>, <<"realm">>], Req);
+               false ->
+                   Req
+           end,
+    Username = wh_json:get_ne_value([<<"sip">>, <<"username">>], Data),
+    Realm = wh_json:get_ne_value([<<"sip">>, <<"realm">>], Data),
+    IsCredsUnique = is_sip_creds_unique(Db, Realm, Username),
+    case wh_json_validator:is_valid(Data, <<"devices">>) of
+        {fail, Errors} when not IsCredsUnique ->
+            E = wh_json:set_value([<<"sip">>, <<"username">>, <<"unique">>]
+                                  ,<<"SIP credentials are already in use">>
+                                  ,Errors),
+            crossbar_util:response_invalid_data(E, Context);
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, _} when not IsCredsUnique ->
+            E = wh_json:set_value([<<"sip">>, <<"username">>, <<"unique">>]
+                                  ,<<"SIP credentials are already in use">>
+                                  ,wh_json:new()),
+            crossbar_util:response_invalid_data(E, Context);
+        {pass, JObj} ->
+            Context#cb_context{resp_status=success
+                               ,doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
+                              }
     end.
 
 %%--------------------------------------------------------------------
@@ -347,11 +375,32 @@ load_device(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_device/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_device(DocId, #cb_context{req_data=JObj}=Context) ->
-    case is_valid_doc(JObj) of
-        {errors, Fields} ->
-	    crossbar_util:response_invalid_data(wh_json:set_value(<<"errors">>, wh_json:from_list(Fields), wh_json:new()), Context);
-        {ok, _} ->
+update_device(DocId, #cb_context{req_data=Req, db_name=Db}=Context) ->
+    SIPRealm = wh_json:get_ne_value([<<"sip">>, <<"realm">>], Req, <<>>),
+    AccountRealm = crossbar_util:get_account_realm(Context),
+    Data = case AccountRealm =:= SIPRealm of
+               true ->
+                   wh_json:delete_key([<<"sip">>, <<"realm">>], Req);
+               false ->
+                   Req
+           end,
+    Username = wh_json:get_ne_value([<<"sip">>, <<"username">>], Data),
+    Realm = wh_json:get_ne_value([<<"sip">>, <<"realm">>], Data),
+    IsCredsUnique = is_sip_creds_unique(Db, Realm, Username, DocId),
+    case wh_json_validator:is_valid(Data, <<"devices">>) of
+        {fail, Errors} when not IsCredsUnique ->
+            E = wh_json:set_value([<<"sip">>, <<"username">>, <<"unique">>]
+                                  ,<<"SIP credentials are already in use">>
+                                  ,Errors),
+            crossbar_util:response_invalid_data(E, Context);
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, _} when not IsCredsUnique ->
+            E = wh_json:set_value([<<"sip">>, <<"username">>, <<"unique">>]
+                                  ,<<"SIP credentials are already in use">>
+                                  ,wh_json:new()),
+            crossbar_util:response_invalid_data(E, Context);
+        {pass, JObj} ->
             crossbar_doc:load_merge(DocId, JObj, Context)
     end.
 
@@ -365,17 +414,19 @@ update_device(DocId, #cb_context{req_data=JObj}=Context) ->
 -spec load_device_status/1 :: (#cb_context{}) -> #cb_context{}.
 load_device_status(#cb_context{db_name=Db}=Context) ->
     {ok, JObjs} = couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]),
-    AccountDevices = lists:foldl(fun(JObj, Acc) -> [{wh_json:get_value([<<"doc">>, <<"sip">>, <<"realm">>], JObj),
-						     wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], JObj)} | Acc] end, [], JObjs),
-    RegDevices = lookup_regs(AccountDevices),
-    Result = case RegDevices of
-		 [] -> wh_json:new();
-		 [_|_] -> {ok, Devices} = couch_mgr:get_results(Db, <<"devices/sip_credentials">>, [{<<"keys">>, RegDevices}]),
-			  lists:foldl(fun(JObj, Acc) ->
-					      RegDevice = wh_json:set_value(<<"device_id">>, wh_json:get_value(<<"id">>, JObj), wh_json:new()),
-					      [wh_json:set_value(<<"registered">>, true, RegDevice)| Acc]
-				      end, [], Devices)
-	     end,
+    AccountRealm = crossbar_util:get_account_realm(Context),
+    AccountDevices = lists:foldl(fun(JObj, Acc) -> 
+                                         [{wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], JObj, AccountRealm),
+                                           wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], JObj)} 
+                                          | Acc
+                                         ] 
+                                 end, [], JObjs),
+    Result = lists:foldl(fun(AuthorizingId, Acc) ->
+                                 Props = [{<<"device_id">>, AuthorizingId}
+                                          ,{<<"registered">>, true}
+                                         ],
+                                 [wh_json:from_list(Props)| Acc]
+                         end, [], lookup_regs(AccountDevices)),
     crossbar_util:response(Result, Context).
 
 %%--------------------------------------------------------------------
@@ -387,16 +438,6 @@ load_device_status(#cb_context{db_name=Db}=Context) ->
 -spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Validates JObj against their schema
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
-is_valid_doc(JObj) ->
-     crossbar_schema:do_validate(JObj, device).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -434,34 +475,68 @@ lookup_registration(Realm, User, Q) ->
 wait_for_reg_resp([], Acc) -> Acc;
 wait_for_reg_resp([_|T], Acc) ->
     try
-	receive
-	    {amqp_host_down, _} ->
-		?LOG("lost AMQP connection"),
+        receive
+            {amqp_host_down, _} ->
+                ?LOG("lost AMQP connection"),
                 Acc;
-	    {amqp_lost_channel,no_connection} ->
-		?LOG("lost AMQP connection"),
+            {amqp_lost_channel,no_connection} ->
+                ?LOG("lost AMQP connection"),
                 Acc;
-	    {_, #amqp_msg{payload = Payload}} ->
-		Resp = mochijson2:decode(Payload),
-		true = wapi_registration:query_resp_v(Resp),
-                Realm = wh_json:get_value([<<"Fields">>, <<"Realm">>], Resp),
-                User = wh_json:get_value([<<"Fields">>, <<"Username">>], Resp),
-                case lists:member([Realm, User], Acc) of
+            {_, #amqp_msg{payload = Payload}} ->
+                Resp = wh_json:decode(Payload),
+                true = wapi_registration:query_resp_v(Resp),
+                AuthorizingId = wh_json:get_value([<<"Fields">>, <<"Authorizing-ID">>], Resp),
+                case lists:member(AuthorizingId, Acc) of
                     true ->
                         wait_for_reg_resp([ok|T], Acc);
                     false ->
-                        wait_for_reg_resp(T, [[Realm, User] | Acc])
+                        wait_for_reg_resp(T, [AuthorizingId | Acc])
                 end;
-	    #'basic.consume_ok'{} ->
-		wait_for_reg_resp([ok|T], Acc)
-	after
-	    500 ->
-		?LOG("timeout for registration query"),
-		Acc
-	end
+            #'basic.consume_ok'{} ->
+                wait_for_reg_resp([ok|T], Acc)
+        after
+            1000 ->
+                ?LOG("timeout for registration query"),
+                Acc
+        end
     catch
-	_:_ ->
-	    wait_for_reg_resp([ok|T], Acc)
+        _:_ ->
+            wait_for_reg_resp([ok|T], Acc)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Check if the device sip creds are unique
+%% @end
+%%--------------------------------------------------------------------
+-spec is_sip_creds_unique/3 :: (undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary() ) -> boolean().
+-spec is_sip_creds_unique/4 :: (undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary()) 
+                               -> boolean().
+
+is_sip_creds_unique(AccountDb, Realm, Username) ->
+    is_sip_creds_unique(AccountDb, Realm, Username, undefined).
+
+%% no account id and no doc id (ie initial create with no account)
+is_sip_creds_unique(undefined, _, _, undefined) ->
+    true;
+is_sip_creds_unique(_, _, undefined, undefined) ->
+    true;
+is_sip_creds_unique(AccountDb, undefined, Username, DocId) ->
+    case couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, [{<<"key">>, Username}]) of
+        {ok, []} -> true;
+        {ok, [JObj]} -> 
+            wh_json:get_value(<<"id">>, JObj) =:= DocId;
+        {error, not_found} -> true;
+        _ -> false
+    end;
+is_sip_creds_unique(_, Realm, Username, DocId) ->
+    ViewOptions = [{<<"key">>, [Realm, Username]}],
+    case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
+        {ok, []} -> true;
+        {ok, [JObj]} -> wh_json:get_value(<<"id">>, JObj) =:= DocId;
+        {error, not_found} -> true;
+        _ -> false
     end.
 
 %%--------------------------------------------------------------------
@@ -503,7 +578,8 @@ provision_device_line(BaseKey, Device, Template) ->
                ],
     provision_device_line(BaseKey, Device, Template, Mappings).
 
--spec provision_device_line/4 :: (json_strings(), json_object(), json_object(), [{json_strings(), json_strings()},...] | []) -> json_object().
+-spec provision_device_line/4 :: (json_strings(), json_object(), json_object(), [{json_strings(), json_strings()},...] | []) 
+                                 -> json_object().
 provision_device_line(_, _, Template, []) ->
     Template;
 provision_device_line(BaseKey, Device, Template, [{TemplateKey, DeviceKey}|T]) ->

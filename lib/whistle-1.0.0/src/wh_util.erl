@@ -1,7 +1,10 @@
 -module(wh_util).
 
+-export([format_account_id/1, format_account_id/2]).
+-export([get_account_realm/1, get_account_realm/2]).
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([call_response/3, call_response/4, call_response/5]).
+-export([is_account_enabled/1]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([is_e164/1, is_npan/1, is_1npan/1]).
 -export([to_integer/1, to_integer/2, to_float/1, to_float/2, to_number/1
@@ -18,41 +21,168 @@
 -export([whistle_version/0, write_pid/1]).
 -export([is_ipv4/1, is_ipv6/1]).
 -export([get_hostname/0]).
--export([get_transfer_state/1, get_transfer_state/2]).
 
 -include_lib("kernel/include/inet.hrl").
 -include_lib("proper/include/proper.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, whistle_version}).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a representation of an account return it in a encoded,
+%% unencoded or raw format.
+%% @end
+%%--------------------------------------------------------------------
+-spec format_account_id/1 :: ([binary(),...] | binary() | json_object()) -> binary().
+-spec format_account_id/2 :: ([binary(),...] | binary() | json_object(), unencoded | encoded | raw) -> binary().
+
+format_account_id(Doc) -> format_account_id(Doc, unencoded).
+
+format_account_id({struct, _}=Doc, Encoding) ->
+    format_account_id([wh_json:get_value([<<"_id">>], Doc)], Encoding);
+format_account_id([AccountId], Encoding) ->
+    format_account_id(AccountId, Encoding);
+format_account_id(AccountId, Encoding) when not is_binary(AccountId) ->
+    format_account_id(wh_util:to_binary(AccountId), Encoding);
+format_account_id(<<"accounts">>, _) ->
+    <<"accounts">>;
+%% unencode the account db name
+format_account_id(<<"account/", _/binary>>=DbName, unencoded) ->
+    DbName;
+format_account_id(<<"account%2F", _/binary>>=DbName, unencoded) ->
+    binary:replace(DbName, <<"%2F">>, <<"/">>, [global]);
+format_account_id(AccountId, unencoded) ->
+    [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
+    wh_util:to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
+%% encode the account db name
+format_account_id(<<"account%2F", _/binary>>=DbName, encoded) ->
+    DbName;
+format_account_id(<<"account/", _/binary>>=DbName, encoded) ->
+    binary:replace(DbName, <<"/">>, <<"%2F">>, [global]);
+format_account_id(AccountId, encoded) when is_binary(AccountId) ->
+    [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
+    wh_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
+%% get just the account ID from the account db name
+format_account_id(<<"account%2F", AccountId/binary>>, raw) ->
+    binary:replace(AccountId, <<"%2F">>, <<>>, [global]);
+format_account_id(<<"account/", AccountId/binary>>, raw) ->
+    binary:replace(AccountId, <<"/">>, <<>>, [global]);
+format_account_id(AccountId, raw) ->
+    AccountId.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% checks the pvt_enabled flag and returns false only if the flag is
+%% specificly set to false.  If it is missing or set to anything else
+%% return true.  However, if we cant find the account doc then return
+%% false.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_account_enabled/1 :: (undefined | ne_binary()) -> boolean().
+is_account_enabled(undefined) ->
+    true;
+is_account_enabled(AccountId) ->
+    case wh_cache:peek({?MODULE, is_account_enabled, AccountId}) of
+        {ok, Enabled} -> 
+            ?LOG("account ~s enabled flag is ~s", [AccountId, Enabled]),
+            Enabled;
+        {error, not_found} ->
+            case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+                {ok, JObj} ->
+                    PvtEnabled = wh_json:is_false(<<"pvt_enabled">>, JObj) =/= true,
+                    ?LOG("account ~s enabled flag is ~s", [AccountId, PvtEnabled]),
+                    wh_cache:store({?MODULE, is_account_enabled, AccountId}, PvtEnabled, 300),
+                    PvtEnabled;
+                {error, R} ->
+                    ?LOG("unable to find enabled status of account ~s: ~p", [AccountId, R]),
+                    false
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieves the account realm
+%% @end
+%%--------------------------------------------------------------------
+-spec get_account_realm/1 :: (undefined | ne_binary()) -> undefined | ne_binary().
+-spec get_account_realm/2 :: (undefined | ne_binary(), ne_binary()) -> undefined | ne_binary().
+
+get_account_realm(AccountId) ->
+    get_account_realm(wh_util:format_account_id(AccountId, encoded), AccountId).
+
+get_account_realm(undefined, _) ->
+    undefined;
+get_account_realm(Db, AccountId) ->
+    case couch_mgr:open_doc(Db, AccountId) of
+        {ok, JObj} ->
+            wh_json:get_ne_value(<<"realm">>, JObj);
+        {error, R} ->
+            ?LOG("error while looking up account realm: ~p", [R]),
+            undefined
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Find the hostname of the system
+%% @end
+%%--------------------------------------------------------------------
 -spec get_hostname/0 :: () -> string().
 get_hostname() ->
     {ok, Host} = inet:gethostname(),
     {ok, #hostent{h_name=Hostname}} = inet:gethostbyname(Host),
     Hostname.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Ensure a binary is a minimum size, padding it if not with a given
+%% value.
+%% @end
+%%--------------------------------------------------------------------
 -spec pad_binary/3 :: (binary(), non_neg_integer(), binary()) -> binary().
 pad_binary(Bin, Size, Value) when size(Bin) < Size ->
     pad_binary(<<Bin/binary, Value/binary>>, Size, Value);
 pad_binary(Bin, _, _) ->
     Bin.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Join a binary together with a seperator.
+%% @end
+%%--------------------------------------------------------------------
 -spec join_binary/1 :: ([binary(),...]) -> binary().
 -spec join_binary/2 :: ([binary(),...], binary()) -> binary().
 
 join_binary(Bins) ->
     join_binary(Bins, <<", ">>).
 
+join_binary([], _) ->
+    <<>>;
 join_binary([Bin], _) ->
     Bin;
-join_binary([Bin|Rest], Sep) -> 
+join_binary([Bin|Rest], Sep) ->
     <<Bin/binary, Sep/binary, (join_binary(Rest, Sep))/binary>>.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Create a call response, as a queue of events when media should be
+%% played as part of the error.
+%% @end
+%%--------------------------------------------------------------------
 -spec call_response/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 -spec call_response/4 :: (ne_binary(), ne_binary(), ne_binary(), 'undefined' | binary()) -> 'ok'.
 -spec call_response/5 :: (ne_binary(), ne_binary(), ne_binary(), 'undefined' | binary(), 'undefined' | binary()) -> 'ok'.
+
 call_response(CallId, CtrlQ, Code) ->
     call_response(CallId, CtrlQ, Code, <<>>).
 call_response(CallId, CtrlQ, Code, undefined) ->
@@ -95,8 +225,7 @@ call_response1(CallId, CtrlQ, Commands) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (JObj) -> binary() | 'undefined' when
-      JObj :: json_object().
+-spec put_callid/1 :: (json_object()) -> ne_binary() | 'undefined'.
 put_callid(JObj) ->
     erlang:put(callid, wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
 
@@ -107,15 +236,12 @@ put_callid(JObj) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (json_object() | proplist()) -> {ne_binary(), ne_binary()}.
-get_event_type(Prop) when is_list(Prop) ->
-    { props:get_value(<<"Event-Category">>, Prop), props:get_value(<<"Event-Name">>, Prop) };
+-spec get_event_type/1 :: (json_object()) -> {ne_binary() | 'undefined', ne_binary() | 'undefined'}.
 get_event_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
 
 %% must be a term that can be changed to a list
--spec to_hex/1 :: (S) -> string() when
-      S :: term().
+-spec to_hex/1 :: (binary() | string()) -> string().
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
 
@@ -134,16 +260,20 @@ is_1npan(DID) ->
 
 %% +18001234567 -> +18001234567
 -spec to_e164/1 :: (ne_binary()) -> ne_binary().
+to_e164(<<$+, _/binary>> = N) ->
+    N;
 to_e164(<<"011", N/binary>>) ->
-    to_e164(N);
-to_e164(<<"+1", _/binary>> = E164) when erlang:byte_size(E164) =:= 12 ->
-    E164;
+    <<$+, N/binary>>;
+to_e164(<<"00", N/binary>>) ->
+    <<$+, N/binary>>;
+to_e164(<<"+1", _/binary>> = N) when erlang:byte_size(N) =:= 12 ->
+    N;
 %% 18001234567 -> +18001234567
-to_e164(<<$1, _/binary>> = NPAN1) when erlang:byte_size(NPAN1) =:= 11 ->
-    << $+, NPAN1/binary>>;
+to_e164(<<$1, _/binary>> = N) when erlang:byte_size(N) =:= 11 ->
+    << $+, N/binary>>;
 %% 8001234567 -> +18001234567
-to_e164(NPAN) when erlang:byte_size(NPAN) =:= 10 ->
-    <<$+, $1, NPAN/binary>>;
+to_e164(N) when erlang:byte_size(N) =:= 10 ->
+    <<$+, $1, N/binary>>;
 to_e164(Other) ->
     Other.
 
@@ -302,6 +432,7 @@ is_empty(<<>>) -> true;
 is_empty(<<"0">>) -> true;
 is_empty(<<"false">>) -> true;
 is_empty(<<"NULL">>) -> true;
+is_empty(null) -> true;
 is_empty(false) -> true;
 is_empty(undefined) -> true;
 is_empty(?EMPTY_JSON_OBJECT) -> true;
@@ -458,93 +589,6 @@ is_ipv6(Address) when is_list(Address) ->
         {error, _} -> false
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec get_transfer_state/1 :: (json_object()) -> 'undefined' | 'transferer' | 'transferee'.
--spec get_transfer_state/2 :: ({ne_binary(), ne_binary()}, json_object()) -> 'undefined' | 'transferer' | 'transferee'.
--spec do_get_transfer_state/2 :: (ne_binary(),  json_object()) ->  'undefined' | 'transferer' | 'transferee'.
-
-get_transfer_state(JObj) ->
-    get_transfer_state(get_event_type(JObj), JObj).
-
-get_transfer_state({<<"call_event">>, <<"CHANNEL_DESTROY">>}, JObj) ->
-    do_get_transfer_state(<<"CHANNEL_DESTROY">>, JObj);
-get_transfer_state({<<"call_event">>, <<"CHANNEL_HANGUP">>}, JObj) ->
-    do_get_transfer_state(<<"CHANNEL_HANGUP">>, JObj);
-get_transfer_state({<<"call_event">>, <<"CHANNEL_UNBRIDGE">>}, JObj) ->
-    do_get_transfer_state(<<"CHANNEL_UNBRIDGE">>, JObj);
-get_transfer_state(_, _) ->
-    undefined.
-
-do_get_transfer_state(<<"CHANNEL_UNBRIDGE">>, JObj) ->
-    Timestamp = wh_json:get_binary_value(<<"Timestamp">>, JObj, <<>>),
-    Epoch = binary:part(wh_util:pad_binary(Timestamp, 10, <<"0">>), 0, 10),
-    Transfer = wh_json:get_value([<<"Transfer-History">>, Epoch], JObj),
-    Disposition = wh_json:get_value(<<"Disposition">>, JObj),
-    case {Disposition, Transfer} of
-        %% caller preforms a blind transfer
-        {<<"BLIND_TRANSFER">>, undefined} ->
-            ?LOG("channel was unbridged as a result of a blind transfer"),
-            transferer;
-        %% callee preforms a attended transfer (on C-leg)
-        {<<"ATTENDED_TRANSFER">>, undefined} ->
-            ?LOG("channel was unbridged as a result of an attended transfer, acquire control"),
-            transferee;
-        %% caller preforms a attended transfer
-        %% caller preforms a partial attended
-        {<<"ANSWER">>, undefined} ->
-            %% to be sure check if it was during a transfer, may not be necessary...
-            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
-                undefined ->
-                    ?LOG("channel was unbridged as a result of a transfer"),
-                    transferer;
-                _Else ->
-                    undefined
-            end;
-        %% just a catch for undefined Transfer History Item
-        %% IE: This unbridge was NOT part of the transfer history,
-        %%     otherwise it WAS and the next clause will handle it.
-        {_, undefined} ->
-            undefined;
-        %% callee preforms a blind transfer
-        %% callee preforms a partial attended
-        %% callee preforms a attended transfer
-        {_, _} ->
-            ?LOG("channel was unbridged as a result of a transfer"),
-            transferer
-    end;    
-do_get_transfer_state(_, JObj) ->
-    case wh_json:get_value(<<"Disposition">>, JObj) of
-        %% caller preforms a blind transfer
-        <<"BLIND_TRANSFER">> ->
-            ?LOG("channel was hungup as a result of a blind transfer"),                            
-            transferer;
-        %% callee preforms partial attended
-        %% callee preforms attended transfer
-        <<"ATTENDED_TRANSFER">> ->
-            ?LOG("channel was hungup as a result of an attended transfer, acquire control"),
-            transferee;
-        %% caller preforms a attended transfer
-        %% caller preforms a partial attended
-        <<"ANSWER">> ->
-            %% to be sure check if it was during a transfer, may not be necessary...
-            case wh_json:get_value(<<"Hangup-Cause">>, JObj) of
-                undefined ->
-                    ?LOG("channel was hungup as a result of a transfer"),
-                    trasferer;
-                _Else ->
-                    undefined
-            end;
-        %% missing events:
-        %% callee preforms blind transfer
-        _Else ->
-            undefined
-    end.
-
 %% PROPER TESTING
 prop_to_integer() ->
     ?FORALL({F, I}, {float(), integer()},
@@ -571,7 +615,7 @@ prop_to_list() ->
     ?FORALL({A, L, B, I, F}, {atom(), list(), binary(), integer(), float()},
             lists:all(fun(X) -> is_list(to_list(X)) end, [A, L, B, I, F])).
 
-%-type iolist() :: maybe_improper_list(char() | binary() | iolist(), binary() | []).
+                                                %-type iolist() :: maybe_improper_list(char() | binary() | iolist(), binary() | []).
 prop_to_binary() ->
     ?FORALL({A, L, B, I, F, IO}, {atom(), list(range(0,255)), binary(), integer(), float(), iolist()},
             lists:all(fun(X) -> is_binary(to_binary(X)) end, [A, L, B, I, F, IO])).

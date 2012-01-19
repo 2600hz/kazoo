@@ -523,12 +523,33 @@ bind_q(_Q, [], _CallID) ->
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     CallID = props:get_value(callid, Props, <<"*">>),
+    unbind_q(Queue, props:get_value(restrict_to, Props), CallID).
 
-    amqp_util:unbind_q_from_callevt(Queue, CallID),
-    amqp_util:bind_q_to_callmgr(Queue, rating_key(CallID)),
-    amqp_util:unbind_q_from_resource(Queue, ?KEY_CHANNEL_QUERY),
-    amqp_util:bind_q_to_callevt(Queue, CallID, status_req),
-    amqp_util:unbind_q_from_callevt(Queue, CallID, cdr).
+unbind_q(Q, undefined, CallID) ->
+    amqp_util:unbind_q_from_callevt(Q, CallID),
+    amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
+    amqp_util:unbind_q_from_resource(Q, ?KEY_CHANNEL_QUERY),
+    amqp_util:unbind_q_from_callmgr(Q, rating_key(CallID));
+
+unbind_q(Q, [events|T], CallID) ->
+    amqp_util:unbind_q_from_callevt(Q, CallID),
+    unbind_q(Q, T, CallID);
+unbind_q(Q, [cdr|T], CallID) ->
+    amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
+    unbind_q(Q, T, CallID);
+unbind_q(Q, [rating|T], CallID) ->
+    amqp_util:unbind_q_from_callmgr(Q, rating_key(CallID)),
+    unbind_q(Q, T, CallID);
+unbind_q(Q, [status_req|T], CallID) ->
+    amqp_util:unbind_q_from_callevt(Q, CallID, status_req),
+    unbind_q(Q, T, CallID);
+unbind_q(Q, [query_req|T], CallID) ->
+    amqp_util:unbind_q_from_resource(Q, ?KEY_CHANNEL_QUERY),
+    unbind_q(Q, T, CallID);
+unbind_q(Q, [_|T], CallID) ->
+    unbind_q(Q, T, CallID);
+unbind_q(_Q, [], _CallID) ->
+    ok.
 
 -spec publish_event/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_event/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.

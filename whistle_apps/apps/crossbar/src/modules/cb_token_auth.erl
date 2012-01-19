@@ -19,14 +19,11 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 
 -define(SERVER, ?MODULE).
-
--define(TOKEN_DB, <<"token_auth">>).
 
 %%%===================================================================
 %%% API
@@ -105,10 +102,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_contex
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  case couch_mgr:open_doc(?TOKEN_DB, AuthToken) of
+                  case crossbar_util:open_doc(?TOKEN_DB, AuthToken) of
                       {ok, JObj} ->
                           ?LOG("token auth is valid, authenticating"),
-                          Pid ! {binding_result, true, {RD, Context#cb_context{auth_doc=JObj}}};
+                          Pid ! {binding_result, true, {RD, Context#cb_context{auth_account_id=wh_json:get_ne_value(<<"account_id">>, JObj)
+                                                                               ,auth_doc=JObj
+                                                                              }}};
                       {error, R} ->
                           ?LOG("failed to authenticate token auth, ~p", [R]),
                           Pid ! {binding_result, false, {RD, Context}}

@@ -19,6 +19,9 @@
 -define(LIST_BY_NUMBER, {<<"callflow">>, <<"listing_by_number">>}).
 -define(LIST_BY_PATTERN, {<<"callflow">>, <<"listing_by_pattern">>}).
 
+%% Hangup Causes that are fine
+-define(SUCCESSFUL_HANGUPS, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
+
 -define(NO_MATCH_CF, <<"no_match">>).
 
 -define(DEFAULT_TIMEOUT, <<"20">>).
@@ -29,43 +32,43 @@
                     ,<<"*">>, <<"0">>, <<"#">>
                    ]).
 
--define(CF_ALERT(Error, AlertCall), 
-        (fun({fail, Reason}, #cf_call{account_id=AId}) ->
-                 {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
-                 Level = whapps_util:hangup_cause_to_alert_level(Cause),
-                 ?LOG("failed to bridge: ~s:~s", [Cause, Code]),
-                 Message = ["Source: ~s(~p)~n"
+-define(CF_ALERT(Error__, AlertCall__), 
+        (fun({fail,Reason__}, #cf_call{account_id=AId__}) ->
+                 {Cause__, Code__} = whapps_util:get_call_termination_reason(Reason__),
+                 Level__ = whapps_util:hangup_cause_to_alert_level(Cause__),
+                 ?LOG("failed to bridge: ~s:~s", [Cause__, Code__]),
+                 Message__ = ["Source: ~s(~p)~n"
                             ,"Alert: failed to bridge ~p ~p~n"
                             ,"Fault: ~p~n"
                             ,"~n~s"
                            ],
-                Args = [?MODULE, ?LINE, Reason, Cause, Code
-                        ,cf_util:call_info_to_string(AlertCall)],
-                 whapps_util:alert(Level, lists:flatten(Message), Args, AId);
-            ({error, Reason}, #cf_call{account_id=AId}) ->
-                 ?LOG("error: ~s", [wh_json:encode(Reason)]),
-                 Message = ["Source: ~s(~p)~n"
-                            ,"Alert: generic error~n"
-                            ,"Fault: ~p~n"
-                            ,"~n~s"
-                           ],
-                 Args = [?MODULE, ?LINE, Reason
-                         ,cf_util:call_info_to_string(AlertCall)],
-                  whapps_util:alert(error, lists:flatten(Message), Args, AId)
-         end)(Error, AlertCall)).
+                Args__ = [?MODULE, ?LINE, Reason__, Cause__, Code__
+                        ,cf_util:call_info_to_string(AlertCall__)],
+                 whapps_util:alert(Level__, lists:flatten(Message__), Args__, AId__)
+            %% ({error, Reason__}, #cf_call{account_id=AId__}) ->
+            %%      ?LOG("error: ~s", [wh_json:encode(Reason__)]),
+            %%      Message__ = ["Source: ~s(~p)~n"
+            %%                 ,"Alert: generic error~n"
+            %%                 ,"Fault: ~p~n"
+            %%                 ,"~n~s"
+            %%                ],
+            %%      Args__ = [?MODULE, ?LINE, Reason__
+            %%              ,cf_util:call_info_to_string(AlertCall__)],
+            %%       whapps_util:alert(error, lists:flatten(Message__), Args__, AId__)
+         end)(Error__, AlertCall__)).
 
--define(CF_ALERT(Error, Msg, AlertCall),
-        (fun({error, Reason}, Msg, #cf_call{account_id=AId}) ->
-                 ?LOG("~s: ~s", [Msg, wh_json:encode(Reason)]),
-                 Message = ["Source: ~s(~p)~n"
+-define(CF_ALERT(Error__, Msg__, AlertCall__),
+        (fun({error, Reason__}, Msg__, #cf_call{account_id=AId__}) ->
+                 ?LOG("~s: ~s", [Msg__, wh_json:encode(Reason__)]),
+                 Message__ = ["Source: ~s(~p)~n"
                             ,"Alert: ~s~n"
                             ,"Fault: ~p~n"
                             ,"~n~s"
                            ],
-                 Args = [?MODULE, ?LINE, Msg, Reason
-                         ,cf_util:call_info_to_string(AlertCall)],
-                 whapps_util:alert(error, lists:flatten(Message), Args, AId)
-         end)(Error, Msg, AlertCall)).
+                 Args__ = [?MODULE, ?LINE, Msg__, Reason__
+                         ,cf_util:call_info_to_string(AlertCall__)],
+                 whapps_util:alert(error, lists:flatten(Message__), Args__, AId__)
+         end)(Error__, Msg__, AlertCall__)).
 
 -record (cf_call, {
             bdst_q = <<>> :: binary()                              %% The broadcast queue the request was recieved on
@@ -92,4 +95,5 @@
             ,last_action = 'undefined' :: 'undefined' | atom()          %% Previous action
             ,capture_group = 'undefined' :: 'undefined' | binary()      %% If the callflow was found using a pattern this is the capture group
             ,inception_during_transfer = 'false' :: boolean()         %% If the hunt for this callflow was intiated during transfer
+            ,call_kvs = orddict:new() :: orddict:orddict() %% allows callflows to set values that propogate to children
            }).

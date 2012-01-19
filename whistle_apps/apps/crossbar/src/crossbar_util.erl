@@ -22,11 +22,15 @@
 -export([response_db_missing/1]).
 -export([response_db_fatal/1]).
 -export([binding_heartbeat/1, binding_heartbeat/2]).
+-export([get_account_realm/1, get_account_realm/2]).
+-export([disable_account/1, enable_account/1, change_pvt_enabled/2]).
 -export([put_reqid/1]).
+-export([cache_doc/2, cache_view/3]).
+-export([flush_doc_cache/2]).
+-export([get_results/3, open_doc/2]).
 -export([store/3, fetch/2, get_abs_url/2]).
 
 -include("../include/crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -134,7 +138,7 @@ response_deprecated_redirect(Context, RedirectUrl) ->
     response_deprecated_redirect(Context, RedirectUrl, wh_json:new()).
 response_deprecated_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj) ->
     create_response(error, <<"deprecated">>, 301, JObj
-		    ,Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
+                    ,Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 
 -spec response_redirect(#cb_context{}, json_string(), json_object()) -> #cb_context{}.
 response_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj) ->
@@ -234,26 +238,39 @@ response_db_fatal(Context) ->
 -spec binding_heartbeat/1 :: (pid()) -> pid().
 -spec binding_heartbeat/2 :: (pid(), non_neg_integer() | 'infinity') -> pid().
 binding_heartbeat(BPid) ->
-    binding_heartbeat(BPid, 3600000). % one hour
+    binding_heartbeat(BPid, 300000). % five minutes
 binding_heartbeat(BPid, Timeout) ->
     PPid = self(),
-    ?LOG("Starting binding heartbeat for ~p", [PPid]),
+    ReqId = get(callid),
+    ?LOG("starting binding heartbeat for ~p", [BPid]),
+    BPid ! heartbeat,
     spawn(fun() ->
-		  Ref = erlang:monitor(process, PPid),
-		  {ok, Tref} = timer:send_interval(250, BPid, heartbeat),
-		  ok = receive
-			   {'DOWN', Ref, process, _, normal} ->
-			       ok;
-			   {'DOWN', Ref, process, _, Reason} ->
-			       ?LOG("Bound client (~p) down for non-normal reason: ~p", [PPid, Reason]),
-			       BPid ! {binding_error, Reason};
-			   _ -> ok
-		       after Timeout ->
-			       ?LOG("Bound client (~p) too slow, timed out after ~p", [PPid, Timeout]),
-			       ok
-		       end,
-		  timer:cancel(Tref)
-	  end).
+                  put(callid, ReqId),
+                  Ref = erlang:monitor(process, PPid),
+                  erlang:send_after(100, self(), heartbeat),
+                  wait_for_binding_heartbeat(Timeout, Ref, BPid)
+          end).
+
+wait_for_binding_heartbeat(Timeout, Ref, BPid) ->
+    BPid ! heartbeat,
+    Start = erlang:now(),
+    receive
+        {'DOWN', Ref, process, _, normal} ->
+            ok;
+        {'DOWN', Ref, process, Pid, Reason} ->
+            ?LOG("bound client (~p) down for non-normal reason: ~p", [Pid, Reason]),
+            BPid ! {binding_error, Reason};
+        heartbeat ->
+            erlang:send_after(100, self(), heartbeat),
+            DiffMicro = timer:now_diff(erlang:now(), Start),
+            wait_for_binding_heartbeat(Timeout - (DiffMicro div 1000), Ref, BPid);
+        _ -> 
+            DiffMicro = timer:now_diff(erlang:now(), Start),
+            wait_for_binding_heartbeat(Timeout - (DiffMicro div 1000), Ref, BPid)
+    after Timeout ->
+            ?LOG("bound client too slow, timed out"),
+            BPid ! {binding_error, timeout}
+    end.    
 
 %%--------------------------------------------------------------------
 %% @public
@@ -287,13 +304,171 @@ store(Key, Data, #cb_context{storage=Storage}=Context) ->
 fetch(Key, #cb_context{storage=Storage}) ->
     props:get_value(Key, Storage).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Retrieves the account realm
+%% @end
+%%--------------------------------------------------------------------
+-spec get_account_realm/1 :: (ne_binary() | #cb_context{}) -> undefined | ne_binary().
+-spec get_account_realm/2 :: (undefined | ne_binary(), ne_binary()) -> undefined | ne_binary().
+
+get_account_realm(#cb_context{db_name=Db, account_id=AccountId}) ->
+    get_account_realm(Db, AccountId);
+get_account_realm(AccountId) ->
+    get_account_realm(wh_util:format_account_id(AccountId, encoded), AccountId).
+
+get_account_realm(undefined, _) ->
+    undefined;
+get_account_realm(Db, AccountId) ->
+    case couch_mgr:open_doc(Db, AccountId) of
+        {ok, JObj} ->
+            wh_json:get_ne_value(<<"realm">>, JObj);
+        {error, R} ->
+            ?LOG("error while looking up account realm: ~p", [R]),
+            undefined
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Flag all descendants of the account id as disabled
+%% @end
+%%--------------------------------------------------------------------
+-spec disable_account/1 :: (undefined | ne_binary()) -> ok.
+disable_account(undefined) ->
+    ok;
+disable_account(AccountId) ->
+    ViewOptions = [{<<"startkey">>, [AccountId]}, {<<"endkey">>, [AccountId, wh_json:new()]}],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
+        {ok, JObjs} ->
+            [change_pvt_enabled(false, wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
+            ok;
+        {error, R}=E ->
+            ?LOG("unable to disable descendants of ~s: ~p", [AccountId, R]),
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Flag all descendants of the account id as enabled
+%% @end
+%%--------------------------------------------------------------------
+-spec enable_account/1 :: (undefined | ne_binary()) -> ok.
+enable_account(undefined) ->
+    ok;
+enable_account(AccountId) ->
+    ViewOptions = [{<<"startkey">>, [AccountId]}, {<<"endkey">>, [AccountId, wh_json:new()]}],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
+        {ok, JObjs} ->
+            [change_pvt_enabled(true, wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
+            ok;
+        {error, R}=E ->
+            ?LOG("unable to enable descendants of ~s: ~p", [AccountId, R]),
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Update all descendants of the account id pvt_enabled flag with State
+%% @end
+%%--------------------------------------------------------------------
+change_pvt_enabled(_, undefined) ->
+    ok;
+change_pvt_enabled(State, AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    try 
+      {ok, JObj1} = couch_mgr:open_doc(AccountDb, AccountId),
+      ?LOG("set pvt_enabled to ~s on account ~s", [State, AccountId]),
+      {ok, JObj2} = couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_enabled">>, State, JObj1)),
+      case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
+          {ok, Rev} ->
+              couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, JObj2));
+          _Else ->
+              couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, JObj2))
+      end
+    catch
+        _:R ->
+            ?LOG("unable to set pvt_enabled to ~s on account ~s: ~p", [State, AccountId, R]),
+            {error, R}
+    end.
+    
+-spec cache_view/3 :: (ne_binary(), proplist(), json_object()) -> false | ok.
+cache_view(Db, ViewOptions, JObj) ->
+    {ok, Srv} = crossbar_sup:cache_proc(),
+    (?CACHE_TTL =/= 0) andalso
+        begin
+            ?LOG("caching views results in cache"),
+            wh_cache:store_local(Srv, {crossbar, view, {Db, ?MODULE}}, {ViewOptions, JObj}, ?CACHE_TTL)
+        end.
+
+-spec cache_doc/2 :: (ne_binary(), json_object()) -> false | ok.
+cache_doc(Db, JObj) ->
+    {ok, Srv} = crossbar_sup:cache_proc(),
+    Id = wh_json:get_value(<<"_id">>, JObj),
+    (?CACHE_TTL =/= 0) andalso
+        begin 
+            ?LOG("caching document and flushing related views in cache"),
+            wh_cache:store_local(Srv, {crossbar, doc, {Db, Id}}, JObj, ?CACHE_TTL),
+            wh_cache:erase_local(Srv, {crossbar, view, {Db, ?MODULE}})
+        end.
+
+-spec flush_doc_cache/2 :: (ne_binary(), ne_binary() | json_object()) -> false | ok.
+flush_doc_cache(Db, <<Id>>) ->
+    {ok, Srv} = crossbar_sup:cache_proc(),
+    (?CACHE_TTL =/= 0) andalso
+        begin
+            ?LOG("flushing document and related views from cache"),
+            wh_cache:erase_local(Srv, {crossbar, doc, {Db, Id}}),
+            wh_cache:erase_local(Srv, {crossbar, view, {Db, ?MODULE}})
+        end;
+flush_doc_cache(Db, JObj) ->
+    flush_doc_cache(Db, wh_json:get_value(<<"_id">>, JObj)).
+
+-spec open_doc/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} | {error, term()}.
+open_doc(Db, Id) ->
+    {ok, Srv} = crossbar_sup:cache_proc(),
+    case wh_cache:peek_local(Srv, {crossbar, doc, {Db, Id}}) of
+        {ok, _}=Ok -> 
+            ?LOG("found document in cache"),
+            Ok;
+        {error, not_found} ->
+            case couch_mgr:open_doc(Db, Id) of
+                {ok, JObj}=Ok ->
+                    cache_doc(Db, JObj),
+                    Ok;
+                {error, R}=E ->
+                    ?LOG("error fetching ~s/~s: ~p", [Db, Id, R]),
+                    E
+            end
+    end.
+-spec get_results/3 :: (ne_binary(), ne_binary(), proplist()) -> {ok, json_object()} | {error, term()}.
+get_results(Db, View, ViewOptions) ->
+    {ok, Srv} = crossbar_sup:cache_proc(),
+    case wh_cache:peek_local(Srv, {crossbar, view, {Db, ?MODULE}}) of
+        {ok, {ViewOptions, ViewResults}} -> 
+            ?LOG("found view results in cache"),
+            {ok, ViewResults};
+        _ ->
+            case couch_mgr:get_results(Db, View, ViewOptions) of
+                {ok, JObj}=Ok ->
+                    cache_view(Db, ViewOptions, JObj),
+                    Ok;
+                {error, R}=E ->
+                    ?LOG("error fetching ~s/~s: ~p", [Db, View, R]),
+                    E
+            end
+    end.    
+
 -spec get_abs_url/2 :: (#wm_reqdata{}, ne_binary() | nonempty_string()) -> ne_binary().
 get_abs_url(RD, Url) ->
     %% http://some.host.com:port/"
     Port = case wrq:port(RD) of
-	       80 -> "";
-	       P -> [":", wh_util:to_list(P)]
-	   end,
+               80 -> "";
+               P -> [":", wh_util:to_list(P)]
+           end,
 
     Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
     ?LOG("host: ~s", [Host]),
@@ -317,11 +492,11 @@ get_abs_url(Host, PathTokensRev, Url) ->
 
     Url1 = string:join(
       lists:reverse(
-	lists:foldl(fun("..", []) -> [];
-		       ("..", [_ | PathTokens]) -> PathTokens;
-		       (".", PathTokens) -> PathTokens;
-		       (Segment, PathTokens) -> [Segment | PathTokens]
-		    end, PathTokensRev, UrlTokens)
+        lists:foldl(fun("..", []) -> [];
+                       ("..", [_ | PathTokens]) -> PathTokens;
+                       (".", PathTokens) -> PathTokens;
+                       (Segment, PathTokens) -> [Segment | PathTokens]
+                    end, PathTokensRev, UrlTokens)
        ), "/"),
     ?LOG("final url: ~s", [Url1]),
     erlang:iolist_to_binary([Host, Url1]).

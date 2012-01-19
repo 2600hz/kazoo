@@ -68,20 +68,22 @@ delete(Path) ->
 -spec do_request/3 :: ('put' | 'post' | 'get' | 'delete', nonempty_string(), binary()) -> do_request_ret().
 do_request(Method, Path, Body) ->
     ?LOG("making ~s request to braintree ~s", [Method, Path]),
-    ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
-                                      ,io_lib:format("Request:~n~s ~s~n~s~n", [Method, Path, Body])),
-
-    Url = ["https://"
-           ,braintree_server_url(whapps_config:get_string(<<"braintree">>, <<"default_environment">>))
-           ,"/merchants/", whapps_config:get_string(<<"braintree">>, <<"default_merchant_id">>)
-           ,Path],
+    Url = lists:flatten(["https://"
+                         ,braintree_server_url(whapps_config:get_string(<<"braintree">>, <<"default_environment">>, <<>>))
+                         ,"/merchants/", whapps_config:get_string(<<"braintree">>, <<"default_merchant_id">>, <<>>)
+                         ,Path
+                        ]),
     Headers = [{"Accept", "application/xml"}
                ,{"User-Agent", "Braintree Erlang Library 1"}
                ,{"X-ApiVersion", wh_util:to_list(?BT_API_VERSION)}
                ,{"Content-Type", "application/xml"}],
     HTTPOptions = [{ssl,[{verify,0}]}
-                   ,{basic_auth, {whapps_config:get_string(<<"braintree">>, <<"default_public_key">>), whapps_config:get_string(<<"braintree">>, <<"default_private_key">>)}}],
-    case ibrowse:send_req(lists:flatten(Url), Headers, Method, Body, HTTPOptions) of
+                   ,{basic_auth, {whapps_config:get_string(<<"braintree">>, <<"default_public_key">>, <<>>)
+                                  ,whapps_config:get_string(<<"braintree">>, <<"default_private_key">>, <<>>)}}
+                  ],
+    ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
+                                      ,io_lib:format("Request:~n~s ~s~n~s~n", [Method, Url, Body])),
+    case ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions) of
         {ok, "401", _, _Response} ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                               ,io_lib:format("Response:~n401~n~s~n", [_Response])
@@ -173,7 +175,7 @@ verify_response(Xml) ->
             Errors = [#bt_error{code = braintree_util:get_xml_value("/error/code/text()", Error)
                                 ,message = braintree_util:get_xml_value("/error/message/text()", Error)
                                 ,attribute = braintree_util:get_xml_value("/error/attribute/text()", Error)}
-                      || Error <- xmerl_xpath:string("/api-error-response/errors/*/errors/error", Xml)],
+                      || Error <- xmerl_xpath:string("/api-error-response/errors//errors/error", Xml)],
             Verif = #bt_verification{verification_status =
                                          braintree_util:get_xml_value("/api-error-response/verification/status/text()", Xml)
                                      ,processor_response_code =

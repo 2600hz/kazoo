@@ -20,7 +20,6 @@
 -export([process_post/2, delete_resource/2]).
 
 -include("crossbar.hrl").
--include_lib("webmachine/include/webmachine.hrl").
 
 %%%===================================================================
 %%% WebMachine API
@@ -107,7 +106,7 @@ malformed_request(RD, #cb_context{req_json=Json, req_verb=Verb}=Context) ->
     ?TIMER_TICK("v1.malformed_request start"),
     Data = wh_json:get_value([<<"data">>], Json, wh_json:new()),
     Auth = get_auth_token(RD, wh_json:get_value(<<"auth_token">>, Json, <<>>), Verb),
-    ?LOG("request is using auth token ~s", [Auth]),
+    ?LOG("request is using auth token '~s'", [Auth]),
     ?TIMER_TICK("v1.malformed_request end"),
     {false, RD, Context#cb_context{req_json=Json, req_data=Data, auth_token=Auth}}.
 
@@ -416,7 +415,7 @@ extract_files_and_params(RD, Context) ->
         _A:_B ->
             ST = erlang:get_stacktrace(),
             ?LOG("exception extracting files and params: ~p:~p", [_A, _B]),
-            ?LOG_END("stacktrace: ~p", [ST]),
+            [?LOG_END("stacktrace: ~p", [Line]) || Line <- ST],
             Context
     end.
 
