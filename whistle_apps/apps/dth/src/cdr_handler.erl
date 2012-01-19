@@ -9,6 +9,7 @@
 -module(cdr_handler).
 
 -export([init/0, handle_req/2]).
+-export([handle_req2/2]).
 
 -include("dth.hrl").
 
