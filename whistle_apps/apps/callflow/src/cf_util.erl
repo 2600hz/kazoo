@@ -8,13 +8,11 @@
 -export([get_sip_realm/2, get_sip_realm/3]).
 -include("callflow.hrl").
 
--spec alpha_to_dialpad/1 :: (Value) -> binary() when
-      Value :: binary().
+-spec alpha_to_dialpad/1 :: (ne_binary()) -> ne_binary().
 alpha_to_dialpad(Value) ->
     << <<(dialpad_digit(C))>> || <<C>> <= strip_nonalpha(wh_util:binary_to_lower(Value))>>.
 
--spec strip_nonalpha/1 :: (Value) -> binary() when
-      Value :: binary().
+-spec strip_nonalpha/1 :: (ne_binary()) -> ne_binary().
 strip_nonalpha(Value) ->
     re:replace(Value, <<"[^[:alpha:]]">>, <<>>, [{return,binary}, global]).
 
@@ -35,8 +33,7 @@ dialpad_digit(WXYZ) when WXYZ =:= $w orelse WXYZ =:= $x orelse WXYZ =:= $y orels
 %% Determine if we should ignore early media
 %% @end
 %%--------------------------------------------------------------------
--spec ignore_early_media/1 :: (Endpoints) -> binary() when
-      Endpoints :: json_objects().
+-spec ignore_early_media/1 :: (json_objects()) -> ne_binary().
 ignore_early_media(Endpoints) ->
     Ignore = lists:foldr(fun(Endpoint, Acc) ->
                                  wh_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
@@ -51,7 +48,7 @@ ignore_early_media(Endpoints) ->
 %% the account id
 %% @end
 %%--------------------------------------------------------------------
--spec correct_media_path/2 :: (undefined | ne_binary(), #cf_call{}) -> undefined | ne_binary().
+-spec correct_media_path/2 :: ('undefined' | ne_binary(), #cf_call{}) -> 'undefined' | ne_binary().
 correct_media_path(undefined, _) ->
     undefined;
 correct_media_path(<<"silence_stream://", _/binary>> = Media, _) ->
@@ -101,8 +98,8 @@ call_info_to_string(Call) ->
 %% lookup the callflow based on the requested number in the account
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_callflow/1 :: (#cf_call{}) -> {ok, binary(), boolean()} | {error, term()}.
--spec lookup_callflow/2 :: (ne_binary(), ne_binary()) -> {ok, binary(), boolean()} | {error, term()}.
+-spec lookup_callflow/1 :: (#cf_call{}) -> {'ok', json_object(), boolean()} | {'error', term()}.
+-spec lookup_callflow/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object(), boolean()} | {'error', term()}.
 
 lookup_callflow(#cf_call{request_user=Number, account_id=AccountId}) ->
     lookup_callflow(Number, AccountId).
@@ -156,7 +153,7 @@ do_lookup_callflow(Number, Db) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec lookup_callflow_patterns/2 :: (ne_binary(), ne_binary())
-                                    -> {ok, {json_object(), binary()}} | {error, term()}.
+                                    -> {'ok', {json_object(), ne_binary()}} | {'error', term()}.
 lookup_callflow_patterns(Number, Db) ->
     ?LOG("lookup callflow patterns for ~s in ~s", [Number, Db]),
     case couch_mgr:get_results(Db, ?LIST_BY_PATTERN, [{<<"include_docs">>, true}]) of
@@ -176,8 +173,8 @@ lookup_callflow_patterns(Number, Db) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec test_callflow_patterns/3 :: (json_objects(), ne_binary()
-                                  ,{undefined, <<>>} | {json_object(), binary()})
-                                  -> {undefined, <<>>} | {json_object(), binary()}.
+                                   ,{'undefined', <<>>} | {json_object(), ne_binary()})
+                                  -> {'undefined', <<>>} | {json_object(), ne_binary()}.
 test_callflow_patterns([], _, Result) ->
     Result;
 test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
@@ -218,8 +215,8 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
 %% certain actions, like cf_offnet and cf_resources
 %% @end
 %%--------------------------------------------------------------------
--spec handle_bridge_failure/2 :: ({fail, json_object} | ne_binary() | undefined, #cf_call{}) -> ok | no_found.
--spec handle_bridge_failure/3 :: (ne_binary() | undefined, ne_binary() | undefined, #cf_call{}) -> ok | no_found.
+-spec handle_bridge_failure/2 :: ({'fail', json_object()} | ne_binary() | 'undefined', #cf_call{}) -> 'ok' | 'not_found'.
+-spec handle_bridge_failure/3 :: (ne_binary() | 'undefined', ne_binary() | 'undefined', #cf_call{}) -> 'ok' | 'not_found'.
 
 handle_bridge_failure({fail, Reason}, Call) ->
     {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
@@ -240,10 +237,12 @@ handle_bridge_failure(Cause, Code, Call) ->
     case (handle_bridge_failure(Cause, Call) =:= ok)
         orelse (handle_bridge_failure(Code, Call) =:= ok) of
         true -> ok;
-        false -> cf_exe:continue(Call)
+        false ->
+            cf_exe:continue(Call),
+            not_found
     end.
 
--spec get_sip_realm/2 :: (json_object(), ne_binary()) -> undefined | ne_binary().
+-spec get_sip_realm/2 :: (json_object(), ne_binary()) -> 'undefined' | ne_binary().
 -spec get_sip_realm/3 :: (json_object(), ne_binary(), Default) -> Default | ne_binary().
 
 get_sip_realm(SIPJObj, AccountId) ->

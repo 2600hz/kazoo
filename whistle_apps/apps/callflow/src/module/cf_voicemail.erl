@@ -18,7 +18,7 @@
 -define(MAILBOX_DEFAULT_SIZE, 0).
 -define(MAILBOX_DEFAULT_MSG_MAX_LENGTH, 0).
 
--import(cf_call_command, [answer/1, play/2, b_play/2, tones/2, b_record/2
+-import(cf_call_command, [answer/1, play/2, b_play/2, tones/2, b_record/2, b_record/4
                           ,b_store/3, b_play_and_collect_digits/5, b_play_and_collect_digit/2
                           ,noop/1, b_flush/1, wait_for_application_or_dtmf/2
                           ,audio_macro/2
@@ -117,7 +117,7 @@
           ,is_setup = false :: boolean()
           ,message_count = 0 :: non_neg_integer()
           ,max_message_count = 0 :: non_neg_integer()
-          ,message_max_length = 0 :: non_neg_integer()
+          ,max_message_length = 'undefined' :: 'undefined' | pos_integer()
           ,keys = #keys{}
           ,prompts = #prompts{}
          }).
@@ -295,14 +295,13 @@ play_greeting(#mailbox{unavailable_media_id=Id}, #cf_call{account_db=Db}=Call) -
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec record_voicemail/3 :: (AttachmentName, Box, Call) -> no_return() when
-      AttachmentName :: binary(),
-      Box :: #mailbox{},
-      Call :: #cf_call{}.
-record_voicemail(AttachmentName, #mailbox{prompts=#prompts{tone_spec=ToneSpec, saved=Saved}}=Box, Call) ->
+-spec record_voicemail/3 :: (ne_binary(), #mailbox{}, #cf_call{}) -> no_return().
+record_voicemail(AttachmentName, #mailbox{prompts = #prompts{tone_spec=ToneSpec, saved=Saved}
+                                          ,max_message_length=MaxMessageLength
+                                         }=Box, Call) ->
     tones(ToneSpec, Call),
     ?LOG("composing new voicemail"),
-    case b_record(AttachmentName, Call) of
+    case b_record(AttachmentName, ?ANY_DIGIT, wh_util:to_binary(MaxMessageLength), Call) of
         {ok, _Msg} ->
             case review_recording(AttachmentName, Box, Call) of
                 {ok, record} ->
@@ -327,9 +326,7 @@ record_voicemail(AttachmentName, #mailbox{prompts=#prompts{tone_spec=ToneSpec, s
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec setup_mailbox/2 :: (Box, Call) -> #mailbox{} when
-      Box :: #mailbox{},
-      Call :: #cf_call{}.
+-spec setup_mailbox/2 :: (#mailbox{}, #cf_call{}) -> #mailbox{}.
 setup_mailbox(#mailbox{prompts=#prompts{setup_intro=SetupIntro
                                         ,setup_rec_greet=SetupRecGreet
                                         ,setup_complete=SetupComplete}}=Box, Call) ->
@@ -756,9 +753,7 @@ has_message_meta(NewMsgCallId, Messages) ->
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
--spec get_mailbox_profile/2 :: (Data, Call) -> #mailbox{} when
-      Data :: json_object(),
-      Call :: #cf_call{}.
+-spec get_mailbox_profile/2 :: (json_object(), #cf_call{}) -> #mailbox{}.
 get_mailbox_profile(Data, #cf_call{capture_group=CG, account_db=Db, request_user=ReqUser, last_action=LastAct}) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case get_mailbox_doc(Db, Id, CG) of
@@ -793,10 +788,10 @@ get_mailbox_profile(Data, #cf_call{capture_group=CG, account_db=Db, request_user
                          wh_json:is_true(<<"is_setup">>, JObj, false)
                      ,max_message_count =
                          wh_json:get_integer_value(<<"max_message_count">>, JObj, ?MAILBOX_DEFAULT_SIZE)
+                     ,max_message_length =
+                         find_max_message_length([Data, JObj])
                      ,message_count =
                          length(wh_json:get_value(<<"messages">>, JObj, []))
-                     ,message_max_length =
-                         wh_json:get_integer_value(<<"message_max_length">>, JObj, ?MAILBOX_DEFAULT_MSG_MAX_LENGTH)
                      ,exists = true
                     };
         {error, R} ->
@@ -887,22 +882,17 @@ store_recording(AttachmentName, MediaId, Call) ->
 %%--------------------------------------------------------------------
 -spec get_new_attachment_url/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, #cf_call{account_db=Db}) ->
-    case couch_mgr:open_doc(Db, MediaId) of
-        {ok, JObj} ->
-            case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
-                [] ->
-                    ok;
-                Existing ->
-                    [couch_mgr:delete_attachment(Db, MediaId, Attach) || Attach <- Existing]
-            end;
-        {error, _} ->
-            ok
-    end,
+    _ = case couch_mgr:open_doc(Db, MediaId) of
+            {ok, JObj} ->
+                case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
+                    [] -> ok;
+                    Existing -> [couch_mgr:delete_attachment(Db, MediaId, Attach) || Attach <- Existing]
+                end;
+            {error, _} -> ok
+        end,
     Rev = case couch_mgr:lookup_doc_rev(Db, MediaId) of
-              {ok, R} ->
-                  <<"?rev=", R/binary>>;
-              _ ->
-                  <<>>
+              {ok, R} -> <<"?rev=", R/binary>>;
+              _ -> <<>>
           end,
 
     list_to_binary([couch_mgr:get_url(), Db, "/", MediaId, "/", AttachmentName, Rev]).
@@ -1155,3 +1145,13 @@ update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, #cf_call{account_id=AccountId
                      (_) ->
                           ok
                   end, Devices).
+
+-spec find_max_message_length/1 :: (json_objects()) -> pos_integer().
+find_max_message_length([JObj | T]) ->
+    case wh_json:get_integer_value(<<"max_message_length">>, JObj) of
+        Len when is_integer(Len) andalso Len > 0 -> Len;
+        _ -> find_max_message_length(T)
+    end;
+find_max_message_length([]) ->
+    whapps_config:get_integer(<<"voicemail">>, <<"max_message_length">>, 120).
+            

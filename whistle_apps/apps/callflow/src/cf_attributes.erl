@@ -26,7 +26,7 @@
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec temporal_rules/1 :: (#cf_call{}) -> json_objects() | [].
+-spec temporal_rules/1 :: (#cf_call{}) -> json_objects().
 temporal_rules(#cf_call{account_db=Db}) ->
     case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"temporal_rules">>}
                                ,[{<<"include_docs">>, true}]) of
@@ -41,8 +41,8 @@ temporal_rules(#cf_call{account_db=Db}) ->
 %% or on a busy system call forwarding will not appear to disable....
 %% @end
 %%-----------------------------------------------------------------------------
--spec call_forward/2 :: (undefined | ne_binary() | json_object(), #cf_call{}) -> undefined | json_object().
--spec call_forward/3 :: (undefined | ne_binary(), undefined | ne_binary(), #cf_call{}) -> undefined | json_object().
+-spec call_forward/2 :: ('undefined' | ne_binary() | json_object(), #cf_call{}) -> 'undefined' | json_object().
+-spec call_forward/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), #cf_call{}) -> 'undefined' | json_object().
 
 call_forward(Endpoint, Call) when is_tuple(Endpoint) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
@@ -84,7 +84,7 @@ call_forward(EndpointId, OwnerId, #cf_call{account_db=Db}) ->
 %%-----------------------------------------------------------------------------
 -spec caller_id/2 :: (ne_binary(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
 -spec caller_id/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
--spec caller_id/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
+-spec caller_id/4 :: (ne_binary() | 'undefined', ne_binary() | 'undefined', ne_binary(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
 
 caller_id(Attribute, #cf_call{authorizing_id=EndpointId, owner_id=OwnerId}=Call) ->
     caller_id(EndpointId, OwnerId, Attribute, Call).
@@ -137,9 +137,9 @@ caller_id(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId, channel
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec callee_id/2 :: (ne_binary() | json_object(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
--spec callee_id/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
--spec callee_id/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> tuple(cf_api_binary(), cf_api_binary()).
+-spec callee_id/2 :: (ne_binary() | json_object(), #cf_call{}) -> {cf_api_binary(), cf_api_binary()}.
+-spec callee_id/3 :: (ne_binary() | json_object() | 'undefined', ne_binary(), #cf_call{}) -> {cf_api_binary(), cf_api_binary()}.
+-spec callee_id/4 :: (ne_binary() | 'undefined', ne_binary() | 'undefined', ne_binary(), #cf_call{}) -> {cf_api_binary(), cf_api_binary()}.
 
 callee_id(Endpoint, #cf_call{inception=Inception}=Call) ->
     case Inception of
@@ -190,7 +190,7 @@ callee_id(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId, request
 %% @end
 %%-----------------------------------------------------------------------------
 -spec caller_id_attributes/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> undefined | ne_binary().
--spec caller_id_attributes/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> undefined | ne_binary().
+-spec caller_id_attributes/4 :: (ne_binary() | 'undefined', ne_binary(), ne_binary(), #cf_call{}) -> undefined | ne_binary().
 
 caller_id_attributes(Endpoint, Attribute, Call) when is_tuple(Endpoint) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
@@ -217,8 +217,8 @@ caller_id_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=Account
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec media_attributes/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> undefined | ne_binary() | list().
--spec media_attributes/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> undefined | ne_binary() | list().
+-spec media_attributes/3 :: (ne_binary() | json_object() | 'undefined', ne_binary(), #cf_call{}) -> undefined | ne_binary() | list().
+-spec media_attributes/4 :: (ne_binary() | 'undefined', ne_binary() | 'undefined', ne_binary(), #cf_call{}) -> undefined | ne_binary() | list().
 
 media_attributes(Endpoint, Attribute, Call) when is_tuple(Endpoint) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
@@ -243,7 +243,7 @@ media_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=
             undefined;
         {Id, Value} when Attribute =:= <<"audio">>; Attribute =:= <<"video">> ->
             Codecs = wh_json:get_value(<<"codecs">>, Value, []),
-            [?LOG("found media attribute ~s codec ~s on ~s", [Attribute, Codec, Id]) || Codec <- Codecs],
+            _ = [?LOG("found media attribute ~s codec ~s on ~s", [Attribute, Codec, Id]) || Codec <- Codecs],
             Codecs;
         {Id, Value} ->
             ?LOG("found media attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
@@ -255,8 +255,8 @@ media_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec moh_attributes/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> undefined | ne_binary() | list().
--spec moh_attributes/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> undefined | ne_binary() | list().
+-spec moh_attributes/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> 'undefined' | ne_binary().
+-spec moh_attributes/4 :: (ne_binary() | 'undefined', ne_binary() | 'undefined', ne_binary(), #cf_call{}) -> 'undefined' | ne_binary().
 
 moh_attributes(Endpoint, Attribute, Call) when is_tuple(Endpoint) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
@@ -287,8 +287,8 @@ moh_attributes(EndpointId, OwnerId, Attribute, #cf_call{account_id=AccountId}=Ca
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec owner_id/2 :: (undefined | ne_binary(), #cf_call{}) -> undefined | json_object().
--spec fetch_owner_id/2 :: (undefined | ne_binary(), #cf_call{}) -> undefined | json_object().
+-spec owner_id/2 :: ('undefined' | ne_binary(), #cf_call{}) -> 'undefined' | ne_binary().
+-spec fetch_owner_id/2 :: ('undefined' | ne_binary(), #cf_call{}) -> 'undefined' | ne_binary().
 
 owner_id(undefined, _Call) ->
     undefined;
@@ -312,11 +312,11 @@ fetch_owner_id(ObjectId, #cf_call{account_db=Db}=Call) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec owned_by/2 :: (undefined | ne_binary(), #cf_call{}) -> list().
--spec owned_by/3 :: (undefined | ne_binary(), atom() | string() | ne_binary(), #cf_call{}) -> list().
+-spec owned_by/2 :: ('undefined' | ne_binary(), #cf_call{}) -> list().
+-spec owned_by/3 :: ('undefined' | ne_binary(), atom() | string() | ne_binary(), #cf_call{}) -> list().
 
--spec fetch_owned_by/2 :: (undefined | ne_binary(), #cf_call{}) -> list().
--spec fetch_owned_by/3 :: (undefined | ne_binary(), atom() | string() | ne_binary(), #cf_call{}) -> list().
+-spec fetch_owned_by/2 :: ('undefined' | ne_binary(), #cf_call{}) -> list().
+-spec fetch_owned_by/3 :: ('undefined' | ne_binary(), atom() | string() | ne_binary(), #cf_call{}) -> list().
 
 owned_by(undefined, _) ->
     [];
@@ -349,7 +349,7 @@ fetch_owned_by(OwnerId, Attribute, #cf_call{account_db=Db}=Call) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec friendly_name/2 :: (ne_binary() | json_object(), #cf_call{}) -> ne_binary().
--spec friendly_name/3 :: (ne_binary() | json_object(), ne_binary(), #cf_call{}) -> ne_binary().
+-spec friendly_name/3 :: (ne_binary() | json_object() | 'undefined', ne_binary(), #cf_call{}) -> ne_binary().
 
 friendly_name(Endpoint, Call) when is_tuple(Endpoint) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
@@ -377,8 +377,8 @@ friendly_name(EndpointId, OwnerId, #cf_call{cid_name=CIDName}=Call) ->
 %% This function will return the precense id for the endpoint
 %% @end
 %%--------------------------------------------------------------------
--spec presence_id/1 :: (#cf_call{}) -> undefined | ne_binary().
--spec presence_id/2 :: (undefined | ne_binary() | json_object(), #cf_call{}) -> undefined | ne_binary().
+-spec presence_id/1 :: (#cf_call{}) -> 'undefined' | ne_binary().
+-spec presence_id/2 :: ('undefined' | ne_binary() | json_object(), #cf_call{}) -> 'undefined' | ne_binary().
 
 presence_id(#cf_call{authorizing_id=AuthId}=Call) ->
     presence_id(AuthId, Call).
@@ -401,10 +401,7 @@ presence_id(Endpoint, #cf_call{request_user=RUser, request_realm=RRealm, account
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec search_attributes/3 :: (Attribute, Ids, Attributes) -> undefined | {ne_binary(), term()} when
-      Attribute :: cf_api_binary(),
-      Ids :: list(),
-      Attributes :: proplist().
+-spec search_attributes/3 :: (cf_api_binary(), [ne_binary(),...] | [], proplist()) -> 'undefined' | {ne_binary(), ne_binary()}.
 search_attributes(_, _, []) ->
     undefined;
 search_attributes(_, [], _) ->
@@ -424,10 +421,7 @@ search_attributes(Attribute, [Id|T], Attributes) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_sub_key/3 :: (Attribute, Id, Attributes) -> cf_api_binary() when
-      Attribute :: cf_api_binary(),
-      Id :: cf_api_binary(),
-      Attributes :: proplist().
+-spec fetch_sub_key/3 :: (cf_api_binary(), cf_api_binary(), proplist()) -> cf_api_binary().
 fetch_sub_key(Attribute, Id, Attributes) ->
     fetch_sub_key(Attribute, props:get_value(Id, Attributes)).
 fetch_sub_key(_, undefined) ->

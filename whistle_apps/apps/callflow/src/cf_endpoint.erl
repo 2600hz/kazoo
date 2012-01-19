@@ -25,11 +25,10 @@
 %% like devices, ring groups, and resources.
 %% @end
 %%--------------------------------------------------------------------
--spec build/2 :: (undefined | ne_binary() | json_object(), #cf_call{}) -> {'ok', json_objects()} 
-                                                                              | {'error', term()}.
--spec build/3 :: (undefined | ne_binary() | json_object(), undefined | json_object(), #cf_call{}) -> {'ok', json_objects()} 
-                                                                                                         | {'error', term()}.
-
+-spec build/2 :: ('undefined' | ne_binary() | json_object(), #cf_call{}) -> {'ok', json_objects()} | 
+                                                                            {'error', term()}.
+-spec build/3 :: ('undefined' | ne_binary() | json_object(), 'undefined' | json_object(), #cf_call{}) -> {'ok', json_objects()} |
+                                                                                                         {'error', term()}.
 build(EndpointId, Call) ->
     build(EndpointId, ?EMPTY_JSON_OBJECT, Call).
 
@@ -67,8 +66,8 @@ build(Endpoint, Properties, #cf_call{owner_id=OwnerId, authorizing_id=Authorizin
 %% bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoints/3 :: (json_object(), json_object(), #cf_call{}) -> {ok, json_objects()}
-                                                                              | {error, no_endpoints}.
+-spec create_endpoints/3 :: (json_object(), json_object(), #cf_call{}) -> {'ok', json_objects()}
+                                                                              | {'error', 'no_endpoints'}.
 create_endpoints(Endpoint, Properties, Call) ->
     Fwd = cf_attributes:call_forward(Endpoint, Call),
     Substitue = wh_json:is_false(<<"substitute">>, Fwd),
@@ -109,7 +108,7 @@ create_endpoints(Endpoint, Properties, Call) ->
 %% Fetches a endpoint defintion from the database or cache
 %% @end
 %%--------------------------------------------------------------------
--spec get/2 :: (undefined | ne_binary(), #cf_call{}) -> {ok, json_object} | {error, term()}.
+-spec get/2 :: ('undefined' | ne_binary(), #cf_call{}) -> {'ok', json_object()} | {'error', term()}.
 get(undefined, _Call) ->
     {error, invalid_endpoint_id};
 get(EndpointId, #cf_call{account_db=Db}) ->
