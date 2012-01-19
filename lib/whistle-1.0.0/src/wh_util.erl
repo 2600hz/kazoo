@@ -2,27 +2,34 @@
 
 -export([format_account_id/1, format_account_id/2]).
 -export([get_account_realm/1, get_account_realm/2]).
--export([pad_binary/3, join_binary/1, join_binary/2]).
--export([call_response/3, call_response/4, call_response/5]).
 -export([is_account_enabled/1]).
--export([to_e164/1, to_npan/1, to_1npan/1]).
--export([is_e164/1, is_npan/1, is_1npan/1]).
+
 -export([to_integer/1, to_integer/2, to_float/1, to_float/2, to_number/1
          ,to_hex/1, to_list/1, to_binary/1
          ,to_atom/1, to_atom/2]).
 -export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
--export([binary_to_lower/1, binary_to_upper/1, binary_join/2]).
+-export([to_lower_binary/1, to_upper_binary/1, binary_join/2]).
+
+-export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
+
 -export([current_tstamp/0, ensure_started/1]).
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
          ,pretty_print_datetime/1
         ]).
--export([microseconds_to_seconds/1, put_callid/1, get_event_type/1]).
+-export([microseconds_to_seconds/1]).
+
+-export([put_callid/1]).
+-export([get_event_type/1]).
+-export([call_response/3, call_response/4, call_response/5]).
+-export([get_xml_value/2]).
+
 -export([whistle_version/0, write_pid/1]).
 -export([is_ipv4/1, is_ipv6/1]).
 -export([get_hostname/0]).
 
 -include_lib("kernel/include/inet.hrl").
+-include_lib("xmerl/include/xmerl.hrl").
 -include_lib("proper/include/proper.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -240,68 +247,31 @@ put_callid(JObj) ->
 get_event_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Generic helper to get the text value of a XML path
+%% @end
+%%--------------------------------------------------------------------
+-spec get_xml_value/2 :: (string(), term()) -> undefined | binary().    
+get_xml_value(Path, Xml) ->
+    try xmerl_xpath:string(Path, Xml) of
+        [#xmlText{value=Value}] ->
+            wh_util:to_binary(Value);
+        [#xmlText{}|_]=Values ->
+            [wh_util:to_binary(Value) 
+             || #xmlText{value=Value} <- Values];
+        _ -> undefined
+    catch
+        E:R ->
+            ?LOG("~s getting value of '~s': ~p", [E, Path, R]),
+            undefined
+    end.
+
 %% must be a term that can be changed to a list
 -spec to_hex/1 :: (binary() | string()) -> string().
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
-
--spec is_e164/1 :: (ne_binary()) -> boolean().
--spec is_npan/1 :: (ne_binary()) -> boolean().
--spec is_1npan/1 :: (ne_binary()) -> boolean().
-
-is_e164(DID) ->
-    re:run(DID, <<"^\\+1\\d{10}$">>) =/= nomatch.
-
-is_npan(DID) ->
-    re:run(DID, <<"^\\d{10}$">>) =/= nomatch.
-
-is_1npan(DID) ->
-    re:run(DID, <<"^1\\d{10}$">>) =/= nomatch.
-
-%% +18001234567 -> +18001234567
--spec to_e164/1 :: (ne_binary()) -> ne_binary().
-to_e164(<<$+, _/binary>> = N) ->
-    N;
-to_e164(<<"011", N/binary>>) ->
-    <<$+, N/binary>>;
-to_e164(<<"00", N/binary>>) ->
-    <<$+, N/binary>>;
-to_e164(<<"+1", _/binary>> = N) when erlang:byte_size(N) =:= 12 ->
-    N;
-%% 18001234567 -> +18001234567
-to_e164(<<$1, _/binary>> = N) when erlang:byte_size(N) =:= 11 ->
-    << $+, N/binary>>;
-%% 8001234567 -> +18001234567
-to_e164(N) when erlang:byte_size(N) =:= 10 ->
-    <<$+, $1, N/binary>>;
-to_e164(Other) ->
-    Other.
-
-%% end up with 8001234567 from 1NPAN and E.164
--spec to_npan/1 :: (ne_binary()) -> ne_binary().
-to_npan(<<"011", N/binary>>) ->
-    to_npan(N);
-to_npan(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
-    N;
-to_npan(<<$1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
-    N;
-to_npan(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
-    NPAN;
-to_npan(Other) ->
-    Other.
-
--spec to_1npan/1 :: (NPAN) -> binary() when
-      NPAN :: binary().
-to_1npan(<<"011", N/binary>>) ->
-    to_1npan(N);
-to_1npan(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
-    <<$1, N/bitstring>>;
-to_1npan(<<$1, N/bitstring>>=NPAN1) when erlang:bit_size(N) =:= 80 ->
-    NPAN1;
-to_1npan(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
-    <<$1, NPAN/bitstring>>;
-to_1npan(Other) ->
-    Other.
 
 -spec to_integer/1 :: (string() | binary() | integer() | float()) -> integer().
 -spec to_integer/2 :: (string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
@@ -445,13 +415,14 @@ is_proplist(Term) when is_list(Term) ->
 is_proplist(_) ->
     false.
 
--spec binary_to_lower/1 :: (B) -> undefined | binary() when
-      B :: undefined | binary().
-binary_to_lower(undefined) ->
+-spec to_lower_binary/1 :: (term()) -> undefined | binary().
+to_lower_binary(undefined) ->
     undefined;
-binary_to_lower(Bin) when is_binary(Bin) ->
-    << <<(binary_to_lower_char(B))>> || <<B>> <= Bin>>.
-
+to_lower_binary(Bin) when is_binary(Bin) ->
+    << <<(binary_to_lower_char(B))>> || <<B>> <= Bin>>;
+to_lower_binary(Else) ->
+    to_lower_binary(to_binary(Else)).
+    
 -spec binary_to_lower_char/1 :: (C) -> char() when
       C :: char().
 binary_to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
@@ -460,10 +431,13 @@ binary_to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % 
 binary_to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 binary_to_lower_char(C) -> C.
 
--spec binary_to_upper/1 :: (B) -> binary() when
-      B :: binary().
-binary_to_upper(Bin) when is_binary(Bin) ->
-    << <<(binary_to_upper_char(B))>> || <<B>> <= Bin>>.
+-spec to_upper_binary/1 :: (term()) -> undefined | binary().
+to_upper_binary(undefined) ->
+    undefined;
+to_upper_binary(Bin) when is_binary(Bin) ->
+    << <<(binary_to_upper_char(B))>> || <<B>> <= Bin>>;
+to_upper_binary(Else) ->
+    to_upper_binary(to_binary(Else)).
 
 -spec binary_to_upper_char/1 :: (C) -> char() when
       C :: char().
@@ -623,44 +597,6 @@ prop_to_binary() ->
 prop_iolist_t() ->
     ?FORALL(IO, iolist(), is_binary(to_binary(IO))).
 
-%% (AAABBBCCCC, 1AAABBBCCCC) -> AAABBBCCCCCC.
-prop_to_npan() ->
-    ?FORALL(Number, range(1000000000,19999999999),
-            begin
-                BinNum = to_binary(Number),
-                NPAN = to_npan(BinNum),
-                case byte_size(BinNum) of
-                    11 -> BinNum =:= <<"1", NPAN/binary>>;
-                    _ -> NPAN =:= BinNum
-                end
-            end).
-
-%% (AAABBBCCCC, 1AAABBBCCCC) -> 1AAABBBCCCCCC.
-prop_to_1npan() ->
-    ?FORALL(Number, range(1000000000,19999999999),
-            begin
-                BinNum = to_binary(Number),
-                OneNPAN = to_1npan(BinNum),
-                case byte_size(BinNum) of
-                    11 -> OneNPAN =:= BinNum;
-                    _ -> OneNPAN =:= <<"1", BinNum/binary>>
-                end
-            end).
-
-%% (AAABBBCCCC, 1AAABBBCCCC) -> +1AAABBBCCCCCC.
-prop_to_e164() ->
-    ?FORALL(Number, range(1000000000,19999999999),
-            begin
-                BinNum = to_binary(Number),
-                E164 = to_e164(BinNum),
-                case byte_size(BinNum) of
-                    11 -> E164 =:= <<$+, BinNum/binary>>;
-                    10 -> E164 =:= <<$+, $1, BinNum/binary>>;
-                    _ -> E164 =:= BinNum
-                end
-            end).
-
-%% EUNIT TESTING
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
@@ -674,21 +610,6 @@ proper_test_() ->
 
 pad_binary_test() ->
     ?assertEqual(<<"1234500000">>, pad_binary(<<"12345">>, 10, <<"0">>)).
-
-to_e164_test() ->
-    Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],
-    Ans = <<"+11234567890">>,
-    lists:foreach(fun(N) -> ?assertEqual(to_e164(N), Ans) end, Ns).
-
-to_npan_test() ->
-    Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],
-    Ans = <<"1234567890">>,
-    lists:foreach(fun(N) -> ?assertEqual(to_npan(N), Ans) end, Ns).
-
-to_1npan_test() ->
-    Ns = [<<"+11234567890">>, <<"11234567890">>, <<"1234567890">>],
-    Ans = <<"11234567890">>,
-    lists:foreach(fun(N) -> ?assertEqual(to_1npan(N), Ans) end, Ns).
 
 greg_secs_to_unix_secs_test() ->
     GregSecs = current_tstamp(),

@@ -169,17 +169,17 @@ get_rate_factors(JObj) ->
 
 -spec invite_format/2 :: (ne_binary(), ne_binary()) -> proplist().
 invite_format(<<"e.164">>, To) ->
-    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, wh_util:to_e164(To)}];
+    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, wnm_util:to_e164(To)}];
 invite_format(<<"e164">>, To) ->
-    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, wh_util:to_e164(To)}];
+    [{<<"Invite-Format">>, <<"e164">>}, {<<"To-DID">>, wnm_util:to_e164(To)}];
 invite_format(<<"1npanxxxxxx">>, To) ->
-    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, wh_util:to_1npan(To)}];
+    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, wnm_util:to_1npan(To)}];
 invite_format(<<"1npan">>, To) ->
-    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, wh_util:to_1npan(To)}];
+    [{<<"Invite-Format">>, <<"1npan">>}, {<<"To-DID">>, wnm_util:to_1npan(To)}];
 invite_format(<<"npanxxxxxx">>, To) ->
-    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, wh_util:to_npan(To)}];
+    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, wnm_util:to_npan(To)}];
 invite_format(<<"npan">>, To) ->
-    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, wh_util:to_npan(To)}];
+    [{<<"Invite-Format">>, <<"npan">>}, {<<"To-DID">>, wnm_util:to_npan(To)}];
 invite_format(_, _) ->
     [{<<"Invite-Format">>, <<"username">>} ].
 

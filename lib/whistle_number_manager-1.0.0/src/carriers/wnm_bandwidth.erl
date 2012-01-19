@@ -152,7 +152,7 @@ make_numbers_request(Verb, Props) ->
                                ,xmerl_xml
                                ,[{prolog, ?BW_XML_PROLOG}]),
     Headers = [{"Accept", "*/*"}
-               ,{"User-Agent", "Whistle Number Manager 1.0.0"}
+               ,{"User-Agent", ?WNM_USER_AGENT}
                ,{"X-BWC-IN-Control-Processing-Type", "process"}
                ,{"Content-Type", "text/xml"}],
     HTTPOptions = [{ssl,[{verify,0}]}
@@ -228,13 +228,13 @@ number_order_response_to_json([]) ->
 number_order_response_to_json([Xml]) ->
     number_order_response_to_json(Xml);
 number_order_response_to_json(Xml) ->
-    Props = [{<<"order_id">>, get_xml_value("orderID/text()", Xml)}
-             ,{<<"order_number">>, get_xml_value("orderNumber/text()", Xml)}
-             ,{<<"order_name">>, get_xml_value("orderName/text()", Xml)}
-             ,{<<"ext_ref_id">>, get_xml_value("extRefID/text()", Xml)}
-             ,{<<"accountID">>, get_xml_value("accountID/text()", Xml)}
-             ,{<<"accountName">>, get_xml_value("accountName/text()", Xml)}
-             ,{<<"quantity">>, get_xml_value("quantity/text()", Xml)}
+    Props = [{<<"order_id">>, wh_util:get_xml_value("orderID/text()", Xml)}
+             ,{<<"order_number">>, wh_util:get_xml_value("orderNumber/text()", Xml)}
+             ,{<<"order_name">>, wh_util:get_xml_value("orderName/text()", Xml)}
+             ,{<<"ext_ref_id">>, wh_util:get_xml_value("extRefID/text()", Xml)}
+             ,{<<"accountID">>, wh_util:get_xml_value("accountID/text()", Xml)}
+             ,{<<"accountName">>, wh_util:get_xml_value("accountName/text()", Xml)}
+             ,{<<"quantity">>, wh_util:get_xml_value("quantity/text()", Xml)}
              ,{<<"number">>, number_search_response_to_json(
                                xmerl_xpath:string("telephoneNumbers/telephoneNumber", Xml))}
             ],
@@ -252,12 +252,12 @@ number_search_response_to_json([]) ->
 number_search_response_to_json([Xml]) ->
     number_search_response_to_json(Xml);
 number_search_response_to_json(Xml) ->
-    Props = [{<<"number_id">>, get_xml_value("numberID/text()", Xml)}
-             ,{<<"ten_digit">>, get_xml_value("tenDigit/text()", Xml)}
-             ,{<<"formatted_number">>, get_xml_value("formattedNumber/text()", Xml)}
-             ,{<<"e164">>, get_xml_value("e164/text()", Xml)}
-             ,{<<"npa_nxx">>, get_xml_value("npaNxx/text()", Xml)}
-             ,{<<"status">>, get_xml_value("status/text()", Xml)}
+    Props = [{<<"number_id">>, wh_util:get_xml_value("numberID/text()", Xml)}
+             ,{<<"ten_digit">>, wh_util:get_xml_value("tenDigit/text()", Xml)}
+             ,{<<"formatted_number">>, wh_util:get_xml_value("formattedNumber/text()", Xml)}
+             ,{<<"e164">>, wh_util:get_xml_value("e164/text()", Xml)}
+             ,{<<"npa_nxx">>, wh_util:get_xml_value("npaNxx/text()", Xml)}
+             ,{<<"status">>, wh_util:get_xml_value("status/text()", Xml)}
              ,{<<"rate_center">>, rate_center_to_json(xmerl_xpath:string("rateCenter", Xml))}
             ],
     wh_json:from_list([{K, V} || {K, V} <- Props, V =/= undefined]).
@@ -274,32 +274,11 @@ rate_center_to_json([]) ->
 rate_center_to_json([Xml]) ->
     rate_center_to_json(Xml);
 rate_center_to_json(Xml) ->
-    Props = [{<<"name">>, get_xml_value("name/text()", Xml)}
-             ,{<<"lata">>, get_xml_value("lata/text()", Xml)}
-             ,{<<"state">>, get_xml_value("state/text()", Xml)}
+    Props = [{<<"name">>, wh_util:get_xml_value("name/text()", Xml)}
+             ,{<<"lata">>, wh_util:get_xml_value("lata/text()", Xml)}
+             ,{<<"state">>, wh_util:get_xml_value("state/text()", Xml)}
             ],
     wh_json:from_list([{K, V} || {K, V} <- Props, V =/= undefined]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Generic helper to get the text value of a XML path
-%% @end
-%%--------------------------------------------------------------------
--spec get_xml_value/2 :: (string(), term()) -> undefined | binary().    
-get_xml_value(Path, Xml) ->
-    try xmerl_xpath:string(Path, Xml) of
-        [#xmlText{value=Value}] ->
-            wh_util:to_binary(Value);
-        [#xmlText{}|_]=Values ->
-            [wh_util:to_binary(Value) 
-             || #xmlText{value=Value} <- Values];
-        _ -> undefined
-    catch
-        E:R ->
-            ?LOG("~s getting value of '~s': ~p", [E, Path, R]),
-            undefined
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -310,11 +289,11 @@ get_xml_value(Path, Xml) ->
 %%--------------------------------------------------------------------
 -spec verify_response/1 :: (term()) -> {ok, term()} | {error, undefined | binary() | [binary(),...]}.
 verify_response(Xml) ->
-    case get_xml_value("/*/status/text()", Xml) of
+    case wh_util:get_xml_value("/*/status/text()", Xml) of
         <<"success">> -> 
             ?LOG("request was successful"),
             {ok, Xml};
         _ ->
             ?LOG("request failed"),
-            {error, get_xml_value("/*/errors/error/message/text()", Xml)}
+            {error, wh_util:get_xml_value("/*/errors/error/message/text()", Xml)}
     end.

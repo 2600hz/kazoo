@@ -10,7 +10,7 @@
 
 -spec alpha_to_dialpad/1 :: (ne_binary()) -> ne_binary().
 alpha_to_dialpad(Value) ->
-    << <<(dialpad_digit(C))>> || <<C>> <= strip_nonalpha(wh_util:binary_to_lower(Value))>>.
+    << <<(dialpad_digit(C))>> || <<C>> <= strip_nonalpha(wh_util:to_lower_binary(Value))>>.
 
 -spec strip_nonalpha/1 :: (ne_binary()) -> ne_binary().
 strip_nonalpha(Value) ->

@@ -85,6 +85,8 @@ reconcile_number(Number, AccountId) ->
 %% if necessary
 %% @end
 %%--------------------------------------------------------------------
+-spec assign_number_to_account/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} |
+                                                                  {error, atom()}.
 assign_number_to_account(Number, AccountId) ->
     ?LOG("attempting to assign ~s to account ~s", [Number, AccountId]),
     Num = wnm_util:normalize_number(Number),
@@ -185,6 +187,8 @@ lookup_account_by_number(Number) ->
 %% Update the user configurable fields
 %% @end
 %%--------------------------------------------------------------------
+-spec get_public_fields/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} |
+                                                           {error, atom()}.
 get_public_fields(Number, AccountId) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
@@ -210,6 +214,8 @@ get_public_fields(Number, AccountId) ->
 %% Update the user configurable fields
 %% @end
 %%--------------------------------------------------------------------
+-spec set_public_fields/3 :: (ne_binary(), ne_binary(), json_object()) -> {ok, json_object()} |
+                                                                          {error, atom()}.
 set_public_fields(Number, AccountId, PublicJObj) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
@@ -242,6 +248,14 @@ set_public_fields(Number, AccountId, PublicJObj) ->
         throw:Reason -> {error, Reason}
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% move an in service number to the released state were it will be 
+%% recycled or cancled after a buffer period
+%% @end
+%%--------------------------------------------------------------------
+-spec release_number/2 :: (ne_binary(), ne_binary()) -> ok | {error, atom()}.
 release_number(Number, AccountId) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
@@ -305,6 +319,13 @@ release_number(Number, AccountId) ->
             {error, fault}
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Release all numbers currently assigned to an account
+%% @end
+%%--------------------------------------------------------------------
+-spec free_numbers/1 :: (ne_binary()) -> ok.
 free_numbers(AccountId) ->
     Db = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(Db, AccountId) of        
