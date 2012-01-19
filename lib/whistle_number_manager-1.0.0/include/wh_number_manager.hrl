@@ -12,6 +12,8 @@
 -define(WNM_DB_PREFIX, <<"numbers/">>).
 -define(WNM_DOC_VSN, <<"1">>).
 
+-define(WNM_USER_AGENT, "Whistle Number Manager 1.0.0").
+
 %%% NUMBER STATES
 %%% discovery    - The number was discovered via a carrier lookup but has not been reserved or purchased.
 %%%                Numbers in this state should be cleared out on a cleanup period (every 2 hours or so)
