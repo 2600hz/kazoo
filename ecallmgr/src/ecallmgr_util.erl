@@ -160,6 +160,8 @@ media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID) ->
     Media;
 media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID) ->
     Media;
+media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID) ->
+    FSPath;
 media_path(MediaName, Type, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
         {'error', _E} ->
