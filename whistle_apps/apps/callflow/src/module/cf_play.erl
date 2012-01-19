@@ -23,6 +23,7 @@ handle(Data, #cf_call{account_id=AccountId}=Call) ->
     Media = case wh_json:get_value(<<"id">>, Data) of
                 <<"/system_media", _/binary>> = Path -> Path;
                 <<"system_media", _/binary>> = Path -> Path;
+                <<"local://",_/binary>> = Path -> Path;
                 Path ->
                     ?LOG("prepending media ID with /~s/", [AccountId]),
                     <<$/, (wh_util:to_binary(AccountId))/binary, $/, Path/binary>>
