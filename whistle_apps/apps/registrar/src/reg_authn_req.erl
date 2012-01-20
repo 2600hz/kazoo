@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 19 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(authn_req).
+-module(reg_authn_req).
 
 -export([init/0, handle_req/2]).
 
@@ -16,7 +16,7 @@ init() ->
     ok.
 
 -spec handle_req/2 :: (ApiJObj, Props) -> 'ok' when
-      ApiJObj :: json_object(),
+      ApiJObj :: wh_json:json_object(),
       Props :: proplist().
 handle_req(ApiJObj, _Props) ->
     true = wapi_authn:req_v(ApiJObj),
@@ -43,10 +43,10 @@ handle_req(ApiJObj, _Props) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec send_auth_resp/4  :: (AuthJObj, AuthU, AuthR, ApiJObj) -> ok when
-      AuthJObj :: json_object(),
+      AuthJObj :: wh_json:json_object(),
       AuthU :: binary(),
       AuthR :: binary(),
-      ApiJObj :: json_object().
+      ApiJObj :: wh_json:json_object().
 send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
     AuthValue = wh_json:get_value(<<"value">>, AuthJObj),
     AuthDoc = wh_json:get_value(<<"doc">>, AuthJObj),
@@ -76,7 +76,7 @@ send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
 %% when present but failing back to reformating the older db name pvt.
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_account_id/1  :: (json_object()) -> ne_binary() | 'undefined'.
+-spec get_account_id/1  :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
 get_account_id(AuthDoc) ->
     case wh_json:get_value(<<"pvt_account_id">>, AuthDoc) of
         undefined ->
@@ -93,7 +93,7 @@ get_account_id(AuthDoc) ->
 %% extract a normalized method from the view results
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_method/1  :: (json_object()) -> ne_binary().
+-spec get_auth_method/1  :: (wh_json:json_object()) -> ne_binary().
 get_auth_method(AuthValue) ->
     Method = wh_json:get_binary_value(<<"method">>, AuthValue, <<"password">>),
     wh_util:to_lower_binary(Method).
