@@ -45,7 +45,7 @@ hold_call(#dg_agent{call_id=CallID, control_queue=CtrlQ}) ->
 
 hold_call(CallID, Q) ->
     Command = [{<<"Application-Name">>, <<"hold">>}
-               ,{<<"Insert-At">>, <<"flush">>}
+               ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, CallID, Q).
 
@@ -81,6 +81,7 @@ store_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}, MediaName, Couch
                ,{<<"Media-Transfer-Method">>, <<"put">>}
                ,{<<"Media-Transfer-Destination">>, CouchURL}
                ,{<<"Additional-Headers">>, []}
+               ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, CallID, CtrlQ).
 
