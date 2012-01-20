@@ -4,31 +4,30 @@
 
 -export([emerg/2, alert/2, crit/2, err/2, warning/2, notice/2, info/2, debug/2]).
 
--spec start_link/0 :: () -> {ok, pid()}.
+-spec start_link/0 :: () -> {'ok', pid()}.
 start_link() ->
     start_link(local0).
 
--spec start_link/1 :: (Facility) -> {ok, pid()} when
-      Facility :: atom().
+-type options() :: ['cons' | 'perror' | 'pid' | 'odelay' | 'ndelay',...].
+
+-spec start_link/1 :: (atom()) -> {'ok', pid()}.
 start_link(Facility) ->
     start_link(Facility, [cons, perror, pid, odelay, ndelay]).
 
--spec start_link/2 :: (Facility, Opts) -> {ok, pid()} when
-      Facility :: atom(),
-      Opts :: [cons | perror | pid | odelay | ndelay,...].
+-spec start_link/2 :: (atom(), options()) -> {'ok', pid()}.
 start_link(Facility, Opts) ->
     Resp = syslog:start_link(),
     syslog:open(atom_to_list(node()), Opts, Facility),
     Resp.
 
--spec(emerg/2 :: (Format :: string(), Data :: list(term())) -> ok).
--spec(alert/2 :: (Format :: string(), Data :: list(term())) -> ok).
--spec(crit/2 :: (Format :: string(), Data :: list(term())) -> ok).
--spec(err/2 :: (Format :: string(), Data :: list(term())) -> ok).
--spec(warning/2 :: (Format :: string(), Data :: list(term())) -> ok).
--spec(notice/2 :: (Format :: string(), Data :: list(term())) -> ok).
--spec(info/2 :: (Format :: string(), Data :: list(term())) -> ok).
--spec(debug/2 :: (Format :: string(), Data :: list(term())) -> ok).
+-spec emerg/2 :: (string(), list(term())) -> 'ok'.
+-spec alert/2 :: (string(), list(term())) -> 'ok'.
+-spec crit/2 :: (string(), list(term())) -> 'ok'.
+-spec err/2 :: (string(), list(term())) -> 'ok'.
+-spec warning/2 :: (string(), list(term())) -> 'ok'.
+-spec notice/2 :: (string(), list(term())) -> 'ok'.
+-spec info/2 :: (string(), list(term())) -> 'ok'.
+-spec debug/2 :: (string(), list(term())) -> 'ok'.
 
 emerg(Format, Data) ->
     format_log(emerg, Format, Data).
@@ -60,10 +59,17 @@ format_log(Type, Format, Data) when not is_list(Data) ->
 format_log(error, Format, Data) ->
     format_log(err, Format, Data);
 
-format_log(Type, Format, Data) ->
+format_log(Type, Format, Data) when is_atom(Type) ->
     try
-    	Str = io_lib:format(Format, Data),
-    	syslog:log(Type, binary_to_list(list_to_binary(Str)))
+        Str = io_lib:format(Format, Data),
+        syslog:log(Type, binary_to_list(list_to_binary(Str)))
     catch
-    	A:B -> io:format("Logger error ~p:~p~n~p~n", [A, B, erlang:get_stacktrace()]), ok
+        A:B ->
+            ST = erlang:get_stacktrace(),
+            syslog:log(debug, "logger error: ~p: ~p", [A, B]),
+            syslog:log(debug, "type: ~p", [Type]),
+            syslog:log(debug, "format: ~p", [Format]),
+            syslog:log(debug, "data: ~p", [Data]),
+            [syslog:log(debug, "st line: ~p", [STLine]) || STLine <- ST],
+            ok
     end.

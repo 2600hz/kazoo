@@ -239,6 +239,17 @@
                            ]).
 -define(RECORD_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
+%% Record Call Leg into MediaName
+-define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>, <<"Record-Action">>]).
+-define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Time-Limit">>, <<"Insert-At">>]).
+-define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                            ,{<<"Event-Name">>, <<"command">>}
+                            ,{<<"Application-Name">>, <<"record_call">>}
+                            ,{<<"Record-Action">>, [<<"start">>, <<"stop">>]}
+                            ,?INSERT_AT_TUPLE
+                           ]).
+-define(RECORD_CALL_REQ_TYPES, []).
+
 %% Play and Record Digits
 -define(PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Minimum-Digits">>, <<"Maximum-Digits">>
                                               ,<<"Media-Name">>, <<"Media-Tries">>, <<"Digits-Regex">>

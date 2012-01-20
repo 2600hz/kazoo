@@ -245,8 +245,8 @@ handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P}=
     ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
 		[<<"nouser">>, _] ->
 		    [RUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>),
-		    wh_util:to_e164(RUser);
-		[ToUser, _] -> wh_util:to_e164(ToUser)
+		    wnm_util:to_e164(RUser);
+		[ToUser, _] -> wnm_util:to_e164(ToUser)
 	    end,
 
     ?LOG("ToDID: ~s", [ToDID]),
@@ -265,8 +265,8 @@ handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P}=State) ->
     ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
 		[<<"nouser">>, _] ->
 		    [RUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>),
-		    wh_util:to_e164(RUser);
-		[ToUser, _] -> wh_util:to_e164(ToUser)
+		    wnm_util:to_e164(RUser);
+		[ToUser, _] -> wnm_util:to_e164(ToUser)
 	    end,
 
     ?LOG("ToDID: ~s", [ToDID]),

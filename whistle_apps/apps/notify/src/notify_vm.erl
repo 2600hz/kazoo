@@ -70,8 +70,8 @@ handle_req(JObj, _Props) ->
 get_template_props(Event, Docs) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, Event),
-    ToE164 = wh_util:to_e164(wh_json:get_value(<<"To-User">>, Event)),
-    FromE164 = wh_util:to_e164(wh_json:get_value(<<"From-User">>, Event)),
+    ToE164 = wnm_util:to_e164(wh_json:get_value(<<"To-User">>, Event)),
+    FromE164 = wnm_util:to_e164(wh_json:get_value(<<"From-User">>, Event)),
     DateCalled = wh_util:to_integer(wh_json:get_value(<<"Voicemail-Timestamp">>, Event)),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
@@ -190,7 +190,7 @@ get_file_name(Props) ->
 pretty_print_did(<<"+1", Area:3/binary, Locale:3/binary, Rest:4/binary>>) ->
     <<"1.", Area/binary, ".", Locale/binary, ".", Rest/binary>>;
 pretty_print_did(<<"011", Rest/binary>>) ->
-    pretty_print_did(wh_util:to_e164(Rest));
+    pretty_print_did(wnm_util:to_e164(Rest));
 pretty_print_did(Other) ->
     Other.
 

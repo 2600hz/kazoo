@@ -143,10 +143,12 @@ handle_cast({event, JObj}, #state{agent=Agent
                     ?LOG(CallID, "customer leg ~s unbridged, freeing agent", [CCID]),
                     datinggame_listener:free_agent(Srv, Agent),
 
-                    store_recording(Agent, Customer, MediaName, StoreSent),
-                    {stop, normal, State};
+                    dg_util:stop_recording(Agent, MediaName),
+                    {noreply, State};
                 false ->
                     ?LOG(CCID, "agent leg ~s unbridged, that's odd", [Agent#dg_agent.call_id]),
+
+                    dg_util:stop_recording(Agent, MediaName),
                     store_recording(Agent, Customer, MediaName, StoreSent),
                     dg_util:hangup(Customer),
 
@@ -159,17 +161,27 @@ handle_cast({event, JObj}, #state{agent=Agent
             case CallID =:= CCID of
                 true ->
                     ?LOG("customer hungup, freeing agent"),
-                    store_recording(Agent, Customer, MediaName, StoreSent),
+
                     datinggame_listener:free_agent(Srv, Agent),
-                    {stop, normal, State};
+
+                    dg_util:stop_recording(Agent, MediaName),
+                    {noreply, State};
                 false ->
                     ?LOG("agent hungup or disconnected"),
+                    dg_util:stop_recording(Agent, MediaName),
                     store_recording(Agent, Customer, MediaName, StoreSent),
                     dg_util:hangup(Customer),
                     dg_util:hangup(Agent),
                     datinggame_listener:rm_agent(Srv, Agent),
                     {stop, normal, State}
             end;
+        {recording_stopped, _} ->
+            ?LOG("recording stopped, saving ~s", [MediaName]),
+            store_recording(Agent, Customer, MediaName, StoreSent),
+            {noreply, State};
+        {recording_saved, _} ->
+            ?LOG("recording saved"),
+            {stop, normal, State};
         {channel_status, JObj} ->
             gen_listener:cast(self(), connect_call),
             ?LOG("channel status resp recv"),
@@ -263,7 +275,29 @@ connect_agent(#dg_agent{switch_hostname=AgentHost}=Agent, #dg_customer{switch_ho
                                  {'hangup', ne_binary()} |
                                  {'channel_status', json_object()} |
                                  {'unbridge', ne_binary()} |
+                                 {'recording_stopped', ne_binary()} |
+                                 {'recording_saved', ne_binary()} |
                                  'ignore'.
+process_event({<<"call_event">>, <<"RECORD_STOP">>}, JObj) ->
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    ?LOG(CallID, "record_stop event received", []),
+    {recording_stopped, wh_json:get_value(<<"Call-ID">>, JObj)};
+process_event({<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>}, JObj) ->
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    case wh_json:get_value(<<"Application-Name">>, JObj) of
+        <<"store">> ->
+            ?LOG(CallID, "store event received", []),
+            ?LOG(CallID, "response: ~s", [wh_json:get_value(<<"Application-Response">>, JObj)]),
+            {recording_saved, CallID};
+        _App ->
+            ?LOG(CallID, "ignoring execution_complete of ~s", [_App]),
+            ignore
+    end;
+process_event({<<"error">>, <<"dialplan">>}, JObj) ->
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    ?LOG(CallID, "error event received", []),
+    ?LOG(CallID, "error message: ~s", [wh_json:get_value(<<"Error-Message">>, JObj)]),
+    ignore;
 process_event({<<"call_event">>, <<"CHANNEL_BRIDGE">>}, JObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG(CallID, "bridge event received", []),

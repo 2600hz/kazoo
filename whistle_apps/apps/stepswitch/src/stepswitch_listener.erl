@@ -101,7 +101,7 @@ handle_call({reload_resrcs}, _, State) ->
 
 handle_call({process_number, Number}, From, #state{resrcs=Resrcs}=State) ->
     spawn(fun() ->
-                  Num = wh_util:to_e164(wh_util:to_binary(Number)),
+                  Num = wnm_util:to_e164(wh_util:to_binary(Number)),
                   EPs = print_endpoints(stepswitch_util:evaluate_number(Num, Resrcs), 0, []),
                   gen_server:reply(From, EPs)
           end),
@@ -110,7 +110,7 @@ handle_call({process_number, Number}, From, #state{resrcs=Resrcs}=State) ->
 handle_call({process_number, Number, Flags}, From, #state{resrcs=R1}=State) ->
     spawn(fun() ->
                   R2 = stepswitch_util:evaluate_flags(Flags, R1),
-                  Num = wh_util:to_e164(wh_util:to_binary(Number)),
+                  Num = wnm_util:to_e164(wh_util:to_binary(Number)),
                   EPs = print_endpoints(stepswitch_util:evaluate_number(Num, R2), 0, []),
                   gen_server:reply(From, EPs)
           end),

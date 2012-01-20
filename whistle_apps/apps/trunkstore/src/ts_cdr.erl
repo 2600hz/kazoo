@@ -78,7 +78,7 @@ find_route_used(<<"outbound">>, ToUri, Routes) ->
 				    _ -> RouteJObj % matched by hostname
 				end;
 			    [<<"user:", _U/binary>>, DID] ->
-				case wh_util:to_e164(ToUser) =:= wh_util:to_e164(DID) of
+				case wnm_util:to_e164(ToUser) =:= wnm_util:to_e164(DID) of
 				    true -> RouteJObj;
 				    false -> Acc
 				end

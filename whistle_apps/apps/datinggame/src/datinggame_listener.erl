@@ -177,6 +177,7 @@ handle_cast(connect_agent, #state{agents_available=Available
                                   ,agents_busy=Busy
                                   ,customers_waiting=Waiting
                                  }=State) ->
+    ?LOG("attempting to connect an agent with a customer"),
     case queue:is_empty(Waiting) of
         true ->
             ?LOG("no customers waiting"),

@@ -867,15 +867,11 @@ review_recording(AttachmentName, #mailbox{keys=#keys{listen=Listen, save=Save, r
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording/3 :: (AttachmentName, MediaId, Call) -> {ok, json_object()} | {error, json_object()} when
-      AttachmentName :: binary(),
-      MediaId :: binary(),
-      Call :: #cf_call{}.
+-spec store_recording/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> {'ok', json_object()} | {'error', json_object()}.
 store_recording(AttachmentName, MediaId, Call) ->
     ?LOG("storing recording ~s as media ~s", [AttachmentName, MediaId]),
     ok = update_doc(<<"content_type">>, <<"audio/mpeg">>, MediaId, Call),
     b_store(AttachmentName, get_new_attachment_url(AttachmentName, MediaId, Call), Call).
-
 
 %%--------------------------------------------------------------------
 %% @private

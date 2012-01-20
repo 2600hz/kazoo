@@ -111,6 +111,7 @@
                                ,{<<"noop">>, <<"noop">>}
                                ,{<<"execute_extension">>, <<"execute_extension">>}
                                ,{<<"playback">>, <<"hold">>}
+                               ,{<<"uuid_record">>, <<"record_call">>}
                               ]).
 
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>

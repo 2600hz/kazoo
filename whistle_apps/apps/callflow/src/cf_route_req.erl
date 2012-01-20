@@ -36,7 +36,7 @@ handle_req(JObj, Options) ->
                             ,cid_name = wh_json:get_value(<<"Caller-ID-Name">>, JObj, <<"Unknown">>)
                             ,cid_number = wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<"0000000000">>)
                             ,request = Request
-                            ,request_user = wh_util:to_e164(RequestUser)
+                            ,request_user = wnm_util:to_e164(RequestUser)
                             ,request_realm = RequestRealm
                             ,from = From
                             ,from_user = FromUser

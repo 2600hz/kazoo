@@ -96,4 +96,4 @@ get_account_id(AuthDoc) ->
 -spec get_auth_method/1  :: (json_object()) -> ne_binary().
 get_auth_method(AuthValue) ->
     Method = wh_json:get_binary_value(<<"method">>, AuthValue, <<"password">>),
-    wh_util:binary_to_lower(Method).
+    wh_util:to_lower_binary(Method).

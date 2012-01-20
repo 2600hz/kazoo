@@ -342,7 +342,7 @@ set_req_header(RD, #cb_context{req_id=ReqId}) ->
 get_http_verb(RD, {malformed, _}) ->
     wh_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD))));
 get_http_verb(RD, JSON) ->
-    HttpV = wh_util:binary_to_lower(wh_util:to_binary(wrq:method(RD))),
+    HttpV = wh_util:to_lower_binary(wh_util:to_binary(wrq:method(RD))),
     case override_verb(RD, JSON, HttpV) of
         {true, OverrideV} ->
             ?LOG("override verb, treating request as a ~s", [OverrideV]),
@@ -356,9 +356,9 @@ override_verb(RD, JSON, <<"post">>) ->
         undefined ->
             case wrq:get_qs_value("verb", RD) of
                 undefined -> false;
-                V -> {true, wh_util:binary_to_lower(V)}
+                V -> {true, wh_util:to_lower_binary(V)}
             end;
-        V -> {true, wh_util:binary_to_lower(V)}
+        V -> {true, wh_util:to_lower_binary(V)}
     end;
 override_verb(RD, _, <<"options">>) ->
     case wrq:get_req_header("Access-Control-Request-Method", RD) of
