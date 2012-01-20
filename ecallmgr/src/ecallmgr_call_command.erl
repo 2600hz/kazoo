@@ -130,17 +130,29 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
         false -> {'error', <<"record_call failed to execute as JObj did not validate">>};
         true ->
             MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
-            Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
 
-            _ = set(Node, UUID, <<"enable_file_write_buffering=false">>), % disable buffering to see if we get all the media
+            case wh_json:get_value(<<"Record-Action">>, JObj) of
+                <<"start">> ->
+                    Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
 
-            %% UUID start|stop path/to/media limit
-            RecArg = binary_to_list(list_to_binary([
-                                                    wh_json:get_string_value(<<"Record-Action">>, JObj, "start"), " "
-                                                    ,Media, " "
-                                                    ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "20"), " "
-                                                   ])),
-            {<<"record_call">>, RecArg}
+                    _ = set(Node, UUID, <<"enable_file_write_buffering=false">>), % disable buffering to see if we get all the media
+
+                    %% UUID start path/to/media limit
+                    RecArg = binary_to_list(list_to_binary([
+                                                            <<"start ">>
+                                                            ,Media, <<" ">>
+                                                            ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "20"), " "
+                                                           ])),
+                    {<<"record_call">>, RecArg};
+                <<"stop">> ->
+                    MediaUrl = ecallmgr_media_registry:register_local_media(MediaName, UUID, url),
+                    %% UUID stop path/to/media
+                    RecArg = binary_to_list(list_to_binary([
+                                                            <<"stop ">>
+                                                            ,MediaUrl
+                                                           ])),
+                    {<<"record_call">>, RecArg}
+            end
     end;
 
 get_fs_app(Node, UUID, JObj, <<"store">>) ->
