@@ -11,7 +11,7 @@
 
 -export([find/1, find/2]).
 -export([reconcile_number/2]).
--export([assign_number_to_account/2]).
+-export([assign_number_to_account/2, assign_number_to_account/3]).
 -export([get_public_fields/2, set_public_fields/3]).
 -export([lookup_account_by_number/1]).
 -export([free_numbers/1]).
@@ -88,6 +88,9 @@ reconcile_number(Number, AccountId) ->
 -spec assign_number_to_account/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} |
                                                                   {error, atom()}.
 assign_number_to_account(Number, AccountId) ->
+    assign_number_to_account(Number, AccountId, undefined).
+
+assign_number_to_account(Number, AccountId, PublicFields) ->
     ?LOG("attempting to assign ~s to account ~s", [Number, AccountId]),
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
@@ -136,15 +139,11 @@ assign_number_to_account(Number, AccountId) ->
                     ,fun(J) -> wh_json:set_value(<<"pvt_module_data">>, NewModuleData, J) end
                     ,fun(J) -> wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), J) end
                     ,fun(J) -> wh_json:set_value(<<"pvt_assigned_to">>, AccountId, J) end
+                    ,fun(J) when is_atom(PublicFields) -> J;
+                        (J) -> wh_json:merge_jobjs(wh_json:private_fields(J), PublicFields)
+                     end
                    ],
-        case couch_mgr:save_doc(Db, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters)) of
-            {ok, JObj2} -> 
-                add_number_to_account(Num, AccountId),
-                {ok, wh_json:public_fields(JObj2)};
-            {error, R2}=E -> 
-                ?LOG("failed to save number document with new assignment: ~p", [R2]),
-                E
-        end
+        save_number(Db, Num, AccountId, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters))
     catch
         throw:Reason -> {error, Reason}
     end.
@@ -235,15 +234,7 @@ set_public_fields(Number, AccountId, PublicJObj) ->
                                throw(unathorized)
                        end
                end,
-        case couch_mgr:save_doc(Db, wh_json:merge_jobjs(wh_json:private_fields(JObj1), PublicJObj)) of
-            {ok, JObj2} -> 
-                ?LOG("updated public fields on number"),
-                add_number_to_account(Num, AccountId),
-                {ok, wh_json:public_fields(JObj2)};
-            {error, R2}=E -> 
-                ?LOG("failed to save public fields on number: ~p", [R2]),
-                E
-        end
+        save_number(Db, Num, AccountId, wh_json:merge_jobjs(wh_json:private_fields(JObj1), PublicJObj))
     catch
         throw:Reason -> {error, Reason}
     end.
@@ -303,14 +294,7 @@ release_number(Number, AccountId) ->
                     ,fun(J) -> wh_json:delete_key(<<"pvt_assigned_to">>, J) end
                     ,fun(J) -> wh_json:set_value(<<"pvt_previously_assigned_to">>, AccountId, J) end
                    ],
-        case couch_mgr:save_doc(Db, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters)) of
-            {ok, _} -> 
-                remove_number_from_account(Num, AccountId),
-                ok;
-            {error, R2}=E -> 
-                ?LOG("failed to save number document with new assignment: ~p", [R2]),
-                E
-        end
+        save_number(Db, Num, AccountId, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters))
     catch
         throw:not_found ->
             remove_number_from_account(Num, AccountId),
@@ -414,7 +398,7 @@ store_discovery(Number, ModuleName, ModuleData, State) ->
                   ,fun(J) -> wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), J) end
                  ],
     JObj = lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), Generators),
-    case couch_mgr:save_doc(Db, JObj) of
+    case save_number(Db, Number, undefined, JObj) of
         {ok, _}=Ok ->
             ?LOG("stored newly discovered number '~s'", [Number]),
             Ok;
@@ -422,7 +406,7 @@ store_discovery(Number, ModuleName, ModuleData, State) ->
             ?LOG("storing discovered number '~s' in a new database '~s'", [Number, Db]),
             couch_mgr:db_create(Db),
             couch_mgr:revise_views_from_folder(Db, whistle_number_manager),
-            couch_mgr:save_doc(Db, JObj);
+            save_number(Db, Number, undefined, JObj);
         {error, conflict} ->
             case couch_mgr:open_doc(Db, Number) of
                 {ok, Conflict} ->
@@ -489,4 +473,81 @@ remove_number_from_account(Number, AccountId) ->
             end;
         Else ->
             Else
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Helper function to save the number, add to the account doc if required,
+%% and run any providers 
+%% @end
+%%--------------------------------------------------------------------
+-spec save_number/4 :: (ne_binary(), ne_binary(), ne_binary(), json_object()) -> {ok, json_object()} |
+                                                                                 {error, term()}.
+save_number(Db, Number, AccountId, JObj1) ->
+    ?LOG("attempting to save '~s' in '~s'", [Number, Db]),
+    CallId = get(callid),
+    case couch_mgr:save_doc(Db, JObj1) of
+        {ok, JObj2} -> 
+            State = wh_json:get_value(<<"pvt_number_state">>, JObj2),
+            spawn(fun() ->
+                          put(callid, CallId),
+                          case is_binary(AccountId) andalso State of
+                              <<"in_service">> -> add_number_to_account(Number, AccountId);
+                              <<"released">> -> remove_number_from_account(Number, AccountId);
+                              _ -> ok
+                          end
+                  end),
+            case exec_providers_save(JObj2, Number, State) of
+                {JObj3, []} ->
+                    case couch_mgr:save_doc(Db, JObj3) of
+                        {ok, J} -> {ok, wh_json:public_fields(J)};
+                        {error, R3}=E -> 
+                            ?LOG("failed to re-save number ~s: ~p", [Number, R3]),
+                            E
+                    end;
+                {_, Errors} ->
+                  {error, wh_json:from_list(Errors)}
+            end;        
+        {error, R2}=E -> 
+            ?LOG("failed to save number ~s: ~p", [Number, R2]),
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% execute the save function of all providers, folding the jobj through
+%% them and collecting any errors...
+%% @end
+%%--------------------------------------------------------------------
+-spec exec_providers_save/3 :: (json_object(), ne_binary(), ne_binary()) -> {json_object(), proplist()}.
+-spec exec_providers_save/5 :: (list(), json_object(), ne_binary(), ne_binary(), list()) -> {json_object(), proplist()}.
+
+exec_providers_save(JObj, Number, State) ->
+    Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, []),
+    exec_providers_save(Providers, JObj, Number, State, []).
+
+exec_providers_save([], JObj, _, _, Result) ->
+    {JObj, Result};
+exec_providers_save([Provider|Providers], JObj, Number, State, Result) ->
+    try 
+        ?LOG("executing provider ~s", [Provider]),
+        case wnm_util:try_load_module(<<"wnm_", Provider/binary>>) of
+            false -> 
+                ?LOG("provider ~s is unknown, skipping", [Provider]),
+                exec_providers_save(Providers, JObj, Number, State, Result);
+            Mod ->
+                case Mod:save(JObj, Number, State) of
+                    {ok, J} -> 
+                        exec_providers_save(Providers, J, Number, State, Result);
+                    {error, Error} ->
+                        ?LOG("provider ~s created error: ~p", [Provider, Error]),
+                        exec_providers_save(Providers, JObj, Number, State, [{Provider, Error}|Result])
+                end
+        end
+    catch
+        _:R ->
+            ?LOG("executing provider ~s threw exception: ~p", [Provider, R]),
+            exec_providers_save(Providers, JObj, Number, State, [{Provider, <<"threw exception">>}|Result])
     end.

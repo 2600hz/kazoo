@@ -10,6 +10,7 @@
 
 -export([list_carrier_modules/0]).
 -export([get_carrier_module/1]).
+-export([try_load_module/1]).
 -export([number_to_db_name/1]).
 -export([normalize_number/1]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
@@ -34,7 +35,7 @@ get_carrier_module(JObj) ->
         undefined -> {error, not_specified};
         Module ->
             Carriers = list_carrier_modules(),
-            Carrier = try_load_carrier_module(Module),
+            Carrier = try_load_module(Module),
             case lists:member(Carrier, Carriers) of
                 true -> {ok, Carrier, wh_json:get_value(<<"pvt_module_data">>, JObj, wh_json:new())};
                 false -> {error, unknown_module}
@@ -51,7 +52,7 @@ get_carrier_module(JObj) ->
 list_carrier_modules() ->
     CarrierModules = 
         whapps_config:get(?WNM_CONFIG_CAT, <<"carrier_modules">>, ?WNM_DEAFULT_CARRIER_MODULES),
-    [Module || M <- CarrierModules, (Module = try_load_carrier_module(M)) =/= false].
+    [Module || M <- CarrierModules, (Module = try_load_module(M)) =/= false].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -88,8 +89,8 @@ normalize_number(Number) ->
 %% the vm if possible.
 %% @end
 %%--------------------------------------------------------------------
--spec try_load_carrier_module/1 :: (string() | binary()) -> atom() | false.
-try_load_carrier_module(Name) ->
+-spec try_load_module/1 :: (string() | binary()) -> atom() | false.
+try_load_module(Name) ->
     try
         Module  = wh_util:to_atom(Name),
         case erlang:module_loaded(Module) of
@@ -109,7 +110,7 @@ try_load_carrier_module(Name) ->
                 _Path ->
                     ?LOG_SYS("beam file found: ~s", [_Path]),
                     wh_util:to_atom(Name, true), %% put atom into atom table
-                    try_load_carrier_module(Name)
+                    try_load_module(Name)
             end;
         _:_ ->
             false
