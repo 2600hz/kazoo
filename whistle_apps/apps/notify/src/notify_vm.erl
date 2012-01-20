@@ -76,11 +76,11 @@ get_template_props(Event, Docs) ->
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
     SupportNumber = wh_json:find([<<"vm_to_email">>, <<"support_number">>], Docs
-				 ,whapps_config:get(?MODULE, <<"default_support_number">>, <<"(415) 886 - 7900">>)),    
+                                 ,whapps_config:get(?MODULE, <<"default_support_number">>, <<"(415) 886 - 7900">>)),    
     SupportEmail = wh_json:find([<<"vm_to_email">>, <<"support_email">>], Docs
-				,whapps_config:get(?MODULE, <<"default_support_email">>, <<"support@2600hz.com">>)),
+                                ,whapps_config:get(?MODULE, <<"default_support_email">>, <<"support@2600hz.com">>)),
     FromAddress = wh_json:find([<<"vm_to_email">>, <<"from_address">>], Docs
-			       ,whapps_config:get(?MODULE, <<"default_from">>, <<"no_reply@2600hz.com">>)),
+                               ,whapps_config:get(?MODULE, <<"default_from">>, <<"no_reply@2600hz.com">>)),
 
     Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
 
@@ -130,22 +130,20 @@ send_vm_to_email(TxtBody, HTMLBody, Subject, Props) ->
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-                 ,[
-                    {<<"From">>, From},
-                    {<<"To">>, To},
-                    {<<"Subject">>, Subject}
+                 ,[{<<"From">>, From}
+                   ,{<<"To">>, To}
+                   ,{<<"Subject">>, Subject}
+                   ,{<<"X-Call-ID">>, props:get_value(call_id, Props)}
                   ]
              ,[]
              ,[
                {<<"multipart">>, <<"alternative">>, [], []
-                ,[
-                  {<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
+                ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
                   ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
                  ]
                }
                ,{<<"audio">>, <<"mpeg">>
-                     ,[
-                       {<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
+                     ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
                        ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
                        ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
                       ]
@@ -207,8 +205,8 @@ render_template(undefined, DefaultTemplate, Props) ->
 render_template(Template, DefaultTemplate, Props) ->
     try                                       
         CustomTemplate = wh_util:to_atom(list_to_binary([props:get_value(account_db, Props), "_"
-							,wh_json:to_binary(DefaultTemplate)]), true
-					),
+                                                        ,wh_json:to_binary(DefaultTemplate)]), true
+                                        ),
         ?LOG("compiling custom ~s template", [DefaultTemplate]),
         {ok, CustomTemplate} = erlydtl:compile(Template, CustomTemplate),
         ?LOG("rendering custom template ~s", [CustomTemplate]),
