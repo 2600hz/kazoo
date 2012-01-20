@@ -589,7 +589,9 @@ send_cmd(Node, UUID, <<"hangup">>, _) ->
 send_cmd(Node, UUID, <<"record_call">>, Args) ->
     Cmd = list_to_binary([UUID, " ", Args]),
     ?LOG("execute on node ~s: uuid_record(~s)", [Node, Cmd]),
-    freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd));
+    Ret = freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd)),
+    ?LOG("executing uuid_record returned ~p", [Ret]),
+    Ret;
 send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
     XferExt = [begin
                    _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),
