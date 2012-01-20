@@ -81,7 +81,7 @@ store_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}, MediaName, Couch
                ,{<<"Media-Transfer-Method">>, <<"put">>}
                ,{<<"Media-Transfer-Destination">>, CouchURL}
                ,{<<"Additional-Headers">>, []}
-               ,{<<"Insert-At">>, <<"store">>}
+               ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, CallID, CtrlQ).
 
