@@ -16,8 +16,8 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
--spec get_value/2 :: (ne_binary() | atom(), proplist()) -> term().
--spec get_value/3 :: (ne_binary() | atom(), proplist(), Default) -> Default | term().
+-spec get_value/2 :: (ne_binary() | atom(), wh_proplist()) -> term().
+-spec get_value/3 :: (ne_binary() | atom(), wh_proplist(), Default) -> Default | term().
 get_value(Key, Prop) ->
     get_value(Key, Prop, undefined).
 
@@ -35,36 +35,36 @@ get_value(Key, Prop, Default) when is_list(Prop) ->
             Default
     end.
 
--spec get_integer_value/2 :: (ne_binary() | atom(), proplist()) -> integer() | 'undefined'.
--spec get_integer_value/3 :: (ne_binary() | atom(), proplist(), Default) -> integer() | Default.
+-spec get_integer_value/2 :: (ne_binary() | atom(), wh_proplist()) -> integer() | 'undefined'.
+-spec get_integer_value/3 :: (ne_binary() | atom(), wh_proplist(), Default) -> integer() | Default.
 get_integer_value(Key, Prop) ->
     get_integer_value(Key, Prop, undefined).
 get_integer_value(Key, Prop, Default) ->
     case ?MODULE:get_value(Key, Prop, Default) of
-	Default -> Default;
-	Val -> wh_util:to_integer(Val)
+        Default -> Default;
+        Val -> wh_util:to_integer(Val)
     end.
 
--spec get_keys/1 :: (proplist()) -> [term(),...] | [].
+-spec get_keys/1 :: (wh_proplist()) -> [term(),...] | [].
 get_keys(Prop) ->
     [ K || {K,_} <- Prop].
 
--spec delete/2 :: (ne_binary() | atom(), proplist()) -> proplist().
+-spec delete/2 :: (ne_binary() | atom(), wh_proplist()) -> wh_proplist().
 delete(K, Prop) ->
     lists:keydelete(K, 1, Prop).
 
--spec is_defined/2 :: (ne_binary() | atom(), proplist()) -> boolean().
+-spec is_defined/2 :: (ne_binary() | atom(), wh_proplist()) -> boolean().
 is_defined(Key, Prop) ->
     case lists:keyfind(Key, 1, Prop) of
         {Key,_} -> true;
         _ -> false
     end.
 
--spec unique/1 :: (proplist()) -> proplist().
+-spec unique/1 :: (wh_proplist()) -> wh_proplist().
 unique(List) ->
     unique(List, []).
 
--spec unique/2 :: (proplist(), proplist()) -> proplist().
+-spec unique/2 :: (wh_proplist(), wh_proplist()) -> wh_proplist().
 unique([], Uniques) ->
     lists:reverse(Uniques);
 unique([{Key, _}=H|T], Uniques) ->

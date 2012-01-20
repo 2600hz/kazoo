@@ -11,8 +11,8 @@
 -export([req/1, resp/1, req_v/1, resp_v/1, bind_q/2, unbind_q/1, unbind_q/2]).
 
 -export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
-	,disambiguate_and_publish/2
-	]).
+        ,disambiguate_and_publish/2
+        ]).
 
 -export([get_auth_user/1, get_auth_realm/1]).
 
@@ -22,32 +22,32 @@
 -define(AUTHN_REQ_EVENT_NAME, <<"authn_req">>).
 
 -define(AUTHN_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
-				, <<"Auth-User">>, <<"Auth-Realm">>]).
+                                , <<"Auth-User">>, <<"Auth-Realm">>]).
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-			   ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
-			  ]).
+                           ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
+                          ]).
 -define(AUTHN_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-			  ,{<<"To">>, fun is_binary/1}
-			  ,{<<"From">>, fun is_binary/1}
-			  ,{<<"Orig-IP">>, fun is_binary/1}
-			  ,{<<"Auth-User">>, fun is_binary/1}
-			  ,{<<"Auth-Realm">>, fun is_binary/1}
-			 ]).
+                          ,{<<"To">>, fun is_binary/1}
+                          ,{<<"From">>, fun is_binary/1}
+                          ,{<<"Orig-IP">>, fun is_binary/1}
+                          ,{<<"Auth-User">>, fun is_binary/1}
+                          ,{<<"Auth-Realm">>, fun is_binary/1}
+                         ]).
 
 %% Authentication Responses
 -define(AUTHN_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Password">>]).
 -define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
 -define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
-			   ,{<<"Event-Name">>, <<"authn_resp">>}
-			   ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>, <<"a1-hash">>, <<"error">>]}
-			 ]).
+                           ,{<<"Event-Name">>, <<"authn_resp">>}
+                           ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>, <<"a1-hash">>, <<"error">>]}
+                         ]).
 -define(AUTHN_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-			  ,{<<"Auth-Password">>, fun is_binary/1}
-			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-			  ,{<<"Access-Group">>, fun is_binary/1}
-			  ,{<<"Tenant-ID">>, fun is_binary/1}
-			 ]).
+                          ,{<<"Auth-Password">>, fun is_binary/1}
+                          ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                          ,{<<"Access-Group">>, fun is_binary/1}
+                          ,{<<"Tenant-ID">>, fun is_binary/1}
+                         ]).
 
 %%--------------------------------------------------------------------
 %% @doc Authentication Request - see wiki
@@ -57,8 +57,8 @@
 -spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
         case req_v(Prop) of
-	    true -> wh_api:build_message(Prop, ?AUTHN_REQ_HEADERS, ?OPTIONAL_AUTHN_REQ_HEADERS);
-	    false -> {error, "Proplist failed validation for authn_req"}
+            true -> wh_api:build_message(Prop, ?AUTHN_REQ_HEADERS, ?OPTIONAL_AUTHN_REQ_HEADERS);
+            false -> {error, "Proplist failed validation for authn_req"}
     end;
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
@@ -77,8 +77,8 @@ req_v(JObj) ->
 -spec resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
-	true -> wh_api:build_message(Prop, ?AUTHN_RESP_HEADERS, ?OPTIONAL_AUTHN_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for authn_resp"}
+        true -> wh_api:build_message(Prop, ?AUTHN_RESP_HEADERS, ?OPTIONAL_AUTHN_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for authn_resp"}
     end;
 resp(JObj) ->
     resp(wh_json:to_proplist(JObj)).
@@ -140,7 +140,7 @@ disambiguate_and_publish(ReqJObj, RespJObj) ->
 %% creating the routing key for either binding queues or publishing messages
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_authn_req_routing/1 :: (ne_binary() | proplist() | json_object()) -> ne_binary().
+-spec get_authn_req_routing/1 :: (ne_binary() | proplist() | wh_json:json_object()) -> ne_binary().
 get_authn_req_routing(Realm) when is_binary(Realm) ->
     list_to_binary([?KEY_AUTHN_REQ, ".", amqp_util:encode(Realm)]);
 get_authn_req_routing(Req) ->
@@ -152,7 +152,7 @@ get_authn_req_routing(Req) ->
 %% extract the auth user from the API request
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_user/1  :: (json_object()) -> ne_binary() | 'undefined'.
+-spec get_auth_user/1  :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
 get_auth_user(ApiJObj) ->
     wh_json:get_value(<<"Auth-User">>, ApiJObj).
 
@@ -163,7 +163,7 @@ get_auth_user(ApiJObj) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_realm/1  :: (json_object() | proplist()) -> ne_binary().
+-spec get_auth_realm/1  :: (wh_json:json_object() | proplist()) -> ne_binary().
 get_auth_realm(ApiProp) when is_list(ApiProp) ->
     AuthRealm = props:get_value(<<"Auth-Realm">>, ApiProp, <<"missing.realm">>),
     case wh_util:is_ipv4(AuthRealm) orelse wh_util:is_ipv6(AuthRealm) of

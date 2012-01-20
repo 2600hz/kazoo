@@ -68,7 +68,7 @@ success(Prop) when is_list(Prop) ->
 success(JObj) ->
     success(wh_json:to_proplist(JObj)).
 
--spec success_v/1 :: (json_object() | proplist()) -> boolean().
+-spec success_v/1 :: (wh_json:json_object() | proplist()) -> boolean().
 success_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?REG_SUCCESS_HEADERS, ?REG_SUCCESS_VALUES, ?REG_SUCCESS_TYPES);
 success_v(JObj) ->

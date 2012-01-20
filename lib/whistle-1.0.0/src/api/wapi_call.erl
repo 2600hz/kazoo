@@ -37,8 +37,6 @@
 -export([publish_control_transfer/2, publish_control_transfer/3]).
 -export([publish_controller_queue/2, publish_controller_queue/3]).
 
--export([publish_rate_req/1, publish_rate_req/2, publish_rate_req/3]).
--export([publish_rate_resp/2, publish_rate_resp/3]).
 -export([publish_channel_query_req/2, publish_channel_query_req/3]).
 -export([publish_channel_query_resp/2, publish_channel_query_resp/3]).
 -export([optional_channel_headers/0, required_rate_resp_rate_headers/0]).
@@ -423,7 +421,7 @@ controller_queue_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec rate_req/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec rate_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
 rate_req(Prop) when is_list(Prop) ->
     case rate_req_v(Prop) of
         true -> wh_api:build_message(Prop, ?RATING_REQ_HEADERS, ?OPTIONAL_RATING_REQ_HEADERS);
@@ -432,7 +430,7 @@ rate_req(Prop) when is_list(Prop) ->
 rate_req(JObj) ->
     rate_req(wh_json:to_proplist(JObj)).
 
--spec rate_req_v/1 :: (proplist() | json_object()) -> boolean().
+-spec rate_req_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
 rate_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?RATING_REQ_HEADERS, ?RATING_REQ_VALUES, ?RATING_REQ_TYPES);
 rate_req_v(JObj) ->
@@ -443,7 +441,7 @@ rate_req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec rate_resp/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec rate_resp/1 :: (proplist() | wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
 rate_resp(Prop) when is_list(Prop) ->
     Rates = [ begin
                   {ok, RateProp} = rate_resp_rate(Rate),
@@ -459,7 +457,7 @@ rate_resp(Prop) when is_list(Prop) ->
 rate_resp(JObj) ->
     rate_resp(wh_json:to_proplist(JObj)).
 
--spec rate_resp_v/1 :: (proplist() | json_object()) -> boolean().
+-spec rate_resp_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
 rate_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?RATING_RESP_HEADERS, ?RATING_RESP_VALUES, ?RATING_RESP_TYPES) andalso
         lists:all(fun rate_resp_rate_v/1, props:get_value(<<"Rates">>, Prop, []));
@@ -471,7 +469,7 @@ rate_resp_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec rate_resp_rate/1 :: (proplist() | json_object()) -> {'ok', proplist()} | {'error', string()}.
+-spec rate_resp_rate/1 :: (proplist() | wh_json:json_object()) -> {'ok', proplist()} | {'error', string()}.
 rate_resp_rate(Prop) when is_list(Prop) ->
     case rate_resp_rate_v(Prop) of
         true -> wh_api:build_message_specific_headers(Prop, ?RATING_RESP_RATE_HEADERS, ?OPTIONAL_RATING_RESP_RATE_HEADERS);
@@ -480,7 +478,7 @@ rate_resp_rate(Prop) when is_list(Prop) ->
 rate_resp_rate(JObj) ->
     rate_resp_rate(wh_json:to_proplist(JObj)).
 
--spec rate_resp_rate_v/1 :: (proplist() | json_object()) -> boolean().
+-spec rate_resp_rate_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
 rate_resp_rate_v(Prop) when is_list(Prop) ->
     wh_api:validate_message(Prop, ?RATING_RESP_RATE_HEADERS, ?RATING_RESP_RATE_VALUES, ?RATING_RESP_RATE_TYPES);
 rate_resp_rate_v(JObj) ->

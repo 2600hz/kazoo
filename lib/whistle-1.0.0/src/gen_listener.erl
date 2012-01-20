@@ -5,10 +5,10 @@
 %%% Behaviour for setting up an AMQP listener.
 %%% Add/rm responders for Event-Cat/Event-Name pairs. Each responder
 %%% corresponds to a module that has defined a handle/1 function, receiving
-%%% the json_object() from the AMQP request.
+%%% the wh_json:json_object() from the AMQP request.
 %%%
 %%% Params :: [
-%%%   {bindings, [ {atom(), proplist()}, ...]} -> the type of bindings, with optional properties to pass along
+%%%   {bindings, [ {atom(), wh_proplist()}, ...]} -> the type of bindings, with optional properties to pass along
 %%%   {responders, [ {responder, [ {<<"event-category">>, <<"event-name">>}, ...]} ]
 %%%      responder is the module name to call handle_req/2 on for those category/name combos
 %%%      responder can also be {module, function}, to call module:function/2 instead of handle_req/2
@@ -60,7 +60,7 @@ behaviour_info(_) ->
     undefined.
 
 -type responders() :: [listener_utils:responder(),...] | [].
--type binding() :: atom() | {atom(), proplist()}.
+-type binding() :: atom() | {atom(), wh_proplist()}.
 -type bindings() :: [binding(),...] | [].
 
 -type responder_callback_mod() :: atom() | {atom(), atom()}.
@@ -70,8 +70,8 @@ behaviour_info(_) ->
 -type start_params() :: [{responders, responders()} |
                          {bindings, bindings()} |
                          {queue_name, binary()} |
-                         {queue_options, proplist()} |
-                         {consume_options, proplist()} |
+                         {queue_options, wh_proplist()} |
+                         {consume_options, wh_proplist()} |
                          {basic_qos, non_neg_integer()}
                          ,...] | [].
 
@@ -80,7 +80,7 @@ behaviour_info(_) ->
          ,is_consuming = 'false' :: boolean()
          ,responders = [] :: responders() %% { {EvtCat, EvtName}, Module }
          ,bindings = [] :: bindings() %% authentication | {authentication, [{key, value},...]}
-         ,params = [] :: proplist()
+         ,params = [] :: wh_proplist()
          ,module = 'undefined' :: atom()
          ,module_state = 'undefined' :: term()
          ,active_responders = [] :: [pid(),...] | [] %% list of pids processing requests
@@ -143,7 +143,7 @@ rm_responder(Srv, Responder, Keys) ->
 add_binding(Srv, {Binding, Props}) ->
     gen_server:cast(Srv, {add_binding, Binding, Props}).
 
--spec add_binding/3 :: (pid() | atom(), binding(), proplist()) -> 'ok'.
+-spec add_binding/3 :: (pid() | atom(), binding(), wh_proplist()) -> 'ok'.
 add_binding(Srv, Binding, Props) ->
     gen_server:cast(Srv, {add_binding, Binding, Props}).
 
@@ -151,7 +151,7 @@ add_binding(Srv, Binding, Props) ->
 rm_binding(Srv, Binding) ->
     gen_server:cast(Srv, {rm_binding, Binding}).
 
--spec rm_binding/3 :: (pid() | atom(), binding(), proplist()) -> 'ok'.
+-spec rm_binding/3 :: (pid() | atom(), binding(), wh_proplist()) -> 'ok'.
 rm_binding(Srv, Binding, []) ->
     gen_server:cast(Srv, {rm_binding, Binding});
 rm_binding(Srv, Binding, Props) ->
@@ -160,7 +160,7 @@ rm_binding(Srv, Binding, Props) ->
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
--spec init/1 :: ([atom() | proplist(),...]) -> {'ok', #state{}, 'hibernate'}.
+-spec init/1 :: ([atom() | wh_proplist(),...]) -> {'ok', #state{}, 'hibernate'}.
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
 
@@ -392,7 +392,7 @@ handle_event(Payload, <<"application/erlang">>, State) ->
     JObj = binary_to_term(Payload),
     process_req(State, JObj).
 
--spec process_req/2 :: (#state{}, json_object()) -> pid().
+-spec process_req/2 :: (#state{}, wh_json:json_object()) -> pid().
 process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj) ->
     Props1 = case catch Module:handle_event(JObj, ModState) of
                  {reply, Props} when is_list(Props) -> [{server, self()}, {queue, Queue} | Props];
@@ -405,7 +405,7 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
             spawn_link(fun() -> _ = wh_util:put_callid(JObj), process_req(Props1, Responders, JObj) end)
     end.
 
--spec process_req/3 :: (proplist(), responders(), json_object()) -> 'ok'.
+-spec process_req/3 :: (wh_proplist(), responders(), wh_json:json_object()) -> 'ok'.
 process_req(Props, Responders, JObj) ->
     Key = wh_util:get_event_type(JObj),
 
@@ -435,7 +435,7 @@ wait_for_handlers([{Pid, Ref} | Hs]) ->
     end;
 wait_for_handlers([]) -> ok.
 
--spec start_amqp/1 :: (proplist()) -> {'ok', binary()} | {'error', 'amqp_error'}.
+-spec start_amqp/1 :: (wh_proplist()) -> {'ok', binary()} | {'error', 'amqp_error'}.
 start_amqp(Props) ->
     QueueProps = props:get_value(queue_options, Props, []),
     QueueName = props:get_value(queue_name, Props, <<>>),
@@ -462,7 +462,7 @@ stop_amqp(Q, Bindings) ->
 set_qos(undefined) -> ok;
 set_qos(N) when is_integer(N) -> amqp_util:basic_qos(N).
 
--spec create_binding/3 :: (binding(), proplist(), ne_binary()) -> any().
+-spec create_binding/3 :: (binding(), wh_proplist(), ne_binary()) -> any().
 create_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
     try

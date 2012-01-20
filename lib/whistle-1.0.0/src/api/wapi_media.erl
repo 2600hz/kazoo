@@ -15,7 +15,7 @@
 -export([bind_q/2, unbind_q/1]).
 
 -export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
-	 ,publish_error/2, publish_error/3]).
+         ,publish_error/2, publish_error/3]).
 
 -include("../wh_api.hrl").
 
@@ -23,17 +23,17 @@
 -define(MEDIA_REQ_HEADERS, [<<"Media-Name">>]).
 -define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>]).
 -define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
-			   ,{<<"Event-Name">>, <<"media_req">>}
-			   ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
-			  ]).
+                           ,{<<"Event-Name">>, <<"media_req">>}
+                           ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
+                          ]).
 -define(MEDIA_REQ_TYPES, []).
 
 %% Media Response
 -define(MEDIA_RESP_HEADERS, [<<"Media-Name">>, <<"Stream-URL">>]).
 -define(OPTIONAL_MEDIA_RESP_HEADERS, []).
 -define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, <<"media">>}
-			   ,{<<"Event-Name">>, <<"media_resp">>}
-			  ]).
+                           ,{<<"Event-Name">>, <<"media_resp">>}
+                          ]).
 -define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true;
                                                  (<<"http://", _/binary>>) -> true;
                                                  (_) -> false end}]).
@@ -42,9 +42,9 @@
 -define(MEDIA_ERROR_HEADERS, [<<"Media-Name">>, <<"Error-Code">>]).
 -define(OPTIONAL_MEDIA_ERROR_HEADERS, [<<"Error-Msg">>]).
 -define(MEDIA_ERROR_VALUES, [{<<"Event-Category">>, <<"media">>}
-			     ,{<<"Event-Name">>, <<"media_error">>}
-			     ,{<<"Error-Code">>, [<<"not_found">>, <<"no_data">>, <<"other">>]}
-			    ]).
+                             ,{<<"Event-Name">>, <<"media_error">>}
+                             ,{<<"Error-Code">>, [<<"not_found">>, <<"no_data">>, <<"other">>]}
+                            ]).
 -define(MEDIA_ERROR_TYPES, []).
 
 %%--------------------------------------------------------------------
@@ -52,16 +52,16 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req/1 :: (json_object() | proplist()) -> {'ok', iolist()} | {'error', string()}.
+-spec req/1 :: (wh_json:json_object() | proplist()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
-	true -> wh_api:build_message(Prop, ?MEDIA_REQ_HEADERS, ?OPTIONAL_MEDIA_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for media_req"}
+        true -> wh_api:build_message(Prop, ?MEDIA_REQ_HEADERS, ?OPTIONAL_MEDIA_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for media_req"}
     end;
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
 
--spec req_v/1 :: (json_object() | proplist()) -> boolean().
+-spec req_v/1 :: (wh_json:json_object() | proplist()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?MEDIA_REQ_HEADERS, ?MEDIA_REQ_VALUES, ?MEDIA_REQ_TYPES);
 req_v(JObj) ->
@@ -72,16 +72,16 @@ req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp/1 :: (json_object() | proplist()) -> {'ok', iolist()} | {'error', string()}.
+-spec resp/1 :: (wh_json:json_object() | proplist()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
-	true -> wh_api:build_message(Prop, ?MEDIA_RESP_HEADERS, ?OPTIONAL_MEDIA_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for media_resp"}
+        true -> wh_api:build_message(Prop, ?MEDIA_RESP_HEADERS, ?OPTIONAL_MEDIA_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for media_resp"}
     end;
 resp(JObj) ->
     resp(wh_json:to_proplist(JObj)).
 
--spec resp_v/1 :: (proplist() | json_object()) -> boolean().
+-spec resp_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?MEDIA_RESP_HEADERS, ?MEDIA_RESP_VALUES, ?MEDIA_RESP_TYPES);
 resp_v(JObj) ->
@@ -92,16 +92,16 @@ resp_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec error/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec error/1 :: (proplist() | wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
-	true -> wh_api:build_message(Prop, ?MEDIA_ERROR_HEADERS, ?OPTIONAL_MEDIA_ERROR_HEADERS);
-	false -> {error, "Proplist failed validation for media_error"}
+        true -> wh_api:build_message(Prop, ?MEDIA_ERROR_HEADERS, ?OPTIONAL_MEDIA_ERROR_HEADERS);
+        false -> {error, "Proplist failed validation for media_error"}
     end;
 error(JObj) ->
     error(wh_json:to_proplist(JObj)).
 
--spec error_v/1 :: (proplist() | json_object()) -> boolean().
+-spec error_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
 error_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?MEDIA_ERROR_HEADERS, ?MEDIA_ERROR_VALUES, ?MEDIA_ERROR_TYPES);
 error_v(JObj) ->
