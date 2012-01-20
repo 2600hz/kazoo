@@ -163,9 +163,11 @@ handle_cast({event, JObj}, #state{agent=Agent
             case CallID =:= CCID of
                 true ->
                     ?LOG("customer hungup, freeing agent"),
+
+                    datinggame_listener:free_agent(Srv, Agent),
+
                     dg_util:stop_recording(Agent, MediaName),
                     store_recording(Agent, Customer, MediaName, StoreSent),
-                    datinggame_listener:free_agent(Srv, Agent),
                     {stop, normal, State};
                 false ->
                     ?LOG("agent hungup or disconnected"),
