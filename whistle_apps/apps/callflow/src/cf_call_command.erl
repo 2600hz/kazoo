@@ -496,18 +496,9 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 
 -type b_store_return() :: {'error', 'timeout' | json_object()} | {'ok', json_object()}.
 
--spec b_store/3 :: (ne_binary(), Transfer, Call) -> b_store_return() when
-      Transfer :: binary(),
-      Call :: #cf_call{}.
--spec b_store/4 :: (ne_binary(), Transfer, Method, Call) -> b_store_return() when
-      Transfer :: binary(),
-      Method :: binary(),
-      Call :: #cf_call{}.
--spec b_store/5 :: (ne_binary(), Transfer, Method, Headers, Call) -> b_store_return() when
-      Transfer :: binary(),
-      Method :: binary(),
-      Headers :: json_objects(),
-      Call :: #cf_call{}.
+-spec b_store/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> b_store_return().
+-spec b_store/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> b_store_return().
+-spec b_store/5 :: (ne_binary(), ne_binary(), ne_binary(), json_objects(), #cf_call{}) -> b_store_return().
 
 store(MediaName, Transfer, Call) ->
     store(MediaName, Transfer, <<"put">>, Call).
@@ -1146,21 +1137,10 @@ wait_for_message(Application, Event, Type, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 -type wait_for_application_return() :: {'error', 'timeout' | json_object()} | {'ok', json_object()}.
--spec wait_for_application/1 :: (Application) -> wait_for_application_return() when
-      Application :: binary().
--spec wait_for_application/2 :: (Application, Event) -> wait_for_application_return() when
-      Application :: binary(),
-      Event :: binary().
--spec wait_for_application/3 :: (Application, Event, Type) -> wait_for_application_return() when
-      Application :: binary(),
-      Event :: binary(),
-      Type :: binary().
--spec wait_for_application/4 :: (Application, Event, Type, Timeout) -> wait_for_application_return() when
-      Application :: binary(),
-      Event :: binary(),
-      Type :: binary(),
-      Timeout :: 'infinity' | integer().
-
+-spec wait_for_application/1 :: (ne_binary()) -> wait_for_application_return().
+-spec wait_for_application/2 :: (ne_binary(), ne_binary()) -> wait_for_application_return().
+-spec wait_for_application/3 :: (ne_binary(), ne_binary(), ne_binary()) -> wait_for_application_return().
+-spec wait_for_application/4 :: (ne_binary(), ne_binary(), ne_binary(), 'infinity' | non_neg_integer()) -> wait_for_application_return().
 wait_for_application(Application) ->
     wait_for_application(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
 wait_for_application(Application, Event) ->
