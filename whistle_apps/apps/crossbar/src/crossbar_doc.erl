@@ -160,7 +160,7 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
              };
         _Else ->
             ?LOG("loading view ~s from ~s failed: unexpected ~p", [View, DB, _Else]),
-            Context#cb_context{doc=wh_json:new()}
+            Context#cb_context{doc=[]}
     end.
 
 %%--------------------------------------------------------------------
