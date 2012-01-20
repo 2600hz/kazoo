@@ -219,7 +219,7 @@ handle_call(Request, From, #state{module=Module, module_state=ModState}=State) -
         {stop, Reason, Reply, ModState1} ->
             {stop, Reason, Reply, State#state{module_state=ModState1}};
         {'EXIT', Why} ->
-            ?LOG("exception: ~p", [Why]),
+            ?LOG(alert, "exception: ~p", [Why]),
             {stop, Why, State}
     end.
 
@@ -253,7 +253,7 @@ handle_cast({rm_binding, Binding}=Req, #state{queue=Q}=State) ->
         {noreply, State}
     catch
         error:badarg ->
-            ?LOG_SYS("Atom ~s not found", [Wapi]),
+            ?LOG_SYS("atom ~s not found", [Wapi]),
             case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
                 non_existing ->
                     {noreply, State};
@@ -263,7 +263,7 @@ handle_cast({rm_binding, Binding}=Req, #state{queue=Q}=State) ->
                     handle_cast(Req, State)
             end;
         error:undef ->
-            ?LOG_SYS("Module ~s doesn't exist or unbind_q/1 isn't exported", [Wapi]),
+            ?LOG_SYS("module ~s doesn't exist or unbind_q/1 isn't exported", [Wapi]),
             queue_bindings:rm_binding_from_q(Q, Binding),
             {noreply, State}
     end;
@@ -276,7 +276,7 @@ handle_cast({rm_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
         {noreply, State}
     catch
         error:badarg ->
-            ?LOG_SYS("Atom ~s not found", [Wapi]),
+            ?LOG_SYS("atom ~s not found", [Wapi]),
             case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
                 non_existing ->
                     {noreply, State};
@@ -286,7 +286,7 @@ handle_cast({rm_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
                     handle_cast(Req, State)
             end;
         error:undef ->
-            ?LOG_SYS("Module ~s doesn't exist or unbind_q/2 isn't exported", [Wapi]),
+            ?LOG_SYS("module ~s doesn't exist or unbind_q/2 isn't exported", [Wapi]),
             queue_bindings:rm_binding_from_q(Q, Binding, Props),
             {noreply, State}
     end;
@@ -312,7 +312,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type=CT}, 
         ignore ->
             {noreply, State};
         {'EXIT', Why} ->
-            ?LOG("exception: ~p", [Why]),
+            ?LOG(alert, "exception: ~p", [Why]),
             {stop, Why, State}
     end;
 
@@ -323,10 +323,10 @@ handle_info({'EXIT', Pid, _Reason}=Message, #state{active_responders=ARs}=State)
     end;
 
 handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=State) ->
-    ?LOG("amqp host down msg: ~p", [_H]),
+    ?LOG(alert, "amqp host down msg: ~p", [_H]),
     case amqp_util:is_host_available() of
         true ->
-            ?LOG("Host is available, let's try wiring up"),
+            ?LOG("host is available, let's try wiring up"),
             case start_amqp(Params) of
                 {ok, Q} ->
                     Self = self(),
@@ -334,26 +334,27 @@ handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=
                     spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
                     {noreply, State#state{queue=Q, is_consuming=false}, hibernate};
                 {error, _} ->
-                    ?LOG("Failed to start amqp, waiting another second"),
+                    ?LOG("failed to start amqp, waiting another second"),
                     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
                     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
             end;
         false ->
-            ?LOG("No AMQP host ready, waiting another second"),
+            ?LOG("no AMQP host ready, waiting another second"),
             erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
             {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
     end;
 
 handle_info({amqp_lost_channel, no_connection}, State) ->
-    ?LOG("Lost our channel, checking every second for a host to come back up"),
+    ?LOG(alert, "lost our channel, checking every second for a host to come back up"),
     _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
 
 handle_info(#'basic.consume_ok'{}, S) ->
+    ?LOG("consuming from our queue"),
     {noreply, S#state{is_consuming=true}};
 
 handle_info(is_consuming, #state{is_consuming=false, queue=Q}=State) ->
-    ?LOG("WTF, we're not consuming. Queue: ~p", [Q]),
+    ?LOG("huh, we're not consuming. Queue: ~p", [Q]),
     _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
     {noreply, State};
 
@@ -372,7 +373,7 @@ handle_callback_info(Message, #state{module=Module, module_state=ModState}=State
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
         {'EXIT', Why} ->
-            ?LOG("exception: ~p", [Why]),
+            ?LOG(alert, "exception: ~p", [Why]),
             {stop, Why, State}
     end.
 
@@ -412,8 +413,9 @@ process_req(Props, Responders, JObj) ->
     Handlers = [spawn_monitor(fun() ->
                                       _ = wh_util:put_callid(JObj),
                                       Responder:Fun(JObj, Props)
-                              end) || {Evt, {Responder, Fun}} <- Responders,
-                                      maybe_event_matches_key(Key, Evt)
+                              end)
+                || {Evt, {Responder, Fun}} <- Responders,
+                   maybe_event_matches_key(Key, Evt)
                ],
     wait_for_handlers(Handlers).
 
@@ -440,14 +442,13 @@ start_amqp(Props) ->
     QueueProps = props:get_value(queue_options, Props, []),
     QueueName = props:get_value(queue_name, Props, <<>>),
     case catch amqp_util:new_queue(QueueName, QueueProps) of
-        {error, amqp_error}=E -> ?LOG("Failed to start new queue"), E;
-        {'EXIT', _Why} -> ?LOG("Exit: ~p", [_Why]), {error, amqp_error};
+        {error, amqp_error}=E -> ?LOG("failed to start new queue"), E;
+        {'EXIT', _Why} -> ?LOG(alert, "exit: ~p", [_Why]), {error, amqp_error};
         Queue ->
             ConsumeProps = props:get_value(consume_options, Props, []),
 
             set_qos(props:get_value(basic_qos, Props)),
             amqp_util:basic_consume(Queue, ConsumeProps),
-            ?LOG("Consuming on ~s", [Queue]),
             {ok, Queue}
     end.
 
@@ -481,10 +482,11 @@ create_binding(Binding, Props, Q) ->
                     create_binding(Binding, Props, Q)
             end;
         error:undef ->
-            ?LOG_SYS("Module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
-            ?LOG_SYS("Trying old school add_binding for ~s", [Binding]),
+            ?LOG_SYS("module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
+            ?LOG_SYS("trying old school add_binding for ~s", [Binding]),
             queue_bindings:add_binding_to_q(Q, Binding, Props);
         E:R ->
-            io:format("~p ~p~n", [E, R]),
-            io:format("~p~n", [erlang:get_stacktrace()])
+            ST = erlang:get_stacktrace(),
+            ?LOG(alert, "exception in creating binding: ~p:~p", [E,R]),
+            ?LOG_STACKTRACE(ST)
     end.
