@@ -119,7 +119,7 @@ handle_call({lookup_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
     case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
         false ->
             {reply, {error, not_local}, Dict};
-        [{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
+        [{{_,_,_,RecvSrv},{Path,_}}] when is_pid(RecvSrv) ->
             spawn(fun() ->
                           process_flag(trap_exit, true),
                           link(RecvSrv),
@@ -139,7 +139,7 @@ handle_call({is_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
     case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
         false ->
             {reply, {error, not_local}, Dict};
-        [{{_,_,_,RecvSrv},Path}] when is_pid(RecvSrv) ->
+        [{{_,_,_,RecvSrv},{Path,_}}] when is_pid(RecvSrv) ->
             spawn(fun() ->
                           process_flag(trap_exit, true),
                           link(RecvSrv),
@@ -267,6 +267,8 @@ lookup_remote(MediaName, Request) ->
             {error, B}
     end.
 
+wait_for_fs_media({Path,_}, RecvSrv, FromPid) ->
+    wait_for_fs_media(Path, RecvSrv, FromPid);
 wait_for_fs_media(Path, RecvSrv, FromPid) ->
     case erlang:is_process_alive(RecvSrv) of
         true ->
