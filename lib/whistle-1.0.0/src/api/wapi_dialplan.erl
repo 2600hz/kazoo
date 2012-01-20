@@ -21,6 +21,7 @@
 -export([execute_extension/1, execute_extension_v/1]).
 -export([play/1, play_v/1]).
 -export([record/1, record_v/1]).
+-export([record_call/1, record_call_v/1]).
 -export([answer/1, answer_v/1]).
 -export([hold/1, hold_v/1]).
 -export([park/1, park_v/1]).
@@ -298,6 +299,26 @@ record_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?RECORD_REQ_HEADERS, ?RECORD_REQ_VALUES, ?RECORD_REQ_TYPES);
 record_v(JObj) ->
     record_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Record call media - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec record_call/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+record_call(Prop) when is_list(Prop) ->
+    case record_call_v(Prop) of
+        true -> wh_api:build_message(Prop, ?RECORD_CALL_REQ_HEADERS, ?OPTIONAL_RECORD_CALL_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for record_call_req"}
+    end;
+record_call(JObj) ->
+    record_call(wh_json:to_proplist(JObj)).
+
+-spec record_call_v/1 :: (proplist() | json_object()) -> boolean().
+record_call_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?RECORD_CALL_REQ_HEADERS, ?RECORD_CALL_REQ_VALUES, ?RECORD_CALL_REQ_TYPES);
+record_call_v(JObj) ->
+    record_call_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Answer a session - see wiki
