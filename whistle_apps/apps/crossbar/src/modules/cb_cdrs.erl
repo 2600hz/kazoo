@@ -238,18 +238,16 @@ validate(_, Context) ->
 -spec load_cdr_summary/1 :: (#cb_context{}) -> #cb_context{}.
 load_cdr_summary(#cb_context{req_nouns=Nouns}=Context) ->
     case Nouns of
-	[_, {?WH_ACCOUNTS_DB, _AID} | _] ->
-	    ?LOG("loading cdrs for account ~s", [_AID]),
+        [_, {?WH_ACCOUNTS_DB, _AID} | _] ->
+            ?LOG("loading cdrs for account ~s", [_AID]),
             crossbar_doc:load_view(?CB_LIST
-                                   ,[{<<"stale">>, <<"update_after">>}]
+                                   ,[]
                                    ,Context
                                    ,fun normalize_view_results/2);
         [_, {<<"users">>, [UserId] } | _] ->
             ?LOG("loading cdrs for user ~s", [UserId]),
             crossbar_doc:load_view(?CB_LIST_BY_USER
-                                   ,[{<<"key">>, UserId}
-                                     ,{<<"stale">>, <<"update_after">>}
-                                    ]
+                                   ,[{<<"key">>, UserId}]
                                    ,Context
                                    ,fun normalize_view_results/2);
         _ ->
