@@ -63,6 +63,7 @@ start_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}, MediaName) ->
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Record-Action">>, <<"start">>}
                ,{<<"Time-Limit">>, <<"28800">>} % 8 hours
+               ,{<<"Application-Name">>, <<"record_call">>}
               ],
     send_command(Command, CallID, CtrlQ).
 
@@ -70,6 +71,7 @@ stop_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}, MediaName) ->
     Command = [{<<"Media-Name">>, MediaName}
                ,{<<"Insert-At">>, <<"now">>}
                ,{<<"Record-Action">>, <<"stop">>}
+               ,{<<"Application-Name">>, <<"record_call">>}
               ],
     send_command(Command, CallID, CtrlQ).
 
