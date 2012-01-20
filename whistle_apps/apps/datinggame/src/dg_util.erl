@@ -8,10 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(dg_util).
 
--export([channel_status/2, send_command/3
+-export([send_command/3, get_node_ip/1
          ,hold_call/1, hold_call/2, pickup_call/2
-         ,hangup/1, start_recording/2, store_recording/3
-         ,get_node_ip/1, redirect/3
+         ,hangup/1, channel_status/2, redirect/3
+         ,start_recording/2, stop_recording/2, store_recording/3
         ]).
 
 -include("datinggame.hrl").
@@ -59,11 +59,17 @@ hangup(CallID, CtrlQ) when is_binary(CallID) ->
     send_command([{<<"Application-Name">>, <<"hangup">>}], CallID, CtrlQ).
 
 start_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}, MediaName) ->
-    Command = [{<<"Application-Name">>, <<"record">>}
-               ,{<<"Media-Name">>, MediaName}
-               ,{<<"Terminators">>, []}
+    Command = [{<<"Media-Name">>, MediaName}
                ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Record-Action">>, <<"start">>}
                ,{<<"Time-Limit">>, <<"28800">>} % 8 hours
+              ],
+    send_command(Command, CallID, CtrlQ).
+
+stop_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}, MediaName) ->
+    Command = [{<<"Media-Name">>, MediaName}
+               ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Record-Action">>, <<"stop">>}
               ],
     send_command(Command, CallID, CtrlQ).
 
@@ -73,7 +79,6 @@ store_recording(#dg_agent{call_id=CallID, control_queue=CtrlQ}, MediaName, Couch
                ,{<<"Media-Transfer-Method">>, <<"put">>}
                ,{<<"Media-Transfer-Destination">>, CouchURL}
                ,{<<"Additional-Headers">>, []}
-               ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, CallID, CtrlQ).
 

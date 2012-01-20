@@ -143,10 +143,14 @@ handle_cast({event, JObj}, #state{agent=Agent
                     ?LOG(CallID, "customer leg ~s unbridged, freeing agent", [CCID]),
                     datinggame_listener:free_agent(Srv, Agent),
 
+                    dg_util:stop_recording(Agent, MediaName),
+                    ?LOG(CallID, "stopping recording", []),
                     store_recording(Agent, Customer, MediaName, StoreSent),
                     {stop, normal, State};
                 false ->
                     ?LOG(CCID, "agent leg ~s unbridged, that's odd", [Agent#dg_agent.call_id]),
+
+                    dg_util:stop_recording(Agent, MediaName),
                     store_recording(Agent, Customer, MediaName, StoreSent),
                     dg_util:hangup(Customer),
 
@@ -159,11 +163,13 @@ handle_cast({event, JObj}, #state{agent=Agent
             case CallID =:= CCID of
                 true ->
                     ?LOG("customer hungup, freeing agent"),
+                    dg_util:stop_recording(Agent, MediaName),
                     store_recording(Agent, Customer, MediaName, StoreSent),
                     datinggame_listener:free_agent(Srv, Agent),
                     {stop, normal, State};
                 false ->
                     ?LOG("agent hungup or disconnected"),
+                    dg_util:stop_recording(Agent, MediaName),
                     store_recording(Agent, Customer, MediaName, StoreSent),
                     dg_util:hangup(Customer),
                     dg_util:hangup(Agent),
