@@ -32,7 +32,7 @@ onnet_data(State) ->
     JObj = ts_callflow:get_request_data(State),
 
     [ToUser, _ToDomain] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-    ToDID = wh_util:to_e164(ToUser),
+    ToDID = wnm_util:to_e164(ToUser),
 
     CallID = ts_callflow:get_aleg_id(State),
     AcctID = ts_callflow:get_account_id(State),

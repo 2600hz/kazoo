@@ -378,7 +378,7 @@ originate_call(#cb_context{doc=JObj, req_data=Req, account_id=AccountId}=Context
     end.
 
 originate_call(Contact, JObj, AccountId) ->
-    Exten = wh_util:to_e164(wh_json:get_binary_value(<<"extension">>, JObj)),
+    Exten = wnm_util:to_e164(wh_json:get_binary_value(<<"extension">>, JObj)),
     FriendlyName = wh_json:get_ne_value(<<"name">>, JObj, <<>>),
 
     ?LOG("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
@@ -447,7 +447,7 @@ get_c2c_contact(Contact) when not is_list(Contact) ->
     get_c2c_contact(wh_util:to_list(Contact));
 get_c2c_contact(Contact) ->
     Encoded = mochiweb_util:quote_plus(Contact),
-    wh_util:to_e164(wh_util:to_binary(Encoded)).
+    wnm_util:to_e164(wh_util:to_binary(Encoded)).
 
 -spec get_c2c_resp_status/1 :: ({'success', ne_binary()} | {'error', ne_binary()} | {'timeout'}) -> 'success' | 'error'.
 get_c2c_resp_status({success, _}) -> success;

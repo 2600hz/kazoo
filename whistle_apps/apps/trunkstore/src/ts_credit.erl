@@ -37,7 +37,7 @@ start_link() ->
       Direction :: inbound | outbound,
       RouteOptions :: [binary(),...] | [].
 reserve(ToDID, CallID, AcctID, Direction, RouteOptions) ->
-    <<Start:1/binary, _/binary>> = Number = wh_util:to_1npan(ToDID),
+    <<Start:1/binary, _/binary>> = Number = wnm_util:to_1npan(ToDID),
     ?LOG("searching for rates in the range ~s to ~s", [Start, Number]),
     case couch_mgr:get_results(?TS_RATES_DB, <<"lookuprates/lookuprate">>, [{<<"startkey">>, wh_util:to_integer(Start)}
 									    ,{<<"endkey">>, wh_util:to_integer(Number)}]) of

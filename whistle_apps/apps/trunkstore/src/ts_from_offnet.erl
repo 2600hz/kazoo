@@ -237,10 +237,10 @@ get_endpoint_data(JObj) ->
                 [<<"nouser">>, _] ->
                     [ReqU, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
                     ?LOG("EP: ReqU: ~s", [ReqU]),
-                    wh_util:to_e164(ReqU);
+                    wnm_util:to_e164(ReqU);
                 [T, _] ->
                     ?LOG("EP: ToUser: ~s", [T]),
-                    wh_util:to_e164(T)
+                    wnm_util:to_e164(T)
             end,
     ?LOG("EP: ToDID: ~s", [ToDID]),
 
@@ -256,7 +256,7 @@ get_endpoint_data(JObj) ->
         {error, _}=E -> ?LOG("Release ~s from ~s", [CallID, AcctID]), ok = ts_acctmgr:release_trunk(AcctID, CallID, 0), E;
         {ok, RateData} ->
             InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
-            Invite = ts_util:invite_format(wh_util:binary_to_lower(InFormat), ToDID) ++ RoutingData,
+            Invite = ts_util:invite_format(wh_util:to_lower_binary(InFormat), ToDID) ++ RoutingData,
 
             {endpoint, wh_json:from_list([{<<"Custom-Channel-Vars">>, wh_json:from_list([
 											 {<<"Auth-User">>, AuthUser}

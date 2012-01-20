@@ -154,9 +154,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = case wh_number_manager:assign_number_to_account(Number, AccountId) of
-                                 {ok, _} ->
-                                     Result = wh_number_manager:set_public_fields(Number, AccountId, JObj),
+                  Context1 = case wh_number_manager:assign_number_to_account(Number, AccountId, JObj) of
+                                 {ok, _}=Result ->
                                      case set_response(Result, Number, Context) of
                                          #cb_context{resp_status=success}=C1 ->
                                              Replaces = wh_json:get_ne_value(<<"replaces">>, JObj),
@@ -410,6 +409,8 @@ set_response({error, not_found}, Number, Context) ->
     crossbar_util:response_bad_identifier(Number, Context);
 set_response({ok, Doc}, _, Context) ->
     crossbar_util:response(Doc, Context);
+set_response({error, Else}, _, Context) ->
+    crossbar_util:response_invalid_data(Else, Context);
 set_response(_Else, _, Context) ->
     crossbar_util:response_db_fatal(Context).
 

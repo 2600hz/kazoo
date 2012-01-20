@@ -35,8 +35,8 @@ handle_req(JObj, Props) ->
 
 -spec get_rate_data/1 :: (json_object()) -> {'ok', proplist()} | {'error', 'no_rate_found'}.
 get_rate_data(JObj) ->
-    ToDID = wh_util:to_e164(wh_json:get_value(<<"To-DID">>, JObj)),
-    _FromDID = wh_util:to_e164(wh_json:get_value(<<"From-DID">>, JObj)),
+    ToDID = wnm_util:to_e164(wh_json:get_value(<<"To-DID">>, JObj)),
+    _FromDID = wnm_util:to_e164(wh_json:get_value(<<"From-DID">>, JObj)),
     RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
     Direction = wh_json:get_value(<<"Direction">>, JObj),
     <<"+", Start:1/binary, Rest/binary>> = ToDID,
@@ -118,7 +118,7 @@ set_rate_ccvs(_, undefined, _) ->
 set_rate_ccvs(Response, CtrlQ, JObj) ->    
     case props:get_value(<<"Rates">>, Response) of
         [] ->
-            ToDID = wh_util:to_e164(wh_json:get_value(<<"To-DID">>, JObj)),
+            ToDID = wnm_util:to_e164(wh_json:get_value(<<"To-DID">>, JObj)),
             whapps_util:alert(<<"error">>, ["Source: ~s(~b)~n"
                                             ,"Alert: rate information unavailable for ~s~n"
                                             ,"Call-ID: ~s~n"]

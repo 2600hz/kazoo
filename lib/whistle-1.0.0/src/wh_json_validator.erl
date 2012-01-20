@@ -704,7 +704,7 @@ is_valid_format(<<"style">>, _) ->
     %% supposed to be valid CSS 2.1 style definition
     true;
 is_valid_format(<<"phone">>, Instance) ->
-    case wh_util:is_e164(Instance) of
+    case wnm_util:is_e164(Instance) of
         true -> true;
         false -> <<"phone:Phone number not in E.164 format">>
     end;
