@@ -21,9 +21,6 @@
 
 -define(SERVER, ?MODULE).
 -define(REG_DB, <<"registrations">>).
--define(REG_VIEW_FILE, <<"views/registrations.json">>).
--define(LOOKUP_ACCOUNT_REGS, <<"reg_doc/lookup_realm_user">>).
--define(LOOKUP_ACCOUNT_USER_REALM, <<"reg_doc/realm_and_username">>).
 
 %%%===================================================================
 %%% API

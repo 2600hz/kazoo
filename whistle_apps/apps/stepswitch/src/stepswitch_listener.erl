@@ -70,9 +70,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting new stepswitch outbound responder"),
-    ?LOG_SYS("ensuring database ~s exists", [?RESOURCES_DB]),
-    couch_mgr:db_create(?RESOURCES_DB),
-    couch_mgr:revise_views_from_folder(?RESOURCES_DB, stepswitch),
+    stepswitch_maintenance:refresh(),
     {ok, #state{resrcs=get_resrcs()}}.
 
 %%--------------------------------------------------------------------

@@ -24,7 +24,6 @@
 -spec blocking_refresh/0 :: () -> 'ok'.
 blocking_refresh() ->
     lists:foreach(fun(AccountDb) ->
-                          timer:sleep(2000),
                           refresh(AccountDb)
                   end, whapps_util:get_all_accounts()),
     ok.
@@ -41,17 +40,17 @@ blocking_refresh() ->
 refresh() ->
     spawn(fun() ->
                   lists:foreach(fun(AccountDb) ->
-                                        timer:sleep(2000),
                                         refresh(AccountDb)
                                 end, whapps_util:get_all_accounts())
           end),
     started.
 
-refresh(Account) when not is_binary(Account) ->
-    refresh(wh_util:to_binary(Account));
-refresh(Account) ->
+refresh(<<Account/binary>>) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
-    couch_mgr:revise_views_from_folder(AccountDb, callflow).
+    Views = whapps_util:get_views_json(callflow, "views"),
+    whapps_util:update_views(AccountDb, Views);
+refresh(Account) ->
+    refresh(wh_util:to_binary(Account)).
 
 %%--------------------------------------------------------------------
 %% @public
