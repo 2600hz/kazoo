@@ -160,7 +160,7 @@ get_accounts_by_name(Name) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_event_type/1 :: (JObj) -> {binary(), binary()} when
-      JObj :: json_object().
+      JObj :: wh_json:json_object().
 get_event_type(JObj) ->
     wh_util:get_event_type(JObj).
 
@@ -172,7 +172,7 @@ get_event_type(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec put_callid/1 :: (JObj) -> binary() | 'undefined' when
-      JObj :: json_object().
+      JObj :: wh_json:json_object().
 put_callid(JObj) ->
     wh_util:put_callid(JObj).
 
@@ -183,7 +183,7 @@ put_callid(JObj) ->
 %% this returns the cause and code for the call termination
 %% @end
 %%--------------------------------------------------------------------
--spec get_call_termination_reason/1 :: (json_object()) -> {binary(), binary()}.
+-spec get_call_termination_reason/1 :: (wh_json:json_object()) -> {binary(), binary()}.
 get_call_termination_reason(JObj) ->
     Cause = case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
                <<>> ->

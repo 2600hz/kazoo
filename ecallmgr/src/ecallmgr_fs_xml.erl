@@ -41,7 +41,7 @@ route_resp_xml(RespJObj) ->
     route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj), wh_json:get_value(<<"Routes">>, RespJObj), RespJObj).
 
 %% Prop = Route Response
--spec route_resp_xml/3 :: (binary(), json_objects(), json_object()) -> {'ok', iolist()}.
+-spec route_resp_xml/3 :: (binary(), wh_json:json_objects(), wh_json:json_object()) -> {'ok', iolist()}.
 route_resp_xml(<<"bridge">>, Routes, _JObj) ->
     ?LOG("Creating a bridge XML response"),
     %% format the Route based on protocol
@@ -90,7 +90,7 @@ route_resp_xml(<<"error">>, _Routes, JObj) ->
     ?LOG("Creating error XML: ~s", [Xml]),
     {ok, lists:flatten(Xml)}.
 
--spec build_route/2 :: (proplist() | json_object(), DIDFormat :: binary()) -> binary() | {'error', 'timeout'}.
+-spec build_route/2 :: (proplist() | wh_json:json_object(), DIDFormat :: binary()) -> binary() | {'error', 'timeout'}.
 build_route(Route, undefined) ->
     build_route(Route, <<"username">>);
 build_route([_|_]=RouteProp, DIDFormat) ->
@@ -132,18 +132,18 @@ format_did(DID, <<"npan">>) ->
 format_did(DID, <<"1npan">>) ->
     wnm_util:to_1npan(DID).
 
--spec get_leg_vars/1 :: (json_object() | proplist()) -> iolist().
+-spec get_leg_vars/1 :: (wh_json:json_object() | proplist()) -> iolist().
 get_leg_vars([_|_]=Prop) ->
     ["[", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"];
 get_leg_vars(JObj) -> get_leg_vars(wh_json:to_proplist(JObj)).
 
--spec get_channel_vars/1 :: (json_object() | proplist()) -> [string(),...].
+-spec get_channel_vars/1 :: (wh_json:json_object() | proplist()) -> [string(),...].
 get_channel_vars([_|_]=Prop) ->
     P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
     ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
 get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
--spec get_channel_vars/2 :: ({binary(), binary() | json_object()}, [binary(),...] | []) -> [binary(),...] | [].
+-spec get_channel_vars/2 :: ({binary(), binary() | wh_json:json_object()}, [binary(),...] | []) -> [binary(),...] | [].
 get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
     lists:foldl(fun({K, V}, Acc) ->
                         case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of

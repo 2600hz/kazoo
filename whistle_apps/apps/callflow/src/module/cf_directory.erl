@@ -58,7 +58,7 @@
 -define(TIMEOUT_DTMF, 4000).
 -define(TIMEOUT_ENDPOINT, ?DEFAULT_TIMEOUT).
 
--type lookup_entry() :: {ne_binary(), {json_object(), json_object()}}. % {ID, {DialpadJObj, JObj}}
+-type lookup_entry() :: {ne_binary(), {wh_json:json_object(), wh_json:json_object()}}. % {ID, {DialpadJObj, JObj}}
 -type lookup_table() :: [lookup_entry(),...] | [].
 
 -record(dbn_state, {
@@ -108,7 +108,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (json_object(), #cf_call{}) -> 'ok'.
+-spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> 'ok'.
 handle(Data, #cf_call{account_db=AccountDB}=Call) ->
     DirID = wh_json:get_value(<<"id">>, Data),
     {ok, DirJObj} = couch_mgr:open_doc(AccountDB, DirID),
@@ -242,7 +242,7 @@ collect_min_digits(#cf_call{account_db=DB}=Call, Prompts, #dbn_state{min_dtmf=Mi
             collect_min_digits(Call, Prompts, DbN, LookupTable, CurrDTMFs)
     end.
 
--spec analyze_dtmf/2 :: (binary(), json_objects() | lookup_table()) -> 'no_dtmf' | 'no_results' | {'one_result', json_object()} | {'many_results', json_objects()}.
+-spec analyze_dtmf/2 :: (binary(), wh_json:json_objects() | lookup_table()) -> 'no_dtmf' | 'no_results' | {'one_result', wh_json:json_object()} | {'many_results', wh_json:json_objects()}.
 analyze_dtmf(<<>>, _) -> 'no_dtmf';
 analyze_dtmf(DTMFs, LookupTable) ->
     ?LOG("Analyze: ~s", [DTMFs]),
@@ -264,14 +264,14 @@ to_json_list([{_, {_, _JObj}}|_] = MatchesTable) ->
 to_json_list(JObjs) ->
     JObjs.
 
--spec filter_table/2 :: (lookup_entry() | json_object(), ne_binary()) -> boolean().
+-spec filter_table/2 :: (lookup_entry() | wh_json:json_object(), ne_binary()) -> boolean().
 filter_table({_, {DialplanJObj, _}}, DTMFs) -> doc_matches(DialplanJObj, DTMFs);
 filter_table(JObj, DTMFs) -> doc_matches(JObj, DTMFs).
 
 %% Play instructions, then the prompts to scroll through messages
--spec matches_menu/4 :: (#cf_call{}, #prompts{}, lookup_table() | json_objects(), ne_binary()) -> {'route', json_object()} | 'continue' | 'start_over'.
--spec matches_menu/5 :: (#cf_call{}, #prompts{}, lookup_table() | json_objects(), ne_binary(), non_neg_integer()) -> {'route', json_object()} | 'continue' | 'start_over'.
--spec matches_menu_dtmf/6 :: (#cf_call{}, #prompts{}, lookup_table() | json_objects(), ne_binary(), non_neg_integer(), {'ok', binary()}) -> {'route', json_object()} | 'continue' | 'start_over'.
+-spec matches_menu/4 :: (#cf_call{}, #prompts{}, lookup_table() | wh_json:json_objects(), ne_binary()) -> {'route', wh_json:json_object()} | 'continue' | 'start_over'.
+-spec matches_menu/5 :: (#cf_call{}, #prompts{}, lookup_table() | wh_json:json_objects(), ne_binary(), non_neg_integer()) -> {'route', wh_json:json_object()} | 'continue' | 'start_over'.
+-spec matches_menu_dtmf/6 :: (#cf_call{}, #prompts{}, lookup_table() | wh_json:json_objects(), ne_binary(), non_neg_integer(), {'ok', binary()}) -> {'route', wh_json:json_object()} | 'continue' | 'start_over'.
 matches_menu(Call, Prompts, LookupList, DB) ->
     matches_menu(Call, Prompts, LookupList, DB, 1).
 
@@ -344,7 +344,7 @@ play_no_more_results(Call, #prompts{no_more_results=NoMoreResults}) ->
 play_result_menu(Call, #prompts{result_menu=ResultMenu}) ->
     play_and_collect([{play, ResultMenu}], Call).
 
--spec play_result/5 :: (#cf_call{}, #prompts{}, integer(), json_object(), ne_binary()) -> {'ok', binary()}.
+-spec play_result/5 :: (#cf_call{}, #prompts{}, integer(), wh_json:json_object(), ne_binary()) -> {'ok', binary()}.
 play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj, DB) ->
     Name = case wh_json:get_value(<<"media_name_id">>, JObj) of
                undefined -> {say, <<$', (wh_json:get_binary_value(<<"full_name">>, JObj))/binary, $'>>};
@@ -357,7 +357,7 @@ play_result(Call, #prompts{result_number=ResultNumber}, MatchNo, JObj, DB) ->
                      ], Call).
 
 %% Takes a user doc ID, creates the endpoint, and routes the call (ending the dialplan callflow as well)
--spec route_to_match/2 :: (#cf_call{}, json_object()) -> 'ok'.
+-spec route_to_match/2 :: (#cf_call{}, wh_json:json_object()) -> 'ok'.
 route_to_match(#cf_call{account_db=DB}=Call, JObj) ->
     case couch_mgr:open_doc(DB, wh_json:get_value(<<"callflow_id">>, JObj)) of
         {ok, CallflowJObj} ->
@@ -368,7 +368,7 @@ route_to_match(#cf_call{account_db=DB}=Call, JObj) ->
             cf_exe:continue(Call)
     end.
 
--spec confirm_match/4 :: (#cf_call{}, #prompts{}, boolean(), json_object()) -> boolean().
+-spec confirm_match/4 :: (#cf_call{}, #prompts{}, boolean(), wh_json:json_object()) -> boolean().
 confirm_match(_Call, _Prompts, false, _) ->
     true;
 confirm_match(Call, Prompts, true, JObj) ->
@@ -377,7 +377,7 @@ confirm_match(Call, Prompts, true, JObj) ->
         {ok, _DTMF}=OK -> confirm_match_dtmf(Call, Prompts, JObj, OK)
     end.
 
--spec confirm_match_dtmf/4 :: (#cf_call{}, #prompts{}, json_object(), {'ok', binary()}) -> boolean().
+-spec confirm_match_dtmf/4 :: (#cf_call{}, #prompts{}, wh_json:json_object(), {'ok', binary()}) -> boolean().
 confirm_match_dtmf(Call, Prompts, JObj, {ok, <<>>}) ->
     confirm_match(Call, Prompts, true, JObj);
 confirm_match_dtmf(_Call, _Prompts, _JObj, {ok, ?DTMF_ACCEPT_MATCH}) -> true;
@@ -398,7 +398,7 @@ play_has_matches(Call, #prompts{result_match=ResultMatch}, Matches) ->
                         ,{play, ResultMatch, ?ANY_DIGIT}
                        ], Call).
 
--spec play_confirm_match/3 :: (#cf_call{}, #prompts{}, json_object()) -> {'ok', binary()}.
+-spec play_confirm_match/3 :: (#cf_call{}, #prompts{}, wh_json:json_object()) -> {'ok', binary()}.
 play_confirm_match(Call, #prompts{confirm_menu=ConfirmMenu, found=Found}, JObj) ->
     play_and_collect([{play, Found}
                       ,{say, wh_json:get_value(<<"first_name">>, JObj)}
@@ -445,7 +445,7 @@ collect_min_digits(MinDTMF, DTMFs) when MinDTMF > 0 ->
 collect_min_digits(_, DTMFs) ->
     {ok, DTMFs}.
 
--spec collect_next_dtmf/4 :: (#cf_call{}, #prompts{}, #dbn_state{}, json_objects()) -> no_return().
+-spec collect_next_dtmf/4 :: (#cf_call{}, #prompts{}, #dbn_state{}, wh_json:json_objects()) -> no_return().
 collect_next_dtmf(Call, Prompts, #dbn_state{digits_collected=DTMFs}=DbN, LookupTable) ->
     case collect_min_digits(1, <<>>) of
         {ok, Digit} ->
@@ -470,7 +470,7 @@ play_start_instructions(Call, #prompts{enter_person=EnterPerson, firstname=FName
                       ,{play, NamePrompt}
                      ], Call).
 
--spec build_lookup_table/1 :: ([{binary(), binary(), json_object()},...]) -> lookup_table().
+-spec build_lookup_table/1 :: ([{binary(), binary(), wh_json:json_object()},...]) -> lookup_table().
 build_lookup_table([_|_]=Docs) ->
     orddict:to_list(orddict:from_list([ {ID, convert_fields(Callflow, DocData, ?FIELDS)} || {ID, Callflow, DocData} <- Docs ])).
 
@@ -478,7 +478,7 @@ build_lookup_table([_|_]=Docs) ->
 %% to their dialpad equivalents
 %% as well as the json object without the dialpad encoding
 %% only convert the fields in Fields (and strip others out of the docs)
--spec convert_fields/3 :: (ne_binary(), json_object(), [ne_binary(),...]) -> {json_object(), json_object()}.
+-spec convert_fields/3 :: (ne_binary(), wh_json:json_object(), [ne_binary(),...]) -> {wh_json:json_object(), wh_json:json_object()}.
 convert_fields(Callflow, Doc, Fields) ->
     {AlphaJObj, JObj} = lists:foldr(fun(Field, {DialpadJObj, JObj}) ->
                                             {wh_json:set_value(Field, cf_util:alpha_to_dialpad(wh_json:get_value(Field, Doc)), DialpadJObj)
@@ -504,7 +504,7 @@ convert_fields(Callflow, Doc, Fields) ->
 get_max_dtmf(Max, Min) when Min > Max -> 0;
 get_max_dtmf(Max, _) -> Max.
 
--spec get_dir_docs/2 :: (ne_binary(), ne_binary()) -> [{ne_binary(), ne_binary(), json_object()},...].
+-spec get_dir_docs/2 :: (ne_binary(), ne_binary()) -> [{ne_binary(), ne_binary(), wh_json:json_object()},...].
 get_dir_docs(DirName, DBName) ->
     {ok, Docs} = couch_mgr:get_results(DBName, ?DIR_DOCS_VIEW, [{<<"key">>, DirName}, {<<"include_docs">>, true}]),
     [ {wh_json:get_value(<<"id">>, Doc), wh_json:get_value(<<"value">>, Doc), wh_json:get_value(<<"doc">>, Doc)} || Doc <- Docs ].
@@ -514,7 +514,7 @@ get_sort_by(<<"first", _/binary>>) -> first;
 get_sort_by(_) -> last.
 
 %% does the eneterd DTMFs match either the first/last combo or the last/first combo?
--spec doc_matches/2 :: (json_object(), ne_binary()) -> boolean().
+-spec doc_matches/2 :: (wh_json:json_object(), ne_binary()) -> boolean().
 doc_matches(JObj, DTMFs) ->
     FName = wh_json:get_value(<<"first_name">>, JObj),
     LName = wh_json:get_value(<<"last_name">>, JObj),

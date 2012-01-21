@@ -29,7 +29,7 @@ init() ->
     {ok, ?DEFAULT_SUBJ_TMPL} = erlydtl:compile(whapps_config:get(?MODULE, default_subject_template), ?DEFAULT_SUBJ_TMPL),
     ?LOG_SYS("init done for vm-to-email").
 
--spec handle_req/2 :: (json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:voicemail_v(JObj),
     whapps_util:put_callid(JObj),
@@ -66,7 +66,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec get_template_props/2 :: (json_object(), json_objects()) -> proplist().
+-spec get_template_props/2 :: (wh_json:json_object(), wh_json:json_objects()) -> proplist().
 get_template_props(Event, Docs) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, Event),
@@ -76,11 +76,11 @@ get_template_props(Event, Docs) ->
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
     SupportNumber = wh_json:find([<<"vm_to_email">>, <<"support_number">>], Docs
-				 ,whapps_config:get(?MODULE, <<"default_support_number">>, <<"(415) 886 - 7900">>)),    
+                                 ,whapps_config:get(?MODULE, <<"default_support_number">>, <<"(415) 886 - 7900">>)),    
     SupportEmail = wh_json:find([<<"vm_to_email">>, <<"support_email">>], Docs
-				,whapps_config:get(?MODULE, <<"default_support_email">>, <<"support@2600hz.com">>)),
+                                ,whapps_config:get(?MODULE, <<"default_support_email">>, <<"support@2600hz.com">>)),
     FromAddress = wh_json:find([<<"vm_to_email">>, <<"from_address">>], Docs
-			       ,whapps_config:get(?MODULE, <<"default_from">>, <<"no_reply@2600hz.com">>)),
+                               ,whapps_config:get(?MODULE, <<"default_from">>, <<"no_reply@2600hz.com">>)),
 
     Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
 
@@ -207,8 +207,8 @@ render_template(undefined, DefaultTemplate, Props) ->
 render_template(Template, DefaultTemplate, Props) ->
     try                                       
         CustomTemplate = wh_util:to_atom(list_to_binary([props:get_value(account_db, Props), "_"
-							,wh_json:to_binary(DefaultTemplate)]), true
-					),
+                                                        ,wh_json:to_binary(DefaultTemplate)]), true
+                                        ),
         ?LOG("compiling custom ~s template", [DefaultTemplate]),
         {ok, CustomTemplate} = erlydtl:compile(Template, CustomTemplate),
         ?LOG("rendering custom template ~s", [CustomTemplate]),

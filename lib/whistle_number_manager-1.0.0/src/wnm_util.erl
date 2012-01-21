@@ -28,7 +28,7 @@
 %% and if return the name as well as the data
 %% @end
 %%--------------------------------------------------------------------
--spec get_carrier_module/1 :: (json_object()) -> {ok, atom(), json_object()} 
+-spec get_carrier_module/1 :: (wh_json:json_object()) -> {ok, atom(), wh_json:json_object()} 
                                                      | {error, not_specified | unknown_module}.
 get_carrier_module(JObj) ->
     case wh_json:get_value(<<"pvt_module_name">>, JObj) of

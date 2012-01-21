@@ -202,7 +202,7 @@ start_amqp() ->
 %%--------------------------------------------------------------------
 -spec process_req/3 :: (MsgType, JObj, State) -> no_return() when
       MsgType :: tuple(binary(), binary()),
-      JObj :: json_object(),
+      JObj :: wh_json:json_object(),
       State :: #state{}.
 process_req({<<"conference">>, <<"discovery">>}, JObj, _) ->
     %% TODO: If I had more time this additional Q is possibly not necessary, or at least pooled...

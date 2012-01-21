@@ -25,17 +25,17 @@
 %% like devices, ring groups, and resources.
 %% @end
 %%--------------------------------------------------------------------
--spec build/2 :: ('undefined' | ne_binary() | json_object(), #cf_call{}) -> {'ok', json_objects()} | 
+-spec build/2 :: ('undefined' | ne_binary() | wh_json:json_object(), #cf_call{}) -> {'ok', wh_json:json_objects()} | 
                                                                             {'error', term()}.
--spec build/3 :: ('undefined' | ne_binary() | json_object(), 'undefined' | json_object(), #cf_call{}) -> {'ok', json_objects()} |
-                                                                                                         {'error', term()}.
+-spec build/3 :: ('undefined' | ne_binary() | wh_json:json_object(), 'undefined' | wh_json:json_object(), #cf_call{}) -> {'ok', wh_json:json_objects()} |
+                                                                                                                         {'error', term()}.
 build(EndpointId, Call) ->
-    build(EndpointId, ?EMPTY_JSON_OBJECT, Call).
+    build(EndpointId, wh_json:new(), Call).
 
 build(undefined, _Properties, _Call) ->
     {error, endpoint_id_undefined};
 build(EndpointId, undefined, Call) ->
-    build(EndpointId, ?EMPTY_JSON_OBJECT, Call);
+    build(EndpointId, wh_json:new(), Call);
 build(EndpointId, Properties, Call) when is_binary(EndpointId) ->
     case ?MODULE:get(EndpointId, Call) of
         {ok, Endpoint} ->
@@ -66,7 +66,7 @@ build(Endpoint, Properties, #cf_call{owner_id=OwnerId, authorizing_id=Authorizin
 %% bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoints/3 :: (json_object(), json_object(), #cf_call{}) -> {'ok', json_objects()}
+-spec create_endpoints/3 :: (wh_json:json_object(), wh_json:json_object(), #cf_call{}) -> {'ok', wh_json:json_objects()}
                                                                               | {'error', 'no_endpoints'}.
 create_endpoints(Endpoint, Properties, Call) ->
     Fwd = cf_attributes:call_forward(Endpoint, Call),
@@ -108,7 +108,7 @@ create_endpoints(Endpoint, Properties, Call) ->
 %% Fetches a endpoint defintion from the database or cache
 %% @end
 %%--------------------------------------------------------------------
--spec get/2 :: ('undefined' | ne_binary(), #cf_call{}) -> {'ok', json_object()} | {'error', term()}.
+-spec get/2 :: ('undefined' | ne_binary(), #cf_call{}) -> {'ok', wh_json:json_object()} | {'error', term()}.
 get(undefined, _Call) ->
     {error, invalid_endpoint_id};
 get(EndpointId, #cf_call{account_db=Db}) ->
@@ -134,7 +134,7 @@ get(EndpointId, #cf_call{account_db=Db}) ->
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec create_sip_endpoint/3 :: (json_object(), json_object(), #cf_call{}) -> json_object().
+-spec create_sip_endpoint/3 :: (wh_json:json_object(), wh_json:json_object(), #cf_call{}) -> wh_json:json_object().
 create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_id=OwnerId, account_id=AccountId
                                                    ,request_user=RUser, cid_name=CIDName, cid_number=CIDNum}=Call) ->
     {CalleeNum, CalleeName} = cf_attributes:callee_id(Endpoint, Call),
@@ -183,7 +183,7 @@ create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_
 %% the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec create_call_fwd_endpoint/4 :: (json_object(), json_object(), json_object(), #cf_call{}) -> json_object().
+-spec create_call_fwd_endpoint/4 :: (wh_json:json_object(), wh_json:json_object(), wh_json:json_object(), #cf_call{}) -> wh_json:json_object().
 create_call_fwd_endpoint(Endpoint, Properties, CallFwd, #cf_call{request_user=ReqUser}=Call) ->
     ?LOG("call forwarding endpoint to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
     IgnoreEarlyMedia = case wh_json:is_true(<<"require_keypress">>, CallFwd)
@@ -233,7 +233,7 @@ generate_sip_headers(Endpoint, #cf_call{inception=Inception}) ->
                            end
                    end
                  ],
-    lists:foldr(fun(F, JObj) -> F(JObj) end, ?EMPTY_JSON_OBJECT, HeaderFuns).
+    lists:foldr(fun(F, JObj) -> F(JObj) end, wh_json:new(), HeaderFuns).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -243,8 +243,8 @@ generate_sip_headers(Endpoint, #cf_call{inception=Inception}) ->
 %% call.
 %% @end
 %%--------------------------------------------------------------------
--spec generate_ccvs/2 :: (json_object(), #cf_call{}) -> json_object().
--spec generate_ccvs/3 :: (json_object(), #cf_call{}, undefined | json_object()) -> json_object().
+-spec generate_ccvs/2 :: (wh_json:json_object(), #cf_call{}) -> wh_json:json_object().
+-spec generate_ccvs/3 :: (wh_json:json_object(), #cf_call{}, 'undefined' | wh_json:json_object()) -> wh_json:json_object().
 
 generate_ccvs(Endpoint, Call) ->
     generate_ccvs(Endpoint, Call, undefined).
@@ -304,4 +304,4 @@ generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
                        end
                end
               ],
-    lists:foldr(fun(F, J) -> F(J) end, ?EMPTY_JSON_OBJECT, CCVFuns).
+    lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), CCVFuns).

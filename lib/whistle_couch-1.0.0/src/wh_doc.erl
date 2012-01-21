@@ -27,11 +27,11 @@
 %% parameters on all crossbar documents
 %% @end
 %%--------------------------------------------------------------------
--spec(update_pvt_parameters/2 :: (JObj0 :: json_object(), DBName :: binary()) -> json_object()).
+-spec update_pvt_parameters/2 :: (JObj0 :: wh_json:json_object(), DBName :: binary()) -> wh_json:json_object().
 update_pvt_parameters(JObj0, DBName) ->
     update_pvt_parameters(JObj0, DBName, []).
 
--spec(update_pvt_parameters/3 :: (JObj0 :: json_object(), DBName :: binary(), Options :: proplist()) -> json_object()).
+-spec update_pvt_parameters/3 :: (JObj0 :: wh_json:json_object(), DBName :: binary(), Options :: proplist()) -> wh_json:json_object().
 update_pvt_parameters(JObj0, DBName, Options) ->
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName, Options) end, JObj0, ?PVT_FUNS).
 
@@ -75,7 +75,7 @@ add_pvt_modified(JObj, _, _) ->
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec(public_fields/1 :: (Json :: json_object()|json_objects()) -> json_object()|json_objects()).
+-spec public_fields/1 :: (Json :: wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
 public_fields([{struct, _}|_]=Json)->
     lists:map(fun public_fields/1, Json);
 public_fields({struct, Prop}) ->
@@ -91,7 +91,7 @@ public_fields(Json) ->
 %% considered private; otherwise false
 %% @end
 %%--------------------------------------------------------------------
--spec(is_private_key/1 :: (Key :: binary()) -> boolean()).
+-spec is_private_key/1 :: (binary()) -> boolean().
 is_private_key(<<"_", _/binary>>) -> true;
 is_private_key(<<"pvt_", _/binary>>) -> true;
 is_private_key(_) -> false.
@@ -103,7 +103,7 @@ is_private_key(_) -> false.
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec(private_fields/1 :: (Json :: json_object()|json_objects()) -> json_object()|json_objects()).
+-spec private_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
 private_fields([{struct, _}|_]=Json)->
     lists:map(fun public_fields/1, Json);
 private_fields({struct, Prop}) ->

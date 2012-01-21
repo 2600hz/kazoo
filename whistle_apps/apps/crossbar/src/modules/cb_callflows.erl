@@ -298,7 +298,7 @@ create_callflow(#cb_context{req_data=Data}=Context) ->
 load_callflow(DocId, Context) ->
     case crossbar_doc:load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc, resp_data=Data, db_name=Db}=Context1 ->
-            Meta = get_metadata(wh_json:get_value(<<"flow">>, Doc), Db, ?EMPTY_JSON_OBJECT),
+            Meta = get_metadata(wh_json:get_value(<<"flow">>, Doc), Db, wh_json:new()),
             Context1#cb_context{resp_data=wh_json:set_value(<<"metadata">>, Meta, Data)};
         Else ->
             Else
@@ -328,7 +328,7 @@ update_callflow(DocId, #cb_context{req_data=Data}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
+-spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -338,7 +338,7 @@ normalize_view_results(JObj, Acc) ->
 %% collect addional informat about the objects referenced in the flow
 %% @end
 %%--------------------------------------------------------------------
--spec get_metadata/3 :: ('undefined' | json_object(), ne_binary(), json_object()) -> json_object().
+-spec get_metadata/3 :: ('undefined' | wh_json:json_object(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
 get_metadata(undefined, _, JObj) ->
     JObj;
 get_metadata(Flow, Db, JObj) ->
@@ -366,10 +366,10 @@ get_metadata(Flow, Db, JObj) ->
 %% exists in metadata.
 %% @end
 %%--------------------------------------------------------------------
--spec create_metadata/3 :: (Db, Id, JObj) -> json_object() when
+-spec create_metadata/3 :: (Db, Id, JObj) -> wh_json:json_object() when
       Db :: binary(),
       Id :: binary(),
-      JObj :: json_object().
+      JObj :: wh_json:json_object().
 create_metadata(Db, Id, JObj) ->
     case wh_json:get_value(Id, JObj) =:= undefined
         andalso couch_mgr:open_doc(Db, Id) of
@@ -384,8 +384,8 @@ create_metadata(Db, Id, JObj) ->
             JObj
     end.
 
--spec create_metadata/1 :: (Doc) -> json_object() when
-      Doc :: json_object().
+-spec create_metadata/1 :: (Doc) -> wh_json:json_object() when
+      Doc :: wh_json:json_object().
 create_metadata(Doc) ->
     %% simple funciton for setting the same key in one json object
     %% with the value of that key in another, unless it doesnt exist
@@ -418,4 +418,4 @@ create_metadata(Doc) ->
     %% do it
     lists:foldl(fun(Fun, JObj) ->
                          Fun(Doc, JObj)
-                end, ?EMPTY_JSON_OBJECT, Funs).
+                end, wh_json:new(), Funs).

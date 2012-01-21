@@ -13,11 +13,11 @@
 
 -include("../callflow.hrl").
 
--spec handle/2 :: (json_object(), #cf_call{}) -> 'ok'.
+-spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> 'ok'.
 handle(Data, #cf_call{call_kvs=KVs}=Call) ->
     cf_exe:continue(Call#cf_call{call_kvs=merge(Data, KVs)}).
 
--spec merge/2 :: (json_object(), orddict:orddict()) -> orddict:orddict().
+-spec merge/2 :: (wh_json:json_object(), orddict:orddict()) -> orddict:orddict().
 merge(New, Old) ->
     lists:foldl(fun({K,NewV}, AccDict) ->
                         ?LOG("adding ~p : ~p", [K, NewV]),

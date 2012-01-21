@@ -15,7 +15,7 @@
 init() ->
     ok.
 
--spec handle_req/2 :: (json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
     wh_util:put_callid(ApiJObj),
 

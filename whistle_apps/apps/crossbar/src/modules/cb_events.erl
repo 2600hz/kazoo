@@ -44,7 +44,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -129,24 +129,24 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.events">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.events">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.events">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  Context1 = validate(Params, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+                  Context1 = validate(Params, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.events">>, [RD, Context | Params]}, State) ->
@@ -154,7 +154,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.events">>, [RD, Con
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:ensure_saved(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.events">>, [RD, Context | Params]}, State) ->
@@ -162,7 +162,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.events">>, [RD, Cont
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:ensure_saved(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.events">>, [RD, Context | Params]}, State) ->
@@ -170,7 +170,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.events">>, [RD, C
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:ensure_saved(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, _, Payload}, State) ->
@@ -292,28 +292,28 @@ resource_exists(_) ->
 validate([], #cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
-	{ok, Pid} when is_pid(Pid) ->
-	    load_events(Context, Pid, UserId);
-	_Other ->
-	    crossbar_util:response_faulty_request(Context)
+        {ok, Pid} when is_pid(Pid) ->
+            load_events(Context, Pid, UserId);
+        _Other ->
+            crossbar_util:response_faulty_request(Context)
     end;
 
 validate([], #cb_context{req_verb = <<"post">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
-	{ok, Pid} when is_pid(Pid) ->
-	    update_srv(Context, Pid, UserId);
-	_ ->
-	    crossbar_util:response_faulty_request(Context)
+        {ok, Pid} when is_pid(Pid) ->
+            update_srv(Context, Pid, UserId);
+        _ ->
+            crossbar_util:response_faulty_request(Context)
     end;
 
 validate([], #cb_context{req_verb = <<"delete">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
-	{ok, Pid} when is_pid(Pid) ->
-	    stop_srv(Context, Pid, UserId);
-	_ ->
-	    crossbar_util:response_faulty_request(Context)
+        {ok, Pid} when is_pid(Pid) ->
+            stop_srv(Context, Pid, UserId);
+        _ ->
+            crossbar_util:response_faulty_request(Context)
     end;
 
 validate([<<"available">>], #cb_context{req_verb = <<"get">>}=Context) ->
@@ -322,10 +322,10 @@ validate([<<"available">>], #cb_context{req_verb = <<"get">>}=Context) ->
 validate([<<"subscription">>], #cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
-	{ok, Pid} when is_pid(Pid) ->
-	    load_current_subscriptions(Context, Pid);
-	_Other ->
-	    crossbar_util:response_faulty_request(Context)
+        {ok, Pid} when is_pid(Pid) ->
+            load_current_subscriptions(Context, Pid);
+        _Other ->
+            crossbar_util:response_faulty_request(Context)
     end;
 
 validate([<<"subscription">>], #cb_context{req_verb = <<"put">>, auth_doc=AuthDoc, account_id=AcctId, req_data=ReqData}=Context) ->
@@ -333,10 +333,10 @@ validate([<<"subscription">>], #cb_context{req_verb = <<"put">>, auth_doc=AuthDo
     Subscriptions = wh_json:get_value(<<"subscriptions">>, ReqData, []),
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
-	{ok, Pid} when is_pid(Pid) ->
-	    add_subscriptions(Context, Pid, Subscriptions, UserId);
-	_ ->
-	    crossbar_util:response_faulty_request(Context)
+        {ok, Pid} when is_pid(Pid) ->
+            add_subscriptions(Context, Pid, Subscriptions, UserId);
+        _ ->
+            crossbar_util:response_faulty_request(Context)
     end;
 
 validate([<<"subscription">>], #cb_context{req_verb = <<"delete">>, auth_doc=AuthDoc, account_id=AcctId, req_data=ReqData}=Context) ->
@@ -344,10 +344,10 @@ validate([<<"subscription">>], #cb_context{req_verb = <<"delete">>, auth_doc=Aut
     Subscriptions = wh_json:get_value(<<"subscriptions">>, ReqData, []),
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
-	{ok, Pid} when is_pid(Pid) ->
-	    rm_subscriptions(Context, Pid, Subscriptions, UserId);
-	_Other ->
-	    crossbar_util:response_faulty_request(Context)
+        {ok, Pid} when is_pid(Pid) ->
+            rm_subscriptions(Context, Pid, Subscriptions, UserId);
+        _Other ->
+            crossbar_util:response_faulty_request(Context)
     end;
 
 validate(_, Context) ->
@@ -356,15 +356,15 @@ validate(_, Context) ->
 load_events(Context, Srv, User) ->
     {Events, Overflow} = cb_events_srv:fetch(Srv),
     RespJObj = wh_json:set_value(<<"overflow">>, Overflow, 
-				 wh_json:set_value(<<"events">>, Events, ?EMPTY_JSON_OBJECT)
-				),
+                                 wh_json:set_value(<<"events">>, Events, wh_json:new())
+                                ),
     save_latest(Context, Srv, User, RespJObj).
 
 update_srv(#cb_context{req_data=ReqJObj}=Context, Srv, User) ->
     MaxEvents = wh_json:get_integer_value(<<"max_events">>, ReqJObj, 100),
     {ok, EventsDropped} = cb_events_srv:set_maxevents(Srv, MaxEvents),
     ?LOG("set max events to ~b: dropped ~b events", [MaxEvents, EventsDropped]),
-    save_latest(Context, Srv, User, wh_json:set_value(<<"events_dropped">>, EventsDropped, ?EMPTY_JSON_OBJECT)).
+    save_latest(Context, Srv, User, wh_json:set_value(<<"events_dropped">>, EventsDropped, wh_json:new())).
 
 stop_srv(Context, Srv, User) ->
     ok = cb_events_srv:stop(Srv),
@@ -372,23 +372,23 @@ stop_srv(Context, Srv, User) ->
 
 load_available_bindings(Context) ->
     Mods = [ begin <<"wapi_", Bind/binary>> = Mod, Bind end
-	     || A <- erlang:loaded(),
-		binary:match((Mod=wh_util:to_binary(A)), <<"wapi_">>) =/= nomatch,
-		erlang:function_exported(A, bind_q, 2)
-	   ],
+             || A <- erlang:loaded(),
+                binary:match((Mod=wh_util:to_binary(A)), <<"wapi_">>) =/= nomatch,
+                erlang:function_exported(A, bind_q, 2)
+           ],
     RespJObj = wh_json:from_list([{<<"available_bindings">>, Mods}]),
     crossbar_util:response(RespJObj, Context).
 
 load_current_subscriptions(Context, Srv) ->
     {ok, Subs} = cb_events_srv:subscriptions(Srv),
-    RespJObj = wh_json:set_value(<<"current_subscriptions">>, Subs, ?EMPTY_JSON_OBJECT),
+    RespJObj = wh_json:set_value(<<"current_subscriptions">>, Subs, wh_json:new()),
     crossbar_util:response(RespJObj, Context).
 
 add_subscriptions(#cb_context{req_data=ReqJObj}=Context, Srv, Subs, User) ->
     ?LOG("Adding ~p", [Subs]),
     RespJObj = {struct, [{Sub
-			  ,format_sub_result(cb_events_srv:subscribe(Srv, Sub, wh_json:get_value(<<"options">>, ReqJObj, [])))
-			 } || Sub <- Subs]},
+                          ,format_sub_result(cb_events_srv:subscribe(Srv, Sub, wh_json:get_value(<<"options">>, ReqJObj, [])))
+                         } || Sub <- Subs]},
     Context1 = save_latest(Context, Srv, User),
     crossbar_util:response(RespJObj, Context1).
 
@@ -405,36 +405,36 @@ rm_subscriptions(Context, Srv, Subs, User) ->
     save_latest(Context, Srv, User).
 
 save_latest(Context, Srv, User) ->
-    save_latest(Context, Srv, User, ?EMPTY_JSON_OBJECT).
+    save_latest(Context, Srv, User, wh_json:new()).
 
 save_latest(Context, undefined, User, BaseJObj) ->
     Doc0 = wh_json:from_list([{<<"subscriptions">>, []}
-			     ,{<<"max_events">>, 0}
-			     ,{<<"_id">>, ?EVENT_DOC_ID(User)}
-			     ,{<<"pvt_type">>, ?DOC_TYPE}
-			     ]),
+                             ,{<<"max_events">>, 0}
+                             ,{<<"_id">>, ?EVENT_DOC_ID(User)}
+                             ,{<<"pvt_type">>, ?DOC_TYPE}
+                             ]),
     Doc = wh_json:merge_jobjs(Doc0, BaseJObj),
 
     case crossbar_doc:load_merge(?EVENT_DOC_ID(User), Doc, Context) of
-	#cb_context{resp_status=success}=Context1 ->
-	    Context1;
-	_ ->
-	    Context#cb_context{resp_status=success, doc=Doc}
+        #cb_context{resp_status=success}=Context1 ->
+            Context1;
+        _ ->
+            Context#cb_context{resp_status=success, doc=Doc}
     end;
 save_latest(Context, Srv, User, BaseJObj) ->
     {ok, Subs} = cb_events_srv:subscriptions(Srv),
     Max = cb_events_srv:get_maxevents(Srv),
 
     Doc0 = wh_json:from_list([{<<"subscriptions">>, Subs}
-			     ,{<<"max_events">>, Max}
-			     ,{<<"_id">>, ?EVENT_DOC_ID(User)}
-			     ,{<<"pvt_type">>, ?DOC_TYPE}
-			     ]),
+                             ,{<<"max_events">>, Max}
+                             ,{<<"_id">>, ?EVENT_DOC_ID(User)}
+                             ,{<<"pvt_type">>, ?DOC_TYPE}
+                             ]),
     Doc = wh_json:merge_jobjs(Doc0, BaseJObj),
 
     case crossbar_doc:load_merge(?EVENT_DOC_ID(User), Doc, Context) of
-	#cb_context{resp_status=success}=Context1 ->
-	    Context1;
-	_ ->
-	    Context#cb_context{resp_status=success, doc=Doc}
+        #cb_context{resp_status=success}=Context1 ->
+            Context1;
+        _ ->
+            Context#cb_context{resp_status=success, doc=Doc}
     end.

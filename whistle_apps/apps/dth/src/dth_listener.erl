@@ -15,26 +15,26 @@
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("dth.hrl").
 
 -define(RESPONDERS, [
-		     {cdr_handler, [{<<"call_detail">>, <<"cdr">>}]}
-		     ,{blacklist_req, [{<<"dth">>, <<"blacklist_req">>}]}
-		    ]).
+                     {dth_cdr_handler, [{<<"call_detail">>, <<"cdr">>}]}
+                     ,{dth_blacklist_req, [{<<"dth">>, <<"blacklist_req">>}]}
+                    ]).
 -define(BINDINGS, [
-		   {cdrs, [{callid, <<"*">>}]}
-		   ,{dth, []}
-		  ]).
+                   {cdrs, [{callid, <<"*">>}]}
+                   ,{dth, []}
+                  ]).
 
 -define(SERVER, ?MODULE).
 -define(BLACKLIST_REFRESH, 60000).
 
 -record(state, {
-	  wsdl_model = undefined :: 'undefined' | term()
-	 ,cache = undefined :: 'undefined' | pid()
-	 ,dth_cdr_url = <<>> :: binary()
+          wsdl_model = undefined :: 'undefined' | term()
+         ,cache = undefined :: 'undefined' | pid()
+         ,dth_cdr_url = <<>> :: binary()
          }).
 
 %%%===================================================================
@@ -50,8 +50,8 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				     ], []).
+                                      ,{bindings, ?BINDINGS}
+                                     ], []).
 -spec stop/1 :: (Srv) -> ok when
       Srv :: atom() | pid().
 stop(Srv) ->
@@ -85,18 +85,18 @@ init([]) ->
 
     case filelib:is_regular(WSDLHrlFile) of
         true -> ok;
-	false ->
-	    true = filelib:is_regular(WSDLFile),
-	    ok = detergent:write_hrl(WSDLFile, WSDLHrlFile)
+        false ->
+            true = filelib:is_regular(WSDLFile),
+            ok = detergent:write_hrl(WSDLFile, WSDLHrlFile)
     end,
 
     Cache = whereis(dth_cache),
     erlang:monitor(process, Cache),
 
     {ok, #state{wsdl_model=detergent:initModel(WSDLFile)
-		,dth_cdr_url=URL
-		,cache=Cache
-	       }}.
+                ,dth_cdr_url=URL
+                ,cache=Cache
+               }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -201,13 +201,13 @@ refresh_blacklist(Cache, WSDL) ->
 -spec get_blocklist_entries/1 :: (Response) -> [{binary(),binary()},...] | [] when
       Response :: #'p:GetBlockListResponse'{}.
 get_blocklist_entries(#'p:GetBlockListResponse'{
-			 'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
-			   'BlockListEntry'=undefined
-			  }}) ->
+                         'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
+                           'BlockListEntry'=undefined
+                          }}) ->
     {struct, []};
 get_blocklist_entries(#'p:GetBlockListResponse'{
-			 'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
-			   'BlockListEntry'=Entries
-			  }}) when is_list(Entries) ->
+                         'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
+                           'BlockListEntry'=Entries
+                          }}) when is_list(Entries) ->
     %% do some formatting of the entries to be [{ID, Reason}]
     {struct, [{wh_util:to_binary(ID), wh_util:to_binary(Reason)} || #'p:BlockListEntry'{'CustomerID'=ID, 'BlockReason'=Reason} <- Entries]}.

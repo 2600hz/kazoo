@@ -140,7 +140,7 @@ fs_log(Node, Format, Args) ->
           end,
     freeswitch:api(Node, log, lists:flatten(Log)).
 
--spec put_callid/1 :: (json_object()) -> 'undefined' | term().
+-spec put_callid/1 :: (wh_json:json_object()) -> 'undefined' | term().
 put_callid(JObj) ->
     case props:get_value(<<"Call-ID">>, JObj) of
         undefined -> put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>));

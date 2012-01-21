@@ -81,7 +81,7 @@ find_numbers(Search, Quanity) ->
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number/3 :: (ne_binary(), ne_binary(), json_object()) -> {ok, ne_binary(), json_object()} |
+-spec acquire_number/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, ne_binary(), wh_json:json_object()} |
                                                                        {error, ne_binary()}.
 acquire_number(_, <<"available">>, JObj) ->
     {ok, <<"in_service">>, JObj};
@@ -103,7 +103,7 @@ acquire_number(_, _, _) ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec release_number/2 :: (ne_binary(), json_object()) -> {ok, json_object()}.
+-spec release_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()}.
 release_number(_, JObj) ->
     {ok, JObj}.
 
@@ -113,7 +113,7 @@ release_number(_, JObj) ->
 %% Order a number given the discovery json object
 %% @end
 %%--------------------------------------------------------------------
--spec order_number/1 :: (json_object()) -> {ok, ne_binary(), json_object()} |
+-spec order_number/1 :: (wh_json:json_object()) -> {ok, ne_binary(), wh_json:json_object()} |
                                            {error, ne_binary()}.
 order_number(JObj) ->
     Id = wh_json:get_string_value(<<"number_id">>, JObj),
@@ -222,7 +222,7 @@ make_numbers_request(Verb, Props) ->
 %% Convert a number order response to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_order_response_to_json/1 :: (term()) -> json_object().
+-spec number_order_response_to_json/1 :: (term()) -> wh_json:json_object().
 number_order_response_to_json([]) ->
     wh_json:new();
 number_order_response_to_json([Xml]) ->
@@ -246,7 +246,7 @@ number_order_response_to_json(Xml) ->
 %% Convert a number search response XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec number_search_response_to_json/1 :: (term()) -> json_object().
+-spec number_search_response_to_json/1 :: (term()) -> wh_json:json_object().
 number_search_response_to_json([]) ->
     wh_json:new();
 number_search_response_to_json([Xml]) ->
@@ -268,7 +268,7 @@ number_search_response_to_json(Xml) ->
 %% Convert a rate center XML entity to json
 %% @end
 %%--------------------------------------------------------------------
--spec rate_center_to_json/1 :: (list()) -> json_object().
+-spec rate_center_to_json/1 :: (list()) -> wh_json:json_object().
 rate_center_to_json([]) ->
     wh_json:new();
 rate_center_to_json([Xml]) ->

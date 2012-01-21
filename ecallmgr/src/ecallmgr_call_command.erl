@@ -14,7 +14,7 @@
 -type io_device() :: pid() | fd().
 -type file_stream_state() :: {'undefined' | io_device(), binary()}.
 
--spec exec_cmd/4 :: (atom(), ne_binary(), json_object(), pid()) -> 'ok' | 'timeout' | {'error', 'invalid_callid' | 'failed'}.
+-spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) -> 'ok' | 'timeout' | {'error', 'invalid_callid' | 'failed'}.
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     case DestID =:= UUID of
@@ -53,7 +53,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 %% the FS ESL via mod_erlang_event
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_app/4 :: (atom(), ne_binary(), json_object(), ne_binary()) -> {binary(), binary() | 'noop'}
+-spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> {binary(), binary() | 'noop'}
                                                                                | {'return', 'ok'}
                                                                                | {'error', binary()}
                                                                                | {'error', binary(), binary()}.
@@ -449,9 +449,10 @@ get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
                                   end
                           end
                           ,fun(DP) ->
-                                   case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT) of 
-                                       ?EMPTY_JSON_OBJECT -> DP;
-                                       CCVs ->
+                                   CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+                                   case wh_json:is_empty(CCVs) of
+                                       true -> DP;
+                                       false ->
                                            ChannelVars = wh_json:to_proplist(CCVs),
                                            [{"application", <<"set ", (get_fs_kv(K, V, UUID))/binary>>} 
                                             || {K, V} <- ChannelVars] ++ DP
@@ -517,10 +518,10 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
     case wapi_dialplan:set_v(JObj) of
         false -> {'error', <<"set failed to execute as JObj did not validate">>};
         true ->
-            ChannelVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
+            ChannelVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
             _ = [ set(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- ChannelVars],
 
-            CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, ?EMPTY_JSON_OBJECT)),
+            CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, wh_json:new())),
             _ = [ export(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- CallVars],
 
             {<<"set">>, noop}
@@ -639,7 +640,7 @@ create_masquerade_event(Application, EventName) ->
 %%                              ,origination_caller_id_number=Num]Endpoint)
 %% @end
 %%--------------------------------------------------------------------
--spec get_bridge_endpoint/1 :: (json_object()) -> string().
+-spec get_bridge_endpoint/1 :: (wh_json:json_object()) -> string().
 get_bridge_endpoint(JObj) ->
     case ecallmgr_fs_xml:build_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
         {'error', 'timeout'} ->
@@ -655,7 +656,7 @@ get_bridge_endpoint(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_amqp/5 :: (atom(), ne_binary(), ne_binary(), json_object(), proplist()) -> no_return().
+-spec stream_over_amqp/5 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> no_return().
 stream_over_amqp(Node, UUID, File, JObj, Headers) ->
     DestQ = case wh_json:get_value(<<"Media-Transfer-Destination">>, JObj) of
                 undefined ->
@@ -700,11 +701,11 @@ amqp_stream(DestQ, F, State, Headers, Seq) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_http/5 :: (atom(), ne_binary(), ne_binary(), 'put' | 'post', json_object()) -> no_return().
+-spec stream_over_http/5 :: (atom(), ne_binary(), ne_binary(), 'put' | 'post', wh_json:json_object()) -> no_return().
 stream_over_http(Node, UUID, File, Method, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     ?LOG("streaming via HTTP(~s) to ~s", [Method, Url]),
-    AddHeaders = wh_json:to_proplist(wh_json:get_value(<<"Additional-Headers">>, JObj, ?EMPTY_JSON_OBJECT)),
+    AddHeaders = wh_json:to_proplist(wh_json:get_value(<<"Additional-Headers">>, JObj, wh_json:new())),
     Headers = [{"Content-Length", filelib:file_size(File)}
                | [ {wh_util:to_list(K), V} || {K,V} <- AddHeaders] ],
 
@@ -793,7 +794,7 @@ export(Node, UUID, Arg) ->
 %% builds a FS specific flag string for the conference command
 %% @end
 %%--------------------------------------------------------------------
--spec get_conference_flags/1 :: (json_object()) -> binary().
+-spec get_conference_flags/1 :: (wh_json:json_object()) -> binary().
 get_conference_flags(JObj) ->
     Flags = [
              <<Flag/binary, Delim/binary>>
@@ -812,7 +813,7 @@ get_conference_flags(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_fetch_call_event/3 :: (atom(), ne_binary(), json_object()) -> 'ok'.
+-spec send_fetch_call_event/3 :: (atom(), ne_binary(), wh_json:json_object()) -> 'ok'.
 send_fetch_call_event(Node, UUID, JObj) ->
     try
         Prop = case wh_util:is_true(wh_json:get_value(<<"From-Other-Leg">>, JObj)) of
@@ -857,7 +858,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_error_response/4 :: (ne_binary(), ne_binary(), ne_binary(), json_object()) -> 'ok'.
+-spec send_error_response/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
 send_error_response(App, Msg, UUID, JObj) ->
     ?LOG("error getting FS app for ~s: ~p", [App, Msg]),
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
@@ -875,7 +876,7 @@ send_error_response(App, Msg, UUID, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_store_call_event/3 :: (atom(), ne_binary(), json_object()) -> 'ok'.
+-spec send_store_call_event/3 :: (atom(), ne_binary(), wh_json:json_object()) -> 'ok'.
 send_store_call_event(Node, UUID, MediaTransResults) ->
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
     Prop = try

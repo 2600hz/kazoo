@@ -62,7 +62,7 @@
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), [binary(),...]} |
                               {'say', binary()} | {'say', binary(), binary()} |
                               {'say', binary(), binary(), binary()} | {'say', binary(), binary(), binary(), binary()} |
-                              {'tones', json_objects()}.
+                              {'tones', wh_json:json_objects()}.
 -export_type([audio_macro_prompt/0]).
 
 -spec audio_macro/2 :: (Prompts, Call) -> binary() when
@@ -71,7 +71,7 @@
 -spec audio_macro/3 :: (Prompts, Call, Queue) -> binary() when
       Prompts :: [audio_macro_prompt(),...],
       Call :: #cf_call{},
-      Queue :: json_objects().
+      Queue :: wh_json:json_objects().
 
 audio_macro([], Call) ->
     noop(Call);
@@ -169,23 +169,25 @@ flush_dtmf(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set/3 :: (ChannelVars, CallVars, Call) -> 'ok' when
-      ChannelVars :: 'undefined' | json_object(),
-      CallVars :: 'undefined' | json_object(),
+      ChannelVars :: 'undefined' | wh_json:json_object(),
+      CallVars :: 'undefined' | wh_json:json_object(),
       Call :: #cf_call{}.
 
 set(undefined, CallVars, Call) ->
-    set(?EMPTY_JSON_OBJECT, CallVars, Call);
+    set(wh_json:new(), CallVars, Call);
 set(ChannelVars, undefined, Call) ->
-    set(ChannelVars, ?EMPTY_JSON_OBJECT, Call);
-set(?EMPTY_JSON_OBJECT, ?EMPTY_JSON_OBJECT, _) ->
-    ok;
+    set(ChannelVars, wh_json:new(), Call);
 set(ChannelVars, CallVars, Call) ->
-    Command = [{<<"Application-Name">>, <<"set">>}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Custom-Channel-Vars">>, ChannelVars}
-               ,{<<"Custom-Call-Vars">>, CallVars}
-              ],
-    send_command(Command, Call).
+    case wh_json:is_empty(ChannelVars) andalso wh_json:is_empty(CallVars) of
+        true -> ok;
+        false ->
+            Command = [{<<"Application-Name">>, <<"set">>}
+                       ,{<<"Insert-At">>, <<"now">>}
+                       ,{<<"Custom-Channel-Vars">>, ChannelVars}
+                       ,{<<"Custom-Call-Vars">>, CallVars}
+                      ],
+            send_command(Command, Call)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -216,7 +218,7 @@ b_fetch(FromOtherLeg, Call) ->
     fetch(FromOtherLeg, Call),
     case wait_for_message(<<"fetch">>) of
         {ok, JObj} ->
-            {ok, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)};
+            {ok, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())};
         {error, _}=E ->
             E
     end.
@@ -228,7 +230,7 @@ b_fetch(FromOtherLeg, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec answer/1 :: (#cf_call{}) -> 'ok'.
--spec b_answer/1 :: (#cf_call{}) -> cf_api_error() | {'ok', json_object()}.
+-spec b_answer/1 :: (#cf_call{}) -> cf_api_error() | {'ok', wh_json:json_object()}.
 
 answer(Call) ->
     Command = [{<<"Application-Name">>, <<"answer">>}],
@@ -324,17 +326,17 @@ b_channel_status(CallId, Call) ->
 %% Produces the low level wh_api request to bridge the call
 %% @end
 %%--------------------------------------------------------------------
--spec bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) -> 'ok'.
--spec bridge/3 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
--spec bridge/4 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
--spec bridge/5 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
--spec bridge/6 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Ringback :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
+-spec bridge/2 :: (Endpoints :: wh_json:json_objects(), Call :: #cf_call{}) -> 'ok'.
+-spec bridge/3 :: (Endpoints :: wh_json:json_objects(), Timeout :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
+-spec bridge/4 :: (Endpoints :: wh_json:json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
+-spec bridge/5 :: (Endpoints :: wh_json:json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
+-spec bridge/6 :: (Endpoints :: wh_json:json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Ringback :: cf_api_binary(), Call :: #cf_call{}) -> 'ok'.
 
--spec b_bridge/2 :: (Endpoints :: json_objects(), Call :: #cf_call{}) -> cf_api_bridge_return().
--spec b_bridge/3 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
--spec b_bridge/4 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
--spec b_bridge/5 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
--spec b_bridge/6 :: (Endpoints :: json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Ringback :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
+-spec b_bridge/2 :: (Endpoints :: wh_json:json_objects(), Call :: #cf_call{}) -> cf_api_bridge_return().
+-spec b_bridge/3 :: (Endpoints :: wh_json:json_objects(), Timeout :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
+-spec b_bridge/4 :: (Endpoints :: wh_json:json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
+-spec b_bridge/5 :: (Endpoints :: wh_json:json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
+-spec b_bridge/6 :: (Endpoints :: wh_json:json_objects(), Timeout :: cf_api_binary(), Strategy :: cf_api_binary(), IgnoreEarlyMedia :: cf_api_binary(), Ringback :: cf_api_binary(), Call :: #cf_call{}) -> cf_api_bridge_return().
 
 bridge(Endpoints, Call) ->
     bridge(Endpoints, ?DEFAULT_TIMEOUT, Call).
@@ -415,7 +417,7 @@ b_play(Media, Terminators, Call) ->
     play(Media, Terminators, Call),
     wait_for_message(<<"play">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, infinity).
 
--spec play_command/3 :: (Media, Terminators, Call) -> json_object() when
+-spec play_command/3 :: (Media, Terminators, Call) -> wh_json:json_object() when
       Media :: binary(),
       Terminators :: [binary(),...],
       Call :: #cf_call{}.
@@ -491,19 +493,19 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 -spec store/5 :: (ne_binary(), Transfer, Method, Headers, Call) -> 'ok' when
       Transfer :: binary(),
       Method :: binary(),
-      Headers :: json_objects(),
+      Headers :: wh_json:json_objects(),
       Call :: #cf_call{}.
 
--type b_store_return() :: {'error', 'timeout' | json_object()} | {'ok', json_object()}.
+-type b_store_return() :: {'error', 'timeout' | wh_json:json_object()} | {'ok', wh_json:json_object()}.
 
 -spec b_store/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> b_store_return().
 -spec b_store/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> b_store_return().
--spec b_store/5 :: (ne_binary(), ne_binary(), ne_binary(), json_objects(), #cf_call{}) -> b_store_return().
+-spec b_store/5 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_objects(), #cf_call{}) -> b_store_return().
 
 store(MediaName, Transfer, Call) ->
     store(MediaName, Transfer, <<"put">>, Call).
 store(MediaName, Transfer, Method, Call) ->
-    store(MediaName, Transfer, Method, [?EMPTY_JSON_OBJECT], Call).
+    store(MediaName, Transfer, Method, [wh_json:new()], Call).
 store(MediaName, Transfer, Method, Headers, Call) ->
     Command = [{<<"Application-Name">>, <<"store">>}
                ,{<<"Media-Name">>, MediaName}
@@ -517,7 +519,7 @@ store(MediaName, Transfer, Method, Headers, Call) ->
 b_store(MediaName, Transfer, Call) ->
     b_store(MediaName, Transfer, <<"put">>, Call).
 b_store(MediaName, Transfer, Method, Call) ->
-    b_store(MediaName, Transfer, Method, [?EMPTY_JSON_OBJECT], Call).
+    b_store(MediaName, Transfer, Method, [wh_json:new()], Call).
 b_store(MediaName, Transfer, Method, Headers, Call) ->
     store(MediaName, Transfer, Method, Headers, Call),
     wait_for_application(<<"store">>).
@@ -530,7 +532,7 @@ b_store(MediaName, Transfer, Method, Headers, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec tones/2 :: (Tones, Call) -> 'ok' when
-      Tones :: json_objects(),
+      Tones :: wh_json:json_objects(),
       Call :: #cf_call{}.
 tones(Tones, Call) ->
     Command = [{<<"Application-Name">>, <<"tones">>}
@@ -538,8 +540,8 @@ tones(Tones, Call) ->
               ],
     send_command(Command, Call).
 
--spec tones_command/2 :: (Tones, Call) -> json_object() when
-      Tones :: json_objects(),
+-spec tones_command/2 :: (Tones, Call) -> wh_json:json_object() when
+      Tones :: wh_json:json_objects(),
       Call :: #cf_call{}.
 tones_command(Tones, Call) ->
     CallId = cf_exe:callid(Call),
@@ -604,7 +606,7 @@ tones_command(Tones, Call) ->
       Terminators :: [binary(),...],
       Call :: #cf_call{}.
 
--type b_play_and_collect_digits_return() :: {'error', 'channel_hungup' | 'channel_unbridge' | json_object()} | {'ok', binary()}.
+-type b_play_and_collect_digits_return() :: {'error', 'channel_hungup' | 'channel_unbridge' | wh_json:json_object()} | {'ok', binary()}.
 
 -spec b_play_and_collect_digit/2 :: (Media, Call) -> b_play_and_collect_digits_return() when
       Media :: binary(),
@@ -791,7 +793,7 @@ say(Say, Type, Method, Language,Call) ->
               ],
     send_command(Command, Call).
 
--spec say_command/5 :: (Say, Type, Method, Language, Call) -> json_object() when
+-spec say_command/5 :: (Say, Type, Method, Language, Call) -> wh_json:json_object() when
       Say :: binary(),
       Type :: binary(),
       Method :: binary(),
@@ -953,7 +955,7 @@ b_flush(Call) ->
 %% execution untill the call is terminated.
 %% @end
 %%--------------------------------------------------------------------
--type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | json_object()} | {'ok', binary()}.
+-type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | wh_json:json_object()} | {'ok', binary()}.
 
 -spec collect_digits/2 :: (MaxDigits, Call) -> collect_digits_return() when
       MaxDigits :: integer() | binary(),
@@ -1136,7 +1138,7 @@ wait_for_message(Application, Event, Type, Timeout) ->
 %% is only interested in events for the application.
 %% @end
 %%--------------------------------------------------------------------
--type wait_for_application_return() :: {'error', 'timeout' | json_object()} | {'ok', json_object()}.
+-type wait_for_application_return() :: {'error', 'timeout' | wh_json:json_object()} | {'ok', wh_json:json_object()}.
 -spec wait_for_application/1 :: (ne_binary()) -> wait_for_application_return().
 -spec wait_for_application/2 :: (ne_binary(), ne_binary()) -> wait_for_application_return().
 -spec wait_for_application/3 :: (ne_binary(), ne_binary(), ne_binary()) -> wait_for_application_return().
@@ -1188,7 +1190,7 @@ wait_for_application(Application, Event, Type, Timeout) ->
 %% Wait for a DTMF event and extract the digits when it comes
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_dtmf/1 :: (Timeout) -> {'error', 'channel_hungup' | json_object()} | {'ok', binary()} when
+-spec wait_for_dtmf/1 :: (Timeout) -> {'error', 'channel_hungup' | wh_json:json_object()} | {'ok', binary()} when
       Timeout :: 'infinity' | integer().
 wait_for_dtmf(Timeout) ->
     Start = erlang:now(),
@@ -1305,7 +1307,7 @@ wait_for_noop(NoopId) ->
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_unbridge/0 :: () -> {'ok', json_object()}.
+-spec wait_for_unbridge/0 :: () -> {'ok', wh_json:json_object()}.
 wait_for_unbridge() ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
@@ -1396,8 +1398,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
 %% Wait forever for the channel to hangup
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (JObj) -> {binary(), binary(), binary()} when
-      JObj :: json_object().
+-spec get_event_type/1 :: (wh_json:json_object()) -> {binary(), binary(), binary()}.
 get_event_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj, <<>>)
       ,wh_json:get_value(<<"Event-Name">>, JObj, <<>>)

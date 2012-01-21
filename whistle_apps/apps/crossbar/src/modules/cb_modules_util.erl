@@ -19,7 +19,7 @@
 %% whose device is registered, ready to be used in a view filter
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_regs/1 :: ([{ne_binary(), ne_binary()},...]) -> [{{ne_binary(), ne_binary()}, json_object()},...] | [].
+-spec lookup_regs/1 :: ([{ne_binary(), ne_binary()},...]) -> [{{ne_binary(), ne_binary()}, wh_json:json_object()},...] | [].
 lookup_regs(RealmUserList) ->
     Q = amqp_util:new_queue(),
     ok = amqp_util:bind_q_to_targeted(Q),
@@ -45,7 +45,7 @@ lookup_registration({Realm, User}, Q) ->
 %% occurs
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_reg_resp/2 :: ([pid(),...] | [], [{{ne_binary(), ne_binary()}, json_object()},...] | []) -> [{{ne_binary(), ne_binary()}, json_object()},...] | [].
+-spec wait_for_reg_resp/2 :: ([pid(),...] | [], [{{ne_binary(), ne_binary()}, wh_json:json_object()},...] | []) -> [{{ne_binary(), ne_binary()}, wh_json:json_object()},...] | [].
 wait_for_reg_resp([], Acc) -> Acc;
 wait_for_reg_resp([_|Ps]=Pids, Acc) ->
     receive
@@ -84,7 +84,7 @@ pass_hashes(Username, Password) ->
     MD5 = wh_util:to_binary(wh_util:to_hex(erlang:md5(Creds))),
     {MD5, SHA1}.
 
--spec get_devices_owned_by/2 :: (ne_binary(), ne_binary()) -> json_objects().
+-spec get_devices_owned_by/2 :: (ne_binary(), ne_binary()) -> wh_json:json_objects().
 get_devices_owned_by(OwnerID, DB) ->
     case couch_mgr:get_results(DB, <<"cf_attributes/owned">>, [{<<"key">>, [OwnerID, <<"device">>]}, {<<"include_docs">>, true}]) of
 	{ok, JObjs} ->

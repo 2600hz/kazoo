@@ -33,7 +33,7 @@
 	  ,user_id = <<>> :: binary()
           ,max_events = 100 :: pos_integer()
           ,subscriptions = [] :: [queue_bindings:bind_types(),...] | []
-	  ,events = queue:new() :: queue() %% queue(json_object())
+	  ,events = queue:new() :: queue() %% queue(wh_json:json_object())
           ,overflow = false :: boolean() %% set to true if events are dropped before being fetched; reset after fetch
 	 }).
 
@@ -72,7 +72,7 @@ unsubscribe(Srv, Sub) ->
 subscriptions(Srv) ->
     gen_listener:call(Srv, subscriptions).
 
--spec fetch/1 :: (Srv) -> {json_objects(), Overflow :: boolean()} when
+-spec fetch/1 :: (Srv) -> {wh_json:json_objects(), Overflow :: boolean()} when
       Srv :: pid().
 fetch(Srv) ->
     gen_listener:call(Srv, fetch).
@@ -94,7 +94,7 @@ stop(Srv) ->
     gen_listener:stop(Srv).
 
 -spec handle_req/2 :: (JObj, Props) -> 'ok' when
-      JObj :: json_object(),
+      JObj :: wh_json:json_object(),
       Props :: proplist().
 handle_req(JObj, Props) ->
     Srv = props:get_value(server, Props),

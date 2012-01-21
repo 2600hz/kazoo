@@ -12,7 +12,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req/2 :: (json_object(), proplist()) -> no_return().
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> no_return().
 handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
@@ -44,7 +44,7 @@ handle_req(JObj, _Options) ->
 %% cf_exe_sup tree.
 %% @end
 %%-----------------------------------------------------------------------------
--spec execute_call_flow/4 :: (json_object(), ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
+-spec execute_call_flow/4 :: (wh_json:json_object(), ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
 execute_call_flow(Flow, ControlQ, CallId, Call) ->
     CCVs = get_channel_ccvs(Call),
     ?LOG("call has been setup, passing control to callflow executer"),
@@ -58,7 +58,7 @@ execute_call_flow(Flow, ControlQ, CallId, Call) ->
 %% get the custom channel vars for this call
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_channel_ccvs/1 :: (#cf_call{}) -> json_object().
+-spec get_channel_ccvs/1 :: (#cf_call{}) -> wh_json:json_object().
 get_channel_ccvs(#cf_call{channel_vars=CCVs, authorizing_id=AuthId, owner_id=OwnerId
                           ,cid_name=CIDName, cid_number=CIDNumber}=Call) ->
     CCVFuns = [fun(J) ->
@@ -100,8 +100,8 @@ get_channel_ccvs(#cf_call{channel_vars=CCVs, authorizing_id=AuthId, owner_id=Own
 %% get the custom call vars for this call
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_call_ccvs/1 :: (#cf_call{}) -> json_object().
+-spec get_call_ccvs/1 :: (#cf_call{}) -> wh_json:json_object().
 get_call_ccvs(_Call) ->
     CCVFuns = [
               ],
-    lists:foldr(fun(F, J) -> F(J) end, ?EMPTY_JSON_OBJECT, CCVFuns).
+    lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), CCVFuns).

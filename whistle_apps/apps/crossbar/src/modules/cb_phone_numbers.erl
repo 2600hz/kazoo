@@ -394,7 +394,7 @@ delete(_, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_response/3 :: ({ok, json_object()} | {error, term()}, ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec set_response/3 :: ({ok, wh_json:json_object()} | {error, term()}, ne_binary(), #cb_context{}) -> #cb_context{}.
 set_response({error, reserved}, _, Context) ->
     crossbar_util:response_conflicting_docs(Context);
 set_response({error, unavailable}, _, Context) ->
@@ -443,7 +443,7 @@ process_replaces(Number, Replaces, Context) ->
 %% of the old number with the new.
 %% @end
 %%--------------------------------------------------------------------
--spec update_callflows/4 :: ([] | [json_object(),...], ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec update_callflows/4 :: ([] | [wh_json:json_object(),...], ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 update_callflows([], _, _, Context) ->
     Context;
 update_callflows([Update|Updates], Number, Replaces, Context) ->

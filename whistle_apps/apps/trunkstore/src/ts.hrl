@@ -35,36 +35,36 @@
 -type active_calls() :: list(tuple(binary(), flat_rate | per_min)) | [].
 
 -record(route_flags, {
-	  callid = <<>> :: binary()                      % unique call ID
-	  ,to_user = <<>> :: binary()                    % usually a DID
-	  ,to_domain = <<>> :: binary()
+          callid = <<>> :: binary()                      % unique call ID
+          ,to_user = <<>> :: binary()                    % usually a DID
+          ,to_domain = <<>> :: binary()
           ,from_user = <<>> :: binary()
           ,from_domain = <<>> :: binary()
-	  ,auth_user = <<>> :: binary() | undefined      % what username did we authenticate with
+          ,auth_user = <<>> :: binary() | undefined      % what username did we authenticate with
           ,auth_realm = <<>> :: binary() | undefined     % what realm did we auth with
-	  ,direction = <<>> :: binary()                  % what direction is the call (relative to client)
-	  ,server_id = <<>> :: binary()                  % Server of the DID
-	  ,failover = {} :: tuple()                      % Failover information {type, value}. Type=(sip|e164), Value=("sip:user@domain"|"+1234567890")
-	  ,allow_payphone = false :: boolean()
-	  ,caller_id = {} :: tuple()                     % Name and Number for Caller ID - check DID, then server, then account, then what we got from ecallmgr
+          ,direction = <<>> :: binary()                  % what direction is the call (relative to client)
+          ,server_id = <<>> :: binary()                  % Server of the DID
+          ,failover = {} :: tuple()                      % Failover information {type, value}. Type=(sip|e164), Value=("sip:user@domain"|"+1234567890")
+          ,allow_payphone = false :: boolean()
+          ,caller_id = {} :: tuple()                     % Name and Number for Caller ID - check DID, then server, then account, then what we got from ecallmgr
           ,caller_id_e911 = {} :: tuple()                % CallerID for E911 calls - Check DID, then server, then account
           ,inbound_format = <<>> :: binary()             % how does the server want the number? "E.164" | "NPANXXXXXX" | "1NPANXXXXXX" | "USERNAME"
           ,media_handling = <<>> :: binary()             % are we in the media path or not "process" | "bypass"
-	  ,progress_timeout = none :: none | integer()   %% for inbound with failover, how long do we wait
+          ,progress_timeout = none :: none | integer()   %% for inbound with failover, how long do we wait
           ,force_outbound = undefined :: undefined | boolean() %% if true, and call is outbound, don't try to route through our network; force over a carrier
           ,codecs = [] :: list()                         % what codecs to use (t38, g729, g711, etc...)
-	  ,rate = 0.0 :: float()                 % rate for the inbound leg, per minute
-	  ,rate_increment = 60 :: integer()      % time, in sec, to bill per
+          ,rate = 0.0 :: float()                 % rate for the inbound leg, per minute
+          ,rate_increment = 60 :: integer()      % time, in sec, to bill per
           ,rate_minimum = 60 :: integer()        % time, in sec, to bill as a minimum
-	  ,surcharge = 0.0 :: float()            % rate to charge up front
+          ,surcharge = 0.0 :: float()            % rate to charge up front
           ,rate_name = <<>> :: binary()          % name of the rate
-	  ,route_options = [] :: list()                  % options required to be handled by carriers
+          ,route_options = [] :: list()                  % options required to be handled by carriers
           ,flat_rate_enabled = true :: boolean()
-	  ,account_doc_id = <<>> :: binary()             % doc id of the account
-	  ,diverted_account_doc_id = <<>> :: binary()    % if an outbound call routes to a known DID, route internally rather than over a carrier; for billing
-          ,routes_generated = ?EMPTY_JSON_OBJECT :: json_object() | json_objects()           % the routes generated during the routing phase
-	  ,scenario = inbound :: inbound | outbound | inbound_failover | outbound_inbound | outbound_inbound_failover % what scenario have we routed over
-	 }).
+          ,account_doc_id = <<>> :: binary()             % doc id of the account
+          ,diverted_account_doc_id = <<>> :: binary()    % if an outbound call routes to a known DID, route internally rather than over a carrier; for billing
+          ,routes_generated = wh_json:new() :: wh_json:json_object() | wh_json:json_objects()           % the routes generated during the routing phase
+          ,scenario = inbound :: inbound | outbound | inbound_failover | outbound_inbound | outbound_inbound_failover % what scenario have we routed over
+         }).
 
 
 -define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookupuserauth.json", "lookupmonitor.json", "lookupipauth.json", "lookupdid.json", "lookupuser.json", "ts_cdr.json"]).

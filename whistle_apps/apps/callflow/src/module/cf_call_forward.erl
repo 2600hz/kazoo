@@ -55,7 +55,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (json_object(), #cf_call{}) -> 'ok'.
+-spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> 'ok'.
 handle(Data, Call) ->
     case get_call_forward(Call) of
         {error, #callfwd{prompts=Prompts}} ->
@@ -182,7 +182,7 @@ cf_update_number(CF, #cf_call{capture_group=CaptureGroup}) ->
 %% rev tag if the document is in conflict
 %% @end
 %%--------------------------------------------------------------------
--spec update_callfwd/2 :: (#callfwd{}, #cf_call{}) -> {'ok', json_object()} | {'error', atom()}.
+-spec update_callfwd/2 :: (#callfwd{}, #cf_call{}) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress=RK, keep_caller_id=KCI}=CF
                ,#cf_call{account_db=Db}=Call) ->
     ?LOG("updating call forwarding settings on ~s", [Id]),

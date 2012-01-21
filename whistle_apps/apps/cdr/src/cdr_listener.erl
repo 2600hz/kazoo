@@ -17,7 +17,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("cdr.hrl").
 
@@ -42,22 +42,22 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				      ,{queue_name, ?QUEUE_NAME}
-				      ,{queue_options, ?QUEUE_OPTIONS}
-				      ,{consume_options, ?CONSUME_OPTIONS}
-				     ], []).
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                     ], []).
 
--spec handle_cdr/2 :: (json_object(), proplist()) -> no_return().
+-spec handle_cdr/2 :: (wh_json:json_object(), proplist()) -> no_return().
 handle_cdr(JObj, _Props) ->
     true  = wapi_call:cdr_v(JObj),
 
     AccountDb = wh_util:format_account_id(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
 
     Db = case couch_mgr:db_exists(AccountDb) of
-	     true -> AccountDb;
-	     false -> ?ANONYMOUS_CDR_DB
-	 end,
+             true -> AccountDb;
+             false -> ?ANONYMOUS_CDR_DB
+         end,
 
     NormDoc = wh_json:normalize_jobj(JObj),
     DocOpts = [{type, cdr}, {crossbar_doc_vsn, 1}],
@@ -175,7 +175,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Creation of the anonymous_cdr DB if it doesn't exists
 %% @end
 %%--------------------------------------------------------------------
--spec create_anonymous_cdr_db/1 :: (ne_binary()) -> {'ok', json_object()} | {'error', term()}.
+-spec create_anonymous_cdr_db/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} | {'error', term()}.
 create_anonymous_cdr_db(DB) ->
     couch_mgr:db_create(DB),
     couch_mgr:revise_doc_from_file(DB, cdr, <<"cdr.json">>).

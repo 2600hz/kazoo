@@ -496,7 +496,7 @@ update_server(ServerId, #cb_context{req_data=Data}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
+-spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -573,7 +573,7 @@ get_command_tmpl(#cb_context{doc=JObj}, #state{dev_role=DevRole}=State) ->
 %% create a proplist to provide to the templates during render
 %% @end
 %%--------------------------------------------------------------------
--spec template_props/2 :: (#cb_context{}, #state{}) -> [{ne_binary(), ne_binary() | proplist() | json_objects()},...].
+-spec template_props/2 :: (#cb_context{}, #state{}) -> [{ne_binary(), ne_binary() | proplist() | wh_json:json_objects()},...].
 template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context
                ,#state{databag_mapping=Mappings, role_path_tmpl=RolePathTmpl, databag_path_tmpl=DatabagPathTmpl}=State) ->
     Server = wh_json:to_proplist(JObj),
@@ -619,7 +619,7 @@ template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context
 %% Creates the role document (when it doesnt exist)
 %% @end
 %%--------------------------------------------------------------------
--spec create_role/3 :: (proplist(), #cb_context{}, #state{}) -> json_object().
+-spec create_role/3 :: (proplist(), #cb_context{}, #state{}) -> wh_json:json_object().
 create_role(_, _, #state{role_tmpl=undefined}) -> wh_json:new();
 create_role(Account, #cb_context{db_name=Db}, #state{role_tmpl=RoleTmpl}) ->
     try
@@ -654,7 +654,7 @@ create_role(Account, #cb_context{db_name=Db}, #state{role_tmpl=RoleTmpl}) ->
 %% TODO: this cant be a template (the databag contents) yet...
 %% @end
 %%--------------------------------------------------------------------
--spec write_databag/4 :: (proplist(), proplist(), json_object(), atom()) -> ne_binary().
+-spec write_databag/4 :: (proplist(), proplist(), wh_json:json_object(), atom()) -> ne_binary().
 write_databag(_, _, _, undefined) -> <<>>;
 write_databag(Account, Server, JObj, PathTmpl) ->
     JSON = wh_json:encode(wh_json:public_fields(JObj)),
@@ -672,7 +672,7 @@ write_databag(Account, Server, JObj, PathTmpl) ->
 %% Creates a databag for this deployment
 %% @end
 %%--------------------------------------------------------------------
--spec create_databag/3 :: (json_objects(), list(), json_object()) -> json_object().
+-spec create_databag/3 :: (wh_json:json_objects(), list(), wh_json:json_object()) -> wh_json:json_object().
 create_databag([], _, JObj) -> JObj;
 create_databag([H|T], Mapping, JObj) ->
     Roles = wh_json:get_value(<<"roles">>, H, []),
@@ -694,7 +694,7 @@ create_databag([H|T], Mapping, JObj) ->
 %% role_path_tmpl, then returns the path
 %% @end
 %%--------------------------------------------------------------------
--spec write_role/4 :: (proplist(), proplist(), json_object(), atom()) -> binary().
+-spec write_role/4 :: (proplist(), proplist(), wh_json:json_object(), atom()) -> binary().
 write_role(_, _, _, undefined) -> <<>>;
 write_role(Account, Server, JObj, PathTmpl) ->
     JSON = wh_json:encode(wh_json:public_fields(JObj)),
@@ -713,7 +713,7 @@ write_role(Account, Server, JObj, PathTmpl) ->
 %% conflicts it will require another request
 %% @end
 %%--------------------------------------------------------------------
--spec mark_deploy_running/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
+-spec mark_deploy_running/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 mark_deploy_running(Db, ServerId) ->
     {ok, JObj} = couch_mgr:open_doc(Db, ServerId),
     case wh_json:get_value(<<"pvt_deploy_status">>, JObj) of
@@ -731,7 +731,7 @@ mark_deploy_running(Db, ServerId) ->
 %% Loop the save if it is in conflict until it works
 %% @end
 %%--------------------------------------------------------------------
--spec mark_deploy_complete/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
+-spec mark_deploy_complete/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 mark_deploy_complete(Db, ServerId) ->
     {ok, JObj} = couch_mgr:open_doc(Db, ServerId),
     couch_mgr:ensure_saved(Db, wh_json:set_value(<<"pvt_deploy_status">>, <<"idle">>, JObj)).

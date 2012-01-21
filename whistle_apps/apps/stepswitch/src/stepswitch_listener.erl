@@ -256,7 +256,7 @@ update_resrc(DocId, Resrcs) ->
 %% populates it with all enabled gateways
 %% @end
 %%--------------------------------------------------------------------
--spec create_resrc/1 :: (json_object()) -> #resrc{}.
+-spec create_resrc/1 :: (wh_json:json_object()) -> #resrc{}.
 create_resrc(JObj) ->
     Default = #resrc{},
     Id = wh_json:get_value(<<"_id">>, JObj),
@@ -287,7 +287,7 @@ create_resrc(JObj) ->
 %% Given a gateway JSON object it builds a gateway record
 %% @end
 %%--------------------------------------------------------------------
--spec create_gateway/2 :: (json_object(), ne_binary()) -> #gateway{}.
+-spec create_gateway/2 :: (wh_json:json_object(), ne_binary()) -> #gateway{}.
 create_gateway(JObj, Id) ->
     Default = #gateway{},
     #gateway{resource_id = Id

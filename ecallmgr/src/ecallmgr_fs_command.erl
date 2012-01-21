@@ -12,7 +12,7 @@
 
 -include("ecallmgr.hrl").
 
--spec exec_cmd/4 :: (atom(), ne_binary(), json_object(), pid()) -> fs_api_ret().
+-spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) -> fs_api_ret().
 exec_cmd(Node, UUID, JObj, _ControlPid) ->
     UUID = wh_json:get_value(<<"Call-ID">>, JObj),
     true = wapi_fs:req_v(JObj),

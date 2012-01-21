@@ -44,7 +44,7 @@
                              ]).
 -define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, [<<"Call-ID">> | wapi_channel_query:optional_headers()])).
 
--spec resource_consume/3 :: (pid(), ne_binary(), json_object()) -> {'resource_consumed', binary(), binary(), integer()} |
+-spec resource_consume/3 :: (pid(), ne_binary(), wh_json:json_object()) -> {'resource_consumed', binary(), binary(), integer()} |
                                                                    {'resource_error', binary() | 'error'}.
 resource_consume(FsNodePid, Route, JObj) ->
     FsNodePid ! {resource_consume, self(), Route, JObj},
@@ -294,7 +294,7 @@ code_change(_OldVsn, State, _Extra) ->
       Pid :: pid(),
       Route :: binary() | list(),
       AvailChan :: integer(),
-      JObj :: json_object().
+      JObj :: wh_json:json_object().
 originate_channel(Node, Pid, Route, AvailChan, JObj) ->
     ChannelVars = ecallmgr_fs_xml:get_channel_vars(JObj),
     Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), JObj),

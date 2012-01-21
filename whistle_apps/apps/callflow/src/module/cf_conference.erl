@@ -20,7 +20,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
 handle(Data, #cf_call{account_id=AccountId}=Call) ->
     Command = [{<<"Account-ID">>, AccountId}
                ,{<<"Call-ID">>, cf_exe:callid(Call)}

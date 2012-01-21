@@ -405,7 +405,7 @@ validate(Params, #cb_context{req_verb=Verb, req_nouns=Nouns, req_data=D}=Context
     ?LOG_SYS("Data: ~p", [D]),
     crossbar_util:response_faulty_request(Context).
 
--spec create_media_meta/2 :: (json_object(), #cb_context{}) -> #cb_context{}.
+-spec create_media_meta/2 :: (wh_json:json_object(), #cb_context{}) -> #cb_context{}.
 create_media_meta(Data, Context) ->
     Doc1 = lists:foldr(fun(Meta, DocAcc) ->
                                case wh_json:get_value(Meta, Data) of
@@ -415,7 +415,7 @@ create_media_meta(Data, Context) ->
                        end, [], ?METADATA_FIELDS),
     crossbar_doc:save(Context#cb_context{doc=wh_json:from_list([{<<"pvt_type">>, <<"media">>} | Doc1])}).
 
--spec update_media_binary/4 :: (ne_binary(), ne_binary(), #cb_context{}, json_object()) -> #cb_context{}.
+-spec update_media_binary/4 :: (ne_binary(), ne_binary(), #cb_context{}, wh_json:json_object()) -> #cb_context{}.
 update_media_binary(MediaID, Contents, Context, HeadersJObj) ->
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
     Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],

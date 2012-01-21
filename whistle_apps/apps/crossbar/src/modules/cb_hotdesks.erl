@@ -225,8 +225,8 @@ validate(_, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (JObj, Acc) -> json_objects() when
-      JObj :: json_object(),
-      Acc :: json_objects().
+-spec normalize_view_results/2 :: (JObj, Acc) -> wh_json:json_objects() when
+      JObj :: wh_json:json_object(),
+      Acc :: wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].

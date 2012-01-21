@@ -174,17 +174,17 @@ transferer(Srv, Props) ->
 transferee(Srv, Props) ->
     gen_server:cast(Srv, {transferee, wh_json:from_list(Props)}).
 
--spec handle_call_command/2 :: (json_object(), proplist()) -> 'ok'.
+-spec handle_call_command/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_call_command(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_server:cast(Srv, {dialplan, JObj}).
 
--spec handle_conference_command/2 :: (json_object(), proplist()) -> 'ok'.
+-spec handle_conference_command/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_conference_command(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_server:cast(Srv, {dialplan, JObj}).
 
--spec handle_call_events/2 :: (json_object(), proplist()) -> 'ok'.
+-spec handle_call_events/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value(server, Props),
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -499,7 +499,7 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %% execute all commands in JObj immediately, irregardless of what is running (if anything).
--spec insert_command/3 :: (#state{}, insert_at_options(), json_object()) -> queue().
+-spec insert_command/3 :: (#state{}, insert_at_options(), wh_json:json_object()) -> queue().
 insert_command(#state{node=Node, callid=CallId, command_q=CommandQ, is_node_up=IsNodeUp}=State, now, JObj) ->
     AName = wh_json:get_value(<<"Application-Name">>, JObj),
     ?LOG("received immediate call command '~s'", [AName]),
@@ -519,12 +519,15 @@ insert_command(#state{node=Node, callid=CallId, command_q=CommandQ, is_node_up=I
         <<"queue">> ->
             true = wapi_dialplan:queue_v(JObj),
             DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)),
-            lists:foreach(fun(?EMPTY_JSON_OBJECT) -> ok;
-                             (CmdJObj) ->
-                                  put(callid, CallId),
-                                  AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
-                                  true = wapi_dialplan:v(AppCmd),
-                                  execute_control_request(CmdJObj, State)
+            lists:foreach(fun(CmdJObj) ->
+                                  case wh_json:is_empty(CmdJObj) of
+                                      true -> 'ok';
+                                      false ->
+                                          put(callid, CallId),
+                                          AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
+                                          true = wapi_dialplan:v(AppCmd),
+                                          execute_control_request(CmdJObj, State)
+                                  end
                           end, wh_json:get_value(<<"Commands">>, JObj)),
             CommandQ;
         _ ->
@@ -542,20 +545,23 @@ insert_command(Q, Pos, _) ->
     ?LOG("received command for an unknown queue position: ~p", [Pos]),
     Q.
 
--spec insert_command_into_queue/3 :: (queue(), tail | head, json_object()) -> queue().
+-spec insert_command_into_queue/3 :: (queue(), tail | head, wh_json:json_object()) -> queue().
 insert_command_into_queue(Q, Position, JObj) ->
     InsertFun = queue_insert_fun(Position),
     case wh_json:get_value(<<"Application-Name">>, JObj) of
         <<"queue">> -> %% list of commands that need to be added
             true = wapi_dialplan:queue_v(JObj),
             DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)), %% each command lacks the default headers
-            lists:foldr(fun(?EMPTY_JSON_OBJECT, TmpQ) -> TmpQ;
-                           (CmdJObj, TmpQ) ->
-                                AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
-                                true = wapi_dialplan:v(AppCmd),
-                                ?LOG("inserting at the ~s of the control queue call command '~s'"
-                                     ,[Position, wh_json:get_value(<<"Application-Name">>, AppCmd)]),
-                                InsertFun(AppCmd, TmpQ)
+            lists:foldr(fun(CmdJObj, TmpQ) ->
+                                case wh_json:is_empty(CmdJObj) of
+                                    true -> TmpQ;
+                                    false ->
+                                        AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
+                                        true = wapi_dialplan:v(AppCmd),
+                                        ?LOG("inserting at the ~s of the control queue call command '~s'"
+                                             ,[Position, wh_json:get_value(<<"Application-Name">>, AppCmd)]),
+                                        InsertFun(AppCmd, TmpQ)
+                                end
                         end, Q, wh_json:get_value(<<"Commands">>, JObj));
         AppName ->
             true = wapi_dialplan:v(JObj),
@@ -568,7 +574,7 @@ queue_insert_fun(tail) ->
 queue_insert_fun(head) ->
     fun queue:in_r/2.
 
--spec post_hangup_commands/1 :: (queue()) -> json_objects().
+-spec post_hangup_commands/1 :: (queue()) -> wh_json:json_objects().
 post_hangup_commands(CmdQ) ->
     [ JObj || JObj <- queue:to_list(CmdQ),
               begin
@@ -582,7 +588,7 @@ post_hangup_commands(CmdQ) ->
               end
     ].
 
--spec execute_control_request/2 :: (json_object(), #state{}) -> 'ok'.
+-spec execute_control_request/2 :: (wh_json:json_object(), #state{}) -> 'ok'.
 execute_control_request(Cmd, #state{node=Node, callid=CallId}) ->
     put(callid, CallId),
 
@@ -621,11 +627,11 @@ execute_control_request(Cmd, #state{node=Node, callid=CallId}) ->
             ok
     end.
 
--spec send_error_resp/2 :: (ne_binary(), json_object()) -> 'ok'.
+-spec send_error_resp/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
 send_error_resp(CallId, Cmd) ->
     send_error_resp(CallId, Cmd, <<"Could not execute dialplan action: ", (wh_json:get_value(<<"Application-Name">>, Cmd))/binary>>).
 
--spec send_error_resp/3 :: (ne_binary(), json_object(), ne_binary()) -> 'ok'.
+-spec send_error_resp/3 :: (ne_binary(), wh_json:json_object(), ne_binary()) -> 'ok'.
 send_error_resp(CallId, Cmd, Msg) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
             ,{<<"Error-Message">>, Msg}
@@ -646,7 +652,7 @@ get_keep_alive_ref(TRef) ->
         end,
     erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired).
 
--spec publish_leg_addition/1 :: (json_object()) -> 'ok'.
+-spec publish_leg_addition/1 :: (wh_json:json_object()) -> 'ok'.
 publish_leg_addition(JObj) ->
     Props = case wh_json:get_value(<<"Event-Name">>, JObj) of
                 <<"CHANNEL_BRIDGE">> ->
@@ -660,7 +666,7 @@ publish_leg_addition(JObj) ->
         _Else -> ecallmgr_call_events:publish_event(Event)
     end.
 
--spec publish_leg_removal/1 :: (json_object()) -> 'ok'.
+-spec publish_leg_removal/1 :: (wh_json:json_object()) -> 'ok'.
 publish_leg_removal(JObj) ->
     Props = case wh_json:get_value(<<"Event-Name">>, JObj) of
                 <<"CHANNEL_UNBRIDGE">> ->

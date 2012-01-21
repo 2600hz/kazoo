@@ -13,7 +13,7 @@
 
 -include("ecallmgr.hrl").
 
--spec exec_cmd/4 :: (atom(), ne_binary(), json_object(), pid()) -> 'ok' | 'timeout' | {'error', 'bad_reply' | string()}.
+-spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) -> 'ok' | 'timeout' | {'error', 'bad_reply' | string()}.
 exec_cmd(Node, CallId, JObj, _) ->
     AppName = wh_json:get_value(<<"Application-Name">>, JObj),
     ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
@@ -31,7 +31,7 @@ exec_cmd(Node, CallId, JObj, _) ->
     end.
 
 %% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
--spec get_fs_app/4 :: (atom(), ne_binary(), json_object(), ne_binary()) -> ne_binary() | {'error', string()}.
+-spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> ne_binary() | {'error', string()}.
 get_fs_app(_Node, ConfName, _JObj, _Application) when not is_binary(ConfName) ->
     {error, "invalid conference id"};
 get_fs_app(_Node, _ConfName, JObj, <<"participants">>) ->
@@ -146,7 +146,7 @@ participants_response(Participants, ConfName, CallId, ServerId) ->
     {ok, Payload} = wh_api:conference_participants_resp(Response),
     amqp_util:conference_publish(Payload, events, ConfName).
 
--spec parse_participants/1 :: (nonempty_string() | ne_binary()) -> json_objects().
+-spec parse_participants/1 :: (nonempty_string() | ne_binary()) -> wh_json:json_objects().
 parse_participants(Participants) ->
     CSV = wh_util:to_list(Participants),
     lists:foldr(fun(Line, Acc) ->

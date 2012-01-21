@@ -20,16 +20,16 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("ts.hrl").
 
 -define(RESPONDERS, [
-		     {route_req, [{<<"dialplan">>, <<"route_req">>}]}
-		    ]).
+                     {route_req, [{<<"dialplan">>, <<"route_req">>}]}
+                    ]).
 -define(BINDINGS, [
-		   {route, []}
-		  ]).
+                   {route, []}
+                  ]).
 
 -define(SERVER, ?MODULE).
 -define(ROUTE_QUEUE_NAME, <<"ts_responder.route.queue">>).
@@ -37,8 +37,8 @@
 -define(ROUTE_CONSUME_OPTIONS, [{exclusive, false}]).
 
 -record(state, {
-	  is_amqp_up = false :: boolean()
-	 }).
+          is_amqp_up = false :: boolean()
+         }).
 
 %%%===================================================================
 %%% API
@@ -53,20 +53,20 @@
 %%--------------------------------------------------------------------
 start_link() ->
     spawn(fun() ->
-		  _ = transfer_auth(),
-		  [ ts_responder_sup:start_handler() || _ <- [1,2,3] ]
-	  end),
+                  _ = transfer_auth(),
+                  [ ts_responder_sup:start_handler() || _ <- [1,2,3] ]
+          end),
     ignore.
 
 start_responder() ->
     ?LOG("Starting responder"),
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				      ,{queue_name, ?ROUTE_QUEUE_NAME}
-				      ,{queue_options, ?ROUTE_QUEUE_OPTIONS}
-				      ,{consume_options, ?ROUTE_CONSUME_OPTIONS}
-				      ,{basic_qos, 1}
-				     ], []).
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?ROUTE_QUEUE_NAME}
+                                      ,{queue_options, ?ROUTE_QUEUE_OPTIONS}
+                                      ,{consume_options, ?ROUTE_CONSUME_OPTIONS}
+                                      ,{basic_qos, 1}
+                                     ], []).
 
 stop(Srv) ->
     gen_listener:stop(Srv).
@@ -167,36 +167,35 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec transfer_auth/0 :: () -> ok.
+-spec transfer_auth/0 :: () -> 'ok'.
 transfer_auth() ->
     case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTHREALM, []) of
-	{ok, AuthJObjs} ->
-	    ?LOG_SYS("Importing ~b accounts into sip_auth", [length(AuthJObjs)]),
-	    _ = [ transfer_auth(AuthJObj) || AuthJObj <- AuthJObjs],
-	    ok;
-	_E ->
-	    ok
+        {ok, AuthJObjs} ->
+            ?LOG_SYS("Importing ~b accounts into sip_auth", [length(AuthJObjs)]),
+            _ = [ transfer_auth(AuthJObj) || AuthJObj <- AuthJObjs],
+            ok;
+        _E ->
+            ok
     end.
 
--spec transfer_auth/1 :: (AuthJObj) -> no_return() when
-      AuthJObj :: json_object().
+-spec transfer_auth/1 :: (wh_json:json_object()) -> no_return().
 transfer_auth(AuthJObj) ->
     ID = wh_json:get_value(<<"id">>, AuthJObj),
     spawn(fun() -> ?LOG_SYS("del doc ~s: ~p", [ID, couch_mgr:del_doc(<<"sip_auth">>, ID)]) end), %% cleanup old imports
 
     AuthData = {struct, AuthProps}
-        = wh_json:get_value(<<"value">>, AuthJObj, ?EMPTY_JSON_OBJECT),
+        = wh_json:get_value(<<"value">>, AuthJObj, wh_json:new()),
 
     DocID = <<ID/binary, (wh_json:get_binary_value(<<"server_id">>, AuthData, <<"0">>))/binary>>,
 
     SipAuthDoc = {struct, [{<<"_id">>, DocID}
-			   ,{<<"sip">>, {struct, [
-						  {<<"realm">>, wh_json:get_value(<<"auth_realm">>, AuthData, <<"">>)}
-						  ,{<<"method">>, wh_json:get_value(<<"auth_method">>, AuthData, <<"">>)}
-						  ,{<<"username">>, wh_json:get_value(<<"auth_user">>, AuthData, <<"">>)}
-						  ,{<<"password">>, wh_json:get_value(<<"auth_password">>, AuthData, <<"">>)}
-					]}
-			    }]},
+                           ,{<<"sip">>, {struct, [
+                                                  {<<"realm">>, wh_json:get_value(<<"auth_realm">>, AuthData, <<"">>)}
+                                                  ,{<<"method">>, wh_json:get_value(<<"auth_method">>, AuthData, <<"">>)}
+                                                  ,{<<"username">>, wh_json:get_value(<<"auth_user">>, AuthData, <<"">>)}
+                                                  ,{<<"password">>, wh_json:get_value(<<"auth_password">>, AuthData, <<"">>)}
+                                        ]}
+                            }]},
     SAD1 = lists:foldl(fun({K, V}, JObj) ->
                               wh_json:set_value(K, V, JObj)
                       end, SipAuthDoc, [Pvt || {K, _}=Pvt <- AuthProps

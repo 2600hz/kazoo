@@ -308,7 +308,7 @@ validate(_, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
+-spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -361,7 +361,7 @@ establish_c2c(C2CId, Context) ->
 %% @end
 %%-------------------------------------------------------------------
 -spec originate_call/1 :: (#cb_context{}) -> #cb_context{}.
--spec originate_call/3 :: (ne_binary(), json_object(), ne_binary()) -> {'success', ne_binary()} | {'error', ne_binary()} | {'timeout'}.
+-spec originate_call/3 :: (ne_binary(), wh_json:json_object(), ne_binary()) -> {'success', ne_binary()} | {'error', ne_binary()} | {'timeout'}.
 
 originate_call(#cb_context{doc=JObj, req_data=Req, account_id=AccountId}=Context) ->
     case get_c2c_contact(wh_json:get_string_value(<<"contact">>, Req)) of

@@ -262,7 +262,7 @@ send_error_resp(JObj, _ErrCode, ErrMsg) ->
     ?LOG_END("sending error reply ~s for ~s", [_ErrCode, MediaName]),
     wapi_media:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error).
 
--spec(handle_req/3 :: (JObj :: json_object(), Port :: port(), Streams :: list()) -> no_return()).
+-spec(handle_req/3 :: (JObj :: wh_json:json_object(), Port :: port(), Streams :: list()) -> no_return()).
 handle_req(JObj, Port, Streams) ->
     true = wapi_media:req_v(JObj),
     case find_attachment(binary:split(wh_json:get_value(<<"Media-Name">>, JObj, <<>>), <<"/">>, [global, trim])) of
@@ -324,7 +324,7 @@ find_attachment([Db, Doc, Attachment]) ->
             not_found
     end.
 
--spec get_content_type_extension/2 :: (json_object(), json_object()) -> 'undefined' | ne_binary().
+-spec get_content_type_extension/2 :: (wh_json:json_object(), wh_json:json_object()) -> 'undefined' | ne_binary().
 get_content_type_extension(JObj, MetaData) ->
     case valid_content_type(JObj) of
         undefined ->
@@ -333,7 +333,7 @@ get_content_type_extension(JObj, MetaData) ->
             ContentType
     end.
 
--spec valid_content_type/1 :: (json_object()) -> 'undefined' | ne_binary().
+-spec valid_content_type/1 :: (wh_json:json_object()) -> 'undefined' | ne_binary().
 valid_content_type(JObj) ->
     case wh_json:get_value(<<"content_type">>, JObj) of
         <<"audio/mp3">> -> <<"mp3">>; %% Jon's computer uses this, is this legit?
@@ -343,12 +343,12 @@ valid_content_type(JObj) ->
         _ -> undefined
     end.
 
--spec is_streamable/1 :: (json_object()) -> boolean().
+-spec is_streamable/1 :: (wh_json:json_object()) -> boolean().
 is_streamable(JObj) ->
     wh_util:is_true(wh_json:get_value(<<"streamable">>, JObj, true)).
 
 -spec start_stream/6 :: (JObj, Db, Doc, Attachment, CType, Port) -> no_return() when
-      JObj :: json_object(),
+      JObj :: wh_json:json_object(),
       Db :: binary(),
       Doc :: binary(),
       Attachment :: binary(),
@@ -362,7 +362,7 @@ start_stream(JObj, Db, Doc, Attachment, CType, Port) ->
     {ok, _} = media_shout_sup:start_shout(Media, To, single, Port, get(callid)).
 
 -spec join_stream/7 :: (JObj, Db, Doc, Attachment, CType, Port, Streams) -> no_return() when
-      JObj :: json_object(),
+      JObj :: wh_json:json_object(),
       Db :: binary(),
       Doc :: binary(),
       Attachment :: binary(),

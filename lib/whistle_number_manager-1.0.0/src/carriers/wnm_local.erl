@@ -50,7 +50,7 @@ find_numbers(Number, Quanity) ->
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number/3 :: (ne_binary(), ne_binary(), json_object()) -> {ok, ne_binary(), json_object()}
+-spec acquire_number/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, ne_binary(), wh_json:json_object()}
                                                                            | {error, ne_binary()}.
 acquire_number(_, <<"available">>, JObj) ->
     {ok, <<"in_service">>, JObj};
@@ -65,6 +65,6 @@ acquire_number(_, _, _) ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec release_number/2 :: (ne_binary(), json_object()) -> {ok, json_object()}.
+-spec release_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()}.
 release_number(_, JObj) ->
     {ok, JObj}.

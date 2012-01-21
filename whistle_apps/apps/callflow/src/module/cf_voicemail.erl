@@ -129,7 +129,7 @@
 %% connect a caller to check_voicemail or compose_voicemail.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
 handle(Data, Call) ->
     case wh_json:get_value(<<"action">>, Data, <<"compose">>) of
         <<"compose">> ->
@@ -462,7 +462,7 @@ message_count_prompts(New, Saved, #prompts{you_have=YouHave, new_and=NewAnd, sav
 %% menu utill
 %% @end
 %%--------------------------------------------------------------------
--spec play_messages/4 :: (json_objects(), non_neg_integer(), #mailbox{}, #cf_call{}) -> 'ok'.
+-spec play_messages/4 :: (wh_json:json_objects(), non_neg_integer(), #mailbox{}, #cf_call{}) -> 'ok'.
 play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone
                                               ,prompts=#prompts{message_number=MsgNum,
                                                                 received=Received,
@@ -509,9 +509,9 @@ play_messages([], _, _, _) ->
 -type message_menu_returns() :: {'ok', 'keep' | 'delete' | 'return' | 'replay'}.
 
 -spec message_menu/2 :: (#mailbox{}, #cf_call{}) ->
-                                {'error', 'channel_hungup' | 'channel_unbridge' | json_object()} | message_menu_returns().
+                                {'error', 'channel_hungup' | 'channel_unbridge' | wh_json:json_object()} | message_menu_returns().
 -spec message_menu/3 :: ([cf_call_command:audio_macro_prompt(),...], #mailbox{}, #cf_call{}) ->
-                                {'error', 'channel_hungup' | 'channel_unbridge' | json_object()} | message_menu_returns().
+                                {'error', 'channel_hungup' | 'channel_unbridge' | wh_json:json_object()} | message_menu_returns().
 message_menu(#mailbox{prompts=#prompts{message_menu=MessageMenu}}=Box, Call) ->
     message_menu([{play, MessageMenu}], Box, Call).
 message_menu(Prompt, #mailbox{keys=#keys{replay=Replay, keep=Keep,
@@ -721,7 +721,7 @@ new_message(AttachmentName, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save_metadata/3 :: (json_object(), ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
+-spec save_metadata/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 save_metadata(NewMessage, Db, Id) ->
     {ok, JObj} = couch_mgr:open_doc(Db, Id),
 
@@ -743,7 +743,7 @@ save_metadata(NewMessage, Db, Id) ->
             end
     end.
 
--spec has_message_meta/2 :: (ne_binary(), json_objects()) -> boolean().
+-spec has_message_meta/2 :: (ne_binary(), wh_json:json_objects()) -> boolean().
 has_message_meta(_, []) -> false;
 has_message_meta(NewMsgCallId, Messages) ->
     lists:any(fun(Msg) -> wh_json:get_value(<<"call_id">>, Msg) =:= NewMsgCallId end, Messages).
@@ -755,7 +755,7 @@ has_message_meta(NewMsgCallId, Messages) ->
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
--spec get_mailbox_profile/2 :: (json_object(), #cf_call{}) -> #mailbox{}.
+-spec get_mailbox_profile/2 :: (wh_json:json_object(), #cf_call{}) -> #mailbox{}.
 get_mailbox_profile(Data, #cf_call{capture_group=CG, account_db=Db, request_user=ReqUser, last_action=LastAct}) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case get_mailbox_doc(Db, Id, CG) of
@@ -807,7 +807,7 @@ get_mailbox_profile(Data, #cf_call{capture_group=CG, account_db=Db, request_user
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_mailbox_doc/3 :: (binary(), undefined | binary(), undefined | binary()) -> {ok, json_object()} | {error, term()}.
+-spec get_mailbox_doc/3 :: (binary(), undefined | binary(), undefined | binary()) -> {ok, wh_json:json_object()} | {error, term()}.
 get_mailbox_doc(Db, Id, CaptureGroup) ->
     CGIsEmpty = wh_util:is_empty(CaptureGroup),
     case wh_util:is_empty(Id) of 
@@ -867,7 +867,7 @@ review_recording(AttachmentName, #mailbox{keys=#keys{listen=Listen, save=Save, r
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> {'ok', json_object()} | {'error', json_object()}.
+-spec store_recording/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> {'ok', wh_json:json_object()} | {'error', wh_json:json_object()}.
 store_recording(AttachmentName, MediaId, Call) ->
     ?LOG("storing recording ~s as media ~s", [AttachmentName, MediaId]),
     ok = update_doc(<<"content_type">>, <<"audio/mpeg">>, MediaId, Call),
@@ -944,7 +944,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum, mailbox_id=Id}, #
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_messages/2 :: (#mailbox{}, #cf_call{}) -> json_objects().
+-spec get_messages/2 :: (#mailbox{}, #cf_call{}) -> wh_json:json_objects().
 get_messages(#mailbox{mailbox_id=Id}, #cf_call{account_db=Db}) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} -> wh_json:get_value(<<"messages">>, JObj, []);
@@ -957,7 +957,7 @@ get_messages(#mailbox{mailbox_id=Id}, #cf_call{account_db=Db}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_message/2 :: (json_object(), #cf_call{}) -> ne_binary().
+-spec get_message/2 :: (wh_json:json_object(), #cf_call{}) -> ne_binary().
 get_message(Message, #cf_call{account_db=Db}) ->
     MediaId = wh_json:get_value(<<"media_id">>, Message),
     list_to_binary(["/", Db, "/", MediaId]).
@@ -968,7 +968,7 @@ get_message(Message, #cf_call{account_db=Db}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec count_messages/2 :: (json_objects(), ne_binary()) -> non_neg_integer().
+-spec count_messages/2 :: (wh_json:json_objects(), ne_binary()) -> non_neg_integer().
 count_messages(Messages, Folder) ->
     lists:sum([1 || Message <- Messages, wh_json:get_value(<<"folder">>, Message) =:= Folder]).
 
@@ -978,7 +978,7 @@ count_messages(Messages, Folder) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_folder/2 :: (json_objects(), ne_binary()) -> json_objects().
+-spec get_folder/2 :: (wh_json:json_objects(), ne_binary()) -> wh_json:json_objects().
 get_folder(Messages, Folder) ->
     [M || M <- Messages, wh_json:get_value(<<"folder">>, M) =:= Folder].
 
@@ -988,7 +988,7 @@ get_folder(Messages, Folder) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_folder/4 :: (ne_binary(), json_object(), #mailbox{}, #cf_call{}) -> no_return().
+-spec set_folder/4 :: (ne_binary(), wh_json:json_object(), #mailbox{}, #cf_call{}) -> no_return().
 set_folder(Folder, Message, Box, Call) ->
     ?LOG("setting folder for message to ~s", [Folder]),
     not (wh_json:get_value(<<"folder">>, Message) =:= Folder) andalso
@@ -1043,7 +1043,7 @@ update_folder1(Message, _, _, _) ->
 %%--------------------------------------------------------------------
 -spec update_doc/4 :: (Key, Value, Id, Db) -> ok | tuple(error, atom()) when
       Key :: list() | binary(),
-      Value :: json_term(),
+      Value :: wh_json:json_term(),
       Id :: #mailbox{} | binary(),
       Db :: #cf_call{} | binary().
 
@@ -1144,7 +1144,7 @@ update_mwi(New, Saved, #mailbox{owner_id=OwnerId}, #cf_call{account_id=AccountId
                           ok
                   end, Devices).
 
--spec find_max_message_length/1 :: (json_objects()) -> pos_integer().
+-spec find_max_message_length/1 :: (wh_json:json_objects()) -> pos_integer().
 find_max_message_length([JObj | T]) ->
     case wh_json:get_integer_value(<<"max_message_length">>, JObj) of
         Len when is_integer(Len) andalso Len > 0 -> Len;

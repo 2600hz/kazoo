@@ -15,23 +15,23 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
 -define(RESPONDERS, [
-		     {?MODULE, [{<<"*">>, <<"*">>}]}
-		    ]).
+                     {?MODULE, [{<<"*">>, <<"*">>}]}
+                    ]).
 -define(BINDINGS, [{self, []}]).
 
 -record(state, {
-	  status = 'free' :: 'free' | 'busy'
-	 ,from = 'undefined' :: 'undefined' | {pid(), reference()}
-	 ,ref = 'undefined' :: 'undefined' | reference()
-	 ,parent = 'undefined' :: 'undefined' | pid() | atom()
-	 ,start = 'undefined' :: 'undefined' | wh_now()
-	 }).
+          status = 'free' :: 'free' | 'busy'
+         ,from = 'undefined' :: 'undefined' | {pid(), reference()}
+         ,ref = 'undefined' :: 'undefined' | reference()
+         ,parent = 'undefined' :: 'undefined' | pid() | atom()
+         ,start = 'undefined' :: 'undefined' | wh_now()
+         }).
 
 %%%===================================================================
 %%% API
@@ -48,8 +48,8 @@ handle_req(JObj, Props) ->
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				     ], []).
+                                      ,{bindings, ?BINDINGS}
+                                     ], []).
 
 stop(Srv) ->
     gen_listener:stop(Srv).
@@ -57,9 +57,9 @@ stop(Srv) ->
 -spec start_req/6 :: (pid(), proplist(), fun(), ne_binary(), {pid(), reference()}, pid() | atom()) -> 'ok'.
 start_req(Srv, Prop, ApiFun, CallId, From, Parent) ->
     JObj = case wh_json:is_json_object(Prop) of
-	       true -> Prop;
-	       false -> wh_json:from_list(Prop)
-	   end,
+               true -> Prop;
+               false -> wh_json:from_list(Prop)
+           end,
     JObj1 = wh_json:set_value(<<"Server-ID">>, gen_listener:queue_name(Srv)
                               ,wh_json:set_value(<<"Call-ID">>, CallId, JObj)),
     PubFun = fun() -> put(callid, CallId), ApiFun(JObj1) end,

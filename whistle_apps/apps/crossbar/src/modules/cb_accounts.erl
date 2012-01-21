@@ -84,7 +84,7 @@ ensure_parent_set(DefaultParentID, AccountID) ->
             ?LOG("failed to update tree for ~s", [AccountID])
     end.
 
--spec find_default_parent/1 :: (json_objects()) -> ne_binary().
+-spec find_default_parent/1 :: (wh_json:json_objects()) -> ne_binary().
 find_default_parent(AcctJObjs) ->
     case whapps_config:get(?CONFIG_CAT, <<"default_parent">>) of
         undefined ->
@@ -605,7 +605,7 @@ load_siblings(AccountId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
+-spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -615,7 +615,7 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_parent/1 :: (json_object()) -> {'true', []}.
+-spec is_valid_parent/1 :: (wh_json:json_object()) -> {'true', []}.
 is_valid_parent(_JObj) ->
     {true, []}.
 
@@ -652,7 +652,7 @@ update_tree(AccountId, ParentId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc_tree/3 :: ([ne_binary(),...], json_object(), json_objects()) -> json_objects().
+-spec update_doc_tree/3 :: ([ne_binary(),...], wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 update_doc_tree([_|_]=ParentTree, JObj, Acc) ->
     AccountId = wh_json:get_value(<<"id">>, JObj),
     ParentId = lists:last(ParentTree),
@@ -676,7 +676,7 @@ update_doc_tree([_|_]=ParentTree, JObj, Acc) ->
 %% document
 %% @end
 %%--------------------------------------------------------------------
--spec set_private_fields/3 :: (json_object(), #cb_context{}, 'undefined' | ne_binary()) -> json_object().
+-spec set_private_fields/3 :: (wh_json:json_object(), #cb_context{}, 'undefined' | ne_binary()) -> wh_json:json_object().
 set_private_fields(JObj0, Context, undefined) ->
     lists:foldl(fun(Fun, JObj1) ->
                         Fun(JObj1, Context)

@@ -70,7 +70,7 @@ do_summary(Registrations, PrintFun) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec print_summary/1 :: (Registration) -> ok when
-      Registration :: json_object().
+      Registration :: wh_json:json_object().
 print_summary(Registration) ->
     Username = wh_json:get_value(<<"Username">>, Registration),
     Realm = wh_json:get_value(<<"Realm">>, Registration),
@@ -88,6 +88,6 @@ print_summary(Registration) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec print_details/1 :: (Registration) -> ok when
-      Registration :: json_object().
+      Registration :: wh_json:json_object().
 print_details(Registration) ->
     [io:format("~s: ~s~n", [K, wh_util:to_list(V)]) || {K, V} <- Registration].

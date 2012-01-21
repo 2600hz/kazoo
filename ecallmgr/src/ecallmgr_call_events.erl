@@ -403,7 +403,7 @@ should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
 should_publish(EventName, _, _) ->
     lists:member(EventName, ?FS_EVENTS).
 
--spec get_transfer_history/1 :: (proplist()) -> json_object().
+-spec get_transfer_history/1 :: (proplist()) -> wh_json:json_object().
 get_transfer_history(Props) ->
     SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
     Hist = [HistJObj 
@@ -411,7 +411,7 @@ get_transfer_history(Props) ->
                (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, [global]))) =/= undefined],
     wh_json:from_list(Hist).
 
--spec create_trnsf_history_object/1 :: (list()) -> {ne_binary(), json_object()} | 'undefined'.
+-spec create_trnsf_history_object/1 :: (list()) -> {ne_binary(), wh_json:json_object()} | 'undefined'.
 create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
     [Transferee, Transferer] = binary:split(Props, <<"/">>),
     Trans = [{<<"Call-ID">>, CallId}
@@ -477,7 +477,7 @@ find_event_value([H|T], Props, Default) ->
         false -> Value
     end.
 
--spec swap_call_legs/1 :: (proplist() | json_object()) -> proplist().
+-spec swap_call_legs/1 :: (proplist() | wh_json:json_object()) -> proplist().
 -spec swap_call_legs/2 :: (proplist(), proplist()) -> proplist().
 
 swap_call_legs(Props) when is_list(Props) ->

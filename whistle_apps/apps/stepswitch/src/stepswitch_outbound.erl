@@ -38,10 +38,10 @@ handle_req(JObj, Props) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec attempt_to_fullfill_req/4 :: (ne_binary(), ne_binary(), json_object(), proplist()) -> {error, json_object()}
+-spec attempt_to_fullfill_req/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> {error, wh_json:json_object()}
                                                                                                 | {error, timeout}
-                                                                                                | {ok, json_object()}
-                                                                                                | {fail, json_object()}.
+                                                                                                | {ok, wh_json:json_object()}
+                                                                                                | {fail, wh_json:json_object()}.
 attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
     Result = case stepswitch_util:lookup_number(Number) of
                  {ok, AccountId, false} ->
@@ -71,7 +71,7 @@ attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
 %% the emergency CID.
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints/4 :: (proplist(), boolean(), ne_binary(), json_object()) -> ok.
+-spec bridge_to_endpoints/4 :: (proplist(), boolean(), ne_binary(), wh_json:json_object()) -> ok.
 
 bridge_to_endpoints([], _, _, _) ->
     {error, no_resources};
@@ -120,7 +120,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 %% macro).  This function will block until that callflow is complete.
 %% @end
 %%--------------------------------------------------------------------
--spec execute_local_extension/4 :: (ne_binary(), ne_binary(), ne_binary(), json_object()) -> ok.
+-spec execute_local_extension/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> ok.
 execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
     ?LOG("number belongs to another account, executing callflow from that account"),
     Q = create_queue(JObj),
@@ -153,8 +153,8 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
 %% response then set the CCVs accordingly.
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_execute_extension/0 :: () -> {ok, json_object()}
-                                                | {fail, json_object()}.
+-spec wait_for_execute_extension/0 :: () -> {ok, wh_json:json_object()}
+                                                | {fail, wh_json:json_object()}.
 wait_for_execute_extension() ->
     receive
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
@@ -186,10 +186,10 @@ wait_for_execute_extension() ->
 %% response then set the CCVs accordingly.
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_bridge/1 :: ('infinity' | pos_integer()) -> {'error', json_object()} |
+-spec wait_for_bridge/1 :: ('infinity' | pos_integer()) -> {'error', wh_json:json_object()} |
                                                            {'error', 'timeout'} |
-                                                           {'ok', json_object()} |
-                                                           {'fail', json_object()}.
+                                                           {'ok', wh_json:json_object()} |
+                                                           {'fail', wh_json:json_object()}.
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
@@ -234,7 +234,7 @@ wait_for_bridge(Timeout) ->
 %% try to rate this call...
 %% @end
 %%--------------------------------------------------------------------
--spec create_queue/1 :: (json_object()) -> ne_binary().
+-spec create_queue/1 :: (wh_json:json_object()) -> ne_binary().
 create_queue(JObj) ->
     Q = amqp_util:new_queue(),
     amqp_util:basic_consume(Q),
@@ -252,7 +252,7 @@ create_queue(JObj) ->
 %% Make a whistle API request to rate this call
 %% @end
 %%--------------------------------------------------------------------
--spec request_rating/1 :: (json_object()) -> 'ok'.
+-spec request_rating/1 :: (wh_json:json_object()) -> 'ok'.
 request_rating(JObj) ->
     whapps_util:put_callid(JObj),
     ?LOG("sending rate request"),
@@ -274,7 +274,7 @@ request_rating(JObj) ->
 %% us in a case clause to determine the appropriate action.
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (json_object()) -> {binary(), binary(), undefined | binary()}.
+-spec get_event_type/1 :: (wh_json:json_object()) -> {binary(), binary(), undefined | binary()}.
 get_event_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj, <<>>)
       ,wh_json:get_value(<<"Event-Name">>, JObj, <<>>)
@@ -348,7 +348,7 @@ build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], Delay, Acc0) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec build_endpoint/3 :: (ne_binary(), #gateway{}, non_neg_integer()) -> json_object().
+-spec build_endpoint/3 :: (ne_binary(), #gateway{}, non_neg_integer()) -> wh_json:json_object().
 build_endpoint(Number, Gateway, _Delay) ->
     Route = get_dialstring(Gateway, Number),
     ?LOG("found resource ~s (~s)", [Gateway#gateway.resource_id, Route]),
@@ -393,8 +393,8 @@ get_dialstring(#gateway{route=Route}, _) ->
 %% create and send a Whistle offnet resource response
 %% @end
 %%--------------------------------------------------------------------
--spec response/2 :: ({ok, atom() | json_object()} | {fail, json_object()} 
-                    |{error, atom() | json_object()}, json_object()) -> ok.
+-spec response/2 :: ({ok, atom() | wh_json:json_object()} | {fail, wh_json:json_object()} 
+                    |{error, atom() | wh_json:json_object()}, wh_json:json_object()) -> ok.
 response({ok, _}, JObj) ->
     ?LOG_END("outbound request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}

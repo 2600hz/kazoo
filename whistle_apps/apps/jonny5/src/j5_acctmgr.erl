@@ -72,7 +72,7 @@ start_link(AcctID) ->
 						    ]}
 				     ], [AcctID]).
 
--spec status/1 :: (pid()) -> json_object().
+-spec status/1 :: (pid()) -> wh_json:json_object().
 status(Srv) ->
     gen_listener:call(Srv, status).
 
@@ -80,7 +80,7 @@ status(Srv) ->
 refresh(Srv) ->
     gen_listener:cast(Srv, refresh).
 
--spec authz_trunk/3 :: (pid() | ne_binary(), json_object(), 'inbound' | 'outbound') -> {boolean(), proplist()}.
+-spec authz_trunk/3 :: (pid() | ne_binary(), wh_json:json_object(), 'inbound' | 'outbound') -> {boolean(), proplist()}.
 authz_trunk(Pid, JObj, CallDir) when is_pid(Pid) ->
     {Bool, Prop} = gen_server:call(Pid, {authz, JObj, CallDir}),
     {Bool, [{<<"Server-ID">>, gen_listener:queue_name(Pid)} | Prop]};

@@ -37,7 +37,7 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec new/4 :: (json_object(), ne_binary(), ne_binary(), #cf_call{}) -> sup_startchild_ret().
+-spec new/4 :: (wh_json:json_object(), ne_binary(), ne_binary(), #cf_call{}) -> sup_startchild_ret().
 new(Flow, ControlQ, CallId, Call) ->
     supervisor:start_child(?MODULE, [Flow, ControlQ, CallId, Call]).
 

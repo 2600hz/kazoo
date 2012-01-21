@@ -64,7 +64,7 @@
 			  ]).
 -define(SYNC_RESP_TYPES, []).
 
--spec status_req/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec status_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
 status_req(Prop) when is_list(Prop) ->
     case status_req_v(Prop) of
 	true -> wh_api:build_message(Prop, ?STATUS_REQ_HEADERS, ?OPTIONAL_STATUS_REQ_HEADERS);
@@ -73,14 +73,14 @@ status_req(Prop) when is_list(Prop) ->
 status_req(JObj) ->
     status_req(wh_json:to_proplist(JObj)).
 
--spec status_req_v/1 :: (proplist() | json_object()) -> boolean().
+-spec status_req_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
 status_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?STATUS_REQ_HEADERS, ?STATUS_REQ_VALUES, ?STATUS_REQ_TYPES);
 status_req_v(JObj) ->
     status_req_v(wh_json:to_proplist(JObj)).
 
 
--spec status_resp/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec status_resp/1 :: (proplist() | wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
 status_resp(Prop) when is_list(Prop) ->
     case status_resp_v(Prop) of
 	true -> wh_api:build_message(Prop, ?STATUS_RESP_HEADERS, ?OPTIONAL_STATUS_RESP_HEADERS);
@@ -89,13 +89,13 @@ status_resp(Prop) when is_list(Prop) ->
 status_resp(JObj) ->
     status_resp(wh_json:to_proplist(JObj)).
 
--spec status_resp_v/1 :: (proplist() | json_object()) -> boolean().
+-spec status_resp_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
 status_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?STATUS_RESP_HEADERS, ?STATUS_RESP_VALUES, ?STATUS_RESP_TYPES);
 status_resp_v(JObj) ->
     status_resp_v(wh_json:to_proplist(JObj)).
 
--spec sync_req/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec sync_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
 sync_req(Prop) when is_list(Prop) ->
     case sync_req_v(Prop) of
 	true -> wh_api:build_message(Prop, ?SYNC_REQ_HEADERS, ?OPTIONAL_SYNC_REQ_HEADERS);
@@ -104,14 +104,14 @@ sync_req(Prop) when is_list(Prop) ->
 sync_req(JObj) ->
     sync_req(wh_json:to_proplist(JObj)).
 
--spec sync_req_v/1 :: (proplist() | json_object()) -> boolean().
+-spec sync_req_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
 sync_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?SYNC_REQ_HEADERS, ?SYNC_REQ_VALUES, ?SYNC_REQ_TYPES);
 sync_req_v(JObj) ->
     sync_req_v(wh_json:to_proplist(JObj)).
 
 
--spec sync_resp/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec sync_resp/1 :: (proplist() | wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
 sync_resp(Prop) when is_list(Prop) ->
     case sync_resp_v(Prop) of
 	true -> wh_api:build_message(Prop, ?SYNC_RESP_HEADERS, ?OPTIONAL_SYNC_RESP_HEADERS);
@@ -120,7 +120,7 @@ sync_resp(Prop) when is_list(Prop) ->
 sync_resp(JObj) ->
     sync_resp(wh_json:to_proplist(JObj)).
 
--spec sync_resp_v/1 :: (proplist() | json_object()) -> boolean().
+-spec sync_resp_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
 sync_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?SYNC_RESP_HEADERS, ?SYNC_RESP_VALUES, ?SYNC_RESP_TYPES);
 sync_resp_v(JObj) ->
@@ -142,7 +142,7 @@ unbind_q(Queue, Props) ->
     amqp_util:unbind_q_from_whapps(Queue, status_req_routing_key(AcctId)),
     amqp_util:unbind_q_from_whapps(Queue, sync_req_routing_key(AcctId)).
 
--spec get_acct_id/1 :: (proplist() | json_object()) -> ne_binary().
+-spec get_acct_id/1 :: (proplist() | wh_json:json_object()) -> ne_binary().
 get_acct_id(Prop) when is_list(Prop) ->
     case props:get_value(account_id, Prop) of
 	undefined ->

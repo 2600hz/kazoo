@@ -19,14 +19,14 @@ start_link() ->
     {ok, DBInfo} = couch_mgr:db_info(?TS_RATES_DB),
 
     _ = case wh_json:get_value(<<"doc_count">>, DBInfo) of
-	    0 -> couch_mgr:load_doc_from_file(?TS_RATES_DB, trunkstore, <<"sample_rate_doc.json">>);
-	    _ -> ok
-	end,
+            0 -> couch_mgr:load_doc_from_file(?TS_RATES_DB, trunkstore, <<"sample_rate_doc.json">>);
+            _ -> ok
+        end,
 
     _ = case couch_mgr:update_doc_from_file(?TS_RATES_DB, trunkstore, <<"lookuprates.json">>) of
-	    {ok, _} -> ok;
-	    _ -> couch_mgr:load_doc_from_file(?TS_RATES_DB, trunkstore, <<"lookuprates.json">>)
-	end,
+            {ok, _} -> ok;
+            _ -> couch_mgr:load_doc_from_file(?TS_RATES_DB, trunkstore, <<"lookuprates.json">>)
+        end,
     ?LOG("setup ~s DB for rates", [?TS_RATES_DB]),
     ignore.
 
@@ -40,37 +40,37 @@ reserve(ToDID, CallID, AcctID, Direction, RouteOptions) ->
     <<Start:1/binary, _/binary>> = Number = wnm_util:to_1npan(ToDID),
     ?LOG("searching for rates in the range ~s to ~s", [Start, Number]),
     case couch_mgr:get_results(?TS_RATES_DB, <<"lookuprates/lookuprate">>, [{<<"startkey">>, wh_util:to_integer(Start)}
-									    ,{<<"endkey">>, wh_util:to_integer(Number)}]) of
-	{ok, []} -> ?LOG("rate lookup had no results"), {error, no_rate_found};
-	{error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_rate_found};
-	{ok, Rates} ->
-	    _ = [?LOG("fetched rate definition: ~s", [wh_json:get_value(<<"id">>, Rate)]) || Rate <- Rates],
-	    Matching = filter_rates(ToDID, Direction, RouteOptions, Rates),
-	    case lists:usort(fun sort_rates/2, Matching) of
-		[] -> ?LOG("no rates left after filter"), {error, no_rate_found};
-		[Rate|_] ->
-		    %% wh_timer:tick("post usort data found"),
-		    ?LOG("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
+                                                                            ,{<<"endkey">>, wh_util:to_integer(Number)}]) of
+        {ok, []} -> ?LOG("rate lookup had no results"), {error, no_rate_found};
+        {error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_rate_found};
+        {ok, Rates} ->
+            _ = [?LOG("fetched rate definition: ~s", [wh_json:get_value(<<"id">>, Rate)]) || Rate <- Rates],
+            Matching = filter_rates(ToDID, Direction, RouteOptions, Rates),
+            case lists:usort(fun sort_rates/2, Matching) of
+                [] -> ?LOG("no rates left after filter"), {error, no_rate_found};
+                [Rate|_] ->
+                    %% wh_timer:tick("post usort data found"),
+                    ?LOG("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
 
-		    BaseCost = wh_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * (wh_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate)) div 60)
-			+ wh_util:to_float(wh_json:get_value(<<"rate_surcharge">>, Rate)),
+                    BaseCost = wh_util:to_float(wh_json:get_value(<<"rate_cost">>, Rate)) * (wh_util:to_integer(wh_json:get_value(<<"rate_minimum">>, Rate)) div 60)
+                        + wh_util:to_float(wh_json:get_value(<<"rate_surcharge">>, Rate)),
 
-		    _ = ts_acctmgr:reserve_trunk(AcctID, CallID, BaseCost, ts_util:is_flat_rate_eligible(ToDID)),
+                    _ = ts_acctmgr:reserve_trunk(AcctID, CallID, BaseCost, ts_util:is_flat_rate_eligible(ToDID)),
 
-		    {ok, [{<<"Rate">>, wh_util:to_binary(wh_json:get_value(<<"rate_cost">>, Rate))}
-			  ,{<<"Rate-Increment">>, wh_util:to_binary(wh_json:get_value(<<"rate_increment">>, Rate))}
-			  ,{<<"Rate-Minimum">>, wh_util:to_binary(wh_json:get_value(<<"rate_minimum">>, Rate))}
-			  ,{<<"Surcharge">>, wh_util:to_binary(wh_json:get_value(<<"rate_surcharge">>, Rate, 0))}
-			  ,{<<"Rate-Name">>, wh_util:to_binary(wh_json:get_value(<<"rate_name">>, Rate))}
-			  ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
-			 ]}
-	    end
+                    {ok, [{<<"Rate">>, wh_util:to_binary(wh_json:get_value(<<"rate_cost">>, Rate))}
+                          ,{<<"Rate-Increment">>, wh_util:to_binary(wh_json:get_value(<<"rate_increment">>, Rate))}
+                          ,{<<"Rate-Minimum">>, wh_util:to_binary(wh_json:get_value(<<"rate_minimum">>, Rate))}
+                          ,{<<"Surcharge">>, wh_util:to_binary(wh_json:get_value(<<"rate_surcharge">>, Rate, 0))}
+                          ,{<<"Rate-Name">>, wh_util:to_binary(wh_json:get_value(<<"rate_name">>, Rate))}
+                          ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
+                         ]}
+            end
     end.
 
 filter_rates(To, Direction, RouteOptions, Rates) ->
     [ begin
-	  Rate = wh_json:get_value(<<"value">>, R),
-	  wh_json:set_value(<<"rate_name">>, wh_json:get_value(<<"id">>, R), Rate)
+          Rate = wh_json:get_value(<<"value">>, R),
+          wh_json:set_value(<<"rate_name">>, wh_json:get_value(<<"id">>, R), Rate)
       end || R <- Rates, matching_rate(To, Direction, RouteOptions, R)].
 
 matching_rate(To, Direction, RouteOptions, Rate) ->
@@ -78,7 +78,7 @@ matching_rate(To, Direction, RouteOptions, Rate) ->
     Routes = wh_json:get_value([<<"value">>, <<"routes">>], Rate),
 
     direction_match(Direction, wh_json:get_value([<<"value">>, <<"direction">>], Rate, [])) andalso
-	options_match(RouteOptions, wh_json:get_value([<<"value">>, <<"options">>], Rate, [])) andalso
+        options_match(RouteOptions, wh_json:get_value([<<"value">>, <<"options">>], Rate, [])) andalso
         routes_match(To, Routes).
 
 %% Return true of RateA has higher weight than RateB
@@ -114,13 +114,11 @@ direction_match(Direction, RateDirections) ->
 %% match options set in Flags to options available in Rate
 %% All options set in Flags must be set in Rate to be usable
 %% RouteOptions come from client's DID/server/account
--spec options_match/2 :: (RouteOptions, RateOptions) -> boolean() when
-      RouteOptions :: list(binary()) | json_object(),
-      RateOptions :: list(binary()) | json_object().
-options_match(RouteOptions, {struct, RateOptions}) ->
-    options_match(RouteOptions, RateOptions);
-options_match({struct, RouteOptions}, RateOptions) ->
-    options_match(RouteOptions, RateOptions);
+-spec options_match/2 :: ([binary()] | wh_json:json_object(), [binary()] | wh_json:json_object()) -> boolean().
+options_match(RouteOptions, RateOptions) when not is_list(RateOptions) ->
+    options_match(RouteOptions, wh_json:to_proplist(RateOptions));
+options_match(RouteOptions, RateOptions) when not is_list(RouteOptions) ->
+    options_match(wh_json:to_proplist(RouteOptions), RateOptions);
 options_match([], []) ->
     ?LOG("both options are empty, continue"),
     true;

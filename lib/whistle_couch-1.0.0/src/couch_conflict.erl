@@ -14,17 +14,17 @@
 
 %% Types of resolution strategies
 -type resolution_strategy() :: 'remove_conflicts' | 'merge' | 'user_merge'.
--type merge_fun() :: fun((ne_binary(), json_object()) -> json_object()).
+-type merge_fun() :: fun((ne_binary(), wh_json:json_object()) -> wh_json:json_object()).
 
 -export_type([resolution_strategy/0, merge_fun/0]).
 
 -define(CONFLICT_VIEW_NAME, <<"conflict/listing_by_id">>).
 -define(CONFLICT_VIEW, wh_json:from_list([{<<"_id">>, <<"_design/conflict">>}
-					  ,{<<"language">>, <<"javascript">>}
-					  ,{<<"views">>, wh_json:from_list([{<<"listing_by_id">>,
-									     wh_json:from_list([{<<"map">>, <<"function(doc) { if(doc._conflicts) {emit(doc._conflicts, null); } }">>}])
-									    }])}
-					 ])).
+                                          ,{<<"language">>, <<"javascript">>}
+                                          ,{<<"views">>, wh_json:from_list([{<<"listing_by_id">>,
+                                                                             wh_json:from_list([{<<"map">>, <<"function(doc) { if(doc._conflicts) {emit(doc._conflicts, null); } }">>}])
+                                                                            }])}
+                                         ])).
 
 -include("wh_couch.hrl").
 
@@ -32,21 +32,21 @@
 default_view() ->
     ?CONFLICT_VIEW_NAME.
 
--spec add_conflict_view/2 :: (#server{}, ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
+-spec add_conflict_view/2 :: (#server{}, ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 add_conflict_view(#server{}=Conn, DBName) ->
     couch_util:ensure_saved(Conn, DBName, ?CONFLICT_VIEW, []).
 
--spec in_conflict/2 :: (#server{}, ne_binary()) -> {'ok', json_objects()}.
--spec in_conflict/3 :: (#server{}, ne_binary(), ne_binary()) -> {'ok', json_objects()}.
+-spec in_conflict/2 :: (#server{}, ne_binary()) -> {'ok', wh_json:json_objects()}.
+-spec in_conflict/3 :: (#server{}, ne_binary(), ne_binary()) -> {'ok', wh_json:json_objects()}.
 in_conflict(#server{}=Conn, DBName) ->
     in_conflict(Conn, DBName, ?CONFLICT_VIEW_NAME).
 in_conflict(#server{}=Conn, DBName, View) ->
     {ok, _} = couch_util:get_results(Conn, DBName, View, []).
 
--spec resolve/2 :: (#server{}, ne_binary()) -> [json_objects(),...].
--spec resolve/3 :: (#server{}, ne_binary(), ne_binary()) -> [json_objects(),...].
--spec resolve/4 :: (#server{}, ne_binary(), ne_binary(), resolution_strategy()) -> [json_objects(),...] | json_objects().
--spec resolve/5 :: (#server{}, ne_binary(), ne_binary(), resolution_strategy(), merge_fun()) -> [json_objects(),...] | [].
+-spec resolve/2 :: (#server{}, ne_binary()) -> [wh_json:json_objects(),...].
+-spec resolve/3 :: (#server{}, ne_binary(), ne_binary()) -> [wh_json:json_objects(),...].
+-spec resolve/4 :: (#server{}, ne_binary(), ne_binary(), resolution_strategy()) -> [wh_json:json_objects(),...] | wh_json:json_objects().
+-spec resolve/5 :: (#server{}, ne_binary(), ne_binary(), resolution_strategy(), merge_fun()) -> [wh_json:json_objects(),...] | [].
 resolve(#server{}=Conn, DBName) ->
     resolve(Conn, DBName, ?CONFLICT_VIEW_NAME).
 resolve(#server{}=Conn, DBName, View) ->
@@ -58,17 +58,17 @@ resolve(#server{}=Conn, DBName, View, Strategy, F) when is_function(F, 2) ->
     {ok, Ds} = couch_util:get_results(Conn, DBName, View, []),
     resolve_strategically(Conn, Strategy, DBName, Ds, F).
 
--spec resolve_strategically/4 :: (#server{}, resolution_strategy(), ne_binary(), json_objects()) -> [json_objects(),...].
--spec resolve_strategically/5 :: (#server{}, resolution_strategy(), ne_binary(), json_objects(), merge_fun()) -> json_objects().
+-spec resolve_strategically/4 :: (#server{}, resolution_strategy(), ne_binary(), wh_json:json_objects()) -> [wh_json:json_objects(),...].
+-spec resolve_strategically/5 :: (#server{}, resolution_strategy(), ne_binary(), wh_json:json_objects(), merge_fun()) -> wh_json:json_objects().
 resolve_strategically(_Conn, _Strategy, _DBName, []) -> [];
 resolve_strategically(#server{}=Conn, remove_conflicts, DBName, Ds) ->
     [ begin
-	  ID = wh_json:get_value(<<"id">>, D),
-	  %% delete the conflicting version
-	  [couch_util:del_doc(Conn, DBName, wh_json:from_list([{<<"_id">>, ID}
-							       ,{<<"_rev">>, R}
-							      ]))
-	   || R <- wh_json:get_value(<<"key">>, D, [])]
+          ID = wh_json:get_value(<<"id">>, D),
+          %% delete the conflicting version
+          [couch_util:del_doc(Conn, DBName, wh_json:from_list([{<<"_id">>, ID}
+                                                               ,{<<"_rev">>, R}
+                                                              ]))
+           || R <- wh_json:get_value(<<"key">>, D, [])]
       end
       || D <- Ds];
 resolve_strategically(#server{}=Conn, merge, DBName, Ds) ->
@@ -77,18 +77,18 @@ resolve_strategically(#server{}=Conn, merge, DBName, Ds) ->
 resolve_strategically(#server{}=Conn, user_merge, DBName, Ds, F) ->
     [merge_user_doc(Conn, DBName, D, F) || D <- Ds].
 
--spec merge_doc/3 :: (#server{}, ne_binary(), json_object()) -> json_object().
+-spec merge_doc/3 :: (#server{}, ne_binary(), wh_json:json_object()) -> wh_json:json_object().
 merge_doc(#server{}=Conn, DBName, D) ->
     ID = wh_json:get_value(<<"id">>, D),
     F = fun(Rev, Doc) ->
-		{ok, ConflictDoc} = couch_util:open_doc(Conn, DBName, ID, [{<<"_rev">>, Rev}]),
-		%% favor Doc values over ConflictDoc
-		wh_json:merge_jobjs(Doc, ConflictDoc)
-	end,
+                {ok, ConflictDoc} = couch_util:open_doc(Conn, DBName, ID, [{<<"_rev">>, Rev}]),
+                %% favor Doc values over ConflictDoc
+                wh_json:merge_jobjs(Doc, ConflictDoc)
+        end,
     merge_user_doc(Conn, DBName, D, F).
 
 %% fold all conflicting versions, using fun F to handle the merge, into the existing doc and save.
--spec merge_user_doc/4 :: (#server{}, ne_binary(), json_object(), fun((ne_binary(), json_object()) -> json_object())) -> json_object().
+-spec merge_user_doc/4 :: (#server{}, ne_binary(), wh_json:json_object(), fun((ne_binary(), wh_json:json_object()) -> wh_json:json_object())) -> wh_json:json_object().
 merge_user_doc(#server{}=Conn, DBName, D, F) ->
     ID = wh_json:get_value(<<"id">>, D),
     {ok, ExistingDoc} = couch_util:open_doc(Conn, DBName, ID, []),

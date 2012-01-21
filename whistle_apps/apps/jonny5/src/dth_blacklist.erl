@@ -60,7 +60,7 @@ is_blacklisted(Srv, AccountID) ->
     gen_listener:call(Srv, {is_blacklisted, AccountID}).
 
 -spec handle_req/2 :: (JObj, Props) -> 'ok' when
-      JObj :: json_object(),
+      JObj :: wh_json:json_object(),
       Props :: proplist().
 handle_req(JObj, Props) ->
     true = dth_api:blacklist_resp_v(JObj),
