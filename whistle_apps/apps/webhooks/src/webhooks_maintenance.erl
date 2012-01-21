@@ -34,7 +34,7 @@ local_summary(AcctId) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_summary/2 :: (json_objects(), fun()) -> 'ok'.
+-spec do_summary/2 :: (wh_json:json_objects(), fun()) -> 'ok'.
 do_summary(Accts, PrintFun) ->
     [PrintFun(Accts) || Acct <- Accts].
 
@@ -44,7 +44,7 @@ do_summary(Accts, PrintFun) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_summary/1 :: (json_object()) -> 'ok'.
+-spec print_summary/1 :: (wh_json:json_object()) -> 'ok'.
 print_summary(Acct) ->
     io:format("No Summary~n", []).
 
@@ -54,6 +54,6 @@ print_summary(Acct) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_details/1 :: (json_object()) -> 'ok'.
+-spec print_details/1 :: (wh_json:json_object()) -> 'ok'.
 print_details(Acct) ->
     [io:format("~s: ~s~n", [K, wh_util:to_list(V)]) || {K, V} <- wh_json:to_proplist(Acct)].
