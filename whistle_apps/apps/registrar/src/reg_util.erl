@@ -136,7 +136,7 @@ get_auth_user(Name, Realm) ->
 
 -spec get_auth_user_in_agg/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found'}.
 get_auth_user_in_agg(Name, Realm) ->
-    UseAggregate = whapps_config:get_is_true(?CONFIG_CAT, <<"use_aggregate">>, false),
+    UseAggregate = whapps_config:get_is_true(?CONFIG_CAT, <<"use_aggregate">>, true),
     ViewOptions = [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}],
     case UseAggregate andalso couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         false ->
