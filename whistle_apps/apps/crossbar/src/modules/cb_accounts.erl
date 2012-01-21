@@ -791,27 +791,20 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
             JObj = wh_json:set_value(<<"_id">>, AccountId, Doc),
             case crossbar_doc:save(Context#cb_context{db_name=AccountDb, account_id=AccountId, doc=JObj}) of
                 #cb_context{resp_status=success}=Context1 ->
+                    whapps_maintenance:refresh(AccountDb),
                     _ = crossbar_bindings:map(<<"account.created">>, Context1),
-                    couch_mgr:revise_docs_from_folder(AccountDb, crossbar, "account", false),
-                    couch_mgr:revise_doc_from_file(AccountDb, crossbar, ?MAINTENANCE_VIEW_FILE),
-                    %% This view should be added by the callflow whapp but until refresh requests are made
-                    %% via AMQP we need to do it here
-                    couch_mgr:revise_views_from_folder(AccountDb, callflow),
                     _ = crossbar_doc:ensure_saved(Context1#cb_context{db_name=?WH_ACCOUNTS_DB, doc=JObj}),
-
                     Credit = whapps_config:get(<<"crossbar.accounts">>, <<"starting_credit">>, 0.0),
                     Units = wapi_money:dollars_to_units(wh_util:to_float(Credit)),
                     ?LOG("Putting ~p units", [Units]),
                     Transaction = wh_json:from_list([{<<"amount">>, Units}
                                                      ,{<<"pvt_type">>, <<"credit">>}
                                                      ,{<<"pvt_description">>, <<"initial account balance">>}
-                                                    ]),
-                    
+                                                    ]),                    
                     case crossbar_doc:save(Context#cb_context{doc=Transaction, db_name=AccountDb}) of
                         #cb_context{resp_status=success} -> ok;
                         #cb_context{resp_error_msg=Err} -> ?LOG("failed to save credit doc: ~p", [Err])
                     end,
-
                     Context1;
                 Else ->
                     ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),

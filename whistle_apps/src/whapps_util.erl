@@ -18,6 +18,11 @@
 -export([get_call_termination_reason/1]).
 -export([alert/3, alert/4]).
 -export([hangup_cause_to_alert_level/1]).
+-export([get_view_json/1, get_view_json/2]).
+-export([get_views_json/2]).
+-export([update_views/2, update_views/3]).
+-export([add_aggregate_device/2]).
+-export([rm_aggregate_device/2]).
 
 -include("whistle_apps.hrl").
 
@@ -306,10 +311,7 @@ should_alert_account_admin(AlertLevel, AccountId) ->
 %% convert the textual alert level to an interger value
 %% @end
 %%--------------------------------------------------------------------
--spec alert_level_to_integer/1 :: (Level) -> 0..8 when
-      Level :: atom() | string() | binary().
-alert_level_to_integer(Level) when not is_binary(Level) ->
-    alert_level_to_integer(wh_util:to_binary(Level));
+-spec alert_level_to_integer/1 :: (atom() | string() | binary()) -> 0..8.
 alert_level_to_integer(<<"emerg">>) ->
     8;
 alert_level_to_integer(<<"critical">>) ->
@@ -326,8 +328,10 @@ alert_level_to_integer(<<"info">>) ->
     2;
 alert_level_to_integer(<<"debug">>) ->
     1;
-alert_level_to_integer(_) ->
-    0.
+alert_level_to_integer(<<_/binary>>) ->
+    0;
+alert_level_to_integer(Level) ->
+    alert_level_to_integer(wh_util:to_binary(Level)).
 
 %% R :: rate, per minute, in dollars (0.01, 1 cent per minute)
 %% RI :: rate increment, in seconds, bill in this increment AFTER rate minimum is taken from Secs
@@ -363,3 +367,131 @@ hangup_cause_to_alert_level(<<"CALL_REJECTED">>) ->
     <<"info">>;
 hangup_cause_to_alert_level(_) ->
     <<"error">>.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec get_views_json/2 :: (atom(), string()) -> json_objects().
+get_views_json(App, Folder) ->
+    Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
+    [JObj 
+     || File <- Files, 
+        begin 
+            JObj = (catch(get_view_json(File))),
+            case JObj of {'EXIT', _} -> false; _ -> true end 
+        end
+    ].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec get_view_json/2 :: (atom(), string()) -> {ne_binary(), json_object()}.
+-spec get_view_json/1 :: (string()) -> {ne_binary(), json_object()}.
+
+get_view_json(App, File) ->
+    Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
+    get_view_json(Path).
+
+get_view_json(Path) ->
+    ?LOG_SYS("fetch view from ~s", [Path]),
+    {ok, Bin} = file:read_file(Path),
+    JObj = wh_json:decode(Bin),
+    {wh_json:get_value(<<"_id">>, JObj), JObj}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec update_views/2 :: (ne_binary(), proplist()) -> ok.
+-spec update_views/3 :: (ne_binary(), proplist(), boolean()) -> ok.
+-spec update_views/4 :: (json_objects(), ne_binary(), proplist(), boolean()) -> ok.
+
+update_views(Db, Views) ->
+    update_views(Db, Views, false).
+
+update_views(Db, Views, Remove) ->
+    ViewOptions = [{<<"startkey">>, <<"_design/">>}
+                   ,{<<"endkey">>, <<"_e">>}
+                   ,{<<"include_docs">>, true}
+                  ],
+    case couch_mgr:get_results(Db, <<"_all_docs">>, ViewOptions) of
+        {ok, Found} ->
+            update_views(Found, Db, Views, Remove);
+        {error, _} ->
+            ok
+    end. 
+
+update_views([], _, [], _) ->
+    ok;
+update_views([], Db, [{Id,View}|Views], Remove) ->
+    ?LOG("adding view '~s' to '~s'", [Id, Db]),
+    couch_mgr:ensure_saved(Db, View),
+    update_views([], Db, Views, Remove);
+update_views([Found|Finds], Db, Views, Remove) ->
+    Id = wh_json:get_value(<<"id">>, Found),
+    Doc = wh_json:get_value(<<"doc">>, Found),
+    RawDoc = wh_json:delete_key(<<"_rev">>, Doc),
+    case props:get_value(Id, Views) of
+        undefined when Remove -> 
+            ?LOG("removing view '~s' from '~s'", [Id, Db]),
+            couch_mgr:del_doc(Db, Doc),
+            update_views(Finds, Db, proplists:delete(Id, Views), Remove);
+        undefined -> 
+            update_views(Finds, Db, proplists:delete(Id, Views), Remove);
+        View1 when View1 =:= RawDoc ->
+            update_views(Finds, Db, proplists:delete(Id, Views), Remove);
+        View2 ->
+            ?LOG("updating view '~s' in '~s'", [Id, Db]),
+            Rev = wh_json:get_value(<<"_rev">>, Doc),
+            couch_mgr:ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, View2)),
+            update_views(Finds, Db, proplists:delete(Id, Views), Remove)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec add_aggregate_device/2 :: (ne_binary(), undefined | ne_binary()) -> ok.
+add_aggregate_device(_, undefined) ->
+    ok;
+add_aggregate_device(Db, Device) ->
+    DeviceId = wh_json:get_value(<<"_id">>, Device),
+    case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
+        {ok, Rev} ->
+            ?LOG("aggregating device ~s/~s", [Db, DeviceId]),
+            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Device));
+        {error, not_found} ->
+            ?LOG("aggregating device ~s/~s", [Db, DeviceId]),
+            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Device))
+    end,
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec rm_aggregate_device/2 :: (ne_binary(), undefined | ne_binary()) -> ok.
+rm_aggregate_device(_, undefined) ->
+    ok;
+rm_aggregate_device(Db, Device) ->
+    DeviceId = wh_json:get_value(<<"_id">>, Device),
+    case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
+        {ok, JObj} ->
+            ?LOG("removing aggregated device ~s/~s", [Db, DeviceId]),
+            couch_mgr:del_doc(?WH_SIP_DB, JObj);
+        {error, not_found} ->
+            ok
+    end,
+    ok.

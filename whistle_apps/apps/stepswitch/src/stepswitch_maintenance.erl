@@ -9,9 +9,33 @@
 -include("stepswitch.hrl").
 
 %% API
+-export([refresh/0]).
 -export([lookup_number/1]).
 -export([reload_resources/0]).
 -export([process_number/1, process_number/2]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Lookup a number in the route db and return the account ID if known
+%% @end
+%%--------------------------------------------------------------------
+-spec refresh/0 :: () -> ok.
+refresh() ->
+    ?LOG_SYS("ensuring database ~s exists", [?RESOURCES_DB]),
+    couch_mgr:db_create(?RESOURCES_DB),
+    Views = whapps_util:get_views_json(stepswitch, "views"),
+    whapps_util:update_views(?RESOURCES_DB, Views),
+    case couch_mgr:all_docs(?RESOURCES_DB, [{<<"include_docs">>, true}]) of
+        {ok, JObjs} ->
+            [couch_mgr:del_doc(?RESOURCES_DB, wh_json:get_value(<<"doc">>, JObj)) 
+             || JObj <- JObjs
+                    ,wh_json:get_value([<<"doc">>, <<"pvt_type">>], JObj) =:= <<"route">>
+            ],
+            ok;
+        {error, _} ->
+            ok
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
