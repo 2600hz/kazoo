@@ -55,6 +55,29 @@ info(Format, Data) ->
 debug(Format, Data) ->
     format_log(debug, Format, Data).
 
+-ifdef(TEST).
+format_log(Type, Format, Data) when not is_list(Data) ->
+    format_log(Type, Format, [Data]);
+
+format_log(error, Format, Data) ->
+    format_log(err, Format, Data);
+
+format_log(Type, Format, CallID) when is_atom(Type), is_binary(CallID) ->
+    format_log(Type, Format, [Type, CallID]);
+
+format_log(Format, Data, CallID) when is_binary(CallID) ->
+    format_log(debug, Format, [debug, CallID | Data]);
+
+format_log(Type, Format, Data) when is_atom(Type) ->
+    try
+        Str = io_lib:format(Format, Data),
+        syslog:log(Type, binary_to_list(list_to_binary(Str)))
+    catch
+        A:B ->
+            io:format("logger exception: ~p:~p", [A,B])
+    end.
+
+-else.
 format_log(Type, Format, Data) when not is_list(Data) ->
     format_log(Type, Format, [Data]);
 
@@ -81,6 +104,8 @@ format_log(Type, Format, Data) when is_atom(Type) ->
             [syslog:log(debug, "st line: ~p", [STLine]) || STLine <- ST],
             ok
     end.
+-endif.
+
 
 format_log(Type, Format, Data, CallID) when is_atom(Type) ->
     format_log(Type, Format, [Type, CallID | Data]);
