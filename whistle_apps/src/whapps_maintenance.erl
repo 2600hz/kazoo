@@ -156,8 +156,7 @@ refresh(Account, Views) ->
                     ?LOG("account is missing its local account definition, but it was recovered from the accounts db"),
                     couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, Def));
                 {error, not_found} ->
-                    ?LOG("account is missing its local account definition, and it doesnt exist in the accounts db. REMOVING!"),
-                    couch_mgr:db_delete(AccountDb)
+                    ?LOG("account is missing its local account definition, and it doesnt exist in the accounts db. REMOVING!")
             end,
             remove;
         {ok, JObj} ->
