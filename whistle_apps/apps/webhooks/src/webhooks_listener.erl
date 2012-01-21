@@ -27,7 +27,7 @@
 
 -record(state, {acctdb = 'undefined' :: 'undefined' | ne_binary()
                ,acctid = 'undefined' :: 'undefined' | ne_binary()
-               ,webhook = 'undefined' :: 'undefined' | json_object()
+               ,webhook = 'undefined' :: 'undefined' | wh_json:json_object()
                ,realm = 'undefined' :: 'undefined' | ne_binary()
                }).
 
@@ -183,7 +183,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec try_send_req/4 :: (ne_binary(), 'put' | 'post' | 'get', json_object(), non_neg_integer()) -> {'ok', json_object()} | {'error', 'retries_exceeded'}.
+-spec try_send_req/4 :: (ne_binary(), 'put' | 'post' | 'get', wh_json:json_object(), non_neg_integer()) -> {'ok', wh_json:json_object()} | {'error', 'retries_exceeded'}.
 try_send_req(_, _, _, R) when R =< 0 ->
     ?LOG("Retries exceeded"),
     {error, retries_exceeded};
