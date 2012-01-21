@@ -1,6 +1,8 @@
 -module(logger).
 
--export([format_log/3, start_link/0, start_link/1, start_link/2]).
+-export([start_link/0, start_link/1, start_link/2]).
+
+-export([format_log/3, format_log/4, format_log/5]).
 
 -export([emerg/2, alert/2, crit/2, err/2, warning/2, notice/2, info/2, debug/2]).
 
@@ -59,6 +61,12 @@ format_log(Type, Format, Data) when not is_list(Data) ->
 format_log(error, Format, Data) ->
     format_log(err, Format, Data);
 
+format_log(Type, Format, CallID) when is_atom(Type), is_binary(CallID) ->
+    format_log(Type, Format, [Type, CallID]);
+
+format_log(Format, Data, CallID) when is_binary(CallID) ->
+    format_log(debug, Format, [debug, CallID | Data]);
+
 format_log(Type, Format, Data) when is_atom(Type) ->
     try
         Str = io_lib:format(Format, Data),
@@ -73,3 +81,24 @@ format_log(Type, Format, Data) when is_atom(Type) ->
             [syslog:log(debug, "st line: ~p", [STLine]) || STLine <- ST],
             ok
     end.
+
+format_log(Type, Format, Data, CallID) when is_atom(Type) ->
+    format_log(Type, Format, [Type, CallID | Data]);
+format_log(CallID, Format, Data, _) ->
+    format_log(debug, Format, [debug, CallID | Data]).
+
+format_log(Type, BaseFmt, BaseArgs, DebugFmt, CallID) when is_atom(Type) ->
+    format_log(Type
+               ,BaseFmt ++ DebugFmt
+               ,[Type, CallID | BaseArgs]
+              );
+format_log(DebugFmt, BaseFmt, BaseArgs, DebugArgs, CallID) when is_list(DebugFmt) ->
+    format_log(debug
+               ,BaseFmt ++ DebugFmt
+               ,[debug, CallID | BaseArgs] ++ DebugArgs
+               );
+format_log(CallID, BaseFmt, BaseArgs, DebugFmt, DebugArgs) when is_binary(CallID) ->
+    format_log(debug
+               ,BaseFmt ++ DebugFmt
+               ,[debug, CallID | BaseArgs] ++ DebugArgs
+               ).
