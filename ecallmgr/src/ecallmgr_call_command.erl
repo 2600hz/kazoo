@@ -130,17 +130,29 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
         false -> {'error', <<"record_call failed to execute as JObj did not validate">>};
         true ->
             MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
-            Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
 
-            _ = set(Node, UUID, <<"enable_file_write_buffering=false">>), % disable buffering to see if we get all the media
+            case wh_json:get_value(<<"Record-Action">>, JObj) of
+                <<"start">> ->
+                    Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
 
-            %% UUID start|stop path/to/media limit
-            RecArg = binary_to_list(list_to_binary([
-                                                    wh_json:get_string_value(<<"Record-Action">>, JObj, "start"), " "
-                                                    ,Media, " "
-                                                    ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "20"), " "
-                                                   ])),
-            {<<"record_call">>, RecArg}
+                    _ = set(Node, UUID, <<"enable_file_write_buffering=false">>), % disable buffering to see if we get all the media
+
+                    %% UUID start path/to/media limit
+                    RecArg = binary_to_list(list_to_binary([
+                                                            <<"start ">>
+                                                            ,Media, <<" ">>
+                                                            ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "20"), " "
+                                                           ])),
+                    {<<"record_call">>, RecArg};
+                <<"stop">> ->
+                    MediaUrl = ecallmgr_media_registry:register_local_media(MediaName, UUID, url),
+                    %% UUID stop path/to/media
+                    RecArg = binary_to_list(list_to_binary([
+                                                            <<"stop ">>
+                                                            ,MediaUrl
+                                                           ])),
+                    {<<"record_call">>, RecArg}
+            end
     end;
 
 get_fs_app(Node, UUID, JObj, <<"store">>) ->
@@ -589,7 +601,9 @@ send_cmd(Node, UUID, <<"hangup">>, _) ->
 send_cmd(Node, UUID, <<"record_call">>, Args) ->
     Cmd = list_to_binary([UUID, " ", Args]),
     ?LOG("execute on node ~s: uuid_record(~s)", [Node, Cmd]),
-    freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd));
+    Ret = freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd)),
+    ?LOG("executing uuid_record returned ~p", [Ret]),
+    Ret;
 send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
     XferExt = [begin
                    _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),

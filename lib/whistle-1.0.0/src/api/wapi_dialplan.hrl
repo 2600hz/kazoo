@@ -241,7 +241,7 @@
 
 %% Record Call Leg into MediaName
 -define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>, <<"Record-Action">>]).
--define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Time-Limit">>]).
+-define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Time-Limit">>, <<"Insert-At">>]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
                             ,{<<"Application-Name">>, <<"record_call">>}
