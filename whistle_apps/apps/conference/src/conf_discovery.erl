@@ -69,7 +69,7 @@ start_link() ->
 %------------------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting new conference discovery process"),
-    spawn(fun() -> whapps_util:revise_whapp_views_in_accounts(conference) end),
+    conference_maintenance:refresh(),
     {ok, #state{}, 0}.
 
 %------------------------------------------------------------------------------
@@ -101,21 +101,21 @@ handle_cast(_Msg, State) ->
 %------------------------------------------------------------------------------
 handle_info(timeout, #state{amqp_q = <<>>}=State) ->
     try
-	{ok, Q} = start_amqp(),
-	{noreply, State#state{amqp_q=Q}, hibernate}
+        {ok, Q} = start_amqp(),
+        {noreply, State#state{amqp_q=Q}, hibernate}
     catch
-	_:_ ->
+        _:_ ->
             ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
             {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
-	    {noreply, State}
+            {noreply, State}
     end;
 
 handle_info({amqp_reconnect, T}, State) ->
     try
-	{ok, NewQ} = start_amqp(),
-	{noreply, State#state{amqp_q=NewQ}, hibernate}
+        {ok, NewQ} = start_amqp(),
+        {noreply, State#state{amqp_q=NewQ}, hibernate}
     catch
-	_:_ ->
+        _:_ ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
@@ -181,11 +181,11 @@ code_change(_OldVsn, State, _Extra) ->
 -spec start_amqp/0 :: () -> tuple(ok, binary()).
 start_amqp() ->
     try
-	{'basic.qos_ok'} = amqp_util:basic_qos(1),
+        {'basic.qos_ok'} = amqp_util:basic_qos(1),
         _ = amqp_util:conference_exchange(),
         Q = amqp_util:new_conference_queue(discovery),
         amqp_util:bind_q_to_conference(Q, discovery),
-	amqp_util:basic_consume(Q, [{exclusive, false}]),
+        amqp_util:basic_consume(Q, [{exclusive, false}]),
         ?LOG_SYS("connected to AMQP"),
         {ok, Q}
     catch
@@ -547,7 +547,7 @@ wait_for_command(Command) ->
                     {error, execution_failure};
                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Command } ->
                     {ok, wh_json:get_value(<<"Application-Response">>, JObj, <<>>)};
-		_ ->
+                _ ->
                     wait_for_command(Command)
             end;
         _ ->

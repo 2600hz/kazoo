@@ -130,22 +130,20 @@ send_vm_to_email(TxtBody, HTMLBody, Subject, Props) ->
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
-                 ,[
-                    {<<"From">>, From},
-                    {<<"To">>, To},
-                    {<<"Subject">>, Subject}
+                 ,[{<<"From">>, From}
+                   ,{<<"To">>, To}
+                   ,{<<"Subject">>, Subject}
+                   ,{<<"X-Call-ID">>, props:get_value(call_id, Props)}
                   ]
              ,[]
              ,[
                {<<"multipart">>, <<"alternative">>, [], []
-                ,[
-                  {<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
+                ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
                   ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
                  ]
                }
                ,{<<"audio">>, <<"mpeg">>
-                     ,[
-                       {<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
+                     ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentFileName, "\""])}
                        ,{<<"Content-Type">>, list_to_binary([<<"audio/mpeg; name=\"">>, AttachmentFileName, "\""])}
                        ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
                       ]
