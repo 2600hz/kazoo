@@ -104,7 +104,7 @@ customers_waiting() ->
 customers_waiting(Srv) ->
     gen_listener:call(Srv, customers_waiting).
 
--spec handle_channel_status_resp/2 :: (json_object(), proplist()) -> 'ok'.
+-spec handle_channel_status_resp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_channel_status_resp(JObj, Props) ->
     Srv = props:get_value(server, Props),
     gen_listener:cast(Srv, {update_agent, JObj}).
@@ -339,7 +339,7 @@ rm_agent_from_dict(GamePid, Busy) when is_pid(GamePid) ->
             {Agent, dict:erase(CallID, Busy)}
     end.
 
--spec update_agent/2 :: (#dg_agent{}, json_object()) -> #dg_agent{}.
+-spec update_agent/2 :: (#dg_agent{}, wh_json:json_object()) -> #dg_agent{}.
 update_agent(#dg_agent{call_id=_CallID}=Agent, JObj) ->
     Hostname = wh_json:get_ne_value(<<"Switch-Hostname">>, JObj),
 

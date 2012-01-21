@@ -6,12 +6,12 @@
 %%% @end
 %%% Created : 29 Nov 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(webhooks_acct_sup).
+-module(webhooks_listener_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_acct/2]).
+-export([start_link/0, start_listener/2]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -27,8 +27,8 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-start_acct(AcctDB, Webhooks) ->
-    supervisor:start_child(?MODULE, [AcctDB, Webhooks]).
+start_listener(AcctDB, Webhook) ->
+    supervisor:start_child(?MODULE, [AcctDB, Webhook]).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -36,5 +36,5 @@ start_acct(AcctDB, Webhooks) ->
 
 init([]) ->
     {ok, { {simple_one_for_one, 5, 10}, [
-					 ?CHILD(webhooks_acct)
+					 ?CHILD(webhooks_listener)
 					]} }.

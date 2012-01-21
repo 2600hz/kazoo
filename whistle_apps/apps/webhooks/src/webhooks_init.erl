@@ -20,8 +20,8 @@ maybe_start_handler(Db) ->
     case couch_mgr:get_results(Db, <<"webhooks/crossbar_listing">>, [{<<"include_docs">>, true}]) of
 	{ok, []} -> ?LOG("No webhooks in ~s", [Db]), ignore;
 	{ok, WebHooks} ->
-	    ?LOG("Starting webhooks listener for ~s", [Db]),
-	    webhooks_acct_sup:start_acct(Db, [wh_json:get_value(<<"doc">>, Hook) || Hook <- WebHooks]);
+	    ?LOG("Starting webhooks listener(s) for ~s: ~b", [Db, length(WebHooks)]),
+	    [webhooks_listener_sup:start_listener(Db, wh_json:get_value(<<"doc">>, Hook)) || Hook <- WebHooks];
 	{error, _E} ->
 	    ?LOG_SYS("Failed to load webhooks view for account ~s", [Db])
     end.

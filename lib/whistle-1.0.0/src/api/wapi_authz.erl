@@ -18,37 +18,37 @@
 
 %% Authorization Requests
 -define(AUTHZ_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
-				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-				,<<"Request">>
-			   ]).
+                                ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                ,<<"Request">>
+                           ]).
 -define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>]).
 -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-			   ,{<<"Event-Name">>, <<"authz_req">>}
-			  ]).
+                           ,{<<"Event-Name">>, <<"authz_req">>}
+                          ]).
 -define(AUTHZ_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-			  ,{<<"To">>, fun is_binary/1}
-			  ,{<<"From">>, fun is_binary/1}
-			  ,{<<"Call-ID">>, fun is_binary/1}
-			  ,{<<"Caller-ID-Name">>, fun is_binary/1}
-			  ,{<<"Caller-ID-Number">>, fun is_binary/1}
-			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-			 ]).
+                          ,{<<"To">>, fun is_binary/1}
+                          ,{<<"From">>, fun is_binary/1}
+                          ,{<<"Call-ID">>, fun is_binary/1}
+                          ,{<<"Caller-ID-Name">>, fun is_binary/1}
+                          ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                          ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                         ]).
 
 %% Authorization Responses
 -define(AUTHZ_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Is-Authorized">>]).
 -define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Custom-Channel-Vars">>]).
 -define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-			    ,{<<"Event-Name">>, <<"authz_resp">>}
-			    ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
-			   ]).
+                            ,{<<"Event-Name">>, <<"authz_resp">>}
+                            ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
+                           ]).
 -define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %% Authorization Requests
 -define(AUTHZ_WIN_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_AUTHZ_WIN_HEADERS, []).
 -define(AUTHZ_WIN_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-			   ,{<<"Event-Name">>, <<"authz_win">>}
-			  ]).
+                           ,{<<"Event-Name">>, <<"authz_win">>}
+                          ]).
 -define(AUTHZ_WIN_TYPES, []).
 
 %%--------------------------------------------------------------------
@@ -59,8 +59,8 @@
 -spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
         case req_v(Prop) of
-	    true -> wh_api:build_message(Prop, ?AUTHZ_REQ_HEADERS, ?OPTIONAL_AUTHZ_REQ_HEADERS);
-	    false -> {error, "Proplist failed validation for authz_req"}
+            true -> wh_api:build_message(Prop, ?AUTHZ_REQ_HEADERS, ?OPTIONAL_AUTHZ_REQ_HEADERS);
+            false -> {error, "Proplist failed validation for authz_req"}
     end;
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
@@ -79,8 +79,8 @@ req_v(JObj) ->
 -spec resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
-	true -> wh_api:build_message(Prop, ?AUTHZ_RESP_HEADERS, ?OPTIONAL_AUTHZ_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for authz_resp"}
+        true -> wh_api:build_message(Prop, ?AUTHZ_RESP_HEADERS, ?OPTIONAL_AUTHZ_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for authz_resp"}
     end;
 resp(JObj) ->
     resp(wh_json:to_proplist(JObj)).
@@ -99,8 +99,8 @@ resp_v(JObj) ->
 -spec win/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 win(Prop) when is_list(Prop) ->
         case win_v(Prop) of
-	    true -> wh_api:build_message(Prop, ?AUTHZ_WIN_HEADERS, ?OPTIONAL_AUTHZ_WIN_HEADERS);
-	    false -> {error, "Proplist failed validation for authz_win"}
+            true -> wh_api:build_message(Prop, ?AUTHZ_WIN_HEADERS, ?OPTIONAL_AUTHZ_WIN_HEADERS);
+            false -> {error, "Proplist failed validation for authz_win"}
     end;
 win(JObj) ->
     win(wh_json:to_proplist(JObj)).
@@ -160,7 +160,7 @@ publish_win(Queue, Resp, ContentType) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_realm/1  :: (json_object()) -> ne_binary().
+-spec get_auth_realm/1  :: (wh_json:json_object()) -> ne_binary().
 get_auth_realm(ApiJObj) ->
     [_ReqUser, ReqDomain] = binary:split(wh_json:get_value(<<"Request">>, ApiJObj), <<"@">>),
     ReqDomain.

@@ -24,7 +24,7 @@ cache_user_key(Realm, User) -> {?MODULE, sip_credentials, Realm, User}.
 %% look up a cached registration by realm and optionally username
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_registrations/1 :: (ne_binary()) -> {'ok', json_objects()}.
+-spec lookup_registrations/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()}.
 lookup_registrations(Realm) when not is_binary(Realm) ->
     lookup_registrations(wh_util:to_binary(Realm));
 lookup_registrations(Realm) ->
@@ -36,7 +36,7 @@ lookup_registrations(Realm) ->
                                          end),
     {'ok', Registrations}.
 
--spec lookup_registration/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found'}.
+-spec lookup_registration/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
 lookup_registration(Realm, Username) when not is_binary(Realm) ->
     lookup_registration(wh_util:to_binary(Realm), Username);
 lookup_registration(Realm, Username) when not is_binary(Username) ->
@@ -51,7 +51,7 @@ lookup_registration(Realm, Username) ->
 %% get a complete list of registrations in the cache
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_all_registrations/0 :: () -> {'ok', json_objects()}.
+-spec fetch_all_registrations/0 :: () -> {'ok', wh_json:json_objects()}.
 fetch_all_registrations() ->
     {ok, Cache} = registrar_sup:cache_proc(),
     Registrations = wh_cache:filter_local(Cache, fun({?MODULE, registration, _, _}, _) ->
@@ -90,7 +90,7 @@ hash_contact(Contact) ->
 %% look up the user and realm in the database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found'}.
+-spec lookup_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
 lookup_auth_user(Name, Realm) ->
     ?LOG("looking up auth creds for ~s@~s", [Name, Realm]),
     {ok, Cache} = registrar_sup:cache_proc(),
@@ -121,7 +121,7 @@ lookup_auth_user(Name, Realm) ->
             end
     end.
 
--spec get_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found'}.
+-spec get_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
 get_auth_user(Name, Realm) ->
     case whapps_util:get_account_by_realm(Realm) of
         {'error', E} ->
@@ -134,7 +134,7 @@ get_auth_user(Name, Realm) ->
             get_auth_user_in_account(Name, Realm, AccountDB)
     end.
 
--spec get_auth_user_in_agg/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found'}.
+-spec get_auth_user_in_agg/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
 get_auth_user_in_agg(Name, Realm) ->
     UseAggregate = whapps_config:get_is_true(?CONFIG_CAT, <<"use_aggregate">>, false),
     ViewOptions = [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}],
@@ -153,7 +153,7 @@ get_auth_user_in_agg(Name, Realm) ->
             {'ok', User}
     end.
 
--spec get_auth_user_in_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', 'not_found'}.
+-spec get_auth_user_in_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
 get_auth_user_in_account(Name, Realm, AccountDB) ->
     case couch_mgr:get_results(AccountDB, <<"devices/sip_credentials">>, [{<<"key">>, Name}, {<<"include_docs">>, true}]) of
         {'error', R} ->

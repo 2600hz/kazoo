@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 29 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cdr_handler).
+-module(dth_cdr_handler).
 
 -export([init/0, handle_req/2]).
 -export([handle_req2/2]).
@@ -112,7 +112,7 @@ now_to_datetime(Secs) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0wZ",
                                    [YY, MM, DD, Hour, Min, Sec])).
 
--spec get_to_user/1 :: (json_object()) -> binary().
+-spec get_to_user/1 :: (wh_json:json_object()) -> binary().
 get_to_user(JObj) ->
     case wh_json:get_value(<<"Callee-ID-Number">>, JObj) of
         undefined ->
@@ -126,7 +126,7 @@ get_to_user(JObj) ->
             To
     end.
 
--spec get_from_user/1 :: (json_object()) -> binary().
+-spec get_from_user/1 :: (wh_json:json_object()) -> binary().
 get_from_user(JObj) ->
     case wh_json:get_value(<<"Caller-ID-Number">>, JObj) of
         undefined ->
@@ -140,7 +140,7 @@ get_from_user(JObj) ->
             From
     end.
 
--spec get_account_code/1 :: (json_object()) -> binary().
+-spec get_account_code/1 :: (wh_json:json_object()) -> ne_binary().
 get_account_code(JObj) ->
     AccountID = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
                     AID when erlang:byte_size(AID) < 18 -> AID;

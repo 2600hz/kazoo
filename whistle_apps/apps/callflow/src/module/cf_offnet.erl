@@ -18,7 +18,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
 handle(Data, #cf_call{account_id=AccountId, request_user=ReqNum}=Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNum, CIDName} = cf_attributes:caller_id(<<"external">>, Call),

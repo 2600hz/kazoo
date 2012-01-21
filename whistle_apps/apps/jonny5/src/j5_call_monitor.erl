@@ -267,7 +267,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 %% Return the cost of the call in UNITS (not dollars)
--spec extract_cost/1 :: (json_object()) -> integer().
+-spec extract_cost/1 :: (wh_json:json_object()) -> integer().
 extract_cost(JObj) ->
     BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),

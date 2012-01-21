@@ -22,19 +22,19 @@
 
 -include("jonny5.hrl").
 
--spec fetch_all_accounts/0 :: () -> json_objects().
+-spec fetch_all_accounts/0 :: () -> wh_json:json_objects().
 fetch_all_accounts() ->
     {ok, Cache} = jonny5_sup:cache_proc(),
     fetch_all_accounts(Cache).
 
--spec fetch_all_accounts/1 :: (pid()) -> json_objects().
+-spec fetch_all_accounts/1 :: (pid()) -> wh_json:json_objects().
 fetch_all_accounts(Cache) ->
     AcctPids = wh_cache:filter_local(Cache, fun({j5_authz, _}, _) -> true;
 						(_, _) -> false
 					     end),
     [j5_acctmgr:status(AcctPid) || {{j5_authz, _AcctID}, AcctPid} <- AcctPids, erlang:is_process_alive(AcctPid)].
 
--spec fetch_account/1 :: (ne_binary()) -> json_object() | {'error', 'not_found'}.
+-spec fetch_account/1 :: (ne_binary()) -> wh_json:json_object() | {'error', 'not_found'}.
 fetch_account(AcctID) ->
     case fetch_account_handler(AcctID) of
 	{ok, Pid} ->
@@ -119,7 +119,7 @@ write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration) ->
 write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration, JObj) ->
     write_transaction_to_ledger(DB, CallID, CallType, CreditUnits, Duration, JObj, credit).
 
--spec write_transaction_to_ledger/7 :: (ne_binary(), ne_binary(), atom(), integer(), integer(), json_object(), 'debit' | 'credit') -> {'ok', json_object()} | {'error', atom()}.
+-spec write_transaction_to_ledger/7 :: (ne_binary(), ne_binary(), atom(), integer(), integer(), wh_json:json_object(), 'debit' | 'credit') -> {'ok', wh_json:json_object()} | {'error', atom()}.
 write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
 

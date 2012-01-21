@@ -19,7 +19,7 @@
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
 handle(Data, #cf_call{channel_vars=CCVs}=Call) ->
     ParkedCalls = get_parked_calls(Call),
     SlotNumber = get_slot_number(ParkedCalls, Call),
@@ -81,7 +81,7 @@ get_switch_hostname(CallId, Call) ->
 %% Determine the appropriate action to retrieve a parked call
 %% @end
 %%--------------------------------------------------------------------
--spec retrieve/4 :: (ne_binary(), json_object(), ne_binary() | 'undefined', #cf_call{}) -> boolean().
+-spec retrieve/4 :: (ne_binary(), wh_json:json_object(), ne_binary() | 'undefined', #cf_call{}) -> boolean().
 retrieve(SlotNumber, ParkedCalls, CallerHost, #cf_call{to_user=ToUser, to_realm=ToRealm}=Call) ->
     case wh_json:get_value([<<"slots">>, SlotNumber], ParkedCalls) of
         undefined ->
@@ -131,7 +131,7 @@ get_node_ip(Node) ->
 %% Determine the appropriate action to park the current call scenario
 %% @end
 %%--------------------------------------------------------------------
--spec park_call/4 :: (ne_binary(), json_object(), undefined | ne_binary(), #cf_call{}) -> ok.
+-spec park_call/4 :: (ne_binary(), wh_json:json_object(), undefined | ne_binary(), #cf_call{}) -> ok.
 park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
     ?LOG("attempting to park call in slot ~p", [SlotNumber]),
     Slot = create_slot(Call),
@@ -152,7 +152,7 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
 %% Builds the json object representing the call in the parking slot
 %% @end
 %%--------------------------------------------------------------------
--spec create_slot/1 :: (#cf_call{}) -> json_object().
+-spec create_slot/1 :: (#cf_call{}) -> wh_json:json_object().
 create_slot(Call) ->
     CallId = cf_exe:callid(Call),
     wh_json:from_list([{<<"Call-ID">>, CallId}]).
@@ -164,7 +164,7 @@ create_slot(Call) ->
 %% was provided
 %% @end
 %%--------------------------------------------------------------------
--spec get_slot_number/2 :: (json_object(), #cf_call{}) -> ne_binary().
+-spec get_slot_number/2 :: (wh_json:json_object(), #cf_call{}) -> ne_binary().
 get_slot_number(_, #cf_call{capture_group=CG}) when is_binary(CG) andalso size(CG) > 0 ->
     CG;
 get_slot_number(ParkedCalls, _) ->
@@ -186,7 +186,7 @@ get_slot_number(ParkedCalls, _) ->
 %% and tries again, determining the new slot.
 %% @end
 %%--------------------------------------------------------------------
--spec save_slot/4 :: (ne_binary(), json_object(), json_object(), #cf_call{}) -> integer().
+-spec save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), #cf_call{}) -> integer().
 save_slot(SlotNumber, Slot, ParkedCalls, #cf_call{account_db=Db}=Call) ->
     case couch_mgr:save_doc(Db, wh_json:set_value([<<"slots">>, SlotNumber], Slot, ParkedCalls)) of
         {ok, Parked} ->
@@ -204,10 +204,10 @@ save_slot(SlotNumber, Slot, ParkedCalls, #cf_call{account_db=Db}=Call) ->
 %% actuall "A-Leg".  Find the old callid and update it with the new one.
 %% @end
 %%--------------------------------------------------------------------
--spec update_call_id/3 :: (ne_binary(), json_object(), #cf_call{}) -> ok.
+-spec update_call_id/3 :: (ne_binary(), wh_json:json_object(), #cf_call{}) -> 'ok'.
 update_call_id(Replaces, ParkedCalls, #cf_call{account_db=Db}=Call) ->
     CallId = cf_exe:callid(Call),
-    {struct, Slots} = wh_json:get_value(<<"slots">>, ParkedCalls, ?EMPTY_JSON_OBJECT),
+    {struct, Slots} = wh_json:get_value(<<"slots">>, ParkedCalls, wh_json:new()),
     Updated = lists:map(fun({Number, Props}=Slot) ->
                                 case wh_json:get_value(<<"Call-ID">>, Props) of
                                     Replaces ->
@@ -231,7 +231,7 @@ update_call_id(Replaces, ParkedCalls, #cf_call{account_db=Db}=Call) ->
 %% the list does not exist then it returns an new empty instance
 %% @end
 %%--------------------------------------------------------------------
--spec get_parked_calls/1 :: (#cf_call{}) -> json_object().
+-spec get_parked_calls/1 :: (#cf_call{}) -> wh_json:json_object().
 get_parked_calls(#cf_call{account_db=Db, account_id=Id}) ->
     case couch_mgr:open_doc(Db, <<"parked_calls">>) of
         {error, not_found} ->
@@ -243,8 +243,8 @@ get_parked_calls(#cf_call{account_db=Db, account_id=Id}) ->
                           ,fun(J) -> wh_json:set_value(<<"pvt_created">>, Timestamp, J) end
                           ,fun(J) -> wh_json:set_value(<<"pvt_modified">>, Timestamp, J) end
                           ,fun(J) -> wh_json:set_value(<<"pvt_vsn">>, <<"1">>, J) end
-                          ,fun(J) -> wh_json:set_value(<<"slots">>, ?EMPTY_JSON_OBJECT, J) end],
-            lists:foldr(fun(F, J) -> F(J) end, ?EMPTY_JSON_OBJECT, Generators);
+                          ,fun(J) -> wh_json:set_value(<<"slots">>, wh_json:new(), J) end],
+            lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), Generators);
         {ok, JObj} ->
             JObj
     end.

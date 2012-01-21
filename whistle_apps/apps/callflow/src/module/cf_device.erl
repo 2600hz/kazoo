@@ -20,7 +20,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (json_object(), #cf_call{}) -> 'ok'.
+-spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> 'ok'.
 handle(Data, Call) ->
     case bridge_to_endpoints(Data, Call) of
         {ok, _} ->
@@ -40,7 +40,7 @@ handle(Data, Call) ->
 %% Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints/2 :: (json_object(), #cf_call{}) -> cf_api_bridge_return().
+-spec bridge_to_endpoints/2 :: (wh_json:json_object(), #cf_call{}) -> cf_api_bridge_return().
 bridge_to_endpoints(Data, Call) ->
     EndpointId = wh_json:get_value(<<"id">>, Data),
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),

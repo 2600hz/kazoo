@@ -11,93 +11,93 @@
 -include("../wh_api.hrl").
 
 -export([req/1, resp/1, req_v/1, resp_v/1, win/1, win_v/1
-	 ,bind_q/2, unbind_q/1
-	]).
+         ,bind_q/2, unbind_q/1
+        ]).
 
 -export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
-	,publish_win/2, publish_win/3
-	]).
+        ,publish_win/2, publish_win/3
+        ]).
 
 -export([get_auth_realm/1]).
 
 %% Route Requests
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
-				,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-			   ]).
+                                ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                           ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
-					 ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
-					 ,<<"Resource-Type">>, <<"Cost-Parameters">>
-				    ]).
+                                         ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
+                                         ,<<"Resource-Type">>, <<"Cost-Parameters">>
+                                    ]).
 -define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-			   ,{<<"Event-Name">>, <<"route_req">>}
-			   ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>, <<"audio">>, <<"video">>, <<"chat">>]}
-			   ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
-			  ]).
+                           ,{<<"Event-Name">>, <<"route_req">>}
+                           ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>, <<"audio">>, <<"video">>, <<"chat">>]}
+                           ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
+                          ]).
 -define(ROUTE_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-			  ,{<<"To">>, fun is_binary/1}
-			  ,{<<"From">>, fun is_binary/1}
-			  ,{<<"Request">>, fun is_binary/1}
-			  ,{<<"Call-ID">>, fun is_binary/1}
-			  ,{<<"Event-Queue">>, fun is_binary/1}
-			  ,{<<"Caller-ID-Name">>, fun is_binary/1}
-			  ,{<<"Caller-ID-Number">>, fun is_binary/1}
-			  ,{<<"Cost-Parameters">>, fun({struct, L}) when is_list(L) ->
-							   lists:all(fun({K, _V}) ->
-									     lists:member(K, ?ROUTE_REQ_COST_PARAMS)
-								     end, L);
-						      (_) -> false
-						   end}
-			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-			 ]).
+                          ,{<<"To">>, fun is_binary/1}
+                          ,{<<"From">>, fun is_binary/1}
+                          ,{<<"Request">>, fun is_binary/1}
+                          ,{<<"Call-ID">>, fun is_binary/1}
+                          ,{<<"Event-Queue">>, fun is_binary/1}
+                          ,{<<"Caller-ID-Name">>, fun is_binary/1}
+                          ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                          ,{<<"Cost-Parameters">>, fun({struct, L}) when is_list(L) ->
+                                                           lists:all(fun({K, _V}) ->
+                                                                             lists:member(K, ?ROUTE_REQ_COST_PARAMS)
+                                                                     end, L);
+                                                      (_) -> false
+                                                   end}
+                          ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                         ]).
 -define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
-				    ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
-			       ]).
+                                    ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
+                               ]).
 
 %% Route Responses
 -define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
 -define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
-						 ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
-						 ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
-						 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
-						 ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
-						 ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
-					   ]).
+                                                 ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
+                                                 ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
+                                                 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
+                                                 ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
+                                                 ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+                                           ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
-				  ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
-				  ,?INVITE_FORMAT_TUPLE
-				 ]).
+                                  ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
+                                  ,?INVITE_FORMAT_TUPLE
+                                 ]).
 -define(ROUTE_RESP_ROUTE_TYPES, [ {<<"Codecs">>, fun is_list/1}
-				  ,{<<"Route">>, fun is_binary/1}
-				  ,{<<"To-User">>, fun is_binary/1}
-				  ,{<<"To-Realm">>, fun is_binary/1}
-				  ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
+                                  ,{<<"Route">>, fun is_binary/1}
+                                  ,{<<"To-User">>, fun is_binary/1}
+                                  ,{<<"To-Realm">>, fun is_binary/1}
+                                  ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
                                   ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-				]).
+                                ]).
 
 %% Route Responses
 -define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Method">>]).
 -define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Routes">>
                                       ,<<"Route-Error-Code">>, <<"Route-Error-Message">>]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-			    ,{<<"Event-Name">>, <<"route_resp">>}
-			    ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
-			   ]).
+                            ,{<<"Event-Name">>, <<"route_resp">>}
+                            ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
+                           ]).
 -define(ROUTE_RESP_TYPES, [{<<"Route-Error-Code">>, fun is_binary/1}
-			   ,{<<"Route-Error-Message">>, fun is_binary/1}
-			   ,{<<"Routes">>, fun(L) when is_list(L) -> true;
-					      (_) -> false
-					   end}
+                           ,{<<"Route-Error-Message">>, fun is_binary/1}
+                           ,{<<"Routes">>, fun(L) when is_list(L) -> true;
+                                              (_) -> false
+                                           end}
                            ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-			  ]).
+                          ]).
 
 %% Route Winner
 -define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
 -define(OPTIONAL_ROUTE_WIN_HEADERS, [<<"Custom-Channel-Vars">>]).
 -define(ROUTE_WIN_VALUES, [{<<"Event-Name">>, <<"route_win">>}]).
 -define(ROUTE_WIN_TYPES, [{<<"Call-ID">>, fun is_binary/1}
-			  ,{<<"Control-Queue">>, fun is_binary/1}
-			  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-			 ]).
+                          ,{<<"Control-Queue">>, fun is_binary/1}
+                          ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                         ]).
 
 %%--------------------------------------------------------------------
 %% @doc Dialplan Route Request - see wiki
@@ -107,8 +107,8 @@
 -spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
-	true -> wh_api:build_message(Prop, ?ROUTE_REQ_HEADERS, ?OPTIONAL_ROUTE_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for route_req"}
+        true -> wh_api:build_message(Prop, ?ROUTE_REQ_HEADERS, ?OPTIONAL_ROUTE_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for route_req"}
     end;
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
@@ -137,8 +137,8 @@ resp(Prop) when is_list(Prop) ->
                     Prop
             end,
     case resp_v(Prop1) of
-	true -> wh_api:build_message(Prop1, ?ROUTE_RESP_HEADERS, ?OPTIONAL_ROUTE_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for route_resp"}
+        true -> wh_api:build_message(Prop1, ?ROUTE_RESP_HEADERS, ?OPTIONAL_ROUTE_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for route_resp"}
     end;
 resp(JObj) ->
     resp(wh_json:to_proplist(JObj)).
@@ -164,8 +164,8 @@ resp_v(JObj) ->
 -spec resp_route/1 :: (api_terms()) -> {'ok', proplist()} | {'error', string()}.
 resp_route(Prop) when is_list(Prop) ->
     case resp_route_v(Prop) of
-	true -> wh_api:build_message_specific(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
-	false -> {error, "Proplist failed validation for route_resp_route"}
+        true -> wh_api:build_message_specific(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
+        false -> {error, "Proplist failed validation for route_resp_route"}
     end;
 resp_route(JObj) ->
     resp_route(wh_json:to_proplist(JObj)).
@@ -184,8 +184,8 @@ resp_route_v(JObj) ->
 -spec win/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 win(Prop) when is_list(Prop) ->
     case win_v(Prop) of
-	true -> wh_api:build_message(Prop, ?ROUTE_WIN_HEADERS, ?OPTIONAL_ROUTE_WIN_HEADERS);
-	false -> {error, "Proplist failed validation for route_win"}
+        true -> wh_api:build_message(Prop, ?ROUTE_WIN_HEADERS, ?OPTIONAL_ROUTE_WIN_HEADERS);
+        false -> {error, "Proplist failed validation for route_win"}
     end.
 
 -spec win_v/1 :: (api_terms()) -> boolean().
@@ -239,7 +239,7 @@ publish_win(RespQ, Win, ContentType) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_realm/1  :: (json_object()) -> ne_binary().
+-spec get_auth_realm/1  :: (wh_json:json_object()) -> ne_binary().
 get_auth_realm(ApiJObj) ->
     [_ReqUser, ReqDomain] = binary:split(wh_json:get_value(<<"Request">>, ApiJObj), <<"@">>),
     ReqDomain.

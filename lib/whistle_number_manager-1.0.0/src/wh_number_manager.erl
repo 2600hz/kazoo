@@ -47,7 +47,7 @@ find(Number, Quanity) ->
 %% missing
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_number/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} |
+-spec reconcile_number/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} |
                                                           {error, term()}.
 reconcile_number(Number, AccountId) ->
     Regex = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"reconcile_regex">>, <<"^\\+{0,1}1{0,1}(\\d{10})$">>),
@@ -85,7 +85,7 @@ reconcile_number(Number, AccountId) ->
 %% if necessary
 %% @end
 %%--------------------------------------------------------------------
--spec assign_number_to_account/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} |
+-spec assign_number_to_account/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} |
                                                                   {error, atom()}.
 assign_number_to_account(Number, AccountId) ->
     assign_number_to_account(Number, AccountId, undefined).
@@ -186,7 +186,7 @@ lookup_account_by_number(Number) ->
 %% Update the user configurable fields
 %% @end
 %%--------------------------------------------------------------------
--spec get_public_fields/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} |
+-spec get_public_fields/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} |
                                                            {error, atom()}.
 get_public_fields(Number, AccountId) ->
     Num = wnm_util:normalize_number(Number),
@@ -213,7 +213,7 @@ get_public_fields(Number, AccountId) ->
 %% Update the user configurable fields
 %% @end
 %%--------------------------------------------------------------------
--spec set_public_fields/3 :: (ne_binary(), ne_binary(), json_object()) -> {ok, json_object()} |
+-spec set_public_fields/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()} |
                                                                           {error, atom()}.
 set_public_fields(Number, AccountId, PublicJObj) ->
     Num = wnm_util:normalize_number(Number),
@@ -328,7 +328,7 @@ free_numbers(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec prepare_find_results/2 :: (proplist(), [] | [ne_binary(),...]) -> [] | [ne_binary(),...].
--spec prepare_find_results/4 :: ([] | [ne_binary(),...], ne_binary(), json_object(), [] | [ne_binary(),...]) 
+-spec prepare_find_results/4 :: ([] | [ne_binary(),...], ne_binary(), wh_json:json_object(), [] | [ne_binary(),...]) 
                                 -> [] | [ne_binary(),...].
 
 prepare_find_results([], Found) ->
@@ -373,8 +373,8 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
 %% Store a newly discovered number (first time)
 %% @end
 %%--------------------------------------------------------------------
--spec store_discovery/3 :: (ne_binary(), ne_binary(), json_object()) -> {ok, json_object()} | {error, term()}.
--spec store_discovery/4 :: (ne_binary(), ne_binary(), json_object(), ne_binary()) -> {ok, json_object()} | {error, term()}.
+-spec store_discovery/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()} | {error, term()}.
+-spec store_discovery/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), ne_binary()) -> {ok, wh_json:json_object()} | {error, term()}.
 
 store_discovery(Number, ModuleName, ModuleData) ->
     store_discovery(Number, ModuleName, ModuleData, <<"discovery">>).
@@ -428,7 +428,7 @@ store_discovery(Number, ModuleName, ModuleData, State) ->
 %% aggregates the new document to the accounts db.
 %% @end
 %%--------------------------------------------------------------------
--spec add_number_to_account/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} |
+-spec add_number_to_account/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} |
                                                                {error, term()}.
 add_number_to_account(Number, AccountId) ->
     Db = wh_util:format_account_id(AccountId, encoded),
@@ -457,7 +457,7 @@ add_number_to_account(Number, AccountId) ->
 %% aggregates the new document to the accounts db.
 %% @end
 %%--------------------------------------------------------------------
--spec remove_number_from_account/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} |
+-spec remove_number_from_account/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} |
                                                                     {error, term()}.
 remove_number_from_account(Number, AccountId) ->
     Db = wh_util:format_account_id(AccountId, encoded),
@@ -482,7 +482,7 @@ remove_number_from_account(Number, AccountId) ->
 %% and run any providers 
 %% @end
 %%--------------------------------------------------------------------
--spec save_number/4 :: (ne_binary(), ne_binary(), ne_binary(), json_object()) -> {ok, json_object()} |
+-spec save_number/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()} |
                                                                                  {error, term()}.
 save_number(Db, Number, AccountId, JObj1) ->
     ?LOG("attempting to save '~s' in '~s'", [Number, Db]),
@@ -521,8 +521,8 @@ save_number(Db, Number, AccountId, JObj1) ->
 %% them and collecting any errors...
 %% @end
 %%--------------------------------------------------------------------
--spec exec_providers_save/3 :: (json_object(), ne_binary(), ne_binary()) -> {json_object(), proplist()}.
--spec exec_providers_save/5 :: (list(), json_object(), ne_binary(), ne_binary(), list()) -> {json_object(), proplist()}.
+-spec exec_providers_save/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> {wh_json:json_object(), proplist()}.
+-spec exec_providers_save/5 :: (list(), wh_json:json_object(), ne_binary(), ne_binary(), list()) -> {wh_json:json_object(), proplist()}.
 
 exec_providers_save(JObj, Number, State) ->
     Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, []),

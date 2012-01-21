@@ -16,7 +16,7 @@
 init() ->
     ok.
 
--spec handle_req/2 :: (json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     Customer = #dg_customer{
       call_id = wh_json:get_value(<<"Call-ID">>, JObj)

@@ -12,7 +12,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req/2 :: (json_object(), proplist()) -> ok.
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> ok.
 handle_req(JObj, Options) ->
     case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
         undefined ->
@@ -60,7 +60,7 @@ handle_req(JObj, Options) ->
 %% attempt to fulfill authorized call requests
 %% @end
 %%-----------------------------------------------------------------------------
--spec fulfill_call_request/3 :: (json_object(), ne_binary(), #cf_call{}) -> 'ok'.
+-spec fulfill_call_request/3 :: (wh_json:json_object(), ne_binary(), #cf_call{}) -> 'ok'.
 fulfill_call_request(JObj, CallId, #cf_call{account_id=AccountId}=Call) ->
     case cf_util:lookup_callflow(Call) of
         {ok, Flow, NoMatch} ->
@@ -80,7 +80,7 @@ fulfill_call_request(JObj, CallId, #cf_call{account_id=AccountId}=Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_route_response/2 :: (json_object(), #cf_call{}) -> 'ok'.
+-spec send_route_response/2 :: (wh_json:json_object(), #cf_call{}) -> 'ok'.
 send_route_response(JObj, #cf_call{channel_vars=CVs, bdst_q=Q}) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}

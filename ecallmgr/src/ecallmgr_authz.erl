@@ -32,7 +32,7 @@ default() ->
 authorize(FSID, CallID, FSData) ->
     proc_lib:start_link(?MODULE, init_authorize, [self(), FSID, CallID, FSData]).
 
--spec is_authorized/1 :: (Pid) -> {boolean(), json_object()} when
+-spec is_authorized/1 :: (Pid) -> {boolean(), wh_json:json_object()} when
       Pid :: pid() | undefined.
 is_authorized(Pid) when is_pid(Pid) ->
     Ref = make_ref(),
@@ -78,7 +78,7 @@ init_authorize(Parent, FSID, CallID, FSData) ->
 
     authorize_loop(JObj).
 
--spec authorize_loop/1 :: (json_object()) -> no_return().
+-spec authorize_loop/1 :: (wh_json:json_object()) -> no_return().
 authorize_loop(JObj) ->
     receive
 	{is_authorized, From, Ref} ->

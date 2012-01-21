@@ -398,8 +398,8 @@ validate_new_signup(#cb_context{req_data=JObj}=Context) ->
 %% Determines if the account realm is unique and if the account is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_account/2 :: (Account, Context) -> tuple(list(), undefined | json_object()) when
-      Account :: undefined | json_object(),
+-spec validate_account/2 :: (Account, Context) -> tuple(list(), undefined | wh_json:json_object()) when
+      Account :: undefined | wh_json:json_object(),
       Context :: #cb_context{}.
 validate_account(undefined, _) ->
     ?LOG("signup did not contain an account definition"),
@@ -423,8 +423,8 @@ validate_account(Account, Context) ->
 %% Determines if the user object is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_user/2 :: (User, Context) -> tuple(list(), undefined | json_object()) when
-      User :: undefined | json_object(),
+-spec validate_user/2 :: (User, Context) -> tuple(list(), undefined | wh_json:json_object()) when
+      User :: undefined | wh_json:json_object(),
       Context :: #cb_context{}.
 validate_user(undefined, _) ->
     ?LOG("signup did not contain an user definition"),
@@ -479,7 +479,7 @@ check_activation_key(ActivationKey, Context) ->
 %% Activate signup document by creating an account and user
 %% @end
 %%--------------------------------------------------------------------
--spec activate_signup/1 :: (json_object()) -> {'ok', json_object(), json_object()} | {'error', 'creation_failed' | 'account_undefined' | 'user_undefined'}.
+-spec activate_signup/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_object(), wh_json:json_object()} | {'error', 'creation_failed' | 'account_undefined' | 'user_undefined'}.
 activate_signup(JObj) ->
     case activate_account(wh_json:get_value(<<"pvt_account">>, JObj)) of
         {ok, Account} ->
@@ -494,7 +494,7 @@ activate_signup(JObj) ->
 %% Create the account defined on the signup document
 %% @end
 %%--------------------------------------------------------------------
--spec activate_account/1 :: ('undefined' | json_object()) -> {'ok', json_object()} | {'error', 'creation_failed' | 'account_undefined'}.
+-spec activate_account/1 :: ('undefined' | wh_json:json_object()) -> {'ok', wh_json:json_object()} | {'error', 'creation_failed' | 'account_undefined'}.
 activate_account(undefined) ->
     {error, account_undefined};
 activate_account(Account) ->
@@ -517,7 +517,7 @@ activate_account(Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec activate_user/2 :: (json_object(), 'undefined' | json_object()) -> {'ok', json_object(), json_object()} |
+-spec activate_user/2 :: (wh_json:json_object(), 'undefined' | wh_json:json_object()) -> {'ok', wh_json:json_object(), wh_json:json_object()} |
                                                                          {'error', 'user_undefined' | 'creation_failed'}.
 activate_user(_, undefined) ->
     {error, user_undefined};
@@ -700,7 +700,7 @@ cleanup_signups(#state{signup_lifespan=Lifespan}) ->
 %% as expired.
 %% @end
 %%--------------------------------------------------------------------
--spec delete_signup/1 :: ('undefined' | json_object()) -> 'ok' | #cb_context{}.
+-spec delete_signup/1 :: ('undefined' | wh_json:json_object()) -> 'ok' | #cb_context{}.
 delete_signup(undefined) -> ok;
 delete_signup(JObj) ->
     ?LOG_SYS("removing expired signup ~s", [wh_json:get_value(<<"_id">>, JObj)]),

@@ -276,12 +276,15 @@ authorize_api_key(Context, ApiKey) ->
         #cb_context{resp_status=success, doc=[JObj|_]}->
             ?LOG("found more account with ~s, using ~s", [ApiKey, wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
-        #cb_context{resp_status=success, doc=JObj} when JObj =/= ?EMPTY_JSON_OBJECT->
-            ?LOG("found API key belongs to account ~s", [wh_json:get_value(<<"id">>, JObj)]),
-            Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
-        _ ->
-            ?LOG("API key does not belong to any account"),
-            crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
+        #cb_context{resp_status=success, doc=JObj} ->
+            case wh_json:is_empty(JObj) of
+                true ->
+                    ?LOG("found API key belongs to account ~s", [wh_json:get_value(<<"id">>, JObj)]),
+                    Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
+                false ->
+                    ?LOG("API key does not belong to any account"),
+                    crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -290,34 +293,35 @@ authorize_api_key(Context, ApiKey) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec create_token/2 :: (RD, Context) -> #cb_context{} when
-      RD :: #wm_reqdata{},
-      Context :: #cb_context{}.
-create_token(_, #cb_context{doc=?EMPTY_JSON_OBJECT}=Context) ->
-    ?LOG("refusing to create auth token for an empty doc"),
-    crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
+-spec create_token/2 :: (#wm_reqdata{}, #cb_context{}) -> #cb_context{}.
 create_token(RD, #cb_context{doc=JObj}=Context) ->
-    AccountId = wh_json:get_value(<<"account_id">>, JObj),
-    Token = [{<<"account_id">>, AccountId}
-             ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-             ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-             ,{<<"method">>, wh_util:to_binary(?MODULE)}
-             ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
-             ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-             ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
-             ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-             ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-             ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-             ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
-             ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
-            ],
-    case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
-        {ok, Doc} ->
-            AuthToken = wh_json:get_value(<<"_id">>, Doc),
-            ?LOG("created new local auth token ~s", [AuthToken]),
-            crossbar_util:response(wh_json:from_list([{<<"account_id">>, AccountId}])
-                                   ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
-        {error, R} ->
-            ?LOG("could not create new local auth token, ~p", [R]),
-            crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
+    case wh_json:is_empty(JObj) of
+        true ->
+            ?LOG("refusing to create auth token for an empty doc"),
+            crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
+        false ->
+            AccountId = wh_json:get_value(<<"account_id">>, JObj),
+            Token = [{<<"account_id">>, AccountId}
+                     ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                     ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                     ,{<<"method">>, wh_util:to_binary(?MODULE)}
+                     ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
+                     ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+                     ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
+                     ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+                     ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+                     ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+                     ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
+                     ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+                    ],
+            case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
+                {ok, Doc} ->
+                    AuthToken = wh_json:get_value(<<"_id">>, Doc),
+                    ?LOG("created new local auth token ~s", [AuthToken]),
+                    crossbar_util:response(wh_json:from_list([{<<"account_id">>, AccountId}])
+                                           ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
+                {error, R} ->
+                    ?LOG("could not create new local auth token, ~p", [R]),
+                    crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
+            end
     end.

@@ -23,8 +23,9 @@
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
                      ,{{?MODULE, handle_channel_query}, [{<<"call_event">>, <<"channel_query_req">>}]}
                     ]).
+
 -define(BINDINGS, [{call, [{restrict_to, [query_req, status_req]}]}]).
--define(QUEUE_NAME, <<"">>).
+-define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
@@ -49,7 +50,7 @@ start_link() ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], []).
 
--spec handle_channel_status/2 :: (json_object(), proplist()) -> 'ok'.
+-spec handle_channel_status/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
     true = wapi_call:channel_status_req_v(JObj),
     wh_util:put_callid(JObj),
@@ -81,7 +82,7 @@ handle_channel_status(JObj, _Props) ->
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
--spec handle_call_status/2 :: (json_object(), proplist()) -> 'ok'.
+-spec handle_call_status/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_call_status(JObj, _Props) ->
     true = wapi_call:call_status_req_v(JObj),
     wh_util:put_callid(JObj),
@@ -108,7 +109,7 @@ handle_call_status(JObj, _Props) ->
             end
     end.
 
--spec handle_channel_query/2 :: (json_object(), proplist()) -> 'ok'.
+-spec handle_channel_query/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_channel_query(JObj, _Props) ->
     true = wapi_call_query:req_v(JObj),
     wh_util:put_callid(JObj),
@@ -229,7 +230,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec filter_for_matching_uuids/3 :: (json_object(), [proplist(),...], [json_object(),...] | []) -> [json_object(),...] | [].
+-spec filter_for_matching_uuids/3 :: (wh_json:json_object(), [proplist(),...], [wh_json:json_object(),...] | []) -> [wh_json:json_object(),...] | [].
 filter_for_matching_uuids(_, [], UUIDs) -> UUIDs;
 filter_for_matching_uuids(SearchParams, [C|Cs], UUIDs) ->
     UUIDs1 = case lists:any(fun({<<"Call-ID">>,_}) -> false;
@@ -254,7 +255,7 @@ filter_for_matching_uuids(SearchParams, [C|Cs], UUIDs) ->
              end,
     filter_for_matching_uuids(SearchParams, Cs, UUIDs1).
 
--spec make_jobj/1 :: (proplist()) -> json_object().
+-spec make_jobj/1 :: (proplist()) -> wh_json:json_object().
 make_jobj(C) ->
     wh_json:from_list([{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, C)}
                        ,{<<"Switch-Hostname">>, wh_json:get_value(<<"Hostname">>, C)}

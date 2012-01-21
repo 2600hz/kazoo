@@ -15,18 +15,18 @@
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("reg.hrl").
 
--define(RESPONDERS, [{authn_req, [{<<"directory">>, <<"authn_req">>}]}
-		     ,{reg_success, [{<<"directory">>, <<"reg_success">>}]}
-		     ,{reg_query, [{<<"directory">>, <<"reg_query">>}]}
-		    ]).
+-define(RESPONDERS, [{reg_authn_req, [{<<"directory">>, <<"authn_req">>}]}
+                     ,{reg_success, [{<<"directory">>, <<"reg_success">>}]}
+                     ,{reg_query, [{<<"directory">>, <<"reg_query">>}]}
+                    ]).
 -define(BINDINGS, [
-		   {authn, []}
-		   ,{registration, []}
-		  ]).
+                   {authn, []}
+                   ,{registration, []}
+                  ]).
 
 -define(SERVER, ?MODULE).
 -define(REG_QUEUE_NAME, <<"">>).
@@ -46,11 +46,11 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				      ,{queue_name, ?REG_QUEUE_NAME}
-				      ,{queue_options, ?REG_QUEUE_OPTIONS}
-				      ,{consume_options, ?REG_CONSUME_OPTIONS}
-				     ], []).
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?REG_QUEUE_NAME}
+                                      ,{queue_options, ?REG_QUEUE_OPTIONS}
+                                      ,{consume_options, ?REG_CONSUME_OPTIONS}
+                                     ], []).
 
 stop(Srv) ->
     gen_listener:stop(Srv).

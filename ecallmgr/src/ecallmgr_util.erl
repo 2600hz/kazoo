@@ -1,9 +1,15 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010 VoIP INC
+%%% @copyright (C) 2010, VoIP INC
 %%% @doc
 %%% Various utilities specific to ecallmgr. More general utilities go
 %%% in whistle_util.erl
 %%% @end
+%%%
+%%% @contributors
+%%% James Aimonetti <james@2600hz.org>
+%%% Karl Anderson <karl@2600hz.org>
+%%%
+%%% Created : 15 Nov 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_util).
 
@@ -77,7 +83,6 @@ fix_value("Event-Date-Timestamp", TStamp) ->
     wh_util:microseconds_to_seconds(wh_util:to_integer(TStamp));
 fix_value(_K, V) -> V.
 
-
 -spec unserialize_fs_array/1 :: ('undefined' | ne_binary()) -> [ne_binary(),...].
 unserialize_fs_array(undefined) ->
     [];
@@ -135,7 +140,7 @@ fs_log(Node, Format, Args) ->
           end,
     freeswitch:api(Node, log, lists:flatten(Log)).
 
--spec put_callid/1 :: (json_object()) -> 'undefined' | term().
+-spec put_callid/1 :: (wh_json:json_object()) -> 'undefined' | term().
 put_callid(JObj) ->
     case props:get_value(<<"Call-ID">>, JObj) of
         undefined -> put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>));

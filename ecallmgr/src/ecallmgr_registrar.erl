@@ -45,7 +45,7 @@ lookup(Realm, User, Fields) ->
     {ok, Srv} = ecallmgr_sup:registrar_proc(),
     gen_server:call(Srv, {lookup, Realm, User, Fields, get(callid)}).
 
--spec handle_req/2 :: (json_object(), proplist()) -> no_return().
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
     {ok, Cache} = ecallmgr_sup:cache_proc(),
     User = wh_json:get_value(<<"Username">>, JObj),

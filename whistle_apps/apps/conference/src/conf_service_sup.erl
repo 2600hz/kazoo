@@ -40,14 +40,14 @@ start_link() ->
 
 -spec start_service/2 :: (ConfId, Conference) -> sup_startchild_ret() when
       ConfId :: binary(),
-      Conference :: json_object().
+      Conference :: wh_json:json_object().
 start_service(ConfId, Conference) ->
     start_service(ConfId, Conference, undefined).
 
 -spec start_service/3 :: (ConfId, Conference, Caller) -> sup_startchild_ret() when
       ConfId :: binary(),
-      Conference :: json_object(),
-      Caller :: undefined | json_object().
+      Conference :: wh_json:json_object(),
+      Caller :: undefined | wh_json:json_object().
 start_service(ConfId, Conference, Caller) ->
     _ = supervisor:delete_child(conf_service_sup, ConfId),
     supervisor:start_child(?SERVER, ?CHILD(ConfId, conf_service, [Conference, Caller])).

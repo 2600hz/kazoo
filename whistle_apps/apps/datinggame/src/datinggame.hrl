@@ -9,7 +9,7 @@
           ,call_id = <<>> :: binary()
           ,control_queue = <<>> :: binary()
           ,signed_in = wh_util:current_tstamp() :: pos_integer()
-          ,skills = wh_json:new() :: json_object()
+          ,skills = wh_json:new() :: wh_json:json_object()
           ,switch_hostname = <<>> :: binary() %% what switch is the call on
           ,account_db = <<>> :: binary()
          }).
@@ -17,7 +17,7 @@
 -record(dg_customer, {
           call_id = <<>> :: binary()
          ,control_queue = <<>> :: binary()
-         ,skills_needed = wh_json:new() :: json_object()
+         ,skills_needed = wh_json:new() :: wh_json:json_object()
          ,record_call = true :: boolean()
          ,wait_started = wh_util:current_tstamp() :: pos_integer()
          ,switch_hostname = <<>> :: binary() %% what switch is the call on

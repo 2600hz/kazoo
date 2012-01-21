@@ -81,7 +81,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_from_file/2 :: (ne_binary(), ne_binary()) -> {'ok', json_object()} | {'error', atom()}.
+-spec load_from_file/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 load_from_file(Db, File) ->
     couch_mgr:load_doc_from_file(Db, crossbar, File).
 
@@ -95,7 +95,7 @@ load_from_file(Db, File) ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_merge/3 :: (ne_binary(), json_object(), #cb_context{}) -> #cb_context{}.
+-spec load_merge/3 :: (ne_binary(), wh_json:json_object(), #cb_context{}) -> #cb_context{}.
 load_merge(_DocId, _Data, #cb_context{db_name=undefined}=Context) ->
     ?LOG("db missing from #cb_context for doc ~s", [_DocId]),
     crossbar_util:response_db_missing(Context);
@@ -173,7 +173,7 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_view/4 :: (ne_binary(), proplist(), #cb_context{}, fun((json_object(), json_objects()) -> json_objects())) -> #cb_context{}.
+-spec load_view/4 :: (ne_binary(), proplist(), #cb_context{}, fun((wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects())) -> #cb_context{}.
 load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
     case load_view(View, Options, Context) of
         #cb_context{resp_status=success, doc=Doc} = Context1 ->
@@ -196,7 +196,7 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_docs/2 :: (#cb_context{}, fun((json_object(), json_objects()) -> [json_object() | 'undefined',...])) -> #cb_context{}.
+-spec load_docs/2 :: (#cb_context{}, fun((wh_json:json_object(), wh_json:json_objects()) -> [wh_json:json_object() | 'undefined',...])) -> #cb_context{}.
 load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) ->
     case couch_mgr:all_docs(Db) of
         {ok, Docs} ->
@@ -328,7 +328,7 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
             Context
     end.
 
--spec send_document_change/3 :: (wapi_conf:conf_action(), ne_binary(), json_object() | json_objects()) -> pid().
+-spec send_document_change/3 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects()) -> pid().
 send_document_change(Action, Db, Doc) when not is_binary(Action) ->
     send_document_change(wh_util:to_binary(Action), Db, Doc);
 send_document_change(Action, Db, Docs) when is_list(Docs) ->
@@ -501,7 +501,7 @@ delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec public_fields/1 :: (json_object() | json_objects()) -> json_object() | json_objects().
+-spec public_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
 public_fields([_|_]=JObjs)->
     lists:map(fun public_fields/1, JObjs);
 public_fields(JObj) ->
@@ -518,7 +518,7 @@ public_fields(JObj) ->
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec private_fields/1 :: (json_object() | json_objects()) -> json_object() | json_objects().
+-spec private_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
 private_fields([_|_]=JObjs)->
     lists:map(fun public_fields/1, JObjs);
 private_fields(JObj) ->
@@ -543,7 +543,7 @@ is_private_key(_) -> false.
 %% document into a usable ETag for the response
 %% @end
 %%--------------------------------------------------------------------
--spec rev_to_etag/1 :: (json_object() | json_objects()) -> 'undefined' | 'automatic' | string().
+-spec rev_to_etag/1 :: (wh_json:json_object() | wh_json:json_objects()) -> 'undefined' | 'automatic' | string().
 rev_to_etag([_|_])-> automatic;
 rev_to_etag([]) -> undefined;
 rev_to_etag(JObj) ->
@@ -559,7 +559,7 @@ rev_to_etag(JObj) ->
 %% parameters on all crossbar documents
 %% @end
 %%--------------------------------------------------------------------
--spec update_pvt_parameters/2 :: (json_object() | json_objects(), #cb_context{}) -> json_object() | json_objects().
+-spec update_pvt_parameters/2 :: (wh_json:json_object() | wh_json:json_objects(), #cb_context{}) -> wh_json:json_object() | wh_json:json_objects().
 update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
     [update_pvt_parameters(JObj, Context) || JObj <- JObjs];
 update_pvt_parameters(JObj0, #cb_context{db_name=DBName}) ->
@@ -599,7 +599,7 @@ add_pvt_modified(JObj, _) ->
 %% request has a filter defined
 %% @end
 %%--------------------------------------------------------------------
--spec has_filter/1 :: (json_object()) -> boolean().
+-spec has_filter/1 :: (wh_json:json_object()) -> boolean().
 has_filter(JObj) ->
     lists:any(fun is_filter_key/1, wh_json:to_proplist(JObj)).
 
@@ -624,7 +624,7 @@ is_filter_key(_) -> false.
 %% Returns true if all of the requested props are found, false if one is not found
 %% @end
 %%--------------------------------------------------------------------
--spec filter_doc/2 :: (json_object(), json_object()) -> boolean().
+-spec filter_doc/2 :: (wh_json:json_object(), wh_json:json_object()) -> boolean().
 filter_doc(Doc, Query) ->
     lists:all(fun({K, V}) -> filter_prop(Doc, K, V) end, wh_json:to_proplist(Query)).
 
@@ -634,7 +634,7 @@ filter_doc(Doc, Query) ->
 %% Returns true or false if the prop is found inside the doc
 %% @end
 %%--------------------------------------------------------------------
--spec filter_prop/3 :: (json_object(), ne_binary(), term()) -> boolean().
+-spec filter_prop/3 :: (wh_json:json_object(), ne_binary(), term()) -> boolean().
 filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
     not (wh_json:get_binary_value(binary:split(Key, <<".">>), Doc, <<>>) =:= wh_util:to_binary(Val));
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->

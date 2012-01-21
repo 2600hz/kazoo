@@ -21,17 +21,17 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec blacklist_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-      Prop :: proplist() | json_object().
+      Prop :: api_terms().
 blacklist_req({struct, Prop}) ->
     blacklist_req(Prop);
 blacklist_req(Prop) ->
     case blacklist_req_v(Prop) of
-	true -> wh_api:build_message(Prop, ?DTH_BLACKLIST_REQ_HEADERS, ?OPTIONAL_DTH_BLACKLIST_REQ_HEADERS);
-	false -> {error, "Proplist failed validation for blacklist_req"}
+        true -> wh_api:build_message(Prop, ?DTH_BLACKLIST_REQ_HEADERS, ?OPTIONAL_DTH_BLACKLIST_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for blacklist_req"}
     end.
 
 -spec blacklist_req_v/1 :: (Prop) -> boolean() when
-      Prop :: proplist() | json_object().
+      Prop :: api_terms().
 blacklist_req_v({struct, Prop}) ->
     blacklist_req_v(Prop);
 blacklist_req_v(Prop) ->
@@ -43,17 +43,17 @@ blacklist_req_v(Prop) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec blacklist_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-      Prop :: proplist() | json_object().
+      Prop :: api_terms().
 blacklist_resp({struct, Prop}) ->
     blacklist_resp(Prop);
 blacklist_resp(Prop) ->
     case blacklist_resp_v(Prop) of
-	true -> wh_api:build_message(Prop, ?DTH_BLACKLIST_RESP_HEADERS, ?OPTIONAL_DTH_BLACKLIST_RESP_HEADERS);
-	false -> {error, "Proplist failed validation for blacklist_resp"}
+        true -> wh_api:build_message(Prop, ?DTH_BLACKLIST_RESP_HEADERS, ?OPTIONAL_DTH_BLACKLIST_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for blacklist_resp"}
     end.
 
 -spec blacklist_resp_v/1 :: (Prop) -> boolean() when
-      Prop :: proplist() | json_object().
+      Prop :: api_terms().
 blacklist_resp_v({struct, Prop}) ->
     blacklist_resp_v(Prop);
 blacklist_resp_v(Prop) ->

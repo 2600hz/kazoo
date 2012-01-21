@@ -236,7 +236,7 @@ get_all_kvs(Category) ->
 %% set the key to the value in the given category but specific to this node
 %% @end
 %%-----------------------------------------------------------------------------
--spec set/3 :: (config_category(), config_key(), term()) -> {'ok', json_object()}.
+-spec set/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()}.
 set(Category, Key, Value) ->
     do_set(Category, wh_util:to_binary(node()), Key, Value).
 
@@ -247,7 +247,7 @@ set(Category, Key, Value) ->
 %% section
 %% @end
 %%-----------------------------------------------------------------------------
--spec set_default/3 :: (config_category(), config_key(), term()) -> {'ok', json_object()}.
+-spec set_default/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()}.
 set_default(Category, Key, Value) ->
     do_set(Category, <<"default">>, Key, Value).
 
@@ -269,7 +269,7 @@ flush() ->
 %% file (can be used when a new option is added)
 %% @end
 %%-----------------------------------------------------------------------------
--spec import/1 :: (config_category()) -> {'ok', json_object()}.
+-spec import/1 :: (config_category()) -> {'ok', wh_json:json_object()}.
 import(Category) when not is_binary(Category) ->
     import(wh_util:to_binary(Category));
 import(Category) ->
@@ -285,7 +285,7 @@ import(Category) ->
 %% 3. from a flat file
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_category/2 :: (ne_binary(), pid()) -> {'ok', json_object()} | {'error', 'not_found'}.
+-spec fetch_category/2 :: (ne_binary(), pid()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
 fetch_category(Category, Cache) ->
     Lookups = [fun fetch_file_config/2
                ,fun fetch_db_config/2
@@ -301,7 +301,7 @@ fetch_category(Category, Cache) ->
 %% cache it
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_db_config/2 :: (ne_binary(), pid()) -> {'ok', json_object()} | {'error', 'not_found'}.
+-spec fetch_db_config/2 :: (ne_binary(), pid()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
 fetch_db_config(Category, Cache) ->
     case couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj}=Ok ->
@@ -319,7 +319,7 @@ fetch_db_config(Category, Cache) ->
 %% save it to the db and cache it
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_file_config/2 :: (ne_binary(), pid()) -> {'ok', json_object()}.
+-spec fetch_file_config/2 :: (ne_binary(), pid()) -> {'ok', wh_json:json_object()}.
 fetch_file_config(Category, Cache) ->
     File = category_to_file(Category),
     case file:consult(File) of
@@ -345,7 +345,7 @@ fetch_file_config(Category, Cache) ->
 %% convert the result of the file consult into a json object
 %% @end
 %%-----------------------------------------------------------------------------
--spec config_terms_to_json/1 :: (proplist()) -> json_object().
+-spec config_terms_to_json/1 :: (proplist()) -> wh_json:json_object().
 config_terms_to_json(Terms) ->
     wh_json:from_list([{wh_util:to_binary(K), V} || {K, V} <- Terms]).
 
@@ -356,7 +356,7 @@ config_terms_to_json(Terms) ->
 %% for the given node
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_set/4 :: (config_category(), config_key(), config_key(), term()) -> {'ok', json_object()}.
+-spec do_set/4 :: (config_category(), config_key(), config_key(), term()) -> {'ok', wh_json:json_object()}.
 do_set(Category, Node, Key, Value) when not is_binary(Category) ->
     do_set(wh_util:to_binary(Category), Node, Key, Value);
 do_set(Category, Node, Key, Value) when not is_binary(Node) ->
@@ -379,7 +379,7 @@ do_set(Category, Node, Key, Value) ->
 %% update the configuration category for a given node in both the db and cache
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_category_node/4 :: (ne_binary(), ne_binary(), fun((json_object()) -> json_object()) , pid()) -> {'ok', json_object()}.
+-spec update_category_node/4 :: (ne_binary(), ne_binary(), fun((wh_json:json_object()) -> wh_json:json_object()) , pid()) -> {'ok', wh_json:json_object()}.
 update_category_node(Category, Node, UpdateFun , Cache) ->
     case is_pid(whereis(couch_mgr)) andalso couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj} ->
@@ -411,7 +411,7 @@ update_category_node(Category, Node, UpdateFun , Cache) ->
 %% update the entire category in both the db and cache
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_category/3 :: (ne_binary(), json_object(), pid()) -> {'ok', json_object()}.
+-spec update_category/3 :: (ne_binary(), wh_json:json_object(), pid()) -> {'ok', wh_json:json_object()}.
 update_category(Category, JObj, Cache) ->
     ?LOG("updating configuration category ~s", [Category]),
     JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),

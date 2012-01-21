@@ -16,15 +16,15 @@
 
 %% Data Access API
 -export([has_credit/1, has_credit/2 %% has_credit(AcctId[, Amount]) - check if account has > Amount credit (0 if Amount isn't specified)
-	 ,has_flatrates/1 %% has_flatrates(AcctId) - check if account has a free flatrate trunk
-	 ,reserve_trunk/4 %% reserve_trunk(AcctId, CallID, Amount, FRE) - only reserve if avail_credit > Amt (0 if unspecified)
-	 ,release_trunk/3 %% release_trunk(AcctId, CallID[, Amount]) - release trunk, deducting Amt from account balance
-	 ,copy_reserve_trunk/4 %% when a failover trunk gets the b-leg callid resolved, copy its reserve doc to the b-leg callid
-	]).
+         ,has_flatrates/1 %% has_flatrates(AcctId) - check if account has a free flatrate trunk
+         ,reserve_trunk/4 %% reserve_trunk(AcctId, CallID, Amount, FRE) - only reserve if avail_credit > Amt (0 if unspecified)
+         ,release_trunk/3 %% release_trunk(AcctId, CallID[, Amount]) - release trunk, deducting Amt from account balance
+         ,copy_reserve_trunk/4 %% when a failover trunk gets the b-leg callid resolved, copy its reserve doc to the b-leg callid
+        ]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("ts.hrl").
 
@@ -38,9 +38,9 @@
 -define(ACTIVE_CALL_TIMEOUT, 1000).
 
 -record(state, {
-	  current_write_db = <<>> :: ne_binary()
-	  ,current_read_db = <<>> :: ne_binary() %% possibly different during transition from yesterday to today
-	 }).
+          current_write_db = <<>> :: ne_binary()
+          ,current_read_db = <<>> :: ne_binary() %% possibly different during transition from yesterday to today
+         }).
 
 %%%===================================================================
 %%% API
@@ -83,7 +83,7 @@ has_flatrates(Acct) ->
 %% if the Amt is more than available credit, return error
 %% is this a flat-rate-enabled trunk request? authz will determine which kind to actually bill as
 -spec reserve_trunk/4 :: (ne_binary(), ne_binary(), integer() | float(), boolean()) ->
-				 {'ok', 'flat_rate' | 'per_min'} | {'error', 'no_account' | 'no_callid' | 'entry_exists' | 'no_funds' | 'not_found' | 'no_results'}.
+                                 {'ok', 'flat_rate' | 'per_min'} | {'error', 'no_account' | 'no_callid' | 'entry_exists' | 'no_funds' | 'not_found' | 'no_results'}.
 reserve_trunk(<<>>, _, _, _) ->
     ?LOG("no_account at entry to reserve_trunk/4"),
     {error, no_account};
@@ -167,59 +167,59 @@ handle_call({has_flatrates, AcctId}, From, #state{current_read_db=RDB}=S) ->
 handle_call({reserve_trunk, AcctId, [CallID, Amt, false]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) when is_number(Amt) ->
     ?LOG(CallID, "Try to reserve a trunk for ~s (against $~p if needed)", [AcctId, Amt]),
     spawn(fun() ->
-		  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, true}]) of
-		      {ok, [Acct] } ->
-			  Funds = wh_json:get_value(<<"value">>, Acct),
-			  Resp = reserve_per_min(Amt, wh_json:get_float_value(<<"credit">>, Funds, 0.0), WDB, reserve_doc(AcctId, CallID, per_min)),
-			  gen_server:reply(From, Resp);
-		      _ ->
-			  gen_server:reply(From, {error, no_results})
-		  end
-	  end),
+                  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, true}]) of
+                      {ok, [Acct] } ->
+                          Funds = wh_json:get_value(<<"value">>, Acct),
+                          Resp = reserve_per_min(Amt, wh_json:get_float_value(<<"credit">>, Funds, 0.0), WDB, reserve_doc(AcctId, CallID, per_min)),
+                          gen_server:reply(From, Resp);
+                      _ ->
+                          gen_server:reply(From, {error, no_results})
+                  end
+          end),
     {noreply, S};
 
 handle_call({reserve_trunk, AcctId, [CallID, Amt, true]}, From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     Self = self(),
     ?LOG(CallID, "Try to reserve a trunk for ~s (against $~p if needed)", [AcctId, Amt]),
     spawn(fun() ->
-		  spawn(fun() -> load_account(AcctId, WDB, Self) end),
+                  spawn(fun() -> load_account(AcctId, WDB, Self) end),
 
-		  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, true}]) of
-		      {error, not_found}=E ->
-			  ?LOG(CallID, "View accounts/balance not found in DB ~s", [RDB]),
-			  gen_server:reply(From, E);
-		      {ok, []} ->
-			  ?LOG(CallID, "No view results for ~s, no_results", [AcctId]),
-			  gen_server:reply(From, {error, no_results});
-		      {ok, [Acct] } ->
-			  Funds = wh_json:get_value(<<"value">>, Acct),
-			  case wh_json:get_value(<<"trunks">>, Funds, 0) > 0 of
-			      true ->
-				  _ = spawn(fun() -> _ = couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)), build_view(WDB, AcctId) end),
-				  ?LOG(CallID, "Flat-rate reserved for ~s", [AcctId]),
-				  gen_server:reply(From, {ok, flat_rate});
-			      false ->
-				  Resp = reserve_per_min(Amt, wh_json:get_value(<<"credit">>, Funds, 0), WDB, reserve_doc(AcctId, CallID, per_min)),
-				  gen_server:reply(From, Resp)
-			  end
-		  end
-	  end),
+                  case couch_mgr:get_results(RDB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, true}]) of
+                      {error, not_found}=E ->
+                          ?LOG(CallID, "View accounts/balance not found in DB ~s", [RDB]),
+                          gen_server:reply(From, E);
+                      {ok, []} ->
+                          ?LOG(CallID, "No view results for ~s, no_results", [AcctId]),
+                          gen_server:reply(From, {error, no_results});
+                      {ok, [Acct] } ->
+                          Funds = wh_json:get_value(<<"value">>, Acct),
+                          case wh_json:get_value(<<"trunks">>, Funds, 0) > 0 of
+                              true ->
+                                  _ = spawn(fun() -> _ = couch_mgr:save_doc(WDB, reserve_doc(AcctId, CallID, flat_rate)), build_view(WDB, AcctId) end),
+                                  ?LOG(CallID, "Flat-rate reserved for ~s", [AcctId]),
+                                  gen_server:reply(From, {ok, flat_rate});
+                              false ->
+                                  Resp = reserve_per_min(Amt, wh_json:get_value(<<"credit">>, Funds, 0), WDB, reserve_doc(AcctId, CallID, per_min)),
+                                  gen_server:reply(From, Resp)
+                          end
+                  end
+          end),
     {noreply, S};
 handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, _From, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     spawn(fun() ->
-		  case trunk_type(RDB, AcctID, ACallID) of
-		      non_existant ->
-			  case trunk_type(WDB, AcctID, ACallID) of
-			      non_existant ->
-				  ?LOG(ACallID, "Can't copy data from ~s to ~s for acct ~s, non_existant in ~s", [ACallID, BCallID, AcctID, WDB]);
-			      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, per_min, Amt));
-			      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, flat_rate))
-			  end;
-		      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, per_min, Amt));
-		      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, flat_rate))
-		  end,
-		  build_view(WDB, AcctID)
-	  end),
+                  case trunk_type(RDB, AcctID, ACallID) of
+                      non_existant ->
+                          case trunk_type(WDB, AcctID, ACallID) of
+                              non_existant ->
+                                  ?LOG(ACallID, "Can't copy data from ~s to ~s for acct ~s, non_existant in ~s", [ACallID, BCallID, AcctID, WDB]);
+                              per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, per_min, Amt));
+                              flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, flat_rate))
+                          end;
+                      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, per_min, Amt));
+                      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, BCallID, flat_rate))
+                  end,
+                  build_view(WDB, AcctID)
+          end),
     {reply, ok, S}.
 
 %%--------------------------------------------------------------------
@@ -234,25 +234,25 @@ handle_call({copy_reserve_trunk, AcctID, [ACallID, BCallID, Amt]}, _From, #state
 %%--------------------------------------------------------------------
 handle_cast({release_trunk, AcctID, [CallID,Amt]}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     spawn(fun() ->
-		  case trunk_type(RDB, AcctID, CallID) of
-		      non_existant ->
-			  case trunk_type(WDB, AcctID, CallID) of
-			      non_existant -> ?LOG(CallID, "Trunk not found for release for ~s", [AcctID]);
-			      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, per_min, Amt));
-			      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, flat_rate))
-			  end;
-		      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, per_min, Amt));
-		      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, flat_rate))
-		  end,
-		  build_view(WDB, AcctID)
-	  end),
+                  case trunk_type(RDB, AcctID, CallID) of
+                      non_existant ->
+                          case trunk_type(WDB, AcctID, CallID) of
+                              non_existant -> ?LOG(CallID, "Trunk not found for release for ~s", [AcctID]);
+                              per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, per_min, Amt));
+                              flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, flat_rate))
+                          end;
+                      per_min -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, per_min, Amt));
+                      flat_rate -> couch_mgr:save_doc(WDB, release_doc(AcctID, CallID, flat_rate))
+                  end,
+                  build_view(WDB, AcctID)
+          end),
     {noreply, S};
 handle_cast({release_trunk, AcctId, [CallID,Amt,Type]}, #state{current_write_db=WDB}=S) ->
     spawn(fun() ->
                   put(callid, CallID),
-		  ?LOG("Release trunk for ~s: $~p", [AcctId, Amt]),
-		  release_result(Type, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, Type, Amt)))
-	  end),
+                  ?LOG("Release trunk for ~s: $~p", [AcctId, Amt]),
+                  release_result(Type, couch_mgr:save_doc(WDB, release_doc(AcctId, CallID, Type, Amt)))
+          end),
     {noreply, S}.
 
 release_result(per_min, {ok, _}) ->
@@ -288,21 +288,21 @@ handle_info(?EOD, S) ->
 
     {noreply
      ,S#state{
-	current_write_db = DB % all new writes should go in new DB, but old DB is needed still
+        current_write_db = DB % all new writes should go in new DB, but old DB is needed still
        }
      ,hibernate};
 handle_info(reconcile_accounts, #state{current_read_db=RDB, current_write_db=WDB}=S) ->
     Self = self(),
     spawn(fun() -> lists:foreach(fun(Acct) ->
-					 ?LOG_SYS("Transfer account ~s from ~s to ~s", [Acct, RDB, WDB]),
-					 _ = transfer_acct(Acct, RDB, WDB),
-					 ?LOG_SYS("Transfer active calls for ~s from ~s to ~s", [Acct, RDB, WDB]),
-					 _ = transfer_active_calls(Acct, RDB, WDB),
-					 build_view(WDB, Acct)
-				 end, get_accts(RDB)),
-		   %% once active accounts from yesterday are done, make sure all others are in too
-		   load_accounts_from_ts(WDB, Self)
-	   end),
+                                         ?LOG_SYS("Transfer account ~s from ~s to ~s", [Acct, RDB, WDB]),
+                                         _ = transfer_acct(Acct, RDB, WDB),
+                                         ?LOG_SYS("Transfer active calls for ~s from ~s to ~s", [Acct, RDB, WDB]),
+                                         _ = transfer_active_calls(Acct, RDB, WDB),
+                                         build_view(WDB, Acct)
+                                 end, get_accts(RDB)),
+                   %% once active accounts from yesterday are done, make sure all others are in too
+                   load_accounts_from_ts(WDB, Self)
+           end),
     {noreply, S#state{current_read_db=WDB}, hibernate};
 handle_info({document_changes, DocID, _Changes}, #state{current_write_db=WDB, current_read_db=RDB}=S) ->
     ?LOG_SYS("Changes for account ~s to be processed", [DocID]),
@@ -350,18 +350,18 @@ code_change(_OldVsn, State, _Extra) ->
 -spec build_view/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 build_view(DB, AcctId) ->
     case couch_mgr:get_results(DB, <<"accounts/balance">>, [{<<"key">>, AcctId}, {<<"group">>, true}]) of
-	{ok, _} -> ?LOG_SYS("Loaded account balance view and got something back for ~s", [AcctId]);
-	{error, _} -> ?LOG_SYS("Error loading account balance for ~s", [AcctId])
+        {ok, _} -> ?LOG_SYS("Loaded account balance view and got something back for ~s", [AcctId]);
+        {error, _} -> ?LOG_SYS("Error loading account balance for ~s", [AcctId])
     end.
 
 -spec load_accounts_from_ts/2 :: (ne_binary(), pid()) -> 'ok'.
 load_accounts_from_ts(DB, Srv) ->
     case couch_mgr:get_results(?TS_DB, <<"accounts/list">>, []) of
-	{error, _} -> ok;
-	{ok, []} -> ok;
-	{ok, Accts} when is_list(Accts) ->
-	    _ = [load_account(wh_json:get_value(<<"id">>, A), DB, Srv) || A <- Accts],
-	    ok
+        {error, _} -> ok;
+        {ok, []} -> ok;
+        {ok, Accts} when is_list(Accts) ->
+            _ = [load_account(wh_json:get_value(<<"id">>, A), DB, Srv) || A <- Accts],
+            ok
     end.
 
 -spec has_credit/3 :: (ne_binary(), ne_binary(), integer() | float()) -> boolean().
@@ -371,8 +371,8 @@ has_credit(DB, AcctId, Amt) ->
 -spec credit_available/2 :: (ne_binary(), ne_binary()) -> integer().
 credit_available(DB, AcctId) ->
     case couch_mgr:get_results(DB, <<"credit/credit_available">>, [{<<"group">>, true}, {<<"key">>, AcctId}]) of
-	{ok, []} -> 0;
-	{ok, [CreditJObj] } -> wh_json:get_value(<<"value">>, CreditJObj)
+        {ok, []} -> 0;
+        {ok, [CreditJObj] } -> wh_json:get_value(<<"value">>, CreditJObj)
     end.
 
 -spec has_flatrates/2 :: (ne_binary(), ne_binary()) -> boolean().
@@ -382,78 +382,78 @@ has_flatrates(DB, AcctId) ->
 -spec flatrates_available/2 :: (ne_binary(), ne_binary()) -> integer().
 flatrates_available(DB, AcctId) ->
     case couch_mgr:get_results(DB, <<"trunks/flat_rates_available">>, [{<<"group">>, true}, {<<"key">>, AcctId}]) of
-	{ok, []} -> 0;
-	{ok, [CreditJObj] } -> wh_json:get_value(<<"value">>, CreditJObj)
+        {ok, []} -> 0;
+        {ok, [CreditJObj] } -> wh_json:get_value(<<"value">>, CreditJObj)
     end.
 
 -spec trunk_type/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'flat_rate' | 'per_min' | 'non_existant'.
 trunk_type(DB, AcctId, CallID) ->
     case couch_mgr:get_results(DB, <<"trunks/trunk_type">>, [ {<<"key">>, [AcctId, CallID]}, {<<"group">>, true}]) of
-	{ok, []} -> non_existant;
-	{ok, [TypeJObj] } -> wh_util:to_atom(wh_json:get_value(<<"value">>, TypeJObj))
+        {ok, []} -> non_existant;
+        {ok, [TypeJObj] } -> wh_util:to_atom(wh_json:get_value(<<"value">>, TypeJObj))
     end.
 
 %% should be the diffs from the last account update to now
--spec account_doc/3 :: (ne_binary(), float() | integer(), non_neg_integer()) -> json_object().
+-spec account_doc/3 :: (ne_binary(), float() | integer(), non_neg_integer()) -> wh_json:json_object().
 account_doc(AcctId, Credit, Trunks) ->
     credit_doc(AcctId, Credit, Trunks, [{<<"_id">>, AcctId}
-					,{<<"doc_type">>, <<"account">>}
-				       ]).
+                                        ,{<<"doc_type">>, <<"account">>}
+                                       ]).
 
--spec reserve_doc/3 :: (ne_binary(), ne_binary(), 'flat_rate' | 'per_min') -> json_object().
+-spec reserve_doc/3 :: (ne_binary(), ne_binary(), 'flat_rate' | 'per_min') -> wh_json:json_object().
 reserve_doc(AcctId, CallID, flat_rate) ->
     debit_doc(AcctId, [{<<"_id">>, reserve_doc_id(CallID, AcctId)}
-		       ,{<<"call_id">>, CallID}
-		       ,{<<"trunk_type">>, flat_rate}
-		       ,{<<"trunks">>, 1}
-		       ,{<<"amount">>, 0}
-		       ,{<<"doc_type">>, <<"reserve">>}
-		      ]);
+                       ,{<<"call_id">>, CallID}
+                       ,{<<"trunk_type">>, flat_rate}
+                       ,{<<"trunks">>, 1}
+                       ,{<<"amount">>, 0}
+                       ,{<<"doc_type">>, <<"reserve">>}
+                      ]);
 reserve_doc(AcctId, CallID, per_min) ->
     debit_doc(AcctId, [{<<"_id">>, reserve_doc_id(CallID, AcctId)}
-		       ,{<<"call_id">>, CallID}
-		       ,{<<"trunk_type">>, per_min}
-		       ,{<<"amount">>, 0}
-		       ,{<<"doc_type">>, <<"reserve">>}
-		      ]).
+                       ,{<<"call_id">>, CallID}
+                       ,{<<"trunk_type">>, per_min}
+                       ,{<<"amount">>, 0}
+                       ,{<<"doc_type">>, <<"reserve">>}
+                      ]).
 
--spec release_doc/3 :: (ne_binary(), ne_binary(), 'flat_rate') -> json_object().
--spec release_doc/4 :: (ne_binary(), ne_binary(), 'flat_rate' | 'per_min', float() | integer()) -> json_object().
+-spec release_doc/3 :: (ne_binary(), ne_binary(), 'flat_rate') -> wh_json:json_object().
+-spec release_doc/4 :: (ne_binary(), ne_binary(), 'flat_rate' | 'per_min', float() | integer()) -> wh_json:json_object().
 release_doc(AcctId, CallID, flat_rate) ->
     credit_doc(AcctId, 0, 1, [{<<"_id">>, release_doc_id(CallID, AcctId)}
-			      ,{<<"call_id">>, CallID}
-			      ,{<<"trunk_type">>, flat_rate}
-			      ,{<<"doc_type">>, <<"release">>}
-			     ]).
+                              ,{<<"call_id">>, CallID}
+                              ,{<<"trunk_type">>, flat_rate}
+                              ,{<<"doc_type">>, <<"release">>}
+                             ]).
 
 release_doc(AcctId, CallID, flat_rate, _) ->
     release_doc(AcctId, CallID, flat_rate);
 release_doc(AcctId, CallID, per_min, Amt) ->
     debit_doc(AcctId, [{<<"_id">>, release_doc_id(CallID, AcctId)}
-		       ,{<<"call_id">>, CallID}
-		       ,{<<"trunk_type">>, per_min}
-		       ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}
-		       ,{<<"doc_type">>, <<"release">>}
-		      ]).
+                       ,{<<"call_id">>, CallID}
+                       ,{<<"trunk_type">>, per_min}
+                       ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}
+                       ,{<<"doc_type">>, <<"release">>}
+                      ]).
 
--spec release_error_doc/3 :: (ne_binary(), ne_binary(), 'flat_rate') -> json_object().
--spec release_error_doc/4 :: (ne_binary(), ne_binary(), 'per_min', integer() | float()) -> json_object().
+-spec release_error_doc/3 :: (ne_binary(), ne_binary(), 'flat_rate') -> wh_json:json_object().
+-spec release_error_doc/4 :: (ne_binary(), ne_binary(), 'per_min', integer() | float()) -> wh_json:json_object().
 release_error_doc(AcctId, CallID, flat_rate) ->
     credit_doc(AcctId, 0, 1, [{<<"_id">>, release_doc_id(CallID, AcctId)}
-			      ,{<<"call_id">>, CallID}
-			      ,{<<"trunk_type">>, flat_rate}
-			      ,{<<"doc_type">>, <<"release">>}
-			      ,{<<"release_error">>, true}
-			     ]).
+                              ,{<<"call_id">>, CallID}
+                              ,{<<"trunk_type">>, flat_rate}
+                              ,{<<"doc_type">>, <<"release">>}
+                              ,{<<"release_error">>, true}
+                             ]).
 
 release_error_doc(AcctId, CallID, per_min, Amt) ->
     debit_doc(AcctId, [{<<"_id">>, release_doc_id(CallID, AcctId)}
-		       ,{<<"call_id">>, CallID}
-		       ,{<<"trunk_type">>, per_min}
-		       ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}
-		       ,{<<"doc_type">>, <<"release">>}
-		       ,{<<"release_error">>, true}
-		      ]).
+                       ,{<<"call_id">>, CallID}
+                       ,{<<"trunk_type">>, per_min}
+                       ,{<<"amount">>, ?DOLLARS_TO_UNITS(Amt)}
+                       ,{<<"doc_type">>, <<"release">>}
+                       ,{<<"release_error">>, true}
+                      ]).
 
 -spec release_doc_id/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 -spec reserve_doc_id/2 :: (ne_binary(), ne_binary()) -> ne_binary().
@@ -462,28 +462,28 @@ release_doc_id(CallID, AcctID) ->
 reserve_doc_id(CallID, AcctID) ->
     <<"reserve-", CallID/binary, "-", AcctID/binary>>.
 
--spec credit_doc/4 :: (ne_binary(), integer(), integer(), proplist()) -> json_object().
+-spec credit_doc/4 :: (ne_binary(), integer(), integer(), proplist()) -> wh_json:json_object().
 credit_doc(AcctId, Credit, Trunks, Extra) ->
     wh_json:from_list([{<<"acct_id">>, AcctId}
-		       ,{<<"amount">>, Credit}
-		       ,{<<"trunks">>, Trunks}
-		       ,{<<"type">>, <<"credit">>}
-		       | Extra
-		      ]).
+                       ,{<<"amount">>, Credit}
+                       ,{<<"trunks">>, Trunks}
+                       ,{<<"type">>, <<"credit">>}
+                       | Extra
+                      ]).
 
--spec debit_doc/2 :: (ne_binary(), proplist()) -> json_object().
+-spec debit_doc/2 :: (ne_binary(), proplist()) -> wh_json:json_object().
 debit_doc(AcctId, Extra) ->
     wh_json:from_list([{<<"acct_id">>, AcctId}
-		       ,{<<"type">>, <<"debit">>}
-		       | Extra
-		      ]).
+                       ,{<<"type">>, <<"debit">>}
+                       | Extra
+                      ]).
 
 -spec get_accts/1 :: (ne_binary()) -> [ne_binary(),...] | [].
 get_accts(DB) ->
     case couch_mgr:get_results(DB, <<"accounts/listing">>, [{<<"group">>, true}]) of
-	{ok, []} -> [];
-	{ok, AcctsDoc} -> couch_mgr:get_result_keys(AcctsDoc);
-	_ -> []
+        {ok, []} -> [];
+        {ok, AcctsDoc} -> couch_mgr:get_result_keys(AcctsDoc);
+        _ -> []
     end.
 
 -spec transfer_acct/3 :: (ne_binary(), ne_binary(), ne_binary()) -> pid() | 'undefined'.
@@ -491,47 +491,47 @@ transfer_acct(AcctId, RDB, WDB) ->
     %% read account balance, from RDB
     Bal = credit_available(RDB, AcctId),
     case couch_mgr:open_doc(RDB, AcctId) of
-	{error, not_found} -> undefined;
-	{ok, Acct} ->
-	    Acct1 = wh_json:set_value(<<"amount">>, Bal, Acct),
+        {error, not_found} -> undefined;
+        {ok, Acct} ->
+            Acct1 = wh_json:set_value(<<"amount">>, Bal, Acct),
 
-	    ?LOG_SYS("Transfer account ~s: Balance ~p from ~s to ~s", [AcctId, ?UNITS_TO_DOLLARS(Bal), RDB, WDB]),
+            ?LOG_SYS("Transfer account ~s: Balance ~p from ~s to ~s", [AcctId, ?UNITS_TO_DOLLARS(Bal), RDB, WDB]),
 
-	    %% create credit entry in WDB for balance/trunks
-	    _ = couch_mgr:save_doc(WDB, wh_json:delete_key(<<"_rev">>, Acct1)),
+            %% create credit entry in WDB for balance/trunks
+            _ = couch_mgr:save_doc(WDB, wh_json:delete_key(<<"_rev">>, Acct1)),
 
-	    %% update info_* doc with account balance
-	    spawn(fun() -> update_account(AcctId, Bal) end)
+            %% update info_* doc with account balance
+            spawn(fun() -> update_account(AcctId, Bal) end)
     end.
 
 -spec transfer_active_calls/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 transfer_active_calls(AcctId, RDB, WDB) ->
     case couch_mgr:get_results(RDB, <<"trunks/trunk_status">>, [{<<"startkey">>, [AcctId]}, {<<"endkey">>, [AcctId, true]}, {<<"group_level">>, <<"2">>}]) of
-	{ok, []} -> ?LOG_SYS("No active calls for ~s in ~s", [AcctId, RDB]);
-	{ok, Calls} when is_list(Calls) ->
-	    [begin
-		 [_Acct, CallId] = wh_json:get_value(<<"key">>, Call),
-		 spawn(fun() ->
-			       case is_call_active(CallId) of
-				   true ->
-				       NewDoc = reserve_doc(AcctId, CallId, trunk_type(RDB, AcctId, CallId)),
-				       ?LOG_SYS(CallId, "Transfering active call for ~s from ~s to ~s", [AcctId, RDB, WDB]),
-				       couch_mgr:save_doc(WDB, NewDoc);
-				   false ->
-				       release_trunk_error(AcctId, CallId, RDB)
-			       end
-		       end)
-	     end || Call <- Calls, wh_json:get_integer_value(<<"value">>, Call) =:= 1];
-	{error, _} -> ok
+        {ok, []} -> ?LOG_SYS("No active calls for ~s in ~s", [AcctId, RDB]);
+        {ok, Calls} when is_list(Calls) ->
+            [begin
+                 [_Acct, CallId] = wh_json:get_value(<<"key">>, Call),
+                 spawn(fun() ->
+                               case is_call_active(CallId) of
+                                   true ->
+                                       NewDoc = reserve_doc(AcctId, CallId, trunk_type(RDB, AcctId, CallId)),
+                                       ?LOG_SYS(CallId, "Transfering active call for ~s from ~s to ~s", [AcctId, RDB, WDB]),
+                                       couch_mgr:save_doc(WDB, NewDoc);
+                                   false ->
+                                       release_trunk_error(AcctId, CallId, RDB)
+                               end
+                       end)
+             end || Call <- Calls, wh_json:get_integer_value(<<"value">>, Call) =:= 1];
+        {error, _} -> ok
     end.
 
 %% When TS updates an account, find the diff and create the appropriate entry (debit or credit).
--spec update_from_couch/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'ok', json_object()}.
+-spec update_from_couch/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'ok', wh_json:json_object()}.
 update_from_couch(AcctId, WDB, RDB) ->
     {ok, JObj} = couch_mgr:open_doc(?TS_DB, AcctId),
 
-    Acct = wh_json:get_value(<<"account">>, JObj, ?EMPTY_JSON_OBJECT),
-    Credits = wh_json:get_value(<<"credits">>, Acct, ?EMPTY_JSON_OBJECT),
+    Acct = wh_json:get_value(<<"account">>, JObj, wh_json:new()),
+    Credits = wh_json:get_value(<<"credits">>, Acct, wh_json:new()),
     Balance = ?DOLLARS_TO_UNITS(wh_util:to_float(wh_json:get_value(<<"prepay">>, Credits, 0.0))),
     Trunks = wh_util:to_integer(wh_json:get_value(<<"trunks">>, Acct, 0)),
 
@@ -544,18 +544,18 @@ update_from_couch(AcctId, WDB, RDB) ->
     %%    7->5 in account, started day with 7, debit 2 trunks
     %% same with credit
     _ = case (Trunks - T0) of
-	    T when T < 0 -> couch_mgr:save_doc(WDB, debit_doc(AcctId, [{<<"trunks">>, T + T0}]));
-	    T when T =:= 0 -> ok;
-	    T -> couch_mgr:save_doc(WDB, credit_doc(AcctId, 0, T + T0, []))
-	end,
+            T when T < 0 -> couch_mgr:save_doc(WDB, debit_doc(AcctId, [{<<"trunks">>, T + T0}]));
+            T when T =:= 0 -> ok;
+            T -> couch_mgr:save_doc(WDB, credit_doc(AcctId, 0, T + T0, []))
+        end,
 
     case (Balance - C0) of
-	C when C < 0 -> couch_mgr:save_doc(WDB, debit_doc(AcctId, [{<<"trunks">>, C0 + C}]));
-	C when C =:= 0 -> ok;
-	C -> couch_mgr:save_doc(WDB, credit_doc(AcctId, C0 + C, 0, []))
+        C when C < 0 -> couch_mgr:save_doc(WDB, debit_doc(AcctId, [{<<"trunks">>, C0 + C}]));
+        C when C =:= 0 -> ok;
+        C -> couch_mgr:save_doc(WDB, credit_doc(AcctId, C0 + C, 0, []))
     end.
 
--spec update_account/2 :: (ne_binary(), non_neg_integer()) -> {'ok', json_object()} | {'error', atom()}.
+-spec update_account/2 :: (ne_binary(), non_neg_integer()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 update_account(AcctId, Bal) ->
     {ok, JObj} = couch_mgr:open_doc(?TS_DB, AcctId),
     JObj1 = wh_json:set_value([<<"account">>, <<"credits">>, <<"prepay">>], ?UNITS_TO_DOLLARS(Bal), JObj),
@@ -564,75 +564,75 @@ update_account(AcctId, Bal) ->
 -spec load_account/3 :: (ne_binary(), ne_binary(), pid()) -> 'ok'.
 load_account(AcctId, DB, Srv) ->
     case wh_cache:fetch({ts_acctmgr, AcctId, DB}) of
-	{ok, _} -> ok;
-	{error, not_found} ->
-	    case couch_mgr:open_doc(?TS_DB, AcctId) of
-		{error, not_found} -> ok;
-		{ok, JObj} ->
-		    Balance = ?DOLLARS_TO_UNITS(wh_json:get_float_value([<<"account">>, <<"credits">>, <<"prepay">>], JObj, 0.0)),
-		    Trunks = wh_json:get_integer_value([<<"account">>, <<"trunks">>], JObj, 0),
+        {ok, _} -> ok;
+        {error, not_found} ->
+            case couch_mgr:open_doc(?TS_DB, AcctId) of
+                {error, not_found} -> ok;
+                {ok, JObj} ->
+                    Balance = ?DOLLARS_TO_UNITS(wh_json:get_float_value([<<"account">>, <<"credits">>, <<"prepay">>], JObj, 0.0)),
+                    Trunks = wh_json:get_integer_value([<<"account">>, <<"trunks">>], JObj, 0),
 
-		    _ = couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)),
-		    couch_mgr:add_change_handler(?TS_DB, AcctId, Srv),
-		    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 60),
-		    build_view(DB, AcctId) %% force the view to refresh
-	    end
+                    _ = couch_mgr:save_doc(DB, account_doc(AcctId, Balance, Trunks)),
+                    couch_mgr:add_change_handler(?TS_DB, AcctId, Srv),
+                    wh_cache:store({ts_acctmgr, AcctId, DB}, true, 60),
+                    build_view(DB, AcctId) %% force the view to refresh
+            end
     end.
 
 -spec load_views/1 :: (ne_binary()) -> 'ok'.
 load_views(DB) ->
     couch_mgr:db_create(DB),
     lists:foreach(fun(Name) ->
-			  couch_mgr:revise_doc_from_file(DB, trunkstore, Name)
-		  end, ?TS_ACCTMGR_VIEWS).
+                          couch_mgr:revise_doc_from_file(DB, trunkstore, Name)
+                  end, ?TS_ACCTMGR_VIEWS).
 
 %% Sample Data importable via #> curl -X POST -d@sample.json.data http://localhost:5984/DB_NAME/_bulk_docs --header "Content-Type: application/json"
 -spec is_call_active/1 :: (ne_binary()) -> boolean() | 'error'.
 is_call_active(CallID) ->
     try
-	true = is_binary(Q = amqp_util:new_targeted_queue()),
-	_ = amqp_util:bind_q_to_targeted(Q),
-	Req = [{<<"Call-ID">>, CallID}
-	       | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
-	wapi_call:publish_channel_status_req(CallID, Req),
-	is_call_active_loop()
+        true = is_binary(Q = amqp_util:new_targeted_queue()),
+        _ = amqp_util:bind_q_to_targeted(Q),
+        Req = [{<<"Call-ID">>, CallID}
+               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+        wapi_call:publish_channel_status_req(CallID, Req),
+        is_call_active_loop()
     catch
-	Type:Reason ->
-	    ?LOG(CallID, "Is call active exception: ~s:~w", [Type, Reason]),
-	    ?LOG(CallID, "Stacktrace: ~w", [erlang:get_stacktrace()]),
-	    error
+        Type:Reason ->
+            ?LOG(CallID, "Is call active exception: ~s:~w", [Type, Reason]),
+            ?LOG(CallID, "Stacktrace: ~w", [erlang:get_stacktrace()]),
+            error
     end.
 
 -spec is_call_active_loop/0 :: () -> boolean().
 is_call_active_loop() ->
     receive
-	{_, #amqp_msg{payload = Payload}} ->
-	    JObj = mochijson2:decode(Payload),
-	    wapi_call:channel_status_resp_v(JObj);
-	_ ->
-	    is_call_active_loop()
+        {_, #amqp_msg{payload = Payload}} ->
+            JObj = mochijson2:decode(Payload),
+            wapi_call:channel_status_resp_v(JObj);
+        _ ->
+            is_call_active_loop()
     after ?ACTIVE_CALL_TIMEOUT ->
-	    false
+            false
     end.
 
--spec release_trunk_error/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'ok', json_object()}.
+-spec release_trunk_error/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'ok', wh_json:json_object()}.
 release_trunk_error(AcctId, CallID, DB) ->
     ?LOG(CallID, "Releasing trunk for ~s errored", [AcctId]),
 
     case trunk_type(DB, AcctId, CallID) of
-	non_existant ->
-	    ?LOG(CallID, "Failed to release trunk for ~s errored", [AcctId]);
-	flat_rate ->
-	    couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, flat_rate));
-	per_min ->
-	    Amt = case ts_cdr:fetch_cdr(binary:replace(DB, ?TS_USAGE_PREFIX, ?TS_CDR_PREFIX), CallID) of
-		      {error, not_found} -> 0;
-		      {ok, CDR} -> wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, CDR, 0))
-		  end,
-	    couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, per_min, Amt))
+        non_existant ->
+            ?LOG(CallID, "Failed to release trunk for ~s errored", [AcctId]);
+        flat_rate ->
+            couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, flat_rate));
+        per_min ->
+            Amt = case ts_cdr:fetch_cdr(binary:replace(DB, ?TS_USAGE_PREFIX, ?TS_CDR_PREFIX), CallID) of
+                      {error, not_found} -> 0;
+                      {ok, CDR} -> wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, CDR, 0))
+                  end,
+            couch_mgr:save_doc(DB, release_error_doc(AcctId, CallID, per_min, Amt))
     end.
 
--spec reserve_per_min/4 :: (float() | integer(), float(), ne_binary(), json_object()) -> {'ok', 'per_min'} | {'error', 'no_funds'}.
+-spec reserve_per_min/4 :: (float() | integer(), float(), ne_binary(), wh_json:json_object()) -> {'ok', 'per_min'} | {'error', 'no_funds'}.
 reserve_per_min(Amt, Avail, WDB, ReserveDoc) when Amt < Avail ->
     spawn(fun() -> couch_mgr:save_doc(WDB, ReserveDoc) end),
     ?LOG("Per-minute trunk reserved"),

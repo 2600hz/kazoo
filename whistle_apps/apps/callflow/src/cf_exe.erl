@@ -32,7 +32,7 @@
 -define(CONSUME_OPTIONS, []).
 
 -record(state, {call = #cf_call{} :: #cf_call{}
-                ,flow = wh_json:new() :: json_object()
+                ,flow = wh_json:new() :: wh_json:json_object()
                 ,cf_module_pid = 'undefined' :: 'undefined' | pid()
                 ,status = <<"sane">> :: ne_binary()
                 ,ctrl_q = 'undefined' :: 'undefined' | ne_binary()
@@ -72,7 +72,7 @@ continue(Key, #cf_call{cf_pid=Srv}=Call) ->
 continue(Key, Srv) ->
     gen_server:cast(Srv, {continue, Key}).
 
--spec branch/2 :: (json_object(), #cf_call{} | pid()) -> 'ok'.
+-spec branch/2 :: (wh_json:json_object(), #cf_call{} | pid()) -> 'ok'.
 branch(Flow, #cf_call{cf_pid=Srv}) ->
     branch(Flow, Srv);
 branch(Flow, Srv) ->
@@ -138,7 +138,7 @@ attempt(Key, #cf_call{cf_pid=Srv}) ->
 attempt(Key, Srv) ->
     gen_server:call(Srv, {attempt, Key}).
 
--spec relay_amqp/2 :: (json_object(), proplist()) -> ok.
+-spec relay_amqp/2 :: (wh_json:json_object(), proplist()) -> ok.
 relay_amqp(JObj, Props) ->
     case props:get_value(cf_module_pid, Props) of
         Pid when is_pid(Pid) ->
@@ -199,11 +199,11 @@ handle_call({callid}, _From, #state{call_id=CallId}=State) ->
 handle_call({control_queue_name}, _From, #state{ctrl_q=CtrlQ}=State) ->
     {reply, CtrlQ, State};
 handle_call({get_branch_keys}, _From, #state{flow = Flow}=State) ->
-    {struct, Children} = wh_json:get_value(<<"children">>, Flow, ?EMPTY_JSON_OBJECT),
+    {struct, Children} = wh_json:get_value(<<"children">>, Flow, wh_json:new()),
     Reply = {branch_keys, lists:delete(<<"_">>, proplists:get_keys(Children))},
     {reply, Reply, State};
 handle_call({get_branch_keys, all}, _From, #state{flow = Flow}=State) ->
-    {struct, Children} = wh_json:get_value(<<"children">>, Flow, ?EMPTY_JSON_OBJECT),
+    {struct, Children} = wh_json:get_value(<<"children">>, Flow, wh_json:new()),
     Reply = {branch_keys, proplists:get_keys(Children)},
     {reply, Reply, State};
 handle_call({attempt, Key}, _From, #state{flow = Flow}=State) ->
@@ -212,14 +212,17 @@ handle_call({attempt, Key}, _From, #state{flow = Flow}=State) ->
             ?LOG("attempted undefined child ~s", [Key]),
             Reply = {attempt_resp, {error, undefined}},
             {reply, Reply, State};
-        ?EMPTY_JSON_OBJECT ->
-            ?LOG("attempted empty child ~s", [Key]),
-            Reply = {attempt_resp, {error, empty}},
-            {reply, Reply, State};
         NewFlow ->
-            ?LOG("branching to attempted child ~s", [Key]),
-            Reply = {attempt_resp, ok},
-            {reply, Reply, launch_cf_module(State#state{flow = NewFlow})}
+            case wh_json:is_empty(NewFlow) of
+                true ->
+                    ?LOG("attempted empty child ~s", [Key]),
+                    Reply = {attempt_resp, {error, empty}},
+                    {reply, Reply, State};
+                false ->
+                    ?LOG("branching to attempted child ~s", [Key]),
+                    Reply = {attempt_resp, ok},
+                    {reply, Reply, launch_cf_module(State#state{flow = NewFlow})}
+            end
     end;
 handle_call(_Request, _From, State) ->
     Reply = {error, unimplemented},
@@ -248,10 +251,13 @@ handle_cast({continue, Key}, #state{flow=Flow}=State) ->
             ?LOG("requested child does not exist, trying wild card", [Key]),
             ?MODULE:continue(self()),
             {noreply, State};
-        ?EMPTY_JSON_OBJECT ->
-            {stop, normal, State};
         NewFlow ->
-            {noreply, launch_cf_module(State#state{flow=NewFlow})}
+            case wh_json:is_empty(NewFlow) of
+                true ->
+                    {stop, normal, State};
+                false ->
+                    {noreply, launch_cf_module(State#state{flow=NewFlow})}
+            end
     end;
 handle_cast({stop}, State) ->
     {stop, normal, State};

@@ -39,10 +39,10 @@
 
 -type error_result() :: {ne_binary(), ne_binary()}.
 -type error_results() :: [error_result(),...].
--type results() :: {'pass', json_object()} | {'fail', json_object()}.
+-type results() :: {'pass', wh_json:json_object()} | {'fail', wh_json:json_object()}.
 -type attribute_results() :: 'true' | error_results().
 -type error_acc() :: [] | [{[ne_binary(),...], ne_binary() },...].
--type jkey_acc() :: [] | [json_string(),...].
+-type jkey_acc() :: [] | [wh_json:json_string(),...].
 
 -define(SIMPLE_TYPES, [<<"string">>,<<"number">>,<<"integer">>,<<"boolean">>,<<"object">>
                            ,<<"array">>,<<"null">>,<<"any">>]).
@@ -57,7 +57,7 @@
 -define(HOSTNAME_REGEX, <<"^[[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
 
 %% Return true or [{JObjKey, ErrorMsg},...]
--spec is_valid/2 :: (json_object(), ne_binary() | json_object()) -> results().
+-spec is_valid/2 :: (wh_json:json_object(), ne_binary() | wh_json:json_object()) -> results().
 is_valid(JObj, Schema) when is_binary(Schema) ->
     %% TODO: cache the schema?
     case couch_mgr:open_doc(?WH_SCHEMA_DB, Schema) of
@@ -80,8 +80,8 @@ is_valid(JObj, Schema) ->
     end.
 
 
--spec format_errors/1 :: (error_acc()) -> json_object().
--spec format_errors/2 :: (error_acc(), json_object()) -> json_object().
+-spec format_errors/1 :: (error_acc()) -> wh_json:json_object().
+-spec format_errors/2 :: (error_acc(), wh_json:json_object()) -> wh_json:json_object().
 
 format_errors(Errors) ->
     format_errors(Errors, wh_json:new()).
@@ -102,9 +102,9 @@ format_errors([{K, V}|T], JObj) ->
 %%   },
 %%   ...
 %% }
--spec are_valid_properties/2 :: (json_object(), json_object()) -> attribute_results().
--spec are_valid_properties/3 :: (json_object(), [] | [ne_binary(),...], json_object()) -> attribute_results().
--spec are_valid_properties/4 :: (json_object(), jkey_acc(), error_acc(), json_object()) -> attribute_results().
+-spec are_valid_properties/2 :: (wh_json:json_object(), wh_json:json_object()) -> attribute_results().
+-spec are_valid_properties/3 :: (wh_json:json_object(), [] | [ne_binary(),...], wh_json:json_object()) -> attribute_results().
+-spec are_valid_properties/4 :: (wh_json:json_object(), jkey_acc(), error_acc(), wh_json:json_object()) -> attribute_results().
 
 are_valid_properties(JObj, Schema) ->
     PropertiesJObj = wh_json:get_value(<<"properties">>, Schema, wh_json:new()),
@@ -159,8 +159,8 @@ are_valid_properties(JObj, Path, Errors, [{Property, AttributesJObj}|T]) ->
 %% JObj = {..., "name":"Mal Reynolds",...}
 %% Key = "name"
 %% AttributesJObj = {"type":"string"}
--spec are_valid_attributes/3 :: (json_object(), jkey_acc(), json_object()) -> attribute_results().
--spec are_valid_attributes/5 :: (json_object(), jkey_acc(), json_object(), error_acc(), proplist()) -> attribute_results().
+-spec are_valid_attributes/3 :: (wh_json:json_object(), jkey_acc(), wh_json:json_object()) -> attribute_results().
+-spec are_valid_attributes/5 :: (wh_json:json_object(), jkey_acc(), wh_json:json_object(), error_acc(), proplist()) -> attribute_results().
 
 are_valid_attributes(JObj, Key, AttributesJObj) ->
     %% 5.7 - testing here for required saves lots of work....
@@ -194,8 +194,8 @@ are_valid_attributes(JObj, Key, AttributesJObj, Errors, [{AttributeKey, Attribut
 %% "type" : string | number | integer | float | boolean | array | object | null | any | user-defined
 %%          The last two (any and user-defined) are automatically considered valid
 %%
--spec is_valid_attribute/3 :: ({json_string(), term(), json_object()}, json_object(), jkey_acc()) ->
-                                      {'pass', json_object()} | {'fail', {jkey_acc(), ne_binary()}}.
+-spec is_valid_attribute/3 :: ({wh_json:json_string(), term(), wh_json:json_object()}, wh_json:json_object(), jkey_acc()) ->
+                                      {'pass', wh_json:json_object()} | {'fail', {jkey_acc(), ne_binary()}}.
 
 %% 5.1
 is_valid_attribute({<<"type">>, [], _}, _, Key) ->
@@ -743,7 +743,7 @@ is_valid_format(_,_) ->
 %% Items: [ json_term(),...]
 %% SchemaItemsJObj: {"type":"some_type", properties:{"prop1":{"attr1key":"attr1val",...},...},...}
 %%  or could be a list of schemas
--spec are_valid_items/2 :: (list(), json_object() | json_objects()) -> attribute_results().
+-spec are_valid_items/2 :: (list(), wh_json:json_object() | wh_json:json_objects()) -> attribute_results().
 are_valid_items(_Items, _SchemaItemsJObj) ->
     _ItemType = wh_json:get_value(<<"type">>, _SchemaItemsJObj, <<"any">>),
     _ItemSchemaJObj = wh_json:get_value(<<"items">>, _SchemaItemsJObj, wh_json:new()),

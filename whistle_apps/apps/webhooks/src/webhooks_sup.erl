@@ -41,6 +41,6 @@ cache_proc() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
 				  ?CACHE(webhooks_cache)
-				  ,?CHILD(webhooks_acct_sup, supervisor)
+				  ,?CHILD(webhooks_listener_sup, supervisor)
 				  ,?CHILD(webhooks_init, worker)
 				 ]} }.

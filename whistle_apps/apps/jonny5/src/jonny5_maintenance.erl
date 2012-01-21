@@ -117,7 +117,7 @@ do_remote_summary(PrintFun, Timeout, Count) ->
 	    io:format("Finished waiting...~n", [])
     end.
 
--spec do_summary/2 :: (json_objects(), fun((json_object()) -> 'ok')) -> no_return().
+-spec do_summary/2 :: (wh_json:json_objects(), fun((wh_json:json_object()) -> 'ok')) -> no_return().
 do_summary(JObjs, PrintFun) ->
     _ = [PrintFun(JObj) || JObj <- JObjs],
     ok.
@@ -135,8 +135,8 @@ start_amqp() ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_summary/2 :: (json_object(), nonempty_string()) -> 'ok' | no_return().
--spec print_summary/3 :: (json_object(), nonempty_string(), binary() | integer()) -> 'ok' | no_return().
+-spec print_summary/2 :: (wh_json:json_object(), nonempty_string()) -> 'ok' | no_return().
+-spec print_summary/3 :: (wh_json:json_object(), nonempty_string(), binary() | integer()) -> 'ok' | no_return().
 print_summary(AcctJObj, RowFormatStr) ->
     print_summary(AcctJObj, RowFormatStr, <<>>).
 print_summary(AcctJObj, RowFormatStr, Count) when is_integer(Count) ->
@@ -174,6 +174,6 @@ print_summary(AcctJObj, RowFormatStr, Count) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_details/1 :: (json_object()) -> ['ok',...].
+-spec print_details/1 :: (wh_json:json_object()) -> ['ok',...].
 print_details(AcctJObj) ->
     [io:format("~s: ~s~n", [K, wh_util:to_list(V)]) || {K, V} <- wh_json:to_proplist(AcctJObj)].

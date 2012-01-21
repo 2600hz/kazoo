@@ -72,7 +72,13 @@ reload() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}, 0}.
+    couch_mgr:db_create(?TOKEN_DB),
+    _ = bind_to_crossbar(),
+    Url = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
+
+    ?LOG("Shared Auth started up, using ~s as authoritative crossbar", [Url]),
+
+    {ok, #state{xbar_url=Url}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -89,8 +95,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -103,7 +108,8 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({reload}, _) ->
-    {noreply, #state{}, 0};
+    Url = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
+    {noreply, #state{xbar_url=Url}};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -169,13 +175,8 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
-handle_info(timeout, CurState) ->
-    bind_to_crossbar(),
-    couch_mgr:db_create(?TOKEN_DB),
-    Url = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
-    {noreply, CurState#state{xbar_url=Url}};
-
-handle_info(_, State) ->
+handle_info(_Info, State) ->
+    ?LOG("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -206,7 +207,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec bind_to_crossbar/0 :: () -> no_return().
+-spec bind_to_crossbar/0 :: () -> 'ok' | {'error', 'exists'}.
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
@@ -224,7 +225,7 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (list()) -> {boolean(), http_methods()}.
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['PUT', 'GET']};
 allowed_methods(_) ->
@@ -238,7 +239,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: (list()) -> {boolean(), []}.
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists(_) ->
@@ -269,7 +270,7 @@ resource_exists(_) ->
 %% Failure here returns 400 or 401
 %% @end
 %%--------------------------------------------------------------------
--spec validate/3 :: (list(), #cb_context{}, nonempty_string() | 'undefined') -> #cb_context{}.
+-spec validate/3 :: (path_tokens(), #cb_context{}, nonempty_string() | 'undefined') -> #cb_context{}.
 validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context, XBarUrl) ->
     SharedToken = wh_json:get_value(<<"shared_token">>, JObj),
     case authenticate_shared_token(SharedToken, XBarUrl) of
@@ -386,7 +387,7 @@ authenticate_shared_token(SharedToken, XBarUrl) ->
 %% an account and user, ensure those exist locally.
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_data/1 :: (json_object()) -> boolean().
+-spec import_missing_data/1 :: (wh_json:json_object()) -> boolean().
 import_missing_data(RemoteData) ->
     Account = wh_json:get_value(<<"account">>, RemoteData),
     AccountId = wh_json:get_value(<<"pvt_account_id">>, Account),
@@ -402,9 +403,7 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account/2 :: (AccountId, Account) -> boolean() when
-      AccountId :: undefined | binary(),
-      Account :: undefined | json_object().
+-spec import_missing_account/2 :: ('undefined' | ne_binary(), 'undefined' | wh_json:json_object()) -> boolean().
 import_missing_account(undefined, _) ->
     ?LOG("shared auth reply did not define an account id"),
     false;
@@ -461,10 +460,7 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user/3 :: (AccountId, UserId, User) -> boolean() when
-      AccountId :: undefined | binary(),
-      UserId :: undefined | binary(),
-      User :: undefined | json_object().
+-spec import_missing_user/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | wh_json:json_object()) -> boolean().
 import_missing_user(_, undefined, _) ->
     ?LOG("shared auth reply did not define an user id"),
     false;

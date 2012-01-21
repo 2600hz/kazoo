@@ -49,7 +49,8 @@ start_proc([_, CallId]=Args) ->
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->
     [ Pid || {_, Pid, worker, [Worker]} <- supervisor:which_children(?SERVER),
-             Worker =:= ecallmgr_call_events].
+             Worker =:= ecallmgr_call_events
+    ].
 
 -spec find_worker/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
 -spec do_find_worker/2 :: ([] | [pid(),...], ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.

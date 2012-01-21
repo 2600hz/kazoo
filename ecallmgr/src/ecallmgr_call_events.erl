@@ -1,10 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010, VoIP INC
 %%% @doc
 %%% Receive call events from freeSWITCH, publish to the call's event
 %%% queue
 %%% @end
+%%%
+%%% @contributors
+%%% James Aimonetti <james@2600hz.org>
+%%% Karl Anderson <karl@2600hz.org>
+%%%
 %%% Created : 25 Aug 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_events).
@@ -256,6 +260,7 @@ create_event(EventName, ApplicationName, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
     {Mega,Sec,Micro} = erlang:now(),
     Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
+
     Event = [ KV || {_, V}=KV <- [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
                                   ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props, Timestamp)}
                                   ,{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
@@ -398,15 +403,15 @@ should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
 should_publish(EventName, _, _) ->
     lists:member(EventName, ?FS_EVENTS).
 
--spec get_transfer_history/1 :: (proplist()) -> json_object().
+-spec get_transfer_history/1 :: (proplist()) -> wh_json:json_object().
 get_transfer_history(Props) ->
     SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
     Hist = [HistJObj 
-            || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory)
-                   ,(HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, [global]))) =/= undefined],
+            || Trnsf <- ecallmgr_util:unserialize_fs_array(SerializedHistory),
+               (HistJObj = create_trnsf_history_object(binary:split(Trnsf, <<":">>, [global]))) =/= undefined],
     wh_json:from_list(Hist).
 
--spec create_trnsf_history_object/1 :: (list()) -> {ne_binary(), json_object()} | 'undefined'.
+-spec create_trnsf_history_object/1 :: (list()) -> {ne_binary(), wh_json:json_object()} | 'undefined'.
 create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
     [Transferee, Transferer] = binary:split(Props, <<"/">>),
     Trans = [{<<"Call-ID">>, CallId}
@@ -429,14 +434,14 @@ create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
 create_trnsf_history_object(_) ->
     undefined.
 
--spec get_channel_state/1 :: (proplist()) -> binary().
+-spec get_channel_state/1 :: (proplist()) -> ne_binary().
 get_channel_state(Prop) ->
     case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
         undefined -> <<"unknown">>;
         ChannelState -> ChannelState
     end.
 
--spec get_hangup_cause/1 :: (proplist()) -> undefined | ne_binary().
+-spec get_hangup_cause/1 :: (proplist()) -> 'undefined' | ne_binary().
 get_hangup_cause(Props) ->
     Causes = case props:get_value(<<"variable_current_application">>, Props) of
                  <<"bridge">> ->
@@ -446,19 +451,19 @@ get_hangup_cause(Props) ->
              end,
     find_event_value(Causes, Props).
 
--spec get_disposition/1 :: (proplist()) -> undefined | ne_binary().
+-spec get_disposition/1 :: (proplist()) -> 'undefined' | ne_binary().
 get_disposition(Props) ->
     find_event_value([<<"variable_endpoint_disposition">>
                           ,<<"variable_originate_disposition">>
                      ], Props).
 
--spec get_hangup_code/1 :: (proplist()) -> undefined | ne_binary().
+-spec get_hangup_code/1 :: (proplist()) -> 'undefined' | ne_binary().
 get_hangup_code(Props) ->
     find_event_value([<<"variable_proto_specific_hangup_cause">>
                           ,<<"variable_last_bridge_proto_specific_hangup_cause">>
                      ], Props).
     
--spec find_event_value/2 :: ([ne_binary(),...], proplist()) -> undefined | ne_binary().
+-spec find_event_value/2 :: ([ne_binary(),...], proplist()) -> 'undefined' | ne_binary().
 find_event_value(Keys, Props) ->
     find_event_value(Keys, Props, undefined).
 
@@ -472,7 +477,7 @@ find_event_value([H|T], Props, Default) ->
         false -> Value
     end.
 
--spec swap_call_legs/1 :: (proplist() | json_object()) -> proplist().
+-spec swap_call_legs/1 :: (proplist() | wh_json:json_object()) -> proplist().
 -spec swap_call_legs/2 :: (proplist(), proplist()) -> proplist().
 
 swap_call_legs(Props) when is_list(Props) ->

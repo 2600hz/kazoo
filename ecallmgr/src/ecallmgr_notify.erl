@@ -50,7 +50,7 @@ start_link() ->
                              ,{basic_qos, 1}
                             ], []).
 
--spec handle_req/2 :: (json_object(), proplist()) -> no_return().
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
 

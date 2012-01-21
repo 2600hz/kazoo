@@ -80,7 +80,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
 handle(Data,Call) ->
     Temporal = get_temporal_route(Data, Call),
     case wh_json:get_value(<<"action">>, Data) of
@@ -199,7 +199,7 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_temporal_route/2 :: (JObj, Call) -> #temporal{} when
-      JObj :: json_object(),
+      JObj :: wh_json:json_object(),
       Call :: #cf_call{}.
 get_temporal_route(JObj, Call) ->
     ?LOG("loading temporal route"),

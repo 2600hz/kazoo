@@ -248,13 +248,16 @@ validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
                   ,fun(R) -> create_account(JObj, Context, R) end
                  ],
     case lists:foldr(fun(F, Acc) -> F(Acc) end, {[], wh_json:new()}, Generators) of
-        {P, ?EMPTY_JSON_OBJECT} ->
-            Context#cb_context{
-              doc=lists:flatten(P)
-              ,resp_status=success
-             };
-        {_, Failures} ->
-            crossbar_util:response_invalid_data(Failures, Context)
+        {P, Failures} ->
+            case wh_json:is_empty(Failures) of
+                true ->
+                    Context#cb_context{
+                      doc=lists:flatten(P)
+                      ,resp_status=success
+                     };
+                false ->
+                    crossbar_util:response_invalid_data(Failures, Context)
+            end
     end;
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
@@ -267,7 +270,7 @@ validate(_, Context) ->
 %% Any errors will also be collected.
 %% @end
 %%--------------------------------------------------------------------
--spec create_extensions/3 :: (json_object(), #cb_context{}, {proplist(), json_object()}) -> {proplist(), json_object()}. 
+-spec create_extensions/3 :: (wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}. 
 create_extensions(JObj, Context, Results) ->
     Extensions = wh_json:get_value(<<"extensions">>, JObj, []),
     create_extensions(Extensions, 1, Context, Results).
@@ -281,11 +284,14 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
                   ,fun(R) -> create_user(Exten, Iteration, Context, R) end
                  ],
     case lists:foldr(fun(F, Acc) -> F(Acc) end, {[], wh_json:new()}, Generators) of
-        {P, ?EMPTY_JSON_OBJECT} ->
-            create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], FailAcc});
         {P, F} ->
-            Failures = wh_json:set_value([<<"extensions">>, Iteration], F, FailAcc),
-            create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], Failures})
+            case wh_json:is_empty(F) of
+                true ->
+                    create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], FailAcc});
+                false ->
+                    Failures = wh_json:set_value([<<"extensions">>, Iteration], F, FailAcc),
+                    create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], Failures})
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -296,7 +302,7 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_account/3 :: (json_object(), #cb_context{}, {proplist(), json_object()}) -> {proplist(), json_object()}. 
+-spec create_account/3 :: (wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}. 
 create_account(JObj, Context, {Pass, Fail}) ->
     Account = wh_json:get_value(<<"account">>, JObj, wh_json:new()),
     Generators = [fun(J) ->
@@ -332,7 +338,7 @@ create_account(JObj, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_phone_numbers/3 :: (json_object(), #cb_context{}, {proplist(), json_object()}) -> {proplist(), json_object()}. 
+-spec create_phone_numbers/3 :: (wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}. 
 
 create_phone_numbers(JObj, Context, Results) ->
     PhoneNumbers = wh_json:get_value(<<"phone_numbers">>, JObj),
@@ -363,7 +369,7 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_braintree_cards/3 :: (json_object(), #cb_context{}, {proplist(), json_object()}) -> {proplist(), json_object()}. 
+-spec create_braintree_cards/3 :: (wh_json:json_object(), #cb_context{}, {proplist(), wh_json:json_object()}) -> {proplist(), wh_json:json_object()}. 
 create_braintree_cards(JObj, Context, {Pass, Fail}) ->
     Account = get_context_jobj(<<"accounts">>, Pass),
     case wh_json:get_value(<<"_id">>, Account) of
@@ -401,8 +407,8 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_user/4 :: (json_object(), pos_integer(), #cb_context{}, {proplist(), json_object()}) 
-                       -> {proplist(), json_object()}. 
+-spec create_user/4 :: (wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()}) 
+                       -> {proplist(), wh_json:json_object()}. 
 create_user(JObj, Iteration, Context, {Pass, Fail}) ->
     User = wh_json:get_value(<<"user">>, JObj, wh_json:new()),
     Generators = [fun(J) ->
@@ -464,8 +470,8 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_device/4 :: (json_object(), pos_integer(), #cb_context{}, {proplist(), json_object()}) 
-                         -> {proplist(), json_object()}. 
+-spec create_device/4 :: (wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()}) 
+                         -> {proplist(), wh_json:json_object()}. 
 create_device(JObj, Iteration, Context, {Pass, Fail}) ->
     Device = wh_json:get_value(<<"device">>, JObj, wh_json:new()),
     Generators = [fun(J) -> 
@@ -531,8 +537,8 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_vmbox/4 :: (json_object(), pos_integer(), #cb_context{}, {proplist(), json_object()}) 
-                        -> {proplist(), json_object()}. 
+-spec create_vmbox/4 :: (wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()}) 
+                        -> {proplist(), wh_json:json_object()}. 
 create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
     VMBox = wh_json:get_value(<<"vmbox">>, JObj, wh_json:new()),
     Generators = [fun(J) -> 
@@ -587,8 +593,8 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
 %% to the error json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_exten_callflow/4 :: (json_object(), pos_integer(), #cb_context{}, {proplist(), json_object()}) 
-                                 -> {proplist(), json_object()}. 
+-spec create_exten_callflow/4 :: (wh_json:json_object(), pos_integer(), #cb_context{}, {proplist(), wh_json:json_object()}) 
+                                 -> {proplist(), wh_json:json_object()}. 
 create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
     Callflow = wh_json:get_value(<<"callflow">>, JObj, wh_json:new()),
     Generators = [fun(J) -> 
@@ -635,7 +641,7 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec populate_new_account/2 :: (proplist(), #cb_context{}) -> #cb_context{}.
--spec populate_new_account/3 :: (proplist(), ne_binary(), json_object()) -> json_object().
+-spec populate_new_account/3 :: (proplist(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
 
 populate_new_account(Props, _) ->
     Context = props:get_value(?WH_ACCOUNTS_DB, Props),
@@ -714,7 +720,7 @@ populate_new_account([{Event, #cb_context{storage=Iteration}=Context}|Props], Ac
 %% context records for a specific key.
 %% @end
 %%--------------------------------------------------------------------
--spec get_context_jobj/2 :: (ne_binary(), proplist()) -> json_object().
+-spec get_context_jobj/2 :: (ne_binary(), proplist()) -> wh_json:json_object().
 get_context_jobj(Key, Pass) ->
     case props:get_value(Key, Pass) of
         #cb_context{doc=JObj} ->

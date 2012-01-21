@@ -16,7 +16,7 @@ init() ->
     ok.
 
 -spec handle_req/2 :: (ApiJObj, Props) -> no_return() when
-      ApiJObj :: json_object(),
+      ApiJObj :: wh_json:json_object(),
       Props :: proplist().
 handle_req(ApiJObj, _Props) ->
     true = wapi_registration:query_req_v(ApiJObj),
@@ -46,8 +46,8 @@ handle_req(ApiJObj, _Props) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec filter_and_send/2 :: (ApiJObj, RegJObj) -> ok when
-      ApiJObj :: json_object(),
-      RegJObj :: json_object().
+      ApiJObj :: wh_json:json_object(),
+      RegJObj :: wh_json:json_object().
 filter_and_send(ApiJObj, RegJObj) ->
     RespFields = case wh_json:get_value(<<"Fields">>, ApiJObj, []) of
                      [] ->

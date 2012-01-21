@@ -57,7 +57,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (Data :: json_object(), Call :: #cf_call{}) -> ok.
+-spec handle/2 :: (Data :: wh_json:json_object(), Call :: #cf_call{}) -> ok.
 handle(Data, Call) ->
     Menu = get_menu_profile(Data, Call),
     cf_call_command:answer(Call),
@@ -220,7 +220,7 @@ hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{account_id=AccountId}
             ?LOG("callflow hunt succeeded, branching"),
             cf_call_command:flush_dtmf(Call),
             cf_call_command:b_play(Prompts#prompts.hunt_transfer, Call),
-            cf_exe:branch(wh_json:get_value(<<"flow">>, Flow, ?EMPTY_JSON_OBJECT), Call),
+            cf_exe:branch(wh_json:get_value(<<"flow">>, Flow, wh_json:new()), Call),
             true;
         _ ->
             ?LOG("callflow hunt failed"),
@@ -233,7 +233,7 @@ hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{account_id=AccountId}
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(play_invalid_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> tuple(ok, json_object()) | tuple(error, atom())).
+-spec play_invalid_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 play_invalid_prompt(#menu{prompts=Prompts}, Call) ->
     Prompts#prompts.invalid_entry =/= <<>> 
         andalso cf_call_command:b_play(Prompts#prompts.invalid_entry, Call).
@@ -289,7 +289,7 @@ get_prompt(#menu{greeting_id=Id}, #cf_call{account_db=Db}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording/3 :: (binary(), binary(), #cf_call{}) -> {ok, json_object()} | {error, json_object()}.
+-spec store_recording/3 :: (binary(), binary(), #cf_call{}) -> {ok, wh_json:json_object()} | {error, wh_json:json_object()}.
 store_recording(AttachmentName, MediaId, Call) ->
     ?LOG("storing recording ~s as media ~s", [AttachmentName, MediaId]),
     ok = update_doc(<<"content_type">>, <<"audio/mpeg">>, MediaId, Call),
@@ -383,7 +383,7 @@ recording_media_doc(Type, #menu{name=MenuName, menu_id=Id}, #cf_call{account_db=
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc/4 :: (list() | binary(), json_term(), #menu{} | binary(),  #cf_call{} | binary()) -> ok | {error, atom()}.
+-spec update_doc/4 :: (list() | binary(), wh_json:json_term(), #menu{} | binary(),  #cf_call{} | binary()) -> ok | {error, atom()}.
 update_doc(Key, Value, #menu{menu_id=Id}, Db) ->
     update_doc(Key, Value, Id, Db);
 update_doc(Key, Value, Id, #cf_call{account_db=Db}) ->
@@ -409,7 +409,7 @@ update_doc(Key, Value, Id, Db) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_menu_profile/2 :: (json_object(), #cf_call{}) -> #menu{}.
+-spec get_menu_profile/2 :: (wh_json:json_object(), #cf_call{}) -> #menu{}.
 get_menu_profile(Data, #cf_call{account_id=AccountId}) ->
     Id = wh_json:get_value(<<"id">>, Data),
     Db = wh_util:format_account_id(AccountId, encoded),

@@ -247,7 +247,7 @@ handle_cast({remove_participant, CallId}, #conf{participants=Participants, ctrl_
     case dict:size(NewPtcp) of
         0 ->
             ?LOG("last participant has left, shuting down"),
-	    %% why change the state record?
+            %% why change the state record?
             {stop, shutdown, Conf#conf{participants=NewPtcp, ctrl_q=NewQs}};
         _ ->
             {noreply, Conf#conf{participants=NewPtcp, ctrl_q=NewQs}, hibernate}
@@ -291,10 +291,10 @@ handle_cast(_Msg, Conf) ->
 %------------------------------------------------------------------------------
 handle_info({amqp_reconnect, T}, #conf{conf_id=ConfId}=Conf) ->
     try
-	{ok, NewQ} = start_amqp(ConfId),
-	{noreply, Conf#conf{amqp_q=NewQ}, hibernate}
+        {ok, NewQ} = start_amqp(ConfId),
+        {noreply, Conf#conf{amqp_q=NewQ}, hibernate}
     catch
-	_:_ ->
+        _:_ ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
                     ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
@@ -392,12 +392,12 @@ start_amqp(ConfId) ->
         _ = amqp_util:callmgr_exchange(),
         _ = amqp_util:callevt_exchange(),
         true = is_binary(Q = amqp_util:new_conference_queue(ConfId)),
-	ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHN_REQ),
+        ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHN_REQ),
         ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_ROUTE_REQ),
         ok = amqp_util:bind_q_to_conference(Q, service, ConfId),
         ok = amqp_util:bind_q_to_conference(Q, events, ConfId),
         ok = amqp_util:bind_q_to_targeted(Q),
-	ok = amqp_util:basic_consume(Q),
+        ok = amqp_util:basic_consume(Q),
         amqp_util:register_return_handler(),
         ?LOG_SYS("connected to AMQP"),
         {ok, Q}
@@ -415,7 +415,7 @@ start_amqp(ConfId) ->
 %%--------------------------------------------------------------------
 -spec process_req/3 :: (MsgType, JObj, Conf) -> no_return() when
       MsgType :: tuple(binary(), binary()),
-      JObj :: json_object(),
+      JObj :: wh_json:json_object(),
       Conf :: #conf{}.
 process_req({<<"conference">>, <<"add_caller">>}, JObj, #conf{service=Srv}) ->
     %% When we receive a request to add a caller to the conference, pass it to the logic that
@@ -733,7 +733,7 @@ find_ctrl_q(CallId, Conf) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_conference_profile/1 :: (Conference) -> #conf{} when
-      Conference :: json_object().
+      Conference :: wh_json:json_object().
 load_conference_profile(JObj) ->
     ConfId = wh_json:get_value(<<"_id">>, JObj),
     put(callid, ConfId),
@@ -772,7 +772,7 @@ load_conference_profile(JObj) ->
 %%--------------------------------------------------------------------
 -spec add_caller/2 :: (Srv, Caller) -> ok when
       Srv :: pid(),
-      Caller :: undefined | json_object().
+      Caller :: undefined | wh_json:json_object().
 add_caller(_, undefined) ->
     %% Allow the conference service to be started with no inital caller, for
     %% later features such as timed auto-dialing conferences
@@ -873,13 +873,13 @@ remove_participant_event(CallId, #conf{conf_id=ConfId, amqp_q=Q}=Conf) ->
 %% Send a response for a route request
 %% @end
 %%--------------------------------------------------------------------
--spec send_route_response/2 :: (json_object(), ne_binary()) -> 'ok'.
+-spec send_route_response/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
 send_route_response(JObj, Q) ->
     ?LOG("sending route response"),
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
-            ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, ?EMPTY_JSON_OBJECT)}
+            ,{<<"Custom-Channel-Vars">>, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())}
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
     wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
@@ -890,7 +890,7 @@ send_route_response(JObj, Q) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec send_auth_response/5 :: (JObj, ConfId, AuthUser, AuthPwd, Q) -> 'ok' when
-      JObj :: json_object(),
+      JObj :: wh_json:json_object(),
       ConfId :: binary(),
       AuthUser :: binary(),
       AuthPwd :: binary(),

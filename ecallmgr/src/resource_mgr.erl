@@ -41,7 +41,7 @@ start_link() ->
 				     ,{bindings, ?BINDINGS}
 				     ], []).
 
--spec handle_req/2 :: (json_object(), proplist()) -> 'ok' | 'fail'.
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok' | 'fail'.
 handle_req(JObj, _Prop) ->
     true = wapi_resource:req_v(JObj),
 %%    put(callid, wh_util:put_callid(JObj)),
@@ -165,18 +165,18 @@ get_resources({<<"resource">>, <<"originate_req">>, <<"audio">>=Type}, Options) 
 get_resources(_Type, _Options) ->
     [].
 
--spec request_type/1 :: (json_object()) -> {binary(), binary(), binary()}.
+-spec request_type/1 :: (wh_json:json_object()) -> {binary(), binary(), binary()}.
 request_type(JObj) ->
     {wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj), wh_json:get_value(<<"Resource-Type">>, JObj)}.
 
--spec get_request_options/1 :: (json_object()) -> proplist().
+-spec get_request_options/1 :: (wh_json:json_object()) -> proplist().
 get_request_options(JObj) ->
     Min = wh_util:to_integer(wh_json:get_value(<<"Resource-Minimum">>, JObj, 1)),
     [{min_channels_requested, Min}
      ,{max_channels_requested, wh_util:to_integer(wh_json:get_value(<<"Resource-Maximum">>, JObj, Min))}
     ].
 
--spec start_channels/6 :: ([proplist(),...] | [], json_object(), binary() | list(), integer(), integer(), list()) -> {'error', 'failed_starting', list()} | 'ok'.
+-spec start_channels/6 :: ([proplist(),...] | [], wh_json:json_object(), binary() | list(), integer(), integer(), list()) -> {'error', 'failed_starting', list()} | 'ok'.
 start_channels(_Ns, _JObj, _Route, 0, 0, _) -> ok; %% started all channels requested
 start_channels([], _JObj, _Route, 0, _, _) -> ok; %% started at least the minimum channels, but ran out of servers with available resources
 start_channels([], _JObj, _Route, _, _, Errors) -> {error, failed_starting, Errors}; %% failed to start the minimum channels before server resources ran out
@@ -193,7 +193,7 @@ start_channels([N | Ns]=Nodes, JObj, Route, Min, Max, Errors) -> %% start the mi
 	{error, E} -> start_channels(Ns, JObj, Route, Min, Max, [E|Errors])
     end.
 
--spec start_channel/3 :: (proplist(), binary() | list(), json_object()) -> {'ok', integer()} | {'error', 'timeout' | binary()}.
+-spec start_channel/3 :: (proplist(), binary() | list(), wh_json:json_object()) -> {'ok', integer()} | {'error', 'timeout' | binary()}.
 start_channel(N, Route, JObj) ->
     Pid = props:get_value(node, N),
     case ecallmgr_fs_node:resource_consume(Pid, Route, JObj) of
@@ -206,7 +206,7 @@ start_channel(N, Route, JObj) ->
 	    {error, E}
     end.
 
--spec send_uuid_to_app/3 :: (json_object(), binary(), binary()) -> 'ok'.
+-spec send_uuid_to_app/3 :: (wh_json:json_object(), binary(), binary()) -> 'ok'.
 send_uuid_to_app(JObj, UUID, CtlQ) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Call-ID">>, UUID}
@@ -215,7 +215,7 @@ send_uuid_to_app(JObj, UUID, CtlQ) ->
     ?LOG("sending resource response for ~s", [UUID]),
     wapi_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
--spec send_failed_req/2 :: (json_object(), list()) -> 'ok'.
+-spec send_failed_req/2 :: (wh_json:json_object(), list()) -> 'ok'.
 send_failed_req(JObj, Errors) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Failed-Attempts">>, length(Errors)}
@@ -224,7 +224,7 @@ send_failed_req(JObj, Errors) ->
     ?LOG("sending resource error"),
     wapi_resource:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
--spec send_failed_consume/3 :: (binary() | list(), json_object(), binary()) -> 'ok'.
+-spec send_failed_consume/3 :: (binary() | list(), wh_json:json_object(), binary()) -> 'ok'.
 send_failed_consume(Route, JObj, E) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Failed-Route">>, Route}

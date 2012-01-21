@@ -371,33 +371,36 @@ authorize_user(Context, _, _, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_token/2 :: (#wm_reqdata{}, #cb_context{}) -> #cb_context{}.
-create_token(_, #cb_context{doc = ?EMPTY_JSON_OBJECT}=Context) ->
-    crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
 create_token(RD, #cb_context{doc=JObj}=Context) ->
-    AccountId = wh_json:get_value(<<"account_id">>, JObj, <<>>),
-    OwnerId = wh_json:get_value(<<"owner_id">>, JObj, <<>>),
-    Token = [{<<"account_id">>, AccountId}
-             ,{<<"owner_id">>, OwnerId}
-             ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-             ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-             ,{<<"method">>, wh_util:to_binary(?MODULE)}
-             ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
-             ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-             ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
-             ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-             ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-             ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-             ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
-             ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
-            ],
-    case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
-        {ok, Doc} ->
-            AuthToken = wh_json:get_value(<<"_id">>, Doc),
-            ?LOG("created new local auth token ~s", [AuthToken]),
-            crossbar_util:response(wh_json:from_list([{<<"account_id">>, AccountId}
-                                                      ,{<<"owner_id">>, OwnerId}])
-                                   ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
-        {error, R} ->
-            ?LOG("could not create new local auth token, ~p", [R]),
-            crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
+    case wh_json:is_empty(JObj) of
+        true ->
+            crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
+        false ->
+            AccountId = wh_json:get_value(<<"account_id">>, JObj, <<>>),
+            OwnerId = wh_json:get_value(<<"owner_id">>, JObj, <<>>),
+            Token = [{<<"account_id">>, AccountId}
+                     ,{<<"owner_id">>, OwnerId}
+                     ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                     ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                     ,{<<"method">>, wh_util:to_binary(?MODULE)}
+                     ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
+                     ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
+                     ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
+                     ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
+                     ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
+                     ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
+                     ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
+                     ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
+                    ],
+            case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
+                {ok, Doc} ->
+                    AuthToken = wh_json:get_value(<<"_id">>, Doc),
+                    ?LOG("created new local auth token ~s", [AuthToken]),
+                    crossbar_util:response(wh_json:from_list([{<<"account_id">>, AccountId}
+                                                              ,{<<"owner_id">>, OwnerId}])
+                                           ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
+                {error, R} ->
+                    ?LOG("could not create new local auth token, ~p", [R]),
+                    crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
+            end
     end.

@@ -302,12 +302,12 @@ to_binary(RD, #cb_context{resp_data=RespData}=Context) ->
 %%--------------------------------------------------------------------
 
 -type cb_mod_with_tokens() :: {ne_binary(), path_tokens()}.
--spec parse_path_tokens/1 :: (json_strings()) -> [cb_mod_with_tokens(),...] | [].
+-spec parse_path_tokens/1 :: (wh_json:json_strings()) -> [cb_mod_with_tokens(),...] | [].
 parse_path_tokens(Tokens) ->
     Loaded = [ wh_util:to_binary(Mod) || {Mod, _, _, _} <- supervisor:which_children(crossbar_module_sup) ],
     parse_path_tokens(Tokens, Loaded, []).
 
--spec parse_path_tokens/3 :: (json_strings(), json_strings(), [cb_mod_with_tokens(),...] | []) -> [cb_mod_with_tokens(),...] | [].
+-spec parse_path_tokens/3 :: (wh_json:json_strings(), wh_json:json_strings(), [cb_mod_with_tokens(),...] | []) -> [cb_mod_with_tokens(),...] | [].
 parse_path_tokens([], _Loaded, Events) ->
     Events;
 parse_path_tokens([Mod|T], Loaded, Events) ->
@@ -338,7 +338,7 @@ set_req_header(RD, #cb_context{req_id=ReqId}) ->
 %% POST to PUT or DELETE.
 %% @end
 %%--------------------------------------------------------------------
--spec get_http_verb/2 :: (#wm_reqdata{}, json_object() | {'malformed', ne_binary()}) -> ne_binary().
+-spec get_http_verb/2 :: (#wm_reqdata{}, wh_json:json_object() | {'malformed', ne_binary()}) -> ne_binary().
 get_http_verb(RD, {malformed, _}) ->
     wh_util:to_binary(string:to_lower(atom_to_list(wrq:method(RD))));
 get_http_verb(RD, JSON) ->
@@ -350,7 +350,7 @@ get_http_verb(RD, JSON) ->
         false -> HttpV
     end.
 
--spec override_verb/3 :: (#wm_reqdata{}, json_object(), ne_binary()) -> {'true', ne_binary()} | 'false'.
+-spec override_verb/3 :: (#wm_reqdata{}, wh_json:json_object(), ne_binary()) -> {'true', ne_binary()} | 'false'.
 override_verb(RD, JSON, <<"post">>) ->
     case wh_json:get_value(<<"verb">>, JSON) of
         undefined ->
@@ -368,7 +368,7 @@ override_verb(RD, _, <<"options">>) ->
     end;
 override_verb(_, _, _) -> false.
 
--spec get_json_body/1 :: (#wm_reqdata{}) -> json_object() | {'malformed', ne_binary()}.
+-spec get_json_body/1 :: (#wm_reqdata{}) -> wh_json:json_object() | {'malformed', ne_binary()}.
 get_json_body(RD) ->
     try
         QS = get_qs(RD),
@@ -395,7 +395,7 @@ get_json_body(RD) ->
             {malformed, <<"JSON failed to validate; check your commas and curlys">>}
     end.
 
--spec get_qs/1 :: (#wm_reqdata{}) -> json_object().
+-spec get_qs/1 :: (#wm_reqdata{}) -> wh_json:json_object().
 get_qs(RD) ->
     wh_json:from_list([ {wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- wrq:req_qs(RD)]).
 
@@ -413,8 +413,9 @@ extract_files_and_params(RD, Context) ->
         Context#cb_context{req_json=wh_json:from_list(ReqProp), req_files=FilesProp}
     catch
         _A:_B ->
+            ST = erlang:get_stacktrace(),
             ?LOG("exception extracting files and params: ~p:~p", [_A, _B]),
-            ?LOG_END("stacktrace: ~p", [erlang:get_stacktrace()]),
+            [?LOG_END("stacktrace: ~p", [Line]) || Line <- ST],
             Context
     end.
 
@@ -533,7 +534,7 @@ get_auth_token(RD, JsonToken, Verb) ->
 %% Determines if the request envelope is valid
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_request_envelope/1 :: (json_object()) -> boolean().
+-spec is_valid_request_envelope/1 :: (wh_json:json_object()) -> boolean().
 is_valid_request_envelope(JSON) ->
     wh_json:get_value([<<"data">>], JSON, undefined) =/= undefined.
 
@@ -838,7 +839,7 @@ is_cors_preflight(RD) ->
 %% This function extracts the reponse fields and puts them in a proplist
 %% @end
 %%--------------------------------------------------------------------
--spec create_resp_envelope/1 :: (#cb_context{}) -> [{binary(), binary() | atom() | json_object() | json_objects()},...].
+-spec create_resp_envelope/1 :: (#cb_context{}) -> [{binary(), binary() | atom() | wh_json:json_object() | wh_json:json_objects()},...].
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=undefined}) ->
     ?LOG("generating successful response"),
     [{<<"auth_token">>, AuthToken}

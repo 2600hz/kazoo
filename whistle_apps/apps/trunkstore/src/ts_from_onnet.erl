@@ -42,13 +42,13 @@ onnet_data(State) ->
     ?LOG("on-net request from ~s(~s) to ~s", [FromUser, AcctID, ToDID]),
 
     Options = case ts_util:lookup_did(FromUser) of
-		  {ok, Opts} -> Opts;
-		  _ -> ?EMPTY_JSON_OBJECT
-	      end,
+                  {ok, Opts} -> Opts;
+                  _ -> wh_json:new()
+              end,
 
-    DIDOptions = wh_json:get_value(<<"DID_Opts">>, Options, ?EMPTY_JSON_OBJECT),
-    AcctOptions = wh_json:get_value(<<"account">>, Options, ?EMPTY_JSON_OBJECT),
-    SrvOptions = wh_json:get_value([<<"server">>, <<"options">>], Options, ?EMPTY_JSON_OBJECT),
+    DIDOptions = wh_json:get_value(<<"DID_Opts">>, Options, wh_json:new()),
+    AcctOptions = wh_json:get_value(<<"account">>, Options, wh_json:new()),
+    SrvOptions = wh_json:get_value([<<"server">>, <<"options">>], Options, wh_json:new()),
 
     MediaHandling = ts_util:get_media_handling([
                                                 wh_json:get_value(<<"media_handling">>, DIDOptions)
@@ -57,34 +57,34 @@ onnet_data(State) ->
                                                ]),
 
     SIPHeaders = ts_util:sip_headers([
-				      wh_json:get_value(<<"sip_headers">>, DIDOptions)
-				      ,wh_json:get_value(<<"sip_headers">>, SrvOptions)
-				      ,wh_json:get_value(<<"sip_headers">>, AcctOptions)
-				     ]),
+                                      wh_json:get_value(<<"sip_headers">>, DIDOptions)
+                                      ,wh_json:get_value(<<"sip_headers">>, SrvOptions)
+                                      ,wh_json:get_value(<<"sip_headers">>, AcctOptions)
+                                     ]),
 
     EmergencyCallerID = case ts_util:caller_id([
-						wh_json:get_value(<<"emergency_caller_id">>, DIDOptions)
-						,wh_json:get_value(<<"emergency_caller_id">>, SrvOptions)
-						,wh_json:get_value(<<"emergency_caller_id">>, AcctOptions)
-					       ]) of
-			    {undefined, undefined} -> [];
-			    {ECIDName, ECIDNum} ->
-				[{<<"Emergency-Caller-ID-Name">>, ECIDName}
-				 ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
-				 ]
-			end,
+                                                wh_json:get_value(<<"emergency_caller_id">>, DIDOptions)
+                                                ,wh_json:get_value(<<"emergency_caller_id">>, SrvOptions)
+                                                ,wh_json:get_value(<<"emergency_caller_id">>, AcctOptions)
+                                               ]) of
+                            {undefined, undefined} -> [];
+                            {ECIDName, ECIDNum} ->
+                                [{<<"Emergency-Caller-ID-Name">>, ECIDName}
+                                 ,{<<"Emergency-Caller-ID-Number">>, ECIDNum}
+                                 ]
+                        end,
     CallerID = case ts_util:caller_id([
-				       wh_json:get_value(<<"caller_id">>, DIDOptions)
-				       ,wh_json:get_value(<<"caller_id">>, SrvOptions)
-				       ,wh_json:get_value(<<"caller_id">>, AcctOptions)
-				      ]) of
-		   {undefined, undefined} -> EmergencyCallerID;
-		   {CIDName, CIDNum} ->
-		       [{<<"Outgoing-Caller-ID-Name">>, CIDName}
-			,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
-			| EmergencyCallerID
-		       ]
-	       end,
+                                       wh_json:get_value(<<"caller_id">>, DIDOptions)
+                                       ,wh_json:get_value(<<"caller_id">>, SrvOptions)
+                                       ,wh_json:get_value(<<"caller_id">>, AcctOptions)
+                                      ]) of
+                   {undefined, undefined} -> EmergencyCallerID;
+                   {CIDName, CIDNum} ->
+                       [{<<"Outgoing-Caller-ID-Name">>, CIDName}
+                        ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+                        | EmergencyCallerID
+                       ]
+               end,
 
     DIDFlags = wh_json:get_value(<<"options">>, DIDOptions, []),
 
@@ -93,29 +93,29 @@ onnet_data(State) ->
             ?LOG("release ~s for ~s", [CallID, AcctID]),
             ok = ts_acctmgr:release_trunk(AcctID, CallID, 0), E;
         {ok, RateData} ->
-	    Q = ts_callflow:get_my_queue(State),
+            Q = ts_callflow:get_my_queue(State),
 
             Command = [ KV
-			|| {_,V}=KV <- CallerID ++ EmergencyCallerID ++
-			       [
-				{<<"Call-ID">>, CallID}
-				,{<<"Resource-Type">>, <<"audio">>}
-				,{<<"To-DID">>, ToDID}
-				,{<<"Account-ID">>, AcctID}
-				,{<<"Application-Name">>, <<"bridge">>}
-				,{<<"Flags">>, DIDFlags}
-				,{<<"Media">>, MediaHandling}
-				,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
-				,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
-				,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
-				,{<<"SIP-Headers">>, SIPHeaders}
-				,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"on-net">>}
-										| RateData])}
-				| wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-			       ],
-			   V =/= undefined,
-			   V =/= <<>>
-		      ],
+                        || {_,V}=KV <- CallerID ++ EmergencyCallerID ++
+                               [
+                                {<<"Call-ID">>, CallID}
+                                ,{<<"Resource-Type">>, <<"audio">>}
+                                ,{<<"To-DID">>, ToDID}
+                                ,{<<"Account-ID">>, AcctID}
+                                ,{<<"Application-Name">>, <<"bridge">>}
+                                ,{<<"Flags">>, DIDFlags}
+                                ,{<<"Media">>, MediaHandling}
+                                ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
+                                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
+                                ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
+                                ,{<<"SIP-Headers">>, SIPHeaders}
+                                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"on-net">>}
+                                                                                | RateData])}
+                                | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                               ],
+                           V =/= undefined,
+                           V =/= <<>>
+                      ],
 
             try
                 send_park(State, Command)
@@ -133,12 +133,12 @@ send_park(State, Command) ->
 
 wait_for_win(State, Command) ->
     case ts_callflow:wait_for_win(State) of
-	{won, State1} ->
-	    ?LOG("route won, sending offnet resource request"),
-	    send_offnet(State1, Command);
-	{lost, State2} ->
-	    ?LOG("did not win route, passive listening"),
-	    wait_for_bridge(State2)
+        {won, State1} ->
+            ?LOG("route won, sending offnet resource request"),
+            send_offnet(State1, Command);
+        {lost, State2} ->
+            ?LOG("did not win route, passive listening"),
+            wait_for_bridge(State2)
     end.
 
 send_offnet(State, Command) ->
@@ -149,48 +149,48 @@ send_offnet(State, Command) ->
 
 wait_for_bridge(State) ->
     case ts_callflow:wait_for_bridge(State) of
-	{bridged, State1} ->
-	    wait_for_cdr(State1);
-	{error, State2} ->
-	    wait_for_bridge(State2);
-	{hangup, State3} ->
-	    ALeg = ts_callflow:get_aleg_id(State3),
-	    ts_callflow:finish_leg(State3, ALeg);
-	{timeout, State4} ->
-	    ALeg = ts_callflow:get_aleg_id(State4),
-	    ts_callflow:finish_leg(State4, ALeg)
+        {bridged, State1} ->
+            wait_for_cdr(State1);
+        {error, State2} ->
+            wait_for_bridge(State2);
+        {hangup, State3} ->
+            ALeg = ts_callflow:get_aleg_id(State3),
+            ts_callflow:finish_leg(State3, ALeg);
+        {timeout, State4} ->
+            ALeg = ts_callflow:get_aleg_id(State4),
+            ts_callflow:finish_leg(State4, ALeg)
     end.
 
 wait_for_cdr(State) ->
     case ts_callflow:wait_for_cdr(State) of
-	{cdr, aleg, CDR, State1} ->
-	    ALeg = ts_callflow:get_aleg_id(State1),
-	    AcctID = ts_callflow:get_account_id(State1),
-	    Cost = ts_callflow:get_call_cost(State1),
+        {cdr, aleg, CDR, State1} ->
+            ALeg = ts_callflow:get_aleg_id(State1),
+            AcctID = ts_callflow:get_account_id(State1),
+            Cost = ts_callflow:get_call_cost(State1),
 
-	    ?LOG("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
+            ?LOG("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
-	    _ = ts_cdr:store(wh_json:set_value(<<"A-Leg">>, ALeg, CDR)),
-	    ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
+            _ = ts_cdr:store(wh_json:set_value(<<"A-Leg">>, ALeg, CDR)),
+            ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
 
-	    wait_for_other_leg(State1, bleg);
-	{cdr, bleg, CDR, State2} ->
-	    BLeg = ts_callflow:get_bleg_id(State2),
-	    AcctID = ts_callflow:get_account_id(State2),
-	    Cost = ts_callflow:get_call_cost(State2),
+            wait_for_other_leg(State1, bleg);
+        {cdr, bleg, CDR, State2} ->
+            BLeg = ts_callflow:get_bleg_id(State2),
+            AcctID = ts_callflow:get_account_id(State2),
+            Cost = ts_callflow:get_call_cost(State2),
 
-	    ?LOG("b-leg CDR for ~s costs ~p", [AcctID, Cost]),
-	    ?LOG(BLeg, "b-leg CDR for ~s costs ~p", [AcctID, Cost]),
+            ?LOG("b-leg CDR for ~s costs ~p", [AcctID, Cost]),
+            ?LOG(BLeg, "b-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
-	    _ = ts_cdr:store(wh_json:set_value(<<"B-Leg">>, BLeg, CDR)),
-	    ok = ts_acctmgr:release_trunk(AcctID, BLeg, Cost),
+            _ = ts_cdr:store(wh_json:set_value(<<"B-Leg">>, BLeg, CDR)),
+            ok = ts_acctmgr:release_trunk(AcctID, BLeg, Cost),
 
-	    wait_for_other_leg(State2, aleg);
-	{timeout, State3} ->
-	    ?LOG("timed out waiting for CDRs, cleaning up"),
+            wait_for_other_leg(State2, aleg);
+        {timeout, State3} ->
+            ?LOG("timed out waiting for CDRs, cleaning up"),
 
-	    ALeg = ts_callflow:get_aleg_id(State3),
-	    ts_callflow:finish_leg(State3, ALeg)
+            ALeg = ts_callflow:get_aleg_id(State3),
+            ts_callflow:finish_leg(State3, ALeg)
     end.
 
 wait_for_other_leg(State, WaitingOnLeg) ->

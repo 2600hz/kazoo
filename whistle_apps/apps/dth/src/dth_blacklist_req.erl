@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 29 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(blacklist_req).
+-module(dth_blacklist_req).
 
 -export([init/0, handle_req/2]).
 
@@ -21,7 +21,7 @@ handle_req(JObj, Props) ->
 
     {ok, Blacklist} = wh_cache:fetch_local(Cache, dth_util:blacklist_cache_key()),
     {ok, JSON} = dth_api:blacklist_resp([{<<"Accounts">>, Blacklist}
-					 | wh_api:default_headers(<<>>, <<"dth">>, <<"blacklist_resp">>, ?APP_NAME, ?APP_VERSION)
-					]),
+                                         | wh_api:default_headers(<<>>, <<"dth">>, <<"blacklist_resp">>, ?APP_NAME, ?APP_VERSION)
+                                        ]),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).

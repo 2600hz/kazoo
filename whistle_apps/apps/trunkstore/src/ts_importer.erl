@@ -20,10 +20,10 @@ parse(Lines, Docs) when length(Docs) >= 100 ->
     parse(Lines, []);
 parse([Line | Lines], Docs) ->
     {Prefix, CC, De, InternalCost, RC} = case binary:split(Line, <<",">>, [global]) of
-					     [P, C | Rest] ->
-						 [R, I | Rest1] = lists:reverse(Rest),
-						 {P, C, list_to_binary(Rest1), I, R} 
-					 end,
+                                             [P, C | Rest] ->
+                                                 [R, I | Rest1] = lists:reverse(Rest),
+                                                 {P, C, list_to_binary(Rest1), I, R} 
+                                         end,
 
     CountryCode = binary:replace(CC, <<"\"">>, <<>>, [global]),
     Desc = binary:replace(De, <<"\"">>, <<>>, [global]),
@@ -31,36 +31,36 @@ parse([Line | Lines], Docs) ->
 
     RateId = <<CountryCode/binary, "-", Prefix/binary>>,
     RateObj = case couch_mgr:open_doc(?TS_RATES_DB, RateId) of
-		  {ok, {struct, [_|_]}=JObj} ->
-		      JObj;
-		  {error, _} ->
-		      ?EMPTY_JSON_OBJECT
-	      end,
+                  {ok, {struct, [_|_]}=JObj} ->
+                      JObj;
+                  {error, _} ->
+                      wh_json:new()
+              end,
     Doc = set_vs(RateObj, [
-			   {<<"direction">>, [<<"inbound">>, <<"outbound">>], optional}
-			   ,{<<"options">>, ?EMPTY_JSON_OBJECT, optional}
-			   ,{<<"flatrate">>, true, optional}
-			   ,{<<"rate_increment">>, <<"60">>, optional}
-			   ,{<<"rate_minimum">>, <<"60">>, optional}
-			   ,{<<"rate_surcharge">>, <<"0.00">>, optional}
-			   ,{<<"rate_cost">>, RateCost}
-			   ,{<<"internal_cost">>, InternalCost}
-			   ,{<<"routes">>, [<<"^011", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>, <<"^\\+", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
-			   ,{<<"weight">>, (byte_size(Prefix) * 10), optional}
-			   ,{<<"iso_country_code">>, CountryCode}
-			   ,{<<"rate_name">>, Desc}
-			   ,{<<"_id">>, RateId}
-			   ,{<<"prefix">>, Prefix}
-			  ]),
+                           {<<"direction">>, [<<"inbound">>, <<"outbound">>], optional}
+                           ,{<<"options">>, wh_json:new(), optional}
+                           ,{<<"flatrate">>, true, optional}
+                           ,{<<"rate_increment">>, <<"60">>, optional}
+                           ,{<<"rate_minimum">>, <<"60">>, optional}
+                           ,{<<"rate_surcharge">>, <<"0.00">>, optional}
+                           ,{<<"rate_cost">>, RateCost}
+                           ,{<<"internal_cost">>, InternalCost}
+                           ,{<<"routes">>, [<<"^011", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>, <<"^\\+", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
+                           ,{<<"weight">>, (byte_size(Prefix) * 10), optional}
+                           ,{<<"iso_country_code">>, CountryCode}
+                           ,{<<"rate_name">>, Desc}
+                           ,{<<"_id">>, RateId}
+                           ,{<<"prefix">>, Prefix}
+                          ]),
 
     parse(Lines, [Doc | Docs]).
 
 set_vs(JObj, KVs) ->
     lists:foldr(fun({K, V}, JObj0) ->
-			wh_json:set_value(K, V, JObj0);
-		   ({K, V, optional}, JObj0) ->
-			case wh_json:get_value(K, JObj0) of
-			    undefined -> wh_json:set_value(K, V, JObj0);
-			    _ -> JObj0
-			end
-		end, JObj, KVs).
+                        wh_json:set_value(K, V, JObj0);
+                   ({K, V, optional}, JObj0) ->
+                        case wh_json:get_value(K, JObj0) of
+                            undefined -> wh_json:set_value(K, V, JObj0);
+                            _ -> JObj0
+                        end
+                end, JObj, KVs).

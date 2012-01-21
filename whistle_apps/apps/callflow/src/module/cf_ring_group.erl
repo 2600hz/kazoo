@@ -20,7 +20,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
 handle(Data, Call) ->
     Endpoints = get_endpoints(Data, Call),
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
@@ -49,7 +49,7 @@ handle(Data, Call) ->
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints/2 :: (json_object(), #cf_call{}) -> json_objects().
+-spec get_endpoints/2 :: (wh_json:json_object(), #cf_call{}) -> wh_json:json_objects().
 get_endpoints(Data, Call) ->
     lists:foldr(fun(Member, Acc) ->
                         EndpointId = wh_json:get_value(<<"id">>, Member),

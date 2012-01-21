@@ -44,17 +44,18 @@
 %% unencoded or raw format.
 %% @end
 %%--------------------------------------------------------------------
--spec format_account_id/1 :: ([binary(),...] | binary() | json_object()) -> binary().
--spec format_account_id/2 :: ([binary(),...] | binary() | json_object(), unencoded | encoded | raw) -> binary().
+-spec format_account_id/1 :: ([binary(),...] | binary() | wh_json:json_object()) -> binary().
+-spec format_account_id/2 :: ([binary(),...] | binary() | wh_json:json_object(), unencoded | encoded | raw) -> binary().
 
 format_account_id(Doc) -> format_account_id(Doc, unencoded).
 
-format_account_id({struct, _}=Doc, Encoding) ->
-    format_account_id([wh_json:get_value([<<"_id">>], Doc)], Encoding);
-format_account_id([AccountId], Encoding) ->
+format_account_id([AccountId], Encoding) when is_binary(AccountId) ->
     format_account_id(AccountId, Encoding);
-format_account_id(AccountId, Encoding) when not is_binary(AccountId) ->
-    format_account_id(wh_util:to_binary(AccountId), Encoding);
+format_account_id(Account, Encoding) when not is_binary(Account) ->
+    case wh_json:is_json_object(Account) of
+        true -> format_account_id([wh_json:get_value([<<"_id">>], Account)], Encoding);
+        false -> format_account_id(wh_util:to_binary(Account), Encoding)
+    end;
 format_account_id(<<"accounts">>, _) ->
     <<"accounts">>;
 %% unencode the account db name
@@ -90,7 +91,7 @@ format_account_id(AccountId, raw) ->
 %% false.
 %% @end
 %%--------------------------------------------------------------------
--spec is_account_enabled/1 :: (undefined | ne_binary()) -> boolean().
+-spec is_account_enabled/1 :: ('undefined' | ne_binary()) -> boolean().
 is_account_enabled(undefined) ->
     true;
 is_account_enabled(AccountId) ->
@@ -233,9 +234,9 @@ call_response1(CallId, CtrlQ, Commands) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (json_object()) -> ne_binary() | 'undefined'.
+-spec put_callid/1 :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
 put_callid(JObj) ->
-    erlang:put(callid, wh_json:get_value(<<"Call-ID">>, JObj, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
+    erlang:put(callid, wh_json:get_binary_value(<<"Call-ID">>, JObj, wh_json:get_binary_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -244,9 +245,9 @@ put_callid(JObj) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (json_object()) -> {ne_binary() | 'undefined', ne_binary() | 'undefined'}.
-get_event_type(JObj) ->
-    { wh_json:get_value(<<"Event-Category">>, JObj), wh_json:get_value(<<"Event-Name">>, JObj) }.
+-spec get_event_type/1 :: (wh_json:json_object()) -> {binary() | 'undefined', binary() | 'undefined'}.
+get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() being passed in
+    { wh_json:get_binary_value(<<"Event-Category">>, JObj), wh_json:get_binary_value(<<"Event-Name">>, JObj) }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -406,8 +407,7 @@ is_empty(<<"NULL">>) -> true;
 is_empty(null) -> true;
 is_empty(false) -> true;
 is_empty(undefined) -> true;
-is_empty(?EMPTY_JSON_OBJECT) -> true;
-is_empty(_) -> false.
+is_empty(MaybeJObj) -> wh_json:is_empty(MaybeJObj).
 
 -spec is_proplist/1 :: (Term) -> boolean() when
       Term :: term().

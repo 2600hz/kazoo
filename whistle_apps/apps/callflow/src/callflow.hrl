@@ -4,9 +4,9 @@
 -include_lib("amqp_client/include/amqp_client.hrl").
 
 -type cf_exe_response() :: {'stop'} | {'continue'} | {'continue', integer()} | {'heartbeat'}.
--type cf_api_error() :: {'error', 'channel_hungup' | 'channel_unbridge' | 'timeout' | json_object()}.
--type cf_api_std_return() :: cf_api_error() | {'ok', json_object()}.
--type cf_api_bridge_return() :: {'error', 'timeout' | json_object()} | {'fail', json_object()} | {'ok', json_object()}.
+-type cf_api_error() :: {'error', 'channel_hungup' | 'channel_unbridge' | 'timeout' | wh_json:json_object()}.
+-type cf_api_std_return() :: cf_api_error() | {'ok', wh_json:json_object()}.
+-type cf_api_bridge_return() :: {'error', 'timeout' | wh_json:json_object()} | {'fail', wh_json:json_object()} | {'ok', wh_json:json_object()}.
 -type cf_api_binary() :: binary() | 'undefined'.
 
 -define(APP_NAME, <<"callflow">>).
@@ -91,7 +91,7 @@
             ,account_id = 'undefined' :: binary() | 'undefined'         %% The account id that authorized this call
             ,authorizing_id = 'undefined' :: binary() | 'undefined'     %% The ID of the record that authorized this call
             ,owner_id = 'undefined' :: binary() | 'undefined'           %% The ID of the that owns the authorizing endpoint
-            ,channel_vars = 'undefined' :: json_object() | 'undefined'  %% Any custom channel vars that where provided with the route request
+            ,channel_vars = 'undefined' :: wh_json:json_object() | 'undefined'  %% Any custom channel vars that where provided with the route request
             ,last_action = 'undefined' :: 'undefined' | atom()          %% Previous action
             ,capture_group = 'undefined' :: 'undefined' | binary()      %% If the callflow was found using a pattern this is the capture group
             ,inception_during_transfer = 'false' :: boolean()         %% If the hunt for this callflow was intiated during transfer

@@ -1,7 +1,12 @@
+-ifndef(WH_API_HEADERS).
+
 -ifndef(WHISTLE_TYPES_INCLUDED).
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -endif.
+
+-type api_formatter_return() :: {'ok', iolist()} | {'error', string()}.
+-type api_headers() :: [ne_binary(),...] | [].
 
 %% For dialplan messages, what does the Invite-Format param accept as values?
 -define(INVITE_FORMAT_TUPLE, {<<"Invite-Format">>, [<<"username">>, <<"e164">>, <<"npan">>, <<"1npan">>, <<"route">>]}).
@@ -197,3 +202,5 @@
                            ,{<<"deaf">>, <<"Deaf">>}
                            ,{<<"moderator">>, <<"Moderator">>}
                            ]).
+-define(WH_API_HEADERS, true).
+-endif.

@@ -1,3 +1,4 @@
+-ifndef(FREESWITCH_XML_HRL).
 -define(EMPTYRESPONSE, ""). %"<document type=\"freeswitch/xml\"></document>").
 
 %% not including dial string section so we can manually do the bridging
@@ -9,8 +10,8 @@
     <domain name=\"~s\">
       <user id=\"~s\">
         <params>
-	  <param name=\"a1-hash\" value=\"~s\"/>
-	</params>
+          <param name=\"a1-hash\" value=\"~s\"/>
+        </params>
         <variables>
           ~s
         </variables>
@@ -107,3 +108,6 @@
     <result status=\"not found\" />
   </section>
 </document>").
+
+-define(FREESWITCH_XML_HRL, true).
+-endif.

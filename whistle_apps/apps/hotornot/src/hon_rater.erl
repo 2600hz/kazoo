@@ -17,7 +17,7 @@ init() ->
     couch_mgr:load_doc_from_file(?RATES_DB, hotornot, <<"fixtures/us-1.json">>),
     couch_mgr:revise_doc_from_file(?RATES_DB, hotornot, <<"views/rating.json">>). %% only load it (will fail if exists)
 
--spec handle_req/2 :: (json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     true = wapi_call:rate_req_v(JObj),
     ?LOG("Valid rating request"),
@@ -33,7 +33,7 @@ handle_req(JObj, Props) ->
 
     wapi_call:publish_rate_resp(wh_json:get_value(<<"Server-ID">>, JObj), RespProp).
 
--spec get_rate_data/1 :: (json_object()) -> {'ok', proplist()} | {'error', 'no_rate_found'}.
+-spec get_rate_data/1 :: (wh_json:json_object()) -> {'ok', proplist()} | {'error', 'no_rate_found'}.
 get_rate_data(JObj) ->
     ToDID = wnm_util:to_e164(wh_json:get_value(<<"To-DID">>, JObj)),
     _FromDID = wnm_util:to_e164(wh_json:get_value(<<"From-DID">>, JObj)),
@@ -59,7 +59,7 @@ get_rate_data(JObj) ->
             end
     end.
 
--spec rate_to_json/1 :: (json_object()) -> json_object().
+-spec rate_to_json/1 :: (wh_json:json_object()) -> wh_json:json_object().
 rate_to_json(Rate) ->
     ?LOG("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
 
@@ -99,8 +99,8 @@ sort_rates(RateA, RateB) ->
 %% All options set in Flags must be set in Rate to be usable
 %% RouteOptions come from client's DID/server/account
 -spec options_match/2 :: (RouteOptions, RateOptions) -> boolean() when
-      RouteOptions :: list(binary()) | json_object(),
-      RateOptions :: list(binary()) | json_object().
+      RouteOptions :: list(binary()) | wh_json:json_object(),
+      RateOptions :: list(binary()) | wh_json:json_object().
 options_match(RouteOptions, {struct, RateOptions}) ->
     options_match(RouteOptions, RateOptions);
 options_match({struct, RouteOptions}, RateOptions) ->
@@ -112,7 +112,7 @@ options_match([], _) ->
 options_match(RouteOptions, RateOptions) ->
     lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions).
 
--spec set_rate_ccvs/3 :: (proplist(), undefined | ne_binary(), json_object()) -> ok.
+-spec set_rate_ccvs/3 :: (proplist(), undefined | ne_binary(), wh_json:json_object()) -> ok.
 set_rate_ccvs(_, undefined, _) ->
     ok;
 set_rate_ccvs(Response, CtrlQ, JObj) ->    

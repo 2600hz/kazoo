@@ -270,10 +270,10 @@ connect_agent(#dg_agent{switch_hostname=AgentHost}=Agent, #dg_customer{switch_ho
             dg_util:redirect(Contact, Server, Agent)
     end.
 
--spec process_event/2 :: ({ne_binary(), ne_binary()}, json_object()) -> 
+-spec process_event/2 :: ({ne_binary(), ne_binary()}, wh_json:json_object()) -> 
                                  {'connected', ne_binary()} |
                                  {'hangup', ne_binary()} |
-                                 {'channel_status', json_object()} |
+                                 {'channel_status', wh_json:json_object()} |
                                  {'unbridge', ne_binary()} |
                                  {'recording_stopped', ne_binary()} |
                                  {'recording_saved', ne_binary()} |
@@ -332,7 +332,7 @@ process_event({_EvtCat, _EvtName}, _JObj) ->
     ?LOG(_CallID, "media app response: ~s", [wh_json:get_value(<<"Application-Response">>, _JObj)]),
     ignore.
 
--spec update_customer/2 :: (#dg_customer{}, json_object()) -> #dg_customer{}.
+-spec update_customer/2 :: (#dg_customer{}, wh_json:json_object()) -> #dg_customer{}.
 update_customer(Customer, JObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 

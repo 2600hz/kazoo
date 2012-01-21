@@ -88,7 +88,7 @@ blocking_refresh() ->
 %%--------------------------------------------------------------------
 -spec refresh/0 :: () -> 'started'.
 -spec refresh/1 :: (ne_binary() | nonempty_string()) -> 'ok'.
--spec refresh/2 :: (ne_binary(), json_objects()) -> 'ok'.
+-spec refresh/2 :: (ne_binary(), wh_json:json_objects()) -> 'ok'.
 
 refresh() ->
     spawn(fun do_refresh/0),
@@ -184,7 +184,7 @@ refresh(Account, Views) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_aggregated_account/1 :: (json_object()) -> ok.
+-spec cleanup_aggregated_account/1 :: (wh_json:json_object()) -> ok.
 cleanup_aggregated_account(Account) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account),
     case AccountDb =/= undefined andalso (couch_mgr:db_exists(AccountDb) =/= true) of
@@ -202,7 +202,7 @@ cleanup_aggregated_account(Account) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_aggregated_device/1 :: (json_object()) -> ok.
+-spec cleanup_aggregated_device/1 :: (wh_json:json_object()) -> ok.
 cleanup_aggregated_device(Device) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Device),
     case AccountDb =/= undefined andalso (couch_mgr:db_exists(AccountDb) =/= true) of

@@ -318,7 +318,7 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
+-spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -329,6 +329,6 @@ normalize_view_results(JObj, Acc) ->
 %% instance
 %% @end
 %%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (json_object(), #cb_context{}) -> json_object().
+-spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
 add_pvt_type(JObj, _) ->
     wh_json:set_value(<<"pvt_type">>, <<"skel">>, JObj).

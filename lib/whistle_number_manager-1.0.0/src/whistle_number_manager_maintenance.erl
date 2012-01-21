@@ -87,7 +87,7 @@ reconcile_accounts() ->
 %% external (TODO: currently just uses US rules).
 %% @end
 %%--------------------------------------------------------------------
--spec get_callflow_account_numbers/1 :: (ne_binary()) -> json_object().
+-spec get_callflow_account_numbers/1 :: (ne_binary()) -> wh_json:json_object().
 get_callflow_account_numbers(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:get_all_results(AccountDb, ?CALLFLOW_VIEW) of
@@ -127,7 +127,7 @@ reconcile_trunkstore() ->
 %% it is a 'info_' document (IE: trunkstore account)
 %% @end
 %%--------------------------------------------------------------------
--spec is_trunkstore_account/1 :: (json_object()) -> boolean().
+-spec is_trunkstore_account/1 :: (wh_json:json_object()) -> boolean().
 is_trunkstore_account(JObj) ->
     wh_json:get_value(<<"type">>, JObj) =:= <<"sys_info">>.
 
@@ -138,19 +138,23 @@ is_trunkstore_account(JObj) ->
 %% containing all numbers assigned to it
 %% @end
 %%--------------------------------------------------------------------
--spec get_trunkstore_account_numbers/1 :: (ne_binary()) -> json_object().
+-spec get_trunkstore_account_numbers/1 :: (ne_binary()) -> wh_json:json_object().
 get_trunkstore_account_numbers(Account) ->
     case couch_mgr:open_doc(?TS_DB, Account) of
         {ok, JObj} ->
             case is_trunkstore_account(JObj) of
                 true ->
                     ?LOG("account ~s is a trunkstore doc...", [Account]),
-                    Assigned = [wh_json:get_value(<<"DIDs">>, Server, ?EMPTY_JSON_OBJECT)
-                                || Server <- wh_json:get_value(<<"servers">>, JObj, ?EMPTY_JSON_OBJECT)],
-                    Unassigned = [wh_json:get_value(<<"DIDs_Unassigned">>, JObj, ?EMPTY_JSON_OBJECT)],
-                    lists:foldr(fun({struct, _} = Numbers, Acc) ->
-                                        wh_json:get_keys(Numbers) ++ Acc;
-                                   (_, Acc) -> Acc
+                    Assigned = [wh_json:get_value(<<"DIDs">>, Server, wh_json:new())
+                                || Server <- wh_json:get_value(<<"servers">>, JObj, wh_json:new())],
+                    Unassigned = [wh_json:get_value(<<"DIDs_Unassigned">>, JObj, wh_json:new())],
+                    lists:foldr(fun(Numbers, Acc) ->
+                                        case wh_json:is_json_object(Numbers) of
+                                            true ->
+                                                wh_json:get_keys(Numbers) ++ Acc;
+                                            false ->
+                                                Acc
+                                        end
                                 end, [], Assigned ++ Unassigned);
                 false -> []
             end;

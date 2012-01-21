@@ -320,7 +320,7 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
+-spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -329,7 +329,7 @@ normalize_view_results(JObj, Acc) ->
 %% @doc Validate against schema doc in DB
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_doc/1 :: (json_object()) -> crossbar_schema:results().
+-spec is_valid_doc/1 :: (wh_json:json_object()) -> crossbar_schema:results().
 is_valid_doc(JObj) ->
     crossbar_schema:do_validate(JObj, agents).    
 
@@ -340,6 +340,6 @@ is_valid_doc(JObj) ->
 %% instance
 %% @end
 %%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (json_object(), #cb_context{}) -> json_object().
+-spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
 add_pvt_type(JObj, _) ->
     wh_json:set_value(<<"pvt_type">>, <<"agent">>, JObj).

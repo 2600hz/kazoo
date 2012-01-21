@@ -12,7 +12,7 @@
 
 -include("../callflow.hrl").
 
--spec handle/2 :: (json_object(), #cf_call{}) -> 'ok'.
+-spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> 'ok'.
 handle(Data, #cf_call{call_kvs=KVs, to_user=ToUser, to_realm=ToRealm}=Call) ->
     ShouldRecord = wh_json:is_true(<<"record_call">>, Data, true),
     ?LOG("Will record: ~s", [ShouldRecord]),

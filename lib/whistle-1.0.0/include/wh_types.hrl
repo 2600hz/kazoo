@@ -12,7 +12,7 @@
            (_) -> false
         end).
 
--type api_terms() :: json_object() | proplist().
+-type api_terms() :: wh_json:json_object() | proplist().
 
 %% non-empty binary
 -type ne_binary() :: <<_:8,_:_*8>>.
@@ -26,20 +26,7 @@
 %% for setting types on dicts
 -type dict(K,V) :: [{K, V}].
 
--define(EMPTY_JSON_OBJECT, {'struct', []}).
-
 -type wh_proplist() :: [{ne_binary() | atom(), binary() | atom() | integer() | float() | string()} | atom(),...] | [].
-
--type json_string() :: atom() | ne_binary().
--type json_strings() :: [json_string(),...] | [].
--type json_number() :: integer() | float().
--type json_array() :: [json_term(),...] | [].
--type json_proplist() :: [{json_string(), json_term()},...] | [].
--type json_object() :: {'struct', json_proplist()} | ?EMPTY_JSON_OBJECT.
--type json_iolist() :: {'json', iolist()}.
--type json_term() :: json_string() | json_number() | json_array() | json_object() | json_iolist() | <<>>.
--type json_objects() :: [json_object(),...] | [].
--type mochijson() :: json_object() | json_objects() | json_term() | [].
 
 %% result of calendar:datetime_to_gregorian_seconds({{1970,1,1},{0,0,0}}).
 %% Subtract this value from a gregorian seconds version of a date

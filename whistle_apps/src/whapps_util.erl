@@ -165,7 +165,7 @@ get_accounts_by_name(Name) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_event_type/1 :: (JObj) -> {binary(), binary()} when
-      JObj :: json_object().
+      JObj :: wh_json:json_object().
 get_event_type(JObj) ->
     wh_util:get_event_type(JObj).
 
@@ -177,7 +177,7 @@ get_event_type(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec put_callid/1 :: (JObj) -> binary() | 'undefined' when
-      JObj :: json_object().
+      JObj :: wh_json:json_object().
 put_callid(JObj) ->
     wh_util:put_callid(JObj).
 
@@ -188,7 +188,7 @@ put_callid(JObj) ->
 %% this returns the cause and code for the call termination
 %% @end
 %%--------------------------------------------------------------------
--spec get_call_termination_reason/1 :: (json_object()) -> {binary(), binary()}.
+-spec get_call_termination_reason/1 :: (wh_json:json_object()) -> {binary(), binary()}.
 get_call_termination_reason(JObj) ->
     Cause = case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
                <<>> ->
@@ -374,7 +374,7 @@ hangup_cause_to_alert_level(_) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec get_views_json/2 :: (atom(), string()) -> json_objects().
+-spec get_views_json/2 :: (atom(), string()) -> wh_json:json_objects().
 get_views_json(App, Folder) ->
     Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
     [JObj 
@@ -391,8 +391,8 @@ get_views_json(App, Folder) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec get_view_json/2 :: (atom(), string()) -> {ne_binary(), json_object()}.
--spec get_view_json/1 :: (string()) -> {ne_binary(), json_object()}.
+-spec get_view_json/2 :: (atom(), string()) -> {ne_binary(), wh_json:json_object()}.
+-spec get_view_json/1 :: (string()) -> {ne_binary(), wh_json:json_object()}.
 
 get_view_json(App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
@@ -412,7 +412,7 @@ get_view_json(Path) ->
 %%--------------------------------------------------------------------
 -spec update_views/2 :: (ne_binary(), proplist()) -> ok.
 -spec update_views/3 :: (ne_binary(), proplist(), boolean()) -> ok.
--spec update_views/4 :: (json_objects(), ne_binary(), proplist(), boolean()) -> ok.
+-spec update_views/4 :: (wh_json:json_objects(), ne_binary(), proplist(), boolean()) -> ok.
 
 update_views(Db, Views) ->
     update_views(Db, Views, false).

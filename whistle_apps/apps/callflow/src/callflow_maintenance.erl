@@ -138,7 +138,7 @@ log(Format, Args) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc/4 :: (list() | binary(), json_term(), binary(), binary()) -> ok | {error, atom()}.
+-spec update_doc/4 :: (list() | binary(), wh_json:json_term(), binary(), binary()) -> ok | {error, atom()}.
 update_doc(Key, Value, Id, Db) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->

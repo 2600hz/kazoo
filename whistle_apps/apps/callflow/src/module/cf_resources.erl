@@ -14,7 +14,7 @@
 
 -define(VIEW_BY_RULES, <<"cf_attributes/active_resources_by_rules">>).
 
--type endpoint() :: {binary(), json_objects(), 'raw' | binary()}.
+-type endpoint() :: {binary(), wh_json:json_objects(), 'raw' | binary()}.
 -type endpoints() :: [] | [endpoint()].
 
 %%--------------------------------------------------------------------
@@ -23,7 +23,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
 handle(Data, Call) ->
     {ok, Endpoints} = find_endpoints(Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
@@ -77,7 +77,7 @@ bridge_to_resources([], _, _, _, Call) ->
 %% for use with the whistle bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoint/2 :: (ne_binary(), json_object()) -> json_object().
+-spec create_endpoint/2 :: (ne_binary(), wh_json:json_object()) -> wh_json:json_object().
 create_endpoint(DestNum, JObj) ->
     Rule = <<"sip:"
               ,(wh_json:get_value(<<"prefix">>, JObj, <<>>))/binary
@@ -127,7 +127,7 @@ find_endpoints(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(get_caller_id_type/2 :: (Resource :: json_object(), Call :: #cf_call{}) -> raw | binary()).
+-spec(get_caller_id_type/2 :: (Resource :: wh_json:json_object(), Call :: #cf_call{}) -> raw | binary()).
 get_caller_id_type(Resource, #cf_call{channel_vars=CVs}) ->
     case wh_json:is_true(<<"emergency">>, Resource) of
         true ->

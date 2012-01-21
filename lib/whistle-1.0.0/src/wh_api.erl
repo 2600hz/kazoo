@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010 VoIP INC
+%%% @Copyright (C) 2010 VoIP INC
 %%% @doc
 %%% Whistle API Helpers
 %%%
@@ -19,6 +19,7 @@
 %% API
 -export([default_headers/2, default_headers/3, default_headers/4, default_headers/5]).
 -export([prepare_api_payload/3, set_missing_values/2, remove_empty_values/1, extract_defaults/1]).
+-export([disambiguate_and_publish/3]).
 
 %% In-Call
 -export([error_resp/1]).
@@ -76,16 +77,19 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
      ,{<<"App-Name">>, AppName}
      ,{<<"App-Version">>, AppVsn}].
 
+disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
+    Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
+    ?LOG("Wapi mod: ~s", [Wapi]),
+    ApiMod = wh_util:to_atom(Wapi),
+    ApiMod:disambiguate_and_publish(ReqJObj, RespJObj).
+
 %%--------------------------------------------------------------------
 %% @doc
 %% Set any missing defaults with the values defined in the by the
 %% validation definitions and remove any empty values
 %% @end
 %%--------------------------------------------------------------------
--spec prepare_api_payload/3 :: (ApiTerm, HeaderValues, ValidateFun) -> {'ok', iolist()} | {'error', string()} when
-      ApiTerm :: api_terms(),
-      HeaderValues :: proplist(),
-      ValidateFun :: fun().
+-spec prepare_api_payload/3 :: (api_terms(), proplist(), fun((api_terms()) -> api_formatter_return())) -> api_formatter_return().
 prepare_api_payload(Prop, HeaderValues, ValidateFun) when is_list(Prop) ->
     CleanupFuns = [fun (P) -> remove_empty_values(P) end
                    ,fun (P) -> set_missing_values(P, HeaderValues) end],
@@ -99,9 +103,7 @@ prepare_api_payload(JObj, HeaderValues, ValidateFun) ->
 %% validation definitions
 %% @end
 %%--------------------------------------------------------------------
--spec set_missing_values/2 :: (ApiTerm, HeaderValues) -> api_terms() when
-      HeaderValues :: proplist(),
-      ApiTerm :: api_terms().
+-spec set_missing_values/2 :: (api_terms(), proplist()) -> api_terms().
 set_missing_values(Prop, HeaderValues) when is_list(Prop) ->
     Missing = [{K, V} || {K,V} <- HeaderValues
                              ,not is_list(V)
@@ -116,8 +118,7 @@ set_missing_values(JObj, HeaderValues) ->
 %% type given
 %% @end
 %%--------------------------------------------------------------------
--spec remove_empty_values/1 :: (ApiTerm) -> api_terms() when
-      ApiTerm :: api_terms().
+-spec remove_empty_values/1 :: (api_terms()) -> api_terms().
 remove_empty_values(Prop) when is_list(Prop) ->
     do_empty_value_removal(Prop, []);
 remove_empty_values(JObj) ->
@@ -169,18 +170,16 @@ extract_defaults(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec error_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
-    Prop :: api_terms().
-error_resp({struct, Prop}) ->
-    error_resp(Prop);
-error_resp(Prop) ->
+-spec error_resp/1 :: (api_terms()) -> api_formatter_return().
+error_resp(Prop) when is_list(Prop) ->
     case error_resp_v(Prop) of
         true -> build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
         false -> {error, "Proplist failed validation for error_resp"}
-    end.
+    end;
+error_resp(JObj) ->
+    error_resp(wh_json:to_proplist(JObj)).
 
--spec error_resp_v/1 :: (Prop) -> boolean() when
-    Prop :: api_terms().
+-spec error_resp_v/1 :: (api_terms()) -> boolean().
 error_resp_v({struct, Prop}) ->
     error_resp_v(Prop);
 error_resp_v(Prop) ->
@@ -192,7 +191,7 @@ error_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_discovery_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
+-spec conference_discovery_req/1 :: (Prop) -> api_formatter_return() when
     Prop :: api_terms().
 conference_discovery_req({struct, Prop}) ->
     conference_discovery_req(Prop);
@@ -215,7 +214,7 @@ conference_discovery_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_participants_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
+-spec conference_participants_req/1 :: (Prop) -> api_formatter_return() when
     Prop :: api_terms().
 conference_participants_req({struct, Prop}) ->
     conference_participants_req(Prop);
@@ -237,7 +236,7 @@ conference_participants_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_participants_resp/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
+-spec conference_participants_resp/1 :: (Prop) -> api_formatter_return() when
     Prop :: api_terms().
 conference_participants_resp({struct, Prop}) ->
     conference_participants_resp(Prop);
@@ -260,7 +259,7 @@ conference_participants_resp_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_play_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
+-spec conference_play_req/1 :: (Prop) -> api_formatter_return() when
     Prop :: api_terms().
 conference_play_req({struct, Prop}) ->
     conference_play_req(Prop);
@@ -282,7 +281,7 @@ conference_play_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_deaf_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
+-spec conference_deaf_req/1 :: (Prop) -> api_formatter_return() when
     Prop :: api_terms().
 conference_deaf_req({struct, Prop}) ->
     conference_deaf_req(Prop);
@@ -305,7 +304,7 @@ conference_deaf_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_undeaf_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
+-spec conference_undeaf_req/1 :: (Prop) -> api_formatter_return() when
     Prop :: api_terms().
 conference_undeaf_req({struct, Prop}) ->
     conference_undeaf_req(Prop);
@@ -328,7 +327,7 @@ conference_undeaf_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_mute_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
+-spec conference_mute_req/1 :: (Prop) -> api_formatter_return() when
     Prop :: api_terms().
 conference_mute_req({struct, Prop}) ->
     conference_mute_req(Prop);
@@ -351,7 +350,7 @@ conference_mute_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_unmute_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
+-spec conference_unmute_req/1 :: (Prop) -> api_formatter_return() when
     Prop :: api_terms().
 conference_unmute_req({struct, Prop}) ->
     conference_unmute_req(Prop);
@@ -373,7 +372,7 @@ conference_unmute_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_kick_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
+-spec conference_kick_req/1 :: (Prop) -> api_formatter_return() when
     Prop :: api_terms().
 conference_kick_req({struct, Prop}) ->
     conference_kick_req(Prop);
@@ -396,7 +395,7 @@ conference_kick_req_v(Prop) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec conference_move_req/1 :: (Prop) -> {'ok', iolist()} | {'error', string()} when
+-spec conference_move_req/1 :: (Prop) -> api_formatter_return() when
     Prop :: api_terms().
 conference_move_req({struct, Prop}) ->
     conference_move_req(Prop);
@@ -416,27 +415,28 @@ conference_move_req_v(Prop) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec validate/4 :: (proplist(), [ne_binary(),...] | [], proplist(), proplist()) -> boolean().
-validate(Prop, ReqH, Vals, Types) ->
+-spec validate/4 :: (api_terms(), api_headers(), proplist(), proplist()) -> boolean().
+validate(Prop, ReqH, Vals, Types) when is_list(Prop) ->
     case has_all(Prop, ?DEFAULT_HEADERS) andalso validate_message(Prop, ReqH, Vals, Types) of
         true ->
             true;
         false ->
             ?LOG("failing API JSON: ~s", [wh_json:encode(wh_json:from_list(Prop))]),
             false
-    end.
+    end;
+validate(JObj, ReqH, Vals, Types) ->
+    validate(wh_json:to_proplist(JObj), ReqH, Vals, Types).
 
--spec validate_message/4 :: (proplist(), [ne_binary(),...] | [], proplist(), proplist()) -> boolean().
-validate_message(Prop, ReqH, Vals, Types) ->
+-spec validate_message/4 :: (api_terms(), api_headers(), proplist(), proplist()) -> boolean().
+validate_message(Prop, ReqH, Vals, Types) when is_list(Prop) ->
     has_all(Prop, ReqH) andalso
         values_check(Prop, Vals) andalso
-        type_check(Prop, Types).
+        type_check(Prop, Types);
+validate_message(JObj, ReqH, Vals, Types) ->
+    validate_message(wh_json:to_proplist(JObj), ReqH, Vals, Types).
 
--spec build_message/3 :: (Prop, ReqHeaders, OptHeaders) -> {'ok', iolist()} | {'error', string()} when
-      Prop :: proplist(),
-      ReqHeaders :: [binary(),...] | [],
-      OptHeaders:: [binary(),...] | [].
-build_message(Prop, ReqH, OptH) ->
+-spec build_message/3 :: (api_terms(), api_headers(), api_headers()) -> api_formatter_return().
+build_message(Prop, ReqH, OptH) when is_list(Prop) ->
     case defaults(Prop) of
         {error, _Reason}=Error ->
             ?LOG("API message does not have the default headers ~s: ~p"
@@ -447,12 +447,14 @@ build_message(Prop, ReqH, OptH) ->
                 {ok, FinalHeaders} -> headers_to_json(FinalHeaders);
                 Err -> Err
             end
-    end.
+    end;
+build_message(JObj, ReqH, OptH) ->
+    build_message(wh_json:to_proplist(JObj), ReqH, OptH).
 
 -spec build_message_specific_headers/3 :: (Msg, ReqHeaders, OptHeaders) -> {'ok', proplist()} | {'error', string()} when
-      Msg :: proplist() | {[binary(),...] | [], proplist()},
-      ReqHeaders :: [binary(),...] | [],
-      OptHeaders :: [binary(),...] | [].
+      Msg :: proplist() | {api_headers(), proplist()},
+      ReqHeaders :: api_headers(),
+      OptHeaders :: api_headers().
 build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {error, _Reason} = Error ->
@@ -466,10 +468,10 @@ build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
 build_message_specific_headers(Prop, ReqH, OptH) ->
     build_message_specific_headers({[], Prop}, ReqH, OptH).
 
--spec build_message_specific/3 :: (Msg, ReqHeaders, OptHeaders) -> {'ok', iolist()} | {'error', string()} when
-      Msg :: proplist() | {[binary(),...] | [], proplist()},
-      ReqHeaders :: [binary(),...] | [],
-      OptHeaders :: [binary(),...] | [].
+-spec build_message_specific/3 :: (Msg, ReqHeaders, OptHeaders) -> api_formatter_return() when
+      Msg :: proplist() | {api_headers(), proplist()},
+      ReqHeaders :: api_headers(),
+      OptHeaders :: api_headers().
 build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {error, _Reason} = Error ->
@@ -483,7 +485,7 @@ build_message_specific({Headers, Prop}, ReqH, OptH) ->
 build_message_specific(Prop, ReqH, OptH) ->
     build_message_specific({[], Prop}, ReqH, OptH).
 
--spec headers_to_json/1 :: (HeadersProp) -> {'ok', iolist()} | {'error', string()} when
+-spec headers_to_json/1 :: (HeadersProp) -> api_formatter_return() when
       HeadersProp :: proplist().
 headers_to_json(HeadersProp) ->
     try
@@ -508,7 +510,7 @@ defaults(Prop, Headers) ->
 
 -spec update_required_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} | {'error', string()} when
       Prop :: proplist(),
-      Fields :: [binary(),...] | [],
+      Fields :: api_headers(),
       Headers :: proplist().
 update_required_headers(Prop, Fields, Headers) ->
     case has_all(Prop, Fields) of
@@ -520,7 +522,7 @@ update_required_headers(Prop, Fields, Headers) ->
 
 -spec update_optional_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} when
       Prop :: proplist(),
-      Fields :: [binary(),...] | [],
+      Fields :: api_headers(),
       Headers :: proplist().
 update_optional_headers(Prop, Fields, Headers) ->
     case has_any(Prop, Fields) of
@@ -533,7 +535,7 @@ update_optional_headers(Prop, Fields, Headers) ->
 %% add [Header] from Prop to HeadProp
 -spec add_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} when
       Prop :: proplist(),
-      Fields :: [binary(),...] | [],
+      Fields :: api_headers(),
       Headers :: proplist().
 add_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
@@ -542,7 +544,7 @@ add_headers(Prop, Fields, Headers) ->
 
 -spec add_optional_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} when
       Prop :: proplist(),
-      Fields :: [binary(),...] | [],
+      Fields :: api_headers(),
       Headers :: proplist().
 add_optional_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
@@ -555,7 +557,7 @@ add_optional_headers(Prop, Fields, Headers) ->
                 end, {Headers, Prop}, Fields).
 
 %% Checks Prop against a list of required headers, returns true | false
--spec has_all/2 :: (proplist(), [ne_binary(),...] | []) -> boolean().
+-spec has_all/2 :: (proplist(), api_headers()) -> boolean().
 has_all(Prop, Headers) ->
     lists:all(fun(Header) ->
                       case props:is_defined(Header, Prop) of
@@ -567,7 +569,7 @@ has_all(Prop, Headers) ->
               end, Headers).
 
 %% Checks Prop against a list of optional headers, returns true | false if at least one if found
--spec has_any/2 :: (proplist(), [ne_binary(),...] | []) -> boolean().
+-spec has_any/2 :: (proplist(), api_headers()) -> boolean().
 has_any(Prop, Headers) ->
     lists:any(fun(Header) -> props:is_defined(Header, Prop) end, Headers).
 

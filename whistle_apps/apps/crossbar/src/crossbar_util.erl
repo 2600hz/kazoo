@@ -39,7 +39,7 @@
 %% data.
 %% @end
 %%--------------------------------------------------------------------
--spec response/2 :: (json_term(), #cb_context{}) -> #cb_context{}.
+-spec response/2 :: (wh_json:json_term(), #cb_context{}) -> #cb_context{}.
 response(JTerm, Context) ->
     create_response(success, undefined, undefined, JTerm, Context).
 
@@ -50,7 +50,7 @@ response(JTerm, Context) ->
 %% fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response/3 :: ('error'|'fatal', json_string(), #cb_context{}) -> #cb_context{}.
+-spec response/3 :: ('error'|'fatal', wh_json:json_string(), #cb_context{}) -> #cb_context{}.
 response(error, Msg, Context) ->
     create_response(error, Msg, 500, [], Context);
 response(fatal, Msg, Context) ->
@@ -63,7 +63,7 @@ response(fatal, Msg, Context) ->
 %% of type fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response/4 :: ('error'|'fatal', json_string(), integer()|'undefined', #cb_context{}) -> #cb_context{}.
+-spec response/4 :: ('error'|'fatal', wh_json:json_string(), integer()|'undefined', #cb_context{}) -> #cb_context{}.
 response(error, Msg, Code, Context) ->
     create_response(error, Msg, Code, [], Context);
 response(fatal, Msg, Code, Context) ->
@@ -76,7 +76,7 @@ response(fatal, Msg, Code, Context) ->
 %% of type fatal or error with additional data
 %% @end
 %%--------------------------------------------------------------------
--spec response/5 :: ('error'|'fatal', json_string(), integer()|'undefined', json_term(), #cb_context{}) -> #cb_context{}.
+-spec response/5 :: ('error'|'fatal', wh_json:json_string(), integer()|'undefined', wh_json:json_term(), #cb_context{}) -> #cb_context{}.
 response(error, Msg, Code, JTerm, Context) ->
     create_response(error, Msg, Code, JTerm, Context);
 response(fatal, Msg, Code, JTerm, Context) ->
@@ -90,7 +90,7 @@ response(fatal, Msg, Code, JTerm, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec create_response/5 :: (crossbar_status(), json_string(), integer()|'undefined', json_term(), #cb_context{}) -> #cb_context{}.
+-spec create_response/5 :: (crossbar_status(), wh_json:json_string(), integer()|'undefined', wh_json:json_term(), #cb_context{}) -> #cb_context{}.
 create_response(Status, Msg, Code, JTerm, Context) ->
     Context#cb_context {
          resp_status = Status
@@ -132,15 +132,15 @@ response_faulty_request(Context) ->
 response_deprecated(Context) ->
     create_response(error, <<"deprecated">>, 410, wh_json:new(), Context).
 
--spec response_deprecated_redirect(#cb_context{}, json_string()) -> #cb_context{}.
--spec response_deprecated_redirect(#cb_context{}, json_string(), json_object()) -> #cb_context{}.
+-spec response_deprecated_redirect(#cb_context{}, wh_json:json_string()) -> #cb_context{}.
+-spec response_deprecated_redirect(#cb_context{}, wh_json:json_string(), wh_json:json_object()) -> #cb_context{}.
 response_deprecated_redirect(Context, RedirectUrl) ->
     response_deprecated_redirect(Context, RedirectUrl, wh_json:new()).
 response_deprecated_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj) ->
     create_response(error, <<"deprecated">>, 301, JObj
                     ,Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 
--spec response_redirect(#cb_context{}, json_string(), json_object()) -> #cb_context{}.
+-spec response_redirect(#cb_context{}, wh_json:json_string(), wh_json:json_object()) -> #cb_context{}.
 response_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj) ->
     create_response(error, <<"redirect">>, 301, JObj, Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 %%--------------------------------------------------------------------
@@ -202,7 +202,7 @@ response_datastore_conn_refused(Context) ->
 %% Create a standard response if the provided data did not validate
 %% @end
 %%--------------------------------------------------------------------
--spec response_invalid_data/2 :: (json_term(), #cb_context{}) -> #cb_context{}.
+-spec response_invalid_data/2 :: (wh_json:json_term(), #cb_context{}) -> #cb_context{}.
 response_invalid_data(JTerm, Context) ->
     response(error, <<"invalid data">>, 400, JTerm, Context).
 
@@ -395,7 +395,7 @@ change_pvt_enabled(State, AccountId) ->
             {error, R}
     end.
     
--spec cache_view/3 :: (ne_binary(), proplist(), json_object()) -> false | ok.
+-spec cache_view/3 :: (ne_binary(), proplist(), wh_json:json_object()) -> false | ok.
 cache_view(Db, ViewOptions, JObj) ->
     {ok, Srv} = crossbar_sup:cache_proc(),
     (?CACHE_TTL =/= 0) andalso
@@ -404,7 +404,7 @@ cache_view(Db, ViewOptions, JObj) ->
             wh_cache:store_local(Srv, {crossbar, view, {Db, ?MODULE}}, {ViewOptions, JObj}, ?CACHE_TTL)
         end.
 
--spec cache_doc/2 :: (ne_binary(), json_object()) -> false | ok.
+-spec cache_doc/2 :: (ne_binary(), wh_json:json_object()) -> false | ok.
 cache_doc(Db, JObj) ->
     {ok, Srv} = crossbar_sup:cache_proc(),
     Id = wh_json:get_value(<<"_id">>, JObj),
@@ -415,7 +415,7 @@ cache_doc(Db, JObj) ->
             wh_cache:erase_local(Srv, {crossbar, view, {Db, ?MODULE}})
         end.
 
--spec flush_doc_cache/2 :: (ne_binary(), ne_binary() | json_object()) -> false | ok.
+-spec flush_doc_cache/2 :: (ne_binary(), ne_binary() | wh_json:json_object()) -> false | ok.
 flush_doc_cache(Db, <<Id>>) ->
     {ok, Srv} = crossbar_sup:cache_proc(),
     (?CACHE_TTL =/= 0) andalso
@@ -427,7 +427,7 @@ flush_doc_cache(Db, <<Id>>) ->
 flush_doc_cache(Db, JObj) ->
     flush_doc_cache(Db, wh_json:get_value(<<"_id">>, JObj)).
 
--spec open_doc/2 :: (ne_binary(), ne_binary()) -> {ok, json_object()} | {error, term()}.
+-spec open_doc/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} | {error, term()}.
 open_doc(Db, Id) ->
     {ok, Srv} = crossbar_sup:cache_proc(),
     case wh_cache:peek_local(Srv, {crossbar, doc, {Db, Id}}) of
@@ -444,7 +444,7 @@ open_doc(Db, Id) ->
                     E
             end
     end.
--spec get_results/3 :: (ne_binary(), ne_binary(), proplist()) -> {ok, json_object()} | {error, term()}.
+-spec get_results/3 :: (ne_binary(), ne_binary(), proplist()) -> {ok, wh_json:json_object()} | {error, term()}.
 get_results(Db, View, ViewOptions) ->
     {ok, Srv} = crossbar_sup:cache_proc(),
     case wh_cache:peek_local(Srv, {crossbar, view, {Db, ?MODULE}}) of

@@ -29,7 +29,7 @@ init() ->
     {ok, ?DEFAULT_SUBJ_TMPL} = erlydtl:compile(whapps_config:get(?MODULE, default_subject_template), ?DEFAULT_SUBJ_TMPL),
     ?LOG_SYS("init done for vm-to-email").
 
--spec handle_req/2 :: (json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:voicemail_v(JObj),
     whapps_util:put_callid(JObj),
@@ -66,7 +66,7 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec get_template_props/2 :: (json_object(), json_objects()) -> proplist().
+-spec get_template_props/2 :: (wh_json:json_object(), wh_json:json_objects()) -> proplist().
 get_template_props(Event, Docs) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, Event),

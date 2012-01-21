@@ -385,7 +385,7 @@ update_vmbox(DocId, #cb_context{req_data=Data}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (json_object(), json_objects()) -> json_objects().
+-spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -400,8 +400,13 @@ load_message_summary(DocId, Context) ->
     case load_messages(DocId, Context) of
         [] ->            
             crossbar_util:response([], Context);
-        [?EMPTY_JSON_OBJECT] ->
-            crossbar_util:response([], Context);
+        [JObj]=Messages ->
+            case wh_json:is_empty(JObj) of
+                true ->
+                    crossbar_util:response([], Context);
+                false ->
+                    crossbar_util:response(Messages,Context)
+            end;
         Messages ->
             crossbar_util:response(Messages,Context)
     end.
@@ -413,7 +418,7 @@ load_message_summary(DocId, Context) ->
 %% Get associated  Messages as a List of json obj
 %% @end
 %%--------------------------------------------------------------------
--spec load_messages/2 :: (ne_binary(), #cb_context{}) -> json_objects().
+-spec load_messages/2 :: (ne_binary(), #cb_context{}) -> wh_json:json_objects().
 load_messages(DocId, Context) ->
     #cb_context{resp_status=success, doc=Doc} = crossbar_doc:load(DocId, Context),
     wh_json:get_value(<<"messages">>, Doc, []).
@@ -506,7 +511,7 @@ delete_message(VMBoxId, MediaId, #cb_context{db_name=Db}=Context) ->
             crossbar_util:response_bad_identifier(MediaId, Context)
     end.
 
--spec update_mwi/2 :: (json_object(), ne_binary()) -> 'ok'.
+-spec update_mwi/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
 update_mwi(VMBox, DB) ->
     OwnerID = wh_json:get_value(<<"owner_id">>, VMBox),
     false = wh_util:is_empty(OwnerID),
@@ -538,7 +543,7 @@ update_mwi(VMBox, DB) ->
                           catch wapi_notifications:publish_mwi_update(Command)
                   end, Devices).
 
--spec count_messages/2 :: (json_objects(), ne_binary()) -> non_neg_integer().
+-spec count_messages/2 :: (wh_json:json_objects(), ne_binary()) -> non_neg_integer().
 count_messages(Messages, Folder) ->
     lists:sum([1 || Message <- Messages, wh_json:get_value(<<"folder">>, Message) =:= Folder]).
 
@@ -549,7 +554,7 @@ count_messages(Messages, Folder) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_message_index/2 :: (ne_binary(), json_objects()) -> pos_integer().
+-spec get_message_index/2 :: (ne_binary(), wh_json:json_objects()) -> pos_integer().
 get_message_index(MediaId, Messages) ->
     find_index(MediaId, Messages, 1).
 
@@ -560,7 +565,7 @@ get_message_index(MediaId, Messages) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_index/3 :: (ne_binary(), json_objects(), pos_integer()) -> integer().
+-spec find_index/3 :: (ne_binary(), wh_json:json_objects(), pos_integer()) -> integer().
 find_index(MediaId, [Message | Ms], Index) ->
     case wh_json:get_value(<<"media_id">>, Message) =:= MediaId of
         true -> Index;
