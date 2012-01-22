@@ -182,6 +182,17 @@
                          ]).
 -define(PARK_REQ_TYPES, []).
 
+%% Presence
+-define(PRESENCE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"User">>]).
+-define(OPTIONAL_PRESENCE_REQ_HEADERS, [<<"Insert-At">>, <<"State">>]).
+-define(PRESENCE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                              ,{<<"Event-Name">>, <<"command">>}
+                              ,{<<"Application-Name">>, <<"presence">>}
+                              ,{<<"State">>, [<<"early">>, <<"confirmed">>, <<"terminated">>]}
+                              ,?INSERT_AT_TUPLE
+                             ]).
+-define(PRESENCE_REQ_TYPES, []).
+
 %% Set
 -define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Custom-Channel-Vars">>, <<"Custom-Call-Vars">>]).
 -define(OPTIONAL_SET_REQ_HEADERS, [<<"Insert-At">>]).

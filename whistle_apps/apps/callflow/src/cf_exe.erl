@@ -319,7 +319,7 @@ handle_info({call_sanity_check}, #state{call_id=CallId, call=Call}=State) ->
 handle_info(timeout, #state{call_id=CallId, ctrl_q=CtrlQ, call=#cf_call{cf_pid=Self}}=State) ->
     spawn(fun() ->
                   ControllerQ = queue_name(Self),
-                  send_controller_queue(ControllerQ, CallId, CtrlQ) 
+                  send_controller_queue(ControllerQ, CallId, CtrlQ)
           end),
     {noreply, launch_cf_module(State)};
 handle_info(_, State) ->

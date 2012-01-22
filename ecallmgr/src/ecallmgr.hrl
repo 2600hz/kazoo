@@ -52,8 +52,7 @@
 %% Call and Channel Vars that have a special prefix instead of the standard CHANNEL_VAR_PREFIX prefix
 %% [{AMQP-Header, FS-var-name}]
 %% so FS-var-name of "foo_var" would become "foo_var=foo_val" in the channel/call string
--define(SPECIAL_CHANNEL_VARS, [
-                               {<<"Auto-Answer">>, <<"sip_auto_answer">>}
+-define(SPECIAL_CHANNEL_VARS, [{<<"Auto-Answer">>, <<"sip_auto_answer">>}
                                ,{<<"Eavesdrop-Group">>, <<"eavesdrop_group">>}
                                ,{<<"Outgoing-Caller-ID-Name">>, <<"origination_caller_id_name">>}
                                ,{<<"Outgoing-Caller-ID-Number">>,<<"origination_caller_id_number">>}
@@ -110,6 +109,7 @@
                                ,{<<"noop">>, <<"noop">>}
                                ,{<<"execute_extension">>, <<"execute_extension">>}
                                ,{<<"playback">>, <<"hold">>}
+                               ,{<<"presence">>, <<"presence">>}
                               ]).
 
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
