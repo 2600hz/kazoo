@@ -63,10 +63,10 @@ format_log(error, Format, Data) ->
     format_log(err, Format, Data);
 
 format_log(Type, Format, CallID) when is_atom(Type), is_binary(CallID) ->
-    format_log(Type, Format, [Type, CallID]);
+    format_log(Type, Format, [CallID, Type]);
 
 format_log(Format, Data, CallID) when is_binary(CallID) ->
-    format_log(debug, Format, [debug, CallID | Data]);
+    format_log(debug, Format, [CallID, debug | Data]);
 
 format_log(Type, Format, Data) when is_atom(Type) ->
     try
@@ -76,7 +76,6 @@ format_log(Type, Format, Data) when is_atom(Type) ->
         A:B ->
             io:format("logger exception: ~p:~p", [A,B])
     end.
-
 -else.
 format_log(Type, Format, Data) when not is_list(Data) ->
     format_log(Type, Format, [Data]);
@@ -85,10 +84,10 @@ format_log(error, Format, Data) ->
     format_log(err, Format, Data);
 
 format_log(Type, Format, CallID) when is_atom(Type), is_binary(CallID) ->
-    format_log(Type, Format, [Type, CallID]);
+    format_log(Type, Format, [CallID, Type]);
 
 format_log(Format, Data, CallID) when is_binary(CallID) ->
-    format_log(debug, Format, [debug, CallID | Data]);
+    format_log(debug, Format, [CallID, debug | Data]);
 
 format_log(Type, Format, Data) when is_atom(Type) ->
     try
@@ -97,32 +96,37 @@ format_log(Type, Format, Data) when is_atom(Type) ->
     catch
         A:B ->
             ST = erlang:get_stacktrace(),
-            syslog:log(debug, io_lib:format("logger error: ~p: ~p", [A, B])),
-            syslog:log(debug, io_lib:format("type: ~p", [Type])),
-            syslog:log(debug, io_lib:format("format: ~p", [Format])),
-            syslog:log(debug, io_lib:format("data: ~p", [Data])),
-            [syslog:log(debug, io_lib:format("st line: ~p", [STLine])) || STLine <- ST],
+            syslog:log(debug, io_lib:format("|000000000000|debug|log|~p:~b (~w) logger error: ~p: ~p"
+                                            ,[?MODULE, ?LINE, self(), A, B])),
+            syslog:log(debug, io_lib:format("|000000000000|debug|log|~p:~b (~w) type: ~p"
+                                            ,[?MODULE, ?LINE, self(), Type])),
+            syslog:log(debug, io_lib:format("|000000000000|debug|log|~p:~b (~w) format: ~p"
+                                            ,[?MODULE, ?LINE, self(), Format])),
+            syslog:log(debug, io_lib:format("|000000000000|debug|log|~p:~b (~w) data: ~p"
+                                            ,[?MODULE, ?LINE, self(), Data])),
+            [syslog:log(debug, io_lib:format("|000000000000|debug|log|~p:~b (~w) st line: ~p"
+                                             ,[?MODULE, ?LINE, self(), STLine])) || STLine <- ST],
             ok
     end.
 -endif.
 
 format_log(Type, Format, Data, CallID) when is_atom(Type) ->
-    format_log(Type, Format, [Type, CallID | Data]);
+    format_log(Type, Format, [CallID, Type | Data]);
 format_log(CallID, Format, Data, _) ->
-    format_log(debug, Format, [debug, CallID | Data]).
+    format_log(debug, Format, [CallID, debug | Data]).
 
 format_log(Type, BaseFmt, BaseArgs, DebugFmt, CallID) when is_atom(Type) ->
     format_log(Type
                ,BaseFmt ++ DebugFmt
-               ,[Type, CallID | BaseArgs]
+               ,[CallID, Type | BaseArgs]
               );
 format_log(DebugFmt, BaseFmt, BaseArgs, DebugArgs, CallID) when is_list(DebugFmt) ->
     format_log(debug
                ,BaseFmt ++ DebugFmt
-               ,[debug, CallID | BaseArgs] ++ DebugArgs
+               ,[CallID, debug | BaseArgs] ++ DebugArgs
                );
 format_log(CallID, BaseFmt, BaseArgs, DebugFmt, DebugArgs) when is_binary(CallID) ->
     format_log(debug
                ,BaseFmt ++ DebugFmt
-               ,[debug, CallID | BaseArgs] ++ DebugArgs
-               ).
+               ,[CallID, debug | BaseArgs] ++ DebugArgs
+              ).

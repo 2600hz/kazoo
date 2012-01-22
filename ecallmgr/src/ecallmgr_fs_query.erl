@@ -59,7 +59,13 @@ handle_channel_status(JObj, _Props) ->
     ?LOG_START("channel status request received"),
 
     case [ecallmgr_fs_node:hostname(NH) || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
-        [] -> ?LOG("no node found with channel ~s", [CallID]);
+        [] -> 
+            ?LOG("no node found with channel ~s", [CallID]),
+            Resp = [{<<"Call-ID">>, CallID}
+                    ,{<<"Status">>, <<"terminated">>}
+                    ,{<<"Error-Msg">>, <<"no node found with channel">>}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
         [{ok, Hostname}] ->
             ?LOG("call is on ~s", [Hostname]),
             Resp = [{<<"Call-ID">>, CallID}

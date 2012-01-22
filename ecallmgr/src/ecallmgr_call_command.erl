@@ -17,9 +17,9 @@
 -spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) -> 'ok' | 'timeout' | {'error', 'invalid_callid' | 'failed'}.
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
+    App = wh_json:get_value(<<"Application-Name">>, JObj),
     case DestID =:= UUID of
         true ->
-            App = wh_json:get_value(<<"Application-Name">>, JObj),
             case get_fs_app(Node, UUID, JObj, App) of
                 {'error', Msg} ->
                     _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
@@ -43,6 +43,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
             end;
         false ->
             ?LOG("command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
+            ecallmgr_call_control:event_execute_complete(ControlPID, UUID, App),
             {'error', invalid_callid}
     end.
 
@@ -555,6 +556,39 @@ get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
                   send_fetch_call_event(Node, UUID, JObj)
           end),
     {<<"fetch">>, noop};
+
+get_fs_app(_Node, _UUID, JObj, <<"presence">>) ->
+    NodeHandlers = ecallmgr_fs_sup:node_handlers(),
+    UUID = case wh_json:get_ne_value(<<"Msg-ID">>, JObj) of
+               undefined -> wh_util:to_list(wh_util:current_tstamp());
+               Else -> wh_util:to_list(Else)
+           end,
+    State = case wh_json:get_value(<<"State">>, JObj) of
+                <<"early">> -> "early";
+                <<"confirmed">> -> "confirmed";
+                _ -> "terminated"
+            end,
+    Event = [{"unique-id", UUID}
+             ,{"channel-state", "CS_ROUTING"}
+             ,{"answer-state", State}
+             ,{"proto", "any"}
+             ,{"login", "src/mod/event_handlers/mod_erlang_event/handle_msg.c"}
+             ,{"from", wh_json:get_string_value(<<"User">>, JObj)}
+             ,{"rpid", "unknown"}
+             ,{"status", "CS_ROUTING"}
+             ,{"event_type", "presence"}
+             ,{"alt_event_type", "dialog"}
+             ,{"presence-call-direction", "outbound"}
+             ,{"event_cound", "0"}
+            ],
+    [begin
+         ?LOG("sending presence in event to ~p~n", [Node]),
+         freeswitch:sendevent(Node, 'PRESENCE_IN', Event) 
+     end
+     || NodeHandler <- NodeHandlers
+            ,(Node = ecallmgr_fs_node:fs_node(NodeHandler)) =/= undefined
+    ],
+    {<<"presence">>, noop};
 
 get_fs_app(_Node, _UUID, JObj, <<"conference">>) ->
     case wapi_dialplan:conference_v(JObj) of

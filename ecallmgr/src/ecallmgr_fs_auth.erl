@@ -61,8 +61,6 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, _Options]) ->
-    put(callid, wh_util:to_binary(Node)),
-
     ?LOG_SYS("starting new fs auth listener for ~s", [Node]),
     process_flag(trap_exit, true),
 
@@ -179,8 +177,8 @@ handle_info({diagnostics, Pid}, #state{lookups=LUs, stats=Stats}=State) ->
 handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
 
-handle_info({'EXIT', _Pid, noconnection}, State) ->
-    ?LOG("noconnection received for node, pid: ~p", [_Pid]),
+handle_info({'EXIT', _Pid, noconnection}, #state{node=Node}=State) ->
+    ?LOG("noconnection received for node ~s, pid: ~p", [Node, _Pid]),
     {stop, normal, State};
 
 handle_info({'EXIT', LU, _Reason}, #state{node=Node, lookups=LUs}=State) ->
