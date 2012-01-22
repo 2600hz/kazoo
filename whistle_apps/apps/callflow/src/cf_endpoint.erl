@@ -39,7 +39,11 @@ build(EndpointId, undefined, Call) ->
 build(EndpointId, Properties, Call) when is_binary(EndpointId) ->
     case ?MODULE:get(EndpointId, Call) of
         {ok, Endpoint} ->
-            build(Endpoint, Properties, Call);
+            case wh_json:is_false(<<"enabled">>, Endpoint) of
+                true -> {error, disabled};
+                false ->
+                    build(Endpoint, Properties, Call)
+            end;
         {error, _}=E ->
             E
     end;
@@ -118,7 +122,7 @@ get(EndpointId, #cf_call{account_db=Db}) ->
         {error, not_found} ->
             case couch_mgr:open_doc(Db, EndpointId) of
                 {ok, JObj}=OK ->
-                    wh_cache:store({?MODULE, Db, EndpointId}, JObj, 900),
+                    wh_cache:store({?MODULE, Db, EndpointId}, JObj, 300),
                     OK;
                 {error, R}=E ->
                     ?LOG("unable to fetch endpoint ~s: ~p", [EndpointId, R]),
