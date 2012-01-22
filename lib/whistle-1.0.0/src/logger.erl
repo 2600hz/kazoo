@@ -97,15 +97,14 @@ format_log(Type, Format, Data) when is_atom(Type) ->
     catch
         A:B ->
             ST = erlang:get_stacktrace(),
-            syslog:log(debug, "logger error: ~p: ~p", [A, B]),
-            syslog:log(debug, "type: ~p", [Type]),
-            syslog:log(debug, "format: ~p", [Format]),
-            syslog:log(debug, "data: ~p", [Data]),
-            [syslog:log(debug, "st line: ~p", [STLine]) || STLine <- ST],
+            syslog:log(debug, io_lib:format("logger error: ~p: ~p", [A, B])),
+            syslog:log(debug, io_lib:format("type: ~p", [Type])),
+            syslog:log(debug, io_lib:format("format: ~p", [Format])),
+            syslog:log(debug, io_lib:format("data: ~p", [Data])),
+            [syslog:log(debug, io_lib:format("st line: ~p", [STLine])) || STLine <- ST],
             ok
     end.
 -endif.
-
 
 format_log(Type, Format, Data, CallID) when is_atom(Type) ->
     format_log(Type, Format, [Type, CallID | Data]);
