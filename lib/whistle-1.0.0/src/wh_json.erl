@@ -136,10 +136,8 @@ merge_recursive(JObj1, Value, Keys) ->
 -spec to_proplist/2 :: (json_string() | json_strings(), json_object()) -> json_proplist().
 %% Convert a json object to a proplist
 %% only top-level conversion is supported
-to_proplist(MaybeJObj) ->
-    true = is_json_object(MaybeJObj),
-    {Vs, Ks} = get_values(MaybeJObj),
-    lists:zip(Ks, Vs).
+to_proplist({struct, Prop}) ->
+    Prop.
 
 %% convert everything starting at a specific key
 to_proplist(Key, JObj) ->
@@ -375,11 +373,9 @@ set_values(KVs, JObj) when is_list(KVs) ->
 
 -spec set_value/3 :: (json_string() | json_strings(), json_term(), json_object()) -> json_object().
 set_value(Keys, Value, JObj) when is_list(Keys) ->
-    true = is_json_object(JObj),
     set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) ->
-    true = is_json_object(JObj),
-    set_value1([Key], Value, JObj).%% ;
+    set_value1([Key], Value, JObj).
 %% set_value(Key, Value, [{struct, _} | _]=JObjs) ->
 %%     set_value1(Key, Value, JObjs).
 
@@ -391,12 +387,11 @@ set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
         true ->
             try
                 %% Create a new object with the next key as a property
-                JObjs ++ [ set_value1(T, Value, set_value1(hd(T), [], new())) ]
+                JObjs ++ [ set_value1(T, Value, set_value1([hd(T)], [], new())) ]
             catch
                 %% There are no more keys in the list, add it unless not an object
                 _:_ ->
                     try
-                        true = is_json_object(Value),
                         JObjs ++ [Value]
                     catch _:_ -> erlang:error(badarg)
                     end
