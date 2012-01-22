@@ -63,6 +63,8 @@ save(JObj, Number, <<"in_service">>) ->
     end;
 save(JObj, _, <<"reserved">>) ->
     {ok, JObj};
+save(JObj, _, <<"discovery">>) ->
+    {ok, JObj};
 save(JObj, Number, _) ->
     ?LOG("removing dash e911 number '~s'", [Number]),
     case remove_number(Number) of
