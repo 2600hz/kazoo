@@ -58,23 +58,38 @@ distributed_presence(Srv, Type, Event) ->
 
 -spec show_channels/1 :: (pid()) -> [proplist(),...] | [].
 show_channels(Srv) ->
-    gen_server:call(Srv, show_channels).
+    case catch(gen_server:call(Srv, show_channels, 100)) of
+        {'EXIT', _} -> [];
+        Else -> Else
+    end.        
 
 -spec hostname/1 :: (pid()) -> fs_api_ret().
 hostname(Srv) ->
-    gen_server:call(Srv, hostname).
+    case catch(gen_server:call(Srv, hostname, 100)) of
+        {'EXIT', _} -> timeout;
+        Else -> Else
+    end.
 
 -spec fs_node/1 :: (pid()) -> atom().
 fs_node(Srv) ->
-    gen_server:call(Srv, fs_node).
+    case catch(gen_server:call(Srv, fs_node, 100)) of
+        {'EXIT', _} -> undefined;
+        Else -> Else
+    end.
 
 -spec uuid_exists/2 :: (pid(), ne_binary()) -> boolean().
 uuid_exists(Srv, UUID) ->
-    gen_server:call(Srv, {uuid_exists, UUID}).
+    case catch(gen_server:call(Srv, {uuid_exists, UUID}, 100)) of
+        {'EXIT', _} -> false;
+        Else -> Else
+    end.
 
 -spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | {'error', ne_binary()} | 'timeout'.
 uuid_dump(Srv, UUID) ->
-    gen_server:call(Srv, {uuid_dump, UUID}).
+    case catch(gen_server:call(Srv, {uuid_dump, UUID}, 100)) of
+        {'EXIT', _} -> [];
+        Else -> Else
+    end.        
 
 -spec start_link/1 :: (atom()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node) ->

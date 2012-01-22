@@ -12,12 +12,13 @@
 
 -export([audio_macro/2]).
 -export([response/2, response/3, response/4]).
--export([pickup/2]).
+-export([pickup/2, b_pickup/2]).
 -export([redirect/3]).
 -export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
 -export([call_status/1, call_status/2, channel_status/1, channel_status/2]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6]).
 -export([hold/1]).
+-export([presence/2, presence/3]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([store/3, store/4, store/5]).
@@ -46,7 +47,8 @@
 
 -export([wait_for_message/1, wait_for_message/2, wait_for_message/3, wait_for_message/4]).
 -export([wait_for_application/1, wait_for_application/2, wait_for_application/3, wait_for_application/4]).
--export([wait_for_bridge/2, wait_for_unbridge/0]).
+-export([wait_for_bridge/2]).
+-export([wait_for_channel_bridge/0, wait_for_channel_unbridge/0]).
 -export([wait_for_dtmf/1]).
 -export([wait_for_noop/1]).
 -export([wait_for_hangup/0]).
@@ -133,6 +135,10 @@ pickup(TargetCallId, Call) ->
                ,{<<"Target-Call-ID">>, TargetCallId}
               ],
     send_command(Command, Call).
+ 
+b_pickup(TargetCallId, Call) ->
+    pickup(TargetCallId, Call),
+    wait_for_channel_unbridge().
 
 %%--------------------------------------------------------------------
 %% @private
@@ -159,6 +165,26 @@ redirect(Contact, Server, Call) ->
 -spec flush_dtmf/1 :: (#cf_call{}) -> 'ok'.
 flush_dtmf(Call) ->
     play(<<"silence_stream://50">>, Call).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec presence/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
+-spec presence/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
+
+presence(State, #cf_call{from=User}=Call) ->
+    presence(State, User, Call).
+
+presence(State, User, Call) ->
+    Command = [{<<"User">>, User}
+               ,{<<"State">>, State}
+               ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Application-Name">>, <<"presence">>}
+              ],
+    send_command(Command, Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1166,6 +1192,9 @@ wait_for_application(Application, Event, Type, Timeout) ->
                             DiffMicro = timer:now_diff(erlang:now(), Start),
                             wait_for_application(Application, Event, Type, Timeout - (DiffMicro div 1000))
                     end;
+                { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
+                    ?LOG("channel was hungup while waiting for ~s", [Application]),
+                    {error, channel_hungup};
                 { Type, Event, Application } ->
                     {ok, JObj};
                 _ when Timeout =:= infinity ->
@@ -1304,11 +1333,11 @@ wait_for_noop(NoopId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Wait forever for the channel to hangup
+%% Wait for a channel to be unbridged from (or destroyed)
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_unbridge/0 :: () -> {'ok', wh_json:json_object()}.
-wait_for_unbridge() ->
+-spec wait_for_channel_unbridge/0 :: () -> {'ok', wh_json:json_object()}.
+wait_for_channel_unbridge() ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case whapps_util:get_event_type(JObj) of
@@ -1317,12 +1346,36 @@ wait_for_unbridge() ->
                 { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
                     {ok, JObj};
                 _ ->
-                    wait_for_unbridge()
+                    wait_for_channel_unbridge()
             end;
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            wait_for_unbridge()
+            wait_for_channel_unbridge()
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Wait for a channel to be bridged to (or destroyed)
+%% @end
+%%--------------------------------------------------------------------
+-spec wait_for_channel_bridge/0 :: () -> {'ok', wh_json:json_object()}.
+wait_for_channel_bridge() ->
+    receive
+        {amqp_msg, {struct, _}=JObj} ->
+            case whapps_util:get_event_type(JObj) of
+                { <<"call_event">>, <<"CHANNEL_BRIDGE">> } ->
+                    {ok, JObj};
+                { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
+                    {ok, JObj};
+                _ ->
+                    wait_for_channel_bridge()
+            end;
+        _ ->
+            %% dont let the mailbox grow unbounded if
+            %%   this process hangs around...
+            wait_for_channel_bridge()
     end.
 
 %%--------------------------------------------------------------------

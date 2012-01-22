@@ -25,6 +25,7 @@
 -export([answer/1, answer_v/1]).
 -export([hold/1, hold_v/1]).
 -export([park/1, park_v/1]).
+-export([presence/1, presence_v/1]).
 -export([play_and_collect_digits/1, play_and_collect_digits_v/1]).
 -export([call_pickup/1, call_pickup_v/1]).
 -export([hangup/1, hangup_v/1]).
@@ -419,6 +420,26 @@ park_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PARK_REQ_HEADERS, ?PARK_REQ_VALUES, ?PARK_REQ_TYPES);
 park_v(JObj) ->
     park_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Presence a call - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec presence/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+presence(Prop) when is_list(Prop) ->
+    case presence_v(Prop) of
+        true -> wh_api:build_message(Prop, ?PRESENCE_REQ_HEADERS, ?OPTIONAL_PRESENCE_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for presence_req"}
+    end;
+presence(JObj) ->
+    presence(wh_json:to_proplist(JObj)).
+
+-spec presence_v/1 :: (proplist() | json_object()) -> boolean().
+presence_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PRESENCE_REQ_HEADERS, ?PRESENCE_REQ_VALUES, ?PRESENCE_REQ_TYPES);
+presence_v(JObj) ->
+    presence_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Set Custom Channel variables - see wiki
