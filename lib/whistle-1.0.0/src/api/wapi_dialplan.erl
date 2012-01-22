@@ -426,7 +426,7 @@ park_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec presence/1 :: (proplist() | json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec presence/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 presence(Prop) when is_list(Prop) ->
     case presence_v(Prop) of
         true -> wh_api:build_message(Prop, ?PRESENCE_REQ_HEADERS, ?OPTIONAL_PRESENCE_REQ_HEADERS);
@@ -435,7 +435,7 @@ presence(Prop) when is_list(Prop) ->
 presence(JObj) ->
     presence(wh_json:to_proplist(JObj)).
 
--spec presence_v/1 :: (proplist() | json_object()) -> boolean().
+-spec presence_v/1 :: (api_terms()) -> boolean().
 presence_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PRESENCE_REQ_HEADERS, ?PRESENCE_REQ_VALUES, ?PRESENCE_REQ_TYPES);
 presence_v(JObj) ->
