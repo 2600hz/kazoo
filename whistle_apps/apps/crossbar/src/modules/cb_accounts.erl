@@ -800,7 +800,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
                     Transaction = wh_json:from_list([{<<"amount">>, Units}
                                                      ,{<<"pvt_type">>, <<"credit">>}
                                                      ,{<<"pvt_description">>, <<"initial account balance">>}
-                                                    ]),                    
+                                                    ]),
                     case crossbar_doc:save(Context#cb_context{doc=Transaction, db_name=AccountDb}) of
                         #cb_context{resp_status=success} -> ok;
                         #cb_context{resp_error_msg=Err} -> ?LOG("failed to save credit doc: ~p", [Err])
