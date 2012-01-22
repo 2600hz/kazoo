@@ -13,11 +13,11 @@
 %% API
 -export([start_link/0, start_link/1, store/2, store/3, peek/1, fetch/1, erase/1, flush/0, fetch_keys/0, filter/1]).
 -export([start_local_link/0, store_local/3, store_local/4, peek_local/2, fetch_local/2,  erase_local/2
-	 ,flush_local/1, fetch_keys_local/1, filter_local/2]).
+         ,flush_local/1, fetch_keys_local/1, filter_local/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
@@ -126,8 +126,7 @@ filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred, 2) ->
 %%--------------------------------------------------------------------
 init([Name]) ->
     {ok, _} = timer:send_interval(1000, flush),
-    put(callid, Name),
-    ?LOG("Started new cache proc"),
+    ?LOG("started new cache proc: ~s", [Name]),
     {ok, dict:new()}.
 
 %%--------------------------------------------------------------------
@@ -146,14 +145,14 @@ init([Name]) ->
 %%--------------------------------------------------------------------
 handle_call({peek, K}, _, Dict) ->
     case dict:find(K, Dict) of
-	{ok, {_, V, _}} -> {reply, {ok, V}, Dict};
-	error -> {reply, {error, not_found}, Dict}
+        {ok, {_, V, _}} -> {reply, {ok, V}, Dict};
+        error -> {reply, {error, not_found}, Dict}
     end;
 handle_call({fetch, K}, _, Dict) ->
     case dict:find(K, Dict) of
-	{ok, {infinity=T, V, T}} -> {reply, {ok, V}, Dict};
-	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {wh_util:current_tstamp()+T, V, T} end, Dict), hibernate};
-	error -> {reply, {error, not_found}, Dict}
+        {ok, {infinity=T, V, T}} -> {reply, {ok, V}, Dict};
+        {ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {wh_util:current_tstamp()+T, V, T} end, Dict), hibernate};
+        error -> {reply, {error, not_found}, Dict}
     end;
 handle_call(fetch_keys, _, Dict) ->
     {reply, dict:fetch_keys(Dict), Dict};
@@ -193,8 +192,8 @@ handle_cast({flush}, _) ->
 handle_info(flush, Dict) ->
     Now = wh_util:current_tstamp(),
     {noreply, dict:filter(fun(_, {infinity,_,_}) -> true;
-			     (_, {T, _, _}) -> Now < T
-			  end, Dict), hibernate};
+                             (_, {T, _, _}) -> Now < T
+                          end, Dict), hibernate};
 handle_info(_Info, State) ->
     {noreply, State}.
 

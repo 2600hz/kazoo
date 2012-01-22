@@ -65,8 +65,6 @@ start_link(Node, _Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node]) ->
-    put(callid, wh_util:to_binary(Node)),
-
     ?LOG_SYS("starting new fs route listener for ~s", [Node]),
     process_flag(trap_exit, true),
 
@@ -125,7 +123,7 @@ handle_cast(_Msg, State) ->
                        ({'DOWN', reference(), 'process', pid(), term()}, #state{}) -> {'noreply', #state{}};
                        ({'EXIT', pid(), term()}, #state{}) -> {'noreply', #state{}}.
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
-    ?LOG("fetch unknown section: ~p So: ~p, K: ~p V: ~p ID: ~s", [_Section, _Something, _Key, _Value, ID]),
+    ?LOG("fetch unknown section from ~s: ~p So: ~p, K: ~p V: ~p ID: ~s", [Node, _Section, _Something, _Key, _Value, ID]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
     {noreply, State};
 
@@ -136,25 +134,25 @@ handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #sta
             erlang:monitor(process, LookupPid),
 
             LookupsReq = Stats#handler_stats.lookups_requested + 1,
-            ?LOG_START(CallID, "processing fetch request ~s (~b) in PID ~p", [FSID, LookupsReq, LookupPid]),
+            ?LOG_START(CallID, "processing fetch request ~s (~b) from ~s in PID ~p", [FSID, LookupsReq, Node, LookupPid]),
             {noreply, State#state{lookups=[{LookupPid, FSID, erlang:now()} | LUs]
                                   ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}, hibernate};
         {_Other, _Context} ->
-            ?LOG("ignoring event ~s in context ~s", [_Other, _Context]),
+            ?LOG("ignoring event ~s in context ~s from ~s", [_Other, _Context, Node]),
             _ = freeswitch:fetch_reply(Node, FSID, ?EMPTYRESPONSE),
             {noreply, State, hibernate}
     end;
 
-handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
-    ?LOG("lookup task ~p went down, ~p", [LU, _Reason]),
+handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs, node=Node}=State) ->
+    ?LOG("lookup task ~p from node ~s went down, ~p", [LU, Node, _Reason]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
 
-handle_info({'EXIT', _Pid, noconnection}, State) ->
-    ?LOG("noconnection received for node, pid: ~p", [_Pid]),
+handle_info({'EXIT', _Pid, noconnection}, #state{node=Node}=State) ->
+    ?LOG("noconnection received for node ~s, pid: ~p", [Node, _Pid]),
     {stop, normal, State};
 
-handle_info({'EXIT', LU, _Reason}, #state{lookups=LUs}=State) ->
-    ?LOG("lookup task ~p exited, ~p", [LU, _Reason]),
+handle_info({'EXIT', LU, _Reason}, #state{lookups=LUs, node=Node}=State) ->
+    ?LOG("lookup task ~p from node ~s exited, ~p", [LU, Node, _Reason]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
 
 handle_info({nodedown, Node}, #state{node=Node}=State) ->
@@ -275,33 +273,33 @@ process_route_req(Node, FSID, CallID, FSData) ->
 
 -spec authorize_and_route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), proplist()) -> 'ok'.
 authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
-    ?LOG("Starting authorization request"),
+    ?LOG("starting authorization request from node ~s", [Node]),
     {ok, AuthZPid} = ecallmgr_authz:authorize(FSID, CallID, FSData),
     route(Node, FSID, CallID, DefProp, AuthZPid).
 
 -spec route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), pid() | 'undefined') -> 'ok'.
 route(Node, FSID, CallID, DefProp, AuthZPid) ->
-    ?LOG("Starting route request"),
+    ?LOG("starting route request from node ~s", [Node]),
     {ok, RespJObj} = ecallmgr_amqp_pool:route_req(DefProp),
     RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
     authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV).
 
 -spec authorize/6 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), pid() | 'undefined', wh_json:json_object()) -> 'ok'.
 authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->
-    ?LOG("No authz available, validating route_resp"),
+    ?LOG("no authz available, validating route_resp on node ~s", [Node]),
     true = wapi_route:resp_v(RespJObj),
     reply(Node, FSID, CallID, RespJObj, RouteCCV);
 authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
-    ?LOG("Checking authz_resp"),
+    ?LOG("checking authz_resp on node ~s", [Node]),
     case ecallmgr_authz:is_authorized(AuthZPid) of
         {false, _} ->
-            ?LOG("Authz is false"),
+            ?LOG("sending reply to node ~s: authz is false", [Node]),
             reply_forbidden(Node, FSID);
         {true, CCVJObj} ->
             CCV = wh_json:to_proplist(CCVJObj),
-            ?LOG("Authz is true"),
+            ?LOG("sending reply to node ~s: authz is true", [Node]),
             true = wapi_route:resp_v(RespJObj),
-            ?LOG("Valid route resp"),
+            ?LOG("sending reply to node ~s: valid route resp", [Node]),
             RouteCCV1 = lists:foldl(fun({K,V}, RouteCCV0) -> wh_json:set_value(K, V, RouteCCV0) end, RouteCCV, CCV),
 
             reply(Node, FSID, CallID, RespJObj, RouteCCV1, AuthZPid)
@@ -317,11 +315,11 @@ reply_forbidden(Node, FSID) ->
     case freeswitch:fetch_reply(Node, FSID, XML) of
         ok ->
             %% only start control if freeswitch recv'd reply
-            ?LOG_END("freeswitch accepted our route unauthz");
+            ?LOG_END("node ~s accepted our route unauthz", [Node]);
         {error, Reason} ->
-            ?LOG_END("freeswitch rejected our route unauthz, ~p", [Reason]);
+            ?LOG_END("node ~s rejected our route unauthz, ~p", [Node, Reason]);
         timeout ->
-            ?LOG_END("received no reply from freeswitch, timeout")
+            ?LOG_END("received no reply from node ~s, timeout", [Node])
     end.
 
 -spec reply/5 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), wh_json:json_object()) -> 'ok'.
@@ -336,13 +334,13 @@ reply(Node, FSID, CallID, RespJObj, CCVs, AuthZPid) ->
     case freeswitch:fetch_reply(Node, FSID, XML) of
         ok ->
             %% only start control if freeswitch recv'd reply
-            ?LOG("freeswitch accepted our route (authzed), starting control and events"),
+            ?LOG("node ~s accepted our route (authzed), starting control and events", [Node]),
             start_control_and_events(Node, CallID, ServerQ, CCVs),
             ecallmgr_authz:authz_win(AuthZPid);
         {error, Reason} ->
-            ?LOG_END("freeswitch rejected our route response, ~p", [Reason]);
+            ?LOG_END("node ~s rejected our route response, ~p", [Node, Reason]);
         timeout ->
-            ?LOG_END("received no reply from freeswitch, timeout")
+            ?LOG_END("received no reply from node ~s, timeout", [Node])
     end.
 
 -spec start_control_and_events/4 :: (Node, CallID, SendTo, CCVs) -> ok when
