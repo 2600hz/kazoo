@@ -24,7 +24,6 @@ start_link() ->
     proc_lib:start_link(?MODULE, init, [self()], infinity, []).
 
 init(Parent) ->
-    timer:sleep(5000),
     case {couch_config:fetch(compact_automatically), couch_config:fetch(conflict_strategy)} of
         {true, undefined} ->
             ?LOG_SYS("just compacting"),
@@ -68,8 +67,7 @@ compact_all(ConflictStrategy, F) ->
 compact_node(Node) when is_atom(Node) ->
     compact_node(wh_util:to_binary(Node));
 compact_node(NodeBin) ->
-    put(callid, NodeBin),
-    ?LOG("compacting node"),
+    ?LOG("compacting node ~s", [NodeBin]),
 
     {Conn, AdminConn} = get_node_connections(NodeBin),
     {ok, DBs} = couch_util:db_info(Conn),
@@ -79,8 +77,7 @@ compact_node(NodeBin) ->
 compact_node(Node, ConflictStrategy) when is_atom(Node) ->
     compact_node(wh_util:to_binary(Node), ConflictStrategy);
 compact_node(NodeBin, ConflictStrategy) ->
-    put(callid, NodeBin),
-    ?LOG("compacting node"),
+    ?LOG("compacting node ~s", [NodeBin]),
 
     {Conn, _AdminConn} = get_node_connections(NodeBin),
     {ok, DBs} = couch_util:db_info(Conn),
@@ -91,8 +88,7 @@ compact_node(NodeBin, ConflictStrategy) ->
 compact_node(Node, ConflictStrategy, F) when is_atom(Node) ->
     compact_node(wh_util:to_binary(Node), ConflictStrategy, F);
 compact_node(NodeBin, ConflictStrategy, F) ->
-    put(callid, NodeBin),
-    ?LOG("compacting node"),
+    ?LOG("compacting node ~s", [NodeBin]),
 
     {Conn, _AdminConn} = get_node_connections(NodeBin),
     {ok, DBs} = couch_util:db_info(Conn),
@@ -115,7 +111,6 @@ compact_db(DB) ->
 compact_db(Node, DB) when is_atom(Node) ->
     compact_db(wh_util:to_binary(Node), DB);
 compact_db(NodeBin, DB) ->
-    put(callid, NodeBin),
     {Conn, AdminConn} = get_node_connections(NodeBin),
     ok = compact_node_db(NodeBin, DB, Conn, AdminConn),
     done.
@@ -123,7 +118,6 @@ compact_db(NodeBin, DB) ->
 compact_db(Node, DB, ConflictStrategy) when is_atom(Node) ->
     compact_db(wh_util:to_binary(Node), DB, ConflictStrategy);
 compact_db(NodeBin, DB, ConflictStrategy) ->
-    put(callid, NodeBin),
     {Conn, AdminConn} = get_node_connections(NodeBin),
 
     _ = couch_conflict:resolve(Conn, DB, couch_conflict:default_view(), ConflictStrategy),
@@ -146,8 +140,7 @@ compact_db(NodeBin, DB, ConflictStrategy, F) ->
 -spec compact_node_db/4 :: (ne_binary(), ne_binary(), #server{}, #server{}) -> 'ok'.
 compact_node_db(NodeBin, DB, Conn, AdminConn) ->
     DBEncoded = binary:replace(DB, <<"/">>, <<"%2f">>, [global]),
-    put(callid, <<NodeBin/binary, "-", DBEncoded/binary>>),
-    ?LOG("starting DB compaction"),
+    ?LOG("compacting db ~s node ~s", [DBEncoded, NodeBin]),
 
     case get_db_shards(AdminConn, DBEncoded) of
         [] ->
