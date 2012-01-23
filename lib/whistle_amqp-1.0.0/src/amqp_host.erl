@@ -111,7 +111,26 @@ stop(Srv) ->
 init([Host, Conn, UseFederation]) when is_pid(Conn) ->
     process_flag(trap_exit, true),
     ?LOG_SYS("starting amqp host for broker ~s", [Host]),
-    {ok, {Host, Conn, UseFederation}, 0}.
+
+    Ref = erlang:monitor(process, Conn),
+    case start_channel(Conn) of
+        {Channel, _} = PubChan when is_pid(Channel) ->
+            _ = load_exchanges(Channel, UseFederation),
+            amqp_channel:register_return_handler(Channel, self()),
+            {ok, #state{
+               connection = {Conn, Ref}
+               ,publish_channel = PubChan
+               ,misc_channel = start_channel(Conn)
+               ,consumers = dict:new()
+               ,manager = whereis(amqp_mgr)
+               ,amqp_h = Host
+               ,use_federation = UseFederation
+              }};
+        {error, E} ->
+            ?LOG_SYS("unable to initialize publish channel for amqp host ~s, ~p", [Host, E]),
+            erlang:demonitor(Ref, [flush]),
+            {stop, E, Conn}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -456,7 +475,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
 handle_info({'DOWN', Ref, process, ConnPid, Reason}, #state{connection={ConnPid, Ref}}=State) ->
     ?LOG_SYS("recieved notification our connection to the amqp broker died: ~p", [Reason]),
     {stop, normal, State};
@@ -465,29 +483,6 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{return_handlers=RHDict
     ?LOG_SYS("recieved notification monitored process ~p  died ~p, searching for reference", [_Pid, _Reason]),
     erlang:demonitor(Ref, [flush]),
     {noreply, remove_ref(Ref, State#state{return_handlers=dict:erase(Ref, RHDict)}), hibernate};
-
-handle_info(timeout, {Host, Conn, UseFederation}) ->
-    Ref = erlang:monitor(process, Conn),
-    case start_channel(Conn) of
-        {Channel, _} = PubChan when is_pid(Channel) ->
-            _ = load_exchanges(),
-            amqp_channel:register_return_handler(Channel, self()),
-            {noreply, #state{
-               connection = {Conn, Ref}
-               ,publish_channel = PubChan
-               ,misc_channel = start_channel(Conn)
-               ,consumers = dict:new()
-               ,manager = whereis(amqp_mgr)
-               ,amqp_h = Host
-               ,use_federation = UseFederation
-              }
-             , hibernate
-            };
-        {error, E} ->
-            ?LOG_SYS("unable to initialize publish channel for amqp host ~s, ~p", [Host, E]),
-            erlang:demonitor(Ref, [flush]),
-            {stop, E, Conn}
-    end;
 
 handle_info({#'basic.return'{}, #amqp_msg{}}=ReturnMsg, #state{return_handlers=RHDict}=State) ->
     spawn(fun() ->
@@ -566,13 +561,15 @@ start_channel(Connection, Pid) ->
             E
     end.
 
--spec load_exchanges/0 :: () -> pid().
-load_exchanges() ->
-    spawn(fun() ->
-                  lists:foreach(fun({Ex, Type}) ->
-                                        amqp_util:new_exchange(Ex, Type)
-                                end, ?KNOWN_EXCHANGES)
-          end).
+-spec load_exchanges/2 :: (pid(), boolean()) -> 'ok'.
+load_exchanges(C, UseFederation) ->
+    lists:foreach(fun({Ex, Type}) ->
+                          ED = #'exchange.declare'{
+                            exchange = Ex
+                            ,type = Type
+                           },
+                          amqp_channel:call(C, exchange_declare(ED, UseFederation))
+                  end, ?KNOWN_EXCHANGES).
 
 -spec remove_ref/2 :: (reference(), #state{}) -> #state{}.
 remove_ref(Ref, #state{connection={Conn, _}, publish_channel={C,Ref}}=State) ->
