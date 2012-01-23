@@ -15,20 +15,16 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("notify.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [
-		     {notify_vm, [
-				  {<<"notification">>, <<"new_voicemail">>}
-				 ]}
-		    ]).
--define(BINDINGS, [
-		   {notifications, [{notices, [new_voicemail]}]}
-		  ]).
+-define(RESPONDERS, [{notify_vm, [{<<"notification">>, <<"new_voicemail">>}]}
+                     ,{notify_deregister, [{<<"notification">>, <<"deregister">>}]}
+                    ]).
+-define(BINDINGS, [{notifications, [{restrict_to, [new_voicemail, deregister]}]}]).
 -define(QUEUE_NAME, <<"notify_listener">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
@@ -47,12 +43,12 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				      ,{queue_name, ?QUEUE_NAME}
-				      ,{queue_options, ?QUEUE_OPTIONS}
-				      ,{consume_options, ?CONSUME_OPTIONS}
-				      ,{basic_qos, 1} %% process one notification at a time (will round-robin amongst notify whapps)
-				     ], []).
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                      ,{basic_qos, 1} %% process one notification at a time (will round-robin amongst notify whapps)
+                                     ], []).
 
 stop(Srv) ->
     gen_listener:stop(Srv).

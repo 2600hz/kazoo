@@ -12,6 +12,8 @@
 
 %% API
 -export([start_link/0, stop/1]).
+-export([reg_query_resp/2]).
+-export([add_query_resp_consumer/3]).
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -22,10 +24,11 @@
 -define(RESPONDERS, [{reg_authn_req, [{<<"directory">>, <<"authn_req">>}]}
                      ,{reg_success, [{<<"directory">>, <<"reg_success">>}]}
                      ,{reg_query, [{<<"directory">>, <<"reg_query">>}]}
+                     ,{{?MODULE, reg_query_resp}, [{<<"directory">>, <<"reg_query_resp">>}]}
                     ]).
--define(BINDINGS, [
-                   {authn, []}
+-define(BINDINGS, [{authn, []}
                    ,{registration, []}
+                   ,{self, []}
                   ]).
 
 -define(SERVER, ?MODULE).
@@ -55,6 +58,21 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
+-spec add_query_resp_consumer/3 :: (pid(), ne_binary(), ne_binary()) -> ok.
+add_query_resp_consumer(Srv, User, Realm) ->
+    gen_server:cast(Srv, {add_consumer, User, Realm, self()}).
+
+-spec reg_query_resp/2 :: (wh_json:json_object(), proplist()) -> ok.
+reg_query_resp(JObj, Props) ->
+    Reg = wh_json:get_value(<<"Fields">>, JObj),
+    User =  wh_json:get_value(<<"Username">>, Reg),
+    Realm =  wh_json:get_value(<<"Realm">>, Reg),
+    Consumers = props:get_value(consumers, Props),
+    case props:get_value({User, Realm}, Consumers) of
+        undefined -> ok;
+        Consumer -> Consumer ! {reg_query_resp, Reg}, ok
+    end.
+
 %%%===================================================================
 %%% gen_listener callbacks
 %%%===================================================================
@@ -73,7 +91,7 @@ stop(Srv) ->
 init([]) ->
     process_flag(trap_exit, true),
     ?LOG_SYS("starting new registrar server"),
-    {ok, ok}.
+    {ok, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -89,8 +107,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Msg, _From, State) ->
-    {noreply, State}.
+handle_call(_Msg, _From, Consumers) ->
+    {noreply, Consumers}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,8 +120,12 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast({add_consumer, User, Realm, Consumer}, Consumers) ->
+    erlang:monitor(process, Consumer),
+    ?LOG("added req query response consumer (~p) for ~s@~s", [Consumer, User, Realm]),
+    {noreply, [{{User, Realm}, Consumer}|Consumers]};
+handle_cast(_Msg, Consumers) ->
+    {noreply, Consumers}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -115,9 +137,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_Info, State) ->
+handle_info({'DOWN', _, _, Consumer, _R}, Consumers) ->
+    ?LOG("removed req query response consumer (~p): ~p", [Consumer, _R]),
+    {noreply, lists:filter(fun({_, C}) when C =:= Consumer -> false; (_) -> true end, Consumers)};
+handle_info(_Info, Consumers) ->
     ?LOG_SYS("Unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {noreply, Consumers}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -127,8 +152,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {reply, []}.
+handle_event(_JObj, Consumers) ->
+    {reply, [{consumers, Consumers}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -153,8 +178,8 @@ terminate(_Reason, _) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+code_change(_OldVsn, Consumers, _Extra) ->
+    {ok, Consumers}.
 
 %%%===================================================================
 %%% Internal functions

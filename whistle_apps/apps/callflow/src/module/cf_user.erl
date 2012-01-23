@@ -57,6 +57,6 @@ get_endpoints(UserId, Call) ->
     lists:foldr(fun(EndpointId, Acc) ->
                         case cf_endpoint:build(EndpointId, Call) of
                             {ok, Endpoint} -> Endpoint ++ Acc;
-                            {error, _} -> Acc
+                            {error, _E} -> Acc
                         end
                 end, [], cf_attributes:fetch_owned_by(UserId, device, Call)).

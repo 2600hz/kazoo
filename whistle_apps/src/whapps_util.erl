@@ -443,16 +443,18 @@ update_views([Found|Finds], Db, Views, Remove) ->
         undefined when Remove -> 
             ?LOG("removing view '~s' from '~s'", [Id, Db]),
             couch_mgr:del_doc(Db, Doc),
-            update_views(Finds, Db, proplists:delete(Id, Views), Remove);
-        undefined -> 
-            update_views(Finds, Db, proplists:delete(Id, Views), Remove);
+            update_views(Finds, Db, props:delete(Id, Views), Remove);
+        undefined ->
+            ?LOG("no id in the views"),
+            update_views(Finds, Db, props:delete(Id, Views), Remove);
         View1 when View1 =:= RawDoc ->
-            update_views(Finds, Db, proplists:delete(Id, Views), Remove);
+            ?LOG("view matches the raw doc, skipping"),
+            update_views(Finds, Db, props:delete(Id, Views), Remove);
         View2 ->
             ?LOG("updating view '~s' in '~s'", [Id, Db]),
             Rev = wh_json:get_value(<<"_rev">>, Doc),
             couch_mgr:ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, View2)),
-            update_views(Finds, Db, proplists:delete(Id, Views), Remove)
+            update_views(Finds, Db, props:delete(Id, Views), Remove)
     end.
 
 %%--------------------------------------------------------------------

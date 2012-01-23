@@ -164,7 +164,7 @@ rm_binding(Srv, Binding, Props) ->
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
 
-    put(callid, wh_util:to_binary(Module)), %% identify the client module for this gen_listener
+    ?LOG("started new cache proc: ~s", [wh_util:to_binary(Module)]),
 
     ModState = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
                    {ok, MS} ->

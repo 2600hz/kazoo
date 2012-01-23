@@ -38,12 +38,29 @@ handle_req(ApiJObj, _Props) ->
 
     JObj2 = case reg_util:lookup_auth_user(Username, Realm) of
                 {ok, AuthJObj} ->
-                    wh_json:set_value(<<"Authorizing-ID">>, wh_json:get_value([<<"doc">>, <<"_id">>], AuthJObj), JObj1);
+                    Updaters = [fun(J) ->
+                                        AuthId = wh_json:get_value([<<"doc">>, <<"_id">>], AuthJObj), 
+                                        wh_json:set_value(<<"Authorizing-ID">>, AuthId, J) 
+                                end
+                                ,fun(J) ->
+                                         AccountId = wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], AuthJObj), 
+                                         wh_json:set_value(<<"Account-ID">>, AccountId, J) 
+                                 end
+                                ,fun(J) ->  
+                                         AccountDb = wh_json:get_value([<<"doc">>, <<"pvt_account_db">>], AuthJObj), 
+                                         wh_json:set_value(<<"Account-DB">>, AccountDb, J)
+                                 end
+                                ,fun(J) ->  
+                                         SuppressNotify = wh_json:is_true([<<"doc">>, <<"suppress_unregister_notifications">>], AuthJObj), 
+                                         wh_json:set_value(<<"Suppress-Unregister-Notify">>, SuppressNotify, J)
+                                 end
+                               ],
+                    lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters);
                 {error, not_found} ->
                     JObj1
     end,
 
     {ok, Cache} = registrar_sup:cache_proc(),
-    wh_cache:store_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username), JObj2, Expires),
+    wh_cache:store_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username), JObj2, Expires, fun reg_util:reg_removed_from_cache/3),
 
     ?LOG_END("cached registration ~s@~s for ~psec", [Username, Realm, Expires]).

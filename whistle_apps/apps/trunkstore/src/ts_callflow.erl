@@ -30,6 +30,7 @@
           aleg_callid = <<>> :: binary()
           ,bleg_callid = <<>> :: binary()
           ,acctid = <<>> :: binary()
+          ,acctdb = <<>> :: binary()
           ,route_req_jobj = wh_json:new() :: wh_json:json_object()
           ,ep_data = wh_json:new() :: wh_json:json_object() %% data for the endpoint, either an actual endpoint or an offnet request
           ,my_q = <<>> :: binary()
@@ -42,8 +43,12 @@
 init(RouteReqJObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
     put(callid, CallID),
-    ?LOG("Init done"),
-    #state{aleg_callid=CallID, route_req_jobj=RouteReqJObj, acctid=wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj)}.
+
+    AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
+    true = is_trunkstore_acct(AcctID),
+
+    ?LOG("Init done for route req for account ~s", [AcctID]),
+    #state{aleg_callid=CallID, route_req_jobj=RouteReqJObj, acctid=AcctID, acctdb=wh_util:format_account_id(AcctID, encoded)}.
 
 -spec start_amqp/1 :: (#state{}) -> #state{}.
 start_amqp(#state{}=State) ->
@@ -186,7 +191,7 @@ wait_for_cdr(State, Timeout) ->
 
 -spec process_event_for_cdr/2 :: (#state{}, wh_json:json_object()) -> {'hangup', #state{}} | 'ignore' |
                                                               {'cdr', 'aleg' | 'bleg', wh_json:json_object(), #state{}}.
-process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
+process_event_for_cdr(#state{aleg_callid=ALeg}=State, JObj) ->
     case wh_util:get_event_type(JObj) of
         {<<"resource">>, <<"offnet_resp">>} ->
             case wh_json:get_value(<<"Response-Message">>) of
@@ -229,16 +234,12 @@ process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
             Leg = wh_json:get_value(<<"Call-ID">>, JObj),
             Duration = ts_util:get_call_duration(JObj),
 
-            {R, RI, RM, S} = ts_util:get_rate_factors(JObj),
-            Cost = ts_util:calculate_cost(R, RI, RM, S, Duration),
-
             ?LOG("CDR received for leg ~s", [Leg]),
             ?LOG("Leg to be billed for ~b seconds", [Duration]),
-            ?LOG("Acct ~s to be charged ~p if per_min", [AcctID, Cost]),
 
             case Leg =:= ALeg of
-                true -> {cdr, aleg, JObj, State#state{call_cost=Cost}};
-                false -> {cdr, bleg, JObj, State#state{call_cost=Cost}}
+                true -> {cdr, aleg, JObj, State};
+                false -> {cdr, bleg, JObj, State}
             end;
         _E ->
             ?LOG("Ignorable event: ~p", [_E]),
@@ -248,8 +249,7 @@ process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
 -spec finish_leg/2 :: (#state{}, 'undefined' | ne_binary()) -> 'ok'.
 finish_leg(_State, undefined) ->
     ok;
-finish_leg(#state{acctid=AcctID, call_cost=Cost}=State, Leg) ->
-    ok = ts_acctmgr:release_trunk(AcctID, Leg, Cost),
+finish_leg(#state{}=State, _Leg) ->
     send_hangup(State).
 
 -spec send_hangup/1 :: (#state{}) -> 'ok'.
@@ -314,3 +314,12 @@ set_failover(State, Failover) ->
 -spec get_failover/1 :: (#state{}) -> wh_json:json_object().
 get_failover(#state{failover=Fail}) ->
     Fail.
+
+-spec is_trunkstore_acct/1 :: (ne_binary() | 'undefined') -> boolean().
+is_trunkstore_acct(undefined) -> false;
+is_trunkstore_acct(AcctID) ->
+    case couch_mgr:get_results(wh_util:format_account_id(AcctID, encoded), <<"trunkstore/crossbar_listing">>, [{<<"reduce">>, true}]) of
+        {ok, []} -> false;
+        {ok, [Cnt]} -> wh_json:get_integer_value(<<"value">>, Cnt, 0) > 0;
+        _ -> false
+    end.

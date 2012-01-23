@@ -26,7 +26,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec build/2 :: ('undefined' | ne_binary() | wh_json:json_object(), #cf_call{}) -> {'ok', wh_json:json_objects()} | 
-                                                                            {'error', term()}.
+                                                                                    {'error', term()}.
 -spec build/3 :: ('undefined' | ne_binary() | wh_json:json_object(), 'undefined' | wh_json:json_object(), #cf_call{}) -> {'ok', wh_json:json_objects()} |
                                                                                                                          {'error', term()}.
 build(EndpointId, Call) ->
@@ -39,7 +39,11 @@ build(EndpointId, undefined, Call) ->
 build(EndpointId, Properties, Call) when is_binary(EndpointId) ->
     case ?MODULE:get(EndpointId, Call) of
         {ok, Endpoint} ->
-            build(Endpoint, Properties, Call);
+            case wh_json:is_false(<<"enabled">>, Endpoint) of
+                true -> {error, disabled};
+                false ->
+                    build(Endpoint, Properties, Call)
+            end;
         {error, _}=E ->
             E
     end;
@@ -66,8 +70,8 @@ build(Endpoint, Properties, #cf_call{owner_id=OwnerId, authorizing_id=Authorizin
 %% bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoints/3 :: (wh_json:json_object(), wh_json:json_object(), #cf_call{}) -> {'ok', wh_json:json_objects()}
-                                                                              | {'error', 'no_endpoints'}.
+-spec create_endpoints/3 :: (wh_json:json_object(), wh_json:json_object(), #cf_call{}) -> {'ok', wh_json:json_objects()} |
+                                                                                          {'error', 'no_endpoints'}.
 create_endpoints(Endpoint, Properties, Call) ->
     Fwd = cf_attributes:call_forward(Endpoint, Call),
     Substitue = wh_json:is_false(<<"substitute">>, Fwd),
@@ -76,22 +80,27 @@ create_endpoints(Endpoint, Properties, Call) ->
     Endpoints = case {IgnoreFwd, Substitue, Fwd} of
                     %% if the call forward object is undefined then there is no fwd'n
                     {_, _, undefined} ->
+                        ?LOG("callfwd is undefined, try creating sip endpoint"),
                         [catch(create_sip_endpoint(Endpoint, Properties, Call))];
                     %% if ignore ring groups is true and susbtitues is true (hence false via is_false)
                     %% then there are no endpoints to ring
                     {true, false, _} ->
+                        ?LOG("no endpoints to ring"),
                         [];
                     %% if ignore ring groups is true and susbtitues is false (hence true via is_false)
                     %% then try to ring just the device
                     {true, true, _} ->
+                        ?LOG("trying to ring just the device"),
                         [catch(create_sip_endpoint(Endpoint, Properties, Call))];
                     %% if we are not ignoring ring groups and and substitute is not set to false
                     %% (hence false via is_false) then only ring the fwd'd number
                     {false, false, _} ->
+                        ?LOG("trying to ring the fwd number in ring group"),
                         [catch(create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call))];
                     %% if we are not ignoring ring groups and and substitute is set to false
                     %% (hence true via is_false) then only ring the fwd'd number
                     {false, true, _} ->
+                        ?LOG("trying to ring the fwd number only"),
                         [catch(create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call))
                          ,catch(create_sip_endpoint(Endpoint, Properties, Call))]
                 end,
@@ -118,7 +127,7 @@ get(EndpointId, #cf_call{account_db=Db}) ->
         {error, not_found} ->
             case couch_mgr:open_doc(Db, EndpointId) of
                 {ok, JObj}=OK ->
-                    wh_cache:store({?MODULE, Db, EndpointId}, JObj, 900),
+                    wh_cache:store({?MODULE, Db, EndpointId}, JObj, 300),
                     OK;
                 {error, R}=E ->
                     ?LOG("unable to fetch endpoint ~s: ~p", [EndpointId, R]),
@@ -151,6 +160,7 @@ create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_
                                      %% if both the internal number and name are different, use them!
                                      {AltCIDNum, AltCIDName} -> {AltCIDNum, AltCIDName}
                                  end,
+
     Prop = [{<<"Invite-Format">>, wh_json:get_value([<<"sip">>, <<"invite_format">>], Endpoint, <<"username">>)}
             ,{<<"To-User">>, wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)}
             ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, AccountId)}
@@ -303,5 +313,13 @@ generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
                            false -> wh_json:set_value(<<"Fax-Enabled">>, <<"true">>, J)
                        end
                end
+               ,fun(J) ->
+                        case wh_json:get_value(<<"pvt_type">>, Endpoint) of
+                            <<"device">> ->
+                                ?LOG("setting inherit_codec"),
+                                wh_json:set_value(<<"Inherit-Codec">>, <<"true">>, J);
+                            false -> J
+                        end
+                end
               ],
     lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), CCVFuns).

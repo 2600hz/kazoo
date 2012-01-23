@@ -41,10 +41,10 @@ start_link() ->
 start_handlers(Node, Options) when is_atom(Node) ->
     NodeB = wh_util:to_binary(Node),
     [ begin
-	  Name = wh_util:to_atom(<<NodeB/binary, H/binary>>, true),
-	  Mod = wh_util:to_atom(<<"ecallmgr_fs", H/binary>>),
-	  ?LOG("Starting handler ~s", [Name]),
-	  supervisor:start_child(?SERVER, ?CHILD(Name, Mod, [Node, Options]))
+          Name = wh_util:to_atom(<<NodeB/binary, H/binary>>, true),
+          Mod = wh_util:to_atom(<<"ecallmgr_fs", H/binary>>),
+          ?LOG("Starting handler ~s", [Name]),
+          supervisor:start_child(?SERVER, ?CHILD(Name, Mod, [Node, Options]))
       end
       || H <- [<<"_auth">>, <<"_route">>, <<"_node">>] ].
 
@@ -52,24 +52,23 @@ start_handlers(Node, Options) when is_atom(Node) ->
 stop_handlers(Node) when is_atom(Node) ->
     NodeB = wh_util:to_binary(Node),
     [ begin
-	  ok = supervisor:terminate_child(?SERVER, Name),
-	  supervisor:delete_child(?SERVER, Name)
+          ok = supervisor:terminate_child(?SERVER, Name),
+          supervisor:delete_child(?SERVER, Name)
       end || {Name, _, _, [_]} <- supervisor:which_children(?SERVER)
-		 ,node_matches(NodeB, wh_util:to_binary(Name))
+                 ,node_matches(NodeB, wh_util:to_binary(Name))
     ].
 
 -spec node_handlers/0 :: () -> [pid(),...] | [].
 node_handlers() ->
     [ Pid || {_, Pid, worker, [HandlerMod]} <- supervisor:which_children(?SERVER),
-	     HandlerMod =:= ecallmgr_fs_node].
+             HandlerMod =:= ecallmgr_fs_node].
 
 -spec get_handler_pids/1 :: (atom()) -> {pid() | 'error', pid() | 'error', pid() | 'error'}.
 get_handler_pids(Node) when is_atom(Node) ->
     NodeB = wh_util:to_binary(Node),
     NodePids = [ {HandlerMod, Pid} || {Name, Pid, worker, [HandlerMod]} <- supervisor:which_children(?SERVER)
-					  ,node_matches(NodeB, wh_util:to_binary(Name))],
-    {
-      props:get_value(ecallmgr_fs_auth, NodePids, error)
+                                          ,node_matches(NodeB, wh_util:to_binary(Name))],
+    {props:get_value(ecallmgr_fs_auth, NodePids, error)
      ,props:get_value(ecallmgr_fs_route, NodePids, error)
      ,props:get_value(ecallmgr_fs_node, NodePids, error)
     }.
@@ -108,6 +107,6 @@ init([]) ->
 node_matches(NodeB, Name) ->
     Size = byte_size(NodeB),
     case binary:match(Name, NodeB) of
-	{_, End} -> Size =:= End;
-	nomatch -> false
+        {_, End} -> Size =:= End;
+        nomatch -> false
     end.

@@ -11,13 +11,25 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, start_link/1, store/2, store/3, peek/1, fetch/1, erase/1, flush/0, fetch_keys/0, filter/1]).
--export([start_local_link/0, store_local/3, store_local/4, peek_local/2, fetch_local/2,  erase_local/2
-	 ,flush_local/1, fetch_keys_local/1, filter_local/2]).
+-export([start_link/0, start_link/1]).
+-export([store/2, store/3, store/4]).
+-export([peek/1]).
+-export([fetch/1, fetch_keys/0]).
+-export([erase/1]).
+-export([flush/0]).
+-export([filter/1]).
+
+-export([start_local_link/0]).
+-export([store_local/3, store_local/4, store_local/5]).
+-export([peek_local/2]).
+-export([fetch_local/2, fetch_keys_local/1]).
+-export([erase_local/2]).
+-export([flush_local/1]). 
+-export([filter_local/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
@@ -47,11 +59,20 @@ start_local_link() ->
 
 %% T - seconds to store the pair
 -spec store/2 :: (term(), term()) -> 'ok'.
--spec store/3 :: (term(), term(), pos_integer() | 'infinity') -> 'ok'.
+-spec store/3 :: (term(), term(), pos_integer() | 'infinity' | function()) -> 'ok'.
+-spec store/4 :: (term(), term(), pos_integer() | 'infinity', function()) -> 'ok'.
+
 store(K, V) ->
     store(K, V, ?EXPIRES).
+
+store(K, V, Fun) when is_function(Fun) ->
+    store(K, V, ?EXPIRES, Fun);
 store(K, V, T) ->
-    gen_server:cast(?SERVER, {store, K, V, T}).
+    gen_server:cast(?SERVER, {store, K, V, T, undefined}).
+
+store(K, V, T, Fun) when is_function(Fun) ->
+    {arity, 3} = erlang:fun_info(Fun, arity),
+    gen_server:cast(?SERVER, {store, K, V, T, Fun}).
 
 -spec peek/1 :: (term()) -> {'ok', term()} | {'error', 'not_found'}.
 peek(K) ->
@@ -79,11 +100,20 @@ filter(Pred) when is_function(Pred, 2) ->
 
 %% Local cache API
 -spec store_local/3 :: (pid(), term(), term()) -> 'ok'.
--spec store_local/4 :: (pid(), term(), term(), integer()) -> 'ok'.
+-spec store_local/4 :: (pid(), term(), term(), pos_integer() | 'infinity' | function() | {atom(), atom()}) -> 'ok'.
+-spec store_local/5 :: (pid(), term(), term(), pos_integer() | 'infinity', function() | {atom(), atom()}) -> 'ok'.
+
 store_local(Srv, K, V) when is_pid(Srv) ->
     store_local(Srv, K, V, ?EXPIRES).
+
+store_local(Srv, K, V, Fun) when is_pid(Srv), is_function(Fun) ->
+    store_local(Srv, K, V, ?EXPIRES, Fun);
 store_local(Srv, K, V, T) when is_pid(Srv) ->
-    gen_server:cast(Srv, {store, K, V, T}).
+    gen_server:cast(Srv, {store, K, V, T, undefined}).
+
+store_local(Srv, K, V, T, Fun) when is_pid(Srv), is_function(Fun) ->
+    {arity, 3} = erlang:fun_info(Fun, arity),
+    gen_server:cast(Srv, {store, K, V, T, Fun}).
 
 -spec peek_local/2 :: (pid(), term()) -> {'ok', term()} | {'error', 'not_found'}.
 peek_local(Srv, K) when is_pid(Srv) ->
@@ -126,8 +156,7 @@ filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred, 2) ->
 %%--------------------------------------------------------------------
 init([Name]) ->
     {ok, _} = timer:send_interval(1000, flush),
-    put(callid, Name),
-    ?LOG("Started new cache proc"),
+    ?LOG("started new cache proc: ~s", [Name]),
     {ok, dict:new()}.
 
 %%--------------------------------------------------------------------
@@ -146,19 +175,19 @@ init([Name]) ->
 %%--------------------------------------------------------------------
 handle_call({peek, K}, _, Dict) ->
     case dict:find(K, Dict) of
-	{ok, {_, V, _}} -> {reply, {ok, V}, Dict};
-	error -> {reply, {error, not_found}, Dict}
+        {ok, {_, V, _, _}} -> {reply, {ok, V}, Dict};
+        error -> {reply, {error, not_found}, Dict}
     end;
 handle_call({fetch, K}, _, Dict) ->
     case dict:find(K, Dict) of
-	{ok, {infinity=T, V, T}} -> {reply, {ok, V}, Dict};
-	{ok, {_, V, T}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {wh_util:current_tstamp()+T, V, T} end, Dict), hibernate};
-	error -> {reply, {error, not_found}, Dict}
+        {ok, {infinity=T, V, T, _}} -> {reply, {ok, V}, Dict};
+        {ok, {_, V, T, F}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {wh_util:current_tstamp()+T, V, T, F} end, Dict), hibernate};
+        error -> {reply, {error, not_found}, Dict}
     end;
 handle_call(fetch_keys, _, Dict) ->
     {reply, dict:fetch_keys(Dict), Dict};
 handle_call({filter, Pred}, _, Dict) ->
-    KV = dict:map(fun(_, {_,V,_}) -> V end, Dict),
+    KV = dict:map(fun(_, {_,V,_, _}) -> V end, Dict),
     {reply, dict:to_list(dict:filter(Pred, KV)), Dict}.
 
 %%--------------------------------------------------------------------
@@ -171,13 +200,23 @@ handle_call({filter, Pred}, _, Dict) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({store, K, V, infinity=T}, Dict) ->
-    {noreply, dict:store(K, {T, V, T}, Dict), hibernate};
-handle_cast({store, K, V, T}, Dict) ->
-    {noreply, dict:store(K, {wh_util:current_tstamp()+T, V, T}, Dict), hibernate};
+handle_cast({store, K, V, infinity=T, F}, Dict) ->
+    {noreply, dict:store(K, {T, V, T, F}, Dict), hibernate};
+handle_cast({store, K, V, T, F}, Dict) ->
+    {noreply, dict:store(K, {wh_util:current_tstamp()+T, V, T, F}, Dict), hibernate};
 handle_cast({erase, K}, Dict) ->
+    case dict:find(K, Dict) of
+        {ok, {_, _, _, undefined}} -> ok;
+        {ok, {_, V, _, F}} -> spawn(fun() -> F(K, V, erase) end);
+        _ -> ok
+    end,
     {noreply, dict:erase(K, Dict), hibernate};
-handle_cast({flush}, _) ->
+handle_cast({flush}, Dict) ->
+    [(fun({_, {_, _, _, undefined}}) -> ok;
+         ({K, {_, V, _, F}}) -> spawn(fun() -> F(K, V, flush) end) 
+      end)(Elem)
+     || Elem <- dict:to_list(Dict) 
+    ],
     {noreply, dict:new(), hibernate}.
 
 %%--------------------------------------------------------------------
@@ -192,9 +231,14 @@ handle_cast({flush}, _) ->
 %%--------------------------------------------------------------------
 handle_info(flush, Dict) ->
     Now = wh_util:current_tstamp(),
-    {noreply, dict:filter(fun(_, {infinity,_,_}) -> true;
-			     (_, {T, _, _}) -> Now < T
-			  end, Dict), hibernate};
+    Filter = fun(_, {infinity, _, _, _}) -> true;
+                (_, {T, _, _, _}) when Now < T -> true;
+                (_, {_, _, _, undefined}) -> false;
+                (K, {_, V, _, F}) -> 
+                     spawn(fun() -> F(K, V, expire) end),
+                     false
+             end,
+    {noreply, dict:filter(Filter, Dict), hibernate};
 handle_info(_Info, State) ->
     {noreply, State}.
 

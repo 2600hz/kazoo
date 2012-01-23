@@ -58,23 +58,38 @@ distributed_presence(Srv, Type, Event) ->
 
 -spec show_channels/1 :: (pid()) -> [proplist(),...] | [].
 show_channels(Srv) ->
-    gen_server:call(Srv, show_channels).
+    case catch(gen_server:call(Srv, show_channels, 100)) of
+        {'EXIT', _} -> [];
+        Else -> Else
+    end.        
 
 -spec hostname/1 :: (pid()) -> fs_api_ret().
 hostname(Srv) ->
-    gen_server:call(Srv, hostname).
+    case catch(gen_server:call(Srv, hostname, 100)) of
+        {'EXIT', _} -> timeout;
+        Else -> Else
+    end.
 
 -spec fs_node/1 :: (pid()) -> atom().
 fs_node(Srv) ->
-    gen_server:call(Srv, fs_node).
+    case catch(gen_server:call(Srv, fs_node, 100)) of
+        {'EXIT', _} -> undefined;
+        Else -> Else
+    end.
 
 -spec uuid_exists/2 :: (pid(), ne_binary()) -> boolean().
 uuid_exists(Srv, UUID) ->
-    gen_server:call(Srv, {uuid_exists, UUID}).
+    case catch(gen_server:call(Srv, {uuid_exists, UUID}, 100)) of
+        {'EXIT', _} -> false;
+        Else -> Else
+    end.
 
 -spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | {'error', ne_binary()} | 'timeout'.
 uuid_dump(Srv, UUID) ->
-    gen_server:call(Srv, {uuid_dump, UUID}).
+    case catch(gen_server:call(Srv, {uuid_dump, UUID}, 100)) of
+        {'EXIT', _} -> [];
+        Else -> Else
+    end.        
 
 -spec start_link/1 :: (atom()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node) ->
@@ -85,8 +100,7 @@ start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
 init([Node, Options]) ->
-    put(callid, wh_util:to_binary(Node)),
-    ?LOG_SYS("starting new fs node"),
+    ?LOG_SYS("starting new fs node ~s", [Node]),
 
     process_flag(trap_exit, true),
 
@@ -101,8 +115,8 @@ handle_call(hostname, _From, #state{node=Node}=State) ->
 handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
     spawn(fun() ->
                   case freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
-                      {'ok', Result} -> ?LOG(UUID, "Result of uuid_exists: ~s", [Result]), gen_server:reply(From, wh_util:is_true(Result));
-                      _ -> ?LOG(UUID, "Failed to get result from uuid_exists", []), gen_server:reply(From, false)
+                      {'ok', Result} -> ?LOG(UUID, "result of uuid_exists: ~s", [Result]), gen_server:reply(From, wh_util:is_true(Result));
+                      _ -> ?LOG(UUID, "failed to get result from uuid_exists", []), gen_server:reply(From, false)
                   end
           end),
     {noreply, State};
@@ -239,7 +253,7 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
     {foo, Node} ! register_event_handler,
     receive
         ok ->
-            ?LOG("event handler registered"),
+            ?LOG("event handler registered on node ~s", [Node]),
             Res = run_start_cmds(Node),
             spawn(fun() -> print_api_responses(Res) end),
 
@@ -250,20 +264,20 @@ handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
                                          ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
                                          ,'CUSTOM', 'sofia::register'
                                         ]),
-            ?LOG("bound to switch events"),
+            ?LOG("bound to switch events on node ~s", [Node]),
 
             {noreply, State#state{stats=(Stats#node_stats{
                                            created_channels = Active
                                            ,fs_uptime = props:get_value(uptime, NodeData, 0)
                                           })}, hibernate};
         {error, Reason} ->
-            ?LOG("error when trying to register event handler: ~p", [Reason]),
+            ?LOG("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
             {stop, Reason, State};
         timeout ->
-            ?LOG("timeout when trying to register event handler"),
+            ?LOG("timeout when trying to register event handler on node ~s", [Node]),
             {stop, timeout, State}
     after ?FS_TIMEOUT ->
-            ?LOG("fs timeout when trying to register event handler"),
+            ?LOG("fs timeout when trying to register event handler on node ~s", [Node]),
             {stop, timeout, State}
     end;
 
@@ -272,19 +286,19 @@ handle_info({'EXIT', _Pid, noconnection}, State) ->
     {stop, normal, State};
 
 handle_info({nodedown, Node}, #state{node=Node}=State) ->
-    ?LOG("nodedown received"),
+    ?LOG("nodedown received from node ~s", [Node]),
     {stop, normal, State};
 
-handle_info(nodedown, State) ->
-    ?LOG("nodedown received"),
+handle_info(nodedown, #state{node=Node}=State) ->
+    ?LOG("nodedown received from node ~s", [Node]),
     {stop, normal, State};
 
-handle_info(_Msg, State) ->
-    ?LOG("unhandled message: ~p", [_Msg]),
+handle_info(_Msg, #state{node=Node}=State) ->
+    ?LOG("unhandled message from node ~s: ~p", [Node, _Msg]),
     {noreply, State}.
 
-terminate(_Reason, _State) ->
-    ?LOG_SYS("fs node ~p termination", [_Reason]).
+terminate(_Reason, #state{node=Node}) ->
+    ?LOG_SYS("fs node ~s termination: ~p", [Node, _Reason]).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.

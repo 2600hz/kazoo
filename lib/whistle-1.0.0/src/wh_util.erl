@@ -108,7 +108,8 @@ is_account_enabled(AccountId) ->
                     PvtEnabled;
                 {error, R} ->
                     ?LOG("unable to find enabled status of account ~s: ~p", [AccountId, R]),
-                    false
+                    wh_cache:store({?MODULE, is_account_enabled, AccountId}, true, 300),
+                    true
             end
     end.
 
