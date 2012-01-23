@@ -16,7 +16,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("ecallmgr.hrl").
 
@@ -24,6 +24,9 @@
 
 -define(RESPONDERS, [{?MODULE, [{<<"resource">>, <<"originate_req">>}]}]).
 -define(BINDINGS, [{resource, []}]).
+-define(QUEUE_NAME, <<"resource_mgr">>).
+-define(QUEUE_OPTIONS, [{exclusive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
 %%% API
@@ -37,9 +40,14 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				     ,{bindings, ?BINDINGS}
-				     ], []).
+    gen_listener:start_link(?MODULE,
+                            [{responders, ?RESPONDERS}
+                             ,{bindings, ?BINDINGS}
+                             ,{queue_name, ?QUEUE_NAME}
+                             ,{queue_options, ?QUEUE_OPTIONS}
+                             ,{consume_options, ?CONSUME_OPTIONS}
+                             ,{basic_qos, 1}
+                            ], []).
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok' | 'fail'.
 handle_req(JObj, _Prop) ->
@@ -56,10 +64,10 @@ handle_req(JObj, _Prop) ->
     Route = ecallmgr_fs_xml:build_route(wh_json:set_value(<<"Realm">>, ?DEFAULT_DOMAIN, JObj), wh_json:get_value(<<"Invite-Format">>, JObj)),
 
     case start_channels(Nodes, JObj, Route, Min, Max-Min, []) of
-	{error, failed_starting, Errors} ->
-	    send_failed_req(JObj, Errors),
-	    fail;
-	ok -> ok
+        {error, failed_starting, Errors} ->
+            send_failed_req(JObj, Errors),
+            fail;
+        ok -> ok
     end.
 
 %%%===================================================================
@@ -182,28 +190,28 @@ start_channels([], _JObj, _Route, 0, _, _) -> ok; %% started at least the minimu
 start_channels([], _JObj, _Route, _, _, Errors) -> {error, failed_starting, Errors}; %% failed to start the minimum channels before server resources ran out
 start_channels([N | Ns]=Nodes, JObj, Route, 0, Max, Errors) -> %% these are bonus channels not required but desired
     case start_channel(N, Route, JObj) of
-	{ok, 0} -> start_channels(Ns, JObj, Route, 0, Max-1, Errors);
-	{ok, _} -> start_channels(Nodes, JObj, Route, 0, Max-1, Errors);
-	{error, E} -> start_channels(Ns, JObj, Route, 0, Max, [E|Errors])
+        {ok, 0} -> start_channels(Ns, JObj, Route, 0, Max-1, Errors);
+        {ok, _} -> start_channels(Nodes, JObj, Route, 0, Max-1, Errors);
+        {error, E} -> start_channels(Ns, JObj, Route, 0, Max, [E|Errors])
     end;
 start_channels([N | Ns]=Nodes, JObj, Route, Min, Max, Errors) -> %% start the minimum channels
     case start_channel(N, Route, JObj) of
-	{ok, 0} -> start_channels(Ns, JObj, Route, Min-1, Max, Errors);
-	{ok, _} -> start_channels(Nodes, JObj, Route, Min-1, Max, Errors);
-	{error, E} -> start_channels(Ns, JObj, Route, Min, Max, [E|Errors])
+        {ok, 0} -> start_channels(Ns, JObj, Route, Min-1, Max, Errors);
+        {ok, _} -> start_channels(Nodes, JObj, Route, Min-1, Max, Errors);
+        {error, E} -> start_channels(Ns, JObj, Route, Min, Max, [E|Errors])
     end.
 
 -spec start_channel/3 :: (proplist(), binary() | list(), wh_json:json_object()) -> {'ok', integer()} | {'error', 'timeout' | binary()}.
 start_channel(N, Route, JObj) ->
     Pid = props:get_value(node, N),
     case ecallmgr_fs_node:resource_consume(Pid, Route, JObj) of
-	{resource_consumed, UUID, CtlQ, AvailableChan} ->
-	    spawn(fun() -> send_uuid_to_app(JObj, UUID, CtlQ) end),
-	    {ok, AvailableChan};
-	{resource_error, E} ->
-	    ?LOG("Error starting channel on ~p: ~p", [Pid, E]),
-	    spawn(fun() -> send_failed_consume(Route, JObj, E) end),
-	    {error, E}
+        {resource_consumed, UUID, CtlQ, AvailableChan} ->
+            spawn(fun() -> send_uuid_to_app(JObj, UUID, CtlQ) end),
+            {ok, AvailableChan};
+        {resource_error, E} ->
+            ?LOG("Error starting channel on ~p: ~p", [Pid, E]),
+            spawn(fun() -> send_failed_consume(Route, JObj, E) end),
+            {error, E}
     end.
 
 -spec send_uuid_to_app/3 :: (wh_json:json_object(), binary(), binary()) -> 'ok'.
@@ -247,17 +255,17 @@ sort_resources(PropA, PropB) ->
     UtilB = props:get_value(percent_utilized, PropB),
     case props:get_value(percent_utilized, PropA) of
         UtilB ->                   % same utilization, use node with more available channels
-	    BiasB = props:get_value(bias, PropB, 1),
-	    case props:get_value(bias, PropA, 1) of
-		BiasB -> %% same bias, use node with more available channels
-		    ACB = props:get_value(available_channels, PropB),
-		    case props:get_value(available_channels, PropA) of
-			C when C >= ACB -> true;
-			_ -> false
-		    end;
-		B when B > BiasB -> true; % A has bigger bias
-		_B -> true
-	    end;
-	A when A > UtilB -> false; % B is less utilized
-	_A -> true                 % A is less utilized
+            BiasB = props:get_value(bias, PropB, 1),
+            case props:get_value(bias, PropA, 1) of
+                BiasB -> %% same bias, use node with more available channels
+                    ACB = props:get_value(available_channels, PropB),
+                    case props:get_value(available_channels, PropA) of
+                        C when C >= ACB -> true;
+                        _ -> false
+                    end;
+                B when B > BiasB -> true; % A has bigger bias
+                _B -> true
+            end;
+        A when A > UtilB -> false; % B is less utilized
+        _A -> true                 % A is less utilized
     end.
