@@ -22,7 +22,7 @@
 -define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: sip:~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
 
 -define(RESPONDERS, [{?MODULE, [{<<"notification">>, <<"mwi">>}]}]).
--define(BINDINGS, [{notifications, [{notices, [sip_notify]}]}]).
+-define(BINDINGS, [{notifications, [{restrict_to, [mwi_update]}]}]).
 
 -define(QUEUE_NAME, <<"ecallmgr_notify">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
