@@ -433,8 +433,10 @@ cache_jobj(Cache, Category, JObj) ->
 -spec category_to_file/1 :: (ne_binary()) -> iolist() | 'undefined'.
 category_to_file(<<"whapps_controller">>) ->
     [code:lib_dir(whistle_apps, priv), "/startup.config"];
-category_to_file(<<"notify_vm">>) ->
+category_to_file(<<"notify.voicemail_to_email">>) ->
     [code:lib_dir(notify, priv), "/notify_vm.config"];
+category_to_file(<<"notify.deregister">>) ->
+    [code:lib_dir(notify, priv), "/notify_deregister.config"];
 category_to_file(<<"smtp_client">>) ->
     [code:lib_dir(whistle_apps, priv), "/smtp_client.config"];
 category_to_file(<<"alerts">>) ->

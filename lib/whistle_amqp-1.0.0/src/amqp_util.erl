@@ -2,45 +2,82 @@
 
 -include("amqp_util.hrl").
 
--export([targeted_exchange/0, targeted_publish/2, targeted_publish/3]).
+-export([targeted_exchange/0]).
+-export([new_targeted_queue/0, new_targeted_queue/1]).
+-export([delete_targeted_queue/1]).
+-export([bind_q_to_targeted/1, bind_q_to_targeted/2]).
+-export([unbind_q_from_targeted/1]).
+-export([targeted_publish/2, targeted_publish/3]).
 
--export([whapps_exchange/0, whapps_publish/2, whapps_publish/3, whapps_publish/4]).
+-export([whapps_exchange/0]).
+-export([new_whapps_queue/0, new_whapps_queue/1]).
+-export([delete_whapps_queue/1]).
 -export([bind_q_to_whapps/2, bind_q_to_whapps/3]).
 -export([unbind_q_from_whapps/2]).
+-export([whapps_publish/2, whapps_publish/3, whapps_publish/4]).
 
--export([callctl_exchange/0, callctl_publish/2, callctl_publish/3, callctl_publish/4]).
--export([callevt_exchange/0, callevt_publish/1, callevt_publish/3, callevt_publish/4]).
--export([resource_exchange/0, resource_publish/1, resource_publish/2, resource_publish/3]).
+-export([notifications_exchange/0]).
+-export([new_notifications_queue/0, new_notifications_queue/1]).
+-export([delete_notifications_queue/1]).
+-export([bind_q_to_notifications/2, bind_q_to_notifications/3]).
+-export([unbind_q_from_notifications/2]).
+-export([notifications_publish/2, notifications_publish/3, notifications_publish/4]).
+
+-export([callctl_exchange/0]).
+-export([new_callctl_queue/1]).
+-export([delete_callctl_queue/1]).
+-export([bind_q_to_callctl/1, bind_q_to_callctl/2]).
+-export([unbind_q_from_callctl/1]).
+-export([callctl_publish/2, callctl_publish/3, callctl_publish/4]).
+
+-export([callevt_exchange/0]).
+-export([new_callevt_queue/1]).
+-export([delete_callevt_queue/1]).
+-export([bind_q_to_callevt/2, bind_q_to_callevt/3]).
+-export([unbind_q_from_callevt/2, unbind_q_from_callevt/3]).
+-export([callevt_publish/1, callevt_publish/3, callevt_publish/4]).
+
+-export([callmgr_exchange/0]).
+-export([new_callmgr_queue/1, new_callmgr_queue/2]).
+-export([delete_callmgr_queue/1]).
+-export([bind_q_to_callmgr/2]).
+-export([unbind_q_from_callmgr/2]).
+-export([callmgr_publish/3]).
+
+-export([resource_exchange/0]).
+-export([new_resource_queue/0, new_resource_queue/1]).
+-export([delete_resource_queue/1]).
+-export([bind_q_to_resource/1, bind_q_to_resource/2]).
+-export([unbind_q_from_resource/2]).
+-export([resource_publish/1, resource_publish/2, resource_publish/3]).
+
+-export([conference_exchange/0]).
+-export([new_conference_queue/1, new_conference_queue/2]).
+-export([delete_conference_queue/1]).
+-export([bind_q_to_conference/2, bind_q_to_conference/3]).
+-export([unbind_q_from_conference/2, unbind_q_from_conference/3]).
+-export([conference_publish/2, conference_publish/3, conference_publish/4]).
+
 -export([originate_resource_publish/1, originate_resource_publish/2]).
+
 -export([offnet_resource_publish/1, offnet_resource_publish/2]).
--export([callmgr_exchange/0, callmgr_publish/3]).
+
 -export([configuration_exchange/0, configuration_publish/2, configuration_publish/3, document_change_publish/5, document_change_publish/6]).
 -export([document_routing_key/0, document_routing_key/1, document_routing_key/2, document_routing_key/3, document_routing_key/4]).
--export([monitor_exchange/0, monitor_publish/3]).
--export([conference_exchange/0, conference_publish/2, conference_publish/3, conference_publish/4]).
-
--export([bind_q_to_targeted/1, bind_q_to_targeted/2, unbind_q_from_targeted/1]).
--export([bind_q_to_callctl/1, bind_q_to_callctl/2, unbind_q_from_callctl/1]).
--export([bind_q_to_callevt/2, bind_q_to_callevt/3, unbind_q_from_callevt/2, unbind_q_from_callevt/3]).
--export([bind_q_to_resource/1, bind_q_to_resource/2, unbind_q_from_resource/2]).
--export([bind_q_to_callmgr/2, unbind_q_from_callmgr/2]).
 -export([bind_q_to_configuration/2, unbind_q_from_configuration/2]).
--export([bind_q_to_monitor/2]).
--export([bind_q_to_conference/2, bind_q_to_conference/3]).
--export([bind_q_to_exchange/3, bind_q_to_exchange/4]).
-
--export([new_targeted_queue/0, new_targeted_queue/1]).
--export([new_callctl_queue/1, delete_callctl_queue/1]).
--export([new_callevt_queue/1, delete_callevt_queue/1]).
--export([new_callmgr_queue/1, new_callmgr_queue/2, delete_callmgr_queue/1]).
 -export([new_configuration_queue/1, new_configuration_queue/2, delete_configuration_queue/1]).
--export([new_resource_queue/0, new_resource_queue/1]).
--export([new_monitor_queue/0, new_monitor_queue/1, delete_monitor_queue/1]).
--export([new_conference_queue/1, new_conference_queue/2]).
 
--export([new_queue/0, new_queue/1, new_queue/2, basic_consume/1, basic_consume/2
-         ,basic_publish/3, basic_publish/4, basic_cancel/1, queue_delete/1, queue_delete/2
-         ,new_exchange/2, new_exchange/3]).
+-export([monitor_exchange/0, monitor_publish/3]).
+-export([bind_q_to_monitor/2]).
+-export([new_monitor_queue/0, new_monitor_queue/1, delete_monitor_queue/1]).
+
+-export([bind_q_to_exchange/3, bind_q_to_exchange/4]).
+-export([new_queue/0, new_queue/1, new_queue/2]).
+-export([basic_consume/1, basic_consume/2]).
+-export([basic_publish/3, basic_publish/4]).
+-export([basic_cancel/1]).
+-export([queue_delete/1, queue_delete/2]).
+-export([new_exchange/2, new_exchange/3]).
 
 -export([access_request/0, access_request/1, basic_ack/1, basic_nack/1, basic_qos/1]).
 
@@ -76,6 +113,16 @@ whapps_publish(Routing, Payload, ContentType) ->
     whapps_publish(Routing, Payload, ContentType, []).
 whapps_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_WHAPPS, Routing, Payload, ContentType, Opts).
+
+-spec notifications_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
+-spec notifications_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec notifications_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), proplist()) -> 'ok'.
+notifications_publish(Routing, Payload) ->
+    notifications_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+notifications_publish(Routing, Payload, ContentType) ->
+    notifications_publish(Routing, Payload, ContentType, []).
+notifications_publish(Routing, Payload, ContentType, Opts) ->
+    basic_publish(?EXCHANGE_NOTIFICATIONS, Routing, Payload, ContentType, Opts).
 
 -spec callmgr_publish/3 :: (amqp_payload(), ne_binary(), ne_binary()) -> 'ok'.
 %% TODO: The routing key on this function should be the first argument for consistency
@@ -280,6 +327,10 @@ targeted_exchange() ->
 whapps_exchange() ->
     new_exchange(?EXCHANGE_WHAPPS, ?TYPE_WHAPPS).
 
+-spec notifications_exchange/0 :: () -> 'ok'.
+notifications_exchange() ->
+    new_exchange(?EXCHANGE_NOTIFICATIONS, ?TYPE_NOTIFICATIONS).
+
 -spec callctl_exchange/0 :: () -> 'ok'.
 callctl_exchange() ->
     new_exchange(?EXCHANGE_CALLCTL, ?TYPE_CALLCTL).
@@ -339,6 +390,22 @@ new_targeted_queue() ->
     new_targeted_queue(<<>>).
 
 new_targeted_queue(Queue) ->
+    new_queue(Queue, [{nowait, false}]).
+
+-spec new_whapps_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_whapps_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
+new_whapps_queue() ->
+    new_whapps_queue(<<>>).
+
+new_whapps_queue(Queue) ->
+    new_queue(Queue, [{nowait, false}]).
+
+-spec new_notifications_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_notifications_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
+new_notifications_queue() ->
+    new_notifications_queue(<<>>).
+
+new_notifications_queue(Queue) ->
     new_queue(Queue, [{nowait, false}]).
 
 -spec new_callevt_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
@@ -428,6 +495,15 @@ new_queue(Queue, Options) when is_binary(Queue) ->
 %% Delete AMQP queue
 %% @end
 %%------------------------------------------------------------------------------
+delete_targeted_queue(Queue) ->
+    queue_delete(Queue, []).
+
+delete_whapps_queue(Queue) ->
+    queue_delete(Queue, []).
+
+delete_notifications_queue(Queue) ->
+    queue_delete(Queue, []).
+
 delete_callevt_queue(CallID) ->
     delete_callevt_queue(CallID, []).
 delete_callevt_queue(CallID, Prop) ->
@@ -441,7 +517,13 @@ delete_callctl_queue(CallID, Prop) ->
 delete_callmgr_queue(Queue) ->
     queue_delete(Queue, []).
 
+delete_resource_queue(Queue) ->
+    queue_delete(Queue, []).
+
 delete_configuration_queue(Queue) ->
+    queue_delete(Queue, []).
+
+delete_conference_queue(Queue) ->
     queue_delete(Queue, []).
 
 delete_monitor_queue(Queue) ->
@@ -480,6 +562,13 @@ bind_q_to_whapps(Queue, Routing) ->
     bind_q_to_whapps(Queue, Routing, []).
 bind_q_to_whapps(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_WHAPPS, Options).
+
+-spec bind_q_to_notifications/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
+-spec bind_q_to_notifications/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok' | {'error', atom()}.
+bind_q_to_notifications(Queue, Routing) ->
+    bind_q_to_notifications(Queue, Routing, []).
+bind_q_to_notifications(Queue, Routing, Options) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_NOTIFICATIONS, Options).
 
 -spec bind_q_to_callctl/1 :: (ne_binary()) -> 'ok' | {'error', atom()}.
 -spec bind_q_to_callctl/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
@@ -588,8 +677,27 @@ unbind_q_from_callevt(Queue, CallID, cdr) ->
 unbind_q_from_callevt(Queue, Routing, other) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
+-spec unbind_q_from_conference/2 :: (ne_binary(), conf_routing_type()) -> 'ok' | {'error', atom()}.
+-spec unbind_q_from_conference/3 :: (ne_binary(), conf_routing_type(), 'undefined' | ne_binary()) -> 'ok' | {'error', atom()}.
+unbind_q_from_conference(Queue, discovery) ->
+    unbind_q_from_conference(Queue, discovery, undefined);
+unbind_q_from_conference(Queue, service) ->
+    unbind_q_from_conference(Queue, service, <<"*">>);
+unbind_q_from_conference(Queue, events) ->
+    unbind_q_from_conference(Queue, events, <<"*">>).
+
+unbind_q_from_conference(Queue, discovery, _) ->
+    unbind_q_from_exchange(Queue, ?KEY_CONF_DISCOVERY_REQ, ?EXCHANGE_CONFERENCE);
+unbind_q_from_conference(Queue, service, ConfId) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
+unbind_q_from_conference(Queue, events, ConfId) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
+
 unbind_q_from_callctl(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_CALLCTL).
+
+unbind_q_from_notifications(Queue, Routing) ->
+    unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_NOTIFICATIONS).
 
 unbind_q_from_resource(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).

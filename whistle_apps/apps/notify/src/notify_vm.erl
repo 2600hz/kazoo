@@ -21,12 +21,14 @@
 -define(DEFAULT_HTML_TMPL, notify_vm_html_tmpl).
 -define(DEFAULT_SUBJ_TMPL, notify_vm_subj_tmpl).
 
+-define(NOTIFY_VM_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".voicemail_to_email">>).
+
 -spec init/0 :: () -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
-    {ok, ?DEFAULT_TEXT_TMPL} = erlydtl:compile(whapps_config:get(?MODULE, default_text_template), ?DEFAULT_TEXT_TMPL),
-    {ok, ?DEFAULT_HTML_TMPL} = erlydtl:compile(whapps_config:get(?MODULE, default_html_template), ?DEFAULT_HTML_TMPL),
-    {ok, ?DEFAULT_SUBJ_TMPL} = erlydtl:compile(whapps_config:get(?MODULE, default_subject_template), ?DEFAULT_SUBJ_TMPL),
+    {ok, ?DEFAULT_TEXT_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_VM_CONFIG_CAT, default_text_template), ?DEFAULT_TEXT_TMPL),
+    {ok, ?DEFAULT_HTML_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_VM_CONFIG_CAT, default_html_template), ?DEFAULT_HTML_TMPL),
+    {ok, ?DEFAULT_SUBJ_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_VM_CONFIG_CAT, default_subject_template), ?DEFAULT_SUBJ_TMPL),
     ?LOG_SYS("init done for vm-to-email").
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
@@ -53,9 +55,9 @@ handle_req(JObj, _Props) ->
                      | get_template_props(JObj, Docs)
                     ],
 
-            {ok, TxtBody} = render_template(wh_json:find(<<"vm_to_email_template">>, Docs), ?DEFAULT_TEXT_TMPL, Props),
-            {ok, HTMLBody} = render_template(wh_json:find(<<"html_vm_to_email_template">>, Docs), ?DEFAULT_HTML_TMPL, Props),
-            {ok, Subject} = render_template(wh_json:find(<<"subject_vm_to_email_template">>, Docs), ?DEFAULT_SUBJ_TMPL, Props),
+            {ok, TxtBody} = notify_util:render_template(wh_json:find(<<"vm_to_email_template">>, Docs), ?DEFAULT_TEXT_TMPL, Props),
+            {ok, HTMLBody} = notify_util:render_template(wh_json:find(<<"html_vm_to_email_template">>, Docs), ?DEFAULT_HTML_TMPL, Props),
+            {ok, Subject} = notify_util:render_template(wh_json:find(<<"subject_vm_to_email_template">>, Docs), ?DEFAULT_SUBJ_TMPL, Props),
 
             send_vm_to_email(TxtBody, HTMLBody, Subject, [ KV || {_, V}=KV <- Props, V =/= undefined ])
     end.
@@ -76,14 +78,13 @@ get_template_props(Event, Docs) ->
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
     SupportNumber = wh_json:find([<<"vm_to_email">>, <<"support_number">>], Docs
-                                 ,whapps_config:get(?MODULE, <<"default_support_number">>, <<"(415) 886 - 7900">>)),    
+                                 ,whapps_config:get(?NOTIFY_VM_CONFIG_CAT, <<"default_support_number">>, <<"(415) 886 - 7900">>)),    
     SupportEmail = wh_json:find([<<"vm_to_email">>, <<"support_email">>], Docs
-                                ,whapps_config:get(?MODULE, <<"default_support_email">>, <<"support@2600hz.com">>)),
+                                ,whapps_config:get(?NOTIFY_VM_CONFIG_CAT, <<"default_support_email">>, <<"support@2600hz.com">>)),
     FromAddress = wh_json:find([<<"vm_to_email">>, <<"from_address">>], Docs
-                               ,whapps_config:get(?MODULE, <<"default_from">>, <<"no_reply@2600hz.com">>)),
+                               ,whapps_config:get(?NOTIFY_VM_CONFIG_CAT, <<"default_from">>, <<"no_reply@2600hz.com">>)),
 
     Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
-
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
     [{caller_id_number, pretty_print_did(CIDNum)}
@@ -151,14 +152,7 @@ send_vm_to_email(TxtBody, HTMLBody, Subject, Props) ->
                 }
               ]
             },
-
-    Encoded = mimemail:encode(Email),
-    Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
-    ?LOG("sending email to ~s from ~s via ~s", [To, From, Relay]),
-
-    CallId = props:get_value(call_id, Props),
-    gen_smtp_client:send({From, [To], Encoded}, [{relay, Relay}]
-                         ,fun(X) -> put(callid, CallId), ?LOG_END("email relay responded: ~p", [X]) end),
+    notify_util:send_email(From, To, Email),
     ok.
 
 %%--------------------------------------------------------------------
@@ -191,28 +185,3 @@ pretty_print_did(<<"011", Rest/binary>>) ->
     pretty_print_did(wnm_util:to_e164(Rest));
 pretty_print_did(Other) ->
     Other.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec render_template/3 :: (ne_binary() | 'undefined', atom(), proplist()) -> {'ok', iolist()} | {'error', term()}.
-render_template(undefined, DefaultTemplate, Props) ->
-    ?LOG("rendering default ~s template", [DefaultTemplate]),
-    DefaultTemplate:render(Props);
-render_template(Template, DefaultTemplate, Props) ->
-    try                                       
-        CustomTemplate = wh_util:to_atom(list_to_binary([props:get_value(account_db, Props), "_"
-                                                        ,wh_json:to_binary(DefaultTemplate)]), true
-                                        ),
-        ?LOG("compiling custom ~s template", [DefaultTemplate]),
-        {ok, CustomTemplate} = erlydtl:compile(Template, CustomTemplate),
-        ?LOG("rendering custom template ~s", [CustomTemplate]),
-        CustomTemplate:render(Props)
-    catch
-        _:_E ->
-            ?LOG("error compiling custom ~s template: ~p", [DefaultTemplate, _E]),
-            render_template(undefined, DefaultTemplate, Props)
-    end.

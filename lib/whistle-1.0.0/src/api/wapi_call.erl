@@ -39,7 +39,8 @@
 
 -export([publish_channel_query_req/2, publish_channel_query_req/3]).
 -export([publish_channel_query_resp/2, publish_channel_query_resp/3]).
--export([optional_channel_headers/0, required_rate_resp_rate_headers/0]).
+
+-export([optional_channel_headers/0]).
 
 -export([get_status/1]).
 

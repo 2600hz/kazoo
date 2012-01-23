@@ -9,7 +9,8 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, cache_proc/0]).
+-export([start_link/0]).
+-export([listener_proc/0, cache_proc/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -29,7 +30,13 @@ start_link() ->
 -spec cache_proc/0 :: () -> {'ok', pid()}.
 cache_proc() ->
     [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-		Mod =:= reg_cache],
+                Mod =:= reg_cache],
+    {ok, P}.
+
+-spec listener_proc/0 :: () -> {'ok', pid()}.
+listener_proc() ->
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+                Mod =:= registrar_listener],
     {ok, P}.
 
 %% ===================================================================
@@ -38,7 +45,7 @@ cache_proc() ->
 
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
-				  ?CACHE(reg_cache)
-				  ,?CHILD(registrar_listener, worker)
-				  %% Put list of ?CHILD(registration_server, worker) or ?CHILD(registration_other_sup, supervisor)
-				 ]} }.
+                                  ?CACHE(reg_cache)
+                                  ,?CHILD(registrar_listener, worker)
+                                  %% Put list of ?CHILD(registration_server, worker) or ?CHILD(registration_other_sup, supervisor)
+                                 ]} }.

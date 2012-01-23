@@ -79,3 +79,8 @@
 %% - For inter-whapp communication (amongst themselves)
 -define(EXCHANGE_WHAPPS, <<"whapps">>).
 -define(TYPE_WHAPPS, <<"topic">>).
+
+%% Notification Exchange
+%% - For notification events
+-define(EXCHANGE_NOTIFICATIONS, <<"notifications">>).
+-define(TYPE_NOTIFICATIONS, <<"topic">>).
