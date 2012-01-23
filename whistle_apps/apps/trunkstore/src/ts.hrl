@@ -14,10 +14,13 @@
 %% cdr doc store
 -define(TS_CDR_PREFIX, <<"ts_cdr">>).
 
+%% Account views
+-define(TS_VIEW_DIDLOOKUP, <<"trunkstore/LookUpDID">>).
+
 -define(TS_VIEW_IPAUTH, <<"LookUpIPAuth/LookUpIPAuth">>).
 -define(TS_VIEW_USERAUTH, <<"LookUpUserAuth/LookUpUserAuth">>).
 -define(TS_VIEW_USERAUTHREALM, <<"LookUpUserAuth/LookUpUserAuthRealm">>).
--define(TS_VIEW_DIDLOOKUP, <<"LookUpDID/LookUpDID">>).
+
 -define(TS_VIEW_CARRIERIP, <<"LookUpCarrierIP/LookUpCarrierIP">>).
 
 -define(EOD, end_of_day).

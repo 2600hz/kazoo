@@ -41,7 +41,7 @@ onnet_data(State) ->
 
     ?LOG("on-net request from ~s(~s) to ~s", [FromUser, AcctID, ToDID]),
 
-    Options = case ts_util:lookup_did(FromUser) of
+    Options = case ts_util:lookup_did(FromUser, AcctID) of
                   {ok, Opts} -> Opts;
                   _ -> wh_json:new()
               end,
@@ -88,43 +88,36 @@ onnet_data(State) ->
 
     DIDFlags = wh_json:get_value(<<"options">>, DIDOptions, []),
 
-    case ts_credit:reserve(ToDID, CallID, AcctID, outbound, DIDFlags) of
-        {error, _}=E ->
-            ?LOG("release ~s for ~s", [CallID, AcctID]),
-            ok = ts_acctmgr:release_trunk(AcctID, CallID, 0), E;
-        {ok, RateData} ->
-            Q = ts_callflow:get_my_queue(State),
+    Q = ts_callflow:get_my_queue(State),
 
-            Command = [ KV
-                        || {_,V}=KV <- CallerID ++ EmergencyCallerID ++
-                               [
-                                {<<"Call-ID">>, CallID}
-                                ,{<<"Resource-Type">>, <<"audio">>}
-                                ,{<<"To-DID">>, ToDID}
-                                ,{<<"Account-ID">>, AcctID}
-                                ,{<<"Application-Name">>, <<"bridge">>}
-                                ,{<<"Flags">>, DIDFlags}
-                                ,{<<"Media">>, MediaHandling}
-                                ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
-                                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
-                                ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
-                                ,{<<"SIP-Headers">>, SIPHeaders}
-                                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"on-net">>}
-                                                                                | RateData])}
-                                | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-                               ],
-                           V =/= undefined,
-                           V =/= <<>>
-                      ],
+    Command = [ KV
+                || {_,V}=KV <- CallerID ++ EmergencyCallerID ++
+                       [
+                        {<<"Call-ID">>, CallID}
+                        ,{<<"Resource-Type">>, <<"audio">>}
+                        ,{<<"To-DID">>, ToDID}
+                        ,{<<"Account-ID">>, AcctID}
+                        ,{<<"Application-Name">>, <<"bridge">>}
+                        ,{<<"Flags">>, DIDFlags}
+                        ,{<<"Media">>, MediaHandling}
+                        ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
+                        ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
+                        ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
+                        ,{<<"SIP-Headers">>, SIPHeaders}
+                        ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"on-net">>}])}
+                        | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+                       ],
+                   V =/= undefined,
+                   V =/= <<>>
+              ],
 
-            try
-                send_park(State, Command)
-            catch
-                _A:_B ->
-                    ?LOG("Exception ~p:~p", [_A, _B]),
-                    ?LOG_SYS("Stacktrace: ~p", [erlang:get_stacktrace()]),
-                    wait_for_cdr(State)
-            end
+    try
+        send_park(State, Command)
+    catch
+        _A:_B ->
+            ?LOG("Exception ~p:~p", [_A, _B]),
+            ?LOG_SYS("Stacktrace: ~p", [erlang:get_stacktrace()]),
+            wait_for_cdr(State)
     end.
 
 send_park(State, Command) ->

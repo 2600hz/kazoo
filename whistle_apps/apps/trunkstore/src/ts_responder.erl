@@ -16,7 +16,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, start_responder/0, stop/1, transfer_auth/0]).
+-export([start_link/0, stop/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -36,10 +36,6 @@
 -define(ROUTE_QUEUE_OPTIONS, [{exclusive, false}]).
 -define(ROUTE_CONSUME_OPTIONS, [{exclusive, false}]).
 
--record(state, {
-          is_amqp_up = false :: boolean()
-         }).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -52,14 +48,6 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    spawn(fun() ->
-                  _ = transfer_auth(),
-                  [ ts_responder_sup:start_handler() || _ <- [1,2,3] ]
-          end),
-    ignore.
-
-start_responder() ->
-    ?LOG("Starting responder"),
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
                                       ,{bindings, ?BINDINGS}
                                       ,{queue_name, ?ROUTE_QUEUE_NAME}
@@ -88,7 +76,7 @@ stop(Srv) ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG("Started responder"),
-    {ok, #state{}}.
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -166,41 +154,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec transfer_auth/0 :: () -> 'ok'.
-transfer_auth() ->
-    case couch_mgr:get_results(?TS_DB, ?TS_VIEW_USERAUTHREALM, []) of
-        {ok, AuthJObjs} ->
-            ?LOG_SYS("Importing ~b accounts into sip_auth", [length(AuthJObjs)]),
-            _ = [ transfer_auth(AuthJObj) || AuthJObj <- AuthJObjs],
-            ok;
-        _E ->
-            ok
-    end.
-
--spec transfer_auth/1 :: (wh_json:json_object()) -> no_return().
-transfer_auth(AuthJObj) ->
-    ID = wh_json:get_value(<<"id">>, AuthJObj),
-    spawn(fun() -> ?LOG_SYS("del doc ~s: ~p", [ID, couch_mgr:del_doc(<<"sip_auth">>, ID)]) end), %% cleanup old imports
-
-    AuthData = {struct, AuthProps}
-        = wh_json:get_value(<<"value">>, AuthJObj, wh_json:new()),
-
-    DocID = <<ID/binary, (wh_json:get_binary_value(<<"server_id">>, AuthData, <<"0">>))/binary>>,
-
-    SipAuthDoc = {struct, [{<<"_id">>, DocID}
-                           ,{<<"sip">>, {struct, [
-                                                  {<<"realm">>, wh_json:get_value(<<"auth_realm">>, AuthData, <<"">>)}
-                                                  ,{<<"method">>, wh_json:get_value(<<"auth_method">>, AuthData, <<"">>)}
-                                                  ,{<<"username">>, wh_json:get_value(<<"auth_user">>, AuthData, <<"">>)}
-                                                  ,{<<"password">>, wh_json:get_value(<<"auth_password">>, AuthData, <<"">>)}
-                                        ]}
-                            }]},
-    SAD1 = lists:foldl(fun({K, V}, JObj) ->
-                              wh_json:set_value(K, V, JObj)
-                      end, SipAuthDoc, [Pvt || {K, _}=Pvt <- AuthProps
-                                                   ,binary:match(K, <<"pvt_">>) =/= nomatch]),
-    %% trunkstore just has to be different, or are we all different and trunkstore normal...
-    %% after all it was first ;)
-    SAD2 = wh_json:set_value(<<"pvt_account_id">>, ID, SAD1),
-    couch_mgr:ensure_saved(<<"sip_auth">>, SAD2).
