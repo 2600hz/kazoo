@@ -18,7 +18,7 @@ migrate() ->
     {ok, TSAccts} = couch_mgr:get_results(?TS_DB, <<"ts_accounts/crossbar_listing">>, [{<<"include_docs">>, true}]),
     ?LOG("trying ~b ts accounts", [length(TSAccts)]),
 
-    [maybe_migrate(wh_json:set_value(<<"_rev">>, <<>>, wh_json:get_value(<<"doc">>, Acct))) || Acct <- TSAccts],
+    _ = [maybe_migrate(wh_json:set_value(<<"_rev">>, <<>>, wh_json:get_value(<<"doc">>, Acct))) || Acct <- TSAccts],
 
     ?LOG("migration complete").
 
@@ -45,10 +45,10 @@ move_doc(AcctDB, AcctID, TSJObj) ->
     case has_ts_doc(AcctDB, wh_json:get_value(<<"_id">>, TSJObj)) of
         true -> ?LOG("looks like trunkstore account has been moved already");
         false ->
-            create_ts_doc(AcctDB, AcctID, TSJObj),
-            create_limit_doc(AcctDB, AcctID, TSJObj),
-            create_credit_doc(AcctDB, AcctID, TSJObj),
-            whapps_maintenance:refresh(AcctID),
+            {ok, _} = create_ts_doc(AcctDB, AcctID, TSJObj),
+            {ok, _} = create_limit_doc(AcctDB, AcctID, TSJObj),
+            {ok, _} = create_credit_doc(AcctDB, AcctID, TSJObj),
+            _ = whapps_maintenance:refresh(AcctID),
             ok
     end.
 

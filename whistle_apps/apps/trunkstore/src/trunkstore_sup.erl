@@ -22,11 +22,9 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
--spec(start_link/0 :: () -> tuple(ok, pid()) | ignore | tuple(error, term())).
+-spec start_link/0 :: () -> {'ok', pid()} | 'ignore' | {'error', term()}.
 start_link() ->
     trunkstore:start_deps(),
-    trunkstore_app:revise_views(),
-    trunkstore_app:setup_base_docs(),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %% ===================================================================

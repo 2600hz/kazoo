@@ -275,7 +275,7 @@ is_flat_rate_eligible(E164) ->
             end
     end.
 
--spec load_flat_rate_regexes/0 :: () -> {[re:mp(),...] | [], [re:mp(),...] | []}.
+-spec load_flat_rate_regexes/0 :: () -> {[re:mp()], [re:mp()]}.
 load_flat_rate_regexes() ->
     case file:consult([code:priv_dir(trunkstore), "/flat_rate_regex.config"]) of
         {error, _Reason} ->

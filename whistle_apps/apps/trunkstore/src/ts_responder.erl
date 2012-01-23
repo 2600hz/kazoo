@@ -25,7 +25,7 @@
 -include("ts.hrl").
 
 -define(RESPONDERS, [
-                     {route_req, [{<<"dialplan">>, <<"route_req">>}]}
+                     {ts_route_req, [{<<"dialplan">>, <<"route_req">>}]}
                     ]).
 -define(BINDINGS, [
                    {route, []}
