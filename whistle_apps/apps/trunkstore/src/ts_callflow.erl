@@ -191,7 +191,7 @@ wait_for_cdr(State, Timeout) ->
 
 -spec process_event_for_cdr/2 :: (#state{}, wh_json:json_object()) -> {'hangup', #state{}} | 'ignore' |
                                                               {'cdr', 'aleg' | 'bleg', wh_json:json_object(), #state{}}.
-process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
+process_event_for_cdr(#state{aleg_callid=ALeg}=State, JObj) ->
     case wh_util:get_event_type(JObj) of
         {<<"resource">>, <<"offnet_resp">>} ->
             case wh_json:get_value(<<"Response-Message">>) of
@@ -234,16 +234,12 @@ process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
             Leg = wh_json:get_value(<<"Call-ID">>, JObj),
             Duration = ts_util:get_call_duration(JObj),
 
-            {R, RI, RM, S} = ts_util:get_rate_factors(JObj),
-            Cost = ts_util:calculate_cost(R, RI, RM, S, Duration),
-
             ?LOG("CDR received for leg ~s", [Leg]),
             ?LOG("Leg to be billed for ~b seconds", [Duration]),
-            ?LOG("Acct ~s to be charged ~p if per_min", [AcctID, Cost]),
 
             case Leg =:= ALeg of
-                true -> {cdr, aleg, JObj, State#state{call_cost=Cost}};
-                false -> {cdr, bleg, JObj, State#state{call_cost=Cost}}
+                true -> {cdr, aleg, JObj, State};
+                false -> {cdr, bleg, JObj, State}
             end;
         _E ->
             ?LOG("Ignorable event: ~p", [_E]),
@@ -253,8 +249,7 @@ process_event_for_cdr(#state{aleg_callid=ALeg, acctid=AcctID}=State, JObj) ->
 -spec finish_leg/2 :: (#state{}, 'undefined' | ne_binary()) -> 'ok'.
 finish_leg(_State, undefined) ->
     ok;
-finish_leg(#state{acctid=AcctID, call_cost=Cost}=State, Leg) ->
-    ok = ts_acctmgr:release_trunk(AcctID, Leg, Cost),
+finish_leg(#state{}=State, _Leg) ->
     send_hangup(State).
 
 -spec send_hangup/1 :: (#state{}) -> 'ok'.

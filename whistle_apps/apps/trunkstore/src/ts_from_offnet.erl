@@ -105,7 +105,6 @@ wait_for_cdr(State) ->
             ?LOG("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
             _ = ts_cdr:store(wh_json:set_value(<<"A-Leg">>, ALeg, CDR)),
-            ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
 
             wait_for_other_leg(State1, bleg);
         {cdr, bleg, CDR, State2} ->
@@ -117,7 +116,6 @@ wait_for_cdr(State) ->
             ?LOG(BLeg, "b-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
             _ = ts_cdr:store(wh_json:set_value(<<"B-Leg">>, BLeg, CDR)),
-            ok = ts_acctmgr:release_trunk(AcctID, BLeg, Cost),
 
             wait_for_other_leg(State2, aleg);
         {timeout, State3} ->
