@@ -123,7 +123,7 @@ cf_toggle(CF, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec(cf_activate/2 :: (CF :: #callfwd{}, Call :: #cf_call{}) -> #callfwd{}).
-cf_activate(#callfwd{number=undefined}=CF, Call) ->
+cf_activate(#callfwd{number = <<>>}=CF, Call) ->
     cf_activate(cf_update_number(CF, Call), Call);
 cf_activate(#callfwd{number=Number, prompts=Prompts}=CF, #cf_call{capture_group=undefined}=Call) ->
     ?LOG("activating call forwarding"),
