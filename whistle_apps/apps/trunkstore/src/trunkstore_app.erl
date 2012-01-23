@@ -3,7 +3,7 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1, revise_views/0, setup_base_docs/0]).
+-export([start/2, stop/1]).
 
 -include("ts.hrl").
 
