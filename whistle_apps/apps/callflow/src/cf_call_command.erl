@@ -47,6 +47,9 @@
 
 -export([wait_for_message/1, wait_for_message/2, wait_for_message/3, wait_for_message/4]).
 -export([wait_for_application/1, wait_for_application/2, wait_for_application/3, wait_for_application/4]).
+-export([wait_for_headless_application/1, wait_for_headless_application/2
+         ,wait_for_headless_application/3, wait_for_headless_application/4
+        ]).
 -export([wait_for_bridge/2]).
 -export([wait_for_channel_bridge/0, wait_for_channel_unbridge/0]).
 -export([wait_for_dtmf/1]).
@@ -548,7 +551,7 @@ b_store(MediaName, Transfer, Method, Call) ->
     b_store(MediaName, Transfer, Method, [wh_json:new()], Call).
 b_store(MediaName, Transfer, Method, Headers, Call) ->
     store(MediaName, Transfer, Method, Headers, Call),
-    wait_for_application(<<"store">>).
+    wait_for_headless_application(<<"store">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1208,6 +1211,59 @@ wait_for_application(Application, Event, Type, Timeout) ->
         _ ->
             DiffMicro = timer:now_diff(erlang:now(), Start),
             wait_for_application(Application, Event, Type, Timeout - (DiffMicro div 1000))
+    after
+        Timeout ->
+            {error, timeout}
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Wait for an application to complete, ignoring channel state.  This
+%% is only interested in events for the application.
+%% @end
+%%--------------------------------------------------------------------
+-type wait_for_headless_application_return() :: {'error', 'timeout'} | {'ok', wh_json:json_object()}.
+-spec wait_for_headless_application/1 :: (ne_binary()) -> wait_for_headless_application_return().
+-spec wait_for_headless_application/2 :: (ne_binary(), ne_binary()) -> wait_for_headless_application_return().
+-spec wait_for_headless_application/3 :: (ne_binary(), ne_binary(), ne_binary()) -> wait_for_headless_application_return().
+-spec wait_for_headless_application/4 :: (ne_binary(), ne_binary(), ne_binary(), 'infinity' | non_neg_integer()) -> wait_for_headless_application_return().
+wait_for_headless_application(Application) ->
+    wait_for_headless_application(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
+wait_for_headless_application(Application, Event) ->
+    wait_for_headless_application(Application, Event, <<"call_event">>).
+wait_for_headless_application(Application, Event, Type) ->
+    wait_for_headless_application(Application, Event, Type, 500000).
+
+wait_for_headless_application(Application, Event, Type, Timeout) ->
+    Start = erlang:now(),
+    receive
+        {amqp_msg, {struct, _}=JObj} ->
+            case get_event_type(JObj) of
+                { <<"error">>, _, _ } ->
+                    case wh_json:get_value(<<"Error-Message">>, JObj) of
+                        <<"Could not execute dialplan action: ", Application/binary>> ->
+                            ?LOG("channel execution error while waiting for ~s", [Application]),
+                            {error, JObj};
+                        _ when Timeout =:= infinity ->
+                            wait_for_headless_application(Application, Event, Type, Timeout);
+                        _ ->
+                            DiffMicro = timer:now_diff(erlang:now(), Start),
+                            wait_for_headless_application(Application, Event, Type, Timeout - (DiffMicro div 1000))
+                    end;
+                { Type, Event, Application } ->
+                    {ok, JObj};
+                _ when Timeout =:= infinity ->
+                    wait_for_headless_application(Application, Event, Type, Timeout);
+                _ ->
+                    DiffMicro = timer:now_diff(erlang:now(), Start),
+                    wait_for_headless_application(Application, Event, Type, Timeout - (DiffMicro div 1000))
+            end;
+        _ when Timeout =:= infinity ->
+            wait_for_headless_application(Application, Event, Type, Timeout);
+        _ ->
+            DiffMicro = timer:now_diff(erlang:now(), Start),
+            wait_for_headless_application(Application, Event, Type, Timeout - (DiffMicro div 1000))
     after
         Timeout ->
             {error, timeout}
