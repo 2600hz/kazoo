@@ -153,10 +153,11 @@ refresh(Account, Views) ->
         {error, not_found} ->
             case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
                 {ok, Def} ->
-                    ?LOG("account is missing its local account definition, but it was recovered from the accounts db"),
+                    ?LOG("account ~s is missing its local account definition, but it was recovered from the accounts db", [AccountId]),
                     couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, Def));
                 {error, not_found} ->
-                    ?LOG("account is missing its local account definition, and it doesnt exist in the accounts db. REMOVING!")
+                    ?LOG("account ~s is missing its local account definition, and it doesnt exist in the accounts db. REMOVING!", [AccountId]),
+                    couch_mgr:db_delete(AccountDb)
             end,
             remove;
         {ok, JObj} ->
