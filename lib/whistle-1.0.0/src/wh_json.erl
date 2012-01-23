@@ -9,6 +9,7 @@
 -module(wh_json).
 
 -export([to_proplist/1, to_proplist/2]).
+-export([recursive_to_proplist/1]).
 -export([get_binary_boolean/2]).
 -export([get_integer_value/2, get_integer_value/3]).
 -export([get_number_value/2, get_number_value/3]).
@@ -144,6 +145,14 @@ to_proplist(Key, JObj) ->
     true = is_json_object(JObj),
     V = get_json_value(Key, JObj),
     to_proplist(V).
+
+-spec recursive_to_proplist/1 :: (json_object()) -> proplist().
+recursive_to_proplist({struct, Props}) ->
+    [{K, recursive_to_proplist(V)} || {K, V} <- Props];
+recursive_to_proplist(Props) when is_list(Props) ->
+    [recursive_to_proplist(V) || V <- Props];
+recursive_to_proplist(Else) ->
+    Else.
 
 -spec get_json_value/2 :: (json_string() | json_strings(), json_object()) -> 'undefined' | json_object().
 -spec get_json_value/3 :: (json_string() | json_strings(), json_object(), Default) -> Default | json_object().
@@ -768,6 +777,14 @@ is_json_object_test() ->
 -define(P6, [{<<"d2k1">>, 1},{<<"d2k2">>, 3.14},{<<"sub_d1">>, {struct, [{<<"d1k1">>, "d1v1"}]}}]).
 -define(P7, [{<<"d1k1">>, <<"d1v1">>}]).
 
+-define(P8, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]).
+-define(P9, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?P1}]).
+-define(P10, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?P8, ?P9]}]).
+-define(P11, [?P8, ?P9, ?P10]).
+-define(P12, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14},{<<"sub_d1">>, [{<<"d1k1">>, "d1v1"}]}]).
+-define(P13, [{<<"d1k1">>, <<"d1v1">>}]).
+
+
 -spec get_keys_test/0 :: () -> no_return().
 get_keys_test() ->
     Keys = [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>],
@@ -783,6 +800,15 @@ to_proplist_test() ->
     ?assertEqual(?P4, lists:map(fun to_proplist/1, ?D4)),
     ?assertEqual(?P6, to_proplist(?D6)),
     ?assertEqual(?P7, to_proplist(?D7)).
+
+-spec recursive_to_proplist_test/0 :: () -> no_return().
+recursive_to_proplist_test() ->
+    ?assertEqual(?P8, recursive_to_proplist(?D1)),
+    ?assertEqual(?P9, recursive_to_proplist(?D2)),   
+    ?assertEqual(?P10, recursive_to_proplist(?D3)),
+    ?assertEqual(?P11, lists:map(fun recursive_to_proplist/1, ?D4)),
+    ?assertEqual(?P12, recursive_to_proplist(?D6)),
+    ?assertEqual(?P13, recursive_to_proplist(?D7)).
 
 -spec delete_key_test/0 :: () -> no_return().
 delete_key_test() ->

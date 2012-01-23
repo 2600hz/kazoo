@@ -50,7 +50,8 @@
 -define(OPTIONAL_DEREGISTER_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
                                           ,<<"From-User">>, <<"From-Host">>, <<"FreeSWITCH-Hostname">>, <<"RPid">>
                                           ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
-                                          ,<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>
+                                          ,<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Account-DB">>
+                                          ,<<"Authorizing-ID">>, <<"Suppress-Unregister-Notify">>
                                      ]).
 -define(DEREGISTER_VALUES, [{<<"Event-Category">>, <<"notification">>}
                             ,{<<"Event-Name">>, <<"deregister">>}
@@ -183,5 +184,5 @@ publish_mwi_update(API, ContentType) ->
 publish_deregister(JObj) ->
     publish_deregister(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_deregister(API, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(API, ?DEREGISTER_HEADERS, fun ?MODULE:deregister/1),
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?DEREGISTER_VALUES, fun ?MODULE:deregister/1),
     amqp_util:notifications_publish(?NOTIFY_DEREGISTER, Payload, ContentType).

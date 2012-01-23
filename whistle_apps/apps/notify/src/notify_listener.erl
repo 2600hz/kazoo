@@ -21,12 +21,10 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [
-                     {notify_vm, [{<<"notification">>, <<"new_voicemail">>}]}
+-define(RESPONDERS, [{notify_vm, [{<<"notification">>, <<"new_voicemail">>}]}
+                     ,{notify_deregister, [{<<"notification">>, <<"deregister">>}]}
                     ]).
--define(BINDINGS, [
-                   {notifications, [{restrict_to, [new_voicemail]}]}
-                  ]).
+-define(BINDINGS, [{notifications, [{restrict_to, [new_voicemail, deregister]}]}]).
 -define(QUEUE_NAME, <<"notify_listener">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).

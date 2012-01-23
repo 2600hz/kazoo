@@ -58,9 +58,11 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
+-spec add_query_resp_consumer/3 :: (pid(), ne_binary(), ne_binary()) -> ok.
 add_query_resp_consumer(Srv, User, Realm) ->
     gen_server:cast(Srv, {add_consumer, User, Realm, self()}).
 
+-spec reg_query_resp/2 :: (wh_json:json_object(), proplist()) -> ok.
 reg_query_resp(JObj, Props) ->
     Reg = wh_json:get_value(<<"Fields">>, JObj),
     User =  wh_json:get_value(<<"Username">>, Reg),
@@ -68,7 +70,7 @@ reg_query_resp(JObj, Props) ->
     Consumers = props:get_value(consumers, Props),
     case props:get_value({User, Realm}, Consumers) of
         undefined -> ok;
-        Consumer -> Consumer ! {reg_query_resp, Reg}
+        Consumer -> Consumer ! {reg_query_resp, Reg}, ok
     end.
 
 %%%===================================================================

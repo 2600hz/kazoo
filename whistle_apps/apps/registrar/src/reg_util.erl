@@ -190,7 +190,15 @@ reg_removed_from_cache({?MODULE, registration, Realm, User}, Reg, expire) ->
                     ?LOG("registration for ~s@~s has expired in this segment, but notifications are suppressed", [Realm, User]);
                 false ->
                     ?LOG("registration for ~s@~s has expired in this segment, sending notification", [Realm, User]),
-                    wapi_notifications:deregister([Reg|wh_api:default_headers(?APP_NAME, ?APP_VERSION)])
+                    Updaters = [fun(J) -> wh_json:set_value(<<"Event-Name">>,  <<"deregister">>, J) end
+                                ,fun(J) -> wh_json:set_value(<<"Event-Category">>, <<"notification">>, J) end 
+                                ,fun(J) -> wh_json:delete_key(<<"App-Version">>, J) end
+                                ,fun(J) -> wh_json:delete_key(<<"App-name">>, J) end 
+                                ,fun(J) -> wh_json:delete_key(<<"Server-ID">>, J) end
+                               ],
+                    Event = wh_json:to_proplist(lists:foldr(fun(F, J) -> F(J) end, Reg, Updaters)) 
+                                                ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
+                    wapi_notifications:publish_deregister(Event)
             end        
     end;
 reg_removed_from_cache(_, _, _) ->
