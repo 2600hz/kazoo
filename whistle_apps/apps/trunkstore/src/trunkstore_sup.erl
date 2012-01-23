@@ -1,4 +1,11 @@
-
+%%%-------------------------------------------------------------------
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2012, VoIP INC
+%%% @doc
+%%%
+%%% @end
+%%% Created : 22 Jan 2012 by James Aimonetti <james@2600hz.org>
+%%%-------------------------------------------------------------------
 -module(trunkstore_sup).
 
 -behaviour(supervisor).
@@ -28,12 +35,8 @@ start_link() ->
 
 init([]) ->
     {ok, { {one_for_one, 5, 10}
-	   , [
-	      ?CHILD(ts_responder_sup, supervisor) %% manages responders to AMQP requests
-	      ,?CHILD(ts_responder, worker)
-	      ,?CHILD(ts_acctmgr, worker) %% handles reserving/releasing trunks
-	      ,?CHILD(ts_credit, worker)  %% handles looking up rating info on the To-DID
-	      ,?CHILD(ts_onnet_sup, supervisor) %% handles calls originating on-net (customer)
-	      ,?CHILD(ts_offnet_sup, supervisor) %% handles calls originating off-net (carrier)
-	      ,?CHILD(ts_cdr, worker)
-	     ]} }.
+           , [
+              ?CHILD(ts_onnet_sup, supervisor) %% handles calls originating on-net (customer)
+              ,?CHILD(ts_offnet_sup, supervisor) %% handles calls originating off-net (carrier)
+              ,?CHILD(ts_responder, worker)
+             ]} }.

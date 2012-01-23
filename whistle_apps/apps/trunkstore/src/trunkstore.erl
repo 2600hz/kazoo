@@ -1,3 +1,11 @@
+%%%-------------------------------------------------------------------
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2012, VoIP INC
+%%% @doc
+%%%
+%%% @end
+%%% Created : 22 Jan 2012 by James Aimonetti <james@2600hz.org>
+%%%-------------------------------------------------------------------
 -module(trunkstore).
 
 -author('James Aimonetti <james@2600hz.org>').
