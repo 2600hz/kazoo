@@ -299,11 +299,12 @@ b_hangup(Call) ->
 -spec b_call_status/1 :: (#cf_call{}) -> {'ok', 'channel_hungup'}.
 -spec b_call_status/2 :: (undefined | ne_binary(), #cf_call{}) -> {'ok', 'channel_hungup'}.
 
-call_status(Call) ->
-    call_status(cf_exe:callid(Call), Call).
+
+call_status(Call) ->    
+    call_status(undefined, Call).
 
 call_status(undefined, Call) ->
-    call_status(cf_exe:callid(Call), Call);    
+    call_status(cf_exe:callid(Call), Call);
 call_status(CallId, Call) ->
     Command = [{<<"Call-ID">>, CallId}
                | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
@@ -311,11 +312,23 @@ call_status(CallId, Call) ->
     wapi_call:publish_call_status_req(CallId, Command).
 
 b_call_status(Call) ->
-    b_call_status(cf_exe:callid(Call), Call).
+    b_call_status(undefined, Call).
 
+b_call_status(undefined, Call) ->
+    b_call_status(cf_exe:callid(Call), Call);
 b_call_status(CallId, Call) ->
     call_status(CallId, Call),
-    wait_for_message(<<>>, <<"call_status_resp">>, <<"call_event">>, 2000).
+    wait_for_our_call_status(CallId).
+
+wait_for_our_call_status(CallId) ->
+    case wait_for_message(<<>>, <<"call_status_resp">>, <<"call_event">>, 2000) of
+        {ok, JObj}=Ok ->
+            case wh_json:get_value(<<"Call-ID">>, JObj) of
+                CallId -> Ok;
+                _Else -> wait_for_our_call_status(CallId)
+            end;
+        Else -> Else
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -330,10 +343,10 @@ b_call_status(CallId, Call) ->
 -spec b_channel_status/2 :: (undefined | ne_binary(), #cf_call{}) -> {'ok', 'channel_hungup'}.
 
 channel_status(Call) ->
-    channel_status(cf_exe:callid(Call), Call).
+    channel_status(undefined, Call).
 
 channel_status(undefined, Call) ->
-    channel_status(cf_exe:callid(Call), Call);    
+    channel_status(cf_exe:callid(Call), Call);
 channel_status(CallId, Call) ->
     Command = [{<<"Call-ID">>, CallId}
                | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
@@ -341,11 +354,23 @@ channel_status(CallId, Call) ->
     wapi_call:publish_channel_status_req(CallId, Command).
 
 b_channel_status(Call) ->
-    b_channel_status(cf_exe:callid(Call), Call).
+    b_channel_status(undefined, Call).
 
+b_channel_status(undefined, Call) ->
+    b_channel_status(cf_exe:callid(Call), Call);
 b_channel_status(CallId, Call) ->
     channel_status(CallId, Call),
-    wait_for_message(<<>>, <<"channel_status_resp">>, <<"call_event">>, 1000).
+    wait_for_our_channel_status(CallId).
+
+wait_for_our_channel_status(CallId) ->
+    case wait_for_message(<<>>, <<"channel_status_resp">>, <<"call_event">>, 2000) of
+        {ok, JObj}=Ok ->
+            case wh_json:get_value(<<"Call-ID">>, JObj) of
+                CallId -> Ok;
+                _Else -> wait_for_our_channel_status(CallId)
+            end;
+        Else -> Else
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
