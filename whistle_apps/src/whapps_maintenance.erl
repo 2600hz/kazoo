@@ -32,7 +32,7 @@
 migrate() ->
     couch_mgr:db_delete(<<"crossbar_schemas">>),
     couch_mgr:db_delete(<<"registrations">>),
-    ts_responder:transfer_auth(),
+    trunkstore_maintenance:migrate(),
     stepswitch_maintenance:refresh(),
     blocking_refresh(),
     whistle_number_manager_maintenance:reconcile(all),
@@ -48,8 +48,7 @@ migrate() ->
     whapps_config:set_default(<<"crossbar">>
                           ,<<"autoload_modules">>
                           ,lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
-    whapps_controller:stop_app(crossbar),
-    whapps_controller:start_app(crossbar),
+    whapps_controller:restart_app(crossbar),
     ok.
 
 %%--------------------------------------------------------------------
