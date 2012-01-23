@@ -30,6 +30,7 @@
           aleg_callid = <<>> :: binary()
           ,bleg_callid = <<>> :: binary()
           ,acctid = <<>> :: binary()
+          ,acctdb = <<>> :: binary()
           ,route_req_jobj = wh_json:new() :: wh_json:json_object()
           ,ep_data = wh_json:new() :: wh_json:json_object() %% data for the endpoint, either an actual endpoint or an offnet request
           ,my_q = <<>> :: binary()
@@ -43,10 +44,11 @@ init(RouteReqJObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
     put(callid, CallID),
 
-    true = is_trunkstore_acct(wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj)),
+    AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
+    true = is_trunkstore_acct(AcctID),
 
-    ?LOG("Init done"),
-    #state{aleg_callid=CallID, route_req_jobj=RouteReqJObj, acctid=wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj)}.
+    ?LOG("Init done for route req for account ~s", [AcctID]),
+    #state{aleg_callid=CallID, route_req_jobj=RouteReqJObj, acctid=AcctID, acctdb=wh_util:format_account_id(AcctID, encoded)}.
 
 -spec start_amqp/1 :: (#state{}) -> #state{}.
 start_amqp(#state{}=State) ->
