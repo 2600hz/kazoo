@@ -391,6 +391,7 @@ originate_call(Contact, JObj, AccountId) ->
             ,{<<"Auto-Answer">>, <<"true">>}
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, JObj)}
+            ,{<<"Inherit-Codec">>, <<"false">>}
            ],
 
     Req = [{<<"Msg-ID">>, wh_util:current_tstamp()}
