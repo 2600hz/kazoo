@@ -84,6 +84,7 @@
                                ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
                                ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
                                ,{<<"Presence-ID">>, <<"presence_id">>}
+                               ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
                                %% ,{<<"Hold-Media">>, <<"hold_music">>}
                               ]).
 
