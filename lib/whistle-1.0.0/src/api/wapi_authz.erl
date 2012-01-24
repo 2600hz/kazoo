@@ -16,9 +16,13 @@
          ,publish_resp/2, publish_resp/3
          ,publish_win/2, publish_win/3
          ,get_auth_realm/1
+         ,req_event_type/0
         ]).
 
 -include("../wh_api.hrl").
+
+-define(EVENT_CATEGORY, <<"dialplan">>).
+-define(AUTHZ_REQ_EVENT_NAME, <<"authz_req">>).
 
 %% Authorization Requests
 -define(AUTHZ_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
@@ -26,8 +30,8 @@
                                 ,<<"Request">>
                            ]).
 -define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>]).
--define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-                           ,{<<"Event-Name">>, <<"authz_req">>}
+-define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+                           ,{<<"Event-Name">>, ?AUTHZ_REQ_EVENT_NAME}
                           ]).
 -define(AUTHZ_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
                           ,{<<"To">>, fun is_binary/1}
@@ -41,7 +45,7 @@
 %% Authorization Responses
 -define(AUTHZ_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Is-Authorized">>]).
 -define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Custom-Channel-Vars">>]).
--define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+-define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"authz_resp">>}
                             ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
                            ]).
@@ -50,7 +54,7 @@
 %% Authorization Requests
 -define(AUTHZ_WIN_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_AUTHZ_WIN_HEADERS, []).
--define(AUTHZ_WIN_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+-define(AUTHZ_WIN_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"authz_win">>}
                           ]).
 -define(AUTHZ_WIN_TYPES, []).
@@ -74,6 +78,10 @@ req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AUTHZ_REQ_HEADERS, ?AUTHZ_REQ_VALUES, ?AUTHZ_REQ_TYPES);
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
+
+-spec req_event_type/0 :: () -> {ne_binary(), ne_binary()}.
+req_event_type() ->
+    {?EVENT_CATEGORY, ?AUTHZ_REQ_EVENT_NAME}.
 
 %%--------------------------------------------------------------------
 %% @doc Authorization Response - see wiki

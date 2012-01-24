@@ -10,15 +10,19 @@
 
 -include("../wh_api.hrl").
 
--export([req/1, resp/1, req_v/1, resp_v/1, win/1, win_v/1
+-export([req/1, req_v/1
+         ,resp/1, resp_v/1
+         ,win/1, win_v/1
          ,bind_q/2, unbind_q/2
+         ,publish_req/1, publish_req/2
+         ,publish_resp/2, publish_resp/3
+         ,publish_win/2, publish_win/3
+         ,get_auth_realm/1
         ]).
 
--export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
-        ,publish_win/2, publish_win/3
-        ]).
 
--export([get_auth_realm/1]).
+-define(EVENT_CATEGORY, <<"dialplan">>).
+-define(ROUTE_REQ_EVENT_NAME, <<"route_req">>).
 
 %% Route Requests
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
@@ -28,8 +32,8 @@
                                          ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
                                          ,<<"Resource-Type">>, <<"Cost-Parameters">>
                                     ]).
--define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-                           ,{<<"Event-Name">>, <<"route_req">>}
+-define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+                           ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
                            ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>, <<"audio">>, <<"video">>, <<"chat">>]}
                            ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
                           ]).
@@ -78,7 +82,7 @@
 -define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Method">>]).
 -define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Routes">>
                                       ,<<"Route-Error-Code">>, <<"Route-Error-Message">>]).
--define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+-define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"route_resp">>}
                             ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
                            ]).
@@ -93,7 +97,9 @@
 %% Route Winner
 -define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
 -define(OPTIONAL_ROUTE_WIN_HEADERS, [<<"Custom-Channel-Vars">>]).
--define(ROUTE_WIN_VALUES, [{<<"Event-Name">>, <<"route_win">>}]).
+-define(ROUTE_WIN_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+                           ,{<<"Event-Name">>, <<"route_win">>}
+                          ]).
 -define(ROUTE_WIN_TYPES, [{<<"Call-ID">>, fun is_binary/1}
                           ,{<<"Control-Queue">>, fun is_binary/1}
                           ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
