@@ -31,7 +31,7 @@ start_link() ->
 -spec cache_proc/0 :: () -> {'ok', pid()}.
 cache_proc() ->
     [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-		Mod =:= webhooks_cache],
+                Mod =:= webhooks_cache],
     {ok, P}.
 
 %% ===================================================================
@@ -40,7 +40,8 @@ cache_proc() ->
 
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
-				  ?CACHE(webhooks_cache)
-				  ,?CHILD(webhooks_listener_sup, supervisor)
-				  ,?CHILD(webhooks_init, worker)
-				 ]} }.
+                                  ?CACHE(webhooks_cache)
+                                  ,?CHILD(webhooks_listener_sup, supervisor)
+                                  ,?CHILD(hook_req_sup, supervisor)
+                                  ,?CHILD(webhooks_init, worker)
+                                 ]} }.
