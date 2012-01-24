@@ -5,9 +5,8 @@
         "crossbar_listing": {
             "map": "function(doc) { if (doc.pvt_type != 'user' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'username': doc.username, 'email': doc.email ,'first_name': doc.first_name, 'last_name': doc.last_name}); }"
         },
-        "group_by_username": {
-          "map": "function(doc) { if(doc.pvt_type != 'user' || doc.pvt_deleted) return; emit( doc.username, doc._id ); }",
-          "reduce": "function(key, values, rereduce) { if (rereduce) return values; else return values[0]; }"        
+        "list_by_username": {
+          "map": "function(doc) { if(doc.pvt_type != 'user' || doc.pvt_deleted) return; emit( doc.username, null ); }",
         },
        "creds_by_md5": {
            "map": "function(doc) { if(!doc.pvt_md5_auth || (doc.pvt_type != 'user' || doc.pvt_deleted)) return; emit( doc.pvt_md5_auth, {'owner_id': doc._id, 'account_id': doc.pvt_account_id} ); }"

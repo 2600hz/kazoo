@@ -29,6 +29,8 @@
 -export([flush_doc_cache/2]).
 -export([get_results/3, open_doc/2]).
 -export([store/3, fetch/2, get_abs_url/2]).
+-export([find_account_id/3, find_account_id/4]).
+-export([find_account_db/3, find_account_db/4]).
 
 -include("../include/crossbar.hrl").
 
@@ -109,7 +111,7 @@ create_response(Status, Msg, Code, JTerm, Context) ->
 %%--------------------------------------------------------------------
 -spec response_faulty_request/1 :: (#cb_context{}) -> #cb_context{}.
 response_faulty_request(Context) ->
-    response(error, <<"faulty request">>, 400, Context).
+    response(error, <<"faulty request">>, 404, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -174,7 +176,7 @@ response_conflicting_docs(Context) ->
 %%--------------------------------------------------------------------
 -spec response_missing_view/1 :: (#cb_context{}) -> #cb_context{}.
 response_missing_view(Context) ->
-    response(fatal, <<"datastore missing view">>, 500, Context).
+    response(fatal, <<"datastore missing view">>, 503, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -226,7 +228,7 @@ response_db_missing(Context) ->
 %%--------------------------------------------------------------------
 -spec response_db_fatal/1 :: (#cb_context{}) -> #cb_context{}.
 response_db_fatal(Context) ->
-    response(fatal, <<"datastore fatal error">>, 500, Context).
+    response(fatal, <<"datastore fatal error">>, 503, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -303,6 +305,90 @@ store(Key, Data, #cb_context{storage=Storage}=Context) ->
 -spec fetch/2 :: (term(), #cb_context{}) -> term().
 fetch(Key, #cb_context{storage=Storage}) ->
     props:get_value(Key, Storage).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Fetches a previously stored value from the current request.
+%% @end
+%%--------------------------------------------------------------------
+-spec find_account_db/3 :: (undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary()) -> {ok, ne_binary()} |
+                                                                                                          {error, wh_json:json_object()}.
+
+-spec find_account_db/4 :: (undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary(), boolean()) 
+                           -> {ok, ne_binary()} | {ok, [ne_binary,...]} | {error, wh_json:json_object()}.
+
+find_account_id(PhoneNumber, AccountRealm, AccountName) ->
+    find_account_id(PhoneNumber, AccountRealm, AccountName, true).
+
+find_account_id(PhoneNumber, AccountRealm, AccountName, AllowMultiples) ->
+    case find_account_db(PhoneNumber, AccountRealm, AccountName, AllowMultiples, wh_json:new()) of
+        {ok, AccountDb} -> {ok, wh_util:format_account_id(AccountDb, raw)};
+        {multiples, AccountDbs} -> {ok, [wh_util:format_account_id(AccountDb, raw) || AccountDb <- AccountDbs]};
+        Else -> Else
+    end.
+
+find_account_db(PhoneNumber, AccountRealm, AccountName) ->
+    find_account_db(PhoneNumber, AccountRealm, AccountName, true).
+
+find_account_db(PhoneNumber, AccountRealm, AccountName, AllowMultiples) ->
+    find_account_db(PhoneNumber, AccountRealm, AccountName, AllowMultiples, wh_json:new()).
+
+find_account_db(undefined, undefined, undefined, _, Errors) ->
+    {error, Errors};
+find_account_db(undefined, undefined, AccountName, AllowMultiples, Errors) ->
+    case whapps_util:get_accounts_by_name(AccountName) of
+        {ok, AccountDb} ->
+            ?LOG("found account by name '~s': ~s", [AccountName, AccountDb]),
+            {ok, AccountDb};
+        {multiples, AccountDbs} when AllowMultiples ->
+            ?LOG("the account name returned multiple results, requestor allowed multiple"),
+            {multiples, AccountDbs};
+        {multiples, _} ->
+            ?LOG("the account realm returned multiple results"),
+            Error = wh_json:set_value([<<"account_name">>, <<"ambiguous">>]
+                                      ,<<"The specific account could not be identified">>
+                                     ,Errors),
+            find_account_db(undefined, undefined, undefined, AllowMultiples, Error);
+        {error, _} ->
+            Error = wh_json:set_value([<<"account_name">>, <<"not_found">>]
+                                      ,<<"The provided account name could not be found">>
+                                      ,Errors),
+            find_account_db(undefined, undefined, undefined, AllowMultiples, Error)
+    end;
+find_account_db(undefined, AccountRealm, AccountName, AllowMultiples, Errors) ->
+    case whapps_util:get_account_by_realm(AccountRealm) of
+        {ok, AccountDb} ->
+            ?LOG("found account by realm '~s': ~s", [AccountRealm, AccountDb]),
+            {ok, AccountDb};
+        {multiples, AccountDbs} when AllowMultiples ->
+            ?LOG("the account realm returned multiple results, requestor allowed multiple"),
+            {multiples, AccountDbs};
+        {multiples, _} ->
+            ?LOG("the account realm realm multiple results"),
+            Error = wh_json:set_value([<<"account_realm">>, <<"ambiguous">>]
+                                      ,<<"The specific account could not be identified">>
+                                     ,Errors),
+            find_account_db(undefined, undefined, AccountName, AllowMultiples, Error);
+        {error, _} ->
+            Error = wh_json:set_value([<<"account_realm">>, <<"not_found">>]
+                                      ,<<"The provided account realm could not be found">>
+                                      ,Errors),
+            find_account_db(undefined, undefined, AccountName, AllowMultiples, Error)
+    end;
+find_account_db(PhoneNumber, AccountRealm, AccountName, AllowMultiples, Errors) ->
+    case wh_number_manager:lookup_account_by_number(PhoneNumber) of
+        {ok, AccountId, _} -> 
+            AccountDb = wh_util:format_account_id(AccountId, encoded),
+            ?LOG("found account by phone number '~s': ~s", [PhoneNumber, AccountDb]),
+            {ok, AccountDb};
+        {error, _} -> 
+            Error = wh_json:set_value([<<"phone_number">>, <<"not_found">>]
+                                      ,<<"The provided phone number could not be found">>
+                                      ,Errors),
+            find_account_db(undefined, AccountRealm, AccountName, AllowMultiples, Error)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

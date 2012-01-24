@@ -136,9 +136,14 @@ is_acct_db(_) -> false.
 -spec get_account_by_realm/1 :: (ne_binary()) -> {ok, ne_binary()} | {error, not_found}.
 get_account_by_realm(Realm) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
-        {ok, [JObj|_]} -> 
+        {ok, [JObj]} -> 
             {ok, wh_json:get_value([<<"value">>, <<"account_db">>], JObj)};
-        _ -> 
+        {ok, []} ->
+            {error, not_found};
+        {ok, JObjs} ->
+            {multiples, [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs]};
+        _E ->
+            ?LOG("error while fetching accounts by realm: ~p", [_E]),
             {error, not_found}
     end.
 
@@ -151,9 +156,14 @@ get_account_by_realm(Realm) ->
 -spec get_accounts_by_name/1 :: (ne_binary()) -> {ok, [ne_binary(),...]} | {error, not_found}.
 get_accounts_by_name(Name) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_NAME, [{<<"key">>, Name}]) of
+        {ok, [JObj]} -> 
+            {ok, wh_json:get_value([<<"value">>, <<"account_db">>], JObj)};
+        {ok, []} ->
+            {error, not_found};
         {ok, JObjs} ->
-            {ok, [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs]};
-        _ ->
+            {multiples, [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs]};
+        _E ->
+            ?LOG("error while fetching accounts by name: ~p", [_E]),
             {error, not_found}
     end.
 
@@ -448,7 +458,7 @@ update_views([Found|Finds], Db, Views, Remove) ->
             ?LOG("no id in the views"),
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         View1 when View1 =:= RawDoc ->
-            ?LOG("view matches the raw doc, skipping"),
+            ?LOG("view '~s' matches the raw doc, skipping", [Id]),
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         View2 ->
             ?LOG("updating view '~s' in '~s'", [Id, Db]),

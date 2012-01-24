@@ -25,6 +25,7 @@
 
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
+-define(USERNAME_LIST, <<"users/list_by_username">>).
 
 %%%===================================================================
 %%% API
@@ -100,14 +101,14 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
-                 ,{RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]
+                 ,{RD, #cb_context{req_nouns=[{<<"user_auth">>, _}]
                                    ,req_id=ReqId}=Context}}, State) ->
     ?LOG(ReqId, "authorizing request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
-                 ,{RD, #cb_context{req_nouns=[{<<"user_auth">>,[]}]}=Context}}, State) ->
+                 ,{RD, #cb_context{req_nouns=[{<<"user_auth">>, _}]}=Context}}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   ?LOG("authenticating request"),
@@ -135,6 +136,15 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.user_auth">>, [RD, Cont
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
+         end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.user_auth">>, [RD, Context | [<<"recovery">>]]}, State) ->
+    spawn(fun() ->
+                  _ = crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = reset_users_password(Context),
+                  Pid ! {binding_result, true, [RD, Context1, [<<"recovery">>]]}
          end),
     {noreply, State};
 
@@ -208,6 +218,8 @@ bind_to_crossbar() ->
 -spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['PUT']};
+allowed_methods([<<"recovery">>]) ->
+    {true, ['PUT']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -221,6 +233,8 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
+    {true, []};
+resource_exists([_]) ->
     {true, []};
 resource_exists(_) ->
     {false, []}.
@@ -242,23 +256,46 @@ validate([], #cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
         {pass, JObj} ->
             Credentials = wh_json:get_value(<<"credentials">>, JObj),
             Method = wh_json:get_value(<<"method">>, JObj, <<"md5">>),
-            case wh_json:get_value(<<"realm">>, JObj) of
-                undefined ->
-                    ?LOG("realm not found, using name to auth..."),
-                    AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
-                    ?LOG("attemping to authorizing with account name: ~s", [AccountName]),
-                    authorize_user_with_account_name(Context
-                                                     ,AccountName
-                                                     ,Credentials
-                                                     ,Method
-                                                    );
-                Realm ->
-                    ?LOG("realm found, using realm to auth..."),
-                    authorize_user_with_realm(Context
-                                              ,Realm
-                                              ,Credentials
-                                              ,Method
-                                             )
+            AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
+            PhoneNumber = wh_json:get_ne_value(<<"phone_number">>, JObj),
+            AccountRealm = wh_json:get_value(<<"account_realm">>, JObj,
+                                             wh_json:get_value(<<"realm">>, JObj)),
+            case crossbar_util:find_account_db(PhoneNumber, AccountRealm, AccountName) of
+                {error, Errors} -> crossbar_util:response_invalid_data(Errors, Context);
+                {ok, AccountDb} ->
+                    authorize_user(Context, Credentials, Method, AccountDb);
+                {multiples, AccountDbs} ->
+                    authorize_user(Context, Credentials, Method, AccountDbs)
+            end
+    end;
+validate([<<"recovery">>], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
+    AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
+    PhoneNumber = wh_json:get_ne_value(<<"phone_number">>, JObj),
+    AccountRealm = wh_json:get_value(<<"account_realm">>, JObj,
+                                     wh_json:get_value(<<"realm">>, JObj)),
+    case crossbar_util:find_account_db(PhoneNumber, AccountRealm, AccountName, false) of
+        {error, Errors} -> crossbar_util:response_invalid_data(Errors, Context);
+        {ok, AccountDb} ->
+            ?LOG("attempting to load username in db: ~s", [AccountDb]),
+            Username = wh_json:get_value(<<"username">>, JObj),
+            case couch_mgr:get_results(AccountDb, ?USERNAME_LIST, [{<<"key">>, Username}, {<<"include_docs">>, true}]) of
+                {ok, [User]} -> 
+                    case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
+                        false ->
+                            ?LOG("the username '~s' was found and is not disabled, continue", [Username]),
+                            Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"doc">>, User), db_name=AccountDb};
+                        true ->
+                            ?LOG("the username '~s' was found but is disabled", [Username]),
+                            Error = wh_json:set_value([<<"username">>, <<"disabled">>]
+                                                      ,<<"The user is disabled">>
+                                                      ,wh_json:new()),
+                            crossbar_util:response_invalid_data(Error, Context)
+                    end;                    
+                _ ->
+                    Error = wh_json:set_value([<<"username">>, <<"not_found">>]
+                                              ,<<"The provided user name was not found">>
+                                              ,wh_json:new()),
+                    crossbar_util:response_invalid_data(Error, Context)
             end
     end;
 validate(_, Context) ->
@@ -273,47 +310,12 @@ validate(_, Context) ->
 %% This can possibly return an empty binary.
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_account_name/1 :: (ne_binary()) -> binary().
+-spec normalize_account_name/1 :: (undefined | ne_binary()) -> binary().
+normalize_account_name(undefined) ->
+    undefined;
 normalize_account_name(AccountName) ->
     << <<Char>> || <<Char>> <= wh_util:to_lower_binary(AccountName)
                    ,(Char >= $a andalso Char =< $z) orelse (Char >= $0 andalso Char =< $9) >>.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to lookup and compare the user creds finding the account by
-%% realm.
-%% @end
-%%--------------------------------------------------------------------
--spec authorize_user_with_realm/4 :: (#cb_context{}, ne_binary(), ne_binary(), ne_binary()) -> #cb_context{}.
-authorize_user_with_realm(Context, Realm, Credentials, Method) ->
-    case whapps_util:get_account_by_realm(Realm) of
-        {ok, AccountDb} ->
-            ?LOG("realm ~s belongs to account ~s", [Realm, wh_util:format_account_id(AccountDb, raw)]),
-            authorize_user(Context, Credentials, Method, AccountDb);
-        {error, not_found} ->
-            ?LOG("could not find account with realm ~s", [Realm]),
-            crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to lookup and compare the user creds finding the account by
-%% user.
-%% @end
-%%--------------------------------------------------------------------
--spec authorize_user_with_account_name/4 :: (#cb_context{}, binary(), ne_binary(), ne_binary()) -> #cb_context{}.
-authorize_user_with_account_name(Context, <<>>, _, _) ->
-    ?LOG("no account name present, failing to authorize"),
-    crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
-authorize_user_with_account_name(Context, AccountName, Credentials, Method) ->
-    case whapps_util:get_accounts_by_name(AccountName) of
-        {ok, AccountDbs} ->
-            authorize_user(Context, Credentials, Method, AccountDbs);
-        {error, not_found} ->
-            crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -404,3 +406,45 @@ create_token(RD, #cb_context{doc=JObj}=Context) ->
                     crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
             end
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Helper function to generate random strings
+%% @end
+%%--------------------------------------------------------------------
+-spec reset_users_password/1 :: (#cb_context{}) -> #cb_context{}.
+reset_users_password(#cb_context{doc=JObj, req_data=Data}=Context) ->
+    Password = rand_chars(16),
+    {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
+    Email = wh_json:get_value(<<"email">>, JObj),
+    Updaters = [fun(J) -> wh_json:set_value(<<"pvt_md5_auth">>, MD5, J) end
+                ,fun(J) -> wh_json:set_value(<<"pvt_sha1_auth">>, SHA1, J) end
+                ,fun(J) -> wh_json:set_value(<<"require_password_update">>, true, J) end
+               ],
+    case crossbar_doc:save(Context#cb_context{doc=lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters), req_verb = <<"post">>}) of
+        #cb_context{resp_status=success} -> 
+            Notify = [{<<"Email">>, Email}
+                      ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, JObj)}
+                      ,{<<"Last-Name">>, wh_json:get_value(<<"last_name">>, JObj)}
+                      ,{<<"Password">>, Password}
+                      ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+                      ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
+                      ,{<<"Request">>, wh_json:delete_key(<<"username">>, Data)}
+                      | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+                     ],
+            ok = wapi_notifications:publish_pwd_recovery(Notify),
+            crossbar_util:response(<<"Password reset, email send to:", Email/binary>>, Context);
+        Else -> 
+            Else
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Helper function to generate random strings
+%% @end
+%%--------------------------------------------------------------------
+-spec rand_chars/1 :: (pos_integer()) -> ne_binary().
+rand_chars(Count) ->
+    wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(Count))).

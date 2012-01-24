@@ -51,13 +51,18 @@ handle_req(JObj, _Props) ->
             {ok, AcctObj} = couch_mgr:open_doc(AcctDB, wh_util:format_account_id(AcctDB, raw)),
             Docs = [VMBox, UserJObj, AcctObj],
 
-            Props = [{email_address, Email}
-                     | get_template_props(JObj, Docs)
+            Props = [{<<"email_address">>, Email}
+                     | get_template_props(JObj, Docs, AcctObj)
                     ],
 
-            {ok, TxtBody} = notify_util:render_template(wh_json:find(<<"vm_to_email_template">>, Docs), ?DEFAULT_TEXT_TMPL, Props),
-            {ok, HTMLBody} = notify_util:render_template(wh_json:find(<<"html_vm_to_email_template">>, Docs), ?DEFAULT_HTML_TMPL, Props),
-            {ok, Subject} = notify_util:render_template(wh_json:find(<<"subject_vm_to_email_template">>, Docs), ?DEFAULT_SUBJ_TMPL, Props),
+            CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"voicemail_to_email">>, <<"email_text_template">>], AcctObj),
+            {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
+            
+            CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"voicemail_to_email">>, <<"email_html_template">>], AcctObj),
+            {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
+            
+            CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"voicemail_to_email">>, <<"email_subject_template">>], AcctObj),
+            {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
             send_vm_to_email(TxtBody, HTMLBody, Subject, [ KV || {_, V}=KV <- Props, V =/= undefined ])
     end.
@@ -68,8 +73,8 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec get_template_props/2 :: (wh_json:json_object(), wh_json:json_objects()) -> proplist().
-get_template_props(Event, Docs) ->
+-spec get_template_props/3 :: (wh_json:json_object(), wh_json:json_objects(), wh_json:json_objects()) -> proplist().
+get_template_props(Event, Docs, Account) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, Event),
     ToE164 = wnm_util:to_e164(wh_json:get_value(<<"To-User">>, Event)),
@@ -77,31 +82,28 @@ get_template_props(Event, Docs) ->
     DateCalled = wh_util:to_integer(wh_json:get_value(<<"Voicemail-Timestamp">>, Event)),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    SupportNumber = wh_json:find([<<"vm_to_email">>, <<"support_number">>], Docs
-                                 ,whapps_config:get(?NOTIFY_VM_CONFIG_CAT, <<"default_support_number">>, <<"(415) 886 - 7900">>)),    
-    SupportEmail = wh_json:find([<<"vm_to_email">>, <<"support_email">>], Docs
-                                ,whapps_config:get(?NOTIFY_VM_CONFIG_CAT, <<"default_support_email">>, <<"support@2600hz.com">>)),
-    FromAddress = wh_json:find([<<"vm_to_email">>, <<"from_address">>], Docs
+    FromAddress = wh_json:find([<<"notifications">>, <<"voicemail_to_email">>, <<"send_from">>], Docs
                                ,whapps_config:get(?NOTIFY_VM_CONFIG_CAT, <<"default_from">>, <<"no_reply@2600hz.com">>)),
 
     Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
-
-    [{caller_id_number, pretty_print_did(CIDNum)}
-     ,{caller_id_name, CIDName}
-     ,{date_called_utc, localtime:local_to_utc(DateTime, ClockTimezone)}
-     ,{date_called, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
-     ,{support_number, SupportNumber}
-     ,{support_email, SupportEmail}
-     ,{from_address, FromAddress}
-     ,{from_user, pretty_print_did(FromE164)}
-     ,{from_realm, wh_json:get_value(<<"From-Realm">>, Event)}
-     ,{to_user, pretty_print_did(ToE164)}
-     ,{to_realm, wh_json:get_value(<<"To-Realm">>, Event)}
-     ,{account_db, wh_json:get_value(<<"Account-DB">>, Event)}
-     ,{voicemail_box, wh_json:get_value(<<"Voicemail-Box">>, Event)}
-     ,{voicemail_media, wh_json:get_value(<<"Voicemail-Name">>, Event)}
-     ,{call_id, wh_json:get_value(<<"Call-ID">>, Event)}
+    
+    [{<<"account">>, notify_util:json_to_template_props(Account)}
+     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?NOTIFY_VM_CONFIG_CAT)}
+     ,{<<"voicemail">>, [{<<"caller_id_number">>, pretty_print_did(CIDNum)}
+                         ,{<<"caller_id_name">>, CIDName}
+                         ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
+                         ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
+                         ,{<<"from_user">>, pretty_print_did(FromE164)}
+                         ,{<<"from_realm">>, wh_json:get_value(<<"From-Realm">>, Event)}
+                         ,{<<"to_user">>, pretty_print_did(ToE164)}
+                         ,{<<"to_realm">>, wh_json:get_value(<<"To-Realm">>, Event)}
+                         ,{<<"voicemail_box">>, wh_json:get_value(<<"Voicemail-Box">>, Event)}
+                         ,{<<"voicemail_media">>, wh_json:get_value(<<"Voicemail-Name">>, Event)}
+                         ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
+                        ]}
+     ,{<<"from_address">>, FromAddress}
+     ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
     ].
 
 %%--------------------------------------------------------------------
@@ -112,8 +114,13 @@ get_template_props(Event, Docs) ->
 %%--------------------------------------------------------------------
 -spec send_vm_to_email/4 :: (iolist(), iolist(), iolist(), proplist()) -> 'ok'.
 send_vm_to_email(TxtBody, HTMLBody, Subject, Props) ->
-    DB = props:get_value(account_db, Props),
-    DocId = props:get_value(voicemail_media, Props),
+    Voicemail = props:get_value(<<"voicemail">>, Props),
+    DB = props:get_value(<<"account_db">>, Props),
+    DocId = props:get_value(<<"voicemail_media">>, Voicemail),
+
+    HostFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
+    From = props:get_value(<<"from_address">>, Voicemail, HostFrom),
+    To = props:get_value(<<"email_address">>, Props),
 
     ?LOG("attempting to attach media ~s in ~s", [DocId, DB]),
     {ok, VMJObj} = couch_mgr:open_doc(DB, DocId),
@@ -125,16 +132,12 @@ send_vm_to_email(TxtBody, HTMLBody, Subject, Props) ->
     AttachmentFileName = get_file_name(Props),
     ?LOG("attachment renamed to ~s", [AttachmentFileName]),
 
-    HostFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
-    From = props:get_value(from_address, Props, HostFrom),
-    To = props:get_value(email_address, Props),
-
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
                  ,[{<<"From">>, From}
                    ,{<<"To">>, To}
                    ,{<<"Subject">>, Subject}
-                   ,{<<"X-Call-ID">>, props:get_value(call_id, Props)}
+                   ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
                   ]
              ,[]
              ,[
@@ -164,13 +167,15 @@ send_vm_to_email(TxtBody, HTMLBody, Subject, Props) ->
 -spec get_file_name/1 :: (proplist()) -> ne_binary().
 get_file_name(Props) ->
     %% CallerID_Date_Time.mp3
-    CallerID = case {props:get_value(caller_id_name, Props), props:get_value(caller_id_number, Props)} of
+    Voicemail = props:get_value(<<"voicemail">>, Props),
+    CallerID = case {props:get_value(<<"caller_id_name">>, Voicemail), props:get_value(<<"caller_id_number">>, Voicemail)} of
                    {undefined, undefined} -> <<"Unknown">>;
                    {undefined, Num} -> wh_util:to_binary(Num);
                    {Name, _} -> wh_util:to_binary(Name)
                end,
-    LocalDateTime = props:get_value(date_called, Props, <<"0000-00-00_00-00-00">>),
-    list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".mp3"]).
+    LocalDateTime = props:get_value(<<"date_called">>, Voicemail, <<"0000-00-00_00-00-00">>),
+    FName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".mp3"]),
+    binary:replace(wh_util:to_lower_binary(FName), <<" ">>, <<"_">>).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -13,16 +13,19 @@
 -export([voicemail/1, voicemail_v/1]).
 -export([mwi_update/1, mwi_update_v/1]).
 -export([deregister/1, deregister_v/1]).
+-export([pwd_recovery/1, pwd_recovery_v/1]).
 
 -export([publish_voicemail/1, publish_voicemail/2]).
 -export([publish_mwi_update/1, publish_mwi_update/2]).
 -export([publish_deregister/1, publish_deregister/2]).
+-export([publish_pwd_recovery/1, publish_pwd_recovery/2]).
 
 -include("../wh_api.hrl").
 
 -define(NOTIFY_MWI_UPDATE, <<"notifications.mwi.update">>).
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
+-define(NOTIFY_PWD_RECOVERY, <<"notifications.password.recovery">>).
 
 %% Notify New Voicemail
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>, <<"To-User">>, <<"To-Realm">>
@@ -57,6 +60,14 @@
                             ,{<<"Event-Name">>, <<"deregister">>}
                            ]).
 -define(DEREGISTER_TYPES, []).
+
+%% Notify Password Recovery
+-define(PWD_RECOVERY_HEADERS, [<<"Email">>, <<"Password">>, <<"Account-ID">>]).
+-define(OPTIONAL_PWD_RECOVERY_HEADERS, [<<"First-Name">>, <<"Last-Name">>, <<"Account-DB">>, <<"Request">>]).
+-define(PWD_RECOVERY_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                              ,{<<"Event-Name">>, <<"password_recovery">>}
+                             ]).
+-define(PWD_RECOVERY_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
@@ -116,6 +127,25 @@ deregister_v(Prop) when is_list(Prop) ->
 deregister_v(JObj) ->
     deregister_v(wh_json:to_proplist(JObj)).
 
+%%--------------------------------------------------------------------
+%% @doc Pwd_Recovery (unregister is a key word) - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+pwd_recovery(Prop) when is_list(Prop) ->
+    case pwd_recovery_v(Prop) of
+        true -> wh_api:build_message(Prop, ?PWD_RECOVERY_HEADERS, ?OPTIONAL_PWD_RECOVERY_HEADERS);
+        false -> {error, "Proplist failed validation for pwd_recovery"}
+    end;
+pwd_recovery(JObj) ->
+    pwd_recovery(wh_json:to_proplist(JObj)).
+
+-spec pwd_recovery_v/1 :: (api_terms()) -> boolean().
+pwd_recovery_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PWD_RECOVERY_HEADERS, ?PWD_RECOVERY_VALUES, ?PWD_RECOVERY_TYPES);
+pwd_recovery_v(JObj) ->
+    pwd_recovery_v(wh_json:to_proplist(JObj)).
+
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     amqp_util:notifications_exchange(),
@@ -124,7 +154,8 @@ bind_q(Queue, Props) ->
 bind_to_q(Q, undefined) ->
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_MWI_UPDATE),
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DEREGISTER);
+    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DEREGISTER),
+    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PWD_RECOVERY);
 bind_to_q(Q, [new_voicemail|T]) ->
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
     bind_to_q(Q, T);
@@ -133,6 +164,9 @@ bind_to_q(Q, [mwi_update|T]) ->
     bind_to_q(Q, T);
 bind_to_q(Q, [deregister|T]) ->
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DEREGISTER),
+    bind_to_q(Q, T);
+bind_to_q(Q, [pwd_recovery|T]) ->
+    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PWD_RECOVERY),
     bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
     ok.
@@ -150,6 +184,7 @@ unbind_q(Queue, Props) ->
 unbind_q_from(Q, undefined) ->
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_MWI_UPDATE),
+    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PWD_RECOVERY),
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_DEREGISTER);
 unbind_q_from(Q, [new_voicemail|T]) ->
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
@@ -159,6 +194,9 @@ unbind_q_from(Q, [mwi_update|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, [deregister|T]) ->
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_DEREGISTER),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, [pwd_recovery|T]) ->
+    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PWD_RECOVERY),
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     ok.
@@ -186,3 +224,11 @@ publish_deregister(JObj) ->
 publish_deregister(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?DEREGISTER_VALUES, fun ?MODULE:deregister/1),
     amqp_util:notifications_publish(?NOTIFY_DEREGISTER, Payload, ContentType).
+
+-spec publish_pwd_recovery/1 :: (api_terms()) -> 'ok'.
+-spec publish_pwd_recovery/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_pwd_recovery(JObj) ->
+    publish_pwd_recovery(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_pwd_recovery(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?PWD_RECOVERY_VALUES, fun ?MODULE:pwd_recovery/1),
+    amqp_util:notifications_publish(?NOTIFY_PWD_RECOVERY, Payload, ContentType).
