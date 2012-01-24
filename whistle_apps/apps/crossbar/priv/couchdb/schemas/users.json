@@ -13,7 +13,7 @@
          "description":"The GUI login username",
          "type":"string",
          "minLength":1,
-         "maxLength":32
+         "maxLength":254
       },
       "first_name":{
          "description":"The first name of the user",
@@ -33,7 +33,7 @@
          "description":"The email of the user",
          "type":"string",
          "minLength":1,
-         "maxLength":32
+         "maxLength":254
       },
       "vm_to_email_enabled":{
          "description":"Determines if the user would like voicemails emailed to them",
@@ -42,6 +42,11 @@
       },
       "verified":{
          "description":"Determines if the user has been verified",
+         "type":"boolean",
+         "default":false
+      },
+      "require_password_update":{
+         "description":"UI flag that the user should update their password.",
          "type":"boolean",
          "default":false
       },
@@ -303,34 +308,57 @@
 
          }
       },
-      "vm_to_email":{
-         "description":"The Voicemail to Email Parameters",
+      "notifications":{
+         "description":"The notifications parameters for this account",
          "type":"object",
          "properties":{
-            "vm_to_email_template":{
-               "description":"The subject line template",
-               "type":"string",
-               "maxLength":64
-            },
-            "html_vm_to_email_template":{
-               "description":"The html template",
-               "type":"string",
-               "maxLength":128
-            },
-            "support_number":{
-               "description":"The support number provided to the templates",
-               "type":"string",
-               "maxLength":128
-            },
-            "support_email":{
-               "description":"The support email provided to the templates",
-               "type":"string",
-               "maxLength":32
-            },
-            "from_address":{
-               "description":"The from address used when sending the email",
-               "type":"string",
-               "maxLength":32
+            "voicemail_to_email":{
+               "description":"The voicemail to email notification parameters for this account",
+               "type":"object",
+               "properties":{
+                  "email_text_template":{
+                     "description":"The email html body template.  Has access to an acccount, service, and voicemail object",
+                     "type":"string"
+                  },
+                  "email_html_template":{
+                     "description":"The email text body template.  Has access to an acccount, service, and voicemail object",
+                     "type":"string"
+                  },
+                  "email_subject_template":{
+                     "description":"The email subject template.  Has access to an acccount, service, and voicemail object",
+                     "type":"string"
+                  },
+                  "support_number":{
+                     "description":"The support number provided to the templates",
+                     "type":"string",
+                     "maxLength":128
+                  },
+                  "support_email":{
+                     "description":"The support email provided to the templates",
+                     "type":"string",
+                     "maxLength":32
+                  },
+                  "service_url":{
+                     "description":"The support number provided to the templates",
+                     "type":"string",
+                     "maxLength":128
+                  },
+                  "service_name":{
+                     "description":"The service name provided",
+                     "type":"string",
+                     "maxLength":128
+                  },
+                  "service_provider":{
+                     "description":"The service provider name",
+                     "type":"string",
+                     "maxLength":128
+                  },
+                  "send_from":{
+                     "description":"The from address used when sending the email",
+                     "type":"string",
+                     "maxLength":32
+                  }
+               }
             }
          },
          "default":{

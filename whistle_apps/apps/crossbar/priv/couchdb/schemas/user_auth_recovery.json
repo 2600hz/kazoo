@@ -1,15 +1,15 @@
 {
-   "_id":"user_auth",
+   "_id":"user_auth_recovery",
    "$schema":"http://json-schema.org/draft-03/schema#",
    "id":"http://json-schema.org/draft-03/schema#",
    "description":"Provides an auth-token via user credentials",
    "properties":{
-      "credentials":{
-         "description":"A hash of the uses credentials",
+      "username":{
+         "description":"The users username",
          "required":"true",
          "type":"string",
          "minLength":1,
-         "maxLength":64
+         "maxLength":254
       },
       "account_realm":{
          "description":"The account realm of the user",
@@ -28,13 +28,6 @@
          "type":"string",
          "minLength":1,
          "maxLength":64
-      },
-      "method":{
-         "description":"The hash method",
-         "type":"string",
-         "enum": ["md5", "sha"],
-         "default": "md5"
       }
-   },
-   "additionalProperties": false
+   }
 }

@@ -23,8 +23,9 @@
 
 -define(RESPONDERS, [{notify_vm, [{<<"notification">>, <<"new_voicemail">>}]}
                      ,{notify_deregister, [{<<"notification">>, <<"deregister">>}]}
+                     ,{notify_pwd_recovery, [{<<"notification">>, <<"password_recovery">>}]}
                     ]).
--define(BINDINGS, [{notifications, [{restrict_to, [new_voicemail, deregister]}]}]).
+-define(BINDINGS, [{notifications, [{restrict_to, [new_voicemail, deregister, pwd_recovery]}]}]).
 -define(QUEUE_NAME, <<"notify_listener">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).

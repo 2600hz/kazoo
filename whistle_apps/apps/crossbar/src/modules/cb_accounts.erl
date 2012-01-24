@@ -793,7 +793,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
                 #cb_context{resp_status=success}=Context1 ->
                     whapps_maintenance:refresh(AccountDb),
                     _ = crossbar_bindings:map(<<"account.created">>, Context1),
-                    _ = crossbar_doc:ensure_saved(Context1#cb_context{db_name=?WH_ACCOUNTS_DB, doc=JObj}),
+                    _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
                     Credit = whapps_config:get(<<"crossbar.accounts">>, <<"starting_credit">>, 0.0),
                     Units = wapi_money:dollars_to_units(wh_util:to_float(Credit)),
                     ?LOG("Putting ~p units", [Units]),

@@ -114,7 +114,10 @@ do_refresh() ->
 
 refresh(?WH_SIP_DB) ->
     couch_mgr:db_create(?WH_SIP_DB),
-    couch_mgr:revise_doc_from_file(?WH_SIP_DB, registrar, <<"auth.json">> ),
+    Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
+             ,whapps_util:get_view_json(registrar, <<"auth.json">>)
+            ],
+    whapps_util:update_views(?WH_SIP_DB, Views, true),
     case couch_mgr:all_docs(?WH_SIP_DB, [{<<"include_docs">>, true}]) of
         {ok, JObjs} ->
             [cleanup_aggregated_device(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs];
@@ -126,14 +129,16 @@ refresh(?WH_SCHEMA_DB) ->
     couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, crossbar, "schemas");
 refresh(?WH_ACCOUNTS_DB) ->
     couch_mgr:db_create(?WH_ACCOUNTS_DB),
+    Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
+             ,whapps_util:get_view_json(whistle_apps, ?ACCOUNTS_AGG_VIEW_FILE)
+            ],
+    whapps_util:update_views(?WH_ACCOUNTS_DB, Views, true),
     case couch_mgr:all_docs(?WH_ACCOUNTS_DB, [{<<"include_docs">>, true}]) of
         {ok, JObjs} ->
             [cleanup_aggregated_account(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs];
         _ ->
             ok
     end,
-    couch_mgr:revise_doc_from_file(?WH_ACCOUNTS_DB, whistle_apps, ?ACCOUNTS_AGG_VIEW_FILE),
-    couch_mgr:revise_doc_from_file(?WH_ACCOUNTS_DB, whistle_apps, ?MAINTENANCE_VIEW_FILE),
     ok;
 refresh(<<Account/binary>>) ->
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
@@ -155,7 +160,7 @@ refresh(Account, Views) ->
                     ?LOG("account ~s is missing its local account definition, but it was recovered from the accounts db", [AccountId]),
                     couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, Def));
                 {error, not_found} ->
-                    ?LOG("account ~s is missing its local account definition, and it doesnt exist in the accounts db. REMOVING!", [AccountId]),
+                    ?LOG("account ~s is missing its local account definition, and not in the accounts db. REMOVING!", [AccountId]),
                     couch_mgr:db_delete(AccountDb)
             end,
             remove;
@@ -175,7 +180,7 @@ refresh(Account, Views) ->
                 {error, _} ->
                     ok
             end,
-            whapps_util:update_views(AccountDb, Views)
+            whapps_util:update_views(AccountDb, Views, true)
     end.
 
 %%--------------------------------------------------------------------
