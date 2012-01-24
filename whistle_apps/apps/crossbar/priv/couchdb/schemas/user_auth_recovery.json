@@ -1,0 +1,33 @@
+{
+   "_id":"user_auth_recovery",
+   "$schema":"http://json-schema.org/draft-03/schema#",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Provides an auth-token via user credentials",
+   "properties":{
+      "username":{
+         "description":"The users username",
+         "required":"true",
+         "type":"string",
+         "minLength":1,
+         "maxLength":254
+      },
+      "account_realm":{
+         "description":"The account realm of the user",
+         "type":"string",
+         "minLength":1,
+         "maxLength":64
+      },
+      "account_name":{
+         "description":"The account name of the user",
+         "type":"string",
+         "minLength":1,
+         "maxLength":64
+      },
+      "phone_number":{
+         "description":"A phone number assigned to the users account",
+         "type":"string",
+         "minLength":1,
+         "maxLength":64
+      }
+   }
+}

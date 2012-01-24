@@ -268,34 +268,39 @@ validate([], #cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
                     authorize_user(Context, Credentials, Method, AccountDbs)
             end
     end;
-validate([<<"recovery">>], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
-    AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
-    PhoneNumber = wh_json:get_ne_value(<<"phone_number">>, JObj),
-    AccountRealm = wh_json:get_value(<<"account_realm">>, JObj,
-                                     wh_json:get_value(<<"realm">>, JObj)),
-    case crossbar_util:find_account_db(PhoneNumber, AccountRealm, AccountName, false) of
-        {error, Errors} -> crossbar_util:response_invalid_data(Errors, Context);
-        {ok, AccountDb} ->
-            ?LOG("attempting to load username in db: ~s", [AccountDb]),
-            Username = wh_json:get_value(<<"username">>, JObj),
-            case couch_mgr:get_results(AccountDb, ?USERNAME_LIST, [{<<"key">>, Username}, {<<"include_docs">>, true}]) of
-                {ok, [User]} -> 
-                    case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
-                        false ->
-                            ?LOG("the username '~s' was found and is not disabled, continue", [Username]),
-                            Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"doc">>, User), db_name=AccountDb};
-                        true ->
-                            ?LOG("the username '~s' was found but is disabled", [Username]),
-                            Error = wh_json:set_value([<<"username">>, <<"disabled">>]
-                                                      ,<<"The user is disabled">>
-                                                      ,wh_json:new()),
+validate([<<"recovery">>], #cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"user_auth_recovery">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
+            PhoneNumber = wh_json:get_ne_value(<<"phone_number">>, JObj),
+            AccountRealm = wh_json:get_value(<<"account_realm">>, JObj
+                                             ,wh_json:get_value(<<"realm">>, JObj)),
+            case crossbar_util:find_account_db(PhoneNumber, AccountRealm, AccountName, false) of
+                {error, Errors} -> crossbar_util:response_invalid_data(Errors, Context);
+                {ok, AccountDb} ->
+                    ?LOG("attempting to load username in db: ~s", [AccountDb]),
+                    Username = wh_json:get_value(<<"username">>, JObj),
+                    case couch_mgr:get_results(AccountDb, ?USERNAME_LIST, [{<<"key">>, Username}, {<<"include_docs">>, true}]) of
+                        {ok, [User]} -> 
+                            case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
+                                false ->
+                                    ?LOG("the username '~s' was found and is not disabled, continue", [Username]),
+                                    Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"doc">>, User), db_name=AccountDb};
+                                true ->
+                                    ?LOG("the username '~s' was found but is disabled", [Username]),
+                                    Error = wh_json:set_value([<<"username">>, <<"disabled">>]
+                                                              ,<<"The user is disabled">>
+                                                              ,wh_json:new()),
+                                    crossbar_util:response_invalid_data(Error, Context)
+                            end;                    
+                        _ ->
+                            Error = wh_json:set_value([<<"username">>, <<"not_found">>]
+                                                      ,<<"The provided user name was not found">>
+                                                          ,wh_json:new()),
                             crossbar_util:response_invalid_data(Error, Context)
-                    end;                    
-                _ ->
-                    Error = wh_json:set_value([<<"username">>, <<"not_found">>]
-                                              ,<<"The provided user name was not found">>
-                                              ,wh_json:new()),
-                    crossbar_util:response_invalid_data(Error, Context)
+                    end
             end
     end;
 validate(_, Context) ->

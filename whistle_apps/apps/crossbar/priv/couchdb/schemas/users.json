@@ -13,7 +13,7 @@
          "description":"The GUI login username",
          "type":"string",
          "minLength":1,
-         "maxLength":32
+         "maxLength":254
       },
       "first_name":{
          "description":"The first name of the user",
@@ -33,7 +33,7 @@
          "description":"The email of the user",
          "type":"string",
          "minLength":1,
-         "maxLength":32
+         "maxLength":254
       },
       "vm_to_email_enabled":{
          "description":"Determines if the user would like voicemails emailed to them",
@@ -42,6 +42,11 @@
       },
       "verified":{
          "description":"Determines if the user has been verified",
+         "type":"boolean",
+         "default":false
+      },
+      "require_password_update":{
+         "description":"UI flag that the user should update their password.",
          "type":"boolean",
          "default":false
       },
