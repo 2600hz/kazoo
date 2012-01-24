@@ -314,7 +314,10 @@ start_amqp_host(ConnP, State, UseFederation) ->
                                     }};
                 E ->
                     ?LOG("Error starting amqp_host ~p", [E]),
-                    E
+                    case UseFederation of
+                        true -> start_amqp_host(ConnP, State, false);
+                        false -> E
+                    end
             end
     end.
 

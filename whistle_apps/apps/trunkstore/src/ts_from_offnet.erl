@@ -22,7 +22,6 @@ init(Parent, RouteReqJObj) ->
     start_amqp(ts_callflow:init(RouteReqJObj)).
 
 start_amqp(State) ->
-    true = ts_util:is_valid_ts_account(ts_callflow:get_account_id(State)),
     endpoint_data(ts_callflow:start_amqp(State)).
 
 endpoint_data(State) ->
@@ -106,7 +105,6 @@ wait_for_cdr(State) ->
             ?LOG("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
             _ = ts_cdr:store(wh_json:set_value(<<"A-Leg">>, ALeg, CDR)),
-            ok = ts_acctmgr:release_trunk(AcctID, ALeg, Cost),
 
             wait_for_other_leg(State1, bleg);
         {cdr, bleg, CDR, State2} ->
@@ -118,7 +116,6 @@ wait_for_cdr(State) ->
             ?LOG(BLeg, "b-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
             _ = ts_cdr:store(wh_json:set_value(<<"B-Leg">>, BLeg, CDR)),
-            ok = ts_acctmgr:release_trunk(AcctID, BLeg, Cost),
 
             wait_for_other_leg(State2, aleg);
         {timeout, State3} ->
@@ -198,27 +195,27 @@ try_failover_sip(State, SIPUri) ->
 
 try_failover_e164(State, ToDID) ->
     CallID = ts_callflow:get_aleg_id(State),
-    FailCallID = <<CallID/binary, "-failover">>,
+
     AcctID = ts_callflow:get_account_id(State),
     EP = ts_callflow:get_endpoint_data(State),
     CtlQ = ts_callflow:get_control_queue(State),
     Q = ts_callflow:get_my_queue(State),
 
-    {ok, RateData} = ts_credit:reserve(ToDID, FailCallID, AcctID, outbound, wh_json:get_value(<<"Route-Options">>, EP)),
     Req = [{<<"Call-ID">>, CallID}
            ,{<<"Resource-Type">>, <<"audio">>}
            ,{<<"To-DID">>, ToDID}
            ,{<<"Account-ID">>, AcctID}
            ,{<<"Control-Queue">>, CtlQ}
            ,{<<"Application-Name">>, <<"bridge">>}
-           ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"off-net">>} | RateData])}
+           ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Inception">>, <<"off-net">>}])}
            ,{<<"Flags">>, wh_json:get_value(<<"flags">>, EP)}
            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, EP)}
            ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, EP)}
            ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, EP)}
            ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, EP)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
-           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+          ],
     ?LOG("sending offnet request for DID ~s", [ToDID]),
     wapi_offnet_resource:publish_req(Req),
 
@@ -227,12 +224,10 @@ try_failover_e164(State, ToDID) ->
 %%--------------------------------------------------------------------
 %% Out-of-band functions
 %%--------------------------------------------------------------------
--spec get_endpoint_data/1 :: (JObj) -> {'endpoint', wh_json:json_object()} | {'error', 'no_rate_found'} when
-      JObj :: wh_json:json_object().
+-spec get_endpoint_data/1 :: (wh_json:json_object()) -> {'endpoint', wh_json:json_object()}.
 get_endpoint_data(JObj) ->
     %% wh_timer:tick("inbound_route/1"),
     AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 
     ?LOG("EP: AcctID: ~s", [AcctID]),
 
@@ -247,7 +242,7 @@ get_endpoint_data(JObj) ->
             end,
     ?LOG("EP: ToDID: ~s", [ToDID]),
 
-    RoutingData = routing_data(ToDID),
+    RoutingData = routing_data(ToDID, AcctID),
 
     AuthUser = props:get_value(<<"To-User">>, RoutingData),
     AuthRealm = props:get_value(<<"To-Realm">>, RoutingData),
@@ -255,25 +250,22 @@ get_endpoint_data(JObj) ->
     ?LOG("EP: AuthUser: ~s", [AuthUser]),
     ?LOG("EP: AuthRealm: ~s", [AuthRealm]),
 
-    case ts_credit:reserve(ToDID, CallID, AcctID, inbound, props:get_value(<<"Route-Options">>, RoutingData)) of
-        {error, _}=E -> ?LOG("Release ~s from ~s", [CallID, AcctID]), ok = ts_acctmgr:release_trunk(AcctID, CallID, 0), E;
-        {ok, RateData} ->
-            InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
-            Invite = ts_util:invite_format(wh_util:to_lower_binary(InFormat), ToDID) ++ RoutingData,
+    InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
+    Invite = ts_util:invite_format(wh_util:to_lower_binary(InFormat), ToDID) ++ RoutingData,
 
-            {endpoint, wh_json:from_list([{<<"Custom-Channel-Vars">>, wh_json:from_list([
-                                                                                         {<<"Auth-User">>, AuthUser}
-                                                                                         ,{<<"Auth-Realm">>, AuthRealm}
-                                                                                         ,{<<"Direction">>, <<"inbound">>}
-                                                                                         | RateData
-                                                                                        ])
-                                          }
-                                          | Invite ])}
-    end.
+    {endpoint, wh_json:from_list([{<<"Custom-Channel-Vars">>, wh_json:from_list([
+                                                                                 {<<"Auth-User">>, AuthUser}
+                                                                                 ,{<<"Auth-Realm">>, AuthRealm}
+                                                                                 ,{<<"Direction">>, <<"inbound">>}
+                                                                                ])
+                                  }
+                                  | Invite
+                                 ])
+    }.
 
--spec routing_data/1 :: (ne_binary()) -> proplist().
-routing_data(ToDID) ->
-    {ok, Settings} = ts_util:lookup_did(ToDID),
+-spec routing_data/2 :: (ne_binary(), ne_binary()) -> [{<<_:48,_:_*8>>,_},...] | [].
+routing_data(ToDID, AcctID) ->
+    {ok, Settings} = ts_util:lookup_did(ToDID, AcctID),
 
     ?LOG("Got DID settings"),
 
@@ -286,7 +278,7 @@ routing_data(ToDID) ->
     AuthR = wh_json:get_value(<<"auth_realm">>, AuthOpts, wh_json:get_value(<<"auth_realm">>, Acct)),
 
     {Srv, AcctStuff} = try
-                      {ok, AccountSettings} = ts_util:lookup_user_flags(AuthU, AuthR),
+                      {ok, AccountSettings} = ts_util:lookup_user_flags(AuthU, AuthR, AcctID),
                       ?LOG("Got account settings"),
                       {
                         wh_json:get_value(<<"server">>, AccountSettings, wh_json:new())

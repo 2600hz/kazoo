@@ -3,6 +3,7 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 -define(APP_NAME, <<"trunkstore">>).
 -define(APP_VERSION, <<"0.9.0">>).
@@ -13,10 +14,13 @@
 %% cdr doc store
 -define(TS_CDR_PREFIX, <<"ts_cdr">>).
 
+%% Account views
+-define(TS_VIEW_DIDLOOKUP, <<"trunkstore/LookUpDID">>).
+
 -define(TS_VIEW_IPAUTH, <<"LookUpIPAuth/LookUpIPAuth">>).
 -define(TS_VIEW_USERAUTH, <<"LookUpUserAuth/LookUpUserAuth">>).
 -define(TS_VIEW_USERAUTHREALM, <<"LookUpUserAuth/LookUpUserAuthRealm">>).
--define(TS_VIEW_DIDLOOKUP, <<"LookUpDID/LookUpDID">>).
+
 -define(TS_VIEW_CARRIERIP, <<"LookUpCarrierIP/LookUpCarrierIP">>).
 
 -define(EOD, end_of_day).
