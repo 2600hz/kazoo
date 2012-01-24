@@ -8,11 +8,15 @@
 %%%-------------------------------------------------------------------
 -module(wapi_authz).
 
--export([req/1, resp/1, req_v/1, resp_v/1, win/1, win_v/1, bind_q/2, unbind_q/1]).
-
--export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3, publish_win/2, publish_win/3]).
-
--export([get_auth_realm/1]).
+-export([req/1, req_v/1
+         ,resp/1, resp_v/1
+         ,win/1, win_v/1
+         ,bind_q/2, unbind_q/2
+         ,publish_req/1, publish_req/2
+         ,publish_resp/2, publish_resp/3
+         ,publish_win/2, publish_win/3
+         ,get_auth_realm/1
+        ]).
 
 -include("../wh_api.hrl").
 
@@ -115,15 +119,23 @@ win_v(JObj) ->
 %% @doc Setup and tear down bindings for authz gen_listeners
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
-bind_q(Q, _Props) ->
+-spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+bind_q(Q, Props) ->
+    Realm = props:get_value(realm, Props, <<"*">>),
+
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHZ_REQ),
+    amqp_util:bind_q_to_callmgr(Q, get_authz_req_routing(Realm)),
     ok.
 
--spec unbind_q/1 :: (binary()) -> 'ok'.
-unbind_q(Q) ->
-    amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHZ_REQ).
+-spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+unbind_q(Q, Props) ->
+    Realm = props:get_value(realm, Props, <<"*">>),
+    amqp_util:unbind_q_from_callmgr(Q, get_authz_req_routing(Realm)).
+
+get_authz_req_routing(Realm) when is_binary(Realm) ->
+    list_to_binary([?KEY_AUTHZ_REQ, ".", amqp_util:encode(Realm)]);
+get_authz_req_routing(Api) ->
+    get_authz_req_routing(get_auth_realm(Api)).
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
@@ -135,7 +147,7 @@ publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?AUTHZ_REQ_VALUES, fun ?MODULE:req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHZ_REQ).
+    amqp_util:callmgr_publish(Payload, ContentType, get_authz_req_routing(Req)).
 
 -spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.

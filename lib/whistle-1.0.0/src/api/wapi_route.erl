@@ -11,7 +11,7 @@
 -include("../wh_api.hrl").
 
 -export([req/1, resp/1, req_v/1, resp_v/1, win/1, win_v/1
-         ,bind_q/2, unbind_q/1
+         ,bind_q/2, unbind_q/2
         ]).
 
 -export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
@@ -199,14 +199,22 @@ win_v(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
-bind_q(Queue, _Props) ->
+bind_q(Queue, Props) ->
+    Realm = props:get_value(realm, Props, <<"*">>),
+
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Queue, ?KEY_ROUTE_REQ),
+    amqp_util:bind_q_to_callmgr(Queue, get_route_req_routing(Realm)),
     ok.
 
--spec unbind_q/1 :: (ne_binary()) -> 'ok'.
-unbind_q(Queue) ->
-    amqp_util:unbind_q_from_callmgr(Queue, ?KEY_ROUTE_REQ).
+-spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+unbind_q(Queue, Props) ->
+    Realm = props:get_value(realm, Props, <<"*">>),
+    amqp_util:unbind_q_from_callmgr(Queue, get_route_req_routing(Realm)).
+
+get_route_req_routing(Realm) when is_binary(Realm) ->
+    list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Realm)]);
+get_route_req_routing(Api) ->
+    get_route_req_routing(get_auth_realm(Api)).
 
 -spec publish_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_req/2 :: (api_terms(), binary()) -> 'ok'.
@@ -214,7 +222,7 @@ publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?ROUTE_REQ_VALUES, fun req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_ROUTE_REQ).
+    amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
 
 -spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_resp/3 :: (ne_binary(), api_terms(), binary()) -> 'ok'.

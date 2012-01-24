@@ -140,7 +140,7 @@ disambiguate_and_publish(ReqJObj, RespJObj) ->
 %% creating the routing key for either binding queues or publishing messages
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_authn_req_routing/1 :: (ne_binary() | proplist() | wh_json:json_object()) -> ne_binary().
+-spec get_authn_req_routing/1 :: (ne_binary() | api_terms()) -> ne_binary().
 get_authn_req_routing(Realm) when is_binary(Realm) ->
     list_to_binary([?KEY_AUTHN_REQ, ".", amqp_util:encode(Realm)]);
 get_authn_req_routing(Req) ->
