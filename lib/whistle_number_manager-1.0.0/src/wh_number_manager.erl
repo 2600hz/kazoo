@@ -157,6 +157,10 @@ assign_number_to_account(Number, AccountId, PublicFields) ->
 %%--------------------------------------------------------------------
 -spec lookup_account_by_number/1 :: (ne_binary()) -> {ok, ne_binary(), boolean()} |
                                                      {error, term()}.
+lookup_account_by_number(undefined) ->
+    {error, number_undefined};
+lookup_account_by_number(Number) when size(Number) < 5 ->
+    {error, number_too_short};
 lookup_account_by_number(Number) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
