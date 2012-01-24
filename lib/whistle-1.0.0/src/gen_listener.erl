@@ -60,7 +60,7 @@ behaviour_info(_) ->
     undefined.
 
 -type responders() :: [listener_utils:responder(),...] | [].
--type binding() :: atom() | {atom(), wh_proplist()}.
+-type binding() :: atom() | ne_binary() | {atom() | ne_binary(), wh_proplist()}.
 -type bindings() :: [binding(),...] | [].
 
 -type responder_callback_mod() :: atom() | {atom(), atom()}.
@@ -475,7 +475,7 @@ create_binding(Binding, Props, Q) ->
             case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
                 non_existing ->
                     ?LOG_SYS("beam file not found for ~s, trying old method", [Wapi]),
-                    queue_bindings:add_binding_to_q(Q, Binding, Props);
+                    throw({not_existing, Binding});
                 _Path ->
                     ?LOG_SYS("beam file found: ~s", [_Path]),
                     wh_util:to_atom(Wapi, true), %% put atom into atom table
@@ -484,9 +484,10 @@ create_binding(Binding, Props, Q) ->
         error:undef ->
             ?LOG_SYS("module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
             ?LOG_SYS("trying old school add_binding for ~s", [Binding]),
-            queue_bindings:add_binding_to_q(Q, Binding, Props);
+            throw({no_bindings, Binding});
         E:R ->
             ST = erlang:get_stacktrace(),
             ?LOG(alert, "exception in creating binding: ~p:~p", [E,R]),
-            ?LOG_STACKTRACE(ST)
+            ?LOG_STACKTRACE(ST),
+            throw(R)
     end.
