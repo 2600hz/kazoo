@@ -36,6 +36,10 @@
 -define(KEY_CONF_EVENTS, <<"conference.events.">>).
 -define(CONF_DISCOVERY_QUEUE_NAME, <<"conference_discovery">>).
 
+%% sysconf whapp routing keys for responses to clients
+-define(KEY_SYSCONF_READ_RESP, <<"read.resp">>).
+-define(KEY_SYSCONF_WRITE_RESP, <<"write.resp">>).
+
 %% To listen for auth requests, bind your queue in the CallMgr Exchange with the <<"auth.req">> routing key.
 %% To listen for route requests, bind your queue in the CallMgr Exchange with the <<"route.req">> routing key.
 

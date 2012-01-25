@@ -84,3 +84,8 @@
 %% - For notification events
 -define(EXCHANGE_NOTIFICATIONS, <<"notifications">>).
 -define(TYPE_NOTIFICATIONS, <<"topic">>).
+
+%% Sysconf Exchange
+%% For system configuration events (read/write)
+-define(EXCHANGE_SYSCONF, <<"sysconf">>).
+-define(TYPE_SYSCONF, <<"topic">>).
