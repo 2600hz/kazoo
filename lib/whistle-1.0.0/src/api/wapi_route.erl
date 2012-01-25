@@ -175,7 +175,7 @@ resp_v(JObj) ->
 -spec resp_route/1 :: (api_terms()) -> {'ok', proplist()} | {'error', string()}.
 resp_route(Prop) when is_list(Prop) ->
     case resp_route_v(Prop) of
-        true -> wh_api:build_message_specific(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
+        true -> wh_api:build_message_specific_headers(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
         false -> {error, "Proplist failed validation for route_resp_route"}
     end;
 resp_route(JObj) ->
@@ -197,7 +197,9 @@ win(Prop) when is_list(Prop) ->
     case win_v(Prop) of
         true -> wh_api:build_message(Prop, ?ROUTE_WIN_HEADERS, ?OPTIONAL_ROUTE_WIN_HEADERS);
         false -> {error, "Proplist failed validation for route_win"}
-    end.
+    end;
+win(JObj) ->
+    win(wh_json:to_proplist(JObj)).
 
 -spec win_v/1 :: (api_terms()) -> boolean().
 win_v(Prop) when is_list(Prop) ->
@@ -236,7 +238,7 @@ publish_req(Req, ContentType) ->
     amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
 
 -spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_resp/3 :: (ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_resp(RespQ, JObj) ->
     publish_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(RespQ, Resp, ContentType) ->
