@@ -119,10 +119,6 @@ handle_call(get_callback_uri, _From, #state{webhook=Hook}=State) ->
 handle_cast({config_change, ConfJObj}, #state{webhook=Hook, realm=Realm, acct_id=AcctID}=State) ->
     JObj = wh_json:get_value(<<"Doc">>, ConfJObj),
 
-    ?LOG("updating uri: ~s, method: ~s, retries: ~p", [wh_json:get_value(<<"callback_uri">>, JObj)
-                                                       ,wh_json:get_value(<<"callback_method">>, JObj)
-                                                       ,wh_json:get_value(<<"retries">>, JObj)
-                                                      ]),
     Hook1 =  wh_json:set_values([
                                  {<<"callback_uri">>, wh_json:get_value(<<"callback_uri">>, JObj)}
                                  ,{<<"callback_method">>, wh_json:get_value(<<"callback_method">>, JObj)}
@@ -136,14 +132,14 @@ handle_cast({config_change, ConfJObj}, #state{webhook=Hook, realm=Realm, acct_id
         {Old, New} ->
             ?LOG("changing hook from ~s to ~s", [Old, New]),
             OldBindOptions = case wh_json:get_value(<<"bind_options">>, Hook, []) of
-                              Prop when is_list(Prop) -> Prop;
-                              JObj -> wh_json:to_proplist(JObj) % maybe [{restrict_to, [call, events]},...] or other json-y type
-                          end,
+                                 Prop1 when is_list(Prop1) -> Prop1;
+                                 JObj1 -> wh_json:to_proplist(JObj1) % maybe [{restrict_to, [call, events]},...] or other json-y type
+                             end,
             tear_down_binding(Old, OldBindOptions, Realm, AcctID),
 
             NewBindOptions = case wh_json:get_value(<<"bind_options">>, JObj, []) of
-                                 Prop1 when is_list(Prop1) -> Prop1;
-                                 JObj1 -> wh_json:to_proplist(JObj1) % maybe [{restrict_to, [call, events]},...] or other json-y type
+                                 Prop2 when is_list(Prop2) -> Prop2;
+                                 JObj2 -> wh_json:to_proplist(JObj2) % maybe [{restrict_to, [call, events]},...] or other json-y type
                              end,
 
             setup_binding(New, NewBindOptions, Realm, AcctID),
@@ -161,6 +157,7 @@ handle_cast({config_change, ConfJObj}, #state{webhook=Hook, realm=Realm, acct_id
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
+    ?LOG("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, #state{webhook=Webhook, realm=Realm, acct_id=AcctId}) ->
