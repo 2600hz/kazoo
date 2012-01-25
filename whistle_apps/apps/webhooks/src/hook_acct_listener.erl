@@ -116,17 +116,23 @@ handle_call(get_callback_uri, _From, #state{webhook=Hook}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({config_change, JObj}, #state{webhook=Hook, realm=Realm, acct_id=AcctID}=State) ->
-    ?LOG("config has changed to ~p", [JObj]),
+handle_cast({config_change, ConfJObj}, #state{webhook=Hook, realm=Realm, acct_id=AcctID}=State) ->
+    JObj = wh_json:get_value(<<"Doc">>, ConfJObj),
 
+    ?LOG("updating uri: ~s, method: ~s, retries: ~p", [wh_json:get_value(<<"callback_uri">>, JObj)
+                                                       ,wh_json:get_value(<<"callback_method">>, JObj)
+                                                       ,wh_json:get_value(<<"retries">>, JObj)
+                                                      ]),
     Hook1 =  wh_json:set_values([
                                  {<<"callback_uri">>, wh_json:get_value(<<"callback_uri">>, JObj)}
                                  ,{<<"callback_method">>, wh_json:get_value(<<"callback_method">>, JObj)}
                                  ,{<<"retries">>, wh_json:get_value(<<"retries">>, JObj)}
                                 ], Hook),
 
-    case {wh_json:get_value(<<"bind_event">>, Hook), wh_json:get_value(<<"bind_event">>, JObj)} of
-        {A, A} -> {noreply, State#state{webhook=Hook1}};
+    case {wh_json:get_atom_value(<<"bind_event">>, Hook), wh_json:get_atom_value(<<"bind_event">>, JObj)} of
+        {A, A} ->
+            ?LOG("no big changes to be done"),
+            {noreply, State#state{webhook=Hook1}};
         {Old, New} ->
             ?LOG("changing hook from ~s to ~s", [Old, New]),
             OldBindOptions = case wh_json:get_value(<<"bind_options">>, Hook, []) of

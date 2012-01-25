@@ -293,7 +293,7 @@ update(Id, #cb_context{req_data=Data}=Context) ->
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, J) -> F(J, Context) end, JObj, ?PVT_FUNS),
+            JObj1 = lists:foldr(fun(F, J) -> F(J, Context) end, JObj, ?PVT_FUNS),
             crossbar_doc:load_merge(Id, JObj1, Context)
     end.
 

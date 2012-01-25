@@ -292,8 +292,13 @@ send_http_req_once(JSON, #state{callback_uri=CB_URI
 
 -spec uri/3 :: (http_methods(), nonempty_string(), iolist() | ne_binary()) -> nonempty_string().
 uri(get, URI, JSON) ->
-    QS = wh_json:to_querystring(wh_json:decode(JSON)),
-    binary_to_list(iolist_to_binary([URI, "?", QS]));
+    JSON_QS = wh_json:to_querystring(wh_json:decode(JSON)),
+    case mochiweb_util:urlsplit(URI) of
+        {Scheme, Host, Path, [], Fragment} ->
+            mochiweb_util:urlunsplit({Scheme, Host, Path, JSON_QS, Fragment});
+        {Scheme, Host, Path, QS, Fragment} ->
+            mochiweb_util:urlunsplit({Scheme, Host, Path, [QS, "&", JSON_QS], Fragment})
+    end;
 uri(_, URI, _) ->
     URI.
 
@@ -341,7 +346,6 @@ process_resp(_Status, _RespHeaders, _RespBody) ->
 %% Should convert from ContentType to a JSON binary (like xml -> Erlang XML -> Erlang JSON -> json)
 -spec decode_to_json/2 :: (nonempty_string(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'unsupported_content_type'}.
 decode_to_json("application/json" ++ _, JSON) ->
-    ?LOG("decoding ~s to json_object()", [JSON]),
     {ok, wh_json:decode(JSON)};
 decode_to_json(_ContentType, _RespBody) ->
     ?LOG("unhandled content type: ~s", [_ContentType]),
@@ -364,7 +368,6 @@ is_valid_req(JObj, BindEvent) ->
 -spec send_amqp_resp/3 :: (ne_binary(), wh_json:json_object(), hook_types()) -> 'ok'.
 send_amqp_resp(RespQ, RespJObj, route) ->
     {<<"dialplan">>, <<"route_resp">>} = wh_util:get_event_type(RespJObj),
-    ?LOG("publish route_resp to ~s: ~p", [RespQ, RespJObj]),
     wapi_route:publish_resp(RespQ, RespJObj);
 send_amqp_resp(RespQ, RespJObj, BindEvent) ->
     webhooks_util:api_call(BindEvent, fun(ApiMod) -> ApiMod:publish_resp(RespQ, RespJObj) end).
