@@ -186,8 +186,7 @@ init([Module, Params, InitArgs]) ->
 
     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
 
-    Self = self(),
-    spawn(fun() -> [add_responder(Self, Mod, Evts) || {Mod, Evts} <- Responders] end),
+    _ = [add_responder(self(), Mod, Evts) || {Mod, Evts} <- Responders],
 
     _ = [create_binding(Type, BindProps, Q) || {Type, BindProps} <- Bindings],
 
