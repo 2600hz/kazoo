@@ -9,12 +9,14 @@
 -module(wh_json).
 
 -export([to_proplist/1, to_proplist/2]).
+-export([to_querystring/1]).
 -export([recursive_to_proplist/1]).
 -export([get_binary_boolean/2]).
 -export([get_integer_value/2, get_integer_value/3]).
 -export([get_number_value/2, get_number_value/3]).
 -export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
+-export([get_atom_value/2, get_atom_value/3]).
 -export([get_string_value/2, get_string_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
@@ -156,6 +158,30 @@ recursive_to_proplist(Props) when is_list(Props) ->
 recursive_to_proplist(Else) ->
     Else.
 
+-spec to_querystring/1 :: (json_object()) -> iolist().
+to_querystring(JObj) ->
+    {Vs, Ks} = get_values(normalize(JObj)),
+    fold_kvs(Ks, Vs, "").
+
+fold_kvs([], [], Acc) -> Acc;
+fold_kvs([K], [V], Acc) -> ["?", lists:reverse([encode_kv(K, V) | Acc])];
+fold_kvs([K|Ks], [V|Vs], Acc) ->
+    fold_kvs(Ks, Vs, ["&", encode_kv(K, V) | Acc]).
+
+encode_kv(K, Vs) when is_list(Vs) ->
+    encode_kv(wh_util:to_binary(K), Vs, "[]=", "");
+encode_kv(K, V) ->
+    encode_kv(K, "=", mochiweb_util:quote_plus(V)).
+
+encode_kv(K, Sep, V) ->
+    [wh_util:to_binary(K), Sep, wh_util:to_binary(V)].
+
+encode_kv(K, [V], Sep, Acc) ->
+    lists:reverse([ encode_kv(K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
+encode_kv(K, [V|Vs], Sep, Acc) ->
+    encode_kv(K, Vs, Sep, [ "&", encode_kv(K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
+encode_kv(_, [], _, Acc) -> lists:reverse(Acc).
+
 -spec get_json_value/2 :: (json_string() | json_strings(), json_object()) -> 'undefined' | json_object().
 -spec get_json_value/3 :: (json_string() | json_strings(), json_object(), Default) -> Default | json_object().
 get_json_value(Key, JObj) ->
@@ -207,6 +233,17 @@ get_binary_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         undefined -> Default;
         Value -> wh_util:to_binary(Value)
+    end.
+
+%% must be an existing atom
+-spec get_atom_value/2 :: (json_string(), json_object() | json_objects()) -> 'undefined' | atom().
+-spec get_atom_value/3 :: (json_string(), json_object() | json_objects(), Default) -> atom() | Default.
+get_atom_value(Key, JObj) ->
+    get_atom_value(Key, JObj, undefined).
+get_atom_value(Key, JObj, Default) ->
+    case get_value(Key, JObj) of
+        undefined -> Default;
+        Value -> wh_util:to_atom(Value)
     end.
 
 -spec get_integer_value/2 :: (json_string(), json_object() | json_objects()) -> 'undefined' | integer().
@@ -905,6 +942,18 @@ set_value_normalizer_test() ->
     ?assertEqual(normalize_jobj(?T4R3), ?T4R3V),
 
     ?assertEqual(normalize_jobj(?T5R1), ?T5R1V).
+
+to_querystring_test() ->
+    Tests = [{<<"{}">>, <<>>}
+             ,{<<"{\"foo\":\"bar\"}">>, <<"?foo=bar">>}
+             ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\"}">>, <<"?foo=bar&fizz=buzz">>}
+             ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\",\"arr\":[1,3,5]}">>, <<"?foo=bar&fizz=buzz&arr[]=1&arr[]=3&arr[]=5">>}
+             ,{<<"{\"Msg-ID\":\"123-abc\"}">>, <<"?msg_id=123-abc">>}
+             ,{<<"{\"url\":\"http://user:pass@host:port/\"}">>, <<"?url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
+            ],
+    lists:foreach(fun({JSON, QS}) ->
+                          ?assertEqual(QS, wh_util:to_binary(to_querystring(decode(JSON))))
+                  end, Tests).
 
 get_values_test() ->
     ?assertEqual(true, are_all_there(?D1, ["d1v1", d1v2, ["d1v3.1", "d1v3.2", "d1v3.3"]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
