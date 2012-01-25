@@ -141,10 +141,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.devices">>, [RD, Co
                                   ?LOG("adding device to the sip auth aggregate"),
                                   couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
                           end,
-                          spawn(fun() ->
-                                        Url = whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>),
-                                        do_awesome_provision(Url, Context1)
-                          end),
+                          provision(Context1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_type">>)),
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
@@ -164,10 +161,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.devices">>, [RD, Con
                                   ?LOG("adding device to the sip auth aggregate"),
                                   couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
                           end,    
-                          spawn(fun() ->
-                                        Url = whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>),
-                                        do_awesome_provision(Url, Context1)
-                          end),
+                          provision(Context1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_type">>)),
                           Pid ! {binding_result, true, [RD, Context1, Params]};
                       Else ->
                           Pid ! {binding_result, true, [RD, Else, Params]}
@@ -538,6 +532,22 @@ is_sip_creds_unique(_, Realm, Username, DocId) ->
         {error, not_found} -> true;
         _ -> false
     end.
+    
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Spawn the function to post data to a provisioning server, if
+%% provided with URL
+%% @end
+%%--------------------------------------------------------------------
+-spec provision/2 :: (#cb_context{}, ne_binary() | 'undefined') -> 'ok' | pid().
+provision(Context, "simple_provisioner") ->   
+    spawn(fun() -> do_simple_provision(Context) end);
+provision(Context, "provisioner.net") ->
+    spawn(fun() -> do_awesome_provision(Context) end);
+provision(_, _Else) ->
+    ?LOG("unsupported provisioning type: ~s", [_Else]),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -545,10 +555,8 @@ is_sip_creds_unique(_, Realm, Username, DocId) ->
 %% Do awesome provisioning
 %% @end
 %%--------------------------------------------------------------------
--spec do_awesome_provision/2 :: ('undefined' | ne_binary(), #cb_context{}) -> 'ok'.
-do_awesome_provision(undefined, _) ->
-    ok;
-do_awesome_provision(Url, #cb_context{doc=JObj, db_name=Db}) ->
+-spec do_awesome_provision/1 :: (#cb_context{}) -> 'ok'.
+do_awesome_provision(#cb_context{doc=JObj, db_name=Db}) ->
     TemplateOverrides = wh_json:get_value([<<"provision">>, <<"template">>], JObj, wh_json:new()),
     TemplateId = wh_json:get_value([<<"provision">>, <<"id">>], JObj),
     case is_binary(TemplateId) andalso couch_mgr:open_doc(Db, TemplateId) of
@@ -565,7 +573,7 @@ do_awesome_provision(Url, #cb_context{doc=JObj, db_name=Db}) ->
                                                     ,JObj, Template),
             MACAddress = re:replace(wh_json:get_string_value(<<"mac_address">>, JObj, "")
                                     ,"[^0-9a-fA-F]", "", [{return, list}, global]),
-            send_awesome_provisioning_request(ProvisionRequest, MACAddress, Url)
+            send_awesome_provisioning_request(ProvisionRequest, MACAddress)
     end,
     ok.
 
@@ -599,8 +607,9 @@ provision_device_line(BaseKey, Device, Template, [{TemplateKey, DeviceKey}|T]) -
 %% Send awesome provisioning request
 %% @end
 %%--------------------------------------------------------------------
--spec send_awesome_provisioning_request/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> 'ok'.
-send_awesome_provisioning_request(ProvisionRequest, MACAddress, Url) ->
+-spec send_awesome_provisioning_request/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
+send_awesome_provisioning_request(ProvisionRequest, MACAddress) ->
+    Url = whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>),
     UrlString = lists:flatten([Url, MACAddress]),
     Headers = [{"User-Agent", wh_util:to_list(erlang:node())}
                ,{"Content-Type", "application/json"}
@@ -614,3 +623,29 @@ send_awesome_provisioning_request(ProvisionRequest, MACAddress, Url) ->
         {ok, Code, _, Response} ->
             ?LOG("ERROR! OH NO! ~s. ~s", [Code, Response])
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% post data to a provisiong server
+%% @end
+%%--------------------------------------------------------------------
+-spec do_simple_provision/1 :: (#cb_context{}) -> 'ok'.
+do_simple_provision(#cb_context{doc=JObj}) ->
+    Url = whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>),
+    Headers = [{K, V}
+               || {K, V} <- [{"Host", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_host">>)}
+                             ,{"Referer", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_referer">>)}
+                             ,{"User-Agent", wh_util:to_list(erlang:node())}
+                             ,{"Content-Type", "application/x-www-form-urlencoded"}]
+                      ,V =/= undefined],
+    HTTPOptions = [],
+    Body = [{"api[realm]", wh_json:get_string_value([<<"sip">>, <<"realm">>], JObj)}
+            ,{"mac", re:replace(wh_json:get_string_value(<<"mac_address">>, JObj, ""), "[^0-9a-fA-F]", "", [{return, list}, global])}
+            ,{"label", wh_json:get_string_value(<<"name">>, JObj)}
+            ,{"sip[username]", wh_json:get_string_value([<<"sip">>, <<"username">>], JObj)}
+            ,{"sip[password]", wh_json:get_string_value([<<"sip">>, <<"password">>], JObj)}
+            ,{"submit", "true"}],
+    Encoded = mochiweb_util:urlencode(Body),
+    ?LOG("posting to ~s with ~s", [Url, Encoded]),
+    ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions).

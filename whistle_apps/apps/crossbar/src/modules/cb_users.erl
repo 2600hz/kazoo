@@ -25,7 +25,7 @@
 -define(SERVER, ?MODULE).
 
 -define(CB_LIST, <<"users/crossbar_listing">>).
--define(GROUP_BY_USERNAME, <<"users/group_by_username">>).
+-define(LIST_BY_USERNAME, <<"users/list_by_username">>).
 
 %%%===================================================================
 %%% API
@@ -366,14 +366,12 @@ hash_password(#cb_context{doc=JObj}=Context) ->
 -spec is_unique_username/2 :: (ne_binary() | 'undefined', #cb_context{}) -> boolean().
 is_unique_username(UserId, #cb_context{req_data=ReqData}=Context) ->
     Username = wh_json:get_value(<<"username">>, ReqData),
-    JObj = case crossbar_doc:load_view(?GROUP_BY_USERNAME, [{<<"key">>, Username}, {<<"reduce">>, <<"true">>}], Context) of
+    JObj = case crossbar_doc:load_view(?LIST_BY_USERNAME, [{<<"key">>, Username}], Context) of
                #cb_context{resp_status=success, doc=[J]} -> J;
                _ -> wh_json:new()
            end,
-    Assignments = wh_json:get_value(<<"value">>, JObj, []),
-    case UserId of
-        undefined ->
-            Assignments =:= [];
-        Id ->
-            Assignments =:= [] orelse Assignments =:= [[Id]]
+    case wh_json:get_value(<<"id">>, JObj) of
+        undefined ->true;
+        UserId -> true;
+        _Else -> false
     end.

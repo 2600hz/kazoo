@@ -14,8 +14,10 @@
 -export([render_template/3]).
 -export([normalize_proplist/1]).
 -export([json_to_template_props/1]).
+-export([get_service_props/3]).
 
 -include("notify.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 %%--------------------------------------------------------------------
 %% @private
@@ -55,7 +57,7 @@ normalize_proplist(Props) ->
 normalize_proplist_element({K, V}) when is_list(V) -> 
     {normalize_value(K), normalize_proplist(V)};
 normalize_proplist_element({K, V}) -> 
-    {normalize_value(K), normalize_value(V)};
+    {normalize_value(K), V};
 normalize_proplist_element(Else) ->
     Else.
 
@@ -91,3 +93,42 @@ render_template(Template, DefaultTemplate, Props) ->
             render_template(undefined, DefaultTemplate, Props)
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% determine the service name, provider, and url. Hunts (in order) 
+%% in the event, parent account notification object, and then default.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_service_props/3 :: (wh_json:json_object(), wh_json:json_object(), ne_binary()) -> proplist().
+get_service_props(Request, Account, ConfigCat) ->
+    DefaultUrl = wh_json:get_ne_value(<<"service_url">>, Request
+                                      ,whapps_config:get(ConfigCat, <<"default_service_url">>, <<"http://apps.2600hz.com">>)),
+    DefaultName = wh_json:get_ne_value(<<"service_name">>, Request
+                                       ,whapps_config:get(ConfigCat, <<"default_service_name">>, <<"VOIP Services">>)),
+    DefaultProvider = wh_json:get_ne_value(<<"service_provider">>, Request
+                                           ,whapps_config:get(ConfigCat, <<"default_service_provider">>, <<"2600hz">>)),
+    DefaultNumber = wh_json:get_ne_value(<<"support_number">>, Request
+                                           ,whapps_config:get(ConfigCat, <<"default_support_number">>, <<"(415) 886-7900">>)),
+    DefaultEmail = wh_json:get_ne_value(<<"support_email">>, Request
+                                        ,whapps_config:get(ConfigCat, <<"default_support_email">>, <<"support@2600hz.com">>)),
+    Tree = wh_json:get_value(<<"pvt_tree">>, Account, []),
+    [_, Module] = binary:split(ConfigCat, <<".">>),
+    case Tree =/= [] andalso couch_mgr:open_doc(?WH_ACCOUNTS_DB, lists:last(Tree)) of
+        {ok, JObj} ->
+            ?LOG("looking for notifications '~s' service info in: ~s", [Module, wh_json:get_value(<<"_id">>, JObj)]),
+            [{<<"url">>, wh_json:get_value([<<"notifications">>, Module, <<"service_url">>], JObj, DefaultUrl)}
+             ,{<<"name">>, wh_json:get_value([<<"notifications">>, Module, <<"service_name">>], JObj, DefaultName)}
+             ,{<<"provider">>, wh_json:get_value([<<"notifications">>, Module, <<"service_provider">>], JObj, DefaultProvider)}
+             ,{<<"support_number">>, wh_json:get_value([<<"notifications">>, Module, <<"support_number">>], JObj, DefaultNumber)}
+             ,{<<"support_email">>, wh_json:get_value([<<"notifications">>, Module, <<"support_email">>], JObj, DefaultEmail)}
+            ];
+        _E ->
+            ?LOG("failed to find parent for notifications '~s' service info: ~p", [Module, _E]),
+            [{<<"url">>, DefaultUrl}
+             ,{<<"name">>, DefaultName}
+             ,{<<"provider">>, DefaultProvider}
+             ,{<<"support_number">>, DefaultNumber}
+             ,{<<"support_email">>, DefaultEmail}
+            ]
+    end.         
