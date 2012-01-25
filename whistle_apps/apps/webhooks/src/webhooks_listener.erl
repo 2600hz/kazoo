@@ -96,21 +96,26 @@ handle_call(_, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({config_change, JObj}, #state{hooks_started=Dict}=State) ->
+    true = wapi_conf:doc_update_v(JObj),
+
     AcctDB = wapi_conf:get_account_db(JObj),
     ID = wapi_conf:get_id(JObj),
 
-    ?LOG("config change to ~s.~s", [AcctDB, ID]),
+    DocAction = wh_json:get_value(<<"Event-Name">>, JObj), % doc_created, doc_edited, doc_deleted
+
+    ?LOG("config change ~s to ~s.~s", [DocAction, AcctDB, ID]),
 
     Key = {AcctDB, ID},
 
     case dict:find(Key, Dict) of
         {ok, {Pid, _}} ->
             ?LOG("server ~p found for webhooks doc", [Pid]),
-            hook_acct_listener:update_config(Pid, JObj),
+            _ = handle_action(DocAction, Pid, JObj),
             {noreply, State};
         error ->
-            ?LOG("unknown webhook doc, starting handler"),
-            {ok, Pid} = hook_acct_sup:start_listener(AcctDB, wh_json:get_value(<<"doc">>, JObj)),
+            PubDoc = wh_json:get_value(<<"doc">>, JObj),
+            ?LOG("unknown webhook doc, starting handler: ~s", [wh_json:get_value(<<"bind_event">>, JObj)]),
+            {ok, Pid} = hook_acct_sup:start_listener(AcctDB, PubDoc),
             Ref = erlang:monitor(process, Pid),
             {noreply, State#state{hooks_started=dict:store(Key, {Pid, Ref}, Dict)}, hibernate}
     end.
@@ -140,6 +145,7 @@ handle_info({'DOWN', Ref, process, Pid, Reason}, #state{hooks_started=Dict}=Stat
                         end, Dict),
     {noreply, State#state{hooks_started=Dict1}, hibernate};
 handle_info(_Info, State) ->
+    ?LOG("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, _State) ->
@@ -198,3 +204,12 @@ maybe_start_handler(Db) ->
             ?LOG_SYS("Failed to load webhooks view for account ~s", [Db]),
             []
     end.
+
+handle_action(<<"doc_created">>, Pid, _JObj) ->
+    ?LOG("doc was created but we know the pid (~p) already?", [Pid]);
+handle_action(<<"doc_edited">>, Pid, JObj) ->
+    ?LOG("webhook updated for ~p", [Pid]),
+    hook_acct_listener:update_config(Pid, JObj);
+handle_action(<<"doc_deleted">>, Pid, _) ->
+    ?LOG("webhook deleted, shutting down ~p", [Pid]),
+    hook_acct_listener:stop(Pid).

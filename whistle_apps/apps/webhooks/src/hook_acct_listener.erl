@@ -13,7 +13,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2, update_config/2]).
+-export([start_link/2, stop/1, update_config/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2
@@ -44,6 +44,9 @@ start_link(AcctDB, Webhook) ->
     gen_listener:start_link(?MODULE, [{bindings, []}
                                       ,{responders, []}
                                      ], [AcctDB, Webhook]).
+
+stop(Srv) ->
+    gen_listener:stop(Srv).
 
 update_config(Pid, JObj) ->
     gen_listener:cast(Pid, {config_change, JObj}).
@@ -76,20 +79,7 @@ init([AcctDB, Webhook]) ->
                   end,
 
     BindEvent = wh_json:get_atom_value(<<"bind_event">>, Webhook),
-    true = lists:member(BindEvent, ?HOOKS_SUPPORTED),
-
-    gen_listener:add_binding(self()
-                             ,BindEvent
-                             ,[{realm, Realm}, {acct_id, AcctID} | BindOptions]
-                            ),
-
-    EventType = webhooks_util:api_call(BindEvent, fun(Mod) -> Mod:req_event_type() end),
-
-    ?LOG("event type: ~p", [EventType]),
-    gen_listener:add_responder(self()
-                               ,{hook_req_sup, handle_req} % send to the super
-                               ,EventType
-                              ),
+    setup_binding(BindEvent, BindOptions, Realm, AcctID),
 
     ?LOG("Starting webhook listener(~s) for ~s (~s)", [BindEvent, AcctID, Realm]),
 
@@ -126,8 +116,33 @@ handle_call(get_callback_uri, _From, #state{webhook=Hook}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_, State) ->
-    {noreply, State}.
+handle_cast({config_change, JObj}, #state{webhook=Hook, realm=Realm, acct_id=AcctID}=State) ->
+    ?LOG("config has changed to ~p", [JObj]),
+
+    Hook1 =  wh_json:set_values([
+                                 {<<"callback_uri">>, wh_json:get_value(<<"callback_uri">>, JObj)}
+                                 ,{<<"callback_method">>, wh_json:get_value(<<"callback_method">>, JObj)}
+                                 ,{<<"retries">>, wh_json:get_value(<<"retries">>, JObj)}
+                                ], Hook),
+
+    case {wh_json:get_value(<<"bind_event">>, Hook), wh_json:get_value(<<"bind_event">>, JObj)} of
+        {A, A} -> {noreply, State#state{webhook=Hook1}};
+        {Old, New} ->
+            ?LOG("changing hook from ~s to ~s", [Old, New]),
+            OldBindOptions = case wh_json:get_value(<<"bind_options">>, Hook, []) of
+                              Prop when is_list(Prop) -> Prop;
+                              JObj -> wh_json:to_proplist(JObj) % maybe [{restrict_to, [call, events]},...] or other json-y type
+                          end,
+            tear_down_binding(Old, OldBindOptions, Realm, AcctID),
+
+            NewBindOptions = case wh_json:get_value(<<"bind_options">>, JObj, []) of
+                                 Prop1 when is_list(Prop1) -> Prop1;
+                                 JObj1 -> wh_json:to_proplist(JObj1) % maybe [{restrict_to, [call, events]},...] or other json-y type
+                             end,
+
+            setup_binding(New, NewBindOptions, Realm, AcctID),
+            {noreply, State#state{webhook=JObj}}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -173,3 +188,25 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+tear_down_binding(BindEvent, BindOptions, Realm, AcctID) ->
+    gen_listener:rm_binding(self()
+                            ,BindEvent
+                            ,[{realm, Realm}, {acct_id, AcctID} | BindOptions]
+                           ),
+    EventType = webhooks_util:api_call(BindEvent, fun(Mod) -> Mod:req_event_type() end),
+    gen_listener:rm_responder(self()
+                              ,{hook_req_sup, handle_req} % send to the super
+                              ,EventType
+                             ).
+
+setup_binding(BindEvent, BindOptions, Realm, AcctID) ->
+    true = lists:member(BindEvent, ?HOOKS_SUPPORTED),
+    gen_listener:add_binding(self()
+                             ,BindEvent
+                             ,[{realm, Realm}, {acct_id, AcctID} | BindOptions]
+                            ),
+    EventType = webhooks_util:api_call(BindEvent, fun(Mod) -> Mod:req_event_type() end),
+    gen_listener:add_responder(self()
+                               ,{hook_req_sup, handle_req} % send to the super
+                               ,EventType
+                              ).
