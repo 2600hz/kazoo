@@ -43,6 +43,7 @@
 -compile({no_auto_import, [get_keys/1]}).
 
 -include("wh_json.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -export_type([json_object/0, json_objects/0
               ,json_string/0, json_strings/0
@@ -158,29 +159,43 @@ recursive_to_proplist(Props) when is_list(Props) ->
 recursive_to_proplist(Else) ->
     Else.
 
+%% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>
+%%   key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1
 -spec to_querystring/1 :: (json_object()) -> iolist().
 to_querystring(JObj) ->
-    {Vs, Ks} = get_values(normalize(JObj)),
-    fold_kvs(Ks, Vs, "").
+    to_querystring(normalize(JObj), "").
 
-fold_kvs([], [], Acc) -> Acc;
-fold_kvs([K], [V], Acc) -> ["?", lists:reverse([encode_kv(K, V) | Acc])];
-fold_kvs([K|Ks], [V|Vs], Acc) ->
-    fold_kvs(Ks, Vs, ["&", encode_kv(K, V) | Acc]).
+%% if Prefix is empty, don't wrap keys in array tags, otherwise Prefix[key]=value
+to_querystring(JObj, Prefix) ->
+    {Vs, Ks} = get_values(JObj),
+    fold_kvs(Ks, Vs, Prefix, "").
 
-encode_kv(K, Vs) when is_list(Vs) ->
-    encode_kv(wh_util:to_binary(K), Vs, "[]=", "");
-encode_kv(K, V) ->
-    encode_kv(K, "=", mochiweb_util:quote_plus(V)).
+fold_kvs([], [], _, Acc) -> Acc;
+fold_kvs([K], [V], Prefix, Acc) -> lists:reverse([encode_kv(Prefix, K, V) | Acc]);
+fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
+    fold_kvs(Ks, Vs, Prefix, ["&", encode_kv(Prefix, K, V) | Acc]).
 
-encode_kv(K, Sep, V) ->
-    [wh_util:to_binary(K), Sep, wh_util:to_binary(V)].
+encode_kv(Prefix, K, Vs) when is_list(Vs) ->
+    encode_kv(Prefix, wh_util:to_binary(K), Vs, "[]=", "");
+encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
+    encode_kv(Prefix, K, "=", mochiweb_util:quote_plus(V));
 
-encode_kv(K, [V], Sep, Acc) ->
-    lists:reverse([ encode_kv(K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
-encode_kv(K, [V|Vs], Sep, Acc) ->
-    encode_kv(K, Vs, Sep, [ "&", encode_kv(K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
-encode_kv(_, [], _, Acc) -> lists:reverse(Acc).
+% key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
+encode_kv("", K, JObj) ->
+    to_querystring(JObj, K);
+encode_kv(Prefix, K, JObj) ->
+    to_querystring(JObj, [Prefix, "[", K, "]"]).
+
+encode_kv("", K, Sep, V) ->
+    [wh_util:to_binary(K), Sep, wh_util:to_binary(V)];
+encode_kv(Prefix, K, Sep, V) ->
+    [Prefix, "[", wh_util:to_binary(K), "]", Sep, wh_util:to_binary(V)].
+
+encode_kv(Prefix, K, [V], Sep, Acc) ->
+    lists:reverse([ encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
+encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
+    encode_kv(Prefix, K, Vs, Sep, [ "&", encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
+encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
 -spec get_json_value/2 :: (json_string() | json_strings(), json_object()) -> 'undefined' | json_object().
 -spec get_json_value/3 :: (json_string() | json_strings(), json_object(), Default) -> Default | json_object().
@@ -685,7 +700,6 @@ prop_to_proplist() ->
 
 %% EUNIT TESTING
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
 
 -define(D1, {struct, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]}).
 -define(D2, {struct, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?D1}]}).
@@ -945,14 +959,19 @@ set_value_normalizer_test() ->
 
 to_querystring_test() ->
     Tests = [{<<"{}">>, <<>>}
-             ,{<<"{\"foo\":\"bar\"}">>, <<"?foo=bar">>}
-             ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\"}">>, <<"?foo=bar&fizz=buzz">>}
-             ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\",\"arr\":[1,3,5]}">>, <<"?foo=bar&fizz=buzz&arr[]=1&arr[]=3&arr[]=5">>}
-             ,{<<"{\"Msg-ID\":\"123-abc\"}">>, <<"?msg_id=123-abc">>}
-             ,{<<"{\"url\":\"http://user:pass@host:port/\"}">>, <<"?url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
+             ,{<<"{\"foo\":\"bar\"}">>, <<"foo=bar">>}
+             ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\"}">>, <<"foo=bar&fizz=buzz">>}
+             ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\",\"arr\":[1,3,5]}">>, <<"foo=bar&fizz=buzz&arr[]=1&arr[]=3&arr[]=5">>}
+             ,{<<"{\"Msg-ID\":\"123-abc\"}">>, <<"msg_id=123-abc">>}
+             ,{<<"{\"url\":\"http://user:pass@host:port/\"}">>, <<"url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
+             ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":\"v2\",\"subkey3\":[\"v31\",\"v32\"]}}">>
+                   ,<<"topkey[subkey1]=v1&topkey[subkey2]=v2&topkey[subkey3][]=v31&topkey[subkey3][]=v32">>}
+             ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":{\"k3\":\"v3\"}}}">>
+                   ,<<"topkey[subkey1]=v1&topkey[subkey2][k3]=v3">>}
             ],
     lists:foreach(fun({JSON, QS}) ->
-                          ?assertEqual(QS, wh_util:to_binary(to_querystring(decode(JSON))))
+                          QS1 = wh_util:to_binary(to_querystring(decode(JSON))),
+                          ?assertEqual(QS, QS1)
                   end, Tests).
 
 get_values_test() ->
