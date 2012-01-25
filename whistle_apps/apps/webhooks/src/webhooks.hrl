@@ -6,6 +6,8 @@
 -define(APP_NAME, <<"webhooks">>).
 -define(APP_VERSION, <<"0.1.0">>).
 
+-type http_methods() :: 'get' | 'post' | 'put'.
+
 -type hook_types() :: 'authn' | 'authz' | 'route'.
 -define(HOOKS_SUPPORTED, [authn, authz, route]).
 

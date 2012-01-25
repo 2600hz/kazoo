@@ -12,7 +12,7 @@
 
 -include("webhooks.hrl").
 
--spec api_call/2 :: (hook_types(), fun((atom()) -> Resp)) -> {'ok', Resp} | {'error', api_call_errors()}.
+-spec api_call/2 :: (hook_types(), fun((atom()) -> Resp)) -> Resp | {'error', 'non_existing' | 'undefined' | atom()}.
 api_call(BindEvent, ApiFun) when is_function(ApiFun, 1) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_list(BindEvent)]),
     try
@@ -33,9 +33,9 @@ api_call(BindEvent, ApiFun) when is_function(ApiFun, 1) ->
         error:undef ->
             ?LOG_SYS("module ~s doesn't exist or fun isn't exported", [Wapi]),
             {error, undefined};
-        E:R ->
+        _E:R ->
             ST = erlang:get_stacktrace(),
-            ?LOG("exception in executing ApiFun: ~p:~p", [E,R]),
+            ?LOG("exception in executing ApiFun: ~p:~p", [_E,R]),
             ?LOG_STACKTRACE(ST),
             {error, R}
     end.

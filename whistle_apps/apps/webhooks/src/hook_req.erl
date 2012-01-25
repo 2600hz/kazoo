@@ -22,8 +22,8 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {
-          callback_uri = 'undefined' :: 'undefined' | nonempty_string()
-         ,callback_method = 'post' :: 'post' | 'put' | 'get'
+          callback_uri = "" :: nonempty_string()
+         ,callback_method = 'post' :: http_methods()
          ,callback_attempts = 'undefined' :: 'undefined' | non_neg_integer()
          ,bind_event = 'undefined' :: 'undefined' | hook_types()
          ,acct_id = 'undefined' :: 'undefined' | ne_binary()
@@ -120,14 +120,25 @@ handle_cast({event, JObj}, #state{bind_event=route, ctl_q=undefined}=State) ->
             CtlQ = wh_json:get_value(<<"Server-ID">>, JObj),
             ?LOG("route_win recv, ctl q: ~s", [CtlQ]),
 
-            CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-
-            gen_listener:add_binding(self(), call, [{callid, CallID}, {restrict_to, [events, cdr]}]),
+            add_call_bindings(JObj),
             ?LOG("bound to call events"),
 
             handle_cast({send_event, JObj}, State#state{ctl_q=CtlQ});
         {_Cat, _Name} ->
-            ?LOG("recv unexpected route event: ~p:~p", [_Cat, _Name]),
+            ?LOG("recv unexpected route event: ~s:~s", [_Cat, _Name]),
+            {noreply, State, 5000}
+    end;
+handle_cast({event, JObj}, #state{bind_event=route}=State) ->
+    case wh_util:get_event_type(JObj) of
+        {<<"call_event">>, _} ->
+            ?LOG("send call event to webhook"),
+            handle_cast({send_event, JObj}, State);
+        {<<"call_detail">>, _} ->
+            ?LOG("send cdr to webhook"),
+            _ = handle_cast({send_event, JObj}, State),
+            {stop, normal, State};
+        {_Cat, _Name} ->
+            ?LOG("recv unexpected route event: ~s:~s", [_Cat, _Name]),
             {noreply, State, 5000}
     end;
 handle_cast({event, JObj}, #state{bind_event=authn}=State) ->
@@ -143,20 +154,20 @@ handle_cast({send_event, JObj}, #state{bind_event=route, ctl_q=CtlQ}=State) ->
     {ok, JSON} = encode_event(route, JObj),
     case send_http_req(JSON, State) of
         {ok, RespJObj} ->
-            send_amqp_resp(CtlQ, RespJObj, route),
-            add_call_bindings(JObj),
+            send_amqp_event_resp(CtlQ, RespJObj),
+            ?LOG("possibly sent amqp resp"),
             {noreply, State, 5000};
         {error, _E} ->
             ?LOG("failed to send event: ~p", [_E]),
             {noreply, State, 5000};
         ignore ->
             ?LOG("ignoring HTTP response"),
-            {noreply, State}
+            {noreply, State, 5000}
     end;
 handle_cast({send_event, JObj}, #state{bind_event=BindEvent}=State) ->
     {ok, JSON} = encode_event(BindEvent, JObj),
     _ = send_http_req(JSON, State),
-    ?LOG("sent followup event"),
+    ?LOG("sent followup event to HTTP"),
     {stop, normal, State};
 
 handle_cast({start_req, ReqJObj}, #state{bind_event=BindEvent}=State) ->
@@ -169,13 +180,15 @@ handle_cast({start_req, ReqJObj}, #state{bind_event=BindEvent}=State) ->
             case send_http_req(JSON, State) of
                 {ok, RespJObj} ->
                     Self = self(),
-                    spawn(fun() -> 
+                    spawn(fun() ->
+                                  wh_util:put_callid(ReqJObj),
                                   Q = gen_listener:queue_name(Self),
-
                                   add_followup_bindings(Self, BindEvent, ReqJObj, RespJObj),
-
                                   send_amqp_resp(wh_json:get_value(<<"Server-ID">>, ReqJObj)
-                                                 ,wh_json:set_value(<<"Server-ID">>, Q, RespJObj)
+                                                 ,wh_json:set_values([{<<"Server-ID">>, Q}
+                                                                      ,{<<"App-Name">>, ?APP_NAME}
+                                                                      ,{<<"App-Version">>, ?APP_VERSION}
+                                                                     ], RespJObj)
                                                  ,BindEvent
                                                 )
                           end),
@@ -207,7 +220,8 @@ handle_info(timeout, State) ->
     ?LOG("timed out waiting, going down"),
     {stop, normal, State};
 handle_info(_Info, State) ->
-    {noreply, State}.
+    ?LOG("unhandled message: ~p", [_Info]),
+    {noreply, State, 5000}.
 
 handle_event(_JObj, _State) ->
     {reply, []}.
@@ -241,16 +255,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--type ibrowse_errors() :: {'url_parsing_failed', {'invalid_uri_1', string()} |
-                           {'EXIT', _} |
-                           {invalid_uri_2, _, _, _}
-                          }.
 -spec send_http_req/2 :: (iolist() | ne_binary(), #state{}) -> 'ignore' |
                                                                {'ok', wh_json:json_object()} |
-                                                               {'error', 'retries_exceeded' | ibrowse_errors()}.
+                                                               {'error', 'retries_exceeded' | term()}.
 -spec send_http_req/3 :: (iolist() | ne_binary(), #state{}, non_neg_integer()) -> 'ignore' |
                                                                                   {'ok', wh_json:json_object()} |
-                                                                                  {'error', 'retries_exceeded' | ibrowse_errors()}.
+                                                                                  {'error', 'retries_exceeded' | term()}.
 send_http_req(JSON, #state{callback_attempts=Attempts}=State) ->
     send_http_req(JSON, State, Attempts).
 
@@ -280,7 +290,7 @@ send_http_req_once(JSON, #state{callback_uri=CB_URI
             E
     end.
 
--spec uri/3 :: (hook_types(), nonempty_string(), iolist() | ne_binary()) -> nonempty_string().
+-spec uri/3 :: (http_methods(), nonempty_string(), iolist() | ne_binary()) -> nonempty_string().
 uri(get, URI, JSON) ->
     QS = wh_json:to_querystring(wh_json:decode(JSON)),
     binary_to_list(iolist_to_binary([URI, "?", QS]));
@@ -294,6 +304,8 @@ encode_event(route, JObj) ->
             wapi_call:event(JObj);
         {<<"call_detail">>, _} ->
             wapi_call:cdr(JObj);
+        {<<"dialplan">>, <<"route_win">>} ->
+            wapi_route:win(JObj);
         {_Cat, _Name} ->
             ?LOG("unhandled route event: ~s:~s", [_Cat, _Name]),
             {error, unhandled_event}
@@ -315,7 +327,7 @@ encode_event(authz, JObj) ->
             {error, unhandled_event}
     end.
 
--spec process_resp/3 :: (nonempty_string(), proplist(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'retry' | term()} | 'ignore'.
+-spec process_resp/3 :: (nonempty_string(), proplist(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'retry' | 'unsupported_content_type'} | 'ignore'.
 process_resp(_, _, <<>>) ->
     ?LOG("no response to decode"),
     ignore;
@@ -329,6 +341,7 @@ process_resp(_Status, _RespHeaders, _RespBody) ->
 %% Should convert from ContentType to a JSON binary (like xml -> Erlang XML -> Erlang JSON -> json)
 -spec decode_to_json/2 :: (nonempty_string(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'unsupported_content_type'}.
 decode_to_json("application/json" ++ _, JSON) ->
+    ?LOG("decoding ~s to json_object()", [JSON]),
     {ok, wh_json:decode(JSON)};
 decode_to_json(_ContentType, _RespBody) ->
     ?LOG("unhandled content type: ~s", [_ContentType]),
@@ -350,16 +363,22 @@ is_valid_req(JObj, BindEvent) ->
 
 -spec send_amqp_resp/3 :: (ne_binary(), wh_json:json_object(), hook_types()) -> 'ok'.
 send_amqp_resp(RespQ, RespJObj, route) ->
-    case wh_util:get_event_type(RespJObj) of
-        {<<"dialplan">>, <<"route_resp">>} ->
-            ?LOG("publish route_resp"),
-            wapi_route:publish_resp(RespQ, RespJObj);
-        _ ->
-            ?LOG("publish dialplan command(s)"),
-            wapi_dialplan:publish_command(RespQ, RespJObj)
-    end;
+    {<<"dialplan">>, <<"route_resp">>} = wh_util:get_event_type(RespJObj),
+    ?LOG("publish route_resp to ~s: ~p", [RespQ, RespJObj]),
+    wapi_route:publish_resp(RespQ, RespJObj);
 send_amqp_resp(RespQ, RespJObj, BindEvent) ->
     webhooks_util:api_call(BindEvent, fun(ApiMod) -> ApiMod:publish_resp(RespQ, RespJObj) end).
+
+-spec send_amqp_event_resp/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+send_amqp_event_resp(RespQ, RespJObj) ->
+    case wh_util:get_event_type(RespJObj) of
+        {<<"dialplan">>, <<"command">>} ->
+            ?LOG("publish dialplan command(s)"),
+            wapi_dialplan:publish_command(RespQ, RespJObj);
+        {_Cat, _Evt} ->
+            ?LOG("unhandled route event: ~s: ~s", [_Cat, _Evt]),
+            ok
+    end.
 
 attempts(N) when N =< 0 -> 1;
 attempts(N) when N > 3 -> 3;

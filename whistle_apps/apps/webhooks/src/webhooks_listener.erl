@@ -110,7 +110,7 @@ handle_cast({config_change, JObj}, #state{hooks_started=Dict}=State) ->
             {noreply, State};
         error ->
             ?LOG("unknown webhook doc, starting handler"),
-            {ok, Pid} = webhooks_listener_sup:start_listener(AcctDB, wh_json:get_value(<<"doc">>, JObj)),
+            {ok, Pid} = hook_acct_sup:start_listener(AcctDB, wh_json:get_value(<<"doc">>, JObj)),
             Ref = erlang:monitor(process, Pid),
             {noreply, State#state{hooks_started=dict:store(Key, {Pid, Ref}, Dict)}, hibernate}
     end.
@@ -190,7 +190,7 @@ maybe_start_handler(Db) ->
         {ok, WebHooks} ->
             ?LOG("Starting webhooks listener(s) for ~s: ~b", [Db, length(WebHooks)]),
             [begin
-                 {ok, Pid} = webhooks_listener_sup:start_listener(Db, wh_json:get_value(<<"doc">>, Hook)),
+                 {ok, Pid} = hook_acct_sup:start_listener(Db, wh_json:get_value(<<"doc">>, Hook)),
                  {wh_json:get_value(<<"id">>, Hook), Pid}
              end
              || Hook <- WebHooks];

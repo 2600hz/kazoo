@@ -41,7 +41,7 @@ cache_proc() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
                                   ?CACHE(webhooks_cache)
-                                  ,?CHILD(webhooks_listener_sup, supervisor)
+                                  ,?CHILD(hook_acct_sup, supervisor)
                                   ,?CHILD(hook_req_sup, supervisor)
                                   ,?CHILD(webhooks_listener, worker) % listens for config changes to webhook docs
                                  ]} }.
