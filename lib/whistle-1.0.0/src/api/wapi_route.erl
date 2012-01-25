@@ -18,8 +18,8 @@
          ,publish_resp/2, publish_resp/3
          ,publish_win/2, publish_win/3
          ,get_auth_realm/1
+         ,req_event_type/0
         ]).
-
 
 -define(EVENT_CATEGORY, <<"dialplan">>).
 -define(ROUTE_REQ_EVENT_NAME, <<"route_req">>).
@@ -58,13 +58,14 @@
                                ]).
 
 %% Route Responses
--define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
+-define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
                                                  ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
                                                  ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
                                                  ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
                                                  ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
                                                  ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+                                                 ,<<"Weight-Cost">>, <<"Weight-Location">>
                                            ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                                   ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
@@ -124,6 +125,10 @@ req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ROUTE_REQ_HEADERS, ?ROUTE_REQ_VALUES, ?ROUTE_REQ_TYPES);
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
+
+-spec req_event_type/0 :: () -> {ne_binary(), ne_binary()}.
+req_event_type() ->
+    {?EVENT_CATEGORY, ?ROUTE_REQ_EVENT_NAME}.
 
 %%--------------------------------------------------------------------
 %% @doc Dialplan Route Response - see wiki

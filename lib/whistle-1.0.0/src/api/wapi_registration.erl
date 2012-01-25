@@ -122,8 +122,20 @@ query_resp_v(JObj) ->
 bind_q(Q, Props) ->
     amqp_util:callmgr_exchange(),
 
+    bind_q(Q, props:get_value(retrict_to, Props), Props).
+
+bind_q(Q, undefined, Props) ->
     amqp_util:bind_q_to_callmgr(Q, get_success_binding(Props)),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_REG_QUERY),
+    amqp_util:bind_q_to_callmgr(Q, get_query_binding(Props));
+bind_q(Q, [reg_success|T], Props) ->
+    amqp_util:bind_q_to_callmgr(Q, get_success_binding(Props)),
+    bind_q(Q, T, Props);
+bind_q(Q, [reg_query|T], Props) ->
+    amqp_util:bind_q_to_callmgr(Q, get_query_binding(Props)),
+    bind_q(Q, T, Props);
+bind_q(Q, [_|T], Props) ->
+    bind_q(Q, T, Props);
+bind_q(_, [], _) ->
     ok.
 
 -spec unbind_q/1 :: (ne_binary()) -> 'ok'.
@@ -131,7 +143,21 @@ bind_q(Q, Props) ->
 unbind_q(Q) ->
     unbind_q(Q, []).
 unbind_q(Q, Props) ->
-    amqp_util:unbind_q_from_callmgr(Q, get_success_binding(Props)).
+    unbind_q(Q, props:get_value(retrict_to, Props), Props).
+
+unbind_q(Q, undefined, Props) ->
+    amqp_util:unbind_q_from_callmgr(Q, get_success_binding(Props)),
+    amqp_util:unbind_q_from_callmgr(Q, get_query_binding(Props));
+unbind_q(Q, [reg_success|T], Props) ->
+    amqp_util:unbind_q_from_callmgr(Q, get_success_binding(Props)),
+    unbind_q(Q, T, Props);
+unbind_q(Q, [reg_query|T], Props) ->
+    amqp_util:unbind_q_from_callmgr(Q, get_query_binding(Props)),
+    unbind_q(Q, T, Props);
+unbind_q(Q, [_|T], Props) ->
+    unbind_q(Q, T, Props);
+unbind_q(_, [], _) ->
+    ok.
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
@@ -151,7 +177,7 @@ publish_query_req(JObj) ->
     publish_query_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_query_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?REG_QUERY_VALUES, fun ?MODULE:query_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_REG_QUERY).
+    amqp_util:callmgr_publish(Payload, ContentType, get_query_routing(Req)).
 
 -spec publish_query_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_query_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -179,6 +205,25 @@ get_success_routing(JObj) ->
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     get_success_routing(Realm, User).
 
+-spec get_success_routing/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+get_success_routing(Realm, User) ->
+    list_to_binary([?KEY_REG_SUCCESS, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
+
+-spec get_query_routing/1 :: (api_terms()) -> ne_binary().
+get_query_routing(Prop) when is_list(Prop) ->
+    User = props:get_value(<<"Username">>, Prop),
+    Realm = props:get_value(<<"Realm">>, Prop),
+    get_query_routing(Realm, User);
+get_query_routing(JObj) ->
+    User = wh_json:get_value(<<"Username">>, JObj),
+    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    get_query_routing(Realm, User).
+
+-spec get_query_routing/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+get_query_routing(Realm, User) ->
+    list_to_binary([?KEY_REG_QUERY, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
+
+
 %% Allow Queues to be bound for specific realms, and even users within those realms
 %% the resulting binding will be reg.success.{realm | *}.{user | *}
 %% * matches one segment only, which means all reg_success messages will be published to
@@ -195,6 +240,16 @@ get_success_binding(Props) ->
 
     iolist_to_binary([?KEY_REG_SUCCESS, Realm, User]).
 
--spec get_success_routing/2 :: (ne_binary(), ne_binary()) -> ne_binary().
-get_success_routing(Realm, User) ->
-    list_to_binary([?KEY_REG_SUCCESS, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
+get_query_binding(Props) ->
+    User = case props:get_value(user, Props) of
+               undefined -> ".*";
+               U -> [".", amqp_util:encode(U)]
+           end,
+    Realm = case props:get_value(realm, Props) of
+                undefined -> ".*";
+                R -> [".", amqp_util:encode(R)]
+            end,
+
+    iolist_to_binary([?KEY_REG_QUERY, Realm, User]).
+    
+
