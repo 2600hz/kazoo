@@ -13,7 +13,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2]).
+-export([start_link/2, update_config/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2
@@ -40,11 +40,13 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(AcctDB, Webhooks) ->
-    gen_listener:start_link(?MODULE, [ % calls immediately to the supervisor to start child
-                                      {responders, [{hook_req_sup, {<<"*">>, <<"*">>}}]}
-                                      ,{bindings, [{self, []}]}
-                                     ], [AcctDB, Webhooks]).
+start_link(AcctDB, Webhook) ->
+    gen_listener:start_link(?MODULE, [{bindings, []}
+                                      ,{responders, []}
+                                     ], [AcctDB, Webhook]).
+
+update_config(Pid, JObj) ->
+    gen_listener:cast(Pid, {config_change, JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -62,7 +64,7 @@ start_link(AcctDB, Webhooks) ->
 %% @end
 %%--------------------------------------------------------------------
 init([AcctDB, Webhook]) ->
-    AcctID = whapps_util:get_db_name(AcctDB, raw),
+    AcctID = wh_util:format_account_id(AcctDB, raw),
     put(callid, AcctID),
 
     {ok, AcctDoc} = couch_mgr:open_doc(AcctDB, AcctID),
@@ -72,13 +74,24 @@ init([AcctDB, Webhook]) ->
                       Prop when is_list(Prop) -> Prop;
                       JObj -> wh_json:to_proplist(JObj) % maybe [{restrict_to, [call, events]},...] or other json-y type
                   end,
-    
+
+    BindEvent = wh_json:get_atom_value(<<"bind_event">>, Webhook),
+    true = lists:member(BindEvent, ?HOOKS_SUPPORTED),
+
     gen_listener:add_binding(self()
-                             ,wh_json:get_value(<<"bind_event">>, Webhook)
+                             ,BindEvent
                              ,[{realm, Realm}, {acct_id, AcctID} | BindOptions]
                             ),
 
-    ?LOG("Starting webhook listener for ~s (~s)", [AcctID, Realm]),
+    EventType = webhooks_util:api_call(BindEvent, fun(Mod) -> Mod:req_event_type() end),
+
+    ?LOG("event type: ~p", [EventType]),
+    gen_listener:add_responder(self()
+                               ,{hook_req_sup, handle_req} % send to the super
+                               ,EventType
+                              ),
+
+    ?LOG("Starting webhook listener(~s) for ~s (~s)", [BindEvent, AcctID, Realm]),
 
     {ok, #state{acct_db=AcctDB
                 ,acct_id=AcctID

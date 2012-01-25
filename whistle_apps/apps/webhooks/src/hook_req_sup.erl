@@ -18,7 +18,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(SERVER, ?MODULE).
--define(CHILD(I), {I, {I, start_link, []}, transient, 5000, worker, [I]}).
+-define(CHILD(I), {I, {I, start_link, []}, temporary, 5000, worker, [I]}).
 
 %% ===================================================================
 %% API functions

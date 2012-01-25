@@ -24,10 +24,11 @@
 -record(state, {
           callback_uri = 'undefined' :: 'undefined' | nonempty_string()
          ,callback_method = 'post' :: 'post' | 'put' | 'get'
-         ,retries = 'undefined' :: 'undefined' | non_neg_integer()
+         ,callback_attempts = 'undefined' :: 'undefined' | non_neg_integer()
          ,bind_event = 'undefined' :: 'undefined' | hook_types()
          ,acct_id = 'undefined' :: 'undefined' | ne_binary()
          ,realm = 'undefined' :: 'undefined' | ne_binary()
+         ,ctl_q = 'undefined' :: 'undefined' | ne_binary()
          }).
 
 %%%===================================================================
@@ -73,13 +74,13 @@ init([JObj, Props]) ->
     gen_listener:cast(self(), {start_req, JObj}),
 
     ?LOG("started req handler for acct ~s: ~s", [props:get_value(acct_id, Props)
-                                                 ,wh_json:get_value(<<"hook_type">>, Hook)
+                                                 ,wh_json:get_value(<<"bind_event">>, Hook)
                                                 ]),
 
     {ok, #state{callback_uri = wh_json:get_string_value(<<"callback_uri">>, Hook)
                 ,callback_method = wh_json:get_atom_value(<<"callback_method">>, Hook)
-                ,retries = wh_json:get_integer_value(<<"retries">>, Hook, 0)
-                ,bind_event = wh_json:get_atom_value(<<"hook_type">>, Hook)
+                ,callback_attempts = attempts(wh_json:get_integer_value(<<"retries">>, Hook, 0))
+                ,bind_event = wh_json:get_atom_value(<<"bind_event">>, Hook)
                 ,acct_id = props:get_value(acct_id, Props)
                 ,realm = props:get_value(realm, Props)
                }}.
@@ -112,21 +113,83 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({event, _JObj}, State) ->
-    ?LOG("followup event received"),
-    {noreply, State};
-handle_cast({start_req, JObj}, #state{bind_event=BindEvent}=State) ->
-    case is_valid_req(JObj, BindEvent) of
+handle_cast({event, JObj}, #state{bind_event=route, ctl_q=undefined}=State) ->
+    case wh_util:get_event_type(JObj) of
+        {<<"dialplan">>, <<"route_win">>} ->
+            true = wapi_route:win_v(JObj),
+            CtlQ = wh_json:get_value(<<"Server-ID">>, JObj),
+            ?LOG("route_win recv, ctl q: ~s", [CtlQ]),
+
+            CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+
+            gen_listener:add_binding(self(), call, [{callid, CallID}, {restrict_to, [events, cdr]}]),
+            ?LOG("bound to call events"),
+
+            handle_cast({send_event, JObj}, State#state{ctl_q=CtlQ});
+        {_Cat, _Name} ->
+            ?LOG("recv unexpected route event: ~p:~p", [_Cat, _Name]),
+            {noreply, State, 5000}
+    end;
+handle_cast({event, JObj}, #state{bind_event=authn}=State) ->
+    true = wapi_registration:success_v(JObj),
+    ?LOG("registration was a success"),
+    handle_cast({send_event, JObj}, State);
+handle_cast({event, JObj}, #state{bind_event=authz}=State) ->
+    true = wapi_authz:win_v(JObj),
+    ?LOG("authz_win recv"),
+    handle_cast({send_event, JObj}, State);
+
+handle_cast({send_event, JObj}, #state{bind_event=route, ctl_q=CtlQ}=State) ->
+    {ok, JSON} = encode_event(route, JObj),
+    case send_http_req(JSON, State) of
+        {ok, RespJObj} ->
+            send_amqp_resp(CtlQ, RespJObj, route),
+            add_call_bindings(JObj),
+            {noreply, State, 5000};
+        {error, _E} ->
+            ?LOG("failed to send event: ~p", [_E]),
+            {noreply, State, 5000};
+        ignore ->
+            ?LOG("ignoring HTTP response"),
+            {noreply, State}
+    end;
+handle_cast({send_event, JObj}, #state{bind_event=BindEvent}=State) ->
+    {ok, JSON} = encode_event(BindEvent, JObj),
+    _ = send_http_req(JSON, State),
+    ?LOG("sent followup event"),
+    {stop, normal, State};
+
+handle_cast({start_req, ReqJObj}, #state{bind_event=BindEvent}=State) ->
+    case is_valid_req(ReqJObj, BindEvent) of
         false ->
             ?LOG("json failed validation for ~s", [BindEvent]),
             {stop, invalid_req, State};
         true ->
-            case send_http_req(JObj, State) of
-                {ok, Resp} ->
-                    ok = send_amqp_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp, BindEvent),
-                    {noreply, State};
+            {ok, JSON} = encode_req(BindEvent, wh_json:set_value(<<"Server-ID">>, <<>>, ReqJObj)),
+            case send_http_req(JSON, State) of
+                {ok, RespJObj} ->
+                    Self = self(),
+                    spawn(fun() -> 
+                                  Q = gen_listener:queue_name(Self),
+
+                                  add_followup_bindings(Self, BindEvent, ReqJObj, RespJObj),
+
+                                  send_amqp_resp(wh_json:get_value(<<"Server-ID">>, ReqJObj)
+                                                 ,wh_json:set_value(<<"Server-ID">>, Q, RespJObj)
+                                                 ,BindEvent
+                                                )
+                          end),
+                    {noreply, State, 5000};
+                {error, {conn_failed, nxdomain}=E} ->
+                    ?LOG(alert, "failed to find domain of callback"),
+                    %% email someone
+                    %% disable the webhook
+                    {stop, E, State};
                 {error, E} ->
-                    {stop, E, State}
+                    {stop, E, State};
+                ignore ->
+                    ?LOG("ignoring response, no answer for the request"),
+                    {stop, normal, State}
             end
     end.
 
@@ -140,6 +203,9 @@ handle_cast({start_req, JObj}, #state{bind_event=BindEvent}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(timeout, State) ->
+    ?LOG("timed out waiting, going down"),
+    {stop, normal, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -179,37 +245,80 @@ code_change(_OldVsn, State, _Extra) ->
                            {'EXIT', _} |
                            {invalid_uri_2, _, _, _}
                           }.
--spec send_http_req/2 :: (wh_json:json_object(), #state{}) -> {'ok', ne_binary()} |
-                                                              {'error', 'retries_exceeded' | ibrowse_errors()}.
--spec send_http_req/3 :: (wh_json:json_object(), #state{}, non_neg_integer()) -> {'ok', ne_binary()} |
-                                                                                 {'error', 'retries_exceeded' | ibrowse_errors()}.
-send_http_req(JObj, #state{retries=Retries}=State) ->
-    send_http_req(JObj, State, Retries+1).
+-spec send_http_req/2 :: (iolist() | ne_binary(), #state{}) -> 'ignore' |
+                                                               {'ok', wh_json:json_object()} |
+                                                               {'error', 'retries_exceeded' | ibrowse_errors()}.
+-spec send_http_req/3 :: (iolist() | ne_binary(), #state{}, non_neg_integer()) -> 'ignore' |
+                                                                                  {'ok', wh_json:json_object()} |
+                                                                                  {'error', 'retries_exceeded' | ibrowse_errors()}.
+send_http_req(JSON, #state{callback_attempts=Attempts}=State) ->
+    send_http_req(JSON, State, Attempts).
 
 send_http_req(_, _, 0) ->
     {error, retries_exceeded};
-send_http_req(JObj, #state{callback_uri=URI
-                           ,callback_method=Method
-                           ,bind_event=BindEvent
-                          }=State, Retries) ->
+send_http_req(JSON, State, Attempts) ->
+    case send_http_req_once(JSON, State) of
+        {ok, _}=OK -> OK;
+        {error, retry} -> send_http_req(JSON, State, Attempts-1);
+        {error, _E}=E -> E;
+        ignore -> ignore
+    end.
+
+send_http_req_once(JSON, #state{callback_uri=CB_URI
+                                ,callback_method=Method
+                               }) ->
+    URI = uri(Method, CB_URI, JSON),
     ?LOG("sending req to ~s using http ~s", [URI, Method]),
-    JSON = encode_req(BindEvent, JObj),
+    ?LOG("req: ~s", [JSON]),
 
     case ibrowse:send_req(URI, ?DEFAULT_REQ_HEADERS, Method, JSON, ?DEFAULT_OPTS) of
         {ok, Status, RespHeaders, RespBody} ->
-            case process_resp(Status, RespHeaders, RespBody) of
-                {ok, _}=OK -> OK;
-                {error, retry} -> send_http_req(JObj, State, Retries-1);
-                {error, _E}=E ->
-                    ?LOG("failed to receive proper response: ~p", [_E]),
-                    E
-            end;
+            ?LOG("resp: ~s", [RespBody]),
+            process_resp(Status, RespHeaders, RespBody);
         {error, _E}=E ->
             ?LOG("failed to send request to ~s", [URI]),
             E
     end.
 
--spec process_resp/3 :: (nonempty_string(), proplist(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'retry' | term()}.
+-spec uri/3 :: (hook_types(), nonempty_string(), iolist() | ne_binary()) -> nonempty_string().
+uri(get, URI, JSON) ->
+    QS = wh_json:to_querystring(wh_json:decode(JSON)),
+    binary_to_list(iolist_to_binary([URI, "?", QS]));
+uri(_, URI, _) ->
+    URI.
+
+-spec encode_event/2 :: (hook_types(), wh_json:json_object()) -> {'ok', iolist() | ne_binary()} | {'error', string() | 'unhandled_event'}.
+encode_event(route, JObj) ->
+    case wh_util:get_event_type(JObj) of
+        {<<"call_event">>, _} ->
+            wapi_call:event(JObj);
+        {<<"call_detail">>, _} ->
+            wapi_call:cdr(JObj);
+        {_Cat, _Name} ->
+            ?LOG("unhandled route event: ~s:~s", [_Cat, _Name]),
+            {error, unhandled_event}
+    end;
+encode_event(authn, JObj) ->
+    case wh_util:get_event_type(JObj) of
+        {<<"directory">>, <<"reg_success">>} ->
+            wapi_registration:success(JObj);
+        {_Cat, _Name} ->
+            ?LOG("unhandled authn event: ~s:~s", [_Cat, _Name]),
+            {error, unhandled_event}
+    end;
+encode_event(authz, JObj) ->
+    case wh_util:get_event_type(JObj) of
+        {<<"dialplan">>, <<"authz_win">>} ->
+            wapi_authz:win(JObj);
+        {_Cat, _Name} ->
+            ?LOG("unhandled authz event: ~s:~s", [_Cat, _Name]),
+            {error, unhandled_event}
+    end.
+
+-spec process_resp/3 :: (nonempty_string(), proplist(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'retry' | term()} | 'ignore'.
+process_resp(_, _, <<>>) ->
+    ?LOG("no response to decode"),
+    ignore;
 process_resp([$2|_]=_Status, RespHeaders, RespBody) ->
     ?LOG("successful status ~s received", [_Status]),
     decode_to_json(props:get_value("Content-Type", RespHeaders), RespBody);
@@ -218,65 +327,58 @@ process_resp(_Status, _RespHeaders, _RespBody) ->
     {error, retry}.
 
 %% Should convert from ContentType to a JSON binary (like xml -> Erlang XML -> Erlang JSON -> json)
--spec decode_to_json/2 :: (nonempty_string(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'unsupported_content_type'}.
+-spec decode_to_json/2 :: (nonempty_string(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'unsupported_content_type'}.
 decode_to_json("application/json" ++ _, JSON) ->
-    {ok, JSON};
+    {ok, wh_json:decode(JSON)};
 decode_to_json(_ContentType, _RespBody) ->
     ?LOG("unhandled content type: ~s", [_ContentType]),
     {error, unsupported_content_type}.
 
--spec encode_req/2 :: (wh_json:json_object(), hook_types()) -> {'ok', iolist() | ne_binary()} | {'error', string()}.
-encode_req(JObj, BindEvent) ->
-    case api_call(BindEvent, fun(ApiMod) -> ApiMod:req(JObj) end) of
+-spec encode_req/2 :: (hook_types(), wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
+encode_req(BindEvent, JObj) ->
+    case webhooks_util:api_call(BindEvent, fun(ApiMod) -> ApiMod:req(JObj) end) of
         {ok, _}=OK -> OK;
-        {error, try_again} -> encode_req(JObj, BindEvent);
         {error, _}=Err -> Err
     end.
 
 -spec is_valid_req/2 :: (wh_json:json_object(), hook_types()) -> boolean().
 is_valid_req(JObj, BindEvent) ->
-    is_valid_req(JObj, BindEvent, 1).
-
-is_valid_req(_JObj, _BindEvent, 0) ->
-    false;
-is_valid_req(JObj, BindEvent, 1) ->
-    case api_call(BindEvent, fun(ApiMod) -> ApiMod:req_v(JObj) end) of
-        {ok, Resp} -> Resp;
-        {error, try_again} -> is_valid_req(JObj, BindEvent, 0);
-        {error, _} -> false
+    case webhooks_util:api_call(BindEvent, fun(ApiMod) -> ApiMod:req_v(JObj) end) of
+        true -> true;
+        _ -> false
     end.
 
 -spec send_amqp_resp/3 :: (ne_binary(), wh_json:json_object(), hook_types()) -> 'ok'.
-send_amqp_resp(RespQ, Resp, BindEvent) ->
-    {'ok', 'ok'} = api_call(BindEvent, fun(ApiMod) -> ApiMod:publish_resp(RespQ, Resp) end),
-    'ok'.
+send_amqp_resp(RespQ, RespJObj, route) ->
+    case wh_util:get_event_type(RespJObj) of
+        {<<"dialplan">>, <<"route_resp">>} ->
+            ?LOG("publish route_resp"),
+            wapi_route:publish_resp(RespQ, RespJObj);
+        _ ->
+            ?LOG("publish dialplan command(s)"),
+            wapi_dialplan:publish_command(RespQ, RespJObj)
+    end;
+send_amqp_resp(RespQ, RespJObj, BindEvent) ->
+    webhooks_util:api_call(BindEvent, fun(ApiMod) -> ApiMod:publish_resp(RespQ, RespJObj) end).
 
--type api_call_errors() :: 'non_existing' | 'try_again' | 'undefined' | term().
+attempts(N) when N =< 0 -> 1;
+attempts(N) when N > 3 -> 3;
+attempts(N) -> N.
 
--spec api_call/2 :: (hook_types(), fun((atom()) -> Resp)) -> {'ok', Resp} | {'error', api_call_errors()}.
-api_call(BindEvent, ApiFun) when is_function(ApiFun, 1) ->
-    Wapi = list_to_binary([<<"wapi_">>, wh_util:to_list(BindEvent)]),
-    try
-        ApiMod = wh_util:to_atom(Wapi),
-        ApiFun(ApiMod)
-    catch
-        error:badarg ->
-            ?LOG_SYS("api module ~s not found", [Wapi]),
-            case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
-                non_existing ->
-                    ?LOG_SYS("beam file not found for ~s, fail", [Wapi]),
-                    {error, non_existing};
-                _Path ->
-                    ?LOG_SYS("beam file found: ~s", [_Path]),
-                    wh_util:to_atom(Wapi, true), %% put atom into atom table
-                    try_again
-            end;
-        error:undef ->
-            ?LOG_SYS("module ~s doesn't exist or fun isn't exported", [Wapi]),
-            {error, undefined};
-        E:R ->
-            ST = erlang:get_stacktrace(),
-            ?LOG("exception in executing ApiFun: ~p:~p", [E,R]),
-            ?LOG_STACKTRACE(ST),
-            {error, R}
-    end.
+add_followup_bindings(Srv, authn, ReqJObj, _RespJObj) ->
+    ?LOG("listening for reg success"),
+    gen_listener:add_binding(Srv, registration, [{user, wh_json:get_value(<<"Auth-User">>, ReqJObj)}
+                                                 ,{realm, wh_json:get_value(<<"Auth-Realm">>, ReqJObj)}
+                                                 ,{restrict_to, [reg_success]}
+                                                ]);
+add_followup_bindings(_, authz, _ReqJObj, _RespJObj) ->
+    ?LOG("waiting for authz_win to come");
+add_followup_bindings(_, route, _ReqJObj, _RespJObj) ->
+    ?LOG("waiting for route_win to come").
+
+add_call_bindings(JObj) ->
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    ?LOG(CallID, "listening for call events and cdr", []),
+    gen_listener:add_binding(self(), call, [{callid, CallID}
+                                            ,{restrict_to, [events, cdr]}
+                                           ]).

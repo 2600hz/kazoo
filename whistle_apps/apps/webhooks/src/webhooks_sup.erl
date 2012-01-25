@@ -43,5 +43,5 @@ init([]) ->
                                   ?CACHE(webhooks_cache)
                                   ,?CHILD(webhooks_listener_sup, supervisor)
                                   ,?CHILD(hook_req_sup, supervisor)
-                                  ,?CHILD(webhooks_init, worker)
+                                  ,?CHILD(webhooks_listener, worker) % listens for config changes to webhook docs
                                  ]} }.
