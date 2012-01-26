@@ -1,0 +1,66 @@
+{
+   "_id":"rates",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Defines a rate for a given prefix",
+   "properties":{
+      "prefix":{
+         "type":"integer",
+         "required":true,
+         "description":"E.164 prefix (ignoring the +)"
+      },
+      "carrier":{
+        "type":"string"
+        ,"description":"Friendly name for the carrier providing this rate"
+      }
+      "iso_country_code":{
+         "type":"string",
+         "description":"Country code this rate applies to"
+      },
+      "description":{
+          "type":"string",
+          "description":"Friendly description of the rate"
+      },
+       "rate_name":{
+           "type":"string"
+           ,"description":"Friendly name of the rate"
+       }
+       "internal_rate_cost":{
+           "type":"number",
+           "description":"The per-min rate charged by the upstream provider"
+       },
+       "rate_cost":{
+           "type":"number"
+           ,"description":"The per-min rate charged to the downstream customer"
+           ,"required":true,
+       },
+       "rate_increment":{
+           "type":"number"
+           ,"description":"The time slice, in seconds, to bill in."
+           ,"default":60
+       },
+       "rate_minimum":{
+           "type":"number",
+           "description":"The minimum time slice, in seconds to bill a call",
+           "default":60
+       },
+       "rate_surcharge":{
+           "type":"number"
+           ,"description":"The upfront cost of connecting the call"
+           ,"default":0.0
+       },
+       "routes":{
+           "type":"array"
+           ,"description":"List of regexs that match valid DIDs for this rate"
+       },
+       "weight":{
+           "type":"integer"
+           ,"minimum":1
+           ,"maximum":100
+           ,"description":"Ordering against other rates, 1 being most preferred, 100 being least preferred"
+       },
+       "options":{
+           "type":"array"
+           ,"description":"List of options this rate is good for, to be matched against a customer's options"
+       }
+   }
+}
