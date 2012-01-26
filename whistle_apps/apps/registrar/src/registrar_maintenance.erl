@@ -61,7 +61,7 @@ local_summary(Realm, Username) ->
       Registrations :: list(),
       PrintFun :: fun().
 do_summary(Registrations, PrintFun) ->
-    [PrintFun(Registration) || {_, Registration} <- Registrations].
+    [PrintFun(Registration) || Registration <- Registrations].
 
 %%-----------------------------------------------------------------------------
 %% @private
