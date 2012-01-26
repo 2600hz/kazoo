@@ -221,6 +221,8 @@ get_query_routing(JObj) ->
     get_query_routing(Realm, User).
 
 -spec get_query_routing/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+get_query_routing(Realm, undefined) ->
+    list_to_binary([?KEY_REG_QUERY, ".", amqp_util:encode(Realm), ".*"]);
 get_query_routing(Realm, User) ->
     list_to_binary([?KEY_REG_QUERY, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
 

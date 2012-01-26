@@ -64,7 +64,7 @@ handle_req(JObj, _Props) ->
     Account = find_account(AllDocs),
     Admin = find_admin(AllDocs), 
 
-    To = wh_json:get_value(<<"Email">>, Admin, whapps_config:get(?NOTIFY_NEW_ACCT_CONFIG_CAT, <<"default_to">>, <<"">>)),
+    To = wh_json:get_value(<<"email">>, Admin, whapps_config:get(?NOTIFY_NEW_ACCT_CONFIG_CAT, <<"default_to">>, <<"">>)),
 
     DefaultFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
     From = wh_json:get_value([<<"notifications">>, <<"new_account">>, <<"send_from">>], Account
@@ -137,7 +137,7 @@ send_new_account_email(TxtBody, HTMLBody, Subject, Props) ->
                }
               ]
             },
-    ?LOG("sending password recovery notice to: ~p", [To]),
+    ?LOG("sending new account notice to: ~p", [To]),
     notify_util:send_email(From, To, Email),
     ok.                
 
