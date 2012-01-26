@@ -244,7 +244,7 @@ binding_heartbeat(BPid) ->
 binding_heartbeat(BPid, Timeout) ->
     PPid = self(),
     ReqId = get(callid),
-    ?LOG("starting binding heartbeat for ~p", [BPid]),
+    ?LOG(ReqId, "starting binding heartbeat for ~p", [BPid]),
     BPid ! heartbeat,
     spawn(fun() ->
                   put(callid, ReqId),
@@ -257,8 +257,8 @@ wait_for_binding_heartbeat(Timeout, Ref, BPid) ->
     BPid ! heartbeat,
     Start = erlang:now(),
     receive
-        {'DOWN', Ref, process, _, normal} ->
-            ok;
+        {'DOWN', Ref, process, _Pid, normal} ->
+            ?LOG("client ~p went down normally", [_Pid]);
         {'DOWN', Ref, process, Pid, Reason} ->
             ?LOG("bound client (~p) down for non-normal reason: ~p", [Pid, Reason]),
             BPid ! {binding_error, Reason};
@@ -266,7 +266,8 @@ wait_for_binding_heartbeat(Timeout, Ref, BPid) ->
             erlang:send_after(100, self(), heartbeat),
             DiffMicro = timer:now_diff(erlang:now(), Start),
             wait_for_binding_heartbeat(Timeout - (DiffMicro div 1000), Ref, BPid);
-        _ -> 
+        _E ->
+            ?LOG("unexpected message: ~p", [_E]),
             DiffMicro = timer:now_diff(erlang:now(), Start),
             wait_for_binding_heartbeat(Timeout - (DiffMicro div 1000), Ref, BPid)
     after Timeout ->

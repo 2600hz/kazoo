@@ -24,6 +24,8 @@
 -define(PVT_TYPE, <<"rate">>).
 -define(CB_LIST, <<"rates/crossbar_listing">>).
 
+-define(UPLOAD_MIME_TYPES, [<<"text/csv">>, <<"text/comma-separated-values">>]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -54,6 +56,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init(_) ->
+    couch_mgr:db_create(?WH_RATES_DB),
     couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, "views/rates.json"),
     bind_to_crossbar(),
     {ok, ok}.
@@ -113,11 +116,21 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.rates">>, Payloa
           end),
     {noreply, State};
 
+handle_info({binding_fired, Pid, <<"v1_resource.content_types_accepted.rates">>, {RD, Context, Params}}, State) ->
+    spawn(fun() ->
+                  Context1 = content_types_accepted(Params, Context),
+                  Pid ! {binding_result, true, {RD, Context1, Params}}
+          end),
+    {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.validate.rates">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
+
+                  ?LOG("validating against db: ~s", [?WH_RATES_DB]),
                   Context1 = validate(Params, Context#cb_context{db_name=?WH_RATES_DB}),
+                  ?LOG("returning true and modified context"),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
@@ -126,8 +139,13 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.rates">>, [RD, Cont
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  case Params of
+                      [] ->
+                          Pid ! {binding_result, true, [RD, Context, Params]};
+                      [_] ->
+                          Context1 = crossbar_doc:save(Context),
+                          Pid ! {binding_result, true, [RD, Context1, Params]}
+                  end
           end),
     {noreply, State};
 
@@ -201,6 +219,7 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.rates">>),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.rates">>),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.rates">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.rates">>),
     crossbar_bindings:bind(<<"v1_resource.execute.#.rates">>).
 
 %%--------------------------------------------------------------------
@@ -214,7 +233,7 @@ bind_to_crossbar() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
-    {true, ['GET', 'PUT']};
+    {true, ['GET', 'PUT', 'POST']};
 allowed_methods([_]) ->
     {true, ['GET', 'POST', 'DELETE']};
 allowed_methods(_) ->
@@ -239,6 +258,25 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Add content types accepted and provided by this module
+%%
+%% @end
+%%--------------------------------------------------------------------
+
+%% -spec content_types_provided/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
+%% content_types_provided([], #cb_context{req_verb = <<"post">>}=Context) ->
+%%     CTP = [{to_binary, ?UPLOAD_MIME_TYPES}],
+%%     Context#cb_context{content_types_provided=CTP};
+%% content_types_provided(_, Context) -> Context.
+
+-spec content_types_accepted/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
+content_types_accepted([], #cb_context{req_verb = <<"post">>}=Context) ->
+    Context#cb_context{content_types_accepted = [{from_binary, ?UPLOAD_MIME_TYPES}]};
+content_types_accepted(_, Context) -> Context.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
 %%
@@ -247,9 +285,14 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec validate/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
+    ?LOG("getting a list of rates"),
     summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
+    ?LOG("putting a rate doc"),
     create(Context);
+validate([], #cb_context{req_verb = <<"post">>}=Context) ->
+    ?LOG("checking uploaded file for valid csv"),
+    check_uploaded_file(Context);
 validate([Id], #cb_context{req_verb = <<"get">>}=Context) ->
     read(Id, Context);
 validate([Id], #cb_context{req_verb = <<"post">>}=Context) ->
@@ -320,6 +363,21 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Check the uploaded file for CSV
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec check_uploaded_file/1 :: (#cb_context{}) -> #cb_context{}.
+check_uploaded_file(#cb_context{req_files=[{_, File}|_]}=Context) ->
+    case wh_json:get_value(<<"contents">>, File) of
+        undefined ->
+            Context#cb_context{resp_status=error};
+        Bin ->
+            convert_file(wh_json:get_value([<<"headers">>, <<"content_type">>], File), Bin, Context)
+    end.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
@@ -337,3 +395,14 @@ normalize_view_results(JObj, Acc) ->
 -spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
 add_pvt_type(JObj, _) ->
     wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
+
+convert_file("text/csv", FileContents, Context) ->
+    {ok, Rates} = csv_to_rates(FileContents),
+    Context#cb_context{doc=Rates}.
+
+csv_to_rates(CSV) ->
+    ecsv:process_csv_binary_with(CSV, fun process_row/2).
+
+process_row(Row, Acc) ->
+    ?LOG("row: ~p", [Row]),
+    Acc.
