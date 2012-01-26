@@ -23,6 +23,12 @@
 
 -define(NOTIFY_PWD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".password_recovery">>).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% initialize the module
+%% @end
+%%--------------------------------------------------------------------
 -spec init/0 :: () -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
@@ -31,6 +37,12 @@ init() ->
     {ok, ?DEFAULT_SUBJ_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_PWD_CONFIG_CAT, default_subject_template), ?DEFAULT_SUBJ_TMPL),
     ?LOG_SYS("init done for password recovery notify").
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% process the AMQP requests
+%% @end
+%%--------------------------------------------------------------------
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:pwd_recovery_v(JObj),
@@ -52,8 +64,9 @@ handle_req(JObj, _Props) ->
     
     To = wh_json:get_value(<<"Email">>, JObj, whapps_config:get(?NOTIFY_PWD_CONFIG_CAT, <<"default_to">>, <<"">>)),
 
+    DefaultFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
     From = wh_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"send_from">>], Account
-                             ,whapps_config:get(?NOTIFY_PWD_CONFIG_CAT, <<"default_from">>, <<"no_reply@2600hz.com">>)),
+                             ,whapps_config:get(?NOTIFY_PWD_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
 
     ?LOG("creating password reset notice"),
     
@@ -71,7 +84,7 @@ handle_req(JObj, _Props) ->
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
     
-    send_pwd_recovery_email(TxtBody, HTMLBody, Subject, [{<<"To">>, To}|Props]).
+    send_pwd_recovery_email(TxtBody, HTMLBody, Subject, Props).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -97,13 +110,7 @@ get_template_props(Event, Account) ->
 %%--------------------------------------------------------------------
 -spec send_pwd_recovery_email/4 :: (iolist(), iolist(), iolist(), proplist()) -> 'ok'.
 send_pwd_recovery_email(TxtBody, HTMLBody, Subject, Props) ->
-    %% NOTE: the value in the From prop could be 'undefined' or not present...
-    From = case props:get_value(<<"From">>, Props) of
-               undefined -> 
-                   list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]);
-               Else ->
-                   Else
-           end,
+    From = props:get_value(<<"From">>, Props),
     To = props:get_value(<<"To">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
@@ -112,8 +119,7 @@ send_pwd_recovery_email(TxtBody, HTMLBody, Subject, Props) ->
                    ,{<<"Subject">>, Subject}
                   ]
              ,[]
-             ,[
-               {<<"multipart">>, <<"alternative">>, [], []
+             ,[{<<"multipart">>, <<"alternative">>, [], []
                 ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
                   ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
                  ]

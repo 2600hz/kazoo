@@ -23,6 +23,12 @@
 
 -define(NOTIFY_NEW_ACCT_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".new_account">>).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% initialize the module
+%% @end
+%%--------------------------------------------------------------------
 -spec init/0 :: () -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
@@ -31,6 +37,12 @@ init() ->
     {ok, ?DEFAULT_SUBJ_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_NEW_ACCT_CONFIG_CAT, default_subject_template), ?DEFAULT_SUBJ_TMPL),
     ?LOG_SYS("init done for new account notify").
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% process the AMQP requests
+%% @end
+%%--------------------------------------------------------------------
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:new_account_v(JObj),
@@ -52,10 +64,11 @@ handle_req(JObj, _Props) ->
     Account = find_account(AllDocs),
     Admin = find_admin(AllDocs), 
 
-    To = wh_json:get_value(<<"Email">>, Admin, whapps_config:get(?NOTIFY_NEW_ACCT_CONFIG_CAT, <<"default_to">>, <<"">>)),
+    To = wh_json:get_value(<<"email">>, Admin, whapps_config:get(?NOTIFY_NEW_ACCT_CONFIG_CAT, <<"default_to">>, <<"">>)),
 
+    DefaultFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
     From = wh_json:get_value([<<"notifications">>, <<"new_account">>, <<"send_from">>], Account
-                             ,whapps_config:get(?NOTIFY_NEW_ACCT_CONFIG_CAT, <<"default_from">>, <<"no_reply@2600hz.com">>)),
+                             ,whapps_config:get(?NOTIFY_NEW_ACCT_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
 
     Props = [{<<"To">>, To}
              ,{<<"From">>, From}
@@ -103,18 +116,12 @@ get_template_props(Event, Admin, Account, AllDocs) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% process the AMQP requests
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec send_new_account_email/4 :: (iolist(), iolist(), iolist(), proplist()) -> 'ok'.
 send_new_account_email(TxtBody, HTMLBody, Subject, Props) ->
-    %% NOTE: the value in the From prop could be 'undefined' or not present...
-    From = case props:get_value(<<"From">>, Props) of
-               undefined -> 
-                   list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]);
-               Else ->
-                   Else
-           end,
+    From = props:get_value(<<"From">>, Props),
     To = props:get_value(<<"To">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
@@ -123,18 +130,24 @@ send_new_account_email(TxtBody, HTMLBody, Subject, Props) ->
                    ,{<<"Subject">>, Subject}
                   ]
              ,[]
-             ,[
-               {<<"multipart">>, <<"alternative">>, [], []
+             ,[{<<"multipart">>, <<"alternative">>, [], []
                 ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
                   ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
                  ]
                }
               ]
             },
-    ?LOG("sending password recovery notice to: ~p", [To]),
+    ?LOG("sending new account notice to: ~p", [To]),
     notify_util:send_email(From, To, Email),
     ok.                
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec find_account/1 :: ([] | [wh_json:json_object(),...]) -> wh_json:json_object().
 find_account([]) ->
     wh_json:new();
 find_account([Doc|Docs]) ->
@@ -143,6 +156,14 @@ find_account([Doc|Docs]) ->
         <<"account">> -> JObj;
         _ -> find_account(Docs)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec find_admin/1 :: ([] | [wh_json:json_object(),...]) -> wh_json:json_object().
 find_admin([]) ->
     wh_json:new();
 find_admin([Doc|Docs]) ->

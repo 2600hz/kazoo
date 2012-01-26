@@ -25,6 +25,7 @@
 -define(OPTIONAL_REG_SUCCESS_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
                                            ,<<"From-User">>, <<"From-Host">>, <<"FreeSWITCH-Hostname">>, <<"RPid">>
                                            ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
+                                           ,<<"Account-ID">>, <<"Account-DB">>, <<"Authorizing-ID">>, <<"Suppress-Unregister-Notify">>
                                       ]).
 -define(REG_SUCCESS_VALUES, [{<<"Event-Category">>, <<"directory">>}
                             ,{<<"Event-Name">>, <<"reg_success">>}
@@ -32,8 +33,8 @@
 -define(REG_SUCCESS_TYPES, []).
 
 %% Query Registrations
--define(REG_QUERY_HEADERS, [<<"Username">>, <<"Realm">>]).
--define(OPTIONAL_REG_QUERY_HEADERS, [<<"Fields">>]).
+-define(REG_QUERY_HEADERS, [<<"Realm">>]).
+-define(OPTIONAL_REG_QUERY_HEADERS, [<<"Username">>, <<"Fields">>]).
 -define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
                            ,{<<"Event-Name">>, <<"reg_query">>}
                           ]).
@@ -48,7 +49,7 @@
 
 %% Registration Query Response
 -define(REG_QUERY_RESP_HEADERS, [<<"Fields">>]).
--define(OPTIONAL_REG_QUERY_RESP_HEADERS, []).
+-define(OPTIONAL_REG_QUERY_RESP_HEADERS, [<<"Multiple">>]).
 -define(REG_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
                                 ,{<<"Event-Name">>, <<"reg_query_resp">>}
                                ]).
@@ -220,6 +221,8 @@ get_query_routing(JObj) ->
     get_query_routing(Realm, User).
 
 -spec get_query_routing/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+get_query_routing(Realm, undefined) ->
+    list_to_binary([?KEY_REG_QUERY, ".", amqp_util:encode(Realm), ".*"]);
 get_query_routing(Realm, User) ->
     list_to_binary([?KEY_REG_QUERY, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
 

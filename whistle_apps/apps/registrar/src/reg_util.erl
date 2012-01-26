@@ -25,7 +25,7 @@ cache_user_key(Realm, User) -> {?MODULE, sip_credentials, Realm, User}.
 %% look up a cached registration by realm and optionally username
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_registrations/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()}.
+-spec lookup_registrations/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} | {'error', 'not_found'}.
 lookup_registrations(Realm) when not is_binary(Realm) ->
     lookup_registrations(wh_util:to_binary(Realm));
 lookup_registrations(Realm) ->
@@ -35,9 +35,14 @@ lookup_registrations(Realm) ->
                                             (_K, _V) ->
                                                  false
                                          end),
-    {'ok', Registrations}.
+    case [V || {_, V} <- Registrations] of 
+        [] -> {error, not_found};
+        Else -> {'ok', Else}
+    end.
 
--spec lookup_registration/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
+-spec lookup_registration/2 :: (ne_binary(), undefined | ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
+lookup_registration(Realm, undefined) ->
+    lookup_registrations(Realm);
 lookup_registration(Realm, Username) when not is_binary(Realm) ->
     lookup_registration(wh_util:to_binary(Realm), Username);
 lookup_registration(Realm, Username) when not is_binary(Username) ->

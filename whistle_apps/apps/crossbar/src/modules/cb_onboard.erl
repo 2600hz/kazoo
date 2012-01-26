@@ -787,12 +787,12 @@ create_response(RD, #cb_context{doc=JObj, account_id=AccountId}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec notfy_new_account/1 :: (#cb_context{}) -> #cb_context{}.
-notfy_new_account(#cb_context{doc=JObj}) ->
+notfy_new_account(#cb_context{db_name=AccountDb, account_id=AccountId, doc=JObj}) ->
     Notify = [{<<"Account-Name">>, wh_json:get_value(<<"name">>, JObj)}
               ,{<<"Account-Realm">>, wh_json:get_value(<<"realm">>, JObj)}
               ,{<<"Account-API-Key">>, wh_json:get_value(<<"pvt_api_key">>, JObj)}
-              ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
-              ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
+              ,{<<"Account-ID">>, AccountId}
+              ,{<<"Account-DB">>, AccountDb}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     wapi_notifications:publish_new_account(Notify).

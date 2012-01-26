@@ -298,9 +298,16 @@ release_number(Number, AccountId) ->
                     ,fun(J) -> wh_json:delete_key(<<"pvt_assigned_to">>, J) end
                     ,fun(J) -> wh_json:set_value(<<"pvt_previously_assigned_to">>, AccountId, J) end
                    ],
-        save_number(Db, Num, AccountId, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters))
+        save_number(Db, Num, AccountId, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters)),
+        ok
     catch
         throw:not_found ->
+            remove_number_from_account(Num, AccountId),
+            ok;
+        throw:unathorized ->
+            remove_number_from_account(Num, AccountId),
+            ok;
+        throw:unavailable ->
             remove_number_from_account(Num, AccountId),
             ok;
         _:_ ->

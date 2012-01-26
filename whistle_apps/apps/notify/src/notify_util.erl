@@ -122,6 +122,7 @@ get_service_props(Request, Account, ConfigCat) ->
              ,{<<"provider">>, wh_json:get_value([<<"notifications">>, Module, <<"service_provider">>], JObj, DefaultProvider)}
              ,{<<"support_number">>, wh_json:get_value([<<"notifications">>, Module, <<"support_number">>], JObj, DefaultNumber)}
              ,{<<"support_email">>, wh_json:get_value([<<"notifications">>, Module, <<"support_email">>], JObj, DefaultEmail)}
+             ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
             ];
         _E ->
             ?LOG("failed to find parent for notifications '~s' service info: ~p", [Module, _E]),
@@ -130,5 +131,6 @@ get_service_props(Request, Account, ConfigCat) ->
              ,{<<"provider">>, DefaultProvider}
              ,{<<"support_number">>, DefaultNumber}
              ,{<<"support_email">>, DefaultEmail}
+             ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
             ]
     end.         

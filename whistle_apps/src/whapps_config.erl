@@ -441,6 +441,8 @@ category_to_file(<<"notify.password_recovery">>) ->
     [code:lib_dir(notify, priv), "/notify_pwd_recovery.config"];
 category_to_file(<<"notify.new_account">>) ->
     [code:lib_dir(notify, priv), "/notify_new_account.config"];
+category_to_file(<<"notify.first_occurrence">>) ->
+    [code:lib_dir(notify, priv), "/notify_first_occurrence.config"];
 category_to_file(<<"smtp_client">>) ->
     [code:lib_dir(whistle_apps, priv), "/smtp_client.config"];
 category_to_file(<<"alerts">>) ->
