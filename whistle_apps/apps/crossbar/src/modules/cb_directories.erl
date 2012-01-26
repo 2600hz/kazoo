@@ -24,6 +24,7 @@
 -define(SERVER, ?MODULE).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"directories/crossbar_listing">>).
+-define(CB_USERS_LIST, <<"directories/users_listing">>).
 
 %%%===================================================================
 %%% API
@@ -114,6 +115,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.directories">>, 
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.directories">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:binding_heartbeat(Pid),
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = validate(Params, Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -122,6 +124,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.directories">>, [RD, Co
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.directories">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:binding_heartbeat(Pid),
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -130,6 +133,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.directories">>, [RD
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.directories">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:binding_heartbeat(Pid),
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:save(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -138,6 +142,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.directories">>, [RD,
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.directories">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
+                  crossbar_util:binding_heartbeat(Pid),
                   _ = crossbar_util:put_reqid(Context),
                   Context1 = crossbar_doc:delete(Context),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
@@ -241,9 +246,7 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: (Params, Context) -> #cb_context{} when
-      Params :: list(),
-      Context :: #cb_context{}.
+-spec validate/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
@@ -263,8 +266,7 @@ validate(_, Context) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec create/1 :: (#cb_context{}) -> #cb_context{}.
 create(#cb_context{req_data=Data}=Context) ->
     case wh_json_validator:is_valid(Data, <<"directories">>) of
         {fail, Errors} ->
@@ -284,7 +286,18 @@ create(#cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    case crossbar_doc:load(Id, Context) of
+        #cb_context{resp_status=success}=Context1 ->
+            load_directory_users(Id, Context1);
+        Context1 -> Context1
+    end.
+
+load_directory_users(Id, #cb_context{resp_data=Directory}=Context) ->
+    case crossbar_doc:load_view(?CB_USERS_LIST, [{<<"key">>, Id}], Context, fun normalize_users_results/2) of
+        #cb_context{resp_status=success, resp_data=Users} ->
+            Context#cb_context{resp_data=wh_json:set_value(<<"users">>, Users, Directory)};
+        _ -> Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -326,6 +339,13 @@ summary(Context) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
+-spec normalize_users_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+normalize_users_results(JObj, Acc) ->
+    [wh_json:set_values([{<<"user_id">>, wh_json:get_value(<<"id">>, JObj)}
+                         ,{<<"callflow_id">>, wh_json:get_value(<<"value">>, JObj)}
+                        ], wh_json:new())
+     | Acc].
+     
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

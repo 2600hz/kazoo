@@ -13,15 +13,15 @@
 -include("webhooks.hrl").
 
 start_link() ->
-    _ = [ spawn(fun() -> maybe_start_handler(Db) end) || Db <- whapps_util:get_all_accounts()],
+    _ = [ spawn(fun() -> maybe_start_handler(Db) end) || Db <- whapps_util:get_all_accounts(encoded)],
     ignore.
 
 maybe_start_handler(Db) ->
     case couch_mgr:get_results(Db, <<"webhooks/crossbar_listing">>, [{<<"include_docs">>, true}]) of
-	{ok, []} -> ?LOG("No webhooks in ~s", [Db]), ignore;
-	{ok, WebHooks} ->
-	    ?LOG("Starting webhooks listener(s) for ~s: ~b", [Db, length(WebHooks)]),
-	    [webhooks_listener_sup:start_listener(Db, wh_json:get_value(<<"doc">>, Hook)) || Hook <- WebHooks];
-	{error, _E} ->
-	    ?LOG_SYS("Failed to load webhooks view for account ~s", [Db])
+        {ok, []} -> ?LOG("No webhooks in ~s", [Db]), ignore;
+        {ok, WebHooks} ->
+            ?LOG("Starting webhooks listener(s) for ~s: ~b", [Db, length(WebHooks)]),
+            [webhooks_listener_sup:start_listener(Db, wh_json:get_value(<<"doc">>, Hook)) || Hook <- WebHooks];
+        {error, _E} ->
+            ?LOG_SYS("Failed to load webhooks view for account ~s", [Db])
     end.

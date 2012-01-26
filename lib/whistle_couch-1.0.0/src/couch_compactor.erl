@@ -142,12 +142,14 @@ compact_node_db(NodeBin, DB, Conn, AdminConn) ->
     DBEncoded = binary:replace(DB, <<"/">>, <<"%2f">>, [global]),
     ?LOG("compacting db ~s node ~s", [DBEncoded, NodeBin]),
 
-    case get_db_shards(AdminConn, DBEncoded) of
-        [] ->
-            ?LOG("no shards found matching ~s", [DBEncoded]);
+    case couch_util:db_exists(Conn, DBEncoded) andalso get_db_shards(AdminConn, DBEncoded) of
+        false -> ?LOG("db ~s not on node ~s", [DBEncoded, NodeBin]);
+        [] -> ?LOG("no shards found matching ~s", [DBEncoded]);
         Shards ->
-            DesignDocs = get_db_design_docs(Conn, DBEncoded),
-            _ = [ compact_shard(AdminConn, Shard, DesignDocs) || Shard <- Shards ],
+            DesignDocs = try get_db_design_docs(Conn, DBEncoded)
+                         catch _:_ -> []
+                         end,
+            _ = [ catch(compact_shard(AdminConn, Shard, DesignDocs)) || Shard <- Shards ],
             ok
     end.
 

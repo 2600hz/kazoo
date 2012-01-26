@@ -60,7 +60,7 @@ behaviour_info(_) ->
     undefined.
 
 -type responders() :: [listener_utils:responder(),...] | [].
--type binding() :: atom() | {atom(), wh_proplist()}.
+-type binding() :: atom() | ne_binary() | {atom() | ne_binary(), wh_proplist()}.
 -type bindings() :: [binding(),...] | [].
 
 -type responder_callback_mod() :: atom() | {atom(), atom()}.
@@ -83,10 +83,12 @@ behaviour_info(_) ->
          ,params = [] :: wh_proplist()
          ,module = 'undefined' :: atom()
          ,module_state = 'undefined' :: term()
+         ,module_timeout_ref = 'undefined' :: 'undefined' | reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
          ,active_responders = [] :: [pid(),...] | [] %% list of pids processing requests
          }).
 
 -define(TIMEOUT_RETRY_CONN, 1000).
+-define(CALLBACK_TIMEOUT_MSG, callback_timeout).
 
 %% API functions for requesting data from the gen_listener
 -spec queue_name/1 :: (pid() | atom()) -> {'ok', binary()} | {'error', atom()}.
@@ -164,19 +166,18 @@ rm_binding(Srv, Binding, Props) ->
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
 
-    ?LOG("started new cache proc: ~s", [wh_util:to_binary(Module)]),
+    ?LOG(wh_util:to_binary(Module), "starting new gen_listener proc: ~s", [wh_util:to_binary(Module)]),
 
-    ModState = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
-                   {ok, MS} ->
-                       MS;
-                   {ok, MS, hibernate} ->
-                       MS;
-                   {ok, MS, Timeout} when is_integer(Timeout) andalso Timeout > -1 ->
-                       erlang:send_after(Timeout, self(), timeout),
-                       MS;
-                   Err ->
-                       throw(Err)
-               end,
+    {ModState, TimeoutRef} = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
+                                 {ok, MS} ->
+                                     {MS, undefined};
+                                 {ok, MS, hibernate} ->
+                                     {MS, undefined};
+                                 {ok, MS, Timeout} ->
+                                     {MS, start_timer(Timeout)};
+                                 Err ->
+                                     throw(Err)
+                             end,
 
     Responders = props:get_value(responders, Params, []),
     Bindings = props:get_value(bindings, Params, []),
@@ -185,12 +186,11 @@ init([Module, Params, InitArgs]) ->
 
     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
 
-    Self = self(),
-    spawn(fun() -> [add_responder(Self, Mod, Evts) || {Mod, Evts} <- Responders] end),
+    _ = [add_responder(self(), Mod, Evts) || {Mod, Evts} <- Responders],
 
     _ = [create_binding(Type, BindProps, Q) || {Type, BindProps} <- Bindings],
 
-    {ok, #state{queue=Q, module=Module, module_state=ModState
+    {ok, #state{queue=Q, module=Module, module_state=ModState, module_timeout_ref=TimeoutRef
                 ,responders=[], bindings=Bindings
                 ,params=lists:keydelete(responders, 1, lists:keydelete(bindings, 1, Params))}
      ,hibernate}.
@@ -204,16 +204,19 @@ handle_call(queue_name, _From, #state{queue=Q}=State) ->
     {reply, Q, State};
 handle_call(responders, _From, #state{responders=Rs}=State) ->
     {reply, Rs, State};
-handle_call(Request, From, #state{module=Module, module_state=ModState}=State) ->
+handle_call(Request, From, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
+    stop_timer(OldRef),
     case catch Module:handle_call(Request, From, ModState) of
         {reply, Reply, ModState1} ->
-            {reply, Reply, State#state{module_state=ModState1}, hibernate};
-        {reply, Reply, ModState1, Timeout} ->
-            {reply, Reply, State#state{module_state=ModState1}, Timeout};
+            {reply, Reply, State#state{module_state=ModState1, module_timeout_ref=undefined}, hibernate};
+        {reply, Reply, ModState1, Timeout} when is_integer(Timeout) andalso Timeout >= 0 ->
+            Ref = start_timer(Timeout),
+            {reply, Reply, State#state{module_state=ModState1, module_timeout_ref=Ref}, hibernate};
         {noreply, ModState1} ->
             {noreply, State#state{module_state=ModState1}, hibernate};
         {noreply, ModState1, Timeout} ->
-            {noreply, State#state{module_state=ModState1}, Timeout};
+            Ref = start_timer(Timeout),
+            {noreply, State#state{module_state=ModState1, module_timeout_ref=Ref}, hibernate};
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
         {stop, Reason, Reply, ModState1} ->
@@ -241,7 +244,6 @@ handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State
     {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}, hibernate};
 
 handle_cast({add_binding, Binding, Props}, #state{queue=Q}=State) ->
-    ?LOG("adding binding ~s, ~p", [Binding, Props]),
     create_binding(Binding, Props, Q),
     {noreply, State};
 
@@ -256,7 +258,7 @@ handle_cast({rm_binding, Binding}=Req, #state{queue=Q}=State) ->
             ?LOG_SYS("atom ~s not found", [Wapi]),
             case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
                 non_existing ->
-                    {noreply, State};
+                    {stop, api_module_undefined, State};
                 _Path ->
                     ?LOG_SYS("beam file found: ~s", [_Path]),
                     wh_util:to_atom(Wapi, true),
@@ -264,8 +266,7 @@ handle_cast({rm_binding, Binding}=Req, #state{queue=Q}=State) ->
             end;
         error:undef ->
             ?LOG_SYS("module ~s doesn't exist or unbind_q/1 isn't exported", [Wapi]),
-            queue_bindings:rm_binding_from_q(Q, Binding),
-            {noreply, State}
+            {stop, api_call_undefined, State}
     end;
 
 handle_cast({rm_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
@@ -279,7 +280,7 @@ handle_cast({rm_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
             ?LOG_SYS("atom ~s not found", [Wapi]),
             case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
                 non_existing ->
-                    {noreply, State};
+                    {stop, api_module_undefined, State};
                 _Path ->
                     ?LOG_SYS("beam file found: ~s", [_Path]),
                     wh_util:to_atom(Wapi, true),
@@ -287,21 +288,23 @@ handle_cast({rm_binding, Binding, Props}=Req, #state{queue=Q}=State) ->
             end;
         error:undef ->
             ?LOG_SYS("module ~s doesn't exist or unbind_q/2 isn't exported", [Wapi]),
-            queue_bindings:rm_binding_from_q(Q, Binding, Props),
-            {noreply, State}
+            {stop, api_call_undefined, State}
     end;
 
-handle_cast(Message, #state{module=Module, module_state=ModState}=State) ->
+handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
+    stop_timer(OldRef),
     case catch Module:handle_cast(Message, ModState) of
         {noreply, ModState1} ->
             {noreply, State#state{module_state=ModState1}, hibernate};
         {noreply, ModState1, Timeout} ->
-            {noreply, State#state{module_state=ModState1}, Timeout};
+            Ref = start_timer(Timeout),
+            {noreply, State#state{module_state=ModState1, module_timeout_ref=Ref}, hibernate};
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
-        {'EXIT', Why} ->
-            ?LOG("exception: ~p", [Why]),
-            {stop, Why, State}
+        {'EXIT', {Reason, ST}} ->
+            ?LOG("exception: ~p", [Reason]),
+            ?LOG_STACKTRACE(ST),
+            {stop, Reason, State}
     end.
 
 -spec handle_info/2 :: (term(), #state{}) -> handle_info_ret().
@@ -361,15 +364,20 @@ handle_info(is_consuming, #state{is_consuming=false, queue=Q}=State) ->
 handle_info(is_consuming, State) ->
     {noreply, State};
 
+handle_info(callback_timeout, State) ->
+    handle_callback_info(timeout, State);
+
 handle_info(Message, State) ->
     handle_callback_info(Message, State).
 
-handle_callback_info(Message, #state{module=Module, module_state=ModState}=State) ->
+handle_callback_info(Message, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
+    stop_timer(OldRef),
     case catch Module:handle_info(Message, ModState) of
         {noreply, ModState1} ->
             {noreply, State#state{module_state=ModState1}, hibernate};
         {noreply, ModState1, Timeout} ->
-            {noreply, State#state{module_state=ModState1}, Timeout};
+            Ref = start_timer(Timeout),
+            {noreply, State#state{module_state=ModState1, module_timeout_ref=Ref}, hibernate};
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
         {'EXIT', Why} ->
@@ -475,7 +483,7 @@ create_binding(Binding, Props, Q) ->
             case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
                 non_existing ->
                     ?LOG_SYS("beam file not found for ~s, trying old method", [Wapi]),
-                    queue_bindings:add_binding_to_q(Q, Binding, Props);
+                    error(api_module_undefined);
                 _Path ->
                     ?LOG_SYS("beam file found: ~s", [_Path]),
                     wh_util:to_atom(Wapi, true), %% put atom into atom table
@@ -483,10 +491,18 @@ create_binding(Binding, Props, Q) ->
             end;
         error:undef ->
             ?LOG_SYS("module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
-            ?LOG_SYS("trying old school add_binding for ~s", [Binding]),
-            queue_bindings:add_binding_to_q(Q, Binding, Props);
-        E:R ->
-            ST = erlang:get_stacktrace(),
-            ?LOG(alert, "exception in creating binding: ~p:~p", [E,R]),
-            ?LOG_STACKTRACE(ST)
+            error(api_call_undefined)
     end.
+
+-spec stop_timer/1 :: ('undefined' | reference()) -> non_neg_integer() | 'false'.
+stop_timer(undefined) ->
+    false;
+stop_timer(Ref) when is_reference(Ref) ->
+    erlang:cancel_timer(Ref).
+
+-spec start_timer/1 :: (term()) -> reference() | 'undefined'.
+start_timer(Timeout) when is_integer(Timeout) andalso Timeout >= 0 ->
+    erlang:send_after(Timeout, self(), ?CALLBACK_TIMEOUT_MSG);
+start_timer(_) -> 'undefined'.
+
+

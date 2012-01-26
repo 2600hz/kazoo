@@ -9,14 +9,15 @@
 -module(wh_json).
 
 -export([to_proplist/1, to_proplist/2]).
+-export([to_querystring/1]).
 -export([recursive_to_proplist/1]).
 -export([get_binary_boolean/2]).
 -export([get_integer_value/2, get_integer_value/3]).
 -export([get_number_value/2, get_number_value/3]).
 -export([get_float_value/2, get_float_value/3]).
 -export([get_binary_value/2, get_binary_value/3]).
+-export([get_atom_value/2, get_atom_value/3]).
 -export([get_string_value/2, get_string_value/3]).
--export([get_json_value/2, get_json_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
 -export([filter/2, filter/3, map/2, find/2, find/3]).
@@ -42,9 +43,11 @@
 -compile({no_auto_import, [get_keys/1]}).
 
 -include("wh_json.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -export_type([json_object/0, json_objects/0
-             ,json_string/0, json_strings/0
+              ,json_string/0, json_strings/0
+              ,json_term/0
              ]).
 
 -spec new/0 :: () -> wh_json:json_object().
@@ -103,7 +106,9 @@ is_json_term(MaybeJObj) ->
 %% wh_json:from_list([{a,b}, {c, wh_json:from_list([{d, e}])}]).
 %% the sub-proplist [{d,e}] needs converting before being passed to the next level
 -spec from_list/1 :: (json_proplist()) -> wh_json:json_object().
-from_list(L) when is_list(L) ->
+from_list([]) ->
+    new();
+from_list([{_,_}|_]=L) ->
     {struct, L}.
 %%    lists:foldr(fun({K,V}, Acc) ->
 %%                        true = is_json_term(V), % crash if invalid
@@ -114,9 +119,7 @@ from_list(L) when is_list(L) ->
 %% only a top-level merge
 %% merges JObj1 into JObj2
 -spec merge_jobjs/2 :: (wh_json:json_object(), wh_json:json_object()) -> wh_json:json_object().
-merge_jobjs(JObj1, JObj2) ->
-    Props1 = to_proplist(JObj1),
-
+merge_jobjs({struct, Props1}=_JObj1, JObj2) ->
     lists:foldr(fun({K, V}, JObj2Acc) ->
                         set_value(K, V, JObj2Acc)
                 end, JObj2, Props1).
@@ -133,10 +136,12 @@ merge_recursive(JObj1, {struct, Prop}, Keys) ->
 merge_recursive(JObj1, Value, Keys) ->
     set_value(lists:reverse(Keys), Value, JObj1).
 
--spec to_proplist/1 :: (json_object()) -> json_proplist().
--spec to_proplist/2 :: (json_string() | json_strings(), json_object()) -> json_proplist().
+-spec to_proplist/1 :: (json_object() | json_objects()) -> json_proplist() | [json_proplist(),...].
+-spec to_proplist/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> json_proplist() | [json_proplist(),...].
 %% Convert a json object to a proplist
 %% only top-level conversion is supported
+to_proplist(JObjs) when is_list(JObjs) ->
+    [to_proplist(JObj) || JObj <- JObjs];
 to_proplist({struct, Prop}) ->
     Prop.
 
@@ -153,6 +158,44 @@ recursive_to_proplist(Props) when is_list(Props) ->
     [recursive_to_proplist(V) || V <- Props];
 recursive_to_proplist(Else) ->
     Else.
+
+%% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>
+%%   key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1
+-spec to_querystring/1 :: (json_object()) -> iolist().
+to_querystring(JObj) ->
+    to_querystring(normalize(JObj), "").
+
+%% if Prefix is empty, don't wrap keys in array tags, otherwise Prefix[key]=value
+to_querystring(JObj, Prefix) ->
+    {Vs, Ks} = get_values(JObj),
+    fold_kvs(Ks, Vs, Prefix, "").
+
+fold_kvs([], [], _, Acc) -> Acc;
+fold_kvs([K], [V], Prefix, Acc) -> lists:reverse([encode_kv(Prefix, K, V) | Acc]);
+fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
+    fold_kvs(Ks, Vs, Prefix, ["&", encode_kv(Prefix, K, V) | Acc]).
+
+encode_kv(Prefix, K, Vs) when is_list(Vs) ->
+    encode_kv(Prefix, wh_util:to_binary(K), Vs, "[]=", "");
+encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
+    encode_kv(Prefix, K, "=", mochiweb_util:quote_plus(V));
+
+% key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
+encode_kv("", K, JObj) ->
+    to_querystring(JObj, K);
+encode_kv(Prefix, K, JObj) ->
+    to_querystring(JObj, [Prefix, "[", K, "]"]).
+
+encode_kv("", K, Sep, V) ->
+    [wh_util:to_binary(K), Sep, wh_util:to_binary(V)];
+encode_kv(Prefix, K, Sep, V) ->
+    [Prefix, "[", wh_util:to_binary(K), "]", Sep, wh_util:to_binary(V)].
+
+encode_kv(Prefix, K, [V], Sep, Acc) ->
+    lists:reverse([ encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
+encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
+    encode_kv(Prefix, K, Vs, Sep, [ "&", encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
+encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
 -spec get_json_value/2 :: (json_string() | json_strings(), json_object()) -> 'undefined' | json_object().
 -spec get_json_value/3 :: (json_string() | json_strings(), json_object(), Default) -> Default | json_object().
@@ -179,15 +222,11 @@ filter(Pred, JObj, Key) ->
     filter(Pred, JObj, [Key]).
 
 -spec filter/2 :: (fun( ({json_string(), json_term()}) -> boolean() ), json_object()) -> json_object().
-filter(Pred, JObj) when is_function(Pred, 1) ->
-    true = is_json_object(JObj),
-    Prop = to_proplist(JObj),
-    from_list([ E || E <- Prop, Pred(E) ]).
+filter(Pred, {struct, Prop}) when is_function(Pred, 1) ->
+    from_list([ E || {_,_}=E <- Prop, Pred(E) ]).
 
 -spec map/2 :: (fun((json_string(), json_term()) -> term()), json_object()) -> json_object().
-map(F, JObj) ->
-    true = is_json_object(JObj),
-    Prop = to_proplist(JObj),
+map(F, {struct, Prop}) ->
     from_list([ F(K, V) || {K,V} <- Prop]).
 
 -spec get_string_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> 'undefined' | list().
@@ -202,17 +241,24 @@ get_string_value(Key, JObj, Default) ->
     end.
 
 -spec get_binary_value/2 :: (json_string(), json_object() | json_objects()) -> 'undefined' | binary().
-get_binary_value(Key, JObj) ->
-    case get_value(Key, JObj) of
-        undefined -> undefined;
-        Value -> wh_util:to_binary(Value)
-    end.
-
 -spec get_binary_value/3 :: (json_string(), json_object() | json_objects(), Default) -> binary() | Default.
+get_binary_value(Key, JObj) ->
+    get_binary_value(Key, JObj, undefined).
 get_binary_value(Key, JObj, Default) ->
     case get_value(Key, JObj) of
         undefined -> Default;
         Value -> wh_util:to_binary(Value)
+    end.
+
+%% must be an existing atom
+-spec get_atom_value/2 :: (json_string(), json_object() | json_objects()) -> 'undefined' | atom().
+-spec get_atom_value/3 :: (json_string(), json_object() | json_objects(), Default) -> atom() | Default.
+get_atom_value(Key, JObj) ->
+    get_atom_value(Key, JObj, undefined).
+get_atom_value(Key, JObj, Default) ->
+    case get_value(Key, JObj) of
+        undefined -> Default;
+        Value -> wh_util:to_atom(Value)
     end.
 
 -spec get_integer_value/2 :: (json_string(), json_object() | json_objects()) -> 'undefined' | integer().
@@ -287,9 +333,8 @@ get_binary_boolean(Key, JObj) ->
     end.
 
 -spec get_keys/1 :: (json_object()) -> json_strings().
--spec get_keys/2 :: (json_string() | json_strings(), json_object()) -> [pos_integer()] | json_strings().
+-spec get_keys/2 :: (json_string() | json_strings(), json_object()) -> [pos_integer(),...] | json_strings().
 get_keys(JObj) ->
-    true = is_json_object(JObj),
     get_keys1(JObj).
 
 get_keys([], JObj) ->
@@ -297,14 +342,14 @@ get_keys([], JObj) ->
 get_keys(Keys, JObj) ->
     get_keys1(get_value(Keys, JObj)).
 
--spec get_keys1/1 :: (list() | json_object()) -> [pos_integer()] | json_strings().
+-spec get_keys1/1 :: (list() | json_object()) -> [pos_integer(),...] | json_strings().
 get_keys1(KVs) when is_list(KVs) ->
     lists:seq(1,length(KVs));
 get_keys1(JObj) ->
     props:get_keys(to_proplist(JObj)).
 
 -spec get_ne_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> json_term().
--spec get_ne_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), json_term()) -> json_term().
+-spec get_ne_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), Default) -> json_term() | Default.
 get_ne_value(Key, JObj) ->
     get_ne_value(Key, JObj, undefined).
 
@@ -328,7 +373,7 @@ get_ne_value(Key, JObj, Default) ->
 find(Key, Docs) ->
     find(Key, Docs, undefined).
 
-find(Key, JObjs, Default) ->
+find(Key, JObjs, Default) when is_list(JObjs) ->
     case lists:dropwhile(fun(JObj) -> get_ne_value(Key, JObj) =:= undefined end, JObjs) of
         [] -> Default;
         [JObj|_] -> get_ne_value(Key, JObj)
@@ -579,7 +624,6 @@ normalize_key_char(C) -> C.
 public_fields(JObjs) when is_list(JObjs) ->
     [public_fields(JObj) || JObj <- JObjs];
 public_fields(JObj) ->
-    true = is_json_object(JObj),
     PubJObj = filter(fun({K, _}) -> (not is_private_key(K)) end, JObj),
 
     case get_binary_value(<<"_id">>, JObj) of
@@ -598,7 +642,6 @@ public_fields(JObj) ->
 private_fields(JObjs) when is_list(JObjs) ->
     [private_fields(JObj) || JObj <- JObjs];
 private_fields(JObj) ->
-    true = is_json_object(JObj),
     filter(fun({K, _}) -> is_private_key(K) end, JObj).
 
 %%--------------------------------------------------------------------
@@ -621,7 +664,7 @@ prop_is_json_object() ->
     ).
 
 prop_from_list() ->
-    ?FORALL(Prop, wh_proplist(),
+    ?FORALL(Prop, json_proplist(),
             ?WHENFAIL(io:format("Failed prop_from_list with ~p~n", [Prop]),
                       is_json_object(from_list(Prop)))
            ).
@@ -657,7 +700,6 @@ prop_to_proplist() ->
 
 %% EUNIT TESTING
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
 
 -define(D1, {struct, [{<<"d1k1">>, "d1v1"}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, ["d1v3.1", "d1v3.2", "d1v3.3"]}]}).
 -define(D2, {struct, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?D1}]}).
@@ -914,6 +956,23 @@ set_value_normalizer_test() ->
     ?assertEqual(normalize_jobj(?T4R3), ?T4R3V),
 
     ?assertEqual(normalize_jobj(?T5R1), ?T5R1V).
+
+to_querystring_test() ->
+    Tests = [{<<"{}">>, <<>>}
+             ,{<<"{\"foo\":\"bar\"}">>, <<"foo=bar">>}
+             ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\"}">>, <<"foo=bar&fizz=buzz">>}
+             ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\",\"arr\":[1,3,5]}">>, <<"foo=bar&fizz=buzz&arr[]=1&arr[]=3&arr[]=5">>}
+             ,{<<"{\"Msg-ID\":\"123-abc\"}">>, <<"msg_id=123-abc">>}
+             ,{<<"{\"url\":\"http://user:pass@host:port/\"}">>, <<"url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
+             ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":\"v2\",\"subkey3\":[\"v31\",\"v32\"]}}">>
+                   ,<<"topkey[subkey1]=v1&topkey[subkey2]=v2&topkey[subkey3][]=v31&topkey[subkey3][]=v32">>}
+             ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":{\"k3\":\"v3\"}}}">>
+                   ,<<"topkey[subkey1]=v1&topkey[subkey2][k3]=v3">>}
+            ],
+    lists:foreach(fun({JSON, QS}) ->
+                          QS1 = wh_util:to_binary(to_querystring(decode(JSON))),
+                          ?assertEqual(QS, QS1)
+                  end, Tests).
 
 get_values_test() ->
     ?assertEqual(true, are_all_there(?D1, ["d1v1", d1v2, ["d1v3.1", "d1v3.2", "d1v3.3"]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).

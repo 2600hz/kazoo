@@ -23,6 +23,13 @@
 -export([unbind_q_from_notifications/2]).
 -export([notifications_publish/2, notifications_publish/3, notifications_publish/4]).
 
+-export([sysconf_exchange/0]).
+-export([new_sysconf_queue/0, new_sysconf_queue/1]).
+-export([delete_sysconf_queue/1]).
+-export([bind_q_to_sysconf/2, bind_q_to_sysconf/3]).
+-export([unbind_q_from_sysconf/2]).
+-export([sysconf_publish/2, sysconf_publish/3, sysconf_publish/4]).
+
 -export([callctl_exchange/0]).
 -export([new_callctl_queue/1]).
 -export([delete_callctl_queue/1]).
@@ -123,6 +130,16 @@ notifications_publish(Routing, Payload, ContentType) ->
     notifications_publish(Routing, Payload, ContentType, []).
 notifications_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_NOTIFICATIONS, Routing, Payload, ContentType, Opts).
+
+-spec sysconf_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
+-spec sysconf_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec sysconf_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), proplist()) -> 'ok'.
+sysconf_publish(Routing, Payload) ->
+    sysconf_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
+sysconf_publish(Routing, Payload, ContentType) ->
+    sysconf_publish(Routing, Payload, ContentType, []).
+sysconf_publish(Routing, Payload, ContentType, Opts) ->
+    basic_publish(?EXCHANGE_SYSCONF, Routing, Payload, ContentType, Opts).
 
 -spec callmgr_publish/3 :: (amqp_payload(), ne_binary(), ne_binary()) -> 'ok'.
 %% TODO: The routing key on this function should be the first argument for consistency
@@ -331,6 +348,10 @@ whapps_exchange() ->
 notifications_exchange() ->
     new_exchange(?EXCHANGE_NOTIFICATIONS, ?TYPE_NOTIFICATIONS).
 
+-spec sysconf_exchange/0 :: () -> 'ok'.
+sysconf_exchange() ->
+    new_exchange(?EXCHANGE_SYSCONF, ?TYPE_SYSCONF).
+
 -spec callctl_exchange/0 :: () -> 'ok'.
 callctl_exchange() ->
     new_exchange(?EXCHANGE_CALLCTL, ?TYPE_CALLCTL).
@@ -406,6 +427,14 @@ new_notifications_queue() ->
     new_notifications_queue(<<>>).
 
 new_notifications_queue(Queue) ->
+    new_queue(Queue, [{nowait, false}]).
+
+-spec new_sysconf_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_sysconf_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
+new_sysconf_queue() ->
+    new_sysconf_queue(<<>>).
+
+new_sysconf_queue(Queue) ->
     new_queue(Queue, [{nowait, false}]).
 
 -spec new_callevt_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
@@ -504,6 +533,9 @@ delete_whapps_queue(Queue) ->
 delete_notifications_queue(Queue) ->
     queue_delete(Queue, []).
 
+delete_sysconf_queue(Queue) ->
+    queue_delete(Queue, []).
+
 delete_callevt_queue(CallID) ->
     delete_callevt_queue(CallID, []).
 delete_callevt_queue(CallID, Prop) ->
@@ -569,6 +601,13 @@ bind_q_to_notifications(Queue, Routing) ->
     bind_q_to_notifications(Queue, Routing, []).
 bind_q_to_notifications(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_NOTIFICATIONS, Options).
+
+-spec bind_q_to_sysconf/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
+-spec bind_q_to_sysconf/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok' | {'error', atom()}.
+bind_q_to_sysconf(Queue, Routing) ->
+    bind_q_to_sysconf(Queue, Routing, []).
+bind_q_to_sysconf(Queue, Routing, Options) ->
+    bind_q_to_exchange(Queue, Routing, ?EXCHANGE_SYSCONF, Options).
 
 -spec bind_q_to_callctl/1 :: (ne_binary()) -> 'ok' | {'error', atom()}.
 -spec bind_q_to_callctl/2 :: (ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
@@ -698,6 +737,9 @@ unbind_q_from_callctl(Queue) ->
 
 unbind_q_from_notifications(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_NOTIFICATIONS).
+
+unbind_q_from_sysconf(Queue, Routing) ->
+    unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_SYSCONF).
 
 unbind_q_from_resource(Queue, Routing) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_RESOURCE).

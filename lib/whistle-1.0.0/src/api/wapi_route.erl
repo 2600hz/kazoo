@@ -10,15 +10,19 @@
 
 -include("../wh_api.hrl").
 
--export([req/1, resp/1, req_v/1, resp_v/1, win/1, win_v/1
-         ,bind_q/2, unbind_q/1
+-export([req/1, req_v/1
+         ,resp/1, resp_v/1
+         ,win/1, win_v/1
+         ,bind_q/2, unbind_q/2
+         ,publish_req/1, publish_req/2
+         ,publish_resp/2, publish_resp/3
+         ,publish_win/2, publish_win/3
+         ,get_auth_realm/1
+         ,req_event_type/0
         ]).
 
--export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
-        ,publish_win/2, publish_win/3
-        ]).
-
--export([get_auth_realm/1]).
+-define(EVENT_CATEGORY, <<"dialplan">>).
+-define(ROUTE_REQ_EVENT_NAME, <<"route_req">>).
 
 %% Route Requests
 -define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
@@ -28,8 +32,8 @@
                                          ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
                                          ,<<"Resource-Type">>, <<"Cost-Parameters">>
                                     ]).
--define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
-                           ,{<<"Event-Name">>, <<"route_req">>}
+-define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+                           ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
                            ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>, <<"audio">>, <<"video">>, <<"chat">>]}
                            ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
                           ]).
@@ -54,13 +58,14 @@
                                ]).
 
 %% Route Responses
--define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>, <<"Weight-Cost">>, <<"Weight-Location">>]).
+-define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>]).
 -define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
                                                  ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
                                                  ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
                                                  ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
                                                  ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
                                                  ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+                                                 ,<<"Weight-Cost">>, <<"Weight-Location">>
                                            ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                                   ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
@@ -78,7 +83,7 @@
 -define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Method">>]).
 -define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Routes">>
                                       ,<<"Route-Error-Code">>, <<"Route-Error-Message">>]).
--define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+-define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"route_resp">>}
                             ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
                            ]).
@@ -93,7 +98,9 @@
 %% Route Winner
 -define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
 -define(OPTIONAL_ROUTE_WIN_HEADERS, [<<"Custom-Channel-Vars">>]).
--define(ROUTE_WIN_VALUES, [{<<"Event-Name">>, <<"route_win">>}]).
+-define(ROUTE_WIN_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+                           ,{<<"Event-Name">>, <<"route_win">>}
+                          ]).
 -define(ROUTE_WIN_TYPES, [{<<"Call-ID">>, fun is_binary/1}
                           ,{<<"Control-Queue">>, fun is_binary/1}
                           ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
@@ -118,6 +125,10 @@ req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ROUTE_REQ_HEADERS, ?ROUTE_REQ_VALUES, ?ROUTE_REQ_TYPES);
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
+
+-spec req_event_type/0 :: () -> {ne_binary(), ne_binary()}.
+req_event_type() ->
+    {?EVENT_CATEGORY, ?ROUTE_REQ_EVENT_NAME}.
 
 %%--------------------------------------------------------------------
 %% @doc Dialplan Route Response - see wiki
@@ -164,7 +175,7 @@ resp_v(JObj) ->
 -spec resp_route/1 :: (api_terms()) -> {'ok', proplist()} | {'error', string()}.
 resp_route(Prop) when is_list(Prop) ->
     case resp_route_v(Prop) of
-        true -> wh_api:build_message_specific(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
+        true -> wh_api:build_message_specific_headers(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
         false -> {error, "Proplist failed validation for route_resp_route"}
     end;
 resp_route(JObj) ->
@@ -186,7 +197,9 @@ win(Prop) when is_list(Prop) ->
     case win_v(Prop) of
         true -> wh_api:build_message(Prop, ?ROUTE_WIN_HEADERS, ?OPTIONAL_ROUTE_WIN_HEADERS);
         false -> {error, "Proplist failed validation for route_win"}
-    end.
+    end;
+win(JObj) ->
+    win(wh_json:to_proplist(JObj)).
 
 -spec win_v/1 :: (api_terms()) -> boolean().
 win_v(Prop) when is_list(Prop) ->
@@ -199,14 +212,22 @@ win_v(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
-bind_q(Queue, _Props) ->
+bind_q(Queue, Props) ->
+    Realm = props:get_value(realm, Props, <<"*">>),
+
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Queue, ?KEY_ROUTE_REQ),
+    amqp_util:bind_q_to_callmgr(Queue, get_route_req_routing(Realm)),
     ok.
 
--spec unbind_q/1 :: (ne_binary()) -> 'ok'.
-unbind_q(Queue) ->
-    amqp_util:unbind_q_from_callmgr(Queue, ?KEY_ROUTE_REQ).
+-spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+unbind_q(Queue, Props) ->
+    Realm = props:get_value(realm, Props, <<"*">>),
+    amqp_util:unbind_q_from_callmgr(Queue, get_route_req_routing(Realm)).
+
+get_route_req_routing(Realm) when is_binary(Realm) ->
+    list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Realm)]);
+get_route_req_routing(Api) ->
+    get_route_req_routing(get_auth_realm(Api)).
 
 -spec publish_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_req/2 :: (api_terms(), binary()) -> 'ok'.
@@ -214,10 +235,10 @@ publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?ROUTE_REQ_VALUES, fun req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_ROUTE_REQ).
+    amqp_util:callmgr_publish(Payload, ContentType, get_route_req_routing(Req)).
 
 -spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_resp/3 :: (ne_binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_resp(RespQ, JObj) ->
     publish_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(RespQ, Resp, ContentType) ->

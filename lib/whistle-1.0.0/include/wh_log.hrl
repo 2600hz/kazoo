@@ -139,7 +139,8 @@
 -define(LOG_STACKTRACE(StacktraceData__),
         (fun() ->
                  LogCallId = ?LOG_CALLID_FUN(erlang:get(callid)),
-                 [logger:debug("|~s|debug|start|~p:~b (~w) st: ~p", [LogCallId, ?MODULE, ?LINE, self(), STLine__]) || STLine__ <- StacktraceData__]
+                 _ = [logger:debug("|~s|debug|start|~p:~b (~w) st: ~p", [LogCallId, ?MODULE, ?LINE, self(), STLine__]) || STLine__ <- StacktraceData__],
+                 ok
          end)()).
 
 -define(WHISTLE_LOG_MACROS, true).

@@ -8,13 +8,14 @@
 %%%-------------------------------------------------------------------
 -module(wapi_authn).
 
--export([req/1, resp/1, req_v/1, resp_v/1, bind_q/2, unbind_q/1, unbind_q/2]).
-
--export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
-        ,disambiguate_and_publish/2
+-export([req/1, req_v/1
+         ,resp/1, resp_v/1
+         ,bind_q/2, unbind_q/1, unbind_q/2
+         ,publish_req/1, publish_req/2
+         ,publish_resp/2, publish_resp/3
+         ,get_auth_user/1, get_auth_realm/1
+         ,req_event_type/0
         ]).
-
--export([get_auth_user/1, get_auth_realm/1]).
 
 -include("../wh_api.hrl").
 
@@ -68,6 +69,10 @@ req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AUTHN_REQ_HEADERS, ?AUTHN_REQ_VALUES, ?AUTHN_REQ_TYPES);
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
+
+-spec req_event_type/0 :: () -> {ne_binary(), ne_binary()}.
+req_event_type() ->
+    {?EVENT_CATEGORY, ?AUTHN_REQ_EVENT_NAME}.
 
 %%--------------------------------------------------------------------
 %% @doc Authentication Response - see wiki
@@ -129,18 +134,13 @@ publish_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHN_RESP_VALUES, fun resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
-disambiguate_and_publish(ReqJObj, RespJObj) ->
-    {?EVENT_CATEGORY, ?AUTHN_REQ_EVENT_NAME} = wh_util:get_event_type(ReqJObj), % only one, in this case
-    RespQ = wh_json:get_value(<<"Server-ID">>, ReqJObj),
-    publish_resp(RespQ, RespJObj).
-
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
 %% creating the routing key for either binding queues or publishing messages
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_authn_req_routing/1 :: (ne_binary() | proplist() | wh_json:json_object()) -> ne_binary().
+-spec get_authn_req_routing/1 :: (ne_binary() | api_terms()) -> ne_binary().
 get_authn_req_routing(Realm) when is_binary(Realm) ->
     list_to_binary([?KEY_AUTHN_REQ, ".", amqp_util:encode(Realm)]);
 get_authn_req_routing(Req) ->

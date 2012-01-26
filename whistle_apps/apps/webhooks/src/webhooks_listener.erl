@@ -15,7 +15,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2, handle_req/2]).
+-export([start_link/0, handle_req/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2
@@ -23,12 +23,9 @@
 
 -include("webhooks.hrl").
 
--define(SERVER, ?MODULE). 
+-define(SERVER, ?MODULE).
 
--record(state, {acctdb = 'undefined' :: 'undefined' | ne_binary()
-               ,acctid = 'undefined' :: 'undefined' | ne_binary()
-               ,webhook = 'undefined' :: 'undefined' | wh_json:json_object()
-               ,realm = 'undefined' :: 'undefined' | ne_binary()
+-record(state, {hooks_started = dict:new() :: dict() % {{Acct, DocId}, {PidOfHookAcctListener, Ref}}
                }).
 
 %%%===================================================================
@@ -42,29 +39,14 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(AcctDB, Webhooks) ->
-    gen_listener:start_link(?MODULE, [{responders, [{?MODULE, {<<"*">>, <<"*">>}}]}
-                                      ,{bindings, [{self, []}]}
-                                     ], [AcctDB, Webhooks]).
+start_link() ->
+    gen_listener:start_link(?MODULE, [{responders, [{{?MODULE, handle_req}, [{<<"configuration">>, <<"*">>}]} ]}
+                                      ,{bindings, [ {conf, [ {doc_type, <<"webhooks">>} ]} ]}
+                                     ], []).
 
 handle_req(JObj, Props) ->
-    wh_util:put_callid(JObj),
-
-    Srv = props:get_value(server, Props),
-    Hook = gen_listener:call(Srv, get_hook),
-
-    Uri = wh_json:get_value(<<"callback_uri">>, Hook),
-    Method = get_method_atom(wh_json:get_binary_value(<<"http_method">>, Hook, <<"post">>)),
-
-    ?LOG("Sending json to ~s using method ~s", [Uri, Method]),
-
-    Retries = wh_json:get_integer_value(<<"retries">>, Hook, 3),
-
-    {ok, Resp} = try_send_req(Uri, Method, JObj, Retries),
-
-    Q = props:get_value(queue, Props),
-
-    try_send_resp(JObj, Resp, Q, wh_json:get_value(<<"bind_event">>, Hook)).
+    true = wapi_conf:doc_update_v(JObj),
+    gen_listener:cast(props:get_value(server, Props), {config_change, JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -81,33 +63,10 @@ handle_req(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([AcctDB, Webhook]) ->
-    AcctID = whapps_util:get_db_name(AcctDB, raw),
-    put(callid, AcctID),
-
-    {ok, AcctDoc} = couch_mgr:open_doc(AcctDB, AcctID),
-    Realm = wh_json:get_value(<<"realm">>, AcctDoc),
-
-    Self = self(),
-    spawn(fun() ->
-                  BindOptions = case wh_json:get_value(<<"bind_options">>, Webhook, []) of
-                                    Prop when is_list(Prop) -> Prop;
-                                    JObj -> wh_json:to_proplist(JObj) % maybe [{restrict_to, [call, events]},...] or other json-y type
-                                end,
-
-                  gen_listener:add_binding(Self
-                                           ,wh_json:get_value(<<"bind_event">>, Webhook)
-                                           ,[{realm, Realm}, {acctid, AcctID} | BindOptions]
-                                          )
-          end),
-
-    ?LOG("Starting webhook listener for ~s (~s)", [AcctID, Realm]),
-
-    {ok, #state{acctdb=AcctDB
-                ,acctid=AcctID
-                ,realm=Realm
-                ,webhook=Webhook
-               }}.
+init([]) ->
+    Dict = start_known_webhooks(),
+    ?LOG("webhooks listener started"),
+    {ok, #state{hooks_started=Dict}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -123,8 +82,8 @@ init([AcctDB, Webhook]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(get_callback_uri, _From, #state{webhook=Hook}=State) ->
-    {reply, wh_json:get_value(<<"callback_uri">>, Hook), State}.
+handle_call(_, _From, State) ->
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -136,8 +95,30 @@ handle_call(get_callback_uri, _From, #state{webhook=Hook}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_, State) ->
-    {noreply, State}.
+handle_cast({config_change, JObj}, #state{hooks_started=Dict}=State) ->
+    true = wapi_conf:doc_update_v(JObj),
+
+    AcctDB = wapi_conf:get_account_db(JObj),
+    ID = wapi_conf:get_id(JObj),
+
+    DocAction = wh_json:get_value(<<"Event-Name">>, JObj), % doc_created, doc_edited, doc_deleted
+
+    ?LOG("config change ~s to ~s.~s", [DocAction, AcctDB, ID]),
+
+    Key = {AcctDB, ID},
+
+    case dict:find(Key, Dict) of
+        {ok, {Pid, _}} ->
+            ?LOG("server ~p found for webhooks doc", [Pid]),
+            _ = handle_action(DocAction, Pid, JObj),
+            {noreply, State};
+        error ->
+            PubDoc = wh_json:get_value(<<"doc">>, JObj),
+            ?LOG("unknown webhook doc, starting handler: ~s", [wh_json:get_value(<<"bind_event">>, JObj)]),
+            {ok, Pid} = hook_acct_sup:start_listener(AcctDB, PubDoc),
+            Ref = erlang:monitor(process, Pid),
+            {noreply, State#state{hooks_started=dict:store(Key, {Pid, Ref}, Dict)}, hibernate}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -149,11 +130,26 @@ handle_cast(_, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'DOWN', Ref, process, Pid, normal}, #state{hooks_started=Dict}=State) ->
+    Dict1 = dict:filter(fun({AcctDB, DocID}, {Pid1, Ref1}) when Pid =:= Pid1 andalso Ref =:= Ref1 ->
+                                ?LOG("hook handler for ~s.~s down normally", [AcctDB, DocID]),
+                                false;
+                           (_, _) -> true
+                        end, Dict),
+    {noreply, State#state{hooks_started=Dict1}, hibernate};
+handle_info({'DOWN', Ref, process, Pid, Reason}, #state{hooks_started=Dict}=State) ->
+    Dict1 = dict:filter(fun({AcctDB, DocID}, {Pid1, Ref1}) when Pid =:= Pid1 andalso Ref =:= Ref1 ->
+                                ?LOG("hook handler for ~s.~s down: ~p", [AcctDB, DocID, Reason]),
+                                false;
+                           (_, _) -> true
+                        end, Dict),
+    {noreply, State#state{hooks_started=Dict1}, hibernate};
 handle_info(_Info, State) ->
+    ?LOG("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
-handle_event(_JObj, #state{webhook=Webhook, realm=Realm, acctid=AcctId}) ->
-    {reply, [{hooks, Webhook}, {realm, Realm}, {acctid, AcctId}]}.
+handle_event(_JObj, _State) ->
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -167,7 +163,7 @@ handle_event(_JObj, #state{webhook=Webhook, realm=Realm, acctid=AcctId}) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ok.
+    ?LOG("webhooks listener going down").
 
 %%--------------------------------------------------------------------
 %% @private
@@ -183,51 +179,37 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec try_send_req/4 :: (ne_binary(), 'put' | 'post' | 'get', wh_json:json_object(), non_neg_integer()) -> {'ok', wh_json:json_object()} | {'error', 'retries_exceeded'}.
-try_send_req(_, _, _, R) when R =< 0 ->
-    ?LOG("Retries exceeded"),
-    {error, retries_exceeded};
-try_send_req(Uri, Method, ReqJObj, Retries) ->
-    try
-        case ibrowse:send_req(wh_util:to_list(Uri)
-                              ,[{"content-type", "application/json"}
-                                ,{"accept", "application/json"}
-                               ]
-                              ,Method
-                              ,wh_json:encode(ReqJObj)
-                             ) of
-            {ok, Status, ResponseHeaders, ResponseBody} ->
-                ?LOG("Resp status: ~s", [Status]),
-                _ = [?LOG("Resp header: ~s: ~s", [K,V]) || {K,V} <- ResponseHeaders],
-                ?LOG("Resp body: ~s", [ResponseBody]),
+-spec start_known_webhooks/0 :: () -> dict().
+start_known_webhooks() ->
+    lists:foldl(fun(AcctDb, HooksAcc) ->
+                        lists:foldl(fun({DocId, Pid}, Hooks1Acc) ->
+                                            Ref = erlang:monitor(process, Pid),
+                                            dict:store({AcctDb, DocId}, {Pid, Ref}, Hooks1Acc)
+                                    end, HooksAcc, maybe_start_handler(AcctDb))
+                end, dict:new(), whapps_util:get_all_accounts(encoded)).
 
-                case wh_util:to_binary(props:get_value("Content-Type", ResponseHeaders)) of
-                    <<"application/xml">> -> {ok, decode_xml(ResponseBody)};
-                    _ -> {ok, wh_json:decode(ResponseBody)}
-                end;
-            {error, Reason} ->
-                ?LOG("Request failed: ~p", [Reason]),
-                try_send_req(Uri, Method, ReqJObj, Retries-1)
-        end
-    catch
-        T:R ->
-            ?LOG("Caught ~s:~p", [T, R]),
-            try_send_req(Uri, Method, ReqJObj, Retries-1)
+%% returns [{DocId, Pid},...]
+-spec maybe_start_handler/1 :: (ne_binary()) -> [{ne_binary(), pid()},...] | [].
+maybe_start_handler(Db) ->
+    case couch_mgr:get_results(Db, <<"webhooks/crossbar_listing">>, [{<<"include_docs">>, true}]) of
+        {ok, []} -> ?LOG("No webhooks in ~s", [Db]), [];
+        {ok, WebHooks} ->
+            ?LOG("Starting webhooks listener(s) for ~s: ~b", [Db, length(WebHooks)]),
+            [begin
+                 {ok, Pid} = hook_acct_sup:start_listener(Db, wh_json:get_value(<<"doc">>, Hook)),
+                 {wh_json:get_value(<<"id">>, Hook), Pid}
+             end
+             || Hook <- WebHooks];
+        {error, _E} ->
+            ?LOG_SYS("Failed to load webhooks view for account ~s", [Db]),
+            []
     end.
 
--spec get_method_atom/1 :: (<<_:24,_:_*8>>) -> 'put' | 'post' | 'get'.
-get_method_atom(<<"put">>) -> put;
-get_method_atom(<<"post">>) -> post;
-get_method_atom(<<"get">>) -> get.
-
--spec decode_xml/1 :: (ne_binary()) -> no_return(). % throw({'not_supported', 'xml'}).
-decode_xml(_Body) ->
-    %% eventually support TwiML and other XML-based formats
-    throw({not_supported, xml}).
-
-try_send_resp(ReqJObj, HTTPJObj, MyQ, Binding) ->
-    DefaultJObj = wh_json:from_list(wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)),
-    RespJObj = wh_json:merge_jobj(DefaultJObj, HTTPJObj),
-
-    ?LOG("Disambiguating on binding ~s", [Binding]),
-    wh_api:disambiguate_and_publish(ReqJObj, RespJObj, Binding).
+handle_action(<<"doc_created">>, Pid, _JObj) ->
+    ?LOG("doc was created but we know the pid (~p) already?", [Pid]);
+handle_action(<<"doc_edited">>, Pid, JObj) ->
+    ?LOG("webhook updated for ~p", [Pid]),
+    hook_acct_listener:update_config(Pid, JObj);
+handle_action(<<"doc_deleted">>, Pid, _) ->
+    ?LOG("webhook deleted, shutting down ~p", [Pid]),
+    hook_acct_listener:stop(Pid).

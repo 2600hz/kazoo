@@ -6,7 +6,7 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("proper/include/proper.hrl").
 
--type json_string() :: atom() | ne_binary().
+-type json_string() :: ne_binary().
 -type json_strings() :: [json_string()].
 -type json_number() :: integer() | float().
 -type json_array() :: [json_term()].
