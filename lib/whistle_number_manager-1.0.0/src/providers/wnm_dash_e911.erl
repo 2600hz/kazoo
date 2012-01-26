@@ -241,8 +241,11 @@ provision_location(LocationId) ->
 -spec remove_number/1 :: (ne_binary()) -> undefined | ne_binary().
 remove_number(Number) ->
     Props = [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}],
-    Response = emergency_provisioning_request('removeURI', Props),
-    wh_util:get_xml_value("//URIStatus/code/text()", Response).
+    case emergency_provisioning_request('removeURI', Props) of
+        {error, server_error} -> <<"REMOVED">>;
+        Response ->
+            wh_util:get_xml_value("//URIStatus/code/text()", Response)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
