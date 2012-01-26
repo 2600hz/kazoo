@@ -41,7 +41,7 @@
 
 -export([handle/2]).
 
--define(DIR_DOCS_VIEW, <<"dialbyname/directory_docs_by_name">>).
+-define(DIR_DOCS_VIEW, <<"directories/users_listing">>).
 
 -define(FIELDS, [<<"last_name">>, <<"first_name">>]). %% what fields to convert/keep for searching
 -define(DTMF_ACCEPT_MATCH, <<"1">>).
@@ -129,8 +129,8 @@ handle(Data, #cf_call{account_db=AccountDB}=Call) ->
     SortBy = get_sort_by(wh_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>)),
     LookupTable = build_lookup_table(get_dir_docs(DirID, AccountDB)),
 
-    ?LOG_START("Dial By Name: ~s", [wh_json:get_value(<<"name">>, DirJObj)]),
-    ?LOG("SortBy: ~s", [SortBy]),
+    ?LOG_START("dial by name: ~s", [wh_json:get_value(<<"name">>, DirJObj)]),
+    ?LOG("sort by: ~s", [SortBy]),
 
     DbN = DbN0#dbn_state{sort_by = SortBy
                          ,min_dtmf = MinDTMF
@@ -470,19 +470,20 @@ play_start_instructions(Call, #prompts{enter_person=EnterPerson, firstname=FName
                       ,{play, NamePrompt}
                      ], Call).
 
--spec build_lookup_table/1 :: ([{binary(), binary(), wh_json:json_object()},...]) -> lookup_table().
+%% {user_id, callflow_id, user_doc}
+-spec build_lookup_table/1 :: ([{ne_binary(), ne_binary(), wh_json:json_object()},...]) -> lookup_table().
 build_lookup_table([_|_]=Docs) ->
-    orddict:to_list(orddict:from_list([ {ID, convert_fields(Callflow, DocData, ?FIELDS)} || {ID, Callflow, DocData} <- Docs ])).
+    orddict:to_list(orddict:from_list([ {UserID, convert_fields(CallflowID, UserDoc, ?FIELDS)} || {UserID, CallflowID, UserDoc} <- Docs ])).
 
 %% create a json object containing only fields in Fields, and the values converted
 %% to their dialpad equivalents
 %% as well as the json object without the dialpad encoding
 %% only convert the fields in Fields (and strip others out of the docs)
 -spec convert_fields/3 :: (ne_binary(), wh_json:json_object(), [ne_binary(),...]) -> {wh_json:json_object(), wh_json:json_object()}.
-convert_fields(Callflow, Doc, Fields) ->
+convert_fields(CallflowID, UserDoc, Fields) ->
     {AlphaJObj, JObj} = lists:foldr(fun(Field, {DialpadJObj, JObj}) ->
-                                            {wh_json:set_value(Field, cf_util:alpha_to_dialpad(wh_json:get_value(Field, Doc)), DialpadJObj)
-                                             ,wh_json:set_value(Field, wh_json:get_value(Field, Doc), JObj)
+                                            {wh_json:set_value(Field, cf_util:alpha_to_dialpad(wh_json:get_value(Field, UserDoc)), DialpadJObj)
+                                             ,wh_json:set_value(Field, wh_json:get_value(Field, UserDoc), JObj)
                                             }
                                     end, {wh_json:new(), wh_json:new()}, Fields),
 
@@ -492,7 +493,7 @@ convert_fields(Callflow, Doc, Fields) ->
             end,
 
     JObj1 = wh_json:from_list([
-                               {<<"callflow_id">>, Callflow}
+                               {<<"callflow_id">>, CallflowID}
                                ,{<<"full_name">>, <<(wh_json:get_value(<<"first_name">>, JObj))/binary, " ", (wh_json:get_value(<<"last_name">>, JObj))/binary>>}
                                | Media
                               ]),
@@ -504,9 +505,10 @@ convert_fields(Callflow, Doc, Fields) ->
 get_max_dtmf(Max, Min) when Min > Max -> 0;
 get_max_dtmf(Max, _) -> Max.
 
+%% {user_id, callflow_id, user_doc}
 -spec get_dir_docs/2 :: (ne_binary(), ne_binary()) -> [{ne_binary(), ne_binary(), wh_json:json_object()},...].
-get_dir_docs(DirName, DBName) ->
-    {ok, Docs} = couch_mgr:get_results(DBName, ?DIR_DOCS_VIEW, [{<<"key">>, DirName}, {<<"include_docs">>, true}]),
+get_dir_docs(DirID, DBName) ->
+    {ok, Docs} = couch_mgr:get_results(DBName, ?DIR_DOCS_VIEW, [{<<"key">>, DirID}, {<<"include_docs">>, true}]),
     [ {wh_json:get_value(<<"id">>, Doc), wh_json:get_value(<<"value">>, Doc), wh_json:get_value(<<"doc">>, Doc)} || Doc <- Docs ].
 
 -spec get_sort_by/1 :: (ne_binary()) -> 'first' | 'last'.
