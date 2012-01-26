@@ -292,10 +292,10 @@ read(Id, Context) ->
         Context1 -> Context1
     end.
 
-load_directory_users(Id, #cb_context{doc=Directory}=Context) ->
+load_directory_users(Id, #cb_context{resp_data=Directory}=Context) ->
     case crossbar_doc:load_view(?CB_USERS_LIST, [{<<"key">>, Id}], Context, fun normalize_users_results/2) of
-        #cb_context{resp_status=success, doc=Users} ->
-            Context#cb_context{doc=wh_json:set_value(<<"users">>, Users, Directory)};
+        #cb_context{resp_status=success, resp_data=Users} ->
+            Context#cb_context{resp_data=wh_json:set_value(<<"users">>, Users, Directory)};
         _ -> Context
     end.
 
