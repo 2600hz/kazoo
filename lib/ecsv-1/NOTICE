@@ -1,0 +1,9 @@
+ecsv
+----
+
+ecsv is a CSV parser written in Erlang based on the code published on the blog
+page http://andrewtill.blogspot.com/2009/12/erlang-csv-parser.html.
+
+So a big thank you to Andy Till for his original code.
+
+2011 (c) Nicolas R Dufour <nicolas.dufour@nemoworld.info>
