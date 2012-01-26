@@ -639,6 +639,10 @@ filter_prop(Doc, <<"filter_not_", Key/binary>>, Val) ->
     not (wh_json:get_binary_value(binary:split(Key, <<".">>), Doc, <<>>) =:= wh_util:to_binary(Val));
 filter_prop(Doc, <<"filter_", Key/binary>>, Val) ->
     wh_json:get_binary_value(binary:split(Key, <<".">>), Doc, <<>>) =:= wh_util:to_binary(Val);
+filter_prop(Doc, <<"has_key">>, Key) ->
+    wh_json:get_value(binary:split(Key, <<".">>), Doc) =/= undefined;
+filter_prop(Doc, <<"has_value">>, Key) ->
+    wh_json:get_ne_value(binary:split(Key, <<".">>), Doc) =/= undefined;
 filter_prop(Doc, <<"created_from">>, Val) ->
     wh_util:to_integer(wh_json:get_value(<<"pvt_created">>, Doc)) >= wh_util:to_integer(Val);
 filter_prop(Doc, <<"created_to">>, Val) ->
