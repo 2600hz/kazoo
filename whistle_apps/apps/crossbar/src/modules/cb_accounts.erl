@@ -265,12 +265,9 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
                               ?PVT_TYPE = wh_json:get_value(<<"pvt_type">>, JObj1),
                               ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
                               
-                              couch_mgr:db_delete(DbName),
+                              true = couch_mgr:db_delete(DbName),
                               
-                              #cb_context{resp_status=success} = crossbar_doc:delete(Context#cb_context{db_name=DbName
-                                                                                                        ,doc=JObj1
-                                                                                                       }),
-                              ?LOG_SYS("deleted ~s in ~s", [DbName, AccountId]);
+                              ?LOG_SYS("deleted db ~s", [DbName]);
                           _ -> ok
                       end,
                       case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
