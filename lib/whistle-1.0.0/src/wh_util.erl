@@ -344,8 +344,7 @@ to_list(X) when is_list(X) ->
 
 %% Known limitations:
 %%   Converting [256 | _], lists with integers > 255
--spec to_binary/1 :: (X) -> binary() when
-      X :: atom() | list(0..255) | binary() | integer() | float().
+-spec to_binary/1 :: (atom() | string() | binary() | integer() | float()) -> binary().
 to_binary(X) when is_float(X) ->
     to_binary(mochinum:digits(X));
 to_binary(X) when is_integer(X) ->
@@ -358,21 +357,18 @@ to_binary(X) when is_binary(X) ->
     X.
 
 %% the safer version, won't let you leak atoms
--spec to_atom/1 :: (X) -> atom() when
-      X :: atom() | list() | binary() | integer() | float().
+-spec to_atom/1 :: (atom() | list() | binary() | integer() | float()) -> atom().
 to_atom(X) when is_atom(X) -> X;
 to_atom(X) when is_list(X) -> list_to_existing_atom(X);
 to_atom(X) -> to_atom(to_list(X)).
 
 %% only if you're really sure you want this
--spec to_atom/2 :: (X, true) -> atom() when
-      X :: atom() | list() | binary() | integer() | float().
+-spec to_atom/2 :: (atom() | list() | binary() | integer() | float(), 'true') -> atom().
 to_atom(X, _) when is_atom(X) -> X;
 to_atom(X, true) when is_list(X) -> list_to_atom(X);
 to_atom(X, true) -> to_atom(to_list(X), true).
 
--spec to_boolean/1 :: (X) -> boolean() when
-      X :: binary() | string() | atom().
+-spec to_boolean/1 :: (binary() | string() | atom()) -> boolean().
 to_boolean(<<"true">>) -> true;
 to_boolean("true") -> true;
 to_boolean(true) -> true;
@@ -380,15 +376,13 @@ to_boolean(<<"false">>) -> false;
 to_boolean("false") -> false;
 to_boolean(false) -> false.
 
--spec is_true/1 :: (X) -> boolean() when
-      X :: binary() | string() | atom().
+-spec is_true/1 :: (binary() | string() | atom()) -> boolean().
 is_true(<<"true">>) -> true;
 is_true("true") -> true;
 is_true(true) -> true;
 is_true(_) -> false.
 
--spec is_false/1 :: (X) -> boolean() when
-      X :: binary() | string() | atom().
+-spec is_false/1 :: (binary() | string() | atom()) -> boolean().
 is_false(<<"false">>) -> true;
 is_false("false") -> true;
 is_false(false) -> true;
@@ -409,14 +403,13 @@ is_empty(false) -> true;
 is_empty(undefined) -> true;
 is_empty(MaybeJObj) -> wh_json:is_empty(MaybeJObj).
 
--spec is_proplist/1 :: (Term) -> boolean() when
-      Term :: term().
+-spec is_proplist/1 :: (term()) -> boolean().
 is_proplist(Term) when is_list(Term) ->
     lists:all(fun({_,_}) -> true; (_) -> false end, Term);
 is_proplist(_) ->
     false.
 
--spec to_lower_binary/1 :: (term()) -> undefined | binary().
+-spec to_lower_binary/1 :: (term()) -> 'undefined' | binary().
 to_lower_binary(undefined) ->
     undefined;
 to_lower_binary(Bin) when is_binary(Bin) ->
@@ -424,15 +417,14 @@ to_lower_binary(Bin) when is_binary(Bin) ->
 to_lower_binary(Else) ->
     to_lower_binary(to_binary(Else)).
     
--spec binary_to_lower_char/1 :: (C) -> char() when
-      C :: char().
+-spec binary_to_lower_char/1 :: (char()) -> char().
 binary_to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
 %% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"
 binary_to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
 binary_to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 binary_to_lower_char(C) -> C.
 
--spec to_upper_binary/1 :: (term()) -> undefined | binary().
+-spec to_upper_binary/1 :: (term()) -> 'undefined' | binary().
 to_upper_binary(undefined) ->
     undefined;
 to_upper_binary(Bin) when is_binary(Bin) ->
@@ -440,8 +432,7 @@ to_upper_binary(Bin) when is_binary(Bin) ->
 to_upper_binary(Else) ->
     to_upper_binary(to_binary(Else)).
 
--spec binary_to_upper_char/1 :: (C) -> char() when
-      C :: char().
+-spec binary_to_upper_char/1 :: (char()) -> char().
 binary_to_upper_char(C) when is_integer(C), $a =< C, C =< $z -> C - 32;
 binary_to_upper_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 -> C - 32;
 binary_to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
@@ -451,16 +442,12 @@ binary_to_upper_char(C) -> C.
 binary_join([H|T], Glue) when is_binary(Glue) ->
     list_to_binary([H, [ [Glue, I] || I <- T]]).
 
--spec a1hash/3 :: (User, Realm, Password) -> string() when
-      User :: binary() | list(),
-      Realm :: binary() | list(),
-      Password :: binary() | list().
+-spec a1hash/3 :: (ne_binary(), ne_binary(), ne_binary()) -> nonempty_string().
 a1hash(User, Realm, Password) ->
     to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
 
 %% found via trapexit
--spec floor/1 :: (X) -> integer() when
-      X :: integer() | float().
+-spec floor/1 :: (integer() | float()) -> integer().
 floor(X) when X < 0 ->
     T = trunc(X),
     case X - T =:= 0 of
@@ -471,8 +458,7 @@ floor(X) ->
     trunc(X).
 
 %% found via trapexit
--spec ceiling/1 :: (X) -> integer() when
-      X :: integer() | float().
+-spec ceiling/1 :: (integer() | float()) -> integer().
 ceiling(X) when X < 0 ->
     trunc(X);
 ceiling(X) ->
@@ -488,7 +474,7 @@ current_tstamp() ->
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()).
 
 %% fetch and cache the whistle version from the VERSION file in whistle's root folder
--spec whistle_version/0 :: () -> binary().
+-spec whistle_version/0 :: () -> ne_binary().
 whistle_version() ->
     case wh_cache:fetch(?WHISTLE_VERSION_CACHE_KEY) of
         {ok, Version} ->  Version;
@@ -497,7 +483,7 @@ whistle_version() ->
             whistle_version(VersionFile)
     end.
 
--spec whistle_version/1 :: (binary() | string()) -> binary().
+-spec whistle_version/1 :: (ne_binary() | nonempty_string()) -> ne_binary().
 whistle_version(FileName) ->
     case file:consult(FileName) of
         {ok, [Version]} ->
@@ -509,13 +495,11 @@ whistle_version(FileName) ->
             Version
     end.
 
--spec write_pid/1 :: (FileName) -> ok | {error, atom()} when
-      FileName :: binary() | string().
+-spec write_pid/1 :: (ne_binary() | nonempty_string()) -> 'ok' | {'error', atom()}.
 write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), [write, binary]).
 
--spec ensure_started/1 :: (App) -> 'ok' when
-      App :: atom().
+-spec ensure_started/1 :: (atom()) -> 'ok'.
 ensure_started(App) when is_atom(App) ->
     case application:start(App) of
         ok ->
