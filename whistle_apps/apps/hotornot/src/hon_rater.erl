@@ -13,9 +13,9 @@
 -include("hotornot.hrl").
 
 init() ->
-    couch_mgr:db_create(?RATES_DB),
-    couch_mgr:load_doc_from_file(?RATES_DB, hotornot, <<"fixtures/us-1.json">>),
-    couch_mgr:revise_doc_from_file(?RATES_DB, hotornot, <<"views/rating.json">>). %% only load it (will fail if exists)
+    couch_mgr:db_create(?WH_RATES_DB),
+    couch_mgr:load_doc_from_file(?WH_RATES_DB, hotornot, <<"fixtures/us-1.json">>),
+    couch_mgr:revise_doc_from_file(?WH_RATES_DB, hotornot, <<"views/rating.json">>). %% only load it (will fail if exists)
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
@@ -43,9 +43,9 @@ get_rate_data(JObj) ->
     End = <<Start/binary, Rest/binary>>,
 
     ?LOG("searching for rates in the range ~s to ~s", [Start, End]),
-    case couch_mgr:get_results(?RATES_DB, <<"rating/lookup">>, [{<<"startkey">>, wh_util:to_integer(Start)}
-                                                                ,{<<"endkey">>, wh_util:to_integer(End)}
-                                                               ]) of
+    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{<<"startkey">>, wh_util:to_integer(Start)}
+                                                                  ,{<<"endkey">>, wh_util:to_integer(End)}
+                                                                 ]) of
         {ok, []} -> ?LOG("rate lookup had no results"), {error, no_rate_found};
         {error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_rate_found};
         {ok, Rates} ->
@@ -95,26 +95,19 @@ matching_rate(To, Direction, RouteOptions, Rate) ->
 sort_rates(RateA, RateB) ->
     ts_util:constrain_weight(wh_json:get_value(<<"weight">>, RateA, 1)) >= ts_util:constrain_weight(wh_json:get_value(<<"weight">>, RateB, 1)).
 
-%% match options set in Flags to options available in Rate
-%% All options set in Flags must be set in Rate to be usable
-%% RouteOptions come from client's DID/server/account
--spec options_match/2 :: (RouteOptions, RateOptions) -> boolean() when
-      RouteOptions :: list(binary()) | wh_json:json_object(),
-      RateOptions :: list(binary()) | wh_json:json_object().
-options_match(RouteOptions, {struct, RateOptions}) ->
-    options_match(RouteOptions, RateOptions);
-options_match({struct, RouteOptions}, RateOptions) ->
-    options_match(RouteOptions, RateOptions);
-options_match([], []) ->
-    true;
-options_match([], _) ->
-    true;
+%% Route options come from the client device
+%% Rate options come from the carrier providing the trunk
+%% All Route options must exist in a carrier's options to keep the carrier
+%% in the list of carriers capable of handling the call
+-type trunking_options() :: [ne_binary(),...] | [].
+-spec options_match/2 :: (trunking_options(), trunking_options()) -> boolean().
+options_match([], []) -> true;
+options_match([], _) -> true;
 options_match(RouteOptions, RateOptions) ->
     lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions).
 
--spec set_rate_ccvs/3 :: (proplist(), undefined | ne_binary(), wh_json:json_object()) -> ok.
-set_rate_ccvs(_, undefined, _) ->
-    ok;
+-spec set_rate_ccvs/3 :: (proplist(), 'undefined' | ne_binary(), wh_json:json_object()) -> ok.
+set_rate_ccvs(_, undefined, _) -> ok;
 set_rate_ccvs(Response, CtrlQ, JObj) ->    
     case props:get_value(<<"Rates">>, Response) of
         [] ->
