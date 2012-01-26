@@ -343,7 +343,7 @@ normalize_view_results(JObj, Acc) ->
 normalize_users_results(JObj, Acc) ->
     [wh_json:set_values([{<<"user_id">>, wh_json:get_value(<<"id">>, JObj)}
                          ,{<<"callflow_id">>, wh_json:get_value(<<"value">>, JObj)}
-                        ], JObj)
+                        ], wh_json:new())
      | Acc].
      
 %%--------------------------------------------------------------------
