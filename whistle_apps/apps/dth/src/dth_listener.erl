@@ -15,26 +15,25 @@
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("dth.hrl").
 
 -define(RESPONDERS, [
-		     {cdr_handler, [{<<"call_detail">>, <<"cdr">>}]}
-		     ,{blacklist_req, [{<<"dth">>, <<"blacklist_req">>}]}
-		    ]).
+                     {cdr_handler, [{<<"call_detail">>, <<"cdr">>}]}
+                     ,{blacklist_req, [{<<"dth">>, <<"blacklist_req">>}]}
+                    ]).
 -define(BINDINGS, [
-		   {cdrs, [{callid, <<"*">>}]}
-		   ,{dth, []}
-		  ]).
+                   {call, [{restrict_to, [cdr]}]}
+                  ]).
 
 -define(SERVER, ?MODULE).
 -define(BLACKLIST_REFRESH, 60000).
 
 -record(state, {
-	  wsdl_model = undefined :: 'undefined' | term()
-	 ,cache = undefined :: 'undefined' | pid()
-	 ,dth_cdr_url = <<>> :: binary()
+          wsdl_model = undefined :: 'undefined' | term()
+         ,cache = undefined :: 'undefined' | pid()
+         ,dth_cdr_url = <<>> :: binary()
          }).
 
 %%%===================================================================
@@ -50,10 +49,10 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				     ], []).
--spec stop/1 :: (Srv) -> ok when
-      Srv :: atom() | pid().
+                                      ,{bindings, ?BINDINGS}
+                                     ], []).
+
+-spec stop/1 :: (atom() | pid()) -> 'ok'.
 stop(Srv) ->
     gen_listener:stop(Srv).
 
@@ -85,18 +84,18 @@ init([]) ->
 
     case filelib:is_regular(WSDLHrlFile) of
         true -> ok;
-	false ->
-	    true = filelib:is_regular(WSDLFile),
-	    ok = detergent:write_hrl(WSDLFile, WSDLHrlFile)
+        false ->
+            true = filelib:is_regular(WSDLFile),
+            ok = detergent:write_hrl(WSDLFile, WSDLHrlFile)
     end,
 
     Cache = whereis(dth_cache),
     erlang:monitor(process, Cache),
 
     {ok, #state{wsdl_model=detergent:initModel(WSDLFile)
-		,dth_cdr_url=URL
-		,cache=Cache
-	       }}.
+                ,dth_cdr_url=URL
+                ,cache=Cache
+               }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -171,7 +170,7 @@ handle_event(_JObj, #state{dth_cdr_url=Url, cache=Cache, wsdl_model=WSDL}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), #state{}) -> ok.
+-spec terminate/2 :: (term(), #state{}) -> 'ok'.
 terminate(_Reason, _) ->
     ?LOG_SYS("dth: ~p termination", [_Reason]).
 
@@ -189,25 +188,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec refresh_blacklist/2 :: (Cache, WSDL) -> ok when
-      Cache :: pid(),
-      WSDL :: #wsdl{}.
+-spec refresh_blacklist/2 :: (pid(), #wsdl{}) -> 'ok'.
 refresh_blacklist(Cache, WSDL) ->
     {ok, _, [Response]} = detergent:call(WSDL, "GetBlockList", []),
     BlockListEntries = get_blocklist_entries(Response),
     ?LOG_SYS("Entries: ~p", [BlockListEntries]),
     wh_cache:store_local(Cache, dth_util:blacklist_cache_key(), BlockListEntries).
 
--spec get_blocklist_entries/1 :: (Response) -> [{binary(),binary()},...] | [] when
-      Response :: #'p:GetBlockListResponse'{}.
+-spec get_blocklist_entries/1 :: (#'p:GetBlockListResponse'{}) -> wh_json:json_object().
 get_blocklist_entries(#'p:GetBlockListResponse'{
-			 'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
-			   'BlockListEntry'=undefined
-			  }}) ->
-    {struct, []};
+                         'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
+                           'BlockListEntry'=undefined
+                          }}) ->
+    wh_json:new();
 get_blocklist_entries(#'p:GetBlockListResponse'{
-			 'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
-			   'BlockListEntry'=Entries
-			  }}) when is_list(Entries) ->
+                         'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
+                           'BlockListEntry'=Entries
+                          }}) when is_list(Entries) ->
     %% do some formatting of the entries to be [{ID, Reason}]
-    {struct, [{wh_util:to_binary(ID), wh_util:to_binary(Reason)} || #'p:BlockListEntry'{'CustomerID'=ID, 'BlockReason'=Reason} <- Entries]}.
+    wh_json:from_list([{wh_util:to_binary(ID), wh_util:to_binary(Reason)} || #'p:BlockListEntry'{'CustomerID'=ID, 'BlockReason'=Reason} <- Entries]).
