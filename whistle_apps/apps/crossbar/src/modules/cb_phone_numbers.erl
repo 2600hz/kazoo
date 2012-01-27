@@ -172,11 +172,17 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.phone_numbers">>, [RD, Context | [Number]]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.phone_numbers">>
+                 ,[RD, #cb_context{account_id=AccountId}=Context | [Number]]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Pid ! {binding_result, true, [RD, Context, [Number]]}
+                  case wh_number_manager:release_number(Number, AccountId) of
+                      ok ->
+                          Pid ! {binding_result, true, [RD, Context, [Number]]};
+                      {error, fault} ->
+                          Pid ! {binding_result, true, [RD, crossbar_util:response_db_fatal(Context), [Number]]}
+                  end
           end),
     {noreply, State};
 
@@ -248,7 +254,7 @@ bind_to_crossbar() ->
 allowed_methods([]) ->
     {true, ['GET']};
 allowed_methods([_]) ->
-    {true, ['GET', 'PUT', 'POST']};
+    {true, ['GET', 'PUT', 'POST', 'DELETE']};
 allowed_methods(_) ->
     {false, []}.
 
