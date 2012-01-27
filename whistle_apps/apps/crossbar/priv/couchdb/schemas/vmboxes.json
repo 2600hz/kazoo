@@ -98,7 +98,7 @@
                   "support_email":{
                      "description":"The support email provided to the templates",
                      "type":"string",
-                     "maxLength":32
+                     "maxLength":256
                   },
                   "service_url":{
                      "description":"The support number provided to the templates",
@@ -118,7 +118,7 @@
                   "send_from":{
                      "description":"The from address used when sending the email",
                      "type":"string",
-                     "maxLength":32
+                     "maxLength":256
                   }
                }
             }

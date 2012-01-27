@@ -143,7 +143,7 @@
                   "support_email":{
                      "description":"The support email provided to the templates",
                      "type":"string",
-                     "maxLength":32
+                     "maxLength":256
                   },
                   "service_url":{
                      "description":"The support number provided to the templates",
@@ -163,7 +163,7 @@
                   "send_from":{
                      "description":"The from address used when sending the email",
                      "type":"string",
-                     "maxLength":32
+                     "maxLength":256
                   }
                }
             },
@@ -191,7 +191,7 @@
                   "support_email":{
                      "description":"The support email provided to the templates",
                      "type":"string",
-                     "maxLength":32
+                     "maxLength":256
                   },
                   "service_url":{
                      "description":"The support number provided to the templates",
@@ -211,7 +211,7 @@
                   "send_from":{
                      "description":"The from address used when sending the email",
                      "type":"string",
-                     "maxLength":32
+                     "maxLength":256
                   }
                }
             },
@@ -239,7 +239,7 @@
                   "support_email":{
                      "description":"The support email provided to the templates",
                      "type":"string",
-                     "maxLength":32
+                     "maxLength":256
                   },
                   "service_url":{
                      "description":"The support number provided to the templates",
@@ -259,7 +259,70 @@
                   "send_from":{
                      "description":"The from address used when sending the email",
                      "type":"string",
-                     "maxLength":32
+                     "maxLength":256
+                  }
+               }
+            },
+            "first_occurrence":{
+               "description":"The first occurrence notification parameters",
+               "type":"object",
+               "properties":{
+                  "send_to":{
+                     "description":"The recipent(s) of the notifications",
+                     "type":"string",
+                     "maxLength":256
+                  },
+                  "sent_initial_registration":{
+                     "description":"Flag to determine if the initial registration has been detected",
+                     "type":"boolean",
+                     "default":false
+                  },
+                  "sent_initial_call":{
+                     "description":"Flag to determine if the initial call has been detected",
+                     "type":"boolean",
+                     "default":false
+                  },
+                  "email_text_template":{
+                     "description":"The email html body template.  Has access to an acccount, service, user, and request object",
+                     "type":"string"
+                  },
+                  "email_html_template":{
+                     "description":"The email text body template.  Has access to an acccount, service, user, and request object",
+                     "type":"string"
+                  },
+                  "email_subject_template":{
+                     "description":"The email subject template.  Has access to an acccount, service, user, and request object",
+                     "type":"string"
+                  },
+                  "support_number":{
+                     "description":"The support number provided to the templates",
+                     "type":"string",
+                     "maxLength":128
+                  },
+                  "support_email":{
+                     "description":"The support email provided to the templates",
+                     "type":"string",
+                     "maxLength":256
+                  },
+                  "service_url":{
+                     "description":"The support number provided to the templates",
+                     "type":"string",
+                     "maxLength":256
+                  },
+                  "service_name":{
+                     "description":"The service name provided",
+                     "type":"string",
+                     "maxLength":128
+                  },
+                  "service_provider":{
+                     "description":"The service provider name",
+                     "type":"string",
+                     "maxLength":128
+                  },
+                  "send_from":{
+                     "description":"The from address used when sending the email",
+                     "type":"string",
+                     "maxLength":256
                   }
                }
             }
