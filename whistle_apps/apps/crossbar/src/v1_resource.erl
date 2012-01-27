@@ -423,7 +423,7 @@ extract_files_and_params(RD, Context) ->
 extract_file(RD, Context) ->
     QS = get_qs(RD),
 
-    FileContents = wh_util:to_binary(wrq:req_body(RD)),
+    FileContents = wrq:req_body(RD),
     ContentType = wrq:get_req_header("Content-Type", RD),
     ContentSize = wrq:get_req_header("Content-Length", RD),
     ?LOG("extracting file content type ~s", [ContentType]),
