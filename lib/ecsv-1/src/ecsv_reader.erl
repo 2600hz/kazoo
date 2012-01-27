@@ -9,59 +9,29 @@
 
 %% @doc read a csv file and stream it to a csv parser
 stream_from_file(IoDevice, ParsingPid) ->
-    IoDeviceIterator = fun(Io) ->
-        {io:get_chars(Io, "", 1), Io}
-    end,
-    iterate_chars(ParsingPid, IoDeviceIterator, IoDevice).
+    send_chars(ParsingPid, IoDevice).
 
 %% @doc read a string and stream it to a csv parser
 stream_from_string(String, ParsingPid) ->
-    StringIterator = fun(StringList) ->
-        get_first_char(StringList)
-    end,
-    iterate_chars(ParsingPid, StringIterator, String).
+    [ send_char(ParsingPid, C) || C <- String],
+    ParsingPid ! {eof}.
 
 stream_from_binary(Bin, ParsingPid) ->
-    BinIterator = fun(BinList) ->
-                          get_first_char(BinList)
-                  end,
-    iterate_chars(ParsingPid, BinIterator, Bin).
+    [ send_char(ParsingPid, C) || <<C>> <= Bin],
+    ParsingPid ! {eof}.
 
 %%
 %% Local Functions
 %%
+send_chars(ParsingPid, IoDevice) ->
+    send_chars(ParsingPid, IoDevice, io:get_chars(IoDevice, "", 1)).
 
-iterate_chars(ParserPid, IteratorFun, TextSource) ->
-    {FirstChar, UpdatedTextSource} = IteratorFun(TextSource),
+send_chars(ParsingPid, IoDevice, eof) ->
+    file:close(IoDevice),
+    ParsingPid ! {eof};
+send_chars(ParsingPid, IoDevice, Char) ->
+    send_char(ParsingPid, Char),
+    send_chars(ParsingPid, IoDevice, io:get_chars(IoDevice, "", 1)).
 
-    iterate_chars(ParserPid, IteratorFun, UpdatedTextSource, FirstChar).
-
-iterate_chars(Pid, _, _, eof) ->
-    Pid ! {eof},
-    ok;
-
-iterate_chars(Pid, IteratorFun, TextSource, Char) ->
-    Pid ! {char, clean_char_argument(Char)},
-
-    {FirstChar, UpdatedTextSource} = IteratorFun(TextSource),
-
-    iterate_chars(Pid, IteratorFun, UpdatedTextSource, FirstChar).
-
-%% @doc make sure that an integer denoting a char is returned instead of a string
-clean_char_argument([CharInt | _]) ->
-    CharInt;
-clean_char_argument(CharInt) when is_integer(CharInt) ->
-    CharInt.
-
-%% @doc returns tuple {FirstChar, RemainingChars} or {eof, []} if no more chars
-%% remains
-get_first_char([]) ->
-    {eof, []};
-get_first_char(<<>>) ->
-    {eof, []};
-get_first_char([Bin]) when is_binary(Bin) ->
-    get_first_char(Bin);
-get_first_char([FirstChar | Tail]) ->
-    {FirstChar, Tail};
-get_first_char(<<C:1,Rest/binary>>) ->
-    {C, Rest}.
+send_char(ParsingPid, C) ->
+    ParsingPid ! {char, C}.
