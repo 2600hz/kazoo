@@ -129,8 +129,7 @@ first_occurrence_notice(Account, Occurrence) ->
 
     ?LOG("creating first occurrence notice"),
     
-    Props = [{<<"To">>, To}
-             ,{<<"From">>, From}
+    Props = [{<<"From">>, From}
              |get_template_props(Account, Occurrence)
             ],
 
@@ -143,7 +142,8 @@ first_occurrence_notice(Account, Occurrence) ->
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
     
-    send_init_occur_email(TxtBody, HTMLBody, Subject, Props).
+    send_init_occur_email(TxtBody, HTMLBody, Subject, To, Props),
+    send_init_occur_email(TxtBody, HTMLBody, Subject, notify_util:get_rep_email(Account), Props).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -166,10 +166,12 @@ get_template_props(Account, Occurrence) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec send_init_occur_email/4 :: (iolist(), iolist(), iolist(), proplist()) -> 'ok'.
-send_init_occur_email(TxtBody, HTMLBody, Subject, Props) ->
+-spec send_init_occur_email/5 :: (iolist(), iolist(), iolist(), undefined | binary() | [ne_binary(),...], proplist()) -> 'ok'.
+send_init_occur_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
+    [send_init_occur_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
+    ok;
+send_init_occur_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"From">>, Props),
-    To = props:get_value(<<"To">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
                  ,[{<<"From">>, From}
@@ -270,6 +272,13 @@ flush() ->
         0 -> true
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensure there are no messages in the process queue 
+%% @end
+%%--------------------------------------------------------------------
+-spec find_admin/1 :: (ne_binary()) -> wh_json:json_object().
 find_admin(AccountDb) ->
     ViewOptions = [{<<"key">>, <<"user">>}
                    ,{<<"include_docs">>, true}

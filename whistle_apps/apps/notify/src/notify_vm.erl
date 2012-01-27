@@ -64,7 +64,7 @@ handle_req(JObj, _Props) ->
             CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"voicemail_to_email">>, <<"email_subject_template">>], AcctObj),
             {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-            send_vm_to_email(TxtBody, HTMLBody, Subject, [ KV || {_, V}=KV <- Props, V =/= undefined ])
+            send_vm_to_email(TxtBody, HTMLBody, Subject, Email, [ KV || {_, V}=KV <- Props, V =/= undefined ])
     end.
 
 %%--------------------------------------------------------------------
@@ -112,8 +112,11 @@ get_template_props(Event, Docs, Account) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec send_vm_to_email/4 :: (iolist(), iolist(), iolist(), proplist()) -> 'ok'.
-send_vm_to_email(TxtBody, HTMLBody, Subject, Props) ->
+-spec send_vm_to_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
+send_vm_to_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
+    [send_vm_to_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
+    ok;
+send_vm_to_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
     DB = props:get_value(<<"account_db">>, Props),
     DocId = props:get_value(<<"voicemail_media">>, Voicemail),
