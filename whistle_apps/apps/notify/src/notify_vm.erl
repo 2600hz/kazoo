@@ -21,15 +21,15 @@
 -define(DEFAULT_HTML_TMPL, notify_vm_html_tmpl).
 -define(DEFAULT_SUBJ_TMPL, notify_vm_subj_tmpl).
 
--define(NOTIFY_VM_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".voicemail_to_email">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".voicemail_to_email">>).
 
 -spec init/0 :: () -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
-    {ok, ?DEFAULT_TEXT_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_VM_CONFIG_CAT, default_text_template), ?DEFAULT_TEXT_TMPL),
-    {ok, ?DEFAULT_HTML_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_VM_CONFIG_CAT, default_html_template), ?DEFAULT_HTML_TMPL),
-    {ok, ?DEFAULT_SUBJ_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_VM_CONFIG_CAT, default_subject_template), ?DEFAULT_SUBJ_TMPL),
-    ?LOG_SYS("init done for vm-to-email").
+    notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
+    notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
+    notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
+    ?LOG_SYS("init done for ~s", [?MODULE]).
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
@@ -52,7 +52,7 @@ handle_req(JObj, _Props) ->
             Docs = [VMBox, UserJObj, AcctObj],
 
             Props = [{<<"email_address">>, Email}
-                     | get_template_props(JObj, Docs, AcctObj)
+                     | create_template_props(JObj, Docs, AcctObj)
                     ],
 
             CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"voicemail_to_email">>, <<"email_text_template">>], AcctObj),
@@ -64,7 +64,7 @@ handle_req(JObj, _Props) ->
             CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"voicemail_to_email">>, <<"email_subject_template">>], AcctObj),
             {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-            send_vm_to_email(TxtBody, HTMLBody, Subject, Email, [ KV || {_, V}=KV <- Props, V =/= undefined ])
+            build_and_send_email(TxtBody, HTMLBody, Subject, Email, [ KV || {_, V}=KV <- Props, V =/= undefined ])
     end.
 
 %%--------------------------------------------------------------------
@@ -73,8 +73,8 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec get_template_props/3 :: (wh_json:json_object(), wh_json:json_objects(), wh_json:json_objects()) -> proplist().
-get_template_props(Event, Docs, Account) ->
+-spec create_template_props/3 :: (wh_json:json_object(), wh_json:json_objects(), wh_json:json_objects()) -> proplist().
+create_template_props(Event, Docs, Account) ->
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, Event),
     ToE164 = wnm_util:to_e164(wh_json:get_value(<<"To-User">>, Event)),
@@ -83,13 +83,13 @@ get_template_props(Event, Docs, Account) ->
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
     FromAddress = wh_json:find([<<"notifications">>, <<"voicemail_to_email">>, <<"send_from">>], Docs
-                               ,whapps_config:get(?NOTIFY_VM_CONFIG_CAT, <<"default_from">>, <<"no_reply@2600hz.com">>)),
+                               ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_from">>, <<"no_reply@2600hz.com">>)),
 
     Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
     
     [{<<"account">>, notify_util:json_to_template_props(Account)}
-     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?NOTIFY_VM_CONFIG_CAT)}
+     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
      ,{<<"voicemail">>, [{<<"caller_id_number">>, pretty_print_did(CIDNum)}
                          ,{<<"caller_id_name">>, CIDName}
                          ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
@@ -112,11 +112,11 @@ get_template_props(Event, Docs, Account) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec send_vm_to_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
-send_vm_to_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    [send_vm_to_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
+-spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     ok;
-send_vm_to_email(TxtBody, HTMLBody, Subject, To, Props) ->
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
     DB = props:get_value(<<"account_db">>, Props),
     DocId = props:get_value(<<"voicemail_media">>, Voicemail),
@@ -143,8 +143,7 @@ send_vm_to_email(TxtBody, HTMLBody, Subject, To, Props) ->
                    ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Voicemail)}
                   ]
              ,[]
-             ,[
-               {<<"multipart">>, <<"alternative">>, [], []
+             ,[{<<"multipart">>, <<"alternative">>, [], []
                 ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
                   ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
                  ]

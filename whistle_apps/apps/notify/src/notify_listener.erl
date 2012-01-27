@@ -25,9 +25,11 @@
                      ,{notify_deregister, [{<<"notification">>, <<"deregister">>}]}
                      ,{notify_pwd_recovery, [{<<"notification">>, <<"password_recovery">>}]}
                      ,{notify_new_account, [{<<"notification">>, <<"new_account">>}]}
+                     ,{notify_cnam_request, [{<<"notification">>, <<"cnam_request">>}]}
+                     ,{notify_port_request, [{<<"notification">>, <<"port_request">>}]}
                      ,{notify_first_occurrence, [{<<"directory">>, <<"reg_query_resp">>}]}
                     ]).
--define(BINDINGS, [{notifications, [{restrict_to, [new_voicemail, deregister, pwd_recovery, new_account]}]}
+-define(BINDINGS, [{notifications, []}
                    ,{self, []}
                   ]).
 -define(QUEUE_NAME, <<"notify_listener">>).

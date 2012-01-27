@@ -9,6 +9,9 @@
 
 -define(WNM_DEAFULT_CARRIER_MODULES, [<<"wnm_local">>]).
 
+-define(APP_VERSION, <<"1.0.0">>).
+-define(APP_NAME, <<"whistle_number_manager">>).
+
 -define(WNM_DB_PREFIX, <<"numbers/">>).
 -define(WNM_DOC_VSN, <<"1">>).
 

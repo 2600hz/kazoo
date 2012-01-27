@@ -9,8 +9,8 @@
 %%%-------------------------------------------------------------------
 -module(wnm_dash_e911).
 
--export([save/3]).
--export([delete/3]).
+-export([save/4]).
+-export([delete/4]).
 -export([is_valid_location/1]).
 
 -include("../../include/wh_number_manager.hrl").
@@ -35,46 +35,47 @@
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec save/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} | {error, binary()}.
-save(JObj, Number, <<"in_service">>) ->
-    ?LOG("provisioning dash e911 address for '~s'", [Number]),
-    Address = wh_json:get_value(<<"dash_e911">>, JObj),
-    Location = json_address_to_xml_location(Address),
-    case not is_atom(Address) andalso add_location(Number, Location) of
-        false -> 
-            ?LOG("dash_e911 address not provided"),
-            {error, <<"address for dash_e911 is required">>};
-        {error, R}=E -> 
-            ?LOG("error provisioning dash e911 address: ~p", [R]),
-            E;
-        {provisioned, E911} -> 
-            ?LOG("provisioned dash e911 address"),
-            {ok, wh_json:set_value(<<"dash_e911">>, E911, JObj)};
-        {geocoded, E911} ->
-            ?LOG("added location to dash e911, attempting to provision new location"),
-            case provision_location(wh_json:get_value(<<"location_id">>, E911)) of
-                undefined -> 
-                    ?LOG("provisioning attempt moved location to status: undefined"),
+-spec save/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) 
+                -> {ok, wh_json:json_object()} | {error, binary()}.
+save(JObj, _, _, <<"reserved">>) ->
+    {ok, JObj};
+save(JObj, _, _, <<"discovery">>) ->
+    {ok, JObj};
+save(JObj, PriorJObj, Number, <<"in_service">>) ->
+    EmptyJObj = wh_json:new(),
+    Address = wh_json:get_value(<<"dash_e911">>, JObj, EmptyJObj),
+    case Address =/= wh_json:get_value(<<"dash_e911">>, PriorJObj) of
+        false -> {ok, JObj};
+        true when Address =:= EmptyJObj ->
+            ?LOG("e911 address was changed and is now empty"),
+            remove_number(Number),
+            {ok, JObj};
+        true ->
+            ?LOG("e911 address for '~s' was changed, updating dash", [Number]),
+            Location = json_address_to_xml_location(Address),
+            CallerName = wh_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
+            case add_location(Number, Location, CallerName) of
+                {error, R}=E -> 
+                    ?LOG("error provisioning dash e911 address: ~p", [R]),
+                    E;
+                {provisioned, E911} -> 
+                    ?LOG("provisioned dash e911 address"),
                     {ok, wh_json:set_value(<<"dash_e911">>, E911, JObj)};
-                Status -> 
-                    ?LOG("provisioning attempt moved location to status: ~s", [Status]),
-                    {ok, wh_json:set_value(<<"dash_e911">>, wh_json:set_value(<<"status">>, Status, E911), JObj)}
+                {geocoded, E911} ->
+                    ?LOG("added location to dash e911, attempting to provision new location"),
+                    case provision_location(wh_json:get_value(<<"location_id">>, E911)) of
+                        undefined -> 
+                            ?LOG("provisioning attempt moved location to status: undefined"),
+                            {ok, wh_json:set_value(<<"dash_e911">>, E911, JObj)};
+                        Status -> 
+                            ?LOG("provisioning attempt moved location to status: ~s", [Status]),
+                            {ok, wh_json:set_value(<<"dash_e911">>, wh_json:set_value(<<"status">>, Status, E911), JObj)}
+                    end
             end
     end;
-save(JObj, _, <<"reserved">>) ->
-    {ok, JObj};
-save(JObj, _, <<"discovery">>) ->
-    {ok, JObj};
-save(JObj, Number, _) ->
-    ?LOG("removing dash e911 number '~s'", [Number]),
-    case remove_number(Number) of
-        <<"REMOVED">> -> 
-            ?LOG("removed number from dash e911"),
-            {ok, JObj};
-        Error -> 
-            ?LOG("failed to remove number from dash e911: ~p", [Error]),
-            {ok, JObj}
-    end.
+save(JObj, _, Number, _) ->
+    remove_number(Number),
+    {ok, JObj}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -83,17 +84,11 @@ save(JObj, Number, _) ->
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec delete/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} | {error, binary()}.
-delete(JObj, Number, _) ->
-    ?LOG("removing dash e911 number '~s'", [Number]),
-    case remove_number(Number) of
-        <<"REMOVED">> -> 
-            ?LOG("removed number from dash e911"),
-            {ok, JObj};
-        Error -> 
-            ?LOG("failed to remove number from dash e911: ~p", [Error]),
-            {ok, JObj}
-    end.
+-spec delete/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) 
+                  -> {ok, wh_json:json_object()} | {error, binary()}.
+delete(JObj, _, Number, _) ->
+    remove_number(Number),
+    {ok, JObj}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -198,12 +193,12 @@ is_valid_location(Location) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_location/2 :: (ne_binary(), term()) -> {geocoded, wh_json:json_object()} | 
-                                                 {provisioned, wh_json:json_object()} |
-                                                 {error, binary()}.
-add_location(Number, Location) ->
+-spec add_location/3 :: (ne_binary(), term(), ne_binary()) -> {geocoded, wh_json:json_object()} | 
+                                                              {provisioned, wh_json:json_object()} |
+                                                              {error, binary()}.
+add_location(Number, Location, CallerName) ->
     Props = [{'uri', [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}
-                      ,{'callername', ["Valued Customer"]}]}
+                      ,{'callername', [wh_util:to_list(CallerName)]}]}
              |Location
             ],
     Response = emergency_provisioning_request('addLocation', Props),
@@ -240,11 +235,21 @@ provision_location(LocationId) ->
 %%--------------------------------------------------------------------
 -spec remove_number/1 :: (ne_binary()) -> undefined | ne_binary().
 remove_number(Number) ->
+    ?LOG("removing dash e911 number '~s'", [Number]),
     Props = [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}],
     case emergency_provisioning_request('removeURI', Props) of
-        {error, server_error} -> <<"REMOVED">>;
+        {error, server_error} -> 
+            ?LOG("removed number from dash e911"),
+            <<"REMOVED">>;
         Response ->
-            wh_util:get_xml_value("//URIStatus/code/text()", Response)
+            case wh_util:get_xml_value("//URIStatus/code/text()", Response) of
+                <<"REMOVED">> = R -> 
+                    ?LOG("removed number from dash e911"),
+                    R;
+                Else ->
+                    ?LOG("failed to remove number from dash e911: ~p", [Else]),
+                    Else
+            end
     end.
 
 %%--------------------------------------------------------------------

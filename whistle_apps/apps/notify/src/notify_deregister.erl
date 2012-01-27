@@ -21,7 +21,7 @@
 -define(DEFAULT_HTML_TMPL, notify_deregister_html_tmpl).
 -define(DEFAULT_SUBJ_TMPL, notify_deregister_subj_tmpl).
 
--define(NOTIFY_DEREG_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".deregister">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".deregister">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -32,10 +32,10 @@
 -spec init/0 :: () -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
-    {ok, ?DEFAULT_TEXT_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_DEREG_CONFIG_CAT, default_text_template), ?DEFAULT_TEXT_TMPL),
-    {ok, ?DEFAULT_HTML_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_DEREG_CONFIG_CAT, default_html_template), ?DEFAULT_HTML_TMPL),
-    {ok, ?DEFAULT_SUBJ_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_DEREG_CONFIG_CAT, default_subject_template), ?DEFAULT_SUBJ_TMPL),
-    ?LOG_SYS("init done for dergister notify").
+    notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
+    notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
+    notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
+    ?LOG_SYS("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -50,29 +50,16 @@ handle_req(JObj, _Props) ->
 
     ?LOG_START("endpoint has become unregistered, sending email notification"),
 
-    {AcctDb, AcctId} = case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
-                           {undefined, undefined} -> undefined;
-                           {undefined, Id1} ->
-                               {wh_util:format_account_id(Id1, encoded), Id1};
-                           {Id2, undefined} ->
-                               {Id2, wh_util:format_account_id(Id2, raw)};
-                           Else -> Else 
-                       end,
-
-    ?LOG("attempting to load account doc ~s from ~s", [AcctId, AcctDb]),
-    {ok, Account} = couch_mgr:open_doc(AcctDb, AcctId),
-
-    To = wh_json:get_value([<<"notifications">>, <<"deregister">>, <<"send_to">>], Account
-                           ,whapps_config:get(?NOTIFY_DEREG_CONFIG_CAT, <<"default_to">>, <<"">>)),
+    {ok, Account} = notify_util:get_account_doc(JObj),
 
     DefaultFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
     From = wh_json:get_value([<<"notifications">>, <<"deregister">>, <<"send_from">>], Account
-                             ,whapps_config:get(?NOTIFY_DEREG_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
+                             ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
 
     ?LOG("creating deregisted notice"),
     
     Props = [{<<"From">>, From}
-             |get_template_props(JObj, Account)
+             |create_template_props(JObj, Account)
             ],
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"deregister">>, <<"email_text_template">>], Account),
@@ -83,8 +70,10 @@ handle_req(JObj, _Props) ->
 
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"deregister">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-    
-    send_deregister_email(TxtBody, HTMLBody, Subject, To, Props).
+  
+    To = wh_json:get_value([<<"notifications">>, <<"deregister">>, <<"send_to">>], Account
+                           ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),  
+    build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -92,11 +81,11 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec get_template_props/2 :: (wh_json:json_object(), wh_json:json_objects()) -> proplist().
-get_template_props(Event, Account) ->
+-spec create_template_props/2 :: (wh_json:json_object(), wh_json:json_objects()) -> proplist().
+create_template_props(Event, Account) ->
     [{<<"last_registration">>, notify_util:json_to_template_props(Event)}
      ,{<<"account">>, notify_util:json_to_template_props(Account)}
-     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?NOTIFY_DEREG_CONFIG_CAT)}
+     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
     ].
 
 %%--------------------------------------------------------------------
@@ -105,11 +94,11 @@ get_template_props(Event, Account) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec send_deregister_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
-send_deregister_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    [send_deregister_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
+-spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     ok;
-send_deregister_email(TxtBody, HTMLBody, Subject, To, Props) ->
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"From">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
@@ -125,6 +114,5 @@ send_deregister_email(TxtBody, HTMLBody, Subject, To, Props) ->
                }
               ]
             },
-    ?LOG("sending deregistered notice to: ~p", [To]),
     notify_util:send_email(From, To, Email),
     ok.

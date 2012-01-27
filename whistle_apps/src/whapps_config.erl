@@ -443,6 +443,10 @@ category_to_file(<<"notify.new_account">>) ->
     [code:lib_dir(notify, priv), "/notify_new_account.config"];
 category_to_file(<<"notify.first_occurrence">>) ->
     [code:lib_dir(notify, priv), "/notify_first_occurrence.config"];
+category_to_file(<<"notify.cnam_request">>) ->
+    [code:lib_dir(notify, priv), "/notify_cnam_request.config"];
+category_to_file(<<"notify.port_request">>) ->
+    [code:lib_dir(notify, priv), "/notify_port_request.config"];
 category_to_file(<<"smtp_client">>) ->
     [code:lib_dir(whistle_apps, priv), "/smtp_client.config"];
 category_to_file(<<"alerts">>) ->

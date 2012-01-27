@@ -1,27 +1,26 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
 %%% @end
 %%%
 %%% @contributors
-%%% James Aimonetti <james@2600hz.org>
 %%% Karl Anderson <karl@2600hz.org>
 %%%
-%%% Created : 22 Dec 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 27 Jan 2012 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(notify_pwd_recovery).
+-module(notify_cnam_request).
 
 -export([init/0, handle_req/2]).
 
 -include("notify.hrl").
 
--define(DEFAULT_TEXT_TMPL, notify_pwd_recovery_text_tmpl).
--define(DEFAULT_HTML_TMPL, notify_pwd_recovery_html_tmpl).
--define(DEFAULT_SUBJ_TMPL, notify_pwd_recovery_subj_tmpl).
+-define(DEFAULT_TEXT_TMPL, notify_cnam_request_text_tmpl).
+-define(DEFAULT_HTML_TMPL, notify_cnam_request_html_tmpl).
+-define(DEFAULT_SUBJ_TMPL, notify_cnam_request_subj_tmpl).
 
--define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".password_recovery">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".cnam_request">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -45,35 +44,41 @@ init() ->
 %%--------------------------------------------------------------------
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    true = wapi_notifications:pwd_recovery_v(JObj),
+    true = wapi_notifications:cnam_request_v(JObj),
     whapps_util:put_callid(JObj),
 
-    ?LOG_START("password has been reset, sending email notification"),
+    ?LOG_START("a cnam change has been requested, sending email notification"),
 
     {ok, Account} = notify_util:get_account_doc(JObj),
 
-    To = wh_json:get_value(<<"Email">>, JObj, whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
-
     DefaultFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
-    From = wh_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"send_from">>], Account
+    From = wh_json:get_value([<<"notifications">>, <<"cnam_request">>, <<"send_from">>], Account
                              ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
 
-    ?LOG("creating password reset notice"),
+    ?LOG("creating cnam change notice"),
     
     Props = [{<<"From">>, From}
              |create_template_props(JObj, Account)
             ],
 
-    CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"email_text_template">>], Account),
+    CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"cnam_request">>, <<"email_text_template">>], Account),
     {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
 
-    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"email_html_template">>], Account),
+    CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"cnam_request">>, <<"email_html_template">>], Account),
     {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
 
-    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"email_subject_template">>], Account),
+    CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"cnam_request">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
     
-    build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
+    RepEmail = notify_util:get_rep_email(Account),
+    case wh_json:is_true(<<"Local-Number">>, JObj) of
+        true ->
+            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props);
+        false ->
+            SysAdminEmail = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>),
+            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props),
+            build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -83,12 +88,11 @@ handle_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 -spec create_template_props/2 :: (wh_json:json_object(), wh_json:json_objects()) -> proplist().
 create_template_props(Event, Account) ->
-    User = wh_json:delete_key(<<"Request">>, Event),
-    Request = wh_json:get_value(<<"Request">>, Event, wh_json:new()),
-    [{<<"user">>, notify_util:json_to_template_props(User)}
-     ,{<<"request">>, notify_util:json_to_template_props(Request)}
+    Admin = notify_util:find_admin(Account),
+    [{<<"request">>, notify_util:json_to_template_props(Event)}
      ,{<<"account">>, notify_util:json_to_template_props(Account)}
-     ,{<<"service">>, notify_util:get_service_props(Request, Account, ?MOD_CONFIG_CAT)}
+     ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
+     ,{<<"service">>, notify_util:get_service_props(Account, ?MOD_CONFIG_CAT)}
     ].
 
 %%--------------------------------------------------------------------

@@ -14,6 +14,7 @@
 -export([assign_number_to_account/2, assign_number_to_account/3]).
 -export([get_public_fields/2, set_public_fields/3]).
 -export([lookup_account_by_number/1]).
+-export([release_number/2]).
 -export([free_numbers/1]).
 
 -include("../include/wh_number_manager.hrl").
@@ -143,7 +144,7 @@ assign_number_to_account(Number, AccountId, PublicFields) ->
                         (J) -> wh_json:merge_jobjs(wh_json:private_fields(J), PublicFields)
                      end
                    ],
-        save_number(Db, Num, AccountId, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters))
+        save_number(Db, Num, AccountId, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters), JObj1)
     catch
         throw:Reason -> {error, Reason}
     end.
@@ -238,7 +239,7 @@ set_public_fields(Number, AccountId, PublicJObj) ->
                                throw(unathorized)
                        end
                end,
-        save_number(Db, Num, AccountId, wh_json:merge_jobjs(wh_json:private_fields(JObj1), PublicJObj))
+        save_number(Db, Num, AccountId, wh_json:merge_jobjs(wh_json:private_fields(JObj1), PublicJObj), JObj1)
     catch
         throw:Reason -> {error, Reason}
     end.
@@ -298,7 +299,7 @@ release_number(Number, AccountId) ->
                     ,fun(J) -> wh_json:delete_key(<<"pvt_assigned_to">>, J) end
                     ,fun(J) -> wh_json:set_value(<<"pvt_previously_assigned_to">>, AccountId, J) end
                    ],
-        save_number(Db, Num, AccountId, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters)),
+        save_number(Db, Num, AccountId, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters), JObj1),
         ok
     catch
         throw:not_found ->
@@ -409,7 +410,7 @@ store_discovery(Number, ModuleName, ModuleData, State) ->
                   ,fun(J) -> wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), J) end
                  ],
     JObj = lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), Generators),
-    case save_number(Db, Number, undefined, JObj) of
+    case save_number(Db, Number, undefined, JObj, JObj) of
         {ok, _}=Ok ->
             ?LOG("stored newly discovered number '~s'", [Number]),
             Ok;
@@ -417,7 +418,7 @@ store_discovery(Number, ModuleName, ModuleData, State) ->
             ?LOG("storing discovered number '~s' in a new database '~s'", [Number, Db]),
             couch_mgr:db_create(Db),
             couch_mgr:revise_views_from_folder(Db, whistle_number_manager),
-            save_number(Db, Number, undefined, JObj);
+            save_number(Db, Number, undefined, JObj, JObj);
         {error, conflict} ->
             case couch_mgr:open_doc(Db, Number) of
                 {ok, Conflict} ->
@@ -493,9 +494,9 @@ remove_number_from_account(Number, AccountId) ->
 %% and run any providers 
 %% @end
 %%--------------------------------------------------------------------
--spec save_number/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()} |
-                                                                                 {error, term()}.
-save_number(Db, Number, AccountId, JObj1) ->
+-spec save_number/5 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object(), wh_json:json_object()) 
+                       -> {ok, wh_json:json_object()} | {error, term()}.
+save_number(Db, Number, AccountId, JObj1, PriorJObj) ->
     ?LOG("attempting to save '~s' in '~s'", [Number, Db]),
     CallId = get(callid),
     case couch_mgr:save_doc(Db, JObj1) of
@@ -509,7 +510,7 @@ save_number(Db, Number, AccountId, JObj1) ->
                               _ -> ok
                           end
                   end),
-            case exec_providers_save(JObj2, Number, State) of
+            case exec_providers_save(JObj2, PriorJObj, Number, State) of
                 {JObj3, []} ->
                     case couch_mgr:save_doc(Db, JObj3) of
                         {ok, J} -> {ok, wh_json:public_fields(J)};
@@ -532,33 +533,35 @@ save_number(Db, Number, AccountId, JObj1) ->
 %% them and collecting any errors...
 %% @end
 %%--------------------------------------------------------------------
--spec exec_providers_save/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> {wh_json:json_object(), proplist()}.
--spec exec_providers_save/5 :: (list(), wh_json:json_object(), ne_binary(), ne_binary(), list()) -> {wh_json:json_object(), proplist()}.
+-spec exec_providers_save/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) 
+                               -> {wh_json:json_object(), proplist()}.
+-spec exec_providers_save/6 :: (list(), wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary(), list()) 
+                               -> {wh_json:json_object(), proplist()}.
 
-exec_providers_save(JObj, Number, State) ->
+exec_providers_save(JObj, PriorJObj, Number, State) ->
     Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, []),
-    exec_providers_save(Providers, JObj, Number, State, []).
+    exec_providers_save(Providers, JObj, PriorJObj, Number, State, []).
 
-exec_providers_save([], JObj, _, _, Result) ->
+exec_providers_save([], JObj, _, _, _, Result) ->
     {JObj, Result};
-exec_providers_save([Provider|Providers], JObj, Number, State, Result) ->
+exec_providers_save([Provider|Providers], JObj, PriorJObj, Number, State, Result) ->
     try 
         ?LOG("executing provider ~s", [Provider]),
         case wnm_util:try_load_module(<<"wnm_", Provider/binary>>) of
             false -> 
                 ?LOG("provider ~s is unknown, skipping", [Provider]),
-                exec_providers_save(Providers, JObj, Number, State, Result);
+                exec_providers_save(Providers, JObj, PriorJObj, Number, State, Result);
             Mod ->
-                case Mod:save(JObj, Number, State) of
+                case Mod:save(JObj, PriorJObj, Number, State) of
                     {ok, J} -> 
-                        exec_providers_save(Providers, J, Number, State, Result);
+                        exec_providers_save(Providers, J, PriorJObj, Number, State, Result);
                     {error, Error} ->
                         ?LOG("provider ~s created error: ~p", [Provider, Error]),
-                        exec_providers_save(Providers, JObj, Number, State, [{Provider, Error}|Result])
+                        exec_providers_save(Providers, JObj, PriorJObj, Number, State, [{Provider, Error}|Result])
                 end
         end
     catch
         _:R ->
             ?LOG("executing provider ~s threw exception: ~p", [Provider, R]),
-            exec_providers_save(Providers, JObj, Number, State, [{Provider, <<"threw exception">>}|Result])
+            exec_providers_save(Providers, JObj, PriorJObj, Number, State, [{Provider, <<"threw exception">>}|Result])
     end.
