@@ -264,9 +264,11 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
                           {ok, JObj1} ->
                               ?PVT_TYPE = wh_json:get_value(<<"pvt_type">>, JObj1),
                               ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
-                              
+
+                              ok = unassign_rep(AccountId, JObj1),
+
                               true = couch_mgr:db_delete(DbName),
-                              
+
                               ?LOG_SYS("deleted db ~s", [DbName]);
                           _ -> ok
                       end,
@@ -462,7 +464,7 @@ create_account(Context) ->
                         ParentId;
                     _ -> undefined
                 end;
-            ParentId -> 
+            ParentId ->
                 ParentId
         end,
     create_account(Context, P).
@@ -742,7 +744,7 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     ?LOG_SYS("account determined that db name: ~s", [AccountDb]),
     case wh_cache:peek_local(Srv, {crossbar, exists, AccountId}) of
-        {ok, true} -> 
+        {ok, true} ->
             ?LOG("check succeeded for db_exists on ~s", [AccountId]),
             Context#cb_context{db_name = AccountDb
                                ,account_id = AccountId
@@ -785,12 +787,22 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
             crossbar_util:response_db_fatal(Context);
         true ->
             ?LOG_SYS("Created DB for account id ~s", [AccountId]),
-            JObj = wh_json:set_value(<<"_id">>, AccountId, Doc),
+            Generators = [fun(J) -> wh_json:set_value(<<"_id">>, AccountId, J) end
+                          ,fun(J) -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, J) end
+                          ,fun(J) -> wh_json:set_value(<<"pvt_account_id">>, AccountId, J) end
+                          ,fun(J) -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, J) end
+                          ,fun(J) -> wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), J) end
+                          ,fun(J) -> wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), J) end
+                          ,fun(J) -> wh_json:set_value(<<"pvt_vsn">>, <<"1">>, J) end
+                          ,fun(J) -> wh_json:set_value(<<"pvt_wnm_numbers">>, [], J) end
+                         ],
+            JObj = lists:foldr(fun(F, J) -> F(J) end, Doc, Generators),
             case crossbar_doc:save(Context#cb_context{db_name=AccountDb, account_id=AccountId, doc=JObj}) of
                 #cb_context{resp_status=success}=Context1 ->
                     whapps_maintenance:refresh(AccountDb),
                     _ = crossbar_bindings:map(<<"account.created">>, Context1),
                     _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
+                    assign_rep(AccountId, JObj),
                     Credit = whapps_config:get(<<"crossbar.accounts">>, <<"starting_credit">>, 0.0),
                     Units = wapi_money:dollars_to_units(wh_util:to_float(Credit)),
                     ?LOG("Putting ~p units", [Units]),
@@ -802,6 +814,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
                         #cb_context{resp_status=success} -> ok;
                         #cb_context{resp_error_msg=Err} -> ?LOG("failed to save credit doc: ~p", [Err])
                     end,
+                    notfy_new_account(JObj),
                     Context1;
                 Else ->
                     ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
@@ -820,16 +833,16 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
 is_unique_realm(AccountId, #cb_context{req_data=JObj}=Context) ->
     is_unique_realm(AccountId, Context, wh_json:get_value(<<"realm">>, JObj)).
 
-is_unique_realm(_, _, undefined) -> 
+is_unique_realm(_, _, undefined) ->
     ?LOG("invalid or non-unique realm: undefined"),
     false;
 is_unique_realm(undefined, _, Realm) ->
     %% unique if Realm doesn't exist in agg DB
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_REALM, [{<<"key">>, Realm}]) of
-        {ok, []} -> 
+        {ok, []} ->
             ?LOG("realm ~s is valid and unique", [Realm]),
             true;
-        {ok, [_|_]} -> 
+        {ok, [_|_]} ->
             ?LOG("invalid or non-unique realm: ~s", [Realm]),
             false
     end;
@@ -839,12 +852,92 @@ is_unique_realm(AccountId, Context, Realm) ->
     %% Unique if, for this account, request and account's realm are same
     %% or request Realm doesn't exist in DB (cf is_unique_realm(undefined ...)
     case wh_json:get_value(<<"realm">>, Doc) of
-        Realm -> 
+        Realm ->
             ?LOG("realm ~s is valid and unique", [Realm]),
             true;
-        _ -> 
+        _ ->
             is_unique_realm(undefined, Context, Realm)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to assign to an account rep in the parent account
+%% @end
+%%--------------------------------------------------------------------
+-spec assign_rep/2 :: (ne_binary(), wh_json:json_object()) -> ok.
+assign_rep(AccountId, JObj) ->
+    case wh_json:get_value(<<"pvt_tree">>, JObj, []) of
+        [] ->
+            ?LOG("failed to find a pvt_tree for sub account assignment"),
+            ok;
+        Tree ->
+            Parent = lists:last(Tree),
+            ParentDb = wh_util:format_account_id(Parent, encoded),
+            ViewOptions = [{<<"limit">>, 1}
+                           ,{<<"include_docs">>, true}
+                          ],
+            case couch_mgr:get_results(ParentDb, <<"sub_account_reps/count_assignments">>, ViewOptions) of
+                {ok, [Results]} ->
+                    Rep = wh_json:get_value(<<"doc">>, Results),                    
+                    Assignments = wh_json:get_value(<<"pvt_sub_account_assignments">>, Rep, []), 
+                    couch_mgr:save_doc(ParentDb, wh_json:set_value(<<"pvt_sub_account_assignments">>, [AccountId|Assignments], Rep)),
+                    ok;
+                _E ->
+                    ?LOG("failed to find sub account reps: ~p", [_E]),
+                    ok
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to remove any assignments to an account rep in the parent
+%% account
+%% @end
+%%--------------------------------------------------------------------
+-spec unassign_rep/2 :: (ne_binary(), wh_json:json_object()) -> ok.
+unassign_rep(AccountId, JObj) ->
+    case wh_json:get_value(<<"pvt_tree">>, JObj, []) of
+        [] -> ok;
+        Tree ->
+            Parent = lists:last(Tree),
+            ParentDb = wh_util:format_account_id(Parent, encoded),
+            ViewOptions = [{<<"include_docs">>, true}
+                           ,{<<"key">>, AccountId}],
+            case couch_mgr:get_results(ParentDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
+                {ok, Results} ->
+                    [begin
+                         Rep = wh_json:get_value(<<"doc">>, Result),
+                         Assignments = wh_json:get_value(<<"pvt_sub_account_assignments">>, Rep, []),                          
+                         couch_mgr:save_doc(ParentDb
+                                            ,wh_json:set_value(<<"pvt_sub_account_assignments">>
+                                                                   ,lists:delete(AccountId, Assignments)
+                                                               ,Rep)
+                                           )
+                     end || Result <- Results],
+                    ok;
+                _E -> ok
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Send a notification that the account has been created
+%% @end
+%%--------------------------------------------------------------------
+-spec notfy_new_account/1 :: (wh_json:json_object()) -> ok.
+notfy_new_account(JObj) ->
+    Notify = [{<<"Account-Name">>, wh_json:get_value(<<"name">>, JObj)}
+              ,{<<"Account-Realm">>, wh_json:get_value(<<"realm">>, JObj)}
+              ,{<<"Account-API-Key">>, wh_json:get_value(<<"pvt_api_key">>, JObj)}
+              ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+              ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
+              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+             ],
+    wapi_notifications:publish_new_account(Notify).
+
 %% for testing purpose, don't forget to export !
 %% is_unique_realm({AccountId, Realm}) -> is_unique_realm(AccountId, #cb_context{}, Realm).
+
