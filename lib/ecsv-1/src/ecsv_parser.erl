@@ -45,28 +45,39 @@ start_parsing(ResultPid) ->
 ready(ResultPid) ->
     ready(ResultPid, [], []).
 ready(ResultPid, ParsedCsv, CurrentValue) ->
+    %% io:format("ready: ~s: ~p~n", [CurrentValue, CurrentValue]),
     receive
         {eof} ->
-            NewLine = lists:reverse([lists:reverse(CurrentValue) | ParsedCsv]),
+            NewTerm = lists:reverse(CurrentValue),
+            %% io:format("newterm: ~s: ~p~n", [NewTerm, NewTerm]),
+            NewLine = lists:reverse([NewTerm | ParsedCsv]),
+            %% io:format("newline: ~p~n", [NewLine]),
             send_line(ResultPid, NewLine),
+            %% io:format("eof~n", []),
             send_eof(ResultPid);
-        {char, Char} when (Char == $") ->
+        {char, Char} when Char =:= $" orelse Char =:= $' ->
+            %% io:format("new quote: ~s: ~p~n", [[Char], Char]),
             % pass an empty string to in_quotes as we do not want the
             % preceeding characters to be included, only those in quotes
             in_quotes(ResultPid, ParsedCsv, ?EMPTY_STRING, Char);
         {char, Char} when Char == $, ->
-            ready(
-                ResultPid,
-                [lists:reverse(CurrentValue) | ParsedCsv], ?EMPTY_STRING);
+            NewTerm = lists:reverse(CurrentValue),
+            %% io:format("new term: ~s: ~p~n", [NewTerm, NewTerm]),
+            ready(ResultPid, [NewTerm | ParsedCsv], ?EMPTY_STRING);
         {char, Char} when Char == $\n ->
             % a new line has been parsed: time to send it back
-            NewLine = lists:reverse([lists:reverse(CurrentValue) | ParsedCsv]),
+            NewTerm = lists:reverse(CurrentValue),
+            %% io:format("newterm: ~s: ~p~n", [NewTerm, NewTerm]),
+            NewLine = lists:reverse([NewTerm | ParsedCsv]),
+            %% io:format("newline: ~p~n", [NewLine]),
             ResultPid ! {newline, NewLine},
+            %% io:format("newline~n", []),
             ready(ResultPid, [], ?EMPTY_STRING);
         {char, Char} when Char == $\r ->
             % ignore line feed characters
             ready(ResultPid, ParsedCsv, CurrentValue);
         {char, Char} ->
+            %% io:format("new char: ~p~n", [Char]),
             ready(ResultPid, ParsedCsv, [Char | CurrentValue])
     end.
 
@@ -74,15 +85,16 @@ ready(ResultPid, ParsedCsv, CurrentValue) ->
 % it receives a char matching the initial quote in which case it moves to
 % the skip_to_delimiter state.
 in_quotes(ResultPid, ParsedCsv, CurrentValue, QuoteChar) ->
+    %% io:format("in_quotes: ~s~n", [CurrentValue]),
     receive
         {eof} ->
             NewLine = lists:reverse([lists:reverse(CurrentValue) | ParsedCsv]),
             send_line(ResultPid, NewLine),
             send_eof(ResultPid);
         {char, Char} when Char == QuoteChar ->
-            skip_to_delimiter(
-                ResultPid,
-                [lists:reverse(CurrentValue) | ParsedCsv]);
+            NewCsv = [lists:reverse(CurrentValue) | ParsedCsv],
+            %% io:format("skip: ~p~n", [ParsedCsv]),
+            skip_to_delimiter(ResultPid, NewCsv);
         {char, Char} ->
             in_quotes(ResultPid, ParsedCsv, [Char | CurrentValue], QuoteChar)
     end.
@@ -92,12 +104,19 @@ in_quotes(ResultPid, ParsedCsv, CurrentValue, QuoteChar) ->
 skip_to_delimiter(ResultPid, ParsedCsv) ->
     receive
         {eof} ->
+            %% io:format("skip: eof~n", []),
             NewLine = lists:reverse(ParsedCsv),
             send_line(ResultPid, NewLine),
             send_eof(ResultPid);
-        {char, Char} when Char == $, ->
+        {char, Char} when Char =:= $, ->
+            %% io:format("skip term: ~p: ~s~n", [Char, [Char]]),
             ready(ResultPid, ParsedCsv, ?EMPTY_STRING);
-        {_} ->
+        {char, Char} when Char =:= $\n ->
+            %% io:format("skip line~n", []),
+            send_line(ResultPid, lists:reverse(ParsedCsv)),
+            ready(ResultPid, ?EMPTY_STRING, ?EMPTY_STRING);
+        _D ->
+            %% io:format("skip unknown: ~p~n", [_D]),
             skip_to_delimiter(ResultPid, ParsedCsv)
     end.
 
