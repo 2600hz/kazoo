@@ -15,6 +15,7 @@
 -export([normalize_proplist/1]).
 -export([json_to_template_props/1]).
 -export([get_service_props/3]).
+-export([get_rep_email/1]).
 
 -include("notify.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
@@ -25,7 +26,11 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_email/3 :: (ne_binary(), ne_binary() | [ne_binary(),...], term()) -> ok.
+-spec send_email/3 :: (ne_binary(), undefined | binary(), term()) -> ok.
+send_email(_, undefined, _) ->
+    ok;
+send_email(_, <<>>, _) ->
+    ok;
 send_email(From, To, Email) ->
     Encoded = mimemail:encode(Email),
     Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
@@ -134,3 +139,29 @@ get_service_props(Request, Account, ConfigCat) ->
              ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
             ]
     end.         
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Try to find the email address of a sub accounts rep
+%% @end
+%%--------------------------------------------------------------------
+-spec get_rep_email/1 :: (wh_json:json_object()) -> undefined | ne_binary().
+get_rep_email(JObj) ->
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    case wh_json:get_value(<<"pvt_tree">>, JObj, []) of
+        [] -> undefined;
+        Tree ->
+            Parent = lists:last(Tree),
+            ParentDb = wh_util:format_account_id(Parent, encoded),
+            ViewOptions = [{<<"include_docs">>, true}
+                           ,{<<"key">>, AccountId}
+                          ],
+            case couch_mgr:get_results(ParentDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
+                {ok, [Result|_]} ->
+                    R = wh_json:get_value([<<"doc">>, <<"email">>], Result),
+                    io:format("found account rep email: ~s", [R]),
+                    R;
+                _E -> undefined
+            end
+    end.

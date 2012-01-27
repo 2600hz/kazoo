@@ -289,7 +289,7 @@
             "username":{
                "type":"string",
                "description":"SIP authentication username",
-               "minLength":5,
+               "minLength":2,
                "maxLength":32
             },
             "password":{

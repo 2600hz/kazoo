@@ -70,8 +70,7 @@ handle_req(JObj, _Props) ->
 
     ?LOG("creating password reset notice"),
     
-    Props = [{<<"To">>, To}
-             ,{<<"From">>, From}
+    Props = [{<<"From">>, From}
              |get_template_props(JObj, Account)
             ],
 
@@ -84,7 +83,7 @@ handle_req(JObj, _Props) ->
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"password_recovery">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
     
-    send_pwd_recovery_email(TxtBody, HTMLBody, Subject, Props).
+    send_pwd_recovery_email(TxtBody, HTMLBody, Subject, To, Props).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -108,10 +107,12 @@ get_template_props(Event, Account) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec send_pwd_recovery_email/4 :: (iolist(), iolist(), iolist(), proplist()) -> 'ok'.
-send_pwd_recovery_email(TxtBody, HTMLBody, Subject, Props) ->
+-spec send_pwd_recovery_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
+send_pwd_recovery_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
+    [send_pwd_recovery_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
+    ok;
+send_pwd_recovery_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"From">>, Props),
-    To = props:get_value(<<"To">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
                  ,[{<<"From">>, From}
