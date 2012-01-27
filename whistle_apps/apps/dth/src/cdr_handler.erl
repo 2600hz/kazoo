@@ -26,37 +26,37 @@
 init() ->
     ok.
 
-handle_req2(JObj, Props) ->
-    true = wapi_call:cdr_v(JObj),
+%% handle_req2(JObj, Props) ->
+%%     true = wapi_call:cdr_v(JObj),
 
-    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
-    ?LOG_SYS(CallID, "Valid call cdr", []),
-    ?LOG_SYS(CallID, "Call Direction: ~s", [CallDirection]),
+%%     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+%%     CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
+%%     ?LOG_SYS(CallID, "Valid call cdr", []),
+%%     ?LOG_SYS(CallID, "Call Direction: ~s", [CallDirection]),
 
-    <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
+%%     <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
 
-    Timestamp = wh_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())),
-    BillingSec = wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
+%%     Timestamp = wh_util:to_integer(wh_json:get_value(<<"Timestamp">>, JObj, wh_util:current_tstamp())),
+%%     BillingSec = wh_util:to_integer(wh_json:get_value(<<"Billing-Seconds">>, JObj, 0)),
 
-    DateTime = now_to_datetime(Timestamp - BillingSec),
+%%     DateTime = now_to_datetime(Timestamp - BillingSec),
 
-    ToE164 = wh_util:to_e164(get_to_user(JObj)),
-    FromE164 = wh_util:to_e164(get_from_user(JObj)),
+%%     ToE164 = wh_util:to_e164(get_to_user(JObj)),
+%%     FromE164 = wh_util:to_e164(get_from_user(JObj)),
 
-    AccountCode = get_account_code(JObj),
+%%     AccountCode = get_account_code(JObj),
 
-    ?LOG(CallID, "CDR from ~s to ~s with account code ~s", [FromE164, ToE164, AccountCode]),
+%%     ?LOG(CallID, "CDR from ~s to ~s with account code ~s", [FromE164, ToE164, AccountCode]),
 
-    CallRecord = #'p:CallRecord'{'CustomerID'=AccountCode
-                                 ,'OriginatingNumber'=FromE164
-                                 ,'DestinationNumber'=ToE164
-                                 ,'StartTime'=DateTime
-                                 ,'Duration'=wh_util:to_binary(BillingSec)
-                                 ,'UniqueID'=CallID
-                                 ,'CallType'=?DTH_CALL_TYPE_OTHER},
-    WsdlModel = props:get_value(wsdl, Props),
-    detergent:call(WsdlModel, "SubmitCallRecord", [CallRecord]).
+%%     CallRecord = #'p:CallRecord'{'CustomerID'=AccountCode
+%%                                  ,'OriginatingNumber'=FromE164
+%%                                  ,'DestinationNumber'=ToE164
+%%                                  ,'StartTime'=DateTime
+%%                                  ,'Duration'=wh_util:to_binary(BillingSec)
+%%                                  ,'UniqueID'=CallID
+%%                                  ,'CallType'=?DTH_CALL_TYPE_OTHER},
+%%     WsdlModel = props:get_value(wsdl, Props),
+%%     detergent:call(WsdlModel, "SubmitCallRecord", [CallRecord]).
 
 handle_req(JObj, Props) ->
     true = wapi_call:cdr_v(JObj),
