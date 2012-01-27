@@ -24,6 +24,7 @@
 
 -define(SERVER, ?MODULE).
 
+-define(ACCOUNTS_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".accounts">>).
 
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_SUMMARY, <<"accounts/listing_by_id">>).
@@ -86,7 +87,7 @@ ensure_parent_set(DefaultParentID, AccountID) ->
 
 -spec find_default_parent/1 :: (wh_json:json_objects()) -> ne_binary().
 find_default_parent(AcctJObjs) ->
-    case whapps_config:get(?CONFIG_CAT, <<"default_parent">>) of
+    case whapps_config:get(?ACCOUNTS_CONFIG_CAT, <<"default_parent">>) of
         undefined ->
             First = hd(AcctJObjs),
             {_, OldestAcctID} = lists:foldl(fun(AcctJObj, {Created, _}=Eldest) ->
@@ -97,7 +98,7 @@ find_default_parent(AcctJObjs) ->
                                             end
                                             ,{wh_json:get_integer_value([<<"doc">>, <<"pvt_created">>], First), wh_json:get_value(<<"id">>, First)}
                                             ,AcctJObjs),
-            whapps_config:set(?CONFIG_CAT, <<"default_parent">>, OldestAcctID),
+            whapps_config:set(?ACCOUNTS_CONFIG_CAT, <<"default_parent">>, OldestAcctID),
             OldestAcctID;
         Default -> Default
     end.
@@ -455,12 +456,12 @@ load_account_summary(AccountId, Context) ->
 -spec create_account/1 :: (#cb_context{}) -> #cb_context{}.
 -spec create_account/2 :: (#cb_context{}, 'undefined' | ne_binary()) -> #cb_context{}.
 create_account(Context) ->
-    P = case whapps_config:get(?CONFIG_CAT, <<"default_parent">>) of
+    P = case whapps_config:get(?ACCOUNTS_CONFIG_CAT, <<"default_parent">>) of
             undefined ->
                 case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_SUMMARY, [{<<"include_docs">>, true}]) of
                     {ok, [_|_]=AcctJObjs} ->
                         ParentId = find_default_parent(AcctJObjs),
-                        whapps_config:set(?CONFIG_CAT, <<"default_parent">>, ParentId),
+                        whapps_config:set(?ACCOUNTS_CONFIG_CAT, <<"default_parent">>, ParentId),
                         ParentId;
                     _ -> undefined
                 end;
@@ -469,8 +470,16 @@ create_account(Context) ->
         end,
     create_account(Context, P).
 
-create_account(#cb_context{req_data=Data}=Context, ParentId) ->
-    UniqueRealm = is_unique_realm(undefined, Context),
+create_account(#cb_context{req_data=ReqData}=Context, ParentId) ->
+    Data = case wh_json:get_ne_value(<<"realm">>, ReqData) of
+               undefined ->
+                   RealmSuffix = whapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
+                   Strength = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3),
+                   wh_json:set_value(<<"realm">>, list_to_binary([crossbar_util:rand_chars(Strength), ".", RealmSuffix]), ReqData);
+               _Else ->
+                   ReqData
+           end,
+    UniqueRealm = is_unique_realm(undefined, Context#cb_context{req_data=Data}),
     case wh_json_validator:is_valid(Data, ?WH_ACCOUNTS_DB) of
         {fail, Errors} when UniqueRealm ->
             crossbar_util:response_invalid_data(Errors, Context);
@@ -831,7 +840,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
 %%--------------------------------------------------------------------
 -spec is_unique_realm/2 :: (ne_binary() | 'undefined', #cb_context{}) -> boolean().
 is_unique_realm(AccountId, #cb_context{req_data=JObj}=Context) ->
-    is_unique_realm(AccountId, Context, wh_json:get_value(<<"realm">>, JObj)).
+    is_unique_realm(AccountId, Context, wh_json:get_ne_value(<<"realm">>, JObj)).
 
 is_unique_realm(_, _, undefined) ->
     ?LOG("invalid or non-unique realm: undefined"),

@@ -7,7 +7,7 @@
 %%% Created : 14 Dec 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(crossbar_util).
-
+-export([rand_chars/1]).
 -export([response/2, response/3, response/4, response/5]).
 -export([response_deprecated/1, response_deprecated_redirect/2, response_deprecated_redirect/3
          ,response_redirect/3
@@ -33,6 +33,16 @@
 -export([find_account_db/3, find_account_db/4]).
 
 -include("../include/crossbar.hrl").
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Helper function to generate random strings
+%% @end
+%%--------------------------------------------------------------------
+-spec rand_chars/1 :: (pos_integer()) -> ne_binary().
+rand_chars(Count) ->
+    wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(Count))).
 
 %%--------------------------------------------------------------------
 %% @public

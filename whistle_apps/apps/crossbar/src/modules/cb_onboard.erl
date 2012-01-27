@@ -309,15 +309,6 @@ create_account(JObj, Context, {Pass, Fail}) ->
                           Id = couch_mgr:get_uuid(), 
                           wh_json:set_value(<<"_id">>, Id, J) 
                   end
-                  ,fun(J) ->
-                           case wh_json:get_ne_value(<<"realm">>, J) of
-                               undefined -> 
-                                   RealmSuffix = whapps_config:get_binary(?OB_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
-                                   Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"realm_strength">>, 3),
-                                   wh_json:set_value(<<"realm">>, list_to_binary([rand_chars(Strength), ".", RealmSuffix]), J);
-                               _ -> J
-                           end
-                   end
                  ],
     Payload = [undefined
                ,Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Account, Generators)
