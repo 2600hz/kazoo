@@ -143,12 +143,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.onboard">>, [RD, #cb
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = populate_new_account(Data, Context),
-                  case Context1 of
-                      #cb_context{resp_status=success} ->
-                          notfy_new_account(Context1);
-                      _Else ->
-                          ok
-                  end,
                   Pid ! {binding_result, true, [RD, create_response(RD, Context1), Params]}
           end),
     {noreply, State};
@@ -779,20 +773,3 @@ create_response(RD, #cb_context{doc=JObj, account_id=AccountId}=Context) ->
             ?LOG("could not create new local auth token, ~p", [R]),
             crossbar_util:response(error, JObj, 400, Context)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Send a notification that the account has been created
-%% @end
-%%--------------------------------------------------------------------
--spec notfy_new_account/1 :: (#cb_context{}) -> #cb_context{}.
-notfy_new_account(#cb_context{db_name=AccountDb, account_id=AccountId, doc=JObj}) ->
-    Notify = [{<<"Account-Name">>, wh_json:get_value(<<"name">>, JObj)}
-              ,{<<"Account-Realm">>, wh_json:get_value(<<"realm">>, JObj)}
-              ,{<<"Account-API-Key">>, wh_json:get_value(<<"pvt_api_key">>, JObj)}
-              ,{<<"Account-ID">>, AccountId}
-              ,{<<"Account-DB">>, AccountDb}
-              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
-             ],
-    wapi_notifications:publish_new_account(Notify).
