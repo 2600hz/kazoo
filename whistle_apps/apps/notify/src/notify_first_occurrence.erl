@@ -25,7 +25,7 @@
 -define(DEFAULT_HTML_TMPL, notify_init_occur_html_tmpl).
 -define(DEFAULT_SUBJ_TMPL, notify_init_occur_subj_tmpl).
 
--define(NOTIFY_INIT_OCCUR_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".first_occurrence">>).
+-define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".first_occurrence">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -36,12 +36,12 @@
 -spec init/0 :: () -> ok.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
-    {ok, ?DEFAULT_TEXT_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_INIT_OCCUR_CONFIG_CAT, default_text_template), ?DEFAULT_TEXT_TMPL),
-    {ok, ?DEFAULT_HTML_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_INIT_OCCUR_CONFIG_CAT, default_html_template), ?DEFAULT_HTML_TMPL),
-    {ok, ?DEFAULT_SUBJ_TMPL} = erlydtl:compile(whapps_config:get(?NOTIFY_INIT_OCCUR_CONFIG_CAT, default_subject_template), ?DEFAULT_SUBJ_TMPL),
+    notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
+    notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
+    notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     Crawler = {notify_first_occurrence, {notify_first_occurrence, start_crawler, []}, permanent, 5000, worker, [notify_first_occurrence]},
     supervisor:start_child(notify_sup, Crawler),
-    ?LOG_SYS("init done for first occurrence notify").
+    ?LOG_SYS("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -120,17 +120,14 @@ notify_initial_call(AccountDb, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 first_occurrence_notice(Account, Occurrence) ->
-    To = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"send_to">>], Account
-                           ,whapps_config:get(?NOTIFY_INIT_OCCUR_CONFIG_CAT, <<"default_to">>, <<"sales@2600hz.com">>)),
-
     DefaultFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
     From = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"send_from">>], Account
-                             ,whapps_config:get(?NOTIFY_INIT_OCCUR_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
+                             ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
 
     ?LOG("creating first occurrence notice"),
     
     Props = [{<<"From">>, From}
-             |get_template_props(Account, Occurrence)
+             |create_template_props(Account, Occurrence)
             ],
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"email_text_template">>], Account),
@@ -142,8 +139,12 @@ first_occurrence_notice(Account, Occurrence) ->
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
     
-    send_init_occur_email(TxtBody, HTMLBody, Subject, To, Props),
-    send_init_occur_email(TxtBody, HTMLBody, Subject, notify_util:get_rep_email(Account), Props).
+    To = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"send_to">>], Account
+                           ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"sales@2600hz.com">>)),
+    RepEmail = notify_util:get_rep_email(Account),
+
+    build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
+    build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -151,13 +152,13 @@ first_occurrence_notice(Account, Occurrence) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec get_template_props/2 :: (wh_json:json_object(), ne_binary()) -> proplist().
-get_template_props(Account, Occurrence) ->
-    Admin = find_admin(wh_json:get_value(<<"pvt_account_db">>, Account)),
+-spec create_template_props/2 :: (wh_json:json_object(), ne_binary()) -> proplist().
+create_template_props(Account, Occurrence) ->
+    Admin = notify_util:find_admin(Account),
     [{<<"event">>, Occurrence}
      ,{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
-     ,{<<"service">>, notify_util:get_service_props(wh_json:new(), Account, ?NOTIFY_INIT_OCCUR_CONFIG_CAT)}
+     ,{<<"service">>, notify_util:get_service_props(wh_json:new(), Account, ?MOD_CONFIG_CAT)}
     ].
 
 %%--------------------------------------------------------------------
@@ -166,11 +167,11 @@ get_template_props(Account, Occurrence) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec send_init_occur_email/5 :: (iolist(), iolist(), iolist(), undefined | binary() | [ne_binary(),...], proplist()) -> 'ok'.
-send_init_occur_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    [send_init_occur_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
+-spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), undefined | binary() | [ne_binary(),...], proplist()) -> 'ok'.
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     ok;
-send_init_occur_email(TxtBody, HTMLBody, Subject, To, Props) ->
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"From">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
@@ -186,7 +187,6 @@ send_init_occur_email(TxtBody, HTMLBody, Subject, To, Props) ->
                }
               ]
             },
-    ?LOG("sending first occurence notice to: ~p", [To]),
     notify_util:send_email(From, To, Email),
     ok.                
 
@@ -271,24 +271,3 @@ flush() ->
     after
         0 -> true
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Ensure there are no messages in the process queue 
-%% @end
-%%--------------------------------------------------------------------
--spec find_admin/1 :: (ne_binary()) -> wh_json:json_object().
-find_admin(AccountDb) ->
-    ViewOptions = [{<<"key">>, <<"user">>}
-                   ,{<<"include_docs">>, true}
-                  ],
-    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
-        {ok, Users} -> 
-            case [User || User <- Users, wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>] of
-                [] -> wh_json:new();
-                Else -> wh_json:get_value(<<"doc">>, hd(Else))
-            end;
-        _ -> wh_json:new()
-    end.
-    

@@ -24,7 +24,18 @@
 
 -define(SERVER, ?MODULE).
 
+-define(PORT_DOCS, <<"docs">>).
+
 -define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 8}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
+
+-define(MIME_TYPES, ["application/pdf"
+                     ,"application/x-gzip"
+                     ,"application/zip"
+                     ,"application/x-rar-compressed"
+                     ,"application/x-tar"
+                     ,"image/*"
+                     ,"text/plain"
+                     ,"application/octet-stream"]).
 
 %%%===================================================================
 %%% API
@@ -99,6 +110,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({binding_fired, Pid, <<"v1_resource.content_types_accepted.phone_numbers">>, {RD, Context, Params}}, State) ->
+    spawn(fun() ->
+                  _ = crossbar_util:put_reqid(Context),
+                  Context1 = content_types_accepted(Params, Context),
+                  Pid ! {binding_result, true, {RD, Context1, Params}}
+          end),
+    {noreply, State};
+
 handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
                  ,{RD, #cb_context{req_nouns=[{<<"phone_numbers">>,[]}]
                                    ,req_id=ReqId, req_verb = <<"get">>}=Context}}, State) ->
@@ -139,18 +158,28 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.phone_numbers">>, [RD, 
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.phone_numbers">>
-                 ,[RD, #cb_context{account_id=AccountId, doc=JObj}=Context | [Number]]}, State) ->
+                 ,[RD, #cb_context{account_id=AccountId, doc=JObj}=Context | [Number]=Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Result = wh_number_manager:set_public_fields(Number, AccountId, JObj),
                   Context1 = set_response(Result, Number, Context),
-                  Pid ! {binding_result, true, [RD, Context1, [Number]]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.post.phone_numbers">>
+                 ,[RD, #cb_context{account_id=AccountId, req_files=Files}=Context | [Number, ?PORT_DOCS, _]=Params]}, State) ->
+    spawn(fun() ->
+                  _ = crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = put_attachments(Number, AccountId, Context, Files),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
-                 ,[RD, #cb_context{account_id=AccountId, doc=JObj}=Context | [Number]]}, State) ->
+                 ,[RD, #cb_context{account_id=AccountId, doc=JObj}=Context | [Number]=Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
@@ -168,15 +197,48 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
                                  Else ->
                                      set_response(Else, Number, Context)
                              end,
-                  Pid ! {binding_result, true, [RD, Context1, [Number]]}
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.phone_numbers">>, [RD, Context | [Number]]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
+                 ,[RD, #cb_context{account_id=AccountId, req_files=Files}=Context | [Number, ?PORT_DOCS]=Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Pid ! {binding_result, true, [RD, Context, [Number]]}
+                  Context1 = put_attachments(Number, AccountId, Context, Files),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
+                 ,[RD, #cb_context{account_id=AccountId, req_files=Files}=Context | [Number, ?PORT_DOCS, _]=Params]}, State) ->
+    spawn(fun() ->
+                  _ = crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = put_attachments(Number, AccountId, Context, Files),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.phone_numbers">>
+                 ,[RD, #cb_context{account_id=AccountId}=Context | [Number]=Params]}, State) ->
+    spawn(fun() ->
+                  _ = crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Result = wh_number_manager:release_number(Number, AccountId),
+                  Pid ! {binding_result, true, [RD, set_response(Result, Number, Context), Params]}
+          end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.phone_numbers">>
+                 ,[RD, #cb_context{account_id=AccountId}=Context | [Number, ?PORT_DOCS, Name]=Params]}, State) ->
+    spawn(fun() ->
+                  _ = crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Result = wh_number_manager:delete_attachment(Number, AccountId, Name),
+                  io:format("~p~n", [Result]),
+                  Pid ! {binding_result, true, [RD, set_response(Result, Number, Context), Params]}
           end),
     {noreply, State};
 
@@ -228,6 +290,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.phone_numbers">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.phone_numbers">>),
@@ -235,6 +298,24 @@ bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.validate.phone_numbers">>),
     crossbar_bindings:bind(<<"v1_resource.execute.#.phone_numbers">>).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec content_types_accepted/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
+content_types_accepted([_Number, ?PORT_DOCS], #cb_context{req_verb = <<"put">>}=Context) ->
+    CTA = [{from_binary, ?MIME_TYPES}],
+    Context#cb_context{content_types_accepted=CTA};
+content_types_accepted([_Number, ?PORT_DOCS, _Name], #cb_context{req_verb = <<"put">>}=Context) ->
+    CTA = [{from_binary, ?MIME_TYPES}],
+    Context#cb_context{content_types_accepted=CTA};
+content_types_accepted([_Number, ?PORT_DOCS, _Name], #cb_context{req_verb = <<"post">>}=Context) ->
+    CTA = [{from_binary, ?MIME_TYPES}],
+    Context#cb_context{content_types_accepted=CTA};
+content_types_accepted(_, Context) -> Context.
+ 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -248,7 +329,11 @@ bind_to_crossbar() ->
 allowed_methods([]) ->
     {true, ['GET']};
 allowed_methods([_]) ->
-    {true, ['GET', 'PUT', 'POST']};
+    {true, ['GET', 'PUT', 'POST', 'DELETE']};
+allowed_methods([_, ?PORT_DOCS]) ->
+    {true, ['GET', 'PUT']};
+allowed_methods([_, ?PORT_DOCS, _]) ->
+    {true, ['PUT', 'POST', 'DELETE']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -264,6 +349,10 @@ allowed_methods(_) ->
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
+    {true, []};
+resource_exists([_, ?PORT_DOCS]) ->
+    {true, []};
+resource_exists([_, ?PORT_DOCS, _]) ->
     {true, []};
 resource_exists(_) ->
     {false, []}.
@@ -290,9 +379,28 @@ validate([Number], #cb_context{req_verb = <<"post">>}=Context) ->
     update(Number, Context);
 validate([Number], #cb_context{req_verb = <<"delete">>}=Context) ->
     delete(Number, Context);
+validate([Number, ?PORT_DOCS], #cb_context{req_verb = <<"get">>}=Context) ->
+    list_attachments(Number, Context);
+validate([_, ?PORT_DOCS], #cb_context{req_verb = <<"put">>, req_files=[]}=Context) ->
+    ?LOG_SYS("No files in request to save attachment"),
+    crossbar_util:response_invalid_data([<<"no_files">>], Context);
+validate([Number, ?PORT_DOCS], #cb_context{req_verb = <<"put">>}=Context) ->
+    read(Number, Context);
+validate([_, ?PORT_DOCS, _], #cb_context{req_verb = <<"put">>, req_files=[]}=Context) ->
+    ?LOG_SYS("No files in request to save attachment"),
+    crossbar_util:response_invalid_data([<<"no_files">>], Context);
+validate([Number, ?PORT_DOCS, Name], #cb_context{req_verb = <<"put">>, req_files=[{_, FileObj}]}=Context) ->
+    read(Number, Context#cb_context{req_files=[{Name, FileObj}]});
+validate([_, ?PORT_DOCS, _], #cb_context{req_verb = <<"post">>, req_files=[]}=Context) ->
+    ?LOG_SYS("No files in request to save attachment"),
+    crossbar_util:response_invalid_data([<<"no_files">>], Context);
+validate([Number, ?PORT_DOCS, Name], #cb_context{req_verb = <<"post">>, req_files=[{_, FileObj}]}=Context) ->
+    read(Number, Context#cb_context{req_files=[{Name, FileObj}]});
+validate([Number, ?PORT_DOCS, _], #cb_context{req_verb = <<"delete">>}=Context) ->
+    read(Number, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
-
+ 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -387,6 +495,38 @@ delete(_, Context) ->
     Context#cb_context{resp_status=success
                        ,doc=undefined
                       }.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load an instance from the database
+%% @end
+%%--------------------------------------------------------------------
+-spec list_attachments/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+list_attachments(Number, #cb_context{account_id=AccountId}=Context) ->
+    Result = wh_number_manager:list_attachments(Number, AccountId),
+    set_response(Result, Number, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec put_attachments/4 :: (ne_binary(), ne_binary(), #cb_context{}, proplist()) -> #cb_context{}.
+put_attachments(_, _, Context, []) ->
+    Context#cb_context{resp_status=success};
+put_attachments(Number, AccountId, Context, [{Filename, FileObj}|Files]) ->
+    HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
+    Content = wh_json:get_value(<<"contents">>, FileObj),
+    CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
+    Options = [{headers, [{content_type, wh_util:to_list(CT)}]}],
+    ?LOG("setting Content-Type to ~s", [CT]),   
+    case wh_number_manager:put_attachment(Number, AccountId, Filename, Content, Options) of
+        {ok, NewDoc} ->
+            put_attachments(Number, AccountId, Context#cb_context{resp_data=NewDoc}, Files);
+        Result ->
+            set_response(Result, Number, Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -409,7 +549,9 @@ set_response({error, not_found}, Number, Context) ->
     crossbar_util:response_bad_identifier(Number, Context);
 set_response({ok, Doc}, _, Context) ->
     crossbar_util:response(Doc, Context);
-set_response({error, Else}, _, Context) ->
+set_response(ok, _, Context) ->
+    crossbar_util:response(wh_json:new(), Context);
+set_response({error, Else}, _, Context) when is_binary(Else) ->
     crossbar_util:response_invalid_data(Else, Context);
 set_response(_Else, _, Context) ->
     crossbar_util:response_db_fatal(Context).

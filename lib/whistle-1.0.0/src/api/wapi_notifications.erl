@@ -15,20 +15,28 @@
 -export([deregister/1, deregister_v/1]).
 -export([pwd_recovery/1, pwd_recovery_v/1]).
 -export([new_account/1, new_account_v/1]).
+-export([port_request/1, port_request_v/1]).
+-export([cnam_request/1, cnam_request_v/1]).
 
 -export([publish_voicemail/1, publish_voicemail/2]).
 -export([publish_mwi_update/1, publish_mwi_update/2]).
 -export([publish_deregister/1, publish_deregister/2]).
 -export([publish_pwd_recovery/1, publish_pwd_recovery/2]).
 -export([publish_new_account/1, publish_new_account/2]).
+-export([publish_port_request/1, publish_port_request/2]).
+-export([publish_cnam_request/1, publish_cnam_request/2]).
 
 -include("../wh_api.hrl").
 
--define(NOTIFY_MWI_UPDATE, <<"notifications.mwi.update">>).
+-define(NOTIFY_MWI_UPDATE, <<"notifications.voicemail.update">>).
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
+%% -define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
 -define(NOTIFY_PWD_RECOVERY, <<"notifications.password.recovery">>).
--define(NOTIFY_NEW_ACCOUNT, <<"notifications.new.account">>).
+-define(NOTIFY_NEW_ACCOUNT, <<"notifications.account.new">>).
+%% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
+-define(NOTIFY_PORT_REQUEST, <<"notifications.number.port">>).
+-define(NOTIFY_CNAM_REQUEST, <<"notifications.number.cnam">>).
 
 %% Notify New Voicemail
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>, <<"To-User">>, <<"To-Realm">>
@@ -79,6 +87,22 @@
                               ,{<<"Event-Name">>, <<"new_account">>}
                              ]).
 -define(NEW_ACCOUNT_TYPES, []).
+
+%% Notify Port Request
+-define(PORT_REQUEST_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Port">>]).
+-define(OPTIONAL_PORT_REQUEST_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Acquired-For">>, <<"Request">>]).
+-define(PORT_REQUEST_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                              ,{<<"Event-Name">>, <<"port_request">>}
+                             ]).
+-define(PORT_REQUEST_TYPES, []).
+
+%% Notify Cnam Request
+-define(CNAM_REQUEST_HEADERS, [<<"Account-ID">>, <<"Number">>, <<"Cnam">>]).
+-define(OPTIONAL_CNAM_REQUEST_HEADERS, [<<"Number-State">>, <<"Local-Number">>, <<"Acquired-For">>, <<"Request">>]).
+-define(CNAM_REQUEST_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                              ,{<<"Event-Name">>, <<"cnam_request">>}
+                             ]).
+-define(CNAM_REQUEST_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
@@ -157,7 +181,6 @@ pwd_recovery_v(Prop) when is_list(Prop) ->
 pwd_recovery_v(JObj) ->
     pwd_recovery_v(wh_json:to_proplist(JObj)).
 
-
 %%--------------------------------------------------------------------
 %% @doc New account notification - see wiki
 %% Takes proplist, creates JSON string or error
@@ -177,17 +200,52 @@ new_account_v(Prop) when is_list(Prop) ->
 new_account_v(JObj) ->
     new_account_v(wh_json:to_proplist(JObj)).
 
+%%--------------------------------------------------------------------
+%% @doc Port request notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+port_request(Prop) when is_list(Prop) ->
+    case port_request_v(Prop) of
+        true -> wh_api:build_message(Prop, ?PORT_REQUEST_HEADERS, ?OPTIONAL_PORT_REQUEST_HEADERS);
+        false -> {error, "Proplist failed validation for port_request"}
+    end;
+port_request(JObj) ->
+    port_request(wh_json:to_proplist(JObj)).
+
+-spec port_request_v/1 :: (api_terms()) -> boolean().
+port_request_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PORT_REQUEST_HEADERS, ?PORT_REQUEST_VALUES, ?PORT_REQUEST_TYPES);
+port_request_v(JObj) ->
+    port_request_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Cnam request notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+cnam_request(Prop) when is_list(Prop) ->
+    case cnam_request_v(Prop) of
+        true -> wh_api:build_message(Prop, ?CNAM_REQUEST_HEADERS, ?OPTIONAL_CNAM_REQUEST_HEADERS);
+        false -> {error, "Proplist failed validation for cnam_request"}
+    end;
+cnam_request(JObj) ->
+    cnam_request(wh_json:to_proplist(JObj)).
+
+-spec cnam_request_v/1 :: (api_terms()) -> boolean().
+cnam_request_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CNAM_REQUEST_HEADERS, ?CNAM_REQUEST_VALUES, ?CNAM_REQUEST_TYPES);
+cnam_request_v(JObj) ->
+    cnam_request_v(wh_json:to_proplist(JObj)).
+
+
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     amqp_util:notifications_exchange(),
-    bind_to_q(Queue, props:get_value(restrict_to, Props, [])).
+    bind_to_q(Queue, props:get_value(restrict_to, Props)).
 
 bind_to_q(Q, undefined) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_MWI_UPDATE),
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DEREGISTER),
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PWD_RECOVERY),
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_ACCOUNT);
+    amqp_util:bind_q_to_notifications(Q, <<"notifications.*.*">>);
 bind_to_q(Q, [new_voicemail|T]) ->
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
     bind_to_q(Q, T);
@@ -203,6 +261,12 @@ bind_to_q(Q, [pwd_recovery|T]) ->
 bind_to_q(Q, [new_account|T]) ->
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
     bind_to_q(Q, T);
+bind_to_q(Q, [port_request|T]) ->
+    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_REQUEST),
+    bind_to_q(Q, T);
+bind_to_q(Q, [cnam_requests|T]) ->
+    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_CNAM_REQUEST),
+    bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
     ok.
 
@@ -214,14 +278,10 @@ unbind_q(Queue) ->
     
 unbind_q(Queue, Props) ->
     amqp_util:notifications_exchange(),
-    unbind_q_from(Queue, props:get_value(restrict_to, Props, [])).
+    unbind_q_from(Queue, props:get_value(restrict_to, Props)).
 
 unbind_q_from(Q, undefined) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_MWI_UPDATE),
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PWD_RECOVERY),
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_DEREGISTER),
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_ACCOUNT);
+    amqp_util:unbind_q_from_notifications(Q, <<"notifications.*.*">>);
 unbind_q_from(Q, [new_voicemail|T]) ->
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
     unbind_q_from(Q, T);
@@ -236,6 +296,12 @@ unbind_q_from(Q, [pwd_recovery|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, [new_account|T]) ->
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, [port_request|T]) ->
+    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_REQUEST),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, [cnam_request|T]) ->
+    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_CNAM_REQUEST),
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     ok.
@@ -279,3 +345,19 @@ publish_new_account(JObj) ->
 publish_new_account(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?NEW_ACCOUNT_VALUES, fun ?MODULE:new_account/1),
     amqp_util:notifications_publish(?NOTIFY_NEW_ACCOUNT, Payload, ContentType).
+
+-spec publish_port_request/1 :: (api_terms()) -> 'ok'.
+-spec publish_port_request/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_port_request(JObj) ->
+    publish_port_request(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_port_request(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?PORT_REQUEST_VALUES, fun ?MODULE:port_request/1),
+    amqp_util:notifications_publish(?NOTIFY_PORT_REQUEST, Payload, ContentType).
+
+-spec publish_cnam_request/1 :: (api_terms()) -> 'ok'.
+-spec publish_cnam_request/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_cnam_request(JObj) ->
+    publish_cnam_request(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_cnam_request(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?CNAM_REQUEST_VALUES, fun ?MODULE:cnam_request/1),
+    amqp_util:notifications_publish(?NOTIFY_CNAM_REQUEST, Payload, ContentType).
