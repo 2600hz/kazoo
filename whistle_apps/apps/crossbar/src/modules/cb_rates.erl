@@ -154,7 +154,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.rates">>, [RD, Cont
                               _ = spawn(fun() ->
                                                 _ = crossbar_util:put_reqid(Context),
                                                 Now = erlang:now(),
-                                                _ = save_bulk_rates(Count, Rates),
+                                                _ = save_bulk_rates(Rates),
                                                 Elapsed = timer:now_diff(erlang:now(), Now),
                                                 ?LOG("it took ~b micro, ~b milli, ~b sec to save ~b rates", [Elapsed, Elapsed div 1000, Elapsed div 1000000, Count])
                                         end),
@@ -465,7 +465,7 @@ process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
 
             {Cnt+1, [add_pvt_fields(
                        wh_json:from_list([{<<"_id">>, list_to_binary([ISO1, "-", Prefix])}
-                                          ,{<<"prefix">>, <<"+", Prefix1/binary>>}
+                                          ,{<<"prefix">>, Prefix1}
                                           ,{<<"iso_country_code">>, ISO1}
                                           ,{<<"description">>, Desc1}
                                           ,{<<"rate_name">>, Desc1}
@@ -474,7 +474,7 @@ process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
                                           ,{<<"rate_minimum">>, 60}
                                           ,{<<"rate_surcharge">>, 0}
                                           ,{<<"internal_rate_cost">>, InternalCost1}
-                                          ,{<<"weight">>, byte_size(Prefix1) * 10 - CostF}
+                                          ,{<<"weight">>, constrain_weight(byte_size(Prefix1) * 10 - CostF)}
 
                                           ,{<<"options">>, []}
                                           ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix1))/binary, "(\\d*)$">>]}
@@ -488,16 +488,17 @@ process_row(_, Acc) ->
 strip_quotes(Bin) ->
     binary:replace(Bin, [<<"\"">>, <<"\'">>], <<>>, [global]).
 
--spec save_bulk_rates/2 :: (pos_integer(), wh_json:json_objects()) -> no_return().
-save_bulk_rates(Count, Rates) ->
-    save_bulk_rates(Count, Rates, Count, []).
+-spec save_bulk_rates/1 :: (wh_json:json_objects()) -> no_return().
+save_bulk_rates(Rates) ->
+    case catch(lists:split(?MAX_BULK_INSERT, Rates)) of
+        {'EXIT', _} ->
+            couch_mgr:save_docs(?WH_RATES_DB, Rates);
+        {Save, Cont} ->
+            spawn(fun() -> couch_mgr:save_docs(?WH_RATES_DB, Save) end),
+            save_bulk_rates(Cont)
+    end.
 
-%% lacking a lists:splice, we chunk it up ourselves
--spec save_bulk_rates/4 :: (pos_integer(), wh_json:json_objects(), non_neg_integer(), wh_json:json_objects()) -> no_return().
-save_bulk_rates(_, [], _, Acc) ->
-    couch_mgr:save_docs(?WH_RATES_DB, Acc);
-save_bulk_rates(Count, Rates, 0, Acc) ->
-    couch_mgr:save_docs(?WH_RATES_DB, Acc),
-    save_bulk_rates(Count, Rates, ?MAX_BULK_INSERT, []);
-save_bulk_rates(Count, [R|Rates], Left, Acc) ->
-    save_bulk_rates(Count, Rates, Left-1, [R|Acc]).
+-spec constrain_weight/1 :: (integer()) -> 1..100.
+constrain_weight(X) when X =< 0 -> 1;
+constrain_weight(X) when X >= 100 -> 100;
+constrain_weight(X) -> X.
