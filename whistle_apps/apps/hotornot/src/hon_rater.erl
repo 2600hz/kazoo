@@ -33,17 +33,18 @@ handle_req(JObj, Props) ->
 
     wapi_call:publish_rate_resp(wh_json:get_value(<<"Server-ID">>, JObj), RespProp).
 
--spec get_rate_data/1 :: (wh_json:json_object()) -> {'ok', proplist()} | {'error', 'no_rate_found'}.
+-spec get_rate_data/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_objects()} | {'error', 'no_rate_found'}.
 get_rate_data(JObj) ->
     ToDID = wh_json:get_value(<<"To-DID">>, JObj),
     FromDID = wh_json:get_value(<<"From-DID">>, JObj),
-    RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
-    Direction = wh_json:get_value(<<"Direction">>, JObj),
 
     case hon_util:candidate_rates(ToDID, FromDID) of
         {ok, []} -> ?LOG("rate lookup had no results"), {error, no_rate_found};
         {error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_rate_found};
         {ok, Rates} ->
+            RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
+            Direction = wh_json:get_value(<<"Direction">>, JObj),
+
             Matching = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions),
             case hon_util:sort_rates(Matching) of
                 [] -> ?LOG("no rates left after filter"), {error, no_rate_found};
@@ -56,8 +57,9 @@ get_rate_data(JObj) ->
 rate_to_json(Rate) ->
     ?LOG("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
 
-    BaseCost = wh_json:get_float_value(<<"rate_cost">>, Rate, 0.01) * ( wh_json:get_integer_value(<<"rate_minimum">>, Rate, 60) div 60 )
-        + wh_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0),
+    BaseCost = wapi_money:base_call_cost(wh_json:get_float_value(<<"rate_cost">>, Rate, 0.01)
+                                         ,wh_json:get_integer_value(<<"rate_minimum">>, Rate, 60)
+                                         ,wh_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0)),
 
     ?LOG("base cost for a minute call: ~p", [BaseCost]),
 
