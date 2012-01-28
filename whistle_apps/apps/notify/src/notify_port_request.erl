@@ -69,15 +69,25 @@ handle_req(JObj, _Props) ->
 
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"port_request">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
+
+    Number = wnm_util:normalize_number(wh_json:get_value(<<"Number">>, JObj)),
+    NumberDb = wnm_util:number_to_db_name(Number),
+    
+    Attachments = case couch_mgr:open_doc(NumberDb, Number) of
+                      {ok, NumberJObj} ->
+                          DocAttach = wh_json:get_value(<<"_attachments">>, NumberJObj, wh_json:new()),
+                          get_attachments(wh_json:to_proplist(DocAttach), Number, NumberDb, []);
+                      _ -> []
+                  end,
     
     RepEmail = notify_util:get_rep_email(Account),
     case wh_json:is_true(<<"Local-Number">>, JObj) of
         true ->
-            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props);
+            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props, Attachments);
         false ->
             SysAdminEmail = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>),
-            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props),
-            build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props)
+            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props, Attachments),
+            build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props, Attachments)
     end.
 
 %%--------------------------------------------------------------------
@@ -101,11 +111,11 @@ create_template_props(Event, Account) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
-build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
-    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
+-spec build_and_send_email/6 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist(), list()) -> 'ok'.
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) when is_list(To)->
+    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, Attachements) || T <- To],
     ok;
-build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
     From = props:get_value(<<"From">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
@@ -118,8 +128,36 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
                 ,[{<<"text">>, <<"plain">>, [{<<"Content-Type">>, <<"text/plain">>}], [], iolist_to_binary(TxtBody)}
                   ,{<<"text">>, <<"html">>, [{<<"Content-Type">>, <<"text/html">>}], [], iolist_to_binary(HTMLBody)}
                  ]
-               }
+               } | Attachements
               ]
             },
     notify_util:send_email(From, To, Email),
     ok.                
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% process the AMQP requests
+%% @end
+%%--------------------------------------------------------------------
+-spec get_attachments/4 :: (proplist(), ne_binary(), ne_binary(), list()) -> list().
+get_attachments([], _, _, EmailAttachments) ->
+    EmailAttachments;
+get_attachments([{AttachmentName, AttachmentJObj}|Attachments], Number, Db, EmailAttachments) ->
+    case couch_mgr:fetch_attachment(Db, Number, AttachmentName) of
+        {ok, AttachmentBin} ->
+            [Type, Subtype] = 
+                binary:split(wh_json:get_ne_value(<<"content_type">>, AttachmentJObj, <<"application/octet-stream">>), <<"/">>),
+            ?LOG("attempting to attach ~s (~s/~s)", [AttachmentName, Type, Subtype]),
+            Attachment = {Type, Subtype
+                          ,[{<<"Content-Disposition">>, list_to_binary([<<"attachment; filename=\"">>, AttachmentName, "\""])}
+                            ,{<<"Content-Type">>, list_to_binary([Type, "/", Subtype, <<"; name=\"">>, AttachmentName, "\""])}
+                            ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+                           ]
+                          ,[], AttachmentBin
+                         },
+            get_attachments(Attachments, Number, Db, [Attachment|EmailAttachments]);
+        _E ->
+            ?LOG("failed to attach ~s: ~p", [AttachmentName, _E]),
+            get_attachments(Attachments, Number, Db, EmailAttachments)
+    end.
