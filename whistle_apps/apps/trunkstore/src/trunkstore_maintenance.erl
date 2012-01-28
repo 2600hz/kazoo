@@ -119,6 +119,9 @@ create_account(Realm) ->
 
 create_account_doc(Realm, AcctID, AcctDB) ->
     ?LOG("creating the account doc in ~s and ~s", [AcctDB, ?WH_ACCOUNTS_DB]),
+
+    Default = whapps_config:get(<<"crossbar.accounts">>, <<"default_parent">>, <<>>),
+
     Doc = wh_json:from_list([{<<"realm">>, Realm}
                              ,{<<"name">>, Realm}
                              ,{<<"pvt_account_id">>, AcctID}
@@ -126,7 +129,7 @@ create_account_doc(Realm, AcctID, AcctDB) ->
                              ,{<<"pvt_type">>, <<"account">>}
                              ,{<<"pvt_account_from">>, <<"trunkstore">>}
                              ,{<<"pvt_enabled">>, <<"true">>}
-                             ,{<<"pvt_tree">>, [AcctID]}
+                             ,{<<"pvt_tree">>, [Default]}
                              ,{<<"_id">>, AcctID}
                             ]),
     case couch_mgr:save_doc(AcctDB, Doc) of
