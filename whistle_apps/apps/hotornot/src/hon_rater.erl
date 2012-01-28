@@ -35,23 +35,17 @@ handle_req(JObj, Props) ->
 
 -spec get_rate_data/1 :: (wh_json:json_object()) -> {'ok', proplist()} | {'error', 'no_rate_found'}.
 get_rate_data(JObj) ->
-    ToDID = wnm_util:to_e164(wh_json:get_value(<<"To-DID">>, JObj)),
-    _FromDID = wnm_util:to_e164(wh_json:get_value(<<"From-DID">>, JObj)),
+    ToDID = wh_json:get_value(<<"To-DID">>, JObj),
+    FromDID = wh_json:get_value(<<"From-DID">>, JObj),
     RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
     Direction = wh_json:get_value(<<"Direction">>, JObj),
 
-    <<"+", Start:1/binary, Rest/binary>> = ToDID,
-    End = <<Start/binary, Rest/binary>>,
-
-    ?LOG("searching for rates in the range ~s to ~s", [Start, End]),
-    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{<<"startkey">>, Start}
-                                                                  ,{<<"endkey">>, End}
-                                                                 ]) of
+    case hon_util:candidate_rates(ToDID, FromDID) of
         {ok, []} -> ?LOG("rate lookup had no results"), {error, no_rate_found};
         {error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_rate_found};
         {ok, Rates} ->
-            Matching = filter_rates(ToDID, Direction, RouteOptions, Rates),
-            case lists:usort(fun sort_rates/2, Matching) of
+            Matching = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions),
+            case hon_util:sort_rates(Matching) of
                 [] -> ?LOG("no rates left after filter"), {error, no_rate_found};
                 [_|_]=SortedRates ->
                     {ok, [rate_to_json(Rate) || Rate <- SortedRates]}
@@ -74,36 +68,6 @@ rate_to_json(Rate) ->
                        ,{<<"Rate-Name">>, wh_json:get_binary_value(<<"rate_name">>, Rate)}
                        ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
                       ]).
-
-
-filter_rates(To, Direction, RouteOptions, Rates) ->
-    [ begin
-          Rate = wh_json:get_value(<<"value">>, R),
-          wh_json:set_value(<<"rate_name">>, wh_json:get_value(<<"id">>, R), Rate)
-      end || R <- Rates, matching_rate(To, Direction, RouteOptions, R)].
-
-matching_rate(To, Direction, RouteOptions, Rate) ->
-    %% need to match direction and options at some point too
-    Routes = wh_json:get_value([<<"value">>, <<"routes">>], Rate),
-
-    lists:member(Direction, wh_json:get_value([<<"value">>, <<"direction">>], Rate, [])) andalso
-        options_match(RouteOptions, wh_json:get_value([<<"value">>, <<"options">>], Rate, [])) andalso
-        lists:any(fun(Regex) -> re:run(To, Regex) =/= nomatch end, Routes).
-
-%% Return true of RateA has higher weight than RateB
-sort_rates(RateA, RateB) ->
-    ts_util:constrain_weight(wh_json:get_value(<<"weight">>, RateA, 1)) >= ts_util:constrain_weight(wh_json:get_value(<<"weight">>, RateB, 1)).
-
-%% Route options come from the client device
-%% Rate options come from the carrier providing the trunk
-%% All Route options must exist in a carrier's options to keep the carrier
-%% in the list of carriers capable of handling the call
--type trunking_options() :: [ne_binary(),...] | [].
--spec options_match/2 :: (trunking_options(), trunking_options()) -> boolean().
-options_match([], []) -> true;
-options_match([], _) -> true;
-options_match(RouteOptions, RateOptions) ->
-    lists:all(fun(Opt) -> props:get_value(Opt, RateOptions, false) =/= false end, RouteOptions).
 
 -spec set_rate_ccvs/3 :: (proplist(), 'undefined' | ne_binary(), wh_json:json_object()) -> ok.
 set_rate_ccvs(_, undefined, _) -> ok;
