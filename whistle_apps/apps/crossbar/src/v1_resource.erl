@@ -674,7 +674,13 @@ execute_request_results(RD, #cb_context{resp_error_code=ReturnCode, req_nouns=[{
         true ->
             ?TIMER_TICK("v1.execute_request verb=/=put end"),
             ?LOG("executed ~s request for ~s: ~p", [Verb, Mod, Params]),
-            {true, RD, Context}
+            case ReturnCode of
+                202 ->
+                    ?LOG("returning 202"),
+                    {{halt, 202}, RD, Context};
+                _ ->
+                    {true, RD, Context}
+            end
     end.
 
 %% If we're tunneling PUT through POST, we need to tell webmachine POST is allowed to create a non-existant resource
