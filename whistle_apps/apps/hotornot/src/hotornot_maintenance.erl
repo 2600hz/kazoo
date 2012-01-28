@@ -12,7 +12,7 @@
 
 -include("hotornot.hrl").
 
--define(LOCAL_SUMMARY_ROW_FORMAT, " ~10.s | ~9.s | ~9.s | ~9.s | ~9.s | ~9.s |~n").
+-define(LOCAL_SUMMARY_ROW_FORMAT, " ~45.s | ~9.s | ~9.s | ~9.s | ~9.s | ~9.s |~n").
 -define(LOCAL_SUMMARY_HEADER, io:format(?LOCAL_SUMMARY_ROW_FORMAT, [<<"RATE NAME">>, <<"COST">>, <<"INCREMENT">>, <<"MINIMUM">>
                                                                         ,<<"SURCHARGE">>, <<"WEIGHT">>
                                                                    ])).
@@ -21,11 +21,12 @@ local_summary() ->
     ok.
 
 rates_for_did(DID) ->
-    E164 = wh_util:to_e164(DID),
+    E164 = wnm_util:to_e164(DID),
     <<"+", Start:1/binary, Rest/binary>> = E164,
     End = <<Start/binary, Rest/binary>>,
-    case couch_mgr:get_results(?WH_RATES_DB, <<"rating/lookup">>, [{<<"startkey">>, wh_util:to_integer(Start)}
-                                                                ,{<<"endkey">>, wh_util:to_integer(End)}]) of
+
+    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{<<"startkey">>, Start}
+                                                                  ,{<<"endkey">>, End}]) of
         {ok, []} -> io:format("rate lookup had no results~n");
         {error, _E} -> io:format("rate lookup error: ~p~n", [_E]);
         {ok, Rates} ->
@@ -39,12 +40,13 @@ rates_for_did(DID) ->
                        ],
 
             io:format("Matching:~n", []),
+            ?LOCAL_SUMMARY_HEADER,
             [ print_rate(wh_json:get_value(<<"value">>, R)) || R <- Matching]
     end.
 
 rates_between(Pre, Post) ->
-    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{<<"startkey">>, wh_util:to_integer(Pre)}
-                                                                ,{<<"endkey">>, wh_util:to_integer(Post)}]) of
+    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{<<"startkey">>, wh_util:to_binary(Pre)}
+                                                                  ,{<<"endkey">>, wh_util:to_binary(Post)}]) of
         {ok, []} -> io:format("rate lookup had no results~n");
         {error, _E} -> io:format("rate lookup error: ~p~n", [_E]);
         {ok, Rates} ->

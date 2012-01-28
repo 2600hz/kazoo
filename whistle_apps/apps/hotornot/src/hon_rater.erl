@@ -39,12 +39,13 @@ get_rate_data(JObj) ->
     _FromDID = wnm_util:to_e164(wh_json:get_value(<<"From-DID">>, JObj)),
     RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
     Direction = wh_json:get_value(<<"Direction">>, JObj),
+
     <<"+", Start:1/binary, Rest/binary>> = ToDID,
     End = <<Start/binary, Rest/binary>>,
 
     ?LOG("searching for rates in the range ~s to ~s", [Start, End]),
-    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{<<"startkey">>, wh_util:to_integer(Start)}
-                                                                  ,{<<"endkey">>, wh_util:to_integer(End)}
+    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{<<"startkey">>, Start}
+                                                                  ,{<<"endkey">>, End}
                                                                  ]) of
         {ok, []} -> ?LOG("rate lookup had no results"), {error, no_rate_found};
         {error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_rate_found};
@@ -53,8 +54,6 @@ get_rate_data(JObj) ->
             case lists:usort(fun sort_rates/2, Matching) of
                 [] -> ?LOG("no rates left after filter"), {error, no_rate_found};
                 [_|_]=SortedRates ->
-                    %% wh_timer:tick("post usort data found"),
-
                     {ok, [rate_to_json(Rate) || Rate <- SortedRates]}
             end
     end.
