@@ -12,6 +12,7 @@
 -export([response_deprecated/1, response_deprecated_redirect/2, response_deprecated_redirect/3
          ,response_redirect/3
         ]).
+-export([response_202/2]).
 -export([response_faulty_request/1]).
 -export([response_bad_identifier/2]).
 -export([response_conflicting_docs/1]).
@@ -44,6 +45,10 @@
 -spec response/2 :: (wh_json:json_term(), #cb_context{}) -> #cb_context{}.
 response(JTerm, Context) ->
     create_response(success, undefined, undefined, JTerm, Context).
+
+-spec response_202/2 :: (wh_json:json_string(), #cb_context{}) -> #cb_context{}.
+response_202(Msg, Context) ->
+    create_response(success, Msg, 202, Msg, Context).
 
 %%--------------------------------------------------------------------
 %% @public
