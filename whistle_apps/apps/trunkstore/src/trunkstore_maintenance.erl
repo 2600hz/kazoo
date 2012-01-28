@@ -63,8 +63,8 @@ create_ts_doc(AcctDB, AcctID, TSJObj) ->
     JObj = wh_json:set_values([{<<"pvt_type">>, <<"sys_info">>}
                                ,{<<"pvt_account_db">>, AcctDB}
                                ,{<<"pvt_account_id">>, AcctID}
-                              ], wh_json:delete_key(<<"_rev">>, TSJObj)),
-    ?LOG("saving ts doc ~s into ~s", [wh_json:get_value(<<"_id">>, JObj), AcctDB]),
+                              ], wh_json:delete_key(<<"_id">>, wh_json:delete_key(<<"_rev">>, TSJObj))),
+    ?LOG("saving ts doc ~s into ~s", [wh_json:get_value(<<"_id">>, TSJObj), AcctDB]),
     {ok, _} = couch_mgr:save_doc(AcctDB, JObj).
 
 create_limit_doc(AcctDB, AcctID, TSJObj) ->
