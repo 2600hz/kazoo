@@ -47,7 +47,7 @@
           ,query_json = wh_json:new() :: wh_json:json_object()
           ,account_id = 'undefined' :: 'undefined' | binary()
           ,db_name = 'undefined' :: 'undefined' | binary()
-          ,doc = wh_json:new() :: wh_json:json_object() | wh_json:json_objects()
+          ,doc = wh_json:new() :: wh_json:json_object() | wh_json:json_objects() | {integer(), wh_json:json_objects()}
           ,resp_expires = {{1999,1,1},{0,0,0}} :: wh_datetime()
           ,resp_etag = 'undefined' :: 'undefined' | 'automatic' | string()
           ,resp_status = 'error' :: crossbar_status()
