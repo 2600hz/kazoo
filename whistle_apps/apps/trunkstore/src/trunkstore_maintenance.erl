@@ -42,18 +42,19 @@ maybe_migrate(AcctJObj) ->
     end.
 
 move_doc(AcctDB, AcctID, TSJObj) ->
-    case has_ts_doc(AcctDB, wh_json:get_value(<<"_id">>, TSJObj)) of
+    case has_ts_doc(AcctDB) of
         true -> ?LOG("looks like trunkstore account has been moved already");
         false ->
-            {ok, _} = create_ts_doc(AcctDB, AcctID, TSJObj),
-            {ok, _} = create_limit_doc(AcctDB, AcctID, TSJObj),
-            {ok, _} = create_credit_doc(AcctDB, AcctID, TSJObj),
+            {ok, AcctTSJObj} = create_ts_doc(AcctDB, AcctID, TSJObj),
+            {ok, _} = create_limit_doc(AcctDB, AcctID, AcctTSJObj),
+            {ok, _} = create_credit_doc(AcctDB, AcctID, AcctTSJObj),
             _ = whapps_maintenance:refresh(AcctID),
             ok
     end.
 
-has_ts_doc(AcctDB, ID) ->
-    case couch_mgr:open_doc(AcctDB, ID) of
+has_ts_doc(AcctDB) ->
+    case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, []) of
+        {ok, []} -> false;
         {ok, _} -> true;
         _ -> false
     end.
