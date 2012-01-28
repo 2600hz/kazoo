@@ -26,9 +26,6 @@
 
 -define(UPLOAD_MIME_TYPES, ["text/csv", "text/comma-separated-values"]).
 
-%% Throttle how many docs we bulk insert to BigCouch
--define(MAX_BULK_INSERT, 2000).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -131,7 +128,13 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.rates">>, [RD, Context 
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
 
-                  Context1 = validate(Params, Context#cb_context{db_name=?WH_RATES_DB}),
+                  Context1 = try
+                                 validate(Params, Context#cb_context{db_name=?WH_RATES_DB})
+                             catch
+                                 _E:R ->
+                                     ?LOG("failed to validate: ~p:~p", [_E, R]),
+                                     crossbar_util:response(fatal, <<"exception encountered">>, 500, wh_json:new(), Context)
+                             end,
 
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
@@ -154,7 +157,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.rates">>, [RD, Cont
                               _ = spawn(fun() ->
                                                 _ = crossbar_util:put_reqid(Context),
                                                 Now = erlang:now(),
-                                                _ = save_bulk_rates(Rates),
+                                                crossbar_doc:save(Context#cb_context{doc=Rates}, [{publish_doc, false}]),
                                                 Elapsed = timer:now_diff(erlang:now(), Now),
                                                 ?LOG("it took ~b micro, ~b milli, ~b sec to save ~b rates", [Elapsed, Elapsed div 1000, Elapsed div 1000000, Count])
                                         end),
@@ -380,7 +383,8 @@ summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec check_uploaded_file/1 :: (#cb_context{}) -> #cb_context{}.
-check_uploaded_file(#cb_context{req_files=[{_, File}|_]}=Context) ->
+check_uploaded_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
+    ?LOG("checking file ~s", [_Name]),
     case wh_json:get_value(<<"contents">>, File) of
         undefined ->
             Context#cb_context{resp_status=error};
@@ -492,16 +496,6 @@ process_row(_, Acc) ->
 -spec strip_quotes/1 :: (ne_binary()) -> ne_binary().
 strip_quotes(Bin) ->
     binary:replace(Bin, [<<"\"">>, <<"\'">>], <<>>, [global]).
-
--spec save_bulk_rates/1 :: (wh_json:json_objects()) -> no_return().
-save_bulk_rates(Rates) ->
-    case catch(lists:split(?MAX_BULK_INSERT, Rates)) of
-        {'EXIT', _} ->
-            couch_mgr:save_docs(?WH_RATES_DB, Rates);
-        {Save, Cont} ->
-            spawn(fun() -> couch_mgr:save_docs(?WH_RATES_DB, Save) end),
-            save_bulk_rates(Cont)
-    end.
 
 -spec constrain_weight/1 :: (integer()) -> 1..100.
 constrain_weight(X) when X =< 0 -> 1;
