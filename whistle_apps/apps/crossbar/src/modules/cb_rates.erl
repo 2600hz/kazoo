@@ -385,8 +385,12 @@ check_uploaded_file(#cb_context{req_files=[{_, File}|_]}=Context) ->
         undefined ->
             Context#cb_context{resp_status=error};
         Bin ->
-            convert_file(wh_json:get_value([<<"headers">>, <<"content_type">>], File), Bin, Context)
-    end.
+            convert_file(wh_json:get_binary_value([<<"headers">>, <<"content_type">>], File), Bin, Context)
+    end;
+check_uploaded_file(Context) ->
+    ?LOG("no file to process"),
+    crossbar_util:response_faulty_request(Context).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -434,13 +438,14 @@ add_pvt_type(JObj, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec convert_file/3 :: (nonempty_string(), ne_binary(), #cb_context{}) -> #cb_context{}.
-convert_file("text/csv", FileContents, Context) ->
+convert_file(<<"text/csv">>, FileContents, Context) ->
     {ok, {Count, Rates}} = csv_to_rates(FileContents),
     case Count of
         0 -> crossbar_util:response(error, <<"no usable rates found">>, 400, [], Context);
         _ -> Context#cb_context{resp_status=success, doc={Count, Rates}}
     end;
 convert_file(ContentType, _, Context) ->
+    ?LOG("unknown content type: ~s", [ContentType]),
     crossbar_util:response(error, list_to_binary(["unknown content type: ", ContentType]), Context).
 
 -spec csv_to_rates/1 :: (ne_binary()) -> {'ok', {integer(), wh_json:json_objects()}}.
