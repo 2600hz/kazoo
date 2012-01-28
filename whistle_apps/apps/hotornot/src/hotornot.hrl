@@ -6,3 +6,5 @@
 
 -define(APP_NAME, <<"hotornot">>).
 -define(APP_VERSION, <<"0.2.0">>).
+
+-type trunking_options() :: [ne_binary(),...] | [].
