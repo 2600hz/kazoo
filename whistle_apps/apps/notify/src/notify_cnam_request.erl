@@ -69,15 +69,13 @@ handle_req(JObj, _Props) ->
 
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"cnam_request">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-    
-    RepEmail = notify_util:get_rep_email(Account),
-    case wh_json:is_true(<<"Local-Number">>, JObj) of
-        true ->
-            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props);
-        false ->
+
+    case notify_util:get_rep_email(Account) of
+        undefined ->
             SysAdminEmail = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>),
-            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props),
-            build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props)
+            build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props);
+        RepEmail ->
+            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props)
     end.
 
 %%--------------------------------------------------------------------

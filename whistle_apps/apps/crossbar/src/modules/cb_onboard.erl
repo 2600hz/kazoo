@@ -343,7 +343,7 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
     Payload = [undefined
                ,Context#cb_context{req_data=Properties
                                    ,db_name = <<"--">>}
-               ,Number
+               ,[Number, <<"activate">>]
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.phone_numbers">>, Payload) of
         [_, #cb_context{resp_status=success}=Context1 | _] ->
@@ -656,7 +656,7 @@ populate_new_account([{<<"phone_numbers">>, #cb_context{storage=Number}=Context}
     Payload = [undefined
                ,Context#cb_context{db_name=AccountDb
                                    ,account_id=wh_util:format_account_id(AccountDb, raw)}
-               ,Number
+               ,[Number, <<"activate">>]
               ],
     case crossbar_bindings:fold(<<"v1_resource.execute.put.phone_numbers">>, Payload) of
         [_, #cb_context{resp_status=success} | _] ->

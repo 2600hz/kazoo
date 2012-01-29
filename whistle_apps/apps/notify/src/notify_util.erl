@@ -186,21 +186,32 @@ get_rep_email(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     case wh_json:get_value(<<"pvt_tree">>, JObj, []) of
         [] -> undefined;
-        Tree ->
-            Parent = lists:last(Tree),
-            ParentDb = wh_util:format_account_id(Parent, encoded),
-            ViewOptions = [{<<"include_docs">>, true}
-                           ,{<<"key">>, AccountId}
-                          ],
-            ?LOG("attempting to find sub account rep for ~s in parent account ~s", [AccountId, Parent]),
-            case couch_mgr:get_results(ParentDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
-                {ok, [Result|_]} ->
-                    wh_json:get_value([<<"doc">>, <<"email">>], Result);
-                _E -> 
-                    ?LOG("failed to find rep for sub account, attempting parent account admin"),
-                    wh_json:get_value(<<"email">>, find_admin(ParentDb))
-            end
+        Tree -> get_rep_email(lists:reverse(Tree), AccountId)
     end.
+
+get_rep_email([], _) ->
+    undefined;
+get_rep_email([Parent|Parents], AccountId) ->
+    ParentDb = wh_util:format_account_id(Parent, encoded),
+    ViewOptions = [{<<"include_docs">>, true}
+                   ,{<<"key">>, AccountId}
+                  ],
+    ?LOG("attempting to find sub account rep for ~s in parent account ~s", [AccountId, Parent]),
+    case couch_mgr:get_results(ParentDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
+        {ok, [Result|_]} ->
+            case wh_json:get_value([<<"doc">>, <<"email">>], Result) of
+                undefined ->
+                    ?LOG("found rep but they have no email, attempting to get email of admin"),
+                    wh_json:get_value(<<"email">>, find_admin(ParentDb));
+                Else ->
+                    ?LOG("found rep but email: ~s", [Else]), 
+                    Else
+            end;
+        _E -> 
+            ?LOG("failed to find rep for sub account, attempting next parent"),
+            get_rep_email(Parents, Parents)
+    end.
+    
 
 %%--------------------------------------------------------------------
 %% @public

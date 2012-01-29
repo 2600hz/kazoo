@@ -25,7 +25,7 @@ refresh() ->
     ?LOG_SYS("ensuring database ~s exists", [?RESOURCES_DB]),
     couch_mgr:db_create(?RESOURCES_DB),
     Views = whapps_util:get_views_json(stepswitch, "views"),
-    whapps_util:update_views(?RESOURCES_DB, Views),
+    whapps_util:update_views(?RESOURCES_DB, Views, true),
     case couch_mgr:all_docs(?RESOURCES_DB, [{<<"include_docs">>, true}]) of
         {ok, JObjs} ->
             [couch_mgr:del_doc(?RESOURCES_DB, wh_json:get_value(<<"doc">>, JObj)) 

@@ -1,5 +1,5 @@
 {
-    "_id":"trunkstore",
+    "_id":"connectivity",
     "id":"http://json-schema.org/draft-03/schema#",
     "description":"Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
     "properties":{

@@ -107,17 +107,22 @@ handle_info({binding_fired, Pid, <<"v1_resource.billing">>
      {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.billing">>
-                 ,{RD, #cb_context{req_nouns=[{<<"ts_accounts">>, Params}]}=Context}}, State) ->
+                 ,{RD, #cb_context{req_nouns=Nouns}=Context}=Payload}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = try
-                                 case authorize_trunkstore(Params, Context) of
-                                     #cb_context{resp_status=success}=C ->
-                                         ?LOG("billing is satisfied, allowing request"),
-                                         C;
-                                     Else ->
-                                         Else
+                                 case props:get_value(<<"connectivity">>, Nouns) of
+                                     undefined ->
+                                         Pid ! {binding_result, false, Payload};
+                                     Params -> 
+                                         case authorize_trunkstore(Params, Context) of
+                                             #cb_context{resp_status=success}=C ->
+                                                 ?LOG("billing is satisfied, allowing request"),
+                                                 C;
+                                             Else ->
+                                                 Else
+                                         end
                                  end
                              catch
                                  _:_ ->
