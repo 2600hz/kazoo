@@ -33,6 +33,10 @@
 
 -include("wh_couch.hrl").
 
+%% Throttle how many docs we bulk insert to BigCouch
+-define(MAX_BULK_INSERT, 2000).
+-define(RETRY_504(F), retry504s(fun() -> F end)).
+
 -type db_create_options() :: [{q,integer()} | {n,integer()},...] | [].
 -export_type([db_create_options/0]).
 
@@ -265,13 +269,25 @@ do_fetch_rev(#db{}=Db, DocId) ->
 do_fetch_doc(#db{}=Db, DocId, Options) ->
     retry504s(fun() -> couchbeam:open_doc(Db, DocId, Options) end).
 
--spec do_save_doc/3 :: (#db{}, wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec do_save_doc/3 :: (#db{}, wh_json:json_object() | wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+do_save_doc(#db{}=Db, Docs, Options) when is_list(Docs) ->
+    do_save_docs(Db, Docs, Options);
 do_save_doc(#db{}=Db, Doc, Options) ->
     retry504s(fun() -> couchbeam:save_doc(Db, Doc, Options) end).
 
 -spec do_save_docs/3 :: (#db{}, wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
 do_save_docs(#db{}=Db, Docs, Options) ->
-    retry504s(fun() -> couchbeam:save_docs(Db, Docs, Options) end).
+    do_save_docs(Db, Docs, Options, []).
+
+do_save_docs(#db{}=Db, Docs, Options, Acc) ->
+    case catch(lists:split(?MAX_BULK_INSERT, Docs)) of
+        {'EXIT', _} ->
+            {ok, Res} = ?RETRY_504(couchbeam:save_docs(Db, Docs, Options)),
+            {ok, Res++Acc};
+        {Save, Cont} ->
+            {ok, Res} = ?RETRY_504(couchbeam:save_docs(Db, Save, Options)),
+            do_save_docs(Db, Cont, Options, Res++Acc)
+    end.
 
 %% Attachment-related functions ------------------------------------------------
 -spec fetch_attachment/4 :: (#server{}, ne_binary(), ne_binary(), ne_binary()) -> {'ok', binary()} | {'error', atom()}.
@@ -361,11 +377,8 @@ get_view(#db{}=Db, DesignDoc, ViewOptions) ->
                          binary() | [binary(),...] | boolean()} |
                         {'error', 'timeout' | atom()}.
 
--spec retry504s/1 :: (Fun) -> retry504_ret() when
-      Fun :: fun(() -> retry504_ret()).
--spec retry504s/2 :: (Fun, Cnt) -> retry504_ret() when
-      Fun :: fun(() -> retry504_ret()),
-      Cnt :: 0..3.
+-spec retry504s/1 :: (fun(() -> retry504_ret())) -> retry504_ret().
+-spec retry504s/2 :: (fun(() -> retry504_ret()), 0..3) -> retry504_ret().
 retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
 retry504s(_Fun, 3) ->

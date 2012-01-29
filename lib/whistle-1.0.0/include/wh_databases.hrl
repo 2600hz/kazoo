@@ -5,6 +5,7 @@
 -define(WH_MEDIA_DB, <<"system_media">>).
 -define(WH_SIP_DB, <<"sip_auth">>).
 -define(WH_ACCOUNTS_DB, <<"accounts">>).
+-define(WH_RATES_DB, <<"ratedeck">>).
 
 -define(WHISTLE_DBS_INCLUDED, true).
 -endif.

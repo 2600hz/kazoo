@@ -1,0 +1,41 @@
+#! /usr/bin/env escript
+%%! -pa ./ebin/ -pa ./deps/ejson/ebin
+
+main(Args) ->
+    case Args of
+        [File] -> process_it(File);
+        _ -> io:format("Wrong usage: file~n")
+    end.
+
+get_timestamp() ->
+    {Megasecs, Secs, Microsecs} = erlang:now(),
+    (Megasecs * 1000000) + Secs + (Microsecs / 1000000).
+
+label_if_1k(N) ->
+    Modulo = N rem 1000,
+    case Modulo of
+        0 ->
+            io:format("--> ~p parsed rows~n", [N]);
+        _ ->
+             ok
+    end.
+
+process_it(File) ->
+    {ok, IoDevice} = file:open(File, [read, compressed]),
+
+    DisplayRow = fun(_NewLine, Counter) ->
+        label_if_1k(Counter),
+        Counter + 1
+    end,
+
+    Begin = get_timestamp(),
+    {ok, ProcessedRows} = ecsv:process_csv_file_with(IoDevice, DisplayRow, 0),
+    End = get_timestamp(),
+
+    Duration = End - Begin,
+    Rate = ProcessedRows / Duration,
+
+    io:format("# processed rows ~p in ~p s~n", [ProcessedRows, Duration]),
+    io:format("Rate: ~p item/s~n", [Rate]),
+
+    ok.

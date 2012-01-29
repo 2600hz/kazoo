@@ -42,18 +42,19 @@ maybe_migrate(AcctJObj) ->
     end.
 
 move_doc(AcctDB, AcctID, TSJObj) ->
-    case has_ts_doc(AcctDB, wh_json:get_value(<<"_id">>, TSJObj)) of
+    case has_ts_doc(AcctDB) of
         true -> ?LOG("looks like trunkstore account has been moved already");
         false ->
-            {ok, _} = create_ts_doc(AcctDB, AcctID, TSJObj),
-            {ok, _} = create_limit_doc(AcctDB, AcctID, TSJObj),
-            {ok, _} = create_credit_doc(AcctDB, AcctID, TSJObj),
+            {ok, AcctTSJObj} = create_ts_doc(AcctDB, AcctID, TSJObj),
+            {ok, _} = create_limit_doc(AcctDB, AcctID, AcctTSJObj),
+            {ok, _} = create_credit_doc(AcctDB, AcctID, AcctTSJObj),
             _ = whapps_maintenance:refresh(AcctID),
             ok
     end.
 
-has_ts_doc(AcctDB, ID) ->
-    case couch_mgr:open_doc(AcctDB, ID) of
+has_ts_doc(AcctDB) ->
+    case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, []) of
+        {ok, []} -> false;
         {ok, _} -> true;
         _ -> false
     end.
@@ -63,8 +64,8 @@ create_ts_doc(AcctDB, AcctID, TSJObj) ->
     JObj = wh_json:set_values([{<<"pvt_type">>, <<"sys_info">>}
                                ,{<<"pvt_account_db">>, AcctDB}
                                ,{<<"pvt_account_id">>, AcctID}
-                              ], wh_json:delete_key(<<"_rev">>, TSJObj)),
-    ?LOG("saving ts doc ~s into ~s", [wh_json:get_value(<<"_id">>, JObj), AcctDB]),
+                              ], wh_json:delete_key(<<"_id">>, wh_json:delete_key(<<"_rev">>, TSJObj))),
+    ?LOG("saving ts doc ~s into ~s", [wh_json:get_value(<<"_id">>, TSJObj), AcctDB]),
     {ok, _} = couch_mgr:save_doc(AcctDB, JObj).
 
 create_limit_doc(AcctDB, AcctID, TSJObj) ->
@@ -118,6 +119,9 @@ create_account(Realm) ->
 
 create_account_doc(Realm, AcctID, AcctDB) ->
     ?LOG("creating the account doc in ~s and ~s", [AcctDB, ?WH_ACCOUNTS_DB]),
+
+    Default = whapps_config:get(<<"crossbar.accounts">>, <<"default_parent">>, <<>>),
+
     Doc = wh_json:from_list([{<<"realm">>, Realm}
                              ,{<<"name">>, Realm}
                              ,{<<"pvt_account_id">>, AcctID}
@@ -125,7 +129,7 @@ create_account_doc(Realm, AcctID, AcctDB) ->
                              ,{<<"pvt_type">>, <<"account">>}
                              ,{<<"pvt_account_from">>, <<"trunkstore">>}
                              ,{<<"pvt_enabled">>, <<"true">>}
-                             ,{<<"pvt_tree">>, [AcctID]}
+                             ,{<<"pvt_tree">>, [Default]}
                              ,{<<"_id">>, AcctID}
                             ]),
     case couch_mgr:save_doc(AcctDB, Doc) of

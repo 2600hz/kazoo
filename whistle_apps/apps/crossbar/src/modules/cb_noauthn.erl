@@ -18,7 +18,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -99,7 +99,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
                  ,{RD, #cb_context{req_id=ReqId}=Context}}, State) ->
-    ?LOG(ReqId, "authenticating request", []),
+    ?LOG(ReqId, "noauthn authenticating request", []),
     Pid ! {binding_result, true, {RD, Context}},
     {noreply, State};
 

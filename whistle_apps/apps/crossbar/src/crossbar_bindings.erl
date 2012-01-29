@@ -21,8 +21,6 @@
 
 -behaviour(gen_server).
 
--compile(export_all).
-
 %% API
 -export([start_link/0, bind/1, map/2, fold/2, flush/0, flush/1, stop/0]).
 

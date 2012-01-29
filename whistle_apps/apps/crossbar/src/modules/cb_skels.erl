@@ -23,6 +23,7 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
+-define(PVT_TYPE, <<"skel">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"skels/crossbar_listing">>).
 
@@ -56,7 +57,8 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init(_) ->
-    {ok, ok, 0}.
+    bind_to_crossbar(),
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -149,11 +151,12 @@ handle_info({binding_fired, Pid, _, Payload}, State) ->
     Pid ! {binding_result, false, Payload},
     {noreply, State};
 
-handle_info(timeout, State) ->
-    bind_to_crossbar(),
+handle_info({binding_flushed, B}, State) ->
+    ?LOG("binding ~s flushed", [B]),
     {noreply, State};
 
 handle_info(_Info, State) ->
+    ?LOG("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -207,7 +210,7 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: ([ne_binary(),...] | []) -> {boolean(), http_methods()}.
+-spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
@@ -223,7 +226,7 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: ([ne_binary(),...] | []) -> {boolean(), []}.
+-spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
@@ -240,7 +243,7 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: ([ne_binary(),...] | [], #cb_context{}) -> #cb_context{}.
+-spec validate/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
 validate([], #cb_context{req_verb = <<"put">>}=Context) ->
@@ -331,4 +334,4 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
 add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, <<"skel">>, JObj).
+    wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).

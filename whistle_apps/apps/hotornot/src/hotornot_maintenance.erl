@@ -8,57 +8,59 @@
 %%%-------------------------------------------------------------------
 -module(hotornot_maintenance).
 
--export([local_summary/0, rates_for_did/1, rates_between/2]).
+-export([local_summary/0
+         ,rates_for_did/1, rates_for_did/3
+         ,rates_between/2
+        ]).
 
 -include("hotornot.hrl").
 
--define(LOCAL_SUMMARY_ROW_FORMAT, " ~10.s | ~9.s | ~9.s | ~9.s | ~9.s | ~9.s |~n").
+-define(LOCAL_SUMMARY_ROW_FORMAT, " ~45.s | ~9.s | ~9.s | ~9.s | ~9.s | ~9.s |~n").
 -define(LOCAL_SUMMARY_HEADER, io:format(?LOCAL_SUMMARY_ROW_FORMAT, [<<"RATE NAME">>, <<"COST">>, <<"INCREMENT">>, <<"MINIMUM">>
-									,<<"SURCHARGE">>, <<"WEIGHT">>
-								   ])).
+                                                                        ,<<"SURCHARGE">>, <<"WEIGHT">>
+                                                                   ])).
 
+-spec local_summary/0 :: () -> 'ok'.
 local_summary() ->
-    ok.
+    io:format("use rates_for_did/1 to see what rates would be used for a DID").
 
+-spec rates_for_did/1 :: (ne_binary()) -> no_return().
+-spec rates_for_did/3 :: (ne_binary(), 'undefined' | ne_binary(), trunking_options()) -> no_return().
 rates_for_did(DID) ->
-    E164 = wh_util:to_e164(DID),
-    <<"+", Start:1/binary, Rest/binary>> = E164,
-    End = <<Start/binary, Rest/binary>>,
-    case couch_mgr:get_results(?RATES_DB, <<"rating/lookup">>, [{<<"startkey">>, wh_util:to_integer(Start)}
-								,{<<"endkey">>, wh_util:to_integer(End)}]) of
-	{ok, []} -> io:format("rate lookup had no results~n");
-	{error, _E} -> io:format("rate lookup error: ~p~n", [_E]);
-	{ok, Rates} ->
-	    io:format("Candidates:~n", []),
-	    ?LOCAL_SUMMARY_HEADER,
-	    [ print_rate(wh_json:get_value(<<"value">>, R)) || R <- Rates],
+    rates_for_did(DID, undefined, []).
+rates_for_did(DID, Direction, RouteOptions) ->
+    case hon_util:candidate_rates(DID) of
+        {ok, []} -> io:format("rate lookup had no results~n");
+        {error, _E} -> io:format("rate lookup error: ~p~n", [_E]);
+        {ok, Rates} ->
+            io:format("Candidates:~n", []),
+            ?LOCAL_SUMMARY_HEADER,
+            _ = [ print_rate(R) || R <- Rates],
 
-	    Matching = [Rate
-			|| Rate <- Rates,
-			   lists:any(fun(Regex) -> re:run(E164, Regex) =/= nomatch end, wh_json:get_value([<<"value">>, <<"routes">>], Rate))
-		       ],
+            Matching = hon_util:matching_rates(Rates, DID, Direction, RouteOptions),
 
-	    io:format("Matching:~n", []),
-	    [ print_rate(wh_json:get_value(<<"value">>, R)) || R <- Matching]
+            io:format("Matching:~n", []),
+            ?LOCAL_SUMMARY_HEADER,
+            [ print_rate(R) || R <- Matching]
     end.
 
 rates_between(Pre, Post) ->
-    case couch_mgr:get_results(?RATES_DB, <<"rating/lookup">>, [{<<"startkey">>, wh_util:to_integer(Pre)}
-								,{<<"endkey">>, wh_util:to_integer(Post)}]) of
-	{ok, []} -> io:format("rate lookup had no results~n");
-	{error, _E} -> io:format("rate lookup error: ~p~n", [_E]);
-	{ok, Rates} ->
-	    io:format("Rates between:~n", []),
-	    ?LOCAL_SUMMARY_HEADER,
-	    [ print_rate(wh_json:get_value(<<"value">>, R)) || R <- Rates]
+    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{<<"startkey">>, wh_util:to_binary(Pre)}
+                                                                  ,{<<"endkey">>, wh_util:to_binary(Post)}]) of
+        {ok, []} -> io:format("rate lookup had no results~n");
+        {error, _E} -> io:format("rate lookup error: ~p~n", [_E]);
+        {ok, Rates} ->
+            io:format("Rates between:~n", []),
+            ?LOCAL_SUMMARY_HEADER,
+            [ print_rate(wh_json:get_value(<<"value">>, R)) || R <- Rates]
     end.
 
 print_rate(JObj) ->
     io:format(?LOCAL_SUMMARY_ROW_FORMAT, [
-					  wh_json:get_binary_value(<<"rate_name">>, JObj)
-					  ,wh_json:get_binary_value(<<"rate_cost">>, JObj)
-					  ,wh_json:get_binary_value(<<"rate_increment">>, JObj)
-					  ,wh_json:get_binary_value(<<"rate_minimum">>, JObj)
-					  ,wh_json:get_binary_value(<<"rate_surcharge">>, JObj)
-					  ,wh_json:get_binary_value(<<"weight">>, JObj)
-					  ]).
+                                          wh_json:get_binary_value(<<"rate_name">>, JObj)
+                                          ,wh_json:get_binary_value(<<"rate_cost">>, JObj)
+                                          ,wh_json:get_binary_value(<<"rate_increment">>, JObj)
+                                          ,wh_json:get_binary_value(<<"rate_minimum">>, JObj)
+                                          ,wh_json:get_binary_value(<<"rate_surcharge">>, JObj)
+                                          ,wh_json:get_binary_value(<<"weight">>, JObj)
+                                          ]).
