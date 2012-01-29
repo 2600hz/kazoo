@@ -25,6 +25,10 @@
 -define(SERVER, ?MODULE).
 
 -define(PORT_DOCS, <<"docs">>).
+-define(ACTIVATE, <<"activate">>).
+
+-define(WNM_NUMBER_STATUS, [<<"discovery">>, <<"available">>, <<"reserved">>, <<"released">>
+                                ,<<"in_service">>, <<"disconnected">>, <<"cancelled">>]).
 
 -define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 8}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
 
@@ -183,6 +187,17 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
+                  Result = wh_number_manager:reserve_number(Number, AccountId, JObj),
+                  Context1 = set_response(Result, Number, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+          end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
+                 ,[RD, #cb_context{account_id=AccountId, doc=JObj}=Context | [Number, ?ACTIVATE]=Params]}, State) ->
+    spawn(fun() ->
+                  _ = crossbar_util:put_reqid(Context),
+                  crossbar_util:binding_heartbeat(Pid),
                   Context1 = case wh_number_manager:assign_number_to_account(Number, AccountId, JObj) of
                                  {ok, _}=Result ->
                                      case set_response(Result, Number, Context) of
@@ -237,7 +252,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.phone_numbers">>
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Result = wh_number_manager:delete_attachment(Number, AccountId, Name),
-                  io:format("~p~n", [Result]),
                   Pid ! {binding_result, true, [RD, set_response(Result, Number, Context), Params]}
           end),
     {noreply, State};
@@ -330,6 +344,8 @@ allowed_methods([]) ->
     {true, ['GET']};
 allowed_methods([_]) ->
     {true, ['GET', 'PUT', 'POST', 'DELETE']};
+allowed_methods([_, ?ACTIVATE]) ->
+    {true, ['PUT']};
 allowed_methods([_, ?PORT_DOCS]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_, ?PORT_DOCS, _]) ->
@@ -349,6 +365,8 @@ allowed_methods(_) ->
 resource_exists([]) ->
     {true, []};
 resource_exists([_]) ->
+    {true, []};
+resource_exists([_, ?ACTIVATE]) ->
     {true, []};
 resource_exists([_, ?PORT_DOCS]) ->
     {true, []};
@@ -379,6 +397,8 @@ validate([Number], #cb_context{req_verb = <<"post">>}=Context) ->
     update(Number, Context);
 validate([Number], #cb_context{req_verb = <<"delete">>}=Context) ->
     delete(Number, Context);
+validate([Number, ?ACTIVATE], #cb_context{req_verb = <<"put">>}=Context) ->
+    create(Number, Context);
 validate([Number, ?PORT_DOCS], #cb_context{req_verb = <<"get">>}=Context) ->
     list_attachments(Number, Context);
 validate([_, ?PORT_DOCS], #cb_context{req_verb = <<"put">>, req_files=[]}=Context) ->
@@ -432,8 +452,11 @@ find_numbers(#cb_context{query_json=Data}=Context) ->
 summary(#cb_context{account_id=AccountId}=Context) ->
     case crossbar_doc:load(AccountId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
-            crossbar_util:response(wh_json:get_value(<<"pvt_wnm_numbers">>, JObj, [])
-                                   ,Context1);
+            Numbers = [{S, Num} 
+                       || S <- [<<"numbers">>|?WNM_NUMBER_STATUS]
+                              ,(Num = wh_json:get_value(<<"pvt_wnm_", S/binary>>, JObj, [])) =/= []
+                      ],
+            crossbar_util:response(wh_json:from_list(Numbers), Context1);
         Else ->
             Else
     end.
@@ -535,6 +558,8 @@ put_attachments(Number, AccountId, Context, [{Filename, FileObj}|Files]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set_response/3 :: ({ok, wh_json:json_object()} | {error, term()}, ne_binary(), #cb_context{}) -> #cb_context{}.
+set_response({error, conflict}, _, Context) ->
+    crossbar_util:response_conflicting_docs(Context);
 set_response({error, reserved}, _, Context) ->
     crossbar_util:response_conflicting_docs(Context);
 set_response({error, unavailable}, _, Context) ->

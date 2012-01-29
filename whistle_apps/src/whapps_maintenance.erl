@@ -26,13 +26,14 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec migrate/0 :: () -> ok.
 migrate() ->
     couch_mgr:db_delete(<<"crossbar_schemas">>),
     couch_mgr:db_delete(<<"registrations">>),
+    couch_mgr:db_delete(<<"crossbar%2Fsessions">>),
     trunkstore_maintenance:migrate(),
     stepswitch_maintenance:refresh(),
     blocking_refresh(),
@@ -44,18 +45,19 @@ migrate() ->
                    ,fun(L) -> [<<"cb_phone_numbers">> | lists:delete(<<"cb_phone_numbers">>, L)] end
                    ,fun(L) -> [<<"cb_templates">> | lists:delete(<<"cb_templates">>, L)] end
                    ,fun(L) -> [<<"cb_onboard">> | lists:delete(<<"cb_onboard">>, L)] end
+                   ,fun(L) -> [<<"cb_connectivity">> | lists:delete(<<"cb_ts_accounts">>, L)] end
                   ],
     StartModules = whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, []),
     whapps_config:set_default(<<"crossbar">>
-                          ,<<"autoload_modules">>
-                          ,lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
+                                  ,<<"autoload_modules">>
+                                  ,lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
     whapps_controller:restart_app(crossbar),
     ok.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_invalid_acccount_dbs/0 :: () -> [] | [ne_binary(),...].
@@ -73,7 +75,7 @@ find_invalid_acccount_dbs() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec blocking_refresh/0 :: () -> 'ok'.
@@ -83,7 +85,7 @@ blocking_refresh() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh/0 :: () -> 'started'.
@@ -100,7 +102,7 @@ do_refresh() ->
     refresh(?WH_ACCOUNTS_DB),
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
-             |whapps_util:get_views_json(crossbar, "account") 
+             |whapps_util:get_views_json(crossbar, "account")
              ++ whapps_util:get_views_json(callflow, "views")
             ],
     Accounts = whapps_util:get_all_accounts(),
@@ -145,7 +147,7 @@ refresh(?WH_ACCOUNTS_DB) ->
 refresh(<<Account/binary>>) ->
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
-             |whapps_util:get_views_json(crossbar, "account") 
+             |whapps_util:get_views_json(crossbar, "account")
              ++ whapps_util:get_views_json(callflow, "views")
             ],
     refresh(Account, Views);
@@ -162,8 +164,8 @@ refresh(Account, Views) ->
                     ?LOG("account ~s is missing its local account definition, but it was recovered from the accounts db", [AccountId]),
                     couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, Def));
                 {error, not_found} ->
-                    ?LOG("account ~s is missing its local account definition, and not in the accounts db. REMOVING!", [AccountId]),
-                    couch_mgr:db_delete(AccountDb)
+                    ?LOG("account ~s is missing its local account definition, and not in the accounts db. REMOVING!", [AccountId])
+                    %%                    couch_mgr:db_delete(AccountDb)
             end,
             remove;
         {ok, JObj} ->
@@ -175,7 +177,7 @@ refresh(Account, Views) ->
                          || Device <- Devices
                                 ,wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =/= AccountRealm
                         ],
-                    _ = [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device)) 
+                    _ = [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
                          || Device <- Devices
                                 ,wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =:= AccountRealm
                         ];
@@ -188,7 +190,7 @@ refresh(Account, Views) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec cleanup_aggregated_account/1 :: (wh_json:json_object()) -> ok.
@@ -198,7 +200,7 @@ cleanup_aggregated_account(Account) ->
         true ->
             ?LOG("removing aggregated account for missing db ~s", [AccountDb]),
             couch_mgr:del_doc(?WH_ACCOUNTS_DB, Account);
-         false ->
+        false ->
             ok
     end,
     ok.
@@ -206,7 +208,7 @@ cleanup_aggregated_account(Account) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec cleanup_aggregated_device/1 :: (wh_json:json_object()) -> ok.
@@ -216,7 +218,7 @@ cleanup_aggregated_device(Device) ->
         true ->
             ?LOG("removing aggregated device for missing db ~s", [AccountDb]),
             couch_mgr:del_doc(?WH_SIP_DB, Device);
-         false ->
+        false ->
             ok
     end,
     ok.
@@ -224,7 +226,7 @@ cleanup_aggregated_device(Device) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec purge_doc_type/2 :: (ne_binary(), ne_binary()) -> ok | {error, term()}.

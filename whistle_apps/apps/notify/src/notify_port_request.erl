@@ -79,15 +79,13 @@ handle_req(JObj, _Props) ->
                           get_attachments(wh_json:to_proplist(DocAttach), Number, NumberDb, []);
                       _ -> []
                   end,
-    
-    RepEmail = notify_util:get_rep_email(Account),
-    case wh_json:is_true(<<"Local-Number">>, JObj) of
-        true ->
-            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props, Attachments);
-        false ->
+
+    case notify_util:get_rep_email(Account) of
+        undefined ->
             SysAdminEmail = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>),
-            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props, Attachments),
-            build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props, Attachments)
+            build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props, Attachments);
+        RepEmail ->
+            build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props, Attachments)
     end.
 
 %%--------------------------------------------------------------------

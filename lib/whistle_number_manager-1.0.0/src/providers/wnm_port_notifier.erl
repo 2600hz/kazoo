@@ -25,25 +25,48 @@
 %%--------------------------------------------------------------------
 -spec save/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) 
                 -> {ok, wh_json:json_object()}.
-save(JObj, PriorJObj, Number, <<"in_service">>) ->
+save(JObj, PriorJObj, Number, <<"reserved">>) ->
     EmptyJObj = wh_json:new(),
-    Porting = wh_json:get_value(<<"porting">>, JObj, EmptyJObj),
-    case Porting =/= EmptyJObj andalso Porting =/= wh_json:get_value(<<"porting">>, PriorJObj) of
-        false -> {ok, JObj};
+    Port = wh_json:get_value(<<"port">>, JObj, EmptyJObj),
+    case Port =/= EmptyJObj andalso Port =/= wh_json:get_value(<<"port">>, PriorJObj) of
+        false ->
+            ?LOG("port is unchanged or empty on a reserved number"), 
+            {ok, JObj};
         true ->
-            ?LOG("porting information has been updated"),
-            Notify = [{<<"Account-ID">>, wh_json:get_value(<<"pvt_assigned_to">>, JObj)}
+            ?LOG("port information has been updated"),
+            Notify = [{<<"Account-ID">>, wh_json:get_value(<<"pvt_reserved_for">>, JObj)}
                       ,{<<"Number-State">>, wh_json:get_value(<<"pvt_number_state">>, JObj)}
                       ,{<<"Local-Number">>, wh_json:get_value(<<"pvt_module_name">>, JObj) =:= <<"wnm_local">>}
                       ,{<<"Number">>, Number}
                       ,{<<"Acquired-For">>, wh_json:get_value([<<"pvt_module_data">>, <<"acquire_for">>], JObj)}
-                      ,{<<"Port">>, Porting}
+                      ,{<<"Port">>, Port}
                       | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                      ],
             wapi_notifications:publish_port_request(Notify),
             {ok, JObj}
     end;
-save(JObj, _, _, _) ->
+save(JObj, PriorJObj, Number, <<"in_service">>) ->
+    EmptyJObj = wh_json:new(),
+    Port = wh_json:get_value(<<"port">>, JObj, EmptyJObj),
+    case Port =/= EmptyJObj andalso Port =/= wh_json:get_value(<<"port">>, PriorJObj) of
+        false ->
+            ?LOG("port is unchanged or empty on a number in service"),  
+            {ok, JObj};
+        true ->
+            ?LOG("port information has been updated"),
+            Notify = [{<<"Account-ID">>, wh_json:get_value(<<"pvt_assigned_to">>, JObj)}
+                      ,{<<"Number-State">>, wh_json:get_value(<<"pvt_number_state">>, JObj)}
+                      ,{<<"Local-Number">>, wh_json:get_value(<<"pvt_module_name">>, JObj) =:= <<"wnm_local">>}
+                      ,{<<"Number">>, Number}
+                      ,{<<"Acquired-For">>, wh_json:get_value([<<"pvt_module_data">>, <<"acquire_for">>], JObj)}
+                      ,{<<"Port">>, Port}
+                      | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+                     ],
+            wapi_notifications:publish_port_request(Notify),
+            {ok, JObj}
+    end;
+save(JObj, _, _, State) ->
+    ?LOG("ignoring port in number with state ~s", [State]),
     {ok, JObj}.
 
 %%--------------------------------------------------------------------
