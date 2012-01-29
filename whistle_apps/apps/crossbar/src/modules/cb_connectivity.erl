@@ -310,7 +310,7 @@ update(Id, #cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec summary/1 :: (#cb_context{}) -> #cb_context{}.
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [{<<"reduce">>, false}], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -320,7 +320,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [wh_json:get_value(<<"id">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
