@@ -36,7 +36,7 @@
 
 %% answer to a read request
 -define(SYSCONF_GET_RESP_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>]).
--define(OPTIONAL_SYSCONF_GET_RESP_HEADERS, []).
+-define(OPTIONAL_SYSCONF_GET_RESP_HEADERS, [<<"Node">>]).
 -define(SYSCONF_GET_RESP_VALUES, [{<<"Event-Name">>, <<"get_resp">>} | ?SYSCONF_VALUES]).
 
 %% request a write
@@ -45,8 +45,8 @@
 -define(SYSCONF_SET_REQ_VALUES, [{<<"Event-Name">>, <<"set_req">>} | ?SYSCONF_VALUES]).
 
 %% answer to a write request
--define(SYSCONF_SET_RESP_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>, <<"Status">>]).
--define(OPTIONAL_SYSCONF_SET_RESP_HEADERS, [<<"Node">>]).
+-define(SYSCONF_SET_RESP_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>]).
+-define(OPTIONAL_SYSCONF_SET_RESP_HEADERS, [<<"Node">>, <<"Status">>]).
 -define(SYSCONF_SET_RESP_VALUES, [{<<"Event-Name">>, <<"set_resp">>} | ?SYSCONF_VALUES]).
 
 -define(SYSCONF_TYPES, [{<<"Category">>, fun is_binary/1}
@@ -126,14 +126,42 @@ set_resp_v(JObj) ->
 
 
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
-bind_q(Q, _Prop) -> 
+bind_q(Q, Prop) ->
     amqp_util:sysconf_exchange(),
-    amqp_util:bind_q_to_sysconf(Q, <<>>),
+
+    add_bindings(Q, props:get_value(restrict_to, Prop)).
+
+add_bindings(Q, undefined) ->
+    amqp_util:bind_q_to_sysconf(Q, routing_key_get()),
+    amqp_util:bind_q_to_sysconf(Q, routing_key_set());
+add_bindings(Q, [get|T]) ->
+    amqp_util:bind_q_to_sysconf(Q, routing_key_get()),
+    add_bindings(Q, T);
+add_bindings(Q, [set|T]) ->
+    amqp_util:bind_q_to_sysconf(Q, routing_key_set()),
+    add_bindings(Q, T);
+add_bindings(Q, [_|T]) ->
+    add_bindings(Q, T);
+add_bindings(_, []) ->
     ok.
 
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
-unbind_q(Q, _Prop) ->
-    amqp_util:unbind_q_from_sysconf(Q).
+unbind_q(Q, Prop) ->
+    rm_bindings(Q, props:get_value(restrict_to, Prop)).
+
+rm_bindings(Q, undefined) ->
+    amqp_util:unbind_q_from_sysconf(Q, routing_key_get()),
+    amqp_util:unbind_q_from_sysconf(Q, routing_key_set());
+rm_bindings(Q, [get|T]) ->
+    amqp_util:unbind_q_from_sysconf(Q, routing_key_get()),
+    rm_bindings(Q, T);
+rm_bindings(Q, [set|T]) ->
+    amqp_util:unbind_q_from_sysconf(Q, routing_key_set()),
+    rm_bindings(Q, T);
+rm_bindings(Q, [_|T]) ->
+    rm_bindings(Q, T);
+rm_bindings(_, []) ->
+    ok.
 
 -spec publish_get_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_get_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
@@ -141,7 +169,7 @@ publish_get_req(JObj) ->
     publish_get_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_req(Api, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Api, ?SYSCONF_GET_REQ_VALUES, fun ?MODULE:get_req/1),
-    amqp_util:sysconf_publish(?KEY_SYSCONF_GET_REQ, Payload, ContentType).
+    amqp_util:sysconf_publish(routing_key_get(), Payload, ContentType).
 
 -spec publish_get_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_get_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -149,7 +177,7 @@ publish_get_resp(RespQ, JObj) ->
     publish_get_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_get_resp(RespQ, Api, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Api, ?SYSCONF_GET_RESP_VALUES, fun ?MODULE:get_resp/1),
-    amqp_util:sysconf_publish(RespQ, Payload, ContentType).
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec publish_set_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_set_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
@@ -157,7 +185,7 @@ publish_set_req(JObj) ->
     publish_set_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_set_req(Api, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Api, ?SYSCONF_SET_REQ_VALUES, fun ?MODULE:set_req/1),
-    amqp_util:sysconf_publish(?KEY_SYSCONF_SET_REQ, Payload, ContentType).
+    amqp_util:sysconf_publish(routing_key_set(), Payload, ContentType).
 
 -spec publish_set_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_set_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -165,4 +193,10 @@ publish_set_resp(RespQ, JObj) ->
     publish_set_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_set_resp(RespQ, Api, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Api, ?SYSCONF_SET_RESP_VALUES, fun ?MODULE:set_resp/1),
-    amqp_util:sysconf_publish(RespQ, Payload, ContentType).
+    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+routing_key_get() ->
+    ?KEY_SYSCONF_GET_REQ.
+
+routing_key_set() ->
+    ?KEY_SYSCONF_SET_REQ.
