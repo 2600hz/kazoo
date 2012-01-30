@@ -363,10 +363,18 @@ to_atom(X) when is_list(X) -> list_to_existing_atom(X);
 to_atom(X) -> to_atom(to_list(X)).
 
 %% only if you're really sure you want this
--spec to_atom/2 :: (atom() | list() | binary() | integer() | float(), 'true') -> atom().
+%% to protect yourself a bit from overrunning the atom table,
+%% pass a list of safe values for X
+%% so if X is a binary, the SafeList would be [ne_binary(),...]
+%% if X is a list, the SafeList would be [nonempty_string(),...]
+%% etc. So to_atom will not coerce the type of X to match the types in SafeList
+%% when doing the lists:member/2
+-spec to_atom/2 :: (atom() | list() | binary() | integer() | float(), 'true' | list()) -> atom().
 to_atom(X, _) when is_atom(X) -> X;
 to_atom(X, true) when is_list(X) -> list_to_atom(X);
-to_atom(X, true) -> to_atom(to_list(X), true).
+to_atom(X, true) -> to_atom(to_list(X), true);
+to_atom(X, SafeList) ->
+    to_atom(to_list(X), lists:member(X, SafeList)).
 
 -spec to_boolean/1 :: (binary() | string() | atom()) -> boolean().
 to_boolean(<<"true">>) -> true;
