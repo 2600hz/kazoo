@@ -11,14 +11,21 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, start_link/1, route_req/1, route_req/2, reg_query/1, reg_query/2, media_req/1, media_req/2]).
--export([authn_req/1, authn_req/2, authz_req/1, authz_req/2]).
+-export([start_link/0, start_link/1
+         ,route_req/1, route_req/2
+         ,reg_query/1, reg_query/2
+         ,media_req/1, media_req/2
+         ,authn_req/1, authn_req/2
+         ,authz_req/1, authz_req/2
+         ,get_req/1, get_req/2
+         ,set_req/1, set_req/2
+        ]).
 
 -export([worker_free/3, worker_count/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("ecallmgr.hrl").
 
@@ -31,12 +38,12 @@
 -define(BACKOFF_PERIOD, 1000). % arbitrary at this point
 
 -record(state, {
-	  worker_count = ?WORKER_COUNT :: integer()
+          worker_count = ?WORKER_COUNT :: integer()
           ,orig_worker_count = ?WORKER_COUNT :: integer() % scale back workers after a period of time
           ,workers = queue:new() :: queue()
           ,requests_per = 0 :: non_neg_integer()
-	  ,elapsed_micro_per = 0 :: non_neg_integer()
-	 }).
+          ,elapsed_micro_per = 0 :: non_neg_integer()
+         }).
 
 %%%===================================================================
 %%% API
@@ -59,21 +66,21 @@ authn_req(Prop) ->
     authn_req(Prop, ?DEFAULT_TIMEOUT).
 authn_req(Prop, Timeout) ->
     gen_server:call(?SERVER
-                    ,{request, Prop, fun wapi_authn:publish_req/1, get(callid)}
+                    ,{request, Prop, fun wapi_authn:publish_req/1, get(callid), Timeout}
                     ,Timeout).
 
 authz_req(Prop) ->
     authz_req(Prop, ?DEFAULT_TIMEOUT).
 authz_req(Prop, Timeout) ->
     gen_server:call(?SERVER
-                    ,{request, Prop, fun wapi_authz:publish_req/1, get(callid)}
+                    ,{request, Prop, fun wapi_authz:publish_req/1, get(callid), Timeout}
                     ,Timeout).
 
 route_req(Prop) ->
     route_req(Prop, ?DEFAULT_TIMEOUT).
 route_req(Prop, Timeout) ->
     gen_server:call(?SERVER
-                    ,{request, Prop, fun wapi_route:publish_req/1, get(callid)}
+                    ,{request, Prop, fun wapi_route:publish_req/1, get(callid), Timeout}
                     ,Timeout).
 
 reg_query(Prop) ->
@@ -81,7 +88,7 @@ reg_query(Prop) ->
 
 reg_query(Prop, Timeout) ->
     gen_server:call(?SERVER
-                    ,{request, Prop, fun wapi_registration:publish_query_req/1, get(callid)}
+                    ,{request, Prop, fun wapi_registration:publish_query_req/1, get(callid), Timeout}
                     ,Timeout).
 
 media_req(Prop) ->
@@ -89,7 +96,19 @@ media_req(Prop) ->
 
 media_req(Prop, Timeout) ->
     gen_server:call(?SERVER
-                    ,{request, Prop, fun wapi_media:publish_req/1, get(callid)}
+                    ,{request, Prop, fun wapi_media:publish_req/1, get(callid), Timeout}
+                    ,Timeout).
+
+get_req(Api) ->
+    get_req(Api, ?DEFAULT_TIMEOUT).
+get_req(Api, Timeout) ->
+    gen_server:call(?SERVER, {request, Api, fun wapi_sysconf:publish_get_req/1, get(callid), Timeout}
+                    ,Timeout).
+
+set_req(Api) ->
+    set_req(Api, ?DEFAULT_TIMEOUT).
+set_req(Api, Timeout) ->
+    gen_server:call(?SERVER, {request, Api, fun wapi_sysconf:publish_set_req/1, get(callid), Timeout}
                     ,Timeout).
 
 worker_free(Srv, Worker, Elapsed) ->
@@ -138,17 +157,17 @@ init([Count]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({request, Prop, ApiFun, CallId}, From, #state{workers=W, worker_count=WC
-                                                          ,requests_per=RP}=State) ->
+handle_call({request, Prop, ApiFun, CallId, Timeout}, From, #state{workers=W, worker_count=WC
+                                                                   ,requests_per=RP}=State) ->
     case queue:out(W) of
-	{{value, Worker}, W1} ->
-	    ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, CallId, From, self()),
-	    {noreply, State#state{workers=W1, requests_per=RP+1}, hibernate};
-	{empty, _} ->
-	    Worker = start_worker(),
-	    ?LOG("starting additional worker ~p", [Worker]),
-	    ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, CallId, From, self()),
-	    {noreply, State#state{worker_count=WC+1, requests_per=RP+1}, hibernate}
+        {{value, Worker}, W1} ->
+            ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, CallId, From, self(), Timeout),
+            {noreply, State#state{workers=W1, requests_per=RP+1}, hibernate};
+        {empty, _} ->
+            Worker = start_worker(),
+            ?LOG("starting additional worker ~p", [Worker]),
+            ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, CallId, From, self(), Timeout),
+            {noreply, State#state{worker_count=WC+1, requests_per=RP+1}, hibernate}
     end.
 
 %%--------------------------------------------------------------------
@@ -189,7 +208,7 @@ handle_info({'EXIT', W, _Reason}, #state{workers=Ws}=State) ->
     {noreply, State#state{workers=Ws1, worker_count=worker_count()}, hibernate};
 
 handle_info(reduce_labor_force
-	    ,#state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC, elapsed_micro_per=EMP}=State)
+            ,#state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC, elapsed_micro_per=EMP}=State)
   when RP > 0 andalso EMP > 0 andalso WC > OWC ->
     AvgMicro = EMP div RP, % average micro per request
     ?LOG("Req per ~b: ~b", [?BACKOFF_PERIOD, RP]),
@@ -200,26 +219,26 @@ handle_info(reduce_labor_force
     erlang:send_after(?BACKOFF_PERIOD, self(), reduce_labor_force),
 
     case round((WC - WsNeeded) * 0.1) of
-	Reduce when Reduce > 0 ->
-	    ?LOG_SYS("Reducing worker count from ~b by ~b", [WC, Reduce]),
-	    Ws1 = reduce_workers(Ws, Reduce, OWC),
-	    {noreply, State#state{workers=Ws1, worker_count=worker_count(), requests_per=0, elapsed_micro_per=0}, hibernate};
-	_Other ->
-	    ?LOG_SYS("Not reducing workers (~b suggested)", [_Other]),
-	    {noreply, State#state{requests_per=0, elapsed_micro_per=0}}
+        Reduce when Reduce > 0 ->
+            ?LOG_SYS("Reducing worker count from ~b by ~b", [WC, Reduce]),
+            Ws1 = reduce_workers(Ws, Reduce, OWC),
+            {noreply, State#state{workers=Ws1, worker_count=worker_count(), requests_per=0, elapsed_micro_per=0}, hibernate};
+        _Other ->
+            ?LOG_SYS("Not reducing workers (~b suggested)", [_Other]),
+            {noreply, State#state{requests_per=0, elapsed_micro_per=0}}
     end;
 
 handle_info(reduce_labor_force, #state{requests_per=RP, worker_count=WC, orig_worker_count=OWC, workers=Ws}=State) ->
     erlang:send_after(?BACKOFF_PERIOD, self(), reduce_labor_force),
 
     case round((WC - RP) * 0.1) of
-	Reduce when Reduce > 0 andalso WC > OWC ->
-	    ?LOG("Reducing worker count from ~b by ~b", [WC, Reduce]),
-	    Ws1 = reduce_workers(Ws, Reduce, OWC),
-	    ?LOG("Queue len before ~b and after ~b", [queue:len(Ws), queue:len(Ws1)]),
-	    {noreply, State#state{requests_per=0, elapsed_micro_per=0, workers=Ws1, worker_count=worker_count()}, hibernate};
-	_Else ->
-	    {noreply, State#state{requests_per=0, elapsed_micro_per=0}, hibernate}
+        Reduce when Reduce > 0 andalso WC > OWC ->
+            ?LOG("Reducing worker count from ~b by ~b", [WC, Reduce]),
+            Ws1 = reduce_workers(Ws, Reduce, OWC),
+            ?LOG("Queue len before ~b and after ~b", [queue:len(Ws), queue:len(Ws1)]),
+            {noreply, State#state{requests_per=0, elapsed_micro_per=0, workers=Ws1, worker_count=worker_count()}, hibernate};
+        _Else ->
+            {noreply, State#state{requests_per=0, elapsed_micro_per=0}, hibernate}
     end;
 
 handle_info(_Info, State) ->
@@ -228,14 +247,14 @@ handle_info(_Info, State) ->
 
 reduce_workers(Ws, Reduce, OWC) ->
     lists:foldl(fun(_, Q0) ->
-			case queue:len(Q0) =< OWC of
-			    true -> Q0;
-			    false ->
-				{{value, W}, Q1} = queue:out(Q0),
-				ecallmgr_amqp_pool_worker:stop(W),
-				Q1
-			end
-		end, Ws, lists:seq(1,Reduce)).
+                        case queue:len(Q0) =< OWC of
+                            true -> Q0;
+                            false ->
+                                {{value, W}, Q1} = queue:out(Q0),
+                                ecallmgr_amqp_pool_worker:stop(W),
+                                Q1
+                        end
+                end, Ws, lists:seq(1,Reduce)).
 
 %%--------------------------------------------------------------------
 %% @private
