@@ -24,8 +24,6 @@
 -include_lib("braintree/include/braintree.hrl").
 
 -define(SERVER, ?MODULE).
--define(TS_DB, <<"ts">>).
--define(IS_TOLLFREE_RE, "^(\\+?1)?(8[1-4,9]\\d{8}|80[1-9]\\d{7}|85[1-4,6-9]\\d{7}|86[1-5,7-9]\\d{7}|87[1-6,8-9]\\d{7}|88[1-7,9]\\d{7}|([1-7,9]\\d{9}))$").
 
 %%%===================================================================
 %%% API
@@ -111,22 +109,18 @@ handle_info({binding_fired, Pid, <<"v1_resource.billing">>
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = try
-                                 case props:get_value(<<"connectivity">>, Nouns) of
-                                     undefined ->
-                                         Pid ! {binding_result, false, Payload};
-                                     Params -> 
+                  Context1 = case props:get_value(<<"connectivity">>, Nouns) of
+                                 undefined ->
+                                     Pid ! {binding_result, false, Payload};
+                                 Params -> 
                                          case authorize_trunkstore(Params, Context) of
                                              #cb_context{resp_status=success}=C ->
                                                  ?LOG("billing is satisfied, allowing request"),
                                                  C;
                                              Else ->
+                                                 io:format("~p~n", [Else]),
                                                  Else
                                          end
-                                 end
-                             catch
-                                 _:_ ->
-                                     crossbar_util:response(error, <<"error during billing validation">>, 500, Context)
                              end,
                   Pid ! {binding_result, true, {RD, Context1}}
           end),
@@ -179,28 +173,32 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.braintree">>
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.braintree">>
-                 ,[RD, #cb_context{account_id=AcctID, req_data=ReqData}=Context | [<<"credits">>]=Params]}, State) ->
+                 ,[RD, #cb_context{req_data=ReqData, resp_data=RespData}=Context | [<<"credits">>]=Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   _ = crossbar_util:binding_heartbeat(Pid),
 
                   Units = wapi_money:dollars_to_units(wh_json:get_float_value(<<"amount">>, ReqData)),
-                  ?LOG("Putting ~p units", [Units]),
+                  ?LOG("putting ~p units", [Units]),
 
-                  Transaction = wh_json:from_list([{<<"amount">>, Units}
-                                                   ,{<<"pvt_type">>, <<"credit">>}
-                                                   ]),
+                  BTCleanup = [fun(J) -> wh_json:delete_key([<<"card">>, <<"billing_address">>], J) end
+                               ,fun(J) -> wh_json:delete_key(<<"billing_address">>, J) end
+                               ,fun(J) -> wh_json:delete_key(<<"shipping_address">>, J) end
+                               ,fun(J) -> wh_json:delete_key([<<"customer">>, <<"credit_cards">>], J) end
+                               ,fun(J) -> wh_json:delete_key([<<"customer">>, <<"addresses">>], J) end
+                              ],
 
-                  #cb_context{resp_status=success, doc=Saved} = 
-                      crossbar_doc:save(Context#cb_context{doc=Transaction, db_name=wh_util:format_account_id(AcctID, encoded)}),
+                  Updaters = [fun(J) -> wh_json:set_value(<<"amount">>, Units, J) end
+                              ,fun(J) -> wh_json:set_value(<<"pvt_type">>, <<"credit">>, J) end
+                              ,fun(J) -> wh_json:set_value(<<"braintree">>, lists:foldr(fun(F, J2) -> F(J2) end, RespData, BTCleanup), J) end
+                             ],
 
-                  Id = wh_json:get_value(<<"_id">>, Saved),
+                  #cb_context{resp_status=success, doc=Saved} 
+                      = crossbar_doc:ensure_saved(Context#cb_context{doc=lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), Updaters)}),
 
-                  ?LOG("publishing credit API for transaction ~s for ~p units", [Id, Units]),
-
-                  wapi_money:publish_credit([{<<"Account-ID">>, AcctID}
-                                             ,{<<"Amount">>, Units}
-                                             ,{<<"Transaction-ID">>, Id}
+                  wapi_money:publish_credit([{<<"Amount">>, Units}
+                                             ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Saved)}
+                                             ,{<<"Transaction-ID">>, wh_json:get_value(<<"_id">>, Saved)}
                                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                             ]),
                   Pid ! {binding_result, true, [RD, Context, Params]}
@@ -599,7 +597,6 @@ validate([<<"credits">>], #cb_context{req_verb = <<"get">>, account_id=AccountId
                 {ok, [ViewRes|_]} -> ?LOG("Found obj ~p", [ViewRes]), wh_json:get_value(<<"value">>, ViewRes, 0);
                 {error, _E} -> ?LOG("Error loading view: ~p", [_E]), 0
             end,
-
     crossbar_util:response(wh_json:from_list([{<<"amount">>, wapi_money:units_to_dollars(Units)}
                                               ,{<<"billing_account_id">>, wh_json:get_value(<<"billing_account_id">>, JObj, AccountId)}
                                              ]), Context);
@@ -667,35 +664,58 @@ create_placeholder_account(#cb_context{account_id=AccountId}=Context) ->
 -spec authorize_trunkstore/2 :: ([ne_binary()], #cb_context{}) -> #cb_context{}.
 authorize_trunkstore(_, #cb_context{req_verb = <<"get">>}=Context) ->
     Context#cb_context{resp_status=success};
-authorize_trunkstore(_, #cb_context{req_verb = <<"put">>, doc=JObj, auth_doc=AuthDoc}=Context) ->
-    Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
-               ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
-               ,{"tollfree_us", fun() -> ts_tollfree_us_quantity(JObj) end()}
-               ,{"e911", fun() -> ts_e911_quantity(JObj) end()}],
-    AuthId = wh_json:get_value(<<"account_id">>, AuthDoc),
-    BillingAccount = wh_json:get_value(<<"billing_account_id">>, JObj, AuthId),
-    case ts_get_subscription(JObj, BillingAccount, Context) of
-        #cb_context{}=Error ->
-            Error;
-        {ok, Subscription} ->
-            change_subscription(Updates, Subscription, Context)
-    end;
-authorize_trunkstore([AccountId], #cb_context{req_verb = <<"post">>, doc=JObj}=Context) ->
+
+authorize_trunkstore([], #cb_context{req_verb = <<"put">>, doc=JObj, account_id=AccountId}=Context) ->
     Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
                ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
                ,{"tollfree_us", fun() -> ts_tollfree_us_quantity(JObj) end()}
                ,{"e911", fun() -> ts_e911_quantity(JObj) end()}],
     BillingAccount = wh_json:get_value(<<"billing_account_id">>, JObj, AccountId),
-    case ts_get_subscription(JObj, BillingAccount, Context) of
-        #cb_context{}=Error ->
-            Error;
+    case ts_get_subscription(JObj, BillingAccount) of
         {ok, Subscription} ->
-            change_subscription(Updates, Subscription, Context)
+            change_subscription(Updates, Subscription, Context);
+        {api_error, Response} ->    
+            crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+        {inactive, Status} ->
+            crossbar_util:response(error, <<"billing account is not active">>, 400
+                                   ,wh_json:from_list([{<<"current_account_status">>, Status}])
+                                   ,Context);
+        {error, not_found} ->
+            crossbar_util:response(error, <<"no credit card on file">>, 400, Context);        
+        {error, no_card} ->
+            crossbar_util:response(error, <<"no credit card on file">>, 400, Context);
+        {error, no_account} ->
+            crossbar_util:response(error, <<"billing account id unspecified">>, 400, Context);
+        {error, _} ->
+            crossbar_util:response_db_fatal(Context)
     end;
-authorize_trunkstore([AccountId], #cb_context{req_verb = <<"delete">>, doc=JObj}=Context) ->
-    case ts_get_subscription(JObj, AccountId, Context) of
-        #cb_context{}=Error ->
-            Error;
+authorize_trunkstore([_], #cb_context{req_verb = <<"post">>, doc=JObj, account_id=AccountId}=Context) ->
+    Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
+               ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
+               ,{"tollfree_us", fun() -> ts_tollfree_us_quantity(JObj) end()}
+               ,{"e911", fun() -> ts_e911_quantity(JObj) end()}],
+    BillingAccount = wh_json:get_value(<<"billing_account_id">>, JObj, AccountId),
+    case ts_get_subscription(JObj, BillingAccount) of
+        {ok, Subscription} ->
+            change_subscription(Updates, Subscription, Context);
+        {api_error, Response} ->    
+            crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+        {inactive, Status} ->
+            crossbar_util:response(error, <<"billing account is not active">>, 400
+                                   ,wh_json:from_list([{<<"current_account_status">>, Status}])
+                                   ,Context);
+        {error, not_found} ->
+            crossbar_util:response(error, <<"no credit card on file">>, 400, Context);        
+        {error, no_card} ->
+            crossbar_util:response(error, <<"no credit card on file">>, 400, Context);
+        {error, no_account} ->
+            crossbar_util:response(error, <<"billing account id unspecified">>, 400, Context);
+        {error, _} ->
+            crossbar_util:response_db_fatal(Context)
+    end;
+authorize_trunkstore([_], #cb_context{req_verb = <<"delete">>, doc=JObj, account_id=AccountId}=Context) ->
+    BillingAccount = wh_json:get_value(<<"billing_account_id">>, JObj, AccountId),
+    case ts_get_subscription(JObj, BillingAccount) of
         {ok, #bt_subscription{id=SubscriptionId}} ->
             case braintree_subscription:cancel(SubscriptionId) of
                 {ok, #bt_subscription{}} ->
@@ -710,74 +730,103 @@ authorize_trunkstore([AccountId], #cb_context{req_verb = <<"delete">>, doc=JObj}
                 Error ->
                     ?LOG("failed to cancel braintree subscription: ~p", [Error]),
                     crossbar_util:response_db_fatal(Context)
-            end
+            end;
+        {api_error, Response} ->    
+            crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+        {inactive, Status} ->
+            crossbar_util:response(error, <<"billing account is not active">>, 400
+                                   ,wh_json:from_list([{<<"current_account_status">>, Status}])
+                                   ,Context);
+        {error, not_found} ->
+            Context#cb_context{resp_status=success};
+        {error, no_card} ->
+            Context#cb_context{resp_status=success};
+        {error, no_account} ->
+            crossbar_util:response(error, <<"billing account id unspecified">>, 400, Context);
+        {error, _} ->
+            crossbar_util:response_db_fatal(Context)
     end.
 
+-spec ts_outbound_us_quantity/1 :: (wh_json:json_object()) -> pos_integer().
 ts_outbound_us_quantity(JObj) ->
     wh_json:get_integer_value([<<"account">>, <<"trunks">>], JObj, 0).
 
+-spec ts_did_us_quantity/1 :: (wh_json:json_object()) -> pos_integer().
 ts_did_us_quantity(JObj) ->
     InUse = [wh_json:get_keys(wh_json:get_value(<<"DIDs">>, Server, []))
              || Server <- wh_json:get_value(<<"servers">>, JObj, [])],
     Unassigned = [wh_json:get_keys(wh_json:get_value(<<"DIDs_Unassigned">>, JObj, []))],
     lists:foldr(ts_fold_did_fun(false), 0, lists:flatten([InUse|Unassigned])).
 
+-spec ts_tollfree_us_quantity/1 :: (wh_json:json_object()) -> pos_integer().
 ts_tollfree_us_quantity(JObj) ->
     InUse = [wh_json:get_keys(wh_json:get_value(<<"DIDs">>, Server, []))
              || Server <- wh_json:get_value(<<"servers">>, JObj, [])],
     Unassigned = [wh_json:get_keys(wh_json:get_value(<<"DIDs_Unassigned">>, JObj, []))],
     lists:foldr(ts_fold_did_fun(true), 0, lists:flatten([InUse|Unassigned])).
 
+-spec ts_e911_quantity/1 :: (wh_json:json_object()) -> pos_integer().
 ts_e911_quantity(JObj) ->
     E911 = [wh_json:get_value(<<"e911_info">>, Server, [])
              || Server <- wh_json:get_value(<<"servers">>, JObj, [])],
     length(E911).
 
+-spec ts_fold_did_fun/1 :: (boolean()) -> pos_integer().
 ts_fold_did_fun(true) ->
     fun(Number, Count) ->
-            case re:run(Number, ?IS_TOLLFREE_RE) of
+            case wnm_util:is_tollfree(Number) of
                 nomatch -> Count + 1;
                 _ -> Count
             end
     end;
 ts_fold_did_fun(false) ->
     fun(Number, Count) ->
-            case re:run(Number, ?IS_TOLLFREE_RE) of
+            case wnm_util:is_tollfree(Number) of
                 nomatch -> Count;
                 _ -> Count + 1
             end
     end.
 
-ts_get_subscription(_, undefined, Context) ->
-    crossbar_util:response(error, <<"billing account id unspecified">>, 400, Context);
-ts_get_subscription(JObj, BillingAccount, Context) ->
+-spec ts_get_subscription/2 :: (wh_json:json_object(), undefined | ne_binary()) -> {ok, #bt_subscription{}} |
+                                                                                   {error, atom()} |
+                                                                                   {inactive, ne_binary()} |
+                                                                                   {api_error, wh_json:json_object()}.
+ts_get_subscription(_, undefined) ->
+    {error, no_account};
+ts_get_subscription(JObj, BillingAccount) ->
+    ts_get_subscription(JObj, BillingAccount, true).
+ts_get_subscription(JObj, BillingAccount, Create) ->
     SubscriptionId = wh_json:get_string_value([<<"pvt_braintree">>, <<"trunkstore_subscription_id">>], JObj),
     case SubscriptionId =/= undefined andalso braintree_subscription:find(SubscriptionId) of
-        false ->
+        false when Create ->
             ?LOG("no trunkstore subscription id found"),
-            Token = get_payment_token(BillingAccount, Context),
+            Token = get_payment_token(BillingAccount),
             create_subscription(Token, "SIP_Services");
+        false -> {error, not_found};
         {ok, #bt_subscription{status=?BT_ACTIVE}}=Ok ->
-            ?LOG("found active trunkstore subscription ~s", [SubscriptionId]),
+            ?LOG("found active trunkstore subscription ~s for account ~s", [SubscriptionId, BillingAccount]),
             Ok;
-        {error, not_found} ->
+        {error, not_found} when Create ->
             ?LOG("trunkstore subscription id is not valid"),
-            Token = get_payment_token(BillingAccount, Context),
+            Token = get_payment_token(BillingAccount),
             create_subscription(Token, "SIP_Services");
+        {error, not_found} -> {error, not_found};
         {ok, #bt_subscription{status=Status}} ->
-            ?LOG("found trunkstore subscription ~s", [SubscriptionId]),
-            crossbar_util:response(error, <<"billing account is not active">>, 400
-                                   ,{struct, [{<<"current_account_status">>, wh_util:to_binary(Status)}]}
-                                   ,Context);
+            ?LOG("found trunkstore subscription ~s for account ~s", [SubscriptionId, BillingAccount]),
+            {inactive, wh_util:to_binary(Status)};
         {error, #bt_api_error{}=ApiError} ->
             Response = braintree_util:bt_api_error_to_json(ApiError),
-            crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+            ?LOG("api error getting ts subscription for account ~s: ~p", [BillingAccount, wh_json:encode(Response)]),
+            {api_error, Response};
         {error, no_card} ->
-            crossbar_util:response(error, <<"no credit card on file">>, 400, Context);
-        {error, _} ->
-            crossbar_util:response_db_fatal(Context)
+            ?LOG("account ~s has no card on file", [BillingAccount]),
+            {error, no_card};
+        {error, _E} ->
+            ?LOG("error getting ts subscription for account ~s: ~p", [BillingAccount, _E]),
+            {error, fatal}                     
     end.
 
+-spec change_subscription/3 :: (ne_binary(), #bt_subscription{}, #cb_context{}) -> #cb_context{}.
 change_subscription(Updates, #bt_subscription{id=undefined}=Subscription, #cb_context{doc=JObj}=Context) ->
     NewSubscription =
         lists:foldr(fun({AddOn, Quantity}, Sub) ->
@@ -823,42 +872,46 @@ change_subscription(Updates, Subscription, #cb_context{doc=JObj}=Context) ->
             crossbar_util:response_db_fatal(Context)
     end.
 
-create_subscription(#cb_context{}=E, _) ->
-    E;
-create_subscription(Token, Plan) ->
+-spec create_subscription/2 :: ({ok, ne_binary()} | {error, atom()} | {inactive, ne_binary()} | {api_error, wh_json:json_object()}
+                                ,ne_binary()) -> {ok, #bt_subscription{}} | {error, atom()} | {inactive, ne_binary()} | 
+                                                 {api_error, wh_json:json_object()}.
+create_subscription({ok, Token}, Plan) ->
     ?LOG("creating new subscription ~s with token ~s", [Plan, Token]),
-    {ok, #bt_subscription{payment_token=Token, plan_id=Plan, do_not_inherit=true}}.
+    {ok, #bt_subscription{payment_token=Token, plan_id=Plan, do_not_inherit=true}};
+create_subscription(Error, _) ->
+    Error.
 
-get_payment_token(BillingAccount, Context) when not is_list(BillingAccount) ->
-    get_payment_token(wh_util:to_list(BillingAccount), Context);
-get_payment_token(BillingAccount, Context) ->
+-spec get_payment_token/1 :: (ne_binary() | list()) -> {ok, ne_binary()} | {error, atom()} | {api_error, wh_json:json_object()}.
+get_payment_token(BillingAccount) when not is_list(BillingAccount) ->
+    get_payment_token(wh_util:to_list(BillingAccount));
+get_payment_token(BillingAccount) ->
     case braintree_customer:find(BillingAccount) of
         {ok, #bt_customer{credit_cards=Cards}} ->
             ?LOG("found braintree customer ~s", [BillingAccount]),
             case [Card || #bt_card{default=Default}=Card <- Cards, Default] of
                 [#bt_card{token=Token}] ->
                     ?LOG("braintree customer ~s default credit card token ~s", [BillingAccount, Token]),
-                    Token;
+                    {ok, Token};
                 _ ->
                     ?LOG("braintree customer ~s has no credit card on file", [BillingAccount]),
-                    crossbar_util:response(error, <<"no credit card on file">>, 400, Context)
+                    {error, no_card}
             end;
         {error, not_found} ->
             case  braintree_customer:create(#bt_customer{id=BillingAccount}) of
                 {ok, #bt_customer{}} ->
                     ?LOG("braintree customer ~s has no credit card on file", [BillingAccount]),
-                    crossbar_util:response(error, <<"no credit card on file">>, 400, Context);
+                    {error, no_card};
                 {error, #bt_api_error{}=ApiError} ->
                     Response = braintree_util:bt_api_error_to_json(ApiError),
-                    crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+                    {api_error, Response};
                 _Else ->
-                    crossbar_util:response_db_fatal(Context)
+                    {error, fatal}
             end;
         {error, #bt_api_error{message=Msg}=ApiError} ->
             ?LOG("failed to find braintree customer: ~s", [Msg]),
             Response = braintree_util:bt_api_error_to_json(ApiError),
-            crossbar_util:response(error, <<"braintree api error">>, 400, Response, Context);
+            {api_error, Response};
         _Else ->
             ?LOG("failed to find braintree customer: ~p", [_Else]),
-            crossbar_util:response_db_fatal(Context)
+            {error, fatal}
     end.
