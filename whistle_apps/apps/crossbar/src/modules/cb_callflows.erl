@@ -276,16 +276,22 @@ load_callflow_summary(Context) ->
 %%--------------------------------------------------------------------
 -spec create_callflow/1 :: (#cb_context{}) -> #cb_context{}.
 create_callflow(#cb_context{req_data=Data}=Context) ->
-    Numbers = [wnm_util:to_e164(Number) || Number <- wh_json:get_value(<<"numbers">>, Data, [])],
-    Data1 = wh_json:set_value(<<"numbers">>, Numbers, Data),
-    case wh_json_validator:is_valid(Data1, <<"callflows">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Context#cb_context{
-                 doc=wh_json:set_value(<<"pvt_type">>, <<"callflow">>, JObj)
-                ,resp_status=success
-            }
+    try [wnm_util:to_e164(Number) || Number <- wh_json:get_value(<<"numbers">>, Data, [])] of
+        Numbers ->
+            Data1 = wh_json:set_value(<<"numbers">>, Numbers, Data),
+            case wh_json_validator:is_valid(Data1, <<"callflows">>) of
+                {fail, Errors} ->
+                    crossbar_util:response_invalid_data(Errors, Context);
+                {pass, JObj} ->
+                    Context#cb_context{
+                      doc=wh_json:set_value(<<"pvt_type">>, <<"callflow">>, JObj)
+                      ,resp_status=success
+                     }
+            end
+    catch
+        _:_ ->
+            Errs = [wh_json:set_value([<<"numbers">>, <<"type">>], <<"Value is not of type array">>, wh_json:new())],
+            crossbar_util:response_invalid_data(Errs, Context)
     end.
 
 %%--------------------------------------------------------------------
