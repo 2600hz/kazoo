@@ -1,0 +1,36 @@
+%%%-------------------------------------------------------------------
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2011, VoIP INC
+%%% @doc
+%%% Handle requests to read configuration data
+%%% Support nested keys a la wh_json, with a # 
+%%% as a separator i.e key#subkey#subsubkey
+%%% @end
+%%%-------------------------------------------------------------------
+-module(sysconf_get).
+
+-export([init/0, handle_req/2]).
+
+-include("sysconf.hrl").
+
+init() ->
+    ok.
+
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+handle_req(ApiJObj, _Props) ->
+    ?LOG_START("received sysconf get"),
+    true = wapi_sysconf:get_req_v(ApiJObj),
+
+    Category = wh_json:get_value(<<"Category">>, ApiJObj),
+    Key = wh_json:get_value(<<"Key">>, ApiJObj),
+    Default = wh_json:get_value(<<"Default">>, ApiJObj, undefined),
+
+    Value = whapps_config:get(Category, Key, Default, wh_json:get_value(<<"Node">>, ApiJObj)),
+
+    RespQ =  wh_json:get_value(<<"Server-ID">>, ApiJObj), 
+    Resp = [{<<"Category">>, Category}
+            ,{<<"Key">>, Key}
+            ,{<<"Value">>, Value}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_sysconf:publish_get_resp(RespQ, Resp).
