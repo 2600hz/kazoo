@@ -482,9 +482,9 @@ process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
                                           ,{<<"rate_increment">>, 60}
                                           ,{<<"rate_minimum">>, 60}
                                           ,{<<"rate_surcharge">>, 0}
-                                          ,{<<"internal_rate_cost">>, InternalCost1}
+                                          ,{<<"pvt_rate_cost">>, InternalCost1}
                                           ,{<<"weight">>, constrain_weight(byte_size(Prefix1) * 10 - CostF)}
-
+                                          
                                           ,{<<"options">>, []}
                                           ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix1))/binary, "(\\d*)$">>]}
                                          ]))
