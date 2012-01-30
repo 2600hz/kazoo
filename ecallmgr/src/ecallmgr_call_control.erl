@@ -577,16 +577,12 @@ queue_insert_fun(head) ->
 -spec post_hangup_commands/1 :: (queue()) -> wh_json:json_objects().
 post_hangup_commands(CmdQ) ->
     [ JObj || JObj <- queue:to_list(CmdQ),
-              begin
-                  AppName = wh_json:get_value(<<"Application-Name">>, JObj),
-                  case lists:member(AppName, ?POST_HANGUP_COMMANDS) of
-                      true -> true;
-                      false ->
-                          ?LOG("removing command ~s from control queue, not valid after hangup", [AppName]),
-                          false
-                  end
-              end
+              is_post_hangup_command(wh_json:get_value(<<"Application-Name">>, JObj))
     ].
+
+-spec is_post_hangup_command/1 :: (ne_binary()) -> boolean().
+is_post_hangup_command(AppName) ->
+    lists:member(AppName, ?POST_HANGUP_COMMANDS).
 
 -spec execute_control_request/2 :: (wh_json:json_object(), #state{}) -> 'ok'.
 execute_control_request(Cmd, #state{node=Node, callid=CallId}) ->
@@ -694,8 +690,7 @@ publish_callid_update(PrevCallId, NewCallId, CtrlQ) ->
 
 -spec publish_control_transfer/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 publish_control_transfer(undefined, CallId) ->
-    ?LOG(CallId, "no whapp queue known for control transfer", []),    
-    ok;
+    ?LOG(CallId, "no whapp queue known for control transfer", []);
 publish_control_transfer(ControllerQ, CallId) ->
     ?LOG(CallId, "sending control transfer to queue ~s", [ControllerQ]),
     Transfer = [{<<"Call-ID">>, CallId}

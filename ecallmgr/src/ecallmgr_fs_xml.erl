@@ -46,38 +46,38 @@ route_resp_xml(<<"bridge">>, Routes, _JObj) ->
     ?LOG("Creating a bridge XML response"),
     %% format the Route based on protocol
     {_Idx, Extensions, Errors} = lists:foldr(
-				   fun(RouteJObj, {Idx, Acc, ErrAcc}) ->
-					   case build_route(RouteJObj, wh_json:get_value(<<"Invite-Format">>, RouteJObj)) of
-					       {error, timeout} ->
-						   {Idx+1, Acc, ErrAcc};
-					       Route ->
-						   BypassMedia = case wh_json:get_value(<<"Media">>, RouteJObj) of
-								     <<"bypass">> -> "true";
-								     _ -> "false" %% default to not bypassing media
-								 end,
+                                   fun(RouteJObj, {Idx, Acc, ErrAcc}) ->
+                                           case build_route(RouteJObj, wh_json:get_value(<<"Invite-Format">>, RouteJObj)) of
+                                               {error, timeout} ->
+                                                   {Idx+1, Acc, ErrAcc};
+                                               Route ->
+                                                   BypassMedia = case wh_json:get_value(<<"Media">>, RouteJObj) of
+                                                                     <<"bypass">> -> "true";
+                                                                     _ -> "false" %% default to not bypassing media
+                                                                 end,
 
-						   RouteJObj1 = case wh_json:get_value(<<"Progress-Timeout">>, RouteJObj) of
-								    undefined ->
-									wh_json:set_value(<<"Progress-Timeout">>, <<"6">>, RouteJObj);
-								    I when is_integer(I) ->
-									wh_json:set_value(<<"Progress-Timeout">>, integer_to_list(I), RouteJObj);
-								    _ -> RouteJObj
-								end,
+                                                   RouteJObj1 = case wh_json:get_value(<<"Progress-Timeout">>, RouteJObj) of
+                                                                    undefined ->
+                                                                        wh_json:set_value(<<"Progress-Timeout">>, <<"6">>, RouteJObj);
+                                                                    I when is_integer(I) ->
+                                                                        wh_json:set_value(<<"Progress-Timeout">>, integer_to_list(I), RouteJObj);
+                                                                    _ -> RouteJObj
+                                                                end,
 
-						   ChannelVars = get_channel_vars(wh_json:to_proplist(RouteJObj1)),
-						   {Idx+1
-						    ,[io_lib:format(?ROUTE_BRIDGE_EXT, [Idx, BypassMedia, ChannelVars, Route]) | Acc]
-						    , ErrAcc}
-					   end
-				   end, {1, "", ""}, Routes),
+                                                   ChannelVars = get_channel_vars(wh_json:to_proplist(RouteJObj1)),
+                                                   {Idx+1
+                                                    ,[io_lib:format(?ROUTE_BRIDGE_EXT, [Idx, BypassMedia, ChannelVars, Route]) | Acc]
+                                                    , ErrAcc}
+                                           end
+                                   end, {1, "", ""}, Routes),
     case Extensions of
-	[] ->
-	    ?LOG("No endpoints to route to"),
-	    {ok, lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [?WHISTLE_CONTEXT, Errors]))};
-	_ ->
-	    Xml = io_lib:format(?ROUTE_BRIDGE_RESPONSE, [?WHISTLE_CONTEXT, Extensions]),
-	    ?LOG("Bridge XML generated: ~s", [Xml]),
-	    {ok, lists:flatten(Xml)}
+        [] ->
+            ?LOG("No endpoints to route to"),
+            {ok, lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [?WHISTLE_CONTEXT, Errors]))};
+        _ ->
+            Xml = io_lib:format(?ROUTE_BRIDGE_RESPONSE, [?WHISTLE_CONTEXT, Extensions]),
+            ?LOG("Bridge XML generated: ~s", [Xml]),
+            {ok, lists:flatten(Xml)}
     end;
 route_resp_xml(<<"park">>, _Routes, _JObj) ->
     Park = lists:flatten(io_lib:format(?ROUTE_PARK_RESPONSE, [?WHISTLE_CONTEXT])),
@@ -104,24 +104,24 @@ build_route(RouteJObj, <<"username">>) ->
     User = wh_json:get_value(<<"To-User">>, RouteJObj),
     Realm = wh_json:get_value(<<"To-Realm">>, RouteJObj),
     case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
-	[{<<"Contact">>, Contact}] ->
-	    RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
+        [{<<"Contact">>, Contact}] ->
+            RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
             <<?SIP_INTERFACE, (RURI)/binary>>;
-	{error, timeout}=E ->
+        {error, timeout}=E ->
             ?LOG("failed to lookup user ~s@~s in the registrar", [User, Realm]),
-	    E
+            E
     end;
 build_route(RouteJObj, DIDFormat) ->
     User = wh_json:get_value(<<"To-User">>, RouteJObj),
     Realm = wh_json:get_value(<<"To-Realm">>, RouteJObj),
     DID = format_did(wh_json:get_value(<<"To-DID">>, RouteJObj), DIDFormat),
     case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
-	[{<<"Contact">>, Contact}] ->
-	    RURI = binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>),
+        [{<<"Contact">>, Contact}] ->
+            RURI = binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>),
             <<?SIP_INTERFACE, (RURI)/binary>>;
-	{error, timeout}=E ->
+        {error, timeout}=E ->
             ?LOG("failed to lookup user ~s@~s in the registrar", [User, Realm]),
-	    E
+            E
     end.
 
 -spec format_did/2 :: (ne_binary(), ne_binary()) -> ne_binary().
@@ -132,15 +132,15 @@ format_did(DID, <<"npan">>) ->
 format_did(DID, <<"1npan">>) ->
     wnm_util:to_1npan(DID).
 
--spec get_leg_vars/1 :: (wh_json:json_object() | proplist()) -> iolist().
+-spec get_leg_vars/1 :: (wh_json:json_object() | proplist()) -> [nonempty_string(),...].
 get_leg_vars([_|_]=Prop) ->
-    ["[", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"];
+    ["[", string:join([wh_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"];
 get_leg_vars(JObj) -> get_leg_vars(wh_json:to_proplist(JObj)).
 
--spec get_channel_vars/1 :: (wh_json:json_object() | proplist()) -> [string(),...].
+-spec get_channel_vars/1 :: (wh_json:json_object() | proplist()) -> [nonempty_string(),...].
 get_channel_vars([_|_]=Prop) ->
     P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
-    ["{", string:join([binary_to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
+    ["{", string:join([wh_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
 get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
 -spec get_channel_vars/2 :: ({binary(), binary() | wh_json:json_object()}, [binary(),...] | []) -> [binary(),...] | [].
@@ -156,8 +156,8 @@ get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
 get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
     SIPHeaders = wh_json:to_proplist(SIPJObj),
     lists:foldl(fun({K,V}, Vars0) ->
-			[ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
-		end, Vars, SIPHeaders);
+                        [ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
+                end, Vars, SIPHeaders);
 
 get_channel_vars({<<"Caller-ID-Type">>, <<"from">>}, Vars) ->
     [ <<"sip_cid_type=none">> | Vars];
@@ -190,7 +190,7 @@ get_channel_vars({<<"Timeout">>, V}, Vars) ->
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         false -> Vars;
-	{_, Prefix} -> [list_to_binary([Prefix, "='", wh_util:to_list(V), "'"]) | Vars]
+        {_, Prefix} -> [list_to_binary([Prefix, "='", wh_util:to_list(V), "'"]) | Vars]
     end;
 
 get_channel_vars(_, Vars) ->
@@ -199,19 +199,19 @@ get_channel_vars(_, Vars) ->
 
 get_channel_params(JObj) ->
     CV0 = case wh_json:get_value(<<"Tenant-ID">>, JObj) of
-	      undefined -> [];
-	      TID -> [io_lib:format(?REGISTER_CHANNEL_PARAM
-				    ,[list_to_binary([?CHANNEL_VAR_PREFIX, "Tenant-ID"]), TID])]
-	  end,
+              undefined -> [];
+              TID -> [io_lib:format(?REGISTER_CHANNEL_PARAM
+                                    ,[list_to_binary([?CHANNEL_VAR_PREFIX, "Tenant-ID"]), TID])]
+          end,
 
     CV1 = case wh_json:get_value(<<"Access-Group">>, JObj) of
-    	      undefined -> CV0;
-	      AG -> [io_lib:format(?REGISTER_CHANNEL_PARAM
-				   ,[list_to_binary([?CHANNEL_VAR_PREFIX, "Access-Group"]), AG]) | CV0]
-	  end,
+              undefined -> CV0;
+              AG -> [io_lib:format(?REGISTER_CHANNEL_PARAM
+                                   ,[list_to_binary([?CHANNEL_VAR_PREFIX, "Access-Group"]), AG]) | CV0]
+          end,
 
     Custom = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
     lists:foldl(fun({K,V}, CV) ->
-			[io_lib:format(?REGISTER_CHANNEL_PARAM
-				       ,[list_to_binary([?CHANNEL_VAR_PREFIX, K]), V]) | CV]
-		end, CV1, Custom).
+                        [io_lib:format(?REGISTER_CHANNEL_PARAM
+                                       ,[list_to_binary([?CHANNEL_VAR_PREFIX, K]), V]) | CV]
+                end, CV1, Custom).
