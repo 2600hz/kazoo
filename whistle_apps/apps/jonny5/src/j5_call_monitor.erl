@@ -16,7 +16,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("jonny5.hrl").
 
@@ -24,12 +24,12 @@
 -define(TIMER_CALL_STATUS, 60000). %% ask for call status every 10 seconds
 
 -record(state, {
-	  callid = <<>> :: binary()
-	 ,ledger_db = <<>> :: binary()
-	 ,call_type = 'per_min' :: call_types()
+          callid = <<>> :: binary()
+         ,ledger_db = <<>> :: binary()
+         ,call_type = 'per_min' :: call_types()
          ,authz_won = 'false' :: boolean()
          ,timer_ref = 'undefined' :: 'undefined' | reference() % timer ref for sending call_status requests
-	 }).
+         }).
 
 %%%===================================================================
 %%% API
@@ -44,10 +44,10 @@
 %%--------------------------------------------------------------------
 start_link(CallID, LedgerDB, CallType) ->
     gen_listener:start_link(?MODULE
-			  ,[{bindings, [{call, [{callid, CallID}]}, {self, []}]}
-			    ,{responders, [{{?MODULE, handle_call_event}, [{<<"*">>, <<"*">>}]}] }
-			   ]
-			  ,[CallID, LedgerDB, CallType]).
+                          ,[{bindings, [{call, [{callid, CallID}]}, {self, []}]}
+                            ,{responders, [{{?MODULE, handle_call_event}, [{<<"*">>, <<"*">>}]}] }
+                           ]
+                          ,[CallID, LedgerDB, CallType]).
 
 authz_won(Srv) ->
     gen_listener:cast(Srv, authz_won).
@@ -75,8 +75,8 @@ init([CallID, LedgerDB, CallType]) ->
     put(callid, CallID),
     ?LOG_SYS("Init complete"),
     {ok, #state{callid=CallID, ledger_db=LedgerDB
-		,call_type=CallType, timer_ref=start_status_timer()
-	       }}.
+                ,call_type=CallType, timer_ref=start_status_timer()
+               }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -114,47 +114,47 @@ handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_HANGUP_COMPLETE">>}, _JOb
     {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
 
 handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref=Ref, callid=CallID, ledger_db=DB
-								       ,call_type=per_min, authz_won=true}=State) ->
+                                                                       ,call_type=per_min, authz_won=true}=State) ->
     case wapi_call:cdr_v(JObj) of
-	false ->
-	    ?LOG("CDR failed validation"),
-	    {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
-	true ->
-	    ?LOG("CDR passed validation"),
-	    CallID = wh_json:get_value(<<"Call-ID">>, JObj), % assert
-	    ?LOG("CDR is for our call-id"),
-	    BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
+        false ->
+            ?LOG("CDR failed validation"),
+            {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
+        true ->
+            ?LOG("CDR passed validation"),
+            CallID = wh_json:get_value(<<"Call-ID">>, JObj), % assert
+            ?LOG("CDR is for our call-id"),
+            BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
 
-	    PerMinCharge = wapi_money:default_per_min_charge(),
-	    case extract_cost(JObj) of
-		Cost when Cost < PerMinCharge ->
-		    Credit = PerMinCharge - Cost,
-		    ?LOG("Crediting back ~p", [Credit]),
-		    {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, per_min, Credit, BillingSecs, JObj),
-		    publish_transaction(Transaction, fun wapi_money:publish_credit/1);
-		Cost ->
-		    Debit = Cost - PerMinCharge,
-		    ?LOG("Debiting an additional ~p", [Debit]),
-		    {ok, Transaction} = j5_util:write_debit_to_ledger(DB, CallID, per_min, Debit, BillingSecs, JObj),
-		    publish_transaction(Transaction, fun wapi_money:publish_debit/1)
-	    end,
+            PerMinCharge = wapi_money:default_per_min_charge(),
+            case extract_cost(JObj) of
+                Cost when Cost < PerMinCharge ->
+                    Credit = PerMinCharge - Cost,
+                    ?LOG("Crediting back ~p", [Credit]),
+                    {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, per_min, Credit, BillingSecs, JObj),
+                    publish_transaction(Transaction, fun wapi_money:publish_credit/1);
+                Cost ->
+                    Debit = Cost - PerMinCharge,
+                    ?LOG("Debiting an additional ~p", [Debit]),
+                    {ok, Transaction} = j5_util:write_debit_to_ledger(DB, CallID, per_min, Debit, BillingSecs, JObj),
+                    publish_transaction(Transaction, fun wapi_money:publish_debit/1)
+            end,
 
-	    {stop, normal, State}
+            {stop, normal, State}
     end;
 
 handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref=Ref, callid=CallID
-								       ,ledger_db=DB, call_type=Type, authz_won=true}=State) ->
+                                                                       ,ledger_db=DB, call_type=Type, authz_won=true}=State) ->
     case CallID =:= wh_json:get_value(<<"Call-ID">>, JObj) andalso wapi_call:cdr_v(JObj) of
-	true ->
-	    ?LOG("Received CDR, finishing transaction"),
-	    BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
-	    {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
-	    publish_transaction(Transaction, fun wapi_money:publish_credit/1),
+        true ->
+            ?LOG("Received CDR, finishing transaction"),
+            BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
+            {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
+            publish_transaction(Transaction, fun wapi_money:publish_credit/1),
 
-	    {stop, normal, State};
-	false ->
-	    ?LOG("JSON not for our call leg (recv call-id ~s) or CDR was invalid", [wh_json:get_value(<<"Call-ID">>, JObj)]),
-	    {noreply, State#state{timer_ref=restart_status_timer(Ref)}}
+            {stop, normal, State};
+        false ->
+            ?LOG("JSON not for our call leg (recv call-id ~s) or CDR was invalid", [wh_json:get_value(<<"Call-ID">>, JObj)]),
+            {noreply, State#state{timer_ref=restart_status_timer(Ref)}}
     end;
 
 handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref=Ref, authz_won=false}=State) ->
@@ -164,16 +164,16 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref
 
 handle_cast({call_event, {<<"call_event">>, <<"status_resp">>}, JObj}, #state{timer_ref=Ref}=State) ->
     case {wapi_call:channel_status_resp_v(JObj), wapi_call:get_status(JObj)} of
-	{true, <<"active">>} ->
-	    ?LOG("Received active status_resp"),
-	    {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
-	{true, <<"tmpdown">>} ->
-	    ?LOG("Call tmpdown, starting down timer"),
-	    _ = erlang:cancel_timer(Ref),
-	    {noreply, State#state{timer_ref=start_down_timer()}};
-	{false, _} ->
-	    ?LOG("Failed validation of status_resp"),
-	    {noreply, State}
+        {true, <<"active">>} ->
+            ?LOG("Received active status_resp"),
+            {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
+        {true, <<"tmpdown">>} ->
+            ?LOG("Call tmpdown, starting down timer"),
+            _ = erlang:cancel_timer(Ref),
+            {noreply, State#state{timer_ref=start_down_timer()}};
+        {false, _} ->
+            ?LOG("Failed validation of status_resp"),
+            {noreply, State}
     end;
 
 handle_cast({call_event, {Cat, Name}, _JObj}, #state{timer_ref=Ref}=State) ->
@@ -205,12 +205,12 @@ handle_info({timeout, CallStatusRef, call_status}, #state{timer_ref=CallStatusRe
 
     Self = self(),
     spawn(fun() ->
-		  StatusReq = [{<<"Call-ID">>, CallID}
-			       | wh_api:default_headers(gen_listener:queue_name(Self), ?APP_NAME, ?APP_VERSION)
-			      ],
+                  StatusReq = [{<<"Call-ID">>, CallID}
+                               | wh_api:default_headers(gen_listener:queue_name(Self), ?APP_NAME, ?APP_VERSION)
+                              ],
 
-		  wapi_call:publish_channel_status_req(CallID, StatusReq)
-	  end),
+                  wapi_call:publish_channel_status_req(CallID, StatusReq)
+          end),
 
     {noreply, State#state{timer_ref=start_status_timer()}};
 
@@ -218,12 +218,12 @@ handle_info({timeout, DownRef, call_status_down}, #state{callid=CallID, timer_re
     ?LOG("Per minute call got lost somehow. What to do???"),
 
     whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
-				    ,"Alert: Per-minute call went down without us receiving the CDR.~n"
-				    ,"No way to bill the proper amount (didn't check for the CDR in the DB.~n"
-				    ,"Call-ID: ~s~n"
-				    ,"Ledger-DB: ~s~n"
-				   ]
-		      ,[?MODULE, ?LINE, CallID, DB]),
+                                    ,"Alert: Per-minute call went down without us receiving the CDR.~n"
+                                    ,"No way to bill the proper amount (didn't check for the CDR in the DB.~n"
+                                    ,"Call-ID: ~s~n"
+                                    ,"Ledger-DB: ~s~n"
+                                   ]
+                      ,[?MODULE, ?LINE, CallID, DB]),
 
     {stop, normal, State};
 
@@ -283,11 +283,11 @@ extract_cost(JObj) ->
 
 publish_transaction(Transaction, PublisherFun) ->
     ?LOG("Publishing transaction to wapi_money"),
-    PublisherFun(wh_json:from_list([{<<"Transaction-ID">>, wh_json:get_value(<<"_id">>, Transaction)}
-				    ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Transaction)}
-				    ,{<<"Amount">>, wh_json:get_value(<<"amount">>, Transaction)}
-				    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-				   ])).
+    PublisherFun([{<<"Transaction-ID">>, wh_json:get_value(<<"_id">>, Transaction)}
+                  ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Transaction)}
+                  ,{<<"Amount">>, wh_json:get_value(<<"amount">>, Transaction)}
+                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                 ]).
 
 -spec start_status_timer/0 :: () -> reference().
 -spec restart_status_timer/1 :: ('undefined' | reference()) -> reference().
