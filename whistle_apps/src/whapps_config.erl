@@ -202,6 +202,8 @@ get(Category, Key, Default) when not is_binary(Key)->
 get(Category, Key, Default) ->
     get(Category, Key, Default, wh_util:to_binary(node())).
 
+get(Category, Key, undefined, Node) ->
+    get(Category, Key, null, Node);
 get(Category, Key, Default, Node) ->
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
     case fetch_category(Category, Cache) of
@@ -211,8 +213,7 @@ get(Category, Key, Default, Node) ->
                     case wh_json:get_value([<<"default">>, Key], JObj) of
                         undefined ->
                             ?LOG("missing key ~s(~s) ~s: ~p", [Category, Node, Key, Default]),
-                            Default =/= undefined andalso
-                                ?MODULE:set(Category, Key, Default),
+                            set_default(Category, Key, Default),
                             Default;
                         Else ->
                             ?LOG("fetched config ~s(~s) ~s: ~p", [Category, "default", Key, Else]),
@@ -280,6 +281,8 @@ set(Category, Key, Value, Node) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec set_default/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()}.
+set_default(Category, Key, undefined) ->
+    do_set(Category, Key, null, <<"default">>);
 set_default(Category, Key, Value) ->
     do_set(Category, Key, Value, <<"default">>).
 
