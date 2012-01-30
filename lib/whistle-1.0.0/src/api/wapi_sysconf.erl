@@ -30,18 +30,18 @@
 
 %% Configuration Document Update
 %% request to read 
--define(SYSCONF_GET_REQ_HEADERS, [<<"Category">>, <<"Key">>]).
--define(OPTIONAL_SYSCONF_GET_REQ_HEADERS, [<<"Node">>]).
+-define(SYSCONF_GET_REQ_HEADERS, [<<"Category">>, <<"Key">>, <<"Node">>]).
+-define(OPTIONAL_SYSCONF_GET_REQ_HEADERS, [<<"Default">>]).
 -define(SYSCONF_GET_REQ_VALUES, [{<<"Event-Name">>, <<"get_req">>} | ?SYSCONF_VALUES]).
 
 %% answer to a read request
 -define(SYSCONF_GET_RESP_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>]).
--define(OPTIONAL_SYSCONF_GET_RESP_HEADERS, [<<"Node">>]).
+-define(OPTIONAL_SYSCONF_GET_RESP_HEADERS, []).
 -define(SYSCONF_GET_RESP_VALUES, [{<<"Event-Name">>, <<"get_resp">>} | ?SYSCONF_VALUES]).
 
 %% request a write
--define(SYSCONF_SET_REQ_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>]).
--define(OPTIONAL_SYSCONF_SET_REQ_HEADERS, [<<"Node">>]).
+-define(SYSCONF_SET_REQ_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>, <<"Node">>]).
+-define(OPTIONAL_SYSCONF_SET_REQ_HEADERS, []).
 -define(SYSCONF_SET_REQ_VALUES, [{<<"Event-Name">>, <<"set_req">>} | ?SYSCONF_VALUES]).
 
 %% answer to a write request
