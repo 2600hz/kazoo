@@ -9,20 +9,21 @@
 
 -include("whistle_apps.hrl").
 
--export([get/2, get/3, get_all_kvs/1]).
--export([get_string/2, get_string/3]).
--export([get_binary/2, get_binary/3]).
--export([get_atom/2, get_atom/3]).
--export([get_integer/2, get_integer/3]).
--export([get_float/2, get_float/3]).
--export([get_is_false/2, get_is_false/3]).
--export([get_is_true/2, get_is_true/3]).
--export([get_non_empty/2, get_non_empty/3]).
--export([set/3, set_default/3]).
+-export([get/2, get/3, get/4, get_all_kvs/1]).
+-export([get_string/2, get_string/3, get_string/4]).
+-export([get_binary/2, get_binary/3, get_binary/4]).
+-export([get_atom/2, get_atom/3, get_atom/4]).
+-export([get_integer/2, get_integer/3, get_integer/4]).
+-export([get_float/2, get_float/3, get_float/4]).
+-export([get_is_false/2, get_is_false/3, get_is_false/4]).
+-export([get_is_true/2, get_is_true/3, get_is_true/4]).
+-export([get_non_empty/2, get_non_empty/3, get_non_empty/4]).
+
+-export([set/3, set/4, set_default/3]).
 -export([flush/0, import/1]).
 
--type config_category() :: binary() | string() | atom().
--type config_key() :: binary() | string() | atom().
+-type config_category() :: ne_binary() | nonempty_string() | atom().
+-type config_key() :: ne_binary() | nonempty_string() | atom().
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -32,13 +33,16 @@
 %%-----------------------------------------------------------------------------
 -spec get_string/2 :: (config_category(), config_key()) -> nonempty_string() | 'undefined'.
 -spec get_string/3 :: (config_category(), config_key(), Default) -> nonempty_string() | Default.
+-spec get_string/4 :: (config_category(), config_key(), Default, ne_binary()) -> nonempty_string() | Default.
 get_string(Category, Key) ->
     case get(Category, Key) of
         undefined -> undefined;
         Else -> wh_util:to_list(Else)
     end.
 get_string(Category, Key, Default) ->
-    wh_util:to_list(get(Category, Key, Default)).
+    get_string(Category, Key, Default, wh_util:to_binary(node())).
+get_string(Category, Key, Default, Node) ->
+    wh_util:to_list(get(Category, Key, Default, Node)).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -48,13 +52,16 @@ get_string(Category, Key, Default) ->
 %%-----------------------------------------------------------------------------
 -spec get_binary/2 :: (config_category(), config_key()) -> binary() | 'undefined'.
 -spec get_binary/3 :: (config_category(), config_key(), Default) -> binary() | Default.
+-spec get_binary/4 :: (config_category(), config_key(), Default, ne_binary()) -> binary() | Default.
 get_binary(Category, Key) ->
     case get(Category, Key) of
         undefined -> undefined;
         Else -> wh_util:to_binary(Else)
     end.
 get_binary(Category, Key, Default) ->
-    wh_util:to_binary(get(Category, Key, Default)).
+    get_binary(Category, Key, Default, wh_util:to_binary(node())).
+get_binary(Category, Key, Default, Node) ->
+    wh_util:to_binary(get(Category, Key, Default, Node)).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -64,13 +71,17 @@ get_binary(Category, Key, Default) ->
 %%-----------------------------------------------------------------------------
 -spec get_atom/2 :: (config_category(), config_key()) -> atom() | 'undefined'.
 -spec get_atom/3 :: (config_category(), config_key(), Default) -> atom() | Default.
+-spec get_atom/4 :: (config_category(), config_key(), Default, ne_binary()) -> atom() | Default.
 get_atom(Category, Key) ->
     case get(Category, Key) of
         undefined -> undefined;
         Else -> wh_util:to_atom(Else, true)
     end.
 get_atom(Category, Key, Default) ->
-    wh_util:to_atom(get(Category, Key, Default), true).
+    get_atom(Category, Key, Default, wh_util:to_binary(node())).
+get_atom(Category, Key, Default, Node) ->
+    wh_util:to_atom(get(Category, Key, Default, Node), true).
+
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -80,13 +91,16 @@ get_atom(Category, Key, Default) ->
 %%-----------------------------------------------------------------------------
 -spec get_integer/2 :: (config_category(), config_key()) -> integer() | 'undefined'.
 -spec get_integer/3 :: (config_category(), config_key(), Default) -> integer() | Default.
+-spec get_integer/4 :: (config_category(), config_key(), Default, ne_binary()) -> integer() | Default.
 get_integer(Category, Key) ->
     case get(Category, Key) of
         undefined -> undefined;
         Else -> wh_util:to_integer(Else)
     end.
 get_integer(Category, Key, Default) ->
-    wh_util:to_integer(get(Category, Key, Default)).
+    get_integer(Category, Key, Default, wh_util:to_binary(node())).
+get_integer(Category, Key, Default, Node) ->
+    wh_util:to_integer(get(Category, Key, Default, Node)).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -96,13 +110,16 @@ get_integer(Category, Key, Default) ->
 %%-----------------------------------------------------------------------------
 -spec get_float/2 :: (config_category(), config_key()) -> float() | 'undefined'.
 -spec get_float/3 :: (config_category(), config_key(), Default) -> float() | Default.
+-spec get_float/4 :: (config_category(), config_key(), Default, ne_binary()) -> float() | Default.
 get_float(Category, Key) ->
     case get(Category, Key) of
         undefined -> undefined;
         Else -> wh_util:to_float(Else)
     end.
 get_float(Category, Key, Default) ->
-    wh_util:to_float(get(Category, Key, Default)).
+    get_float(Category, Key, Default, wh_util:to_binary(node())).
+get_float(Category, Key, Default, Node) ->
+    wh_util:to_float(get(Category, Key, Default, Node)).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -112,13 +129,16 @@ get_float(Category, Key, Default) ->
 %%-----------------------------------------------------------------------------
 -spec get_is_false/2 :: (config_category(), config_key()) -> boolean() | 'undefined'.
 -spec get_is_false/3 :: (config_category(), config_key(), Default) -> boolean() | Default.
+-spec get_is_false/4 :: (config_category(), config_key(), Default, ne_binary()) -> boolean() | Default.
 get_is_false(Category, Key) ->
     case get(Category, Key) of
         undefined -> undefined;
         Else -> wh_util:is_false(Else)
     end.
 get_is_false(Category, Key, Default) ->
-    wh_util:is_false(get(Category, Key, Default)).
+    get_is_false(Category, Key, Default, wh_util:to_binary(node())).
+get_is_false(Category, Key, Default, Node) ->
+    wh_util:is_false(get(Category, Key, Default, Node)).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -128,13 +148,16 @@ get_is_false(Category, Key, Default) ->
 %%-----------------------------------------------------------------------------
 -spec get_is_true/2 :: (config_category(), config_key()) -> boolean() | 'undefined'.
 -spec get_is_true/3 :: (config_category(), config_key(), Default) -> boolean() | Default.
+-spec get_is_true/4 :: (config_category(), config_key(), Default, ne_binary()) -> boolean() | Default.
 get_is_true(Category, Key) ->
     case get(Category, Key) of
         undefined -> undefined;
         Else -> wh_util:is_true(Else)
     end.
 get_is_true(Category, Key, Default) ->
-    wh_util:is_true(get(Category, Key, Default)).
+    get_is_true(Category, Key, Default, wh_util:to_binary(node())).
+get_is_true(Category, Key, Default, Node) ->
+    wh_util:is_true(get(Category, Key, Default, Node)).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -144,11 +167,14 @@ get_is_true(Category, Key, Default) ->
 %%-----------------------------------------------------------------------------
 -spec get_non_empty/2 :: (config_category(), config_key()) -> boolean() | 'undefined'.
 -spec get_non_empty/3 :: (config_category(), config_key(), Default) -> boolean() | Default.
+-spec get_non_empty/4 :: (config_category(), config_key(), Default, ne_binary()) -> boolean() | Default.
 get_non_empty(Category, Key) ->
     get_non_empty(Category, Key, undefined).
 
 get_non_empty(Category, Key, Default) ->
-    Value = get(Category, Key, Default),
+    get_non_empty(Category, Key, Default, wh_util:to_binary(node())).
+get_non_empty(Category, Key, Default, Node) ->
+    Value = get(Category, Key, Default, Node),
     case wh_util:is_empty(Value) of
         true -> undefined;
         false -> Value
@@ -165,6 +191,7 @@ get_non_empty(Category, Key, Default) ->
 %%-----------------------------------------------------------------------------
 -spec get/2 :: (config_category(), config_key()) -> term() | 'undefined'.
 -spec get/3 :: (config_category(), config_key(), Default) -> term() | Default.
+-spec get/4 :: (config_category(), config_key(), Default, ne_binary()) -> term() | Default.
 get(Category, Key) ->
     get(Category, Key, undefined).
 
@@ -173,10 +200,12 @@ get(Category, Key, Default) when not is_binary(Category)->
 get(Category, Key, Default) when not is_binary(Key)->
     get(Category, wh_util:to_binary(Key), Default);
 get(Category, Key, Default) ->
+    get(Category, Key, Default, wh_util:to_binary(node())).
+
+get(Category, Key, Default, Node) ->
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
     case fetch_category(Category, Cache) of
         {ok, JObj} ->
-            Node = wh_util:to_binary(node()),
             case wh_json:get_value([Node, Key], JObj) of
                 undefined ->
                     case wh_json:get_value([<<"default">>, Key], JObj) of
@@ -237,8 +266,11 @@ get_all_kvs(Category) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec set/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()}.
+-spec set/4 :: (config_category(), config_key(), term(), ne_binary()) -> {'ok', wh_json:json_object()}.
 set(Category, Key, Value) ->
-    do_set(Category, wh_util:to_binary(node()), Key, Value).
+    set(Category, Key, Value, wh_util:to_binary(node())).
+set(Category, Key, Value, Node) ->
+    do_set(Category, Key, Value, Node).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -249,7 +281,7 @@ set(Category, Key, Value) ->
 %%-----------------------------------------------------------------------------
 -spec set_default/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()}.
 set_default(Category, Key, Value) ->
-    do_set(Category, <<"default">>, Key, Value).
+    do_set(Category, Key, Value, <<"default">>).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -356,14 +388,8 @@ config_terms_to_json(Terms) ->
 %% for the given node
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_set/4 :: (config_category(), config_key(), config_key(), term()) -> {'ok', wh_json:json_object()}.
-do_set(Category, Node, Key, Value) when not is_binary(Category) ->
-    do_set(wh_util:to_binary(Category), Node, Key, Value);
-do_set(Category, Node, Key, Value) when not is_binary(Node) ->
-    do_set(Category, wh_util:to_binary(Node), Key, Value);
-do_set(Category, Node, Key, Value) when not is_binary(Key) ->
-    do_set(Category, Node, wh_util:to_binary(Key), Value);
-do_set(Category, Node, Key, Value) ->
+-spec do_set/4 :: (config_category(), config_key(), term(), ne_binary()) -> {'ok', wh_json:json_object()}.
+do_set(Category, Key, Value, Node) ->
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
 
     UpdateFun = fun(J) ->
