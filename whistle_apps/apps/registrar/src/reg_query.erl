@@ -32,9 +32,23 @@ handle_req(ApiJObj, _Props) ->
 
     %% only send data if a registration is found
     case reg_util:lookup_registration(Realm, Username) of
+        {ok, RegJObjs} when is_list(RegJObjs) ->
+            ?LOG("found multiple contacts for ~s@~s in cache", [Username, Realm]),
+            Resp = [{<<"Multiple">>, <<"true">>}
+                    ,{<<"Fields">>, [filter(ApiJObj, RegJObj) 
+                                     || RegJObj <- RegJObjs
+                                    ]}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp),
+            ?LOG_END("sent multiple registration AORs");
         {ok, RegJObj} ->
             ?LOG("found contact for ~s@~s in cache", [Username, Realm]),
-            filter_and_send(ApiJObj, RegJObj);
+            Resp = [{<<"Fields">>, filter(ApiJObj, RegJObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp),
+            ?LOG_END("sent reply for AOR: ~s", [wh_json:get_value(<<"Contact">>, RegJObj)]);
         {error, not_found} ->
             ?LOG_END("no registration for ~s@~s", [Username, Realm])
     end.
@@ -45,21 +59,13 @@ handle_req(ApiJObj, _Props) ->
 %% extract the requested fields from the registration and send a response
 %% @end
 %%-----------------------------------------------------------------------------
--spec filter_and_send/2 :: (ApiJObj, RegJObj) -> ok when
-      ApiJObj :: wh_json:json_object(),
-      RegJObj :: wh_json:json_object().
-filter_and_send(ApiJObj, RegJObj) ->
-    RespFields = case wh_json:get_value(<<"Fields">>, ApiJObj, []) of
-                     [] ->
-                         wh_json:delete_key(<<"_id">>, wh_json:delete_key(<<"_rev">>, RegJObj));
-                     Fields ->
-                         wh_json:from_list(lists:foldl(fun(F, Acc) ->
-                                                               [ {F, wh_json:get_value(F, RegJObj)} | Acc]
-                                                       end, [], Fields))
-                 end,
-
-    Resp = [{<<"Fields">>, RespFields}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-
-    wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp),
-    ?LOG_END("sent reply for AOR: ~s", [wh_json:get_value(<<"Contact">>, RegJObj)]).
+-spec filter/2 :: (wh_json:json_object(), wh_json:json_object()) -> ok.
+filter(ApiJObj, RegJObj) ->
+    case wh_json:get_value(<<"Fields">>, ApiJObj, []) of
+        [] ->
+            wh_json:delete_key(<<"_id">>, wh_json:delete_key(<<"_rev">>, RegJObj));
+        Fields ->
+            wh_json:from_list(lists:foldl(fun(F, Acc) ->
+                                                  [ {F, wh_json:get_value(F, RegJObj)} | Acc]
+                                          end, [], Fields))
+    end.

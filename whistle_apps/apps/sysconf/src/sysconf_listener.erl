@@ -14,19 +14,19 @@
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("sysconf.hrl").
 
--define(RESPONDERS, [{sysconf_read, [{<<"sysconf">>, <<"read_req">>}]}
-		     ,{sysconf_write, [{<<"sysconf">>, <<"write_req">>}]}
-		    ]).
+-define(RESPONDERS, [{sysconf_get, [{<<"sysconf">>, <<"get_req">>}]}
+                     ,{sysconf_set, [{<<"sysconf">>, <<"set_req">>}]}
+                    ]).
 -define(BINDINGS, [
-		   {sysconf, []}
-		  ]).
+                   {sysconf, []}
+                  ]).
 
 -define(SERVER, ?MODULE).
--define(SYSCONF_QUEUE_NAME, <<"">>).
+-define(SYSCONF_QUEUE_NAME, <<>>).
 -define(SYSCONF_QUEUE_OPTIONS, []).
 -define(SYSCONF_CONSUME_OPTIONS, []).
 
@@ -43,11 +43,11 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				      ,{queue_name, ?SYSCONF_QUEUE_NAME}
-				      ,{queue_options, ?SYSCONF_QUEUE_OPTIONS}
-				      ,{consume_options, ?SYSCONF_CONSUME_OPTIONS}
-				     ], []).
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?SYSCONF_QUEUE_NAME}
+                                      ,{queue_options, ?SYSCONF_QUEUE_OPTIONS}
+                                      ,{consume_options, ?SYSCONF_CONSUME_OPTIONS}
+                                     ], []).
 
 stop(Srv) ->
     gen_listener:stop(Srv).
@@ -113,7 +113,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
+    ?LOG_SYS("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

@@ -404,10 +404,11 @@ extract_files_and_params(RD, Context) ->
     try
         Boundry = webmachine_multipart:find_boundary(RD),
         ?LOG("extracting files with boundry: ~s", [Boundry]),
-        StreamReqBody = wrq:stream_req_body(RD, 1024),
-        StreamParts = webmachine_multipart:stream_parts(StreamReqBody, Boundry),
+
+        StreamParts = webmachine_multipart:stream_parts(wrq:stream_req_body(RD, 1024), Boundry),
 
         {ReqProp, FilesProp} = get_streamed_body(StreamParts),
+        ?LOG("req proplist and files proplist ready"),
         ?LOG("extracted request vars(~b) and files(~b)", [length(ReqProp), length(FilesProp)]),
 
         Context#cb_context{req_json=wh_json:from_list(ReqProp), req_files=FilesProp}
@@ -415,7 +416,7 @@ extract_files_and_params(RD, Context) ->
         _A:_B ->
             ST = erlang:get_stacktrace(),
             ?LOG("exception extracting files and params: ~p:~p", [_A, _B]),
-            [?LOG_END("stacktrace: ~p", [Line]) || Line <- ST],
+            ?LOG_STACKTRACE(ST),
             Context
     end.
 
@@ -423,17 +424,17 @@ extract_files_and_params(RD, Context) ->
 extract_file(RD, Context) ->
     QS = get_qs(RD),
 
-    FileContents = wh_util:to_binary(wrq:req_body(RD)),
-    ContentType = wrq:get_req_header("Content-Type", RD),
-    ContentSize = wrq:get_req_header("Content-Length", RD),
-    ?LOG("extracting file content type ~s", [ContentType]),
-    ?LOG("extracting file content size ~s", [ContentSize]),
-    Context#cb_context{req_files=[{<<"uploaded_file">>, wh_json:from_list([{<<"headers">>, wh_json:from_list([{<<"content_type">>, ContentType}
-                                                                                                              ,{<<"content_length">>, ContentSize}
-                                                                                                             ])}
-                                                                           ,{<<"contents">>, FileContents}
-                                                                          ])
-                                  }]
+    FileContents = wrq:req_body(RD),
+    
+    Headers = wh_json:from_list([{<<"content_type">>, wrq:get_req_header("Content-Type", RD)}
+                                 ,{<<"content_length">>, wrq:get_req_header("Content-Length", RD)}
+                                ]),
+
+    FileJObj = wh_json:from_list([{<<"headers">>, Headers}
+                                  ,{<<"contents">>, FileContents}
+                                 ]),
+
+    Context#cb_context{req_files=[{<<"uploaded_file">>, FileJObj}]
                        ,req_json=QS
                       }.
 
@@ -459,13 +460,14 @@ get_streamed_body({{_Ignored, {Params, Hdrs}, Content}, Next}, ReqProp, FilesPro
 
     ?LOG("streamed file headers ~p", [Hdrs]),
     ?LOG("streamed file name ~s (~s)", [Key, FileName]),
-    get_streamed_body(Next(), ReqProp, [{Key, {struct, [{<<"headers">>, wh_json:normalize_jobj({struct, Hdrs})}
-                                                        ,{<<"contents">>, Value}
-                                                        ,{<<"filename">>, FileName}
-                                                       ]}}
-                                        | FilesProp]);
+    get_streamed_body(Next(), ReqProp, [{Key, wh_json:from_list([{<<"headers">>, wh_json:normalize_jobj(wh_json:from_list(Hdrs))}
+                                                                 ,{<<"contents">>, Value}
+                                                                 ,{<<"filename">>, FileName}
+                                                                ])}
+                                        | FilesProp
+                                       ]);
 get_streamed_body(Term, _, _) ->
-    ?LOG("Erro get_streamed_body: ~p", [Term]).
+    ?LOG("error get_streamed_body: ~p", [Term]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -674,7 +676,13 @@ execute_request_results(RD, #cb_context{resp_error_code=ReturnCode, req_nouns=[{
         true ->
             ?TIMER_TICK("v1.execute_request verb=/=put end"),
             ?LOG("executed ~s request for ~s: ~p", [Verb, Mod, Params]),
-            {true, RD, Context}
+            case ReturnCode of
+                202 ->
+                    ?LOG("returning 202"),
+                    {{halt, 202}, RD, Context};
+                _ ->
+                    {true, RD, Context}
+            end
     end.
 
 %% If we're tunneling PUT through POST, we need to tell webmachine POST is allowed to create a non-existant resource

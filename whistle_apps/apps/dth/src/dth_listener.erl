@@ -20,12 +20,11 @@
 -include("dth.hrl").
 
 -define(RESPONDERS, [
-                     {dth_cdr_handler, [{<<"call_detail">>, <<"cdr">>}]}
-                     ,{dth_blacklist_req, [{<<"dth">>, <<"blacklist_req">>}]}
+                     {cdr_handler, [{<<"call_detail">>, <<"cdr">>}]}
+                     ,{blacklist_req, [{<<"dth">>, <<"blacklist_req">>}]}
                     ]).
 -define(BINDINGS, [
-                   {cdrs, [{callid, <<"*">>}]}
-                   ,{dth, []}
+                   {call, [{restrict_to, [cdr]}]}
                   ]).
 
 -define(SERVER, ?MODULE).
@@ -52,8 +51,8 @@ start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
                                       ,{bindings, ?BINDINGS}
                                      ], []).
--spec stop/1 :: (Srv) -> ok when
-      Srv :: atom() | pid().
+
+-spec stop/1 :: (atom() | pid()) -> 'ok'.
 stop(Srv) ->
     gen_listener:stop(Srv).
 
@@ -171,7 +170,7 @@ handle_event(_JObj, #state{dth_cdr_url=Url, cache=Cache, wsdl_model=WSDL}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), #state{}) -> ok.
+-spec terminate/2 :: (term(), #state{}) -> 'ok'.
 terminate(_Reason, _) ->
     ?LOG_SYS("dth: ~p termination", [_Reason]).
 
@@ -189,25 +188,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec refresh_blacklist/2 :: (Cache, WSDL) -> ok when
-      Cache :: pid(),
-      WSDL :: #wsdl{}.
+-spec refresh_blacklist/2 :: (pid(), #wsdl{}) -> 'ok'.
 refresh_blacklist(Cache, WSDL) ->
     {ok, _, [Response]} = detergent:call(WSDL, "GetBlockList", []),
     BlockListEntries = get_blocklist_entries(Response),
     ?LOG_SYS("Entries: ~p", [BlockListEntries]),
     wh_cache:store_local(Cache, dth_util:blacklist_cache_key(), BlockListEntries).
 
--spec get_blocklist_entries/1 :: (Response) -> [{binary(),binary()},...] | [] when
-      Response :: #'p:GetBlockListResponse'{}.
+-spec get_blocklist_entries/1 :: (#'p:GetBlockListResponse'{}) -> wh_json:json_object().
 get_blocklist_entries(#'p:GetBlockListResponse'{
                          'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
                            'BlockListEntry'=undefined
                           }}) ->
-    {struct, []};
+    wh_json:new();
 get_blocklist_entries(#'p:GetBlockListResponse'{
                          'GetBlockListResult'=#'p:ArrayOfBlockListEntry'{
                            'BlockListEntry'=Entries
                           }}) when is_list(Entries) ->
     %% do some formatting of the entries to be [{ID, Reason}]
-    {struct, [{wh_util:to_binary(ID), wh_util:to_binary(Reason)} || #'p:BlockListEntry'{'CustomerID'=ID, 'BlockReason'=Reason} <- Entries]}.
+    wh_json:from_list([{wh_util:to_binary(ID), wh_util:to_binary(Reason)} || #'p:BlockListEntry'{'CustomerID'=ID, 'BlockReason'=Reason} <- Entries]).

@@ -8,9 +8,16 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_doc).
 
--export([load/2, load_from_file/2, load_merge/3, load_view/3, load_view/4, load_attachment/3, load_docs/2]).
--export([save/1, delete/1, delete/2, save_attachment/4, save_attachment/5, delete_attachment/3]).
--export([ensure_saved/1]).
+-export([load/2, load_from_file/2, load_merge/3
+         ,load_view/3, load_view/4
+         ,load_attachment/3, load_docs/2
+        ]).
+-export([save/1, save/2
+         ,delete/1, delete/2
+         ,save_attachment/4, save_attachment/5
+         ,delete_attachment/3
+        ]).
+-export([ensure_saved/1, ensure_saved/2]).
 -export([public_fields/1, private_fields/1, is_private_key/1]).
 -export([rev_to_etag/1, current_doc_vsn/0]).
 
@@ -253,12 +260,16 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec save/1 :: (#cb_context{}) -> #cb_context{}.
-save(#cb_context{db_name=undefined}=Context) ->
+-spec save/2 :: (#cb_context{}, proplist()) -> #cb_context{}.
+save(#cb_context{}=Context) ->
+    save(Context, []).
+
+save(#cb_context{db_name=undefined}=Context, _) ->
     ?LOG("DB undefined, cannot save"),
     crossbar_util:response_db_missing(Context);
-save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context) ->
+save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
-    case couch_mgr:save_doc(DB, JObj0) of
+    case couch_mgr:save_doc(DB, JObj0, Options) of
         {error, db_not_reachable} ->
             ?LOG("failed to save json: db not reachable"),
             crossbar_util:response_datastore_timeout(Context);
@@ -267,7 +278,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
             crossbar_util:response_conflicting_docs(Context);
         {ok, JObj1} when Verb =:= <<"put">> ->
             ?LOG("saved a put request, setting location headers"),
-            send_document_change(created, DB, JObj1),
+            send_document_change(created, DB, JObj1, Options),
             Context#cb_context{doc=JObj1
                                ,resp_status=success
                                ,resp_headers=[{"Location", wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
@@ -276,7 +287,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
                               };
         {ok, JObj2} ->
             ?LOG("saved json doc"),
-            send_document_change(edited, DB, JObj2),
+            send_document_change(edited, DB, JObj2, Options),
             Context#cb_context{doc=JObj2
                                ,resp_status=success
                                ,resp_data=public_fields(JObj2)
@@ -297,18 +308,22 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
 %% @end
 %%--------------------------------------------------------------------
 -spec ensure_saved/1 :: (#cb_context{}) -> #cb_context{}.
-ensure_saved(#cb_context{db_name=undefined}=Context) ->
+-spec ensure_saved/2 :: (#cb_context{}, proplist()) -> #cb_context{}.
+ensure_saved(#cb_context{}=Context) ->
+    ensure_saved(Context, []).
+
+ensure_saved(#cb_context{db_name=undefined}=Context, _) ->
     ?LOG("DB undefined, cannot ensure save"),
     crossbar_util:response_db_missing(Context);
-ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context) ->
+ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
-    case couch_mgr:ensure_saved(DB, JObj0) of
+    case couch_mgr:ensure_saved(DB, JObj0, Options) of
         {error, db_not_reachable} ->
             ?LOG("Failed to save json: db not reachable"),
             crossbar_util:response_datastore_timeout(Context);
         {ok, JObj1} when Verb =:= <<"put">> ->
             ?LOG("Saved a put request, setting location headers"),
-            send_document_change(created, DB, JObj1),
+            send_document_change(created, DB, JObj1, Options),
             Context#cb_context{doc=JObj1
                                ,resp_status=success
                                ,resp_headers=[{"Location", wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
@@ -317,7 +332,7 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
                               };
         {ok, JObj2} ->
             ?LOG("Saved json doc"),
-            send_document_change(edited, DB, JObj2),
+            send_document_change(edited, DB, JObj2, Options),
             Context#cb_context{doc=JObj2
                                ,resp_status=success
                                ,resp_data=public_fields(JObj2)
@@ -328,30 +343,52 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
             Context
     end.
 
--spec send_document_change/3 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects()) -> pid().
-send_document_change(Action, Db, Doc) when not is_binary(Action) ->
-    send_document_change(wh_util:to_binary(Action), Db, Doc);
-send_document_change(Action, Db, Docs) when is_list(Docs) ->
-    [send_document_change(Action, Db, Doc) || Doc <- Docs];
-send_document_change(Action, Db, Doc) ->
+-spec send_document_change/3 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects()) -> 'ok' | pid().
+-spec send_document_change/4 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects(), proplist()) -> 'ok' | pid().
+send_document_change(Action, Db, Docs) ->
+    send_document_change(Action, Db, Docs, []).
+
+send_document_change(Action, Db, Docs, Options) when is_list(Docs) ->
+    [send_document_change(Action, Db, Doc, Options) || Doc <- Docs];
+send_document_change(Action, Db, Doc, Options) ->
     CallID = get(callid),
-    spawn(fun() ->
-                  put(callid, CallID),
-                  Id = wh_json:get_value(<<"_id">>, Doc),
-                  Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
-                  Change = [{<<"ID">>, Id}
-                            ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
-                            ,{<<"Doc">>, public_fields(Doc)}
-                            ,{<<"Type">>, Type}
-                            ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
-                            ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
-                            ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
-                            ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
-                            ,{<<"Version">>, wh_json:get_binary_value(<<"pvt_vsn">>, Doc)}
-                            | wh_api:default_headers(<<"configuration">>, <<"doc_", Action/binary>>, ?APP_NAME, ?APP_VERSION)],
-                  ?LOG("publishing configuration document_change event for ~s, type: ~s", [Id, Type]),
-                  wapi_conf:publish_doc_update(Action, Db, Type, Id, Change)
-          end).
+
+    case props:get_value(publish_doc, Options, true) of
+        true ->
+            spawn(fun() ->
+                          put(callid, CallID),
+                          case wh_json:get_value(<<"_id">>, Doc) of
+                              undefined ->
+                                  Id = wh_json:get_value(<<"id">>, Doc),
+                                  case wh_json:get_value(<<"error">>, Doc) of
+                                      undefined ->
+                                          {ok, Doc1} = couch_mgr:open_doc(Db, Id),
+                                          publish_doc(Action, Db, Doc1, Id);
+                                      _E ->
+                                          ok
+                                  end;
+                              Id ->
+                                  publish_doc(Action, Db, Doc, Id)
+                          end
+                  end);
+        false ->
+            ok
+    end.
+
+publish_doc(Action, Db, Doc, Id) ->
+    Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
+    Change = [{<<"ID">>, Id}
+              ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
+              ,{<<"Doc">>, public_fields(Doc)}
+              ,{<<"Type">>, Type}
+              ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
+              ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
+              ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
+              ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
+              ,{<<"Version">>, wh_json:get_binary_value(<<"pvt_vsn">>, Doc)}
+              | wh_api:default_headers(<<"configuration">>, <<"doc_", (wh_util:to_binary(Action))/binary>>, ?APP_NAME, ?APP_VERSION)],
+    wapi_conf:publish_doc_update(Action, Db, Type, Id, Change).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

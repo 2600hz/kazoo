@@ -143,12 +143,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.onboard">>, [RD, #cb
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
                   Context1 = populate_new_account(Data, Context),
-                  case Context1 of
-                      #cb_context{resp_status=success} ->
-                          notfy_new_account(Context1);
-                      _Else ->
-                          ok
-                  end,
                   Pid ! {binding_result, true, [RD, create_response(RD, Context1), Params]}
           end),
     {noreply, State};
@@ -315,15 +309,6 @@ create_account(JObj, Context, {Pass, Fail}) ->
                           Id = couch_mgr:get_uuid(), 
                           wh_json:set_value(<<"_id">>, Id, J) 
                   end
-                  ,fun(J) ->
-                           case wh_json:get_ne_value(<<"realm">>, J) of
-                               undefined -> 
-                                   RealmSuffix = whapps_config:get_binary(?OB_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
-                                   Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"realm_strength">>, 3),
-                                   wh_json:set_value(<<"realm">>, list_to_binary([rand_chars(Strength), ".", RealmSuffix]), J);
-                               _ -> J
-                           end
-                   end
                  ],
     Payload = [undefined
                ,Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Account, Generators)
@@ -358,7 +343,7 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
     Payload = [undefined
                ,Context#cb_context{req_data=Properties
                                    ,db_name = <<"--">>}
-               ,Number
+               ,[Number, <<"activate">>]
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.phone_numbers">>, Payload) of
         [_, #cb_context{resp_status=success}=Context1 | _] ->
@@ -671,7 +656,7 @@ populate_new_account([{<<"phone_numbers">>, #cb_context{storage=Number}=Context}
     Payload = [undefined
                ,Context#cb_context{db_name=AccountDb
                                    ,account_id=wh_util:format_account_id(AccountDb, raw)}
-               ,Number
+               ,[Number, <<"activate">>]
               ],
     case crossbar_bindings:fold(<<"v1_resource.execute.put.phone_numbers">>, Payload) of
         [_, #cb_context{resp_status=success} | _] ->
@@ -779,20 +764,3 @@ create_response(RD, #cb_context{doc=JObj, account_id=AccountId}=Context) ->
             ?LOG("could not create new local auth token, ~p", [R]),
             crossbar_util:response(error, JObj, 400, Context)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Send a notification that the account has been created
-%% @end
-%%--------------------------------------------------------------------
--spec notfy_new_account/1 :: (#cb_context{}) -> #cb_context{}.
-notfy_new_account(#cb_context{doc=JObj}) ->
-    Notify = [{<<"Account-Name">>, wh_json:get_value(<<"name">>, JObj)}
-              ,{<<"Account-Realm">>, wh_json:get_value(<<"realm">>, JObj)}
-              ,{<<"Account-API-Key">>, wh_json:get_value(<<"pvt_api_key">>, JObj)}
-              ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
-              ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
-              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
-             ],
-    wapi_notifications:publish_new_account(Notify).

@@ -13,7 +13,7 @@
          "description":"The GUI login username",
          "type":"string",
          "minLength":1,
-         "maxLength":254
+         "maxLength":256
       },
       "first_name":{
          "description":"The first name of the user",
@@ -33,7 +33,7 @@
          "description":"The email of the user",
          "type":"string",
          "minLength":1,
-         "maxLength":254
+         "maxLength":256
       },
       "vm_to_email_enabled":{
          "description":"Determines if the user would like voicemails emailed to them",
@@ -58,6 +58,11 @@
             "admin"
          ],
          "default":"user"
+      },
+      "is_sub_account_rep":{
+         "description":"Determines if the user should be in the pool of users that recieve emails when sub accounts are created",
+         "type":"boolean",
+         "default":false
       },
       "apps":{
          "description":"The applications the user has enabled in the GUI",
@@ -336,7 +341,7 @@
                   "support_email":{
                      "description":"The support email provided to the templates",
                      "type":"string",
-                     "maxLength":32
+                     "maxLength":256
                   },
                   "service_url":{
                      "description":"The support number provided to the templates",
@@ -356,7 +361,7 @@
                   "send_from":{
                      "description":"The from address used when sending the email",
                      "type":"string",
-                     "maxLength":32
+                     "maxLength":256
                   }
                }
             }

@@ -14,7 +14,14 @@
 -export([render_template/3]).
 -export([normalize_proplist/1]).
 -export([json_to_template_props/1]).
--export([get_service_props/3]).
+-export([get_service_props/2, get_service_props/3]).
+-export([get_rep_email/1]).
+-export([compile_default_text_template/2]).
+-export([compile_default_html_template/2]).
+-export([compile_default_subject_template/2]).
+-export([compile_default_template/3]).
+-export([find_admin/1]).
+-export([get_account_doc/1]).
 
 -include("notify.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
@@ -25,7 +32,11 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_email/3 :: (ne_binary(), ne_binary() | [ne_binary(),...], term()) -> ok.
+-spec send_email/3 :: (ne_binary(), undefined | binary(), term()) -> ok.
+send_email(_, undefined, _) ->
+    ok;
+send_email(_, <<>>, _) ->
+    ok;
 send_email(From, To, Email) ->
     Encoded = mimemail:encode(Email),
     Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
@@ -63,9 +74,32 @@ normalize_proplist_element(Else) ->
 
 normalize_value(Value) ->
     binary:replace(wh_util:to_lower_binary(Value), <<"-">>, <<"_">>, [global]).
+    
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec compile_default_text_template/2 :: (atom(), ne_binary()) -> {ok, atom()}.
+-spec compile_default_html_template/2 :: (atom(), ne_binary()) -> {ok, atom()}.
+-spec compile_default_subject_template/2 :: (atom(), ne_binary()) -> {ok, atom()}.
+-spec compile_default_template/3 :: (atom(), ne_binary(), atom()) -> {ok, atom()}.
+
+compile_default_text_template(TemplateModule, Category) ->
+    compile_default_template(TemplateModule, Category, default_text_template).
+
+compile_default_html_template(TemplateModule, Category) ->
+    compile_default_template(TemplateModule, Category, default_html_template).
+
+compile_default_subject_template(TemplateModule, Category) ->
+    compile_default_template(TemplateModule, Category, default_subject_template).
+
+compile_default_template(TemplateModule, Category, Key) ->
+    {ok, TemplateModule} = erlydtl:compile(whapps_config:get(Category, Key), TemplateModule).
  
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %%
 %% @end
@@ -100,7 +134,12 @@ render_template(Template, DefaultTemplate, Props) ->
 %% in the event, parent account notification object, and then default.
 %% @end
 %%--------------------------------------------------------------------
+-spec get_service_props/2 :: (wh_json:json_object(), ne_binary()) -> proplist().
 -spec get_service_props/3 :: (wh_json:json_object(), wh_json:json_object(), ne_binary()) -> proplist().
+
+get_service_props(Account, ConfigCat) ->
+    get_service_props(wh_json:new(), Account, ConfigCat).
+
 get_service_props(Request, Account, ConfigCat) ->
     DefaultUrl = wh_json:get_ne_value(<<"service_url">>, Request
                                       ,whapps_config:get(ConfigCat, <<"default_service_url">>, <<"http://apps.2600hz.com">>)),
@@ -122,6 +161,7 @@ get_service_props(Request, Account, ConfigCat) ->
              ,{<<"provider">>, wh_json:get_value([<<"notifications">>, Module, <<"service_provider">>], JObj, DefaultProvider)}
              ,{<<"support_number">>, wh_json:get_value([<<"notifications">>, Module, <<"support_number">>], JObj, DefaultNumber)}
              ,{<<"support_email">>, wh_json:get_value([<<"notifications">>, Module, <<"support_email">>], JObj, DefaultEmail)}
+             ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
             ];
         _E ->
             ?LOG("failed to find parent for notifications '~s' service info: ~p", [Module, _E]),
@@ -130,5 +170,98 @@ get_service_props(Request, Account, ConfigCat) ->
              ,{<<"provider">>, DefaultProvider}
              ,{<<"support_number">>, DefaultNumber}
              ,{<<"support_email">>, DefaultEmail}
+             ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
             ]
     end.         
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Try to find the email address of a sub_account_rep for a given
+%% account object
+%% @end
+%%--------------------------------------------------------------------
+-spec get_rep_email/1 :: (wh_json:json_object()) -> undefined | ne_binary().
+get_rep_email(JObj) ->
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    case wh_json:get_value(<<"pvt_tree">>, JObj, []) of
+        [] -> undefined;
+        Tree -> get_rep_email(lists:reverse(Tree), AccountId)
+    end.
+
+get_rep_email([], _) ->
+    undefined;
+get_rep_email([Parent|Parents], AccountId) ->
+    ParentDb = wh_util:format_account_id(Parent, encoded),
+    ViewOptions = [{<<"include_docs">>, true}
+                   ,{<<"key">>, AccountId}
+                  ],
+    ?LOG("attempting to find sub account rep for ~s in parent account ~s", [AccountId, Parent]),
+    case couch_mgr:get_results(ParentDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
+        {ok, [Result|_]} ->
+            case wh_json:get_value([<<"doc">>, <<"email">>], Result) of
+                undefined ->
+                    ?LOG("found rep but they have no email, attempting to get email of admin"),
+                    wh_json:get_value(<<"email">>, find_admin(ParentDb));
+                Else ->
+                    ?LOG("found rep but email: ~s", [Else]), 
+                    Else
+            end;
+        _E -> 
+            ?LOG("failed to find rep for sub account, attempting next parent"),
+            get_rep_email(Parents, Parents)
+    end.
+    
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% try to find the first user with admin privileges and an email given
+%% a sub account object or sub account db name.
+%% @end
+%%--------------------------------------------------------------------
+-spec find_admin/1 :: (undefined | ne_binary() | wh_json:json_object()) -> wh_json:json_object().
+find_admin(undefined) ->
+    wh_json:new();
+find_admin(AccountDb) when is_binary(AccountDb) ->
+    ViewOptions = [{<<"key">>, <<"user">>}
+                   ,{<<"include_docs">>, true}
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+        {ok, Users} -> 
+            Admins = [User || User <- Users
+                                  ,wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
+                                  ,wh_json:get_ne_value([<<"doc">>, <<"email">>], User) =/= undefined 
+                     ],
+            case Admins of
+                [] ->
+                    ?LOG("failed to find any admins with email addresses in ~s", [AccountDb]),
+                    wh_json:new();
+                Else -> 
+                    wh_json:get_value(<<"doc">>, hd(Else))
+            end;
+        _E -> 
+            ?LOG("faild to find users in ~s: ~p", [AccountDb, _E]),
+            wh_json:new()
+    end;
+find_admin(Account) ->
+    find_admin(wh_json:get_value(<<"pvt_account_db">>, Account)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% given a notification event try to open the account definition doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_account_doc/1 :: (wh_json:json_object()) -> {ok, wh_json:json_object()} | {error, term()}.
+get_account_doc(JObj) ->
+    {AcctDb, AcctId} = case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
+                           {undefined, undefined} -> undefined;
+                           {undefined, Id1} ->
+                               {wh_util:format_account_id(Id1, encoded), Id1};
+                           {Id2, undefined} ->
+                               {Id2, wh_util:format_account_id(Id2, raw)};
+                           Else -> Else 
+                       end,
+    ?LOG("attempting to load account doc ~s from ~s", [AcctId, AcctDb]),
+    couch_mgr:open_doc(AcctDb, AcctId).

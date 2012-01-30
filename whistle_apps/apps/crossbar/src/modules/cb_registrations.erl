@@ -15,7 +15,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("../../include/crossbar.hrl").
 
@@ -98,59 +98,59 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.registrations">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = allowed_methods(Payload),
+                  {Result, Payload1} = allowed_methods(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.registrations">>, Payload}, State) ->
     spawn(fun() ->
-		  {Result, Payload1} = resource_exists(Payload),
+                  {Result, Payload1} = resource_exists(Payload),
                   Pid ! {binding_result, Result, Payload1}
-	  end),
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
-		  Context1 = validate(Params, RD, Context),
-		  Pid ! {binding_result, true, [RD, Context1, Params]}
-	 end),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Context1 = validate(Params, RD, Context),
+                  Pid ! {binding_result, true, [RD, Context1, Params]}
+         end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
-		  Pid ! {binding_result, true, [RD, Context, Params]}
-	  end),
+                  Pid ! {binding_result, true, [RD, Context, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.post.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
-		  {Context1, Resp} = case Context#cb_context.resp_status =:= success of
-					 true -> {crossbar_doc:save(Context), true};
-					 false -> {Context, false}
-				     end,
-		  Pid ! {binding_result, Resp, [RD, Context1, Params]}
-	  end),
+                  crossbar_util:binding_heartbeat(Pid),
+                  {Context1, Resp} = case Context#cb_context.resp_status =:= success of
+                                         true -> {crossbar_doc:save(Context), true};
+                                         false -> {Context, false}
+                                     end,
+                  Pid ! {binding_result, Resp, [RD, Context1, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
-		  Pid ! {binding_result, true, [RD, Context, Params]}
-	  end),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Pid ! {binding_result, true, [RD, Context, Params]}
+          end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.registrations">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-		  crossbar_util:binding_heartbeat(Pid),
-		  Pid ! {binding_result, true, [RD, Context, Params]}
-	  end),
+                  crossbar_util:binding_heartbeat(Pid),
+                  Pid ! {binding_result, true, [RD, Context, Params]}
+          end),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -243,10 +243,11 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate/3 :: (path_tokens(), #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
-validate([], _, #cb_context{req_verb = <<"get">>, db_name=DbName}=Context) ->
+validate([], _, #cb_context{req_verb = <<"get">>, db_name=DbName, account_id=AccountId}=Context) ->
     {ok, JObjs} = couch_mgr:get_all_results(DbName, <<"devices/sip_credentials">>),
-    AccountUsers = [ list_to_tuple(wh_json:get_value(<<"key">>, JObj)) || JObj <- JObjs],
-
+    DefaultRealm = wh_util:get_account_realm(DbName, AccountId),
+    AccountUsers = [{wh_json:get_value([<<"value">>, <<"realm">>], JObj, DefaultRealm)
+                     ,wh_json:get_value([<<"value">>, <<"username">>], JObj)} || JObj <- JObjs],
     ?LOG("CurrentRegs:"),
     CurrentRegs = [ begin ?LOG("~p", [JObj]), wh_json:normalize(JObj) end || {_, JObj} <- cb_modules_util:lookup_regs(AccountUsers)],
 

@@ -13,7 +13,13 @@
 -export([reconcile_number/2]).
 -export([assign_number_to_account/2, assign_number_to_account/3]).
 -export([get_public_fields/2, set_public_fields/3]).
+-export([list_attachments/2]).
+-export([fetch_attachment/3]).
+-export([delete_attachment/3]).
+-export([put_attachment/4, put_attachment/5]).
+-export([reserve_number/2, reserve_number/3]).
 -export([lookup_account_by_number/1]).
+-export([release_number/2]).
 -export([free_numbers/1]).
 
 -include("../include/wh_number_manager.hrl").
@@ -39,6 +45,211 @@ find(Number, Quanity) ->
     Results = [{Module, catch(Module:find_numbers(Num, Quanity))} 
                || Module <- wnm_util:list_carrier_modules()],
     prepare_find_results(Results, []).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Lists attachments on a number
+%% @end
+%%--------------------------------------------------------------------
+-spec list_attachments/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+list_attachments(Number, AccountId) ->
+    ?LOG("attempting to list attachements on ~s for account ~s", [Number, AccountId]),
+    Num = wnm_util:normalize_number(Number),
+    Db = wnm_util:number_to_db_name(Num),
+    case couch_mgr:open_doc(Db, Num) of
+        {error, R1} -> 
+            ?LOG("failed to open number DB: ~p", [R1]),
+            {error, not_found};
+        {ok, JObj} -> 
+            case wh_json:get_value(<<"pvt_number_state">>, JObj, <<"unknown">>) of
+                <<"reserved">> -> 
+                    case wh_json:get_value(<<"pvt_reserved_for">>, JObj) of
+                        AccountId -> 
+                            ?LOG("allowing account to list attachments on a reserved number"),
+                            {ok, wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())};
+                        _ ->
+                            ?LOG("number is reserved for another account"),
+                            {error, reserved}
+                    end;
+                <<"in_service">> -> 
+                    case wh_json:get_value(<<"pvt_assigned_to">>, JObj) of
+                        AccountId -> 
+                            ?LOG("allowing account to list attachments"),
+                            {ok, wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())};
+                        _ ->
+                            ?LOG("number belongs to another account"),
+                            {error, unathorized}
+                    end;
+                Else -> 
+                    ?LOG("disallowing listing attachments for a number in state ~s", [Else]),
+                    {error, unathorized}
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Fetch an attachment on a number
+%% @end
+%%--------------------------------------------------------------------
+-spec fetch_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+
+fetch_attachment(Number, AccountId, Name) ->
+    ?LOG("attempting to fetch attachement ~s on ~s for account ~s", [Name, Number, AccountId]),
+    Num = wnm_util:normalize_number(Number),
+    Db = wnm_util:number_to_db_name(Num),
+    case couch_mgr:open_doc(Db, Num) of
+        {error, R1} -> 
+            ?LOG("failed to open number DB: ~p", [R1]),
+            {error, not_found};
+        {ok, JObj} -> 
+            case wh_json:get_value(<<"pvt_number_state">>, JObj, <<"unknown">>) of
+                <<"reserved">> -> 
+                    case wh_json:get_value(<<"pvt_reserved_for">>, JObj) of
+                        AccountId -> 
+                            ?LOG("allowing account to fetch attachment on a reserved number"),
+                            couch_mgr:fetch_attachment(Db, Num, Name);
+                        _ ->
+                            ?LOG("number is reserved for another account"),
+                            {error, reserved}
+                    end;
+                <<"in_service">> -> 
+                    case wh_json:get_value(<<"pvt_assigned_to">>, JObj) of
+                        AccountId -> 
+                            ?LOG("allowing account to fetch an attachment"),
+                            couch_mgr:fetch_attachment(Db, Num, Name);
+                        _ ->
+                            ?LOG("number belongs to another account"),
+                            {error, unathorized}
+                    end;
+                Else -> 
+                    ?LOG("disallowing attachment to a number in state ~s", [Else]),
+                    {error, unathorized}
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Add an attachment to a number
+%% @end
+%%--------------------------------------------------------------------
+-spec put_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec put_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) 
+                          -> {'ok', wh_json:json_object()} | {'error', atom}.
+
+put_attachment(Number, AccountId, Name, Content) ->
+    put_attachment(Number, AccountId, Name, Content, []).    
+
+put_attachment(Number, AccountId, Name, Content, Options) ->
+    ?LOG("attempting to add an attachement to ~s for account ~s", [Number, AccountId]),
+    Num = wnm_util:normalize_number(Number),
+    Db = wnm_util:number_to_db_name(Num),
+    case couch_mgr:open_doc(Db, Num) of
+        {error, R1} -> 
+            ?LOG("failed to open number DB: ~p", [R1]),
+            {error, not_found};
+        {ok, JObj} -> 
+            Rev = wh_json:get_value(<<"_rev">>, JObj),
+            case wh_json:get_value(<<"pvt_number_state">>, JObj, <<"unknown">>) of
+                <<"reserved">> -> 
+                    case wh_json:get_value(<<"pvt_reserved_for">>, JObj) of
+                        AccountId -> 
+                            ?LOG("allowing account to add an attachment to a reserved number"),
+                            case couch_mgr:put_attachment(Db, Num, Name, Content, [{rev, Rev}|Options]) of
+                                {ok, _} ->
+                                    Attachments = wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())),
+                                    {ok, wh_json:public_fields(wh_json:set_value(<<"attachments">>
+                                                                                     ,[Name|lists:delete(Name, Attachments)]
+                                                                                 ,JObj))};
+                                Else ->
+                                    Else
+                            end;
+                        _ ->
+                            ?LOG("number is reserved for another account"),
+                            {error, reserved}
+                    end;
+                <<"in_service">> -> 
+                    case wh_json:get_value(<<"pvt_assigned_to">>, JObj) of
+                        AccountId -> 
+                            ?LOG("allowing account to add an attachment"),
+                            case couch_mgr:put_attachment(Db, Num, Name, Content, [{rev, Rev}|Options]) of
+                                {ok, _} -> 
+                                    Attachments = wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())),
+                                    {ok, wh_json:public_fields(wh_json:set_value(<<"attachments">>
+                                                                                     ,[Name|lists:delete(Name, Attachments)]
+                                                                                 ,JObj))};
+                                Else ->
+                                    Else
+                            end;
+                        _ ->
+                            ?LOG("number belongs to another account"),
+                            {error, unathorized}
+                    end;
+                Else -> 
+                    ?LOG("disallowing attachment to a number in state ~s", [Else]),
+                    {error, unathorized}
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Add an attachment to a number
+%% @end
+%%--------------------------------------------------------------------
+-spec delete_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+
+delete_attachment(Number, AccountId, Name) ->
+    ?LOG("attempting to delete attachement ~s from ~s for account ~s", [Name, Number, AccountId]),
+    Num = wnm_util:normalize_number(Number),
+    Db = wnm_util:number_to_db_name(Num),
+    case couch_mgr:open_doc(Db, Num) of
+        {error, R1} -> 
+            ?LOG("failed to open number DB: ~p", [R1]),
+            {error, not_found};
+        {ok, JObj} -> 
+            case wh_json:get_value(<<"pvt_number_state">>, JObj, <<"unknown">>) of
+                <<"reserved">> -> 
+                    case wh_json:get_value(<<"pvt_reserved_for">>, JObj) of
+                        AccountId -> 
+                            ?LOG("allowing account to delete attachment from a reserved number"),
+                            case couch_mgr:delete_attachment(Db, Num, Name) of
+                                {ok, _} ->
+                                    Attachments = wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())),
+                                    {ok, wh_json:public_fields(wh_json:set_value(<<"attachments">>
+                                                                                     ,lists:delete(Name, Attachments)
+                                                                                 ,JObj))};
+                                Else ->
+                                    Else
+                            end;
+                        _ ->
+                            ?LOG("number is reserved for another account"),
+                            {error, reserved}
+                    end;
+                <<"in_service">> -> 
+                    case wh_json:get_value(<<"pvt_assigned_to">>, JObj) of
+                        AccountId -> 
+                            ?LOG("allowing account to delete an attachment"),
+                            case couch_mgr:delete_attachment(Db, Num, Name) of
+                                {ok, _} -> 
+                                    Attachments = wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())),
+                                    {ok, wh_json:public_fields(wh_json:set_value(<<"attachments">>
+                                                                                     ,lists:delete(Name, Attachments)
+                                                                                 ,JObj))};
+                                Else ->
+                                    Else
+                            end;
+                        _ ->
+                            ?LOG("number belongs to another account"),
+                            {error, unathorized}
+                    end;
+                Else -> 
+                    ?LOG("disallowing delete attachment from a number in state ~s", [Else]),
+                    {error, unathorized}
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -76,6 +287,26 @@ reconcile_number(Number, AccountId) ->
         end
     catch
         throw:Reason -> {error, Reason}
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Add and reserve a number for an account
+%% @end
+%%--------------------------------------------------------------------
+-spec reserve_number/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} | {error, term()}.
+-spec reserve_number/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()} | {error, term()}.
+
+reserve_number(Number, AccountId) ->
+    reserve_number(Number, AccountId, wh_json:new()).
+
+reserve_number(Number, AccountId, PublicFields) ->
+    Num = wnm_util:normalize_number(Number),
+    case store_discovery(Num, <<"wnm_local">>, wh_json:new(), {<<"reserved">>, AccountId}, PublicFields) of
+        {error, {conflict, _}} -> {error, conflict};
+        {ok, JObj} -> {ok, wh_json:public_fields(JObj)};
+        Else -> Else
     end.
 
 %%--------------------------------------------------------------------
@@ -143,7 +374,7 @@ assign_number_to_account(Number, AccountId, PublicFields) ->
                         (J) -> wh_json:merge_jobjs(wh_json:private_fields(J), PublicFields)
                      end
                    ],
-        save_number(Db, Num, AccountId, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters))
+        save_number(Db, Num, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters), JObj1)
     catch
         throw:Reason -> {error, Reason}
     end.
@@ -198,12 +429,29 @@ get_public_fields(Number, AccountId) ->
     ?LOG("attempting to lookup '~s' in '~s'", [Num, Db]),
     case couch_mgr:open_doc(Db, Num) of
         {ok, JObj} -> 
-            case wh_json:get_value(<<"pvt_assigned_to">>, JObj) of
-                AccountId ->
-                    ?LOG("found number assigned to ~s", [AccountId]),
-                    {ok, wh_json:public_fields(JObj)};
-                _Else ->
-                    ?LOG("found number was not assigned to ~s, returning unathorized", [AccountId]),
+            case wh_json:get_value(<<"pvt_number_state">>, JObj, <<"unknown">>) of
+                <<"reserved">> -> 
+                    case wh_json:get_value(<<"pvt_reserved_for">>, JObj) of
+                        AccountId ->
+                            ?LOG("found number assigned to ~s", [AccountId]),
+                            Attachments = wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())),
+                            {ok, wh_json:public_fields(wh_json:set_value(<<"attachments">>, Attachments, JObj))};
+                        _Else ->
+                            ?LOG("found number was not assigned to ~s, returning unathorized", [AccountId]),
+                            {error, unathorized}
+                    end;
+                <<"in_service">> -> 
+                    case wh_json:get_value(<<"pvt_assigned_to">>, JObj) of
+                        AccountId ->
+                            ?LOG("found number assigned to ~s", [AccountId]),
+                            Attachments = wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())),
+                            {ok, wh_json:public_fields(wh_json:set_value(<<"attachments">>, Attachments, JObj))};
+                        _Else ->
+                            ?LOG("found number was not assigned to ~s, returning unathorized", [AccountId]),
+                            {error, unathorized}
+                    end;
+                Else -> 
+                    ?LOG("disallowing attachment to a number in state ~s", [Else]),
                     {error, unathorized}
             end;
         {error, R}=E -> 
@@ -219,7 +467,8 @@ get_public_fields(Number, AccountId) ->
 %%--------------------------------------------------------------------
 -spec set_public_fields/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()} |
                                                                           {error, atom()}.
-set_public_fields(Number, AccountId, PublicJObj) ->
+set_public_fields(Number, AccountId, Data) ->
+    PublicJObj = wh_json:delete_key(<<"attachments">>, Data),
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
     ?LOG("attempting to lookup '~s' in '~s'", [Num, Db]),
@@ -229,16 +478,31 @@ set_public_fields(Number, AccountId, PublicJObj) ->
                         ?LOG("failed to lookup number: ~p", [R1]),
                         throw(not_found);
                    {ok, J} -> 
-                       case wh_json:get_value(<<"pvt_assigned_to">>, J) of
-                           AccountId -> 
-                               ?LOG("found number assigned to ~s", [AccountId]),
-                               J;
-                           _Else -> 
-                               ?LOG("found number was not assigned to ~s, returning unathorized", [AccountId]),
-                               throw(unathorized)
-                       end
+                        case wh_json:get_value(<<"pvt_number_state">>, J, <<"unknown">>) of
+                            <<"reserved">> -> 
+                                case wh_json:get_value(<<"pvt_reserved_for">>, J) of
+                                    AccountId ->
+                                        ?LOG("found number assigned to ~s", [AccountId]),
+                                        J;
+                                    _Else ->
+                                        ?LOG("found number was not assigned to ~s, returning unathorized", [AccountId]),
+                                        throw(unathorized)
+                                end;
+                            <<"in_service">> -> 
+                                case wh_json:get_value(<<"pvt_assigned_to">>, J) of
+                                    AccountId ->
+                                        ?LOG("found number assigned to ~s", [AccountId]),
+                                        J;
+                                    _Else ->
+                                        ?LOG("found number was not assigned to ~s, returning unathorized", [AccountId]),
+                                        throw(unathorized)
+                                end;
+                            Else -> 
+                                ?LOG("disallowing attachment to a number in state ~s", [Else]),
+                                throw(unathorized)
+                        end
                end,
-        save_number(Db, Num, AccountId, wh_json:merge_jobjs(wh_json:private_fields(JObj1), PublicJObj))
+        save_number(Db, Num, wh_json:merge_jobjs(wh_json:private_fields(JObj1), PublicJObj), JObj1)
     catch
         throw:Reason -> {error, Reason}
     end.
@@ -298,10 +562,17 @@ release_number(Number, AccountId) ->
                     ,fun(J) -> wh_json:delete_key(<<"pvt_assigned_to">>, J) end
                     ,fun(J) -> wh_json:set_value(<<"pvt_previously_assigned_to">>, AccountId, J) end
                    ],
-        save_number(Db, Num, AccountId, lists:foldr(fun(F, J) -> F(J) end, JObj1, Updaters))
+        save_number(Db, Num, lists:foldr(fun(F, J) -> F(J) end, wh_json:private_fields(JObj1), Updaters), JObj1),
+        ok
     catch
         throw:not_found ->
-            remove_number_from_account(Num, AccountId),
+            update_numbers_on_account(Num, <<"released">>, AccountId),
+            ok;
+        throw:unathorized ->
+            update_numbers_on_account(Num, <<"released">>, AccountId),
+            ok;
+        throw:unavailable ->
+            update_numbers_on_account(Num, <<"released">>, AccountId),
             ok;
         _:_ ->
             {error, fault}
@@ -319,7 +590,9 @@ free_numbers(AccountId) ->
     case couch_mgr:open_doc(Db, AccountId) of        
         {ok, JObj} ->
                  [ok = release_number(Number, AccountId) 
-                  || Number <- wh_json:get_value(<<"pvt_wnm_numbers">>, JObj, [])],
+                  || Number <- wh_json:get_value(<<"pvt_wnm_in_service">>, JObj, [])
+                         ++ wh_json:get_value(<<"pvt_wnm_in_reserved">>, JObj, [])
+                 ],
                  ok;
         _ -> ok
     end.
@@ -378,12 +651,17 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec store_discovery/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()} | {error, term()}.
--spec store_discovery/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), ne_binary()) -> {ok, wh_json:json_object()} | {error, term()}.
+-spec store_discovery/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), ne_binary() | {ne_binary(), ne_binary()}) -> {ok, wh_json:json_object()} | {error, term()}.
+-spec store_discovery/5 :: (ne_binary(), ne_binary(), wh_json:json_object(), ne_binary() | {ne_binary(), ne_binary()}, wh_json:json_object()) 
+                           -> {ok, wh_json:json_object()} | {error, term()}.
 
 store_discovery(Number, ModuleName, ModuleData) ->
     store_discovery(Number, ModuleName, ModuleData, <<"discovery">>).
 
 store_discovery(Number, ModuleName, ModuleData, State) ->
+    store_discovery(Number, ModuleName, ModuleData, State, wh_json:new()).
+
+store_discovery(Number, ModuleName, ModuleData, State, PublicFields) ->
     Db = wnm_util:number_to_db_name(Number),
     Generators = [fun(J) -> wh_json:set_value(<<"_id">>, Number, J) end
                   ,fun(J) -> wh_json:set_value(<<"pvt_module_name">>, ModuleName, J) end
@@ -401,8 +679,8 @@ store_discovery(Number, ModuleName, ModuleData, State) ->
                   ,fun(J) -> wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), J) end 
                   ,fun(J) -> wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), J) end
                  ],
-    JObj = lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), Generators),
-    case save_number(Db, Number, undefined, JObj) of
+    JObj = lists:foldr(fun(F, J) -> F(J) end, PublicFields, Generators),
+    case save_number(Db, Number, JObj, wh_json:new()) of
         {ok, _}=Ok ->
             ?LOG("stored newly discovered number '~s'", [Number]),
             Ok;
@@ -410,7 +688,7 @@ store_discovery(Number, ModuleName, ModuleData, State) ->
             ?LOG("storing discovered number '~s' in a new database '~s'", [Number, Db]),
             couch_mgr:db_create(Db),
             couch_mgr:revise_views_from_folder(Db, whistle_number_manager),
-            save_number(Db, Number, undefined, JObj);
+            save_number(Db, Number, JObj, wh_json:new());
         {error, conflict} ->
             case couch_mgr:open_doc(Db, Number) of
                 {ok, Conflict} ->
@@ -432,18 +710,43 @@ store_discovery(Number, ModuleName, ModuleData, State) ->
 %% aggregates the new document to the accounts db.
 %% @end
 %%--------------------------------------------------------------------
--spec add_number_to_account/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} |
-                                                               {error, term()}.
-add_number_to_account(Number, AccountId) ->
+-spec update_numbers_on_account/1 :: (wh_json:json_object()) -> {ok, wh_json:json_object()} |
+                                                                {error, term()}.
+-spec update_numbers_on_account/3 :: (ne_binary(), ne_binary(), undefined | ne_binary()) -> {ok, wh_json:json_object()} |
+                                                                                            {error, term()}.
+
+update_numbers_on_account(JObj) ->
+    State = wh_json:get_value(<<"pvt_number_state">>, JObj, <<"unknown">>),
+    Number = wh_json:get_value(<<"_id">>, JObj),
+    AccountId = wh_json:get_ne_value(<<"pvt_assigned_to">>, JObj
+                                     ,wh_json:get_ne_value(<<"pvt_reserved_for">>, JObj)),
+    update_numbers_on_account(Number, State, AccountId).
+
+update_numbers_on_account(_, _, undefined) ->
+    {error, not_account_id};
+update_numbers_on_account(Number, State, AccountId) ->
     Db = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(Db, AccountId) of
         {ok, JObj} ->
-            Numbers = wh_json:get_value(<<"pvt_wnm_numbers">>, JObj, []),
-            case couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_wnm_numbers">>
-                                                              ,[Number|lists:delete(Number,Numbers)]
-                                                          ,JObj)) of
+            ?LOG("setting number ~s to state ~s on the account ~s", [Number, State, AccountId]),
+            Migrate = wh_json:get_value(<<"pvt_wnm_numbers">>, JObj, []),
+            Updated = lists:foldr(fun(<<"numbers">>, J) when Migrate =/= [] ->
+                                          N = wh_json:get_value(<<"pvt_wnm_in_service">>, J, []),
+                                          wh_json:set_value(<<"pvt_wnm_in_service">>, N ++ Migrate, J);
+                                     (<<"numbers">>, J) when Migrate =:= [] ->
+                                          wh_json:delete_key(<<"pvt_wnm_numbers">>, J);
+                                     (S, J) when S =:= State ->
+                                          ?LOG("adding number ~s to state ~s", [Number, S]),
+                                          N = wh_json:get_value(<<"pvt_wnm_", S/binary>>, JObj, []),
+                                          wh_json:set_value(<<"pvt_wnm_", S/binary>>, [Number|lists:delete(Number,N)], J);
+                                     (S, J) -> 
+                                          ?LOG("removing number ~s from state ~s", [Number, S]),
+                                          N = wh_json:get_value(<<"pvt_wnm_", S/binary>>, JObj, []),
+                                          wh_json:set_value(<<"pvt_wnm_", S/binary>>, lists:delete(Number,N), J)
+                                  end, JObj, [<<"numbers">>|?WNM_NUMBER_STATUS]),
+            case couch_mgr:save_doc(Db, Updated) of
                 {ok, AccountDef} ->
-                    ?LOG("added '~s' to account definition ~s", [Number, AccountId]),
+                    ?LOG("updated the account definition"),
                     couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, AccountDef);
                 Else ->
                     ?LOG("failed to save account definition when adding '~s': ~p", [Number, Else]),
@@ -457,38 +760,12 @@ add_number_to_account(Number, AccountId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Removes a number from the list kept on the account defintion doc, then
-%% aggregates the new document to the accounts db.
-%% @end
-%%--------------------------------------------------------------------
--spec remove_number_from_account/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} |
-                                                                    {error, term()}.
-remove_number_from_account(Number, AccountId) ->
-    Db = wh_util:format_account_id(AccountId, encoded),
-    case couch_mgr:open_doc(Db, AccountId) of
-        {ok, JObj} ->
-            Numbers = wh_json:get_value(<<"pvt_wnm_numbers">>, JObj, []),
-            case couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_wnm_numbers">>
-                                                              ,lists:delete(Number,Numbers), JObj)) of
-                {ok, AccountDef} ->
-                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, AccountDef);
-                Else ->
-                    Else
-            end;
-        Else ->
-            Else
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Helper function to save the number, add to the account doc if required,
 %% and run any providers 
 %% @end
 %%--------------------------------------------------------------------
--spec save_number/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()} |
-                                                                                 {error, term()}.
-save_number(Db, Number, AccountId, JObj1) ->
+-spec save_number/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), wh_json:json_object()) -> {ok, wh_json:json_object()} | {error, term()}.
+save_number(Db, Number, JObj1, PriorJObj) ->
     ?LOG("attempting to save '~s' in '~s'", [Number, Db]),
     CallId = get(callid),
     case couch_mgr:save_doc(Db, JObj1) of
@@ -496,13 +773,9 @@ save_number(Db, Number, AccountId, JObj1) ->
             State = wh_json:get_value(<<"pvt_number_state">>, JObj2),
             spawn(fun() ->
                           put(callid, CallId),
-                          case is_binary(AccountId) andalso State of
-                              <<"in_service">> -> add_number_to_account(Number, AccountId);
-                              <<"released">> -> remove_number_from_account(Number, AccountId);
-                              _ -> ok
-                          end
+                          update_numbers_on_account(JObj2)
                   end),
-            case exec_providers_save(JObj2, Number, State) of
+            case exec_providers_save(JObj2, PriorJObj, Number, State) of
                 {JObj3, []} ->
                     case couch_mgr:save_doc(Db, JObj3) of
                         {ok, J} -> {ok, wh_json:public_fields(J)};
@@ -525,33 +798,35 @@ save_number(Db, Number, AccountId, JObj1) ->
 %% them and collecting any errors...
 %% @end
 %%--------------------------------------------------------------------
--spec exec_providers_save/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> {wh_json:json_object(), proplist()}.
--spec exec_providers_save/5 :: (list(), wh_json:json_object(), ne_binary(), ne_binary(), list()) -> {wh_json:json_object(), proplist()}.
+-spec exec_providers_save/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) 
+                               -> {wh_json:json_object(), proplist()}.
+-spec exec_providers_save/6 :: (list(), wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary(), list()) 
+                               -> {wh_json:json_object(), proplist()}.
 
-exec_providers_save(JObj, Number, State) ->
+exec_providers_save(JObj, PriorJObj, Number, State) ->
     Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, []),
-    exec_providers_save(Providers, JObj, Number, State, []).
+    exec_providers_save(Providers, JObj, PriorJObj, Number, State, []).
 
-exec_providers_save([], JObj, _, _, Result) ->
+exec_providers_save([], JObj, _, _, _, Result) ->
     {JObj, Result};
-exec_providers_save([Provider|Providers], JObj, Number, State, Result) ->
+exec_providers_save([Provider|Providers], JObj, PriorJObj, Number, State, Result) ->
     try 
         ?LOG("executing provider ~s", [Provider]),
         case wnm_util:try_load_module(<<"wnm_", Provider/binary>>) of
             false -> 
                 ?LOG("provider ~s is unknown, skipping", [Provider]),
-                exec_providers_save(Providers, JObj, Number, State, Result);
+                exec_providers_save(Providers, JObj, PriorJObj, Number, State, Result);
             Mod ->
-                case Mod:save(JObj, Number, State) of
+                case Mod:save(JObj, PriorJObj, Number, State) of
                     {ok, J} -> 
-                        exec_providers_save(Providers, J, Number, State, Result);
+                        exec_providers_save(Providers, J, PriorJObj, Number, State, Result);
                     {error, Error} ->
                         ?LOG("provider ~s created error: ~p", [Provider, Error]),
-                        exec_providers_save(Providers, JObj, Number, State, [{Provider, Error}|Result])
+                        exec_providers_save(Providers, JObj, PriorJObj, Number, State, [{Provider, Error}|Result])
                 end
         end
     catch
         _:R ->
             ?LOG("executing provider ~s threw exception: ~p", [Provider, R]),
-            exec_providers_save(Providers, JObj, Number, State, [{Provider, <<"threw exception">>}|Result])
+            exec_providers_save(Providers, JObj, PriorJObj, Number, State, [{Provider, <<"threw exception">>}|Result])
     end.

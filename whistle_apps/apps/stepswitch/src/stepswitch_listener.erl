@@ -31,7 +31,7 @@
                     ]).
 -define(QUEUE_NAME, ?RESOURCE_QUEUE_NAME).
 -define(QUEUE_OPTIONS, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
--define(CONSUME_OPTIONS, [{exclustive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
 %%% API
