@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(wnm_util).
 
+-export([is_tollfree/1]).
 -export([list_carrier_modules/0]).
 -export([get_carrier_module/1]).
 -export([try_load_module/1]).
@@ -20,6 +21,21 @@
 -include_lib("proper/include/proper.hrl").
 
 -define(SERVER, ?MODULE).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Determines if a given number is tollfree
+%% @end
+%%--------------------------------------------------------------------
+-spec is_tollfree/1 :: (ne_binary()) -> boolean().
+is_tollfree(Number) ->
+    Num = normalize_number(Number),
+    Regex = whapps_config:get(?WNM_CONFIG_CAT, <<"is_tollfree_regex">>, ?WNM_DEAFULT_TOLLFREE_RE),
+    case re:run(Num, Regex) of
+        nomatch -> false;
+        _ -> true
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
