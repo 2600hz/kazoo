@@ -103,6 +103,7 @@ init([Node, Options]) ->
     ?LOG_SYS("starting new fs node ~s", [Node]),
 
     process_flag(trap_exit, true),
+    put(callid, wh_util:to_binary(Node)),
 
     Stats = #node_stats{started = erlang:now()},
     erlang:monitor_node(Node, true),
@@ -249,27 +250,22 @@ handle_info({diagnostics, Pid}, #state{stats=Stats}=State) ->
     spawn(fun() -> diagnostics(Pid, Stats) end),
     {noreply, State};
 
-handle_info(timeout, #state{stats=Stats, node=Node}=State) ->
+handle_info(timeout, #state{node=Node}=State) ->
     {foo, Node} ! register_event_handler,
     receive
         ok ->
             ?LOG("event handler registered on node ~s", [Node]),
             Res = run_start_cmds(Node),
-            spawn(fun() -> print_api_responses(Res) end),
 
-            NodeData = extract_node_data(Node),
-            Active = get_active_channels(Node),
-
-            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
-                                         ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
-                                         ,'CUSTOM', 'sofia::register'
-                                        ]),
-            ?LOG("bound to switch events on node ~s", [Node]),
-
-            {noreply, State#state{stats=(Stats#node_stats{
-                                           created_channels = Active
-                                           ,fs_uptime = props:get_value(uptime, NodeData, 0)
-                                          })}, hibernate};
+            case lists:filter(fun was_not_successful_cmd/1, Res) of
+                [] ->
+                    ?LOG("everything went according to plan"),
+                    {noreply, continue_startup(State), hibernate};
+                Errs ->
+                    print_api_responses(Errs),
+                    ecallmgr_fs_handler:rm_fs_node(Node),
+                    {stop, normal, State}
+            end;
         {error, Reason} ->
             ?LOG("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
             {stop, Reason, State};
@@ -303,12 +299,23 @@ terminate(_Reason, #state{node=Node}) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
--spec originate_channel/5 :: (Node, Pid, Route, AvailChan, JObj) -> no_return() when
-      Node :: atom(),
-      Pid :: pid(),
-      Route :: binary() | list(),
-      AvailChan :: integer(),
-      JObj :: wh_json:json_object().
+-spec continue_startup/1 :: (#state{}) -> #state{}.
+continue_startup(#state{node=Node, stats=Stats}=State) ->
+    NodeData = extract_node_data(Node),
+    Active = get_active_channels(Node),
+
+    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+                                 ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
+                                 ,'CUSTOM', 'sofia::register'
+                                ]),
+    ?LOG("bound to switch events on node ~s", [Node]),
+
+    State#state{stats=(Stats#node_stats{
+                         created_channels = Active
+                         ,fs_uptime = props:get_value(uptime, NodeData, 0)
+                        })}.
+
+-spec originate_channel/5 :: (atom(), pid(), ne_binary(), integer(), wh_json:json_object()) -> no_return().
 originate_channel(Node, Pid, Route, AvailChan, JObj) ->
     ChannelVars = ecallmgr_fs_xml:get_channel_vars(JObj),
     Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), JObj),
@@ -502,11 +509,74 @@ get_unset_vars(JObj) ->
             [string:join(Unset, "^"), "^"]
     end.
 
--spec run_start_cmds/1 :: (atom()) -> [fs_api_ret(),...].
+-type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
+                      {'error', {atom(), nonempty_string()}, ne_binary()} |
+                      {'error', {atom(), nonempty_string()}, ne_binary()} |
+                      {'timeout', ne_binary()}.
+-type cmd_results() :: [cmd_result(),...] | [].
+
+-spec run_start_cmds/1 :: (atom()) -> cmd_results().
 run_start_cmds(Node) ->
-    [freeswitch:api(Node, wh_util:to_atom(ApiCmd, true), wh_util:to_list(ApiArg))
-     || {ApiCmd, ApiArg} <- ecallmgr_config:fetch(fs_cmds, []) %% replace with AMQP call to get list of startup commands
-    ].
+    case ecallmgr_config:get(fs_cmds, [], Node) of
+        [] ->
+            ?LOG("no freeswitch commands to run, seems suspect"),
+            timer:sleep(5000),
+            [];
+        Cmds when is_list(Cmds) ->
+            [process_cmd(Node, Cmd) || Cmd <- Cmds];
+        CmdJObj ->
+            case wh_json:is_json_object(CmdJObj) of
+                true ->
+                    process_cmd(Node, CmdJObj);
+                false ->
+                    ?LOG("recv something other than a list for fs_cmds: ~p", [CmdJObj]),
+                    timer:sleep(5000),
+                    run_start_cmds(Node)
+            end
+    end.
+
+process_cmd(Node, JObj) ->
+    [process_cmd(Node, ApiCmd, ApiArg) || {ApiCmd, ApiArg} <- wh_json:to_proplist(JObj)].
+process_cmd(Node, ApiCmd0, ApiArg0) ->
+    ApiCmd = wh_util:to_atom(wh_util:to_binary(ApiCmd0), ?FS_CMD_SAFELIST),
+    ApiArg = wh_util:to_list(ApiArg0),
+
+    case freeswitch:api(Node, ApiCmd, wh_util:to_list(ApiArg)) of
+        {ok, FSResp} ->
+            process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, [global]));
+        {error, _}=E -> [E];
+        timeout -> [{timeout, {ApiCmd, ApiArg}}]
+    end.
+
+process_resp(ApiCmd, ApiArg, FSResps) ->
+    process_resp(ApiCmd, ApiArg, FSResps, []).
+
+process_resp(ApiCmd, ApiArg, [<<>>|Resps], Acc) ->
+    process_resp(ApiCmd, ApiArg, Resps, Acc);
+process_resp(ApiCmd, ApiArg, [<<"+OK Reloading XML">>|Resps], Acc) ->
+    process_resp(ApiCmd, ApiArg, Resps, Acc);
+process_resp(ApiCmd, ApiArg, [<<"+OK acl reloaded">>|Resps], Acc) ->
+    process_resp(ApiCmd, ApiArg, Resps, Acc);
+process_resp(ApiCmd, ApiArg, [<<"+OK ", Resp/binary>>|Resps], Acc) ->
+    process_resp(ApiCmd, ApiArg, Resps, [{ok, {ApiCmd, ApiArg}, Resp} | Acc]);
+process_resp(ApiCmd, ApiArg, [<<"-ERR ", Err/binary>>|Resps], Acc) ->
+    case was_bad_error(Err, ApiCmd, ApiArg) of
+        true -> process_resp(ApiCmd, ApiArg, Resps, [{error, {ApiCmd, ApiArg}, Err} | Acc]);
+        false -> process_resp(ApiCmd, ApiArg, Resps, Acc)
+    end;
+process_resp(_, _, [], Acc) ->
+    Acc.
+
+was_bad_error(<<"[Module already loaded]">>, load, _) ->
+    false;
+was_bad_error(_E, _, _) ->
+    ?LOG("bad error: ~s", [_E]),
+    true.
+
+was_not_successful_cmd({ok, _}) ->
+    false;
+was_not_successful_cmd(_) ->
+    true.
 
 -spec get_active_channels/1 :: (atom()) -> integer().
 get_active_channels(Node) ->
@@ -549,10 +619,16 @@ return_rows(_Node, [], Acc) -> Acc.
 
 print_api_responses(Res) ->
     ?LOG_SYS("Start cmd results:"),
-    _ = [ print_api_response(ApiRes) || ApiRes <- Res],
+    _ = [ print_api_response(ApiRes) || ApiRes <- lists:flatten(Res)],
     ?LOG_SYS("End cmd results").
 
-print_api_response({ok, Res}) ->
-    [ ?LOG_SYS("~s", [Row]) || Row <- binary:split(Res, <<"\n">>, [global]), Row =/= <<>> ];
+print_api_response({ok, {Cmd, Args}, Res}) ->
+    ?LOG_SYS("ok: ~s(~s) => ~s", [Cmd, Args, Res]);
+print_api_response({error, {Cmd, Args}, Res}) ->
+    ?LOG_SYS("error: ~s(~s) => ~s", [Cmd, Args, Res]);
+print_api_response({error, Res}) ->
+    ?LOG_SYS("error: ~s", [Res]);
+print_api_response({timeout, {Cmd, Arg}}) ->
+    ?LOG_SYS("timeout: ~s(~s)", [Cmd, Arg]);
 print_api_response(Other) ->
-    ?LOG_SYS("~p", [Other]).
+    ?LOG_SYS("other: ~p", [Other]).
