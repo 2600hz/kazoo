@@ -8,44 +8,76 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_config).
 
--export([load_config/1, write_config/1, write_config/2, fetch/1, fetch/2]).
+-export([get/1, get/2, get/3
+         ,set/2, set/3
+        ]).
 
 -include("ecallmgr.hrl").
 
--spec load_config/1 :: (file:name()) -> 'ok' | {'error', 'enoent'}.
-load_config(Path) ->
-    ?LOG("Loading ~s", [Path]),
-    case file:consult(Path) of
-	{ok, Startup} ->
-	    {ok, Cache} = ecallmgr_sup:cache_proc(),
-	    _ = [wh_cache:store_local(Cache, cache_key(K), V) || {K,V} <- Startup],
-	    ok;
-	{error, enoent} ->
-	    ?LOG("No file"),
-	    {error, enoent}
+-spec get/1 :: (wh_json:json_string()) -> wh_json:json_term() | 'undefined'.
+-spec get/2 :: (wh_json:json_string(), Default) -> wh_json:json_term() | Default.
+-spec get/3 :: (wh_json:json_string(), Default, wh_json:json_string() | atom()) -> wh_json:json_term() | Default.
+get(Key) ->
+    get(Key, undefined).
+get(Key, Default) ->
+    get(Key, Default, wh_util:to_binary(node())).
+get(Key0, Default, Node0) ->
+    Key = wh_util:to_binary(Key0),
+    Node = wh_util:to_binary(Node0),
+
+    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    case wh_cache:fetch_local(Cache, cache_key(Key, Node)) of
+        {ok, V} -> V;
+        {error, not_found} ->
+            Req = [KV ||
+                      {_, V} = KV <- [{<<"Category">>, <<"ecallmgr">>}
+                                      ,{<<"Key">>, Key}
+                                      ,{<<"Default">>, Default}
+                                      ,{<<"Node">>, Node}
+                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                     ],
+                      V =/= undefined],
+            case catch ecallmgr_amqp_pool:get_req(Req) of
+                {ok, RespJObj} ->
+                    true = wapi_sysconf:get_resp_v(RespJObj),
+                    V = case wh_json:get_value(<<"Value">>, RespJObj) of
+                            <<"undefined">> -> Default;
+                            undefined -> Default;
+                            Value ->
+                                wh_cache:store_local(Cache, cache_key(Key, Node), Value),
+                                Value
+                        end,
+                    V;
+                {'EXIT', _} ->
+                    Default
+            end
     end.
 
--spec write_config/2 :: (file:name(), iodata()) -> 'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
-write_config(Path, Contents) ->
-    file:write_file(Path, Contents).
+-spec set/2 :: (wh_json:json_string(), wh_json:json_term()) -> 'ok'.
+-spec set/3 :: (wh_json:json_string(), wh_json:json_term(), wh_json:json_string() | atom()) -> 'ok'.
+set(Key, Value) ->
+    set(Key, Value, wh_util:to_binary(node())).
+set(Key0, Value, Node0) ->
+    Key = wh_util:to_binary(Key0),
+    Node = wh_util:to_binary(Node0),
 
--spec write_config/1 :: (file:name()) -> 'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
-write_config(Path) ->
     {ok, Cache} = ecallmgr_sup:cache_proc(),
-    KVs = wh_cache:filter_local(Cache, fun({?MODULE, _}, _) -> true; (_,_) -> false end),
-    Contents = lists:foldl(fun(I, Acc) -> [io_lib:format("~p.~n", [I]) | Acc] end
-			   , "", [{K,V} || {{?MODULE, K}, V} <- KVs]),
-    file:write_file(Path, Contents).
-
-fetch(Key) ->
-    fetch(Key, undefined).
-
-fetch(Key, Default) ->
-    {ok, Cache} = ecallmgr_sup:cache_proc(),
-    case wh_cache:fetch_local(Cache, cache_key(Key)) of
-	{ok, Val} -> Val;
-	_ -> Default
+    wh_cache:store_local(Cache, cache_key(Key, Node), Value),
+    
+    Req = [KV ||
+              {_, V} = KV <- [{<<"Category">>, <<"ecallmgr">>}
+                              ,{<<"Key">>, Key}
+                              ,{<<"Value">>, Value}
+                              ,{<<"Node">>, Node}
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ],
+              V =/= undefined],
+    case catch ecallmgr_amqp_pool:set_req(Req) of
+        {'EXIT', _} ->
+            ?LOG("failed to recv resp for setting ~s to ~p", [Key, Value]);
+        _ ->
+            ?LOG("recv resp for setting ~s to ~p", [Key, Value])
     end.
 
-cache_key(K) ->
-    {?MODULE, K}.
+cache_key(K, Node) ->
+    {?MODULE, K, Node}.
