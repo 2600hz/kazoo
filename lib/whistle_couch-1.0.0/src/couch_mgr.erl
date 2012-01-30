@@ -26,7 +26,7 @@
 -export([load_doc_from_file/3, update_doc_from_file/3]).
 -export([revise_doc_from_file/3]).
 -export([revise_docs_from_folder/3, revise_docs_from_folder/4]).
--export([revise_views_from_folder/2, ensure_saved/2]).
+-export([revise_views_from_folder/2, ensure_saved/2, ensure_saved/3]).
 
 -export([all_docs/1, all_design_docs/1, admin_all_docs/1]).
 -export([all_docs/2, all_design_docs/2, admin_all_docs/2]).
@@ -378,8 +378,13 @@ save_doc(DbName, Doc) ->
 %% save a document; if it fails to save because of conflict, pull the latest revision and try saving again.
 %% any other error is returned
 -spec ensure_saved/2 :: (ne_binary(), wh_json:json_object()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec ensure_saved/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+
 ensure_saved(DbName, Doc) ->
-    couch_util:ensure_saved(get_conn(), DbName, Doc, []).
+    ensure_saved(DbName, Doc, []).
+
+ensure_saved(DbName, Doc, Options) ->
+    couch_util:ensure_saved(get_conn(), DbName, Doc, Options).
 
 -spec save_doc/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 save_doc(DbName, Doc, Opts) ->
