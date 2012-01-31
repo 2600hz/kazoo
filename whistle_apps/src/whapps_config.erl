@@ -423,7 +423,7 @@ update_category_node(Category, Node, UpdateFun, Cache) ->
             NewCat = wh_json:set_value(Node, UpdateFun(wh_json:new()), wh_json:new()),
             update_category(Category, NewCat, Cache);
         false ->
-            ?LOG("couch_mgr hasn't started; just cache the json object"),
+            ?LOG("couch_mgr hasn't started; just cache the json object for ~s", [Key]),
             case wh_cache:peek_local(Cache, {?MODULE, Category}) of
                 {ok, JObj} ->
                     case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
