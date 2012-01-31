@@ -23,7 +23,7 @@ handle_req(ApiJObj, _Props) ->
 
     Category = wh_json:get_value(<<"Category">>, ApiJObj),
     Key = wh_json:get_value(<<"Key">>, ApiJObj),
-    Default = wh_json:get_value(<<"Default">>, ApiJObj),
+    Default = wh_json:get_value(<<"Default">>, ApiJObj, null),
     Node = wh_json:get_value(<<"Node">>, ApiJObj),
 
     RespQ =  wh_json:get_value(<<"Server-ID">>, ApiJObj), 
