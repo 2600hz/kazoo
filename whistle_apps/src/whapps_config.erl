@@ -278,7 +278,9 @@ set(Category, Key, Value, Node) ->
 %% section
 %% @end
 %%-----------------------------------------------------------------------------
--spec set_default/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()}.
+-spec set_default/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()} | 'ok'.
+set_default(Category, Key, undefined) ->
+    ok;
 set_default(Category, Key, Value) ->
     do_set(Category, Key, Value, <<"default">>).
 
