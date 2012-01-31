@@ -117,8 +117,10 @@ handle_cast({employed, {Pid, _}=From, Parent, PubFun, CallId, Timeout}, #state{s
     ?LOG(CallId, "Employed by ~p via ~p", [Pid, Parent]),
     Ref = erlang:monitor(process, Pid),
     ReqRef = erlang:start_timer(Timeout, self(), req_timeout),
+
     try
         PubFun(),
+        ?LOG("req ref: ~p", [ReqRef]),
         {noreply, State#state{status=busy, from=From, ref=Ref
                               ,parent=Parent, start=erlang:now()
                               ,req_ref=ReqRef
