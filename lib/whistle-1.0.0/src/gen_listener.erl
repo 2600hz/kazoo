@@ -334,7 +334,7 @@ handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=
                 {ok, Q} ->
                     Self = self(),
                     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
-                    spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
+                    proc_lib:spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
                     {noreply, State#state{queue=Q, is_consuming=false}, hibernate};
                 {error, _} ->
                     ?LOG("failed to start amqp, waiting another second"),
@@ -411,17 +411,17 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
     case Props1 of
         ignore -> ignore;
         _Else ->
-            spawn_link(fun() -> _ = wh_util:put_callid(JObj), process_req(Props1, Responders, JObj) end)
+            proc_lib:spawn_link(fun() -> _ = wh_util:put_callid(JObj), process_req(Props1, Responders, JObj) end)
     end.
 
 -spec process_req/3 :: (wh_proplist(), responders(), wh_json:json_object()) -> 'ok'.
 process_req(Props, Responders, JObj) ->
     Key = wh_util:get_event_type(JObj),
 
-    Handlers = [spawn_monitor(fun() ->
-                                      _ = wh_util:put_callid(JObj),
-                                      Responder:Fun(JObj, Props)
-                              end)
+    Handlers = [proc_lib:spawn_monitor(fun() ->
+                                               _ = wh_util:put_callid(JObj),
+                                               Responder:Fun(JObj, Props)
+                                       end)
                 || {Evt, {Responder, Fun}} <- Responders,
                    maybe_event_matches_key(Key, Evt)
                ],
@@ -464,7 +464,7 @@ start_amqp(Props) ->
 stop_amqp(<<>>, _) -> ok;
 stop_amqp(Q, Bindings) ->
     Self = self(),
-    spawn(fun() -> [ gen_listener:rm_binding(Self, Type, Prop) || {Type, Prop} <- Bindings] end),
+    proc_lib:spawn(fun() -> [ gen_listener:rm_binding(Self, Type, Prop) || {Type, Prop} <- Bindings] end),
     amqp_util:queue_delete(Q).
 
 -spec set_qos/1 :: ('undefined' | non_neg_integer()) -> 'ok'.
