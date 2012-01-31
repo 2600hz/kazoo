@@ -390,8 +390,8 @@ ensure_saved(DbName, Doc, Options) ->
 save_doc(DbName, Doc, Opts) ->
     couch_util:save_doc(get_conn(), DbName, Doc, Opts).
 
--spec save_docs/2 :: (ne_binary(), wh_json:json_objects()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
--spec save_docs/3 :: (ne_binary(), wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec save_docs/2 :: (ne_binary(), wh_json:json_objects()) -> {'ok', wh_json:json_objects()}.
+-spec save_docs/3 :: (ne_binary(), wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_objects()}.
 save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 save_docs(DbName, Docs, Opts) when is_list(Docs) ->
@@ -513,7 +513,14 @@ get_creds() ->
     gen_server:call(?SERVER, get_creds).
 
 get_conn() ->
-    gen_server:call(?SERVER, get_conn).
+    case whereis(?SERVER) of
+        Srv when is_pid(Srv) ->
+            gen_server:call(?SERVER, get_conn);
+        _E ->
+            ?LOG("no server by the name of ~s", [?SERVER]),
+            ST = erlang:get_stacktrace(),
+            ?LOG_STACKTRACE(ST)
+    end.
 
 get_admin_conn() ->
     gen_server:call(?SERVER, get_admin_conn).
@@ -738,16 +745,18 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec init_state/0 :: () -> #state{}.
 init_state() ->
-    case couch_config:fetch(couch_host) of
+    case couch_config:fetch(<<"couch_host">>) of
         undefined ->
             ?LOG("starting conns with default_couch_host"),
-            init_state_from_config(couch_config:fetch(default_couch_host));
+            init_state_from_config(couch_config:fetch(<<"default_couch_host">>));
         HostData ->
             ?LOG("starting conns with couch_host"),
             init_state_from_config(HostData)
     end.
 
 init_state_from_config(undefined) ->
+    init_state_from_config({"localhost", ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT});
+init_state_from_config(null) ->
     init_state_from_config({"localhost", ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT});
 init_state_from_config(H) when not is_tuple(H) ->
     init_state_from_config({H, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT});
@@ -762,6 +771,7 @@ init_state_from_config({H, Port, User, Pass, AdminPort}) ->
     AdminConn = couch_util:get_new_connection(H, wh_util:to_integer(AdminPort), User, Pass),
 
     ?LOG_SYS("returning state record"),
+    couch_config:ready(),
     #state{connection=Conn
            ,admin_connection=AdminConn
            ,host={H, wh_util:to_integer(Port), wh_util:to_integer(AdminPort)}

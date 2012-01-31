@@ -23,7 +23,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+         terminate/2, code_change/3]).
 
 -include("ecallmgr.hrl").
 
@@ -33,8 +33,8 @@
 -define(NODE_MOD, ecallmgr_fs_node).
 
 -record(node_handler, {node = 'undefined' :: atom()
-		       ,options = [] :: proplist()
-		      }).
+                       ,options = [] :: proplist()
+                      }).
 
 -record(state, {
           fs_nodes = [] :: [#node_handler{},...] | []
@@ -49,28 +49,23 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% returns ok or {error, some_error_atom_explaining_more}
--spec add_fs_node/1 :: (Node) -> 'ok' | {'error', 'no_connection'} when
-      Node :: atom().
--spec add_fs_node/2 :: (Node, Opts) -> 'ok' | {'error', 'no_connection'} when
-      Node :: atom(),
-      Opts :: proplist().
+-spec add_fs_node/1 :: (atom()) -> 'ok' | {'error', 'no_connection'}.
+-spec add_fs_node/2 :: (atom(), proplist()) -> 'ok' | {'error', 'no_connection'}.
 add_fs_node(Node) -> add_fs_node(Node, []).
 add_fs_node(Node, Opts) ->
     gen_server:call(?MODULE, {add_fs_node, Node, Opts}, infinity).
 
 %% returns ok or {error, some_error_atom_explaining_more}
--spec rm_fs_node/1 :: (Node) -> ok | tuple(error, no_node, Node) when
-      Node :: atom().
+-spec rm_fs_node/1 :: (atom()) -> 'ok'.
 rm_fs_node(Node) ->
-    gen_server:call(?MODULE, {rm_fs_node, Node}, infinity).
+    gen_server:cast(?MODULE, {rm_fs_node, Node}).
 
 %% calls all handlers and gets diagnostic info from them
 -spec diagnostics/0 :: () -> proplist().
 diagnostics() ->
     gen_server:call(?MODULE, {diagnostics}, infinity).
 
--spec is_node_up/1 :: (Node) -> boolean() when
-      Node :: atom().
+-spec is_node_up/1 :: (atom()) -> boolean().
 is_node_up(Node) ->
     gen_server:call(?MODULE, {is_node_up, Node}, infinity).
 
@@ -81,14 +76,11 @@ is_node_up(Node) ->
 %% Returns - Proplist
 %%   {max_channels_available, 4}
 %%   {bias, 1}
--spec request_resource/2 :: (Type, Options) -> list(proplist()) when
-      Type :: binary(),
-      Options :: proplist().
+-spec request_resource/2 :: (ne_binary(), proplist()) -> [proplist(),...].
 request_resource(Type, Options) ->
     gen_server:call(?MODULE, {request_resource, Type, Options}).
 
--spec request_node/1 :: (Type) -> tuple(ok, atom()) | tuple(error, binary()) when
-      Type :: binary().
+-spec request_node/1 :: (ne_binary()) -> {'ok', atom()} | {'error', ne_binary()}.
 request_node(Type) ->
     gen_server:call(?MODULE, {request_node, Type}).
 
@@ -111,16 +103,7 @@ init([]) ->
     ?LOG_SYS("starting new fs handler"),
     process_flag(trap_exit, true),
 
-    spawn(fun() ->
-		  'ok' = case ecallmgr_config:load_config(?STARTUP_FILE) of
-			     ok -> ?LOG("Configs loaded from ~s", [?STARTUP_FILE]);
-			     {error, enoent} ->
-				 'ok' = ecallmgr_config:write_config(?STARTUP_FILE, ?STARTUP_FILE_CONTENTS),
-				 ?LOG("Wrote config file at ~s", [?STARTUP_FILE]),
-				 ecallmgr_config:load_config(?STARTUP_FILE)
-			 end,
-		  [?MODULE:add_fs_node(wh_util:to_atom(N, true)) || N <- ecallmgr_config:fetch(fs_nodes, [])]
-	  end),
+    spawn(fun() -> start_preconfigured_servers() end),
 
     {ok, #state{}}.
 
@@ -141,54 +124,51 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({request_node, <<"audio">>}, From, #state{fs_nodes=Nodes}=State) ->
     spawn(fun() ->
-		  try
-		      {_, Node} = hd(lists:keysort(1, [ {random:uniform(), Node} || #node_handler{node=Node} <- Nodes ])),
-		      gen_server:reply(From, {ok, Node})
-		  catch
-		      _:E -> gen_server:reply(From, {error, E})
-		  end
-	  end),
+                  try
+                      {_, Node} = hd(lists:keysort(1, [ {random:uniform(), Node} || #node_handler{node=Node} <- Nodes ])),
+                      gen_server:reply(From, {ok, Node})
+                  catch
+                      _:E -> gen_server:reply(From, {error, E})
+                  end
+          end),
     {noreply, State};
 handle_call({is_node_up, Node}, _From, #state{fs_nodes=Nodes}=State) ->
     {reply, [ Node1 || #node_handler{node=Node1} <- Nodes, Node1 =:= Node ] =/= [], State};
 
 handle_call({diagnostics}, From, #state{fs_nodes=Nodes}=State) ->
     spawn(fun() ->
-		  {KnownNodes, HandlerD} = lists:foldl(fun(#node_handler{node=FSNode}, {KN, HD}) ->
-							       {AHP, RHP, NHP} = ecallmgr_fs_sup:get_handler_pids(FSNode),
-							       AuthHandlerD = diagnostics_query(AHP),
-							       RteHandlerD = diagnostics_query(RHP),
-							       NodeHandlerD = diagnostics_query(NHP),
-							       {[FSNode | KN], [{FSNode
-										 ,{auth_handler, AuthHandlerD}
-										 ,{route_handler, RteHandlerD}
-										 ,{node_handler, NodeHandlerD}
-										}
-										| HD]}
-						       end, {[], []}, Nodes),
-		  Resp = [{gen_server, ?MODULE}
-			  ,{host, net_adm:localhost()}
-			  ,{version, ?APP_VERSION}
-			  ,{known_fs_nodes, KnownNodes}
-			  ,{handler_diagnostics, HandlerD}
-			  ,{recorded, erlang:now()}
-			  ,{amqp_host, amqp_mgr:get_host()}
-			 ],
-		  gen_server:reply(From, Resp)
-	  end),
+                  {KnownNodes, HandlerD} = lists:foldl(fun(#node_handler{node=FSNode}, {KN, HD}) ->
+                                                               {AHP, RHP, NHP} = ecallmgr_fs_sup:get_handler_pids(FSNode),
+                                                               AuthHandlerD = diagnostics_query(AHP),
+                                                               RteHandlerD = diagnostics_query(RHP),
+                                                               NodeHandlerD = diagnostics_query(NHP),
+                                                               {[FSNode | KN], [{FSNode
+                                                                                 ,{auth_handler, AuthHandlerD}
+                                                                                 ,{route_handler, RteHandlerD}
+                                                                                 ,{node_handler, NodeHandlerD}
+                                                                                }
+                                                                                | HD]}
+                                                       end, {[], []}, Nodes),
+                  Resp = [{gen_server, ?MODULE}
+                          ,{host, net_adm:localhost()}
+                          ,{version, ?APP_VERSION}
+                          ,{known_fs_nodes, KnownNodes}
+                          ,{handler_diagnostics, HandlerD}
+                          ,{recorded, erlang:now()}
+                          ,{amqp_host, amqp_mgr:get_host()}
+                         ],
+                  gen_server:reply(From, Resp)
+          end),
     {noreply, State};
 handle_call({add_fs_node, Node, Options}, _From, State) ->
     ?LOG("trying to add ~s", [Node]),
     {Resp, State1} = add_fs_node(Node, check_options(Options), State),
     {reply, Resp, State1, hibernate};
-handle_call({rm_fs_node, Node}, _From, State) ->
-    {Resp, State1} = rm_fs_node(Node, State),
-    {reply, Resp, State1, hibernate};
 handle_call({request_resource, Type, Options}, From, #state{fs_nodes=Nodes}=State) ->
     spawn(fun() ->
-		  Resp = process_resource_request(Type, Nodes, Options),
-		  gen_server:reply(From, Resp)
-	  end),
+                  Resp = process_resource_request(Type, Nodes, Options),
+                  gen_server:reply(From, Resp)
+          end),
     {noreply, State};
 
 handle_call(_Request, _From, State) ->
@@ -204,6 +184,8 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({rm_fs_node, Node}, State) ->
+    {noreply, rm_fs_node(Node, State), hibernate};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -289,19 +271,19 @@ watch_node_for_restart(Node, Opts, Timeout) ->
 -spec is_node_up/3 :: (atom(), proplist(), pos_integer()) -> 'ok' | {'error', 'no_connection'}.
 is_node_up(Node, Opts, Timeout) ->
     case net_adm:ping(Node) of
-	pong ->
-	    ?LOG_SYS("node ~s has risen", [Node]),
-	    ?MODULE:add_fs_node(Node, Opts);
-	pang ->
-	    ?LOG_SYS("waiting ~b seconds to ping again", [Timeout div 1000]),
-	    receive
-		shutdown ->
-		    ?LOG_SYS("watcher for ~s asked to go down", [Node])
-	    after
-		Timeout ->
-		    ?LOG_SYS("Pinging ~s again", [Node]),
-		    watch_node_for_restart(Node, Opts, Timeout)
-	    end
+        pong ->
+            ?LOG_SYS("node ~s has risen", [Node]),
+            ?MODULE:add_fs_node(Node, Opts);
+        pang ->
+            ?LOG_SYS("waiting ~b seconds to ping again", [Timeout div 1000]),
+            receive
+                shutdown ->
+                    ?LOG_SYS("watcher for ~s asked to go down", [Node])
+            after
+                Timeout ->
+                    ?LOG_SYS("Pinging ~s again", [Node]),
+                    watch_node_for_restart(Node, Opts, Timeout)
+            end
     end.
 
 -spec check_options/1 :: (proplist()) -> proplist().
@@ -309,27 +291,27 @@ check_options([]) ->
     [{bias, 1}, {max_channels, 100}];
 check_options(Opts) ->
     Opts0 = case props:get_value(bias, Opts) of
-		undefined -> [{bias, 1} | Opts];
-		_ -> Opts
-	    end,
+                undefined -> [{bias, 1} | Opts];
+                _ -> Opts
+            end,
     case props:get_value(max_channels, Opts0) of
-	undefined -> [{max_channels, 100} | Opts0];
-	_ -> Opts0
+        undefined -> [{max_channels, 100} | Opts0];
+        _ -> Opts0
     end.
 
 %% query a pid for its diagnostics info
 -spec diagnostics_query/1 :: (pid()) -> {'ok', proplist()} | {'error', 'timed_out' | 'not_responding', 'handler_busy' | 'handler_down'}.
 diagnostics_query(Pid) when is_pid(Pid) ->
     case erlang:is_process_alive(Pid) of
-	true ->
-	    Pid ! {diagnostics, self()},
-	    receive
-		X -> {ok, X}
-	    after
-		500 -> {error, timed_out, handler_busy}
-	    end;
-	false ->
-	    {error, not_responding, handler_down}
+        true ->
+            Pid ! {diagnostics, self()},
+            receive
+                X -> {ok, X}
+            after
+                500 -> {error, timed_out, handler_busy}
+            end;
+        false ->
+            {error, not_responding, handler_down}
     end;
 diagnostics_query(X) ->
     {error, handler_down, X}.
@@ -337,55 +319,54 @@ diagnostics_query(X) ->
 -spec add_fs_node/3 :: (atom(), proplist(), #state{}) -> {'ok', #state{}} | {{'error', 'no_connection'}, #state{}}.
 add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
     case [N || #node_handler{node=Node1}=N <- Nodes, Node =:= Node1] of
-	[] ->
-	    case net_adm:ping(Node) of
-		pong ->
-		    erlang:monitor_node(Node, true),
-		    ?LOG_SYS("no node matching ~p found, adding", [Node]),
+        [] ->
+            case net_adm:ping(Node) of
+                pong ->
+                    erlang:monitor_node(Node, true),
+                    ?LOG_SYS("no node matching ~p found, adding", [Node]),
 
-		    case lists:all(fun({ok, Pid}) when is_pid(Pid) -> true;
-				      ({error, {already_started, Pid}}) when is_pid(Pid) -> true;
-				      (_) -> false
-				   end, ecallmgr_fs_sup:start_handlers(Node, Options)) of
-			true ->
-			    {ok, State#state{fs_nodes=[#node_handler{node=Node, options=Options} | Nodes]}};
-			false ->
+                    case lists:all(fun({ok, Pid}) when is_pid(Pid) -> true;
+                                      ({error, {already_started, Pid}}) when is_pid(Pid) -> true;
+                                      (_) -> false
+                                   end, ecallmgr_fs_sup:start_handlers(Node, Options)) of
+                        true ->
+                            {ok, State#state{fs_nodes=[#node_handler{node=Node, options=Options} | Nodes]}};
+                        false ->
                             self() ! {nodedown, Node},
-			    {{error, failed_starting_handlers}, State}
-		    end;
-		pang ->
-		    ?LOG_SYS("node ~p not responding, can't connect", [Node]),
+                            {{error, failed_starting_handlers}, State}
+                    end;
+                pang ->
+                    ?LOG_SYS("node ~p not responding, can't connect", [Node]),
                     self() ! {nodedown, Node},
-		    {{error, no_connection}, State}
-	    end;
-	[#node_handler{node=Node}=N] ->
-	    ?LOG_SYS("handlers known for node ~p", [Node]),
+                    {{error, no_connection}, State}
+            end;
+        [#node_handler{node=Node}=N] ->
+            ?LOG_SYS("handlers known for node ~p", [Node]),
 
-	    {_, _, NHP} = Handlers = ecallmgr_fs_sup:get_handler_pids(Node),
-	    is_pid(NHP) andalso NHP ! {update_options, Options},
+            {_, _, NHP} = Handlers = ecallmgr_fs_sup:get_handler_pids(Node),
+            is_pid(NHP) andalso NHP ! {update_options, Options},
 
-	    case lists:any(fun(error) -> true; (undefined) -> true; (_) -> false end, tuple_to_list(Handlers)) of
-		true ->
-		    _ = ecallmgr_fs_sup:stop_handlers(Node),
-		    ?LOG_SYS("removed handlers for node ~p because something is wonky: handlers: ~p", [Node, Handlers]),
-		    add_fs_node(Node, Options, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)});
-		false ->
-		    {ok, State#state{fs_nodes=[N#node_handler{options=Options} | lists:keydelete(Node, 2, Nodes)]}}
-	    end
+            case lists:any(fun(error) -> true; (undefined) -> true; (_) -> false end, tuple_to_list(Handlers)) of
+                true ->
+                    _ = ecallmgr_fs_sup:stop_handlers(Node),
+                    ?LOG_SYS("removed handlers for node ~p because something is wonky: handlers: ~p", [Node, Handlers]),
+                    add_fs_node(Node, Options, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)});
+                false ->
+                    {ok, State#state{fs_nodes=[N#node_handler{options=Options} | lists:keydelete(Node, 2, Nodes)]}}
+            end
     end.
 
--spec rm_fs_node/2 :: (Node, State) -> {'ok' | {'error', 'no_node', atom()}, #state{}} when
-      Node :: atom(),
-      State :: #state{}.
+-spec rm_fs_node/2 :: (atom(), #state{}) -> #state{}.
 rm_fs_node(Node, #state{fs_nodes=Nodes, node_reconnect_pids=ReconPids}=State) ->
     kill_watchers(Node, ReconPids),
     case lists:keyfind(Node, 2, Nodes) of
-	false ->
-	    ?LOG_SYS("no handlers found for ~s", [Node]),
-	    {{error, no_node, Node}, State};
-	N ->
-	    ?LOG_SYS("closing node handler for ~s", [Node]),
-	    {{ok, close_node(N)}, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}}
+        false ->
+            ?LOG_SYS("no handlers found for ~s", [Node]),
+            State;
+        N ->
+            ?LOG_SYS("closing node handler for ~s", [Node]),
+            close_node(N),
+            State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}
     end.
 
 -spec kill_watchers/2 :: (Node, Watchers) -> 'ok' when
@@ -411,13 +392,27 @@ close_node(#node_handler{node=Node}) ->
       Options :: proplist().
 process_resource_request(<<"audio">> = Type, Nodes, Options) ->
     NodesResp = [begin
-		     {_,_,NHP} = ecallmgr_fs_sup:get_handler_pids(Node),
-		     NHP ! {resource_request, self(), Type, Options},
-		     receive {resource_response, NHP, Resp} -> Resp
-		     after 500 -> []
-		     end
-		 end || #node_handler{node=Node} <- Nodes],
+                     {_,_,NHP} = ecallmgr_fs_sup:get_handler_pids(Node),
+                     NHP ! {resource_request, self(), Type, Options},
+                     receive {resource_response, NHP, Resp} -> Resp
+                     after 500 -> []
+                     end
+                 end || #node_handler{node=Node} <- Nodes],
     [ X || X <- NodesResp, X =/= []];
 process_resource_request(Type, _Nodes, _Options) ->
     ?LOG_SYS("unhandled resource request type ~p", [Type]),
     [].
+
+start_preconfigured_servers() ->
+    case ecallmgr_config:get(<<"fs_nodes">>, []) of
+        [] ->
+            ?LOG("no preconfigured servers, waiting then trying again"),
+            timer:sleep(5000),
+            start_preconfigured_servers();
+        Nodes when is_list(Nodes) ->
+            [?MODULE:add_fs_node(wh_util:to_atom(N, true)) || N <- Nodes];
+        _E ->
+            ?LOG("recieved a non-list for fs_nodes: ~p", [_E]),
+            timer:sleep(5000),
+            start_preconfigured_servers()
+    end.

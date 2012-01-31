@@ -15,7 +15,7 @@
 
 -include("hotornot.hrl").
 
--define(MIN_PREFIX_LEN, 2). % how many chars to strip off the e164 DID
+-define(MIN_PREFIX_LEN, 1). % how many chars to strip off the e164 DID
 -define(BOTH_DIRECTIONS, [<<"inbound">>, <<"outbound">>]).
 
 -spec candidate_rates/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.

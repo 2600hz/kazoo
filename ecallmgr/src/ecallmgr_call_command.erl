@@ -301,7 +301,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                           ,fun(DP) ->
                                    case wh_json:get_value(<<"Ringback">>, JObj) of
                                        undefined ->
-                                           {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)"),
+                                           {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, <<"%(2000,4000,440,480)">>),
                                            [{"application", "set ringback=" ++ wh_util:to_list(RBSetting)}|DP];
                                        Ringback ->
                                            Stream = ecallmgr_util:media_path(Ringback, extant, UUID),
@@ -581,13 +581,13 @@ get_fs_app(_Node, _UUID, JObj, <<"presence">>) ->
              ,{"presence-call-direction", "outbound"}
              ,{"event_cound", "0"}
             ],
-    [begin
-         ?LOG("sending presence in event to ~p~n", [Node]),
-         freeswitch:sendevent(Node, 'PRESENCE_IN', Event) 
-     end
-     || NodeHandler <- NodeHandlers
-            ,(Node = ecallmgr_fs_node:fs_node(NodeHandler)) =/= undefined
-    ],
+    _ = [begin
+             ?LOG("sending presence in event to ~p~n", [Node]),
+             freeswitch:sendevent(Node, 'PRESENCE_IN', Event) 
+         end
+         || NodeHandler <- NodeHandlers,
+            (Node = ecallmgr_fs_node:fs_node(NodeHandler)) =/= undefined
+        ],
     {<<"presence">>, noop};
 
 get_fs_app(_Node, _UUID, JObj, <<"conference">>) ->
@@ -690,7 +690,7 @@ get_bridge_endpoint(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_amqp/5 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> no_return().
+-spec stream_over_amqp/5 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> 'ok'.
 stream_over_amqp(Node, UUID, File, JObj, Headers) ->
     DestQ = case wh_json:get_value(<<"Media-Transfer-Destination">>, JObj) of
                 undefined ->
@@ -709,7 +709,7 @@ stream_over_amqp(Node, UUID, File, JObj, Headers) ->
 %% get a chunk of the file and send it in an AMQP message to the DestQ
 %% @end
 %%--------------------------------------------------------------------
--spec amqp_stream/5 :: (ne_binary(), fun(), {term(), ne_binary()}, proplist(), pos_integer()) -> no_return().
+-spec amqp_stream/5 :: (ne_binary(), fun(), {term(), ne_binary()}, proplist(), pos_integer()) -> 'eof'.
 amqp_stream(DestQ, F, State, Headers, Seq) ->
     ?LOG("streaming via AMQP to ~s", [DestQ]),
     case F(State) of
@@ -735,7 +735,7 @@ amqp_stream(DestQ, F, State, Headers, Seq) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_http/5 :: (atom(), ne_binary(), ne_binary(), 'put' | 'post', wh_json:json_object()) -> no_return().
+-spec stream_over_http/5 :: (atom(), ne_binary(), ne_binary(), 'put' | 'post', wh_json:json_object()) -> 'ok'.
 stream_over_http(Node, UUID, File, Method, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     ?LOG("streaming via HTTP(~s) to ~s", [Method, Url]),

@@ -271,8 +271,7 @@ should_alert_system_admin(AlertLevel) ->
         0 -> undefined;
         L when L =< AlertLevel ->
             case whapps_config:get(<<"alerts">>, <<"system_admin_email">>) of
-                undefined ->
-                    undefined;
+                undefined -> undefined;
                 Email when is_binary(Email) ->
                     Email;
                 Emails when is_list(Emails) ->
@@ -340,6 +339,8 @@ alert_level_to_integer(<<"debug">>) ->
     1;
 alert_level_to_integer(<<_/binary>>) ->
     0;
+alert_level_to_integer(undefined) ->
+    5;
 alert_level_to_integer(Level) ->
     alert_level_to_integer(wh_util:to_binary(Level)).
 

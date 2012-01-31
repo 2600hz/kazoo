@@ -96,24 +96,11 @@ varstr_to_proplist(VarStr) ->
     [to_kv(X, "=") || X <- string:tokens(wh_util:to_list(VarStr), ",")].
 
 -spec get_setting/1 :: (atom()) -> {'ok', term()}.
--spec get_setting/2 :: (atom(), term()) -> {'ok', term()}.
+-spec get_setting/2 :: (atom(), Default) -> {'ok', term() | Default}.
 get_setting(Setting) ->
-    get_setting(Setting, undefined).
+    get_setting(Setting, null).
 get_setting(Setting, Default) ->
-    {ok, Cache} = ecallmgr_sup:cache_proc(),
-    case wh_cache:fetch_local(Cache, cache_key(Setting)) of
-        {ok, _}=Success -> Success;
-        {error, _} ->
-            case file:consult(?SETTINGS_FILE) of
-                {ok, Settings} ->
-                    Value = props:get_value(Setting, Settings, Default),
-                    wh_cache:store_local(Cache, cache_key(Setting), Value),
-                    {ok, Value};
-                {error, _} ->
-                    wh_cache:store_local(Cache, cache_key(Setting), Default),
-                    {ok, Default}
-            end
-    end.
+    {ok, ecallmgr_config:get(Setting, Default)}.
 
 cache_key(Setting) ->
     {?MODULE, Setting}.

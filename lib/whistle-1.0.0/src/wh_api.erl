@@ -126,7 +126,7 @@ remove_empty_values(JObj) ->
     wh_json:from_list(Prop).
 
 do_empty_value_removal([], Acc) ->
-    Acc;
+    lists:reverse(Acc);
 do_empty_value_removal([{<<"Server-ID">>,_}=KV|T], Acc) ->
     do_empty_value_removal(T, [KV|Acc]);
 do_empty_value_removal([{<<"Msg-ID">>,_}=KV|T], Acc) ->
