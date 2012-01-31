@@ -20,7 +20,7 @@
 -export([get_non_empty/2, get_non_empty/3, get_non_empty/4]).
 
 -export([set/3, set/4, set_default/3]).
--export([flush/0, import/1]).
+-export([flush/0, import/1, couch_ready/0]).
 
 -type config_category() :: ne_binary() | nonempty_string() | atom().
 -type config_key() :: ne_binary() | nonempty_string() | atom().
@@ -338,6 +338,7 @@ fetch_category(Category, Cache) ->
 %%-----------------------------------------------------------------------------
 -spec fetch_db_config/2 :: (ne_binary(), pid()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
 fetch_db_config(Category, Cache) ->
+    ?LOG("fetch db config for ~s", [Category]),
     case couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj}=Ok ->
             wh_cache:store_local(Cache, {?MODULE, Category}, JObj),
@@ -394,7 +395,6 @@ config_terms_to_json(Terms) ->
 -spec do_set/4 :: (config_category(), config_key(), term(), ne_binary()) -> {'ok', wh_json:json_object()}.
 do_set(Category, Key, Value, Node) ->
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
-
     UpdateFun = fun(J) ->
                         NodeConfig = wh_json:get_value(Node, J, wh_json:new()),
                         wh_json:set_value(Key, Value, NodeConfig)
@@ -409,8 +409,12 @@ do_set(Category, Key, Value, Node) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec update_category_node/4 :: (ne_binary(), ne_binary(), fun((wh_json:json_object()) -> wh_json:json_object()) , pid()) -> {'ok', wh_json:json_object()}.
-update_category_node(Category, Node, UpdateFun , Cache) ->
-    case is_pid(whereis(couch_mgr)) andalso couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
+update_category_node(Category, Node, UpdateFun, Cache) ->
+    DBReady = case wh_cache:fetch_local(Cache, {?MODULE, couch_mgr_ready}) of
+                  {ok, true} -> true;
+                  _ -> false
+              end,
+    case DBReady andalso couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj} ->
             case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
                 JObj -> {ok, JObj};
@@ -488,3 +492,11 @@ category_to_file(<<"crossbar.shared_auth">>) ->
     [code:lib_dir(crossbar, priv), "/shared_auth/shared_auth.config"];
 category_to_file(_) ->
     undefined.
+
+couch_ready() ->
+    case whereis(couch_mgr) =:= self() of
+        true ->
+            {ok, Cache} = whistle_apps_sup:config_cache_proc(),
+            wh_cache:store_local(Cache, {?MODULE, couch_mgr_ready}, true);
+        false -> ok
+    end.

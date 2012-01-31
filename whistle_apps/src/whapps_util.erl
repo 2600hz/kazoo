@@ -269,10 +269,11 @@ should_alert_system_admin(AlertLevel) ->
     SystemLevel = whapps_config:get(<<"alerts">>, <<"system_admin_level">>, <<"debug">>),
     case alert_level_to_integer(SystemLevel) of
         0 -> undefined;
+        null -> undefined;
         L when L =< AlertLevel ->
             case whapps_config:get(<<"alerts">>, <<"system_admin_email">>) of
-                undefined ->
-                    undefined;
+                undefined -> undefined;
+                null -> undefined;
                 Email when is_binary(Email) ->
                     Email;
                 Emails when is_list(Emails) ->
@@ -293,6 +294,8 @@ should_alert_system_admin(AlertLevel) ->
       AccountId :: undefined | binary().
 should_alert_account_admin(_, undefined) ->
     undefined;
+should_alert_account_admin(_, null) ->
+    undefined;
 should_alert_account_admin(AlertLevel, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(AccountDb, AccountId) of
@@ -300,6 +303,7 @@ should_alert_account_admin(AlertLevel, AccountId) ->
             AdminLevel = wh_json:get_value([<<"alerts">>, <<"level">>], JObj),
             case alert_level_to_integer(AdminLevel) of
                 0 -> undefined;
+                null -> undefined;
                 L when L =< AlertLevel ->
                     case wh_json:get_value([<<"alerts">>, <<"email">>], JObj) of
                         undefined ->
@@ -340,6 +344,10 @@ alert_level_to_integer(<<"debug">>) ->
     1;
 alert_level_to_integer(<<_/binary>>) ->
     0;
+alert_level_to_integer(undefined) ->
+    5;
+alert_level_to_integer(null) ->
+    5;
 alert_level_to_integer(Level) ->
     alert_level_to_integer(wh_util:to_binary(Level)).
 

@@ -25,7 +25,7 @@ start_link() ->
 
 init(Parent) ->
     case {couch_config:fetch(compact_automatically), couch_config:fetch(conflict_strategy)} of
-        {true, undefined} ->
+        {true, null} ->
             ?LOG_SYS("just compacting"),
             proc_lib:init_ack(Parent, {ok, self()}),
             compact_all();
@@ -36,7 +36,7 @@ init(Parent) ->
         {false, _Strategy} ->
             ?LOG_SYS("auto-compaction not enabled"),
             proc_lib:init_ack(Parent, ignore);
-        {undefined, _Strategy} ->
+        {null, _Strategy} ->
             ?LOG_SYS("auto-compaction not enabled"),
             proc_lib:init_ack(Parent, ignore),
             couch_config:store(compact_automatically, false)
