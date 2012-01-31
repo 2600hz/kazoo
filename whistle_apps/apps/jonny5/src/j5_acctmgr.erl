@@ -82,7 +82,9 @@ refresh(Srv) ->
 -spec authz_trunk/3 :: (pid() | ne_binary(), wh_json:json_object(), 'inbound' | 'outbound') -> {boolean(), proplist()}.
 authz_trunk(Pid, JObj, CallDir) when is_pid(Pid) ->
     {Bool, Prop} = gen_server:call(Pid, {authz, JObj, CallDir}),
-    {Bool, [{<<"Server-ID">>, gen_listener:queue_name(Pid)} | Prop]};
+    Queue = gen_listener:queue_name(Pid),
+    ?LOG("sending ~s to ~s", [Bool, Queue]),
+    {Bool, [{<<"Server-ID">>, Queue} | Prop]};
 
 authz_trunk(AcctID, JObj, CallDir) ->
     case j5_util:fetch_account_handler(AcctID) of
@@ -105,8 +107,8 @@ authz_trunk(AcctID, JObj, CallDir) ->
                 E:R ->
                     ST = erlang:get_stacktrace(),
                     ?LOG_SYS("Error: ~p: ~p", [E, R]),
-                    _ = [ ?LOG_SYS("Stacktrace: ~p", [ST1]) || ST1 <- ST],
-                    {false, []}
+                    ?LOG_STACKTRACE(ST),
+                    {false, [{<<"Server-ID">>, <<>>}]}
             end
     end.
 
@@ -204,9 +206,9 @@ handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P}=
     ?LOG_START(CallID, "Authorizing inbound call...", []),
     ?LOG(CallID, "Trunks available: Two: ~b In: ~b Pre: ~b Per-min: ~b", [T, I, P, wapi_money:default_per_min_charge()]),
 
-    ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
+    ToDID = case binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>) of
                 [<<"nouser">>, _] ->
-                    [RUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>),
+                    [RUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"nouser">>), <<"@">>),
                     wnm_util:to_e164(RUser);
                 [ToUser, _] -> wnm_util:to_e164(ToUser)
             end,
@@ -224,21 +226,24 @@ handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P}=State) ->
     ?LOG_START(CallID, "Authorizing outbound call...", []),
     ?LOG(CallID, "Trunks available: Two: ~b Pre: ~b Per-min: ~b", [T, P, wapi_money:default_per_min_charge()]),
 
-    ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
+    ToDID = case binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>) of
                 [<<"nouser">>, _] ->
-                    [RUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>),
+                    [RUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"nouser">>), <<"@">>),
                     wnm_util:to_e164(RUser);
                 [ToUser, _] -> wnm_util:to_e164(ToUser)
             end,
 
     ?LOG("ToDID: ~s", [ToDID]),
 
-    {Resp, State1} = case {erlang:byte_size(ToDID) > 6, is_us48(ToDID)} of
-                         {true, true} -> try_twoway_then_prepay(CallID, State);
-                         {true, false} -> try_prepay(CallID, State, wapi_money:default_per_min_charge());
-                         {false, _} ->
+    {Resp, State1} = case erlang:byte_size(ToDID) > 6 of
+                         true ->
+                             case is_us48(ToDID) of
+                                 true -> try_twoway_then_prepay(CallID, State);
+                                 false -> try_prepay(CallID, State, wapi_money:default_per_min_charge())
+                             end;
+                         false ->
                              ?LOG(CallID, "Auto-authz call to internal-seeming extension: ~s", [ToDID]),
-                             {{true, [{<<"Trunk-Type">>, <<"internal">>}]}, State}
+                             { {true, [{<<"Trunk-Type">>, <<"internal">>}]}, State}
                      end,
     {reply, Resp, State1, hibernate}.
 
