@@ -535,10 +535,8 @@ try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) 
 try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId}=State, PerMinCharge) when Pre =< PerMinCharge ->
     ?LOG_SYS(CallID, "Failed to authz a per_min trunk", []),
 
-    %% Send Email to account holder warning of low Prepay?
-
     %% Alert admins of the situation
-    whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
+    whapps_util:alert(<<"emerg">>, ["Source: ~s(~p)~n"
                                     ,"Alert: Insufficient prepay to authorize the call.~n"
                                     ,"Call-ID: ~s~n"
                                     ,"Account-ID: ~s~n"

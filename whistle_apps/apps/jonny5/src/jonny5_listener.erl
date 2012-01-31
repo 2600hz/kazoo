@@ -12,19 +12,19 @@
 
 %% API
 -export([start_link/0, stop/1, set_blacklist_provider/2
-	,add_responder/3, add_binding/2, is_blacklisted/1]).
+        ,add_responder/3, add_binding/2, is_blacklisted/1]).
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("jonny5.hrl").
 
 -record(state, {
-	 bl_provider_mod = 'default_blacklist' :: atom()
+         bl_provider_mod = 'default_blacklist' :: atom()
          ,bl_provider_pid = 'undefined' :: 'undefined' | pid()
          ,bl_provider_ref = 'undefined' :: 'undefined' | reference()
-	 }).
+         }).
 
 -define(RESPONDERS, [ {authz_req, [{<<"dialplan">>, <<"authz_req">>}]} ]).
 -define(BINDINGS, [ {authz, []} ]).
@@ -46,8 +46,8 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				     ], []).
+                                      ,{bindings, ?BINDINGS}
+                                     ], []).
 
 -spec stop/1 :: (atom() | pid()) -> 'ok'.
 stop(Srv) ->
@@ -87,14 +87,16 @@ is_blacklisted(AccountId) ->
 %%--------------------------------------------------------------------
 init([]) ->
     Provider = case file:consult(?SETTINGS_FILE) of
-		   {ok, Config} ->
-		       case props:get_value(blacklist_provider, Config) of
-			   undefined -> ?DEFAULT_BL_PROVIDER;
-			   P -> P
-		       end;
-		   _ -> ?DEFAULT_BL_PROVIDER
-	       end,
+                   {ok, Config} ->
+                       case props:get_value(blacklist_provider, Config) of
+                           undefined -> ?DEFAULT_BL_PROVIDER;
+                           P -> P
+                       end;
+                   _ -> ?DEFAULT_BL_PROVIDER
+               end,
     ?LOG_SYS("Blacklist provider: ~s", [Provider]),
+
+    _ = whapps_config:get_is_true(<<"jonny5">>, <<"authz_on_no_prepay">>, true), % preload
 
     {ok, #state{bl_provider_mod=Provider}, 0}.
 
@@ -144,25 +146,25 @@ handle_info({'DOWN', PRef, process, _PPid, _Reason}, #state{bl_provider_ref=PRef
     ?LOG_SYS("blacklist provider ~s down: ~p", [PMod, _Reason]),
     try
     case find_bl_provider_pid(PMod) of
-	PPid1 when is_pid(PPid1) ->
-	    PRef1 = erlang:monitor(process, PPid1),
-	    {noreply, State#state{bl_provider_ref=PRef1, bl_provider_pid=PPid1}};
-	ignore ->
-	    {noreply, State}
+        PPid1 when is_pid(PPid1) ->
+            PRef1 = erlang:monitor(process, PPid1),
+            {noreply, State#state{bl_provider_ref=PRef1, bl_provider_pid=PPid1}};
+        ignore ->
+            {noreply, State}
     end
     catch
-	_:_ ->
-	    {noreply, State#state{bl_provider_pid=undefined}}
+        _:_ ->
+            {noreply, State#state{bl_provider_pid=undefined}}
     end;
 
 handle_info(timeout, #state{bl_provider_mod=PMod, bl_provider_pid=undefined}=State) ->
     ?LOG_SYS("blacklist provider ~s unknown, starting", [PMod]),
     case find_bl_provider_pid(PMod) of
-	PPid1 when is_pid(PPid1) ->
-	    PRef1 = erlang:monitor(process, PPid1),
-	    {noreply, State#state{bl_provider_ref=PRef1, bl_provider_pid=PPid1}};
-	ignore ->
-	    {noreply, State}
+        PPid1 when is_pid(PPid1) ->
+            PRef1 = erlang:monitor(process, PPid1),
+            {noreply, State#state{bl_provider_ref=PRef1, bl_provider_pid=PPid1}};
+        ignore ->
+            {noreply, State}
     end;
 
 handle_info(_Info, State) ->
@@ -212,13 +214,13 @@ find_bl_provider_pid(PMod) ->
     ?LOG_SYS("trying to start ~s" , [PMod]),
     {module, PMod} = code:ensure_loaded(PMod),
     case jonny5_sup:start_child(PMod) of
-	{ok, undefined} -> ?LOG("ignored"), 'ignore';
-	{ok, Pid} -> ?LOG("started"), Pid;
-	{ok, Pid, _Info} -> ?LOG("started with ~p", [_Info]), Pid;
-	{error, already_present} ->
-	    ?LOG_SYS("already present"),
-	    ignore;
-	{error, {already_started, Pid}} ->
-	    ?LOG("already started"),
-	    Pid
+        {ok, undefined} -> ?LOG("ignored"), 'ignore';
+        {ok, Pid} -> ?LOG("started"), Pid;
+        {ok, Pid, _Info} -> ?LOG("started with ~p", [_Info]), Pid;
+        {error, already_present} ->
+            ?LOG_SYS("already present"),
+            ignore;
+        {error, {already_started, Pid}} ->
+            ?LOG("already started"),
+            Pid
     end.
