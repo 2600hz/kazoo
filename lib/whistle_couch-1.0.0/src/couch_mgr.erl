@@ -745,10 +745,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec init_state/0 :: () -> #state{}.
 init_state() ->
-    case couch_config:fetch(couch_host) of
+    case couch_config:fetch(<<"couch_host">>) of
         undefined ->
             ?LOG("starting conns with default_couch_host"),
-            init_state_from_config(couch_config:fetch(default_couch_host));
+            init_state_from_config(couch_config:fetch(<<"default_couch_host">>));
         HostData ->
             ?LOG("starting conns with couch_host"),
             init_state_from_config(HostData)

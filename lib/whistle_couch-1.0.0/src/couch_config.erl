@@ -75,7 +75,7 @@ fetch(Key, Default, Cache) ->
 
 -spec store/2 :: (term(), term()) -> 'ok'.
 store(Key, Value) ->
-    whapps_config:set(?CONFIG_CAT, Key, Value).
+    whapps_config:set(?CONFIG_CAT, wh_util:to_binary(Key), Value).
 
 -spec store/3 :: (term(), term(), pid()) -> 'ok'.
 store(Key, Value, Cache) when is_pid(Cache) ->
