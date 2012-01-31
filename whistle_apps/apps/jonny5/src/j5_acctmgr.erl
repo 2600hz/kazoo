@@ -81,7 +81,7 @@ refresh(Srv) ->
 
 -spec authz_trunk/3 :: (pid() | ne_binary(), wh_json:json_object(), 'inbound' | 'outbound') -> {boolean(), proplist()}.
 authz_trunk(Pid, JObj, CallDir) when is_pid(Pid) ->
-    {Bool, Prop} = gen_server:call(Pid, {authz, JObj, CallDir}),
+    {Bool, Prop} = gen_listener:call(Pid, {authz, JObj, CallDir}),
     Queue = gen_listener:queue_name(Pid),
     ?LOG("sending ~s to ~s", [Bool, Queue]),
     {Bool, [{<<"Server-ID">>, Queue} | Prop]};
@@ -113,7 +113,7 @@ authz_trunk(AcctID, JObj, CallDir) ->
     end.
 
 known_calls(Pid) when is_pid(Pid) ->
-    gen_server:call(Pid, known_calls);
+    gen_listener:call(Pid, known_calls);
 known_calls(AcctID) when is_binary(AcctID) ->
     case j5_util:fetch_account_handler(AcctID) of
         {error, _}=E -> E;
