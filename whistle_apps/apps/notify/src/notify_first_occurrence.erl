@@ -52,7 +52,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec start_crawler/0 :: () -> {ok, pid()}.
 start_crawler() ->
-    {ok, spawn_link(fun crawler_loop/0)}.
+    {ok, proc_lib:spawn_link(fun crawler_loop/0)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -209,7 +209,7 @@ crawler_loop() ->
     end,
     erlang:send_after(30000, self(), wakeup),
     flush(),
-    erlang:hibernate(?MODULE, crawler_loop, []).
+    proc_lib:hibernate(?MODULE, crawler_loop, []).
 
 %%--------------------------------------------------------------------
 %% @private

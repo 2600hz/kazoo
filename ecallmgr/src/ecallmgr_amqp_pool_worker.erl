@@ -164,6 +164,21 @@ handle_info({'DOWN', Ref, process, Pid, _Info}, #state{status=busy, ref=Ref, par
     ecallmgr_amqp_pool:worker_free(Parent, self(), 0),
     {noreply, #state{}};
 
+handle_info({timeout, ReqRef, req_timeout}, #state{status=busy, from=From, parent=Parent, ref=Ref
+                                ,start=Start, req_ref=ReqRef
+                               }) ->
+    ?LOG("request took too long, timing out caller"),
+    Elapsed = timer:now_diff(erlang:now(), Start),
+    ?LOG("received response after ~b ms, returning to pool ~p", [Elapsed div 1000, Parent]),
+
+    erlang:demonitor(Ref, [flush]),
+    erlang:cancel_timer(ReqRef),
+
+    gen_server:reply(From, {error, timeout}),
+
+    ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
+    {noreply, #state{}};
+
 handle_info(req_timeout, #state{status=busy, from=From, parent=Parent, ref=Ref
                                 ,start=Start, req_ref=ReqRef
                                }) ->
