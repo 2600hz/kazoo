@@ -279,7 +279,7 @@ set(Category, Key, Value, Node) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec set_default/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()} | 'ok'.
-set_default(Category, Key, undefined) ->
+set_default(_Category, _Key, undefined) ->
     ok;
 set_default(Category, Key, Value) ->
     do_set(Category, Key, Value, <<"default">>).
@@ -423,7 +423,7 @@ update_category_node(Category, Node, UpdateFun, Cache) ->
             NewCat = wh_json:set_value(Node, UpdateFun(wh_json:new()), wh_json:new()),
             update_category(Category, NewCat, Cache);
         false ->
-            ?LOG("couch_mgr hasn't started; just cache the json object for ~s", [Key]),
+            ?LOG("couch_mgr hasn't started; just cache the json object"),
             case wh_cache:peek_local(Cache, {?MODULE, Category}) of
                 {ok, JObj} ->
                     case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
