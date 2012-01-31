@@ -457,26 +457,24 @@ get_trunks_available(AcctID) ->
     case couch_mgr:get_results(AcctDB, <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
         {ok, [JObj|_]} ->
             ?LOG("View result retrieved"),
-            get_account_values(AcctID, JObj);
+            get_account_values(AcctID, wh_json:get_value(<<"doc">>, JObj));
         _ ->
             case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, [{<<"reduce">>, false}
                                                                                    ,{<<"include_docs">>, true}
                                                                                   ]) of
                 {ok, [JObj|_]} ->
                     ?LOG("ts view result retrieved"),
-                    get_ts_values(AcctID, JObj);
+                    get_ts_values(AcctID, wh_json:get_value([<<"doc">>, <<"account">>], JObj));
                 _ ->
                     ?LOG("missing limits or trunkstore doc, generating one"),
                     {ok, _} = create_new_limits(AcctID, AcctDB),
-                    {0, 0, 0}
+                    {0, 0, j5_util:current_usage(AcctID)}
             end
     end.
 
-get_ts_values(AcctID, JObj) ->
-    Acct = wh_json:get_value(<<"account">>, JObj, wh_json:new()),
-
-    Trunks = wh_json:get_integer_value(<<"trunks">>, Acct),
-    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, Acct),
+get_ts_values(AcctID, AcctDoc) ->
+    Trunks = wh_json:get_integer_value(<<"trunks">>, AcctDoc),
+    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, AcctDoc),
 
     Prepay = j5_util:current_usage(AcctID),
 
