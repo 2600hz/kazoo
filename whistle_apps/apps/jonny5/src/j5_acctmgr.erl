@@ -461,8 +461,9 @@ get_trunks_available(AcctID) ->
                     ?LOG("ts view result retrieved"),
                     get_ts_values(AcctID, JObj);
                 _ ->
-                    {ok, JObj} = couch_mgr:open_doc(<<"ts">>, AcctID),
-                    get_ts_values(AcctID, JObj)
+                    ?LOG("missing limits or trunkstore doc, generating one"),
+                    {ok, _} = create_new_limits(AcctID, AcctDB),
+                    {0, 0, 0}
             end
     end.
 
@@ -605,3 +606,12 @@ trunks_to_json(Dict) ->
     [ wh_json:from_list([{<<"callid">>, CallID}, {<<"type">>, Type}])
       || {CallID, {Type, _}} <- dict:to_list(Dict)
     ].
+
+create_new_limits(AcctID, AcctDB) ->
+    JObj = wh_json:set_values([{<<"pvt_account_db">>, AcctDB}
+                               ,{<<"pvt_account_id">>, AcctID}
+                               ,{<<"pvt_type">>, <<"sip_service">>}
+                               ,{<<"trunks">>, 0}
+                               ,{<<"inbound_trunks">>, 0}
+                              ], wh_json:new()),
+    couch_mgr:save_doc(AcctDB, JObj).
