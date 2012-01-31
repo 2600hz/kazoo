@@ -4,7 +4,7 @@
   ,"pvt_internal_rate_cost":"0.01"
   ,"iso_country_code":"US"
   ,"options":[]
-  ,"prefix":1
+  ,"prefix":"1"
   ,"rate_cost":"0.02"
   ,"rate_increment":60
   ,"rate_minimum":60
