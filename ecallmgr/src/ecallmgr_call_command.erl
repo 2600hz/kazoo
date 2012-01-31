@@ -301,7 +301,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                           ,fun(DP) ->
                                    case wh_json:get_value(<<"Ringback">>, JObj) of
                                        undefined ->
-                                           {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, "%(2000,4000,440,480)"),
+                                           {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, <<"%(2000,4000,440,480)">>),
                                            [{"application", "set ringback=" ++ wh_util:to_list(RBSetting)}|DP];
                                        Ringback ->
                                            Stream = ecallmgr_util:media_path(Ringback, extant, UUID),
