@@ -122,35 +122,18 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref
         true ->
             ?LOG("CDR passed validation"),
             CallID = wh_json:get_value(<<"Call-ID">>, JObj), % assert
-            ?LOG("CDR is for our call-id"),
-            BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
 
-            PerMinCharge = wapi_money:default_per_min_charge(),
-            case extract_cost(JObj) of
-                Cost when Cost < PerMinCharge ->
-                    Credit = PerMinCharge - Cost,
-                    ?LOG("Crediting back ~p", [Credit]),
-                    {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, per_min, Credit, BillingSecs, JObj),
-                    publish_transaction(Transaction, fun wapi_money:publish_credit/1);
-                Cost ->
-                    Debit = Cost - PerMinCharge,
-                    ?LOG("Debiting an additional ~p", [Debit]),
-                    {ok, Transaction} = j5_util:write_debit_to_ledger(DB, CallID, per_min, Debit, BillingSecs, JObj),
-                    publish_transaction(Transaction, fun wapi_money:publish_debit/1)
-            end,
-
+            handle_transaction(JObj, DB),
             {stop, normal, State}
     end;
 
 handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref=Ref, callid=CallID
-                                                                       ,ledger_db=DB, call_type=Type, authz_won=true}=State) ->
+                                                                       ,ledger_db=DB, authz_won=true}=State) ->
     case CallID =:= wh_json:get_value(<<"Call-ID">>, JObj) andalso wapi_call:cdr_v(JObj) of
         true ->
             ?LOG("Received CDR, finishing transaction"),
-            BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
-            {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
-            publish_transaction(Transaction, fun wapi_money:publish_credit/1),
 
+            handle_transaction(JObj, DB),
             {stop, normal, State};
         false ->
             ?LOG("JSON not for our call leg (recv call-id ~s) or CDR was invalid", [wh_json:get_value(<<"Call-ID">>, JObj)]),
@@ -190,13 +173,11 @@ handle_cast({call_event, {Cat, Name}, _JObj}, #state{timer_ref=Ref}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({check_ledger, JObj}, #state{callid=CallID, ledger_db=DB, call_type=Type}=State) ->
+handle_info({check_ledger, JObj}, #state{callid=CallID, ledger_db=DB}=State) ->
     ?LOG("Checking ledger for final debit/credit"),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 
-    BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
-    {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, Type, 0, BillingSecs, JObj),
-    publish_transaction(Transaction, fun wapi_money:publish_credit/1),
+    handle_transaction(JObj, DB),
 
     {stop, normal, State};
 
@@ -280,6 +261,25 @@ extract_cost(JObj) ->
     Cost = whapps_util:calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
     ?LOG("Rating call: ~p at incr: ~p with min: ~p and surcharge: ~p for ~p secs: $~p", [Rate, RateIncr, RateMin, Surcharge, BillingSecs, Cost]),
     wapi_money:dollars_to_units(Cost).
+
+handle_transaction(JObj, DB) ->
+    ?LOG("CDR is for our call-id"),
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
+
+    PerMinCharge = wapi_money:default_per_min_charge(),
+    case extract_cost(JObj) of
+        Cost when Cost < PerMinCharge ->
+            Credit = PerMinCharge - Cost,
+            ?LOG("Crediting back ~p", [Credit]),
+            {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, per_min, Credit, BillingSecs, JObj),
+            publish_transaction(Transaction, fun wapi_money:publish_credit/1);
+        Cost ->
+            Debit = Cost - PerMinCharge,
+            ?LOG("Debiting an additional ~p", [Debit]),
+            {ok, Transaction} = j5_util:write_debit_to_ledger(DB, CallID, per_min, Debit, BillingSecs, JObj),
+            publish_transaction(Transaction, fun wapi_money:publish_debit/1)
+    end.
 
 publish_transaction(Transaction, PublisherFun) ->
     ?LOG("Publishing transaction to wapi_money"),
