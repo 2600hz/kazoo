@@ -44,7 +44,7 @@
 %%--------------------------------------------------------------------
 start_link(CallID, LedgerDB, CallType) ->
     gen_listener:start_link(?MODULE
-                          ,[{bindings, [{call, [{callid, CallID}]}, {self, []}]}
+                          ,[{bindings, [{call, [{callid, CallID}, {restrict_to, [events, cdr]}]}, {self, []}]}
                             ,{responders, [{{?MODULE, handle_call_event}, [{<<"*">>, <<"*">>}]}] }
                            ]
                           ,[CallID, LedgerDB, CallType]).
@@ -142,7 +142,7 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref
 
 handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref=Ref, authz_won=false}=State) ->
     ?LOG("CDR received, but we're not the winner of the authz_win, so let's wait a bit and see if the ledger was updated"),
-    erlang:send_after(1000, self(), {check_ledger, JObj}),
+    erlang:send_after(500 + crypto:rand_uniform(500, 1000), self(), {check_ledger, JObj}),
     {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
 
 handle_cast({call_event, {<<"call_event">>, <<"status_resp">>}, JObj}, #state{timer_ref=Ref}=State) ->
