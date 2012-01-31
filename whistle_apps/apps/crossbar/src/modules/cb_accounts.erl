@@ -823,7 +823,7 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
                         #cb_context{resp_status=success} -> ok;
                         #cb_context{resp_error_msg=Err} -> ?LOG("failed to save credit doc: ~p", [Err])
                     end,
-                    notfy_new_account(JObj),
+                    notfy_new_account(Context1),
                     Context1;
                 Else ->
                     ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
@@ -936,8 +936,12 @@ unassign_rep(AccountId, JObj) ->
 %% Send a notification that the account has been created
 %% @end
 %%--------------------------------------------------------------------
--spec notfy_new_account/1 :: (wh_json:json_object()) -> ok.
-notfy_new_account(JObj) ->
+-spec notfy_new_account/1 :: (#cb_context{}) -> ok.
+%% NOTE: when the auth token is empty either signups or onboard allowed this request
+%%       and they will notify once complete...
+notfy_new_account(#cb_context{auth_doc = undefined}) ->
+    ok;
+notfy_new_account(#cb_context{doc = JObj}) ->
     Notify = [{<<"Account-Name">>, wh_json:get_value(<<"name">>, JObj)}
               ,{<<"Account-Realm">>, wh_json:get_value(<<"realm">>, JObj)}
               ,{<<"Account-API-Key">>, wh_json:get_value(<<"pvt_api_key">>, JObj)}

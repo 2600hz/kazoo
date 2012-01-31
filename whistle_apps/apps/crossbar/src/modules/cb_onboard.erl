@@ -343,7 +343,7 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
     Payload = [undefined
                ,Context#cb_context{req_data=Properties
                                    ,db_name = <<"--">>}
-               ,[Number, <<"activate">>]
+               ,Number, <<"activate">>
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.phone_numbers">>, Payload) of
         [_, #cb_context{resp_status=success}=Context1 | _] ->
@@ -603,7 +603,7 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
                            wh_json:set_value(<<"_id">>, Id, J) 
                    end
                   ,fun(J) ->
-                           case wh_json:get_value(<<"numbers">>, J, []) of
+                           case [Num || Num <- wh_json:get_ne_value(<<"numbers">>, J, []), not wh_util:is_empty(Num)] of
                                [] ->
                                    StartExten = whapps_config:get_integer(?OB_CONFIG_CAT
                                                                           ,<<"default_callflow_start_exten">>
@@ -640,8 +640,9 @@ populate_new_account(Props, _) ->
                ,Context
               ],
     case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, Payload) of
-        [_, #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId}=Context1 | _] ->
+        [_, #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId, doc=JObj}=Context1 | _] ->
             Results = populate_new_account(proplists:delete(?WH_ACCOUNTS_DB, Props), AccountDb, wh_json:new()),
+            notfy_new_account(JObj),
             Context1#cb_context{doc=wh_json:set_value(<<"account_id">>, AccountId, Results)};
         [_, ErrorContext | _] ->
             AccountId = wh_json:get_value(<<"_id">>, Context#cb_context.req_data),
@@ -656,7 +657,7 @@ populate_new_account([{<<"phone_numbers">>, #cb_context{storage=Number}=Context}
     Payload = [undefined
                ,Context#cb_context{db_name=AccountDb
                                    ,account_id=wh_util:format_account_id(AccountDb, raw)}
-               ,[Number, <<"activate">>]
+               ,Number, <<"activate">>
               ],
     case crossbar_bindings:fold(<<"v1_resource.execute.put.phone_numbers">>, Payload) of
         [_, #cb_context{resp_status=success} | _] ->
@@ -764,3 +765,20 @@ create_response(RD, #cb_context{doc=JObj, account_id=AccountId}=Context) ->
             ?LOG("could not create new local auth token, ~p", [R]),
             crossbar_util:response(error, JObj, 400, Context)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to create a token and save it to the token db
+%% @end
+%%--------------------------------------------------------------------
+-spec notfy_new_account/1 :: (wh_json:json_object()) -> ok.
+notfy_new_account(JObj) ->
+    Notify = [{<<"Account-Name">>, wh_json:get_value(<<"name">>, JObj)}
+              ,{<<"Account-Realm">>, wh_json:get_value(<<"realm">>, JObj)}
+              ,{<<"Account-API-Key">>, wh_json:get_value(<<"pvt_api_key">>, JObj)}
+              ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
+              ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
+              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+             ],
+    wapi_notifications:publish_new_account(Notify).
