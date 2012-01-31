@@ -15,24 +15,23 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("jonny5.hrl").
--include_lib("dth/include/dth_amqp.hrl").
 
 -define(RESPONDERS, [
-		     {?MODULE, [{<<"dth">>, <<"blacklist_resp">>}]}
-		    ]).
+                     {?MODULE, [{<<"dth">>, <<"blacklist_resp">>}]}
+                    ]).
 -define(BINDINGS, [
-		   {self, []}
-		  ]).
+                   {self, []}
+                  ]).
 
 -define(SERVER, ?MODULE).
 -define(BLACKLIST_UPDATE_TIMER, 5000).
 
 -record(state, {
-	  blacklist = dict:new() :: dict() %% {AccountID, Reason}
-	 }).
+          blacklist = dict:new() :: dict() %% {AccountID, Reason}
+         }).
 
 %%%===================================================================
 %%% API
@@ -47,8 +46,8 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				     ], []).
+                                      ,{bindings, ?BINDINGS}
+                                     ], []).
 
 stop(Srv) ->
     gen_listener:stop(Srv).
@@ -105,11 +104,11 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({is_blacklisted, AccountID}, _From, #state{blacklist=BL}=State) ->
     try
-	Reason = dict:fetch(AccountID, BL),
-	{reply, {true, Reason}, State}
+        Reason = dict:fetch(AccountID, BL),
+        {reply, {true, Reason}, State}
     catch
-	_:_ ->
-	    {reply, false, State}
+        _:_ ->
+            {reply, false, State}
     end.
 
 %%--------------------------------------------------------------------
@@ -184,9 +183,5 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-request_blacklist(Srv) ->
-    Queue = gen_listener:queue_name(Srv),
-    Prop = wh_api:default_headers(Queue, <<"dth">>, <<"blacklist_req">>, ?APP_NAME, ?APP_VERSION),
-    {ok, JSON} = dth_api:blacklist_req(Prop),
-    ?LOG_SYS("Sending request for blacklist: ~s", [JSON]),
-    amqp_util:callmgr_publish(JSON, <<"application/json">>, ?KEY_DTH_BLACKLIST_REQ).
+request_blacklist(_Srv) ->
+    ok.
