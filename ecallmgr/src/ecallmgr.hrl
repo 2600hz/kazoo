@@ -68,10 +68,6 @@
                                ,{<<"Callee-ID-Name">>, <<"effective_callee_id_name">>}
                                ,{<<"Callee-ID-Number">>, <<"effective_callee_id_number">>}
                                ,{<<"Progress-Timeout">>, <<"progress_timeout">>}
-                               ,{<<"Rate">>, <<"rate">>}
-                               ,{<<"Rate-Increment">>, <<"rate_increment">>}
-                               ,{<<"Rate-Minimum">>, <<"rate_minimum">>}
-                               ,{<<"Surcharge">>, <<"surcharge">>}
                                ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}
                                ,{<<"Continue-On-Fail">>, <<"continue_on_fail">>}
                                ,{<<"Endpoint-Timeout">>, <<"leg_timeout">>}
