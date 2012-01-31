@@ -523,8 +523,14 @@ get_auth_token(RD, JsonToken, Verb) ->
         undefined ->
             case Verb of
                 <<"get">> ->
-                    wh_util:to_binary(props:get_value("auth_token", wrq:req_qs(RD), <<>>));
-                _ -> JsonToken
+                    case props:get_value("auth_token", wrq:req_qs(RD)) of
+                        undefined ->
+                            <<>>;
+                        AuthToken ->
+                            wh_util:to_binary(AuthToken)
+                    end;
+                _ -> 
+                    JsonToken
             end;
         AuthToken ->
             wh_util:to_binary(AuthToken)
