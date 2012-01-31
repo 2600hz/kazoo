@@ -14,7 +14,7 @@
 %%%-------------------------------------------------------------------
 -module(couch_config).
 
--export([start_link/0]).
+-export([start_link/0, ready/0]).
 -export([load_config/1, write_config/1]).
 -export([fetch/1, fetch/2]).
 -export([store/2, store/3]).
@@ -33,11 +33,11 @@ start_link() ->
 load_config(Path) ->
     ?LOG("loading ~s", [Path]),
     case file:consult(Path) of
-	{ok, Startup} ->
-	    _ = [cache_from_file(T) || T <- Startup],
-	    ok;
-	{error, enoent}=E ->
-	    E
+        {ok, Startup} ->
+            _ = [cache_from_file(T) || T <- Startup],
+            ok;
+        {error, enoent}=E ->
+            E
     end.
 
 %% convert 3..n-tuples to 2 tuples with the value being (3..n)-1 tuples
@@ -53,8 +53,11 @@ cache_from_file(T) when is_tuple(T) ->
 -spec write_config/1 :: (file:name()) -> 'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 write_config(Path) ->
     Contents = lists:foldl(fun(I, Acc) -> [io_lib:format("~p.~n", [I]) | Acc] end
-			   , "", whapps_config:get_all_kvs(?CONFIG_CAT)),
+                           , "", whapps_config:get_all_kvs(?CONFIG_CAT)),
     file:write_file(Path, Contents).
+
+ready() ->
+    whapps_config:couch_ready().
 
 fetch(Key) ->
     fetch(Key, undefined).
@@ -66,8 +69,8 @@ fetch(Key, Default) ->
 
 fetch(Key, Default, Cache) ->
     case wh_cache:fetch_local(Cache, {?MODULE, Key}) of
-	{error, not_found} -> Default;
-	{ok, V} -> V
+        {error, not_found} -> Default;
+        {ok, V} -> V
     end.
 
 -spec store/2 :: (term(), term()) -> 'ok'.
