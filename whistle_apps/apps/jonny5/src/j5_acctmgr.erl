@@ -538,7 +538,7 @@ try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) 
     }.
 
 -spec try_prepay/3 :: (ne_binary(), #state{}, integer()) -> {{boolean(), proplist()}, #state{}}.
-try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId}=State, PerMinCharge) when Pre =< PerMinCharge ->
+try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId, trunks_in_use=Dict, ledger_db=LedgerDB}=State, PerMinCharge) when Pre =< PerMinCharge ->
     ?LOG_SYS(CallID, "Failed to authz a per_min trunk", []),
 
     %% Alert admins of the situation
@@ -553,7 +553,14 @@ try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId}=State, PerMinCharge) when 
     case whapps_config:get_is_true(<<"jonny5">>, <<"authz_on_no_prepay">>, true) of
         true ->
             ?LOG("authz_on_no_prepay set to true, authz the call"),
-            {{true, [{<<"Trunk-Type">>, <<"pre_min">>}]}};
+            PrepayLeft = Pre - PerMinCharge,
+            ?LOG_SYS(CallID, "Authz a per_min trunk; ~b prepay left, ~b charged up-front", [PrepayLeft, PerMinCharge]),
+            {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
+            erlang:monitor(process, Pid),
+
+            {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
+             ,State#state{trunks_in_use=dict:store(CallID, {per_min, Pid}, Dict), prepay=PrepayLeft}
+            };
         false ->
             ?LOG("authz_on_no_prepay set to false, denying the call"),
             {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State}

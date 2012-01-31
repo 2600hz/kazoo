@@ -17,8 +17,8 @@
 -export([refresh_all_accounts/0, refresh_account/1]).
 
 -export([write_debit_to_ledger/5, write_credit_to_ledger/5
-	 ,write_debit_to_ledger/6, write_credit_to_ledger/6
-	]).
+         ,write_debit_to_ledger/6, write_credit_to_ledger/6
+        ]).
 
 -include("jonny5.hrl").
 
@@ -30,16 +30,16 @@ fetch_all_accounts() ->
 -spec fetch_all_accounts/1 :: (pid()) -> wh_json:json_objects().
 fetch_all_accounts(Cache) ->
     AcctPids = wh_cache:filter_local(Cache, fun({j5_authz, _}, _) -> true;
-						(_, _) -> false
-					     end),
+                                                (_, _) -> false
+                                             end),
     [j5_acctmgr:status(AcctPid) || {{j5_authz, _AcctID}, AcctPid} <- AcctPids, erlang:is_process_alive(AcctPid)].
 
 -spec fetch_account/1 :: (ne_binary()) -> wh_json:json_object() | {'error', 'not_found'}.
 fetch_account(AcctID) ->
     case fetch_account_handler(AcctID) of
-	{ok, Pid} ->
-	    j5_acctmgr:status(Pid);
-	{error, _}=E -> E
+        {ok, Pid} ->
+            j5_acctmgr:status(Pid);
+        {error, _}=E -> E
     end.
 
 -spec fetch_account_handler/1 :: (ne_binary()) -> {'ok', pid()} | {'error', 'not_found'}.
@@ -77,9 +77,9 @@ preload_accounts(JObjs) ->
 
 preload_account(AcctID, Cache) ->
     case fetch_account_handler(AcctID, Cache) of
-	{ok, _} -> ok;
-	{error, not_found} ->
-	    jonny5_acct_sup:start_proc(AcctID)
+        {ok, _} -> ok;
+        {error, not_found} ->
+            jonny5_acct_sup:start_proc(AcctID)
     end.
 
 -spec preload_trunkstore/0 :: () -> [{'ok', pid()},...].
@@ -92,8 +92,8 @@ preload_trunkstore() ->
 refresh_all_accounts() ->
     {ok, Cache} = jonny5_sup:cache_proc(),
     AcctPids = wh_cache:filter_local(Cache, fun({j5_authz, _}, _) -> true;
-					       (_, _) -> false
-					    end),
+                                               (_, _) -> false
+                                            end),
     [j5_acctmgr:refresh(AcctPid) || {{j5_authz, _AcctID}, AcctPid} <- AcctPids].
 
 -spec refresh_account/1 :: (ne_binary()) -> 'ok'.
@@ -104,9 +104,9 @@ refresh_account(AcctID) ->
 -spec uptime/1 :: (pos_integer()) -> pos_integer().
 uptime(StartTime) ->
     case wh_util:current_tstamp() - StartTime of
-	X when X =< 0 ->
-	    1;
-	X -> X
+        X when X =< 0 ->
+            1;
+        X -> X
     end.
 
 write_debit_to_ledger(DB, CallID, CallType, DebitUnits, Duration) ->
@@ -131,43 +131,43 @@ write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType
     ?LOG("trying to write ~s to ~s for doc ~s", [ID, DB, DocType]),
 
     TransactionJObj = wh_json:from_list([{<<"call_id">>, CallID}
-					 ,{<<"call_type">>, CallType}
-					 ,{<<"call_duration">>, Duration}
-					 ,{<<"amount">>, Units}
-					 ,{<<"pvt_account_id">>, wh_util:format_account_id(AcctID, raw)}
-					 ,{<<"pvt_account_db">>, wh_util:format_account_id(AcctID, encoded)}
-					 ,{<<"pvt_type">>, DocType}
-					 ,{<<"pvt_created">>, Timestamp}
-					 ,{<<"pvt_modified">>, Timestamp}
-					 ,{<<"pvt_vsn">>, ?APP_VERSION}
-					 ,{<<"pvt_whapp">>, ?APP_NAME}
-					 ,{<<"_id">>, ID}
-					]),
+                                         ,{<<"call_type">>, CallType}
+                                         ,{<<"call_duration">>, Duration}
+                                         ,{<<"amount">>, Units}
+                                         ,{<<"pvt_account_id">>, wh_util:format_account_id(AcctID, raw)}
+                                         ,{<<"pvt_account_db">>, wh_util:format_account_id(AcctID, encoded)}
+                                         ,{<<"pvt_type">>, DocType}
+                                         ,{<<"pvt_created">>, Timestamp}
+                                         ,{<<"pvt_modified">>, Timestamp}
+                                         ,{<<"pvt_vsn">>, ?APP_VERSION}
+                                         ,{<<"pvt_whapp">>, ?APP_NAME}
+                                         ,{<<"_id">>, ID}
+                                        ]),
     couch_mgr:save_doc(DB, TransactionJObj).
 
 -spec mk_id/3 :: (ne_binary(), ne_binary(), ne_binary() | pos_integer()) -> ne_binary() | 'undefined'.
 mk_id(CallID, AcctID, Tstamp) ->
     Suffix = case wh_util:is_empty(Tstamp) of
-		 true -> <<>>;
-		 false -> [<<"-">>, (wh_util:to_binary(Tstamp))]
-	     end,
+                 true -> <<>>;
+                 false -> [<<"-">>, (wh_util:to_binary(Tstamp))]
+             end,
     case wh_util:is_empty(CallID) of
-	true -> mk_id(AcctID, Suffix);
-	false -> mk_id(CallID, Suffix)
+        true -> mk_id(AcctID, Suffix);
+        false -> mk_id(CallID, Suffix)
     end.
 
 -spec mk_id/2 :: (binary(), binary()) -> ne_binary() | 'undefined'.
 mk_id(Prefix, Suffix) ->
     case wh_util:is_empty(Prefix) of
-	true -> undefined;
-	false -> list_to_binary([Prefix, Suffix])
+        true -> undefined;
+        false -> list_to_binary(["transaction-", Prefix, Suffix])
     end.
 
 -spec current_usage/1 :: (ne_binary()) -> integer().
 current_usage(AcctID) ->
     DB = wh_util:format_account_id(AcctID, encoded),
     case couch_mgr:get_results(DB, <<"transactions/credit_remaining">>, [{<<"reduce">>, true}]) of
-	{ok, []} -> 0;
-	{ok, [ViewRes|_]} -> wh_json:get_value(<<"value">>, ViewRes, 0);
-	{error, _} -> 0
+        {ok, []} -> 0;
+        {ok, [ViewRes|_]} -> wh_json:get_value(<<"value">>, ViewRes, 0);
+        {error, _} -> 0
     end.
