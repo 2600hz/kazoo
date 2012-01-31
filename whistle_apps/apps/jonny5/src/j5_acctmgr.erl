@@ -219,7 +219,7 @@ handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P}=
                          true -> try_inbound_then_twoway(CallID, State);
                          false -> try_prepay(CallID, State, wapi_money:default_per_min_charge())
                      end,
-    {reply, Resp, State1, hibernate};
+    {reply, Resp, State1};
 
 handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -245,7 +245,7 @@ handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P}=State) ->
                              ?LOG(CallID, "Auto-authz call to internal-seeming extension: ~s", [ToDID]),
                              { {true, [{<<"Trunk-Type">>, <<"internal">>}]}, State}
                      end,
-    {reply, Resp, State1, hibernate}.
+    {reply, Resp, State1}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -369,7 +369,7 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID
                           ,inbound=NTIIU
                           ,prepay=try_update_value(Prepay, P)
                           ,trunks_in_use=Dict1
-                         }, hibernate};
+                         }};
 
 handle_cast(Req, State) ->
     ?LOG("Failed cast request: ~p", [Req]),
