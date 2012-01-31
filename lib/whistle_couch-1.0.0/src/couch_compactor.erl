@@ -24,7 +24,7 @@ start_link() ->
     proc_lib:start_link(?MODULE, init, [self()], infinity, []).
 
 init(Parent) ->
-    case {couch_config:fetch(compact_automatically), couch_config:fetch(conflict_strategy)} of
+    case {couch_config:fetch(compact_automatically, true), couch_config:fetch(conflict_strategy, null)} of
         {true, null} ->
             ?LOG_SYS("just compacting"),
             proc_lib:init_ack(Parent, {ok, self()}),
