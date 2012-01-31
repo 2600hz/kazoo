@@ -72,7 +72,7 @@ running_apps() ->
 initialize_whapps() ->
     couch_mgr:db_create(?WH_CONFIG_DB),
     case whapps_config:get(?MODULE, <<"cookie">>) of
-        null -> ok;
+        undefined -> ok;
         Cookie ->
             ?LOG("changing the erlang cookie to ~s", [Cookie]),
             erlang:set_cookie(node(), wh_util:to_atom(Cookie, true))
