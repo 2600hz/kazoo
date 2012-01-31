@@ -418,10 +418,10 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
 process_req(Props, Responders, JObj) ->
     Key = wh_util:get_event_type(JObj),
 
-    Handlers = [proc_lib:spawn_monitor(fun() ->
-                                               _ = wh_util:put_callid(JObj),
-                                               Responder:Fun(JObj, Props)
-                                       end)
+    Handlers = [spawn_monitor(fun() ->
+                                      _ = wh_util:put_callid(JObj),
+                                      Responder:Fun(JObj, Props)
+                              end)
                 || {Evt, {Responder, Fun}} <- Responders,
                    maybe_event_matches_key(Key, Evt)
                ],

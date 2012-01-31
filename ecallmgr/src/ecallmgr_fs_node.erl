@@ -255,7 +255,7 @@ handle_info(timeout, #state{node=Node}=State) ->
     receive
         ok ->
             ?LOG("event handler registered on node ~s", [Node]),
-            Res = run_start_cmds(Node),
+            Res = lists:flatten(run_start_cmds(Node)),
 
             case lists:filter(fun was_not_successful_cmd/1, Res) of
                 [] ->
