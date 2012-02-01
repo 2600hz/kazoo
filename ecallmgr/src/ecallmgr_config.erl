@@ -14,11 +14,10 @@
 
 -include("ecallmgr.hrl").
 
--spec flush/0 :: () -> ok.
+-spec flush/0 :: () -> 'ok'.
 flush() ->
     {ok, Cache} = ecallmgr_sup:cache_proc(),
-    wh_cache:flush_local(Cache),
-    ok.
+    wh_cache:flush_local(Cache).
 
 -spec get/1 :: (wh_json:json_string()) -> wh_json:json_term() | 'undefined'.
 -spec get/2 :: (wh_json:json_string(), Default) -> wh_json:json_term() | Default.
@@ -70,7 +69,7 @@ set(Key0, Value, Node0) ->
 
     {ok, Cache} = ecallmgr_sup:cache_proc(),
     wh_cache:store_local(Cache, cache_key(Key, Node), Value),
-    
+
     Req = [KV ||
               {_, V} = KV <- [{<<"Category">>, <<"ecallmgr">>}
                               ,{<<"Key">>, Key}
