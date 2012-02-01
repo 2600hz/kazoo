@@ -3,10 +3,14 @@
     ,"language": "javascript"
     ,"views": {
         "credit_remaining": {
-            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; var modifier = doc.pvt_type == 'credit' ? 1 : -1; emit(null, doc.amount * modifier); }"
-	    ,"reduce": "_sum"
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || doc.call_type !== 'per_min') return; var modifier = doc.pvt_type == 'credit' ? 1 : -1; emit(null, doc.amount * modifier); }"
+            ,"reduce": "_sum"
         }
-	,"by_timestamp": {
+        "minutes_consumed": {
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; var modifier = doc.pvt_type == 'credit' ? 1 : -1; emit(doc.call_type, doc.amount * modifier); }"
+            ,"reduce": "_sum"
+        }
+        ,"by_timestamp": {
             "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; emit(doc.pvt_created, doc._id); }"
         }
     }

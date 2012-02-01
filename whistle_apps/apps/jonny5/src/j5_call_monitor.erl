@@ -73,7 +73,7 @@ handle_call_event(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([CallID, LedgerDB, CallType]) ->
     put(callid, CallID),
-    ?LOG_SYS("Init complete"),
+    ?LOG_SYS("init complete for call of type ~s", [CallType]),
     {ok, #state{callid=CallID, ledger_db=LedgerDB
                 ,call_type=CallType, timer_ref=start_status_timer()
                }}.
@@ -123,17 +123,17 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref
             ?LOG("CDR passed validation"),
             CallID = wh_json:get_value(<<"Call-ID">>, JObj), % assert
 
-            handle_transaction(JObj, DB),
+            handle_transaction(JObj, DB, per_min),
             {stop, normal, State}
     end;
 
-handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref=Ref, callid=CallID
+handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref=Ref, callid=CallID, call_type=CallType
                                                                        ,ledger_db=DB, authz_won=true}=State) ->
     case CallID =:= wh_json:get_value(<<"Call-ID">>, JObj) andalso wapi_call:cdr_v(JObj) of
         true ->
             ?LOG("Received CDR, finishing transaction"),
 
-            handle_transaction(JObj, DB),
+            handle_transaction(JObj, DB, CallType),
             {stop, normal, State};
         false ->
             ?LOG("JSON not for our call leg (recv call-id ~s) or CDR was invalid", [wh_json:get_value(<<"Call-ID">>, JObj)]),
@@ -173,11 +173,11 @@ handle_cast({call_event, {Cat, Name}, _JObj}, #state{timer_ref=Ref}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({check_ledger, JObj}, #state{callid=CallID, ledger_db=DB}=State) ->
+handle_info({check_ledger, JObj}, #state{callid=CallID, ledger_db=DB, call_type=CallType}=State) ->
     ?LOG("Checking ledger for final debit/credit"),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 
-    handle_transaction(JObj, DB),
+    handle_transaction(JObj, DB, CallType),
 
     {stop, normal, State};
 
@@ -262,7 +262,7 @@ extract_cost(JObj) ->
     ?LOG("Rating call: ~p at incr: ~p with min: ~p and surcharge: ~p for ~p secs: $~p", [Rate, RateIncr, RateMin, Surcharge, BillingSecs, Cost]),
     wapi_money:dollars_to_units(Cost).
 
-handle_transaction(JObj, DB) ->
+handle_transaction(JObj, DB, CallType) ->
     ?LOG("CDR is for our call-id"),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
@@ -272,12 +272,12 @@ handle_transaction(JObj, DB) ->
         Cost when Cost < PerMinCharge ->
             Credit = PerMinCharge - Cost,
             ?LOG("Crediting back ~p", [Credit]),
-            {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, per_min, Credit, BillingSecs, JObj),
+            {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, CallType, Credit, BillingSecs, JObj),
             publish_transaction(Transaction, fun wapi_money:publish_credit/1);
         Cost ->
             Debit = Cost - PerMinCharge,
             ?LOG("Debiting an additional ~p", [Debit]),
-            {ok, Transaction} = j5_util:write_debit_to_ledger(DB, CallID, per_min, Debit, BillingSecs, JObj),
+            {ok, Transaction} = j5_util:write_debit_to_ledger(DB, CallID, CallType, Debit, BillingSecs, JObj),
             publish_transaction(Transaction, fun wapi_money:publish_debit/1)
     end.
 
