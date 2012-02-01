@@ -229,7 +229,7 @@ handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P, 
             {reply, Resp, State1}
     end;
 
-handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P}=State) ->
+handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P, trunks_in_use=Dict}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG_START(CallID, "authorizing outbound call...", []),
     ?LOG(CallID, "trunks available: two: ~b prepay: ~b", [T, P, wapi_money:default_per_min_charge()]),
