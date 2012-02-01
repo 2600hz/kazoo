@@ -53,9 +53,11 @@
 -spec start_link/1 :: (ne_binary()) -> {'ok', pid()} | 'ignore' | {'error', term()}.
 start_link(AcctID) ->
     %% why are we receiving messages for account IDs we don't bind to?
+    AcctDB = wh_util:format_account_id(AcctID, encoded),
     gen_listener:start_link(?MODULE, [{bindings, [{self, []}
                                                   ,{money, [{account_id, AcctID}]}
-                                                  ,{conf, [{doc_id, AcctID}, {doc_type, <<"sip_service">>}]}
+                                                  ,{conf, [{db, AcctDB}, {doc_type, <<"sip_service">>}]}
+                                                  ,{conf, [{db, AcctDB}, {doc_type, <<"sys_info">>}]}
                                                  ]}
                                       ,{responders, [{ {?MODULE, handle_call_event}, [{<<"call_event">>, <<"*">>} % call events
                                                                                       ,{<<"call_detail">>, <<"*">>} % and CDR
