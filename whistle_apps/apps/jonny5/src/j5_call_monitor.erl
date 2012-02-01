@@ -106,21 +106,21 @@ handle_call(_, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(authz_won, State) ->
-    ?LOG("Aww yeah, won the authz. We're responsible for writing to the ledger (don't crash!)"),
+    ?LOG("qww yeah, won the authz. We're responsible for writing to the ledger (don't crash!)"),
     {noreply, State#state{authz_won=true}};
 
 handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_HANGUP_COMPLETE">>}, _JObj}, #state{timer_ref=Ref}=State) ->
-    ?LOG("Hangup complete, expecting a CDR any moment"),
+    ?LOG("hangup complete, expecting a CDR any moment"),
     {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
 
 handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref=Ref, callid=CallID, ledger_db=DB
                                                                        ,call_type=per_min, authz_won=true}=State) ->
     case wapi_call:cdr_v(JObj) of
         false ->
-            ?LOG("CDR failed validation"),
+            ?LOG("cdr failed validation"),
             {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
         true ->
-            ?LOG("CDR passed validation"),
+            ?LOG("cdr passed validation"),
             CallID = wh_json:get_value(<<"Call-ID">>, JObj), % assert
 
             handle_transaction(JObj, DB, per_min),
@@ -131,36 +131,36 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref
                                                                        ,ledger_db=DB, authz_won=true}=State) ->
     case CallID =:= wh_json:get_value(<<"Call-ID">>, JObj) andalso wapi_call:cdr_v(JObj) of
         true ->
-            ?LOG("Received CDR, finishing transaction"),
+            ?LOG("received CDR, finishing transaction"),
 
             handle_transaction(JObj, DB, CallType),
             {stop, normal, State};
         false ->
-            ?LOG("JSON not for our call leg (recv call-id ~s) or CDR was invalid", [wh_json:get_value(<<"Call-ID">>, JObj)]),
+            ?LOG("json not for our call leg (recv call-id ~s) or CDR was invalid", [wh_json:get_value(<<"Call-ID">>, JObj)]),
             {noreply, State#state{timer_ref=restart_status_timer(Ref)}}
     end;
 
 handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref=Ref, authz_won=false}=State) ->
-    ?LOG("CDR received, but we're not the winner of the authz_win, so let's wait a bit and see if the ledger was updated"),
+    ?LOG("cdr received, but we're not the winner of the authz_win, so let's wait a bit and see if the ledger was updated"),
     erlang:send_after(500 + crypto:rand_uniform(500, 1000), self(), {check_ledger, JObj}),
     {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
 
 handle_cast({call_event, {<<"call_event">>, <<"status_resp">>}, JObj}, #state{timer_ref=Ref}=State) ->
     case {wapi_call:channel_status_resp_v(JObj), wapi_call:get_status(JObj)} of
         {true, <<"active">>} ->
-            ?LOG("Received active status_resp"),
+            ?LOG("received active status_resp"),
             {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
         {true, <<"tmpdown">>} ->
-            ?LOG("Call tmpdown, starting down timer"),
+            ?LOG("call tmpdown, starting down timer"),
             _ = erlang:cancel_timer(Ref),
             {noreply, State#state{timer_ref=start_down_timer()}};
         {false, _} ->
-            ?LOG("Failed validation of status_resp"),
+            ?LOG("failed validation of status_resp"),
             {noreply, State}
     end;
 
 handle_cast({call_event, {Cat, Name}, _JObj}, #state{timer_ref=Ref}=State) ->
-    ?LOG("Unhandled event ~s:~s: ~s", [Cat, Name, wh_json:get_value(<<"Application-Name">>, _JObj)]),
+    ?LOG("unhandled event ~s:~s: ~s", [Cat, Name, wh_json:get_value(<<"Application-Name">>, _JObj)]),
     {noreply, State#state{timer_ref=restart_status_timer(Ref)}}.
 
 %%--------------------------------------------------------------------
@@ -174,7 +174,7 @@ handle_cast({call_event, {Cat, Name}, _JObj}, #state{timer_ref=Ref}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({check_ledger, JObj}, #state{callid=CallID, ledger_db=DB, call_type=CallType}=State) ->
-    ?LOG("Checking ledger for final debit/credit"),
+    ?LOG("checking ledger for final debit/credit"),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
 
     handle_transaction(JObj, DB, CallType),
@@ -182,7 +182,7 @@ handle_info({check_ledger, JObj}, #state{callid=CallID, ledger_db=DB, call_type=
     {stop, normal, State};
 
 handle_info({timeout, CallStatusRef, call_status}, #state{timer_ref=CallStatusRef, callid=CallID}=State) ->
-    ?LOG("Been a while, time to check in on call"),
+    ?LOG("been a while, time to check in on call"),
 
     Self = self(),
     spawn(fun() ->
@@ -196,7 +196,7 @@ handle_info({timeout, CallStatusRef, call_status}, #state{timer_ref=CallStatusRe
     {noreply, State#state{timer_ref=start_status_timer()}};
 
 handle_info({timeout, DownRef, call_status_down}, #state{callid=CallID, timer_ref=DownRef, call_type=per_min, ledger_db=DB}=State) ->
-    ?LOG("Per minute call got lost somehow. What to do???"),
+    ?LOG("per minute call got lost somehow. What to do???"),
 
     whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
                                     ,"Alert: Per-minute call went down without us receiving the CDR.~n"
@@ -209,11 +209,11 @@ handle_info({timeout, DownRef, call_status_down}, #state{callid=CallID, timer_re
     {stop, normal, State};
 
 handle_info({timeout, DownRef, call_status_down}, #state{timer_ref=DownRef}=State) ->
-    ?LOG("Call is down; status requests have gone unanswered or indicate call is down"),
+    ?LOG("aall is down; status requests have gone unanswered or indicate call is down"),
     {stop, normal, State};
 
 handle_info(_Info, State) ->
-    ?LOG("Unhandled message: ~p", [_Info]),
+    ?LOG("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_, _) ->
@@ -259,11 +259,11 @@ extract_cost(JObj) ->
     Surcharge = wh_json:get_float_value(<<"Surcharge">>, CCVs, 0.0),
 
     Cost = whapps_util:calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
-    ?LOG("Rating call: ~p at incr: ~p with min: ~p and surcharge: ~p for ~p secs: $~p", [Rate, RateIncr, RateMin, Surcharge, BillingSecs, Cost]),
+    ?LOG("rating call: ~p at incr: ~p with min: ~p and surcharge: ~p for ~p secs: $~p", [Rate, RateIncr, RateMin, Surcharge, BillingSecs, Cost]),
     wapi_money:dollars_to_units(Cost).
 
 handle_transaction(JObj, DB, CallType) ->
-    ?LOG("CDR is for our call-id"),
+    ?LOG("cdr is for our call-id"),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
 
@@ -271,12 +271,12 @@ handle_transaction(JObj, DB, CallType) ->
     case extract_cost(JObj) of
         Cost when Cost < PerMinCharge ->
             Credit = PerMinCharge - Cost,
-            ?LOG("Crediting back ~p", [Credit]),
+            ?LOG("crediting back ~p", [Credit]),
             {ok, Transaction} = j5_util:write_credit_to_ledger(DB, CallID, CallType, Credit, BillingSecs, JObj),
             publish_transaction(Transaction, fun wapi_money:publish_credit/1);
         Cost ->
             Debit = Cost - PerMinCharge,
-            ?LOG("Debiting an additional ~p", [Debit]),
+            ?LOG("debiting an additional ~p", [Debit]),
             {ok, Transaction} = j5_util:write_debit_to_ledger(DB, CallID, CallType, Debit, BillingSecs, JObj),
             publish_transaction(Transaction, fun wapi_money:publish_debit/1)
     end.
