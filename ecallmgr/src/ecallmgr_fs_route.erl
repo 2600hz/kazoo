@@ -343,11 +343,7 @@ reply(Node, FSID, CallID, RespJObj, CCVs, AuthZPid) ->
             ?LOG_END("received no reply from node ~s, timeout", [Node])
     end.
 
--spec start_control_and_events/4 :: (Node, CallID, SendTo, CCVs) -> ok when
-      Node :: atom(),
-      CallID :: binary(),
-      SendTo :: binary(),
-      CCVs :: wh_json:json_object().
+-spec start_control_and_events/4 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
 start_control_and_events(Node, CallID, SendTo, CCVs) ->
     try
         {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID, SendTo),
@@ -367,9 +363,7 @@ start_control_and_events(Node, CallID, SendTo, CCVs) ->
             {error, amqp_error}
     end.
 
--spec send_control_queue/2 :: (SendTo, CtlProp) -> ok when
-      SendTo :: binary(),
-      CtlProp :: proplist().
+-spec send_control_queue/2 :: (ne_binary(), proplist()) -> 'ok'.
 send_control_queue(SendTo, CtlProp) ->
     ?LOG_END("sending route_win to ~s", [SendTo]),
     wapi_route:publish_win(SendTo, CtlProp).
