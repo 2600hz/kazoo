@@ -40,8 +40,6 @@
 
 -define(SERVER, ?MODULE).
 
--type binding_result() :: {'binding_result', term(), term()}.
-
 %% {FullBinding, BindingPieces, QueueOfPids}
 %% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue()}
 -type binding() :: {ne_binary(), [ne_binary(),...], queue()}. %% queue(pid() | atom())
@@ -156,16 +154,23 @@ handle_call({map, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) ->
                   put(callid, ReqId),
                   ?TIMER_START(list_to_binary(["bindings.map ", Routing])),
                   ?LOG("running map for binding ~s", [Routing]),
-
+                  S = self(),
                   RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
-
-                  Reply = lists:foldl(
-                            fun({B, BParts, Ps}, Acc) ->
-                                    case B =:= Routing orelse matches(BParts, RoutingParts) of
-                                        true -> map_bind_results(Ps, Payload, Acc, Routing);
-                                        false -> Acc
-                                    end
-                            end, [], Bs),
+                  Map = fun(Ps) -> 
+                                put(callid, ReqId),
+                                Ps ! {binding_fired, self(), Routing, Payload},
+                                wait_for_map_binding(Ps, Routing, Payload)
+                        end,
+                  Pids = lists:foldl(fun({B, _, Ps}, Acc) when B =:= Routing ->
+                                             [spawn(fun() -> S ! {self(), (catch Map(P))} end) || P <- queue:to_list(Ps)] ++ Acc;
+                                        ({_, BParts, Ps}, Acc) ->
+                                             case matches(BParts, RoutingParts) of
+                                                 true ->
+                                                     [spawn(fun() -> S ! {self(), (catch Map(P))} end) || P <- queue:to_list(Ps)] ++ Acc;
+                                                 false -> Acc
+                                             end
+                                     end, [], Bs),
+                  Reply = [receive {Pid, Result} -> Result end || Pid <- Pids],
                   ?TIMER_STOP("bindings.map"),
                   gen_server:reply(From, Reply)
           end),
@@ -359,47 +364,23 @@ matches(_, _) -> false.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% returns the results for each pid and their modification (if any) to the payload
-%% Results is the accumulated results list so far
-%% @end
-%%--------------------------------------------------------------------
--spec map_bind_results/4 :: (queue(), term(), [binding_result(),...], ne_binary()) -> [{term() | 'timeout', term()}].
-map_bind_results(Pids, Payload, Results, Route) ->
-    S = self(),
-    ReqId = get(callid),
-    SpawnedPids = [ spawn(fun() ->
-                                  put(callid, ReqId),
-                                  P ! {binding_fired, self(), Route, Payload},
-                                  case wait_for_map_binding(P, Route) of
-                                      {ok,  Resp, Pay1} -> S ! {self(), {Resp, Pay1}};
-                                      timeout -> S ! {self(), {timeout, Payload}};
-                                      {error, E} -> S ! {self(), {error, E, P}}
-                                  end
-                          end)
-                    || P <- queue:to_list(Pids)
-                  ],
-
-    [ receive {Pid, DS} -> DS end || Pid <- SpawnedPids ] ++ Results.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Run a receive loop if we recieve hearbeat, otherwise collect binding results
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_map_binding/2 :: (pid(), ne_binary()) -> {'ok', atom(), term()} | 'timeout' | {'error', atom()}.
-wait_for_map_binding(P, Route) ->
+-spec wait_for_map_binding/3 :: (pid(), ne_binary(), term()) -> {term() | 'timeout', term()}.
+wait_for_map_binding(P, Route, Payload) ->
     receive
-        {binding_result, Resp, Pay} -> 
-            {ok, Resp, Pay};
-        {binding_error, Error} -> 
+        {binding_result, Resp, Pay} ->            
+            {Resp, Pay};
+        {binding_error, Error} ->
             ?LOG("receieved binding error from ~p: ~p", [P, Error]),
-            {error, Error};
-        heartbeat -> wait_for_map_binding(P, Route)
+            {error, Error, P};
+        heartbeat ->
+            wait_for_map_binding(P, Route, Payload)
     after
-        300 ->
-            ?LOG("map '~s' timed out waiting for ~p", [Route, P]), 
-            timeout
+        500 ->
+            ?LOG("map '~s' timed out waiting for ~p", [P]),
+            {timeout, Payload}
     end.
 
 %%--------------------------------------------------------------------
@@ -454,7 +435,7 @@ wait_for_fold_binding(P, Route) ->
             {error, Error};
         heartbeat -> wait_for_fold_binding(P, Route)
     after
-        300 ->
+        500 ->
             ?LOG("fold '~s' timed out waiting for ~p", [Route, P]), 
             timeout
     end.
