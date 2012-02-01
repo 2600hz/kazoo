@@ -30,6 +30,7 @@
                           ,{?EXCHANGE_CONFIGURATION, ?TYPE_CONFIGURATION}
                           ,{?EXCHANGE_CONFERENCE, ?TYPE_CONFERENCE}
                           ,{?EXCHANGE_WHAPPS, ?TYPE_WHAPPS}
+                          ,{?EXCHANGE_SYSCONF, ?TYPE_SYSCONF}
                          ]).
 
 %% Channel, ChannelRef

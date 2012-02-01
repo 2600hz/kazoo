@@ -53,9 +53,11 @@
 -spec start_link/1 :: (ne_binary()) -> {'ok', pid()} | 'ignore' | {'error', term()}.
 start_link(AcctID) ->
     %% why are we receiving messages for account IDs we don't bind to?
+    AcctDB = wh_util:format_account_id(AcctID, encoded),
     gen_listener:start_link(?MODULE, [{bindings, [{self, []}
                                                   ,{money, [{account_id, AcctID}]}
-                                                  ,{conf, [{doc_id, AcctID}, {doc_type, <<"sip_service">>}]}
+                                                  ,{conf, [{db, AcctDB}, {doc_type, <<"sip_service">>}]}
+                                                  ,{conf, [{db, AcctDB}, {doc_type, <<"sys_info">>}]}
                                                  ]}
                                       ,{responders, [{ {?MODULE, handle_call_event}, [{<<"call_event">>, <<"*">>} % call events
                                                                                       ,{<<"call_detail">>, <<"*">>} % and CDR
@@ -342,20 +344,7 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID
     NMTW = try_update_value(Trunks, MTW),
     NMI = try_update_value(InboundTrunks,MI),
 
-    {NTWIU, NTIIU} = dict:fold(fun(_CallID, {twoway, MonPid}, {Two, In}=Acc) ->
-                                       case erlang:is_process_alive(MonPid) of
-                                           true -> {Two-1, In};
-                                           false -> Acc
-                                       end;
-                                  (_CallID, {inbound, MonPid}, {Two, In}=Acc) ->
-                                       case erlang:is_process_alive(MonPid) of
-                                           true -> {Two, In-1};
-                                           false -> Acc
-                                       end;
-                                  (_, _, Acc) -> Acc %% ignore per-min
-                               end, {NMTW, NMI}, Dict),
-
-    Dict1 = dict:filter(fun(_CallID, {_, Pid}) -> erlang:is_process_alive(Pid) end, Dict),
+    {NTWIU, NTIIU, Dict1} = update_in_use(NMTW, NMI, Dict),
 
     ?LOG("changing max two way from ~b to ~p", [MTW, NMTW]),
     ?LOG("changing max inbound from ~b to ~p", [MI, NMI]),
@@ -387,16 +376,27 @@ handle_cast(Req, State) ->
 %%--------------------------------------------------------------------
 handle_info({timeout, SyncRef, sync}, #state{sync_ref=SyncRef, acct_id=AcctID
                                              ,max_two_way=Two, max_inbound=In, prepay=Pre
+                                             ,two_way=_TwoAvail, inbound=_InAvail
+                                             ,trunks_in_use=Dict
                                             }=State) ->
-    ?LOG_SYS("Syncing with DB"),
+    ?LOG_SYS("syncing with DB"),
     {NewTwo, NewIn, NewPre} = get_trunks_available(AcctID),
 
-    ?LOG("Old Maxs: two: ~p, in: ~p, prepay: ~p", [Two, In, Pre]),
-    ?LOG("New Possible Maxs: two: ~p, in: ~p, prepay: ~p", [NewTwo, NewIn, NewPre]),
+    ?LOG("old maxs: two: ~p, in: ~p, prepay: ~p", [Two, In, Pre]),
+    ?LOG("new possible maxs: two: ~p, in: ~p, prepay: ~p", [NewTwo, NewIn, NewPre]),
+    ?LOG("old in use: two: ~p in: ~p", [_TwoAvail, _InAvail]),
+
+    MaxTwo = try_update_value(NewTwo, Two),
+    MaxIn = try_update_value(NewIn, In),
+
+    {TAvail, IAvail, Dict1} = update_in_use(MaxTwo, MaxIn, Dict),
 
     {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)
-                          ,max_two_way=try_update_value(NewTwo, Two)
-                          ,max_inbound=try_update_value(NewIn, In)
+                          ,max_two_way=MaxTwo
+                          ,max_inbound=MaxIn
+                          ,two_way=TAvail
+                          ,inbound=IAvail
+                          ,trunks_in_use=Dict1
                           ,prepay=try_update_value(NewPre, Pre)
                          }};
 
@@ -457,26 +457,24 @@ get_trunks_available(AcctID) ->
     case couch_mgr:get_results(AcctDB, <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
         {ok, [JObj|_]} ->
             ?LOG("View result retrieved"),
-            get_account_values(AcctID, JObj);
+            get_account_values(AcctID, wh_json:get_value(<<"doc">>, JObj));
         _ ->
             case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, [{<<"reduce">>, false}
                                                                                    ,{<<"include_docs">>, true}
                                                                                   ]) of
                 {ok, [JObj|_]} ->
                     ?LOG("ts view result retrieved"),
-                    get_ts_values(AcctID, JObj);
+                    get_ts_values(AcctID, wh_json:get_value([<<"doc">>, <<"account">>], JObj));
                 _ ->
                     ?LOG("missing limits or trunkstore doc, generating one"),
                     {ok, _} = create_new_limits(AcctID, AcctDB),
-                    {0, 0, 0}
+                    {0, 0, j5_util:current_usage(AcctID)}
             end
     end.
 
-get_ts_values(AcctID, JObj) ->
-    Acct = wh_json:get_value(<<"account">>, JObj, wh_json:new()),
-
-    Trunks = wh_json:get_integer_value(<<"trunks">>, Acct),
-    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, Acct),
+get_ts_values(AcctID, AcctDoc) ->
+    Trunks = wh_json:get_integer_value(<<"trunks">>, AcctDoc),
+    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, AcctDoc),
 
     Prepay = j5_util:current_usage(AcctID),
 
@@ -627,3 +625,21 @@ create_new_limits(AcctID, AcctDB) ->
                                ,{<<"inbound_trunks">>, 0}
                               ], wh_json:new()),
     couch_mgr:save_doc(AcctDB, JObj).
+
+-spec update_in_use/3 :: (non_neg_integer(), non_neg_integer(), dict()) -> {non_neg_integer(), non_neg_integer(), dict()}.
+update_in_use(NMTW, NMI, Dict) ->
+    {NTWIU, NTIIU} = dict:fold(fun(_CallID, {twoway, MonPid}, {Two, In}=Acc) ->
+                                       case erlang:is_process_alive(MonPid) of
+                                           true -> {Two-1, In};
+                                           false -> Acc
+                                       end;
+                                  (_CallID, {inbound, MonPid}, {Two, In}=Acc) ->
+                                       case erlang:is_process_alive(MonPid) of
+                                           true -> {Two, In-1};
+                                           false -> Acc
+                                       end;
+                                  (_, _, Acc) -> Acc %% ignore per-min
+                               end, {NMTW, NMI}, Dict),
+    
+    Dict1 = dict:filter(fun(_CallID, {_, Pid}) -> erlang:is_process_alive(Pid) end, Dict),
+    {NTWIU, NTIIU, Dict1}.
