@@ -446,6 +446,7 @@ update_category_node(Category, Node, UpdateFun, Cache) ->
 update_category(Category, JObj, Cache) ->
     ?LOG("updating configuration category ~s", [Category]),
     JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),
+    couch_mgr:db_create(?WH_CONFIG_DB),
     {ok, SavedJObj} = couch_mgr:ensure_saved(?WH_CONFIG_DB, JObj1),
     ?LOG("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
     cache_jobj(Cache, Category, SavedJObj).
