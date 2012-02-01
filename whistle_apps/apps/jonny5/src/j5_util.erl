@@ -132,8 +132,8 @@ write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType
 
     TransactionJObj = wh_json:from_list([{<<"call_id">>, CallID}
                                          ,{<<"call_type">>, CallType}
-                                         ,{<<"call_duration">>, Duration}
-                                         ,{<<"amount">>, Units}
+                                         ,{<<"call_duration">>, wh_util:to_integer(Duration)}
+                                         ,{<<"amount">>, wh_util:to_integer(Units)}
                                          ,{<<"pvt_account_id">>, wh_util:format_account_id(AcctID, raw)}
                                          ,{<<"pvt_account_db">>, wh_util:format_account_id(AcctID, encoded)}
                                          ,{<<"pvt_type">>, DocType}
