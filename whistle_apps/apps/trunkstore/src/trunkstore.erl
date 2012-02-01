@@ -26,7 +26,7 @@ start() ->
     application:start(trunkstore).
 
 start_deps() ->
-    trunkstore_deps:ensure(),
+    whistle_apps_deps:ensure(?MODULE),
     wh_util:ensure_started(sasl),
     wh_util:ensure_started(crypto),
     wh_util:ensure_started(whistle_amqp),
