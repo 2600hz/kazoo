@@ -8,11 +8,17 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_config).
 
--export([get/1, get/2, get/3
-         ,set/2, set/3
-        ]).
+-export([flush/0]).
+-export([get/1, get/2, get/3]).
+-export([set/2, set/3]).
 
 -include("ecallmgr.hrl").
+
+-spec flush/0 :: () -> ok.
+flush() ->
+    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    wh_cache:flush_local(Cache),
+    ok.
 
 -spec get/1 :: (wh_json:json_string()) -> wh_json:json_term() | 'undefined'.
 -spec get/2 :: (wh_json:json_string(), Default) -> wh_json:json_term() | Default.
@@ -43,6 +49,7 @@ get(Key0, Default, Node0) ->
                     V = case wh_json:get_value(<<"Value">>, RespJObj) of
                             <<"undefined">> -> Default;
                             undefined -> Default;
+                            null -> Default;
                             Value ->
                                 wh_cache:store_local(Cache, cache_key(Key, Node), Value),
                                 Value
