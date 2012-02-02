@@ -120,6 +120,9 @@ write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration, JObj) ->
     write_transaction_to_ledger(DB, CallID, CallType, CreditUnits, Duration, JObj, credit).
 
 -spec write_transaction_to_ledger/7 :: (ne_binary(), ne_binary(), call_types(), integer(), integer(), wh_json:json_object(), 'debit' | 'credit') -> {'ok', wh_json:json_object()} | {'error', atom()}.
+write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType) when (CallType =:= twoway orelse CallType =:= inbound)
+                                                                                       andalso Units =/= 0 ->
+    write_transaction_to_ledger(DB, CallID, CallType, 0, Duration, JObj, DocType);
 write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
 

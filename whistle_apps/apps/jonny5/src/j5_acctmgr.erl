@@ -206,9 +206,9 @@ handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->
 handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P, trunks_in_use=Dict}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG_START(CallID, "authorizing inbound call...", []),
-    ?LOG(CallID, "trunks available: Two: ~b In: ~b Pre: ~b Per-min: ~b", [T, I, P, wapi_money:default_per_min_charge()]),
+    ?LOG(CallID, "trunks available: two: ~b in: ~b prepay: ~b", [T, I, P]),
 
-    case dict:fetch(CallID, Dict) of
+    case dict:find(CallID, Dict) of
         {ok, {_CallType, _Pid}} ->
             ?LOG(CallID, "call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
             {noreply, State};
@@ -232,9 +232,9 @@ handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P, 
 handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P, trunks_in_use=Dict}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG_START(CallID, "authorizing outbound call...", []),
-    ?LOG(CallID, "trunks available: two: ~b prepay: ~b", [T, P, wapi_money:default_per_min_charge()]),
+    ?LOG(CallID, "trunks available: two: ~b prepay: ~b", [T, P]),
 
-    case dict:fetch(CallID, Dict) of
+    case dict:find(CallID, Dict) of
         {ok, {_CallType, _Pid}} ->
             ?LOG(CallID, "call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
             {noreply, State};
