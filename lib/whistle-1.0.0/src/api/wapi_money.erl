@@ -199,7 +199,7 @@ units_to_dollars(Units) when is_integer(Units) ->
 %% How much to charge a per_min call at the outset
 -spec default_per_min_charge/0 :: () -> pos_integer().
 default_per_min_charge() ->
-    2 * ?DOLLAR_TO_UNIT.
+    wh_util:to_float(whapps_config:get(?MODULE, <<"default_per_min_charge">>, 0.5)) * ?DOLLAR_TO_UNIT. % $0.50 default removed
 
 -spec base_call_cost/3 :: (float() | integer(), integer(), float() | integer()) -> float().
 base_call_cost(RateCost, RateMin, RateSurcharge) when is_number(RateCost),
