@@ -118,7 +118,6 @@ handle_info({binding_fired, Pid, <<"v1_resource.billing">>
                                                  ?LOG("billing is satisfied, allowing request"),
                                                  C;
                                              Else ->
-                                                 io:format("~p~n", [Else]),
                                                  Else
                                          end
                              end,

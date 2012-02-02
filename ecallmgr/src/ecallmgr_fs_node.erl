@@ -306,7 +306,7 @@ continue_startup(#state{node=Node, stats=Stats}=State) ->
 
     ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
                                  ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
-                                 ,'CUSTOM', 'sofia::register'
+                                 ,'CUSTOM', 'sofia::register', 'sofia::transfer'
                                 ]),
     ?LOG("bound to switch events on node ~s", [Node]),
 

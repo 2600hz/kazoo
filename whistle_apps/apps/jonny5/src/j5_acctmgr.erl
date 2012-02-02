@@ -53,9 +53,11 @@
 -spec start_link/1 :: (ne_binary()) -> {'ok', pid()} | 'ignore' | {'error', term()}.
 start_link(AcctID) ->
     %% why are we receiving messages for account IDs we don't bind to?
+    AcctDB = wh_util:format_account_id(AcctID, encoded),
     gen_listener:start_link(?MODULE, [{bindings, [{self, []}
                                                   ,{money, [{account_id, AcctID}]}
-                                                  ,{conf, [{doc_id, AcctID}, {doc_type, <<"sip_service">>}]}
+                                                  ,{conf, [{db, AcctDB}, {doc_type, <<"sip_service">>}]}
+                                                  ,{conf, [{db, AcctDB}, {doc_type, <<"sys_info">>}]}
                                                  ]}
                                       ,{responders, [{ {?MODULE, handle_call_event}, [{<<"call_event">>, <<"*">>} % call events
                                                                                       ,{<<"call_detail">>, <<"*">>} % and CDR
@@ -81,8 +83,10 @@ refresh(Srv) ->
 
 -spec authz_trunk/3 :: (pid() | ne_binary(), wh_json:json_object(), 'inbound' | 'outbound') -> {boolean(), proplist()}.
 authz_trunk(Pid, JObj, CallDir) when is_pid(Pid) ->
-    {Bool, Prop} = gen_server:call(Pid, {authz, JObj, CallDir}),
-    {Bool, [{<<"Server-ID">>, gen_listener:queue_name(Pid)} | Prop]};
+    {Bool, Prop} = gen_listener:call(Pid, {authz, JObj, CallDir}),
+    Queue = gen_listener:queue_name(Pid),
+    ?LOG("sending ~s to ~s", [Bool, Queue]),
+    {Bool, [{<<"Server-ID">>, Queue} | Prop]};
 
 authz_trunk(AcctID, JObj, CallDir) ->
     case j5_util:fetch_account_handler(AcctID) of
@@ -105,13 +109,13 @@ authz_trunk(AcctID, JObj, CallDir) ->
                 E:R ->
                     ST = erlang:get_stacktrace(),
                     ?LOG_SYS("Error: ~p: ~p", [E, R]),
-                    _ = [ ?LOG_SYS("Stacktrace: ~p", [ST1]) || ST1 <- ST],
-                    {false, []}
+                    ?LOG_STACKTRACE(ST),
+                    {false, [{<<"Server-ID">>, <<>>}]}
             end
     end.
 
 known_calls(Pid) when is_pid(Pid) ->
-    gen_server:call(Pid, known_calls);
+    gen_listener:call(Pid, known_calls);
 known_calls(AcctID) when is_binary(AcctID) ->
     case j5_util:fetch_account_handler(AcctID) of
         {error, _}=E -> E;
@@ -199,48 +203,63 @@ handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->
     {reply, dict:to_list(Dict), State};
 
 %% pull from inbound, then two_way, then prepay
-handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P}=State) ->
+handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P, trunks_in_use=Dict}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    ?LOG_START(CallID, "Authorizing inbound call...", []),
-    ?LOG(CallID, "Trunks available: Two: ~b In: ~b Pre: ~b Per-min: ~b", [T, I, P, wapi_money:default_per_min_charge()]),
+    ?LOG_START(CallID, "authorizing inbound call...", []),
+    ?LOG(CallID, "trunks available: Two: ~b In: ~b Pre: ~b Per-min: ~b", [T, I, P, wapi_money:default_per_min_charge()]),
 
-    ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
-                [<<"nouser">>, _] ->
-                    [RUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>),
-                    wnm_util:to_e164(RUser);
-                [ToUser, _] -> wnm_util:to_e164(ToUser)
-            end,
+    case dict:fetch(CallID, Dict) of
+        {ok, {_CallType, _Pid}} ->
+            ?LOG(CallID, "call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
+            {noreply, State};
+        error ->
+            ToDID = case binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>) of
+                        [<<"nouser">>, _] ->
+                            [RUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"nouser">>), <<"@">>),
+                            wnm_util:to_e164(RUser);
+                        [ToUser, _] -> wnm_util:to_e164(ToUser)
+                    end,
 
-    ?LOG("ToDID: ~s", [ToDID]),
+            ?LOG("ToDID: ~s", [ToDID]),
 
-    {Resp, State1} = case is_us48(ToDID) of
-                         true -> try_inbound_then_twoway(CallID, State);
-                         false -> try_prepay(CallID, State, wapi_money:default_per_min_charge())
-                     end,
-    {reply, Resp, State1, hibernate};
+            {Resp, State1} = case is_us48(ToDID) of
+                                 true -> try_inbound_then_twoway(CallID, State);
+                                 false -> try_prepay(CallID, State, wapi_money:default_per_min_charge())
+                             end,
+            {reply, Resp, State1}
+    end;
 
-handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P}=State) ->
+handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P, trunks_in_use=Dict}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    ?LOG_START(CallID, "Authorizing outbound call...", []),
-    ?LOG(CallID, "Trunks available: Two: ~b Pre: ~b Per-min: ~b", [T, P, wapi_money:default_per_min_charge()]),
+    ?LOG_START(CallID, "authorizing outbound call...", []),
+    ?LOG(CallID, "trunks available: two: ~b prepay: ~b", [T, P, wapi_money:default_per_min_charge()]),
 
-    ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
-                [<<"nouser">>, _] ->
-                    [RUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>),
-                    wnm_util:to_e164(RUser);
-                [ToUser, _] -> wnm_util:to_e164(ToUser)
-            end,
+    case dict:fetch(CallID, Dict) of
+        {ok, {_CallType, _Pid}} ->
+            ?LOG(CallID, "call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
+            {noreply, State};
+        error ->
+            ToDID = case binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>) of
+                        [<<"nouser">>, _] ->
+                            [RUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"nouser">>), <<"@">>),
+                            wnm_util:to_e164(RUser);
+                        [ToUser, _] -> wnm_util:to_e164(ToUser)
+                    end,
 
-    ?LOG("ToDID: ~s", [ToDID]),
+            ?LOG("ToDID: ~s", [ToDID]),
 
-    {Resp, State1} = case {erlang:byte_size(ToDID) > 6, is_us48(ToDID)} of
-                         {true, true} -> try_twoway_then_prepay(CallID, State);
-                         {true, false} -> try_prepay(CallID, State, wapi_money:default_per_min_charge());
-                         {false, _} ->
-                             ?LOG(CallID, "Auto-authz call to internal-seeming extension: ~s", [ToDID]),
-                             {{true, [{<<"Trunk-Type">>, <<"internal">>}]}, State}
-                     end,
-    {reply, Resp, State1, hibernate}.
+            {Resp, State1} = case erlang:byte_size(ToDID) > 6 of
+                                 true ->
+                                     case is_us48(ToDID) of
+                                         true -> try_twoway_then_prepay(CallID, State);
+                                         false -> try_prepay(CallID, State, wapi_money:default_per_min_charge())
+                                     end;
+                                 false ->
+                                     ?LOG(CallID, "auto-authz call to internal-seeming extension: ~s", [ToDID]),
+                                     { {true, [{<<"Trunk-Type">>, <<"internal">>}]}, State}
+                             end,
+            {reply, Resp, State1}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -257,7 +276,7 @@ handle_cast({money, <<"balance_req">>, JObj}, #state{max_two_way=MaxTwoWay, max_
                                                      ,acct_id=AcctId, trunks_in_use=Dict
                                                     }=State) ->
     SrvId = wh_json:get_value(<<"Server-ID">>, JObj),
-    ?LOG("Sending balance resp to ~s", [SrvId]),
+    ?LOG("sending balance resp to ~s", [SrvId]),
     wapi_money:publish_balance_resp(SrvId, [
                                             {<<"Max-Two-Way">>, MaxTwoWay}
                                             ,{<<"Two-Way">>, TwoWay}
@@ -277,14 +296,14 @@ handle_cast({money, _Evt, _JObj}, #state{prepay=Prepay, acct_id=AcctId}=State) -
     timer:sleep(200), %% view needs time to update
     NewPre = j5_util:current_usage(AcctId),
 
-    ?LOG("Old prepay value: ~p", [Prepay]),
-    ?LOG("New prepay (from DB ~s): ~p", [wh_util:format_account_id(AcctId, encoded), NewPre]),
+    ?LOG("ald prepay value: ~p", [Prepay]),
+    ?LOG("new prepay (from DB ~s): ~p", [wh_util:format_account_id(AcctId, encoded), NewPre]),
 
     {noreply, State#state{prepay=try_update_value(NewPre, Prepay)}};
 
 handle_cast({authz_win, JObj}, #state{trunks_in_use=Dict}=State) ->
     spawn(fun() ->
-                  ?LOG("Authz won!"),
+                  ?LOG("authz won!"),
 
                   CID = wh_json:get_value(<<"Call-ID">>, JObj),
 
@@ -296,20 +315,20 @@ handle_cast({authz_win, JObj}, #state{trunks_in_use=Dict}=State) ->
 handle_cast(refresh, #state{acct_id=AcctID, max_two_way=OldTwo, max_inbound=OldIn, prepay=OldPrepay}=State) ->
     case catch get_trunks_available(AcctID) of
         {Trunks, InboundTrunks, Prepay} ->
-            ?LOG("Maybe changing max two way from ~b to ~p", [OldTwo, Trunks]),
-            ?LOG("Maybe changing max inbound from ~b to ~p", [OldIn, InboundTrunks]),
-            ?LOG("Maybe changing prepay from ~b to ~p", [OldPrepay, Prepay]),
+            ?LOG("maybe changing max two way from ~b to ~p", [OldTwo, Trunks]),
+            ?LOG("maybe changing max inbound from ~b to ~p", [OldIn, InboundTrunks]),
+            ?LOG("maybe changing prepay from ~b to ~p", [OldPrepay, Prepay]),
             {noreply, State#state{max_two_way=try_update_value(Trunks, OldTwo)
                                   ,max_inbound=try_update_value(InboundTrunks, OldIn)
                                   ,prepay=try_update_value(Prepay, OldPrepay)
                                  }};
         _E ->
-            ?LOG("Failed to refresh: ~p", [_E]),
+            ?LOG("failed to refresh: ~p", [_E]),
             {noreply, State}
     end;
 
 handle_cast({conf_change, <<"doc_deleted">>, _JObj}, State) ->
-    ?LOG("Document was deleted"),
+    ?LOG("document was deleted"),
     {stop, normal, State};
 handle_cast({conf_change, <<"doc_created">>, JObj}, State) ->
     handle_cast({conf_change, <<"doc_edited">>, JObj}, State);
@@ -337,26 +356,13 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID
     NMTW = try_update_value(Trunks, MTW),
     NMI = try_update_value(InboundTrunks,MI),
 
-    {NTWIU, NTIIU} = dict:fold(fun(_CallID, {twoway, MonPid}, {Two, In}=Acc) ->
-                                       case erlang:is_process_alive(MonPid) of
-                                           true -> {Two-1, In};
-                                           false -> Acc
-                                       end;
-                                  (_CallID, {inbound, MonPid}, {Two, In}=Acc) ->
-                                       case erlang:is_process_alive(MonPid) of
-                                           true -> {Two, In-1};
-                                           false -> Acc
-                                       end;
-                                  (_, _, Acc) -> Acc %% ignore per-min
-                               end, {NMTW, NMI}, Dict),
-
-    Dict1 = dict:filter(fun(_CallID, {_, Pid}) -> erlang:is_process_alive(Pid) end, Dict),
+    {NTWIU, NTIIU, Dict1} = update_in_use(NMTW, NMI, Dict),
 
     ?LOG("changing max two way from ~b to ~p", [MTW, NMTW]),
     ?LOG("changing max inbound from ~b to ~p", [MI, NMI]),
     ?LOG("changing two-way avail from ~b to ~p", [_TW, NTWIU]),
     ?LOG("changing inbound avail from ~b to ~p", [_I, NTIIU]),
-    ?LOG("Maybe changing prepay from ~b to ~p", [P, Prepay]),
+    ?LOG("maybe changing prepay from ~b to ~p", [P, Prepay]),
 
     {noreply, State#state{max_two_way=NMTW
                           ,max_inbound=NMI
@@ -364,10 +370,10 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID
                           ,inbound=NTIIU
                           ,prepay=try_update_value(Prepay, P)
                           ,trunks_in_use=Dict1
-                         }, hibernate};
+                         }};
 
 handle_cast(Req, State) ->
-    ?LOG("Failed cast request: ~p", [Req]),
+    ?LOG("failed cast request: ~p", [Req]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -382,33 +388,44 @@ handle_cast(Req, State) ->
 %%--------------------------------------------------------------------
 handle_info({timeout, SyncRef, sync}, #state{sync_ref=SyncRef, acct_id=AcctID
                                              ,max_two_way=Two, max_inbound=In, prepay=Pre
+                                             ,two_way=_TwoAvail, inbound=_InAvail
+                                             ,trunks_in_use=Dict
                                             }=State) ->
-    ?LOG_SYS("Syncing with DB"),
+    ?LOG_SYS("syncing with DB"),
     {NewTwo, NewIn, NewPre} = get_trunks_available(AcctID),
 
-    ?LOG("Old Maxs: two: ~p, in: ~p, prepay: ~p", [Two, In, Pre]),
-    ?LOG("New Possible Maxs: two: ~p, in: ~p, prepay: ~p", [NewTwo, NewIn, NewPre]),
+    ?LOG("old maxs: two: ~p, in: ~p, prepay: ~p", [Two, In, Pre]),
+    ?LOG("new possible maxs: two: ~p, in: ~p, prepay: ~p", [NewTwo, NewIn, NewPre]),
+    ?LOG("old in use: two: ~p in: ~p", [_TwoAvail, _InAvail]),
+
+    MaxTwo = try_update_value(NewTwo, Two),
+    MaxIn = try_update_value(NewIn, In),
+
+    {TAvail, IAvail, Dict1} = update_in_use(MaxTwo, MaxIn, Dict),
 
     {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)
-                          ,max_two_way=try_update_value(NewTwo, Two)
-                          ,max_inbound=try_update_value(NewIn, In)
+                          ,max_two_way=MaxTwo
+                          ,max_inbound=MaxIn
+                          ,two_way=TAvail
+                          ,inbound=IAvail
+                          ,trunks_in_use=Dict1
                           ,prepay=try_update_value(NewPre, Pre)
                          }};
 
 handle_info({'DOWN', _Ref, process, Pid, Reason}, #state{two_way=T, inbound=I, trunks_in_use=Dict}=State) ->
-    ?LOG("Pid ~p down: ~p, checking for call monitor proc", [Pid, Reason]),
+    ?LOG("pid ~p down: ~p, checking for call monitor proc", [Pid, Reason]),
     case unmonitor_call(Pid, Dict) of
-        {twoway, Dict1} -> ?LOG("Was two-way trunk, adding 1 to ~b", [T]), {noreply, State#state{two_way=T+1, trunks_in_use=Dict1}};
-        {inbound, Dict1} -> ?LOG("Was inbound trunk, adding 1 to ~b", [I]), {noreply, State#state{inbound=T+1, trunks_in_use=Dict1}};
-        {per_min, Dict1} -> ?LOG("Was prepay trunk"), {noreply, State#state{trunks_in_use=Dict1}};
-        _ -> ?LOG("Ignoring down proc"), {noreply, State}
+        {twoway, Dict1} -> ?LOG("was two-way trunk, adding 1 to ~b", [T]), {noreply, State#state{two_way=T+1, trunks_in_use=Dict1}};
+        {inbound, Dict1} -> ?LOG("was inbound trunk, adding 1 to ~b", [I]), {noreply, State#state{inbound=T+1, trunks_in_use=Dict1}};
+        {per_min, Dict1} -> ?LOG("was prepay trunk"), {noreply, State#state{trunks_in_use=Dict1}};
+        _ -> ?LOG("ignoring down proc"), {noreply, State}
     end;
 
 handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
+    ?LOG_SYS("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, #state{acct_id=_AcctId}=_State) ->
@@ -451,31 +468,29 @@ get_trunks_available(AcctID) ->
     AcctDB = wh_util:format_account_id(AcctID, encoded),
     case couch_mgr:get_results(AcctDB, <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
         {ok, [JObj|_]} ->
-            ?LOG("View result retrieved"),
-            get_account_values(AcctID, JObj);
+            ?LOG("view result retrieved"),
+            get_account_values(AcctID, wh_json:get_value(<<"doc">>, JObj));
         _ ->
             case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, [{<<"reduce">>, false}
                                                                                    ,{<<"include_docs">>, true}
                                                                                   ]) of
                 {ok, [JObj|_]} ->
                     ?LOG("ts view result retrieved"),
-                    get_ts_values(AcctID, JObj);
+                    get_ts_values(AcctID, wh_json:get_value([<<"doc">>, <<"account">>], JObj));
                 _ ->
                     ?LOG("missing limits or trunkstore doc, generating one"),
                     {ok, _} = create_new_limits(AcctID, AcctDB),
-                    {0, 0, 0}
+                    {0, 0, j5_util:current_usage(AcctID)}
             end
     end.
 
-get_ts_values(AcctID, JObj) ->
-    Acct = wh_json:get_value(<<"account">>, JObj, wh_json:new()),
-
-    Trunks = wh_json:get_integer_value(<<"trunks">>, Acct),
-    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, Acct),
+get_ts_values(AcctID, AcctDoc) ->
+    Trunks = wh_json:get_integer_value(<<"trunks">>, AcctDoc),
+    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, AcctDoc),
 
     Prepay = j5_util:current_usage(AcctID),
 
-    ?LOG_SYS("Found ts trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
+    ?LOG_SYS("found ts trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
     {Trunks, InboundTrunks, Prepay}.
 
 get_account_values(AcctID, JObj) ->
@@ -483,14 +498,14 @@ get_account_values(AcctID, JObj) ->
     InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, JObj),
     Prepay = j5_util:current_usage(AcctID),
 
-    ?LOG_SYS("Found trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
+    ?LOG_SYS("found trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
     {Trunks, InboundTrunks, Prepay}.
 
 -spec try_inbound_then_twoway/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
 try_inbound_then_twoway(CallID, State) ->
     case try_inbound(CallID, State) of
         {{true, _}, _}=Resp ->
-            ?LOG_END(CallID, "Inbound call authorized with inbound trunk", []),
+            ?LOG_END(CallID, "inbound call authorized with inbound trunk", []),
             Resp;
         {{false, _}, State2} ->
             try_twoway_then_prepay(CallID, State2)
@@ -500,7 +515,7 @@ try_inbound_then_twoway(CallID, State) ->
 try_twoway_then_prepay(CallID, State) ->
     case try_twoway(CallID, State) of
         {{true, _}, _}=Resp ->
-            ?LOG_END(CallID, "Authorized using a two-way trunk", []),
+            ?LOG_END(CallID, "authorized using a two-way trunk", []),
             Resp;
         {{false, _}, State2} ->
             try_prepay(CallID, State2, wapi_money:default_per_min_charge())
@@ -508,10 +523,10 @@ try_twoway_then_prepay(CallID, State) ->
 
 -spec try_twoway/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
 try_twoway(_CallID, #state{two_way=T}=State) when T < 1 ->
-    ?LOG_SYS(_CallID, "Failed to authz a two-way trunk", []),
+    ?LOG_SYS(_CallID, "failed to authz a two-way trunk", []),
     {{false, []}, State#state{two_way=0}};
 try_twoway(CallID, #state{two_way=Two, trunks_in_use=Dict, ledger_db=DB}=State) ->
-    ?LOG_SYS(CallID, "Authz a two-way trunk", []),
+    ?LOG_SYS(CallID, "authz a two-way trunk", []),
     {ok, Pid} = monitor_call(CallID, DB, twoway),
     erlang:monitor(process, Pid),
 
@@ -521,10 +536,10 @@ try_twoway(CallID, #state{two_way=Two, trunks_in_use=Dict, ledger_db=DB}=State) 
 
 -spec try_inbound/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
 try_inbound(_CallID, #state{inbound=I}=State) when I < 1 ->
-    ?LOG_SYS(_CallID, "Failed to authz an inbound_only trunk", []),
+    ?LOG_SYS(_CallID, "failed to authz an inbound_only trunk", []),
     {{false, []}, State#state{inbound=0}};
 try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) ->
-    ?LOG_SYS(CallID, "Authz an inbound_only trunk", []),
+    ?LOG_SYS(CallID, "authz an inbound_only trunk", []),
     {ok, Pid} = monitor_call(CallID, DB, inbound),
     erlang:monitor(process, Pid),
 
@@ -533,8 +548,8 @@ try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) 
     }.
 
 -spec try_prepay/3 :: (ne_binary(), #state{}, integer()) -> {{boolean(), proplist()}, #state{}}.
-try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId}=State, PerMinCharge) when Pre =< PerMinCharge ->
-    ?LOG_SYS(CallID, "Failed to authz a per_min trunk", []),
+try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId, trunks_in_use=Dict, ledger_db=LedgerDB}=State, PerMinCharge) when Pre =< PerMinCharge ->
+    ?LOG_SYS(CallID, "failed to authz a per_min trunk", []),
 
     %% Alert admins of the situation
     whapps_util:alert(<<"emerg">>, ["Source: ~s(~p)~n"
@@ -548,7 +563,14 @@ try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId}=State, PerMinCharge) when 
     case whapps_config:get_is_true(<<"jonny5">>, <<"authz_on_no_prepay">>, true) of
         true ->
             ?LOG("authz_on_no_prepay set to true, authz the call"),
-            {{true, [{<<"Trunk-Type">>, <<"pre_min">>}]}};
+            PrepayLeft = Pre - PerMinCharge,
+            ?LOG_SYS(CallID, "authz a per_min trunk; ~b prepay left, ~b charged up-front", [PrepayLeft, PerMinCharge]),
+            {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
+            erlang:monitor(process, Pid),
+
+            {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
+             ,State#state{trunks_in_use=dict:store(CallID, {per_min, Pid}, Dict), prepay=PrepayLeft}
+            };
         false ->
             ?LOG("authz_on_no_prepay set to false, denying the call"),
             {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State}
@@ -560,7 +582,7 @@ try_prepay(CallID, #state{acct_id=AcctId, prepay=Prepay, trunks_in_use=Dict, led
             {{false, [{<<"Error">>, Reason}]}, State};
         false ->
             PrepayLeft = Prepay - PerMinCharge,
-            ?LOG_SYS(CallID, "Authz a per_min trunk; ~b prepay left, ~b charged up-front", [PrepayLeft, PerMinCharge]),
+            ?LOG_SYS(CallID, "authz a per_min trunk; ~b prepay left, ~b charged up-front", [PrepayLeft, PerMinCharge]),
             {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
             erlang:monitor(process, Pid),
 
@@ -615,3 +637,21 @@ create_new_limits(AcctID, AcctDB) ->
                                ,{<<"inbound_trunks">>, 0}
                               ], wh_json:new()),
     couch_mgr:save_doc(AcctDB, JObj).
+
+-spec update_in_use/3 :: (non_neg_integer(), non_neg_integer(), dict()) -> {non_neg_integer(), non_neg_integer(), dict()}.
+update_in_use(NMTW, NMI, Dict) ->
+    {NTWIU, NTIIU} = dict:fold(fun(_CallID, {twoway, MonPid}, {Two, In}=Acc) ->
+                                       case erlang:is_process_alive(MonPid) of
+                                           true -> {Two-1, In};
+                                           false -> Acc
+                                       end;
+                                  (_CallID, {inbound, MonPid}, {Two, In}=Acc) ->
+                                       case erlang:is_process_alive(MonPid) of
+                                           true -> {Two, In-1};
+                                           false -> Acc
+                                       end;
+                                  (_, _, Acc) -> Acc %% ignore per-min
+                               end, {NMTW, NMI}, Dict),
+    
+    Dict1 = dict:filter(fun(_CallID, {_, Pid}) -> erlang:is_process_alive(Pid) end, Dict),
+    {NTWIU, NTIIU, Dict1}.

@@ -160,9 +160,12 @@ handle_cast({response_recv, JObj}, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', Ref, process, Pid, _Info}, #state{status=busy, ref=Ref, parent=Parent}) ->
+handle_info({'DOWN', Ref, process, Pid, _Info}, #state{status=busy, ref=Ref, parent=Parent, req_ref=ReqRef}) ->
     ?LOG_END("requestor (~w) down, giving up on task", [Pid]),
+
     erlang:demonitor(Ref, [flush]),
+    erlang:cancel_timer(ReqRef),
+
     ecallmgr_amqp_pool:worker_free(Parent, self(), 0),
     {noreply, #state{}};
 

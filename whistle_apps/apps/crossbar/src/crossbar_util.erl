@@ -253,42 +253,35 @@ response_db_fatal(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec binding_heartbeat/1 :: (pid()) -> pid().
--spec binding_heartbeat/2 :: (pid(), non_neg_integer() | 'infinity') -> pid().
-binding_heartbeat(BPid) ->
+-spec binding_heartbeat/2 :: (pid(), non_neg_integer()) -> pid().
+-spec binding_heartbeat/3 :: (pid(), non_neg_integer(), ne_binary()) -> ok.
+
+binding_heartbeat(BPid) ->    
     binding_heartbeat(BPid, 300000). % five minutes
+
 binding_heartbeat(BPid, Timeout) ->
+    BPid ! heartbeat,
     PPid = self(),
     ReqId = get(callid),
-    ?LOG(ReqId, "starting binding heartbeat for ~p", [BPid]),
-    BPid ! heartbeat,
     spawn(fun() ->
-                  put(callid, ReqId),
-                  Ref = erlang:monitor(process, PPid),
-                  erlang:send_after(100, self(), heartbeat),
-                  wait_for_binding_heartbeat(Timeout, Ref, BPid)
-          end).
+                  BPid ! heartbeat,
+                  erlang:monitor(process, PPid),
+                  binding_heartbeat(BPid, Timeout, ReqId)
+    end).
 
-wait_for_binding_heartbeat(Timeout, Ref, BPid) ->
+binding_heartbeat(_, Timeout, ReqId) when Timeout =< 0 ->
+    ?LOG(ReqId, "bound client too slow, timed out", []);
+binding_heartbeat(BPid, Timeout, ReqId) ->
     BPid ! heartbeat,
-    Start = erlang:now(),
     receive
-        {'DOWN', Ref, process, _Pid, normal} ->
-            ?LOG("client ~p went down normally", [_Pid]);
-        {'DOWN', Ref, process, Pid, Reason} ->
-            ?LOG("bound client (~p) down for non-normal reason: ~p", [Pid, Reason]),
-            BPid ! {binding_error, Reason};
-        heartbeat ->
-            erlang:send_after(100, self(), heartbeat),
-            DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_binding_heartbeat(Timeout - (DiffMicro div 1000), Ref, BPid);
-        _E ->
-            ?LOG("unexpected message: ~p", [_E]),
-            DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_binding_heartbeat(Timeout - (DiffMicro div 1000), Ref, BPid)
-    after Timeout ->
-            ?LOG("bound client too slow, timed out"),
-            BPid ! {binding_error, timeout}
-    end.    
+        {'DOWN', _, process, _Pid, normal} ->
+            ?LOG(ReqId, "client ~p went down normally", [_Pid]);
+        {'DOWN', _, process, Pid, Reason} ->
+            ?LOG(ReqId, "bound client (~p) down for non-normal reason: ~p", [Pid, Reason]),
+            BPid ! {binding_error, Reason}
+    after 100 ->
+            binding_heartbeat(BPid, Timeout - 100, ReqId)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
