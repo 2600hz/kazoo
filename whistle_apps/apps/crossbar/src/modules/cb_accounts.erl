@@ -65,8 +65,8 @@ ensure_parent_set() ->
         {ok, []} -> {error, no_accounts};
         {ok, AcctJObjs} ->
             DefaultParentID = find_default_parent(AcctJObjs),
-            ?LOG("Default Parent ID: ~s", [DefaultParentID]),
-            [ ensure_parent_set(DefaultParentID, wh_json:get_value(<<"id">>, AcctJObj))
+            ?LOG("default parent ID: ~s", [DefaultParentID]),
+            [ ensure_parent_set(DefaultParentID, wh_json:get_binary_value(<<"id">>, AcctJObj))
               || AcctJObj <- AcctJObjs,
                  wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
                  wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj, []) =:= [] % empty tree (should have at least the parent)
@@ -273,13 +273,13 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD,
                               ?LOG_SYS("deleted db ~s", [DbName]);
                           _ -> ok
                       end,
-                      case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
-                          {ok, JObj2} ->
-                              crossbar_doc:delete(Context#cb_context{db_name=?WH_ACCOUNTS_DB
-                                                                     ,doc=JObj2
-                                                                    });
-                          _ -> ok
-                      end,
+                      _ = case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+                              {ok, JObj2} ->
+                                  crossbar_doc:delete(Context#cb_context{db_name=?WH_ACCOUNTS_DB
+                                                                         ,doc=JObj2
+                                                                        });
+                              _ -> ok
+                          end,
                       Pid ! {binding_result, true, [RD, Context, Params]}
                   catch
                       _:_E ->

@@ -452,9 +452,10 @@ convert_file(ContentType, _, _) ->
 
 -spec csv_to_rates/2 :: (ne_binary(), #cb_context{}) -> {'ok', {integer(), wh_json:json_objects()}}.
 csv_to_rates(CSV, Context) ->
+    BulkInsert = couch_util:max_bulk_insert(),
     ecsv:process_csv_binary_with(CSV
                                  ,fun(Row, {Cnt, RateDocs}) ->
-                                          RateDocs1 = case Cnt > 1 andalso Cnt rem 5000 =:= 0 of
+                                          RateDocs1 = case Cnt > 1 andalso Cnt rem BulkInsert =:= 0 of
                                                           true ->
                                                               spawn(fun() ->
                                                                             crossbar_util:put_reqid(Context),

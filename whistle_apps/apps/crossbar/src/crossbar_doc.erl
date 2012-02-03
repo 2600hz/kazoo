@@ -74,7 +74,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
                                       }
             end;
         _Else ->
-            ?LOG("Unexpected return from datastore: ~p", [_Else]),
+            ?LOG("unexpected return from datastore: ~p", [_Else]),
             Context#cb_context{doc=wh_json:new()}
     end.
 
@@ -265,7 +265,7 @@ save(#cb_context{}=Context) ->
     save(Context, []).
 
 save(#cb_context{db_name=undefined}=Context, _) ->
-    ?LOG("DB undefined, cannot save"),
+    ?LOG("db undefined, cannot save"),
     crossbar_util:response_db_missing(Context);
 save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
@@ -278,7 +278,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
             crossbar_util:response_conflicting_docs(Context);
         {ok, JObj1} when Verb =:= <<"put">> ->
             ?LOG("saved a put request, setting location headers"),
-            send_document_change(created, DB, JObj1, Options),
+            _ = send_document_change(created, DB, JObj1, Options),
             Context#cb_context{doc=JObj1
                                ,resp_status=success
                                ,resp_headers=[{"Location", wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
@@ -287,14 +287,14 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
                               };
         {ok, JObj2} ->
             ?LOG("saved json doc"),
-            send_document_change(edited, DB, JObj2, Options),
+            _ = send_document_change(edited, DB, JObj2, Options),
             Context#cb_context{doc=JObj2
                                ,resp_status=success
                                ,resp_data=public_fields(JObj2)
                                ,resp_etag=rev_to_etag(JObj2)
                               };
         _Else ->
-            ?LOG("Save failed: unexpected return from datastore: ~p", [_Else]),
+            ?LOG("save failed: unexpected return from datastore: ~p", [_Else]),
             Context
     end.
 
@@ -313,17 +313,17 @@ ensure_saved(#cb_context{}=Context) ->
     ensure_saved(Context, []).
 
 ensure_saved(#cb_context{db_name=undefined}=Context, _) ->
-    ?LOG("DB undefined, cannot ensure save"),
+    ?LOG("db undefined, cannot ensure save"),
     crossbar_util:response_db_missing(Context);
 ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:ensure_saved(DB, JObj0, Options) of
         {error, db_not_reachable} ->
-            ?LOG("Failed to save json: db not reachable"),
+            ?LOG("failed to save json: db not reachable"),
             crossbar_util:response_datastore_timeout(Context);
         {ok, JObj1} when Verb =:= <<"put">> ->
-            ?LOG("Saved a put request, setting location headers"),
-            send_document_change(created, DB, JObj1, Options),
+            ?LOG("saved a put request, setting location headers"),
+            _ = send_document_change(created, DB, JObj1, Options),
             Context#cb_context{doc=JObj1
                                ,resp_status=success
                                ,resp_headers=[{"Location", wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
@@ -331,15 +331,15 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
                                ,resp_etag=rev_to_etag(JObj1)
                               };
         {ok, JObj2} ->
-            ?LOG("Saved json doc"),
-            send_document_change(edited, DB, JObj2, Options),
+            ?LOG("saved json doc"),
+            _ = send_document_change(edited, DB, JObj2, Options),
             Context#cb_context{doc=JObj2
                                ,resp_status=success
                                ,resp_data=public_fields(JObj2)
                                ,resp_etag=rev_to_etag(JObj2)
                               };
         _Else ->
-            ?LOG("Save failed: unexpected return from datastore: ~p", [_Else]),
+            ?LOG("save failed: unexpected return from datastore: ~p", [_Else]),
             Context
     end.
 
@@ -411,7 +411,7 @@ save_attachment(DocId, AName, Contents, Context) ->
 %%--------------------------------------------------------------------
 -spec save_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), #cb_context{}, proplist()) -> #cb_context{}.
 save_attachment(_DocId, _AName, _, #cb_context{db_name=undefined}=Context, _) ->
-    ?LOG("Saving attachment ~s to doc ~s failed: no db specified", [_AName, _DocId]),
+    ?LOG("saving attachment ~s to doc ~s failed: no db specified", [_AName, _DocId]),
     crossbar_util:response_db_missing(Context);
 save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options) ->
     Opts1 = case props:get_value(rev, Options) of
@@ -422,20 +422,20 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
             end,
     case couch_mgr:put_attachment(DB, DocId, AName, Contents, Opts1) of
         {error, db_not_reachable} ->
-            ?LOG("Saving attachment ~s to doc ~s to db ~s failed: db not reachable", [AName, DocId, DB]),
+            ?LOG("saving attachment ~s to doc ~s to db ~s failed: db not reachable", [AName, DocId, DB]),
             crossbar_util:response_datastore_timeout(Context);
         {error, conflict} ->
-            ?LOG("Saving attachment ~s to doc ~s to db ~s failed: conflict", [AName, DocId, DB]),
+            ?LOG("saving attachment ~s to doc ~s to db ~s failed: conflict", [AName, DocId, DB]),
             crossbar_util:response_conflicting_docs(Context);
         {ok, _Res} ->
-            ?LOG("Saved attachment ~s to doc ~s to db ~s", [AName, DocId, DB]),
+            ?LOG("saved attachment ~s to doc ~s to db ~s", [AName, DocId, DB]),
             {ok, Rev1} = couch_mgr:lookup_doc_rev(DB, DocId),
             Context#cb_context{resp_status=success
                                ,resp_data=[]
                                ,resp_etag=rev_to_etag(Rev1)
                               };
         _Else ->
-            ?LOG("Saving attachment ~s to doc ~s to db ~s failed: unexpected: ~p", [AName, DocId, DB, _Else]),
+            ?LOG("saving attachment ~s to doc ~s to db ~s failed: unexpected: ~p", [AName, DocId, DB, _Else]),
             crossbar_util:response_datastore_conn_refused(Context)
     end.
 
@@ -450,12 +450,8 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
--spec delete/2 :: (Context, Switch) -> #cb_context{} when
-      Context :: #cb_context{},
-      Switch :: permanent.
-
+-spec delete/1 :: (#cb_context{}) -> #cb_context{}.
+-spec delete/2 :: (#cb_context{}, 'permanent') -> #cb_context{}.
 delete(#cb_context{db_name=undefined, doc=JObj}=Context) ->
     ?LOG("deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
     crossbar_util:response_db_missing(Context);
@@ -468,7 +464,7 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
             crossbar_util:response_datastore_timeout(Context);
         {ok, _Doc} ->
             ?LOG("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
-            send_document_change(deleted, DB, JObj1),
+            _ = send_document_change(deleted, DB, JObj1),
             Context#cb_context{doc = wh_json:new()
                                ,resp_status=success
                                ,resp_data=[]
@@ -488,7 +484,7 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context, permanent) ->
             crossbar_util:response_datastore_timeout(Context);
         {ok, _Doc} ->
             ?LOG("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
-            send_document_change(deleted, DB, wh_json:set_value(<<"pvt_deleted">>, true, JObj)),
+            _ = send_document_change(deleted, DB, wh_json:set_value(<<"pvt_deleted">>, true, JObj)),
             Context#cb_context{doc = wh_json:new()
                                ,resp_status=success
                                ,resp_data=[]

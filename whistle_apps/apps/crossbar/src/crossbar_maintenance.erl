@@ -15,11 +15,11 @@
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec refresh/0 :: () -> string().
--spec refresh/1 :: (term()) -> string().
+-spec refresh/0 :: () -> nonempty_string().
+-spec refresh/1 :: (term()) -> nonempty_string().
 
 refresh() ->
     "please use whapps_maintenance:refresh().".
 
 refresh(Value) ->
-    io:format("please use whapps_maintenance:refresh(~p).", [Value]).
+    io_lib:format("please use whapps_maintenance:refresh(~p).", [Value]).
