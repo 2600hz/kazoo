@@ -37,29 +37,26 @@ fetch_all_accounts(Cache) ->
 -spec fetch_account/1 :: (ne_binary()) -> wh_json:json_object() | {'error', 'not_found'}.
 fetch_account(AcctID) ->
     case fetch_account_handler(AcctID) of
-        {ok, Pid} ->
-            j5_acctmgr:status(Pid);
+        {ok, Pid} -> j5_acctmgr:status(Pid);
         {error, _}=E -> E
     end.
 
 -spec fetch_account_handler/1 :: (ne_binary()) -> {'ok', pid()} | {'error', 'not_found'}.
+-spec fetch_account_handler/2 :: (ne_binary(), pid()) -> {'ok', pid()} | {'error', 'not_found'}.
 fetch_account_handler(AcctID) ->
     {ok, Cache} = jonny5_sup:cache_proc(),
     fetch_account_handler(AcctID, Cache).
-
--spec fetch_account_handler/2 :: (ne_binary(), pid()) -> {'ok', pid()} | {'error', 'not_found'}.
 fetch_account_handler(AcctID, Cache) when is_pid(Cache) ->
     wh_cache:fetch_local(Cache, cache_account_handler_key(AcctID)).
 
 -spec store_account_handler/2 :: (ne_binary(), pid() | 'undefined') -> 'ok'.
-store_account_handler(AcctID, J5Pid) ->
+-spec store_account_handler/3 :: (ne_binary(), pid() | 'undefined', pid()) -> 'ok'.
+store_account_handler(AcctID, J5Pid) when is_pid(J5Pid) ->
     {ok, Cache} = jonny5_sup:cache_proc(),
     store_account_handler(AcctID, J5Pid, Cache).
-
--spec store_account_handler/3 :: (ne_binary(), pid() | 'undefined', pid()) -> 'ok'.
-store_account_handler(AcctID, undefined, Cache) ->
+store_account_handler(AcctID, undefined, Cache) when is_pid(Cache) ->
     wh_cache:erase_local(Cache, cache_account_handler_key(AcctID));
-store_account_handler(AcctID, J5Pid, Cache) when is_pid(J5Pid) ->
+store_account_handler(AcctID, J5Pid, Cache) when is_pid(J5Pid), is_pid(Cache) ->
     wh_cache:store_local(Cache, cache_account_handler_key(AcctID), J5Pid, infinity).
 
 cache_account_handler_key(AcctID) ->
