@@ -896,7 +896,7 @@ basic_qos(PreFetch) when is_integer(PreFetch) ->
 %%------------------------------------------------------------------------------
 -spec register_return_handler/0 :: () -> 'ok'.
 register_return_handler() ->
-    ?AMQP_DEBUG andalso ?LOG("registering retunr handler", []),
+    ?AMQP_DEBUG andalso ?LOG("registering return handler", []),
     amqp_mgr:register_return_handler().
 
 %%------------------------------------------------------------------------------
