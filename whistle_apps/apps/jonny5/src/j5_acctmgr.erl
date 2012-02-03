@@ -296,7 +296,7 @@ handle_cast({money, _Evt, _JObj}, #state{prepay=Prepay, acct_id=AcctId}=State) -
     timer:sleep(200), %% view needs time to update
     NewPre = j5_util:current_usage(AcctId),
 
-    ?LOG("ald prepay value: ~p", [Prepay]),
+    ?LOG("old prepay value: ~p", [Prepay]),
     ?LOG("new prepay (from DB ~s): ~p", [wh_util:format_account_id(AcctId, encoded), NewPre]),
 
     {noreply, State#state{prepay=try_update_value(NewPre, Prepay)}};
@@ -629,6 +629,7 @@ trunks_to_json(Dict) ->
       || {CallID, {Type, _}} <- dict:to_list(Dict)
     ].
 
+-spec create_new_limits/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()}.
 create_new_limits(AcctID, AcctDB) ->
     JObj = wh_json:set_values([{<<"pvt_account_db">>, AcctDB}
                                ,{<<"pvt_account_id">>, AcctID}
