@@ -166,7 +166,7 @@ rm_binding(Srv, Binding, Props) ->
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
 
-    ?LOG(wh_util:to_binary(Module), "starting new gen_listener proc: ~s", [wh_util:to_binary(Module)]),
+    ?LOG("starting new gen_listener proc: ~s", [wh_util:to_binary(Module)]),
 
     {ModState, TimeoutRef} = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
                                  {ok, MS} ->
@@ -389,7 +389,6 @@ code_change(_OldVersion, State, _Extra) ->
     {ok, State}.
 
 terminate(Reason, #state{module=Module, module_state=ModState}) ->
-    ?LOG_SYS("terminating with ~p", [Reason]),
     Module:terminate(Reason, ModState),
     ok.
 
