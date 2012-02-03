@@ -168,6 +168,6 @@ current_usage(AcctID) ->
     DB = wh_util:format_account_id(AcctID, encoded),
     case couch_mgr:get_results(DB, <<"transactions/credit_remaining">>, [{<<"reduce">>, true}]) of
         {ok, []} -> 0;
-        {ok, [ViewRes|_]} -> wh_json:get_value(<<"value">>, ViewRes, 0);
+        {ok, [ViewRes|_]} -> wh_json:get_integer_value(<<"value">>, ViewRes, 0);
         {error, _} -> 0
     end.

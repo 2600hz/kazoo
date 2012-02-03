@@ -582,7 +582,7 @@ try_prepay(CallID, #state{acct_id=AcctId, prepay=Prepay, trunks_in_use=Dict, led
             {{false, [{<<"Error">>, Reason}]}, State};
         false ->
             PrepayLeft = Prepay - PerMinCharge,
-            ?LOG_SYS(CallID, "authz a per_min trunk; ~b prepay left, ~b charged up-front", [PrepayLeft, PerMinCharge]),
+            ?LOG_SYS(CallID, "authz per_min trunk; ~p prepay left, ~p charged up-front", [PrepayLeft, PerMinCharge]),
             {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
             erlang:monitor(process, Pid),
 
