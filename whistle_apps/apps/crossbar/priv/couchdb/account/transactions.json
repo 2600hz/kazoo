@@ -7,7 +7,7 @@
             ,"reduce": "_sum"
         },
         "minutes_consumed": {
-            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || type doc.call_duration === 'undefined') return; emit(doc.call_type, doc.call_duration || 0); }"
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || typeof doc.call_duration === 'undefined') return; emit(doc.call_type, doc.call_duration || 0); }"
             ,"reduce": "_sum"
         }
         ,"by_timestamp": {
