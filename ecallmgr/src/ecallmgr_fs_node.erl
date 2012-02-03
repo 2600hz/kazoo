@@ -199,7 +199,10 @@ handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_
                     {noreply, State, hibernate};
                 <<"CS_DESTROY">> ->
                     ?LOG(UUID, "received channel destroyed", []),
-                    spawn(fun() -> ecallmgr_call_control:rm_leg(Data) end),
+                    spawn(fun() -> 
+                                  ecallmgr_call_control:rm_leg(Data),
+                                  ecallmgr_call_events:publish_channel_destroy(Data)
+                          end),
                     {noreply, State#state{stats=Stats#node_stats{destroyed_channels=De+1}}, hibernate}
             end;
         <<"CHANNEL_HANGUP_COMPLETE">> ->
