@@ -1,4 +1,4 @@
-var a = {
+{
     "_id": "_design/transactions"
     ,"language": "javascript"
     ,"views": {
@@ -14,4 +14,4 @@ var a = {
             "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; emit(doc.pvt_created, doc._id); }"
         }
     }
-};
+}
