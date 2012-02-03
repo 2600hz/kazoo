@@ -3,11 +3,11 @@
     ,"language": "javascript"
     ,"views": {
         "credit_remaining": {
-            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || doc.call_type !== 'per_min') return; var modifier = doc.pvt_type == 'credit' ? 1 : -1; emit(null, doc.amount * modifier); }"
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(null, doc.amount * modifier); }"
             ,"reduce": "_sum"
         },
         "minutes_consumed": {
-            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || type doc.call_duration === 'undefined') return; emit(doc.call_type, doc.call_duration || 0); }"
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || typeof doc.call_duration === 'undefined') return; emit(doc.call_type, doc.call_duration || 0); }"
             ,"reduce": "_sum"
         }
         ,"by_timestamp": {

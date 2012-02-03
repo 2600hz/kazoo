@@ -296,7 +296,7 @@ handle_cast({money, _Evt, _JObj}, #state{prepay=Prepay, acct_id=AcctId}=State) -
     timer:sleep(200), %% view needs time to update
     NewPre = j5_util:current_usage(AcctId),
 
-    ?LOG("ald prepay value: ~p", [Prepay]),
+    ?LOG("old prepay value: ~p", [Prepay]),
     ?LOG("new prepay (from DB ~s): ~p", [wh_util:format_account_id(AcctId, encoded), NewPre]),
 
     {noreply, State#state{prepay=try_update_value(NewPre, Prepay)}};
@@ -582,7 +582,7 @@ try_prepay(CallID, #state{acct_id=AcctId, prepay=Prepay, trunks_in_use=Dict, led
             {{false, [{<<"Error">>, Reason}]}, State};
         false ->
             PrepayLeft = Prepay - PerMinCharge,
-            ?LOG_SYS(CallID, "authz a per_min trunk; ~b prepay left, ~b charged up-front", [PrepayLeft, PerMinCharge]),
+            ?LOG_SYS(CallID, "authz per_min trunk; ~p prepay left, ~p charged up-front", [PrepayLeft, PerMinCharge]),
             {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
             erlang:monitor(process, Pid),
 
@@ -629,6 +629,7 @@ trunks_to_json(Dict) ->
       || {CallID, {Type, _}} <- dict:to_list(Dict)
     ].
 
+-spec create_new_limits/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()}.
 create_new_limits(AcctID, AcctDB) ->
     JObj = wh_json:set_values([{<<"pvt_account_db">>, AcctDB}
                                ,{<<"pvt_account_id">>, AcctID}
