@@ -59,8 +59,6 @@ v(JObj) ->
 v(Prop, DPApp) ->
     try
         VFun = wh_util:to_atom(<<DPApp/binary, "_v">>),
-        ?LOG("vfun: ~s", [VFun]),
-        ?LOG("keyfind: ~p", [lists:keyfind(VFun, 1, ?MODULE:module_info(exports))]),
         case lists:keyfind(VFun, 1, ?MODULE:module_info(exports)) of
             false -> throw({invalid_dialplan_object, Prop});
             {_, 1} -> ?MODULE:VFun(Prop)
@@ -693,8 +691,6 @@ publish_command(CtrlQ, JObj) ->
 publish_command(CtrlQ, Prop, DPApp) ->
     try
         BuildMsgFun = wh_util:to_atom(<<DPApp/binary>>),
-        ?LOG("vfun: ~s", [BuildMsgFun]),
-        ?LOG("keyfind: ~p", [lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info(exports))]),
         case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info(exports)) of
             false -> throw({invalid_dialplan_object, Prop});
             {_, 1} -> 
