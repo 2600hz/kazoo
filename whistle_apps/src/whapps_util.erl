@@ -267,15 +267,16 @@ maybe_send_alert(Level, Format, Args, AccountId) ->
       AlertLevel :: 0..8.
 should_alert_system_admin(AlertLevel) ->
     SystemLevel = whapps_config:get(<<"alerts">>, <<"system_admin_level">>, <<"debug">>),
+    ?LOG("system level: ~p", [SystemLevel]),
     case alert_level_to_integer(SystemLevel) of
         0 -> undefined;
-        L when L =< AlertLevel ->
+        L when is_integer(L), L =< AlertLevel ->
             case whapps_config:get(<<"alerts">>, <<"system_admin_email">>) of
-                undefined -> undefined;
                 Email when is_binary(Email) ->
                     Email;
                 Emails when is_list(Emails) ->
-                    [wh_util:to_binary(E) || E <- Emails]
+                    [wh_util:to_binary(E) || E <- Emails];
+                _ -> undefined
             end;
         _ -> undefined
     end.
@@ -301,12 +302,11 @@ should_alert_account_admin(AlertLevel, AccountId) ->
                 0 -> undefined;
                 L when L =< AlertLevel ->
                     case wh_json:get_value([<<"alerts">>, <<"email">>], JObj) of
-                        undefined ->
-                            undefined;
                         Email when is_binary(Email) ->
                             Email;
                         Emails when is_list(Emails) ->
-                            [wh_util:to_binary(E) || E <- Emails]
+                            [wh_util:to_binary(E) || E <- Emails];
+                        _ -> undefined
                     end;
                 _ -> undefined
             end;
