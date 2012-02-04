@@ -82,8 +82,9 @@ handle_req(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_template_props/2 :: (wh_json:json_object(), wh_json:json_objects()) -> proplist().
-create_template_props(Event, _Account) ->
+create_template_props(Event, Account) ->
     [{<<"current_balance">>, notify_util:json_to_template_props(Event)}
+     ,{<<"account">>, notify_util:json_to_template_props(Account)}
     ].
 
 %%--------------------------------------------------------------------
