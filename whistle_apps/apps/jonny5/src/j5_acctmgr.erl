@@ -551,26 +551,35 @@ try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) 
 try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId, trunks_in_use=Dict, ledger_db=LedgerDB}=State, PerMinCharge) when Pre =< PerMinCharge ->
     ?LOG_SYS(CallID, "failed to authz a per_min trunk", []),
 
-    %% Alert admins of the situation
-    whapps_util:alert(<<"emerg">>, ["Source: ~s(~p)~n"
-                                    ,"Alert: Insufficient prepay to authorize the call.~n"
-                                    ,"Call-ID: ~s~n"
-                                    ,"Account-ID: ~s~n"
-                                    ,"Current Prepay Balance: ~p~n"
-                                   ]
-                      ,[?MODULE, ?LINE, CallID, AcctId, wapi_money:units_to_dollars(Pre)]),
-
     case whapps_config:get_is_true(<<"jonny5">>, <<"authz_on_no_prepay">>, true) of
         true ->
-            ?LOG("authz_on_no_prepay set to true, authz the call"),
+            HowLow = wapi_money:dollars_to_units(whapps_config:get_float(<<"jonny5">>, <<"how_low_can_you_go">>, 0.0)),
             PrepayLeft = Pre - PerMinCharge,
-            ?LOG_SYS(CallID, "authz a per_min trunk; ~b prepay left, ~b charged up-front", [PrepayLeft, PerMinCharge]),
-            {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
-            erlang:monitor(process, Pid),
+            case HowLow > PrepayLeft of
+                true -> % 0 > -1
+                    %% Alert admins of the situation
+                    whapps_util:alert(<<"emerg">>, ["Source: ~s(~p)~n"
+                                                    ,"Alert: Insufficient prepay to authorize the call.~n"
+                                                    ,"Call-ID: ~s~n"
+                                                    ,"Account-ID: ~s~n"
+                                                    ,"Current Prepay Balance: ~p~n"
+                                                   ]
+                                      ,[?MODULE, ?LINE, CallID, AcctId, wapi_money:units_to_dollars(Pre)]),
 
-            {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
-             ,State#state{trunks_in_use=dict:store(CallID, {per_min, Pid}, Dict), prepay=PrepayLeft}
-            };
+                    catch(wapi_notifications:publish_low_balance([{<<"Account-ID">>, AcctId}, {<<"Current-Balance">>, wapi_money:units_to_dollars(Pre)}])),
+
+                    ?LOG(CallID, "howlow (~p) > prepay (~p), noauthz this call!", [HowLow, Pre]),
+                    {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State};
+                false ->
+                    ?LOG(CallID, "authz_on_no_prepay set to true, and prepay (~p) still > howlow (~p)", [PrepayLeft, HowLow]),
+
+                    {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
+                    erlang:monitor(process, Pid),
+
+                    {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
+                     ,State#state{trunks_in_use=dict:store(CallID, {per_min, Pid}, Dict), prepay=PrepayLeft}
+                    }
+            end;
         false ->
             ?LOG("authz_on_no_prepay set to false, denying the call"),
             {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State}
