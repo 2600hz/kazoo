@@ -466,17 +466,17 @@ code_change(_OldVsn, State, _Extra) ->
                                                  }.
 get_trunks_available(AcctID) ->
     AcctDB = wh_util:format_account_id(AcctID, encoded),
-    case couch_mgr:get_results(AcctDB, <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, [{<<"reduce">>, false}
+                                                                           ,{<<"include_docs">>, true}
+                                                                          ]) of
         {ok, [JObj|_]} ->
-            ?LOG("view result retrieved"),
-            get_account_values(AcctID, wh_json:get_value(<<"doc">>, JObj));
+            ?LOG("ts view result retrieved"),
+            get_ts_values(AcctID, wh_json:get_value([<<"doc">>, <<"account">>], JObj));
         _ ->
-            case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, [{<<"reduce">>, false}
-                                                                                   ,{<<"include_docs">>, true}
-                                                                                  ]) of
+            case couch_mgr:get_results(AcctDB, <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
                 {ok, [JObj|_]} ->
-                    ?LOG("ts view result retrieved"),
-                    get_ts_values(AcctID, wh_json:get_value([<<"doc">>, <<"account">>], JObj));
+                    ?LOG("view result retrieved"),
+                    get_account_values(AcctID, wh_json:get_value(<<"doc">>, JObj));
                 _ ->
                     ?LOG("missing limits or trunkstore doc, generating one"),
                     {ok, _} = create_new_limits(AcctID, AcctDB),
@@ -640,12 +640,20 @@ trunks_to_json(Dict) ->
 
 -spec create_new_limits/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()}.
 create_new_limits(AcctID, AcctDB) ->
-    JObj = wh_json:set_values([{<<"pvt_account_db">>, AcctDB}
-                               ,{<<"pvt_account_id">>, AcctID}
-                               ,{<<"pvt_type">>, <<"sip_service">>}
-                               ,{<<"trunks">>, 0}
-                               ,{<<"inbound_trunks">>, 0}
-                              ], wh_json:new()),
+    TStamp = wh_util:current_tstamp(),
+
+    Account = wh_json:from_list([{<<"trunks">>, 0}
+                                 ,{<<"inbound_trunks">>, 0}
+                                 ]),
+    JObj = wh_json:from_list([{<<"pvt_account_db">>, AcctDB}
+                              ,{<<"pvt_account_id">>, AcctID}
+                              ,{<<"pvt_type">>, <<"sys_info">>}
+                              ,{<<"pvt_created">>< TStamp}
+                              ,{<<"pvt_modified">>, TStamp}
+                              ,{<<"pvt_created_by">>, <<"jonny5">>}
+                              ,{<<"account">>, Account}
+                              ,{<<"servers">>, []}
+                             ]),
     couch_mgr:save_doc(AcctDB, JObj).
 
 -spec update_in_use/3 :: (non_neg_integer(), non_neg_integer(), dict()) -> {non_neg_integer(), non_neg_integer(), dict()}.
