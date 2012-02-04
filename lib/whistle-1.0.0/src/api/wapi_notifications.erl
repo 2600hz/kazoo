@@ -17,6 +17,7 @@
 -export([new_account/1, new_account_v/1]).
 -export([port_request/1, port_request_v/1]).
 -export([cnam_request/1, cnam_request_v/1]).
+-export([low_balance/1, low_balance_v/1]).
 
 -export([publish_voicemail/1, publish_voicemail/2]).
 -export([publish_mwi_update/1, publish_mwi_update/2]).
@@ -25,6 +26,7 @@
 -export([publish_new_account/1, publish_new_account/2]).
 -export([publish_port_request/1, publish_port_request/2]).
 -export([publish_cnam_request/1, publish_cnam_request/2]).
+-export([publish_low_balance/1, publish_low_balance/2]).
 
 -include("../wh_api.hrl").
 
@@ -37,6 +39,7 @@
 %% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
 -define(NOTIFY_PORT_REQUEST, <<"notifications.number.port">>).
 -define(NOTIFY_CNAM_REQUEST, <<"notifications.number.cnam">>).
+-define(NOTIFY_LOW_BALANCE, <<"notifications.account.low_balance">>).
 
 %% Notify New Voicemail
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>, <<"To-User">>, <<"To-Realm">>
@@ -103,6 +106,14 @@
                               ,{<<"Event-Name">>, <<"cnam_request">>}
                              ]).
 -define(CNAM_REQUEST_TYPES, []).
+
+%% Notify Low Balance
+-define(LOW_BALANCE_HEADERS, [<<"Account-ID">>, <<"Current-Balance">>]).
+-define(OPTIONAL_LOW_BALANCE_HEADERS, []).
+-define(LOW_BALANCE_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                             ,{<<"Event-Name">>, <<"low_balance">>}
+                            ]).
+-define(LOW_BALANCE_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
@@ -238,6 +249,24 @@ cnam_request_v(Prop) when is_list(Prop) ->
 cnam_request_v(JObj) ->
     cnam_request_v(wh_json:to_proplist(JObj)).
 
+%%--------------------------------------------------------------------
+%% @doc Low Balance notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+low_balance(Prop) when is_list(Prop) ->
+    case low_balance_v(Prop) of
+        true -> wh_api:build_message(Prop, ?LOW_BALANCE_HEADERS, ?OPTIONAL_LOW_BALANCE_HEADERS);
+        false -> {error, "Proplist failed validation for low_balance"}
+    end;
+low_balance(JObj) ->
+    low_balance(wh_json:to_proplist(JObj)).
+
+-spec low_balance_v/1 :: (api_terms()) -> boolean().
+low_balance_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?LOW_BALANCE_HEADERS, ?LOW_BALANCE_VALUES, ?LOW_BALANCE_TYPES);
+low_balance_v(JObj) ->
+    low_balance_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
@@ -267,6 +296,9 @@ bind_to_q(Q, [port_request|T]) ->
 bind_to_q(Q, [cnam_requests|T]) ->
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_CNAM_REQUEST),
     bind_to_q(Q, T);
+bind_to_q(Q, [low_balance|T]) ->
+    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_LOW_BALANCE),
+    bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
     ok.
 
@@ -275,7 +307,6 @@ bind_to_q(_Q, []) ->
 
 unbind_q(Queue) ->
     unbind_q_from(Queue, undefined).
-    
 unbind_q(Queue, Props) ->
     amqp_util:notifications_exchange(),
     unbind_q_from(Queue, props:get_value(restrict_to, Props)).
@@ -302,6 +333,9 @@ unbind_q_from(Q, [port_request|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, [cnam_request|T]) ->
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_CNAM_REQUEST),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, [low_balance|T]) ->
+    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_LOW_BALANCE),
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     ok.
@@ -361,3 +395,11 @@ publish_cnam_request(JObj) ->
 publish_cnam_request(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?CNAM_REQUEST_VALUES, fun ?MODULE:cnam_request/1),
     amqp_util:notifications_publish(?NOTIFY_CNAM_REQUEST, Payload, ContentType).
+
+-spec publish_low_balance/1 :: (api_terms()) -> 'ok'.
+-spec publish_low_balance/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_low_balance(JObj) ->
+    publish_low_balance(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_low_balance(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?LOW_BALANCE_VALUES, fun ?MODULE:low_balance/1),
+    amqp_util:notifications_publish(?NOTIFY_LOW_BALANCE, Payload, ContentType).
