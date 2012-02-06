@@ -65,7 +65,7 @@ fetch_all_registrations() ->
                                             (_K, _V) ->
                                                  false
                                          end),
-    {'ok', Registrations}.
+    {'ok', [Registration || {_, Registration} <- Registrations]}.
 
 %%-----------------------------------------------------------------------------
 %% @public

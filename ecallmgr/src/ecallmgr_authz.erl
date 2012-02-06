@@ -57,7 +57,7 @@ init_authorize(Parent, FSID, CallID, FSData) ->
     proc_lib:init_ack(Parent, {ok, self()}),
     put(callid, CallID),
 
-    ?LOG_START("Authorize started"),
+    ?LOG_START("authorize started"),
 
     ReqProp = request(FSID, CallID, FSData),
 
@@ -67,8 +67,8 @@ init_authorize(Parent, FSID, CallID, FSData) ->
                RespJObj
            catch
                _T:_R ->
-                   ?LOG("Authz request un-answered or improper"),
-                   ?LOG("Authz ~p: ~p", [_T, _R]),
+                   ?LOG("authz request un-answered or improper"),
+                   ?LOG("authz ~p: ~p", [_T, _R]),
                    default()
            end,
 

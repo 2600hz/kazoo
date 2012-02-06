@@ -145,28 +145,22 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.post.rates">>, [RD, Cont
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 =
-                      case Context#cb_context.doc of
-                          {0, _} ->
-                              ?LOG("no rates to save"),
-                              crossbar_util:response_invalid_data(wh_json:new(), Context);
-                          {Count, Rates} when Count < 10 ->
-                              ?LOG("only ~b rates to try saving", [Count]),
-                              crossbar_doc:save(Context#cb_context{doc=Rates});
-                          {Count, Rates} ->
-                              ?LOG("there are ~b rates to save, responding with a 202 and saving in a spawn", [Count]),
-                              _ = spawn(fun() ->
-                                                _ = crossbar_util:put_reqid(Context),
-                                                Now = erlang:now(),
-                                                crossbar_doc:save(Context#cb_context{doc=Rates}, [{publish_doc, false}]),
-                                                Elapsed = timer:now_diff(erlang:now(), Now),
-                                                ?LOG("it took ~b micro, ~b milli, ~b sec to save ~b rates", [Elapsed, Elapsed div 1000, Elapsed div 1000000, Count])
-                                        end),
-                              crossbar_util:response_202(list_to_binary(["saving ", wh_util:to_list(Count), " rates from the uploaded document"]), Context);
-                          _Rate ->
-                              crossbar_doc:save(Context)
-                      end,
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+
+                  Pid ! {binding_result
+                         ,true
+                         ,[RD
+                           ,crossbar_util:response_202(list_to_binary(["attempting to insert rates from the uploaded document"]), Context)
+                           ,Params
+                          ]},
+
+                  Now = erlang:now(),
+                  {ok, {Count, Rates}} = process_upload_file(Context),
+
+                  ?LOG("trying to save ~b rates (took ~b ms to process)", [Count, timer:now_diff(erlang:now(), Now) div 1000]),
+
+                  crossbar_doc:save(Context#cb_context{doc=Rates}, [{publish_doc, false}]),
+
+                  ?LOG("it took ~b milli to process and save ~b rates", [timer:now_diff(erlang:now(), Now) div 1000, Count])
           end),
     {noreply, State};
 
@@ -389,8 +383,8 @@ check_uploaded_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
     case wh_json:get_value(<<"contents">>, File) of
         undefined ->
             Context#cb_context{resp_status=error};
-        Bin ->
-            convert_file(wh_json:get_binary_value([<<"headers">>, <<"content_type">>], File), Bin, Context)
+        Bin when is_binary(Bin) ->
+            Context#cb_context{resp_status=success}
     end;
 check_uploaded_file(Context) ->
     ?LOG("no file to process"),
@@ -442,20 +436,39 @@ add_pvt_type(JObj, _) ->
 %% Convert the file, based on content-type, to rate documents
 %% @end
 %%--------------------------------------------------------------------
--spec convert_file/3 :: (nonempty_string(), ne_binary(), #cb_context{}) -> #cb_context{}.
-convert_file(<<"text/csv">>, FileContents, Context) ->
-    {ok, {Count, Rates}} = csv_to_rates(FileContents),
-    case Count of
-        0 -> crossbar_util:response(error, <<"no usable rates found">>, 400, [], Context);
-        _ -> Context#cb_context{resp_status=success, doc={Count, Rates}}
-    end;
-convert_file(ContentType, _, Context) ->
-    ?LOG("unknown content type: ~s", [ContentType]),
-    crossbar_util:response(error, list_to_binary(["unknown content type: ", ContentType]), Context).
+-spec process_upload_file/1 :: (#cb_context{}) -> {'ok', {non_neg_integer(), wh_json:json_objects()}}.
+process_upload_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
+    convert_file(wh_json:get_binary_value([<<"headers">>, <<"content_type">>], File)
+                 ,wh_json:get_value(<<"contents">>, File)
+                 ,Context
+                ).
 
--spec csv_to_rates/1 :: (ne_binary()) -> {'ok', {integer(), wh_json:json_objects()}}.
-csv_to_rates(CSV) ->
-    ecsv:process_csv_binary_with(CSV, fun process_row/2, {0, []}).
+-spec convert_file/3 :: (nonempty_string(), ne_binary(), #cb_context{}) -> {'ok', {non_neg_integer(), wh_json:json_objects()}}.
+convert_file(<<"text/csv">>, FileContents, Context) ->
+    csv_to_rates(FileContents, Context);
+convert_file(ContentType, _, _) ->
+    ?LOG("unknown content type: ~s", [ContentType]),
+    throw({unknown_content_type, ContentType}).
+
+-spec csv_to_rates/2 :: (ne_binary(), #cb_context{}) -> {'ok', {integer(), wh_json:json_objects()}}.
+csv_to_rates(CSV, Context) ->
+    BulkInsert = couch_util:max_bulk_insert(),
+    ecsv:process_csv_binary_with(CSV
+                                 ,fun(Row, {Cnt, RateDocs}) ->
+                                          RateDocs1 = case Cnt > 1 andalso Cnt rem BulkInsert =:= 0 of
+                                                          true ->
+                                                              spawn(fun() ->
+                                                                            crossbar_util:put_reqid(Context),
+                                                                            crossbar_doc:save(Context#cb_context{doc=RateDocs}),
+                                                                            ?LOG("saved up to ~b docs", [Cnt])
+                                                                    end),
+                                                              [];
+                                                          false -> RateDocs
+                                                      end,
+                                          process_row(Row, {Cnt, RateDocs1})
+                                  end
+                                 ,{0, []}
+                                ).
 
 -spec process_row/2 :: ([string(),...], {integer(), wh_json:json_objects()}) -> {integer(), wh_json:json_objects()}.
 process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
@@ -479,11 +492,11 @@ process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
                                           ,{<<"iso_country_code">>, ISO1}
                                           ,{<<"description">>, Desc1}
                                           ,{<<"rate_name">>, Desc1}
-                                          ,{<<"rate_cost">>, Rate1}
+                                          ,{<<"rate_cost">>, wh_util:to_float(Rate1)}
                                           ,{<<"rate_increment">>, 60}
                                           ,{<<"rate_minimum">>, 60}
                                           ,{<<"rate_surcharge">>, 0}
-                                          ,{<<"pvt_rate_cost">>, InternalCost1}
+                                          ,{<<"pvt_rate_cost">>, wh_util:to_float(InternalCost1)}
                                           ,{<<"weight">>, constrain_weight(byte_size(Prefix1) * 10 - CostF)}
                                           
                                           ,{<<"options">>, []}

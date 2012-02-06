@@ -26,6 +26,7 @@
 -export([create_event/3, publish_event/1]).
 -export([transfer/3]).
 -export([get_fs_var/4]).
+-export([publish_channel_destroy/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -69,6 +70,22 @@ transfer(Srv, TransferType, Props) ->
 -spec queue_name/1 :: (pid()) -> ne_binary().
 queue_name(Srv) ->
     gen_listener:queue_name(Srv).
+
+-spec publish_channel_destroy/1 :: (proplist()) -> ok.
+publish_channel_destroy(Props) ->
+    CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
+                            props:get_value(<<"Unique-ID">>, Props)),
+    put(callid, CallId),
+    EventName = props:get_value(<<"Event-Name">>, Props),
+    ApplicationName = props:get_value(<<"Application">>, Props),
+    Event = create_event(EventName, ApplicationName, Props),
+    publish_event(Event),
+    case ecallmgr_call_event_sup:find_worker(CallId) of
+        {error, not_found} -> ok;
+        {ok, Srv} -> 
+            erlang:send_after(5000, Srv, {shutdown}),
+            ok
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -121,9 +138,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({channel_destroyed, _}, State) ->
-    ?LOG("channel destroyed, goodbye and thanks for all the fish"),
-    {stop, normal, State};
+handle_cast({channel_destroyed, Props}, State) ->
+    ?LOG("our channel has been destroyed, preparing to shutdown"),
+    process_channel_event(Props, State),
+    erlang:send_after(5000, self(), {shutdown}),
+    {noreply, State};
 handle_cast({transferer, _}, State) ->
     ?LOG("call control has been transfered."),
     {stop, normal, State};
@@ -140,13 +159,17 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({call, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
-    process_channel_event(Props, State),
-%%    spawn(fun() -> process_channel_event(Props, State) end),
+handle_info({call, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->        
+    case props:get_value(<<"Event-Name">>, Props) of
+        <<"CHANNEL_DESTROY">> -> gen_server:cast(self(), {channel_destroyed, Props});
+        _Else -> process_channel_event(Props, State)
+    end,
     {'noreply', State};
 handle_info({call_event, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
-    process_channel_event(Props, State),
-%%    spawn(fun() -> process_channel_event(Props, State) end),
+    case props:get_value(<<"Event-Name">>, Props) of
+        <<"CHANNEL_DESTROY">> -> gen_server:cast(self(), {channel_destroyed, Props});
+        _Else -> process_channel_event(Props, State)
+    end,
     {'noreply', State};
 handle_info({nodedown, _}, #state{node=Node, is_node_up=true}=State) ->
     ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
@@ -196,6 +219,8 @@ handle_info({sanity_check}, #state{node=Node, callid=CallId}=State) ->
             ?LOG("But I tried, didn't I? Goddamnit, at least I did that"),
             {stop, normal, State#state{sanity_check_tref=undefined}}
     end;
+handle_info({shutdown}, State) ->
+    {stop, normal, State};
 handle_info(_Info, State) ->
     {'noreply', State}.
 
@@ -212,8 +237,8 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{node_down_tref=NDTRef, sanity_check_tref=SCTRef}) ->   
     catch (erlang:cancel_timer(SCTRef)), 
-    catch (erlang:cancel_timer(NDTRef)), 
-    ?LOG("terminating call events listener: ~p", [_Reason]).
+    catch (erlang:cancel_timer(NDTRef)),
+    ?LOG_END("goodbye and thanks for all the fish").
 
 %%--------------------------------------------------------------------
 %% @private
@@ -230,7 +255,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec process_channel_event/2 :: (proplist(), #state{}) -> ok.
-process_channel_event(Props, #state{self=Self, node=Node}) ->
+process_channel_event(Props, #state{node=Node}) ->
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
                             props:get_value(<<"Unique-ID">>, Props)),
     put(callid, CallId),
@@ -245,15 +270,7 @@ process_channel_event(Props, #state{self=Self, node=Node}) ->
             %% clause until we can break the conference stuff into its own module
             Event = create_event(EventName, ApplicationName, [{<<"Node">>, Node}|Props]),
             publish_event(Event)
-    end,
-    case EventName of 
-        %% if we are processing a channel destroy event, it was for
-        %% our channel, so we are done here...
-        <<"CHANNEL_DESTROY">> ->
-            gen_server:cast(Self, {channel_destroyed, Props});
-        _ ->
-            ok
-    end.    
+    end.
 
 -spec create_event/3 :: (ne_binary(), 'undefined' | ne_binary(), proplist()) -> proplist().
 create_event(EventName, ApplicationName, Props) ->
@@ -347,10 +364,16 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
     ];
+event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"record">>, Prop) ->
+    [{<<"Application-Name">>, <<"bridge">>}
+     ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
+     ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Prop)}
+    ];
 event_specific(<<"RECORD_STOP">>, _, Prop) ->
     [{<<"Application-Name">>, <<"record">>}
      ,{<<"Application-Response">>, props:get_value(<<"Record-File-Path">>, Prop)}
      ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Prop)}
+     ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Prop)}
     ];
 event_specific(<<"DETECTED_TONE">>, _, Prop) ->
     [{<<"Detected-Tone">>, props:get_value(<<"Detected-Tone">>, Prop)}];

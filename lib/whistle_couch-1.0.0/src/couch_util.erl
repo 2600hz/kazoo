@@ -31,6 +31,9 @@
          ,delete_attachment/5
         ]).
 
+%% Settings-related
+-export([max_bulk_insert/0]).
+
 -include("wh_couch.hrl").
 
 %% Throttle how many docs we bulk insert to BigCouch
@@ -40,8 +43,18 @@
 -type db_create_options() :: [{q,integer()} | {n,integer()},...] | [].
 -export_type([db_create_options/0]).
 
+
 %%------------------------------------------------------------------------------
-%% @private
+%% @public
+%% @doc How many documents are chunked when doing a bulk save
+%% @end
+%%------------------------------------------------------------------------------
+-spec max_bulk_insert/0 :: () -> ?MAX_BULK_INSERT.
+max_bulk_insert() ->
+    ?MAX_BULK_INSERT.
+
+%%------------------------------------------------------------------------------
+%% @public
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
@@ -54,11 +67,11 @@ get_new_connection(Host, Port, User, Pass) ->
 -spec get_new_conn/3 :: (nonempty_string(), pos_integer(), proplist()) -> #server{}.
 get_new_conn(Host, Port, Opts) ->
     Conn = couchbeam:server_connection(Host, Port, "", Opts),
-    ?LOG_SYS("New connection to Host ~s, testing", [Host]),
+    ?LOG_SYS("new connection to Host ~s, testing", [Host]),
     {'ok', ConnData} = couchbeam:server_info(Conn),
     CouchVersion = wh_json:get_value(<<"version">>, ConnData),
     BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
-    ?LOG_SYS("Connected successfully to ~s", [Host]),
+    ?LOG_SYS("connected successfully to ~s", [Host]),
     ?LOG_SYS("CouchDB: ~s", [CouchVersion]),
     is_binary(BigCouchVersion) andalso ?LOG_SYS("BigCouch: ~s", [BigCouchVersion]),
     Conn.
@@ -122,11 +135,11 @@ db_view_cleanup(#server{}=Conn, DbName) ->
 
 -spec db_info/1 :: (#server{}) -> {'ok', [ne_binary(),...] | []} | {'error', term()}.
 db_info(#server{}=Conn) ->
-    retry504s(fun() -> couchbeam:all_dbs(Conn) end).
+    ?RETRY_504(couchbeam:all_dbs(Conn)).
 
 -spec db_info/2 :: (#server{}, ne_binary()) -> {'ok', wh_json:json_object()} | {'error', term()}.
 db_info(#server{}=Conn, DbName) ->
-    retry504s(fun() -> couchbeam:db_info(get_db(Conn, DbName)) end).
+    ?RETRY_504(couchbeam:db_info(get_db(Conn, DbName))).
 
 -spec db_exists/2 :: (#server{}, ne_binary()) -> boolean().
 db_exists(#server{}=Conn, DbName) ->
@@ -136,12 +149,12 @@ db_exists(#server{}=Conn, DbName) ->
 
 -spec do_db_compact/1 :: (#db{}) -> boolean().
 do_db_compact(#db{}=Db) ->
-    Resp = retry504s(fun() -> couchbeam:compact(Db) end),
+    Resp = ?RETRY_504(couchbeam:compact(Db)),
     Resp =:= 'ok'.
 
 -spec do_db_view_cleanup/1 :: (#db{}) -> boolean().
 do_db_view_cleanup(#db{}=Db) ->
-    Resp = retry504s(fun() -> couchbeam:view_cleanup(Db) end),
+    Resp = ?RETRY_504(couchbeam:view_cleanup(Db)),
     Resp =:= 'ok'.
 
 %%% View-related functions -----------------------------------------------------
@@ -178,18 +191,17 @@ get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 
 -spec do_fetch_results/1 :: (#view{}) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} | {'error', atom()}.
 do_fetch_results(#view{}=View) ->
-    retry504s(fun() ->
-                      case couchbeam_view:fetch(View) of
-                          {'ok', JObj} ->
-                              Rows = wh_json:get_value(<<"rows">>, JObj, []),
-                              {'ok', Rows};
-                          Other -> Other
-                      end
-              end).
+    ?RETRY_504(case couchbeam_view:fetch(View) of
+                   {'ok', JObj} ->
+                       Rows = wh_json:get_value(<<"rows">>, JObj, []),
+                       {'ok', Rows};
+                   Other -> Other
+               end
+              ).
 
 -spec do_get_design_info/2 :: (#db{}, ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 do_get_design_info(#db{}=Db, Design) ->
-    retry504s(fun() -> couchbeam:design_info(Db, Design) end).
+    ?RETRY_504(couchbeam:design_info(Db, Design)).
 
 %% Document related functions --------------------------------------------------
 -spec open_doc/4 :: (#server{}, ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
@@ -244,7 +256,7 @@ do_delete_doc(#db{}=Db, Doc) ->
 
 -spec do_delete_docs/2 :: (#db{}, wh_json:json_objects()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
 do_delete_docs(#db{}=Db, Docs) ->
-    retry504s(fun() -> couchbeam:save_docs(Db, [wh_json:set_value(<<"_deleted">>, true, Doc) || Doc <- Docs]) end).
+    ?RETRY_504(couchbeam:save_docs(Db, [wh_json:set_value(<<"_deleted">>, true, Doc) || Doc <- Docs])).
 
 -spec do_ensure_saved/3 :: (#db{}, wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 do_ensure_saved(#db{}=Db, Doc, Opts) ->
@@ -263,17 +275,17 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
 
 -spec do_fetch_rev/2 :: (#db{}, ne_binary()) -> {'ok', binary()} | {'error', atom()}.
 do_fetch_rev(#db{}=Db, DocId) ->
-    retry504s(fun() -> couchbeam:lookup_doc_rev(Db, DocId) end).
+    ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId)).
 
 -spec do_fetch_doc/3 :: (#db{}, ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 do_fetch_doc(#db{}=Db, DocId, Options) ->
-    retry504s(fun() -> couchbeam:open_doc(Db, DocId, Options) end).
+    ?RETRY_504(couchbeam:open_doc(Db, DocId, Options)).
 
 -spec do_save_doc/3 :: (#db{}, wh_json:json_object() | wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 do_save_doc(#db{}=Db, Docs, Options) when is_list(Docs) ->
     do_save_docs(Db, Docs, Options);
 do_save_doc(#db{}=Db, Doc, Options) ->
-    retry504s(fun() -> couchbeam:save_doc(Db, Doc, Options) end).
+    ?RETRY_504(couchbeam:save_doc(Db, Doc, Options)).
 
 -spec do_save_docs/3 :: (#db{}, wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
 do_save_docs(#db{}=Db, Docs, Options) ->
@@ -330,15 +342,15 @@ delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
 %% Internal Attachment-related functions ---------------------------------------
 -spec do_fetch_attachment/3 :: (#db{}, ne_binary(), ne_binary()) -> {'ok', binary()} | {'error', atom()}.
 do_fetch_attachment(#db{}=Db, DocId, AName) ->
-    retry504s(fun() -> couchbeam:fetch_attachment(Db, DocId, AName) end).
+    ?RETRY_504(couchbeam:fetch_attachment(Db, DocId, AName)).
 
 -spec do_put_attachment/5 :: (#db{}, ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
-    retry504s(fun() -> couchbeam:put_attachment(Db, DocId, AName, Contents, Options) end).
+    ?RETRY_504(couchbeam:put_attachment(Db, DocId, AName, Contents, Options)).
 
 -spec do_del_attachment/4 :: (#db{}, ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 do_del_attachment(#db{}=Db, DocId, AName, Options) ->
-    retry504s(fun() -> couchbeam:delete_attachment(Db, DocId, AName, Options) end).
+    ?RETRY_504(couchbeam:delete_attachment(Db, DocId, AName, Options)).
 
 %% Helpers for getting Couchbeam records ---------------------------------------
 

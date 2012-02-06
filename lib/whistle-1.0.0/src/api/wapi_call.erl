@@ -55,7 +55,7 @@
                                           ,<<"Other-Leg-Unique-ID">> %% BRIDGE
                                           ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
                                           ,<<"Terminator">>, <<"Disposition">>, <<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
-                                          ,<<"Raw-Application-Name">>
+                                          ,<<"Raw-Application-Name">>, <<"Length">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
@@ -95,7 +95,7 @@
                                            ]).
 -define(CALL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                   ,{<<"Event-Name">>, <<"call_status_resp">>}
-                                  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
+                                  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
                                  ]).
 -define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 

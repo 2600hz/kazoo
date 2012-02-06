@@ -420,23 +420,23 @@ import_missing_account(AccountId, Account) ->
             ?LOG("remote account db ~s alread exists locally", [AccountId]),
             %% make sure the account definition is in the account, if not
             %% use the one we got from shared auth
-            Event = <<"v1_resource.execute.post.accounts">>,
-            Doc = case couch_mgr:open_doc(Db, AccountId) of
-                      {error, not_found} ->
-                          ?LOG("missing local account definition, creating from shared auth response"),
-                          wh_json:delete_key(<<"_rev">>, Account);
-                      {ok, JObj} ->
-                          ?LOG("account definition exists locally"),
-                          JObj
-                  end,
-            Payload = [undefined, #cb_context{doc=Doc, db_name=Db}, AccountId],
-            case crossbar_bindings:fold(Event, Payload) of
-                [_, #cb_context{resp_status=success} | _] ->
-                    ?LOG("udpated account definition"),
-                    true;
-                _ ->
-                    ?LOG("could not update account definition"),
-                    false
+            case couch_mgr:open_doc(Db, AccountId) of
+                {error, not_found} ->
+                    ?LOG("missing local account definition, creating from shared auth response"),
+                    Doc = wh_json:delete_key(<<"_rev">>, Account),
+                    Event = <<"v1_resource.execute.post.accounts">>,
+                    Payload = [undefined, #cb_context{doc=Doc, db_name=Db}, AccountId],
+                    case crossbar_bindings:fold(Event, Payload) of
+                        [_, #cb_context{resp_status=success} | _] ->
+                            ?LOG("udpated account definition"),
+                            true;
+                        _ ->
+                            ?LOG("could not update account definition"),
+                            false
+                    end;
+                {ok, _} ->
+                    ?LOG("account definition exists locally"),
+                    true
             end;
         false ->
             ?LOG("remote account db ~s does not exist locally, creating", [AccountId]),

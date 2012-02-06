@@ -194,7 +194,7 @@ wait_for_cdr(State, Timeout) ->
 process_event_for_cdr(#state{aleg_callid=ALeg}=State, JObj) ->
     case wh_util:get_event_type(JObj) of
         {<<"resource">>, <<"offnet_resp">>} ->
-            case wh_json:get_value(<<"Response-Message">>) of
+            case wh_json:get_value(<<"Response-Message">>, JObj) of
                 <<"SUCCESS">> ->
                     ?LOG("bridge was successful, still waiting on the CDR"),
                     ignore;

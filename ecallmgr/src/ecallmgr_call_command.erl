@@ -22,13 +22,8 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
         true ->
             case get_fs_app(Node, UUID, JObj, App) of
                 {'error', Msg} ->
-                    _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
-                    send_error_response(App, Msg, UUID, JObj),
-                    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, App);
-                {'error', AppName, Msg} ->
-                    _ = ecallmgr_util:fs_log(Node, wh_util:to_list(Msg), []),
-                    send_error_response(App, Msg, UUID, JObj),
-                    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
+                    _ = ecallmgr_util:fs_log(Node, "whistle error while building command ~s: ~s", [App, Msg]),
+                    throw({msg, Msg});
                 {return, Result} ->
                     Result;
                 {AppName, noop} ->
@@ -43,8 +38,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
             end;
         false ->
             ?LOG("command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
-            ecallmgr_call_control:event_execute_complete(ControlPID, UUID, App),
-            {'error', invalid_callid}
+            throw(<<"call command provided with a command for a different call id">>)
     end.
 
 %%--------------------------------------------------------------------
@@ -61,7 +55,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
     case wapi_dialplan:noop_v(JObj) of
         false ->
-            {'error', <<"noop">>, <<"noop failed to execute as JObj did not validate">>};
+            {'error', <<"noop failed to execute as JObj did not validate">>};
         true ->
             Args = case wh_json:get_value(<<"Msg-ID">>, JObj) of
                        undefined ->
@@ -79,7 +73,7 @@ get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
 
 get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case wapi_dialplan:play_v(JObj) of
-        false -> {'error', <<"playback">>, <<"play failed to execute as JObj did not validate">>};
+        false -> {'error', <<"play failed to execute as JObj did not validate">>};
         true ->
             F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID),
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
@@ -91,7 +85,7 @@ get_fs_app(_Node, _UUID, _JObj, <<"hangup">>) ->
 
 get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
     case wapi_dialplan:play_and_collect_digits_v(JObj) of
-        false -> {'error', <<"play_and_get_digits">>, <<"play_and_collect_digits failed to execute as JObj did not validate">>};
+        false -> {'error', <<"play_and_collect_digits failed to execute as JObj did not validate">>};
         true ->
             Min = wh_json:get_value(<<"Minimum-Digits">>, JObj),
             Max = wh_json:get_value(<<"Maximum-Digits">>, JObj),
@@ -200,7 +194,7 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
 
 get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case wapi_dialplan:tones_v(JObj) of
-        false -> {'error', <<"playback">>, <<"tones failed to execute as JObj did not validate">>};
+        false -> {'error', <<"tones failed to execute as JObj did not validate">>};
         true ->
             Tones = wh_json:get_value(<<"Tones">>, JObj, []),
             FSTones = [begin
@@ -830,16 +824,13 @@ export(Node, UUID, Arg) ->
 %%--------------------------------------------------------------------
 -spec get_conference_flags/1 :: (wh_json:json_object()) -> binary().
 get_conference_flags(JObj) ->
-    Flags = [
-             <<Flag/binary, Delim/binary>>
+    Flags = [<<Flag/binary, Delim/binary>>
                  || {Flag, Parameter} <- ?CONFERENCE_FLAGS, Delim <- [<<",">>]
                         ,wh_util:to_boolean(wh_json:get_value(Parameter, JObj, false))
             ],
     case list_to_binary(Flags) of
-        <<>> ->
-            <<>>;
-        F ->
-            <<"+flags{", (erlang:binary_part(F, {0, byte_size(F)-1}))/binary, "}">>
+        <<>> -> <<>>;
+        F -> <<"+flags{", (erlang:binary_part(F, {0, byte_size(F)-1}))/binary, "}">>
     end.
 
 %%--------------------------------------------------------------------
@@ -886,24 +877,6 @@ send_fetch_call_event(Node, UUID, JObj) ->
             {ok, P2} = wapi_dialplan:error(Error),
             amqp_util:callevt_publish(UUID, P2, event)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec send_error_response/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
-send_error_response(App, Msg, UUID, JObj) ->
-    ?LOG("error getting FS app for ~s: ~p", [App, Msg]),
-    Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-             ,{<<"Error-Message">>, Msg}
-             ,{<<"Call-ID">>, UUID}
-             ,{<<"Application-Name">>, App}
-             ,{<<"Application-Response">>, <<>>}
-             | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
-            ],
-    {ok, Payload} = wapi_dialplan:error(Error),
-    amqp_util:targeted_publish(wh_json:get_value(<<"Server-ID">>, JObj), Payload).
 
 %%--------------------------------------------------------------------
 %% @private

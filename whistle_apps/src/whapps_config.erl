@@ -194,15 +194,14 @@ get_non_empty(Category, Key, Default, Node) ->
 -spec get/4 :: (config_category(), config_key(), Default, ne_binary()) -> term() | Default.
 get(Category, Key) ->
     get(Category, Key, undefined).
-
-get(Category, Key, Default) when not is_binary(Category)->
-    get(wh_util:to_binary(Category), Key, Default);
-get(Category, Key, Default) when not is_binary(Key)->
-    get(Category, wh_util:to_binary(Key), Default);
 get(Category, Key, Default) ->
-    get(Category, Key, Default, wh_util:to_binary(node())).
+    get(Category, Key, Default, node()).
 
-get(Category, Key, Default, Node) ->
+get(Category0, Key0, Default, Node0) ->
+    Category = wh_util:to_binary(Category0),
+    Key = wh_util:to_binary(Key0),
+    Node = wh_util:to_binary(Node0),
+
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
     case fetch_category(Category, Cache) of
         {ok, JObj} ->
@@ -267,7 +266,7 @@ get_all_kvs(Category) ->
 -spec set/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()}.
 -spec set/4 :: (config_category(), config_key(), term(), ne_binary()) -> {'ok', wh_json:json_object()}.
 set(Category, Key, Value) ->
-    set(Category, Key, Value, wh_util:to_binary(node())).
+    set(Category, Key, Value, node()).
 set(Category, Key, Value, Node) ->
     do_set(Category, Key, Value, Node).
 
@@ -391,7 +390,11 @@ config_terms_to_json(Terms) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec do_set/4 :: (config_category(), config_key(), term(), ne_binary()) -> {'ok', wh_json:json_object()}.
-do_set(Category, Key, Value, Node) ->
+do_set(Category0, Key0, Value, Node0) ->
+    Category = wh_util:to_binary(Category0),
+    Key = wh_util:to_binary(Key0),
+    Node = wh_util:to_binary(Node0),
+
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
     UpdateFun = fun(J) ->
                         NodeConfig = wh_json:get_value(Node, J, wh_json:new()),

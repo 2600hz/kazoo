@@ -7,6 +7,7 @@
 %%% Created : 14 Dec 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(crossbar_util).
+
 -export([rand_chars/1]).
 -export([response/2, response/3, response/4, response/5]).
 -export([response_deprecated/1, response_deprecated_redirect/2, response_deprecated_redirect/3
@@ -437,7 +438,7 @@ disable_account(AccountId) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}, {<<"endkey">>, [AccountId, wh_json:new()]}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {ok, JObjs} ->
-            [change_pvt_enabled(false, wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
+            _ = [change_pvt_enabled(false, wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
             ok;
         {error, R}=E ->
             ?LOG("unable to disable descendants of ~s: ~p", [AccountId, R]),
@@ -457,7 +458,7 @@ enable_account(AccountId) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}, {<<"endkey">>, [AccountId, wh_json:new()]}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {ok, JObjs} ->
-            [change_pvt_enabled(true, wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
+            _ = [change_pvt_enabled(true, wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
             ok;
         {error, R}=E ->
             ?LOG("unable to enable descendants of ~s: ~p", [AccountId, R]),

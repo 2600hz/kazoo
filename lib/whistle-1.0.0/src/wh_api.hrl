@@ -68,7 +68,7 @@
 
 %% Error Responses
 -define(ERROR_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>]).
--define(OPTIONAL_ERROR_RESP_HEADERS, []).
+-define(OPTIONAL_ERROR_RESP_HEADERS, [<<"Request">>]).
 -define(ERROR_RESP_VALUES, [{<<"Event-Category">>, <<"error">>}]).
 -define(ERROR_RESP_TYPES, []).
 

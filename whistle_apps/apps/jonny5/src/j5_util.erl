@@ -37,29 +37,26 @@ fetch_all_accounts(Cache) ->
 -spec fetch_account/1 :: (ne_binary()) -> wh_json:json_object() | {'error', 'not_found'}.
 fetch_account(AcctID) ->
     case fetch_account_handler(AcctID) of
-        {ok, Pid} ->
-            j5_acctmgr:status(Pid);
+        {ok, Pid} -> j5_acctmgr:status(Pid);
         {error, _}=E -> E
     end.
 
 -spec fetch_account_handler/1 :: (ne_binary()) -> {'ok', pid()} | {'error', 'not_found'}.
+-spec fetch_account_handler/2 :: (ne_binary(), pid()) -> {'ok', pid()} | {'error', 'not_found'}.
 fetch_account_handler(AcctID) ->
     {ok, Cache} = jonny5_sup:cache_proc(),
     fetch_account_handler(AcctID, Cache).
-
--spec fetch_account_handler/2 :: (ne_binary(), pid()) -> {'ok', pid()} | {'error', 'not_found'}.
 fetch_account_handler(AcctID, Cache) when is_pid(Cache) ->
     wh_cache:fetch_local(Cache, cache_account_handler_key(AcctID)).
 
 -spec store_account_handler/2 :: (ne_binary(), pid() | 'undefined') -> 'ok'.
+-spec store_account_handler/3 :: (ne_binary(), pid() | 'undefined', pid()) -> 'ok'.
 store_account_handler(AcctID, J5Pid) ->
     {ok, Cache} = jonny5_sup:cache_proc(),
     store_account_handler(AcctID, J5Pid, Cache).
-
--spec store_account_handler/3 :: (ne_binary(), pid() | 'undefined', pid()) -> 'ok'.
-store_account_handler(AcctID, undefined, Cache) ->
+store_account_handler(AcctID, undefined, Cache) when is_pid(Cache) ->
     wh_cache:erase_local(Cache, cache_account_handler_key(AcctID));
-store_account_handler(AcctID, J5Pid, Cache) when is_pid(J5Pid) ->
+store_account_handler(AcctID, J5Pid, Cache) when is_pid(J5Pid), is_pid(Cache) ->
     wh_cache:store_local(Cache, cache_account_handler_key(AcctID), J5Pid, infinity).
 
 cache_account_handler_key(AcctID) ->
@@ -120,6 +117,9 @@ write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration, JObj) ->
     write_transaction_to_ledger(DB, CallID, CallType, CreditUnits, Duration, JObj, credit).
 
 -spec write_transaction_to_ledger/7 :: (ne_binary(), ne_binary(), call_types(), integer(), integer(), wh_json:json_object(), 'debit' | 'credit') -> {'ok', wh_json:json_object()} | {'error', atom()}.
+write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType) when (CallType =:= twoway orelse CallType =:= inbound)
+                                                                                       andalso Units =/= 0 ->
+    write_transaction_to_ledger(DB, CallID, CallType, 0, Duration, JObj, DocType);
 write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
 
@@ -168,6 +168,6 @@ current_usage(AcctID) ->
     DB = wh_util:format_account_id(AcctID, encoded),
     case couch_mgr:get_results(DB, <<"transactions/credit_remaining">>, [{<<"reduce">>, true}]) of
         {ok, []} -> 0;
-        {ok, [ViewRes|_]} -> wh_json:get_value(<<"value">>, ViewRes, 0);
+        {ok, [ViewRes|_]} -> wh_json:get_integer_value(<<"value">>, ViewRes, 0);
         {error, _} -> 0
     end.
