@@ -466,17 +466,17 @@ code_change(_OldVsn, State, _Extra) ->
                                                  }.
 get_trunks_available(AcctID) ->
     AcctDB = wh_util:format_account_id(AcctID, encoded),
-    case couch_mgr:get_results(AcctDB, <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, [{<<"reduce">>, false}
+                                                                           ,{<<"include_docs">>, true}
+                                                                          ]) of
         {ok, [JObj|_]} ->
-            ?LOG("view result retrieved"),
-            get_account_values(AcctID, wh_json:get_value(<<"doc">>, JObj));
+            ?LOG("ts view result retrieved"),
+            get_ts_values(AcctID, wh_json:get_value([<<"doc">>, <<"account">>], JObj));
         _ ->
-            case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, [{<<"reduce">>, false}
-                                                                                   ,{<<"include_docs">>, true}
-                                                                                  ]) of
+            case couch_mgr:get_results(AcctDB, <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
                 {ok, [JObj|_]} ->
-                    ?LOG("ts view result retrieved"),
-                    get_ts_values(AcctID, wh_json:get_value([<<"doc">>, <<"account">>], JObj));
+                    ?LOG("view result retrieved"),
+                    get_account_values(AcctID, wh_json:get_value(<<"doc">>, JObj));
                 _ ->
                     ?LOG("missing limits or trunkstore doc, generating one"),
                     {ok, _} = create_new_limits(AcctID, AcctDB),
@@ -551,26 +551,35 @@ try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) 
 try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId, trunks_in_use=Dict, ledger_db=LedgerDB}=State, PerMinCharge) when Pre =< PerMinCharge ->
     ?LOG_SYS(CallID, "failed to authz a per_min trunk", []),
 
-    %% Alert admins of the situation
-    whapps_util:alert(<<"emerg">>, ["Source: ~s(~p)~n"
-                                    ,"Alert: Insufficient prepay to authorize the call.~n"
-                                    ,"Call-ID: ~s~n"
-                                    ,"Account-ID: ~s~n"
-                                    ,"Current Prepay Balance: ~p~n"
-                                   ]
-                      ,[?MODULE, ?LINE, CallID, AcctId, wapi_money:units_to_dollars(Pre)]),
-
     case whapps_config:get_is_true(<<"jonny5">>, <<"authz_on_no_prepay">>, true) of
         true ->
-            ?LOG("authz_on_no_prepay set to true, authz the call"),
+            HowLow = wapi_money:dollars_to_units(whapps_config:get_float(<<"jonny5">>, <<"how_low_can_you_go">>, 0.0)),
             PrepayLeft = Pre - PerMinCharge,
-            ?LOG_SYS(CallID, "authz a per_min trunk; ~b prepay left, ~b charged up-front", [PrepayLeft, PerMinCharge]),
-            {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
-            erlang:monitor(process, Pid),
+            case HowLow > PrepayLeft of
+                true -> % 0 > -1
+                    %% Alert admins of the situation
+                    whapps_util:alert(<<"emerg">>, ["Source: ~s(~p)~n"
+                                                    ,"Alert: Insufficient prepay to authorize the call.~n"
+                                                    ,"Call-ID: ~s~n"
+                                                    ,"Account-ID: ~s~n"
+                                                    ,"Current Prepay Balance: ~p~n"
+                                                   ]
+                                      ,[?MODULE, ?LINE, CallID, AcctId, wapi_money:units_to_dollars(Pre)]),
 
-            {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
-             ,State#state{trunks_in_use=dict:store(CallID, {per_min, Pid}, Dict), prepay=PrepayLeft}
-            };
+                    catch(wapi_notifications:publish_low_balance([{<<"Account-ID">>, AcctId}, {<<"Current-Balance">>, wapi_money:units_to_dollars(Pre)}])),
+
+                    ?LOG(CallID, "howlow (~p) > prepay (~p), noauthz this call!", [HowLow, Pre]),
+                    {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State};
+                false ->
+                    ?LOG(CallID, "authz_on_no_prepay set to true, and prepay (~p) still > howlow (~p)", [PrepayLeft, HowLow]),
+
+                    {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
+                    erlang:monitor(process, Pid),
+
+                    {{true, [{<<"Trunk-Type">>, <<"per_min">>}]}
+                     ,State#state{trunks_in_use=dict:store(CallID, {per_min, Pid}, Dict), prepay=PrepayLeft}
+                    }
+            end;
         false ->
             ?LOG("authz_on_no_prepay set to false, denying the call"),
             {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State}
@@ -631,12 +640,20 @@ trunks_to_json(Dict) ->
 
 -spec create_new_limits/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()}.
 create_new_limits(AcctID, AcctDB) ->
-    JObj = wh_json:set_values([{<<"pvt_account_db">>, AcctDB}
-                               ,{<<"pvt_account_id">>, AcctID}
-                               ,{<<"pvt_type">>, <<"sip_service">>}
-                               ,{<<"trunks">>, 0}
-                               ,{<<"inbound_trunks">>, 0}
-                              ], wh_json:new()),
+    TStamp = wh_util:current_tstamp(),
+
+    Account = wh_json:from_list([{<<"trunks">>, 0}
+                                 ,{<<"inbound_trunks">>, 0}
+                                 ]),
+    JObj = wh_json:from_list([{<<"pvt_account_db">>, AcctDB}
+                              ,{<<"pvt_account_id">>, AcctID}
+                              ,{<<"pvt_type">>, <<"sys_info">>}
+                              ,{<<"pvt_created">>< TStamp}
+                              ,{<<"pvt_modified">>, TStamp}
+                              ,{<<"pvt_created_by">>, <<"jonny5">>}
+                              ,{<<"account">>, Account}
+                              ,{<<"servers">>, []}
+                             ]),
     couch_mgr:save_doc(AcctDB, JObj).
 
 -spec update_in_use/3 :: (non_neg_integer(), non_neg_integer(), dict()) -> {non_neg_integer(), non_neg_integer(), dict()}.

@@ -51,7 +51,7 @@ fetch_account_handler(AcctID, Cache) when is_pid(Cache) ->
 
 -spec store_account_handler/2 :: (ne_binary(), pid() | 'undefined') -> 'ok'.
 -spec store_account_handler/3 :: (ne_binary(), pid() | 'undefined', pid()) -> 'ok'.
-store_account_handler(AcctID, J5Pid) when is_pid(J5Pid) ->
+store_account_handler(AcctID, J5Pid) ->
     {ok, Cache} = jonny5_sup:cache_proc(),
     store_account_handler(AcctID, J5Pid, Cache).
 store_account_handler(AcctID, undefined, Cache) when is_pid(Cache) ->
