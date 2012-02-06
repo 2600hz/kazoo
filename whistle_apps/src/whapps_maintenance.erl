@@ -55,7 +55,6 @@ migrate() ->
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
                     ],
     StartWhapps = whapps_config:get(<<"whapps_controller">>, <<"whapps">>, []),
-    io:format("update ~p~n", [lists:foldr(fun(F, L) -> F(L) end, StartWhapps, WhappsUpdates)]),
     whapps_config:set_default(<<"whapps_controller">>
                                   ,<<"whapps">>
                                   ,lists:foldr(fun(F, L) -> F(L) end, StartWhapps, WhappsUpdates)),
