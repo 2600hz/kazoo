@@ -59,18 +59,18 @@ inbound_handler(JObj, Number) ->
 -spec get_dest_number/1 :: (wh_json:json_object()) -> ne_binary().
 get_dest_number(JObj) ->
     User = case whapps_config:get(<<"stepswitch">>, <<"inbound_user_field">>, <<"Request">>) of
-               <<"Request">> ->
-                   case binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>) of
-                       [<<"nouser">>, _] ->
-                           [ReqUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-                           ReqUser;
-                       [ToUser, _] ->
-                           ToUser
-                   end;
                <<"To">> ->
                    case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
                        [<<"nouser">>, _] ->
                            [ReqUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+                           ReqUser;
+                       [ToUser, _] ->
+                           ToUser
+                   end;
+               _ ->
+                   case binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>) of
+                       [<<"nouser">>, _] ->
+                           [ReqUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
                            ReqUser;
                        [ToUser, _] ->
                            ToUser
