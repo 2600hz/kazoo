@@ -1035,7 +1035,6 @@ update_folder(Folder, MediaId, #mailbox{mailbox_id=Id}=Mailbox, #cf_call{account
                 {error, conflict} ->
                     update_folder(Folder, MediaId, Mailbox, Call);
                 {ok, _}=OK ->
-                    UpdatedMsgs = wh_json:get_value(<<"messages">>, JObj, []),
                     OK;
                 {error, R}=E ->
                     ?LOG("error while updating folder ~s ~p", [Folder, R]),
