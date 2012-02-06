@@ -39,8 +39,15 @@ init() ->
     notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
-    Crawler = {notify_first_occurrence, {notify_first_occurrence, start_crawler, []}, permanent, 5000, worker, [notify_first_occurrence]},
-    supervisor:start_child(notify_sup, Crawler),
+    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"crawl_for_first_occurrence">>, true) of
+        false -> ok;
+        true ->
+            Crawler = {notify_first_occurrence
+                       ,{notify_first_occurrence, start_crawler, []}
+                       ,permanent, 5000, worker, [notify_first_occurrence]
+                      },
+            supervisor:start_child(notify_sup, Crawler)
+    end,
     ?LOG_SYS("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
@@ -207,7 +214,7 @@ crawler_loop() ->
         _ ->
             ok
     end,
-    Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_sleep_time">>, <<"300000">>),
+    Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_sleep_time">>, 300000),
     erlang:send_after(Cycle, self(), wakeup),
     flush(),
     proc_lib:hibernate(?MODULE, crawler_loop, []).
@@ -257,7 +264,7 @@ test_for_initial_occurrences(Result) ->
                 _ -> ok 
             end
     end,
-    Delay = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_interaccount_delay">>, <<"1000">>),
+    Delay = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_interaccount_delay">>, 1000),
     timer:sleep(Delay).
 
 %%--------------------------------------------------------------------
