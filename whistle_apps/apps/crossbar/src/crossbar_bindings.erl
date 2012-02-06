@@ -379,7 +379,7 @@ wait_for_map_binding(P, Route, Payload) ->
             wait_for_map_binding(P, Route, Payload)
     after
         500 ->
-            ?LOG("map '~s' timed out waiting for ~p", [P]),
+            ?LOG("map '~s' timed out waiting for ~p", [Route, P]),
             {timeout, Payload}
     end.
 
