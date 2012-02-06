@@ -21,6 +21,39 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     start_deps(),
+
+    %% maybe move this into a config file?
+    Dispatch = [
+                %% {Host, list({Path, Handler, Opts})}
+                {'_', [{['v1', '...'], v1_resource, []}]}
+               ],
+
+    Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 8000),
+    %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
+    cowboy:start_listener(v1_resource, 100
+                          ,cowboy_tcp_transport, [{port, Port}]
+                          ,cowboy_http_protocol, [{dispatch, Dispatch}]
+                         ),
+
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"ssl">>, false) of
+        false -> ok;
+        true ->
+            SSLPort = whapps_config:get_integer(?CONFIG_CAT, <<"ssl_port">>, 8443),
+            SSLCert = whapps_config:get_string(?CONFIG_CAT, <<"ssl_cert">>, "priv/ssl/cert.pem"),
+            SSLKey = whapps_config:get_string(?CONFIG_CAT, <<"ssl_key">>, "priv/ssl/key.pem"),
+            SSLPassword = whapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, "2600hz"),
+
+            cowboy:start_listener(v1_resource, 100
+                                  ,cowboy_ssl_transport, [
+                                                          {port, SSLPort}
+                                                          ,{certfile, SSLCert}
+                                                          ,{keyfile, SSLKey}
+                                                          ,{password, SSLPassword}
+                                                         ]
+                                  ,cowboy_http_protocol, [{dispatch, Dispatch}]
+                                 )
+    end,
+
     crossbar_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -42,10 +75,4 @@ stop() ->
 -spec start_deps/0 :: () -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    wh_util:ensure_started(sasl), % logging
-    wh_util:ensure_started(crypto), % random
-    wh_util:ensure_started(inets),
-    wh_util:ensure_started(mochiweb),
-    application:set_env(webmachine, webmachine_logger_module, webmachine_logger),
-    wh_util:ensure_started(webmachine),
-    wh_util:ensure_started(whistle_amqp). % amqp wrapper
+    [ wh_util:ensure_started(App) || App <- [sasl, crypto, inets, cowboy, whistle_amqp]].

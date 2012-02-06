@@ -3,7 +3,10 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
+-include_lib("cowboy/include/http.hrl").
+
 -include_lib("webmachine/include/webmachine.hrl").
+
 -include("crossbar_types.hrl").
 
 -define(CONFIG_CAT, <<"crossbar">>).
@@ -18,9 +21,9 @@
 
 -define(CACHE_TTL, whapps_config:get_integer(<<"crossbar">>, <<"cache_ttl">>, 300)).
 
--define(CONTENT_PROVIDED, [{to_json, ["application/json","application/x-json"]}]).
--define(CONTENT_ACCEPTED, [{from_json, ["application/json","application/x-json"]}
-                           ,{from_form, ["application/x-www-form-urlencoded"]}
+-define(CONTENT_PROVIDED, [{to_json, [<<"application/json">>,<<"application/x-json">>]}]).
+-define(CONTENT_ACCEPTED, [{from_json, [<<"application/json">>,<<"application/x-json">>]}
+                           ,{from_form, [<<"application/x-www-form-urlencoded">>]}
                            ,{from_binary, []}
                           ]).
 -define(ALLOWED_METHODS, ['GET'

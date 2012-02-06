@@ -25,7 +25,7 @@
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).
 
--define(MEDIA_MIME_TYPES, ["audio/x-wav", "audio/mpeg", "application/octet-stream"]).
+-define(MEDIA_MIME_TYPES, [<<"audio/x-wav">>, <<"audio/mpeg">>, <<"application/octet-stream">>]).
 
 -define(METADATA_FIELDS, [<<"name">>, <<"description">>, <<"media_type">>
                               ,<<"status">>, <<"content_size">>, <<"size">>
