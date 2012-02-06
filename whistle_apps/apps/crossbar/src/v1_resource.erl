@@ -20,6 +20,7 @@
          ,known_content_type/2
          ,valid_entity_length/2
          ,options/2
+         ,content_types_provided/2
         ]).
 
 -include("crossbar.hrl").
@@ -131,3 +132,5 @@ options(Req0, Context) ->
             {ok, Req1, Context}
     end.
 
+content_types_provided(Req0, Context0) ->
+    

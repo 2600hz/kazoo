@@ -13,7 +13,7 @@
          ,allow_methods/4, parse_path_tokens/1
          ,get_req_data/2, get_http_verb/2
          ,is_authentic/2, is_permitted/2
-         ,is_known_content_type/2
+         ,is_known_content_type/2, content_types_provided/2
         ]).
 
 -include("crossbar.hrl").
@@ -322,4 +322,8 @@ is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
 
     {CT, Req1} = cowboy_http_req:header(<<"Content-Type">>, Req0, ?DEFAULT_CONTENT_TYPE),
     ?LOG("is ~s acceptable: ~s", [CT, lists:member(CT, CTA)]),
-    {lists:member(CT, CTA), Req1, Context1}.
+    {lists:member(CT, CTA), Req1, Context1#cb_context{content_types_accepted=CTA}}.
+
+-spec content_types_provided/2 :: (#http_req{}, #cb_context{}) -> {[{ne_binary(), ne_binary(), proplist()},...] | [], #http_req{}}.
+content_types_provided(Req0, Context0) ->
+    {[], Req0}.
