@@ -14,13 +14,14 @@
 
 migrate() ->
     ?LOG("migrating trunkstore information from the ts database"),
-
-    {ok, TSAccts} = couch_mgr:get_results(?TS_DB, <<"ts_accounts/crossbar_listing">>, [{<<"include_docs">>, true}]),
-    ?LOG("trying ~b ts accounts", [length(TSAccts)]),
-
-    _ = [maybe_migrate(wh_json:set_value(<<"_rev">>, <<>>, wh_json:get_value(<<"doc">>, Acct))) || Acct <- TSAccts],
-
-    ?LOG("migration complete").
+    case couch_mgr:get_results(?TS_DB, <<"ts_accounts/crossbar_listing">>, [{<<"include_docs">>, true}]) of
+        {error, not_found} ->
+            ?LOG("ts database not found or ts_account/crossbar_listing view missing");
+        {ok, TSAccts} ->
+            ?LOG("trying ~b ts accounts", [length(TSAccts)]),            
+            _ = [maybe_migrate(wh_json:set_value(<<"_rev">>, <<>>, wh_json:get_value(<<"doc">>, Acct))) || Acct <- TSAccts],
+            ?LOG("migration complete")
+    end.
 
 maybe_migrate(AcctJObj) ->
     Realm = wh_json:get_value([<<"account">>, <<"auth_realm">>], AcctJObj),
