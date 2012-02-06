@@ -167,6 +167,7 @@ handle_info({event, [undefined | Data]}, #state{stats=Stats, node=Node}=State) -
         <<"PRESENCE_", _/binary>> = EvtName ->
             _ = case props:get_value(<<"Distributed-From">>, Data) of
                     undefined ->
+                        ecallmgr_notify:send_presence_event(EvtName, Node, Data),
                         Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)} | Data],
                         [distributed_presence(Srv, EvtName, Headers)
                          || Srv <- ecallmgr_fs_sup:node_handlers(),
@@ -211,6 +212,7 @@ handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_
         <<"PRESENCE_", _/binary>> = EvtName ->
             _ = case props:get_value(<<"Distributed-From">>, Data) of
                     undefined ->
+                        ecallmgr_notify:send_presence_event(EvtName, Node, Data),
                         Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
                         [distributed_presence(Srv, EvtName, Headers)
                          || Srv <- ecallmgr_fs_sup:node_handlers(),
