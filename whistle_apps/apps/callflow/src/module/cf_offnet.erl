@@ -19,13 +19,14 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
-handle(Data, #cf_call{account_id=AccountId, request_user=ReqNum}=Call) ->
+handle(Data, #cf_call{account_id=AccountId, from_realm=AccountRealm, request_user=ReqNum}=Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNum, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
     Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Resource-Type">>, <<"audio">>}
            ,{<<"To-DID">>, ReqNum}
            ,{<<"Account-ID">>, AccountId}
+           ,{<<"Account-Realm">>, AccountRealm}
            ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
            ,{<<"Application-Name">>, <<"bridge">>}
            ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Data)}

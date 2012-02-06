@@ -51,6 +51,7 @@ handle_req(JObj, Props) ->
 attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
     Result = case stepswitch_util:lookup_number(Number) of
                  {ok, AccountId, false} ->
+                     ?LOG("found local extension, keeping onnet"),
                      execute_local_extension(Number, AccountId, CtrlQ, JObj);
                  _ ->
                      Flags = wh_json:get_value(<<"Flags">>, JObj),
@@ -83,8 +84,7 @@ bridge_to_endpoints([], _, _, _) ->
 bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     ?LOG("found resources that handle the number...to the cloud!"),
     Q = create_queue(JObj),
-    CCVs = wh_json:set_value(<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)
-                             ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+
     {CIDNum, CIDName} = case IsEmergency of
                             'true' ->
                                 ?LOG("outbound call is using an emergency route, attempting to set CID accordingly"),
@@ -97,6 +97,18 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                                  wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
                         end,
     ?LOG("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
+
+    FromURI = case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
+                  {undefined, _} -> undefined;
+                  {_, undefined} -> undefined;
+                  {FromNumber, FromRealm} -> <<"sip:", FromNumber/binary, "@", FromRealm/binary>>
+              end,
+    ?LOG("setting from-uri to ~s", [FromURI]),
+
+    CCVs = wh_json:set_values([{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}
+                               ,{<<"From-URI">>, FromURI}
+                              ], wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
@@ -353,6 +365,7 @@ build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], Delay, Acc0) ->
 build_endpoint(Number, Gateway, _Delay) ->
     Route = stepswitch_util:get_dialstring(Gateway, Number),
     ?LOG("found resource ~s (~s)", [Gateway#gateway.resource_id, Route]),
+
     CCVs = [{<<"Resource-ID">>, Gateway#gateway.resource_id}],
     Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"Route">>, stepswitch_util:get_dialstring(Gateway, Number)}
