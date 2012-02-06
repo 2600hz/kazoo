@@ -9,6 +9,7 @@
 -export([lookup_number/1]).
 -export([evaluate_number/2]).
 -export([evaluate_flags/2]).
+-export([get_dialstring/2]).
 
 -include("stepswitch.hrl").
 
@@ -61,6 +62,24 @@ evaluate_flags(F1, Resrcs) ->
      || #resrc{flags=F2}=Resrc <- Resrcs,
         lists:all(fun(Flag) -> lists:member(Flag, F2) end, F1)
     ].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Build the sip url of a resource gateway
+%% @end
+%%--------------------------------------------------------------------
+-spec get_dialstring/2 :: (#gateway{}, ne_binary()) -> ne_binary().
+get_dialstring(#gateway{route = undefined, prefix=Prefix, suffix=Suffix, server=Server}, Number) ->
+    list_to_binary(["sip:"
+                    ,wh_util:to_binary(Prefix)
+                    ,Number
+                    ,wh_util:to_binary(Suffix)
+                    ,"@"
+                    ,wh_util:to_binary(Server)
+                   ]);
+get_dialstring(#gateway{route=Route}, _) ->
+    Route.
 
 %%--------------------------------------------------------------------
 %% @private
