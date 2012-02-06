@@ -266,11 +266,19 @@ handle_cast({transfer}, State) ->
 handle_cast({branch, NewFlow}, State) ->
     ?LOG("callflow has been branched"),
     {noreply, launch_cf_module(State#state{flow=NewFlow})};
-handle_cast({channel_status_received, _}, #state{sanity_timer=RunningTRef}=State) ->
-    ?LOG("callflow executer is sane... for now"),
-    _ = timer:cancel(RunningTRef),
-    {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
-    {noreply, State#state{status = <<"sane">>, sanity_timer=TRef}};
+handle_cast({channel_status_received, JObj}, #state{sanity_timer=RunningTRef}=State) ->
+    case wh_json:get_value(<<"Status">>, JObj) of
+        <<"active">> ->
+            ?LOG("callflow executer is sane... for now"),
+            _ = timer:cancel(RunningTRef),
+            {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
+            {noreply, State#state{status = <<"sane">>, sanity_timer=TRef}};
+        _Else ->
+            ?LOG("call status is ~s, preparing to stop cf_exe", [_Else]),
+            _ = timer:cancel(RunningTRef),
+            {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
+            {noreply, State#state{status = <<"testing">>, sanity_timer=TRef}}
+    end;            
 handle_cast({callid_update, NewCallId, NewCtrlQ}, #state{call_id=PrevCallId}=State) ->
     put(callid, NewCallId),
     ?LOG(PrevCallId, "updating callid to ~s, catch you on the flip side", [NewCallId]),
@@ -320,7 +328,7 @@ handle_info({call_sanity_check}, #state{status = <<"testing">>, call=#cf_call{ac
                   Args = [?MODULE, ?LINE, cf_util:call_info_to_string(Call)],
                   whapps_util:alert(<<"notice">>, lists:flatten(Message), Args, AccountId)
           end),
-    {stop, insane, State#state{status = <<"insane">>}};
+    {stop, {shutdown, insane}, State#state{status = <<"insane">>}};
 handle_info({call_sanity_check}, #state{call_id=CallId, call=Call}=State) ->
     ?LOG("ensuring call is active, requesting controlling channel status"),
     spawn(fun() -> cf_call_command:channel_status(CallId, Call) end),
@@ -378,6 +386,10 @@ handle_event(JObj, #state{cf_module_pid=Pid, call_id=CallId}) ->
 terminate({shutdown, transfer}, #state{sanity_timer=TRef}) ->
     _ = timer:cancel(TRef),
     ?LOG_END("callflow execution has been transfered"),
+    ok;
+terminate({shutdown, insane}, #state{sanity_timer=TRef}) ->
+    _ = timer:cancel(TRef),
+    ?LOG_END("call id is not longer present on the media gateways, terminating callflow execution"),
     ok;
 terminate(_Reason, #state{sanity_timer=TRef}=State) ->
     _ = timer:cancel(TRef),
