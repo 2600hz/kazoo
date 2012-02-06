@@ -25,8 +25,10 @@
 
 -define(RESPONDERS, [{cf_route_req, [{<<"dialplan">>, <<"route_req">>}]}
                      ,{cf_route_win, [{<<"dialplan">>, <<"route_win">>}]}
+                     ,{{cf_util, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
                     ]).
 -define(BINDINGS, [{route, []}
+                   ,{notifications, [{restrict_to, [presence_probe]}]}
                    ,{self, []}
                   ]).
 -define(QUEUE_NAME, <<"">>).
@@ -46,11 +48,11 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				      ,{queue_name, ?QUEUE_NAME}
-				      ,{queue_options, ?QUEUE_OPTIONS}
-				      ,{consume_options, ?CONSUME_OPTIONS}
-				     ], []).
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                     ], []).
 
 stop(Srv) ->
     gen_listener:stop(Srv).

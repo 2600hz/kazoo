@@ -61,6 +61,23 @@ handle_req(ApiJObj, _Props) ->
     end,
 
     {ok, Cache} = registrar_sup:cache_proc(),
+    case wh_cache:peek_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username)) of
+        {ok, _} -> ok;
+        {error, not_found} -> spawn(fun() -> send_new_register(JObj2) end)
+    end,
     wh_cache:store_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username), JObj2, Expires, fun reg_util:reg_removed_from_cache/3),
 
     ?LOG_END("cached registration ~s@~s for ~psec", [Username, Realm, Expires]).
+
+-spec send_new_register/1 :: (wh_json:json_object()) -> ok.
+send_new_register(JObj) ->
+    Updaters = [fun(J) -> wh_json:set_value(<<"Event-Name">>,  <<"register">>, J) end
+                ,fun(J) -> wh_json:set_value(<<"Event-Category">>, <<"notification">>, J) end 
+                ,fun(J) -> wh_json:delete_key(<<"App-Version">>, J) end
+                ,fun(J) -> wh_json:delete_key(<<"App-name">>, J) end 
+                ,fun(J) -> wh_json:delete_key(<<"Server-ID">>, J) end
+               ],
+    ?LOG("sending new registration event for ~s@~s", [wh_json:get_value(<<"Username">>, JObj), wh_json:get_value(<<"Realm">>, JObj)]),
+    Event = wh_json:to_proplist(lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters)) 
+        ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
+    wapi_notifications:publish_register(Event).

@@ -13,6 +13,7 @@
 %% API
 -export([start_link/0, handle_req/2]).
 -export([send_mwi/4]).
+-export([send_presence_event/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -85,11 +86,7 @@ handle_req(JObj, _Props) ->
             ?LOG("sending of MWI update to ~s resulted in: ~p", [Node, Resp])
     end.
 
--spec send_mwi/4 :: (User, Realm, New, Saved) -> no_return() when
-      User :: string() | binary(),
-      Realm :: string() | binary(),
-      New :: integer() | binary(),
-      Saved :: integer() | binary().
+-spec send_mwi/4 :: (string() | binary(), string() | binary(), integer() | binary(), integer() | binary()) -> ok.
 send_mwi(User, Realm, New, Saved) ->
     JObj = wh_json:from_list([{<<"Notify-User">>, wh_util:to_binary(User)}
                               ,{<<"Notify-Realm">>, wh_util:to_binary(Realm)}
@@ -98,6 +95,30 @@ send_mwi(User, Realm, New, Saved) ->
                               | wh_api:default_headers(<<>>, <<"notification">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
                              ]),
     handle_req(JObj, []).
+
+
+-spec send_presence_event/3 :: (ne_binary(), ne_binary(), proplist()) -> ok.
+send_presence_event(<<"PRESENCE_PROBE">>, Node, Data) ->
+    From = props:get_value(<<"from">>, Data, <<"nouser@nodomain">>),
+    To = props:get_value(<<"to">>, Data, <<"nouser@nodomain">>),
+    [FromUser, FromRealm] = binary:split(From, <<"@">>),
+    [ToUser, ToRealm] = binary:split(To, <<"@">>),
+    Req = [{<<"From">>, From}
+           ,{<<"From-User">>, FromUser}
+           ,{<<"From-Realm">>, FromRealm}
+           ,{<<"To">>, To}
+           ,{<<"To-User">>, ToUser}
+           ,{<<"To-Realm">>, ToRealm}
+           ,{<<"Node">>, Node}
+           ,{<<"Expires">>, props:get_value(<<"expires">>, Data)}
+           ,{<<"Subscription-Call-ID">>, props:get_value(<<"sub-call-id">>, Data)}
+           ,{<<"Subscription-Type">>, props:get_value(<<"alt_event_type">>, Data)}
+           ,{<<"Subscription">>, props:get_value(<<"proto-specific-event-name">>, Data)}
+           | wh_api:default_headers(<<>>, <<"notification">>, <<"presence_probe">>, ?APP_NAME, ?APP_VERSION)
+          ],
+    wapi_notifications:publish_presence_probe(Req);
+send_presence_event(_, _, _) ->
+    ok.
 
 %%%===================================================================
 %%% gen_server callbacks

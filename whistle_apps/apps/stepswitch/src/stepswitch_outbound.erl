@@ -10,6 +10,15 @@
 
 -include("stepswitch.hrl").
 
+-type bridge_resp() :: {'error', wh_json:json_object()} |
+                       {'error', 'timeout'} |
+                       {'ok', wh_json:json_object()} |
+                       {'fail', wh_json:json_object()}.
+
+-type execute_ext_resp() ::  {'ok', wh_json:json_object()} |
+                             {'ok', 'execute_extension'} |
+                             {'fail', wh_json:json_object()}.
+
 init() ->
     'ok'.
 
@@ -38,13 +47,11 @@ handle_req(JObj, Props) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec attempt_to_fullfill_req/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> {error, wh_json:json_object()}
-                                                                                                | {error, timeout}
-                                                                                                | {ok, wh_json:json_object()}
-                                                                                                | {fail, wh_json:json_object()}.
+-spec attempt_to_fullfill_req/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> bridge_resp() | execute_ext_resp().
 attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
     Result = case stepswitch_util:lookup_number(Number) of
                  {ok, AccountId, false} ->
+                     ?LOG("found local extension, keeping onnet"),
                      execute_local_extension(Number, AccountId, CtrlQ, JObj);
                  _ ->
                      Flags = wh_json:get_value(<<"Flags">>, JObj),
@@ -55,7 +62,7 @@ attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
     CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj
                                ,wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj)),
     case {Result, correct_shortdial(Number, CIDNum)} of
-        {{error, no_resources}, undefined} -> Result;
+        {{error, no_resources}, fail} -> Result;
         {{error, no_resources}, CorrectedNumber} -> 
             ?LOG("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
             attempt_to_fullfill_req(CorrectedNumber, CtrlQ, JObj, Props);
@@ -71,15 +78,13 @@ attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
 %% the emergency CID.
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints/4 :: (proplist(), boolean(), ne_binary(), wh_json:json_object()) -> ok.
-
+-spec bridge_to_endpoints/4 :: (proplist(), boolean(), ne_binary(), wh_json:json_object()) -> {'error', 'no_resources'} | bridge_resp().
 bridge_to_endpoints([], _, _, _) ->
     {error, no_resources};
 bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     ?LOG("found resources that handle the number...to the cloud!"),
     Q = create_queue(JObj),
-    CCVs = wh_json:set_value(<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)
-                             ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+
     {CIDNum, CIDName} = case IsEmergency of
                             'true' ->
                                 ?LOG("outbound call is using an emergency route, attempting to set CID accordingly"),
@@ -92,6 +97,18 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                                  wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
                         end,
     ?LOG("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
+
+    FromURI = case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
+                  {undefined, _} -> undefined;
+                  {_, undefined} -> undefined;
+                  {FromNumber, FromRealm} -> <<"sip:", FromNumber/binary, "@", FromRealm/binary>>
+              end,
+    ?LOG("setting from-uri to ~s", [FromURI]),
+
+    CCVs = wh_json:set_values([{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}
+                               ,{<<"From-URI">>, FromURI}
+                              ], wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
@@ -120,7 +137,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 %% macro).  This function will block until that callflow is complete.
 %% @end
 %%--------------------------------------------------------------------
--spec execute_local_extension/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> ok.
+-spec execute_local_extension/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> execute_ext_resp().
 execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
     ?LOG("number belongs to another account, executing callflow from that account"),
     Q = create_queue(JObj),
@@ -153,8 +170,7 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
 %% response then set the CCVs accordingly.
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_execute_extension/0 :: () -> {ok, wh_json:json_object()}
-                                                | {fail, wh_json:json_object()}.
+-spec wait_for_execute_extension/0 :: () -> execute_ext_resp().
 wait_for_execute_extension() ->
     receive
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
@@ -186,10 +202,8 @@ wait_for_execute_extension() ->
 %% response then set the CCVs accordingly.
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_bridge/1 :: ('infinity' | pos_integer()) -> {'error', wh_json:json_object()} |
-                                                           {'error', 'timeout'} |
-                                                           {'ok', wh_json:json_object()} |
-                                                           {'fail', wh_json:json_object()}.
+
+-spec wait_for_bridge/1 :: ('infinity' | pos_integer()) -> bridge_resp().
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
@@ -288,8 +302,7 @@ get_event_type(JObj) ->
 %% component of a Whistle dialplan bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec find_endpoints/3 :: (ne_binary, [] | [ne_binary(),...], endpoints()) -> {proplist(), boolean()}.
-
+-spec find_endpoints/3 :: (ne_binary(), [] | [ne_binary(),...], endpoints()) -> {proplist(), boolean()}.
 find_endpoints(Number, Flags, Resources) ->
     Endpoints = case Flags of
                     'undefined' -> 
@@ -350,11 +363,12 @@ build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], Delay, Acc0) ->
 %%--------------------------------------------------------------------
 -spec build_endpoint/3 :: (ne_binary(), #gateway{}, non_neg_integer()) -> wh_json:json_object().
 build_endpoint(Number, Gateway, _Delay) ->
-    Route = get_dialstring(Gateway, Number),
+    Route = stepswitch_util:get_dialstring(Gateway, Number),
     ?LOG("found resource ~s (~s)", [Gateway#gateway.resource_id, Route]),
+
     CCVs = [{<<"Resource-ID">>, Gateway#gateway.resource_id}],
     Prop = [{<<"Invite-Format">>, <<"route">>}
-            ,{<<"Route">>, get_dialstring(Gateway, Number)}
+            ,{<<"Route">>, stepswitch_util:get_dialstring(Gateway, Number)}
             ,{<<"Callee-ID-Name">>, wh_util:to_binary(Number)}
             ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
             ,{<<"Caller-ID-Type">>, Gateway#gateway.caller_id_type}
@@ -371,30 +385,11 @@ build_endpoint(Number, Gateway, _Delay) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Build the sip url of a resource gateway
-%% @end
-%%--------------------------------------------------------------------
--spec get_dialstring/2 :: (#gateway{}, ne_binary()) -> ne_binary().
-get_dialstring(#gateway{route = undefined, prefix=Prefix, suffix=Suffix, server=Server}, Number) ->
-    list_to_binary(["sip:"
-                    ,wh_util:to_binary(Prefix)
-                    ,Number
-                    ,wh_util:to_binary(Suffix)
-                    ,"@"
-                    ,wh_util:to_binary(Server)
-                   ]);
-get_dialstring(#gateway{route=Route}, _) ->
-    Route.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% given the result of either wait_for_bridge or wait_for_execute_extension
 %% create and send a Whistle offnet resource response
 %% @end
 %%--------------------------------------------------------------------
--spec response/2 :: ({ok, atom() | wh_json:json_object()} | {fail, wh_json:json_object()} 
-                    |{error, atom() | wh_json:json_object()}, wh_json:json_object()) -> ok.
+-spec response/2 :: (bridge_resp() | execute_ext_resp(), wh_json:json_object()) -> proplist().
 response({ok, _}, JObj) ->
     ?LOG_END("outbound request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
@@ -468,14 +463,14 @@ response({error, Error}, JObj) ->
 %% callerid.
 %% @end
 %%--------------------------------------------------------------------
--spec correct_shortdial/2 :: (ne_binary(), ne_binary()) -> ne_binary() | fail.
+-spec correct_shortdial/2 :: (ne_binary(), ne_binary()) -> ne_binary() | 'fail'.
 correct_shortdial(Number, CIDNum) ->
     MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length > 0 ->
             wnm_util:to_e164(<<(binary:part(CIDNum, 0, Length))/binary, Number/binary>>);
         _ ->
-            undefined
+            fail
     end.
 %%--------------------------------------------------------------------
 %% @private
@@ -484,13 +479,9 @@ correct_shortdial(Number, CIDNum) ->
 %% get the name of the account for the callee-id
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_name/2 :: (ne_binary() | integer(), ne_binary()) -> ne_binary().
-get_account_name(Number, AccountId) when not is_binary(Number) ->
-    get_account_name(wh_util:to_binary(Number), AccountId);
-get_account_name(Number, AccountId) ->
+-spec get_account_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+get_account_name(Number, AccountId) when is_binary(Number) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
-        {ok, JObj} ->
-            wh_json:get_ne_value(<<"name">>, JObj, Number);
-        _ ->
-            Number
+        {ok, JObj} -> wh_json:get_ne_value(<<"name">>, JObj, Number);
+        _ -> Number
     end.

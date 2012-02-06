@@ -104,13 +104,13 @@ lookup_auth_user(Name, Realm) ->
     case wh_cache:fetch_local(Cache, CacheKey) of
         {'error', not_found} ->
             case get_auth_user(Name, Realm) of
-                {'ok', UserJObj} ->
+                {'ok', UserJObj}=OK ->
                     case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], UserJObj)) of
                         true -> 
                             CacheTTL = whapps_config:get_integer(?CONFIG_CAT, <<"credentials_cache_ttl">>, 300),
                             ?LOG("storing ~s@~s in cache", [Name, Realm]),
                             wh_cache:store_local(Cache, CacheKey, UserJObj, CacheTTL),
-                            {'ok', UserJObj};
+                            OK;
                         false -> 
                             {error, not_found}
                     end;
@@ -121,7 +121,7 @@ lookup_auth_user(Name, Realm) ->
             case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], UserJObj)) of
                 true -> 
                     ?LOG("pulling auth user from cache"),
-                    OK;      
+                    OK;
                 false -> 
                     {error, not_found}
             end

@@ -1,5 +1,7 @@
 -module(cf_util).
 
+-export([presence_probe/2]).
+-export([update_mwi/2, update_mwi/4]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
 -export([correct_media_path/2]).
 -export([call_info_to_string/1]).
@@ -8,14 +10,135 @@
 -export([get_sip_realm/2, get_sip_realm/3]).
 -include("callflow.hrl").
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec presence_probe/2 :: (wh_json:json_object(), proplist()) -> ok.
+presence_probe(JObj, _Props) ->
+    ToUser = wh_json:get_value(<<"To-User">>, JObj),
+    ToRealm = wh_json:get_value(<<"To-Realm">>, JObj),
+    FromUser = wh_json:get_value(<<"From-User">>, JObj),
+    FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
+    Subscription = wh_json:get_value(<<"Subscription">>, JObj),
+    ProbeRepliers = [fun presence_mwi_update/4
+                     ,fun presence_parking_slot/4
+                    ],
+    [Fun(Subscription, {FromUser, FromRealm}, {ToUser, ToRealm}, JObj) || Fun <- ProbeRepliers],
+    ok.
+
+-spec presence_mwi_update/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) -> ok.
+presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, _) ->     
+    case whapps_util:get_account_by_realm(FromRealm) of
+        {ok, AccountDb} ->
+            ViewOptions = [{<<"include_docs">>, true}
+                           ,{<<"key">>, FromUser}
+                          ],
+            case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
+                {ok, []} -> 
+                    ?LOG("sip credentials not in account db ~s", [AccountDb]),
+                    ok;
+                {ok, [Device]} -> 
+                    update_mwi(wh_json:get_value([<<"doc">>, <<"owner_id">>], Device), AccountDb);
+                {error, _R} -> 
+                    ?LOG("unable to lookup sip credentials for owner id: ~p", [_R]),
+                    ok
+            end;
+        _E ->
+            ?LOG("failed to find the account for realm ~s: ~p", [FromRealm, _E]),
+            ok
+    end;
+presence_mwi_update(_, _, _, _) ->
+    ok.
+
+-spec presence_parking_slot/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) -> ok.
+presence_parking_slot(_, _, _, _) ->
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec update_mwi/2 :: (undefined | ne_binary(), ne_binary()) -> ok.
+-spec update_mwi/4 :: (non_neg_integer() | ne_binary(), non_neg_integer() | ne_binary(), ne_binary(), ne_binary()) -> ok.
+
+update_mwi(undefined, _) ->
+    ok;
+update_mwi(OwnerId, AccountDb) ->
+    ViewOptions = [{<<"reduce">>, true}
+                   ,{<<"group">>, true}
+                   ,{<<"startkey">>, [OwnerId]}
+                   ,{<<"endkey">>, [OwnerId, "\ufff0"]}
+                  ],    
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/vm_count_by_owner">>, ViewOptions) of
+        {ok, MessageCounts} -> 
+            Props = [{wh_json:get_value([<<"key">>, 2], MessageCount), wh_json:get_value(<<"value">>, MessageCount)}
+                     || MessageCount <- MessageCounts
+                    ],
+            update_mwi(props:get_value(<<"new">>, Props, 0), props:get_value(<<"saved">>, Props, 0), OwnerId, AccountDb);
+        {error, _R} ->
+            ?LOG("unable to lookup vm counts by owner: ~p", [_R]),
+            ok
+    end.
+
+update_mwi(New, Saved, OwnerId, AccountDb) ->
+    AccountId = wh_util:format_account_id(AccountDb, raw),
+    ViewOptions = [{<<"key">>, [OwnerId, <<"device">>]}
+                   ,{<<"include_docs">>, true}
+                  ],    
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
+        {ok, Devices} -> 
+            ?LOG("updating MWI for owner ~s: (~b/~b) on ~b devices", [OwnerId, New, Saved, length(Devices)]),
+            CommonHeaders = [{<<"Messages-New">>, New}
+                             ,{<<"Messages-Saved">>, Saved}
+                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                            ],
+            lists:foreach(fun(Result) ->
+                                  Device = wh_json:get_value(<<"doc">>, Result, wh_json:new()),
+                                  User = wh_json:get_value([<<"sip">>, <<"username">>], Device),
+                                  Realm = cf_util:get_sip_realm(Device, AccountId),
+                                  Command = wh_json:from_list([{<<"Notify-User">>, User}
+                                                               ,{<<"Notify-Realm">>, Realm}
+                                                               | CommonHeaders
+                                                              ]),
+                                  catch (wapi_notifications:publish_mwi_update(Command))
+                          end, Devices),
+            ok;
+        {error, _R} ->
+            ?LOG("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
+            ok
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
 -spec alpha_to_dialpad/1 :: (ne_binary()) -> ne_binary().
 alpha_to_dialpad(Value) ->
     << <<(dialpad_digit(C))>> || <<C>> <= strip_nonalpha(wh_util:to_lower_binary(Value))>>.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
 -spec strip_nonalpha/1 :: (ne_binary()) -> ne_binary().
 strip_nonalpha(Value) ->
     re:replace(Value, <<"[^[:alpha:]]">>, <<>>, [{return,binary}, global]).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
 -spec dialpad_digit/1 :: (Char) -> 50..57 when
       Char :: 97..122.
 dialpad_digit(ABC) when ABC =:= $a orelse ABC =:= $b orelse ABC =:= $c -> $2;
