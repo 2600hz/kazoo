@@ -11,9 +11,17 @@
 
 %% API
 -export([start_link/4, relay_amqp/2]).
--export([callid/1, queue_name/1, control_queue_name/1]).
--export([continue/1, continue/2, branch/2, stop/1, transfer/1]).
--export([get_branch_keys/1, get_all_branch_keys/1, attempt/1, attempt/2]).
+-export([get_call_info/1]).
+-export([callid/1]).
+-export([queue_name/1]).
+-export([control_queue_name/1]).
+-export([continue/1, continue/2]).
+-export([branch/2]).
+-export([stop/1]).
+-export([transfer/1]).
+-export([control_usurped/1]).
+-export([get_branch_keys/1, get_all_branch_keys/1]).
+-export([attempt/1, attempt/2]).
 -export([callid_update/3]).
 
 %% gen_server callbacks
@@ -62,6 +70,10 @@ start_link(Flow, ControlQ, CallId, Call) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Flow, ControlQ, CallId, Call]).
 
+-spec get_call_info/1 :: (pid()) -> {ok, #cf_call{}}.
+get_call_info(Srv) ->
+    gen_server:call(Srv, {call_info}, 500).
+    
 -spec continue/1 :: (#cf_call{} | pid()) -> 'ok'.
 -spec continue/2 :: (ne_binary(), #cf_call{} | pid()) -> 'ok'.
 continue(Srv) ->
@@ -90,6 +102,12 @@ transfer(#cf_call{cf_pid=Srv}) ->
 transfer(Srv) ->
     gen_server:cast(Srv, {transfer}).
 
+-spec control_usurped/1 :: (#cf_call{} | pid()) -> 'ok'.
+control_usurped(#cf_call{cf_pid=Srv}) ->
+    control_usurped(Srv);
+control_usurped(Srv) ->
+    gen_server:cast(Srv, {control_usurped}).
+
 -spec callid_update/3 :: (ne_binary(), ne_binary(), #cf_call{} | pid()) -> 'ok'.
 callid_update(CallId, CtrlQ, #cf_call{cf_pid=Srv}) ->
     callid_update(CallId, CtrlQ, Srv);
@@ -101,7 +119,7 @@ callid_update(CallId, CtrlQ, Srv) ->
 callid(#cf_call{cf_pid=Srv}) ->
     callid(Srv);
 callid(Srv) ->
-    CallId = gen_server:call(Srv, {callid}),
+    CallId = gen_server:call(Srv, {callid}, 500),
     put(callid, CallId),
     CallId.
 
@@ -194,6 +212,8 @@ init([Flow, ControlQ, CallId, Call]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({call_info}, _From, #state{call=Call}=State) ->
+    {reply, {ok, Call}, State};
 handle_call({callid}, _From, #state{call_id=CallId}=State) ->
     {reply, CallId, State};
 handle_call({control_queue_name}, _From, #state{ctrl_q=CtrlQ}=State) ->
@@ -263,6 +283,8 @@ handle_cast({stop}, State) ->
     {stop, normal, State};
 handle_cast({transfer}, State) ->
     {stop, {shutdown, transfer}, State};
+handle_cast({control_usurped}, State) ->
+    {stop, {shutdown, control_usurped}, State};
 handle_cast({branch, NewFlow}, State) ->
     ?LOG("callflow has been branched"),
     {noreply, launch_cf_module(State#state{flow=NewFlow})};
@@ -363,6 +385,17 @@ handle_event(JObj, #state{cf_module_pid=Pid, call_id=CallId}) ->
         {{<<"call_event">>, <<"control_transfer">>}, _} ->
             transfer(self()),
             ignore;
+        {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
+            Srv = self(),
+            spawn(fun() ->
+                          put(callid, CallId),
+                          Q = queue_name(Srv),
+                          case wh_json:get_value(<<"Controller-Queue">>, JObj) of
+                              Q -> ok;
+                              _Else -> control_usurped(Srv)
+                          end
+                  end),
+            ignore;
         {{<<"error">>, _}, _} ->
             {reply, [{cf_module_pid, Pid}]};
         {_, CallId} ->
@@ -390,6 +423,10 @@ terminate({shutdown, transfer}, #state{sanity_timer=TRef}) ->
 terminate({shutdown, insane}, #state{sanity_timer=TRef}) ->
     _ = timer:cancel(TRef),
     ?LOG_END("call id is not longer present on the media gateways, terminating callflow execution"),
+    ok;
+terminate({shutdown, control_usurped}, #state{sanity_timer=TRef}) ->
+    _ = timer:cancel(TRef),
+    ?LOG_END("the call has been usurped by an external process"),
     ok;
 terminate(_Reason, #state{sanity_timer=TRef}=State) ->
     _ = timer:cancel(TRef),

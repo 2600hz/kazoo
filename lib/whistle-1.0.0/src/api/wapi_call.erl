@@ -22,6 +22,7 @@
 -export([callid_update/1, callid_update_v/1]).
 -export([control_transfer/1, control_transfer_v/1]).
 -export([controller_queue/1, controller_queue_v/1]).
+-export([usurp_control/1, usurp_control_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
 
@@ -36,6 +37,7 @@
 -export([publish_callid_update/2, publish_callid_update/3]).
 -export([publish_control_transfer/2, publish_control_transfer/3]).
 -export([publish_controller_queue/2, publish_controller_queue/3]).
+-export([publish_usurp_control/2, publish_usurp_control/3]).
 
 -export([publish_channel_query_req/2, publish_channel_query_req/3]).
 -export([publish_channel_query_resp/2, publish_channel_query_resp/3]).
@@ -151,6 +153,14 @@
                                        ,{<<"Event-Name">>, <<"control_transfer">>}
                                  ]).
 -define(CALL_CONTROL_TRANSFER_TYPES, []).
+
+%% Call Usurp Control
+-define(CALL_USURP_CONTROL_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>, <<"Controller-Queue">>]).
+-define(OPTIONAL_CALL_USURP_CONTROL_HEADERS, [<<"Reason">>]).
+-define(CALL_USURP_CONTROL_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                    ,{<<"Event-Name">>, <<"usurp_control">>}
+                                   ]).
+-define(CALL_USURP_CONTROL_TYPES, []).
 
 %% Controller Queue Update
 -define(CONTROLLER_QUEUE_HEADERS, [<<"Call-ID">>, <<"Controller-Queue">>]).
@@ -402,6 +412,26 @@ control_transfer_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec usurp_control/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+usurp_control(Prop) when is_list(Prop) ->
+    case usurp_control_v(Prop) of
+        true -> wh_api:build_message(Prop, ?CALL_USURP_CONTROL_HEADERS, ?OPTIONAL_CALL_USURP_CONTROL_HEADERS);
+        false -> {error, "Proplist failed validation for usurp_control"}
+    end;
+usurp_control(JObj) ->
+    usurp_control(wh_json:to_proplist(JObj)).
+
+-spec usurp_control_v/1 :: (api_terms()) -> boolean().
+usurp_control_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CALL_USURP_CONTROL_HEADERS, ?CALL_USURP_CONTROL_VALUES, ?CALL_USURP_CONTROL_TYPES);
+usurp_control_v(JObj) ->
+    usurp_control_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Format a call id update from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
 -spec controller_queue/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 controller_queue(Prop) when is_list(Prop) ->
     case controller_queue_v(Prop) of
@@ -633,6 +663,14 @@ publish_controller_queue(TargetQ, JObj) ->
 publish_controller_queue(TargetQ, JObj, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CONTROLLER_QUEUE_VALUES, fun ?MODULE:controller_queue/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+
+-spec publish_usurp_control/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_usurp_control/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_usurp_control(CallID, JObj) ->
+    publish_usurp_control(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_usurp_control(CallID, JObj, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CALL_USURP_CONTROL_VALUES, fun ?MODULE:usurp_control/1),
+    amqp_util:callevt_publish(CallID, Payload, event, ContentType).
 
 -spec publish_rate_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_rate_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
