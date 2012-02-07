@@ -5,6 +5,7 @@
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
 -export([correct_media_path/2]).
 -export([call_info_to_string/1]).
+-export([call_to_proplist/1]).
 -export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
 -export([get_sip_realm/2, get_sip_realm/3]).
@@ -214,6 +215,11 @@ call_info_to_string(Call) ->
             ,Call#cf_call.authorizing_id
            ],
     io_lib:format(lists:flatten(Format), Args).
+
+-spec call_to_proplist/1 :: (#cf_call{}) -> proplist().
+call_to_proplist(#cf_call{} = Call) ->
+    lists:zip(record_info(fields, cf_call), tl(tuple_to_list(Call))).
+
 
 %%-----------------------------------------------------------------------------
 %% @private
