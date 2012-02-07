@@ -46,12 +46,21 @@ migrate() ->
                    ,fun(L) -> [<<"cb_templates">> | lists:delete(<<"cb_templates">>, L)] end
                    ,fun(L) -> [<<"cb_onboard">> | lists:delete(<<"cb_onboard">>, L)] end
                    ,fun(L) -> [<<"cb_connectivity">> | lists:delete(<<"cb_ts_accounts">>, L)] end
+                   ,fun(L) -> [<<"cb_provisioner_templates">> | lists:delete(<<"cb_provisioner_templates">>, L)] end
                   ],
     StartModules = whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, []),
     whapps_config:set_default(<<"crossbar">>
                                   ,<<"autoload_modules">>
                                   ,lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
+    WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
+                    ],
+    StartWhapps = whapps_config:get(<<"whapps_controller">>, <<"whapps">>, []),
+    whapps_config:set_default(<<"whapps_controller">>
+                                  ,<<"whapps">>
+                                  ,lists:foldr(fun(F, L) -> F(L) end, StartWhapps, WhappsUpdates)),
     whapps_controller:restart_app(crossbar),
+    whapps_controller:restart_app(sysconf),
+    whapps_controller:restart_app(notify),
     ok.
 
 %%--------------------------------------------------------------------
@@ -195,7 +204,11 @@ refresh(Account, Views) ->
 %%--------------------------------------------------------------------
 -spec cleanup_aggregated_account/1 :: (wh_json:json_object()) -> ok.
 cleanup_aggregated_account(Account) ->
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account),
+    Default = case wh_json:get_value(<<"pvt_account_id">>, Account) of
+                  undefined -> undefined;
+                  Else -> wh_util:format_account_id(Else, encoded)
+              end,
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account, Default),
     case AccountDb =/= undefined andalso (couch_mgr:db_exists(AccountDb) =/= true) of
         true ->
             ?LOG("removing aggregated account for missing db ~s", [AccountDb]),
@@ -213,7 +226,11 @@ cleanup_aggregated_account(Account) ->
 %%--------------------------------------------------------------------
 -spec cleanup_aggregated_device/1 :: (wh_json:json_object()) -> ok.
 cleanup_aggregated_device(Device) ->
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Device),
+    Default = case wh_json:get_value(<<"pvt_account_id">>, Device) of
+                  undefined -> undefined;
+                  Else -> wh_util:format_account_id(Else, encoded)
+              end,
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Device, Default),
     case AccountDb =/= undefined andalso (couch_mgr:db_exists(AccountDb) =/= true) of
         true ->
             ?LOG("removing aggregated device for missing db ~s", [AccountDb]),

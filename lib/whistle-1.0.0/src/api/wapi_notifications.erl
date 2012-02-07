@@ -12,7 +12,9 @@
 
 -export([voicemail/1, voicemail_v/1]).
 -export([mwi_update/1, mwi_update_v/1]).
+-export([register/1, register_v/1]).
 -export([deregister/1, deregister_v/1]).
+-export([presence_probe/1, presence_probe_v/1]).
 -export([pwd_recovery/1, pwd_recovery_v/1]).
 -export([new_account/1, new_account_v/1]).
 -export([port_request/1, port_request_v/1]).
@@ -21,7 +23,9 @@
 
 -export([publish_voicemail/1, publish_voicemail/2]).
 -export([publish_mwi_update/1, publish_mwi_update/2]).
+-export([publish_register/1, publish_register/2]).
 -export([publish_deregister/1, publish_deregister/2]).
+-export([publish_presence_probe/1, publish_presence_probe/2]).
 -export([publish_pwd_recovery/1, publish_pwd_recovery/2]).
 -export([publish_new_account/1, publish_new_account/2]).
 -export([publish_port_request/1, publish_port_request/2]).
@@ -30,10 +34,13 @@
 
 -include("../wh_api.hrl").
 
--define(NOTIFY_MWI_UPDATE, <<"notifications.voicemail.update">>).
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).
+-define(NOTIFY_MWI_UPDATE, <<"notifications.sip.mwi_update">>).
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
-%% -define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
+-define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
+-define(NOTIFY_PRESENCE_PROBE, <<"notifications.presence.probe">>).
+-define(NOTIFY_PRESENCE_IN, <<"notifications.presence.in">>).
+-define(NOTIFY_PRESENCE_OUT, <<"notifications.presence.out">>).
 -define(NOTIFY_PWD_RECOVERY, <<"notifications.password.recovery">>).
 -define(NOTIFY_NEW_ACCOUNT, <<"notifications.account.new">>).
 %% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
@@ -44,7 +51,7 @@
 %% Notify New Voicemail
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>, <<"To-User">>, <<"To-Realm">>
                                     ,<<"Account-DB">>, <<"Voicemail-Box">>, <<"Voicemail-Name">>, <<"Voicemail-Timestamp">>]).
--define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Call-ID">>]).
+-define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Voicemail-Length">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Call-ID">>]).
 -define(VOICEMAIL_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                ,{<<"Event-Name">>, <<"new_voicemail">>}
                               ]).
@@ -62,6 +69,17 @@
                         ,{<<"Messages-Urgent-Saved">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
                        ]).
 
+%% Notify Presence_Probe
+-define(PRESENCE_PROBE_HEADERS, [<<"From">>, <<"To">>, <<"Node">>]).
+-define(OPTIONAL_PRESENCE_PROBE_HEADERS, [<<"From-User">>, <<"From-Realm">>, <<"To-User">>, <<"To-Realm">>
+                                              ,<<"Expires">>, <<"Subscription-Call-ID">>, <<"Subscription-Type">>
+                                              ,<<"Subscription">>
+                                         ]).
+-define(PRESENCE_PROBE_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                            ,{<<"Event-Name">>, <<"presence_probe">>}
+                           ]).
+-define(PRESENCE_PROBE_TYPES, []).
+
 %% Notify Deregister
 -define(DEREGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
 -define(OPTIONAL_DEREGISTER_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
@@ -74,6 +92,19 @@
                             ,{<<"Event-Name">>, <<"deregister">>}
                            ]).
 -define(DEREGISTER_TYPES, []).
+
+%% Notify Register
+-define(REGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
+-define(OPTIONAL_REGISTER_HEADERS, [<<"Status">>, <<"User-Agent">>, <<"Call-ID">>, <<"Profile-Name">>, <<"Presence-Hosts">>
+                                          ,<<"From-User">>, <<"From-Host">>, <<"FreeSWITCH-Hostname">>, <<"RPid">>
+                                          ,<<"To-User">>, <<"To-Host">>, <<"Network-IP">>, <<"Network-Port">>
+                                          ,<<"Event-Timestamp">>, <<"Contact">>, <<"Expires">>, <<"Account-DB">>
+                                          ,<<"Authorizing-ID">>, <<"Suppress-Unregister-Notify">>
+                                     ]).
+-define(REGISTER_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                            ,{<<"Event-Name">>, <<"register">>}
+                           ]).
+-define(REGISTER_TYPES, []).
 
 %% Notify Password Recovery
 -define(PWD_RECOVERY_HEADERS, [<<"Email">>, <<"Password">>, <<"Account-ID">>]).
@@ -155,6 +186,25 @@ mwi_update_v(JObj) ->
     mwi_update_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Register (unregister is a key word) - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+register(Prop) when is_list(Prop) ->
+    case register_v(Prop) of
+        true -> wh_api:build_message(Prop, ?REGISTER_HEADERS, ?OPTIONAL_REGISTER_HEADERS);
+        false -> {error, "Proplist failed validation for register"}
+    end;
+register(JObj) ->
+    register(wh_json:to_proplist(JObj)).
+
+-spec register_v/1 :: (api_terms()) -> boolean().
+register_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?REGISTER_HEADERS, ?REGISTER_VALUES, ?REGISTER_TYPES);
+register_v(JObj) ->
+    register_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Deregister (unregister is a key word) - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -172,6 +222,25 @@ deregister_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?DEREGISTER_HEADERS, ?DEREGISTER_VALUES, ?DEREGISTER_TYPES);
 deregister_v(JObj) ->
     deregister_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Presence_Probe (unregister is a key word) - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+presence_probe(Prop) when is_list(Prop) ->
+    case presence_probe_v(Prop) of
+        true -> wh_api:build_message(Prop, ?PRESENCE_PROBE_HEADERS, ?OPTIONAL_PRESENCE_PROBE_HEADERS);
+        false -> {error, "Proplist failed validation for presence_probe"}
+    end;
+presence_probe(JObj) ->
+    presence_probe(wh_json:to_proplist(JObj)).
+
+-spec presence_probe_v/1 :: (api_terms()) -> boolean().
+presence_probe_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PRESENCE_PROBE_HEADERS, ?PRESENCE_PROBE_VALUES, ?PRESENCE_PROBE_TYPES);
+presence_probe_v(JObj) ->
+    presence_probe_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Pwd_Recovery (unregister is a key word) - see wiki
@@ -281,8 +350,20 @@ bind_to_q(Q, [new_voicemail|T]) ->
 bind_to_q(Q, [mwi_update|T]) ->
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_MWI_UPDATE),
     bind_to_q(Q, T);
+bind_to_q(Q, [register|T]) ->
+    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_REGISTER),
+    bind_to_q(Q, T);
 bind_to_q(Q, [deregister|T]) ->
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DEREGISTER),
+    bind_to_q(Q, T);
+bind_to_q(Q, [presence_probe|T]) ->
+    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_PROBE),
+    bind_to_q(Q, T);
+bind_to_q(Q, [presence_in|T]) ->
+    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_IN),
+    bind_to_q(Q, T);
+bind_to_q(Q, [presence_out|T]) ->
+    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_OUT),
     bind_to_q(Q, T);
 bind_to_q(Q, [pwd_recovery|T]) ->
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PWD_RECOVERY),
@@ -319,8 +400,20 @@ unbind_q_from(Q, [new_voicemail|T]) ->
 unbind_q_from(Q, [mwi_update|T]) ->
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_MWI_UPDATE),
     unbind_q_from(Q, T);
+unbind_q_from(Q, [register|T]) ->
+    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_REGISTER),
+    unbind_q_from(Q, T);
 unbind_q_from(Q, [deregister|T]) ->
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_DEREGISTER),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, [presence_probe|T]) ->
+    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_PROBE),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, [presence_in|T]) ->
+    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_IN),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, [presence_out|T]) ->
+    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_OUT),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [pwd_recovery|T]) ->
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PWD_RECOVERY),
@@ -356,6 +449,14 @@ publish_mwi_update(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?MWI_REQ_VALUES, fun ?MODULE:mwi_update/1),
     amqp_util:notifications_publish(?NOTIFY_MWI_UPDATE, Payload, ContentType).
 
+-spec publish_register/1 :: (api_terms()) -> 'ok'.
+-spec publish_register/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_register(JObj) ->
+    publish_register(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_register(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?REGISTER_VALUES, fun ?MODULE:register/1),
+    amqp_util:notifications_publish(?NOTIFY_REGISTER, Payload, ContentType).
+
 -spec publish_deregister/1 :: (api_terms()) -> 'ok'.
 -spec publish_deregister/2 :: (api_terms(), ne_binary()) -> 'ok'.
 publish_deregister(JObj) ->
@@ -363,6 +464,14 @@ publish_deregister(JObj) ->
 publish_deregister(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?DEREGISTER_VALUES, fun ?MODULE:deregister/1),
     amqp_util:notifications_publish(?NOTIFY_DEREGISTER, Payload, ContentType).
+
+-spec publish_presence_probe/1 :: (api_terms()) -> 'ok'.
+-spec publish_presence_probe/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_presence_probe(JObj) ->
+    publish_presence_probe(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_presence_probe(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?PRESENCE_PROBE_VALUES, fun ?MODULE:presence_probe/1),
+    amqp_util:notifications_publish(?NOTIFY_PRESENCE_PROBE, Payload, ContentType).
 
 -spec publish_pwd_recovery/1 :: (api_terms()) -> 'ok'.
 -spec publish_pwd_recovery/2 :: (api_terms(), ne_binary()) -> 'ok'.

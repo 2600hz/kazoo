@@ -39,7 +39,7 @@ start_app(App) ->
 
 -spec restart_app/1 :: (atom()) -> {'ok', pid() | 'undefined'} | {'ok', pid() | 'undefined', term()} | {'error', term()}.
 restart_app(App) ->
-    ok = supervisor:terminate_child(?MODULE, App),
+    supervisor:terminate_child(?MODULE, App),
     supervisor:restart_child(?MODULE, App).
 
 stop_app(App) ->

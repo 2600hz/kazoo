@@ -36,7 +36,10 @@ init(Opts) ->
 
 allowed_methods(RD, #cb_context{allowed_methods=Methods}=Context) ->
     ?TIMER_TICK("v1.allowed_methods begin"),
-    ReqId = couch_mgr:get_uuid(),
+    ReqId = case wrq:get_req_header("X-Request-ID", RD) of 
+                undefined -> couch_mgr:get_uuid();
+                Else -> Else
+            end,
     put(callid, ReqId),
     ?LOG_START("recieved new request ~s", [wrq:disp_path(RD)]),
     ?LOG("host: ~s", [wrq:get_req_header("Host", RD)]),

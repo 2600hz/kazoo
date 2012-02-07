@@ -40,10 +40,6 @@ reconcile(all) ->
 reconcile(AccountId) when not is_binary(AccountId) ->
     reconcile(wh_util:to_binary(AccountId));
 reconcile(AccountId) ->
-%%     Numbers = get_trunkstore_account_numbers(AccountId),
-%%     _ = reconcile_numbers(Numbers, wh_util:format_account_id(AccountId, raw)),
-%%     done;
-%% reconcile(AccountId, false) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     Numbers = get_callflow_account_numbers(AccountDb),
     Numbers1 = get_trunkstore_account_numbers(AccountId, AccountDb) ++ Numbers,

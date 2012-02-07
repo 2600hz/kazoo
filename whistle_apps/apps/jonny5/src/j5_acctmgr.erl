@@ -89,19 +89,21 @@ authz_trunk(Pid, JObj, CallDir) when is_pid(Pid) ->
     {Bool, [{<<"Server-ID">>, Queue} | Prop]};
 
 authz_trunk(AcctID, JObj, CallDir) ->
+    ?LOG("fetch acct handler"),
     case j5_util:fetch_account_handler(AcctID) of
         {ok, AcctPID} ->
+            ?LOG("got acct pid"),
             case erlang:is_process_alive(AcctPID) of
                 true ->
-                    ?LOG_SYS("Account(~s) AuthZ proc ~p found", [AcctID, AcctPID]),
+                    ?LOG_SYS("account(~s) authz proc ~p found", [AcctID, AcctPID]),
                     j5_acctmgr:authz_trunk(AcctPID, JObj, CallDir);
                 false ->
-                    ?LOG_SYS("Account(~s) AuthZ proc ~p not alive", [AcctID, AcctPID]),
+                    ?LOG_SYS("account(~s) authz proc ~p not alive", [AcctID, AcctPID]),
                     {ok, AcctPID} = jonny5_acct_sup:start_proc(AcctID),
                     j5_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
             end;
         {error, not_found} ->
-            ?LOG_SYS("No AuthZ proc for account ~s, starting", [AcctID]),
+            ?LOG_SYS("no authz proc for account ~s, starting", [AcctID]),
             try
                 {ok, AcctPID} = jonny5_acct_sup:start_proc(AcctID),
                 j5_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
@@ -566,7 +568,10 @@ try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId, trunks_in_use=Dict, ledger
                                                    ]
                                       ,[?MODULE, ?LINE, CallID, AcctId, wapi_money:units_to_dollars(Pre)]),
 
-                    catch(wapi_notifications:publish_low_balance([{<<"Account-ID">>, AcctId}, {<<"Current-Balance">>, wapi_money:units_to_dollars(Pre)}])),
+                    catch(wapi_notifications:publish_low_balance([{<<"Account-ID">>, AcctId}
+                                                                  ,{<<"Current-Balance">>, wapi_money:units_to_dollars(Pre)}
+                                                                  | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)
+                                                                 ])),
 
                     ?LOG(CallID, "howlow (~p) > prepay (~p), noauthz this call!", [HowLow, Pre]),
                     {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State};
@@ -648,7 +653,7 @@ create_new_limits(AcctID, AcctDB) ->
     JObj = wh_json:from_list([{<<"pvt_account_db">>, AcctDB}
                               ,{<<"pvt_account_id">>, AcctID}
                               ,{<<"pvt_type">>, <<"sys_info">>}
-                              ,{<<"pvt_created">>< TStamp}
+                              ,{<<"pvt_created">>, TStamp}
                               ,{<<"pvt_modified">>, TStamp}
                               ,{<<"pvt_created_by">>, <<"jonny5">>}
                               ,{<<"account">>, Account}
