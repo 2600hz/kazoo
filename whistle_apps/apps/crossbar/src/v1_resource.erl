@@ -21,6 +21,23 @@
          ,valid_entity_length/2
          ,options/2
          ,content_types_provided/2
+         ,content_types_accepted/2
+         ,languages_provided/2
+         ,charsets_provided/2
+         ,encodings_provided/2
+         ,resource_exists/2
+         ,moved_temporarily/2
+         ,moved_permanently/2
+         ,previously_existed/2
+         ,allow_missing_post/2
+         ,post_is_create/2
+         ,create_path/2
+         ,process_post/2
+         ,delete_resource/2
+         ,is_conflict/2
+         ,to_json/2, to_binary/2
+         ,from_json/2, from_binary/2
+         ,generate_etag/2
         ]).
 
 -include("crossbar.hrl").
@@ -132,5 +149,228 @@ options(Req0, Context) ->
             {ok, Req1, Context}
     end.
 
-content_types_provided(Req0, Context0) ->
-    
+-type content_type_callbacks() :: [ {{ne_binary(), ne_binary(), proplist()}, atom()} | {ne_binary(), atom()},...] | [].
+-spec content_types_provided/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
+content_types_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+    ?LOG("run: content_types_provided"),
+    {Req1, Context1} = lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
+                                           Event = <<"v1_resource.content_types_provided.", Mod/binary>>,
+                                           Payload = {ReqAcc, ContextAcc, Params},
+                                           {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
+                                           {ReqAcc1, ContextAcc1}
+                                   end, {Req0, Context0}, Nouns),
+    CTP = lists:foldr(fun({Fun, L}, Acc) ->
+                              lists:foldr(fun({Type, SubType}, Acc1) ->
+                                                  [{{Type, SubType, []}, Fun} | Acc1];
+                                             (EncType, Acc1) ->
+                                                  [ {EncType, Fun} | Acc1 ]
+                                          end, Acc, L)
+                      end, [], Context1#cb_context.content_types_provided),
+
+    {CTP, Req1, Context1}.
+
+-spec content_types_accepted/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
+content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+    ?LOG("run: content_types_accepted"),
+    {Req1, Context1} = lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
+                                           Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
+                                           Payload = {ReqAcc, ContextAcc, Params},
+                                           {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
+                                           {ReqAcc1, ContextAcc1}
+                                   end, {Req0, Context0}, Nouns),
+    CTA = lists:foldr(fun({Fun, L}, Acc) ->
+                              lists:foldr(fun({Type, SubType}, Acc1) ->
+                                                  [{{Type, SubType, []}, Fun} | Acc1];
+                                             (EncType, Acc1) ->
+                                                  [ {EncType, Fun} | Acc1 ]
+                                          end, Acc, L)
+                      end, [], Context1#cb_context.content_types_accepted),
+
+    {CTA, Req1, Context1}.
+
+-spec languages_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
+languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+    ?LOG("run: languages_provided"),
+
+    {Req1, Context1} = 
+        lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
+                            Event = <<"v1_resource.languages_provided.", Mod/binary>>,
+                            Payload = {ReqAcc, ContextAcc, Params},
+                            {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
+                            {ReqAcc1, ContextAcc1}
+                    end, {Req0, Context0}, Nouns),
+    {Context1#cb_context.languages_provided, Req1, Context1}.
+
+-spec charsets_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
+charsets_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+    ?LOG("run: charsets_provided"),
+
+    {Req1, Context1} = 
+        lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
+                            Event = <<"v1_resource.charsets_provided.", Mod/binary>>,
+                            Payload = {ReqAcc, ContextAcc, Params},
+                            {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
+                            {ReqAcc1, ContextAcc1}
+                    end, {Req0, Context0}, Nouns),
+    {Context1#cb_context.charsets_provided, Req1, Context1}.
+
+-spec encodings_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
+encodings_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+    ?LOG("run: encodings_provided"),
+
+    {Req1, Context1} = 
+        lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
+                            Event = <<"v1_resource.encodings_provided.", Mod/binary>>,
+                            Payload = {ReqAcc, ContextAcc, Params},
+                            {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
+                            {ReqAcc1, ContextAcc1}
+                    end, {Req0, Context0}, Nouns),
+    {Context1#cb_context.encodings_provided, Req1, Context1}.
+
+-spec resource_exists/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+resource_exists(Req, #cb_context{req_nouns=[{<<"404">>,_}|_]}=Context) ->
+    ?LOG("failed to tokenize request, returning 404"),
+    {false, Req, Context};
+resource_exists(Req0, Context0) ->
+    ?LOG("run: resource_exists"),
+    case v1_util:does_resource_exist(Context0) of
+        true ->
+            ?LOG("requested resource exists, validating it"),
+            {Req1, Context1} = v1_util:validate(Req0, Context0),
+            case v1_util:succeeded(Context1) of
+                true ->
+                    ?LOG("requested resource validated, but is the request a PUT: ~s", [Context1#cb_context.req_verb]),
+                    {Context1#cb_context.req_verb =/= <<"put">>, Req1, Context1};
+                false ->
+                    ?LOG("failed to validate resource"),
+                    {false, Req1, Context1}
+            end;
+        false ->
+            ?LOG("requested resource does not exist"),
+            {false, Req0, Context0}
+    end.
+
+-spec moved_temporarily/2 :: (#http_req{}, #cb_context{}) -> {false, #http_req{}, #cb_context{}}.
+moved_temporarily(Req, Context) ->
+    ?LOG("run: moved_temporarily"),
+    {false, Req, Context}.
+
+-spec moved_permanently/2 :: (#http_req{}, #cb_context{}) -> {false, #http_req{}, #cb_context{}}.
+moved_permanently(Req, Context) ->
+    ?LOG("run: moved_permanently"),
+    {false, Req, Context}.
+
+-spec previously_existed/2 :: (#http_req{}, #cb_context{}) -> {false, #http_req{}, #cb_context{}}.
+previously_existed(Req, State) ->
+    ?LOG("run: previously_existed"),
+    {false, Req, State}.
+
+%% If we're tunneling PUT through POST, 
+%% we need to allow POST to create a non-existent resource
+%% AKA, 201 Created header set
+-spec allow_missing_post/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+allow_missing_post(Req0, #cb_context{req_verb = <<"put">>}=Context) ->
+    ?LOG("run: allow_missing_post when req_verb = put"),
+    {Method, Req1} = cowboy_http_req:method(Req0),
+    {Method =:= 'POST', Req1, Context};
+allow_missing_post(Req, Context) ->
+    ?LOG("run: allow_missing_post"),
+    {false, Req, Context}.
+
+-spec delete_resource/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+delete_resource(Req, Context) ->
+    ?LOG("run: delete_resource"),
+    v1_util:execute_request(Req, Context).
+
+%% If allow_missing_post returned true (cause it was a POST) and PUT has been tunnelled,
+%% POST is a create
+-spec post_is_create/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+post_is_create(Req, #cb_context{req_verb = <<"put">>}=Context) ->
+    ?LOG("run: post_is_create: true"),
+    {true, Req, Context};
+post_is_create(Req, Context) ->
+    ?LOG("run: post_is_create: false"),
+    {false, Req, Context}.
+
+%% whatever (for now)
+-spec create_path/2 :: (#http_req{}, #cb_context{}) -> {[], #http_req{}, #cb_context{}}.
+create_path(Req, #cb_context{resp_headers=RespHeaders}=Context) ->
+    ?LOG("run: create_path"),
+    %% Location header goes here, I believe
+
+    Path = props:get_value(<<"Location">>, RespHeaders, <<>>),
+
+    {crossbar_util:new_path(Req, Path), Req, Context}.
+
+-spec process_post/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+process_post(Req0, Context0) ->
+    ?LOG("run: process_post"),
+    case v1_util:execute_request(Req0, Context0) of
+        {true, Req1, Context1} ->
+            Event = <<"v1_resource.process_post">>,
+            _ = crossbar_bindings:map(Event, {Req1, Context1}),
+            v1_util:create_push_response(Req1, Context1);
+        Else ->
+            Else
+    end.
+
+-spec is_conflict/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+is_conflict(Req, #cb_context{resp_error_code=409}=Context) ->
+    ?LOG("run: is_conflict: true"),
+    {true, Req, Context};
+is_conflict(Req, Context) ->
+    ?LOG("run: is_conflict: false"),
+    {false, Req, Context}.
+
+-spec from_binary/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+from_binary(Req0, Context0) ->
+    ?LOG("run: from_binary"),
+    case v1_util:execute_request(Req0, Context0) of
+        {true, Req1, Context1} ->
+            Event = <<"v1_resource.from_binary">>,
+            _ = crossbar_bindings:map(Event, {Req1, Context1}),
+            v1_util:create_push_response(Req1, Context1);
+        Else ->
+            Else
+    end.
+
+-spec from_json/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+from_json(Req0, Context0) ->
+    ?LOG("run: from_json"),
+    case v1_util:execute_request(Req0, Context0) of
+        {true, Req1, Context1} ->
+            Event = <<"v1_resource.from_json">>,
+            _ = crossbar_bindings:map(Event, {Req1, Context1}),
+            v1_util:create_push_response(Req1, Context1);
+        Else ->
+            Else
+    end.
+
+-spec to_json/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+to_json(Req, Context) ->
+    Event = <<"v1_resource.to_json">>,
+    _ = crossbar_bindings:map(Event, {Req, Context}),
+    v1_util:create_pull_response(Req, Context).
+
+-spec to_binary/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
+    Event = <<"v1_resource.to_binary">>,
+    _ = crossbar_bindings:map(Event, {Req, Context}),
+    {RespData, v1_util:set_resp_headers(Req, Context), Context}.
+
+-spec generate_etag/2 :: (#http_req{}, #cb_context{}) -> {ne_binary(), #http_req{}, #cb_context{}}.
+generate_etag(Req0, Context0) ->
+    Event = <<"v1_resource.etag">>,
+    {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
+    case Context1#cb_context.resp_etag of
+        automatic ->
+            Tag = mochihex:to_hex(crypto:md5(v1_util:create_resp_content(Req1, Context1))),
+            ?LOG("using automatic etag ~s", [Tag]),
+            {Tag, Req1, Context1#cb_context{resp_etag=Tag}};
+        undefined ->
+            ?LOG("no etag provided, skipping", []),
+            {undefined, Req1, Context1#cb_context{resp_etag=undefined}};
+        Tag ->
+            ?LOG("using etag ~s", [Tag]),
+            {wh_util:to_binary(Tag), Req1, Context1#cb_context{resp_etag=Tag}}
+    end.

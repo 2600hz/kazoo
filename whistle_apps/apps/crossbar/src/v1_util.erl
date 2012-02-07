@@ -13,7 +13,12 @@
          ,allow_methods/4, parse_path_tokens/1
          ,get_req_data/2, get_http_verb/2
          ,is_authentic/2, is_permitted/2
-         ,is_known_content_type/2, content_types_provided/2
+         ,is_known_content_type/2
+         ,does_resource_exist/1, validate/2
+         ,succeeded/1
+         ,execute_request/2
+         ,create_push_response/2, set_resp_headers/2
+         ,create_resp_content/2, create_pull_response/2
         ]).
 
 -include("crossbar.hrl").
@@ -246,7 +251,7 @@ allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
             AllowedSet = lists:foldr(fun({true, Response}, Acc) ->
                                              Set = sets:from_list(Response),
                                              sets:intersection(Acc, Set)
-                                     end, Available, Succeeded),
+                                     end, sets:from_list(Available), Succeeded),
             maybe_add_post_method(ReqVerb, HttpVerb, sets:to_list(AllowedSet))
     end.
 
@@ -324,6 +329,230 @@ is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     ?LOG("is ~s acceptable: ~s", [CT, lists:member(CT, CTA)]),
     {lists:member(CT, CTA), Req1, Context1#cb_context{content_types_accepted=CTA}}.
 
--spec content_types_provided/2 :: (#http_req{}, #cb_context{}) -> {[{ne_binary(), ne_binary(), proplist()},...] | [], #http_req{}}.
-content_types_provided(Req0, Context0) ->
-    {[], Req0}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will use event bindings to determine if the target noun
+%% (the final module in the chain) accepts this verb parameter pair.
+%% @end
+%%--------------------------------------------------------------------
+-spec does_resource_exist/1 :: (#cb_context{}) -> boolean().
+does_resource_exist(#cb_context{req_nouns=[{Mod, Params}|_]}) ->
+    Event = <<"v1_resource.resource_exists.", Mod/binary>>,
+    Responses = crossbar_bindings:map(Event, Params),
+    crossbar_bindings:all(Responses) and true;
+does_resource_exist(_Context) ->
+    false.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function gives each noun a chance to determine if
+%% it is valid and returns the status, and any errors
+%% @end
+%%--------------------------------------------------------------------
+-spec validate/2 :: (#http_req{}, #cb_context{}) -> {#http_req{}, #cb_context{}}.
+validate(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+    {Req1, Context1} = lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
+                                           Event = <<"v1_resource.validate.", Mod/binary>>,
+                                           Payload = [ReqAcc, ContextAcc] ++ Params,
+                                          [ReqAcc1, ContextAcc1 | _] = crossbar_bindings:fold(Event, Payload),
+                                          {ReqAcc1, ContextAcc1}
+                                   end, {Req0, Context0}, Nouns),
+    case succeeded(Context1) of
+        true -> process_billing(Req1, Context1);
+        false -> {Req1, Context1}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will use event bindings to determine if the client is
+%% authorized for this request
+%% @end
+%%--------------------------------------------------------------------
+-spec process_billing/2 :: (#http_req{}, #cb_context{}) -> {#http_req{}, #cb_context{}}.
+process_billing(Req0, Context0)->
+    Event = <<"v1_resource.billing">>,
+    case crossbar_bindings:fold(Event, {Req0, Context0}) of
+        {Req1, Context1} -> {Req1, Context1};
+        _ -> {Req0, Context0}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function determines if the response is of type success
+%% @end
+%%--------------------------------------------------------------------
+-spec succeeded/1 :: (#cb_context{}) -> boolean().
+succeeded(#cb_context{resp_status=success}) -> true;
+succeeded(_) -> false.
+
+
+-spec execute_request/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+execute_request(Req0, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context0) ->
+    Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
+    Payload = [Req0, Context0 | Params],
+    case crossbar_bindings:fold(Event, Payload) of
+        [Req1, Context1 | _] ->
+            execute_request_results(Req1, Context1);
+        {error, _E} ->
+            ?LOG("error executing request: ~p", [_E]),
+            {false, Req0, Context0}
+    end;
+execute_request(Req, Context) ->
+    ?LOG("execute request false end"),
+    {false, Req, Context}.
+
+-spec execute_request_results/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+execute_request_results(Req0, #cb_context{resp_error_code=ReturnCode, req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
+    case succeeded(Context) of
+        false ->
+            {Content, Req1} = create_resp_content(Req0, Context),
+            {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
+
+            ?LOG("failed to execute request, returning ~p", [props:get_value(<<"error">>, Content)]),
+            {halt, cowboy_http_req:set_resp_header(<<"Content-Encoding">>, undefined, Req2), Context};
+        true ->
+            ?LOG("v1.execute_request verb=/=put end"),
+            ?LOG("executed ~s request for ~s: ~p", [Verb, Mod, Params]),
+            case ReturnCode of
+                202 ->
+                    ?LOG("returning 202"),
+                    {halt, Req0, Context};
+                _ ->
+                    {true, Req0, Context}
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will create the content for the response body
+%% @end
+%%--------------------------------------------------------------------
+-spec create_resp_content/2 :: (#http_req{}, #cb_context{}) -> {iolist(), #http_req{}}.
+create_resp_content(Req0, #cb_context{req_json=ReqJson, resp_data=RespData}=Context) ->
+    try wh_json:encode(wh_json:from_list(create_resp_envelope(Context))) of
+        JSON ->
+            case wh_json:get_value(<<"jsonp">>, ReqJson) of
+                undefined -> JSON;
+                JsonFun when is_binary(JsonFun) ->
+                    {[JsonFun, "(", JSON, ");"], Req0}
+            end
+    catch
+        _:_ ->
+            {RespData, Req0}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will create response expected for a request that
+%% is pushing data (like PUT)
+%% @end
+%%--------------------------------------------------------------------
+-spec create_push_response/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+create_push_response(Req0, Context) ->
+    Content = create_resp_content(Req0, Context),
+    Req1 = set_resp_headers(Req0, Context),
+    {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
+    {succeeded(Context), Req2, Context}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will create response expected for a request that
+%% is pulling data (like GET)
+%% @end
+%%--------------------------------------------------------------------
+-spec create_pull_response/2 :: (#http_req{}, #cb_context{}) -> {boolean() | 'halt', #http_req{}, #cb_context{}}.
+create_pull_response(Req0, Context) ->
+    Content = create_resp_content(Req0, Context),
+    Req1 = set_resp_headers(Req0, Context),
+    case succeeded(Context) of
+        false ->
+            {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
+            {halt, Req2, Context};
+        true ->
+            {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
+            {true, Req2, Context}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function extracts the reponse fields and puts them in a proplist
+%% @end
+%%--------------------------------------------------------------------
+-spec create_resp_envelope/1 :: (#cb_context{}) -> [{binary(), binary() | atom() | wh_json:json_object() | wh_json:json_objects()},...].
+create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=undefined}) ->
+    ?LOG("generating successful response"),
+    [{<<"auth_token">>, AuthToken}
+     ,{<<"status">>, success}
+     ,{<<"data">>, RespData}
+    ];
+create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=Etag}) ->
+    ?LOG("generating successful response"),
+    [{<<"auth_token">>, AuthToken}
+     ,{<<"status">>, success}
+     ,{<<"data">>, RespData}
+     ,{<<"revision">>, wh_util:to_binary(Etag)}
+    ];
+create_resp_envelope(#cb_context{auth_token=AuthToken, resp_data=RespData, resp_status=RespStatus
+                                 ,resp_error_code=undefined, resp_error_msg=RespErrorMsg}) ->
+    Msg = case RespErrorMsg of
+              undefined ->
+                  StatusBin = wh_util:to_binary(RespStatus),
+                  <<"Unspecified server error: ", StatusBin/binary>>;
+              Else ->
+                  wh_util:to_binary(Else)
+          end,
+    ?LOG("generating ~s 500 response, ~s", [RespStatus, Msg]),
+    [{<<"auth_token">>, AuthToken}
+     ,{<<"status">>, RespStatus}
+     ,{<<"message">>, Msg}
+     ,{<<"error">>, 500}
+     ,{<<"data">>, RespData}
+    ];
+create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespStatus, resp_error_code=RespErrorCode
+                                 ,resp_data=RespData, auth_token=AuthToken}) ->
+    Msg = case RespErrorMsg of
+              undefined ->
+                  StatusBin = wh_util:to_binary(RespStatus),
+                  ErrCodeBin = wh_util:to_binary(RespErrorCode),
+                  <<"Unspecified server error: ", StatusBin/binary, "(", ErrCodeBin/binary, ")">>;
+              Else ->
+                  wh_util:to_binary(Else)
+          end,
+    ?LOG("generating ~s ~b response, ~s", [RespStatus, wh_util:to_integer(RespErrorCode), Msg]),
+    [{<<"auth_token">>, AuthToken}
+     ,{<<"status">>, RespStatus}
+     ,{<<"message">>, Msg}
+     ,{<<"error">>, RespErrorCode}
+     ,{<<"data">>, RespData}
+    ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Iterate through #cb_context.resp_headers, setting the headers specified
+%% @end
+%%--------------------------------------------------------------------
+-spec set_resp_headers/2 :: (#wm_reqdata{}, #cb_context{}) -> #wm_reqdata{}.
+set_resp_headers(Req0, #cb_context{resp_headers=[]}) -> Req0;
+set_resp_headers(Req0, #cb_context{resp_headers=Headers}) ->
+    lists:foldl(fun({Header, Value}, ReqAcc) ->
+                        {H, V} = fix_header(Header, Value),
+                        ?LOG("response header: ~s: ~s", [H, V]),
+                        {ok, ReqAcc1} = cowboy_http_req:set_resp_header(H, V, ReqAcc),
+                        ReqAcc1
+                end, Req0, Headers).
+
+-spec fix_header/2 :: (nonempty_string() | ne_binary(), nonempty_string() | ne_binary()) -> {binary(), binary()}.
+fix_header(<<"Location">>, _) ->
+    {<<>>, <<>>};
+fix_header(H, V) ->
+    {wh_util:to_binary(H), wh_util:to_binary(V)}.
