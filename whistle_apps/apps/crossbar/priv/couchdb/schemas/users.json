@@ -10,10 +10,11 @@
          "default":true
       },
       "username":{
-         "description":"The GUI login username",
+         "description":"The GUI login username - alpha-numeric, dashes, at symbol, periods, plusses, and underscores allowed",
          "type":"string",
          "minLength":1,
-         "maxLength":256
+         "maxLength":256,
+         "pattern":"^([+@.\\\w_-]+)$"
       },
       "first_name":{
          "description":"The first name of the user",
