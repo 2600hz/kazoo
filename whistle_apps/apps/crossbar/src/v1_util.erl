@@ -61,11 +61,11 @@ is_cors_request(Req0) ->
                 {undefined, Req2} ->
                     case cowboy_http_req:header(<<"Access-Control-Request-Headers">>, Req2) of
                         {undefined, Req3} -> {false, Req3};
-                        {_, Req3} -> {true, Req3}
+                        {_, Req3} -> ?LOG("has access control request headers"), {true, Req3}
                     end;
-                {_, Req2} -> {true, Req2}
+                {_M, Req2} -> ?LOG("has access control request method: ~s", [_M]), {true, Req2}
             end;
-        {_, Req1} -> {true, Req1}
+        {_O, Req1} -> ?LOG("has origin: ~s", [_O]), {true, Req1}
     end.
 
 %%--------------------------------------------------------------------
@@ -96,20 +96,30 @@ get_cors_headers(#cb_context{allow_methods=Allowed}) ->
 
 -spec get_req_data/2 :: (#cb_context{}, #http_req{}) -> {#cb_context{}, #http_req{}}.
 get_req_data(Context, Req0) ->
-    {ContentType, Req1} = cowboy_http_req:header(<<"Content-Type">>, Req0),
+    {ContentType, Req1} = cowboy_http_req:header('Content-Type', Req0),
     {QS, Req2} = cowboy_http_req:qs_vals(Req1),
 
+    ?LOG("request has content type: ~s", [ContentType]),
+
     case ContentType of
-        "multipart/form-data" ++ _ ->
+        <<"multipart/form-data", _/binary>> ->
             extract_multipart(Context#cb_context{query_json=QS}, Req2);
-        "application/x-www-form-urlencoded" ++ _ ->
+        <<"application/x-www-form-urlencoded", _/binary>> ->
             extract_multipart(Context#cb_context{query_json=QS}, Req2);
-        "application/json" ++ _ ->
+        <<"application/json", _/binary>> ->
             {JSON, Req3_1} = get_json_body(Req2),
-            {Context#cb_context{req_json=JSON, query_json=QS}, Req3_1};
-        "application/x-json" ++ _ ->
+            {Context#cb_context{req_json=JSON
+                                ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
+                                ,query_json=QS
+                               }
+             ,Req3_1};
+        <<"application/x-json", _/binary>> ->
             {JSON, Req3_1} = get_json_body(Req2),
-            {Context#cb_context{req_json=JSON, query_json=QS}, Req3_1};
+            {Context#cb_context{req_json=JSON
+                                ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
+                                ,query_json=QS
+                               }
+             ,Req3_1};
         _CT ->
             ?LOG("unknown content-type: ~s", [_CT]),
             extract_file(Context#cb_context{query_json=QS}, Req2)
@@ -153,24 +163,31 @@ extract_file(Context, Req0) ->
                                            {{'malformed', ne_binary()}, #http_req{}}.
 get_json_body(Req0) ->
     case cowboy_http_req:body(Req0) of
-        {ok, <<>>, Req2} -> {wh_json:new(), Req2};
-        {ok, ReqBody, Req2} ->
+        {error, _E} ->
+            ?LOG("failed to fetch req body: ~s", [_E]),
+            {wh_json:new(), Req0};
+        {ok, <<>>, Req1} ->
+            ?LOG("no req body"),
+            {wh_json:new(), Req1};
+        {ok, ReqBody, Req1} ->
+            ?LOG("req body: ~s", [ReqBody]),
             try wh_json:decode(ReqBody) of
                 JObj ->
                     case is_valid_request_envelope(JObj) of
                         true ->
-                            {ok, JObj, Req2};
+                            ?LOG("request envelope is valid"),
+                            {JObj, Req1};
                         false ->
                             ?LOG("invalid request envelope"),
-                            {{malformed, <<"Invalid request envelope">>}, Req2}
+                            {{malformed, <<"Invalid request envelope">>}, Req1}
                     end
             catch
                 _:{badmatch, {comma,{decoder,_,S,_,_,_}}} ->
             ?LOG("failed to decode json: comma error around char ~s", [wh_util:to_list(S)]),
-                    {{malformed, list_to_binary(["Failed to decode: comma error around char ", wh_util:to_list(S)])}, Req2};
+                    {{malformed, list_to_binary(["Failed to decode: comma error around char ", wh_util:to_list(S)])}, Req1};
                 _:E ->
                     ?LOG("failed to decode json: ~p", [E]),
-                    {{malformed, <<"JSON failed to validate; check your commas and curlys">>}, Req2}
+                    {{malformed, <<"JSON failed to validate; check your commas and curlys">>}, Req1}
             end
     end.
 
@@ -186,14 +203,14 @@ is_valid_request_envelope(JSON) ->
 
 
 -spec get_http_verb/2 :: (http_method(), #cb_context{}) -> ne_binary().
-get_http_verb(Method, #cb_context{req_data=ReqData, query_json=ReqQs}) ->
-    case wh_json:get_value(<<"verb">>, ReqData) of
+get_http_verb(Method, #cb_context{req_json=ReqJObj, query_json=ReqQs}) ->
+    case wh_json:get_value(<<"verb">>, ReqJObj) of
         undefined ->
             case wh_json:get_value(<<"verb">>, ReqQs) of
-                undefined -> wh_util:to_lower_binary(Method);
-                Verb -> wh_util:to_lower_binary(Verb)
+                undefined -> ?LOG("sticking with method ~s", [Method]), wh_util:to_lower_binary(Method);
+                Verb -> ?LOG("found verb ~s on query string", [Verb]), wh_util:to_lower_binary(Verb)
             end;
-        Verb -> wh_util:to_lower_binary(Verb)
+        Verb -> ?LOG("found verb ~s in req data", [Verb]), wh_util:to_lower_binary(Verb)
     end.
 
 %%--------------------------------------------------------------------
@@ -276,12 +293,17 @@ maybe_add_post_method(_, _, Allowed) ->
 -spec is_authentic/2 :: (#http_req{}, #cb_context{}) -> {{'false', []} | 'true', #http_req{}, #cb_context{}}.
 is_authentic(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     %% all OPTIONS, they are harmless (I hope) and required for CORS preflight
+    ?LOG("is authentic: options"),
     {true, Req, Context};
 is_authentic(Req0, Context0) ->
     Event = <<"v1_resource.authenticate">>,
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {Req0, Context0})) of
-        [] -> {{false, []}, Req0, Context0};
-        [{true, {Req1, Context1}}|_] -> {true, Req1, Context1}
+        [] ->
+            ?LOG("failed to authenticate"),
+            {{false, <<>>}, Req0, Context0};
+        [{true, {Req1, Context1}}|_] ->
+            ?LOG("is authentic"),
+            {true, Req1, Context1}
     end.
 
 %%--------------------------------------------------------------------
@@ -308,6 +330,9 @@ is_permitted(Req0, Context0) ->
     end.
 
 -spec is_known_content_type/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+is_known_content_type(Req, #cb_context{req_verb = <<"options">>}=Context) ->
+    ?LOG("ignore content type for options"),
+    {true, Req, Context};
 is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     #cb_context{content_types_accepted=CTAs}=Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
                                                                            Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
@@ -316,19 +341,20 @@ is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                                                                            ContextAcc1
                                                                    end, Context0, Nouns),
     CTA = lists:foldr(fun({_Fun, L}, Acc) ->
-                              lists:foldl(fun(ContentType, Acc1) ->
-                                                  [ContentType | Acc1]
+                              lists:foldl(fun({Type, Sub}, Acc1) ->
+                                                  [{Type, Sub, []} | Acc1]
                                           end, Acc, L);
                          (L, Acc) ->
-                              lists:foldl(fun(ContentType, Acc1) ->
-                                                  [ContentType | Acc1]
+                              lists:foldl(fun({Type, Sub}, Acc1) ->
+                                                  [{Type, Sub, []} | Acc1]
                                           end, Acc, L)
                       end, [], CTAs),
 
-    {CT, Req1} = cowboy_http_req:header(<<"Content-Type">>, Req0, ?DEFAULT_CONTENT_TYPE),
-    ?LOG("is ~s acceptable: ~s", [CT, lists:member(CT, CTA)]),
-    {lists:member(CT, CTA), Req1, Context1#cb_context{content_types_accepted=CTA}}.
+    {CT, Req1} = cowboy_http_req:parse_header('Content-Type', Req0),
 
+    IsAcceptable = lists:member(CT, CTA),
+    ?LOG("is acceptable content type: ~s", [IsAcceptable]),
+    {IsAcceptable, Req1, Context1#cb_context{content_types_accepted=CTAs}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -356,7 +382,7 @@ does_resource_exist(_Context) ->
 validate(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     {Req1, Context1} = lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
                                            Event = <<"v1_resource.validate.", Mod/binary>>,
-                                           Payload = [ReqAcc, ContextAcc] ++ Params,
+                                           Payload = [ReqAcc, ContextAcc | Params],
                                           [ReqAcc1, ContextAcc1 | _] = crossbar_bindings:fold(Event, Payload),
                                           {ReqAcc1, ContextAcc1}
                                    end, {Req0, Context0}, Nouns),
@@ -376,8 +402,8 @@ validate(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
 process_billing(Req0, Context0)->
     Event = <<"v1_resource.billing">>,
     case crossbar_bindings:fold(Event, {Req0, Context0}) of
-        {Req1, Context1} -> {Req1, Context1};
-        _ -> {Req0, Context0}
+        {#http_req{}, #cb_context{}}=Resp -> ?LOG("billing returned"), Resp;
+        _E -> ?LOG("billing failed: ~p", [_E]), {Req0, Context0}
     end.
 
 %%--------------------------------------------------------------------
@@ -397,6 +423,7 @@ execute_request(Req0, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Co
     Payload = [Req0, Context0 | Params],
     case crossbar_bindings:fold(Event, Payload) of
         [Req1, Context1 | _] ->
+            ?LOG("excution finished"),
             execute_request_results(Req1, Context1);
         {error, _E} ->
             ?LOG("error executing request: ~p", [_E]),
@@ -410,13 +437,14 @@ execute_request(Req, Context) ->
 execute_request_results(Req0, #cb_context{resp_error_code=ReturnCode, req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
     case succeeded(Context) of
         false ->
+            ?LOG("execute did not succeed"),
             {Content, Req1} = create_resp_content(Req0, Context),
+            ?LOG("setting resp body: ~p", [Content]),
             {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
 
-            ?LOG("failed to execute request, returning ~p", [props:get_value(<<"error">>, Content)]),
-            {halt, cowboy_http_req:set_resp_header(<<"Content-Encoding">>, undefined, Req2), Context};
+            ?LOG("failed to execute request, returning ~s", [Content]),
+            {true, Req2, Context};
         true ->
-            ?LOG("v1.execute_request verb=/=put end"),
             ?LOG("executed ~s request for ~s: ~p", [Verb, Mod, Params]),
             case ReturnCode of
                 202 ->
@@ -433,18 +461,23 @@ execute_request_results(Req0, #cb_context{resp_error_code=ReturnCode, req_nouns=
 %% This function will create the content for the response body
 %% @end
 %%--------------------------------------------------------------------
--spec create_resp_content/2 :: (#http_req{}, #cb_context{}) -> {iolist(), #http_req{}}.
-create_resp_content(Req0, #cb_context{req_json=ReqJson, resp_data=RespData}=Context) ->
+-spec create_resp_content/2 :: (#http_req{}, #cb_context{}) -> {ne_binary(), #http_req{}}.
+create_resp_content(Req0, #cb_context{req_json=ReqJson}=Context) ->
     try wh_json:encode(wh_json:from_list(create_resp_envelope(Context))) of
         JSON ->
             case wh_json:get_value(<<"jsonp">>, ReqJson) of
-                undefined -> JSON;
+                undefined ->
+                    ?LOG("resp body"),
+                    _ = [?LOG("line: ~p", [L]) || L <- JSON],
+                    {[JSON, <<"\r\n">>], Req0};
                 JsonFun when is_binary(JsonFun) ->
-                    {[JsonFun, "(", JSON, ");"], Req0}
+                    ?LOG("jsonp wrapping in ~s: ~p", [JsonFun, JSON]),
+                    {[JsonFun, <<"(">>, JSON, <<");\r\n">>], Req0}
             end
     catch
-        _:_ ->
-            {RespData, Req0}
+        _E:_R ->
+            ?LOG("failed to encode response: ~s: ~p", [_E, _R]),
+            {<<>>, Req0}
     end.
 
 %%--------------------------------------------------------------------
@@ -456,10 +489,15 @@ create_resp_content(Req0, #cb_context{req_json=ReqJson, resp_data=RespData}=Cont
 %%--------------------------------------------------------------------
 -spec create_push_response/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 create_push_response(Req0, Context) ->
-    Content = create_resp_content(Req0, Context),
-    Req1 = set_resp_headers(Req0, Context),
-    {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
-    {succeeded(Context), Req2, Context}.
+    ?LOG("create push response"),
+    {Content, Req1} = create_resp_content(Req0, Context),
+
+    Req2 = set_resp_headers(Req1, Context),
+    {ok, Req3} = cowboy_http_req:set_resp_body(Content, Req2),
+    Succeeded = succeeded(Context),
+    ?LOG("is successful response: ~p", [Succeeded]),
+    ?LOG("has resp body: ~p", [cowboy_http_req:has_resp_body(Req3)]),
+    {Succeeded, Req3, Context}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -470,14 +508,17 @@ create_push_response(Req0, Context) ->
 %%--------------------------------------------------------------------
 -spec create_pull_response/2 :: (#http_req{}, #cb_context{}) -> {boolean() | 'halt', #http_req{}, #cb_context{}}.
 create_pull_response(Req0, Context) ->
+    ?LOG("create pull response"),
     Content = create_resp_content(Req0, Context),
     Req1 = set_resp_headers(Req0, Context),
     case succeeded(Context) of
         false ->
             {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
+            ?LOG("set resp body: ~p", [Content]),
             {halt, Req2, Context};
         true ->
             {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
+            ?LOG("set resp body: ~p", [Content]),
             {true, Req2, Context}
     end.
 
@@ -489,15 +530,15 @@ create_pull_response(Req0, Context) ->
 %%--------------------------------------------------------------------
 -spec create_resp_envelope/1 :: (#cb_context{}) -> [{binary(), binary() | atom() | wh_json:json_object() | wh_json:json_objects()},...].
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=undefined}) ->
-    ?LOG("generating successful response"),
+    ?LOG("generating successful response, no etag"),
     [{<<"auth_token">>, AuthToken}
-     ,{<<"status">>, success}
+     ,{<<"status">>, <<"success">>}
      ,{<<"data">>, RespData}
     ];
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=Etag}) ->
-    ?LOG("generating successful response"),
+    ?LOG("generating successful response, etag: ~s", [Etag]),
     [{<<"auth_token">>, AuthToken}
-     ,{<<"status">>, success}
+     ,{<<"status">>, <<"success">>}
      ,{<<"data">>, RespData}
      ,{<<"revision">>, wh_util:to_binary(Etag)}
     ];
@@ -511,10 +552,10 @@ create_resp_envelope(#cb_context{auth_token=AuthToken, resp_data=RespData, resp_
                   wh_util:to_binary(Else)
           end,
     ?LOG("generating ~s 500 response, ~s", [RespStatus, Msg]),
-    [{<<"auth_token">>, AuthToken}
-     ,{<<"status">>, RespStatus}
-     ,{<<"message">>, Msg}
-     ,{<<"error">>, 500}
+    [{<<"auth_token">>, wh_util:to_binary(AuthToken)}
+     ,{<<"status">>, wh_util:to_binary(RespStatus)}
+     ,{<<"message">>, wh_util:to_binary(Msg)}
+     ,{<<"error">>, <<"500">>}
      ,{<<"data">>, RespData}
     ];
 create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespStatus, resp_error_code=RespErrorCode
@@ -527,11 +568,13 @@ create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespSt
               Else ->
                   wh_util:to_binary(Else)
           end,
+
     ?LOG("generating ~s ~b response, ~s", [RespStatus, wh_util:to_integer(RespErrorCode), Msg]),
-    [{<<"auth_token">>, AuthToken}
-     ,{<<"status">>, RespStatus}
-     ,{<<"message">>, Msg}
-     ,{<<"error">>, RespErrorCode}
+
+    [{<<"auth_token">>, wh_util:to_binary(AuthToken)}
+     ,{<<"status">>, wh_util:to_binary(RespStatus)}
+     ,{<<"message">>, wh_util:to_binary(Msg)}
+     ,{<<"error">>, wh_util:to_binary(RespErrorCode)}
      ,{<<"data">>, RespData}
     ].
 
@@ -541,7 +584,7 @@ create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespSt
 %% Iterate through #cb_context.resp_headers, setting the headers specified
 %% @end
 %%--------------------------------------------------------------------
--spec set_resp_headers/2 :: (#wm_reqdata{}, #cb_context{}) -> #wm_reqdata{}.
+-spec set_resp_headers/2 :: (#http_req{}, #cb_context{}) -> #http_req{}.
 set_resp_headers(Req0, #cb_context{resp_headers=[]}) -> Req0;
 set_resp_headers(Req0, #cb_context{resp_headers=Headers}) ->
     lists:foldl(fun({Header, Value}, ReqAcc) ->

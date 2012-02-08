@@ -21,10 +21,10 @@
 
 -define(CACHE_TTL, whapps_config:get_integer(<<"crossbar">>, <<"cache_ttl">>, 300)).
 
--define(CONTENT_PROVIDED, [{to_json, [<<"application/json">>,<<"application/x-json">>]}]).
--define(CONTENT_ACCEPTED, [{from_json, [<<"application/json">>,<<"application/x-json">>]}
-                           ,{from_form, [<<"application/x-www-form-urlencoded">>]}
-                           ,{from_binary, []}
+-define(CONTENT_PROVIDED, [{to_json, [{<<"application">>, <<"json">>},{<<"application">>, <<"x-json">>}]}]).
+-define(CONTENT_ACCEPTED, [{from_json, [{<<"application">>, <<"json">>},{<<"application">>, <<"x-json">>}]}
+                           ,{from_form, [{<<"application">>, <<"x-www-form-urlencoded">>}]}
+                           ,{from_binary, [{<<"text">>, <<"csv">>}]}
                           ]).
 -define(ALLOWED_METHODS, ['GET'
                           ,'POST'
@@ -59,7 +59,7 @@
           ,resp_status = 'error' :: crossbar_status()
           ,resp_error_msg = 'undefined' :: wh_json:json_string() | 'undefined'
           ,resp_error_code = 'undefined' :: wh_json:json_number() | 'undefined'
-          ,resp_data = [] :: wh_json:json_objects()
+          ,resp_data = wh_json:new() :: wh_json:json_object()
           ,resp_headers = [] :: proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
           ,start = erlang:now() :: wh_now()
           ,req_id = <<"000000000000">> :: ne_binary()

@@ -323,11 +323,11 @@ fetch(Key, #cb_context{storage=Storage}) ->
 %% Fetches a previously stored value from the current request.
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_db/3 :: (undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary()) -> {ok, ne_binary()} |
-                                                                                                          {error, wh_json:json_object()}.
+-spec find_account_db/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> {'ok', ne_binary()} |
+                                                                                                          {'error', wh_json:json_object()}.
 
--spec find_account_db/4 :: (undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary(), boolean()) 
-                           -> {ok, ne_binary()} | {ok, [ne_binary,...]} | {error, wh_json:json_object()}.
+-spec find_account_db/4 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), boolean()) 
+                           -> {'ok', ne_binary()} | {'ok', [ne_binary(),...]} | {'error', wh_json:json_object()}.
 
 find_account_id(PhoneNumber, AccountRealm, AccountName) ->
     find_account_id(PhoneNumber, AccountRealm, AccountName, true).
@@ -406,8 +406,8 @@ find_account_db(PhoneNumber, AccountRealm, AccountName, AllowMultiples, Errors) 
 %% Retrieves the account realm
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_realm/1 :: (ne_binary() | #cb_context{}) -> undefined | ne_binary().
--spec get_account_realm/2 :: (undefined | ne_binary(), ne_binary()) -> undefined | ne_binary().
+-spec get_account_realm/1 :: (ne_binary() | #cb_context{}) -> 'undefined' | ne_binary().
+-spec get_account_realm/2 :: ('undefined' | ne_binary(), ne_binary()) -> 'undefined' | ne_binary().
 
 get_account_realm(#cb_context{db_name=Db, account_id=AccountId}) ->
     get_account_realm(Db, AccountId);

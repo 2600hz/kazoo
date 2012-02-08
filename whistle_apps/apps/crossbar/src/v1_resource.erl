@@ -11,6 +11,7 @@
 -module(v1_resource).
 
 -export([init/3, rest_init/2
+         ,terminate/2, rest_terminate/2
          ,known_methods/2
          ,allowed_methods/2
          ,malformed_request/2
@@ -36,14 +37,16 @@
          ,delete_resource/2
          ,is_conflict/2
          ,to_json/2, to_binary/2
-         ,from_json/2, from_binary/2
+         ,from_json/2, from_binary/2, from_form/2
+         ,multiple_choices/2
          ,generate_etag/2
+         ,expires/2
         ]).
 
 -include("crossbar.hrl").
 
 %%%===================================================================
-%%% CowboyHTTPRest API
+%%% Startup and shutdown of request
 %%%===================================================================
 -spec init/3 :: ({'tcp' | 'ssl', 'http'}, #http_req{}, proplist()) -> {'upgrade', 'protocol', 'cowboy_http_rest'}.
 init({tcp, http}, _Req, _Opts) ->
@@ -54,14 +57,31 @@ init({ssl, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_http_rest}.
 
 -spec rest_init/2 :: (#http_req{}, proplist()) -> {'ok', #http_req{}, #cb_context{}}.
-rest_init(Req, Opts) ->
+rest_init(Req0, Opts) ->
     ?LOG("rest init: Opts: ~p", [Opts]),
     ReqId = couch_mgr:get_uuid(),
     put(callid, ReqId),
 
-    {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{}, Opts}),
-    {ok, Req, Context#cb_context{req_id=ReqId}}.
+    Req1 = lists:foldl(fun(Prop, ReqAcc) ->
+                               case cowboy_http_req:Prop(ReqAcc) of
+                                   {Val, ReqAcc1} -> ?LOG("~s: ~s", [Prop, wh_util:to_binary(Val)]);
+                                   {ok, Val, ReqAcc1} -> ?LOG("~s: ~s", [Prop, wh_util:to_binary(Val)])
+                               end,
+                               ReqAcc1
+                       end, Req0, [raw_host, port, raw_path, raw_qs, method]),
 
+    {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{}, Opts}),
+    {ok, Req1, Context#cb_context{req_id=ReqId}}.
+
+terminate(_, _) ->
+    ?LOG_END("session finished").
+
+rest_terminate(_Req, #cb_context{start=T1}) ->
+    ?LOG_END("fulfilled in ~p ms", [timer:now_diff(now(), T1) div 1000]).
+
+%%%===================================================================
+%%% CowboyHTTPRest API Callbacks
+%%%===================================================================
 known_methods(Req, Context) ->
     ?LOG("run: known methods"),
     {?ALLOWED_METHODS, Req, Context}.
@@ -91,11 +111,13 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
                     ?LOG("allowing OPTIONS request for CORS preflight"),
                     {['OPTIONS'], Req4, Context1#cb_context{allow_methods=Methods1
                                                             ,req_nouns=Nouns
+                                                            ,req_verb=Verb
                                                            }};
                 {false, Req4} ->
                     ?LOG("not CORS preflight"),
                     {Methods1, Req4, Context1#cb_context{allow_methods=Methods1
                                                          ,req_nouns=Nouns
+                                                         ,req_verb=Verb
                                                         }}
             end;
         [] ->
@@ -172,20 +194,21 @@ content_types_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
 -spec content_types_accepted/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
 content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     ?LOG("run: content_types_accepted"),
-    {Req1, Context1} = lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
-                                           Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
-                                           Payload = {ReqAcc, ContextAcc, Params},
-                                           {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
-                                           {ReqAcc1, ContextAcc1}
-                                   end, {Req0, Context0}, Nouns),
+    {Req1, Context1=#cb_context{content_types_accepted=CTAs}} =
+        lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
+                            Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
+                            Payload = {ReqAcc, ContextAcc, Params},
+                            {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
+                            {ReqAcc1, ContextAcc1}
+                    end, {Req0, Context0}, Nouns),
+
     CTA = lists:foldr(fun({Fun, L}, Acc) ->
                               lists:foldr(fun({Type, SubType}, Acc1) ->
                                                   [{{Type, SubType, []}, Fun} | Acc1];
                                              (EncType, Acc1) ->
                                                   [ {EncType, Fun} | Acc1 ]
                                           end, Acc, L)
-                      end, [], Context1#cb_context.content_types_accepted),
-
+                      end, [], CTAs),
     {CTA, Req1, Context1}.
 
 -spec languages_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
@@ -296,11 +319,12 @@ post_is_create(Req, Context) ->
 -spec create_path/2 :: (#http_req{}, #cb_context{}) -> {[], #http_req{}, #cb_context{}}.
 create_path(Req, #cb_context{resp_headers=RespHeaders}=Context) ->
     ?LOG("run: create_path"),
-    %% Location header goes here, I believe
+    %% Location header goes here, I believe?
 
     Path = props:get_value(<<"Location">>, RespHeaders, <<>>),
 
     {crossbar_util:new_path(Req, Path), Req, Context}.
+    
 
 -spec process_post/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 process_post(Req0, Context0) ->
@@ -346,20 +370,40 @@ from_json(Req0, Context0) ->
             Else
     end.
 
+-spec from_form/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+from_form(Req0, Context0) ->
+    ?LOG("run: from_form"),
+    case v1_util:execute_request(Req0, Context0) of
+        {true, Req1, Context1} ->
+            Event = <<"v1_resource.from_form">>,
+            _ = crossbar_bindings:map(Event, {Req1, Context1}),
+            v1_util:create_push_response(Req1, Context1);
+        Else ->
+            Else
+    end.
+
 -spec to_json/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 to_json(Req, Context) ->
+    ?LOG("run: to_json"),
     Event = <<"v1_resource.to_json">>,
     _ = crossbar_bindings:map(Event, {Req, Context}),
     v1_util:create_pull_response(Req, Context).
 
 -spec to_binary/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
+    ?LOG("run: to_binary"),
     Event = <<"v1_resource.to_binary">>,
     _ = crossbar_bindings:map(Event, {Req, Context}),
     {RespData, v1_util:set_resp_headers(Req, Context), Context}.
 
+multiple_choices(Req, Context) ->
+    ?LOG("run: multiple_choices"),
+    {false, Req, Context}.
+
 -spec generate_etag/2 :: (#http_req{}, #cb_context{}) -> {ne_binary(), #http_req{}, #cb_context{}}.
 generate_etag(Req0, Context0) ->
+    ?LOG("run: generate_etag"),
+
     Event = <<"v1_resource.etag">>,
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
     case Context1#cb_context.resp_etag of
@@ -374,3 +418,9 @@ generate_etag(Req0, Context0) ->
             ?LOG("using etag ~s", [Tag]),
             {wh_util:to_binary(Tag), Req1, Context1#cb_context{resp_etag=Tag}}
     end.
+
+-spec expires/2 :: (#http_req{}, #cb_context{}) -> {wh_datetime(), #http_req{}, #cb_context{}}.
+expires(Req, #cb_context{resp_expires=Expires}=Context) ->
+    ?LOG("run: expires"),
+    Event = <<"v1_resource.expires">>,
+    crossbar_bindings:fold(Event, {Expires, Req, Context}).
