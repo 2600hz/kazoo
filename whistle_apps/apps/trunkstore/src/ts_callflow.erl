@@ -44,8 +44,9 @@ init(RouteReqJObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
     put(callid, CallID),
 
+    true = is_trunkstore_acct(RouteReqJObj),
+
     AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
-    true = is_trunkstore_acct(AcctID),
 
     ?LOG("Init done for route req for account ~s", [AcctID]),
     #state{aleg_callid=CallID, route_req_jobj=RouteReqJObj, acctid=AcctID, acctdb=wh_util:format_account_id(AcctID, encoded)}.
@@ -315,11 +316,9 @@ set_failover(State, Failover) ->
 get_failover(#state{failover=Fail}) ->
     Fail.
 
--spec is_trunkstore_acct/1 :: (ne_binary() | 'undefined') -> boolean().
-is_trunkstore_acct(undefined) -> false;
-is_trunkstore_acct(AcctID) ->
-    case couch_mgr:get_results(wh_util:format_account_id(AcctID, encoded), <<"trunkstore/crossbar_listing">>, [{<<"reduce">>, true}]) of
-        {ok, []} -> false;
-        {ok, [Cnt]} -> wh_json:get_integer_value(<<"value">>, Cnt, 0) > 0;
+-spec is_trunkstore_acct/1 :: (wh_json:json_object()) -> boolean().
+is_trunkstore_acct(JObj) ->
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj) of
+        <<"sys_info">> -> true;
         _ -> false
     end.
