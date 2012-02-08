@@ -21,7 +21,7 @@
 -include("jonny5.hrl").
 
 -define(SERVER, ?MODULE).
--define(TIMER_CALL_STATUS, 60000). %% ask for call status every 10 seconds
+-define(TIMER_CALL_STATUS, 60000). %% ask for call status every 60 seconds
 
 -record(state, {
           callid = <<>> :: binary()
@@ -145,13 +145,17 @@ handle_cast({call_event, {<<"call_detail">>, <<"cdr">>}, JObj}, #state{timer_ref
     erlang:send_after(500 + crypto:rand_uniform(500, 1000), self(), {check_ledger, JObj}),
     {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
 
-handle_cast({call_event, {<<"call_event">>, <<"status_resp">>}, JObj}, #state{timer_ref=Ref}=State) ->
+handle_cast({call_event, {<<"call_event">>, <<"channel_status_resp">>}, JObj}, #state{timer_ref=Ref}=State) ->
     case {wapi_call:channel_status_resp_v(JObj), wapi_call:get_status(JObj)} of
         {true, <<"active">>} ->
             ?LOG("received active status_resp"),
             {noreply, State#state{timer_ref=restart_status_timer(Ref)}};
         {true, <<"tmpdown">>} ->
             ?LOG("call tmpdown, starting down timer"),
+            _ = erlang:cancel_timer(Ref),
+            {noreply, State#state{timer_ref=start_down_timer()}};
+        {true, <<"terminated">>} ->
+            ?LOG("call is down, time to go"),
             _ = erlang:cancel_timer(Ref),
             {noreply, State#state{timer_ref=start_down_timer()}};
         {false, _} ->
@@ -209,7 +213,7 @@ handle_info({timeout, DownRef, call_status_down}, #state{callid=CallID, timer_re
     {stop, normal, State};
 
 handle_info({timeout, DownRef, call_status_down}, #state{timer_ref=DownRef}=State) ->
-    ?LOG("aall is down; status requests have gone unanswered or indicate call is down"),
+    ?LOG("call is down; status requests have gone unanswered or indicate call is down"),
     {stop, normal, State};
 
 handle_info(_Info, State) ->
