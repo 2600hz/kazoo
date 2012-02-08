@@ -323,7 +323,7 @@ validate(_, Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_local_token/2 :: (#wm_reqdata{}, #cb_context{}) -> #cb_context{}.
-create_local_token(RD, #cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
+create_local_token(_RD, #cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
     AccountId = wh_json:get_value([<<"account">>, <<"_id">>], JObj, <<>>),
     OwnerId = wh_json:get_value([<<"user">>, <<"_id">>], JObj, <<>>),
     Token = wh_json:from_list([{<<"account_id">>, AccountId}
@@ -331,14 +331,6 @@ create_local_token(RD, #cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
                                ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                                ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                                ,{<<"method">>, wh_util:to_binary(?MODULE)}
-                               ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
-                               ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-                               ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
-                               ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-                               ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-                               ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-                               ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
-                               ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
                                ,{<<"shared_token">>, SharedToken}
                               ]),
     case couch_mgr:save_doc(?TOKEN_DB, Token) of

@@ -71,7 +71,7 @@ rest_init(Req0, Opts) ->
                        end, Req0, [raw_host, port, raw_path, raw_qs, method]),
 
     {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{}, Opts}),
-    {ok, Req1, Context#cb_context{req_id=ReqId}}.
+    {ok, Req1, Context#cb_context{req_id=ReqId, resp_headers=[{<<"X-Request-ID">>, ReqId}]}}.
 
 terminate(_, _) ->
     ?LOG_END("session finished").
@@ -167,7 +167,8 @@ options(Req0, Context) ->
         {true, Req1} ->
             ?LOG("is CORS request"),
             {ok, Req2} = v1_util:add_cors_headers(Req1, Context),
-            {ok, Req2, Context};
+            {ok, Req3} = cowboy_http_req:set_resp_body(<<>>, Req2),
+            {ok, Req3, Context};
         {false, Req1} ->
             ?LOG("is not CORS request"),
             {ok, Req1, Context}
@@ -400,6 +401,7 @@ to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
 
 multiple_choices(Req, Context) ->
     ?LOG("run: multiple_choices"),
+    ?LOG("has resp_body: ~s", [cowboy_http_req:has_resp_body(Req)]),
     {false, Req, Context}.
 
 -spec generate_etag/2 :: (#http_req{}, #cb_context{}) -> {ne_binary(), #http_req{}, #cb_context{}}.
@@ -410,7 +412,8 @@ generate_etag(Req0, Context0) ->
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
     case Context1#cb_context.resp_etag of
         automatic ->
-            Tag = mochihex:to_hex(crypto:md5(v1_util:create_resp_content(Req1, Context1))),
+            {Content, _} = v1_util:create_resp_content(Req1, Context1),
+            Tag = mochihex:to_hex(crypto:md5(Content)),
             ?LOG("using automatic etag ~s", [Tag]),
             {Tag, Req1, Context1#cb_context{resp_etag=Tag}};
         undefined ->

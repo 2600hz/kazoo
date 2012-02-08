@@ -99,7 +99,8 @@ get_cors_headers(#cb_context{allow_methods=Allowed}) ->
 -spec get_req_data/2 :: (#cb_context{}, #http_req{}) -> {#cb_context{}, #http_req{}}.
 get_req_data(Context, Req0) ->
     {ContentType, Req1} = cowboy_http_req:header('Content-Type', Req0),
-    {QS, Req2} = cowboy_http_req:qs_vals(Req1),
+    {QS0, Req2} = cowboy_http_req:qs_vals(Req1),
+    QS = wh_json:from_list(QS0),
 
     ?LOG("request has content type: ~s", [ContentType]),
 
@@ -493,6 +494,7 @@ create_push_response(Req0, Context) ->
     {Content, Req1} = create_resp_content(Req0, Context),
 
     Req2 = set_resp_headers(Req1, Context),
+    ?LOG("content: ~s", [Content]),
     {ok, Req3} = cowboy_http_req:set_resp_body(Content, Req2),
     Succeeded = succeeded(Context),
     ?LOG("is successful response: ~p", [Succeeded]),
@@ -514,13 +516,12 @@ create_pull_response(Req0, Context) ->
     ?LOG("content: ~s", [Content]),
 
     Req2 = set_resp_headers(Req1, Context),
+    %% {ok, Req3} = cowboy_http_req:set_resp_body(Content, Req2),
+    %% ?LOG("respbody: ~p", [Req3#http_req.resp_body]),
+
     case succeeded(Context) of
-        false ->
-            {ok, Req3} = cowboy_http_req:set_resp_body(Content, Req2),
-            {halt, Req3, Context};
-        true ->
-            {ok, Req3} = cowboy_http_req:set_resp_body(Content, Req2),
-            {true, Req3, Context}
+        false -> {halt, Req2, Context};
+        true -> {Content, Req2, Context}
     end.
 
 %%--------------------------------------------------------------------
