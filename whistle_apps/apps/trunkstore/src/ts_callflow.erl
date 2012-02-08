@@ -320,5 +320,6 @@ get_failover(#state{failover=Fail}) ->
 is_trunkstore_acct(JObj) ->
     case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj) of
         <<"sys_info">> -> true;
+        undefined -> true;
         _ -> false
     end.
