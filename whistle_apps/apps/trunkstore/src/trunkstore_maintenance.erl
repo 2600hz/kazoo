@@ -47,7 +47,6 @@ move_doc(AcctDB, AcctID, TSJObj) ->
         true -> ?LOG("looks like trunkstore account has been moved already");
         false ->
             {ok, AcctTSJObj} = create_ts_doc(AcctDB, AcctID, TSJObj),
-            {ok, _} = create_limit_doc(AcctDB, AcctID, AcctTSJObj),
             {ok, _} = create_credit_doc(AcctDB, AcctID, AcctTSJObj),
             _ = whapps_maintenance:refresh(AcctID),
             ok
@@ -67,15 +66,6 @@ create_ts_doc(AcctDB, AcctID, TSJObj) ->
                                ,{<<"pvt_account_id">>, AcctID}
                               ], wh_json:delete_key(<<"_id">>, wh_json:delete_key(<<"_rev">>, TSJObj))),
     ?LOG("saving ts doc ~s into ~s", [wh_json:get_value(<<"_id">>, TSJObj), AcctDB]),
-    {ok, _} = couch_mgr:save_doc(AcctDB, JObj).
-
-create_limit_doc(AcctDB, AcctID, TSJObj) ->
-    JObj = wh_json:from_list([{<<"trunks">>, wh_json:get_integer_value([<<"account">>, <<"trunks">>], TSJObj, 0)}
-                              ,{<<"inbound_trunks">>, wh_json:get_integer_value([<<"account">>, <<"inbound_trunks">>], TSJObj, 0)}
-                              ,{<<"pvt_type">>, <<"limits">>}
-                              ,{<<"pvt_account_db">>, AcctDB}
-                              ,{<<"pvt_account_id">>, AcctID}
-                             ]),
     {ok, _} = couch_mgr:save_doc(AcctDB, JObj).
 
 create_credit_doc(AcctDB, AcctID, TSJObj) ->    
