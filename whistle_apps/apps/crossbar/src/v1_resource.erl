@@ -163,7 +163,7 @@ valid_entity_length(Req, Context) ->
 -spec options/2 :: (#http_req{}, #cb_context{}) -> {'ok', #http_req{}, #cb_context{}}.
 options(Req0, Context) ->
     ?LOG("run: options"),
-    case v1_util:is_cors_request(Req0, Context) of
+    case v1_util:is_cors_request(Req0) of
         {true, Req1} ->
             ?LOG("is CORS request"),
             {ok, Req2} = v1_util:add_cors_headers(Req1, Context),

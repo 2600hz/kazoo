@@ -86,9 +86,11 @@ add_cors_headers(Req0, Context) ->
 %%--------------------------------------------------------------------
 -spec get_cors_headers/1 :: (#cb_context{}) -> [{ne_binary(), ne_binary()},...].
 get_cors_headers(#cb_context{allow_methods=Allowed}) ->
+    Methods = wh_util:join_binary([wh_util:to_binary(A) || A <- Allowed], <<", ">>),
+    ?LOG("allowed cors methods: ~s", [Methods]),
     [
       {<<"Access-Control-Allow-Origin">>, <<"*">>}
-     ,{<<"Access-Control-Allow-Methods">>, wh_util:join_binary([wh_util:to_binary(A) || A <- Allowed], <<", ">>)}
+     ,{<<"Access-Control-Allow-Methods">>, Methods}
      ,{<<"Access-Control-Allow-Headers">>, <<"Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token, If-Match">>}
      ,{<<"Access-Control-Expose-Headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, Location, Etag, ETag">>}
      ,{<<"Access-Control-Max-Age">>, wh_util:to_binary(?SECONDS_IN_DAY)}
@@ -507,17 +509,18 @@ create_push_response(Req0, Context) ->
 -spec create_pull_response/2 :: (#http_req{}, #cb_context{}) -> {boolean() | 'halt', #http_req{}, #cb_context{}}.
 create_pull_response(Req0, Context) ->
     ?LOG("create pull response"),
-    Content = create_resp_content(Req0, Context),
-    Req1 = set_resp_headers(Req0, Context),
+    {Content, Req1} = create_resp_content(Req0, Context),
+
+    ?LOG("content: ~s", [Content]),
+
+    Req2 = set_resp_headers(Req1, Context),
     case succeeded(Context) of
         false ->
-            {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
-            ?LOG("set resp body: ~p", [Content]),
-            {halt, Req2, Context};
+            {ok, Req3} = cowboy_http_req:set_resp_body(Content, Req2),
+            {halt, Req3, Context};
         true ->
-            {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
-            ?LOG("set resp body: ~p", [Content]),
-            {true, Req2, Context}
+            {ok, Req3} = cowboy_http_req:set_resp_body(Content, Req2),
+            {true, Req3, Context}
     end.
 
 %%--------------------------------------------------------------------
