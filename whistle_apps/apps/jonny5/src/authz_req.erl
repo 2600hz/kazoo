@@ -24,7 +24,9 @@ handle_req(JObj, _Props) ->
 
     wh_util:put_callid(JObj),
 
-    ?LOG("authorize ~s can make the call to ~s", [wh_json:get_value(<<"From">>, JObj), wh_json:get_value(<<"Request">>, JObj)]),
+    E164 = get_dest_number(JObj),
+
+    ?LOG("authorize ~s can make the call to ~s", [wh_json:get_value(<<"From">>, JObj), E164]),
 
     AuthZResp = case {wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)
                       ,wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], JObj)
@@ -38,8 +40,14 @@ handle_req(JObj, _Props) ->
                         ?LOG("trying to authorize outbound call"),
                         j5_acctmgr:authz_trunk(AcctID, JObj, outbound);
                     {_AcctID, _AuthID} ->
-                        ?LOG("error in finding authorization: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID]),
-                        undefined
+                        case wh_number_manager:lookup_account_by_number(E164) of
+                            {ok, AcctID, _} ->
+                                ?LOG("found account id ~s for ~s for inbound call", [AcctID, E164]),
+                                j5_acctmgr:authz_trunk(AcctID, JObj, inbound);
+                            _ ->
+                                ?LOG("error in finding authorization: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID]),
+                                undefined
+                        end
                 end,
     send_resp(JObj, AuthZResp).
 
@@ -57,3 +65,31 @@ send_resp(JObj, {AuthzResp, CCV}) ->
             ,{<<"App-Version">>, ?APP_VERSION}
            ],
     wapi_authz:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% determine the e164 format of the inbound number
+%% @end
+%%--------------------------------------------------------------------
+-spec get_dest_number/1 :: (wh_json:json_object()) -> ne_binary().
+get_dest_number(JObj) ->
+    User = case whapps_config:get(<<"stepswitch">>, <<"inbound_user_field">>, <<"Request">>) of
+               <<"To">> ->
+                   case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
+                       [<<"nouser">>, _] ->
+                           [ReqUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+                           ReqUser;
+                       [ToUser, _] ->
+                           ToUser
+                   end;
+               _ ->
+                   case binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>) of
+                       [<<"nouser">>, _] ->
+                           [ReqUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
+                           ReqUser;
+                       [ToUser, _] ->
+                           ToUser
+                   end
+           end,
+    wnm_util:to_e164(User).
