@@ -14,24 +14,23 @@
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> ok.
 handle_req(JObj, Options) ->
-    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
-        undefined ->
-            ok;
-        AccountId ->
+    case {wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], JObj, <<"device">>)
+          ,wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)} of
+        {<<"device">>, AccountId} when is_binary(AccountId)->
             CallId = wh_json:get_value(<<"Call-ID">>, JObj),
             put(callid, CallId),
-
+            
             ?LOG_START("received route request"),
-
+            
             CVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
             Request = wh_json:get_value(<<"Request">>, JObj, <<"nouser@norealm">>),
             From = wh_json:get_value(<<"From">>, JObj, <<"nouser@norealm">>),
             To = wh_json:get_value(<<"To">>, JObj, <<"nouser@norealm">>),
-
+            
             [ToUser, ToRealm] = binary:split(To, <<"@">>),
             [FromUser, FromRealm] = binary:split(From, <<"@">>),
             [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
-
+            
             Call = #cf_call{bdst_q = props:get_value(queue, Options)
                             ,cid_name = wh_json:get_value(<<"Caller-ID-Name">>, JObj, <<"Unknown">>)
                             ,cid_number = wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<"0000000000">>)
@@ -51,7 +50,9 @@ handle_req(JObj, Options) ->
                             ,channel_vars = CVs
                             ,inception_during_transfer = wh_json:is_true(<<"During-Transfer">>, JObj)
                            },
-            fulfill_call_request(JObj, CallId, Call)
+            fulfill_call_request(JObj, CallId, Call);
+        {_, _} ->
+            ok
     end.
 
 %%-----------------------------------------------------------------------------
