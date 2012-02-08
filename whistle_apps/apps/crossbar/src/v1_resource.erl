@@ -109,13 +109,15 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
             case v1_util:is_cors_preflight(Req3) of
                 {true, Req4} ->
                     ?LOG("allowing OPTIONS request for CORS preflight"),
-                    {['OPTIONS'], Req4, Context1#cb_context{allow_methods=Methods1
+                    {ok, Req5} = v1_util:add_cors_headers(Req4, Context),
+                    {['OPTIONS'], Req5, Context1#cb_context{allow_methods=Methods1
                                                             ,req_nouns=Nouns
                                                             ,req_verb=Verb
                                                            }};
                 {false, Req4} ->
                     ?LOG("not CORS preflight"),
-                    {Methods1, Req4, Context1#cb_context{allow_methods=Methods1
+                    {ok, Req5} = v1_util:add_cors_headers(Req4, Context),
+                    {Methods1, Req5, Context1#cb_context{allow_methods=Methods1
                                                          ,req_nouns=Nouns
                                                          ,req_verb=Verb
                                                         }}
@@ -161,7 +163,7 @@ valid_entity_length(Req, Context) ->
 -spec options/2 :: (#http_req{}, #cb_context{}) -> {'ok', #http_req{}, #cb_context{}}.
 options(Req0, Context) ->
     ?LOG("run: options"),
-    case v1_util:is_cors_request(Req0) of
+    case v1_util:is_cors_request(Req0, Context) of
         {true, Req1} ->
             ?LOG("is CORS request"),
             {ok, Req2} = v1_util:add_cors_headers(Req1, Context),

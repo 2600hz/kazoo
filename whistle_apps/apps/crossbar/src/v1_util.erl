@@ -467,12 +467,10 @@ create_resp_content(Req0, #cb_context{req_json=ReqJson}=Context) ->
         JSON ->
             case wh_json:get_value(<<"jsonp">>, ReqJson) of
                 undefined ->
-                    ?LOG("resp body"),
-                    _ = [?LOG("line: ~p", [L]) || L <- JSON],
-                    {[JSON, <<"\r\n">>], Req0};
+                    {JSON, Req0};
                 JsonFun when is_binary(JsonFun) ->
                     ?LOG("jsonp wrapping in ~s: ~p", [JsonFun, JSON]),
-                    {[JsonFun, <<"(">>, JSON, <<");\r\n">>], Req0}
+                    {[JsonFun, <<"(">>, JSON, <<");">>], Req0}
             end
     catch
         _E:_R ->
