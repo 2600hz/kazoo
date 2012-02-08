@@ -105,8 +105,10 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
               end,
     ?LOG("setting from-uri to ~s", [FromURI]),
 
-    CCVs = wh_json:set_values([{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}
-                               ,{<<"From-URI">>, FromURI}
+    CCVs = wh_json:set_values([ KV || {_,V}=KV <- [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}
+                                                   ,{<<"From-URI">>, FromURI}
+                                                  ],
+                                      V =/= undefined
                               ], wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
 
     Command = [{<<"Application-Name">>, <<"bridge">>}

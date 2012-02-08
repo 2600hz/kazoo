@@ -114,11 +114,14 @@ handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.users">>, Payloa
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.validate.users">>, [RD, #cb_context{req_data=ReqData}=Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, Context),
+
+                  ReqData1 = wh_json:set_value(<<"username">>, wh_util:to_lower_binary(wh_json:get_value(<<"username">>, ReqData)), ReqData),
+
+                  Context1 = validate(Params, Context#cb_context{req_data=ReqData1}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
     {noreply, State};
@@ -365,7 +368,7 @@ hash_password(#cb_context{doc=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec is_unique_username/2 :: (ne_binary() | 'undefined', #cb_context{}) -> boolean().
 is_unique_username(UserId, #cb_context{req_data=ReqData}=Context) ->
-    Username = wh_json:get_value(<<"username">>, ReqData),
+    Username = wh_util:to_lower_binary(wh_json:get_value(<<"username">>, ReqData)),
     JObj = case crossbar_doc:load_view(?LIST_BY_USERNAME, [{<<"key">>, Username}], Context) of
                #cb_context{resp_status=success, doc=[J]} -> J;
                _ -> wh_json:new()
