@@ -81,6 +81,7 @@
                                ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
                                ,{<<"Presence-ID">>, <<"presence_id">>}
                                ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
+                               ,{<<"From-URI">>, <<"sip_from_uri">>}
                                %% ,{<<"Hold-Media">>, <<"hold_music">>}
                               ]).
 

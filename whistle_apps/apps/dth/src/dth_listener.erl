@@ -20,8 +20,8 @@
 -include("dth.hrl").
 
 -define(RESPONDERS, [
-                     {cdr_handler, [{<<"call_detail">>, <<"cdr">>}]}
-                     ,{blacklist_req, [{<<"dth">>, <<"blacklist_req">>}]}
+                     {dth_cdr_handler, [{<<"call_detail">>, <<"cdr">>}]}
+                     ,{dth_blacklist_req, [{<<"dth">>, <<"blacklist_req">>}]}
                     ]).
 -define(BINDINGS, [
                    {call, [{restrict_to, [cdr]}]}
@@ -188,7 +188,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec refresh_blacklist/2 :: (pid(), #wsdl{}) -> 'ok'.
+-spec refresh_blacklist/2 :: (pid(), _) -> 'ok'.
 refresh_blacklist(Cache, WSDL) ->
     {ok, _, [Response]} = detergent:call(WSDL, "GetBlockList", []),
     BlockListEntries = get_blocklist_entries(Response),
