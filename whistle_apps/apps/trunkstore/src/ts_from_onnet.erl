@@ -30,7 +30,7 @@ start_amqp(State) ->
 onnet_data(State) ->
     JObj = ts_callflow:get_request_data(State),
 
-    [ToUser, _ToDomain] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
+    {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
     ToDID = wnm_util:to_e164(ToUser),
 
     CallID = ts_callflow:get_aleg_id(State),
