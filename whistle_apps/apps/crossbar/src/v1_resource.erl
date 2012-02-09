@@ -76,7 +76,8 @@ rest_init(Req0, Opts) ->
 terminate(_, _) ->
     ?LOG_END("session finished").
 
-rest_terminate(_Req, #cb_context{start=T1}) ->
+rest_terminate(_Req, #cb_context{start=T1}=Context) ->
+    crossbar_bindings:map(<<"v1_resource.finish_request">>, Context),
     ?LOG_END("fulfilled in ~p ms", [timer:now_diff(now(), T1) div 1000]).
 
 %%%===================================================================
