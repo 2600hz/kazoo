@@ -1,36 +1,35 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
-%%% Listen for Hangup call events and record them to the database
+%%% Listen for CDR events publish non-normal termination notifications 
 %%% @end
+%%%
+%%% Contributors:
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%% Created : 23 Nov 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(hangups_listener).
 
--behaviour(gen_server).
+-behaviour(gen_listener).
+
+-include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 %% API
--export([start_link/0, set_amqp_host/1, set_couch_host/1]).
+-export([start_link/0, handle_cdr/2]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
+         ,terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE). 
--define(HANGUP_DB, "hangups").
+-define(SERVER, ?MODULE).
 
--include_lib("amqp_client/include/amqp_client.hrl").
--include_lib("whistle/include/wh_amqp.hrl").
-
--import(logger, [format_log/3]).
--import(props, [get_value/2, get_value/3]).
-
--record(state, {
-	  couch_host = "" :: string()
-	  ,amqp_host = "" :: string()
-	  ,q = <<>> :: binary()
-	 }).
+-define(RESPONDERS, [{{?MODULE, handle_cdr}, [{<<"call_detail">>, <<"cdr">>}]}]).
+-define(BINDINGS, [{call, [{restrict_to, [cdr]}, {callid, <<"*">>}]}]).
+-define(QUEUE_NAME, <<"">>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -44,13 +43,30 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                     ], []).
 
-set_amqp_host(H) ->
-    gen_server:cast(?MODULE, {set_amqp_host, H}).
-
-set_couch_host(H) ->
-    gen_server:cast(?MODULE, {set_couch_host, H}).
+-spec handle_cdr/2 :: (wh_json:json_object(), proplist()) -> no_return().
+handle_cdr(JObj, _Props) ->
+    true = wapi_call:cdr_v(JObj),
+    IgnoreCauses = whapps_config:get(<<"hangups">>, <<"ignore_hangup_causes">>, [<<"NO_ANSWER">>
+                                                                                     ,<<"USER_BUSY">>
+                                                                                     ,<<"NO_USER_RESPONSE">>
+                                                                                     ,<<"LOSE_RACE">>
+                                                                                     ,<<"ATTENDED_TRANSFER">>
+                                                                                     ,<<"ORIGINATOR_CANCEL">>
+                                                                                ]),
+    HangupCause = wh_json:get_value(<<"hangup_cause">>, JObj, <<"unknown">>),
+    case lists:member(HangupCause, IgnoreCauses) of
+        true -> ok;
+        false -> ?LOG(hangup_cause_to_alert_level(HangupCause)
+                      ,"abnormal call termination ~s"
+                      ,[HangupCause, {extra_data, [{details, JObj}]}])
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -68,7 +84,8 @@ set_couch_host(H) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    ?LOG_SYS("started hangups listener"),
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -98,28 +115,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({set_amqp_host, H}, #state{q = <<>>}=State) ->
-    try
-	Q = start_amqp(H),
-	{noreply, State#state{amqp_host=H, q=Q}}
-    catch
-	_:_ -> {noreply, State}
-    end;
-handle_cast({set_amqp_host, H}, #state{amqp_host=OldH, q=OldQ}=State) ->
-    try
-	Q = start_amqp(H),
-	amqp_util:delete_queue(OldH, OldQ),
-	{noreply, State#state{amqp_host=H, q=Q}}
-    catch
-	_:_ -> {noreply, State}
-    end;
-handle_cast({set_couch_host, H}, #state{}=State) ->
-    try
-	ok = couch_mgr:set_host(H),
-	{noreply, State#state{couch_host=H}}
-    catch
-	_:_ -> {noreply, State}
-    end;
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -133,11 +128,11 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({_, #amqp_msg{props = Props, payload = Payload}}, #state{}=State) ->
-    spawn(fun() -> handle_hangup(Props#'P_basic'.content_type, Payload) end),
-    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
+
+handle_event(_JObj, _State) ->
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -150,8 +145,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{q=Q}) ->
-    amqp_util:delete_queue(Q),
+terminate(_Reason, _State) ->
+    ?LOG_SYS("hangups listener ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -168,26 +163,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec(start_amqp/1 :: (Host :: string()) -> binary()).
-start_amqp(Host) ->
-    amqp_util:callevt_exchange(Host),
-    Q = amqp_util:new_callevt_queue(Host, <<>>),
-    amqp_util:bind_q_to_callevt(Host, Q, <<"*">>, cdr), % bind to all CDR events
-    amqp_util:bind_q_to_callevt(Host, Q, <<"*">>, events), % bind to all Call events
-    amqp_util:basic_consume(Host, Q),
-    Q.
-
-handle_hangup(<<"application/json">>, JSON) ->
-    {struct, Prop} = mochijson2:decode(binary_to_list(JSON)),
-    case get_value(<<"Hangup-Cause">>, Prop) of
-	undefined -> ok;
-	<<"ORIGINATOR_CANCEL">> -> ok;
-	<<"NORMAL_CLEARING">> -> ok;
-	_ErrCause ->
-	    {ok, _} = couch_mgr:save_doc(?HANGUP_DB, create_error_doc(Prop))
-    end.
-
-%% Call-ID, Hangup-Cause, Timestamp, Call-Direction
-create_error_doc(Prop) ->
-    Fields = [<<"Call-ID">>, <<"Hangup-Cause">>, <<"Timestamp">>, <<"Call-Direction">>],
-    lists:foldl(fun(F, Acc) -> [{F, get_value(F, Prop)} | Acc] end, [{<<"_id">>, get_value(<<"Call-ID">>, Prop)}], Fields).
+-spec hangup_cause_to_alert_level/1 :: (ne_binary()) -> atom().
+hangup_cause_to_alert_level(<<"UNALLOCATED_NUMBER">>) ->
+    warning;
+hangup_cause_to_alert_level(<<"NO_ROUTE_DESTINATION">>) ->
+    warning;
+hangup_cause_to_alert_level(<<"NORMAL_UNSPECIFIED">>) ->
+    warning;
+hangup_cause_to_alert_level(<<"USER_BUSY">>) ->
+    info;
+hangup_cause_to_alert_level(<<"ORIGINATOR_CANCEL">>) ->
+    info;
+hangup_cause_to_alert_level(<<"NO_ANSWER">>) ->
+    info;
+hangup_cause_to_alert_level(<<"LOSE_RACE">>) ->
+    info;
+hangup_cause_to_alert_level(<<"ATTENDED_TRANSFER">>) ->
+    info;
+hangup_cause_to_alert_level(<<"CALL_REJECTED">>) ->
+    info;
+hangup_cause_to_alert_level(_) ->
+    error.
