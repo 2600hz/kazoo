@@ -22,7 +22,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, bind/1, map/2, fold/2, flush/0, flush/1, stop/0]).
+-export([start_link/0, bind/2, map/2, fold/2, flush/0, flush/1, stop/0]).
 
 %% Helper Functions for Results of a map/2
 -export([any/1, all/1, succeeded/1, failed/1]).
@@ -39,6 +39,24 @@
 -include("../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
+-define(CALLBACKS, [{init, 1}
+                    ,{authenticate, 1}
+                    ,{authorize, 1}
+                    ,{allowed_methods, 1}
+                    ,{content_types_provided, 1}
+                    ,{content_types_accepted, 1}
+                    ,{languages_provided, 1}
+                    ,{charsets_provided, 1}
+                    ,{encodings_provided, 1}
+                    ,{validate, 1}
+                    ,{billing, 1}
+                    ,{get, 1}
+                    ,{put, 1}
+                    ,{post, 1}
+                    ,{delete, 1}
+                    ,{etag, 1}
+                    ,{expires, 1}
+                   ]).
 
 %% {FullBinding, BindingPieces, QueueOfPids}
 %% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue()}
@@ -103,9 +121,9 @@ start_link() ->
 stop() ->
     gen_server:cast(?SERVER, stop).
 
--spec bind/1 :: (ne_binary()) -> 'ok' | {'error', 'exists'}.
-bind(Binding) ->
-    gen_server:call(?MODULE, {bind, Binding}, infinity).
+-spec bind/2 :: (ne_binary(), atom()) -> 'ok' | {'error', 'exists'}.
+bind(Binding, Module) ->
+    gen_server:call(?MODULE, {bind, Binding, Module}, infinity).
 
 -spec flush/0 :: () -> 'ok'.
 flush() ->
@@ -133,6 +151,16 @@ flush(Binding) ->
 init([]) ->
     process_flag(trap_exit, true),
     ?LOG("starting bindings server"),
+
+    spawn(fun() ->
+                  [ begin
+                        case catch Mod:bindings() of
+                            {'EXIT', _E} -> ?LOG("failed to add bindings for ~s: ~p", [Mod, _E]);
+                            _ -> ok
+                        end
+                    end || Mod <- whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, [])]
+          end),
+
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -152,12 +180,12 @@ init([]) ->
 handle_call({map, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) ->
     spawn(fun() ->
                   put(callid, ReqId),
-                  ?TIMER_START(list_to_binary(["bindings.map ", Routing])),
                   ?LOG("running map for binding ~s", [Routing]),
                   S = self(),
                   RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
                   Map = fun(Ps) -> 
                                 put(callid, ReqId),
+                                ?LOG("sending routing ~s to ~p", [Routing, Ps]),
                                 Ps ! {binding_fired, self(), Routing, Payload},
                                 wait_for_map_binding(Ps, Routing, Payload)
                         end,
@@ -370,7 +398,8 @@ matches(_, _) -> false.
 -spec wait_for_map_binding/3 :: (pid(), ne_binary(), term()) -> {term() | 'timeout', term()}.
 wait_for_map_binding(P, Route, Payload) ->
     receive
-        {binding_result, Resp, Pay} ->            
+        {binding_result, Resp, Pay} ->
+            ?LOG("result received from ~p", [P]),
             {Resp, Pay};
         {binding_error, Error} ->
             ?LOG("receieved binding error from ~p: ~p", [P, Error]),
