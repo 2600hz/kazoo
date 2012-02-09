@@ -194,7 +194,7 @@ handle_cast({start_req, ReqJObj}, #state{bind_event=BindEvent}=State) ->
                           end),
                     {noreply, State, 5000};
                 {error, {conn_failed, nxdomain}=E} ->
-                    ?LOG(alert, "failed to find domain of callback"),
+                    ?LOG(info, "failed to find domain of callback"),
                     %% email someone
                     %% disable the webhook
                     {stop, E, State};
