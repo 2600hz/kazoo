@@ -305,29 +305,17 @@ handle_info({'EXIT', _, normal}, State) ->
     %% handle normal exits so we dont need a guard on the next clause, cleaner looking...
     {noreply, State};
 handle_info({'EXIT', Pid, Reason}, #state{cf_module_pid=Pid, call=#cf_call{account_id=AccountId}=Call}=State) ->
-    ?LOG("action ~w died unexpectedly, ~p", [Pid, Reason]),
-    spawn(fun() ->
-                  Message = ["Source: ~s(~p)~n"
-                             ,"Alert: action died unexpectedly~n"
-                             ,"Fault: ~p~n"
-                             ,"~n~s"
-                            ],
-                  Args = [?MODULE, ?LINE, Reason, cf_util:call_info_to_string(Call)],
-                  whapps_util:alert(<<"notice">>, lists:flatten(Message), Args, AccountId)
-          end),
+    ?LOG(error, "action ~w died unexpectedly, ~p"
+         ,[Pid, Reason, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+                                      ,{account_id, AccountId}
+                                     ]}]),
     ?MODULE:continue(self()),
     {noreply, State};
 handle_info({call_sanity_check}, #state{status = <<"testing">>, call=#cf_call{account_id=AccountId}=Call}=State) ->
-    ?LOG("callflow executer is insane, shuting down"),
-    spawn(fun() ->
-                  Message = ["Source: ~s(~p)~n"
-                             ,"Alert: forced channel termination~n"
-                             ,"Fault: call sanity check failed~n"
-                             ,"~n~s"
-                            ],
-                  Args = [?MODULE, ?LINE, cf_util:call_info_to_string(Call)],
-                  whapps_util:alert(<<"notice">>, lists:flatten(Message), Args, AccountId)
-          end),
+    ?LOG(info, "callflow executer is insane, shuting down"
+         ,[{extra_data, [{details, cf_util:call_to_proplist(Call)}
+                         ,{account_id, AccountId}
+                        ]}]),
     {stop, {shutdown, insane}, State#state{status = <<"insane">>}};
 handle_info({call_sanity_check}, #state{call_id=CallId, call=Call}=State) ->
     ?LOG("ensuring call is active, requesting controlling channel status"),
@@ -424,7 +412,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec launch_cf_module/1 :: (#state{}) -> #state{}.
-launch_cf_module(#state{call=#cf_call{last_action=LastAction}=Call, flow=Flow, call_id=CallId}=State) ->
+launch_cf_module(#state{call=#cf_call{last_action=LastAction, account_id=AccountId}=Call, flow=Flow, call_id=CallId}=State) ->
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow),
     {Pid, Action} =
@@ -434,7 +422,10 @@ launch_cf_module(#state{call=#cf_call{last_action=LastAction}=Call, flow=Flow, c
             spawn_cf_module(CFModule, Data, CallId, Call)
         catch
             _:_ ->
-                ?LOG("unknown action ~s, skipping", [Module]),
+                ?LOG(error, "unknown callflow action: ~p"
+                     ,[Module, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+                                             ,{account_id, AccountId}
+                                            ]}]),
                 ?MODULE:continue(self()),
                 {undefined, LastAction}
         end,

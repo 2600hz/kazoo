@@ -77,11 +77,7 @@ set_rate_ccvs(Response, CtrlQ, JObj) ->
     case props:get_value(<<"Rates">>, Response) of
         [] ->
             ToDID = wnm_util:to_e164(wh_json:get_value(<<"To-DID">>, JObj)),
-            whapps_util:alert(<<"error">>, ["Source: ~s(~b)~n"
-                                            ,"Alert: rate information unavailable for ~s~n"
-                                            ,"Call-ID: ~s~n"]
-                              ,[?MODULE, ?LINE, ToDID, wh_json:get_value(<<"Call-ID">>, JObj)]),
-            ?LOG("no rates found for ~s", [ToDID]);
+            ?LOG(notice, "rate information unavailable for ~s", [ToDID]);
         [RateInfoJObj | _] ->                    
             Command = [{<<"Application-Name">>, <<"set">>}
                        ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
