@@ -82,19 +82,7 @@ upgrade() ->
 -spec init(Args) -> sup_init_ret() when
       Args :: [].
 init([]) ->
-    {ok, Dispatch} = file:consult(?DISPATCH_FILE),
-    IP = whapps_config:get_string(?CONFIG_CAT, <<"ip">>, <<"0.0.0.0">>),
-    Port = whapps_config:get_string(?CONFIG_CAT, <<"port">>, <<"8000">>),
-    Name = whapps_config:get_string(?CONFIG_CAT, <<"service_name">>, <<"crossbar">>),
-    WebConfig = [{ip, IP}
-                 ,{port, Port}
-                 ,{name, Name}
-                 ,{dispatch, Dispatch}
-                 ,{log_dir, whapps_config:get_string(?CONFIG_CAT, <<"log_dir">>, ?DEFAULT_LOG_DIR)}
-                 ,{ssl, whapps_config:get_is_true(?CONFIG_CAT, <<"ssl">>, false)}
-                 ,{ssl_opts, wh_json:to_proplist(whapps_config:get(?CONFIG_CAT, <<"ssl_opts">>, wh_json:new()))}],
-    ?LOG("starting webmachine ~s:~s as ~s", [IP, Port, Name]),
-    Web = ?CHILD(webmachine_mochiweb, worker, WebConfig),
-    ModuleSup = ?CHILD(crossbar_module_sup, supervisor),
-    BindingServer = ?CHILD(crossbar_bindings, worker),
-    {ok, { {one_for_one, 10, 10}, [Web, BindingServer, ModuleSup, ?CACHE(crossbar_cache)]} }.
+    {ok, {{one_for_one, 10, 10}, [?CACHE(crossbar_cache)
+                                  ,?CHILD(crossbar_bindings, worker)
+                                  ,?CHILD(crossbar_module_sup, supervisor)
+                                 ]}}.

@@ -293,7 +293,9 @@ generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
                         case CallFwd of
                             undefined -> J;
                             _ ->
-                                wh_json:set_value(<<"Call-Forward">>, <<"true">>, J)
+                                wh_json:set_value([{<<"Call-Forward">>, <<"true">>}
+                                                   ,{<<"Authorizing-Type">>, <<"device">>}
+                                                  ], J)
                         end
                 end
                ,fun(J) ->

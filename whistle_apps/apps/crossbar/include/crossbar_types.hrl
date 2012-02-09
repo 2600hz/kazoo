@@ -2,12 +2,12 @@
 
 -type crossbar_status() :: 'success' | 'error' | 'fatal'.
 -type crossbar_module_result() :: {crossbar_status(), proplist()}
-				  | {crossbar_status(), proplist(), string()}
-				  | {crossbar_status(), proplist(), string(), integer()}.
+                                  | {crossbar_status(), proplist(), string()}
+                                  | {crossbar_status(), proplist(), string(), integer()}.
 
 -type path_tokens() :: [ne_binary(),...] | [].
 
--type crossbar_content_handler() :: {atom(), [string(),...]}.
+-type crossbar_content_handler() :: {atom(), [ne_binary(),...]}.
 
 -type http_method() :: 'POST' | 'GET' | 'PUT' | 'DELETE'.
 -type http_methods() :: [http_method()].

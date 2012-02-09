@@ -108,11 +108,14 @@ handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
-                 ,{RD, #cb_context{req_nouns=[{<<"user_auth">>, _}]}=Context}}, State) ->
+                 ,{RD, #cb_context{req_nouns=[{<<"user_auth">>, []}]}=Context}}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  ?LOG("authenticating request"),
-                  Pid ! {binding_result, true, {RD, Context}}
+                  crossbar_util:binding_heartbeat(Pid),
+                  ?LOG("authenticating creds"),
+                  #cb_context{resp_status=Status}=Context1 = validate([], Context),
+                  ?LOG("status of authn: ~s", [Status]),
+                  Pid ! {binding_result, Status =:= success, {RD, Context1}}
           end),
     {noreply, State};
 
@@ -250,10 +253,13 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec validate/2 :: (list(), #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"user_auth">>) of
+    ?LOG("validating user_auth"),
+    case catch(wh_json_validator:is_valid(Data, <<"user_auth">>)) of
         {fail, Errors} ->
+            ?LOG("fail json validation"),
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
+            ?LOG("pass json validation"),
             Credentials = wh_json:get_value(<<"credentials">>, JObj),
             Method = wh_json:get_value(<<"method">>, JObj, <<"md5">>),
             AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
@@ -261,10 +267,14 @@ validate([], #cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
             AccountRealm = wh_json:get_value(<<"account_realm">>, JObj,
                                              wh_json:get_value(<<"realm">>, JObj)),
             case crossbar_util:find_account_db(PhoneNumber, AccountRealm, AccountName) of
-                {error, Errors} -> crossbar_util:response_invalid_data(Errors, Context);
+                {error, Errors} ->
+                    ?LOG("failed to find account DB"),
+                    crossbar_util:response_invalid_data(Errors, Context);
                 {ok, AccountDb} ->
+                    ?LOG("found account DB"),
                     authorize_user(Context, Credentials, Method, AccountDb);
                 {multiples, AccountDbs} ->
+                    ?LOG("found multiple account DBs"),
                     authorize_user(Context, Credentials, Method, AccountDbs)
             end
     end;
@@ -303,7 +313,9 @@ validate([<<"recovery">>], #cb_context{req_data=Data, req_verb = <<"put">>}=Cont
                     end
             end
     end;
-validate(_, Context) ->
+validate(_Path, Context) ->
+    ?LOG("bad path: ~p", [_Path]),
+    ?LOG("req verb: ~s", [Context#cb_context.req_verb]),
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
@@ -340,6 +352,7 @@ authorize_user(Context, _, _, []) ->
 authorize_user(Context, Credentials, Method, [AccountDb|AccountDbs]) ->
     case authorize_user(Context, Credentials, Method, AccountDb) of
         #cb_context{resp_status=success}=Context1 ->
+            ?LOG("authz user creds: ~s", [AccountDb]),
             Context1;
         _ ->
             authorize_user(Context, Credentials, Method, AccountDbs)
@@ -369,6 +382,7 @@ authorize_user(Context, Credentials, <<"sha">>, AccountDb) ->
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
 authorize_user(Context, _, _, _) ->
+    ?LOG("invalid creds"),
     crossbar_util:response(error, <<"invalid credentials">>, 401, Context).
 
 %%--------------------------------------------------------------------
@@ -377,8 +391,8 @@ authorize_user(Context, _, _, _) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec create_token/2 :: (#wm_reqdata{}, #cb_context{}) -> #cb_context{}.
-create_token(RD, #cb_context{doc=JObj}=Context) ->
+-spec create_token/2 :: (#http_req{}, #cb_context{}) -> #cb_context{}.
+create_token(_Req, #cb_context{doc=JObj}=Context) ->
     case wh_json:is_empty(JObj) of
         true ->
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
@@ -390,14 +404,6 @@ create_token(RD, #cb_context{doc=JObj}=Context) ->
                      ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                      ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
                      ,{<<"method">>, wh_util:to_binary(?MODULE)}
-                     ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
-                     ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-                     ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
-                     ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-                     ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-                     ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-                     ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
-                     ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
                     ],
             case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
                 {ok, Doc} ->

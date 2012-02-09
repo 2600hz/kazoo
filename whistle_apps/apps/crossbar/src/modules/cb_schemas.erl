@@ -9,7 +9,7 @@
 %%% @end
 %%% Created : 26 Nov 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cb_schema).
+-module(cb_schemas).
 
 -behaviour(gen_server).
 
@@ -112,10 +112,13 @@ handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.schema">>, Paylo
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.schema">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = resource_exists(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
+    ?LOG("payload: ~p", [Payload]),
+
+    {Result, Payload1} = resource_exists(Payload),
+    ?LOG("exists? ~s", [Result]),
+
+    Pid ! {binding_result, Result, Payload1},
+
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.validate.schema">>, [RD, Context | Params]}, State) ->
@@ -135,6 +138,7 @@ handle_info(timeout, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
+    ?LOG("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -175,10 +179,10 @@ code_change(_OldVsn, State, _Extra) ->
 -spec bind_to_crossbar/0 :: () ->  no_return().
 bind_to_crossbar() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.schema">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.schema">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.schema">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.schema">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.schemas">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.schemas">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.schemas">>),
+    crossbar_bindings:bind(<<"v1_resource.execute.#.schemas">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -224,6 +228,7 @@ resource_exists(_) ->
 %%--------------------------------------------------------------------
 -spec validate/2 :: ([ne_binary(),...] | [], #cb_context{}) -> #cb_context{}.
 validate([], #cb_context{req_verb = <<"get">>}=Context) ->
+    ?LOG("load summary of schemas from ~s", [?WH_SCHEMA_DB]),
     summary(Context#cb_context{db_name = ?WH_SCHEMA_DB});
 validate([Id], #cb_context{req_verb = <<"get">>}=Context) ->
     read(Id, Context#cb_context{db_name = ?WH_SCHEMA_DB});

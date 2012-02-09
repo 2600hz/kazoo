@@ -281,7 +281,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
             _ = send_document_change(created, DB, JObj1, Options),
             Context#cb_context{doc=JObj1
                                ,resp_status=success
-                               ,resp_headers=[{"Location", wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
+                               ,resp_headers=[{<<"Location">>, wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
                                ,resp_data=public_fields(JObj1)
                                ,resp_etag=rev_to_etag(JObj1)
                               };
@@ -326,7 +326,7 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
             _ = send_document_change(created, DB, JObj1, Options),
             Context#cb_context{doc=JObj1
                                ,resp_status=success
-                               ,resp_headers=[{"Location", wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
+                               ,resp_headers=[{<<"Location">>, wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
                                ,resp_data=public_fields(JObj1)
                                ,resp_etag=rev_to_etag(JObj1)
                               };
