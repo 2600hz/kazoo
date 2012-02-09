@@ -231,15 +231,8 @@ get_endpoint_data(JObj) ->
 
     ?LOG("EP: AcctID: ~s", [AcctID]),
 
-    ToDID = case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
-                [<<"nouser">>, _] ->
-                    [ReqU, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
-                    ?LOG("EP: ReqU: ~s", [ReqU]),
-                    wnm_util:to_e164(ReqU);
-                [T, _] ->
-                    ?LOG("EP: ToUser: ~s", [T]),
-                    wnm_util:to_e164(T)
-            end,
+    {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
+    ToDID = wnm_util:to_e164(ToUser),
     ?LOG("EP: ToDID: ~s", [ToDID]),
 
     RoutingData = routing_data(ToDID, AcctID),
