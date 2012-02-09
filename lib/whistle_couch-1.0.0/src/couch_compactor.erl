@@ -178,9 +178,10 @@ wait_for_compaction(AdminConn, Shard) ->
                     ok = timer:sleep(couch_config:fetch(<<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL)),
                     wait_for_compaction(AdminConn, Shard);
                 false ->
-                    ?LOG("compaction is not running for shard"),
-                    ok
+                    ?LOG("compaction is not running for shard")
             end;
+        {error, db_not_found} ->
+            ?LOG("db shard ~s not found, skipping", [Shard]);
         {error, _E} ->
             ?LOG("failed to query shard for compaction status: ~p", [_E]),
             ok = timer:sleep(couch_config:fetch(<<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL)),
