@@ -302,13 +302,36 @@ is_authentic(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     {true, Req, Context};
 is_authentic(Req0, Context0) ->
     Event = <<"v1_resource.authenticate">>,
-    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {Req0, Context0})) of
+    {Req1, Context1} = get_auth_token(Req0, Context0),
+    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {Req1, Context1})) of
         [] ->
             ?LOG("failed to authenticate"),
-            {{false, <<>>}, Req0, Context0};
-        [{true, {Req1, Context1}}|_] ->
+            {{false, <<>>}, Req1, Context1};
+        [{true, {Req2, Context2}}|_] ->
             ?LOG("is authentic"),
-            {true, Req1, Context1}
+            {true, Req2, Context2}
+    end.
+
+get_auth_token(Req0, #cb_context{req_json=ReqJObj, query_json=QSJObj}=Context0) ->
+    case cowboy_http_req:header(<<"X-Auth-Token">>, Req0) of
+        {undefined, Req1} ->
+            case wh_json:get_value(<<"auth_token">>, ReqJObj) of
+                undefined ->
+                    case wh_json:get_value(<<"auth_token">>, QSJObj) of
+                        undefined ->
+                            ?LOG("no auth token found"),
+                            {Req1, Context0};
+                        Token ->
+                            ?LOG("using auth token from query string"),
+                            {Req1, Context0#cb_context{auth_token=Token}}
+                    end;
+                Token ->
+                    ?LOG("using auth token from req json"),
+                    {Req1, Context0#cb_context{auth_token=Token}}
+            end;
+        {Token, Req1} ->
+            ?LOG("using auth token from header"),
+            {Req1, Context0#cb_context{auth_token=Token}}
     end.
 
 %%--------------------------------------------------------------------
