@@ -235,6 +235,8 @@ parse_path_tokens(Tokens) ->
 -spec parse_path_tokens/3 :: (wh_json:json_strings(), wh_json:json_strings(), [cb_mod_with_tokens(),...] | []) -> [cb_mod_with_tokens(),...] | [].
 parse_path_tokens([], _Loaded, Events) ->
     Events;
+parse_path_tokens([<<"schemas">>=Mod|T], _, Events) ->
+    [{Mod, T} | Events];
 parse_path_tokens([Mod|T], Loaded, Events) ->
     case lists:member(<<"cb_", (Mod)/binary>>, Loaded) of
         false ->
