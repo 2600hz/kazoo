@@ -34,7 +34,8 @@ handle_req(JObj, Props) ->
     true = wapi_offnet_resource:req_v(JObj),
     ?LOG_START("received outbound request"),
     <<"audio">> = wh_json:get_value(<<"Resource-Type">>, JObj),
-    Number = wh_json:get_value(<<"To-DID">>, JObj),
+    {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
+
     ?LOG("outbound request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
     CtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj),
     Response = case attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) of

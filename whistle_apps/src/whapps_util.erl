@@ -22,6 +22,7 @@
 -export([update_views/2, update_views/3]).
 -export([add_aggregate_device/2]).
 -export([rm_aggregate_device/2]).
+-export([get_destination/3]).
 
 -include("whistle_apps.hrl").
 
@@ -372,3 +373,31 @@ rm_aggregate_device(Db, Device) ->
             ok
     end,
     ok.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Extracts the User and Realm from either the Request or To field, configured
+%% in the system_config DB. Defaults to Request (To is the other option)
+%% @end
+%%--------------------------------------------------------------------
+-spec get_destination/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+get_destination(JObj, Cat, Key) ->
+    case whapps_config:get(Cat, Key, <<"Request">>) of
+        <<"To">> ->
+            case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
+                [<<"nouser">>, _] ->
+                    [_, _]=Dest = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+                    list_to_tuple(Dest);
+                [_, _]=Dest ->
+                    list_to_tuple(Dest)
+            end;
+        _ ->
+            case binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>) of
+                [<<"nouser">>, _] ->
+                    [_, _]=Dest = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
+                    list_to_tuple(Dest);
+                [_, _]=Dest ->
+                    list_to_tuple(Dest)
+            end
+    end.
