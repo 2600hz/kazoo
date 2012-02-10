@@ -415,7 +415,7 @@ generate_etag(Req0, Context0) ->
     case Context1#cb_context.resp_etag of
         automatic ->
             {Content, _} = v1_util:create_resp_content(Req1, Context1),
-            Tag = wh_util:to_binary(mochihex:to_hex(crypto:md5(Content))),
+            Tag = wh_util:to_hex_binary(crypto:md5(Content)),
             ?LOG("using automatic etag ~s", [Tag]),
             {Tag, Req1, Context1#cb_context{resp_etag=Tag}};
         undefined ->

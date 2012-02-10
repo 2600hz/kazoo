@@ -1084,9 +1084,9 @@ update_doc(Key, Value, Id, Db) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec tmp_file/0 :: () -> binary().
+-spec tmp_file/0 :: () -> ne_binary().
 tmp_file() ->
-     <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
+     <<(wh_util:to_hex(crypto:rand_bytes(16)))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1097,7 +1097,7 @@ tmp_file() ->
 %% with year 0.
 %% @end
 %%--------------------------------------------------------------------
--spec new_timestamp/0 :: () -> binary().
+-spec new_timestamp/0 :: () -> ne_binary().
 new_timestamp() ->
     wh_util:to_binary(wh_util:current_tstamp()).
 

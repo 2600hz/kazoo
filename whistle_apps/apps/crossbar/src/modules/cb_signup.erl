@@ -445,10 +445,10 @@ validate_user(User, Context) ->
 %% generates a random activation key
 %% @end
 %%--------------------------------------------------------------------
--spec create_activation_key/0 :: () -> binary().
+-spec create_activation_key/0 :: () -> ne_binary().
 create_activation_key() ->
     ActivationKey =
-        wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(32))),
+        wh_util:to_hex_binary(crypto:rand_bytes(32)),
     ?LOG("created new activation key ~s", [ActivationKey]),
     ActivationKey.
 

@@ -44,7 +44,7 @@
 %%--------------------------------------------------------------------
 -spec rand_chars/1 :: (pos_integer()) -> ne_binary().
 rand_chars(Count) ->
-    wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(Count))).
+    wh_util:to_hex_binary(crypto:rand_bytes(Count)).
 
 %%--------------------------------------------------------------------
 %% @public

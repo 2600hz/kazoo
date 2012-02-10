@@ -206,7 +206,7 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, Con
 handle_info({binding_fired, Pid, <<"v1_resource.execute.put.servers">>, [RD, #cb_context{doc=Doc}=Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  Id = wh_util:to_binary(wh_util:to_hex(crypto:md5([wh_json:get_value(<<"ip">>, Doc), wh_json:get_value(<<"ssh_port">>, Doc)]))),
+                  Id = wh_util:to_hex_binary(crypto:md5([wh_json:get_value(<<"ip">>, Doc), wh_json:get_value(<<"ssh_port">>, Doc)])),
                   Context1 = crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(<<"_id">>, Id, Doc)}),
                   Pid ! {binding_result, true, [RD, Context1, Params]}
           end),
@@ -626,16 +626,16 @@ create_role(Account, #cb_context{db_name=Db}, #state{role_tmpl=RoleTmpl}) ->
         Props = [{<<"account">>, Account}
                  ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
                  %% The list index syntax of erlydtl doesnt seem to compile
-                 ,{<<"rand_small_1">>, wh_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_small_2">>, wh_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_small_3">>, wh_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_small_4">>, wh_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_small_5">>, wh_util:to_hex(crypto:rand_bytes(8))}
-                 ,{<<"rand_large_1">>, wh_util:to_hex(crypto:rand_bytes(24))}
-                 ,{<<"rand_large_2">>, wh_util:to_hex(crypto:rand_bytes(24))}
-                 ,{<<"rand_large_3">>, wh_util:to_hex(crypto:rand_bytes(24))}
-                 ,{<<"rand_large_4">>, wh_util:to_hex(crypto:rand_bytes(24))}
-                 ,{<<"rand_large_5">>, wh_util:to_hex(crypto:rand_bytes(24))}
+                 ,{<<"rand_small_1">>, wh_util:to_hex_binary(crypto:rand_bytes(8))}
+                 ,{<<"rand_small_2">>, wh_util:to_hex_binary(crypto:rand_bytes(8))}
+                 ,{<<"rand_small_3">>, wh_util:to_hex_binary(crypto:rand_bytes(8))}
+                 ,{<<"rand_small_4">>, wh_util:to_hex_binary(crypto:rand_bytes(8))}
+                 ,{<<"rand_small_5">>, wh_util:to_hex_binary(crypto:rand_bytes(8))}
+                 ,{<<"rand_large_1">>, wh_util:to_hex_binary(crypto:rand_bytes(24))}
+                 ,{<<"rand_large_2">>, wh_util:to_hex_binary(crypto:rand_bytes(24))}
+                 ,{<<"rand_large_3">>, wh_util:to_hex_binary(crypto:rand_bytes(24))}
+                 ,{<<"rand_large_4">>, wh_util:to_hex_binary(crypto:rand_bytes(24))}
+                 ,{<<"rand_large_5">>, wh_util:to_hex_binary(crypto:rand_bytes(24))}
                 ],
         {ok, Role} = RoleTmpl:render(Props),
         JObj = wh_json:decode(iolist_to_binary(Role)),

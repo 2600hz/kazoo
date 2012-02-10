@@ -172,8 +172,8 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.get.openid_auth">>, [RD,
                   Popup = wh_util:is_popup(wrq:get_qs_value("popup", RD)),
 
                   %% we cant just put the UUID on the url, that would defeat the purpose
-                  CacheKey = wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(16))),
-                  Seed = wh_util:to_hex(crypto:rand_bytes(32)),
+                  CacheKey = wh_util:to_hex_binary(crypto:rand_bytes(16)),
+                  Seed = wh_util:to_hex_binary(crypto:rand_bytes(32)),
                   wh_cache:store(CacheKey, {Seed, Provider, Popup}, 60),
 
                   %% build up our URL

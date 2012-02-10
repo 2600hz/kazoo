@@ -488,4 +488,4 @@ delete_media_binary(MediaID, Context) ->
 
 -spec attachment_name/0 :: () -> ne_binary().
 attachment_name() ->
-    list_to_binary([wh_util:to_hex(crypto:rand_bytes(16))]).
+    wh_util:to_hex_binary(crypto:rand_bytes(16)).

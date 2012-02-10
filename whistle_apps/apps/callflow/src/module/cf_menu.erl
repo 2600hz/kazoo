@@ -330,9 +330,9 @@ get_new_attachment_url(AttachmentName, MediaId, #cf_call{account_db=Db}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(tmp_file/0 :: () -> binary()).
+-spec tmp_file/0 :: () -> ne_binary().
 tmp_file() ->
-     <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
+     <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -340,7 +340,7 @@ tmp_file() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec review_recording/3 :: (ne_binary(), #menu{}, #cf_call{}) -> {ok, record | save | no_selection}.
+-spec review_recording/3 :: (ne_binary(), #menu{}, #cf_call{}) -> {'ok', 'record' | 'save' | 'no_selection'}.
 review_recording(MediaName, #menu{prompts=Prompts, keys=#keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
     ?LOG("playing menu greeting review options"),
     cf_call_command:flush_dtmf(Call),
