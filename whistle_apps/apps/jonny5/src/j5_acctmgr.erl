@@ -502,8 +502,8 @@ get_ts_values(AcctID, AcctDoc) ->
     {Trunks, InboundTrunks, Prepay}.
 
 get_account_values(AcctID, JObj) ->
-    Trunks = wh_json:get_integer_value(<<"trunks">>, JObj),
-    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, JObj),
+    Trunks = wh_json:get_integer_value(<<"trunks">>, JObj, 0),
+    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, JObj, 0),
     Prepay = j5_util:current_usage(AcctID),
 
     ?LOG_SYS("found trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
