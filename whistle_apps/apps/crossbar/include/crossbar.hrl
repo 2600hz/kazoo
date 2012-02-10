@@ -3,7 +3,10 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
+-include_lib("cowboy/include/http.hrl").
+
 -include_lib("webmachine/include/webmachine.hrl").
+
 -include("crossbar_types.hrl").
 
 -define(CONFIG_CAT, <<"crossbar">>).
@@ -18,10 +21,10 @@
 
 -define(CACHE_TTL, whapps_config:get_integer(<<"crossbar">>, <<"cache_ttl">>, 300)).
 
--define(CONTENT_PROVIDED, [{to_json, ["application/json","application/x-json"]}]).
--define(CONTENT_ACCEPTED, [{from_json, ["application/json","application/x-json"]}
-                           ,{from_form, ["application/x-www-form-urlencoded"]}
-                           ,{from_binary, []}
+-define(CONTENT_PROVIDED, [{to_json, [{<<"application">>, <<"json">>},{<<"application">>, <<"x-json">>}]}]).
+-define(CONTENT_ACCEPTED, [{from_json, [{<<"application">>, <<"json">>},{<<"application">>, <<"x-json">>}]}
+                           ,{from_form, [{<<"application">>, <<"x-www-form-urlencoded">>}]}
+                           ,{from_binary, [{<<"text">>, <<"csv">>}]}
                           ]).
 -define(ALLOWED_METHODS, ['GET'
                           ,'POST'
@@ -36,6 +39,9 @@
           ,content_types_accepted = ?CONTENT_ACCEPTED :: [crossbar_content_handler(),...] | []
           ,allowed_methods = ?ALLOWED_METHODS :: [atom(),...] | []
           ,allow_methods = ?ALLOWED_METHODS :: [atom(),...] | []
+          ,languages_provided = [<<"en">>] :: [ne_binary(),...] %% english by default
+          ,charsets_provided = [<<"*">>] :: [ne_binary(),...] %% all charsets provided
+          ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: [ne_binary(),...] %% gzip and identity
           ,auth_token = <<>> :: binary()
           ,auth_account_id = 'undefined' :: 'undefined' | ne_binary()
           ,auth_doc = 'undefined' :: wh_json:json_object() | 'undefined'
@@ -53,7 +59,7 @@
           ,resp_status = 'error' :: crossbar_status()
           ,resp_error_msg = 'undefined' :: wh_json:json_string() | 'undefined'
           ,resp_error_code = 'undefined' :: wh_json:json_number() | 'undefined'
-          ,resp_data = [] :: wh_json:json_objects()
+          ,resp_data = wh_json:new() :: wh_json:json_object()
           ,resp_headers = [] :: proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
           ,start = erlang:now() :: wh_now()
           ,req_id = <<"000000000000">> :: ne_binary()

@@ -560,14 +560,10 @@ try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId, trunks_in_use=Dict, ledger
             case HowLow > PrepayLeft of
                 true -> % 0 > -1
                     %% Alert admins of the situation
-                    whapps_util:alert(<<"emerg">>, ["Source: ~s(~p)~n"
-                                                    ,"Alert: Insufficient prepay to authorize the call.~n"
-                                                    ,"Call-ID: ~s~n"
-                                                    ,"Account-ID: ~s~n"
-                                                    ,"Current Prepay Balance: ~p~n"
-                                                   ]
-                                      ,[?MODULE, ?LINE, CallID, AcctId, wapi_money:units_to_dollars(Pre)]),
-
+                    ?LOG(notice, "insufficient prepay to authorize call, current balance $~p", [CallID
+                                                                                                ,wapi_money:units_to_dollars(Pre)
+                                                                                                ,{extra_data, [{account_id, AcctId}]}
+                                                                                               ]),
                     catch(wapi_notifications:publish_low_balance([{<<"Account-ID">>, AcctId}
                                                                   ,{<<"Current-Balance">>, wapi_money:units_to_dollars(Pre)}
                                                                   | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)

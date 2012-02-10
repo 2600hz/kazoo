@@ -52,10 +52,9 @@ handle(Data, Call) ->
                     ?LOG("completed successful bridge to the hotdesk"),
                     cf_exe:stop(Call);
                 {fail, _}=Failure ->
-                    ?CF_ALERT(Failure, Call),
                     cf_util:handle_bridge_failure(Failure, Call);
-                {error, _}=E ->
-                    ?CF_ALERT(E, "error bridging to hotdesk", Call),
+                {error, _R} ->
+                    ?LOG("error bridging to hotdesk: ~p", [_R]),
                     cf_exe:continue(Call)
             end;
         <<"bridge">> ->

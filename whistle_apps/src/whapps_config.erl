@@ -23,7 +23,7 @@
 -export([flush/0, import/1, couch_ready/0]).
 
 -type config_category() :: ne_binary() | nonempty_string() | atom().
--type config_key() :: ne_binary() | nonempty_string() | atom().
+-type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -197,31 +197,32 @@ get(Category, Key) ->
 get(Category, Key, Default) ->
     get(Category, Key, Default, node()).
 
-get(Category0, Key0, Default, Node0) ->
+get(Category, Key, Default, Node) when not is_list(Key) ->
+    get(Category, [wh_util:to_binary(Key)], Default, Node);
+get(Category0, Keys, Default, Node0) ->
     Category = wh_util:to_binary(Category0),
-    Key = wh_util:to_binary(Key0),
     Node = wh_util:to_binary(Node0),
 
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
     case fetch_category(Category, Cache) of
         {ok, JObj} ->
-            case wh_json:get_value([Node, Key], JObj) of
+            case wh_json:get_value([Node | Keys], JObj) of
                 undefined ->
-                    case wh_json:get_value([<<"default">>, Key], JObj) of
+                    case wh_json:get_value([<<"default">> | Keys], JObj) of
                         undefined ->
-                            ?LOG("missing key ~s(~s) ~s: ~p", [Category, Node, Key, Default]),
-                            set_default(Category, Key, Default),
+                            ?LOG("missing key ~s(~s) ~p: ~p", [Category, Node, Keys, Default]),
+                            set_default(Category, Keys, Default),
                             Default;
                         Else ->
-                            ?LOG("fetched config ~s(~s) ~s: ~p", [Category, "default", Key, Else]),
+                            ?LOG("fetched config ~s(default) ~p: ~p", [Category, Keys, Else]),
                             Else
                     end;
                 Else ->
-                    ?LOG("fetched config ~s(~s) ~s: ~p", [Category, Node, Key, Else]),
+                    ?LOG("fetched config ~s(~s) ~p: ~p", [Category, Node, Keys, Else]),
                     Else
             end;
         {error, _} ->
-            ?LOG("missing category ~s(~s) ~s: ~p", [Category, "default", Key, Default]),
+            ?LOG("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
             Default
     end.
 
@@ -390,15 +391,16 @@ config_terms_to_json(Terms) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec do_set/4 :: (config_category(), config_key(), term(), ne_binary()) -> {'ok', wh_json:json_object()}.
-do_set(Category0, Key0, Value, Node0) ->
+do_set(Category, Key, Value, Node) when not is_list(Key) ->
+    do_set(Category, [wh_util:to_binary(Key)], Value, Node);
+do_set(Category0, Keys, Value, Node0) ->
     Category = wh_util:to_binary(Category0),
-    Key = wh_util:to_binary(Key0),
     Node = wh_util:to_binary(Node0),
 
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
     UpdateFun = fun(J) ->
                         NodeConfig = wh_json:get_value(Node, J, wh_json:new()),
-                        wh_json:set_value(Key, Value, NodeConfig)
+                        wh_json:set_value(Keys, Value, NodeConfig)
                 end,
 
     update_category_node(Category, Node, UpdateFun, Cache).
@@ -482,6 +484,8 @@ category_to_file(<<"notify.cnam_request">>) ->
     [code:lib_dir(notify, priv), "/notify_cnam_request.config"];
 category_to_file(<<"notify.port_request">>) ->
     [code:lib_dir(notify, priv), "/notify_port_request.config"];
+category_to_file(<<"notify.low_balance">>) ->
+    [code:lib_dir(notify, priv), "/notify_low_balance.config"];
 category_to_file(<<"smtp_client">>) ->
     [code:lib_dir(whistle_apps, priv), "/smtp_client.config"];
 category_to_file(<<"alerts">>) ->

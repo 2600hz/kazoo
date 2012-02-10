@@ -43,11 +43,7 @@ inbound_handler(JObj, Number) ->
               wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
              );
         {error, R} ->
-            whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
-                                            ,"Alert: could not lookup ~s~n"
-                                            ,"Fault: ~p~n"]
-                              ,[?MODULE, ?LINE, Number, R]),
-            ?LOG_END("unable to get account id ~w", [R])
+            ?LOG(notice, "unable to get account id for ~s: ~p", [Number, R])
     end.
 
 %%--------------------------------------------------------------------
@@ -58,24 +54,7 @@ inbound_handler(JObj, Number) ->
 %%--------------------------------------------------------------------
 -spec get_dest_number/1 :: (wh_json:json_object()) -> ne_binary().
 get_dest_number(JObj) ->
-    User = case whapps_config:get(<<"stepswitch">>, <<"inbound_user_field">>, <<"Request">>) of
-               <<"To">> ->
-                   case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
-                       [<<"nouser">>, _] ->
-                           [ReqUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
-                           ReqUser;
-                       [ToUser, _] ->
-                           ToUser
-                   end;
-               _ ->
-                   case binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>) of
-                       [<<"nouser">>, _] ->
-                           [ReqUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-                           ReqUser;
-                       [ToUser, _] ->
-                           ToUser
-                   end
-           end,
+    {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     wnm_util:to_e164(User).
 
 %%--------------------------------------------------------------------

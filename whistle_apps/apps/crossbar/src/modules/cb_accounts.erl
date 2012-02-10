@@ -916,15 +916,15 @@ unassign_rep(AccountId, JObj) ->
                            ,{<<"key">>, AccountId}],
             case couch_mgr:get_results(ParentDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
                 {ok, Results} ->
-                    [begin
-                         Rep = wh_json:get_value(<<"doc">>, Result),
-                         Assignments = wh_json:get_value(<<"pvt_sub_account_assignments">>, Rep, []),                          
-                         couch_mgr:save_doc(ParentDb
-                                            ,wh_json:set_value(<<"pvt_sub_account_assignments">>
+                    _ = [begin
+                             Rep = wh_json:get_value(<<"doc">>, Result),
+                             Assignments = wh_json:get_value(<<"pvt_sub_account_assignments">>, Rep, []),                          
+                             couch_mgr:save_doc(ParentDb
+                                                ,wh_json:set_value(<<"pvt_sub_account_assignments">>
                                                                    ,lists:delete(AccountId, Assignments)
-                                                               ,Rep)
-                                           )
-                     end || Result <- Results],
+                                                                   ,Rep)
+                                               )
+                         end || Result <- Results],
                     ok;
                 _E -> ok
             end

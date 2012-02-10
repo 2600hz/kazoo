@@ -26,12 +26,11 @@ handle(Data, Call) ->
         {ok, _} ->
             ?LOG("completed successful bridge to the device"),
             cf_exe:stop(Call);
-        {error, _}=E ->
-            ?CF_ALERT(E, "error bridging to device", Call),
-            cf_exe:continue(Call);
         {fail, _}=F ->
-            ?CF_ALERT(F, Call),
-            cf_util:handle_bridge_failure(F, Call)
+            cf_util:handle_bridge_failure(F, Call);
+        {error, _R} ->
+            ?LOG("error bridging to device: ~p", [_R]),
+            cf_exe:continue(Call)
     end.
 
 %%--------------------------------------------------------------------

@@ -98,10 +98,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{auth_token = <<>>}=Context}}, State) ->
+    Pid ! {binding_result, false, {RD, Context}},
+    {noreply, State};
 handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>, {RD, #cb_context{auth_token=AuthToken}=Context}}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   crossbar_util:binding_heartbeat(Pid),
+                  ?LOG("checking auth token: ~s", [AuthToken]),
                   case crossbar_util:open_doc(?TOKEN_DB, AuthToken) of
                       {ok, JObj} ->
                           ?LOG("token auth is valid, authenticating"),

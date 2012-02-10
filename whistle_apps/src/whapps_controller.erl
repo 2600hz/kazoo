@@ -38,14 +38,11 @@ start_app(App) when is_atom(App) ->
         false ->
             try
                 {ok, _} = whapps_sup:start_app(App),
-                whapps_util:alert(<<"info">>, "Source: ~s(~p)~nAlert: started whapp ~s", [?MODULE, ?LINE, App]),
+                ?LOG(info, "started whistle application ~s", [App]),
                 ok
             catch
                 E:R ->
-                    whapps_util:alert(<<"critical">>, "Source: ~s(~p)~nAlert: failed to start whapp ~s~nFault: ~p"
-                                      ,[?MODULE, ?LINE, App, R]),
-                    ?LOG_SYS("Failed to load ~s", [App]),
-                    ?LOG_SYS("~p: ~p", [E, R]),
+                    ?LOG(critical, "failed to start whapp ~s: ~p:~p", [App, E, R]),
                     error
             end
     end.
@@ -54,15 +51,14 @@ start_app(App) when is_atom(App) ->
 stop_app(App) when not is_atom(App) ->
     stop_app(wh_util:to_atom(App));
 stop_app(App) ->
-    ?LOG_SYS("attempting to stop whapp ~s", [App]),
-    whapps_util:alert(<<"notice">>, "Source: ~s(~p)~nAlert: stopping whapp ~s", [?MODULE, ?LINE, App]),
+    ?LOG(notice, "stopping whistle application ~s", [App]),
     whapps_sup:stop_app(App).
 
 -spec restart_app/1 :: (atom() | nonempty_string() | ne_binary()) -> {'ok', pid() | 'undefined'} | {'ok', pid() | 'undefined', term()} | {'error', term()}.
 restart_app(App) when not is_atom(App) ->
     restart_app(wh_util:to_atom(App));
 restart_app(App) when is_atom(App) ->
-    whapps_util:alert(<<"info">>, "Source: ~s(~p)~nrestarting whapp ~s", [?MODULE, ?LINE, App]),
+    ?LOG(info, "restarting whistle application ~s", [App]),
     whapps_sup:restart_app(App).
 
 -spec running_apps/0 :: () -> [atom(),...] | [].
