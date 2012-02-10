@@ -22,7 +22,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, bind/2, map/2, fold/2, flush/0, flush/1, stop/0]).
+-export([start_link/0, bind/1, bind/2, map/2, fold/2, flush/0, flush/1, stop/0]).
 
 %% Helper Functions for Results of a map/2
 -export([any/1, all/1, succeeded/1, failed/1]).
@@ -120,6 +120,9 @@ start_link() ->
 
 stop() ->
     gen_server:cast(?SERVER, stop).
+
+bind(Binding) ->
+    gen_server:call(?MODULE, {bind, Binding}, infinity).
 
 -spec bind/2 :: (ne_binary(), atom()) -> 'ok' | {'error', 'exists'}.
 bind(Binding, Module) ->
@@ -399,7 +402,7 @@ matches(_, _) -> false.
 wait_for_map_binding(P, Route, Payload) ->
     receive
         {binding_result, Resp, Pay} ->
-            ?LOG("result received from ~p", [P]),
+            ?LOG("result received from ~p: ~p", [P, Resp]),
             {Resp, Pay};
         {binding_error, Error} ->
             ?LOG("receieved binding error from ~p: ~p", [P, Error]),

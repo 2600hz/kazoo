@@ -603,15 +603,14 @@ get_path(Req, Relative) ->
     PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>)),
     UrlTokens = binary:split(Relative, <<"/">>),
 
-    Url1 = wh_util:join_binary(
-             lists:reverse(
-               lists:foldl(fun(<<"..">>, []) -> [];
-                              (<<"..">>, [_ | PathTokens]) -> PathTokens;
-                              (<<".">>, PathTokens) -> PathTokens;
-                              (Segment, PathTokens) -> [Segment | PathTokens]
-                           end, PathTokensRev, UrlTokens)
-              ), <<"/">>),
-    erlang:iolist_to_binary(Url1).
+    wh_util:join_binary(
+      lists:reverse(
+        lists:foldl(fun(<<"..">>, []) -> [];
+                       (<<"..">>, [_ | PathTokens]) -> PathTokens;
+                       (<<".">>, PathTokens) -> PathTokens;
+                       (Segment, PathTokens) -> [Segment | PathTokens]
+                    end, PathTokensRev, UrlTokens)
+       ), <<"/">>).
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).

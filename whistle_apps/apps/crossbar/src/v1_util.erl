@@ -23,9 +23,11 @@
 
 -include("crossbar.hrl").
 
--type cowboy_multipart_response() :: {{headers, cowboy_http:headers()} |
-                                      {data, binary()} | end_of_part | eof,
-                                      #http_req{}
+-type cowboy_multipart_response() :: {{'headers', cowboy_http:headers()} |
+                                      {'data', binary()} |
+                                      'end_of_part' |
+                                      'eof'
+                                      ,#http_req{}
                                      }.
 
 %%--------------------------------------------------------------------
@@ -295,7 +297,7 @@ maybe_add_post_method(_, _, Allowed) ->
 %% provided a valid authentication token
 %% @end
 %%--------------------------------------------------------------------
--spec is_authentic/2 :: (#http_req{}, #cb_context{}) -> {{'false', []} | 'true', #http_req{}, #cb_context{}}.
+-spec is_authentic/2 :: (#http_req{}, #cb_context{}) -> {{'false', <<>>} | 'true', #http_req{}, #cb_context{}}.
 is_authentic(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     %% all OPTIONS, they are harmless (I hope) and required for CORS preflight
     ?LOG("is authentic: options"),
@@ -312,6 +314,7 @@ is_authentic(Req0, Context0) ->
             {true, Req2, Context2}
     end.
 
+-spec get_auth_token/2 :: (#http_req{}, #cb_context{}) -> {#http_req{}, #cb_context{}}.
 get_auth_token(Req0, #cb_context{req_json=ReqJObj, query_json=QSJObj}=Context0) ->
     case cowboy_http_req:header(<<"X-Auth-Token">>, Req0) of
         {undefined, Req1} ->
@@ -461,7 +464,7 @@ execute_request(Req, Context) ->
     ?LOG("execute request false end"),
     {false, Req, Context}.
 
--spec execute_request_results/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+-spec execute_request_results/2 :: (#http_req{}, #cb_context{}) -> {'true' | 'halt', #http_req{}, #cb_context{}}.
 execute_request_results(Req0, #cb_context{resp_error_code=ReturnCode, req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
     case succeeded(Context) of
         false ->
@@ -489,7 +492,7 @@ execute_request_results(Req0, #cb_context{resp_error_code=ReturnCode, req_nouns=
 %% This function will create the content for the response body
 %% @end
 %%--------------------------------------------------------------------
--spec create_resp_content/2 :: (#http_req{}, #cb_context{}) -> {ne_binary(), #http_req{}}.
+-spec create_resp_content/2 :: (#http_req{}, #cb_context{}) -> {ne_binary() | iolist(), #http_req{}}.
 create_resp_content(Req0, #cb_context{req_json=ReqJson}=Context) ->
     try wh_json:encode(wh_json:from_list(create_resp_envelope(Context))) of
         JSON ->
@@ -503,7 +506,7 @@ create_resp_content(Req0, #cb_context{req_json=ReqJson}=Context) ->
     catch
         _E:_R ->
             ?LOG("failed to encode response: ~s: ~p", [_E, _R]),
-            {<<>>, Req0}
+            {[], Req0}
     end.
 
 %%--------------------------------------------------------------------
@@ -533,7 +536,7 @@ create_push_response(Req0, Context) ->
 %% is pulling data (like GET)
 %% @end
 %%--------------------------------------------------------------------
--spec create_pull_response/2 :: (#http_req{}, #cb_context{}) -> {boolean() | 'halt', #http_req{}, #cb_context{}}.
+-spec create_pull_response/2 :: (#http_req{}, #cb_context{}) -> {ne_binary() | iolist() | 'halt', #http_req{}, #cb_context{}}.
 create_pull_response(Req0, Context) ->
     ?LOG("create pull response"),
     {Content, Req1} = create_resp_content(Req0, Context),
@@ -555,7 +558,7 @@ create_pull_response(Req0, Context) ->
 %% This function extracts the reponse fields and puts them in a proplist
 %% @end
 %%--------------------------------------------------------------------
--spec create_resp_envelope/1 :: (#cb_context{}) -> [{binary(), binary() | atom() | wh_json:json_object() | wh_json:json_objects()},...].
+-spec create_resp_envelope/1 :: (#cb_context{}) -> wh_json:json_proplist(<<_:32,_:_*8>>). 
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=undefined}) ->
     ?LOG("generating successful response, no etag"),
     [{<<"auth_token">>, AuthToken}

@@ -77,7 +77,7 @@ terminate(_, _) ->
     ?LOG_END("session finished").
 
 rest_terminate(_Req, #cb_context{start=T1}=Context) ->
-    crossbar_bindings:map(<<"v1_resource.finish_request">>, Context),
+    _ = crossbar_bindings:map(<<"v1_resource.finish_request">>, Context),
     ?LOG_END("fulfilled in ~p ms", [timer:now_diff(now(), T1) div 1000]).
 
 %%%===================================================================
@@ -135,7 +135,7 @@ malformed_request(Req, Context) ->
     ?LOG("request is not malformed"),
     {false, Req, Context}.
 
--spec is_authorized/2 :: (#http_req{}, #cb_context{}) -> {'true' | {'false', proplist()}, #http_req{}, #cb_context{}}.
+-spec is_authorized/2 :: (#http_req{}, #cb_context{}) -> {'true' | {'false', <<>>}, #http_req{}, #cb_context{}}.
 is_authorized(Req, Context) ->
     ?LOG("run: is_authorized"),
     v1_util:is_authentic(Req, Context).
@@ -319,15 +319,15 @@ post_is_create(Req, Context) ->
     ?LOG("run: post_is_create: false"),
     {false, Req, Context}.
 
-%% whatever (for now)
--spec create_path/2 :: (#http_req{}, #cb_context{}) -> {[], #http_req{}, #cb_context{}}.
+%% set the location header
+-spec create_path/2 :: (#http_req{}, #cb_context{}) -> {ne_binary(), #http_req{}, #cb_context{}}.
 create_path(Req, #cb_context{resp_headers=RespHeaders}=Context) ->
     ?LOG("run: create_path"),
     %% Location header goes here, I believe?
 
     Path = props:get_value(<<"Location">>, RespHeaders, <<>>),
 
-    {crossbar_util:new_path(Req, Path), Req, Context}.
+    {crossbar_util:get_path(Req, Path), Req, Context}.
     
 
 -spec process_post/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
@@ -386,7 +386,7 @@ from_form(Req0, Context0) ->
             Else
     end.
 
--spec to_json/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+-spec to_json/2 :: (#http_req{}, #cb_context{}) -> {iolist() | ne_binary() | 'halt', #http_req{}, #cb_context{}}.
 to_json(Req, Context) ->
     ?LOG("run: to_json"),
     Event = <<"v1_resource.to_json">>,
@@ -400,6 +400,7 @@ to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
     _ = crossbar_bindings:map(Event, {Req, Context}),
     {RespData, v1_util:set_resp_headers(Req, Context), Context}.
 
+-spec multiple_choices/2 :: (#http_req{}, #cb_context{}) -> {'false', #http_req{}, #cb_context{}}.
 multiple_choices(Req, Context) ->
     ?LOG("run: multiple_choices"),
     ?LOG("has resp_body: ~s", [cowboy_http_req:has_resp_body(Req)]),
@@ -414,7 +415,7 @@ generate_etag(Req0, Context0) ->
     case Context1#cb_context.resp_etag of
         automatic ->
             {Content, _} = v1_util:create_resp_content(Req1, Context1),
-            Tag = mochihex:to_hex(crypto:md5(Content)),
+            Tag = wh_util:to_binary(mochihex:to_hex(crypto:md5(Content))),
             ?LOG("using automatic etag ~s", [Tag]),
             {Tag, Req1, Context1#cb_context{resp_etag=Tag}};
         undefined ->

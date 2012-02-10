@@ -7,7 +7,8 @@
 
 -type path_tokens() :: [ne_binary(),...] | [].
 
--type crossbar_content_handler() :: {atom(), [ne_binary(),...]}.
+%% {handler_fun, {type, sub_type}} => {to_json, [{<<"application">>, <<"json">>}]}
+-type crossbar_content_handler() :: {atom(), [{ne_binary(), ne_binary()},...]}.
 
 -type http_method() :: 'POST' | 'GET' | 'PUT' | 'DELETE'.
 -type http_methods() :: [http_method()].
