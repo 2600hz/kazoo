@@ -215,14 +215,8 @@ handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P, 
             ?LOG(CallID, "call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
             {noreply, State};
         error ->
-            ToDID = case binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>) of
-                        [<<"nouser">>, _] ->
-                            [RUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"nouser">>), <<"@">>),
-                            wnm_util:to_e164(RUser);
-                        [ToUser, _] -> wnm_util:to_e164(ToUser)
-                    end,
-
-            ?LOG("ToDID: ~s", [ToDID]),
+            {User, _} = whapps_util:get_destination(JObj),
+            ToDID = wnm_util:to_e164(User),
 
             {Resp, State1} = case is_us48(ToDID) of
                                  true -> try_inbound_then_twoway(CallID, State);
@@ -241,14 +235,8 @@ handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P, trunks_in
             ?LOG(CallID, "call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
             {noreply, State};
         error ->
-            ToDID = case binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>) of
-                        [<<"nouser">>, _] ->
-                            [RUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"nouser">>), <<"@">>),
-                            wnm_util:to_e164(RUser);
-                        [ToUser, _] -> wnm_util:to_e164(ToUser)
-                    end,
-
-            ?LOG("ToDID: ~s", [ToDID]),
+            {User, _} = whapps_util:get_destination(JObj),
+            ToDID = wnm_util:to_e164(User),
 
             {Resp, State1} = case erlang:byte_size(ToDID) > 6 of
                                  true ->
@@ -479,10 +467,12 @@ get_trunks_available(AcctID) ->
                 {ok, [JObj|_]} ->
                     ?LOG("view result retrieved"),
                     get_account_values(AcctID, wh_json:get_value(<<"doc">>, JObj));
-                _ ->
+                {ok, []} ->
                     ?LOG("missing limits or trunkstore doc, generating one"),
                     {ok, _} = create_new_limits(AcctID, AcctDB),
-                    {0, 0, j5_util:current_usage(AcctID)}
+                    {0, 0, j5_util:current_usage(AcctID)};
+                _ ->
+                    ?LOG("view errored out, going down")
             end
     end.
 
@@ -657,7 +647,6 @@ create_new_limits(AcctID, AcctDB) ->
                               ,{<<"pvt_modified">>, TStamp}
                               ,{<<"pvt_created_by">>, <<"jonny5">>}
                               ,{<<"account">>, Account}
-                              ,{<<"servers">>, []}
                              ]),
     couch_mgr:save_doc(AcctDB, JObj).
 
