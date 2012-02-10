@@ -21,9 +21,8 @@
 -include("../../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
--define(PVT_TYPE, <<"skel">>).
--define(PVT_FUNS, [fun add_pvt_type/2]).
--define(CB_LIST, <<"acls/crossbar_listing">>).
+-define(ECALLMGR, <<"ecallmgr">>).
+-define(ECALLMGR_ACLS, <<"acls">>).
 
 %%%===================================================================
 %%% API
@@ -121,27 +120,37 @@ handle_info({binding_fired, Pid, <<"v1_resource.validate.acls">>, [RD, Context |
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.acls">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.put.acls">>, [RD, #cb_context{resp_data=JObj}=Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS),
+                  Merged = wh_json:set_value(wh_json:get_value(<<"cidr">>, JObj), JObj, Acls),
+                  whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, Merged),
+                  Pid ! {binding_result, true, [RD, Context, Params]}
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.acls">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.get.acls">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context, Params]}
           end),
     {noreply, State};
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.acls">>, [RD, Context | Params]}, State) ->
+handle_info({binding_fired, Pid, <<"v1_resource.execute.authorize.acls">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
+                  Pid ! {binding_result, true, [RD, Context, Params]}
+          end),
+    {noreply, State};
+
+handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.acls">>, [RD, #cb_context{resp_data=Acl}=Context | Params]}, State) ->
+    spawn(fun() ->
+                  _ = crossbar_util:put_reqid(Context),
+                  Cidr =  wh_json:get_value(<<"cidr">>, Acl),
+                  Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS),
+                  whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, wh_json:delete_key(Cidr, Acls)),
+                  Pid ! {binding_result, true, [RD, Context, Params]}
           end),
     {noreply, State};
 
@@ -212,7 +221,7 @@ bind_to_crossbar() ->
 allowed_methods([]) ->
     {true, ['GET', 'PUT']};
 allowed_methods([_]) ->
-    {true, ['GET', 'POST', 'DELETE']};
+    {true, ['GET', 'DELETE']};
 allowed_methods(_) ->
     {false, []}.
 
@@ -248,8 +257,6 @@ validate([], #cb_context{req_verb = <<"put">>}=Context) ->
     create(Context);
 validate([Id], #cb_context{req_verb = <<"get">>}=Context) ->
     read(Id, Context);
-validate([Id], #cb_context{req_verb = <<"post">>}=Context) ->
-    update(Id, Context);
 validate([Id], #cb_context{req_verb = <<"delete">>}=Context) ->
     read(Id, Context);
 validate(_, Context) ->
@@ -267,10 +274,7 @@ create(#cb_context{req_data=Data}=Context) ->
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            Context#cb_context{doc=JObj1, resp_status=success}
+            Context#cb_context{resp_data=JObj, resp_status=success}
     end.
 
 %%--------------------------------------------------------------------
@@ -281,26 +285,8 @@ create(#cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing instance with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update(Id, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"acls">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            crossbar_doc:load_merge(Id, JObj1, Context)
-    end.
+    Acl = whapps_config:get(?ECALLMGR, [?ECALLMGR_ACLS, Id]),
+    Context#cb_context{resp_data=Acl, resp_status='success'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -311,25 +297,5 @@ update(Id, #cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec summary/1 :: (#cb_context{}) -> #cb_context{}.
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the resuts of a view
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
-normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% These are the pvt funs that add the necessary pvt fields to every
-%% instance
-%% @end
-%%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
-add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
+    Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS, wh_json:new()),
+    Context#cb_context{resp_data=Acls, resp_status='success'}.
