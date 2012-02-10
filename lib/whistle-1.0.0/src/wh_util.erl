@@ -4,9 +4,13 @@
 -export([get_account_realm/1, get_account_realm/2]).
 -export([is_account_enabled/1]).
 
--export([to_integer/1, to_integer/2, to_float/1, to_float/2, to_number/1
-         ,to_hex/1, to_list/1, to_binary/1
-         ,to_atom/1, to_atom/2]).
+-export([to_integer/1, to_integer/2
+         ,to_float/1, to_float/2
+         ,to_number/1
+         ,to_hex/1, to_hex_binary/1
+         ,to_list/1, to_binary/1
+         ,to_atom/1, to_atom/2
+        ]).
 -export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
 -export([to_lower_binary/1, to_upper_binary/1, binary_join/2]).
 
@@ -276,6 +280,16 @@ get_xml_value(Path, Xml) ->
 -spec to_hex/1 :: (binary() | string()) -> string().
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
+
+-spec to_hex_binary/1 :: (binary() | string()) -> binary().
+to_hex_binary(S) ->
+    Bin = to_binary(S),
+    << <<(binary_to_hex_char(B div 16)), (binary_to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
+
+binary_to_hex_char(N) when N < 10 ->
+    $0 + N;
+binary_to_hex_char(N) when N < 16 ->
+    $a - 10 + N.
 
 -spec to_integer/1 :: (string() | binary() | integer() | float()) -> integer().
 -spec to_integer/2 :: (string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
