@@ -61,7 +61,10 @@ cf-enter_number: Enter the number to forward to, followed by the pound key.
 cf-enabled_menu: To disable call forwarding press 1, to change the number press 2.
 cf-disabled_menu: To enable call forwarding press 1, to change the number press 2.
 
-
 park-already_in_use: This parking spot is already in use, please choose a different spot number.This parking spot is already in use, please choose a different spot number.
 park-no_caller: This parking extension is empty, the caller may have been retrieved by a different user or hungup.
 park-call_placed_in_spot: Call placed in parking spot
+
+fault-can_not_be_completed_as_dialed: Your call can not be completed as dialed. Please check the number and dial again.
+fault-facility_trouble: Due to telephone company facility trouble your call can not be completed at this time.  Please try your call again later.
+fault-can_not_be_completed_at_this_time: Your call can not be completed at this time. Please try again later.
