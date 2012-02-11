@@ -30,8 +30,6 @@ start_deps() ->
         _ -> ok
     end,
 
-    wh_alert:start_link(),
-
     wh_util:ensure_started(sasl),
     wh_util:ensure_started(crypto),
     wh_util:ensure_started(ibrowse),

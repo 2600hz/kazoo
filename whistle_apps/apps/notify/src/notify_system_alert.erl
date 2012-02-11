@@ -49,7 +49,10 @@ handle_req(JObj, _Props) ->
 
     ?LOG_START("an alert has occured, sending email notification"),
 
-    {ok, Account} = notify_util:get_account_doc(JObj),
+    Account = case notify_util:get_account_doc(JObj) of
+                  undefined -> wh_json:new();
+                  {ok, Else} -> Else
+              end,
 
     {To, MinLevel} = case wh_json:get_value([<<"notifications">>, <<"alert">>, <<"send_to">>], Account) of
                          undefined ->
@@ -99,12 +102,18 @@ handle_req(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_template_props/2 :: (wh_json:json_object(), wh_json:json_objects()) -> proplist().
-create_template_props(Event1, Account) ->
-    Event2 = wh_json:set_value(<<"Details">>
-                                   ,io_lib:format("~p", [wh_json:get_value(<<"Details">>, Event1, <<>>)])
-                               ,Event1),
-    Admin = notify_util:find_admin(Account),
-    [{<<"request">>, notify_util:json_to_template_props(Event2)}
+create_template_props(Event, Account) ->
+    Admin = notify_util:find_admin(Account),    
+    [{<<"request">>, notify_util:json_to_template_props(wh_json:delete_keys([<<"Details">>
+                                                                                 ,<<"App-Version">>
+                                                                                 ,<<"App-Name">>
+                                                                                 ,<<"Event-Name">>
+                                                                                 ,<<"Event-Category">>
+                                                                                 ,<<"Server-ID">>
+                                                                                 ,<<"Message">>
+                                                                            ], Event))}
+     ,{<<"message">>, wh_json:get_binary_value(<<"Message">>, Event)}
+     ,{<<"details">>, notify_util:json_to_template_props(wh_json:get_value(<<"Details">>, Event))}
      ,{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
      ,{<<"service">>, notify_util:get_service_props(Account, ?MOD_CONFIG_CAT)}

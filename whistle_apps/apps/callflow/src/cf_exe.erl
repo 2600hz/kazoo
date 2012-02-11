@@ -326,18 +326,18 @@ handle_cast(_, State) ->
 handle_info({'EXIT', _, normal}, State) ->
     %% handle normal exits so we dont need a guard on the next clause, cleaner looking...
     {noreply, State};
-handle_info({'EXIT', Pid, Reason}, #state{cf_module_pid=Pid, call=#cf_call{account_id=AccountId}=Call}=State) ->
-    ?LOG(error, "action ~w died unexpectedly, ~p"
-         ,[Pid, Reason, {extra_data, [{details, cf_util:call_to_proplist(Call)}
-                                      ,{account_id, AccountId}
-                                     ]}]),
+handle_info({'EXIT', Pid, Reason}, #state{cf_module_pid=Pid, call=#cf_call{account_id=AccountId, last_action=Action}=Call}=State) ->
+    ?LOG(error, "action ~s died unexpectedly: ~p"
+         ,[Action, Reason, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+                                         ,{account_id, AccountId}
+                                        ]}]),
     ?MODULE:continue(self()),
     {noreply, State};
 handle_info({call_sanity_check}, #state{status = <<"testing">>, call=#cf_call{account_id=AccountId}=Call}=State) ->
     ?LOG(info, "callflow executer is insane, shuting down"
          ,[{extra_data, [{details, cf_util:call_to_proplist(Call)}
                          ,{account_id, AccountId}
-                        ]}]),
+                         ]}]),
     {stop, {shutdown, insane}, State#state{status = <<"insane">>}};
 handle_info({call_sanity_check}, #state{call_id=CallId, call=Call}=State) ->
     ?LOG("ensuring call is active, requesting controlling channel status"),

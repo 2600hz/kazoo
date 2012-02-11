@@ -321,7 +321,6 @@ update_views([Found|Finds], Db, Views, Remove) ->
             couch_mgr:del_doc(Db, Doc),
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         undefined ->
-            ?LOG("no id in the views"),
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         View1 when View1 =:= RawDoc ->
             ?LOG("view '~s' matches the raw doc, skipping", [Id]),

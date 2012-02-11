@@ -152,7 +152,7 @@
 %% Notify System Alert
 -define(SYSTEM_ALERT_HEADERS, [<<"Level">>, <<"Message">>]).
 -define(OPTIONAL_SYSTEM_ALERT_HEADERS, [<<"Pid">>, <<"Module">>, <<"Line">>, <<"Request-ID">>, <<"Section">>
-                                            ,<<"Details">>, <<"Account-ID">>
+                                            ,<<"Node">>, <<"Details">>, <<"Account-ID">>
                                        ]).
 -define(SYSTEM_ALERT_VALUES, [{<<"Event-Category">>, <<"notification">>}
                               ,{<<"Event-Name">>, <<"system_alert">>}

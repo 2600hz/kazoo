@@ -50,12 +50,11 @@ bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Rin
             ?LOG("completed successful bridge to resource"),
             cf_exe:stop(Call);
         {fail, R} when T =:= [] ->
-            ?LOG(notice, "exhausted all local resources attempting bridge. Final failure: ~p"
-                 ,[R, {extra_data, [{details, cf_util:call_to_proplist(Call)}
-                                    ,{account_id, AccountId}
-                                   ]}]),
             {Cause, Code} = whapps_util:get_call_termination_reason(R),
-            ?LOG("attempting failure branch ~s:~s", [Code, Cause]),
+            ?LOG(notice, "exhausted all local resources attempting bridge, final cause ~s:~s"
+                 ,[Code, Cause, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+                                              ,{account_id, AccountId}
+                                             ]}]),
             case (cf_util:handle_bridge_failure(Cause, Call) =:= ok)
                 orelse (cf_util:handle_bridge_failure(Code, Call) =:= ok) of
                 true -> 
