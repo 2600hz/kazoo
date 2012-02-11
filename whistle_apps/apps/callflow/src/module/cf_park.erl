@@ -131,6 +131,7 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
             %% Update screen with error that the slot is occupied
             cf_call_command:b_answer(Call),
             %% playback message that caller will have to try a different slot
+            cf_exe:transfer(Call),
             ok;
         %% attended transfer and allowed to update the provided slot number, we are still connected to the 'parker'
         %% not the 'parkee'
@@ -140,13 +141,14 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
             cf_call_command:b_answer(Call),
             %% Caller parked in slot number...
             cf_call_command:b_say(wh_util:to_binary(SlotNumber), Call),
+            cf_exe:transfer(Call),
             ok;
         %% blind transfer and but the provided slot number is occupied
         {_, {error, occupied}} ->
             ?LOG("blind transfer to a occupied slot, call the parker back.."),
             case wh_json:get_value(<<"Ringback-ID">>, Slot) of
                 undefined -> ok;
-                EndpointId -> ringback_parker(EndpointId, <<"300">>, Call)
+                EndpointId -> ringback_parker(EndpointId, undefined, Call)
             end,
             ok;
         %% blind transfer and able to allowed to update the provided slot number
@@ -395,15 +397,16 @@ wait_for_pickup(SlotNumber, undefined, Call) ->
     cf_call_command:b_hold(Call),
     cleanup_slot(SlotNumber, cf_exe:callid(Call), Call);
 wait_for_pickup(SlotNumber, RingbackId, Call) ->
+    CleanUpFun = fun(_) -> cleanup_slot(SlotNumber, cf_exe:callid(Call), Call) end,
     case cf_call_command:b_hold(30000, Call) of
         {error, timeout} ->
-            case ringback_parker(RingbackId, <<"26">>, Call) of
+            case ringback_parker(RingbackId, CleanUpFun, Call) of
                 answered -> cf_exe:continue(Call);
                 _ -> wait_for_pickup(SlotNumber, RingbackId, Call)
             end;
         _ ->
             ?LOG("parked caller has been picked up or hungup"),
-            cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
+            CleanUpFun(undefined),
             cf_exe:transfer(Call)
     end.
 
@@ -473,15 +476,16 @@ get_endpoint_id(Username, #cf_call{account_db=Db}) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
-ringback_parker(EndpointId, Timeout, Call) ->
+ringback_parker(EndpointId, CleanUpFun, Call) ->
     case cf_endpoint:build(EndpointId, wh_json:from_list([{<<"can_call_self">>, true}]), Call) of
         {ok, Endpoints} ->
             ?LOG("attempting to ringback ~s", [EndpointId]),
-            case cf_call_command:b_bridge(Endpoints, Timeout, Call) of
+            cf_call_command:bridge(Endpoints, <<"20">>, Call),
+            case cf_call_command:wait_for_bridge(30000, CleanUpFun, Call) of
                 {ok, _} ->
                     ?LOG("completed successful bridge to the ringback device"),
                     answered;
-                _ ->
+                _Else ->
                     ?LOG("ringback failed, returning caller to parking slot"),
                     failed
             end;
