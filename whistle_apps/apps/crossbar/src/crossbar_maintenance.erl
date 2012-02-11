@@ -7,7 +7,19 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_maintenance).
 
+-export([flush/0]).
 -export([refresh/0, refresh/1]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Flush the crossbar local cache
+%% @end
+%%--------------------------------------------------------------------
+-spec flush/0 :: () -> ok.
+flush() ->
+    {ok, Srv} = crossbar_sup:cache_proc(),
+    wh_cache:flush_local(Srv).
 
 %%--------------------------------------------------------------------
 %% @private

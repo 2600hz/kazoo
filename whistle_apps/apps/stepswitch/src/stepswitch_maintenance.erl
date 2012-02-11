@@ -9,10 +9,22 @@
 -include("stepswitch.hrl").
 
 %% API
+-export([flush/0]).
 -export([refresh/0]).
 -export([lookup_number/1]).
 -export([reload_resources/0]).
 -export([process_number/1, process_number/2]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Flush the stepswitch local cache
+%% @end
+%%--------------------------------------------------------------------
+-spec flush/0 :: () -> ok.
+flush() ->
+    {ok, Pid} = stepswitch_sup:cache_proc(),
+    wh_cache:flush_local(Pid).
 
 %%--------------------------------------------------------------------
 %% @public
