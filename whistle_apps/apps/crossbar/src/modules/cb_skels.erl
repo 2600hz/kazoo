@@ -3,26 +3,39 @@
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
-%%%
-%%% Handle client requests for skel documents
+%%% Listing of all expected v1 callbacks
 %%%
 %%% @end
 %%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% Contributors: Karl Anderson
+%%%               James Aimonetti
+%%% 
 %%%-------------------------------------------------------------------
 -module(cb_skels).
 
--behaviour(gen_server).
-
-%% API
--export([start_link/0]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([init/0
+         ,authenticate/2
+         ,authorize/2
+         ,allowed_methods/1
+         ,resource_exists/1
+         ,content_types_provided/1
+         ,content_types_accepted/1
+         ,languages_provided/1
+         ,charsets_provided/1
+         ,encodings_provided/1
+         ,validate/2
+         ,billing/1
+         ,get/2
+         ,put/2
+         ,post/2
+         ,delete/2
+         ,etag/1
+         ,expires/1
+         ,finish_request/1
+        ]).
 
 -include("../../include/crossbar.hrl").
 
--define(SERVER, ?MODULE).
 -define(PVT_TYPE, <<"skel">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"skels/crossbar_listing">>).
@@ -32,215 +45,156 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
+%% @public
 %% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init(_) ->
-    bind_to_crossbar(),
-    {ok, ok}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.skels">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = allowed_methods(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.skels">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = resource_exists(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.validate.skels">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = validate(Params, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.skels">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.skels">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.skels">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, _, Payload}, State) ->
-    Pid ! {binding_result, false, Payload},
-    {noreply, State};
-
-handle_info({binding_flushed, B}, State) ->
-    ?LOG("binding ~s flushed", [B]),
-    {noreply, State};
-
-handle_info(_Info, State) ->
-    ?LOG("unhandled message: ~p", [_Info]),
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+-spec init/0 :: () -> 'ok'.
+init() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.languages_provided.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.charsets_provided.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.encodings_provided.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.billing.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.get.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.put.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.post.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.delete.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.etag.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.expires.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.finish_request.skels">>),
     ok.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% Authenticates the incoming request, returning true if the requestor is
+%% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function binds this server to the crossbar bindings server,
-%% for the keys we need to consume.
-%% @end
-%%--------------------------------------------------------------------
--spec bind_to_crossbar/0 :: () ->  no_return().
-bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.skels">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.skels">>).
+-spec authenticate/2 :: (path_tokens(), #cb_context{}) -> {boolean(), #cb_context{}}.
+authenticate(_, #cb_context{}=Context) ->
+    {false, Context}.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
-%% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
-%%
-%% Failure here returns 405
+%% Authorizes the incoming request, returning true if the requestor is
+%% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
+-spec authorize/2 :: (path_tokens(), #cb_context{}) -> {boolean(), #cb_context{}}.
+authorize(_, #cb_context{}=Context) ->
+    {false, Context}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given the path tokens related to this module, what HTTP methods are
+%% going to be responded to.
+%% @end
+%%--------------------------------------------------------------------
+-spec allowed_methods/1 :: (path_tokens()) -> http_methods() | [].
 allowed_methods([]) ->
-    {true, ['GET', 'PUT']};
+    ['GET', 'PUT'];
 allowed_methods([_]) ->
-    {true, ['GET', 'POST', 'DELETE']};
+    ['GET', 'POST', 'DELETE'];
 allowed_methods(_) ->
-    {false, []}.
+    [].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
-%% This function determines if the provided list of Nouns are valid.
-%%
-%% Failure here returns 404
+%% Does the path point to a valid resource
+%% So /skels => []
+%%    /skels/foo => [<<"foo">>]
+%%    /skels/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
+-spec resource_exists/1 :: (path_tokens()) -> boolean().
 resource_exists([]) ->
-    {true, []};
+    true;
 resource_exists([_]) ->
-    {true, []};
+    true;
 resource_exists(_) ->
-    {false, []}.
+    false.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
-%% This function determines if the parameters and content are correct
-%% for this request
-%%
-%% Failure here returns 400
+%% What content-types will the module be using to respond (matched against
+%% client's accept header)
+%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% @end
+%%--------------------------------------------------------------------
+-spec content_types_provided/1 :: (path_tokens()) -> [crossbar_content_handler(),...] | [].
+content_types_provided(_) ->
+    [].
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% What content-types will the module be requiring (matched to the client's
+%% Content-Type header
+%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
+%% @end
+%%--------------------------------------------------------------------
+-spec content_types_accepted/1 :: (path_tokens()) -> crossbar_content_handler().
+content_types_accepted(_) ->
+    [].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If you provide alternative languages, return a list of languages and optional
+%% quality value:
+%% [<<"en">>, <<"en-gb;q=0.7">>, <<"da;q=0.5">>]
+%% @end
+%%--------------------------------------------------------------------
+-spec languages_provided/1 :: (path_tokens()) -> [ne_binary(),...] | [].
+languages_provided(_) ->
+    [].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If you provide alternative charsets, return a list of charsets and optional
+%% quality value:
+%% [<<"iso-8859-5">>, <<"unicode-1-1;q=0.8">>]
+%% @end
+%%--------------------------------------------------------------------
+-spec charsets_provided/1 :: (path_tokens()) -> [ne_binary(),...] | [].
+charsets_provided(_) ->
+    [].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If you provide alternative encodings, return a list of encodings and optional
+%% quality value:
+%% [<<"gzip;q=1.0">>, <<"identity">>;q=0.5">>, <<"*;q=0">>]
+%% @end
+%%--------------------------------------------------------------------
+-spec encodings_provided/1 :: (path_tokens()) -> [ne_binary(),...] | [].
+encodings_provided(_) ->
+    [].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Check the request (request body, query string params, path tokens, etc)
+%% and load necessary information.
+%% /skels mights load a list of skel objects
+%% /skels/123 might load the skel object 123
+%% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
 -spec validate/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
@@ -256,6 +210,90 @@ validate([Id], #cb_context{req_verb = <<"delete">>}=Context) ->
     read(Id, Context);
 validate(_, Context) ->
     crossbar_util:response_faulty_request(Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If you handle billing-related calls, this callback will allow you to
+%% execute those.
+%% @end
+%%--------------------------------------------------------------------
+-spec billing/1 :: (#cb_context{}) -> #cb_context{}.
+billing(#cb_context{}=Context) ->
+    Context.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the HTTP verb is a GET, execute necessary code to fulfill the GET
+%% request. Generally, this will involve stripping pvt fields and loading
+%% the resource into the resp_data, resp_headers, etc...
+%% @end
+%%--------------------------------------------------------------------
+-spec get/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
+get(_, #cb_context{}=Context) ->
+    Context.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% @end
+%%--------------------------------------------------------------------
+-spec put/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
+put(_, #cb_context{}=Context) ->
+    crossbar_doc:save(Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the HTTP verib is POST, execute the actual action, usually a db save
+%% (after a merge perhaps).
+%% @end
+%%--------------------------------------------------------------------
+-spec post/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
+post(_, #cb_context{}=Context) ->
+    crossbar_doc:save(Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% @end
+%%--------------------------------------------------------------------
+-spec delete/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
+delete(_, #cb_context{}=Context) ->
+    crossbar_doc:delete(Context).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If you want to manipulate the etag header, change it here in the cb_context{}
+%% @end
+%%--------------------------------------------------------------------
+-spec etag/1 :: (#cb_context{}) -> #cb_context{}.
+etag(#cb_context{}=Context) ->
+    Context.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set the expires header
+%% @end
+%%--------------------------------------------------------------------
+-spec expires/1 :: (#cb_context{}) -> #cb_context{}.
+expires(#cb_context{}=Context) ->
+    Context.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% The response has gone out, do some cleanup of your own here.
+%% @end
+%%--------------------------------------------------------------------
+-spec finish_request/1 :: (#cb_context{}) -> #cb_context{}.
+finish_request(#cb_context{}=Context) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @private

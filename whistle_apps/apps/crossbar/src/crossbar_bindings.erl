@@ -58,9 +58,9 @@
                     ,{expires, 1}
                    ]).
 
-%% {FullBinding, BindingPieces, QueueOfPids}
+%% {FullBinding, BindingPieces, QueueOfMods}
 %% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue()}
--type binding() :: {ne_binary(), [ne_binary(),...], queue()}. %% queue(pid() | atom())
+-type binding() :: {ne_binary(), [ne_binary(),...], queue()}. %% queue(Module::atom())
 -type bindings() :: [binding(),...] | [].
 
 -record(state, {bindings = [] :: bindings()}).

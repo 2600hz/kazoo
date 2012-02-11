@@ -1,3 +1,5 @@
+-ifndef(CROSSBAR_HRL).
+
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
@@ -74,4 +76,7 @@
 -define(TIMER_START(Str), ok).
 -define(TIMER_TICK(Str), ok).
 -define(TIMER_STOP(Str), ok).
+-endif.
+
+-define(CROSSBAR_HRL, true).
 -endif.
