@@ -384,18 +384,33 @@ rm_aggregate_device(Db, Device) ->
 get_destination(JObj, Cat, Key) ->
     case whapps_config:get(Cat, Key, <<"Request">>) of
         <<"To">> ->
-            case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
-                [<<"nouser">>, _] ->
-                    [_, _]=Dest = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
-                    list_to_tuple(Dest);
-                [_, _]=Dest ->
-                    list_to_tuple(Dest)
+            case try_split(<<"To">>, JObj) of
+                {_,_}=UserRealm -> UserRealm;
+                undefined ->
+                    case try_split(<<"Request">>, JObj) of
+                        {_,_}=UserRealm -> UserRealm;
+                        undefined -> {wh_json:get_value(<<"To-DID">>, JObj), wh_json:get_value(<<"To-Realm">>, JObj)}
+                    end
             end;
         _ ->
-            case binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>) of
+            case try_split(<<"Request">>, JObj) of
+                {_,_}=UserRealm -> UserRealm;
+                undefined ->
+                    case try_split(<<"To">>, JObj) of
+                        {_,_}=UserRealm -> UserRealm;
+                        undefined -> {wh_json:get_value(<<"To-DID">>, JObj), wh_json:get_value(<<"To-Realm">>, JObj)}
+                    end
+            end
+    end.
+
+-spec try_split/2 :: (ne_binary(), wh_json:json_object()) -> {ne_binary(), ne_binary()} | 'undefined'.
+try_split(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Bin when is_binary(Bin) ->
+            case binary:split(Bin, <<"@">>) of
                 [<<"nouser">>, _] ->
-                    [_, _]=Dest = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-                    list_to_tuple(Dest);
+                    undefined;
                 [_, _]=Dest ->
                     list_to_tuple(Dest)
             end

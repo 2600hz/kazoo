@@ -23,7 +23,7 @@
 -include("jonny5.hrl").
 
 -define(SERVER, ?MODULE).
--define(SYNC_TIMER, 60000).
+-define(SYNC_TIMER, 600000). % 10 minutes
 
 -record(state, {
          acct_id = <<>> :: binary()
@@ -162,18 +162,23 @@ init([AcctID]) ->
     StartTime = wh_util:current_tstamp(),
 
     put(callid, AcctID),
-    {TwoWay, Inbound, Prepay} = get_trunks_available(AcctID),
-    ?LOG_SYS("Init for account ~s complete", [AcctID]),
 
-    {ok, #state{prepay=try_update_value(Prepay, 0)
-                ,two_way=try_update_value(TwoWay, 0)
-                ,inbound=try_update_value(Inbound, 0)
-                ,max_two_way=try_update_value(TwoWay, 0)
-                ,max_inbound=try_update_value(Inbound, 0)
-                ,acct_id=AcctID
-                ,start_time=StartTime, sync_ref=SyncRef
-                ,ledger_db=wh_util:format_account_id(AcctID, encoded)
-               }}.
+    HowLow = wapi_money:dollars_to_units(whapps_config:get_float(<<"jonny5">>, <<"how_low_can_you_go">>, 0.0)),
+    case get_trunks_available(AcctID) of
+        {0, 0, Per} when Per =< HowLow -> {stop, normal};
+        {TwoWay, Inbound, Prepay} ->
+            ?LOG_SYS("Init for account ~s complete", [AcctID]),
+
+            {ok, #state{prepay=try_update_value(Prepay, 0)
+                        ,two_way=try_update_value(TwoWay, 0)
+                        ,inbound=try_update_value(Inbound, 0)
+                        ,max_two_way=try_update_value(TwoWay, 0)
+                        ,max_inbound=try_update_value(Inbound, 0)
+                        ,acct_id=AcctID
+                        ,start_time=StartTime, sync_ref=SyncRef
+                        ,ledger_db=wh_util:format_account_id(AcctID, encoded)
+                       }}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -215,14 +220,8 @@ handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P, 
             ?LOG(CallID, "call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
             {noreply, State};
         error ->
-            ToDID = case binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>) of
-                        [<<"nouser">>, _] ->
-                            [RUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"nouser">>), <<"@">>),
-                            wnm_util:to_e164(RUser);
-                        [ToUser, _] -> wnm_util:to_e164(ToUser)
-                    end,
-
-            ?LOG("ToDID: ~s", [ToDID]),
+            {User, _} = whapps_util:get_destination(JObj),
+            ToDID = wnm_util:to_e164(User),
 
             {Resp, State1} = case is_us48(ToDID) of
                                  true -> try_inbound_then_twoway(CallID, State);
@@ -241,14 +240,8 @@ handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P, trunks_in
             ?LOG(CallID, "call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
             {noreply, State};
         error ->
-            ToDID = case binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>) of
-                        [<<"nouser">>, _] ->
-                            [RUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"nouser">>), <<"@">>),
-                            wnm_util:to_e164(RUser);
-                        [ToUser, _] -> wnm_util:to_e164(ToUser)
-                    end,
-
-            ?LOG("ToDID: ~s", [ToDID]),
+            {User, _} = whapps_util:get_destination(JObj),
+            ToDID = wnm_util:to_e164(User),
 
             {Resp, State1} = case erlang:byte_size(ToDID) > 6 of
                                  true ->
@@ -315,7 +308,11 @@ handle_cast({authz_win, JObj}, #state{trunks_in_use=Dict}=State) ->
           end),
     {noreply, State};
 handle_cast(refresh, #state{acct_id=AcctID, max_two_way=OldTwo, max_inbound=OldIn, prepay=OldPrepay}=State) ->
-    case catch get_trunks_available(AcctID) of
+    HowLow = wapi_money:dollars_to_units(whapps_config:get_float(<<"jonny5">>, <<"how_low_can_you_go">>, 0.0)),
+    case get_trunks_available(AcctID) of
+        {0, 0, Pre} when Pre =< HowLow ->
+            ?LOG("nothing to authz with, going down"),
+            {stop, normal, State};
         {Trunks, InboundTrunks, Prepay} ->
             ?LOG("maybe changing max two way from ~b to ~p", [OldTwo, Trunks]),
             ?LOG("maybe changing max inbound from ~b to ~p", [OldIn, InboundTrunks]),
@@ -394,25 +391,30 @@ handle_info({timeout, SyncRef, sync}, #state{sync_ref=SyncRef, acct_id=AcctID
                                              ,trunks_in_use=Dict
                                             }=State) ->
     ?LOG_SYS("syncing with DB"),
-    {NewTwo, NewIn, NewPre} = get_trunks_available(AcctID),
+    HowLow = wapi_money:dollars_to_units(whapps_config:get_float(<<"jonny5">>, <<"how_low_can_you_go">>, 0.0)),
+    case get_trunks_available(AcctID) of
+        {0,0,Pre} when Pre =< HowLow ->
+            ?LOG("nothing here to authz with, going down"),
+            {stop, normal, State};
+        {NewTwo, NewIn, NewPre} ->
+            ?LOG("old maxs: two: ~p, in: ~p, prepay: ~p", [Two, In, Pre]),
+            ?LOG("new possible maxs: two: ~p, in: ~p, prepay: ~p", [NewTwo, NewIn, NewPre]),
+            ?LOG("old in use: two: ~p in: ~p", [_TwoAvail, _InAvail]),
 
-    ?LOG("old maxs: two: ~p, in: ~p, prepay: ~p", [Two, In, Pre]),
-    ?LOG("new possible maxs: two: ~p, in: ~p, prepay: ~p", [NewTwo, NewIn, NewPre]),
-    ?LOG("old in use: two: ~p in: ~p", [_TwoAvail, _InAvail]),
+            MaxTwo = try_update_value(NewTwo, Two),
+            MaxIn = try_update_value(NewIn, In),
 
-    MaxTwo = try_update_value(NewTwo, Two),
-    MaxIn = try_update_value(NewIn, In),
+            {TAvail, IAvail, Dict1} = update_in_use(MaxTwo, MaxIn, Dict),
 
-    {TAvail, IAvail, Dict1} = update_in_use(MaxTwo, MaxIn, Dict),
-
-    {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)
-                          ,max_two_way=MaxTwo
-                          ,max_inbound=MaxIn
-                          ,two_way=TAvail
-                          ,inbound=IAvail
-                          ,trunks_in_use=Dict1
-                          ,prepay=try_update_value(NewPre, Pre)
-                         }};
+            {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)
+                                  ,max_two_way=MaxTwo
+                                  ,max_inbound=MaxIn
+                                  ,two_way=TAvail
+                                  ,inbound=IAvail
+                                  ,trunks_in_use=Dict1
+                                  ,prepay=try_update_value(NewPre, Pre)
+                                 }}
+    end;
 
 handle_info({'DOWN', _Ref, process, Pid, Reason}, #state{two_way=T, inbound=I, trunks_in_use=Dict}=State) ->
     ?LOG("pid ~p down: ~p, checking for call monitor proc", [Pid, Reason]),
@@ -465,7 +467,8 @@ code_change(_OldVsn, State, _Extra) ->
 -spec get_trunks_available/1 :: (ne_binary()) -> {'undefined' | non_neg_integer()
                                                   ,'undefined' | non_neg_integer()
                                                   ,integer()
-                                                 }.
+                                                 } |
+                                                 {error, _}.
 get_trunks_available(AcctID) ->
     AcctDB = wh_util:format_account_id(AcctID, encoded),
     case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, [{<<"reduce">>, false}
@@ -479,16 +482,19 @@ get_trunks_available(AcctID) ->
                 {ok, [JObj|_]} ->
                     ?LOG("view result retrieved"),
                     get_account_values(AcctID, wh_json:get_value(<<"doc">>, JObj));
-                _ ->
+                {ok, []} ->
                     ?LOG("missing limits or trunkstore doc, generating one"),
                     {ok, _} = create_new_limits(AcctID, AcctDB),
-                    {0, 0, j5_util:current_usage(AcctID)}
+                    {0, 0, j5_util:current_usage(AcctID)};
+                {error, _E}=E ->
+                    ?LOG("view errored out: ~p", [_E]),
+                    E
             end
     end.
 
 get_ts_values(AcctID, AcctDoc) ->
-    Trunks = wh_json:get_integer_value(<<"trunks">>, AcctDoc),
-    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, AcctDoc),
+    Trunks = wh_json:get_integer_value(<<"trunks">>, AcctDoc, 0),
+    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, AcctDoc, 0),
 
     Prepay = j5_util:current_usage(AcctID),
 
@@ -496,8 +502,8 @@ get_ts_values(AcctID, AcctDoc) ->
     {Trunks, InboundTrunks, Prepay}.
 
 get_account_values(AcctID, JObj) ->
-    Trunks = wh_json:get_integer_value(<<"trunks">>, JObj),
-    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, JObj),
+    Trunks = wh_json:get_integer_value(<<"trunks">>, JObj, 0),
+    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, JObj, 0),
     Prepay = j5_util:current_usage(AcctID),
 
     ?LOG_SYS("found trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
@@ -653,7 +659,6 @@ create_new_limits(AcctID, AcctDB) ->
                               ,{<<"pvt_modified">>, TStamp}
                               ,{<<"pvt_created_by">>, <<"jonny5">>}
                               ,{<<"account">>, Account}
-                              ,{<<"servers">>, []}
                              ]),
     couch_mgr:save_doc(AcctDB, JObj).
 
