@@ -31,6 +31,8 @@
                     ,<<"*">>, <<"0">>, <<"#">>
                    ]).
 
+-define(CF_CONFIG_CAT, <<"callflow">>).
+
 -record (cf_call, {
             bdst_q = <<>> :: binary()                              %% The broadcast queue the request was recieved on
             ,cf_pid = 'undefined' :: pid() | 'undefined'                %% PID of the callflow tree processor, who we should pass control back to
