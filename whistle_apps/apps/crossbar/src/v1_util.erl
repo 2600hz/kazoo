@@ -88,8 +88,7 @@ add_cors_headers(Req0, Context) ->
 get_cors_headers(#cb_context{allow_methods=Allowed}) ->
     Methods = wh_util:join_binary([wh_util:to_binary(A) || A <- Allowed], <<", ">>),
     ?LOG("allowed cors methods: ~s", [Methods]),
-    [
-      {<<"Access-Control-Allow-Origin">>, <<"*">>}
+    [{<<"Access-Control-Allow-Origin">>, <<"*">>}
      ,{<<"Access-Control-Allow-Methods">>, Methods}
      ,{<<"Access-Control-Allow-Headers">>, <<"Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token, If-Match">>}
      ,{<<"Access-Control-Expose-Headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, Location, Etag, ETag">>}
