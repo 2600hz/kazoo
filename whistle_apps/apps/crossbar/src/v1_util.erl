@@ -360,6 +360,12 @@ is_permitted(Req0, Context0) ->
 is_known_content_type(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     ?LOG("ignore content type for options"),
     {true, Req, Context};
+is_known_content_type(Req, #cb_context{req_verb = <<"get">>}=Context) ->
+    ?LOG("ignore content type for get"),
+    {true, Req, Context};
+is_known_content_type(Req, #cb_context{req_verb = <<"delete">>}=Context) ->
+    ?LOG("ignore content type for delete"),
+    {true, Req, Context};
 is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     #cb_context{content_types_accepted=CTAs}=Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
                                                                            Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
