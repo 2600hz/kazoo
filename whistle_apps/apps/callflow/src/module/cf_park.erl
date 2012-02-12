@@ -12,7 +12,10 @@
 
 -export([handle/2]).
 
--define(PARKED_CALLS, <<"parked_calls">>).
+-define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".park">>).
+
+-define(DB_DOC_NAME, whapps_config:get(?MOD_CONFIG_CAT, <<"db_doc_name">>, <<"parked_calls">>)).
+-define(DEFAULT_RINGBACK_TM, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"default_ringback_time">>, 120000)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -36,7 +39,10 @@ handle(Data, #cf_call{channel_vars=CCVs}=Call) ->
                 <<"retrieve">> ->
                     ?LOG("action is to retrieve a parked call"),
                     case retrieve(SlotNumber, ParkedCalls, Call) of
-                        false -> cf_exe:continue(Call);
+                        false -> 
+                            cf_call_command:b_answer(Call),
+                            cf_call_command:b_prompt(<<"park-no_caller">>, Call),
+                            cf_exe:continue(Call);
                         _ -> ok
                     end;
                 <<"auto">> ->
@@ -89,9 +95,11 @@ retrieve(SlotNumber, ParkedCalls, #cf_call{to_user=ToUser, to_realm=ToRealm}=Cal
             ?LOG("They hungup? play back nobody here message", []),
             false;
         Slot ->
-            case wh_json:get_ne_value(<<"Node">>, Slot) of
+            ParkedCall = wh_json:get_ne_value(<<"Call-ID">>, Slot),            
+            case get_switch_hostname(ParkedCall, Call) of
                 undefined ->
                     ?LOG("the parked caller node is undefined"),
+                    cleanup_slot(SlotNumber, ParkedCall, Call),
                     false;
                 CallerHost ->
                     ParkedCall = wh_json:get_ne_value(<<"Call-ID">>, Slot),
@@ -99,6 +107,14 @@ retrieve(SlotNumber, ParkedCalls, #cf_call{to_user=ToUser, to_realm=ToRealm}=Cal
                         true ->
                             publish_usurp_control(ParkedCall, Call),
                             ?LOG("pickup call id ~s", [ParkedCall]),
+                            Name = wh_json:get_value(<<"CID-Name">>, Slot, <<"Parking Slot ", SlotNumber/binary>>),
+                            Number = wh_json:get_value(<<"CID-Number">>, Slot, SlotNumber),
+                            Update = [{<<"Caller-ID-Name">>, Name}
+                                      ,{<<"Caller-ID-Number">>, Number}
+                                      ,{<<"Callee-ID-Name">>, Name}
+                                      ,{<<"Callee-ID-Number">>, Number}
+                                     ],
+                            cf_call_command:set(wh_json:from_list(Update), undefined, Call),
                             cf_call_command:b_pickup(ParkedCall, Call),
                             cf_exe:continue(Call);
                         %% if we cant clean up the slot then someone beat us to it
@@ -131,7 +147,8 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
             %% Update screen with error that the slot is occupied
             cf_call_command:b_answer(Call),
             %% playback message that caller will have to try a different slot
-            cf_exe:transfer(Call),
+            cf_call_command:b_prompt(<<"park-already_in_use">>, Call),
+            cf_exe:continue(Call),
             ok;
         %% attended transfer and allowed to update the provided slot number, we are still connected to the 'parker'
         %% not the 'parkee'
@@ -140,18 +157,20 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
             %% Update screen with new slot number
             cf_call_command:b_answer(Call),
             %% Caller parked in slot number...
+            cf_call_command:b_prompt(<<"park-call_placed_in_spot">>, Call),
             cf_call_command:b_say(wh_util:to_binary(SlotNumber), Call),
             cf_exe:transfer(Call),
             ok;
         %% blind transfer and but the provided slot number is occupied
         {_, {error, occupied}} ->
             ?LOG("blind transfer to a occupied slot, call the parker back.."),
-            case wh_json:get_value(<<"Ringback-ID">>, Slot) of
-                undefined -> ok;
-                EndpointId -> ringback_parker(EndpointId, undefined, Call)
+            TmpCID = <<"Parking slot ", SlotNumber/binary, " occupied">>,
+            case ringback_parker(wh_json:get_value(<<"Ringback-ID">>, Slot), SlotNumber, TmpCID, Call) of
+                answered -> cf_exe:continue(Call);
+                failed -> cf_exe:hangup(Call)
             end,
             ok;
-        %% blind transfer and able to allowed to update the provided slot number
+        %% blind transfer and allowed to update the provided slot number
         {_, {ok, _}} ->
             PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
             ?LOG("update presence-id '~s' with state: early", [PresenceId]),
@@ -339,7 +358,7 @@ find_slot_by_callid([SlotNumber|SlotNumbers], Slots, CallId) ->
 %%--------------------------------------------------------------------
 -spec get_parked_calls/1 :: (#cf_call{}) -> wh_json:json_object().
 get_parked_calls(#cf_call{account_db=Db, account_id=Id}) ->
-    case couch_mgr:open_doc(Db, ?PARKED_CALLS) of
+    case couch_mgr:open_doc(Db, ?DB_DOC_NAME) of
         {error, not_found} ->
             Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
             Generators = [fun(J) -> wh_json:set_value(<<"_id">>, <<"parked_calls">>, J) end
@@ -363,7 +382,7 @@ get_parked_calls(#cf_call{account_db=Db, account_id=Id}) ->
 %%--------------------------------------------------------------------
 -spec cleanup_slot/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> boolean().
 cleanup_slot(SlotNumber, ParkedCall, #cf_call{account_db=Db}=Call) ->
-    case couch_mgr:open_doc(Db, ?PARKED_CALLS) of
+    case couch_mgr:open_doc(Db, ?DB_DOC_NAME) of
         {ok, JObj} ->
             case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj) of
                 ParkedCall -> 
@@ -393,22 +412,25 @@ cleanup_slot(SlotNumber, ParkedCall, #cf_call{account_db=Db}=Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec wait_for_pickup/3 :: (ne_binary(), undefined | ne_binary(), #cf_call{}) -> ok.
 wait_for_pickup(SlotNumber, undefined, Call) ->
     cf_call_command:b_hold(Call),
-    cleanup_slot(SlotNumber, cf_exe:callid(Call), Call);
+    cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
+    ok;
 wait_for_pickup(SlotNumber, RingbackId, Call) ->
-    CleanUpFun = fun(_) -> cleanup_slot(SlotNumber, cf_exe:callid(Call), Call) end,
-    case cf_call_command:b_hold(30000, Call) of
+    case cf_call_command:b_hold(?DEFAULT_RINGBACK_TM, Call) of
         {error, timeout} ->
-            case ringback_parker(RingbackId, CleanUpFun, Call) of
+            TmpCID = <<"Parking slot ", SlotNumber/binary>>,
+            case ringback_parker(RingbackId, SlotNumber, TmpCID, Call) of
                 answered -> cf_exe:continue(Call);
-                _ -> wait_for_pickup(SlotNumber, RingbackId, Call)
+                failed -> wait_for_pickup(SlotNumber, RingbackId, Call)
             end;
         _ ->
             ?LOG("parked caller has been picked up or hungup"),
-            CleanUpFun(undefined),
+            cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
             cf_exe:transfer(Call)
-    end.
+    end,
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -476,13 +498,26 @@ get_endpoint_id(Username, #cf_call{account_db=Db}) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
-ringback_parker(EndpointId, CleanUpFun, Call) ->
+-spec ringback_parker/4 :: (undefined | ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> answered | failed.
+ringback_parker(undefined, _, _, _) ->
+    failed;
+ringback_parker(EndpointId, SlotNumber, TmpCID, #cf_call{cid_name=OriginalName, channel_vars=CCVs}=Call) ->
     case cf_endpoint:build(EndpointId, wh_json:from_list([{<<"can_call_self">>, true}]), Call) of
         {ok, Endpoints} ->
             ?LOG("attempting to ringback ~s", [EndpointId]),
-            cf_call_command:bridge(Endpoints, <<"20">>, Call),
+            Update = [{<<"Caller-ID-Name">>, TmpCID}
+                      ,{<<"Callee-ID-Name">>, TmpCID}
+                     ],
+            CleanUpFun = fun(_) -> 
+                                 cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
+                                 Restore = [{<<"Caller-ID-Name">>, OriginalName}
+                                            ,{<<"Callee-ID-Name">>, OriginalName}
+                                           ],
+                                 cf_call_command:set(wh_json:from_list(Restore), undefined, Call)
+                         end,
+            cf_call_command:bridge(Endpoints, <<"20">>, Call#cf_call{channel_vars=wh_json:set_values(Update, CCVs)}),
             case cf_call_command:wait_for_bridge(30000, CleanUpFun, Call) of
-                {ok, _} ->
+                {ok, _} ->      
                     ?LOG("completed successful bridge to the ringback device"),
                     answered;
                 _Else ->

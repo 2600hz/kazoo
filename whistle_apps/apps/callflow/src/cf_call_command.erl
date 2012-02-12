@@ -20,6 +20,7 @@
 -export([hold/1, b_hold/1, b_hold/2]).
 -export([presence/2, presence/3]).
 -export([play/2, play/3]).
+-export([prompt/2, prompt/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([store/3, store/4, store/5]).
 -export([tones/2]).
@@ -35,6 +36,7 @@
 -export([b_call_status/1, b_call_status/2, b_channel_status/1, b_channel_status/2]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6]).
 -export([b_play/2, b_play/3]).
+-export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_store/3, b_store/4, b_store/5]).
 -export([b_play_and_collect_digit/2]).
@@ -65,6 +67,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), [binary(),...]} |
+                              {'prompt', binary()} | {'prompt', binary(), binary()} |
                               {'say', binary()} | {'say', binary(), binary()} |
                               {'say', binary(), binary(), binary()} | {'say', binary(), binary(), binary(), binary()} |
                               {'tones', wh_json:json_objects()}.
@@ -94,6 +97,10 @@ audio_macro([{play, MediaName}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(MediaName, ?ANY_DIGIT, Call) | Queue]);
 audio_macro([{play, MediaName, Terminators}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(MediaName, Terminators, Call) | Queue]);
+audio_macro([{prompt, PromptName}|T], Call, Queue) ->
+    audio_macro(T, Call, [play_command(cf_util:get_prompt(PromptName), ?ANY_DIGIT, Call) | Queue]);
+audio_macro([{prompt, PromptName, Lang}|T], Call, Queue) ->
+    audio_macro(T, Call, [play_command(cf_util:get_prompt(PromptName, Lang), ?ANY_DIGIT, Call) | Queue]);
 audio_macro([{say, Say}|T], Call, Queue) ->
     audio_macro(T, Call, [say_command(Say, <<"name_spelled">>, <<"pronounced">>, <<"en">>, Call) | Queue]);
 audio_macro([{say, Say, Type}|T], Call, Queue) ->
@@ -364,7 +371,11 @@ wait_for_our_channel_status(CallId) ->
     case wait_for_message(<<>>, <<"channel_status_resp">>, <<"call_event">>, 2000) of
         {ok, JObj}=Ok ->
             case wh_json:get_value(<<"Call-ID">>, JObj) of
-                CallId -> Ok;
+                CallId -> 
+                    case wh_json:get_value(<<"Status">>, JObj) of 
+                        <<"active">> -> Ok;
+                        _Else -> {error, JObj}
+                    end;
                 _Else -> wait_for_our_channel_status(CallId)
             end;
         Else -> Else
@@ -447,6 +458,31 @@ b_hold(Call) ->
 b_hold(Timeout, Call) ->
     hold(Call),
     wait_for_message(<<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Timeout).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level wh_api request to play media to the
+%% caller.
+%% @end
+%%--------------------------------------------------------------------
+-spec prompt/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
+-spec prompt/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
+
+-spec b_prompt/2 :: (ne_binary(), #cf_call{}) -> cf_api_std_return().
+-spec b_prompt/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> cf_api_std_return().
+
+prompt(Prompt, Call) ->
+    prompt(Prompt, <<"en">>, Call).
+
+prompt(Prompt, Lang, Call) ->
+    play(cf_util:get_prompt(Prompt, Lang), Call).
+
+b_prompt(Prompt, Call) ->
+    b_prompt(Prompt, <<"en">>, Call).
+
+b_prompt(Prompt, Lang, Call) ->
+    b_play(cf_util:get_prompt(Prompt, Lang), Call).
     
 %%--------------------------------------------------------------------
 %% @public
