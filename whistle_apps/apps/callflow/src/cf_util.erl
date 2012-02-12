@@ -4,7 +4,7 @@
 -export([update_mwi/2, update_mwi/4]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
 -export([correct_media_path/2]).
--export([call_info_to_string/1]).
+-export([call_to_proplist/1]).
 -export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
 -export([get_sip_realm/2, get_sip_realm/3]).
@@ -189,31 +189,15 @@ correct_media_path(Media, #cf_call{account_id=AccountId}) ->
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
-%% Convert the call record to a string
+%% Convert the call record to a proplist
 %% @end
 %%-----------------------------------------------------------------------------
--spec call_info_to_string/1 :: (#cf_call{}) -> io_lib:chars().
-call_info_to_string(Call) ->
-    Format = ["Call-ID: ~s~n"
-              ,"Callflow: ~s~n"
-              ,"Account ID: ~s~n"
-              ,"Request: ~s~n"
-              ,"To: ~s~n"
-              ,"From: ~s~n"
-              ,"CID: ~s ~s~n"
-              ,"Innception: ~s~n"
-              ,"Authorizing ID: ~s~n"],
-    Args = [cf_exe:callid(Call)
-            ,Call#cf_call.flow_id
-            ,Call#cf_call.account_id
-            ,Call#cf_call.request
-            ,Call#cf_call.to
-            ,Call#cf_call.from
-            ,Call#cf_call.cid_number, Call#cf_call.cid_name
-            ,Call#cf_call.inception
-            ,Call#cf_call.authorizing_id
-           ],
-    io_lib:format(lists:flatten(Format), Args).
+-spec call_to_proplist/1 :: (#cf_call{}) -> proplist().
+call_to_proplist(#cf_call{} = Call) ->
+    [{wh_util:to_binary(K), V}
+     || {K, V} <- lists:zip(record_info(fields, cf_call), tl(tuple_to_list(Call)))
+            ,K =/= cf_pid andalso K =/= call_kvs
+    ].
 
 %%-----------------------------------------------------------------------------
 %% @private

@@ -21,7 +21,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> 'ok'.
-handle(Data, Call) ->
+handle(Data, #cf_call{account_id=AccountId}=Call) ->
     UserId = wh_json:get_ne_value(<<"id">>, Data),
     Endpoints = get_endpoints(UserId, Call),
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
@@ -29,17 +29,17 @@ handle(Data, Call) ->
     ?LOG("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
     case length(Endpoints) > 0 andalso cf_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Call) of
         false ->
-            Error = {error, wh_json:from_list([{<<"user_id">>, UserId}])},
-            ?CF_ALERT(Error, "user has no endpoints", Call),
+            ?LOG(notice, "user ~s has no endpoints", [UserId, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+                                                                            ,{account_id, AccountId}
+                                                                           ]}]),
             cf_exe:continue(Call);
         {ok, _} ->
             ?LOG("completed successful bridge to user"),
             cf_exe:stop(Call);
         {fail, _}=F ->
-            ?CF_ALERT(F, Call),
             cf_util:handle_bridge_failure(F, Call);
-        {error, _}=E ->
-            ?CF_ALERT(E, "error bridging to user", Call),
+        {error, _R} ->
+            ?LOG("error bridging to user: ~p", [_R]),
             cf_exe:continue(Call)
     end.
 

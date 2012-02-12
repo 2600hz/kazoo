@@ -38,9 +38,18 @@ handle_req(JObj, Props) ->
 
     ?LOG("outbound request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
     CtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj),
-    Result = attempt_to_fullfill_req(Number, CtrlQ, JObj, Props),
-    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
-                                      ,response(Result, JObj)).
+    Response = case attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) of
+                   {ok, _}=R1 -> response(R1, JObj);
+                   {fail, _}=R2 -> response(R2, JObj);
+                   {error, _}=R3 ->
+                       Props = response(R3, JObj),
+                       AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+                       ?LOG(notice, "error attempting global resources to ~s", [Number, {extra_data, [{details, Props}
+                                                                                                      ,{account_id, AccountId}
+                                                                                                     ]}]),
+                       Props
+               end,
+    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Response).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -412,49 +421,32 @@ response({fail, BridgeResp}, JObj) ->
     ];
 response({error, no_resources}, JObj) ->
     ?LOG_END("no available resources"),
-    ErrorMsg = <<"no available resources">>,
-    To = wh_json:get_value(<<"To-DID">>, JObj),
-    whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
-                                    ,"Alert: could not process ~s~n"
-                                    ,"Fault: ~p~n"
-                                    ,"Call-ID: ~s~n"]
-                      ,[?MODULE, ?LINE, To, ErrorMsg, get(callid)]),    
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
      ,{<<"Response-Message">>, <<"NO_RESOURCES">>}
      ,{<<"Response-Code">>, <<"sip:404">>}
+     ,{<<"Error-Message">>, <<"no available resources">>}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 response({error, timeout}, JObj) ->
     ?LOG_END("attempt to connect to resources timed out"),
-    ErrorMsg = <<"bridge request timed out">>,
-    To = wh_json:get_value(<<"To-DID">>, JObj),
-    whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
-                                    ,"Alert: could not process ~s~n"
-                                    ,"Fault: ~p~n"
-                                    ,"Call-ID: ~s~n"]
-                      ,[?MODULE, ?LINE, To, ErrorMsg, get(callid)]),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
      ,{<<"Response-Message">>, <<"ERROR">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
-     ,{<<"Error-Message">>, ErrorMsg}
+     ,{<<"Error-Message">>, <<"bridge request timed out">>}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 response({error, Error}, JObj) ->
     ?LOG_END("error during outbound request: ~s", [wh_json:encode(Error)]),
-    ErrorMsg = wh_json:get_value(<<"Error-Message">>, Error),
-    To = wh_json:get_value(<<"To-DID">>, JObj),
-    whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
-                                    ,"Alert: could not process ~s~n"
-                                    ,"Fault: ~p~n"
-                                    ,"Call-ID: ~s~n"]
-                      ,[?MODULE, ?LINE, To, ErrorMsg, get(callid)]),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
      ,{<<"Response-Message">>, <<"ERROR">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
-     ,{<<"Error-Message">>, ErrorMsg}
+     ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, Error)}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 

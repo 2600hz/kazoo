@@ -25,50 +25,11 @@
 -define(NO_MATCH_CF, <<"no_match">>).
 
 -define(DEFAULT_TIMEOUT, <<"20">>).
--define(ANY_DIGIT, [
-                     <<"1">>, <<"2">>, <<"3">>
+-define(ANY_DIGIT, [<<"1">>, <<"2">>, <<"3">>
                     ,<<"4">>, <<"5">>, <<"6">>
                     ,<<"7">>, <<"8">>, <<"9">>
                     ,<<"*">>, <<"0">>, <<"#">>
                    ]).
-
--define(CF_ALERT(Error__, AlertCall__), 
-        (fun({fail,Reason__}, #cf_call{account_id=AId__}) ->
-                 {Cause__, Code__} = whapps_util:get_call_termination_reason(Reason__),
-                 Level__ = whapps_util:hangup_cause_to_alert_level(Cause__),
-                 ?LOG("failed to bridge: ~s:~s", [Cause__, Code__]),
-                 Message__ = ["Source: ~s(~p)~n"
-                            ,"Alert: failed to bridge ~p ~p~n"
-                            ,"Fault: ~p~n"
-                            ,"~n~s"
-                           ],
-                Args__ = [?MODULE, ?LINE, Reason__, Cause__, Code__
-                        ,cf_util:call_info_to_string(AlertCall__)],
-                 whapps_util:alert(Level__, lists:flatten(Message__), Args__, AId__)
-            %% ({error, Reason__}, #cf_call{account_id=AId__}) ->
-            %%      ?LOG("error: ~s", [wh_json:encode(Reason__)]),
-            %%      Message__ = ["Source: ~s(~p)~n"
-            %%                 ,"Alert: generic error~n"
-            %%                 ,"Fault: ~p~n"
-            %%                 ,"~n~s"
-            %%                ],
-            %%      Args__ = [?MODULE, ?LINE, Reason__
-            %%              ,cf_util:call_info_to_string(AlertCall__)],
-            %%       whapps_util:alert(error, lists:flatten(Message__), Args__, AId__)
-         end)(Error__, AlertCall__)).
-
--define(CF_ALERT(Error__, Msg__, AlertCall__),
-        (fun({error, Reason__}, Msg__, #cf_call{account_id=AId__}) ->
-                 ?LOG("~s: ~s", [Msg__, wh_json:encode(Reason__)]),
-                 Message__ = ["Source: ~s(~p)~n"
-                            ,"Alert: ~s~n"
-                            ,"Fault: ~p~n"
-                            ,"~n~s"
-                           ],
-                 Args__ = [?MODULE, ?LINE, Msg__, Reason__
-                         ,cf_util:call_info_to_string(AlertCall__)],
-                 whapps_util:alert(error, lists:flatten(Message__), Args__, AId__)
-         end)(Error__, Msg__, AlertCall__)).
 
 -record (cf_call, {
             bdst_q = <<>> :: binary()                              %% The broadcast queue the request was recieved on

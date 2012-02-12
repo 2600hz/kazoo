@@ -20,6 +20,7 @@
 -export([port_request/1, port_request_v/1]).
 -export([cnam_request/1, cnam_request_v/1]).
 -export([low_balance/1, low_balance_v/1]).
+-export([system_alert/1, system_alert_v/1]).
 
 -export([publish_voicemail/1, publish_voicemail/2]).
 -export([publish_mwi_update/1, publish_mwi_update/2]).
@@ -31,6 +32,7 @@
 -export([publish_port_request/1, publish_port_request/2]).
 -export([publish_cnam_request/1, publish_cnam_request/2]).
 -export([publish_low_balance/1, publish_low_balance/2]).
+-export([publish_system_alert/1, publish_system_alert/2]).
 
 -include("../wh_api.hrl").
 
@@ -47,6 +49,7 @@
 -define(NOTIFY_PORT_REQUEST, <<"notifications.number.port">>).
 -define(NOTIFY_CNAM_REQUEST, <<"notifications.number.cnam">>).
 -define(NOTIFY_LOW_BALANCE, <<"notifications.account.low_balance">>).
+-define(NOTIFY_SYSTEM_ALERT, <<"notifications.system.alert">>).
 
 %% Notify New Voicemail
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>, <<"To-User">>, <<"To-Realm">>
@@ -145,6 +148,16 @@
                              ,{<<"Event-Name">>, <<"low_balance">>}
                             ]).
 -define(LOW_BALANCE_TYPES, []).
+
+%% Notify System Alert
+-define(SYSTEM_ALERT_HEADERS, [<<"Level">>, <<"Message">>]).
+-define(OPTIONAL_SYSTEM_ALERT_HEADERS, [<<"Pid">>, <<"Module">>, <<"Line">>, <<"Request-ID">>, <<"Section">>
+                                            ,<<"Node">>, <<"Details">>, <<"Account-ID">>
+                                       ]).
+-define(SYSTEM_ALERT_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                              ,{<<"Event-Name">>, <<"system_alert">>}
+                             ]).
+-define(SYSTEM_ALERT_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
@@ -337,6 +350,25 @@ low_balance_v(Prop) when is_list(Prop) ->
 low_balance_v(JObj) ->
     low_balance_v(wh_json:to_proplist(JObj)).
 
+%%--------------------------------------------------------------------
+%% @doc System alert notification - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+system_alert(Prop) when is_list(Prop) ->
+    case system_alert_v(Prop) of
+        true -> wh_api:build_message(Prop, ?SYSTEM_ALERT_HEADERS, ?OPTIONAL_SYSTEM_ALERT_HEADERS);
+        false -> {error, "Proplist failed validation for system_alert"}
+    end;
+system_alert(JObj) ->
+    system_alert(wh_json:to_proplist(JObj)).
+
+-spec system_alert_v/1 :: (api_terms()) -> boolean().
+system_alert_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SYSTEM_ALERT_HEADERS, ?SYSTEM_ALERT_VALUES, ?SYSTEM_ALERT_TYPES);
+system_alert_v(JObj) ->
+    system_alert_v(wh_json:to_proplist(JObj)).
+
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     amqp_util:notifications_exchange(),
@@ -379,6 +411,9 @@ bind_to_q(Q, [cnam_requests|T]) ->
     bind_to_q(Q, T);
 bind_to_q(Q, [low_balance|T]) ->
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_LOW_BALANCE),
+    bind_to_q(Q, T);
+bind_to_q(Q, [system_alerts|T]) ->
+    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_SYSTEM_ALERT),
     bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
     ok.
@@ -429,6 +464,9 @@ unbind_q_from(Q, [cnam_request|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, [low_balance|T]) ->
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_LOW_BALANCE),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, [system_alert|T]) ->
+    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_SYSTEM_ALERT),
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     ok.
@@ -512,3 +550,11 @@ publish_low_balance(JObj) ->
 publish_low_balance(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?LOW_BALANCE_VALUES, fun ?MODULE:low_balance/1),
     amqp_util:notifications_publish(?NOTIFY_LOW_BALANCE, Payload, ContentType).
+
+-spec publish_system_alert/1 :: (api_terms()) -> 'ok'.
+-spec publish_system_alert/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_system_alert(JObj) ->
+    publish_system_alert(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_system_alert(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?SYSTEM_ALERT_VALUES, fun ?MODULE:system_alert/1),
+    amqp_util:notifications_publish(?NOTIFY_SYSTEM_ALERT, Payload, ContentType).

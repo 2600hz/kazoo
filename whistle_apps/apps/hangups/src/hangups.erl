@@ -1,48 +1,46 @@
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2011, VoIP, INC
 %%% @doc
-%%% HANGUPS logger
+%%%
 %%% @end
 %%% Created :  8 Nov 2010 by James Aimonetti <james@2600hz.org>
-
+%%%-------------------------------------------------------------------
 -module(hangups).
 
--author('James Aimonetti <james@2600hz.org>').
--export([start/0, start_link/0, stop/0, set_amqp_host/1, set_couch_host/1]).
+-include_lib("whistle/include/wh_types.hrl").
 
-%% @spec start_link() -> {ok,Pid::pid()}
-%% @doc Starts the app for inclusion in a supervisor tree
+-export([start_link/0, stop/0]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the app for inclusion in a supervisor tree
+%% @end
+%%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     start_deps(),
     hangups_sup:start_link().
 
-%% @spec start() -> ok
-%% @doc Start the callmgr server.
-start() ->
-    start_deps(),
-    application:start(hangups).
-
-start_deps() ->
-    hangups_deps:ensure(),
-    ensure_started(sasl),
-    ensure_started(crypto),
-    ensure_started(whistle_amqp).
-
-%% @spec stop() -> ok
-%% @doc Stop the hangups server.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Stop the app
+%% @end
+%%--------------------------------------------------------------------
+-spec stop/0 :: () -> 'ok'.
 stop() ->
-    application:stop(hangups).
+    ok = application:stop(hangups).
 
-ensure_started(App) ->
-    case application:start(App) of
-	ok ->
-	    ok;
-	{error, {already_started, App}} ->
-	    ok
-    end.
-
-set_amqp_host(H) ->
-    hangups_listener:set_amqp_host(H).
-
-set_couch_host(H) ->
-    hangups_listener:set_couch_host(H).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all dependencies for this app are already running
+%% @end
+%%--------------------------------------------------------------------
+-spec start_deps/0 :: () -> 'ok'.
+start_deps() ->
+    whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
+    wh_util:ensure_started(sasl), % logging
+    wh_util:ensure_started(crypto), % random
+    wh_util:ensure_started(whistle_amqp). % amqp wrapper

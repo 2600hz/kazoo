@@ -17,7 +17,7 @@
 -export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
 -export([call_status/1, call_status/2, channel_status/1, channel_status/2]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6]).
--export([hold/1]).
+-export([hold/1, b_hold/1, b_hold/2]).
 -export([presence/2, presence/3]).
 -export([play/2, play/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
@@ -50,7 +50,7 @@
 -export([wait_for_headless_application/1, wait_for_headless_application/2
          ,wait_for_headless_application/3, wait_for_headless_application/4
         ]).
--export([wait_for_bridge/2]).
+-export([wait_for_bridge/2, wait_for_bridge/3]).
 -export([wait_for_channel_bridge/0, wait_for_channel_unbridge/0]).
 -export([wait_for_dtmf/1]).
 -export([wait_for_noop/1]).
@@ -433,12 +433,21 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
 %%--------------------------------------------------------------------
 -spec hold/1 :: (#cf_call{}) -> 'ok'.
 
+-spec b_hold/1 :: (#cf_call{}) -> 'ok'.
+-spec b_hold/2 :: ('infinity' | pos_integer(), #cf_call{}) -> 'ok'.
+
 hold(Call) ->
     Command = [{<<"Application-Name">>, <<"hold">>}
                ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
 
+b_hold(Call) ->
+    b_hold(infinity, Call).
+b_hold(Timeout, Call) ->
+    hold(Call),
+    wait_for_message(<<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Timeout).
+    
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -1233,7 +1242,12 @@ wait_for_dtmf(Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_bridge/2 :: ('infinity' | pos_integer(), #cf_call{}) -> cf_api_bridge_return().
+-spec wait_for_bridge/3 :: ('infinity' | pos_integer(), undefined | fun(), #cf_call{}) -> cf_api_bridge_return().
+
 wait_for_bridge(Timeout, Call) ->
+    wait_for_bridge(Timeout, undefined, Call).
+
+wait_for_bridge(Timeout, Fun, Call) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
@@ -1250,25 +1264,29 @@ wait_for_bridge(Timeout, Call) ->
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
                     CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
                     ?LOG("channel bridged to ~s", [CallId]),
-                    wait_for_bridge(infinity, Call);
+                    case is_function(Fun) of
+                        false -> ok;
+                        true -> Fun(JObj)
+                    end,
+                    wait_for_bridge(infinity, Fun, Call);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     {Result, JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
                     ?LOG("bridge completed with result ~s catagorized as ~s", [AppResponse, Result]),                     
                    {Result, JObj};
                 _ when Timeout =:= infinity ->
-                    wait_for_bridge(Timeout, Call);
+                    wait_for_bridge(Timeout, Fun, Call);
                 _ ->
                     DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_bridge(Timeout - (DiffMicro div 1000), Call)
+                    wait_for_bridge(Timeout - (DiffMicro div 1000), Fun, Call)
             end;
         _ when Timeout =:= infinity ->
-            wait_for_bridge(Timeout, Call);
+            wait_for_bridge(Timeout, Fun, Call);
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
             DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_bridge(Timeout - (DiffMicro div 1000), Call)
+            wait_for_bridge(Timeout - (DiffMicro div 1000), Fun, Call)
     after
         Timeout ->
             {error, timeout}

@@ -69,7 +69,6 @@ start_link() ->
 %------------------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting new conference discovery process"),
-    conference_maintenance:refresh(),
     {ok, #state{}, 0}.
 
 %------------------------------------------------------------------------------
