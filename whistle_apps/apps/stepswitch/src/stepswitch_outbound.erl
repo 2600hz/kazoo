@@ -42,12 +42,12 @@ handle_req(JObj, Props) ->
                    {ok, _}=R1 -> response(R1, JObj);
                    {fail, _}=R2 -> response(R2, JObj);
                    {error, _}=R3 ->
-                       Props = response(R3, JObj),
+                       Error = response(R3, JObj),
                        AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
-                       ?LOG(notice, "error attempting global resources to ~s", [Number, {extra_data, [{details, Props}
+                       ?LOG(notice, "error attempting global resources to ~s", [Number, {extra_data, [{details, Error}
                                                                                                       ,{account_id, AccountId}
                                                                                                      ]}]),
-                       Props
+                       Error
                end,
     wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Response).
 
@@ -423,7 +423,7 @@ response({error, no_resources}, JObj) ->
     ?LOG_END("no available resources"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, <<"NO_RESOURCES">>}
+     ,{<<"Response-Message">>, <<"NO_ROUTE_DESTINATION">>}
      ,{<<"Response-Code">>, <<"sip:404">>}
      ,{<<"Error-Message">>, <<"no available resources">>}
      ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
@@ -433,7 +433,7 @@ response({error, timeout}, JObj) ->
     ?LOG_END("attempt to connect to resources timed out"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, <<"ERROR">>}
+     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
      ,{<<"Error-Message">>, <<"bridge request timed out">>}
      ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
@@ -443,7 +443,7 @@ response({error, Error}, JObj) ->
     ?LOG_END("error during outbound request: ~s", [wh_json:encode(Error)]),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, <<"ERROR">>}
+     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
      ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, Error)}
      ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
