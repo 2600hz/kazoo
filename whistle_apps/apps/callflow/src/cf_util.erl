@@ -10,6 +10,7 @@
 -export([call_to_proplist/1]).
 -export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
+-export([send_default_response/2]).
 -export([get_sip_realm/2, get_sip_realm/3]).
 
 -define(PROMPTS_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".prompts">>).
@@ -368,6 +369,28 @@ handle_bridge_failure(Cause, Code, Call) ->
             not_found
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Send and wait for a call failure cause response
+%% @end
+%%--------------------------------------------------------------------
+-spec send_default_response/2 :: (ne_binary(), #cf_call{}) -> ok.
+send_default_response(Cause, Call) ->
+    CallId = cf_exe:callid(Call),
+    CtrlQ = cf_exe:control_queue_name(Call),
+    case wh_call_response:send_default(CallId, CtrlQ, Cause) of
+        {error, no_response} -> ok;
+        {ok, NoopId} -> cf_call_command:wait_for_noop(NoopId)
+    end,
+    ok.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get the sip realm
+%% @end
+%%--------------------------------------------------------------------
 -spec get_sip_realm/2 :: (wh_json:json_object(), ne_binary()) -> 'undefined' | ne_binary().
 -spec get_sip_realm/3 :: (wh_json:json_object(), ne_binary(), Default) -> Default | ne_binary().
 

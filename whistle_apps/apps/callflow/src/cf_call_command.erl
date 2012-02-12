@@ -128,7 +128,7 @@ response(Code, Cause, Call) ->
 response(Code, Cause, Media, Call) ->
     CallId = cf_exe:callid(Call),
     CtrlQ = cf_exe:control_queue_name(Call),
-    wh_util:call_response(CallId, CtrlQ, Code, Cause, Media).
+    wh_call_response:send(CallId, CtrlQ, Code, Cause, Media).
 
 %%--------------------------------------------------------------------
 %% @public

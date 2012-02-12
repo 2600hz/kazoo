@@ -57,10 +57,10 @@ bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Rin
                                              ]}]),
             case (cf_util:handle_bridge_failure(Cause, Call) =:= ok)
                 orelse (cf_util:handle_bridge_failure(Code, Call) =:= ok) of
-                true -> 
-                    ok;
-                false -> 
-                    bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call)
+                true -> ok;
+                false ->
+                    cf_util:send_default_response(Cause, Call),
+                    cf_exe:continue(Call)
             end;
         {fail, _} ->
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call);
@@ -72,7 +72,12 @@ bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Rin
     end;
 bridge_to_resources([], _, _, _, Call) ->
     ?LOG("resources exhausted without success"),
-    cf_exe:continue(Call).
+    case cf_util:handle_bridge_failure(<<"NO_ROUTE_DESTINATION">>, Call) =:= ok of
+        true -> ok;
+        false ->
+            cf_util:send_default_response(<<"NO_ROUTE_DESTINATION">>, Call),
+            cf_exe:continue(Call)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
