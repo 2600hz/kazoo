@@ -22,6 +22,7 @@
 -export([control_usurped/1]).
 -export([get_branch_keys/1, get_all_branch_keys/1]).
 -export([attempt/1, attempt/2]).
+-export([wildcard_is_empty/1]).
 -export([callid_update/3]).
 
 %% gen_server callbacks
@@ -156,6 +157,12 @@ attempt(Key, #cf_call{cf_pid=Srv}) ->
 attempt(Key, Srv) ->
     gen_server:call(Srv, {attempt, Key}).
 
+-spec wildcard_is_empty/1 :: (#cf_call{} | pid()) -> boolean().
+wildcard_is_empty(#cf_call{cf_pid=Srv}) ->
+    wildcard_is_empty(Srv);
+wildcard_is_empty(Srv) ->
+    gen_server:call(Srv, {wildcard_is_empty}).
+
 -spec relay_amqp/2 :: (wh_json:json_object(), proplist()) -> ok.
 relay_amqp(JObj, Props) ->
     case props:get_value(cf_module_pid, Props) of
@@ -242,6 +249,15 @@ handle_call({attempt, Key}, _From, #state{flow = Flow}=State) ->
                     ?LOG("branching to attempted child ~s", [Key]),
                     Reply = {attempt_resp, ok},
                     {reply, Reply, launch_cf_module(State#state{flow = NewFlow})}
+            end
+    end;
+handle_call({wildcard_is_empty}, _From, #state{flow = Flow}=State) ->
+    case wh_json:get_value([<<"children">>, <<"_">>], Flow) of
+        undefined -> {reply, true, State};
+        ChildFlow ->
+            case wh_json:is_empty(ChildFlow) of
+                true -> {reply, true, State};
+                false -> {reply, false, State}
             end
     end;
 handle_call(_Request, _From, State) ->

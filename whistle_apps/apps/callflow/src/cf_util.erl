@@ -377,11 +377,15 @@ handle_bridge_failure(Cause, Code, Call) ->
 %%--------------------------------------------------------------------
 -spec send_default_response/2 :: (ne_binary(), #cf_call{}) -> ok.
 send_default_response(Cause, Call) ->
-    CallId = cf_exe:callid(Call),
-    CtrlQ = cf_exe:control_queue_name(Call),
-    case wh_call_response:send_default(CallId, CtrlQ, Cause) of
-        {error, no_response} -> ok;
-        {ok, NoopId} -> cf_call_command:wait_for_noop(NoopId)
+    case cf_exe:wildcard_is_empty(Call) of
+        false -> ok;
+        true ->
+            CallId = cf_exe:callid(Call),
+            CtrlQ = cf_exe:control_queue_name(Call),
+            case wh_call_response:send_default(CallId, CtrlQ, Cause) of
+                {error, no_response} -> ok;
+                {ok, NoopId} -> cf_call_command:wait_for_noop(NoopId)
+            end
     end,
     ok.
 
