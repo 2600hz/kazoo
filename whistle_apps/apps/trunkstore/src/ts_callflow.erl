@@ -163,7 +163,7 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
             ?LOG("Failure code: ~s", [Code]),
 
             %% send failure code to Call
-            wh_util:call_response(ALeg, CtlQ, Code, Message),
+            wh_call_response:send(ALeg, CtlQ, Code, Message),
 
             {hangup, State};
         _Unhandled ->
