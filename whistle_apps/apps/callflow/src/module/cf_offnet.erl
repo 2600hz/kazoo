@@ -44,11 +44,15 @@ handle(Data, #cf_call{account_id=AccountId, from_realm=AccountRealm, request_use
         {<<"SUCCESS">>, _} ->
             ?LOG("completed successful offnet request"),
             cf_exe:stop(Call);
-        {<<"ERROR">>, Msg} ->
-            ?LOG("offnet request error: ~p", [Msg]),
-            cf_exe:continue(Call);
         {Cause, Code} ->
-            cf_util:handle_bridge_failure(Cause, Code, Call)
+            ?LOG("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
+            case (cf_util:handle_bridge_failure(Cause, Call) =:= ok)
+                orelse (cf_util:handle_bridge_failure(Code, Call) =:= ok) of
+                true -> ok;
+                false ->
+                    cf_util:send_default_response(Cause, Call),
+                    cf_exe:continue(Call)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -64,8 +68,7 @@ wait_for_offnet() ->
             case wh_util:get_event_type(JObj) of
                 { <<"resource">>, <<"offnet_resp">> } ->
                     {wh_json:get_value(<<"Response-Message">>, JObj)
-                     ,wh_json:get_value(<<"Error-Message">>, JObj
-                                        ,wh_json:get_value(<<"Response-Code">>, JObj))};
+                     ,wh_json:get_value(<<"Response-Code">>, JObj)};
                 _ ->
                     wait_for_offnet()
             end;

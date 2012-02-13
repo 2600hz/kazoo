@@ -92,7 +92,8 @@ create_endpoints(Endpoint, Properties, Call) ->
                     {true, true, _} ->
                         ?LOG("trying to ring just the device"),
                         [catch(create_sip_endpoint(Endpoint, Properties, Call))];
-                    %% if we are not ignoring ring groups and and substitute is not set to false
+           
+         %% if we are not ignoring ring groups and and substitute is not set to false
                     %% (hence false via is_false) then only ring the fwd'd number
                     {false, false, _} ->
                         ?LOG("trying to ring the fwd number in ring group"),
@@ -293,9 +294,9 @@ generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
                         case CallFwd of
                             undefined -> J;
                             _ ->
-                                wh_json:set_value([{<<"Call-Forward">>, <<"true">>}
-                                                   ,{<<"Authorizing-Type">>, <<"device">>}
-                                                  ], J)
+                                wh_json:set_values([{<<"Call-Forward">>, <<"true">>}
+                                                    ,{<<"Authorizing-Type">>, <<"device">>}
+                                                   ], J)
                         end
                 end
                ,fun(J) ->

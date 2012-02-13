@@ -21,7 +21,6 @@
 
 -export([put_callid/1]).
 -export([get_event_type/1]).
--export([call_response/3, call_response/4, call_response/5]).
 -export([get_xml_value/2]).
 
 -export([whistle_version/0, write_pid/1]).
@@ -182,52 +181,6 @@ join_binary([Bin], _) ->
     Bin;
 join_binary([Bin|Rest], Sep) ->
     <<Bin/binary, Sep/binary, (join_binary(Rest, Sep))/binary>>.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create a call response, as a queue of events when media should be
-%% played as part of the error.
-%% @end
-%%--------------------------------------------------------------------
--spec call_response/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
--spec call_response/4 :: (ne_binary(), ne_binary(), ne_binary(), 'undefined' | binary()) -> 'ok'.
--spec call_response/5 :: (ne_binary(), ne_binary(), ne_binary(), 'undefined' | binary(), 'undefined' | binary()) -> 'ok'.
-
-call_response(CallId, CtrlQ, Code) ->
-    call_response(CallId, CtrlQ, Code, <<>>).
-call_response(CallId, CtrlQ, Code, undefined) ->
-    call_response(CallId, CtrlQ, Code, <<>>);
-call_response(CallId, CtrlQ, Code, Cause) ->
-    call_response(CallId, CtrlQ, Code, Cause, undefined).
-call_response(CallId, CtrlQ, Code, Cause, Media) ->
-    Respond = wh_json:from_list([{<<"Application-Name">>, <<"respond">>}
-                                 ,{<<"Response-Code">>, Code}
-                                 ,{<<"Response-Message">>, Cause}
-                                 ,{<<"Call-ID">>, CallId}
-                                ]),
-    call_response1(CallId, CtrlQ, Media, Respond).
-
-call_response1(CallId, CtrlQ, undefined, Respond) ->
-    call_response1(CallId, CtrlQ, [Respond]);
-call_response1(CallId, CtrlQ, Media, Respond) ->
-    call_response1(CallId, CtrlQ, [Respond
-                                   ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
-                                                       ,{<<"Media-Name">>, Media}
-                                                       ,{<<"Call-ID">>, CallId}
-                                                      ])
-                                   ,wh_json:from_list([{<<"Application-Name">>, <<"progress">>}
-                                                       ,{<<"Call-ID">>, CallId}
-                                                      ])
-                                  ]).
-
-call_response1(CallId, CtrlQ, Commands) ->
-    Command = [{<<"Application-Name">>, <<"queue">>}
-               ,{<<"Call-ID">>, CallId}
-               ,{<<"Commands">>, Commands}
-               | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
-    {ok, Payload} = wapi_dialplan:queue(Command),
-    wapi_dialplan:publish_action(CtrlQ, Payload).
 
 %%--------------------------------------------------------------------
 %% @public

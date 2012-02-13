@@ -43,32 +43,41 @@ handle(Data, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), #cf_call{}) -> ok.
-bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Call) ->
+bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, #cf_call{account_id=AccountId}=Call) ->
     Endpoint = [create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
     case cf_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
             ?LOG("completed successful bridge to resource"),
             cf_exe:stop(Call);
-        {fail, R}=F when T =:= [] ->
-            ?CF_ALERT(F, Call),
+        {fail, R} when T =:= [] ->
             {Cause, Code} = whapps_util:get_call_termination_reason(R),
-            ?LOG("attempting failure branch ~s:~s", [Code, Cause]),
+            ?LOG(notice, "exhausted all local resources attempting bridge, final cause ~s:~s"
+                 ,[Code, Cause, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+                                              ,{account_id, AccountId}
+                                             ]}]),
             case (cf_util:handle_bridge_failure(Cause, Call) =:= ok)
                 orelse (cf_util:handle_bridge_failure(Code, Call) =:= ok) of
-                true -> 
-                    ok;
-                false -> 
-                    bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call)
+                true -> ok;
+                false ->
+                    cf_util:send_default_response(Cause, Call),
+                    cf_exe:continue(Call)
             end;
         {fail, _} ->
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call);
-        {error, _}=E ->
-            ?CF_ALERT(E, "error bridging to device", Call),
+        {error, _R} ->
+            ?LOG(notice, "error attemping local resource to ~s: ~p", [DestNum, _R, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+                                                                                                 ,{account_id, AccountId}
+                                                                                                ]}]),
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call)
     end;
 bridge_to_resources([], _, _, _, Call) ->
     ?LOG("resources exhausted without success"),
-    cf_exe:continue(Call).
+    case cf_util:handle_bridge_failure(<<"NO_ROUTE_DESTINATION">>, Call) =:= ok of
+        true -> ok;
+        false ->
+            cf_util:send_default_response(<<"NO_ROUTE_DESTINATION">>, Call),
+            cf_exe:continue(Call)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

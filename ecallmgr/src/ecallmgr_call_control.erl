@@ -205,6 +205,12 @@ handle_call_events(JObj, Props) ->
         <<"controller_queue">> ->
             ControllerQ = wh_json:get_value(<<"Controller-Queue">>, JObj),
             gen_server:cast(Srv, {controller_queue, ControllerQ});
+        <<"usurp_control">> ->
+            Q = props:get_value(queue, Props),
+            case wh_json:get_value(<<"Control-Queue">>, JObj) of
+                Q -> ok;
+                _Else -> gen_server:cast(Srv, {usurp_control, JObj})
+            end;
         _ ->
             ok
     end.
@@ -267,6 +273,9 @@ handle_call(_Request, _From, State) ->
 handle_cast({controller_queue, ControllerQ}, State) ->
     ?LOG("updating controller queue to ~s", [ControllerQ]),
     {noreply, State#state{controller_q=ControllerQ}};
+handle_cast({usurp_control, _}, State) ->
+    ?LOG("the call has been usurped by an external process"),
+    {stop, normal, State};
 handle_cast({transferer, _}, #state{last_removed_leg=undefined, other_legs=[]}=State) ->    
     %% if the callee preforms a blind transfer then sometimes the new control
     %% listener is built so quickly that it receives the transferer event ment

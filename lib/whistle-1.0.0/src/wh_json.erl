@@ -25,7 +25,7 @@
 -export([get_value/2, get_value/3, get_values/1]).
 -export([get_keys/1, get_keys/2]).
 -export([set_value/3, set_values/2, new/0]).
--export([delete_key/2, delete_key/3]).
+-export([delete_key/2, delete_key/3, delete_keys/2]).
 -export([merge_recursive/2]).
 
 -export([from_list/1, merge_jobjs/2]).
@@ -489,17 +489,17 @@ set_value1([], Value, _JObj) -> Value.
 %% delete_key(foo, {struct, [{foo, bar}, {baz, biz}]}) -> {struct, [{baz, biz}]}
 %% delete_key([foo, far], {struct, [{foo, {struct, [{far, away}]}}, {baz, biz}]}) -> {struct, [{foo, {struct, []}}, {baz, biz}]}
 
--spec delete_key/2 :: (Key, JObj) -> json_object() | json_objects() when
-      Key :: list() | binary(),
-      JObj :: json_object() | json_objects().
--spec delete_key/3 :: (Key, JObj, PruneOpt) -> json_object() | json_objects() when
-      Key :: list() | binary(),
-      JObj :: json_object() | json_objects(),
-      PruneOpt :: prune | no_prune.
+-spec delete_key/2 :: (list() | binary(), json_object() | json_objects()) -> json_object() | json_objects().
+-spec delete_key/3 :: (list() | binary(), json_object() | json_objects(), prune | no_prune) -> json_object() | json_objects().
 delete_key(Key, JObj) when not is_list(Key) ->
     delete_key([Key], JObj, no_prune);
 delete_key(Keys, JObj) ->
     delete_key(Keys, JObj, no_prune).
+
+%% Figure out how to set the current key among a list of objects
+-spec delete_keys/2 :: ([list() | binary(),...], json_object()) -> json_object().
+delete_keys(Keys, JObj) when is_list(Keys) ->
+    lists:foldr(fun(K, JObj0) -> delete_key(K, JObj0) end, JObj, Keys).
 
 %% prune removes the parent key if the result of the delete is an empty list; no prune leaves the parent intact
 %% so, delete_key([<<"k1">>, <<"k1.1">>], {struct, [{<<"k1">>, {struct, [{<<"k1.1">>, <<"v1.1">>}]}}]}) would result in

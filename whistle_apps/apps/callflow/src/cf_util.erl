@@ -1,14 +1,19 @@
 -module(cf_util).
 
+-include("callflow.hrl").
+
 -export([presence_probe/2]).
 -export([update_mwi/2, update_mwi/4]).
+-export([get_prompt/1, get_prompt/2]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
 -export([correct_media_path/2]).
--export([call_info_to_string/1]).
+-export([call_to_proplist/1]).
 -export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
+-export([send_default_response/2]).
 -export([get_sip_realm/2, get_sip_realm/3]).
--include("callflow.hrl").
+
+-define(PROMPTS_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".prompts">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -151,7 +156,22 @@ dialpad_digit(TUV) when TUV =:= $t orelse TUV =:= $u orelse TUV =:= $v -> $8;
 dialpad_digit(WXYZ) when WXYZ =:= $w orelse WXYZ =:= $x orelse WXYZ =:= $y orelse WXYZ =:= $z -> $9.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_prompt/1 :: (ne_binary()) -> ne_binary().
+-spec get_prompt/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+
+get_prompt(Name) ->
+    get_prompt(Name, <<"en">>).
+
+get_prompt(Name, Lang) ->
+    whapps_config:get(?PROMPTS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>).    
+
+%%--------------------------------------------------------------------
+%% @public
 %% @doc
 %% Determine if we should ignore early media
 %% @end
@@ -189,31 +209,15 @@ correct_media_path(Media, #cf_call{account_id=AccountId}) ->
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
-%% Convert the call record to a string
+%% Convert the call record to a proplist
 %% @end
 %%-----------------------------------------------------------------------------
--spec call_info_to_string/1 :: (#cf_call{}) -> io_lib:chars().
-call_info_to_string(Call) ->
-    Format = ["Call-ID: ~s~n"
-              ,"Callflow: ~s~n"
-              ,"Account ID: ~s~n"
-              ,"Request: ~s~n"
-              ,"To: ~s~n"
-              ,"From: ~s~n"
-              ,"CID: ~s ~s~n"
-              ,"Innception: ~s~n"
-              ,"Authorizing ID: ~s~n"],
-    Args = [cf_exe:callid(Call)
-            ,Call#cf_call.flow_id
-            ,Call#cf_call.account_id
-            ,Call#cf_call.request
-            ,Call#cf_call.to
-            ,Call#cf_call.from
-            ,Call#cf_call.cid_number, Call#cf_call.cid_name
-            ,Call#cf_call.inception
-            ,Call#cf_call.authorizing_id
-           ],
-    io_lib:format(lists:flatten(Format), Args).
+-spec call_to_proplist/1 :: (#cf_call{}) -> proplist().
+call_to_proplist(#cf_call{} = Call) ->
+    [{wh_util:to_binary(K), V}
+     || {K, V} <- lists:zip(record_info(fields, cf_call), tl(tuple_to_list(Call)))
+            ,K =/= cf_pid andalso K =/= call_kvs
+    ].
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -365,6 +369,32 @@ handle_bridge_failure(Cause, Code, Call) ->
             not_found
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Send and wait for a call failure cause response
+%% @end
+%%--------------------------------------------------------------------
+-spec send_default_response/2 :: (ne_binary(), #cf_call{}) -> ok.
+send_default_response(Cause, Call) ->
+    case cf_exe:wildcard_is_empty(Call) of
+        false -> ok;
+        true ->
+            CallId = cf_exe:callid(Call),
+            CtrlQ = cf_exe:control_queue_name(Call),
+            case wh_call_response:send_default(CallId, CtrlQ, Cause) of
+                {error, no_response} -> ok;
+                {ok, NoopId} -> cf_call_command:wait_for_noop(NoopId)
+            end
+    end,
+    ok.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get the sip realm
+%% @end
+%%--------------------------------------------------------------------
 -spec get_sip_realm/2 :: (wh_json:json_object(), ne_binary()) -> 'undefined' | ne_binary().
 -spec get_sip_realm/3 :: (wh_json:json_object(), ne_binary(), Default) -> Default | ne_binary().
 

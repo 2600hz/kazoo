@@ -16,21 +16,21 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_change/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("wh_couch.hrl").
 
 -define(SERVER, ?MODULE). 
 
 -record(listener, {
-	  pid = undefined :: undefined | pid()
+          pid = undefined :: undefined | pid()
           ,monitor_ref = undefined :: undefined | reference()
-	  ,doc = <<>> :: binary()
-	 }).
+          ,doc = <<>> :: binary()
+         }).
 -record(state, {
-	  listeners = [] :: [#listener{},...] | []
-	  ,db = <<>> :: binary()
-	 }).
+          listeners = [] :: [#listener{},...] | []
+          ,db = <<>> :: binary()
+         }).
 
 %%%===================================================================
 %%% API
@@ -44,7 +44,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(#db{name=DbName}=Db, Options) ->
-    gen_changes:start_link(?MODULE, Db, [ {heartbeat, 5000} | Options], [DbName]).
+    gen_changes:start_link(?MODULE, Db, [ {heartbeat, 500} | Options], [DbName]).
 
 stop(Srv) ->
     gen_changes:stop(Srv).
@@ -53,11 +53,11 @@ add_listener(Srv, Pid) ->
     add_listener(Srv, Pid, <<>>).
 
 add_listener(Srv, Pid, Doc) ->
-    ?LOG_SYS("Adding listener ~p for doc ~s to CH ~p", [Pid, Doc, Srv]),
+    ?LOG_SYS("adding listener ~p for doc ~s to CH ~p", [Pid, Doc, Srv]),
     gen_changes:cast(Srv, {add_listener, Pid, Doc}).
 
 rm_listener(Srv, Pid, Doc) ->
-    ?LOG_SYS("Removing listener ~p for doc ~s to CH ~p", [Pid, Doc, Srv]),
+    ?LOG_SYS("removing listener ~p for doc ~s to CH ~p", [Pid, Doc, Srv]),
     gen_changes:cast(Srv, {rm_listener, Pid, Doc}).
 
 %%%===================================================================
@@ -76,7 +76,7 @@ rm_listener(Srv, Pid, Doc) ->
 %% @end
 %%--------------------------------------------------------------------
 init([DbName]) ->
-    ?LOG_SYS("Starting change handler for ~s", [DbName]),
+    ?LOG_SYS("starting change handler for ~s", [DbName]),
     {ok, #state{db=DbName}}.
 
 %%--------------------------------------------------------------------
@@ -108,15 +108,17 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({add_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
     case lists:any(fun(#listener{pid=Pid1, doc=Doc1}) when Pid =:= Pid1 andalso Doc =:= Doc1 -> true;
-		      (_) -> false end, Ls) of
-	true -> {noreply, State};
-	false ->
-	    Ref = erlang:monitor(process, Pid),
-	    {noreply, State#state{listeners=[#listener{pid=Pid,doc=Doc,monitor_ref=Ref} | Ls]}}
+                      (_) -> false end, Ls) of
+        true -> {noreply, State};
+        false ->
+            Ref = erlang:monitor(process, Pid),
+            {noreply, State#state{listeners=[#listener{pid=Pid,doc=Doc,monitor_ref=Ref} | Ls]}}
     end;
 handle_cast({rm_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
     Ls1 = [ V || V <- Ls, keep_listener(V, Doc, Pid)],
-    {noreply, State#state{listeners=Ls1}}.
+    {noreply, State#state{listeners=Ls1}};
+handle_cast(_, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -133,7 +135,6 @@ handle_info({'DOWN', _Ref, process, Pid, Info}, #state{listeners=Ls}=State) ->
     Ls1 = [ V || V <- Ls, keep_listener(V, Pid)],
     {noreply, State#state{listeners=Ls1}};
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -150,21 +151,21 @@ handle_change(_, #state{listeners=[]}=State) ->
     {noreply, State};
 handle_change({struct, Change}, #state{listeners=Ls}=State) ->
     spawn(fun() ->
-		  DocID = props:get_value(<<"id">>, Change),
-		  Send = case props:get_value(<<"deleted">>, Change) of
-			     undefined ->
-				 {document_changes, DocID, [ C || {struct, C} <- props:get_value(<<"changes">>, Change)]};
-			     true ->
-				 {document_deleted, DocID}
-			 end,
+                  DocID = props:get_value(<<"id">>, Change),
+                  Send = case props:get_value(<<"deleted">>, Change) of
+                             undefined ->
+                                 {document_changes, DocID, [ C || {struct, C} <- props:get_value(<<"changes">>, Change)]};
+                             true ->
+                                 {document_deleted, DocID}
+                         end,
 
-		  lists:foreach(fun(#listener{pid=Pid, doc=DocID1}) when DocID =:= DocID1 ->
-					Pid ! Send;
-				   (#listener{pid=Pid, doc = <<>>}) ->
-					Pid ! Send;
-				   (_) -> ok
-				end, Ls)
-	  end),
+                  lists:foreach(fun(#listener{pid=Pid, doc=DocID1}) when DocID =:= DocID1 ->
+                                        Pid ! Send;
+                                   (#listener{pid=Pid, doc = <<>>}) ->
+                                        Pid ! Send;
+                                   (_) -> ok
+                                end, Ls)
+          end),
     {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------
@@ -179,11 +180,11 @@ handle_change({struct, Change}, #state{listeners=Ls}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{listeners=Ls, db=DbName}) ->
-    ?LOG_SYS("Going down, down, down for ~p(~p)", [self(), DbName, _Reason]),
+    ?LOG_SYS("going down, down, down for ~p(~p)", [DbName, _Reason]),
     lists:foreach(fun(#listener{pid=Pid, monitor_ref=Ref, doc=Doc}) ->
-			  Pid ! {change_handler_terminating, DbName, Doc},
-			  erlang:demonitor(Ref, [flush])
-		  end, Ls).
+                          Pid ! {change_handler_terminating, DbName, Doc},
+                          erlang:demonitor(Ref, [flush])
+                  end, Ls).
 
 %%--------------------------------------------------------------------
 %% @private

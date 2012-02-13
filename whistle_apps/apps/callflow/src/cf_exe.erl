@@ -11,9 +11,18 @@
 
 %% API
 -export([start_link/4, relay_amqp/2]).
--export([callid/1, queue_name/1, control_queue_name/1]).
--export([continue/1, continue/2, branch/2, stop/1, transfer/1]).
--export([get_branch_keys/1, get_all_branch_keys/1, attempt/1, attempt/2]).
+-export([get_call_info/1]).
+-export([callid/1]).
+-export([queue_name/1]).
+-export([control_queue_name/1]).
+-export([continue/1, continue/2]).
+-export([branch/2]).
+-export([stop/1]).
+-export([transfer/1]).
+-export([control_usurped/1]).
+-export([get_branch_keys/1, get_all_branch_keys/1]).
+-export([attempt/1, attempt/2]).
+-export([wildcard_is_empty/1]).
 -export([callid_update/3]).
 
 %% gen_server callbacks
@@ -62,6 +71,10 @@ start_link(Flow, ControlQ, CallId, Call) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Flow, ControlQ, CallId, Call]).
 
+-spec get_call_info/1 :: (pid()) -> {ok, #cf_call{}}.
+get_call_info(Srv) ->
+    gen_server:call(Srv, {call_info}, 500).
+    
 -spec continue/1 :: (#cf_call{} | pid()) -> 'ok'.
 -spec continue/2 :: (ne_binary(), #cf_call{} | pid()) -> 'ok'.
 continue(Srv) ->
@@ -90,6 +103,12 @@ transfer(#cf_call{cf_pid=Srv}) ->
 transfer(Srv) ->
     gen_server:cast(Srv, {transfer}).
 
+-spec control_usurped/1 :: (#cf_call{} | pid()) -> 'ok'.
+control_usurped(#cf_call{cf_pid=Srv}) ->
+    control_usurped(Srv);
+control_usurped(Srv) ->
+    gen_server:cast(Srv, {control_usurped}).
+
 -spec callid_update/3 :: (ne_binary(), ne_binary(), #cf_call{} | pid()) -> 'ok'.
 callid_update(CallId, CtrlQ, #cf_call{cf_pid=Srv}) ->
     callid_update(CallId, CtrlQ, Srv);
@@ -101,7 +120,7 @@ callid_update(CallId, CtrlQ, Srv) ->
 callid(#cf_call{cf_pid=Srv}) ->
     callid(Srv);
 callid(Srv) ->
-    CallId = gen_server:call(Srv, {callid}),
+    CallId = gen_server:call(Srv, {callid}, 500),
     put(callid, CallId),
     CallId.
 
@@ -137,6 +156,12 @@ attempt(Key, #cf_call{cf_pid=Srv}) ->
     attempt(Key, Srv);
 attempt(Key, Srv) ->
     gen_server:call(Srv, {attempt, Key}).
+
+-spec wildcard_is_empty/1 :: (#cf_call{} | pid()) -> boolean().
+wildcard_is_empty(#cf_call{cf_pid=Srv}) ->
+    wildcard_is_empty(Srv);
+wildcard_is_empty(Srv) ->
+    gen_server:call(Srv, {wildcard_is_empty}).
 
 -spec relay_amqp/2 :: (wh_json:json_object(), proplist()) -> ok.
 relay_amqp(JObj, Props) ->
@@ -194,6 +219,8 @@ init([Flow, ControlQ, CallId, Call]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({call_info}, _From, #state{call=Call}=State) ->
+    {reply, {ok, Call}, State};
 handle_call({callid}, _From, #state{call_id=CallId}=State) ->
     {reply, CallId, State};
 handle_call({control_queue_name}, _From, #state{ctrl_q=CtrlQ}=State) ->
@@ -222,6 +249,15 @@ handle_call({attempt, Key}, _From, #state{flow = Flow}=State) ->
                     ?LOG("branching to attempted child ~s", [Key]),
                     Reply = {attempt_resp, ok},
                     {reply, Reply, launch_cf_module(State#state{flow = NewFlow})}
+            end
+    end;
+handle_call({wildcard_is_empty}, _From, #state{flow = Flow}=State) ->
+    case wh_json:get_value([<<"children">>, <<"_">>], Flow) of
+        undefined -> {reply, true, State};
+        ChildFlow ->
+            case wh_json:is_empty(ChildFlow) of
+                true -> {reply, true, State};
+                false -> {reply, false, State}
             end
     end;
 handle_call(_Request, _From, State) ->
@@ -263,6 +299,8 @@ handle_cast({stop}, State) ->
     {stop, normal, State};
 handle_cast({transfer}, State) ->
     {stop, {shutdown, transfer}, State};
+handle_cast({control_usurped}, State) ->
+    {stop, {shutdown, control_usurped}, State};
 handle_cast({branch, NewFlow}, State) ->
     ?LOG("callflow has been branched"),
     {noreply, launch_cf_module(State#state{flow=NewFlow})};
@@ -304,30 +342,18 @@ handle_cast(_, State) ->
 handle_info({'EXIT', _, normal}, State) ->
     %% handle normal exits so we dont need a guard on the next clause, cleaner looking...
     {noreply, State};
-handle_info({'EXIT', Pid, Reason}, #state{cf_module_pid=Pid, call=#cf_call{account_id=AccountId}=Call}=State) ->
-    ?LOG("action ~w died unexpectedly, ~p", [Pid, Reason]),
-    spawn(fun() ->
-                  Message = ["Source: ~s(~p)~n"
-                             ,"Alert: action died unexpectedly~n"
-                             ,"Fault: ~p~n"
-                             ,"~n~s"
-                            ],
-                  Args = [?MODULE, ?LINE, Reason, cf_util:call_info_to_string(Call)],
-                  whapps_util:alert(<<"notice">>, lists:flatten(Message), Args, AccountId)
-          end),
+handle_info({'EXIT', Pid, Reason}, #state{cf_module_pid=Pid, call=#cf_call{account_id=AccountId, last_action=Action}=Call}=State) ->
+    ?LOG(error, "action ~s died unexpectedly: ~p"
+         ,[Action, Reason, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+                                         ,{account_id, AccountId}
+                                        ]}]),
     ?MODULE:continue(self()),
     {noreply, State};
 handle_info({call_sanity_check}, #state{status = <<"testing">>, call=#cf_call{account_id=AccountId}=Call}=State) ->
-    ?LOG("callflow executer is insane, shuting down"),
-    spawn(fun() ->
-                  Message = ["Source: ~s(~p)~n"
-                             ,"Alert: forced channel termination~n"
-                             ,"Fault: call sanity check failed~n"
-                             ,"~n~s"
-                            ],
-                  Args = [?MODULE, ?LINE, cf_util:call_info_to_string(Call)],
-                  whapps_util:alert(<<"notice">>, lists:flatten(Message), Args, AccountId)
-          end),
+    ?LOG(info, "callflow executer is insane, shuting down"
+         ,[{extra_data, [{details, cf_util:call_to_proplist(Call)}
+                         ,{account_id, AccountId}
+                         ]}]),
     {stop, {shutdown, insane}, State#state{status = <<"insane">>}};
 handle_info({call_sanity_check}, #state{call_id=CallId, call=Call}=State) ->
     ?LOG("ensuring call is active, requesting controlling channel status"),
@@ -363,6 +389,17 @@ handle_event(JObj, #state{cf_module_pid=Pid, call_id=CallId}) ->
         {{<<"call_event">>, <<"control_transfer">>}, _} ->
             transfer(self()),
             ignore;
+        {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
+            Srv = self(),
+            spawn(fun() ->
+                          put(callid, CallId),
+                          Q = queue_name(Srv),
+                          case wh_json:get_value(<<"Controller-Queue">>, JObj) of
+                              Q -> ok;
+                              _Else -> control_usurped(Srv)
+                          end
+                  end),
+            ignore;
         {{<<"error">>, _}, _} ->
             {reply, [{cf_module_pid, Pid}]};
         {_, CallId} ->
@@ -390,6 +427,10 @@ terminate({shutdown, transfer}, #state{sanity_timer=TRef}) ->
 terminate({shutdown, insane}, #state{sanity_timer=TRef}) ->
     _ = timer:cancel(TRef),
     ?LOG_END("call id is not longer present on the media gateways, terminating callflow execution"),
+    ok;
+terminate({shutdown, control_usurped}, #state{sanity_timer=TRef}) ->
+    _ = timer:cancel(TRef),
+    ?LOG_END("the call has been usurped by an external process"),
     ok;
 terminate(_Reason, #state{sanity_timer=TRef}=State) ->
     _ = timer:cancel(TRef),
@@ -424,7 +465,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec launch_cf_module/1 :: (#state{}) -> #state{}.
-launch_cf_module(#state{call=#cf_call{last_action=LastAction}=Call, flow=Flow, call_id=CallId}=State) ->
+launch_cf_module(#state{call=#cf_call{last_action=LastAction, account_id=AccountId}=Call, flow=Flow, call_id=CallId}=State) ->
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
     Data = wh_json:get_value(<<"data">>, Flow),
     {Pid, Action} =
@@ -434,7 +475,10 @@ launch_cf_module(#state{call=#cf_call{last_action=LastAction}=Call, flow=Flow, c
             spawn_cf_module(CFModule, Data, CallId, Call)
         catch
             _:_ ->
-                ?LOG("unknown action ~s, skipping", [Module]),
+                ?LOG(error, "unknown callflow action: ~p"
+                     ,[Module, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+                                             ,{account_id, AccountId}
+                                            ]}]),
                 ?MODULE:continue(self()),
                 {undefined, LastAction}
         end,

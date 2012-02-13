@@ -29,6 +29,7 @@
                      ,{notify_port_request, [{<<"notification">>, <<"port_request">>}]}
                      ,{notify_first_occurrence, [{<<"directory">>, <<"reg_query_resp">>}]}
                      ,{notify_low_balance, [{<<"notification">>, <<"low_balance">>}]}
+                     ,{notify_system_alert, [{<<"notification">>, <<"system_alert">>}]}
                     ]).
 -define(BINDINGS, [{notifications, []}
                    ,{self, []}
