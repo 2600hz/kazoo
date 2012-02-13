@@ -26,7 +26,7 @@
          ,bl_provider_ref = 'undefined' :: 'undefined' | reference()
          }).
 
--define(RESPONDERS, [ {authz_req, [{<<"dialplan">>, <<"authz_req">>}]} ]).
+-define(RESPONDERS, [ {j5_authz_req, [{<<"dialplan">>, <<"authz_req">>}]} ]).
 -define(BINDINGS, [ {authz, []} ]).
 
 -define(SERVER, ?MODULE).

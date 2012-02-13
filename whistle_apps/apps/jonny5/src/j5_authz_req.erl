@@ -6,7 +6,7 @@
 %%% @end
 %%% Created : 22 Aug 2011 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
--module(authz_req).
+-module(j5_authz_req).
 
 -export([init/0, handle_req/2]).
 
@@ -24,7 +24,7 @@ handle_req(JObj, _Props) ->
 
     wh_util:put_callid(JObj),
 
-    {DID, _} = whapps_util:get_destination(JObj),
+    {DID, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     E164 = wnm_util:to_e164(DID),
 
     ?LOG("authorize ~s can make the call to ~s", [wh_json:get_value(<<"From">>, JObj), E164]),
