@@ -1,7 +1,7 @@
 -ifndef(WHISTLE_LOG_MACROS).
 
 -define(LOG_SYSTEM_ID, "000000000000").
--define(LOG_PUBLISH_LEVELS, [emergency, alert, critical, error, warning, notice]).
+-define(LOG_PUBLISH_LEVELS, [emergency, alert, critical, error, warning, notice, info]).
 
 -define(LOG_DEFAULT_DATA, [erlang:get(callid), ?MODULE, ?LINE, self()]).
 
@@ -62,12 +62,9 @@
 
 
 %% ?LOG_STACKTRACE(ListOfStacktrace)
--define(LOG_STACKTRACE(StacktraceData__),
-        (fun() ->
-    %%             LogCallId = ?LOG_CALLID_FUN(erlang:get(callid)),
-      %%           _ = [logger:debug("|~s|debug|start|~p:~b (~w) st: ~p", [LogCallId, ?MODULE, ?LINE, self(), STLine__]) || STLine__ <- StacktraceData__],
-                 ok
-         end)()).
+-define(LOG_STACKTRACE(StacktraceData__), [wh_alert:format('log', ?LOG_DEFAULT_DATA, "st: ~p", [STLine__]) 
+                                           || STLine__ <- StacktraceData__
+                                          ]).
 
 -define(WHISTLE_LOG_MACROS, true).
 -endif.
