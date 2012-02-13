@@ -15,6 +15,8 @@
 
 %% API
 -export([start_link/0, new/4]).
+-export([workers/0]).
+-export([show_calls/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -40,6 +42,26 @@ start_link() ->
 -spec new/4 :: (wh_json:json_object(), ne_binary(), ne_binary(), #cf_call{}) -> sup_startchild_ret().
 new(Flow, ControlQ, CallId, Call) ->
     supervisor:start_child(?MODULE, [Flow, ControlQ, CallId, Call]).
+
+-spec workers/0 :: () -> [pid(),...] | [].
+workers() ->
+    [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE)].
+
+
+show_calls() ->
+    do_show_calls(workers()).
+
+do_show_calls([]) ->
+    ok;
+do_show_calls([Srv|T]) ->
+    case catch(cf_exe:get_call_info(Srv)) of
+        {ok, Call} ->
+            io:format("CF_EXE(~p): ~p~n", [Srv, cf_util:call_to_proplist(Call)]),
+            do_show_calls(T);            
+        _ -> 
+            do_show_calls(T)
+    end.
+
 
 %% ===================================================================
 %% Supervisor callbacks

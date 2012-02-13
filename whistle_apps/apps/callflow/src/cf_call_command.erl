@@ -17,9 +17,10 @@
 -export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
 -export([call_status/1, call_status/2, channel_status/1, channel_status/2]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6]).
--export([hold/1]).
+-export([hold/1, b_hold/1, b_hold/2]).
 -export([presence/2, presence/3]).
 -export([play/2, play/3]).
+-export([prompt/2, prompt/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([store/3, store/4, store/5]).
 -export([tones/2]).
@@ -35,6 +36,7 @@
 -export([b_call_status/1, b_call_status/2, b_channel_status/1, b_channel_status/2]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6]).
 -export([b_play/2, b_play/3]).
+-export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_store/3, b_store/4, b_store/5]).
 -export([b_play_and_collect_digit/2]).
@@ -50,7 +52,7 @@
 -export([wait_for_headless_application/1, wait_for_headless_application/2
          ,wait_for_headless_application/3, wait_for_headless_application/4
         ]).
--export([wait_for_bridge/2]).
+-export([wait_for_bridge/2, wait_for_bridge/3]).
 -export([wait_for_channel_bridge/0, wait_for_channel_unbridge/0]).
 -export([wait_for_dtmf/1]).
 -export([wait_for_noop/1]).
@@ -65,6 +67,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), [binary(),...]} |
+                              {'prompt', binary()} | {'prompt', binary(), binary()} |
                               {'say', binary()} | {'say', binary(), binary()} |
                               {'say', binary(), binary(), binary()} | {'say', binary(), binary(), binary(), binary()} |
                               {'tones', wh_json:json_objects()}.
@@ -94,6 +97,10 @@ audio_macro([{play, MediaName}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(MediaName, ?ANY_DIGIT, Call) | Queue]);
 audio_macro([{play, MediaName, Terminators}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(MediaName, Terminators, Call) | Queue]);
+audio_macro([{prompt, PromptName}|T], Call, Queue) ->
+    audio_macro(T, Call, [play_command(cf_util:get_prompt(PromptName), ?ANY_DIGIT, Call) | Queue]);
+audio_macro([{prompt, PromptName, Lang}|T], Call, Queue) ->
+    audio_macro(T, Call, [play_command(cf_util:get_prompt(PromptName, Lang), ?ANY_DIGIT, Call) | Queue]);
 audio_macro([{say, Say}|T], Call, Queue) ->
     audio_macro(T, Call, [say_command(Say, <<"name_spelled">>, <<"pronounced">>, <<"en">>, Call) | Queue]);
 audio_macro([{say, Say, Type}|T], Call, Queue) ->
@@ -121,7 +128,7 @@ response(Code, Cause, Call) ->
 response(Code, Cause, Media, Call) ->
     CallId = cf_exe:callid(Call),
     CtrlQ = cf_exe:control_queue_name(Call),
-    wh_util:call_response(CallId, CtrlQ, Code, Cause, Media).
+    wh_call_response:send(CallId, CtrlQ, Code, Cause, Media).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -364,7 +371,11 @@ wait_for_our_channel_status(CallId) ->
     case wait_for_message(<<>>, <<"channel_status_resp">>, <<"call_event">>, 2000) of
         {ok, JObj}=Ok ->
             case wh_json:get_value(<<"Call-ID">>, JObj) of
-                CallId -> Ok;
+                CallId -> 
+                    case wh_json:get_value(<<"Status">>, JObj) of 
+                        <<"active">> -> Ok;
+                        _Else -> {error, JObj}
+                    end;
                 _Else -> wait_for_our_channel_status(CallId)
             end;
         Else -> Else
@@ -433,12 +444,46 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
 %%--------------------------------------------------------------------
 -spec hold/1 :: (#cf_call{}) -> 'ok'.
 
+-spec b_hold/1 :: (#cf_call{}) -> 'ok'.
+-spec b_hold/2 :: ('infinity' | pos_integer(), #cf_call{}) -> 'ok'.
+
 hold(Call) ->
     Command = [{<<"Application-Name">>, <<"hold">>}
                ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
 
+b_hold(Call) ->
+    b_hold(infinity, Call).
+b_hold(Timeout, Call) ->
+    hold(Call),
+    wait_for_message(<<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Timeout).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level wh_api request to play media to the
+%% caller.
+%% @end
+%%--------------------------------------------------------------------
+-spec prompt/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
+-spec prompt/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
+
+-spec b_prompt/2 :: (ne_binary(), #cf_call{}) -> cf_api_std_return().
+-spec b_prompt/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> cf_api_std_return().
+
+prompt(Prompt, Call) ->
+    prompt(Prompt, <<"en">>, Call).
+
+prompt(Prompt, Lang, Call) ->
+    play(cf_util:get_prompt(Prompt, Lang), Call).
+
+b_prompt(Prompt, Call) ->
+    b_prompt(Prompt, <<"en">>, Call).
+
+b_prompt(Prompt, Lang, Call) ->
+    b_play(cf_util:get_prompt(Prompt, Lang), Call).
+    
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -1233,7 +1278,12 @@ wait_for_dtmf(Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec wait_for_bridge/2 :: ('infinity' | pos_integer(), #cf_call{}) -> cf_api_bridge_return().
+-spec wait_for_bridge/3 :: ('infinity' | pos_integer(), undefined | fun(), #cf_call{}) -> cf_api_bridge_return().
+
 wait_for_bridge(Timeout, Call) ->
+    wait_for_bridge(Timeout, undefined, Call).
+
+wait_for_bridge(Timeout, Fun, Call) ->
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
@@ -1250,25 +1300,29 @@ wait_for_bridge(Timeout, Call) ->
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
                     CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
                     ?LOG("channel bridged to ~s", [CallId]),
-                    wait_for_bridge(infinity, Call);
+                    case is_function(Fun) of
+                        false -> ok;
+                        true -> Fun(JObj)
+                    end,
+                    wait_for_bridge(infinity, Fun, Call);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     {Result, JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
                     ?LOG("bridge completed with result ~s catagorized as ~s", [AppResponse, Result]),                     
                    {Result, JObj};
                 _ when Timeout =:= infinity ->
-                    wait_for_bridge(Timeout, Call);
+                    wait_for_bridge(Timeout, Fun, Call);
                 _ ->
                     DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_bridge(Timeout - (DiffMicro div 1000), Call)
+                    wait_for_bridge(Timeout - (DiffMicro div 1000), Fun, Call)
             end;
         _ when Timeout =:= infinity ->
-            wait_for_bridge(Timeout, Call);
+            wait_for_bridge(Timeout, Fun, Call);
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
             DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_bridge(Timeout - (DiffMicro div 1000), Call)
+            wait_for_bridge(Timeout - (DiffMicro div 1000), Fun, Call)
     after
         Timeout ->
             {error, timeout}

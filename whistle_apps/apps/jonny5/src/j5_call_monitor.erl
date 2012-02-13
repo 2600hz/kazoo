@@ -200,16 +200,7 @@ handle_info({timeout, CallStatusRef, call_status}, #state{timer_ref=CallStatusRe
     {noreply, State#state{timer_ref=start_status_timer()}};
 
 handle_info({timeout, DownRef, call_status_down}, #state{callid=CallID, timer_ref=DownRef, call_type=per_min, ledger_db=DB}=State) ->
-    ?LOG("per minute call got lost somehow. What to do???"),
-
-    whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
-                                    ,"Alert: Per-minute call went down without us receiving the CDR.~n"
-                                    ,"No way to bill the proper amount (didn't check for the CDR in the DB.~n"
-                                    ,"Call-ID: ~s~n"
-                                    ,"Ledger-DB: ~s~n"
-                                   ]
-                      ,[?MODULE, ?LINE, CallID, DB]),
-
+    ?LOG(error, "per-minute call ~s went down without us receiving the CDR. Ledger DB was ~s", [CallID, DB]),
     {stop, normal, State};
 
 handle_info({timeout, DownRef, call_status_down}, #state{timer_ref=DownRef}=State) ->

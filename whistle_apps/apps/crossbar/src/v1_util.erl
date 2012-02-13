@@ -90,8 +90,7 @@ add_cors_headers(Req0, Context) ->
 get_cors_headers(#cb_context{allow_methods=Allowed}) ->
     Methods = wh_util:join_binary([wh_util:to_binary(A) || A <- Allowed], <<", ">>),
     ?LOG("allowed cors methods: ~s", [Methods]),
-    [
-      {<<"Access-Control-Allow-Origin">>, <<"*">>}
+    [{<<"Access-Control-Allow-Origin">>, <<"*">>}
      ,{<<"Access-Control-Allow-Methods">>, Methods}
      ,{<<"Access-Control-Allow-Headers">>, <<"Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token, If-Match">>}
      ,{<<"Access-Control-Expose-Headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, Location, Etag, ETag">>}
@@ -363,6 +362,12 @@ is_permitted(Req0, Context0) ->
 -spec is_known_content_type/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 is_known_content_type(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     ?LOG("ignore content type for options"),
+    {true, Req, Context};
+is_known_content_type(Req, #cb_context{req_verb = <<"get">>}=Context) ->
+    ?LOG("ignore content type for get"),
+    {true, Req, Context};
+is_known_content_type(Req, #cb_context{req_verb = <<"delete">>}=Context) ->
+    ?LOG("ignore content type for delete"),
     {true, Req, Context};
 is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     #cb_context{content_types_accepted=CTAs}=Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->

@@ -92,7 +92,7 @@ lookup_did(DID, AcctID) ->
                     wh_cache:store({lookup_did, DID, AcctID}, Resp),
                     {ok, Resp};
                 {ok, [ViewJObj | _Rest]} ->
-                    ?LOG(alert, "multiple results for did ~s in acct ~s", [DID, AcctID]),
+                    ?LOG(notice, "multiple results for did ~s in acct ~s", [DID, AcctID]),
                     ?LOG("Cache miss for ~s, found multiple results, using first with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
                     ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
                     Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),

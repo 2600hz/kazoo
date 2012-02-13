@@ -59,7 +59,10 @@ init({ssl, http}, _Req, _Opts) ->
 -spec rest_init/2 :: (#http_req{}, proplist()) -> {'ok', #http_req{}, #cb_context{}}.
 rest_init(Req0, Opts) ->
     ?LOG("rest init: Opts: ~p", [Opts]),
-    ReqId = couch_mgr:get_uuid(),
+    ReqId = case cowboy_http_req:header(<<"X-Request-Id">>, Req0) of
+                {undefined, _} -> couch_mgr:get_uuid();
+                {UserReqId, _} -> wh_util:to_binary(UserReqId)
+            end,
     put(callid, ReqId),
 
     Req1 = lists:foldl(fun(Prop, ReqAcc) ->
@@ -71,7 +74,8 @@ rest_init(Req0, Opts) ->
                        end, Req0, [raw_host, port, raw_path, raw_qs, method]),
 
     {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{}, Opts}),
-    {ok, Req1, Context#cb_context{req_id=ReqId, resp_headers=[{<<"X-Request-ID">>, ReqId}]}}.
+    {ok, Req2} = cowboy_http_req:set_resp_header(<<"X-Request-ID">>, ReqId, Req1),
+    {ok, Req2, Context#cb_context{req_id=ReqId}}.
 
 terminate(_, _) ->
     ?LOG_END("session finished").

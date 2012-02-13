@@ -255,13 +255,12 @@ find_admin(Account) ->
 %%--------------------------------------------------------------------
 -spec get_account_doc/1 :: (wh_json:json_object()) -> {ok, wh_json:json_object()} | {error, term()}.
 get_account_doc(JObj) ->
-    {AcctDb, AcctId} = case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
-                           {undefined, undefined} -> undefined;
-                           {undefined, Id1} ->
-                               {wh_util:format_account_id(Id1, encoded), Id1};
-                           {Id2, undefined} ->
-                               {Id2, wh_util:format_account_id(Id2, raw)};
-                           Else -> Else 
-                       end,
-    ?LOG("attempting to load account doc ~s from ~s", [AcctId, AcctDb]),
-    couch_mgr:open_doc(AcctDb, AcctId).
+    case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
+        {undefined, undefined} -> undefined;
+        {undefined, Id1} ->
+            couch_mgr:open_doc(wh_util:format_account_id(Id1, encoded), Id1);
+        {Id2, undefined} ->
+            couch_mgr:open_doc(Id2, wh_util:format_account_id(Id2, raw));
+        {Db, AccountId} -> 
+            couch_mgr:open_doc(Db, AccountId)
+    end.

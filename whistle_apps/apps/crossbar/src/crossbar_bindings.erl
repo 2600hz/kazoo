@@ -537,7 +537,7 @@ bindings_match_test() ->
                   end, ?BINDINGS).
 
 simple_bind_test() ->
-    _ = logger:start_link(),
+    _ = wh_alert:start_link(),
     _ = ?MODULE:start_link(),
 
     Binding = <<"foo">>,
