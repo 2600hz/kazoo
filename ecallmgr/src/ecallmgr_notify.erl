@@ -77,7 +77,7 @@ presence_update(JObj, _Props) ->
     NodeHandlers = ecallmgr_fs_sup:node_handlers(),
     _ = [begin
              ?LOG("sending presence in event to ~p~n", [Node]),
-             freeswitch:sendevent(Node, 'PRESENCE_IN', Event)
+             freeswitch:sendevent(Node, 'PRESENCE_IN', [{"Distributed-From", wh_util:to_list(Node)} | Event])
          end
          || NodeHandler <- NodeHandlers,
             (Node = ecallmgr_fs_node:fs_node(NodeHandler)) =/= undefined
