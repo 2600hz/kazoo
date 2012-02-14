@@ -55,7 +55,6 @@ allowed_methods() ->
 allowed_methods(_) ->
     ['GET', 'POST', 'DELETE'].
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

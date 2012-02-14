@@ -389,11 +389,11 @@ is_known_content_type(Req, #cb_context{req_verb = <<"delete">>}=Context) ->
     {true, Req, Context};
 is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     #cb_context{content_types_accepted=CTAs}=Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                                                                           Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
-                                                                           Payload = {Req0, ContextAcc, Params},
-                                                                           {_, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
-                                                                           ContextAcc1
-                                                                   end, Context0, Nouns),
+                                                                            Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
+                                                                           Payload = [ContextAcc | Params],
+                                                                            [ContextAcc1 | _] = crossbar_bindings:fold(Event, Payload),
+                                                                            ContextAcc1
+                                                                    end, Context0, Nouns),
     CTA = lists:foldr(fun({_Fun, L}, Acc) ->
                               lists:foldl(fun({Type, Sub}, Acc1) ->
                                                   [{Type, Sub, []} | Acc1]
@@ -436,12 +436,13 @@ does_resource_exist(_Context) ->
 validate(#cb_context{req_nouns=Nouns}=Context0) ->
     Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
                                    Event = <<"v1_resource.validate.", Mod/binary>>,
+                                   ?LOG("validating against params ~p", [Params]),
                                    Payload = [ContextAcc | Params],
                                    crossbar_bindings:fold(Event, Payload)
                            end, Context0, Nouns),
     case succeeded(Context1) of
         true -> process_billing(Context1);
-        false -> Context1
+        false -> crossbar_util:response_faulty_request(Context1)
     end.
 
 %%--------------------------------------------------------------------

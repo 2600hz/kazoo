@@ -98,6 +98,7 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
 
     case v1_util:parse_path_tokens(Tokens) of
         [{Mod, Params}|_] = Nouns ->
+            ?LOG("Nouns: ~p", [Nouns]),
             Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
 
             %% Because we allow tunneling of verbs through the request,

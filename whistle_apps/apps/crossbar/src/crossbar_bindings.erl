@@ -206,14 +206,17 @@ handle_call({fold, Routing, Payload, ReqId}, From, #state{bindings=Bs}=State) ->
                   RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
                   try
                       [Reply|_] = lists:foldl(
-                            fun({B, BParts, MFs}, Acc) ->
-                                    case B =:= Routing orelse matches(BParts, RoutingParts) of
-                                        true -> fold_bind_results(MFs, Acc, Routing);
-                                        false -> Acc
-                                    end
-                            end, Payload, Bs),
+                                    fun({B, BParts, MFs}, Acc) ->
+                                            case B =:= Routing orelse matches(BParts, RoutingParts) of
+                                                true ->
+                                                    ?LOG("routing ~s matches ~s", [Routing, B]),
+                                                    ?LOG("MFs: ~p", [MFs]),
+                                                    fold_bind_results(MFs, Acc, Routing);
+                                                false -> Acc
+                                            end
+                                    end, Payload, Bs),
 
-                  gen_server:reply(From, Reply)
+                      gen_server:reply(From, Reply)
                   catch
                       _R:_E ->
                           ST = erlang:get_stacktrace(),
