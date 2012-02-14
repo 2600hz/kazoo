@@ -23,11 +23,13 @@
 
 -define(RESPONDERS, [{reg_authn_req, [{<<"directory">>, <<"authn_req">>}]}
                      ,{reg_success, [{<<"directory">>, <<"reg_success">>}]}
-                     ,{reg_query, [{<<"directory">>, <<"reg_query">>}]}
+                     ,{{reg_query, req_query_req}, [{<<"directory">>, <<"reg_query">>}]}
                      ,{{?MODULE, reg_query_resp}, [{<<"directory">>, <<"reg_query_resp">>}]}
+                     ,{{reg_query, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
                     ]).
 -define(BINDINGS, [{authn, []}
                    ,{registration, []}
+                   ,{notifications, [{restrict_to, [presence_probe]}]}
                    ,{self, []}
                   ]).
 
