@@ -15,6 +15,7 @@
 -export([register/1, register_v/1]).
 -export([deregister/1, deregister_v/1]).
 -export([presence_probe/1, presence_probe_v/1]).
+-export([presence_update/1, presence_update_v/1]).
 -export([pwd_recovery/1, pwd_recovery_v/1]).
 -export([new_account/1, new_account_v/1]).
 -export([port_request/1, port_request_v/1]).
@@ -27,6 +28,7 @@
 -export([publish_register/1, publish_register/2]).
 -export([publish_deregister/1, publish_deregister/2]).
 -export([publish_presence_probe/1, publish_presence_probe/2]).
+-export([publish_presence_update/1, publish_presence_update/2]).
 -export([publish_pwd_recovery/1, publish_pwd_recovery/2]).
 -export([publish_new_account/1, publish_new_account/2]).
 -export([publish_port_request/1, publish_port_request/2]).
@@ -40,6 +42,7 @@
 -define(NOTIFY_MWI_UPDATE, <<"notifications.sip.mwi_update">>).
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
 -define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
+-define(NOTIFY_PRESENCE_UPDATE, <<"notifications.presence.update">>).
 -define(NOTIFY_PRESENCE_PROBE, <<"notifications.presence.probe">>).
 -define(NOTIFY_PRESENCE_IN, <<"notifications.presence.in">>).
 -define(NOTIFY_PRESENCE_OUT, <<"notifications.presence.out">>).
@@ -79,9 +82,17 @@
                                               ,<<"Subscription">>
                                          ]).
 -define(PRESENCE_PROBE_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                            ,{<<"Event-Name">>, <<"presence_probe">>}
-                           ]).
+                                ,{<<"Event-Name">>, <<"presence_probe">>}
+                               ]).
 -define(PRESENCE_PROBE_TYPES, []).
+
+%% Notify Presence Update
+-define(PRESENCE_UPDATE_HEADERS, [<<"Presence-ID">>]).
+-define(OPTIONAL_PRESENCE_UPDATE_HEADERS, [<<"To">>]).
+-define(PRESENCE_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                                 ,{<<"Event-Name">>, <<"presence_update">>}
+                                ]).
+-define(PRESENCE_UPDATE_TYPES, []).
 
 %% Notify Deregister
 -define(DEREGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
@@ -256,6 +267,25 @@ presence_probe_v(JObj) ->
     presence_probe_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Presence_Update (unregister is a key word) - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+presence_update(Prop) when is_list(Prop) ->
+    case presence_update_v(Prop) of
+        true -> wh_api:build_message(Prop, ?PRESENCE_UPDATE_HEADERS, ?OPTIONAL_PRESENCE_UPDATE_HEADERS);
+        false -> {error, "Proplist failed validation for presence_update"}
+    end;
+presence_update(JObj) ->
+    presence_update(wh_json:to_proplist(JObj)).
+
+-spec presence_update_v/1 :: (api_terms()) -> boolean().
+presence_update_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PRESENCE_UPDATE_HEADERS, ?PRESENCE_UPDATE_VALUES, ?PRESENCE_UPDATE_TYPES);
+presence_update_v(JObj) ->
+    presence_update_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Pwd_Recovery (unregister is a key word) - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -388,6 +418,9 @@ bind_to_q(Q, [register|T]) ->
 bind_to_q(Q, [deregister|T]) ->
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DEREGISTER),
     bind_to_q(Q, T);
+bind_to_q(Q, [presence_update|T]) ->
+    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_UPDATE),
+    bind_to_q(Q, T);
 bind_to_q(Q, [presence_probe|T]) ->
     amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_PROBE),
     bind_to_q(Q, T);
@@ -440,6 +473,9 @@ unbind_q_from(Q, [register|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, [deregister|T]) ->
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_DEREGISTER),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, [presence_update|T]) ->
+    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_UPDATE),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [presence_probe|T]) ->
     amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_PROBE),
@@ -502,6 +538,14 @@ publish_deregister(JObj) ->
 publish_deregister(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?DEREGISTER_VALUES, fun ?MODULE:deregister/1),
     amqp_util:notifications_publish(?NOTIFY_DEREGISTER, Payload, ContentType).
+
+-spec publish_presence_update/1 :: (api_terms()) -> 'ok'.
+-spec publish_presence_update/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_presence_update(JObj) ->
+    publish_presence_update(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_presence_update(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?PRESENCE_UPDATE_VALUES, fun ?MODULE:presence_update/1),
+    amqp_util:notifications_publish(?NOTIFY_PRESENCE_UPDATE, Payload, ContentType).
 
 -spec publish_presence_probe/1 :: (api_terms()) -> 'ok'.
 -spec publish_presence_probe/2 :: (api_terms(), ne_binary()) -> 'ok'.

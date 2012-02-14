@@ -573,7 +573,7 @@ get_fs_app(_Node, _UUID, JObj, <<"presence">>) ->
              ,{"event_type", "presence"}
              ,{"alt_event_type", "dialog"}
              ,{"presence-call-direction", "outbound"}
-             ,{"event_cound", "0"}
+             ,{"event_count", "0"}
             ],
     _ = [begin
              ?LOG("sending presence in event to ~p~n", [Node]),
