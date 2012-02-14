@@ -178,19 +178,23 @@ flush_dtmf(Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec presence/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
--spec presence/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
+-spec presence/2 :: (ne_binary(), ne_binary() | #cf_call{}) -> 'ok'.
+-spec presence/3 :: (ne_binary(), ne_binary() | #cf_call{}, ne_binary() | #cf_call{}) -> 'ok'.
 
-presence(State, #cf_call{from=User}=Call) ->
-    presence(State, User, Call).
+presence(State, #cf_call{from=User}) ->
+    presence(State, User);
+presence(State, PresenceId) ->
+    presence(State, PresenceId, undefined).
 
-presence(State, User, Call) ->
-    Command = [{<<"User">>, User}
+presence(State, PresenceId, #cf_call{}=Call) ->
+    presence(State, PresenceId, cf_exe:callid(Call));
+presence(State, PresenceId, CallId) ->
+    Command = [{<<"Presence-ID">>, PresenceId}
                ,{<<"State">>, State}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Application-Name">>, <<"presence">>}
+               ,{<<"Call-ID">>, CallId}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    send_command(Command, Call).
+    wapi_notifications:publish_presence_update(Command).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -200,11 +204,7 @@ presence(State, User, Call) ->
 %%   can not be used to set system settings
 %% @end
 %%--------------------------------------------------------------------
--spec set/3 :: (ChannelVars, CallVars, Call) -> 'ok' when
-      ChannelVars :: 'undefined' | wh_json:json_object(),
-      CallVars :: 'undefined' | wh_json:json_object(),
-      Call :: #cf_call{}.
-
+-spec set/3 :: ('undefined' | wh_json:json_object(), 'undefined' | wh_json:json_object(), #cf_call{}) -> 'ok'.
 set(undefined, CallVars, Call) ->
     set(wh_json:new(), CallVars, Call);
 set(ChannelVars, undefined, Call) ->
