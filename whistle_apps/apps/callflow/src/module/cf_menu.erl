@@ -12,6 +12,8 @@
 
 -export([handle/2]).
 
+-define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".menu">>).
+
 -record(keys, {
            %% Record Review
            save = <<"1">>
@@ -19,36 +21,21 @@
           ,record = <<"3">>
          }).
 
--record(prompts, {
-           generic_prompt = <<"/system_media/menu-no_prompt">>
-          ,hunt_transfer = <<"/system_media/menu-transferring_call">>
-          ,invalid_entry = <<"/system_media/menu-invalid_entry">>
-          ,exit = <<"/system_media/menu-exit">>
-          ,goodbye = <<"/system_media/vm-goodbye">>
-
-          ,record_prompt= <<"/system_media/vm-record_greeting">>
-          ,review_recording = <<"/system_media/vm-review_recording">>
-
-          ,message_saved = <<"/system_media/vm-saved">>
-          ,message_deleted = <<"/system_media/vm-deleted">>
-          ,return_to_ivr = <<"/system_media/menu-return">>
-
-          ,tone_spec = [{struct, [{<<"Frequencies">>, [440]},{<<"Duration-ON">>, 500},{<<"Duration-OFF">>, 100}]}]
-         }).
-
--record(menu, {
-           menu_id = undefined :: binary() | undefined
-          ,name = <<>>
-          ,retries = 3 :: pos_integer()
-          ,timeout = <<"2000">> :: binary()
-          ,max_length = <<"4">> :: binary()
-          ,hunt = false :: boolean()
-          ,hunt_deny = <<>> :: binary()
-          ,hunt_allow = <<>> :: binary()
-          ,record_pin = <<>> :: binary()
-          ,greeting_id = 'undefined' :: 'undefined' | ne_binary()
-          ,prompts = #prompts{} :: #prompts{}
-          ,keys = #keys{} :: #keys{}
+-record(menu, {menu_id = undefined :: binary() | undefined
+               ,name = <<>>
+               ,retries = 3 :: pos_integer()
+               ,timeout = <<"2000">> :: binary()
+               ,max_length = <<"4">> :: binary()
+               ,hunt = false :: boolean()
+               ,hunt_deny = <<>> :: binary()
+               ,hunt_allow = <<>> :: binary()
+               ,record_pin = <<>> :: binary()
+               ,record_from_offnet = false :: boolean()   
+               ,greeting_id = 'undefined' :: 'undefined' | ne_binary()
+               ,exit_media = true :: boolean() | ne_binary()
+               ,transfer_media = true :: boolean() | ne_binary()
+               ,invalid_media = true :: boolean() | ne_binary()
+               ,keys = #keys{} :: #keys{}
          }).
 
 %%--------------------------------------------------------------------
@@ -72,24 +59,22 @@ handle(Data, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec menu_loop/2 :: (#menu{}, #cf_call{}) -> ok.
-menu_loop(#menu{retries=Retries, prompts=Prompts}, Call) when Retries =< 0 ->
+menu_loop(#menu{retries=Retries}=Menu, Call) when Retries =< 0 ->
     ?LOG("maxium number of retries reached"),
     cf_call_command:flush_dtmf(Call),
-    cf_call_command:b_play(Prompts#prompts.exit, Call),
+    play_exit_prompt(Menu, Call),
     case cf_exe:attempt(<<"max_retries">>, Call) of
         {attempt_resp, ok} ->
             ok;
         {attempt_resp, {error, _}} ->
-            {branch_keys, Keys} = cf_exe:get_all_branch_keys(Call), 
-            case lists:member(<<"_">>, Keys) of
-                false ->
-                    cf_call_command:b_play(Prompts#prompts.goodbye, Call);
-                true ->
-                    cf_call_command:b_play(Prompts#prompts.hunt_transfer, Call)
+            case cf_exe:wildcard_is_empty(Call) of
+                true -> cf_call_command:b_prompt(<<"vm-goodbye">>, Call);
+                false -> play_transferring_prompt(Menu, Call)
             end,
             cf_exe:continue(Call)
     end;
-menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_pin=RecordPin, prompts=Prompts}=Menu, Call) ->
+menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout
+                ,record_pin=RecordPin, record_from_offnet=RecOffnet}=Menu, #cf_call{inception=Inception}=Call) ->
     case cf_call_command:b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu, Call), <<"1">>, Timeout, Call) of
         {ok, <<>>} ->
             ?LOG("menu entry timeout"),
@@ -99,21 +84,26 @@ menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout, record_p
                 {attempt_resp, {error, _}} ->
                     menu_loop(Menu#menu{retries=Retries - 1}, Call)
             end;
-        {ok, RecordPin} ->
-            ?LOG("selection matches recording pin"),
-            M = record_greeting(tmp_file(), Menu, Call),
-            ?LOG("returning caller to menu"),
-            cf_call_command:b_play(Prompts#prompts.return_to_ivr, Call),
-            menu_loop(M, Call);
         {ok, Digits} ->
             %% this try_match_digits calls hunt_for_callflow() based on the digits dialed
             %% if it finds a callflow, the main CFPid will move on to it and try_match_digits
             %% will return true, matching here, and causing menu_loop to exit; this is
             %% expected behaviour as CFPid has moved on from this invocation
+            AllowRecord = RecOffnet orelse Inception =:= <<"on-net">>,
             case try_match_digits(Digits, Menu, Call) of
                 true -> 
                     ok;
-                false -> 
+                false when Digits =:= RecordPin, AllowRecord -> 
+                    ?LOG("selection matches recording pin"),
+                    case record_greeting(tmp_file(), Menu, Call) of
+                        {ok, M} ->
+                            ?LOG("returning caller to menu"),
+                            cf_call_command:b_prompt(<<"menu-return">>, Call),
+                            menu_loop(M, Call);
+                        {error, _} -> 
+                            cf_exe:stop(Call)
+                    end;                            
+                false ->
                     ?LOG("invalid selection ~w", [Digits]),
                     play_invalid_prompt(Menu, Call),
                     menu_loop(Menu#menu{retries=Retries - 1}, Call)
@@ -213,13 +203,13 @@ is_hunt_denied(Digits, #menu{hunt_deny=RegEx}, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec hunt_for_callflow/3 :: (ne_binary(), #menu{}, #cf_call{}) -> boolean().
-hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{account_id=AccountId}=Call) ->
+hunt_for_callflow(Digits, Menu, #cf_call{account_id=AccountId}=Call) ->
     ?LOG("hunting for ~s in account ~s", [Digits, AccountId]),
     case cf_util:lookup_callflow(Digits, AccountId) of
         {ok, Flow, false} ->
             ?LOG("callflow hunt succeeded, branching"),
             cf_call_command:flush_dtmf(Call),
-            cf_call_command:b_play(Prompts#prompts.hunt_transfer, Call),
+            play_transferring_prompt(Menu, Call),
             cf_exe:branch(wh_json:get_value(<<"flow">>, Flow, wh_json:new()), Call),
             true;
         _ ->
@@ -233,10 +223,43 @@ hunt_for_callflow(Digits, #menu{prompts=Prompts}, #cf_call{account_id=AccountId}
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec play_invalid_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> {'ok', wh_json:json_object()} | {'error', atom()}.
-play_invalid_prompt(#menu{prompts=Prompts}, Call) ->
-    Prompts#prompts.invalid_entry =/= <<>> 
-        andalso cf_call_command:b_play(Prompts#prompts.invalid_entry, Call).
+-spec record_greeting/3 :: (binary(), #menu{}, #cf_call{}) -> {ok, #menu{}} | {error, wh_json:json_object()}.
+record_greeting(AttachmentName, #menu{greeting_id=undefined}=Menu, Call) ->
+    MediaId = recording_media_doc(<<"greeting">>, Menu, Call),
+    record_greeting(AttachmentName, Menu#menu{greeting_id=MediaId}, Call);
+record_greeting(AttachmentName, #menu{greeting_id=MediaId}=Menu, Call) ->
+    ?LOG("recording new menu greeting"),
+    cf_call_command:audio_macro([{prompt, <<"vm-record_greeting">>}
+                                 ,{tones, [wh_json:from_list([{<<"Frequencies">>, [440]}
+                                                              ,{<<"Duration-ON">>, 500}
+                                                              ,{<<"Duration-OFF">>, 100}
+                                                             ])
+                                          ]}
+                                ], Call),
+    case cf_call_command:b_record(AttachmentName, Call) of
+        {error, _}=E -> E;
+        {ok, JObj} ->
+            NoRec = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"min_greeting_length">>, 1500) 
+                > wh_json:get_integer_value(<<"Length">>, JObj),
+            case review_recording(AttachmentName, Menu, Call) of
+                {ok, record} ->
+                    record_greeting(tmp_file(), Menu, Call);
+                {ok, save} when NoRec ->
+                    cf_call_command:b_prompt(<<"vm-recording_to_short">>, Call),
+                    record_greeting(tmp_file(), Menu, Call);
+                {ok, save} ->
+                    {ok, _} = store_recording(AttachmentName, MediaId, Call),
+                    ok = update_doc([<<"media">>, <<"greeting">>], MediaId, Menu, Call),
+                    cf_call_command:b_prompt(<<"vm-saved">>, Call),
+                    {ok, Menu};
+                {ok, no_selection} ->
+                    ?LOG("abandoning recorded greeting"),
+                    cf_call_command:b_prompt(<<"vm-deleted">>, Call),
+                    {ok, Menu};
+                {error, _}=E -> E
+            end
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -244,31 +267,41 @@ play_invalid_prompt(#menu{prompts=Prompts}, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec record_greeting/3 :: (binary(), #menu{}, #cf_call{}) -> #menu{}.
-record_greeting(AttachmentName, #menu{greeting_id=undefined}=Menu, Call) ->
-    MediaId = recording_media_doc(<<"greeting">>, Menu, Call),
-    ok = update_doc([<<"media">>, <<"greeting">>], MediaId, Menu, Call),
-    record_greeting(AttachmentName, Menu#menu{greeting_id=MediaId}, Call);
-record_greeting(AttachmentName, #menu{prompts=#prompts{record_prompt=RecordGreeting, tone_spec=ToneSpec
-                                                      ,message_saved=Saved, message_deleted=Deleted}
-                                     ,greeting_id=MediaId}=Menu, Call) ->
-    ?LOG("recording new menu greeting"),
-    cf_call_command:audio_macro([{play, RecordGreeting}
-                                 ,{tones, ToneSpec}]
-                                ,Call),
-    {ok, _} = cf_call_command:b_record(AttachmentName, Call),
-    case review_recording(AttachmentName, Menu, Call) of
-        {ok, record} ->
-            record_greeting(tmp_file(), Menu, Call);
-        {ok, save} ->
-            {ok, _} = store_recording(AttachmentName, MediaId, Call),
-            cf_call_command:b_play(Saved, Call),
-            Menu;
-        {ok, no_selection} ->
-            ?LOG("abandoning recorded greeting"),
-            cf_call_command:b_play(Deleted, Call),
-            Menu
-    end.
+-spec play_invalid_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+play_invalid_prompt(#menu{invalid_media=false}, _) ->
+    {ok, wh_json:new()};
+play_invalid_prompt(#menu{invalid_media=true}, Call) ->
+    cf_call_command:b_prompt(<<"menu-invalid_entry">>, Call);
+play_invalid_prompt(#menu{invalid_media=Id}, #cf_call{account_db=Db}=Call) ->
+    cf_call_command:b_play(<<$/, Db/binary, $/, Id/binary>>, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec play_transferring_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+play_transferring_prompt(#menu{transfer_media=false}, _) ->
+    {ok, wh_json:new()};
+play_transferring_prompt(#menu{transfer_media=true}, Call) ->
+    cf_call_command:b_prompt(<<"menu-transferring_call">>, Call);
+play_transferring_prompt(#menu{transfer_media=Id}, #cf_call{account_db=Db}=Call) ->
+    cf_call_command:b_play(<<$/, Db/binary, $/, Id/binary>>, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec play_exit_prompt/2 :: (Menu :: #menu{}, Call :: #cf_call{}) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+play_exit_prompt(#menu{exit_media=false}, _) ->
+    {ok, wh_json:new()};
+play_exit_prompt(#menu{exit_media=true}, Call) ->
+    cf_call_command:b_prompt(<<"menu-exit">>, Call);
+play_exit_prompt(#menu{exit_media=Id}, #cf_call{account_db=Db}=Call) ->
+    cf_call_command:b_play(<<$/, Db/binary, $/, Id/binary>>, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -277,8 +310,8 @@ record_greeting(AttachmentName, #menu{prompts=#prompts{record_prompt=RecordGreet
 %% @end
 %%--------------------------------------------------------------------
 -spec get_prompt/2 :: (#menu{}, #cf_call{}) -> ne_binary().
-get_prompt(#menu{greeting_id=undefined, prompts=Prompts}, _) ->
-    Prompts#prompts.generic_prompt;
+get_prompt(#menu{greeting_id=undefined}, _) ->
+    cf_util:get_prompt(<<"menu-no_prompt">>);
 get_prompt(#menu{greeting_id = <<"local_stream://", _/binary>> = ID}, _) ->
     ID;
 get_prompt(#menu{greeting_id=Id}, #cf_call{account_db=Db}) ->
@@ -341,10 +374,11 @@ tmp_file() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec review_recording/3 :: (ne_binary(), #menu{}, #cf_call{}) -> {ok, record | save | no_selection}.
-review_recording(MediaName, #menu{prompts=Prompts, keys=#keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
+review_recording(MediaName, #menu{keys=#keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
     ?LOG("playing menu greeting review options"),
     cf_call_command:flush_dtmf(Call),
-    case cf_call_command:b_play_and_collect_digit(Prompts#prompts.review_recording, Call) of
+    Prompt = cf_util:get_prompt(<<"vm-review_recording">>),
+    case cf_call_command:b_play_and_collect_digit(Prompt, Call) of
         {ok, ListenKey} ->
             cf_call_command:b_play(MediaName, Call),
             review_recording(MediaName, Menu, Call);
@@ -434,8 +468,19 @@ get_menu_profile(Data, #cf_call{account_id=AccountId}) ->
                       wh_json:get_value(<<"hunt_allow">>, JObj, Default#menu.hunt_allow)
                   ,record_pin =
                       wh_json:get_value(<<"record_pin">>, JObj, Default#menu.record_pin)
+                  ,record_from_offnet =
+                      wh_json:is_true(<<"allow_record_from_offnet">>, JObj, Default#menu.record_from_offnet)
                   ,greeting_id =
                       wh_json:get_ne_value([<<"media">>, <<"greeting">>], JObj)
+                  ,exit_media =
+                      (not wh_json:is_false([<<"media">>, <<"exit_media">>], JObj))
+                  andalso wh_json:get_ne_value([<<"media">>, <<"exit_media">>], JObj, true)
+                  ,transfer_media = 
+                      (not wh_json:is_false([<<"media">>, <<"transfer_media">>], JObj))
+                  andalso wh_json:get_ne_value([<<"media">>, <<"transfer_media">>], JObj, true)
+                  ,invalid_media =
+                      (not wh_json:is_false([<<"media">>, <<"invalid_media">>], JObj)) 
+                  andalso wh_json:get_ne_value([<<"media">>, <<"invalid_media">>], JObj, true)
                  };
         {error, R} ->
             ?LOG("failed to load menu route ~s, ~w", [Id, R]),
