@@ -108,10 +108,14 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                         end,
     ?LOG("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
 
-    FromURI = case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
-                  {undefined, _} -> undefined;
-                  {_, undefined} -> undefined;
-                  {FromNumber, FromRealm} -> <<"sip:", FromNumber/binary, "@", FromRealm/binary>>
+    FromURI = case catch whapps_config:get_atom(?APP_NAME, <<"format_from_uri">>, false) of
+                  true ->
+                      case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
+                          {undefined, _} -> undefined;
+                          {_, undefined} -> undefined;
+                          {FromNumber, FromRealm} -> <<"sip:", FromNumber/binary, "@", FromRealm/binary>>
+                      end;
+                  _ -> undefined
               end,
     ?LOG("setting from-uri to ~s", [FromURI]),
 
