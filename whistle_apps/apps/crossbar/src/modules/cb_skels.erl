@@ -14,21 +14,21 @@
 -module(cb_skels).
 
 -export([init/0
-         ,authenticate/2
-         ,authorize/2
-         ,allowed_methods/1
-         ,resource_exists/1
+         ,authenticate/1
+         ,authorize/1
+         ,allowed_methods/0, allowed_methods/1
+         ,resource_exists/0, resource_exists/1
          ,content_types_provided/1
          ,content_types_accepted/1
          ,languages_provided/1
          ,charsets_provided/1
          ,encodings_provided/1
-         ,validate/2
+         ,validate/1, validate/2
          ,billing/1
-         ,get/2
-         ,put/2
-         ,post/2
-         ,delete/2
+         ,get/1, get/2
+         ,put/1, put/2
+         ,post/1, post/2
+         ,delete/1, delete/2
          ,etag/1
          ,expires/1
          ,finish_request/1
@@ -52,24 +52,24 @@
 %%--------------------------------------------------------------------
 -spec init/0 :: () -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.languages_provided.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.charsets_provided.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.encodings_provided.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.billing.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.get.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.put.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.post.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.delete.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.etag.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.expires.skels">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.finish_request.skels">>),
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate.skels">>, ?MODULE, authenticate),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize.skels">>, ?MODULE, authorize),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.skels">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.skels">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.skels">>, ?MODULE, content_types_provided),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.skels">>, ?MODULE, content_types_accepted),
+    _ = crossbar_bindings:bind(<<"v1_resource.languages_provided.skels">>, ?MODULE, languages_provided),
+    _ = crossbar_bindings:bind(<<"v1_resource.charsets_provided.skels">>, ?MODULE, charsets_provided),
+    _ = crossbar_bindings:bind(<<"v1_resource.encodings_provided.skels">>, ?MODULE, encodings_provided),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.skels">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, billing),
+    _ = crossbar_bindings:bind(<<"v1_resource.get.skels">>, ?MODULE, get),
+    _ = crossbar_bindings:bind(<<"v1_resource.put.skels">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"v1_resource.post.skels">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"v1_resource.delete.skels">>, ?MODULE, delete),
+    _ = crossbar_bindings:bind(<<"v1_resource.etag.skels">>, ?MODULE, etag),
+    _ = crossbar_bindings:bind(<<"v1_resource.expires.skels">>, ?MODULE, expires),
+    _ = crossbar_bindings:bind(<<"v1_resource.finish_request.skels">>, ?MODULE, finish_request),
     ok.
 
 %%--------------------------------------------------------------------
@@ -79,9 +79,9 @@ init() ->
 %% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/2 :: (path_tokens(), #cb_context{}) -> {boolean(), #cb_context{}}.
-authenticate(_, #cb_context{}=Context) ->
-    {false, Context}.
+-spec authenticate/1 :: (#cb_context{}) -> boolean().
+authenticate(#cb_context{}=Context) ->
+    false.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -90,9 +90,9 @@ authenticate(_, #cb_context{}=Context) ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authorize/2 :: (path_tokens(), #cb_context{}) -> {boolean(), #cb_context{}}.
-authorize(_, #cb_context{}=Context) ->
-    {false, Context}.
+-spec authorize/1 :: (#cb_context{}) -> boolean().
+authorize(#cb_context{}=Context) ->
+    false.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -101,13 +101,12 @@ authorize(_, #cb_context{}=Context) ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (path_tokens()) -> http_methods() | [].
-allowed_methods([]) ->
-    ['GET', 'PUT'];
-allowed_methods([_]) ->
-    ['GET', 'POST', 'DELETE'];
+-spec allowed_methods/0 :: () -> http_methods() | [].
+-spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
+allowed_methods() ->
+    ['GET', 'PUT'].
 allowed_methods(_) ->
-    [].
+    ['GET', 'POST', 'DELETE'].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -118,13 +117,10 @@ allowed_methods(_) ->
 %%    /skels/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
+-spec resource_exists/0 :: () -> boolean().
 -spec resource_exists/1 :: (path_tokens()) -> boolean().
-resource_exists([]) ->
-    true;
-resource_exists([_]) ->
-    true;
-resource_exists(_) ->
-    false.
+resource_exists() -> true.
+resource_exists(_) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -197,18 +193,22 @@ encodings_provided(_) ->
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
+-spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = <<"put">>}=Context) ->
     create(Context);
-validate([Id], #cb_context{req_verb = <<"get">>}=Context) ->
+validate(Context) ->
+    crossbar_util:response_faulty_request(Context).
+
+validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context);
-validate([Id], #cb_context{req_verb = <<"post">>}=Context) ->
+validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
     update(Id, Context);
-validate([Id], #cb_context{req_verb = <<"delete">>}=Context) ->
+validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
     read(Id, Context);
-validate(_, Context) ->
+validate(Context, _) ->
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
@@ -230,8 +230,11 @@ billing(#cb_context{}=Context) ->
 %% the resource into the resp_data, resp_headers, etc...
 %% @end
 %%--------------------------------------------------------------------
--spec get/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
-get(_, #cb_context{}=Context) ->
+-spec get/1 :: (#cb_context{}) -> #cb_context{}.
+-spec get/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+get(#cb_context{}=Context) ->
+    Context.
+get(#cb_context{}=Context, _) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -240,8 +243,11 @@ get(_, #cb_context{}=Context) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
-put(_, #cb_context{}=Context) ->
+-spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+put(#cb_context{}=Context) ->
+    crossbar_doc:save(Context).
+put(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -251,8 +257,11 @@ put(_, #cb_context{}=Context) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
-post(_, #cb_context{}=Context) ->
+-spec post/1 :: (#cb_context{}) -> #cb_context{}.
+-spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+post(#cb_context{}=Context) ->
+    crossbar_doc:save(Context).
+post(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -261,8 +270,11 @@ post(_, #cb_context{}=Context) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
-delete(_, #cb_context{}=Context) ->
+-spec delete/1 :: (#cb_context{}) -> #cb_context{}.
+-spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+delete(#cb_context{}=Context) ->
+    crossbar_doc:delete(Context).
+delete(#cb_context{}=Context, _) ->
     crossbar_doc:delete(Context).
 
 %%--------------------------------------------------------------------

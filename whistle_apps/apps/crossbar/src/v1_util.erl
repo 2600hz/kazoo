@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
-%%% @copyright (C) 2012, James Aimonetti
+%%% @author James Aimonetti <james@2600hz.org>
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%% Moved util functions out of v1_resource so only REST-related calls
 %%% are in there.
 %%% @end
-%%% Created :  5 Feb 2012 by James Aimonetti <>
+%%% Created :  5 Feb 2012 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(v1_util).
 
@@ -14,7 +14,7 @@
          ,get_req_data/2, get_http_verb/2
          ,is_authentic/2, is_permitted/2
          ,is_known_content_type/2
-         ,does_resource_exist/1, validate/2
+         ,does_resource_exist/1, validate/1
          ,succeeded/1
          ,execute_request/2
          ,create_push_response/2, set_resp_headers/2
@@ -43,7 +43,7 @@ is_cors_preflight(Req0) ->
         {true, Req1} ->
             case cowboy_http_req:method(Req1) of
                 {'OPTIONS', Req2} -> {true, Req2};
-                {_, Req2} -> {false, Req2}
+                {_M, Req2} -> {false, Req2}
             end;
         Nope -> Nope
     end.
@@ -76,10 +76,12 @@ is_cors_request(Req0) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec add_cors_headers/2 :: (#http_req{}, #cb_context{}) -> {'ok', #http_req{}}.
-add_cors_headers(Req0, Context) ->
+add_cors_headers(Req0, #cb_context{allow_methods=Ms}=Context) ->
+    {ReqM, Req1} = cowboy_http_req:header(<<"Access-Control-Request-Method">>, Req0),
+    ?LOG("cors req methods: ~p", [ReqM]),
     lists:foldl(fun({H, V}, {ok, ReqAcc}) ->
                         cowboy_http_req:set_resp_header(H, V, ReqAcc)
-                end, {ok, Req0}, get_cors_headers(Context)).
+                end, {ok, Req1}, get_cors_headers(Context#cb_context{allow_methods=[ReqM|Ms]})).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -88,7 +90,7 @@ add_cors_headers(Req0, Context) ->
 %%--------------------------------------------------------------------
 -spec get_cors_headers/1 :: (#cb_context{}) -> [{ne_binary(), ne_binary()},...].
 get_cors_headers(#cb_context{allow_methods=Allowed}) ->
-    Methods = wh_util:join_binary([wh_util:to_binary(A) || A <- Allowed], <<", ">>),
+    Methods = wh_util:join_binary([wh_util:to_binary(A) || A <- Allowed, A =/= undefined], <<", ">>),
     ?LOG("allowed cors methods: ~s", [Methods]),
     [{<<"Access-Control-Allow-Origin">>, <<"*">>}
      ,{<<"Access-Control-Allow-Methods">>, Methods}
@@ -230,23 +232,32 @@ get_http_verb(Method, #cb_context{req_json=ReqJObj, query_json=ReqQs}) ->
 -type cb_mod_with_tokens() :: {ne_binary(), path_tokens()}.
 -spec parse_path_tokens/1 :: (wh_json:json_strings()) -> [cb_mod_with_tokens(),...] | [].
 parse_path_tokens(Tokens) ->
-    Loaded = [ wh_util:to_binary(Mod) || {Mod, _, _, _} <- supervisor:which_children(crossbar_module_sup) ],
-    parse_path_tokens(Tokens, Loaded, []).
+    Ebin = code:lib_dir(crossbar, ebin),
 
--spec parse_path_tokens/3 :: (wh_json:json_strings(), wh_json:json_strings(), [cb_mod_with_tokens(),...] | []) -> [cb_mod_with_tokens(),...] | [].
-parse_path_tokens([], _Loaded, Events) ->
+    parse_path_tokens(Tokens, Ebin, []).
+
+-spec parse_path_tokens/3 :: (wh_json:json_strings(), nonempty_string(), [cb_mod_with_tokens(),...] | []) -> [cb_mod_with_tokens(),...] | [].
+parse_path_tokens([], _Ebin, Events) ->
     Events;
 parse_path_tokens([<<"schemas">>=Mod|T], _, Events) ->
     [{Mod, T} | Events];
-parse_path_tokens([Mod|T], Loaded, Events) ->
-    case lists:member(<<"cb_", (Mod)/binary>>, Loaded) of
+parse_path_tokens([Mod|T], Ebin, Events) ->
+    case is_cb_module(Mod, Ebin) of
         false ->
             ?LOG("failed to find ~s in loaded cb modules", [Mod]),
             [];
         true ->
-            {Params, List2} = lists:splitwith(fun(Elem) -> not lists:member(<<"cb_", (Elem)/binary>>, Loaded) end, T),
+            {Params, List2} = lists:splitwith(fun(Elem) -> not is_cb_module(Elem, Ebin) end, T),
             Params1 = [ wh_util:to_binary(P) || P <- Params ],
-            parse_path_tokens(List2, Loaded, [{Mod, Params1} | Events])
+
+            parse_path_tokens(List2, Ebin, [{Mod, Params1} | Events])
+    end.
+
+-spec is_cb_module/2 :: (ne_binary(), nonempty_string()) -> boolean().
+is_cb_module(Elem, Ebin) ->
+    case code:where_is_file(lists:flatten(["cb_", wh_util:to_list(Elem), ".beam"])) of
+        non_existing -> false;
+        BeamPath -> lists:prefix(Ebin, BeamPath) =:= true
     end.
 
 %%--------------------------------------------------------------------
@@ -266,12 +277,12 @@ parse_path_tokens([Mod|T], Loaded, Events) ->
 %% 'POST' from the allowed methods.
 %% @end
 %%--------------------------------------------------------------------
--spec allow_methods/4  :: ([{term(), term()},...], http_methods(), ne_binary(), atom()) -> http_methods().
+-spec allow_methods/4  :: ([http_methods(),...], http_methods(), ne_binary(), atom()) -> http_methods().
 allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
     case crossbar_bindings:succeeded(Responses) of
-        [] -> Available;
+        [] -> [];
         Succeeded ->
-            AllowedSet = lists:foldr(fun({true, Response}, Acc) ->
+            AllowedSet = lists:foldr(fun(Response, Acc) ->
                                              Set = sets:from_list(Response),
                                              sets:intersection(Acc, Set)
                                      end, sets:from_list(Available), Succeeded),
@@ -281,7 +292,7 @@ allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
 %% insert 'POST' if Verb is in Allowed; otherwise remove 'POST'.
 -spec maybe_add_post_method/3 :: (ne_binary(), http_methods(), [http_methods(),...]) -> [http_methods(),...].
 maybe_add_post_method(Verb, 'POST', Allowed) ->
-    VerbAtom = list_to_atom(string:to_upper(binary_to_list(Verb))),
+    VerbAtom = wh_util:to_atom(wh_util:to_upper_binary(Verb)),
     case lists:member(VerbAtom, Allowed) of
         true -> ['POST' | Allowed];
         false -> lists:delete('POST', Allowed)
@@ -304,13 +315,17 @@ is_authentic(Req, #cb_context{req_verb = <<"options">>}=Context) ->
 is_authentic(Req0, Context0) ->
     Event = <<"v1_resource.authenticate">>,
     {Req1, Context1} = get_auth_token(Req0, Context0),
-    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {Req1, Context1})) of
+    MapResp = crossbar_bindings:map(Event, Context1),
+    case crossbar_bindings:succeeded(MapResp) of
         [] ->
             ?LOG("failed to authenticate"),
             {{false, <<>>}, Req1, Context1};
-        [{true, {Req2, Context2}}|_] ->
-            ?LOG("is authentic"),
-            {true, Req2, Context2}
+        [true|_] ->
+            ?LOG("is_authentic: true"),
+            {true, Req1, Context1};
+        [{true, Context2}|_] ->
+            ?LOG("is_authentic: true"),
+            {true, Req1, Context2}
     end.
 
 -spec get_auth_token/2 :: (#http_req{}, #cb_context{}) -> {#http_req{}, #cb_context{}}.
@@ -350,13 +365,16 @@ is_permitted(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     {true, Req, Context};
 is_permitted(Req0, Context0) ->
     Event = <<"v1_resource.authorize">>,
-    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, {Req0, Context0})) of
+    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             ?LOG("no on authz the request"),
             {false, Req0, Context0};
-        [{true, {Req1, Context1}}|_] ->
+        [true|_] ->
             ?LOG("request was authz"),
-            {true, Req1, Context1}
+            {true, Req0, Context0};
+        [{true, Context1}|_] ->
+            ?LOG("request was authz"),
+            {true, Req0, Context1}
     end.
 
 -spec is_known_content_type/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
@@ -414,17 +432,16 @@ does_resource_exist(_Context) ->
 %% it is valid and returns the status, and any errors
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: (#http_req{}, #cb_context{}) -> {#http_req{}, #cb_context{}}.
-validate(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
-    {Req1, Context1} = lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
-                                           Event = <<"v1_resource.validate.", Mod/binary>>,
-                                           Payload = [ReqAcc, ContextAcc | Params],
-                                          [ReqAcc1, ContextAcc1 | _] = crossbar_bindings:fold(Event, Payload),
-                                          {ReqAcc1, ContextAcc1}
-                                   end, {Req0, Context0}, Nouns),
+-spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+validate(#cb_context{req_nouns=Nouns}=Context0) ->
+    Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
+                                   Event = <<"v1_resource.validate.", Mod/binary>>,
+                                   Payload = [ContextAcc | Params],
+                                   crossbar_bindings:fold(Event, Payload)
+                           end, Context0, Nouns),
     case succeeded(Context1) of
-        true -> process_billing(Req1, Context1);
-        false -> {Req1, Context1}
+        true -> process_billing(Context1);
+        false -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -434,12 +451,12 @@ validate(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
 %% authorized for this request
 %% @end
 %%--------------------------------------------------------------------
--spec process_billing/2 :: (#http_req{}, #cb_context{}) -> {#http_req{}, #cb_context{}}.
-process_billing(Req0, Context0)->
+-spec process_billing/1 :: (#cb_context{}) -> #cb_context{}.
+process_billing(Context0)->
     Event = <<"v1_resource.billing">>,
-    case crossbar_bindings:fold(Event, {Req0, Context0}) of
-        {#http_req{}, #cb_context{}}=Resp -> ?LOG("billing returned"), Resp;
-        _E -> ?LOG("billing failed: ~p", [_E]), {Req0, Context0}
+    case crossbar_bindings:fold(Event, Context0) of
+        #cb_context{}=Resp -> ?LOG("billing returned"), Resp;
+        _E -> ?LOG("billing failed: ~p", [_E]), Context0
     end.
 
 %%--------------------------------------------------------------------
@@ -454,16 +471,20 @@ succeeded(_) -> false.
 
 
 -spec execute_request/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
-execute_request(Req0, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context0) ->
+execute_request(Req, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context0) ->
     Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
-    Payload = [Req0, Context0 | Params],
+    Payload = [Context0 | Params],
+    ?LOG("params: ~p", [Params]),
     case crossbar_bindings:fold(Event, Payload) of
-        [Req1, Context1 | _] ->
+        #cb_context{}=Context1 ->
             ?LOG("excution finished"),
-            execute_request_results(Req1, Context1);
+            execute_request_results(Req, Context1);
         {error, _E} ->
             ?LOG("error executing request: ~p", [_E]),
-            {false, Req0, Context0}
+            {false, Req, Context0};
+        _E ->
+            ?LOG("unexpected return from the fold: ~p", [_E]),
+            {false, Req, Context0}
     end;
 execute_request(Req, Context) ->
     ?LOG("execute request false end"),

@@ -181,14 +181,13 @@ options(Req0, Context) ->
 
 -type content_type_callbacks() :: [ {{ne_binary(), ne_binary(), proplist()}, atom()} | {ne_binary(), atom()},...] | [].
 -spec content_types_provided/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
-content_types_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+content_types_provided(Req, #cb_context{req_nouns=Nouns}=Context0) ->
     ?LOG("run: content_types_provided"),
-    {Req1, Context1} = lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
-                                           Event = <<"v1_resource.content_types_provided.", Mod/binary>>,
-                                           Payload = {ReqAcc, ContextAcc, Params},
-                                           {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
-                                           {ReqAcc1, ContextAcc1}
-                                   end, {Req0, Context0}, Nouns),
+    Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
+                                   Event = <<"v1_resource.content_types_provided.", Mod/binary>>,
+                                   Payload = [ContextAcc | Params],
+                                   crossbar_bindings:fold(Event, Payload)
+                           end, Context0, Nouns),
     CTP = lists:foldr(fun({Fun, L}, Acc) ->
                               lists:foldr(fun({Type, SubType}, Acc1) ->
                                                   [{{Type, SubType, []}, Fun} | Acc1];
@@ -197,18 +196,18 @@ content_types_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                                           end, Acc, L)
                       end, [], Context1#cb_context.content_types_provided),
 
-    {CTP, Req1, Context1}.
+    {CTP, Req, Context1}.
 
 -spec content_types_accepted/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
-content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+content_types_accepted(Req, #cb_context{req_nouns=Nouns}=Context0) ->
     ?LOG("run: content_types_accepted"),
-    {Req1, Context1=#cb_context{content_types_accepted=CTAs}} =
-        lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
+    Context1=#cb_context{content_types_accepted=CTAs} =
+        lists:foldr(fun({Mod, Params}, ContextAcc) ->
                             Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
-                            Payload = {ReqAcc, ContextAcc, Params},
-                            {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
-                            {ReqAcc1, ContextAcc1}
-                    end, {Req0, Context0}, Nouns),
+                            Payload = [ContextAcc | Params],
+                            ContextAcc1 = crossbar_bindings:fold(Event, Payload),
+                            ContextAcc1
+                    end, Context0, Nouns),
 
     CTA = lists:foldr(fun({Fun, L}, Acc) ->
                               lists:foldr(fun({Type, SubType}, Acc1) ->
@@ -217,7 +216,7 @@ content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                                                   [ {EncType, Fun} | Acc1 ]
                                           end, Acc, L)
                       end, [], CTAs),
-    {CTA, Req1, Context1}.
+    {CTA, Req, Context1}.
 
 -spec languages_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
 languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
@@ -267,14 +266,14 @@ resource_exists(Req0, Context0) ->
     case v1_util:does_resource_exist(Context0) of
         true ->
             ?LOG("requested resource exists, validating it"),
-            {Req1, Context1} = v1_util:validate(Req0, Context0),
+            Context1 = v1_util:validate(Context0),
             case v1_util:succeeded(Context1) of
                 true ->
                     ?LOG("requested resource validated, but is the request a PUT: ~s", [Context1#cb_context.req_verb]),
-                    {Context1#cb_context.req_verb =/= <<"put">>, Req1, Context1};
+                    {Context1#cb_context.req_verb =/= <<"put">>, Req0, Context1};
                 false ->
                     ?LOG("failed to validate resource"),
-                    {false, Req1, Context1}
+                    {false, Req0, Context1}
             end;
         false ->
             ?LOG("requested resource does not exist"),

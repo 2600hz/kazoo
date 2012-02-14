@@ -5,7 +5,8 @@
                                   | {crossbar_status(), proplist(), string()}
                                   | {crossbar_status(), proplist(), string(), integer()}.
 
--type path_tokens() :: [ne_binary(),...] | [].
+-type path_token() :: ne_binary().
+-type path_tokens() :: [path_token(),...] | [].
 
 %% {handler_fun, {type, sub_type}} => {to_json, [{<<"application">>, <<"json">>}]}
 -type crossbar_content_handler() :: {atom(), [{ne_binary(), ne_binary()},...]}.

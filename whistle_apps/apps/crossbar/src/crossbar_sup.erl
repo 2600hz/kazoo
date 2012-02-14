@@ -84,5 +84,4 @@ upgrade() ->
 init([]) ->
     {ok, {{one_for_one, 10, 10}, [?CACHE(crossbar_cache)
                                   ,?CHILD(crossbar_bindings, worker)
-                                  ,?CHILD(crossbar_module_sup, supervisor)
                                  ]}}.
