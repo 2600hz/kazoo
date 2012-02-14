@@ -57,37 +57,22 @@ start_link() ->
 -spec presence_update/2 :: (wh_json:json_object(), proplist()) -> ok.
 presence_update(JObj, _Props) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
-    Channels = ecallmgr_fs_query:channel_query(wh_json:from_list([{<<"Presence-ID">>, PresenceId}])),
-    Event = case try_find_ringing_channel(Channels) of
-                undefined -> 
-                    [{"proto", "any"}
-                     ,{"login", "src/mod/event_handlers/mod_erlang_event/handle_msg.c"}
-                     ,{"from", wh_util:to_list(PresenceId)}
-                     ,{"rpid", "unknown"}
-                     ,{"status", "Available"}
-                     ,{"event_type", "presence"}
-                     ,{"alt_event_type", "dialog"}
-                     ,{"presence-call-direction", "outbound"}
-                     ,{"event_count", "0"}
-                    ];
-                Channel -> 
-                    Status = case wh_json:get_value(<<"Answer-State">>, Channel) of
-                                 <<"answered">> -> "answered";
-                                 _Else -> "CS_ROUTING"
-                             end, 
-                    [{"unique-id", wh_json:get_string_value(<<"Call-ID">>, Channel)}
-                     ,{"channel-state", wh_json:get_string_value(<<"Channel-State">>, Channel)}
-                     ,{"answer-state", wh_json:get_string_value(<<"Answer-State">>, Channel)}
-                     ,{"proto", "any"}
-                     ,{"login", "src/mod/event_handlers/mod_erlang_event/handle_msg.c"}
-                     ,{"from", wh_util:to_list(PresenceId)}
-                     ,{"rpid", "unknown"}
-                     ,{"status", Status}
-                     ,{"event_type", "presence"}
-                     ,{"alt_event_type", "dialog"}
-                     ,{"presence-call-direction", "outbound"}
-                     ,{"event_count", "0"}
-                    ]
+    Event = case wh_json:get_value(<<"State">>, JObj) of
+                undefined ->
+                    Channels = ecallmgr_fs_query:channel_query(wh_json:from_list([{<<"Presence-ID">>, PresenceId}])),
+                    case try_find_ringing_channel(Channels) of
+                        undefined -> 
+                            create_presence_in(PresenceId, "Available", undefined, wh_json:new());
+                        Channel -> 
+                            State = wh_json:get_string_value(<<"Answer-State">>, Channel),
+                            Status = case State of <<"answered">> -> "answered"; _Else -> "CS_ROUTING" end, 
+                            create_presence_in(PresenceId, Status, State, Channel)
+                    end;
+                <<"early">> -> create_presence_in(PresenceId, "CS_ROUTING", "early", JObj);
+                <<"confirmed">> -> create_presence_in(PresenceId, "CS_ROUTING", "confirmed", JObj);
+                <<"answered">> -> create_presence_in(PresenceId, "answered", "confirmed", JObj);
+                <<"terminated">> -> create_presence_in(PresenceId, "CS_ROUTING", "terminated", JObj);
+                _ -> create_presence_in(PresenceId, "Available", undefined, wh_json:new())
             end,
     NodeHandlers = ecallmgr_fs_sup:node_handlers(),
     _ = [begin
@@ -282,3 +267,21 @@ try_find_ringing_channel([Channel|Channels]) ->
         <<"ringing">> -> Channel;
         _Else -> try_find_ringing_channel(Channels)
     end.
+
+-spec create_presence_in/4 :: (ne_binary(), undefined | string(), undefined | string(), wh_json:json_object()) -> proplist().
+create_presence_in(PresenceId, Status, State, JObj) ->
+    [KV || {_, V}=KV <- [{"unique-id", wh_json:get_string_value(<<"Call-ID">>, JObj)}
+                         ,{"channel-state", wh_json:get_string_value(<<"Channel-State">>, JObj, State)}
+                         ,{"answer-state", State}
+                         ,{"proto", "any"}
+                         ,{"login", "src/mod/event_handlers/mod_erlang_event/handle_msg.c"}
+                         ,{"from", wh_util:to_list(PresenceId)}
+                         ,{"rpid", "unknown"}
+                         ,{"status", Status}
+                         ,{"event_type", "presence"}
+                         ,{"alt_event_type", "dialog"}
+                         ,{"presence-call-direction", "outbound"}
+                         ,{"event_count", "0"}
+                        ]
+               ,V =/= undefined
+    ].

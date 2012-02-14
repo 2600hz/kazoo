@@ -88,7 +88,7 @@
 
 %% Notify Presence Update
 -define(PRESENCE_UPDATE_HEADERS, [<<"Presence-ID">>]).
--define(OPTIONAL_PRESENCE_UPDATE_HEADERS, [<<"To">>]).
+-define(OPTIONAL_PRESENCE_UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>, <<"Call-ID">>]).
 -define(PRESENCE_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                  ,{<<"Event-Name">>, <<"presence_update">>}
                                 ]).
