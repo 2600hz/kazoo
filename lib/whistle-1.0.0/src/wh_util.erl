@@ -378,7 +378,11 @@ is_empty(<<"NULL">>) -> true;
 is_empty(null) -> true;
 is_empty(false) -> true;
 is_empty(undefined) -> true;
-is_empty(MaybeJObj) -> wh_json:is_empty(MaybeJObj).
+is_empty(MaybeJObj) ->
+    case wh_json:is_json_object(MaybeJObj) of
+        false -> false; %% if not a json object, its not empty
+        true -> wh_json:is_empty(MaybeJObj)
+    end.
 
 -spec is_proplist/1 :: (term()) -> boolean().
 is_proplist(Term) when is_list(Term) ->
