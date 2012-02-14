@@ -19,25 +19,29 @@ init() ->
 
 -spec presence_probe/2 :: (wh_json:json_object(), proplist()) -> ok.
 presence_probe(ApiJObj, _Props) ->
-    ToRealm = wh_json:get_ne_value(<<"To-Realm">>, ApiJObj),
-    ToUser = wh_json:get_ne_value(<<"To-User">>, ApiJObj),
-    FromRealm = wh_json:get_ne_value(<<"From-Realm">>, ApiJObj),
-    FromUser = wh_json:get_ne_value(<<"From-User">>, ApiJObj),
-    case reg_util:lookup_registration(ToRealm, ToUser) of
-        {ok, RegJObjs} when is_list(RegJObjs) ->
-            PresenceUpdate = [{<<"Presence-ID">>, list_to_binary([ToUser, "@", ToRealm])}
-                              ,{<<"To">>, list_to_binary([FromUser, "@", FromRealm])}
-                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                             ],
-            wapi_notifications:publish_presence_update(PresenceUpdate);
-        {ok, _} ->
-            PresenceUpdate = [{<<"Presence-ID">>, list_to_binary([ToUser, "@", ToRealm])}
-                              ,{<<"To">>, list_to_binary([FromUser, "@", FromRealm])}
-                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                             ],
-            wapi_notifications:publish_presence_update(PresenceUpdate);
-        {error, not_found} -> 
-            ok
+    case wh_json:get_value(<<"Subscription">>, ApiJObj) of
+        <<"message-summary">> -> ok;
+        _Else ->
+            ToRealm = wh_json:get_ne_value(<<"To-Realm">>, ApiJObj),
+            ToUser = wh_json:get_ne_value(<<"To-User">>, ApiJObj),
+            FromRealm = wh_json:get_ne_value(<<"From-Realm">>, ApiJObj),
+            FromUser = wh_json:get_ne_value(<<"From-User">>, ApiJObj),
+            case reg_util:lookup_registration(ToRealm, ToUser) of
+                {ok, RegJObjs} when is_list(RegJObjs) ->
+                    PresenceUpdate = [{<<"Presence-ID">>, list_to_binary([ToUser, "@", ToRealm])}
+                                      ,{<<"To">>, list_to_binary([FromUser, "@", FromRealm])}
+                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                     ],
+                    wapi_notifications:publish_presence_update(PresenceUpdate);
+                {ok, _} ->
+                    PresenceUpdate = [{<<"Presence-ID">>, list_to_binary([ToUser, "@", ToRealm])}
+                                      ,{<<"To">>, list_to_binary([FromUser, "@", FromRealm])}
+                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                     ],
+                    wapi_notifications:publish_presence_update(PresenceUpdate);
+                {error, not_found} -> 
+                    ok
+            end
     end,
     ok.
 
