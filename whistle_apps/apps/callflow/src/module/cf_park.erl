@@ -11,11 +11,29 @@
 -include("../callflow.hrl").
 
 -export([handle/2]).
+-export([update_presence/3]).
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".park">>).
 
 -define(DB_DOC_NAME, whapps_config:get(?MOD_CONFIG_CAT, <<"db_doc_name">>, <<"parked_calls">>)).
 -define(DEFAULT_RINGBACK_TM, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"default_ringback_time">>, 120000)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Entry point for this module sends an arbitrary response back to the
+%% call originator.
+%% @end
+%%--------------------------------------------------------------------
+-spec update_presence/3 :: (ne_binary(), ne_binary(), ne_binary()) -> ok.
+update_presence(SlotNumber, PresenceId, AccountDb) ->
+    AccountId = wh_util:format_account_id(AccountDb, raw),
+    ParkedCalls = get_parked_calls(#cf_call{account_db=AccountDb, account_id=AccountId}),
+    {State, CallId} = case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls) of
+                          undefined -> {<<"terminated">>, undefined};
+                          Else -> {<<"early">>, Else}
+                      end,
+    cf_call_command:presence(State, PresenceId, CallId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -39,7 +57,7 @@ handle(Data, #cf_call{channel_vars=CCVs}=Call) ->
                 <<"retrieve">> ->
                     ?LOG("action is to retrieve a parked call"),
                     case retrieve(SlotNumber, ParkedCalls, Call) of
-                        false -> 
+                        false ->
                             cf_call_command:b_answer(Call),
                             cf_call_command:b_prompt(<<"park-no_caller">>, Call),
                             cf_exe:continue(Call);
@@ -95,7 +113,7 @@ retrieve(SlotNumber, ParkedCalls, #cf_call{to_user=ToUser, to_realm=ToRealm}=Cal
             ?LOG("They hungup? play back nobody here message", []),
             false;
         Slot ->
-            ParkedCall = wh_json:get_ne_value(<<"Call-ID">>, Slot),            
+            ParkedCall = wh_json:get_ne_value(<<"Call-ID">>, Slot),
             case get_switch_hostname(ParkedCall, Call) of
                 undefined ->
                     ?LOG("the parked caller node is undefined"),
@@ -172,10 +190,11 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
             ok;
         %% blind transfer and allowed to update the provided slot number
         {_, {ok, _}} ->
+            ParkedCallId = wh_json:get_value(<<"Call-ID">>, Slot),
             PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
             ?LOG("update presence-id '~s' with state: early", [PresenceId]),
-            cf_call_command:presence(<<"early">>, PresenceId, Call),
-            wait_for_pickup(SlotNumber, wh_json:get_value(<<"Ringback-ID">>, Slot), Call), 
+            cf_call_command:presence(<<"early">>, PresenceId, ParkedCallId),
+            wait_for_pickup(SlotNumber, wh_json:get_value(<<"Ringback-ID">>, Slot), Call),
             ok
     end.
 
@@ -296,16 +315,16 @@ update_call_id(Replaces, ParkedCalls, #cf_call{account_db=Db, channel_vars=CCVs
                         ,fun(J) -> wh_json:set_value(<<"Node">>, CallerHost, J) end
                         ,fun(J) -> wh_json:set_value(<<"CID-Number">>, CIDNum, J) end
                         ,fun(J) -> wh_json:set_value(<<"CID-Name">>, CIDName, J) end
-                        ,fun(J) ->  
+                        ,fun(J) ->
                                  Referred = wh_json:get_value(<<"Referred-By">>, CCVs),
                                  ReOptions = [{capture, [1], binary}],
                                  case catch(re:run(Referred, <<".*sip:(.*)@.*">>, ReOptions)) of
-                                     {match, [Match]} -> 
+                                     {match, [Match]} ->
                                          case get_endpoint_id(Match, Call) of
                                              undefined -> wh_json:delete_key(<<"Ringback-ID">>, J);
                                              RingbackId -> wh_json:set_value(<<"Ringback-ID">>, RingbackId, J)
                                          end;
-                                     _ -> 
+                                     _ ->
                                          wh_json:delete_key(<<"Ringback-ID">>, J)
                                  end
                          end
@@ -315,9 +334,10 @@ update_call_id(Replaces, ParkedCalls, #cf_call{account_db=Db, channel_vars=CCVs
             case couch_mgr:save_doc(Db, JObj) of
                 {ok, _} ->
                     publish_usurp_control(Call),
+                    ParkedCallId = wh_json:get_value(<<"Call-ID">>, Slot),
                     PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
                     ?LOG("update presence-id '~s' with state: early", [PresenceId]),
-                    cf_call_command:presence(<<"early">>, PresenceId, Call),                    
+                    cf_call_command:presence(<<"early">>, PresenceId, ParkedCallId),
                     {ok, SlotNumber, UpdatedSlot};
                 {error, conflict} ->
                     update_call_id(Replaces, get_parked_calls(Call), Call)
@@ -385,11 +405,12 @@ cleanup_slot(SlotNumber, ParkedCall, #cf_call{account_db=Db}=Call) ->
     case couch_mgr:open_doc(Db, ?DB_DOC_NAME) of
         {ok, JObj} ->
             case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj) of
-                ParkedCall -> 
+                ParkedCall ->
                     ?LOG("clean up matched the call id in the slot, terminating presence"),
+                    ParkedCallId = wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj),
                     PresenceId = wh_json:get_value([<<"slots">>, SlotNumber, <<"Presence-ID">>], JObj),
                     ?LOG("update presence-id '~s' with state: terminated", [PresenceId]),
-                    cf_call_command:presence(<<"terminated">>, PresenceId, Call),
+                    cf_call_command:presence(<<"terminated">>, PresenceId, ParkedCallId),
                     case couch_mgr:save_doc(Db, wh_json:delete_key([<<"slots">>, SlotNumber], JObj)) of
                         {ok, _} -> true;
                         {error, conflict} -> cleanup_slot(SlotNumber, ParkedCall, Call);
@@ -454,7 +475,7 @@ get_node_ip(Node) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Kill any other cf_exe or ecallmgr_call_control processes that are 
+%% Kill any other cf_exe or ecallmgr_call_control processes that are
 %% hanging around waiting for the parked call on hold to hit the
 %% timeout.
 %% @end
@@ -490,7 +511,7 @@ get_endpoint_id(Username, #cf_call{account_db=Db}) ->
     case couch_mgr:get_results(Db, <<"cf_attributes/sip_credentials">>, ViewOptions) of
         {ok, [Device]} -> wh_json:get_value(<<"id">>, Device);
         _ -> undefined
-    end.    
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -508,7 +529,7 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, #cf_call{cid_name=OriginalName, 
             Update = [{<<"Caller-ID-Name">>, TmpCID}
                       ,{<<"Callee-ID-Name">>, TmpCID}
                      ],
-            CleanUpFun = fun(_) -> 
+            CleanUpFun = fun(_) ->
                                  cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
                                  Restore = [{<<"Caller-ID-Name">>, OriginalName}
                                             ,{<<"Callee-ID-Name">>, OriginalName}
@@ -517,7 +538,7 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, #cf_call{cid_name=OriginalName, 
                          end,
             cf_call_command:bridge(Endpoints, <<"20">>, Call#cf_call{channel_vars=wh_json:set_values(Update, CCVs)}),
             case cf_call_command:wait_for_bridge(30000, CleanUpFun, Call) of
-                {ok, _} ->      
+                {ok, _} ->
                     ?LOG("completed successful bridge to the ringback device"),
                     answered;
                 _Else ->
