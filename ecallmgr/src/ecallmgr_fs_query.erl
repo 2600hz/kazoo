@@ -9,7 +9,11 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, handle_channel_query/2, handle_channel_status/2, handle_call_status/2]).
+-export([start_link/0]).
+-export([handle_channel_query/2]).
+-export([handle_channel_status/2]).
+-export([handle_call_status/2]).
+-export([channel_query/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -55,9 +59,7 @@ handle_channel_status(JObj, _Props) ->
     true = wapi_call:channel_status_req_v(JObj),
     wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-
     ?LOG_START("channel status request received"),
-
     case [ecallmgr_fs_node:hostname(NH) || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
         [] -> 
             ?LOG("no node found with channel ~s", [CallID]),
@@ -93,9 +95,7 @@ handle_call_status(JObj, _Props) ->
     true = wapi_call:call_status_req_v(JObj),
     wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-
     ?LOG("call status request received"),
-
     case [NH || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
         [] -> ?LOG("no node found with call having leg ~s", [CallID]);
         [NodeHandler] ->
@@ -117,30 +117,35 @@ handle_call_status(JObj, _Props) ->
 
 -spec handle_channel_query/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_channel_query(JObj, _Props) ->
-    true = wapi_call_query:req_v(JObj),
+    true = wapi_call:channel_query_req_v(JObj),
     wh_util:put_callid(JObj),
+    ?LOG("channel query received"),
+    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+    Resp = [{<<"Active-Calls">>, channel_query(JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+    wapi_call:publish_channel_query_resp(RespQ, Resp).
 
-    ?LOG("Channel query received"),
-
-    ListOfChannels = [ecallmgr_fs_node:show_channels(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()],
-
+-spec channel_query/1 :: (wh_json:json_object()) -> wh_json:json_objects().
+channel_query(JObj) ->
     SearchParams = lists:foldl(fun(Field, Acc) ->
                                        case wh_json:get_value(Field, JObj) of
                                            undefined -> Acc;
                                            Value -> [{Field, Value} | Acc]
                                        end
-                               end, [], wapi_call:optional_channel_headers()),
-
-    case lists:foldl(fun(NodeChannels, Acc) ->
-                             filter_for_matching_uuids(SearchParams, NodeChannels, Acc)
-                     end, [], ListOfChannels) of
-        [] ->
-            ?LOG("No channels found that meet search parameters"),
-            ok;
-        Matching ->
-            RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-            send_channel_query_resp(RespQ, Matching)
-    end.
+                               end, [], wapi_call:channel_query_search_fields()),
+    Channels = lists:flatten([ecallmgr_fs_node:show_channels(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()]),
+    SearchParams = lists:foldl(fun(Field, Acc) ->
+                                       case wh_json:get_value(Field, JObj) of
+                                           undefined -> Acc;
+                                           Value -> [{Field, Value} | Acc]
+                                       end
+                               end, [], wapi_call:channel_query_search_fields()),
+    lists:foldl(fun(Channel, Results) ->
+                        case lists:any(fun({K, V}) -> wh_json:get_value(K, Channel) =:= V end, SearchParams) of
+                            true -> [Channel|Results];
+                            false -> Results
+                        end
+                end, [], Channels).    
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -235,43 +240,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec filter_for_matching_uuids/3 :: (wh_json:json_object(), [proplist(),...], [wh_json:json_object(),...] | []) -> [wh_json:json_object(),...] | [].
-filter_for_matching_uuids(_, [], UUIDs) -> UUIDs;
-filter_for_matching_uuids(SearchParams, [C|Cs], UUIDs) ->
-    UUIDs1 = case lists:any(fun({<<"Call-ID">>,_}) -> false;
-                               ({Key, FSValue}) ->
-                                    case wh_json:get_value(Key, SearchParams) of
-                                        FSValue -> true;
-                                        _ -> false
-                                    end
-                            end, C) of
-                 true ->
-                     try
-                         [ make_jobj(C) | UUIDs]
-                     catch
-                         throw:_E ->
-                             ?LOG("Throw making jobj: ~p", [_E]),
-                             UUIDs;
-                         error:_E ->
-                             ?LOG("Error making jobj: ~p", [_E]),
-                             UUIDs
-                     end;
-                 false -> UUIDs
-             end,
-    filter_for_matching_uuids(SearchParams, Cs, UUIDs1).
-
--spec make_jobj/1 :: (proplist()) -> wh_json:json_object().
-make_jobj(C) ->
-    wh_json:from_list([{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, C)}
-                       ,{<<"Switch-Hostname">>, wh_json:get_value(<<"Hostname">>, C)}
-                      ]).
-
-send_channel_query_resp(RespQ, UUIDs) ->
-    Resp = [{<<"Active-Calls">>, UUIDs}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    wapi_call:publish_channel_resp(RespQ, Resp).
-
 -spec create_call_status_resp/2 :: (proplist(), boolean()) -> proplist().
 create_call_status_resp(Props, true) ->
     {OLCIName, OLCINum} = case props:get_value(<<"Other-Leg-Direction">>, Props) of
@@ -296,6 +264,7 @@ create_call_status_resp(Props, true) ->
      ,{<<"Other-Leg-Caller-ID-Name">>, OLCIName}
      ,{<<"Other-Leg-Caller-ID-Number">>, OLCINum}
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Other-Leg-Destination-Number">>, Props)}
+     ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)];
 create_call_status_resp(Props, false) ->
     {OLCIName, OLCINum} = case props:get_value(<<"Call-Direction">>, Props) of
@@ -320,4 +289,5 @@ create_call_status_resp(Props, false) ->
      ,{<<"Other-Leg-Caller-ID-Name">>, OLCIName}
      ,{<<"Other-Leg-Caller-ID-Number">>, OLCINum}
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Caller-Destination-Number">>, Props)}
+     ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)].

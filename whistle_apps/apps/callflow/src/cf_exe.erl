@@ -254,11 +254,7 @@ handle_call({attempt, Key}, _From, #state{flow = Flow}=State) ->
 handle_call({wildcard_is_empty}, _From, #state{flow = Flow}=State) ->
     case wh_json:get_value([<<"children">>, <<"_">>], Flow) of
         undefined -> {reply, true, State};
-        ChildFlow ->
-            case wh_json:is_empty(ChildFlow) of
-                true -> {reply, true, State};
-                false -> {reply, false, State}
-            end
+        ChildFlow -> {reply, wh_json:is_empty(ChildFlow), State}
     end;
 handle_call(_Request, _From, State) ->
     Reply = {error, unimplemented},

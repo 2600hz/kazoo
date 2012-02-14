@@ -27,6 +27,7 @@ vm-person: The person at extension
 vm-not_available: is not available.
 vm-no_messages: Mailbox is empty.
 vm-message_number: Message
+vm-recording_to_short: The recording was too short to be saved.
 
 menu-no_prompt: The recording for this menu has not been created. If you know the pin number, dial it now to record the prompt.  Otherwise, please try your call again later. Thank you.
 menu-transferring_call: Transferring your call.

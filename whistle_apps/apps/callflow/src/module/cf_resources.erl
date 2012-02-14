@@ -72,11 +72,13 @@ bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Rin
     end;
 bridge_to_resources([], _, _, _, Call) ->
     ?LOG("resources exhausted without success"),
+    WildcardIsEmpty = cf_exe:wildcard_is_empty(Call),
     case cf_util:handle_bridge_failure(<<"NO_ROUTE_DESTINATION">>, Call) =:= ok of
         true -> ok;
-        false ->
+        false when WildcardIsEmpty ->
             cf_util:send_default_response(<<"NO_ROUTE_DESTINATION">>, Call),
-            cf_exe:continue(Call)
+            cf_exe:continue(Call);
+        false -> cf_exe:continue(Call)
     end.
 
 %%--------------------------------------------------------------------

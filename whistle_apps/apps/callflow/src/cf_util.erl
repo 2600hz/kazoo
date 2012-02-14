@@ -59,8 +59,27 @@ presence_mwi_update(_, _, _, _) ->
     ok.
 
 -spec presence_parking_slot/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) -> ok.
-presence_parking_slot(_, _, _, _) ->
-    ok.
+presence_parking_slot(<<"message-summary">>, _, _, _) ->
+    ok;
+presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
+    case whapps_util:get_account_by_realm(FromRealm) of
+        {ok, AccountDb} ->
+            AccountId = wh_util:format_account_id(AccountDb, raw),
+            lookup_callflow(ToUser, AccountId),
+            case wh_cache:fetch({cf_flow, ToUser, AccountDb}) of
+                {error, not_found} -> ok;
+                {ok, Flow} ->
+                    case wh_json:get_value([<<"flow">>, <<"module">>], Flow) of
+                        <<"park">> -> 
+                            SlotNumber = wh_json:get_ne_value(<<"capture_group">>, Flow, ToUser),
+                            cf_park:update_presence(SlotNumber, <<ToUser/binary, "@", ToRealm/binary>>, AccountDb);
+                        _Else -> ok
+                    end
+            end;
+        _E ->
+            ?LOG("failed to find the account for realm ~s: ~p", [FromRealm, _E]),
+            ok
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

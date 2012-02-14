@@ -31,6 +31,11 @@
          "minLength":3,
          "maxLength":6
       },
+      "allow_record_from_offnet":{
+         "description":"Determines if the record pin can be used by external calls",
+         "type":"boolean",
+         "default":false
+      },
       "hunt":{
          "description":"Determines if the callers can dial internal extensions directly",
          "type":"boolean",
@@ -57,6 +62,33 @@
             "greeting":{
                "description":"The ID of a media object that should be used as the menu greeting",
                "type":"string",
+               "minLength":32,
+               "maxLength":32
+            },
+            "transfer_media":{
+               "description":"When a call is transfered from the menu, either after all retries exhausted or a successful hunt, this media can be played",
+               "type":[
+                  "boolean",
+                  "string"
+               ],
+               "minLength":32,
+               "maxLength":32
+            },
+            "exit_media":{
+               "description":"When a call is transfered from the menu after all retries exhausted this media can be played (prior to transfer if enabled)",
+               "type":[
+                  "boolean",
+                  "string"
+               ],
+               "minLength":32,
+               "maxLength":32
+            },
+            "invalid_media":{
+               "description":"When the collected digits dont result in a match or hunt this media can be played",
+               "type":[
+                  "boolean",
+                  "string"
+               ],
                "minLength":32,
                "maxLength":32
             }

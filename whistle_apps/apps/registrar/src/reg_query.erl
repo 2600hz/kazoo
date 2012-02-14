@@ -8,17 +8,45 @@
 %%%-------------------------------------------------------------------
 -module(reg_query).
 
--export([init/0, handle_req/2]).
-
 -include("reg.hrl").
+
+-export([init/0]).
+-export([req_query_req/2]).
+-export([presence_probe/2]).
 
 init() ->
     ok.
 
--spec handle_req/2 :: (ApiJObj, Props) -> no_return() when
-      ApiJObj :: wh_json:json_object(),
-      Props :: proplist().
-handle_req(ApiJObj, _Props) ->
+-spec presence_probe/2 :: (wh_json:json_object(), proplist()) -> ok.
+presence_probe(ApiJObj, _Props) ->
+    case wh_json:get_value(<<"Subscription">>, ApiJObj) of
+        <<"message-summary">> -> ok;
+        _Else ->
+            ToRealm = wh_json:get_ne_value(<<"To-Realm">>, ApiJObj),
+            ToUser = wh_json:get_ne_value(<<"To-User">>, ApiJObj),
+            FromRealm = wh_json:get_ne_value(<<"From-Realm">>, ApiJObj),
+            FromUser = wh_json:get_ne_value(<<"From-User">>, ApiJObj),
+            case reg_util:lookup_registration(ToRealm, ToUser) of
+                {ok, RegJObjs} when is_list(RegJObjs) ->
+                    PresenceUpdate = [{<<"Presence-ID">>, list_to_binary([ToUser, "@", ToRealm])}
+                                      ,{<<"To">>, list_to_binary([FromUser, "@", FromRealm])}
+                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                     ],
+                    wapi_notifications:publish_presence_update(PresenceUpdate);
+                {ok, _} ->
+                    PresenceUpdate = [{<<"Presence-ID">>, list_to_binary([ToUser, "@", ToRealm])}
+                                      ,{<<"To">>, list_to_binary([FromUser, "@", FromRealm])}
+                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                     ],
+                    wapi_notifications:publish_presence_update(PresenceUpdate);
+                {error, not_found} -> 
+                    ok
+            end
+    end,
+    ok.
+
+-spec req_query_req/2 :: (wh_json:json_object(), proplist()) -> ok.
+req_query_req(ApiJObj, _Props) ->
     true = wapi_registration:query_req_v(ApiJObj),
 
     CallId = wh_json:get_value(<<"Call-ID">>, ApiJObj, <<"000000000000">>),

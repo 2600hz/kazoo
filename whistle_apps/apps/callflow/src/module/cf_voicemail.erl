@@ -619,7 +619,7 @@ record_unavailable_greeting(AttachmentName, #mailbox{prompts=#prompts{record_una
                                            ,{tones, ToneSpec}
                                           ], Call),
     cf_call_command:b_record(AttachmentName, Call),
-    case cf_call_command:review_recording(AttachmentName, Box, Call) of
+    case review_recording(AttachmentName, Box, Call) of
         {ok, record} ->
             record_unavailable_greeting(tmp_file(), Box, Call);
         {ok, save} ->
