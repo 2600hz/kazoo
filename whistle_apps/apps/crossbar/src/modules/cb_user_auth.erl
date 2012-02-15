@@ -2,8 +2,6 @@
 %%% @copyright (C) 2011, VoIP, INC
 %%% @doc
 %%% User auth module
-%%%
-%%%
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
@@ -21,8 +19,6 @@
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
-
--define(SERVER, ?MODULE).
 
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).

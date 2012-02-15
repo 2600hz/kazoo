@@ -4,7 +4,6 @@
            "cb_signup",
            "cb_api_auth",
            "cb_shared_auth",
-           "cb_devices",
            "cb_conferences",
            "cb_vmboxes",
            "cb_servers",
