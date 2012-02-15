@@ -11,10 +11,8 @@
            "cb_ts_accounts",
            "cb_temporal_rules",
            "cb_directories",
-           "cb_cdrs",
            "cb_local_resources",
            "cb_global_resources",
            "cb_braintree",
            "cb_schemas",
-           "cb_webhooks",
-           "cb_rates"
+           "cb_webhooks"
