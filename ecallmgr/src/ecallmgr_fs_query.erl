@@ -22,6 +22,7 @@
 -define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
                      ,{{?MODULE, handle_channel_query}, [{<<"call_event">>, <<"channel_query_req">>}]}
+                     ,{?MODULE, handle_switch_event, [{<<"switch_event">>, <<"switch_event_req">>}]}
                     ]).
 
 -define(BINDINGS, [{call, [{restrict_to, [query_req, status_req]}]}]).
@@ -141,6 +142,15 @@ handle_channel_query(JObj, _Props) ->
             RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
             send_channel_query_resp(RespQ, Matching)
     end.
+
+-spec handle_switch_event/2 ::(wh_json:json_object(), proplist()) -> 'ok'
+handle_switch_event(JObj, _Props) ->
+  true = wapi_switch:req_v(JObj),
+  ListOfNodes = ecallmgr_fs_sup:node_handlers(),
+  case wh_json:get_value(<<"switch_event">>, JObj)  ->
+    <<"reloadacl">> -> [ecallmgr_fs_node:reloadacl(Pid) || ListOfNodes];
+    _ -> ok
+  ok.
 
 %%%===================================================================
 %%% gen_server callbacks

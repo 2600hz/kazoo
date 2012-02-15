@@ -126,18 +126,12 @@ handle_info({binding_fired, Pid, <<"v1_resource.execute.put.acls">>, [RD, #cb_co
                   Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS),
                   Merged = wh_json:set_value(wh_json:get_value(<<"cidr">>, JObj), JObj, Acls),
                   whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, Merged),
+                  crossbar_doc:send_document_change(<<"created">>, <<"system_config">>, JObj),
                   Pid ! {binding_result, true, [RD, Context, Params]}
           end),
     {noreply, State};
 
 handle_info({binding_fired, Pid, <<"v1_resource.execute.get.acls">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Pid ! {binding_result, true, [RD, Context, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.authorize.acls">>, [RD, Context | Params]}, State) ->
     spawn(fun() ->
                   _ = crossbar_util:put_reqid(Context),
                   Pid ! {binding_result, true, [RD, Context, Params]}
