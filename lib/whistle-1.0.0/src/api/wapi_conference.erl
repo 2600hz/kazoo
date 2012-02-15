@@ -8,6 +8,7 @@
 -module(wapi_conference).
 
 -export([discovery_req/1, discovery_req_v/1]).
+%% -export([discovery_resp/1, discovery_resp_v/1]).
 -export([deaf_participant/1, deaf_participant_v/1]).
 -export([participant_energy/1, participant_energy_v/1]).
 -export([kick/1, kick_v/1]).
@@ -29,6 +30,7 @@
 -export([bind_q/2, unbind_q/2]).
 
 -export([publish_discovery_req/1, publish_discovery_req/2]).
+%% -export([publish_discovery_resp/1, publish_discovery_resp/2]).
 -export([publish_deaf_participant/2, publish_deaf_participant/3]).
 -export([publish_participant_energy/2, publish_participant_energy/3]).
 -export([publish_kick/2, publish_kick/3]).
@@ -619,8 +621,28 @@ participant_volume_out_v(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
-bind_q(Q, _Props) ->
-    amqp_util:bind_q_to_conference(Q),
+bind_q(Queue, Props) ->
+    amqp_util:conference_exchange(),
+    bind_to_q(Queue, props:get_value(restrict_to, Props)).
+
+bind_to_q(Q, undefined) ->
+    amqp_util:bind_q_to_conference(Q, discovery),
+    amqp_util:bind_q_to_conference(Q, command),
+    amqp_util:bind_q_to_conference(Q, event);
+bind_to_q(Q, [discovery|T]) ->
+    amqp_util:bind_q_to_conference(Q, discovery),
+    bind_to_q(Q, T);
+bind_to_q(Q, [command|T]) ->
+    amqp_util:bind_q_to_conference(Q, command),
+    bind_to_q(Q, T);
+bind_to_q(Q, [event|T]) ->
+    amqp_util:bind_q_to_conference(Q, event),
+    bind_to_q(Q, T);
+bind_to_q(Q, [{conference, ConfId}|T]) ->
+    amqp_util:bind_q_to_conference(Q, command, ConfId),
+    amqp_util:bind_q_to_conference(Q, event, ConfId),
+    bind_to_q(Q, T);
+bind_to_q(_Q, []) ->
     ok.
 
 %%--------------------------------------------------------------------
@@ -629,8 +651,28 @@ bind_q(Q, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec unbind_q/2 :: (binary(), proplist()) -> 'ok'.
-unbind_q(Q, _Props) ->
-    amqp_util:unbind_q_from_conference(Q),
+unbind_q(Queue, Props) ->
+    amqp_util:conference_exchange(),
+    unbind_from_q(Queue, props:get_value(restrict_to, Props)).
+
+unbind_from_q(Q, undefined) ->
+    amqp_util:unbind_q_from_conference(Q, discovery),
+    amqp_util:unbind_q_from_conference(Q, command),
+    amqp_util:unbind_q_from_conference(Q, event);
+unbind_from_q(Q, [discovery|T]) ->
+    amqp_util:unbind_q_from_conference(Q, discovery),
+    unbind_from_q(Q, T);
+unbind_from_q(Q, [command|T]) ->
+    amqp_util:unbind_q_from_conference(Q, command),
+    unbind_from_q(Q, T);
+unbind_from_q(Q, [event|T]) ->
+    amqp_util:unbind_q_from_conference(Q, event),
+    unbind_from_q(Q, T);
+unbind_from_q(Q, [{conference, ConfId}|T]) ->
+    amqp_util:unbind_q_from_conference(Q, command, ConfId),
+    amqp_util:unbind_q_from_conference(Q, event, ConfId),
+    unbind_from_q(Q, T);
+unbind_from_q(_Q, []) ->
     ok.
 
 %%--------------------------------------------------------------------
@@ -644,7 +686,7 @@ publish_discovery_req(JObj) ->
     publish_discovery_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_discovery_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?DISCOVERY_REQ_VALUES, fun ?MODULE:discovery_req/1),
-    amqp_util:conference_publish(Payload, discovery, ContentType).
+    amqp_util:conference_publish(Payload, discovery, undefined, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -657,7 +699,7 @@ publish_deaf_participant(ConferenceId, JObj) ->
     publish_deaf_participant(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_deaf_participant(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?DEAF_PARTICIPANT_VALUES, fun ?MODULE:deaf_participant/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -670,7 +712,7 @@ publish_participant_energy(ConferenceId, JObj) ->
     publish_participant_energy(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_participant_energy(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?PARTICIPANT_ENERGY_VALUES, fun ?MODULE:participant_energy/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -683,7 +725,7 @@ publish_kick(ConferenceId, JObj) ->
     publish_kick(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_kick(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?KICK_VALUES, fun ?MODULE:kick/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -696,7 +738,7 @@ publish_participants_req(ConferenceId, JObj) ->
     publish_participants_req(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_participants_req(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?PARTICIPANTS_REQ_VALUES, fun ?MODULE:participants_req/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -709,7 +751,7 @@ publish_participants_resp(ConferenceId, JObj) ->
     publish_participants_resp(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_participants_resp(ConferenceId, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?PARTICIPANTS_RESP_VALUES, fun ?MODULE:participants_resp/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -722,7 +764,7 @@ publish_lock(ConferenceId, JObj) ->
     publish_lock(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_lock(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?LOCK_VALUES, fun ?MODULE:lock/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -735,7 +777,7 @@ publish_mute_participant(ConferenceId, JObj) ->
     publish_mute_participant(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_mute_participant(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?MUTE_PARTICIPANT_VALUES, fun ?MODULE:mute_participant/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -748,7 +790,7 @@ publish_play(ConferenceId, JObj) ->
     publish_play(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_play(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?PLAY_VALUES, fun ?MODULE:play/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -761,7 +803,7 @@ publish_record(ConferenceId, JObj) ->
     publish_record(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_record(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?RECORD_VALUES, fun ?MODULE:record/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -774,7 +816,7 @@ publish_relate_participants(ConferenceId, JObj) ->
     publish_relate_participants(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_relate_participants(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?RELATE_PARTICIPANTS_VALUES, fun ?MODULE:relate_participants/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -787,7 +829,7 @@ publish_set(ConferenceId, JObj) ->
     publish_set(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_set(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?SET_VALUES, fun ?MODULE:set/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -800,7 +842,7 @@ publish_stop_play(ConferenceId, JObj) ->
     publish_stop_play(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_stop_play(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?STOP_PLAY_VALUES, fun ?MODULE:stop_play/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -813,7 +855,7 @@ publish_undeaf_participant(ConferenceId, JObj) ->
     publish_undeaf_participant(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_undeaf_participant(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?UNDEAF_PARTICIPANT_VALUES, fun ?MODULE:undeaf_participant/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -826,7 +868,7 @@ publish_unlock(ConferenceId, JObj) ->
     publish_unlock(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_unlock(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?UNLOCK_VALUES, fun ?MODULE:unlock/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -839,7 +881,7 @@ publish_unmute_participant(ConferenceId, JObj) ->
     publish_unmute_participant(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_unmute_participant(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?UNMUTE_PARTICIPANT_VALUES, fun ?MODULE:unmute_participant/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -852,7 +894,7 @@ publish_participant_volume_in(ConferenceId, JObj) ->
     publish_participant_volume_in(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_participant_volume_in(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?PARTICIPANT_VOLUME_IN_VALUES, fun ?MODULE:participant_volume_in/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -865,4 +907,4 @@ publish_participant_volume_out(ConferenceId, JObj) ->
     publish_participant_volume_out(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_participant_volume_out(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?PARTICIPANT_VOLUME_OUT_VALUES, fun ?MODULE:participant_volume_out/1),
-    amqp_util:conference_publish(ConferenceId, Payload, command, ContentType).
+    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
