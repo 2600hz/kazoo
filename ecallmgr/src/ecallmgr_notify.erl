@@ -11,8 +11,9 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, handle_req/2]).
--export([send_mwi/4]).
+-export([start_link/0]).
+-export([presence_update/2]).
+-export([mwi_update/2]).
 -export([send_presence_event/3]).
 
 %% gen_server callbacks
@@ -22,8 +23,10 @@
 -define(SERVER, ?MODULE).
 -define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: sip:~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
 
--define(RESPONDERS, [{?MODULE, [{<<"notification">>, <<"mwi">>}]}]).
--define(BINDINGS, [{notifications, [{restrict_to, [mwi_update]}]}]).
+-define(RESPONDERS, [{{?MODULE, mwi_update}, [{<<"notification">>, <<"mwi">>}]}
+                     ,{{?MODULE, presence_update}, [{<<"notification">>, <<"presence_update">>}]}
+                    ]).
+-define(BINDINGS, [{notifications, [{restrict_to, [mwi_update, presence_update]}]}]).
 
 -define(QUEUE_NAME, <<"ecallmgr_notify">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
@@ -51,8 +54,38 @@ start_link() ->
                              ,{basic_qos, 1}
                             ], []).
 
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> no_return().
-handle_req(JObj, _Props) ->
+-spec presence_update/2 :: (wh_json:json_object(), proplist()) -> ok.
+presence_update(JObj, _Props) ->
+    PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
+    Event = case wh_json:get_value(<<"State">>, JObj) of
+                undefined ->
+                    Channels = ecallmgr_fs_query:channel_query(wh_json:from_list([{<<"Presence-ID">>, PresenceId}])),
+                    case try_find_ringing_channel(Channels) of
+                        undefined -> 
+                            create_presence_in(PresenceId, "Available", undefined, wh_json:new());
+                        Channel -> 
+                            State = wh_json:get_string_value(<<"Answer-State">>, Channel),
+                            Status = case State of <<"answered">> -> "answered"; _Else -> "CS_ROUTING" end, 
+                            create_presence_in(PresenceId, Status, State, Channel)
+                    end;
+                <<"early">> -> create_presence_in(PresenceId, "CS_ROUTING", "early", JObj);
+                <<"confirmed">> -> create_presence_in(PresenceId, "CS_ROUTING", "confirmed", JObj);
+                <<"answered">> -> create_presence_in(PresenceId, "answered", "confirmed", JObj);
+                <<"terminated">> -> create_presence_in(PresenceId, "CS_ROUTING", "terminated", JObj);
+                _ -> create_presence_in(PresenceId, "Available", undefined, wh_json:new())
+            end,
+    NodeHandlers = ecallmgr_fs_sup:node_handlers(),
+    _ = [begin
+             ?LOG("sending presence in event to ~p~n", [Node]),
+             freeswitch:sendevent(Node, 'PRESENCE_IN', [{"Distributed-From", wh_util:to_list(Node)} | Event])
+         end
+         || NodeHandler <- NodeHandlers,
+            (Node = ecallmgr_fs_node:fs_node(NodeHandler)) =/= undefined
+        ],
+    ok.
+
+-spec mwi_update/2 :: (wh_json:json_object(), proplist()) -> no_return().
+mwi_update(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
 
     true = wapi_notifications:mwi_update_v(JObj),
@@ -85,17 +118,6 @@ handle_req(JObj, _Props) ->
             Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
             ?LOG("sending of MWI update to ~s resulted in: ~p", [Node, Resp])
     end.
-
--spec send_mwi/4 :: (string() | binary(), string() | binary(), integer() | binary(), integer() | binary()) -> ok.
-send_mwi(User, Realm, New, Saved) ->
-    JObj = wh_json:from_list([{<<"Notify-User">>, wh_util:to_binary(User)}
-                              ,{<<"Notify-Realm">>, wh_util:to_binary(Realm)}
-                              ,{<<"Messages-New">>, wh_util:to_binary(New)}
-                              ,{<<"Messages-Saved">>, wh_util:to_binary(Saved)}
-                              | wh_api:default_headers(<<>>, <<"notification">>, <<"mwi">>, ?APP_NAME, ?APP_VERSION)
-                             ]),
-    handle_req(JObj, []).
-
 
 -spec send_presence_event/3 :: (ne_binary(), ne_binary(), proplist()) -> ok.
 send_presence_event(<<"PRESENCE_PROBE">>, Node, Data) ->
@@ -228,3 +250,38 @@ get_endpoint(User, Realm) ->
         {error, timeout}=E ->
             E
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns the first channel in a list of channels with the answer
+%% state, ringing or the last channel if no prior was ringing.  If
+%% the list is empty it returns undefined
+%% @end
+%%--------------------------------------------------------------------
+-spec try_find_ringing_channel/1 :: (wh_json:json_objects()) -> undefined | wh_json:json_object().
+try_find_ringing_channel([]) -> undefined;
+try_find_ringing_channel([Channel]) -> Channel; 
+try_find_ringing_channel([Channel|Channels]) -> 
+    case wh_json:get_value(<<"Answer-State">>, Channel) of
+        <<"ringing">> -> Channel;
+        _Else -> try_find_ringing_channel(Channels)
+    end.
+
+-spec create_presence_in/4 :: (ne_binary(), undefined | string(), undefined | string(), wh_json:json_object()) -> proplist().
+create_presence_in(PresenceId, Status, State, JObj) ->
+    [KV || {_, V}=KV <- [{"unique-id", wh_json:get_string_value(<<"Call-ID">>, JObj)}
+                         ,{"channel-state", wh_json:get_string_value(<<"Channel-State">>, JObj, State)}
+                         ,{"answer-state", State}
+                         ,{"proto", "any"}
+                         ,{"login", "src/mod/event_handlers/mod_erlang_event/handle_msg.c"}
+                         ,{"from", wh_util:to_list(PresenceId)}
+                         ,{"rpid", "unknown"}
+                         ,{"status", Status}
+                         ,{"event_type", "presence"}
+                         ,{"alt_event_type", "dialog"}
+                         ,{"presence-call-direction", "outbound"}
+                         ,{"event_count", "0"}
+                        ]
+               ,V =/= undefined
+    ].

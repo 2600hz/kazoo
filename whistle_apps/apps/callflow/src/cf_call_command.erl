@@ -178,19 +178,23 @@ flush_dtmf(Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec presence/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
--spec presence/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
+-spec presence/2 :: (ne_binary(), ne_binary() | #cf_call{}) -> 'ok'.
+-spec presence/3 :: (ne_binary(), ne_binary() | #cf_call{}, ne_binary() | #cf_call{}) -> 'ok'.
 
-presence(State, #cf_call{from=User}=Call) ->
-    presence(State, User, Call).
+presence(State, #cf_call{from=User}) ->
+    presence(State, User);
+presence(State, PresenceId) ->
+    presence(State, PresenceId, undefined).
 
-presence(State, User, Call) ->
-    Command = [{<<"User">>, User}
+presence(State, PresenceId, #cf_call{}=Call) ->
+    presence(State, PresenceId, cf_exe:callid(Call));
+presence(State, PresenceId, CallId) ->
+    Command = [{<<"Presence-ID">>, PresenceId}
                ,{<<"State">>, State}
-               ,{<<"Insert-At">>, <<"now">>}
-               ,{<<"Application-Name">>, <<"presence">>}
+               ,{<<"Call-ID">>, CallId}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    send_command(Command, Call).
+    wapi_notifications:publish_presence_update(Command).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -200,11 +204,7 @@ presence(State, User, Call) ->
 %%   can not be used to set system settings
 %% @end
 %%--------------------------------------------------------------------
--spec set/3 :: (ChannelVars, CallVars, Call) -> 'ok' when
-      ChannelVars :: 'undefined' | wh_json:json_object(),
-      CallVars :: 'undefined' | wh_json:json_object(),
-      Call :: #cf_call{}.
-
+-spec set/3 :: ('undefined' | wh_json:json_object(), 'undefined' | wh_json:json_object(), #cf_call{}) -> 'ok'.
 set(undefined, CallVars, Call) ->
     set(wh_json:new(), CallVars, Call);
 set(ChannelVars, undefined, Call) ->
@@ -501,22 +501,34 @@ b_prompt(Prompt, Lang, Call) ->
 play(Media, Call) ->
     play(Media, ?ANY_DIGIT, Call).
 play(Media, Terminators, Call) ->
-    Command = [{<<"Application-Name">>, <<"play">>}
-               ,{<<"Media-Name">>, Media}
-               ,{<<"Terminators">>, Terminators}
+    NoopId = couch_mgr:get_uuid(),
+    CallId = cf_exe:callid(Call),
+    Q = cf_exe:queue_name(Call),
+    Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
+                                   ,{<<"Call-ID">>, CallId}
+                                   ,{<<"Msg-ID">>, NoopId}
+                                   | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                                  ])
+                ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
+                                    ,{<<"Media-Name">>, Media}
+                                    ,{<<"Terminators">>, Terminators}
+                                    ,{<<"Call-ID">>, CallId}
+                                    | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                                   ])
+               ],
+    Command = [{<<"Application-Name">>, <<"queue">>}
+               ,{<<"Commands">>, Commands}
               ],
-    send_command(Command, Call).
+    send_command(Command, Call),
+    NoopId.
 
 b_play(Media, Call) ->
     b_play(Media, ?ANY_DIGIT, Call).
 b_play(Media, Terminators, Call) ->
-    play(Media, Terminators, Call),
-    wait_for_message(<<"play">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, infinity).
+    NoopId = play(Media, Terminators, Call),
+    wait_for_noop(NoopId).
 
--spec play_command/3 :: (Media, Terminators, Call) -> wh_json:json_object() when
-      Media :: binary(),
-      Terminators :: [binary(),...],
-      Call :: #cf_call{}.
+-spec play_command/3 :: (ne_binary(), [ne_binary(),...], #cf_call{}) -> wh_json:json_object().
 play_command(Media, Terminators, Call) ->
     wh_json:from_list([{<<"Application-Name">>, <<"play">>}
                        ,{<<"Media-Name">>, Media}
@@ -710,25 +722,7 @@ b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, <<"0">>, _Timeout, Med
     _ = b_play(MediaInvalid, Terminators, Call),
     {ok, <<>>};
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call) ->
-    NoopId = couch_mgr:get_uuid(),
-    CallId = cf_exe:callid(Call),
-    Q = cf_exe:queue_name(Call),
-    Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
-                                   ,{<<"Call-ID">>, CallId}
-                                   ,{<<"Msg-ID">>, NoopId}
-                                   | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-                                  ])
-                ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
-                                    ,{<<"Media-Name">>, Media}
-                                    ,{<<"Terminators">>, Terminators}
-                                    ,{<<"Call-ID">>, CallId}
-                                    | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-                                   ])
-               ],
-    Command = [{<<"Application-Name">>, <<"queue">>}
-               ,{<<"Commands">>, Commands}
-              ],
-    send_command(Command, Call),
+    NoopId = play(Media, Terminators, Call),
     case collect_digits(MaxDigits, Timeout, <<"2000">>, NoopId, Call) of
         {ok, Digits} ->
             MinSize = wh_util:to_integer(MinDigits),

@@ -38,14 +38,8 @@
 
 -define(FS_TIMEOUT, 5000).
 
-%% keep in sync with wh_api.hrl OPTIONAL_CHANNEL_QUERY_REQ_HEADERS
--define(CALL_STATUS_HEADERS, [<<"Unique-ID">>, <<"Call-Direction">>, <<"Caller-Caller-ID-Name">>, <<"Caller-Caller-ID-Number">>
-                                  ,<<"Caller-Network-Addr">>, <<"Caller-Destination-Number">>, <<"FreeSWITCH-Hostname">>
-                             ]).
--define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, [<<"Call-ID">> | wapi_channel_query:optional_headers()])).
-
 -spec resource_consume/3 :: (pid(), ne_binary(), wh_json:json_object()) -> {'resource_consumed', binary(), binary(), integer()} |
-                                                                   {'resource_error', binary() | 'error'}.
+                                                                           {'resource_error', binary() | 'error'}.
 resource_consume(FsNodePid, Route, JObj) ->
     FsNodePid ! {resource_consume, self(), Route, JObj},
     receive Resp -> Resp
@@ -606,8 +600,8 @@ get_active_channels(Node) ->
     end.
 
 -spec convert_rows/2 :: (atom(), binary()) -> [proplist(),...] | [].
-convert_rows(_, <<"\n0 total.\n">>) ->
-    ?LOG("No channels up"),
+convert_rows(Node, <<"\n0 total.\n">>) ->
+    ?LOG("no channels up on node ~s", [Node]),
     [];
 convert_rows(Node, RowsBin) ->
     [_|Rows] = binary:split(RowsBin, <<"\n">>, [global]),
@@ -617,19 +611,24 @@ convert_rows(Node, RowsBin) ->
 return_rows(Node, [<<>>|Rs], Acc) ->
     return_rows(Node, Rs, Acc);
 return_rows(Node, [R|Rs], Acc) ->
-    ?LOG("R: ~s", [R]),
     case binary:split(R, <<",">>) of
         [_Total] ->
-            ?LOG("Total: ~s", [_Total]),
+            ?LOG("found ~s calls on node ~s", [_Total, Node]),
             return_rows(Node, Rs, Acc);
         [UUID|_] ->
-            ?LOG("UUID: ~s", [UUID]),
-            {ok, Dump} = freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)),
-            DumpProp = ecallmgr_util:eventstr_to_proplist(Dump),
-
-            %% Pull wanted data from the converted DUMP proplist
-            Prop = [{AMQPKey, props:get_value(FSKey, DumpProp)} || {FSKey, AMQPKey} <- ?CALL_STATUS_MAPPING],
-            return_rows(Node, Rs, [ Prop | Acc ])
+            case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
+                {'ok', Result} -> 
+                    Props = ecallmgr_util:eventstr_to_proplist(Result),
+                    ApplicationName = props:get_value(<<"variable_current_application">>, Props),
+                    JObj = wh_json:from_list([{<<"Switch-Hostname">>, Node}
+                                              ,{<<"Answer-State">>, props:get_value(<<"Answer-State">>, Props)}
+                                              | ecallmgr_call_events:create_event_props(<<>>, ApplicationName, Props)
+                                             ]),
+                    return_rows(Node, Rs, [JObj|Acc]);
+                Error -> 
+                    ?LOG(UUID, "failed to get result from uuid_dump: ~p", [Error]),
+                    return_rows(Node, Rs, Acc)
+            end
     end;
 return_rows(_Node, [], Acc) -> Acc.
 
