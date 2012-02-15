@@ -6,7 +6,6 @@
            "cb_shared_auth",
            "cb_conferences",
            "cb_servers",
-           "cb_menus",
            "cb_clicktocall",
            "cb_registrations",
            "cb_ts_accounts",
