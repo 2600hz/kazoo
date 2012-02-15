@@ -394,7 +394,7 @@ is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                             Payload = [ContextAcc | Params],
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, Nouns),
-    ?LOG("ctas: ~p", [CTAs]),
+
     CTA = lists:foldr(fun({_Fun, L}, Acc) ->
                               lists:foldl(fun({Type, Sub}, Acc1) ->
                                                   [{Type, Sub, []} | Acc1]
@@ -471,7 +471,6 @@ process_billing(Context0)->
 succeeded(#cb_context{resp_status=success}) -> true;
 succeeded(_) -> false.
 
-
 -spec execute_request/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 execute_request(Req, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context0) ->
     Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
@@ -493,7 +492,7 @@ execute_request(Req, Context) ->
     {false, Req, Context}.
 
 -spec execute_request_results/2 :: (#http_req{}, #cb_context{}) -> {'true' | 'halt', #http_req{}, #cb_context{}}.
-execute_request_results(Req0, #cb_context{resp_error_code=ReturnCode, req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
+execute_request_results(Req0, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
     case succeeded(Context) of
         false ->
             ?LOG("execute did not succeed"),
@@ -505,13 +504,7 @@ execute_request_results(Req0, #cb_context{resp_error_code=ReturnCode, req_nouns=
             {true, Req2, Context};
         true ->
             ?LOG("executed ~s request for ~s: ~p", [Verb, Mod, Params]),
-            case ReturnCode of
-                202 ->
-                    ?LOG("returning 202"),
-                    {halt, Req0, Context};
-                _ ->
-                    {true, Req0, Context}
-            end
+            {true, Req0, Context}
     end.
 
 %%--------------------------------------------------------------------
@@ -554,7 +547,7 @@ create_push_response(Req0, Context) ->
     {ok, Req3} = cowboy_http_req:set_resp_body(Content, Req2),
     Succeeded = succeeded(Context),
     ?LOG("is successful response: ~p", [Succeeded]),
-    ?LOG("has resp body: ~p", [cowboy_http_req:has_resp_body(Req3)]),
+
     {Succeeded, Req3, Context}.
 
 %%--------------------------------------------------------------------
@@ -572,8 +565,6 @@ create_pull_response(Req0, Context) ->
     ?LOG("content: ~s", [Content]),
 
     Req2 = set_resp_headers(Req1, Context),
-    %% {ok, Req3} = cowboy_http_req:set_resp_body(Content, Req2),
-    %% ?LOG("respbody: ~p", [Req3#http_req.resp_body]),
 
     case succeeded(Context) of
         false -> {halt, Req2, Context};
@@ -646,14 +637,14 @@ create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespSt
 set_resp_headers(Req0, #cb_context{resp_headers=[]}) -> Req0;
 set_resp_headers(Req0, #cb_context{resp_headers=Headers}) ->
     lists:foldl(fun({Header, Value}, ReqAcc) ->
-                        {H, V} = fix_header(Header, Value),
+                        {H, V} = fix_header(Header, Value, ReqAcc),
                         ?LOG("response header: ~s: ~s", [H, V]),
                         {ok, ReqAcc1} = cowboy_http_req:set_resp_header(H, V, ReqAcc),
                         ReqAcc1
                 end, Req0, Headers).
 
--spec fix_header/2 :: (nonempty_string() | ne_binary(), nonempty_string() | ne_binary()) -> {binary(), binary()}.
-fix_header(<<"Location">>, _) ->
-    {<<>>, <<>>};
-fix_header(H, V) ->
+-spec fix_header/3 :: (nonempty_string() | ne_binary(), nonempty_string() | ne_binary(), #http_req{}) -> {binary(), binary()}.
+fix_header(<<"Location">> = H, Path, Req) ->
+    {H, crossbar_util:get_path(Req, Path)};
+fix_header(H, V, _) ->
     {wh_util:to_binary(H), wh_util:to_binary(V)}.

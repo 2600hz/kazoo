@@ -299,13 +299,10 @@ previously_existed(Req, State) ->
 %% we need to allow POST to create a non-existent resource
 %% AKA, 201 Created header set
 -spec allow_missing_post/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
-allow_missing_post(Req0, #cb_context{req_verb = <<"put">>}=Context) ->
-    ?LOG("run: allow_missing_post when req_verb = put"),
+allow_missing_post(Req0, #cb_context{req_verb=_Verb}=Context) ->
+    ?LOG("run: allow_missing_post when req_verb = ~s", [_Verb]),
     {Method, Req1} = cowboy_http_req:method(Req0),
-    {Method =:= 'POST', Req1, Context};
-allow_missing_post(Req, Context) ->
-    ?LOG("run: allow_missing_post"),
-    {false, Req, Context}.
+    {Method =:= 'POST', Req1, Context}.
 
 -spec delete_resource/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 delete_resource(Req, Context) ->
@@ -331,7 +328,6 @@ create_path(Req, #cb_context{resp_headers=RespHeaders}=Context) ->
     Path = props:get_value(<<"Location">>, RespHeaders, <<>>),
 
     {crossbar_util:get_path(Req, Path), Req, Context}.
-    
 
 -spec process_post/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 process_post(Req0, Context0) ->
