@@ -388,12 +388,13 @@ is_known_content_type(Req, #cb_context{req_verb = <<"delete">>}=Context) ->
     ?LOG("ignore content type for delete"),
     {true, Req, Context};
 is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
-    #cb_context{content_types_accepted=CTAs}=Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                                                                            Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
-                                                                           Payload = [ContextAcc | Params],
-                                                                            [ContextAcc1 | _] = crossbar_bindings:fold(Event, Payload),
-                                                                            ContextAcc1
-                                                                    end, Context0, Nouns),
+    #cb_context{content_types_accepted=CTAs}=Context1 =
+        lists:foldr(fun({Mod, Params}, ContextAcc) ->
+                            Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
+                            Payload = [ContextAcc | Params],
+                            crossbar_bindings:fold(Event, Payload)
+                    end, Context0, Nouns),
+    ?LOG("ctas: ~p", [CTAs]),
     CTA = lists:foldr(fun({_Fun, L}, Acc) ->
                               lists:foldl(fun({Type, Sub}, Acc1) ->
                                                   [{Type, Sub, []} | Acc1]
@@ -475,7 +476,7 @@ succeeded(_) -> false.
 execute_request(Req, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context0) ->
     Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
     Payload = [Context0 | Params],
-    ?LOG("params: ~p", [Params]),
+
     case crossbar_bindings:fold(Event, Payload) of
         #cb_context{}=Context1 ->
             ?LOG("excution finished"),

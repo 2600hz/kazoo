@@ -14,12 +14,13 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,validate/1, validate/2
+         ,validate/1, validate/2, validate/3
          ,content_types_provided/3
          ,content_types_accepted/3
+         ,get/3
          ,put/1
-         ,post/2
-         ,delete/2
+         ,post/2, post/3
+         ,delete/2, delete/3
         ]).
 
 -include("../../include/crossbar.hrl").
@@ -47,6 +48,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.media">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.media">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.media">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.media">>, ?MODULE, get),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.media">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.media">>, ?MODULE, post),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.media">>, ?MODULE, delete).
@@ -62,7 +64,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods/0 :: () -> http_methods().
 -spec allowed_methods/1 :: (path_token()) -> http_methods().
--spec allowed_methods/1 :: (path_token(), path_token()) -> http_methods().
+-spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'PUT'].
 allowed_methods(_MediaID) ->
@@ -80,7 +82,7 @@ allowed_methods(_MediaID, ?BIN_DATA) ->
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> boolean().
 -spec resource_exists/1 :: (path_token()) -> boolean().
--spec resource_exists/1 :: (path_token(), path_token()) -> boolean().
+-spec resource_exists/2 :: (path_token(), path_token()) -> boolean().
 resource_exists() -> true.
 resource_exists(_) -> true.
 resource_exists(_, ?BIN_DATA) -> true.
@@ -143,7 +145,7 @@ validate(#cb_context{req_verb = <<"delete">>, req_data=_Data}=Context, MediaID) 
 
 validate(#cb_context{req_verb = <<"get">>}=Context, MediaID, ?BIN_DATA) ->
     get_media_binary(MediaID, Context);
-validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, MediaID, ?BIN_DATA) ->
+validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, _MediaID, ?BIN_DATA) ->
     ?LOG_SYS("No files in request to save attachment"),
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
 validate(#cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Context, MediaID, ?BIN_DATA) ->
@@ -154,93 +156,49 @@ validate(#cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Co
             lookup_media_by_id(MediaID, Context)
     end.
 
+get(Context, _MediaID, ?BIN_DATA) ->
+    Context#cb_context{resp_headers = [{<<"Content-Type">>
+                                            ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
+                                       ,{<<"Content-Length">>
+                                             ,wh_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
+                                       | Context#cb_context.resp_headers]}.
 
+-spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+post(#cb_context{req_files=[], resp_status=RespStatus}=Context, _MediaID) ->
+    case RespStatus =:= success of
+        true -> crossbar_doc:save(Context);
+        false -> Context
+    end.
+post(#cb_context{req_files=[{_, FileObj}]}=Context, MediaID, ?BIN_DATA) ->
+    HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
+    Contents = wh_json:get_value(<<"contents">>, FileObj),
 
+    update_media_binary(MediaID, Contents, Context, HeadersJObj).
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.get.media">>, [RD, Context | Params]}, State) ->
-    case Params of
-        [_MediaID, ?BIN_DATA] ->
-            spawn(fun() ->
-                          _ = crossbar_util:put_reqid(Context),
-                          Context1 = Context#cb_context{resp_headers = [{<<"Content-Type">>
-                                                                             ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
-                                                                        ,{<<"Content-Length">>
-                                                                              ,wh_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
-                                                                        | Context#cb_context.resp_headers]},
-                          Pid ! {binding_result, true, [RD, Context1, Params]}
-                  end);
+-spec put/1 :: (#cb_context{}) -> #cb_context{}.
+put(#cb_context{resp_headers=RespHeaders, req_data=ReqData}=Context) ->
+    case props:get_value(<<"Location">>, RespHeaders) of
+        undefined ->
+            case create_media_meta(ReqData, Context) of
+                #cb_context{resp_status=success, resp_data=RespData, resp_headers=RHs}=Context2 ->
+                    DocID = wh_json:get_value(<<"id">>, RespData),
+                    Context2#cb_context{resp_headers=[{"Location", DocID} | RHs]};
+                Context2 ->
+                    crossbar_util:put_reqid(Context),
+                    ?LOG_SYS("put: error saving"),
+                    Context2
+            end;
         _ ->
-            spawn(fun() ->
-                          _ = crossbar_util:put_reqid(Context),
-                          Pid ! {binding_result, true, [RD, Context, Params]}
-                  end)
-    end,
-    {noreply, State};
+            Context
+    end.
 
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.media">>, [RD, #cb_context{req_files=[], resp_status=RespStatus}=Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  #cb_context{resp_status=Resp}=Context1 = case RespStatus =:= success of
-                                                               true -> crossbar_doc:save(Context);
-                                                               false -> Context
-                                                           end,
-                  Pid ! {binding_result, Resp, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.media">>, [RD, #cb_context{req_files=[{_, FileObj}]}=Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid, infinity),
-                  [MediaID, ?BIN_DATA] = Params,
-                  HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
-                  Contents = wh_json:get_value(<<"contents">>, FileObj),
-
-                  #cb_context{resp_status=RespStatus}=Context1 = update_media_binary(MediaID, Contents, Context, HeadersJObj),
-                  Pid ! {binding_result, (RespStatus =:= success), [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.media">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  case props:get_value(<<"Location">>, Context#cb_context.resp_headers) of
-                      undefined ->
-                          {Context1, Resp} = case create_media_meta(Context#cb_context.req_data, Context) of
-                                                 #cb_context{resp_status=success, resp_data=RespData, resp_headers=RHs}=Context2 ->
-                                                     DocID = wh_json:get_value(<<"id">>, RespData),
-                                                     {Context2#cb_context{resp_headers=[{"Location", DocID} | RHs]}, true};
-                                                 Context3 ->
-                                                     ?LOG_SYS("PUT: ERROR"),
-                                                     {Context3, false}
-                                             end,
-                          Pid ! {binding_result, Resp, [RD, Context1, Params]};
-                      _ ->
-                          {Context, true}
-                  end
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.media">>, [RD, Context | Params]}, State) ->
-    case Params of
-        [MediaID, ?BIN_DATA] ->
-            spawn(fun() ->
-                          _ = crossbar_util:put_reqid(Context),
-                          crossbar_util:binding_heartbeat(Pid),
-                          #cb_context{resp_status=RS}=Context1 = delete_media_binary(MediaID, Context),
-                          Pid ! {binding_result, RS =:= success, [RD, Context1, Params]}
-                  end);
-        [_] ->
-            spawn(fun() ->
-                          _ = crossbar_util:put_reqid(Context),
-                          crossbar_util:binding_heartbeat(Pid),
-                          Context1 = delete_media(Context),
-                          Pid ! {binding_result, Context1#cb_context.resp_status =:= success, [RD, Context1, Params]}
-                  end)
-    end,
-    {noreply, State}.
+-spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+delete(Context, _MediaID) ->
+    delete_media(Context).
+delete(Context, MediaID, ?BIN_DATA) ->
+    delete_media_binary(MediaID, Context).
 
 %%%===================================================================
 %%% Internal functions

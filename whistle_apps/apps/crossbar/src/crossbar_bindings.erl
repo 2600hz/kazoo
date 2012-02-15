@@ -204,25 +204,18 @@ handle_call({fold, Routing, Payload, ReqId}, From, #state{bindings=Bs}=State) ->
                   ?LOG(ReqId, "running fold for binding ~s", [Routing]),
 
                   RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
-                  try
-                      [Reply|_] = lists:foldl(
-                                    fun({B, BParts, MFs}, Acc) ->
-                                            case B =:= Routing orelse matches(BParts, RoutingParts) of
-                                                true ->
-                                                    ?LOG("routing ~s matches ~s", [Routing, B]),
-                                                    ?LOG("MFs: ~p", [MFs]),
-                                                    fold_bind_results(MFs, Acc, Routing);
-                                                false -> Acc
-                                            end
-                                    end, Payload, Bs),
 
-                      gen_server:reply(From, Reply)
-                  catch
-                      _R:_E ->
-                          ST = erlang:get_stacktrace(),
-                          ?LOG(ReqId, "~p:~p", [_E, _R]),
-                          ?LOG_STACKTRACE(ST)
-                  end
+                  [Reply|_] = lists:foldl(
+                                fun({B, BParts, MFs}, Acc) ->
+                                        case B =:= Routing orelse matches(BParts, RoutingParts) of
+                                            true ->
+                                                ?LOG("routing ~s matches ~s", [Routing, B]),
+                                                fold_bind_results(MFs, Acc, Routing);
+                                            false -> Acc
+                                        end
+                                end, Payload, Bs),
+
+                  gen_server:reply(From, Reply)
           end),
     {noreply, State};
 handle_call({bind, Binding, Mod, Fun}, _, #state{bindings=[]}=State) ->
