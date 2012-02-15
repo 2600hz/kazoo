@@ -9,6 +9,7 @@
 
 -export([reloadacl_req/1, reloadacl_req_v/1
         ,reloadacl_resp/1, reloadacl_resp_v/1]).
+-export([bind_q/2, unbind_q/2]).
 -export([publish_reloadacl_resp/2, publish_reloadacl_resp/3]).
 
 -include("../wh_api.hrl").
@@ -25,6 +26,8 @@
 -define(OPTIONAL_SWITCH_EVENT_RELOADACL_RESP_HEADERS, []).
 -define(SWITCH_EVENT_RELOADACL_RESP_VALUES, []).
 
+-define(SWITCH_EVENT_TYPES, []).
+
 %% Request a reloadacl
 -spec reloadacl_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 reloadacl_req(Prop) when is_list(Prop) ->
@@ -37,7 +40,7 @@ reloadacl_req(JObj) ->
 
 -spec reloadacl_req_v/1 :: (api_terms()) -> boolean().
 reloadacl_req_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?SWITCH_EVENT_RELOADACL_REQ_HEADERS, ?SWITCH_EVENT_RELOADACL_REQ_VALUES, ?SWITCH_EVENT_RELOADACL_REQ_TYPES);
+    wh_api:validate(Prop, ?SWITCH_EVENT_RELOADACL_REQ_HEADERS, ?SWITCH_EVENT_RELOADACL_REQ_VALUES, ?SWITCH_EVENT_TYPES);
 reloadacl_req_v(JObj) ->
     reloadacl_req_v(wh_json:to_proplist(JObj)).
 
@@ -53,7 +56,7 @@ reloadacl_resp(JObj) ->
 
 -spec reloadacl_resp_v/1 :: (api_terms()) -> boolean().
 reloadacl_resp_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?SWITCH_EVENT_RELOADACL_RESP_HEADERS, ?SWITCH_EVENT_RELOADACL_RESP_VALUES, ?SWITCH_EVENT_RELOADACL_RESP_TYPES);
+    wh_api:validate(Prop, ?SWITCH_EVENT_RELOADACL_RESP_HEADERS, ?SWITCH_EVENT_RELOADACL_RESP_VALUES, ?SWITCH_EVENT_TYPES);
 reloadacl_resp_v(JObj) ->
     reloadacl_resp_v(wh_json:to_proplist(JObj)).
 
@@ -65,7 +68,7 @@ bind_q(Queue, Props) ->
     bind_q(Queue, props:get_value(restrict_to, Props), CallID).
 
 bind_q(Q, undefined, CallID) ->
-    amqp_util:bind_q_to_configuration(Q, CallID).
+    amqp_util:bind_q_to_configuration(Q, CallID);
 
 bind_q(Q, [relodacl|T], CallID) ->
     amqp_util:bind_q_to_configuration(Q, CallID),
@@ -80,8 +83,8 @@ unbind_q(Queue, Props) ->
     CallID = props:get_value(callid, Props, <<"*">>),
     unbind_q(Queue, props:get_value(restrict_to, Props), CallID).
 
-unbind_q(Q, undefined, CallID) ->
-    amqp_util:unbind_q_from_configuration(Q).
+unbind_q(Q, undefined, _CallID) ->
+    amqp_util:unbind_q_from_configuration(Q);
 unbind_q(Q, [reloadacl|T], CallID) ->
     amqp_util:unbind_q_from_configuration(Q, CallID),
     unbind_q(Q, T, CallID);
@@ -90,21 +93,6 @@ unbind_q(Q, [_|T], CallID) ->
 unbind_q(_Q, [], _CallID) ->
     ok.
 
--spec publish_reloadacl_req/1 :: (api_terms()) -> 'ok'.
--spec publish_reloadacl_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_reloadacl_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_reloadacl_req(API) ->
-    case is_list(API) of
-        true -> publish_reloadacl_req(props:get_value(<<"Call-ID">>, API), API);
-        false -> publish_reloadacl_req(wh_json:get_value(<<"Call-ID">>, API), API)
-    end.
-publish_reloadacl_req(CallID, JObj) ->
-    publish_reloadacl_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_reloadacl_req(CallID, Req, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Req, ?SWITCH_EVENT_RELOADACL_REQ_VALUES, fun ?MODULE:reloadacl_req/1),
-    amqp_util:configuration_publish(CallID, Payload, status_req, ContentType).
-
--spec publish_reloadacl_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_reloadacl_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_reloadacl_resp(RespQ, JObj) ->
     publish_reloadacl_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).

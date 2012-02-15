@@ -13,7 +13,7 @@
 -export([handle_channel_query/2]).
 -export([handle_channel_status/2]).
 -export([handle_call_status/2]).
--export([handle_switch_event/2]).
+-export([handle_switch_reloadacl/2]).
 -export([channel_query/1]).
 
 %% gen_server callbacks
@@ -27,7 +27,7 @@
 -define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
                      ,{{?MODULE, handle_channel_query}, [{<<"call_event">>, <<"channel_query_req">>}]}
-                     ,{?MODULE, handle_switch_event, [{<<"switch_event">>, <<"switch_event_req">>}]}
+                     ,{{?MODULE, handle_switch_reloadacl}, [{<<"switch_event">>, <<"reloadacl_req">>}]}
                     ]).
 
 -define(BINDINGS, [{call, [{restrict_to, [query_req, status_req]}]}]).
@@ -149,14 +149,10 @@ channel_query(JObj) ->
                         end
                 end, [], Channels).    
 
--spec handle_switch_event/2 ::(wh_json:json_object(), proplist()) -> 'ok'.
-handle_switch_event(JObj, _Props) ->
-  true = wapi_switch:req_v(JObj),
-  ListOfNodes = ecallmgr_fs_sup:node_handlers(),
-  case wh_json:get_value(<<"switch_event">>, JObj) of
-    <<"reloadacl">> -> [ecallmgr_fs_node:reloadacl(Pid) || Pid <- ListOfNodes];
-    _ -> ok
-  end,
+-spec handle_switch_reloadacl/2 ::(wh_json:json_object(), proplist()) -> 'ok'.
+handle_switch_reloadacl(JObj, _Props) ->
+  true = wapi_switch:reloacacl_req_v(JObj),
+  [ecallmgr_fs_node:reloadacl(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()],
   ok.
 
 %%%===================================================================
