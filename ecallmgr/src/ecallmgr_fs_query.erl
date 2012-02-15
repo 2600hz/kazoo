@@ -13,6 +13,7 @@
 -export([handle_channel_query/2]).
 -export([handle_channel_status/2]).
 -export([handle_call_status/2]).
+-export([handle_switch_event/2]).
 -export([channel_query/1]).
 
 %% gen_server callbacks
@@ -148,13 +149,14 @@ channel_query(JObj) ->
                         end
                 end, [], Channels).    
 
--spec handle_switch_event/2 ::(wh_json:json_object(), proplist()) -> 'ok'
+-spec handle_switch_event/2 ::(wh_json:json_object(), proplist()) -> 'ok'.
 handle_switch_event(JObj, _Props) ->
   true = wapi_switch:req_v(JObj),
   ListOfNodes = ecallmgr_fs_sup:node_handlers(),
-  case wh_json:get_value(<<"switch_event">>, JObj)  ->
-    <<"reloadacl">> -> [ecallmgr_fs_node:reloadacl(Pid) || ListOfNodes];
+  case wh_json:get_value(<<"switch_event">>, JObj) of
+    <<"reloadacl">> -> [ecallmgr_fs_node:reloadacl(Pid) || Pid <- ListOfNodes];
     _ -> ok
+  end,
   ok.
 
 %%%===================================================================

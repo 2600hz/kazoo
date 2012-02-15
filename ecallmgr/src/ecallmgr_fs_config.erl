@@ -233,11 +233,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec lookup_user/3 :: (Node, ID, Data) -> {ok, pid()} when
+-spec lookup_config/3 :: (Node, ID, Data) -> {ok, pid()} when
       Node :: atom(),
       ID :: binary(),
       Data :: proplist().
-lookup_acl(Node, ID, Data) ->
+lookup_config(Node, ID, Data) ->
     Pid = spawn_link(fun() ->
             put(callid, ID),
       
@@ -251,8 +251,8 @@ lookup_acl(Node, ID, Data) ->
         
                 true = wapi_authn:resp_v(AuthResp),
                 ?LOG(ID, "received authn_resp", []),
-                {ok, Xml} = ecallmgr_fs_xml:config_resp_xml()
-                                    
+                %{ok, Xml} = ecallmgr_fs_xml:config_resp_xml();
+                Xml = ok,                    
                 ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml]),
                 freeswitch:fetch_reply(Node, ID, Xml)
             catch
