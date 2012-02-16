@@ -20,7 +20,7 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
 
     %% maybe move this into a config file?
     Dispatch = [
@@ -75,4 +75,5 @@ stop() ->
 -spec start_deps/0 :: () -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    [ wh_util:ensure_started(App) || App <- [sasl, crypto, inets, cowboy, whistle_amqp]].
+    [ wh_util:ensure_started(App) || App <- [sasl, crypto, inets, cowboy, whistle_amqp]],
+    ok.

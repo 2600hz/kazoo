@@ -230,7 +230,7 @@ get_http_verb(Method, #cb_context{req_json=ReqJObj, query_json=ReqQs}) ->
 %%--------------------------------------------------------------------
 
 -type cb_mod_with_tokens() :: {ne_binary(), path_tokens()}.
--spec parse_path_tokens/1 :: (wh_json:json_strings()) -> [cb_mod_with_tokens(),...] | [].
+-spec parse_path_tokens/1 :: (path_tokens()) -> [cb_mod_with_tokens(),...] | [].
 parse_path_tokens(Tokens) ->
     Ebin = code:lib_dir(crossbar, ebin),
 
@@ -491,7 +491,7 @@ execute_request(Req, Context) ->
     ?LOG("execute request false end"),
     {false, Req, Context}.
 
--spec execute_request_results/2 :: (#http_req{}, #cb_context{}) -> {'true' | 'halt', #http_req{}, #cb_context{}}.
+-spec execute_request_results/2 :: (#http_req{}, #cb_context{}) -> {'true', #http_req{}, #cb_context{}}.
 execute_request_results(Req0, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
     case succeeded(Context) of
         false ->

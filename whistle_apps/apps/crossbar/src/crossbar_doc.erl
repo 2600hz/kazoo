@@ -344,7 +344,7 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
     end.
 
 -spec send_document_change/3 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects()) -> 'ok' | pid().
--spec send_document_change/4 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects(), proplist()) -> 'ok' | pid().
+-spec send_document_change/4 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects(), proplist()) -> 'ok' | pid() | ['ok' | pid(),...].
 send_document_change(Action, Db, Docs) ->
     send_document_change(Action, Db, Docs, []).
 

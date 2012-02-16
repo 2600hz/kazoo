@@ -1,5 +1,3 @@
-"cb_phone_numbers",
-           "cb_templates",
            "cb_onboard",
            "cb_signup",
            "cb_api_auth",
