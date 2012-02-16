@@ -62,11 +62,11 @@ ensure_parent_set() ->
         {ok, AcctJObjs} ->
             DefaultParentID = find_default_parent(AcctJObjs),
             ?LOG("default parent ID: ~s", [DefaultParentID]),
-            [ ensure_parent_set(DefaultParentID, wh_json:get_binary_value(<<"id">>, AcctJObj))
-              || AcctJObj <- AcctJObjs,
-                 wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
-                 wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj, []) =:= [] % empty tree (should have at least the parent)
-            ],
+            _ = [ ensure_parent_set(DefaultParentID, wh_json:get_binary_value(<<"id">>, AcctJObj))
+                  || AcctJObj <- AcctJObjs,
+                     wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
+                     wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj, []) =:= [] % empty tree (should have at least the parent)
+                ],
             ok;
         {error, _}=E -> E
     end.
@@ -140,8 +140,8 @@ allowed_methods(_, Path) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
--spec resource_exists/1 :: (path_tokens()) -> boolean().
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_tokens()) -> 'true'.
 -spec resource_exists/2 :: (path_tokens(), ne_binary()) -> boolean().
 resource_exists() -> true.
 resource_exists(_) -> true.
@@ -175,7 +175,7 @@ validate(Context, Id, Relationship) ->
 
 -spec validate_req/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate_req/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec validate_req/3 :: (#cb_context{}, path_token(), ne_binary()) -> #cb_context{}.
+-spec validate_req/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 validate_req(#cb_context{req_verb = <<"get">>}=Context) ->
     load_account_summary([], Context);
 validate_req(#cb_context{req_verb = <<"put">>}=Context) ->
