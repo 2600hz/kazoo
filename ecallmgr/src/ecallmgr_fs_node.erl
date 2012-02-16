@@ -153,11 +153,9 @@ handle_cast({distributed_presence, Presence, Event}, #state{node=Node}=State) ->
     {noreply, State};
 
 handle_cast(reloadacl, State) ->
-  %% ecallmgr_fs_config to retrieve ACLs
-  %Acls = ecallmgr_fs_config:lookup(acls),
-  %% send XML to freeswitch
-  %freeswitch:sendevent(Node, EventName, Headers),
-  {noreply, State};
+    Acls = ecallmgr_fs_config:reloadacl(),
+    %freeswitch:sendevent(Node, EventName, Headers),
+    {noreply, State};
 
 handle_cast(_Req, State) ->
     {noreply, State}.

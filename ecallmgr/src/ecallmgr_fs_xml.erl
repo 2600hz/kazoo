@@ -8,7 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, get_channel_vars/2, authn_resp_xml/1]).
+-export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, 
+         get_channel_vars/2, authn_resp_xml/1, config_req_xml/1]).
 
 -include("ecallmgr.hrl").
 
@@ -39,6 +40,9 @@ route_resp_xml([_|_]=RespProp) ->
     route_resp_xml(props:get_value(<<"Method">>, RespProp), props:get_value(<<"Routes">>, RespProp), wh_json:from_list(RespProp));
 route_resp_xml(RespJObj) ->
     route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj), wh_json:get_value(<<"Routes">>, RespJObj), RespJObj).
+
+config_req_xml(JObj) ->
+    {ok, ""}.
 
 %% Prop = Route Response
 -spec route_resp_xml/3 :: (binary(), wh_json:json_objects(), wh_json:json_object()) -> {'ok', iolist()}.
