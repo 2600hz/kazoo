@@ -12,6 +12,8 @@
 %%%   {responders, [ {responder, [ {<<"event-category">>, <<"event-name">>}, ...]} ]
 %%%      responder is the module name to call handle_req/2 on for those category/name combos
 %%%      responder can also be {module, function}, to call module:function/2 instead of handle_req/2
+%%%      Responder can optionally define a function/3 (or handle_req/3) that will be called with the 3rd arg
+%%%      consisting of the delivery options
 %%%   {queue_name, <<"some name">>} -> optional, if you want a named queue
 %%%   {queue_options, [{key, value}]} -> optional, if the queue requires different params
 %%%   {consume_options, [{key, value}]} -> optional, if the consumption requires special params
@@ -308,8 +310,8 @@ handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout
     end.
 
 -spec handle_info/2 :: (term(), #state{}) -> handle_info_ret().
-handle_info({#'basic.deliver'{}, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, #state{active_responders=ARs}=State) ->
-    case catch handle_event(Payload, CT, State) of
+handle_info({#'basic.deliver'{}=BD, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, #state{active_responders=ARs}=State) ->
+    case catch handle_event(Payload, CT, BD, State) of
         Pid when is_pid(Pid) ->
             {noreply, State#state{active_responders=[Pid | ARs]}, hibernate};
         ignore ->
@@ -392,16 +394,16 @@ terminate(Reason, #state{module=Module, module_state=ModState}) ->
     Module:terminate(Reason, ModState),
     ok.
 
--spec handle_event/3 :: (ne_binary(), ne_binary(), #state{}) -> pid().
-handle_event(Payload, <<"application/json">>, State) ->
+-spec handle_event/4 :: (ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) -> pid().
+handle_event(Payload, <<"application/json">>, BD, State) ->
     JObj = mochijson2:decode(Payload),
-    process_req(State, JObj);
-handle_event(Payload, <<"application/erlang">>, State) ->
+    process_req(State, JObj, BD);
+handle_event(Payload, <<"application/erlang">>, BD, State) ->
     JObj = binary_to_term(Payload),
-    process_req(State, JObj).
+    process_req(State, JObj, BD).
 
--spec process_req/2 :: (#state{}, wh_json:json_object()) -> pid().
-process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj) ->
+-spec process_req/3 :: (#state{}, wh_json:json_object(), #'basic.deliver'{}) -> pid().
+process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj, BD) ->
     Props1 = case catch Module:handle_event(JObj, ModState) of
                  {reply, Props} when is_list(Props) -> [{server, self()}, {queue, Queue} | Props];
                  {'EXIT', _Why} -> [{server, self()}, {queue, Queue}];
@@ -410,16 +412,19 @@ process_req(#state{queue=Queue, responders=Responders, module=Module, module_sta
     case Props1 of
         ignore -> ignore;
         _Else ->
-            proc_lib:spawn_link(fun() -> _ = wh_util:put_callid(JObj), process_req(Props1, Responders, JObj) end)
+            proc_lib:spawn_link(fun() -> _ = wh_util:put_callid(JObj), process_req(Props1, Responders, JObj, BD) end)
     end.
 
--spec process_req/3 :: (wh_proplist(), responders(), wh_json:json_object()) -> 'ok'.
-process_req(Props, Responders, JObj) ->
+-spec process_req/4 :: (wh_proplist(), responders(), wh_json:json_object(), #'basic.deliver'{}) -> 'ok'.
+process_req(Props, Responders, JObj, BD) ->
     Key = wh_util:get_event_type(JObj),
 
     Handlers = [spawn_monitor(fun() ->
                                       _ = wh_util:put_callid(JObj),
-                                      Responder:Fun(JObj, Props)
+                                      case erlang:function_exported(Responder, Fun, 3) of
+                                          true -> Responder:Fun(JObj, Props, BD);
+                                          false -> Responder:Fun(JObj, Props)
+                                      end
                               end)
                 || {Evt, {Responder, Fun}} <- Responders,
                    maybe_event_matches_key(Key, Evt)
