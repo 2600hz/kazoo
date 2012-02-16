@@ -6,14 +6,11 @@
 %%% @end
 %%% Created : 16 Mar 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
-
 -module(ecallmgr_conference_command).
 
 -export([exec_cmd/3]).
--export([run/0]).
 
 -include("ecallmgr.hrl").
--include_lib("xmerl/include/xmerl.hrl").
 
 -spec exec_cmd/3 :: (atom(), ne_binary(), wh_json:json_object()) -> 'ok'.
 exec_cmd(Node, ConferenceId, JObj) ->
@@ -22,14 +19,17 @@ exec_cmd(Node, ConferenceId, JObj) ->
         {'error', Msg}=E ->
             _ = ecallmgr_util:fs_log(Node, "whistle error while building command ~s: ~s", [App, Msg]),
             send_response(App, E, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
+        {noop, JObj} ->
+            send_response(App, {noop, JObj}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = wh_util:to_list(list_to_binary([ConferenceId, AppName, " ", AppData])),
             Result = freeswitch:api(Node, 'conference', Command),
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj)
     end.
 
-%% return the app name and data (as a binary string) to send to the FS ESL via mod_erlang_event
--spec get_conf_command/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> ne_binary() | {'error', string()}.
+-spec get_conf_command/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> {ne_binary(), binary()} | 
+                                                                                         {'error', ne_binary()} |
+                                                                                         {'noop', wh_json:json_object()}.
 get_conf_command(_Node, _ConferenceId, JObj, <<"deaf_participant">>) ->
     case wapi_conference:deaf_participant_v(JObj) of
         false -> 
@@ -54,12 +54,12 @@ get_conf_command(_Node, _ConferenceId, JObj, <<"kick">>) ->
         true ->
             {<<"hup">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"participants">>) ->
+get_conf_command(Node, ConferenceId, JObj, <<"participants">>) ->
     case wapi_conference:participants_v(JObj) of
         false ->
             {'error', <<"conference participants failed to execute as JObj did not validate.">>};
         true ->
-            {<<"list">>, <<>>} %% !!!!!!!!!!!!!!!!!!!
+            {noop, wh_json:get_value(ConferenceId, ecallmgr_conference_listener:conferences_on_node(Node))}
     end;
 get_conf_command(_Node, _ConferenceId, JObj, <<"lock">>) ->
     case wapi_conference:lock_v(JObj) of
@@ -173,6 +173,7 @@ get_conf_command(_Node, _ConferenceId, JObj, <<"participant_volume_out">>) ->
             {<<"volume_out">>, Args}
     end.
 
+-spec send_response/4 :: (ne_binary(), tuple(), undefined | ne_binary(), wh_json:json_object()) -> ok.
 send_response(_, _, undefined, _) ->
     ok;
 send_response(_, {ok, <<"Non-Existant ID", _/binary>> = Msg}, RespQ, Command) ->
@@ -182,18 +183,14 @@ send_response(_, {ok, <<"Non-Existant ID", _/binary>> = Msg}, RespQ, Command) ->
              | wh_api:default_headers(<<>>, <<"conference">>, <<"error">>, ?APP_NAME, ?APP_VERSION)
             ],
     wapi_conference:publish_error(RespQ, Error);
-send_response(<<"find">>, {ok, Node}, RespQ, Command) ->
-    Props = ecallmgr_util:get_interface_properties(Node),
-    [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
+send_response(<<"find">>, {noop, Conference}, RespQ, Command) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-            ,{<<"Switch-Hostname">>, Hostname}
-            ,{<<"External-SIP-IP">>, props:get_value(<<"Ext-SIP-IP">>, Props)}
             | wh_api:default_headers(<<>>, <<"conference">>, <<"find">>, ?APP_NAME, ?APP_VERSION)
            ],
     wapi_conference:publish_participants_resp(RespQ, Resp);
-send_response(<<"list">>, {ok, Participants}, RespQ, Command) ->
+send_response(<<"participants">>, {noop, Conference}, RespQ, Command) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-            ,{<<"Participants">>, parse_participants(Participants)}
+            ,{<<"Participants">>, wh_json:get_value(<<"Participants">>, Conference, wh_json:new())}
             | wh_api:default_headers(<<>>, <<"conference">>, <<"participants_resp">>, ?APP_NAME, ?APP_VERSION)
            ],
     wapi_conference:publish_participants_resp(RespQ, Resp);
@@ -222,91 +219,3 @@ send_response(_, timeout, RespQ, Command) ->
              | wh_api:default_headers(<<>>, <<"conference">>, <<"error">>, ?APP_NAME, ?APP_VERSION)
             ],
     wapi_conference:publish_error(RespQ, Error).
-
--spec parse_participants/1 :: (nonempty_string() | ne_binary()) -> wh_json:json_objects().
-parse_participants(Participants) ->
-    CSV = wh_util:to_list(Participants),
-        lists:foldr(fun(Line, Acc) ->                          
-                        [wh_json:from_list(parse_participant(Line))|Acc]
-                end, [], string:tokens(CSV, "\n")).
-
--spec parse_participant/1 :: (nonempty_string()) -> proplist().
-parse_participant(Line) ->    
-    [Id, _, CallId, CidName, CidNum, Status, VolIn, _, VolOut, Energy] = string:tokens(Line, ";"),
-    [{<<"Participant-ID">>, wh_util:to_binary(Id)}
-     ,{<<"Call-ID">>, wh_util:to_binary(CallId)}
-     ,{<<"CID-Name">>, wh_util:to_binary(CidName)}
-     ,{<<"CID-Number">>, wh_util:to_binary(CidNum)}
-     ,{<<"Status">>, wh_util:to_binary(Status)}
-     ,{<<"Volume-In">>, wh_util:to_binary(VolIn)}
-     ,{<<"Volume-Out">>, wh_util:to_binary(VolOut)}
-     ,{<<"Energy-Threshold">>, wh_util:to_binary(Energy)}
-    ].
-
-run() ->
-    {ok, Response} = freeswitch:api('freeswitch@fs001-dev-vb.2600hz.com', 'conference', "xml_list"),
-    {Xml, _} = xmerl_scan:string(binary_to_list(binary:replace(Response, <<"\n">>, <<>>, [global]))),
-    conferences_xml_to_json(Xml, wh_json:new()).
-
-conferences_xml_to_json([], JObj) ->
-    JObj;
-conferences_xml_to_json(#xmlElement{name='conferences', content=Content}, JObj) ->
-    conferences_xml_to_json(Content, JObj);
-conferences_xml_to_json([#xmlElement{name='conferences', content=Content}|_], JObj) ->
-    conferences_xml_to_json(Content, JObj);
-conferences_xml_to_json([#xmlElement{attributes=Attributes, name='conference', content=Content}|ConferencesXml], JObj) ->
-    Conference = wh_json:from_list([{<<"Participants">>, members_xml_to_json(Content, wh_json:new())}
-                                    |[{K, wh_util:to_binary(V)} 
-                                      || #xmlAttribute{name=Name, value=V} <- Attributes
-                                             ,(K = props:get_value(Name, ?FS_CONFERNCE_ATTRS)) =/= undefined
-                                     ]]),
-    case wh_json:get_value(<<"Conference-ID">>, Conference) of
-        undefined -> conferences_xml_to_json(ConferencesXml, JObj);
-        ConferenceId ->
-            conferences_xml_to_json(ConferencesXml, wh_json:set_value(ConferenceId, Conference, JObj))
-    end;
-conferences_xml_to_json([_|ConferencesXml], JObj) ->
-    conferences_xml_to_json(ConferencesXml, JObj).
-
-members_xml_to_json([], JObj) ->
-    JObj;
-members_xml_to_json(#xmlElement{content=Content, name='members'}, JObj) ->
-    members_xml_to_json(Content, JObj);
-members_xml_to_json([#xmlElement{content=Content, name='members'}|_], JObj) ->
-    members_xml_to_json(Content, JObj);
-members_xml_to_json([#xmlElement{content=Content, name='member'}|MembersXml], JObj) ->
-    Member = member_xml_to_json(Content, wh_json:new()),
-    case wh_json:get_value(<<"Participant-ID">>, Member) of
-        undefined -> members_xml_to_json(MembersXml, JObj);
-        ParticipantId ->
-            members_xml_to_json(MembersXml, wh_json:set_value(ParticipantId, Member, JObj))
-    end;
-members_xml_to_json([_|MembersXml], JObj) ->    
-    members_xml_to_json(MembersXml, JObj).
-
-member_xml_to_json([], JObj) ->
-    JObj;
-member_xml_to_json([#xmlElement{name='flags', content=Content}|Xml], JObj) ->
-    Flags = member_flags_xml_to_json(Content, wh_json:new()),
-    member_xml_to_json(Xml, wh_json:set_value(<<"Flags">>, Flags, JObj));
-member_xml_to_json([#xmlElement{name=Name, content=Content}|Xml], JObj) ->
-    case {props:get_value(Name, ?FS_CONFERENCE_PARTICIPANT), Content} of
-        {Key, [#xmlText{value=Value}]} when is_binary(Key) ->
-            member_xml_to_json(Xml, wh_json:set_value(Key, wh_util:to_binary(Value), JObj));
-        _Else ->
-            member_xml_to_json(Xml, JObj)
-    end;
-member_xml_to_json([_Else|Xml], JObj) ->
-    member_xml_to_json(Xml, JObj).
-
-member_flags_xml_to_json([], JObj) ->
-    JObj;
-member_flags_xml_to_json([#xmlElement{name=Name, content=Content}|Xml], JObj) ->
-    case {props:get_value(Name, ?FS_CONFERENCE_FLAGS), Content} of
-        {Key, [#xmlText{value=Value}]} when is_binary(Key) ->
-            member_flags_xml_to_json(Xml, wh_json:set_value(Key, wh_util:to_binary(Value), JObj));
-        _Else ->
-            member_flags_xml_to_json(Xml, JObj)
-    end;
-member_flags_xml_to_json([_|Xml], JObj) ->
-    member_flags_xml_to_json(Xml, JObj).
