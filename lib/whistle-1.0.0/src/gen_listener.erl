@@ -13,7 +13,7 @@
 %%%      responder is the module name to call handle_req/2 on for those category/name combos
 %%%      responder can also be {module, function}, to call module:function/2 instead of handle_req/2
 %%%      Responder can optionally define a function/3 (or handle_req/3) that will be called with the 3rd arg
-%%%      consisting of the delivery options
+%%%      consisting of the delivery options including exchange and routing_key
 %%%   {queue_name, <<"some name">>} -> optional, if you want a named queue
 %%%   {queue_options, [{key, value}]} -> optional, if the queue requires different params
 %%%   {consume_options, [{key, value}]} -> optional, if the consumption requires special params
