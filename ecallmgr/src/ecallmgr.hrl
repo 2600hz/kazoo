@@ -147,5 +147,40 @@
                               ,<<"uuid_exists">>
                          ]).
 
+-define(FS_CONFERNCE_ATTRS, [{'name', <<"Conference-ID">>}
+                             ,{'member-count', <<"Participant-Count">>}
+                             ,{'rate', <<"Rate">>}
+                             ,{'uuid', <<"UUID">>}
+                             ,{'locked', <<"Locked">>}
+                             ,{'run_time', <<"Run-Time">>}
+                             ,{'running', <<"Running">>}
+                             ,{'answered', <<"Answered">>}
+                             ,{'dynamic', <<"Dynamic">>}
+                            ]).
+
+-define(FS_CONFERENCE_PARTICIPANT, [{'id', <<"Participant-ID">>}
+                                    ,{'uuid', <<"Call-ID">>}
+                                    ,{'caller_id_name', <<"Caller-ID-Name">>}
+                                    ,{'caller_id_number', <<"Caller-ID-Number">>}
+                                    ,{'join_time', <<"Join-Time">>}
+                                    ,{'last_talking', <<"Last-Talking-Time">>}
+                                    ,{'energy', <<"Energy-Level">>}
+                                    ,{'volume_in', <<"Volume-In-Level">>}
+                                    ,{'volume_out', <<"Volume-Out-Level">>}
+                                    ,{'output-volume', <<"Output-Volume-Level">>}
+                                    ,{'input-volume', <<"Input-Volume">>}
+                                    ,{'auto-adjusted-input-volume', <<"Adjusted-Input-Volume-Level">>}
+                                   ]).
+
+-define(FS_CONFERENCE_FLAGS, [{'can_hear', <<"Can-Hear">>}
+                              ,{'can_speak', <<"Can-Speak">>}
+                              ,{'mute_detect', <<"Mute-Detect">>}
+                              ,{'talking', <<"Talking">>}
+                              ,{'has_video', <<"Has-Video">>}
+                              ,{'had_floor', <<"Has-Floor">>}
+                              ,{'is_moderator', <<"Moderator">>}
+                              ,{'end_conference', <<"End-Conference">>}
+                             ]).
+
 -define(ECALLMGR_HRL, true).
 -endif.

@@ -108,11 +108,10 @@
 -define(PARTICIPANTS_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 %% Conference Participants Resp
--define(PARTICIPANTS_RESP_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
+-define(PARTICIPANTS_RESP_HEADERS, [<<"Application-Name">>, <<"Conference">>]).
 -define(OPTIONAL_PARTICIPANTS_RESP_HEADERS, [<<"Participants">>, <<"Error">>]).
 -define(PARTICIPANTS_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                                   ,{<<"Event-Name">>, <<"participants">>}
-                                   ,{<<"Application-Name">>, <<"participants">>}
+                                   ,{<<"Event-Name">>, <<"participants_resp">>}
                                   ]).
 -define(PARTICIPANTS_RESP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
@@ -140,7 +139,7 @@
 
 %% Conference Play
 -define(PLAY_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
--define(OPTIONAL_PLAY_HEADERS, [<<"Participant">>]).
+-define(OPTIONAL_PLAY_HEADERS, [<<"Participant">>, <<"Call-ID">>]).
 -define(PLAY_VALUES, [{<<"Event-Category">>, <<"conference">>}
                       ,{<<"Event-Name">>, <<"command">>}
                       ,{<<"Application-Name">>, <<"play">>}
@@ -151,8 +150,8 @@
                     ]).
 
 %% Conference Record
--define(RECORD_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
--define(OPTIONAL_RECORD_HEADERS, []).
+-define(RECORD_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Media-Name">>]).
+-define(OPTIONAL_RECORD_HEADERS, [<<"Call-ID">>]).
 -define(RECORD_VALUES, [{<<"Event-Category">>, <<"conference">>}
                         ,{<<"Event-Name">>, <<"command">>}
                         ,{<<"Application-Name">>, <<"record">>}
@@ -160,29 +159,29 @@
 -define(RECORD_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 %% Conference Relate Participants
--define(RELATE_PARTICIPANTS_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant-ID">>, <<"Correlate-ID">>]).
+-define(RELATE_PARTICIPANTS_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>, <<"Other-Participant">>]).
 -define(OPTIONAL_RELATE_PARTICIPANTS_HEADERS, [<<"Relationship">>]).
 -define(RELATE_PARTICIPANTS_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                      ,{<<"Event-Name">>, <<"command">>}
                                      ,{<<"Application-Name">>, <<"relate_participants">>}
-                                     ,{<<"Relationship">>, [<<"deaf">>, <<"mute">>, <<"reset">>]}
+                                     ,{<<"Relationship">>, [<<"deaf">>, <<"mute">>, <<"clear">>]}
                                     ]).
 -define(RELATE_PARTICIPANTS_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                                    ,{<<"Participant-ID">>, fun is_binary/1}
-                                    ,{<<"Correlate-ID">>, fun is_binary/1}
+                                    ,{<<"Participant">>, fun is_binary/1}
+                                    ,{<<"Other-Participant">>, fun is_binary/1}
                                    ]).
 
 %% Conference Set
--define(SET_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>]).
--define(OPTIONAL_SET_HEADERS, [<<"Max-Members">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>]).
+-define(SET_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Parameter">>, <<"Value">>]).
+-define(OPTIONAL_SET_HEADERS, []).
 -define(SET_VALUES, [{<<"Event-Category">>, <<"conference">>}
                      ,{<<"Event-Name">>, <<"command">>}
-                     ,{<<"Application-Name">>, <<"kick">>}
-                     ,{<<"Relationship">>, [<<"deaf">>, <<"mute">>, <<"reset">>]}
+                     ,{<<"Application-Name">>, <<"set">>}
+                     ,{<<"Parameter">>, [<<"Max-Members">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>]}
                     ]).
 -define(SET_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                    ,{<<"Participant-ID">>, fun is_binary/1}
-                    ,{<<"Corset-ID">>, fun is_binary/1}
+                    ,{<<"Participant">>, fun is_binary/1}
+                    ,{<<"Value">>, fun is_binary/1}
                    ]).
 
 %% Conference Stop Play
@@ -194,7 +193,7 @@
                            ,{<<"Affects">>, [<<"current">>, <<"all">>]}
                           ]).
 -define(STOP_PLAY_TYPES, [{<<"Conference-ID">>, fun is_binary/1}
-                          ,{<<"Participant-ID">>, fun is_binary/1}
+                          ,{<<"Participant">>, fun is_binary/1}
                          ]).
 %% Conference Undeaf
 -define(UNDEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>]).
