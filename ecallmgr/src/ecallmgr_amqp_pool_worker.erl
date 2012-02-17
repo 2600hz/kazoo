@@ -55,8 +55,11 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
--spec start_req/7 :: (pid(), wh_json:json_object() | proplist(), fun((api_terms()) -> 'ok'), ne_binary(), {pid(), reference()}, pid() | atom(), pos_integer()) -> 'ok'.
-start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout) when is_integer(Timeout) and Timeout > 0->
+-spec start_req/7 :: (pid(), wh_json:json_object() | proplist(), fun((api_terms()) -> 'ok'), ne_binary() | 'undefined', {pid(), reference()}, pid() | atom(), pos_integer()) -> 'ok'.
+start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout) when is_pid(Srv),
+                                                                 is_function(ApiFun, 1),
+                                                                 is_pid(Parent),
+                                                                 is_integer(Timeout) ->
     JObj = case wh_json:is_json_object(Prop) of
                true -> Prop;
                false -> wh_json:from_list(Prop)
