@@ -59,13 +59,18 @@ handle_cdr(JObj, _Props) ->
                                                                                      ,<<"LOSE_RACE">>
                                                                                      ,<<"ATTENDED_TRANSFER">>
                                                                                      ,<<"ORIGINATOR_CANCEL">>
+                                                                                     ,<<"NORMAL_CLEARING">>
                                                                                 ]),
-    HangupCause = wh_json:get_value(<<"hangup_cause">>, JObj, <<"unknown">>),
+    HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj, <<"unknown">>),
     case lists:member(HangupCause, IgnoreCauses) of
         true -> ok;
-        false -> ?LOG(hangup_cause_to_alert_level(HangupCause)
-                      ,"abnormal call termination ~s"
-                      ,[HangupCause, {extra_data, [{details, JObj}]}])
+        false -> 
+            AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+            ?LOG(hangup_cause_to_alert_level(HangupCause)
+                 ,"abnormal call termination ~s"
+                 ,[HangupCause, {extra_data, [{details, wh_json:to_proplist(JObj)}
+                                              ,{account_id, AccountId}
+                                             ]}])
     end.
 
 %%%===================================================================
