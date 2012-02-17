@@ -71,7 +71,7 @@ decode(JSON, <<"application/json">>) ->
 is_empty(MaybeJObj) ->
     MaybeJObj =:= ?EMPTY_JSON_OBJECT.
 
--spec is_json_object/1 :: (term()) -> boolean().
+-spec is_json_object/1 :: (wh_json:json_object() | any()) -> boolean().
 is_json_object({struct, _}) -> true;
 is_json_object(_) -> false.
 
@@ -108,13 +108,8 @@ is_json_term(MaybeJObj) ->
 -spec from_list/1 :: (json_proplist()) -> wh_json:json_object().
 from_list([]) ->
     new();
-from_list([{_,_}|_]=L) ->
+from_list(L) when is_list(L) ->
     {struct, L}.
-%%    lists:foldr(fun({K,V}, Acc) ->
-%%                        true = is_json_term(V), % crash if invalid
-%%                        set_value([K], V, Acc); % set all other Values normally
-%%                   (A, Acc) when is_atom(A) -> set_value([A], true, Acc)
-%%                end, ?EMPTY_JSON_OBJECT, L).
 
 %% only a top-level merge
 %% merges JObj1 into JObj2
@@ -380,8 +375,8 @@ find(Key, JObjs, Default) when is_list(JObjs) ->
     end.
 
 
--spec get_value/2 :: (json_string() | json_strings(), wh_json:json_object() | wh_json:json_objects()) -> json_term() | 'undefined'.
--spec get_value/3 :: (json_string() | json_strings(), wh_json:json_object() | wh_json:json_objects(), Default) -> json_term() | Default.
+-spec get_value/2 :: (json_string() | json_strings(), wh_json:json_object() | json_objects()) -> json_term() | 'undefined'.
+-spec get_value/3 :: (json_string() | json_strings(), wh_json:json_object() | json_objects(), Default) -> json_term() | Default.
 get_value(Key, JObj) ->
     get_value(Key, JObj, undefined).
 

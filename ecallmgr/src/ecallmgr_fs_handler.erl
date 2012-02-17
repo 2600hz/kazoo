@@ -365,13 +365,11 @@ rm_fs_node(Node, #state{fs_nodes=Nodes, node_reconnect_pids=ReconPids}=State) ->
             State;
         N ->
             ?LOG_SYS("closing node handler for ~s", [Node]),
-            close_node(N),
+            _ = close_node(N),
             State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}
     end.
 
--spec kill_watchers/2 :: (Node, Watchers) -> 'ok' when
-      Node :: atom(),
-      Watchers :: [{atom(), pid()},...] | [].
+-spec kill_watchers/2 :: (atom(), [{atom(), pid()},...] | []) -> 'ok'.
 kill_watchers(Node, [{Node, Pid}|Rest]) ->
     Pid ! shutdown,
     kill_watchers(Node, Rest);
@@ -380,16 +378,12 @@ kill_watchers(Node, [_|Rest]) ->
 kill_watchers(_, []) ->
     ok.
 
--spec close_node/1 :: (N) -> ['ok' | {'error', 'not_found' | 'running' | 'simple_one_for_one'},...] when
-      N :: #node_handler{}.
+-spec close_node/1 :: (#node_handler{}) -> ['ok' | {'error', 'not_found' | 'running' | 'simple_one_for_one'},...].
 close_node(#node_handler{node=Node}) ->
     erlang:monitor_node(Node, false),
     ecallmgr_fs_sup:stop_handlers(Node).
 
--spec process_resource_request/3 :: (Type, Nodes, Options) -> [proplist(),...] | [] when
-      Type :: binary(),
-      Nodes :: [#node_handler{},...],
-      Options :: proplist().
+-spec process_resource_request/3 :: (ne_binary(), [#node_handler{},...], wh_proplist()) -> [wh_proplist(),...] | [].
 process_resource_request(<<"audio">> = Type, Nodes, Options) ->
     NodesResp = [begin
                      {_,_,NHP} = ecallmgr_fs_sup:get_handler_pids(Node),

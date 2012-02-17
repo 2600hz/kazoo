@@ -261,17 +261,22 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                     ?LOG("bridge is simultaneous to multiple endpoints, starting local ringing"),
                                     %% we don't really care if this succeeds, the call will fail later on
                                     _ = send_cmd(Node, UUID, <<"ring_ready">>, ""),
-                                    ",";
+                                    <<",">>;
                                 _Else ->
-                                    "|"
+                                    <<"|">>
                             end,
 
+            %% { [ne_binary(),...], json_object() }
             KeyedEPs = [{[wh_json:get_value(<<"Invite-Format">>, Endpoint)
-                         ,wh_json:get_value(<<"To-User">>, Endpoint)
-                         ,wh_json:get_value(<<"To-Realm">>, Endpoint)
-                         ,wh_json:get_value(<<"To-DID">>, Endpoint)
-                         ,wh_json:get_value(<<"Route">>, Endpoint)], Endpoint}
-                       || Endpoint <- Endpoints],
+                          ,wh_json:get_value(<<"To-User">>, Endpoint)
+                          ,wh_json:get_value(<<"To-Realm">>, Endpoint)
+                          ,wh_json:get_value(<<"To-DID">>, Endpoint)
+                          ,wh_json:get_value(<<"Route">>, Endpoint)
+                         ]
+                         ,Endpoint}
+                        || Endpoint <- Endpoints,
+                           wh_json:is_json_object(Endpoint)
+                       ],
 
             S = self(),
             DialStrings = [D || D <- [receive {Pid, DS} -> DS end
@@ -279,10 +284,10 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                                                put(callid, UUID),
                                                                S ! {self(), (catch get_bridge_endpoint(EP))}
                                                        end)
-                                                 || {_, EP} <- props:unique(KeyedEPs)
-                                                        ,wh_json:is_json_object(EP)
+                                                 || {_, EP} <- props:unique(KeyedEPs),
+                                                    wh_json:is_json_object(EP)
                                                 ]
-                                     ], D =/= ""],
+                                     ], not wh_util:is_empty(D)],
 
             Generators = [fun(DP) ->
                                   case wh_json:get_integer_value(<<"Timeout">>, JObj) of
@@ -368,8 +373,8 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                    ]
                            end
                           ,fun(DP) ->
-                                   BridgeCmd = lists:flatten(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)])
-                                       ++ string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
+                                   BridgeCmd = list_to_binary(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)
+                                                               ,wh_util:binary_join([D || D <- DialStrings], DialSeparator)]),
                                    [{"application", BridgeCmd}|DP]
                            end
                           ,fun(DP) ->
@@ -670,15 +675,15 @@ create_masquerade_event(Application, EventName) ->
 %%                              ,origination_caller_id_number=Num]Endpoint)
 %% @end
 %%--------------------------------------------------------------------
--spec get_bridge_endpoint/1 :: (wh_json:json_object()) -> string().
+-spec get_bridge_endpoint/1 :: (wh_json:json_object()) -> binary().
 get_bridge_endpoint(JObj) ->
     case ecallmgr_fs_xml:build_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
         {'error', 'timeout'} ->
             ?LOG("unable to build route to endpoint"),
-            "";
+            <<>>;
         EndPoint ->
             CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
-            wh_util:to_list(list_to_binary([CVs, EndPoint]))
+            list_to_binary([CVs, EndPoint])
     end.
 
 %%--------------------------------------------------------------------

@@ -96,7 +96,7 @@ behaviour_info(_) ->
 -define(CALLBACK_TIMEOUT_MSG, callback_timeout).
 
 %% API functions for requesting data from the gen_listener
--spec queue_name/1 :: (pid()) -> {'ok', binary()} | {'error', atom()}.
+-spec queue_name/1 :: (pid()) -> ne_binary().
 queue_name(Srv) ->
     gen_server:call(Srv, queue_name).
 
@@ -145,14 +145,14 @@ rm_responder(Srv, Responder, Keys) ->
     gen_server:cast(Srv, {rm_responder, Responder, Keys}).
 
 -spec add_binding/2 :: (pid(), binding() | ne_binary() | atom()) -> 'ok'.
+-spec add_binding/3 :: (pid(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 add_binding(Srv, {Binding, Props}) ->
     gen_server:cast(Srv, {add_binding, Binding, Props});
 add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {add_binding, wh_util:to_binary(Binding), []}).
 
--spec add_binding/3 :: (pid(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
-    gen_server:cast(Srv, {add_binding, Binding, Props}).
+    gen_server:cast(Srv, {add_binding, wh_util:to_binary(Binding), Props}).
 
 %% It is expected that responders have been set up already, prior to binding the new queue
 -spec add_queue/4 :: (pid(), binary(), proplist(), binding() | bindings()) -> {'ok', ne_binary()} | {'error', term()}.
@@ -170,14 +170,11 @@ other_queues(Srv) ->
     gen_server:call(Srv, other_queues).
 
 -spec rm_binding/2 :: (pid(), binding()) -> 'ok'.
-rm_binding(Srv, Binding) ->
-    gen_server:cast(Srv, {rm_binding, Binding}).
-
--spec rm_binding/3 :: (pid(), binding(), wh_proplist()) -> 'ok'.
-rm_binding(Srv, Binding, []) ->
-    gen_server:cast(Srv, {rm_binding, Binding});
+-spec rm_binding/3 :: (pid(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
+rm_binding(Srv, {Binding, Props}) ->
+    rm_binding(Srv, Binding, Props).
 rm_binding(Srv, Binding, Props) ->
-    gen_server:cast(Srv, {rm_binding, Binding, Props}).
+    gen_server:cast(Srv, {rm_binding, wh_util:to_binary(Binding), Props}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -208,7 +205,7 @@ init([Module, Params, InitArgs]) ->
 
     _ = [add_responder(self(), Mod, Evts) || {Mod, Evts} <- Responders],
 
-    _ = [create_binding(Type, BindProps, Q) || {Type, BindProps} <- Bindings],
+    _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
 
     {ok, #state{queue=Q, module=Module, module_state=ModState, module_timeout_ref=TimeoutRef
                 ,responders=[], bindings=Bindings
@@ -222,11 +219,12 @@ init([Module, Params, InitArgs]) ->
 -spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> gen_l_handle_call_ret().
 handle_call({add_queue, <<>>, QueueProps, Bindings}, _From, #state{other_queues=OtherQueues}=State) ->
     {ok, Q} = start_amqp(QueueProps),
-    _ = [create_binding(Type, BindProps, Q) || {Type, BindProps} <- Bindings],
+    _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
     {reply, {ok, Q}, State#state{other_queues=[{Q, Bindings}|OtherQueues]}};
+
 handle_call({add_queue, QueueName, QueueProps, Bindings}, _From, #state{other_queues=OtherQueues}=State) ->
     {ok, _} = start_amqp([{queue_name, QueueName} | QueueProps]),
-    _ = [create_binding(Type, BindProps, QueueName) || {Type, BindProps} <- Bindings],
+    _ = [create_binding(wh_util:to_binary(Type), BindProps, QueueName) || {Type, BindProps} <- Bindings],
     case props:get_value(QueueName, OtherQueues) of
         undefined ->
             {reply, {ok, QueueName}, State#state{other_queues=[{QueueName, Bindings}|OtherQueues]}};
@@ -244,7 +242,7 @@ handle_call(queue_name, _From, #state{queue=Q}=State) ->
 handle_call(responders, _From, #state{responders=Rs}=State) ->
     {reply, Rs, State};
 handle_call(Request, From, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
-    stop_timer(OldRef),
+    _ = stop_timer(OldRef),
     case catch Module:handle_call(Request, From, ModState) of
         {reply, Reply, ModState1} ->
             {reply, Reply, State#state{module_state=ModState1, module_timeout_ref=undefined}, hibernate};
@@ -288,18 +286,14 @@ handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State
 
 handle_cast({add_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
     create_binding(Binding, Props, Q),
-    {noreply, State#state{bindings={[{Binding, Props}|Bs]}}};
-
-handle_cast({rm_binding, Binding}, #state{queue=Q, bindings=Bs}=State) ->
-    _ = remove_binding(Binding, props:get_value(Binding, Bs, []), Q),
-    {noreply, State#state{bindings=props:delete(Binding, Bs)}};
+    {noreply, State#state{bindings=[{Binding, Props}|Bs]}};
 
 handle_cast({rm_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
     _ = remove_binding(Binding, Props, Q),
     {noreply, State#state{bindings=props:delete(Binding, Bs)}};
 
 handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
-    stop_timer(OldRef),
+    _ = stop_timer(OldRef),
     case catch Module:handle_cast(Message, ModState) of
         {noreply, ModState1} ->
             {noreply, State#state{module_state=ModState1}, hibernate};
@@ -378,7 +372,7 @@ handle_info(Message, State) ->
     handle_callback_info(Message, State).
 
 handle_callback_info(Message, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
-    stop_timer(OldRef),
+    _ = stop_timer(OldRef),
     case catch Module:handle_info(Message, ModState) of
         {noreply, ModState1} ->
             {noreply, State#state{module_state=ModState1}, hibernate};
@@ -489,14 +483,14 @@ remove_binding(Binding, Props, Q) ->
                 _Path ->
                     ?LOG_SYS("beam file found: ~s", [_Path]),
                     wh_util:to_atom(Wapi, true), %% put atom into atom table
-                    rm_binding(Binding, Props, Q)
+                    remove_binding(Binding, Props, Q)
             end;
         error:undef ->
             ?LOG_SYS("module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
             error(api_call_undefined)
     end.
 
--spec create_binding/3 :: (binding(), wh_proplist(), ne_binary()) -> any().
+-spec create_binding/3 :: (ne_binary(), wh_proplist(), ne_binary()) -> any().
 create_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
     try

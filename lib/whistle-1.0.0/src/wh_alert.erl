@@ -115,7 +115,7 @@ format(Section, [ReqId, Module, Line, Pid], Msg, Args) ->
     gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, msg=Msg, args=Args}).
 
 -spec format/5 :: (atom(), list(), undefined | atom() | binary(), msg(), list()) -> 'ok'.
-format(Section, [undefined | _]=Defaults, undefined, Msg, Args) ->
+format(Section, [undefined | _]=Defaults, undefined, Msg, Args) when is_atom(Section) ->
     format(Section, Defaults, ?LOG_SYSTEM_ID, Msg, Args);
 format(Section, [ReqId | _]=Defaults, undefined, Msg, Args) ->
     format(Section, Defaults, ReqId, Msg, Args);
