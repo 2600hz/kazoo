@@ -11,8 +11,22 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_host/1, set_host/2, set_host/3, set_host/4, set_host/5, get_host/0, get_port/0, get_creds/0, get_url/0, get_uuid/0, get_uuids/1]).
--export([get_admin_port/0, get_admin_conn/0, get_admin_url/0, get_node_cookie/0, set_node_cookie/1]).
+-export([start_link/0
+         ,set_host/1, set_host/2, set_host/3, set_host/4, set_host/5
+         ,get_host/0
+         ,get_port/0
+         ,get_creds/0
+         ,get_url/0
+         ,get_uuid/0
+         ,get_uuids/1
+        ]).
+-export([get_admin_port/0
+         ,get_admin_conn/0
+         ,get_admin_url/0
+         ,get_node_cookie/0
+         ,set_node_cookie/1
+         ,load_configs/0
+        ]).
 
 %% System manipulation
 -export([db_exists/1, db_info/0, db_info/1, db_create/1, db_create/2, db_compact/1, db_view_cleanup/1, db_delete/1, db_replicate/1]).
@@ -543,6 +557,10 @@ get_node_cookie() ->
 set_node_cookie(Cookie) when is_atom(Cookie) ->
     couch_config:store(bigcouch_cookie, Cookie).
 
+-spec load_configs/0 :: () -> 'ok'.
+load_configs() ->
+    gen_server:cast(?SERVER, load_configs).
+
 -spec get_url/0 :: () -> ne_binary() | 'undefined'.
 -spec get_admin_url/0 :: () -> ne_binary() | 'undefined'.
 get_url() ->
@@ -674,19 +692,13 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(load_configs, State) ->
+    couch_config:ready(),
+    {noreply, State};
 handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
-    case dict:find(DBName, CH) of
-        {ok, {Srv, _}} ->
-            ?LOG_SYS("found CH(~p): Adding listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
-            change_handler:add_listener(Srv, Pid, DocID),
-            {noreply, State};
-        error ->
-            {ok, Srv} = change_handler:start_link(couch_util:get_db(S, DBName), []),
-            ?LOG_SYS("started CH(~p): added listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
-            SrvRef = erlang:monitor(process, Srv),
-            change_handler:add_listener(Srv, Pid, DocID),
-            {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
-    end.
+    ?LOG("change handlers off for now"),
+    {noreply, State}.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

@@ -65,13 +65,12 @@ start_local_link() ->
 store(K, V) ->
     store(K, V, ?EXPIRES).
 
-store(K, V, Fun) when is_function(Fun) ->
+store(K, V, Fun) when is_function(Fun, 3) ->
     store(K, V, ?EXPIRES, Fun);
 store(K, V, T) ->
     gen_server:cast(?SERVER, {store, K, V, T, undefined}).
 
-store(K, V, T, Fun) when is_function(Fun) ->
-    {arity, 3} = erlang:fun_info(Fun, arity),
+store(K, V, T, Fun) when is_function(Fun, 3) ->
     gen_server:cast(?SERVER, {store, K, V, T, Fun}).
 
 -spec peek/1 :: (term()) -> {'ok', term()} | {'error', 'not_found'}.
@@ -106,13 +105,12 @@ filter(Pred) when is_function(Pred, 2) ->
 store_local(Srv, K, V) when is_pid(Srv) ->
     store_local(Srv, K, V, ?EXPIRES).
 
-store_local(Srv, K, V, Fun) when is_pid(Srv), is_function(Fun) ->
+store_local(Srv, K, V, Fun) when is_pid(Srv), is_function(Fun, 3) ->
     store_local(Srv, K, V, ?EXPIRES, Fun);
 store_local(Srv, K, V, T) when is_pid(Srv) ->
     gen_server:cast(Srv, {store, K, V, T, undefined}).
 
-store_local(Srv, K, V, T, Fun) when is_pid(Srv), is_function(Fun) ->
-    {arity, 3} = erlang:fun_info(Fun, arity),
+store_local(Srv, K, V, T, Fun) when is_pid(Srv), is_function(Fun, 3) ->
     gen_server:cast(Srv, {store, K, V, T, Fun}).
 
 -spec peek_local/2 :: (pid(), term()) -> {'ok', term()} | {'error', 'not_found'}.
