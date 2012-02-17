@@ -12,18 +12,16 @@
 %% API
 -export([start_link/0]).
 -export([conferences_on_node/1]).
+-export([handle_req/2]).
 -export([debug/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
          terminate/2, code_change/3]).
 
--define(RESPONDERS, [{{?MODULE, mwi_update}, [{<<"notification">>, <<"mwi">>}]}
-                     ,{{?MODULE, presence_update}, [{<<"notification">>, <<"presence_update">>}]}
-                    ]).
--define(BINDINGS, [{notifications, [{restrict_to, [mwi_update, presence_update]}]}]).
-
--define(QUEUE_NAME, <<"ecallmgr_notify">>).
+-define(RESPONDERS, [{?MODULE, [{<<"conference">>, <<"command">>}]}]).
+-define(BINDINGS, [{conference, [{restrict_to, [command]}]}]).
+-define(QUEUE_NAME, <<"ecallmgr_conference_listener">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
 
@@ -61,6 +59,12 @@ conferences_on_node(Node) ->
 debug() ->
     conferences_on_node('freeswitch@fs001-dev-vb.2600hz.com').
 
+handle_req(JObj, _Props) ->
+    ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
+    Focus = get_conference_focus(ConferenceId),
+    ecallmgr_conference_command:exec(Focus, ConferenceId, JObj),
+    ok.
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -91,7 +95,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
-
+             
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -159,6 +163,41 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec search_nodes_for_conference/2 :: ([atom(),...], ne_binary()) -> undefined | wh_json:json_object(). 
+search_nodes_for_conference([], _) ->
+    undefined;
+search_nodes_for_conference([Node|Nodes], ConferenceId) ->                            
+    JObj = conferences_on_node(Node),
+    case wh_json:get_value(ConferenceId, JObj) of
+        undefined -> search_nodes_for_conference(Nodes, ConferenceId);
+        Conference -> Conference
+    end.
+
+-spec get_conference_focus/1 :: (ne_binary()) -> undefined | atom().
+get_conference_focus(ConferenceId) ->
+    Cache = ecallmgr_sup:cache_sup(),
+    case wh_cache:fetch_local(Cache, {conference, focus, ConferenceId}) of
+        {ok, Focus} -> Focus;
+        {error, not_found} ->
+            Nodes = [],
+            case search_for_conference_focus(Nodes, ConferenceId) of
+                undefined -> undefined;
+                Focus -> 
+                    wh_cache:store_local(Cache, {conference, focus, ConferenceId}, Focus),
+                    Focus
+            end
+    end.
+
+-spec search_for_conference_focus/2 :: ([atom(),...], ne_binary()) -> undefined | atom().
+search_for_conference_focus([], _) ->
+    undefined;
+search_for_conference_focus([Node|Nodes], ConferenceId) ->                            
+    JObj = conferences_on_node(Node),
+    case wh_json:get_value(ConferenceId, JObj) of
+        undefined -> search_for_conference_focus(Nodes, ConferenceId);
+        _Else -> Node
+    end.
+
 -spec conferences_xml_to_json/3 :: (list(), proplist(), wh_json:json_object()) -> wh_json:json_object().
 conferences_xml_to_json([], _, JObj) ->
     JObj;
@@ -191,7 +230,7 @@ members_xml_to_json(#xmlElement{content=Content, name='members'}, JObj) ->
 members_xml_to_json([#xmlElement{content=Content, name='members'}|_], JObj) ->
     members_xml_to_json(Content, JObj);
 members_xml_to_json([#xmlElement{content=Content, name='member'}|MembersXml], JObj) ->
-    Member = member_xml_to_json(Content, JObj),
+    Member = member_xml_to_json(Content, wh_json:new()),
     case wh_json:get_value(<<"Participant-ID">>, Member) of
         undefined -> members_xml_to_json(MembersXml, JObj);
         ParticipantId ->

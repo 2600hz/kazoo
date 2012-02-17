@@ -8,36 +8,36 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_conference_command).
 
--export([exec_cmd/3]).
+-export([exec/3]).
 
 -include("ecallmgr.hrl").
 
--spec exec_cmd/3 :: (atom(), ne_binary(), wh_json:json_object()) -> 'ok'.
-exec_cmd(Node, ConferenceId, JObj) ->
+-spec exec/3 :: (atom(), ne_binary(), wh_json:json_object()) -> 'ok'.
+exec(Focus, ConferenceId, JObj) ->
     App = wh_json:get_value(<<"Application-Name">>, JObj),
-    case get_conf_command(Node, ConferenceId, JObj, App) of
+    case get_conf_command(App, Focus, ConferenceId, JObj) of
         {'error', Msg}=E ->
-            _ = ecallmgr_util:fs_log(Node, "whistle error while building command ~s: ~s", [App, Msg]),
+            _ = ecallmgr_util:fs_log(Focus, "whistle error while building command ~s: ~s", [App, Msg]),
             send_response(App, E, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {noop, JObj} ->
             send_response(App, {noop, JObj}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = wh_util:to_list(list_to_binary([ConferenceId, AppName, " ", AppData])),
-            Result = freeswitch:api(Node, 'conference', Command),
+            Result = freeswitch:api(Focus, 'conference', Command),
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj)
     end.
 
--spec get_conf_command/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> {ne_binary(), binary()} | 
+-spec get_conf_command/4 :: (ne_binary(), atom(), ne_binary(), wh_json:json_object()) -> {ne_binary(), binary()} | 
                                                                                          {'error', ne_binary()} |
                                                                                          {'noop', wh_json:json_object()}.
-get_conf_command(_Node, _ConferenceId, JObj, <<"deaf_participant">>) ->
+get_conf_command(<<"deaf_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:deaf_participant_v(JObj) of
         false -> 
             {'error', <<"conference deaf_participant failed to execute as JObj did not validate.">>};
         true ->
             {<<"deaf">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"participant_energy">>) ->
+get_conf_command(<<"participant_energy">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:participant_energy_v(JObj) of
         false ->
             {'error', <<"conference participant_energy failed to execute as JObj did not validate.">>};
@@ -47,35 +47,35 @@ get_conf_command(_Node, _ConferenceId, JObj, <<"participant_energy">>) ->
                                   ]),
             {<<"energy">>, Args}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"kick">>) ->
+get_conf_command(<<"kick">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:kick_v(JObj) of
         false ->
             {'error', <<"conference kick failed to execute as JObj did not validate.">>};
         true ->
             {<<"hup">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
-get_conf_command(Node, ConferenceId, JObj, <<"participants">>) ->
+get_conf_command(<<"participants">>, Focus, ConferenceId, JObj) ->
     case wapi_conference:participants_v(JObj) of
         false ->
             {'error', <<"conference participants failed to execute as JObj did not validate.">>};
         true ->
-            {noop, wh_json:get_value(ConferenceId, ecallmgr_conference_listener:conferences_on_node(Node))}
+            {noop, wh_json:get_value(ConferenceId, ecallmgr_conference_listener:conferences_on_node(Focus))}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"lock">>) ->
+get_conf_command(<<"lock">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:lock_v(JObj) of
         false ->
             {'error', <<"conference lock failed to execute as JObj did not validate.">>};
         true ->
             {<<"lock">>, <<>>}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"mute_participant">>) ->
+get_conf_command(<<"mute_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:mute_participant_v(JObj) of
         false ->
             {'error', <<"conference mute_participant failed to execute as JObj did not validate.">>};
         true ->
             {<<"lock">>, <<>>}
     end;
-get_conf_command(_Node, ConferenceId, JObj, <<"play">>) ->
+get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
     case wapi_conference:play_v(JObj) of
         false ->
             {'error', <<"conference play failed to execute as JObj did not validate.">>};
@@ -88,7 +88,7 @@ get_conf_command(_Node, ConferenceId, JObj, <<"play">>) ->
                    end,
             {<<"play">>, Args}
     end;
-get_conf_command(_Node, ConferenceId, JObj, <<"record">>) ->
+get_conf_command(<<"record">>, _Focus, ConferenceId, JObj) ->
     case wapi_conference:record_v(JObj) of
         false ->
             {'error', <<"conference record failed to execute as JObj did not validate.">>};
@@ -98,7 +98,7 @@ get_conf_command(_Node, ConferenceId, JObj, <<"record">>) ->
             Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
             {<<"record">>, Media}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"relate_participants">>) ->
+get_conf_command(<<"relate_participants">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:relate_participants_v(JObj) of
         false ->
             {'error', <<"conference relate_participants failed to execute as JObj did not validate.">>};
@@ -109,7 +109,7 @@ get_conf_command(_Node, _ConferenceId, JObj, <<"relate_participants">>) ->
                                   ]),
             {<<"relate">>, Args}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"set">>) ->
+get_conf_command(<<"set">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:set_v(JObj) of
         false ->
             {'error', <<"conference set failed to execute as JObj did not validate.">>};
@@ -119,7 +119,7 @@ get_conf_command(_Node, _ConferenceId, JObj, <<"set">>) ->
                                   ]),
             {<<"set">>, Args}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"stop_play">>) ->
+get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:stop_play_v(JObj) of
         false ->
             {'error', <<"conference stop_play failed to execute as JObj did not validate.">>};
@@ -131,28 +131,28 @@ get_conf_command(_Node, _ConferenceId, JObj, <<"stop_play">>) ->
                    end,
             {<<"stop">>, Args}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"undeaf_participant">>) ->
+get_conf_command(<<"undeaf_participant">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:undeaf_participant_v(JObj) of
         false ->
             {'error', <<"conference undeaf_participant failed to execute as JObj did not validate.">>};
         true ->
             {<<"undeaf">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"unlock">>) ->
+get_conf_command(<<"unlock">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:unlock_v(JObj) of
         false ->
             {'error', <<"conference unlock failed to execute as JObj did not validate.">>};
         true ->
             {<<"unlock">>, <<>>}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"unmute">>) ->
+get_conf_command(<<"unmute">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:unmute_v(JObj) of
         false ->
             {'error', <<"conference unmute failed to execute as JObj did not validate.">>};
         true ->
             {<<"unmute">>, wh_json:get_binary_value(<<"Participant">>, JObj)}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"participant_volume_in">>) ->
+get_conf_command(<<"participant_volume_in">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:participant_volume_in_v(JObj) of
         false ->
             {'error', <<"conference participant_volume_in failed to execute as JObj did not validate.">>};
@@ -162,7 +162,7 @@ get_conf_command(_Node, _ConferenceId, JObj, <<"participant_volume_in">>) ->
                                   ]),
             {<<"volume_in">>, Args}
     end;
-get_conf_command(_Node, _ConferenceId, JObj, <<"participant_volume_out">>) ->
+get_conf_command(<<"participant_volume_out">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:participant_volume_out_v(JObj) of
         false ->
             {'error', <<"conference participant_volume_out failed to execute as JObj did not validate.">>};

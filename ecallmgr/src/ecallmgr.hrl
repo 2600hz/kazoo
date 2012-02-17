@@ -168,7 +168,7 @@
                                     ,{'volume_in', <<"Volume-In-Level">>}
                                     ,{'volume_out', <<"Volume-Out-Level">>}
                                     ,{'output-volume', <<"Output-Volume-Level">>}
-                                    ,{'input-volume', <<"Input-Volume">>}
+                                    ,{'input-volume', <<"Input-Volume-Level">>}
                                     ,{'auto-adjusted-input-volume', <<"Adjusted-Input-Volume-Level">>}
                                    ]).
 
