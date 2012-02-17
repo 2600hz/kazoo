@@ -153,18 +153,16 @@ add_leg(Props) ->
 
 -spec rm_leg/1 :: (proplist()) -> pid().
 rm_leg(Props) ->
-    spawn(fun() ->
-                  %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
-                  %% by call_control, if so remove the leg from it
-                  CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
-                  put(callid, CallId),
-                  case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
-                      false -> ok;
-                      {error, _} -> ok;
-                      {ok, Srv} -> 
-                          gen_server:cast(Srv, {rm_leg, wh_json:from_list(Props)})
-                  end
-          end).
+    %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
+    %% by call_control, if so remove the leg from it
+    CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
+    put(callid, CallId),
+    case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
+        false -> ok;
+        {error, _} -> ok;
+        {ok, Srv} -> 
+            gen_server:cast(Srv, {rm_leg, wh_json:from_list(Props)})
+    end.
 
 -spec transferer/2 :: (pid(), proplist()) -> 'ok'.
 transferer(Srv, Props) ->
