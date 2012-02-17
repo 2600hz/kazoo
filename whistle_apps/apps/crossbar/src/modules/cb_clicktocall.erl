@@ -392,10 +392,14 @@ originate_call(Contact, JObj, AccountId) ->
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, JObj)}
             ,{<<"Inherit-Codec">>, <<"false">>}
+	    ,{<<"Authorizing-Type">>, <<"device">>}
+	    ,{<<"Inception">>, <<"on-net">>}
            ],
 
     Req = [{<<"Msg-ID">>, wh_util:current_tstamp()}
            ,{<<"Resource-Type">>, <<"audio">>}
+	   ,{<<"Resource-Minimum">>, <<"1">>}
+	   ,{<<"Resource-Maximum">>, <<"1">>}
            ,{<<"Invite-Format">>, <<"route">>}
            ,{<<"Route">>, <<"loopback/", Exten/binary, "/context_2">>}
            ,{<<"Outgoing-Callee-ID-Name">>, Exten}
