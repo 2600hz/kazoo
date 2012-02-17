@@ -21,12 +21,6 @@ inttests: clean app eunit intct
 eunit:
 	@$(REBAR) eunit skip_deps=true
 
-ct:
-	@$(REBAR) ct skip_deps=true suites=http,proper,ws
-
-intct:
-	@$(REBAR) ct skip_deps=true suites=http,proper,ws,autobahn
-
 build-plt:
 	@$(DIALYZER) --build_plt --output_plt .platform_dialyzer.plt \
 		--apps kernel stdlib sasl inets crypto public_key ssl
