@@ -20,8 +20,8 @@
          ,handle_info/2, code_change/3, terminate/2
         ]).
 
--define(APP_VERSION, "2.0").
--define(APP_NAME, "Whistle Alert").
+-define(APP_VERSION, <<"2.0">>).
+-define(APP_NAME, <<"Whistle Alert">>).
 
 -record(alert, {level=debug
                 ,req_id=?LOG_SYSTEM_ID
