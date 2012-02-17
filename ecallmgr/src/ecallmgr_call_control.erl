@@ -140,18 +140,16 @@ event_execute_complete(Srv, CallId, App) ->
 
 -spec add_leg/1 :: (proplist()) -> pid().
 add_leg(Props) ->
-    spawn(fun() ->
-                  %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
-                  %% by call_control, if so add the leg to it
-                  CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
-                  put(callid, CallId),
-                  case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
-                      false -> ok;
-                      {error, _} -> ok;
-                      {ok, Srv} -> 
-                          gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)})
-                  end
-          end).
+    %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
+    %% by call_control, if so add the leg to it
+    CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
+    put(callid, CallId),
+    case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
+        false -> ok;
+        {error, _} -> ok;
+        {ok, Srv} -> 
+            gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)})
+    end.
 
 -spec rm_leg/1 :: (proplist()) -> pid().
 rm_leg(Props) ->
@@ -363,12 +361,12 @@ handle_cast({channel_destroyed, _},  #state{is_call_up=true, sanity_check_tref=S
     %% then create an error and force advance. This will happen with dialplan actions that
     %% have not been executed on freeswitch but were already queued (for example in xferext). 
     %% Commonly events like masquerade, noop, ect
-    case CurrentApp =:= undefined orelse is_post_hangup_command(CurrentApp) of
-        true -> ok;
-        false -> 
-            send_error_resp(CallId, CurrentCmd),
-            self() ! {force_queue_advance, CallId}
-    end,
+    _ = case CurrentApp =:= undefined orelse is_post_hangup_command(CurrentApp) of
+            true -> ok;
+            false -> 
+                send_error_resp(CallId, CurrentCmd),
+                self() ! {force_queue_advance, CallId}
+        end,
     {noreply, State#state{keep_alive_ref=get_keep_alive_ref(State#state{is_call_up=false}), is_call_up=false, is_node_up=true}, hibernate};
 handle_cast({channel_destroyed, _},  #state{is_call_up=false}=State) ->
     {noreply, State};
@@ -384,13 +382,13 @@ handle_cast({dialplan, JObj}, #state{callid=CallId, is_node_up=INU, is_call_up=C
         true ->
             {{value, Cmd}, NewCmdQ1} = queue:out(NewCmdQ),
             AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
-            case CallUp orelse is_post_hangup_command(AppName) of
-                true -> execute_control_request(Cmd, State);
-                false ->
-                    ?LOG("command '~s' is not valid after hangup, ignoring", [AppName]),
-                    send_error_resp(CallId, Cmd),
-                    self() ! {force_queue_advance, CallId}
-            end,
+            _ = case CallUp orelse is_post_hangup_command(AppName) of
+                    true -> execute_control_request(Cmd, State);
+                    false ->
+                        ?LOG("command '~s' is not valid after hangup, ignoring", [AppName]),
+                        send_error_resp(CallId, Cmd),
+                        self() ! {force_queue_advance, CallId}
+                end,
             {noreply, State#state{command_q=NewCmdQ1, current_app=AppName, current_cmd=Cmd
                                   ,keep_alive_ref=get_keep_alive_ref(State)}, hibernate};
         false ->
@@ -414,18 +412,16 @@ handle_cast({event_execute_complete, CallId, EvtName},#state{callid=CallId, is_n
                     {noreply, State#state{current_app=undefined}, hibernate};
                 {{value, Cmd}, CmdQ1} ->
                     AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
-                    case CallUp orelse is_post_hangup_command(AppName) of
-                        true -> execute_control_request(Cmd, State);
-                        false ->
-                            ?LOG("command '~s' is not valid after hangup, skipping", [AppName]),
-                            send_error_resp(CallId, Cmd),
-                            self() ! {force_queue_advance, CallId}
-                    end,
+                    _ = case CallUp orelse is_post_hangup_command(AppName) of
+                            true -> execute_control_request(Cmd, State);
+                            false ->
+                                ?LOG("command '~s' is not valid after hangup, skipping", [AppName]),
+                                send_error_resp(CallId, Cmd),
+                                self() ! {force_queue_advance, CallId}
+                        end,
                     {noreply, State#state{command_q = CmdQ1, current_app = AppName, current_cmd = Cmd}, hibernate}
             end
-    end;
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -472,14 +468,14 @@ handle_info({force_queue_advance, CallId}, #state{callid=CallId, current_app=Cur
             {noreply, State#state{current_app = undefined}, hibernate};
         {{value, Cmd}, CmdQ1} ->
             AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
-            case CallUp orelse is_post_hangup_command(AppName) of
-                true ->
-                    execute_control_request(Cmd, State);
-                false ->
-                    ?LOG("command '~s' is not valid after hangup, skipping", [AppName]),
-                    send_error_resp(CallId, Cmd),
-                    self() ! {force_queue_advance, CallId}
-            end,
+            _ = case CallUp orelse is_post_hangup_command(AppName) of
+                    true ->
+                        execute_control_request(Cmd, State);
+                    false ->
+                        ?LOG("command '~s' is not valid after hangup, skipping", [AppName]),
+                        send_error_resp(CallId, Cmd),
+                        self() ! {force_queue_advance, CallId}
+                end,
             {noreply, State#state{command_q=CmdQ1, current_app=AppName, current_cmd=Cmd
                                   ,keep_alive_ref=get_keep_alive_ref(State)}, hibernate}
     end;
