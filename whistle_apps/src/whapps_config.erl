@@ -505,6 +505,10 @@ couch_ready() ->
     case whereis(couch_mgr) =:= self() of
         true ->
             {ok, Cache} = whistle_apps_sup:config_cache_proc(),
-            wh_cache:store_local(Cache, {?MODULE, couch_mgr_ready}, true);
-        false -> ok
+            wh_cache:store_local(Cache, {?MODULE, couch_mgr_ready}, true
+                                 ,fun(_, _, _) ->
+                                          couch_mgr:load_configs()
+                                  end);
+        false ->
+            ok
     end.
