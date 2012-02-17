@@ -631,8 +631,9 @@ send_awesome_provisioning_request(ProvisionRequest, MACAddress) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec do_simple_provision/1 :: (#cb_context{}) -> 'ok'.
-do_simple_provision(#cb_context{doc=JObj}) ->
+do_simple_provision(#cb_context{doc=JObj}=Context) ->
     Url = whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>),
+    AccountRealm = crossbar_util:get_account_realm(Context),
     Headers = [{K, V}
                || {K, V} <- [{"Host", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_host">>)}
                              ,{"Referer", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_referer">>)}
@@ -640,7 +641,7 @@ do_simple_provision(#cb_context{doc=JObj}) ->
                              ,{"Content-Type", "application/x-www-form-urlencoded"}]
                       ,V =/= undefined],
     HTTPOptions = [],
-    Body = [{"api[realm]", wh_json:get_string_value([<<"sip">>, <<"realm">>], JObj)}
+    Body = [{"api[realm]", wh_json:get_string_value([<<"sip">>, <<"realm">>], JObj, AccountRealm)}
             ,{"mac", re:replace(wh_json:get_string_value(<<"mac_address">>, JObj, ""), "[^0-9a-fA-F]", "", [{return, list}, global])}
             ,{"label", wh_json:get_string_value(<<"name">>, JObj)}
             ,{"sip[username]", wh_json:get_string_value([<<"sip">>, <<"username">>], JObj)}
