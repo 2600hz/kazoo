@@ -447,7 +447,7 @@ handle_event(_JObj, #state{acct_id=_AcctId}=_State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{acct_id=AcctID}) ->
-    j5_util:store_account_handler(AcctID, undefined).
+    ?LOG(AcctID, "j5_acctmgr going down: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
