@@ -692,9 +692,19 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 handle_cast(load_configs, State) ->
     couch_config:ready(),
     {noreply, State};
-handle_cast({add_change_handler, _DBName, _DocID, _Pid}, #state{change_handlers=_CH, connection=_S}=State) ->
-    ?LOG("change handlers off for now"),
-    {noreply, State}.
+handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
+    case dict:find(DBName, CH) of
+        {ok, {Srv, _}} ->
+            ?LOG_SYS("found change handler(~p): adding listener(~p) for ~s:~s", [Srv, Pid, DBName, DocID]),
+            change_handler:add_listener(Srv, Pid, DocID),
+            {noreply, State};
+        error ->
+            {ok, Srv} = change_handler:start_link(couch_util:get_db(S, DBName), []),
+            ?LOG_SYS("started change handler(~p): adding listener(~p) for ~s:~s", [Srv, Pid, DBName, DocID]),
+            SrvRef = erlang:monitor(process, Srv),
+            change_handler:add_listener(Srv, Pid, DocID),
+            {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
