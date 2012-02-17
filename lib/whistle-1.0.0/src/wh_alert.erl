@@ -90,21 +90,21 @@ info(Msg, Args) ->
 debug(Msg, Args) ->
     gen_server:cast(?MODULE, #alert{level=debug, msg=Msg, args=Args}).
 
--spec format/1 :: (#alert{} | msg()) -> ok.
+-spec format/1 :: (#alert{} | msg()) -> 'ok'.
 format(Msg) ->
     format(#alert{section=sys, req_id=erlang:get(callid), module=?MODULE, line=?LINE, pid=self(), msg=Msg}).
 
--spec format/2 :: (atom() | msg(), msg() | list()) -> ok.
+-spec format/2 :: (atom() | msg(), msg() | list()) -> 'ok'.
 format(Level, Msg) when is_atom(Level) ->
     gen_server:cast(?MODULE, #alert{section=sys, req_id=erlang:get(callid), module=?MODULE, line=?LINE, pid=self(), level=Level, msg=Msg});
 format(Msg, Args) ->
     gen_server:cast(?MODULE, #alert{section=sys, req_id=erlang:get(callid), module=?MODULE, line=?LINE, pid=self(), msg=Msg, args=Args}).
 
--spec format/3 :: (atom(), list(), msg()) -> ok.
+-spec format/3 :: (atom(), list(), msg()) -> 'ok'.
 format(Section, [ReqId, Module, Line, Pid], Msg) ->
     gen_server:cast(?MODULE, #alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, msg=Msg}).
 
--spec format/4 :: (atom(), list(), atom() | msg(), msg() | list()) -> ok.
+-spec format/4 :: (atom(), list(), atom() | msg(), msg() | list()) -> 'ok'.
 format(Section, [undefined|_]=Defaults, undefined, Msg) ->
     format(Section, Defaults, ?LOG_SYSTEM_ID, Msg);
 format(Section, [ReqId|_]=Defaults, undefined, Msg) ->
@@ -114,7 +114,7 @@ format(Section, [ReqId, Module, Line, Pid], Level, Msg) when is_atom(Level) ->
 format(Section, [ReqId, Module, Line, Pid], Msg, Args) ->
     gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, msg=Msg, args=Args}).
 
--spec format/5 :: (atom(), list(), undefined | atom() | binary(), msg(), list()) -> ok.
+-spec format/5 :: (atom(), list(), undefined | atom() | binary(), msg(), list()) -> 'ok'.
 format(Section, [undefined | _]=Defaults, undefined, Msg, Args) ->
     format(Section, Defaults, ?LOG_SYSTEM_ID, Msg, Args);
 format(Section, [ReqId | _]=Defaults, undefined, Msg, Args) ->
@@ -124,7 +124,7 @@ format(Section, [ReqId, Module, Line, Pid], Level, Msg, Args) when is_atom(Level
 format(Section, [_, Module, Line, Pid], ReqId, Msg, Args) ->
     gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, msg=Msg, args=Args}).
 
--spec format/6 :: (atom(), list(), atom(), undefined | binary(), msg(), list()) -> ok.
+-spec format/6 :: (atom(), list(), atom(), undefined | binary(), msg(), list()) -> 'ok'.
 format(Section, [undefined | _]=Defaults, Level, undefined, Msg, Args) ->
     format(Section, Defaults, Level, ?LOG_SYSTEM_ID, Msg, Args);
 format(Section, [ReqId | _]=Defaults, Level, undefined, Msg, Args) ->

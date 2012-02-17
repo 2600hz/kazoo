@@ -1,9 +1,11 @@
 DIALYZER = dialyzer
 REBAR = rebar
 
+DIRS = lib/whistle-1.0.0 lib/whistle_couch-1.0.0 lib/whistle_amqp-1.0.0 lib/whistle_number_manager-1.0.0 ecallmgr whistle_apps
+
 all: app
 
-app: deps
+app:
 	@$(REBAR) compile
 
 deps:
@@ -25,10 +27,8 @@ build-plt:
 	@$(DIALYZER) --build_plt --output_plt .platform_dialyzer.plt \
 		--apps kernel stdlib sasl inets crypto public_key ssl
 
-dialyze:
-	@$(DIALYZER) --src ecallmgr/src/ --src whistle_apps/src/ --src lib/whistle-1.0.0/src/ \
-	        --src lib/whistle_couch-1.0.0/src/ --src lib/whistle_amqp-1.0.0/src/ \
-                --src lib/whistle_number_manager-1.0.0/src/ \
+dialyze: 
+	@$(DIALYZER) $(foreach DIR,$(DIRS),--src $(DIR)/src) \
                 --plt .platform_dialyzer.plt --no_native \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
 

@@ -14,7 +14,7 @@
 -type io_device() :: pid() | fd().
 -type file_stream_state() :: {'undefined' | io_device(), binary()}.
 
--spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) -> 'ok' | 'timeout' | {'error', 'invalid_callid' | 'failed'}.
+-spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) -> 'ok' | 'timeout' | {'error', ne_binary()}.
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     App = wh_json:get_value(<<"Application-Name">>, JObj),
@@ -48,10 +48,9 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 %% the FS ESL via mod_erlang_event
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> {binary(), binary() | 'noop'}
+-spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> {ne_binary(), ne_binary() | 'noop'}
                                                                                | {'return', 'ok'}
-                                                                               | {'error', binary()}
-                                                                               | {'error', binary(), binary()}.
+                                                                               | {'error', ne_binary()}.
 get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
     case wapi_dialplan:noop_v(JObj) of
         false ->
@@ -280,7 +279,9 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                                                put(callid, UUID),
                                                                S ! {self(), (catch get_bridge_endpoint(EP))}
                                                        end)
-                                                 || {_, EP} <- props:unique(KeyedEPs)]
+                                                 || {_, EP} <- props:unique(KeyedEPs)
+                                                        ,wh_json:is_json_object(EP)
+                                                ]
                                      ], D =/= ""],
 
             Generators = [fun(DP) ->
@@ -295,7 +296,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                           ,fun(DP) ->
                                    case wh_json:get_value(<<"Ringback">>, JObj) of
                                        undefined ->
-                                           {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, <<"%(2000,4000,440,480)">>),
+                                           {ok, RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
                                            [{"application", "set ringback=" ++ wh_util:to_list(RBSetting)}|DP];
                                        Ringback ->
                                            Stream = ecallmgr_util:media_path(Ringback, extant, UUID),
@@ -335,10 +336,11 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                    end
                            end
                           ,fun(DP) ->
-                                   case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
-                                       {struct, Props} ->
+                                   CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+                                   case wh_json:is_json_object(CCVs) of
+                                       true ->
                                            [{"application", <<"set ", Var/binary, "=", (wh_util:to_binary(V))/binary>>}
-                                            || {K, V} <- Props,
+                                            || {K, V} <- wh_json:to_proplist(CCVs),
                                                (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= undefined
                                            ] ++ DP;
                                        _ ->
@@ -656,9 +658,9 @@ send_cmd(Node, UUID, AppName, Args) ->
 %%--------------------------------------------------------------------
 -spec create_masquerade_event/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 create_masquerade_event(Application, EventName) ->
-    wh_util:to_list(<<"event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade"
-                      ,",whistle_event_name=", EventName/binary
-                      ,",whistle_application_name=", Application/binary>>).
+    <<"event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade"
+      ,",whistle_event_name=", EventName/binary
+      ,",whistle_application_name=", Application/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -694,7 +696,7 @@ stream_over_amqp(Node, UUID, File, JObj, Headers) ->
                 Q ->
                     Q
             end,
-    amqp_stream(DestQ, fun stream_file/1, {undefined, File}, Headers, 1),
+    _ = amqp_stream(DestQ, fun stream_file/1, {undefined, File}, Headers, 1),
     send_store_call_event(Node, UUID, <<"complete">>).
 
 %%--------------------------------------------------------------------
@@ -883,7 +885,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_store_call_event/3 :: (atom(), ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec send_store_call_event/3 :: (atom(), ne_binary(), wh_json:json_object() | ne_binary()) -> 'ok'.
 send_store_call_event(Node, UUID, MediaTransResults) ->
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
     Prop = try

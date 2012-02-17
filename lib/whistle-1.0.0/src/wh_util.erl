@@ -458,7 +458,7 @@ whistle_version(FileName) ->
             Version
     end.
 
--spec write_pid/1 :: (ne_binary() | nonempty_string()) -> 'ok' | {'error', atom()}.
+-spec write_pid/1 :: (ne_binary() | nonempty_string() | iolist()) -> 'ok' | {'error', atom()}.
 write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), [write, binary]).
 
