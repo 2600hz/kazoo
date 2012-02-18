@@ -279,8 +279,10 @@ create(#cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
-    Acl = whapps_config:get(?ECALLMGR, [?ECALLMGR_ACLS, Id]),
-    Context#cb_context{resp_data=Acl, resp_status='success'}.
+    case whapps_config:get(?ECALLMGR, [?ECALLMGR_ACLS, Id]) of 
+        undefined -> Context#cb_context{resp_status='error', resp_error_code=404};
+        Acl -> Context#cb_context{resp_data=Acl, resp_status='success'}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
