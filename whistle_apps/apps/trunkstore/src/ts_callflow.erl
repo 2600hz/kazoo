@@ -166,6 +166,15 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
             wh_call_response:send(ALeg, CtlQ, Code, Message),
 
             {hangup, State};
+        {<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>} ->
+            Resp = wh_json:get_value(<<"Application-Response">>, JObj),
+
+            ?LOG("bridge completed unexpectedly: ~s(~s)", [Resp, wh_json:get_value(<<"Hangup-Cause">>, JObj)]),
+
+            case lists:member(Resp, ?SUCCESSFUL_HANGUPS) of
+                true -> {hangup, State};
+                false -> {error, State}
+            end;
         _Unhandled ->
             ?LOG("Unhandled combo: ~p", [_Unhandled]),
             ignore
