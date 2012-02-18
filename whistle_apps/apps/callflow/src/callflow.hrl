@@ -19,9 +19,6 @@
 -define(LIST_BY_NUMBER, {<<"callflow">>, <<"listing_by_number">>}).
 -define(LIST_BY_PATTERN, {<<"callflow">>, <<"listing_by_pattern">>}).
 
-%% Hangup Causes that are fine
--define(SUCCESSFUL_HANGUPS, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
-
 -define(NO_MATCH_CF, <<"no_match">>).
 
 -define(DEFAULT_TIMEOUT, <<"20">>).
