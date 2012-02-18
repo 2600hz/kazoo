@@ -27,7 +27,7 @@
         ]).
 
 %% cleanup process
--export([start_link/0, init_it/1]).
+-export([start_link/0, init_it/0]).
 
 -include_lib("crossbar/include/crossbar.hrl").
 
@@ -69,12 +69,14 @@ init() ->
             {ok, _} -> ok
         end,
 
-    supervisor:start(crossbar_sup, crossbar_sup:child_spec(?MODULE)).
+    supervisor:start_child(crossbar_sup, crossbar_sup:child_spec(?MODULE)).
+
+
 
 start_link() ->
-    proc_lib:spawn_link(?MODULE, init_it, []).
+    {ok, proc_lib:spawn_link(?MODULE, init_it, [])}.
 
-init_it(_) ->
+init_it() ->
     State = init_state(),
     cleanup_loop(State).
 
