@@ -15,6 +15,7 @@
 -type api_terms() :: wh_json:json_object() | proplist().
 
 %% non-empty binary
+-define(NE_BINARY, <<_:8,_/binary>>).
 -type ne_binary() :: <<_:8,_:_*8>>.
 
 -type proplist_key() :: nonempty_string() | ne_binary() | atom().

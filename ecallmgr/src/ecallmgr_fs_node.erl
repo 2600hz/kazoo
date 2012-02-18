@@ -161,8 +161,9 @@ handle_info({event, [undefined | Data]}, #state{stats=Stats, node=Node}=State) -
         <<"PRESENCE_", _/binary>> = EvtName ->
             _ = case props:get_value(<<"Distributed-From">>, Data) of
                     undefined ->
-                        ecallmgr_notify:send_presence_event(EvtName, Node, Data),
-                        Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)} | Data],
+                        NodeBin = wh_util:to_binary(Node),
+                        ecallmgr_notify:send_presence_event(EvtName, NodeBin, Data),
+                        Headers = [{<<"Distributed-From">>, NodeBin} | Data],
                         [distributed_presence(Srv, EvtName, Headers)
                          || Srv <- ecallmgr_fs_sup:node_handlers(),
                             Srv =/= self()
@@ -516,7 +517,7 @@ get_unset_vars(JObj) ->
 
 -spec run_start_cmds/1 :: (atom()) -> cmd_results().
 run_start_cmds(Node) ->
-    case ecallmgr_config:get(fs_cmds, [], Node) of
+    case ecallmgr_config:get(<<"fs_cmds">>, [], Node) of
         [] ->
             ?LOG("no freeswitch commands to run, seems suspect"),
             timer:sleep(5000),

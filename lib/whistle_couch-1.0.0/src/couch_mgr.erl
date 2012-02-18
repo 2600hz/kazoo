@@ -533,7 +533,8 @@ get_conn() ->
         _E ->
             ?LOG("no server by the name of ~s", [?SERVER]),
             ST = erlang:get_stacktrace(),
-            ?LOG_STACKTRACE(ST)
+            ?LOG_STACKTRACE(ST),
+            exit(couch_mgr_died)
     end.
 
 get_admin_conn() ->
@@ -638,9 +639,7 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={O
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
 
-    couch_config:store(couch_config, {Host, Port, User, Pass, AdminPort}),
-
-    spawn(fun() -> save_config() end),
+    couch_config:store(couch_host, {Host, Port, User, Pass, AdminPort}),
 
     {reply, ok, State#state{host={Host, Port, AdminPort}
                             ,connection=Conn
@@ -654,9 +653,7 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
 
-    couch_config:store(couch_config, {Host, Port, User, Pass, AdminPort}),
-
-    spawn(fun() -> save_config() end),
+    couch_config:store(couch_host, {Host, Port, User, Pass, AdminPort}),
 
     {reply, ok, State#state{host={Host,Port,AdminPort}
                             ,connection=Conn
@@ -696,8 +693,18 @@ handle_cast(load_configs, State) ->
     couch_config:ready(),
     {noreply, State};
 handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
-    ?LOG("change handlers off for now"),
-    {noreply, State}.
+    case dict:find(DBName, CH) of
+        {ok, {Srv, _}} ->
+            ?LOG_SYS("found change handler(~p): adding listener(~p) for ~s:~s", [Srv, Pid, DBName, DocID]),
+            change_handler:add_listener(Srv, Pid, DocID),
+            {noreply, State};
+        error ->
+            {ok, Srv} = change_handler:start_link(couch_util:get_db(S, DBName), []),
+            ?LOG_SYS("started change handler(~p): adding listener(~p) for ~s:~s", [Srv, Pid, DBName, DocID]),
+            SrvRef = erlang:monitor(process, Srv),
+            change_handler:add_listener(Srv, Pid, DocID),
+            {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -789,15 +796,6 @@ init_state_from_config({H, Port, User, Pass, AdminPort}) ->
            ,host={H, wh_util:to_integer(Port), wh_util:to_integer(AdminPort)}
            ,creds={User, Pass}
           }.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec save_config/0 :: () -> 'ok'.
-save_config() ->
-    couch_config:write_config(?CONFIG_FILE_PATH).
 
 -spec remove_ref/2 :: (reference(), dict()) -> dict().
 remove_ref(Ref, CH) ->

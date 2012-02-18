@@ -119,7 +119,7 @@ mwi_update(JObj, _Props) ->
             ?LOG("sending of MWI update to ~s resulted in: ~p", [Node, Resp])
     end.
 
--spec send_presence_event/3 :: (ne_binary(), ne_binary(), proplist()) -> ok.
+-spec send_presence_event/3 :: (ne_binary(), ne_binary() | atom(), proplist()) -> 'ok'.
 send_presence_event(<<"PRESENCE_PROBE">>, Node, Data) ->
     From = props:get_value(<<"from">>, Data, <<"nouser@nodomain">>),
     To = props:get_value(<<"to">>, Data, <<"nouser@nodomain">>),
@@ -131,7 +131,7 @@ send_presence_event(<<"PRESENCE_PROBE">>, Node, Data) ->
            ,{<<"To">>, To}
            ,{<<"To-User">>, ToUser}
            ,{<<"To-Realm">>, ToRealm}
-           ,{<<"Node">>, Node}
+           ,{<<"Node">>, wh_util:to_binary(Node)}
            ,{<<"Expires">>, props:get_value(<<"expires">>, Data)}
            ,{<<"Subscription-Call-ID">>, props:get_value(<<"sub-call-id">>, Data)}
            ,{<<"Subscription-Type">>, props:get_value(<<"alt_event_type">>, Data)}

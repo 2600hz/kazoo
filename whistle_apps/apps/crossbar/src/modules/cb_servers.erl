@@ -747,7 +747,7 @@ mark_deploy_complete(Db, ServerId) ->
 compile_template(undefined, _) -> 'undefined';
 compile_template(Template, Name) when not is_binary(Template) ->
     Path = case string:substr(Template, 1, 1) of
-               "/" -> wh_json:to_binary(Template);
+               "/" -> wh_util:to_binary(Template);
                _ ->
                    BasePath = code:lib_dir(crossbar, priv),
                    lists:concat([BasePath, "/servers/", Template])

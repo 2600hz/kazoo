@@ -69,6 +69,8 @@ authn_req(Prop, Timeout) ->
                     ,{request, Prop, fun wapi_authn:publish_req/1, get(callid), Timeout}
                     ,Timeout).
 
+-spec authz_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()}.
+-spec authz_req/2 :: (proplist() | wh_json:json_object(), pos_integer()) -> {'ok', wh_json:json_object()}.
 authz_req(Prop) ->
     authz_req(Prop, ?DEFAULT_TIMEOUT).
 authz_req(Prop, Timeout) ->

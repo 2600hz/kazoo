@@ -113,7 +113,7 @@ render_template(undefined, DefaultTemplate, Props) ->
 render_template(Template, DefaultTemplate, Props) ->
     try       
         CustomTemplate = wh_util:to_atom(list_to_binary([couch_mgr:get_uuid(), "_"
-                                                        ,wh_json:to_binary(DefaultTemplate)
+                                                        ,wh_util:to_binary(DefaultTemplate)
                                                         ])
                                          ,true),
         ?LOG("compiling custom ~s template", [DefaultTemplate]),
