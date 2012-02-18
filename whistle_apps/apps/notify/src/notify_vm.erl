@@ -101,8 +101,8 @@ create_template_props(Event, Docs, Account) ->
                          ,{<<"voicemail_box">>, wh_json:get_value(<<"Voicemail-Box">>, Event)}
                          ,{<<"voicemail_media">>, wh_json:get_value(<<"Voicemail-Name">>, Event)}
                          ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
+                         ,{<<"from_address">>, FromAddress}
                         ]}
-     ,{<<"from_address">>, FromAddress}
      ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
     ].
 
