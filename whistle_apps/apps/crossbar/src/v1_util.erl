@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%% Moved util functions out of v1_resource so only REST-related calls
 %%% are in there.
 %%% @end
-%%% Created :  5 Feb 2012 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(v1_util).
 

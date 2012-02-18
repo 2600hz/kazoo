@@ -80,7 +80,7 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate/1 :: (#cb_context{}) -> boolean().
-authenticate(#cb_context{}=Context) ->
+authenticate(#cb_context{}) ->
     false.
 
 %%--------------------------------------------------------------------
@@ -91,7 +91,7 @@ authenticate(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize/1 :: (#cb_context{}) -> boolean().
-authorize(#cb_context{}=Context) ->
+authorize(#cb_context{}) ->
     false.
 
 %%--------------------------------------------------------------------

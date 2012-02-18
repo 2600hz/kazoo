@@ -65,7 +65,12 @@
           ,resp_headers = [] :: proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
           ,start = erlang:now() :: wh_now()
           ,req_id = <<"000000000000">> :: ne_binary()
-          ,storage = []
+          ,storage = [] :: proplist()
+          ,raw_host = <<>> :: binary()
+          ,port = 8000 :: integer()
+          ,raw_path = <<>> :: binary()
+          ,raw_qs = <<>> :: binary()
+          ,method = 'GET' :: http_methods()
          }).
 
 -ifdef(PROFILE).

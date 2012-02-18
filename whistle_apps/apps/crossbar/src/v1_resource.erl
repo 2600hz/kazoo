@@ -1,12 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% API resource
 %%%
 %%%
 %%% @end
-%%% Created :  05 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(v1_resource).
 
@@ -65,17 +66,26 @@ rest_init(Req0, Opts) ->
             end,
     put(callid, ReqId),
 
-    Req1 = lists:foldl(fun(Prop, ReqAcc) ->
-                               case cowboy_http_req:Prop(ReqAcc) of
-                                   {Val, ReqAcc1} -> ?LOG("~s: ~s", [Prop, wh_util:to_binary(Val)]);
-                                   {ok, Val, ReqAcc1} -> ?LOG("~s: ~s", [Prop, wh_util:to_binary(Val)])
-                               end,
-                               ReqAcc1
-                       end, Req0, [raw_host, port, raw_path, raw_qs, method]),
+    {Host, Req1} = cowboy_http_req:raw_host(Req0),
+    {Port, Req2} = cowboy_http_req:port(Req1),
+    {Path, Req3} = cowboy_http_req:port(Req2),
+    {QS, Req4} = cowboy_http_req:port(Req3),
+    {Method, Req5} = cowboy_http_req:port(Req4),
 
-    {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{}, Opts}),
-    {ok, Req2} = cowboy_http_req:set_resp_header(<<"X-Request-ID">>, ReqId, Req1),
-    {ok, Req2, Context#cb_context{req_id=ReqId}}.
+    ?LOG("host: ~s:~b", [Host, Port]),
+    ?LOG("~s: ~s?~s", [Method, Path, QS]),
+
+    Context0 = #cb_context{req_id=ReqId
+                           ,raw_host=Host
+                           ,port=Port
+                           ,raw_path=Path
+                           ,raw_qs=QS
+                           ,method=Method
+                          },
+
+    {Context1, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {Context0, Opts}),
+    {ok, Req6} = cowboy_http_req:set_resp_header(<<"X-Request-ID">>, ReqId, Req5),
+    {ok, Req6, Context1}.
 
 terminate(_, _) ->
     ?LOG_END("session finished").
