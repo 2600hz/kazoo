@@ -7,10 +7,9 @@
 %%%-------------------------------------------------------------------
 -module(wapi_switch).
 
--export([reloadacl_req/1, reloadacl_req_v/1
-        ,reloadacl_resp/1, reloadacl_resp_v/1]).
+-export([reloadacl_req/1, reloadacl_req_v/1]).
 -export([bind_q/2, unbind_q/2]).
--export([publish_reloadacl_resp/2, publish_reloadacl_resp/3]).
+-export([publish_reloadacl_req/2, publish_reloadacl_req/3]).
 
 -include("../wh_api.hrl").
 
@@ -20,14 +19,7 @@
 -define(SWITCH_EVENT_RELOADACL_REQ_HEADERS, []).
 -define(OPTIONAL_SWITCH_EVENT_RELOADACL_REQ_HEADERS, []).
 -define(SWITCH_EVENT_RELOADACL_REQ_VALUES, [{<<"Event-Name">>, <<"reloadacl">>} | ?SWITCH_EVENT_VALUES]).
-
-%% answer to reload acl
--define(SWITCH_EVENT_RELOADACL_RESP_HEADERS, []).
--define(OPTIONAL_SWITCH_EVENT_RELOADACL_RESP_HEADERS, []).
--define(SWITCH_EVENT_RELOADACL_RESP_VALUES, []).
-
 -define(SWITCH_EVENT_TYPES, []).
-
 %% Request a reloadacl
 -spec reloadacl_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 reloadacl_req(Prop) when is_list(Prop) ->
@@ -44,58 +36,41 @@ reloadacl_req_v(Prop) when is_list(Prop) ->
 reloadacl_req_v(JObj) ->
     reloadacl_req_v(wh_json:to_proplist(JObj)).
 
-%% Respond to a reloadacl
--spec reloadacl_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
-reloadacl_resp(Prop) when is_list(Prop) ->
-    case reloadacl_resp_v(Prop) of
-        true -> wh_api:build_message(Prop, ?SWITCH_EVENT_RELOADACL_RESP_HEADERS, ?OPTIONAL_SWITCH_EVENT_RELOADACL_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for switch event reloadacl resp"}
-    end;
-reloadacl_resp(JObj) ->
-    reloadacl_resp(wh_json:to_proplist(JObj)).
-
--spec reloadacl_resp_v/1 :: (api_terms()) -> boolean().
-reloadacl_resp_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?SWITCH_EVENT_RELOADACL_RESP_HEADERS, ?SWITCH_EVENT_RELOADACL_RESP_VALUES, ?SWITCH_EVENT_TYPES);
-reloadacl_resp_v(JObj) ->
-    reloadacl_resp_v(wh_json:to_proplist(JObj)).
-
-
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    CallID = props:get_value(callid, Props, <<"*">>),
+    SwitchId = props:get_value(switchid, Props, <<"*">>),
     amqp_util:configuration_exchange(),
-    bind_q(Queue, props:get_value(restrict_to, Props), CallID).
+    bind_q(Queue, props:get_value(restrict_to, Props), SwitchId).
 
-bind_q(Q, undefined, CallID) ->
-    amqp_util:bind_q_to_configuration(Q, CallID);
+bind_q(Q, undefined, SwitchId) ->
+    amqp_util:bind_q_to_configuration(Q, SwitchId);
 
-bind_q(Q, [relodacl|T], CallID) ->
-    amqp_util:bind_q_to_configuration(Q, CallID),
-    bind_q(Q, T, CallID);
-bind_q(Q, [_|T], CallID) ->
-    bind_q(Q, T, CallID);
-bind_q(_Q, [], _CallID) ->
+bind_q(Q, [relodacl|T], SwitchId) ->
+    amqp_util:bind_q_to_configuration(Q, SwitchId),
+    bind_q(Q, T, SwitchId);
+bind_q(Q, [_|T], SwitchId) ->
+    bind_q(Q, T, SwitchId);
+bind_q(_Q, [], _SwitchId) ->
     ok.
 
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
-    CallID = props:get_value(callid, Props, <<"*">>),
-    unbind_q(Queue, props:get_value(restrict_to, Props), CallID).
+    SwitchId = props:get_value(switchid, Props, <<"*">>),
+    unbind_q(Queue, props:get_value(restrict_to, Props), SwitchId).
 
-unbind_q(Q, undefined, _CallID) ->
+unbind_q(Q, undefined, _SwitchId) ->
     amqp_util:unbind_q_from_configuration(Q);
-unbind_q(Q, [reloadacl|T], CallID) ->
-    amqp_util:unbind_q_from_configuration(Q, CallID),
-    unbind_q(Q, T, CallID);
-unbind_q(Q, [_|T], CallID) ->
-    unbind_q(Q, T, CallID);
-unbind_q(_Q, [], _CallID) ->
+unbind_q(Q, [reloadacl|T], SwitchId) ->
+    amqp_util:unbind_q_from_configuration(Q, SwitchId),
+    unbind_q(Q, T, SwitchId);
+unbind_q(Q, [_|T], SwitchId) ->
+    unbind_q(Q, T, SwitchId);
+unbind_q(_Q, [], _SwitchId) ->
     ok.
 
--spec publish_reloadacl_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_reloadacl_resp(RespQ, JObj) ->
-    publish_reloadacl_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_reloadacl_resp(RespQ, Resp, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?SWITCH_EVENT_RELOADACL_RESP_VALUES, fun ?MODULE:reloadacl_resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
+-spec publish_reloadacl_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_reloadacl_req(Q, JObj) ->
+    publish_reloadacl_req(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_reloadacl_req(Q, JObj, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?SWITCH_EVENT_RELOADACL_REQ_VALUES, fun ?MODULE:reloadacl_req/1),
+    amqp_util:targeted_publish(Q, Payload, ContentType).

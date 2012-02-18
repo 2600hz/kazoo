@@ -11,7 +11,7 @@
 
 %% API
 -export([start_link/1, start_link/2, 
-        reloadacl/3]).
+        handle_config_req/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -111,7 +111,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
+handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
     ?LOG_START(ID, "received switch event request for ~s ~s from ~s", [ _Section, _Something, Node]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
     ?LOG_END("ignoring request from for ~s", [Node, props:get_value(<<"Event-Name">>, _Data)]),
@@ -215,31 +215,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec reloadacl/3 :: (Node, ID, Data) -> {ok, pid()} when
+-spec handle_config_req/3 :: (Node, ID, Data) -> {ok, pid()} when
       Node :: atom(),
       ID :: binary(),
       Data :: proplist().
-reloadacl(Node, ID, Data) ->
-    Pid = spawn_link(fun() ->
-            put(callid, ID),
-            SysconfReq = [{<<"Server-ID">>, <<"">>},
-                   {<<"Category">>, <<"ecallmgr">>},
-                   {<<"Key">>, <<"acls">>},
-                   {<<"Node">>, <<"default">>}],
-            %| wh_api:default_headers(<<>>, <<"sysconf">>, <<"sysconf_req">>, ?APP_NAME, ?APP_VERSION)],
-
-            try
-                {ok, SysconfResp} = ecallmgr_amqp_pool:get_req(SysconfReq),
-        
-                true = wapi_switch:reloadacl_resp_v(SysconfResp),
-                ?LOG(ID, "received reloadacl_resp ~p", [SysconfResp]),
-                {ok, Xml} = ecallmgr_fs_xml:reloadacl_req_xml(SysconfResp),
-                ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml])
-            catch
-                throw:_T ->
-                    ?LOG("relaodacl request lookup failed: thrown ~w", [_T]);
-                error:_E ->
-                    ?LOG("relaodacl request lookup failed: error ~w", [_E])
-            end
+handle_config_req(Node, ID, Data) ->
+    Pid = spawn_link(fun() -> ok
         end),
     {ok, Pid}.
