@@ -111,7 +111,12 @@ get_req_data(Context, Req0) ->
         <<"multipart/form-data", _/binary>> ->
             extract_multipart(Context#cb_context{query_json=QS}, Req2);
         <<"application/x-www-form-urlencoded", _/binary>> ->
-            extract_multipart(Context#cb_context{query_json=QS}, Req2);
+            case catch extract_multipart(Context#cb_context{query_json=QS}, Req2) of
+                {'EXIT', _} ->
+                    ?LOG("failed to extract multipart"),
+                    {halt, Context, Req2};
+                Resp -> Resp
+            end;
         <<"application/json", _/binary>> ->
             {JSON, Req3_1} = get_json_body(Req2),
             {Context#cb_context{req_json=JSON

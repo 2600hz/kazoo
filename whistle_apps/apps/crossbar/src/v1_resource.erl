@@ -107,39 +107,49 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
     {Tokens, Req1} = cowboy_http_req:path_info(Req0),
 
     case v1_util:parse_path_tokens(Tokens) of
-        [{Mod, Params}|_] = Nouns ->
-            Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
-
+        [_|_] = Nouns ->
             %% Because we allow tunneling of verbs through the request,
             %% we have to check and see if we need to override the actual
             %% HTTP method with the tunneled version
-            {Method, Req2} = cowboy_http_req:method(Req1),
-            {Context1, Req3} = v1_util:get_req_data(Context, Req2),
-
-            Verb = v1_util:get_http_verb(Method, Context1),
-
-            ?LOG("http method: ~s, actual verb to be used: ~s", [Method, Verb]),
-
-            Methods1 = v1_util:allow_methods(Responses, Methods, Verb, Method),
-            case v1_util:is_cors_preflight(Req3) of
-                {true, Req4} ->
-                    ?LOG("allowing OPTIONS request for CORS preflight"),
-                    {ok, Req5} = v1_util:add_cors_headers(Req4, Context),
-                    {['OPTIONS'], Req5, Context1#cb_context{allow_methods=Methods1
-                                                            ,req_nouns=Nouns
-                                                            ,req_verb=Verb
-                                                           }};
-                {false, Req4} ->
-                    ?LOG("not CORS preflight"),
-                    {ok, Req5} = v1_util:add_cors_headers(Req4, Context),
-                    {Methods1, Req5, Context1#cb_context{allow_methods=Methods1
-                                                         ,req_nouns=Nouns
-                                                         ,req_verb=Verb
-                                                        }}
+            case v1_util:get_req_data(Context, Req1) of
+                {halt, Context1, Req2} ->
+                    #cb_context{resp_error_code=StatusCode}=Context2 = crossbar_util:response_invalid_data(
+                                 wh_json:set_value(<<"error">>, <<"failed to parse request body">>, wh_json:new())
+                                 ,Context1),
+                    {_, Req3, Context3} = v1_util:create_push_response(Req2, Context2),
+                    ?LOG("setting status code: ~p", [StatusCode]),
+                    {ok, Req4} = cowboy_http_req:reply(StatusCode, Req3),
+                    {halt, Req4, Context3};
+                {Context1, Req2} -> check_preflight(Req2, Context1#cb_context{req_nouns=Nouns})
             end;
         [] ->
             ?LOG("no path tokens: ~p", [Methods]),
             {Methods, Req1, Context#cb_context{allow_methods=Methods}}
+    end.
+
+-spec check_preflight/2 :: (#http_req{}, #cb_context{}) -> {http_methods(), #http_req{}, #cb_context{}}.
+check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Params}|_]}=Context) ->
+    ?LOG("run: check_preflight"),
+    Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
+    {Method, Req1} = cowboy_http_req:method(Req0),
+    Verb = v1_util:get_http_verb(Method, Context),
+
+    ?LOG("http method: ~s, actual verb to be used: ~s", [Method, Verb]),
+
+    Methods1 = v1_util:allow_methods(Responses, Methods, Verb, Method),
+    case v1_util:is_cors_preflight(Req1) of
+        {true, Req2} ->
+            ?LOG("allowing OPTIONS request for CORS preflight"),
+            {ok, Req3} = v1_util:add_cors_headers(Req2, Context),
+            {['OPTIONS'], Req3, Context#cb_context{allow_methods=Methods1
+                                                   ,req_verb=Verb
+                                                  }};
+        {false, Req2} ->
+            ?LOG("not CORS preflight"),
+            {ok, Req3} = v1_util:add_cors_headers(Req2, Context),
+            {Methods1, Req3, Context#cb_context{allow_methods=Methods1
+                                                ,req_verb=Verb
+                                               }}
     end.
 
 malformed_request(Req, #cb_context{req_json={malformed, _}}=Context) ->
