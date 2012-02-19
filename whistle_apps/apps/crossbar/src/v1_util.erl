@@ -320,8 +320,8 @@ is_authentic(Req, #cb_context{req_verb = <<"options">>}=Context) ->
 is_authentic(Req0, Context0) ->
     Event = <<"v1_resource.authenticate">>,
     {Req1, Context1} = get_auth_token(Req0, Context0),
-    MapResp = crossbar_bindings:map(Event, Context1),
-    case crossbar_bindings:succeeded(MapResp) of
+
+    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context1)) of
         [] ->
             ?LOG("failed to authenticate"),
             {{false, <<>>}, Req1, Context1};

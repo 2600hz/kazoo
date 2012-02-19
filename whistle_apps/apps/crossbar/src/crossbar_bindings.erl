@@ -417,6 +417,7 @@ filter_out_failed({true, _}) -> true;
 filter_out_failed(true) -> true;
 filter_out_failed({false, _}) -> false;
 filter_out_failed(false) -> false;
+filter_out_failed({'EXIT', _}) -> false;
 filter_out_failed(Term) -> not wh_util:is_empty(Term).
 
 %%--------------------------------------------------------------------
@@ -429,6 +430,7 @@ filter_out_succeeded({true, _}) -> false;
 filter_out_succeeded(true) -> false;
 filter_out_succeeded({false, _}) -> true;
 filter_out_succeeded(false) -> true;
+filter_out_succeeded({'EXIT', _}) -> true;
 filter_out_succeeded(Term) -> wh_util:is_empty(Term).
 
 %% EUNIT and PropEr TESTING %%

@@ -1,6 +1,5 @@
            "cb_conferences",
            "cb_clicktocall",
-           "cb_registrations",
            "cb_ts_accounts",
            "cb_temporal_rules",
            "cb_directories",
