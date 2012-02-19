@@ -2,7 +2,6 @@
            "cb_clicktocall",
            "cb_ts_accounts",
            "cb_temporal_rules",
-           "cb_directories",
            "cb_local_resources",
            "cb_global_resources",
            "cb_braintree",

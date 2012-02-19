@@ -37,7 +37,7 @@ init() ->
     crossbar_bindings:bind(<<"v1_resource.execute.delete.devices">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -55,7 +55,7 @@ allowed_methods(_) ->
     ['GET', 'POST', 'DELETE'].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
@@ -70,7 +70,7 @@ resource_exists(_) ->
     true.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
