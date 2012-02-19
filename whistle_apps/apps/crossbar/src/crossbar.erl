@@ -1,14 +1,17 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP, INC
 %%% @doc
 %%%
 %%% @end
-%%% Created :  19 Aug 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(crossbar).
 
--export([start_link/0, stop/0]).
+-export([start_link/0, stop/0
+         ,start_mod/1, stop_mod/1
+        ]).
 
 -include("../include/crossbar.hrl").
 
@@ -65,6 +68,26 @@ start_link() ->
 -spec stop/0 :: () -> 'ok'.
 stop() ->
     ok = application:stop(crossbar).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Load a crossbar module's bindings into the bindings server
+%% @end
+%%--------------------------------------------------------------------
+-spec start_mod/1 :: (atom()) -> any().
+start_mod(CBMod) ->
+    CBMod:init().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Load a crossbar module's bindings into the bindings server
+%% @end
+%%--------------------------------------------------------------------
+-spec stop_mod/1 :: (atom()) -> any().
+stop_mod(CBMod) ->
+    crossbar_bindings:flush_mod(CBMod).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -22,7 +22,11 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, bind/3, map/2, fold/2, flush/0, flush/1, stop/0]).
+-export([start_link/0, bind/3
+         ,map/2, fold/2
+         ,flush/0, flush/1, flush_mod/1
+         ,stop/0
+        ]).
 
 %% Helper Functions for Results of a map/2
 -export([any/1, all/1, succeeded/1, failed/1]).
@@ -114,6 +118,10 @@ flush() ->
 -spec flush/1 :: (ne_binary()) -> 'ok'.
 flush(Binding) ->
     gen_server:cast(?MODULE, {flush, Binding}).
+
+-spec flush_mod/1 :: (atom()) -> 'ok'.
+flush_mod(CBMod) ->
+    gen_server:cast(?MODULE, {flush_mod, CBMod}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -255,6 +263,13 @@ handle_cast({flush, Binding}, #state{bindings=Bs}=State) ->
         {_, _, _} ->
             {noreply, State#state{bindings=lists:keydelete(Binding, 1, Bs)}, hibernate}
     end;
+handle_cast({flush_mod, CBMod}, #state{bindings=Bs}=State) ->
+    ?LOG("trying to flush ~s", [CBMod]),
+    Bs1 = [ {Binding, BParts, MFs1}
+            || {Binding, BParts, MFs} <- Bs,
+               not queue:is_empty(MFs1 = queue:filter(fun({Mod, _}) -> Mod =/= CBMod end, MFs))
+          ],
+    {noreply, State#state{bindings=Bs1}};
 handle_cast(stop, State) ->
     {stop, normal, State}.
 
