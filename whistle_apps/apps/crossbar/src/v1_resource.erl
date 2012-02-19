@@ -68,9 +68,9 @@ rest_init(Req0, Opts) ->
 
     {Host, Req1} = cowboy_http_req:raw_host(Req0),
     {Port, Req2} = cowboy_http_req:port(Req1),
-    {Path, Req3} = cowboy_http_req:port(Req2),
-    {QS, Req4} = cowboy_http_req:port(Req3),
-    {Method, Req5} = cowboy_http_req:port(Req4),
+    {Path, Req3} = cowboy_http_req:raw_path(Req2),
+    {QS, Req4} = cowboy_http_req:raw_qs(Req3),
+    {Method, Req5} = cowboy_http_req:method(Req4),
 
     ?LOG("host: ~s:~b", [Host, Port]),
     ?LOG("~s: ~s?~s", [Method, Path, QS]),
