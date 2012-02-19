@@ -127,6 +127,7 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
     end.
 
 validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context, <<"recovery">>) ->
+    crossbar_util:put_reqid(Context),
     case wh_json_validator:is_valid(Data, <<"user_auth_recovery">>) of
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
@@ -162,6 +163,7 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context, <<"recovery">
             end
     end;
 validate(Context, _Path) ->
+    crossbar_util:put_reqid(Context),
     ?LOG("bad path: ~p", [_Path]),
     ?LOG("req verb: ~s", [Context#cb_context.req_verb]),
     crossbar_util:response_faulty_request(Context).
@@ -169,8 +171,10 @@ validate(Context, _Path) ->
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 -spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 put(Context) ->
+    crossbar_util:put_reqid(Context),
     create_token(Context).
 put(Context, <<"recovery">>) ->
+    crossbar_util:put_reqid(Context),
     reset_users_password(Context).
 
 %%%===================================================================
@@ -186,7 +190,7 @@ put(Context, <<"recovery">>) ->
 %% This can possibly return an empty binary.
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_account_name/1 :: (undefined | ne_binary()) -> binary().
+-spec normalize_account_name/1 :: ('undefined' | ne_binary()) -> ne_binary().
 normalize_account_name(undefined) ->
     undefined;
 normalize_account_name(AccountName) ->
