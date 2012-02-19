@@ -17,10 +17,7 @@
          ,authenticate/1
         ]).
 
-
 -include_lib("crossbar/include/crossbar.hrl").
-
--define(SERVER, ?MODULE).
 
 %%%===================================================================
 %%% API

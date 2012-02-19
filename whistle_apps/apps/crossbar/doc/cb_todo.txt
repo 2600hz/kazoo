@@ -1,5 +1,4 @@
            "cb_conferences",
-           "cb_servers",
            "cb_clicktocall",
            "cb_registrations",
            "cb_ts_accounts",
