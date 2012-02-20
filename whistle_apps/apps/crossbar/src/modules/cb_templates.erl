@@ -32,7 +32,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.templates">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.templates">>, ?MODULE, validate),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.templates">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.templates">>, ?MODULE, delete),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.templates">>, ?MODULE, delete),
     crossbar_bindings:bind(<<"account.created">>, ?MODULE, account_created).
 
 %%--------------------------------------------------------------------
