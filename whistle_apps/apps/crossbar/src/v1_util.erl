@@ -462,7 +462,8 @@ validate(#cb_context{req_nouns=Nouns}=Context0) ->
 process_billing(Context0)->
     Event = <<"v1_resource.billing">>,
     case crossbar_bindings:fold(Event, Context0) of
-        #cb_context{}=Resp -> ?LOG("billing returned"), Resp;
+        #cb_context{resp_status=success}=Resp -> ?LOG("billing returned"), Resp;
+        #cb_context{}=Resp -> ?LOG("billing failed"), Resp;
         _E -> ?LOG("billing failed: ~p", [_E]), Context0
     end.
 
