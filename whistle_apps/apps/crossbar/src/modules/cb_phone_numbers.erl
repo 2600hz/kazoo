@@ -1,5 +1,4 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
@@ -7,329 +6,59 @@
 %%% Handle client requests for phone_number documents
 %%%
 %%% @end
-%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_phone_numbers).
 
--behaviour(gen_server).
-
-%% API
--export([start_link/0]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([init/0
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,content_types_accepted/3, content_types_accepted/4
+         ,validate/1, validate/2, validate/3, validate/4
+         ,authorize/1
+         ,authenticate/1
+         ,put/2, put/3, put/4
+         ,post/2, post/4
+         ,delete/2, delete/4
+        ]).
 
 -include("../../include/crossbar.hrl").
-
--define(SERVER, ?MODULE).
 
 -define(PORT_DOCS, <<"docs">>).
 -define(ACTIVATE, <<"activate">>).
 
 -define(WNM_NUMBER_STATUS, [<<"discovery">>, <<"available">>, <<"reserved">>, <<"released">>
-                                ,<<"in_service">>, <<"disconnected">>, <<"cancelled">>]).
+                                ,<<"in_service">>, <<"disconnected">>, <<"cancelled">>
+                           ]).
 
 -define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 8}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
 
--define(MIME_TYPES, ["application/pdf"
-                     ,"application/x-gzip"
-                     ,"application/zip"
-                     ,"application/x-rar-compressed"
-                     ,"application/x-tar"
-                     ,"image/*"
-                     ,"text/plain"
-                     ,"application/octet-stream"]).
+-define(MIME_TYPES, [{<<"application">>, <<"pdf">>}
+                     ,{<<"application">>, <<"x-gzip">>}
+                     ,{<<"application">>, <<"zip">>}
+                     ,{<<"application">>, <<"x-rar-compressed">>}
+                     ,{<<"application">>, <<"x-tar">>}
+                     ,{<<"image">>, <<"*">>}
+                     ,{<<"text">>, <<"plain">>}
+                     ,{<<"application">>, <<"octet-stream">>}
+                    ]).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+init() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.phone_numbers">>, ?MODULE, content_types_accepted),
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.phone_numbers">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.phone_numbers">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.phone_numbers">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.phone_numbers">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.phone_numbers">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"v1_resource.execute.delete.phone_numbers">>, ?MODULE, delete).
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init(_) ->
-    {ok, ok, 0}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.content_types_accepted.phone_numbers">>, {RD, Context, Params}}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = content_types_accepted(Params, Context),
-                  Pid ! {binding_result, true, {RD, Context1, Params}}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
-                 ,{RD, #cb_context{req_nouns=[{<<"phone_numbers">>,[]}]
-                                   ,req_id=ReqId, req_verb = <<"get">>}=Context}}, State) ->
-    ?LOG(ReqId, "authorizing request", []),
-    Pid ! {binding_result, true, {RD, Context}},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
-                 ,{RD, #cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}=Context}}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  ?LOG("authenticating request"),
-                  Pid ! {binding_result, true, {RD, Context}}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.phone_numbers">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = allowed_methods(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.phone_numbers">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = resource_exists(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.validate.phone_numbers">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.phone_numbers">>
-                 ,[RD, #cb_context{account_id=AccountId, doc=JObj}=Context | [Number]=Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Result = wh_number_manager:set_public_fields(Number, AccountId, JObj),
-                  Context1 = set_response(Result, Number, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.phone_numbers">>
-                 ,[RD, #cb_context{account_id=AccountId, req_files=Files}=Context | [Number, ?PORT_DOCS, _]=Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = put_attachments(Number, AccountId, Context, Files),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
-                 ,[RD, #cb_context{account_id=AccountId, doc=JObj}=Context | [Number]=Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Result = wh_number_manager:reserve_number(Number, AccountId, JObj),
-                  Context1 = set_response(Result, Number, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
-                 ,[RD, #cb_context{account_id=AccountId, doc=JObj}=Context | [Number, ?ACTIVATE]=Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = case wh_number_manager:assign_number_to_account(Number, AccountId, JObj) of
-                                 {ok, _}=Result ->
-                                     case set_response(Result, Number, Context) of
-                                         #cb_context{resp_status=success}=C1 ->
-                                             Replaces = wh_json:get_ne_value(<<"replaces">>, JObj),
-                                             process_replaces(wnm_util:normalize_number(Number)
-                                                              ,wnm_util:normalize_number(Replaces)
-                                                              ,C1);
-                                         Else ->
-                                             Else
-                                     end;
-                                 Else ->
-                                     set_response(Else, Number, Context)
-                             end,
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
-                 ,[RD, #cb_context{account_id=AccountId, req_files=Files}=Context | [Number, ?PORT_DOCS]=Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = put_attachments(Number, AccountId, Context, Files),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.phone_numbers">>
-                 ,[RD, #cb_context{account_id=AccountId, req_files=Files}=Context | [Number, ?PORT_DOCS, _]=Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = put_attachments(Number, AccountId, Context, Files),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.phone_numbers">>
-                 ,[RD, #cb_context{account_id=AccountId}=Context | [Number]=Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Result = wh_number_manager:release_number(Number, AccountId),
-                  Pid ! {binding_result, true, [RD, set_response(Result, Number, Context), Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.phone_numbers">>
-                 ,[RD, #cb_context{account_id=AccountId}=Context | [Number, ?PORT_DOCS, Name]=Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Result = wh_number_manager:delete_attachment(Number, AccountId, Name),
-                  Pid ! {binding_result, true, [RD, set_response(Result, Number, Context), Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, _, Payload}, State) ->
-    Pid ! {binding_result, false, Payload},
-    {noreply, State};
-
-handle_info(timeout, State) ->
-    bind_to_crossbar(),
-    {noreply, State};
-
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function binds this server to the crossbar bindings server,
-%% for the keys we need to consume.
-%% @end
-%%--------------------------------------------------------------------
--spec bind_to_crossbar/0 :: () ->  no_return().
-bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.phone_numbers">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.phone_numbers">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.phone_numbers">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.phone_numbers">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.phone_numbers">>).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec content_types_accepted/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
-content_types_accepted([_Number, ?PORT_DOCS], #cb_context{req_verb = <<"put">>}=Context) ->
-    CTA = [{from_binary, ?MIME_TYPES}],
-    Context#cb_context{content_types_accepted=CTA};
-content_types_accepted([_Number, ?PORT_DOCS, _Name], #cb_context{req_verb = <<"put">>}=Context) ->
-    CTA = [{from_binary, ?MIME_TYPES}],
-    Context#cb_context{content_types_accepted=CTA};
-content_types_accepted([_Number, ?PORT_DOCS, _Name], #cb_context{req_verb = <<"post">>}=Context) ->
-    CTA = [{from_binary, ?MIME_TYPES}],
-    Context#cb_context{content_types_accepted=CTA};
-content_types_accepted(_, Context) -> Context.
- 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -339,19 +68,23 @@ content_types_accepted(_, Context) -> Context.
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: ([ne_binary(),...] | []) -> {boolean(), http_methods()}.
-allowed_methods([]) ->
-    {true, ['GET']};
-allowed_methods([_]) ->
-    {true, ['GET', 'PUT', 'POST', 'DELETE']};
-allowed_methods([_, ?ACTIVATE]) ->
-    {true, ['PUT']};
-allowed_methods([_, ?PORT_DOCS]) ->
-    {true, ['GET', 'PUT']};
-allowed_methods([_, ?PORT_DOCS, _]) ->
-    {true, ['PUT', 'POST', 'DELETE']};
+-spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
+-spec allowed_methods/3 :: (path_token(), path_token(), path_token()) -> http_methods().
+allowed_methods() ->
+    ['GET'].
+
 allowed_methods(_) ->
-    {false, []}.
+    ['GET', 'PUT', 'POST', 'DELETE'].
+
+allowed_methods(_, ?ACTIVATE) ->
+    ['PUT'];
+allowed_methods(_, ?PORT_DOCS) ->
+    ['GET', 'PUT'].
+
+allowed_methods(_, ?PORT_DOCS, _) ->
+    ['PUT', 'POST', 'DELETE'].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -361,22 +94,49 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: ([ne_binary(),...] | []) -> {boolean(), []}.
-resource_exists([]) ->
-    {true, []};
-resource_exists([_]) ->
-    {true, []};
-resource_exists([_, ?ACTIVATE]) ->
-    {true, []};
-resource_exists([_, ?PORT_DOCS]) ->
-    {true, []};
-resource_exists([_, ?PORT_DOCS, _]) ->
-    {true, []};
+-spec resource_exists/0 :: () -> boolean().
+-spec resource_exists/1 :: (path_token()) -> boolean().
+-spec resource_exists/2 :: (path_token(), path_token()) -> boolean().
+-spec resource_exists/3 :: (path_token(), path_token(), path_token()) -> boolean().
+resource_exists() ->
+    true.
+
 resource_exists(_) ->
-    {false, []}.
+    true.
+
+resource_exists(_, ?ACTIVATE) ->
+    true;
+resource_exists(_, ?PORT_DOCS) ->
+    true.
+
+resource_exists(_, ?PORT_DOCS, _) ->
+    true.
 
 %%--------------------------------------------------------------------
 %% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec content_types_accepted/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec content_types_accepted/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+content_types_accepted(#cb_context{req_verb = <<"put">>}=Context, _Number, ?PORT_DOCS) ->
+    Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]}.
+
+content_types_accepted(#cb_context{req_verb = <<"put">>}=Context, _Number, ?PORT_DOCS, _Name) ->
+    Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]};
+content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _Number, ?PORT_DOCS, _Name) ->
+    Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]}.
+
+
+authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}) ->
+    true.
+
+authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}) ->
+    true.
+
+%%--------------------------------------------------------------------
+%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -384,42 +144,97 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: ([ne_binary(),...] | [], #cb_context{}) -> #cb_context{}.
-validate([], #cb_context{req_verb = <<"get">>, account_id=undefined}=Context) ->
+-spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec validate/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+
+validate(#cb_context{req_verb = <<"get">>, account_id=undefined}=Context) ->
     find_numbers(Context);
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    summary(Context);
-validate([Number], #cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = <<"get">>}=Context) ->
+    summary(Context).
+
+validate(#cb_context{req_verb = <<"get">>}=Context, Number) ->
     read(Number, Context);
-validate([Number], #cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = <<"put">>}=Context, Number) ->
     create(Number, Context);
-validate([Number], #cb_context{req_verb = <<"post">>}=Context) ->
+validate(#cb_context{req_verb = <<"post">>}=Context, Number) ->
     update(Number, Context);
-validate([Number], #cb_context{req_verb = <<"delete">>}=Context) ->
-    delete(Number, Context);
-validate([Number, ?ACTIVATE], #cb_context{req_verb = <<"put">>}=Context) ->
+validate(#cb_context{req_verb = <<"delete">>}=Context, _Number) ->
+    validate_delete(Context).
+
+validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?ACTIVATE) ->
     create(Number, Context);
-validate([Number, ?PORT_DOCS], #cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = <<"get">>}=Context, Number, ?PORT_DOCS) ->
     list_attachments(Number, Context);
-validate([_, ?PORT_DOCS], #cb_context{req_verb = <<"put">>, req_files=[]}=Context) ->
+validate(#cb_context{req_verb = <<"put">>, req_files=[]}=Context, _, ?PORT_DOCS) ->
     ?LOG_SYS("No files in request to save attachment"),
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
-validate([Number, ?PORT_DOCS], #cb_context{req_verb = <<"put">>}=Context) ->
-    read(Number, Context);
-validate([_, ?PORT_DOCS, _], #cb_context{req_verb = <<"put">>, req_files=[]}=Context) ->
+validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?PORT_DOCS) ->
+    read(Number, Context).
+
+validate(#cb_context{req_verb = <<"put">>, req_files=[]}=Context, _, ?PORT_DOCS, _) ->
     ?LOG_SYS("No files in request to save attachment"),
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
-validate([Number, ?PORT_DOCS, Name], #cb_context{req_verb = <<"put">>, req_files=[{_, FileObj}]}=Context) ->
+validate(#cb_context{req_verb = <<"put">>, req_files=[{_, FileObj}]}=Context, Number, ?PORT_DOCS, Name) ->
     read(Number, Context#cb_context{req_files=[{Name, FileObj}]});
-validate([_, ?PORT_DOCS, _], #cb_context{req_verb = <<"post">>, req_files=[]}=Context) ->
+validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, _, ?PORT_DOCS, _) ->
     ?LOG_SYS("No files in request to save attachment"),
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
-validate([Number, ?PORT_DOCS, Name], #cb_context{req_verb = <<"post">>, req_files=[{_, FileObj}]}=Context) ->
+validate(#cb_context{req_verb = <<"post">>, req_files=[{_, FileObj}]}=Context, Number, ?PORT_DOCS, Name) ->
     read(Number, Context#cb_context{req_files=[{Name, FileObj}]});
-validate([Number, ?PORT_DOCS, _], #cb_context{req_verb = <<"delete">>}=Context) ->
-    read(Number, Context);
-validate(_, Context) ->
-    crossbar_util:response_faulty_request(Context).
+validate(#cb_context{req_verb = <<"delete">>}=Context, Number, ?PORT_DOCS, _) ->
+    read(Number, Context).
+
+-spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+post(#cb_context{account_id=AccountId, doc=JObj}=Context, Number) ->
+    Result = wh_number_manager:set_public_fields(Number, AccountId, JObj),
+    set_response(Result, Number, Context).
+
+post(#cb_context{account_id=AccountId, req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
+    put_attachments(Number, AccountId, Context, Files).
+
+-spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec put/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec put/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+put(#cb_context{account_id=AccountId, doc=JObj}=Context, Number) ->
+    Result = wh_number_manager:reserve_number(Number, AccountId, JObj),
+    set_response(Result, Number, Context).
+
+put(#cb_context{account_id=AccountId, doc=JObj}=Context, Number, ?ACTIVATE) ->
+    case wh_number_manager:assign_number_to_account(Number, AccountId, JObj) of
+        {ok, _}=Result ->
+            case set_response(Result, Number, Context) of
+                #cb_context{resp_status=success}=C1 ->
+                    Replaces = wh_json:get_ne_value(<<"replaces">>, JObj),
+                    process_replaces(wnm_util:normalize_number(Number)
+                                     ,wnm_util:normalize_number(Replaces)
+                                     ,C1);
+                Else ->
+                    Else
+            end;
+        Else ->
+            set_response(Else, Number, Context)
+    end;
+put(#cb_context{account_id=AccountId, req_files=Files}=Context, Number, ?PORT_DOCS) ->
+    put_attachments(Number, AccountId, Context, Files).
+
+put(#cb_context{account_id=AccountId, req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
+    put_attachments(Number, AccountId, Context, Files).
+
+-spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
+delete(#cb_context{account_id=AccountId}=Context, Number) ->
+    Result = wh_number_manager:release_number(Number, AccountId),
+    set_response(Result, Number, Context).
+delete(#cb_context{account_id=AccountId}=Context, Number, ?PORT_DOCS, Name) ->
+    Result = wh_number_manager:delete_attachment(Number, AccountId, Name),
+    set_response(Result, Number, Context).
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
  
 %%--------------------------------------------------------------------
 %% @private
@@ -513,8 +328,8 @@ update(_, #cb_context{req_data=Data}=Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec delete/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-delete(_, Context) ->
+-spec validate_delete/1 :: (#cb_context{}) -> #cb_context{}.
+validate_delete(#cb_context{}=Context) ->
     Context#cb_context{resp_status=success
                        ,doc=undefined
                       }.

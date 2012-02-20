@@ -91,7 +91,7 @@ do_menu_migration(Menu, Db) ->
         {ok, Bin} ->
             Name = <<(wh_json:get_value(<<"name">>, Doc, <<>>))/binary, " menu greeting">>,
             MediaId = create_media_doc(Name, <<"menu">>, MenuId, Db),
-            AName = <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>,
+            AName = <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>,
             {ok, _} = couch_mgr:put_attachment(Db, MediaId, AName, Bin),
             ok = update_doc([<<"media">>, <<"greeting">>], MediaId, MenuId, Db),
             ok = update_doc([<<"pvt_vsn">>], <<"2">>, MenuId, Db),

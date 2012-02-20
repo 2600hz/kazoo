@@ -1,209 +1,43 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
-%%%
 %%%
 %%% Handle client requests for onboard documents
 %%%
 %%% @end
-%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_onboard).
 
--behaviour(gen_server).
-
-%% API
--export([start_link/0]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([init/0
+         ,allowed_methods/0
+         ,resource_exists/0
+         ,validate/1
+         ,authorize/1
+         ,authenticate/1
+         ,put/1
+        ]).
 
 -include("../../include/crossbar.hrl").
 
--define(SERVER, ?MODULE).
 -define(OB_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".onboard">>).
 -define(DEFAULT_FLOW, "{\"data\": { \"id\": \"~s\" }, \"module\": \"user\", \"children\": { \"_\": { \"data\": { \"id\": \"~s\" }, \"module\": \"voicemail\", \"children\": {}}}}").
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+init() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize),
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.onboard">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.onboard">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.onboard">>, ?MODULE, validate),
+    crossbar_bindings:bind(<<"v1_resource.execute.put.onboard">>, ?MODULE, put).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init(_) ->
-    {ok, ok, 0}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
-                 ,{RD, #cb_context{req_nouns=[{<<"onboard">>,[]}]
-                                   ,req_verb = <<"put">>
-                                   ,req_id=ReqId}=Context}}, State) ->
-    ?LOG(ReqId, "authorizing request", []),
-    Pid ! {binding_result, true, {RD, Context}},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
-                 ,{RD, #cb_context{req_nouns=[{<<"onboard">>,[]}]
-                                   ,req_verb = <<"put">>
-                                   ,req_id=ReqId}=Context}}, State) ->
-    ?LOG(ReqId, "authenticating request", []),
-    Pid ! {binding_result, true, {RD, Context}},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.onboard">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = allowed_methods(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.onboard">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = resource_exists(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.validate.onboard">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.onboard">>, [RD, #cb_context{doc=Data}=Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = populate_new_account(Data, Context),
-                  Pid ! {binding_result, true, [RD, create_response(RD, Context1), Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, _, Payload}, State) ->
-    Pid ! {binding_result, false, Payload},
-    {noreply, State};
-
-handle_info(timeout, State) ->
-    bind_to_crossbar(),
-    {noreply, State};
-
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function binds this server to the crossbar bindings server,
-%% for the keys we need to consume.
-%% @end
-%%--------------------------------------------------------------------
--spec bind_to_crossbar/0 :: () ->  no_return().
-bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.onboard">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.onboard">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.onboard">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.put.onboard">>).
-
-%%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -211,28 +45,24 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: ([ne_binary(),...] | []) -> {boolean(), http_methods()}.
-allowed_methods([]) ->
-    {true, ['PUT']};
-allowed_methods(_) ->
-    {false, []}.
+-spec allowed_methods/0 :: () -> http_methods().
+allowed_methods() ->
+    ['PUT'].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: ([ne_binary(),...] | []) -> {boolean(), []}.
-resource_exists([]) ->
-    {true, []};
-resource_exists(_) ->
-    {false, []}.
+-spec resource_exists/0 :: () -> 'true'.
+resource_exists() ->
+    true.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -240,8 +70,8 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: ([ne_binary(),...] | [], #cb_context{}) -> #cb_context{}.
-validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
+-spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
     Generators = [fun(R) -> create_extensions(JObj, Context, R) end
                   ,fun(R) -> create_phone_numbers(JObj, Context, R) end
                   ,fun(R) -> create_braintree_cards(JObj, Context, R) end
@@ -258,9 +88,18 @@ validate([], #cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
                 false ->
                     crossbar_util:response_invalid_data(Failures, Context)
             end
-    end;
-validate(_, Context) ->
-    crossbar_util:response_faulty_request(Context).
+    end.
+
+authorize(#cb_context{req_nouns=[{<<"onboard">>,[]}]
+                      ,req_verb = <<"put">>}) ->
+    true.
+
+authenticate(#cb_context{req_nouns=[{<<"onboard">>,[]}]
+                                   ,req_verb = <<"put">>}) ->
+    true.
+
+put(#cb_context{doc=Data}=Context) ->
+    create_response(populate_new_account(Data, Context)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -310,14 +149,13 @@ create_account(JObj, Context, {Pass, Fail}) ->
                           wh_json:set_value(<<"_id">>, Id, J) 
                   end
                  ],
-    Payload = [undefined
-               ,Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Account, Generators)
-                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]}
+    Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Account, Generators)
+                                  ,req_nouns=[{?WH_ACCOUNTS_DB, []}]}
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.accounts">>, Payload) of
-        [_, #cb_context{resp_status=success}=Context1 | _] ->
+        #cb_context{resp_status=success}=Context1 ->
             {[{?WH_ACCOUNTS_DB, Context1}|Pass], Fail};
-        [_, #cb_context{resp_data=Errors} | _] ->
+        #cb_context{resp_data=Errors} ->
             {Pass, wh_json:set_value(<<"account">>, Errors, Fail)}
     end.
 
@@ -340,15 +178,14 @@ create_phone_numbers(JObj, Context, Results) ->
                 end, Results, wh_json:get_keys(PhoneNumbers)).
 
 create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
-    Payload = [undefined
-               ,Context#cb_context{req_data=Properties
-                                   ,db_name = <<"--">>}
+    Payload = [Context#cb_context{req_data=Properties
+                                  ,db_name = <<"--">>}
                ,Number, <<"activate">>
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.phone_numbers">>, Payload) of
-        [_, #cb_context{resp_status=success}=Context1 | _] ->
+        #cb_context{resp_status=success}=Context1 ->
             {[{<<"phone_numbers">>, Context1#cb_context{storage=Number}}|Pass], Fail};
-        [_, #cb_context{resp_data=Errors} | _] ->
+        #cb_context{resp_data=Errors} ->
             {Pass, wh_json:set_value([<<"phone_numbers">>, Number], Errors, Fail)}
     end.
 
@@ -376,16 +213,15 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
                                   end
                           end
                          ],
-            Payload = [undefined
-                       ,Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Customer, Generators)
-                                           ,account_id=AccountId
-                                           ,req_verb = <<"post">>}
+            Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Customer, Generators)
+                                          ,account_id=AccountId
+                                          ,req_verb = <<"post">>}
                        ,<<"customer">>
                       ],
             case crossbar_bindings:fold(<<"v1_resource.validate.braintree">>, Payload) of
-                [_, #cb_context{resp_status=success}=Context1 | _] ->
+                #cb_context{resp_status=success}=Context1 ->
                     {[{<<"braintree">>, Context1}|Pass], Fail};
-                [_, #cb_context{resp_data=Errors} | _] ->
+                #cb_context{resp_data=Errors} ->
                     {Pass, wh_json:set_value(<<"braintree">>, Errors, Fail)}
             end
     end.
@@ -443,13 +279,11 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
                            end
                    end
                  ],
-    Payload = [undefined
-               ,Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, User, Generators)}
-              ],
+    Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, User, Generators)}],
     case crossbar_bindings:fold(<<"v1_resource.validate.users">>, Payload) of
-        [_, #cb_context{resp_status=success}=Context1 | _] ->
+        #cb_context{resp_status=success}=Context1 ->
             {[{<<"users">>, Context1#cb_context{storage=Iteration}}|Pass], Fail};
-        [_, #cb_context{resp_data=Errors} | _] ->
+        #cb_context{resp_data=Errors} ->
             {Pass, wh_json:set_value(<<"user">>, Errors, Fail)}
     end.
 
@@ -510,13 +344,11 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                            end
                    end
                  ],
-    Payload = [undefined
-               ,Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Device, Generators)}
-              ],
+    Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Device, Generators)}],
     case crossbar_bindings:fold(<<"v1_resource.validate.devices">>, Payload) of
-        [_, #cb_context{resp_status=success}=Context1 | _] ->
+        #cb_context{resp_status=success}=Context1 ->
             {[{<<"devices">>, Context1#cb_context{storage=Iteration}}|Pass], Fail};
-        [_, #cb_context{resp_data=Errors} | _] ->
+        #cb_context{resp_data=Errors} ->
             {Pass, wh_json:set_value(<<"device">>, Errors, Fail)}
     end.
 
@@ -566,13 +398,11 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
                            end
                    end
                  ],
-    Payload = [undefined
-               ,Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, VMBox, Generators)}
-              ],
+    Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, VMBox, Generators)}],
     case crossbar_bindings:fold(<<"v1_resource.validate.vmboxes">>, Payload) of
-        [_, #cb_context{resp_status=success}=Context1 | _] ->
+        #cb_context{resp_status=success}=Context1 ->
             {[{<<"vmboxes">>, Context1#cb_context{storage=Iteration}}|Pass], Fail};
-        [_, #cb_context{resp_data=Errors} | _] ->
+        #cb_context{resp_data=Errors} ->
             {Pass, wh_json:set_value(<<"vmbox">>, Errors, Fail)}
     end.
 
@@ -613,13 +443,11 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
                            end     
                    end
                  ],
-    Payload = [undefined
-               ,Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Callflow, Generators)}
-              ],
+    Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Callflow, Generators)}],
     case crossbar_bindings:fold(<<"v1_resource.validate.callflows">>, Payload) of
-        [_, #cb_context{resp_status=success}=Context1 | _] ->
+        #cb_context{resp_status=success}=Context1 ->
             {[{<<"callflows">>, Context1#cb_context{storage=Iteration}}|Pass], Fail};
-        [_, #cb_context{resp_data=Errors} | _] ->
+        #cb_context{resp_data=Errors} ->
             {Pass, wh_json:set_value(<<"callflow">>, Errors, Fail)}
     end.
 
@@ -654,15 +482,14 @@ populate_new_account([], _, Results) ->
     Results;
 
 populate_new_account([{<<"phone_numbers">>, #cb_context{storage=Number}=Context}|Props], AccountDb, Results) ->
-    Payload = [undefined
-               ,Context#cb_context{db_name=AccountDb
-                                   ,account_id=wh_util:format_account_id(AccountDb, raw)}
+    Payload = [Context#cb_context{db_name=AccountDb
+                                  ,account_id=wh_util:format_account_id(AccountDb, raw)}
                ,Number, <<"activate">>
               ],
     case crossbar_bindings:fold(<<"v1_resource.execute.put.phone_numbers">>, Payload) of
-        [_, #cb_context{resp_status=success} | _] ->
+        #cb_context{resp_status=success} ->
             populate_new_account(Props, AccountDb, Results);
-        [_, #cb_context{resp_error_msg=ErrMsg, resp_error_code=ErrCode, resp_data=ErrData} | _] ->
+        #cb_context{resp_error_msg=ErrMsg, resp_error_code=ErrCode, resp_data=ErrData} ->
             Error = wh_json:from_list([{<<"error">>, ErrCode}, {<<"message">>, ErrMsg}, {<<"data">>, ErrData}]),
             populate_new_account(Props, AccountDb
                                  ,wh_json:set_value([<<"errors">>, <<"phone_numbers">>, Number], Error, Results))
@@ -670,16 +497,15 @@ populate_new_account([{<<"phone_numbers">>, #cb_context{storage=Number}=Context}
 
 populate_new_account([{<<"braintree">>, Context}|Props], AccountDb, Results) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
-    Payload = [undefined
-               ,Context#cb_context{db_name=AccountDb
-                                   ,account_id=AccountId
-                                   ,req_verb = <<"post">>}
+    Payload = [Context#cb_context{db_name=AccountDb
+                                  ,account_id=AccountId
+                                  ,req_verb = <<"post">>}
                ,<<"customer">>
               ],
     case crossbar_bindings:fold(<<"v1_resource.execute.post.braintree">>, Payload) of
-        [_, #cb_context{resp_status=success} | _] ->
+        #cb_context{resp_status=success} ->
             populate_new_account(Props, AccountDb, Results);
-        [_, #cb_context{resp_error_msg=ErrMsg, resp_error_code=ErrCode, resp_data=ErrData} | _] ->
+        #cb_context{resp_error_msg=ErrMsg, resp_error_code=ErrCode, resp_data=ErrData} ->
             crossbar_util:disable_account(AccountId),
             Error = wh_json:from_list([{<<"error">>, ErrCode}, {<<"message">>, ErrMsg}, {<<"data">>, ErrData}]),
             populate_new_account(Props, AccountDb
@@ -687,11 +513,9 @@ populate_new_account([{<<"braintree">>, Context}|Props], AccountDb, Results) ->
     end;
 
 populate_new_account([{Event, #cb_context{storage=Iteration}=Context}|Props], AccountDb, Results) ->
-    Payload = [undefined
-               ,Context#cb_context{db_name=AccountDb}
-              ],
+    Payload = [Context#cb_context{db_name=AccountDb}],
     case crossbar_bindings:fold(<<"v1_resource.execute.put.", Event/binary>>, Payload) of
-        [_, #cb_context{resp_status=success, doc=JObj} | _] ->
+        #cb_context{resp_status=success, doc=JObj} ->
             case wh_json:get_value(<<"priv_level">>, JObj) of
                 <<"admin">> ->
                     populate_new_account(Props, AccountDb
@@ -699,7 +523,7 @@ populate_new_account([{Event, #cb_context{storage=Iteration}=Context}|Props], Ac
                 _ ->
                     populate_new_account(Props, AccountDb, Results)
             end;
-        [_, #cb_context{resp_error_msg=ErrMsg, resp_error_code=ErrCode, resp_data=ErrData} | _] ->
+        #cb_context{resp_error_msg=ErrMsg, resp_error_code=ErrCode, resp_data=ErrData} ->
             Error = wh_json:from_list([{<<"error">>, ErrCode}, {<<"message">>, ErrMsg}, {<<"data">>, ErrData}]),
             populate_new_account(Props, AccountDb
                                  ,wh_json:set_value([<<"errors">>, Event, Iteration], Error, Results))
@@ -715,10 +539,8 @@ populate_new_account([{Event, #cb_context{storage=Iteration}=Context}|Props], Ac
 -spec get_context_jobj/2 :: (ne_binary(), proplist()) -> wh_json:json_object().
 get_context_jobj(Key, Pass) ->
     case props:get_value(Key, Pass) of
-        #cb_context{doc=JObj} ->
-            JObj;
-        _ ->
-            wh_json:new()
+        #cb_context{doc=JObj} -> JObj;
+        _ -> wh_json:new()
     end.
 
 %%--------------------------------------------------------------------
@@ -729,7 +551,7 @@ get_context_jobj(Key, Pass) ->
 %%--------------------------------------------------------------------
 -spec rand_chars/1 :: (pos_integer()) -> ne_binary().
 rand_chars(Count) ->
-    wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(Count))).
+    wh_util:to_hex_binary(crypto:rand_bytes(Count)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -737,23 +559,15 @@ rand_chars(Count) ->
 %% Attempt to create a token and save it to the token db
 %% @end
 %%--------------------------------------------------------------------
--spec create_response/2 :: (#wm_reqdata{}, #cb_context{}) -> #cb_context{}.
-create_response(_, #cb_context{doc=JObj, account_id=undefined}=Context) ->
+-spec create_response/1 :: (#cb_context{}) -> #cb_context{}.
+create_response(#cb_context{doc=JObj, account_id=undefined}=Context) ->
     crossbar_util:response(error, JObj, 400, Context);
-create_response(RD, #cb_context{doc=JObj, account_id=AccountId}=Context) ->
+create_response(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
     Token = [{<<"account_id">>, AccountId}
              ,{<<"owner_id">>, wh_json:get_value(<<"owner_id">>, JObj)}
              ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
              ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
              ,{<<"method">>, wh_util:to_binary(?MODULE)}
-             ,{<<"peer">>, wh_util:to_binary(wrq:peer(RD))}
-             ,{<<"user_agent">>, wh_util:to_binary(wrq:get_req_header("User-Agent", RD))}
-             ,{<<"accept">>, wh_util:to_binary(wrq:get_req_header("Accept", RD))}
-             ,{<<"accept_charset">>, wh_util:to_binary(wrq:get_req_header("Accept-Charset", RD))}
-             ,{<<"accept_endocing">>, wh_util:to_binary(wrq:get_req_header("Accept-Encoding", RD))}
-             ,{<<"accept_language">>, wh_util:to_binary(wrq:get_req_header("Accept-Language", RD))}
-             ,{<<"connection">>, wh_util:to_binary(wrq:get_req_header("Conntection", RD))}
-             ,{<<"keep_alive">>, wh_util:to_binary(wrq:get_req_header("Keep-Alive", RD))}
             ],
     case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
         {ok, Doc} ->

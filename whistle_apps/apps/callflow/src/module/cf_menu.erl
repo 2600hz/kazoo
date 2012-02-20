@@ -363,9 +363,9 @@ get_new_attachment_url(AttachmentName, MediaId, #cf_call{account_db=Db}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec(tmp_file/0 :: () -> binary()).
+-spec tmp_file/0 :: () -> ne_binary().
 tmp_file() ->
-     <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
+     <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private

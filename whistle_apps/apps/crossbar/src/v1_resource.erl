@@ -1,12 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% API resource
 %%%
 %%%
 %%% @end
-%%% Created :  05 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(v1_resource).
 
@@ -65,23 +66,32 @@ rest_init(Req0, Opts) ->
             end,
     put(callid, ReqId),
 
-    Req1 = lists:foldl(fun(Prop, ReqAcc) ->
-                               case cowboy_http_req:Prop(ReqAcc) of
-                                   {Val, ReqAcc1} -> ?LOG("~s: ~s", [Prop, wh_util:to_binary(Val)]);
-                                   {ok, Val, ReqAcc1} -> ?LOG("~s: ~s", [Prop, wh_util:to_binary(Val)])
-                               end,
-                               ReqAcc1
-                       end, Req0, [raw_host, port, raw_path, raw_qs, method]),
+    {Host, Req1} = cowboy_http_req:raw_host(Req0),
+    {Port, Req2} = cowboy_http_req:port(Req1),
+    {Path, Req3} = cowboy_http_req:raw_path(Req2),
+    {QS, Req4} = cowboy_http_req:raw_qs(Req3),
+    {Method, Req5} = cowboy_http_req:method(Req4),
 
-    {Context, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {#cb_context{}, Opts}),
-    {ok, Req2} = cowboy_http_req:set_resp_header(<<"X-Request-ID">>, ReqId, Req1),
-    {ok, Req2, Context#cb_context{req_id=ReqId}}.
+    ?LOG("host: ~s:~b", [Host, Port]),
+    ?LOG("~s: ~s?~s", [Method, Path, QS]),
+
+    Context0 = #cb_context{req_id=ReqId
+                           ,raw_host=Host
+                           ,port=Port
+                           ,raw_path=Path
+                           ,raw_qs=QS
+                           ,method=Method
+                          },
+
+    {Context1, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {Context0, Opts}),
+    {ok, Req6} = cowboy_http_req:set_resp_header(<<"X-Request-ID">>, ReqId, Req5),
+    {ok, Req6, Context1}.
 
 terminate(_, _) ->
     ?LOG_END("session finished").
 
 rest_terminate(_Req, #cb_context{start=T1}=Context) ->
-    crossbar_bindings:map(<<"v1_resource.finish_request">>, Context),
+    _ = crossbar_bindings:map(<<"v1_resource.finish_request">>, Context),
     ?LOG_END("fulfilled in ~p ms", [timer:now_diff(now(), T1) div 1000]).
 
 %%%===================================================================
@@ -97,39 +107,49 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
     {Tokens, Req1} = cowboy_http_req:path_info(Req0),
 
     case v1_util:parse_path_tokens(Tokens) of
-        [{Mod, Params}|_] = Nouns ->
-            Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
-
+        [_|_] = Nouns ->
             %% Because we allow tunneling of verbs through the request,
             %% we have to check and see if we need to override the actual
             %% HTTP method with the tunneled version
-            {Method, Req2} = cowboy_http_req:method(Req1),
-            {Context1, Req3} = v1_util:get_req_data(Context, Req2),
-
-            Verb = v1_util:get_http_verb(Method, Context1),
-
-            ?LOG("http method: ~s, actual verb to be used: ~s", [Method, Verb]),
-
-            Methods1 = v1_util:allow_methods(Responses, Methods, Verb, Method),
-            case v1_util:is_cors_preflight(Req3) of
-                {true, Req4} ->
-                    ?LOG("allowing OPTIONS request for CORS preflight"),
-                    {ok, Req5} = v1_util:add_cors_headers(Req4, Context),
-                    {['OPTIONS'], Req5, Context1#cb_context{allow_methods=Methods1
-                                                            ,req_nouns=Nouns
-                                                            ,req_verb=Verb
-                                                           }};
-                {false, Req4} ->
-                    ?LOG("not CORS preflight"),
-                    {ok, Req5} = v1_util:add_cors_headers(Req4, Context),
-                    {Methods1, Req5, Context1#cb_context{allow_methods=Methods1
-                                                         ,req_nouns=Nouns
-                                                         ,req_verb=Verb
-                                                        }}
+            case v1_util:get_req_data(Context, Req1) of
+                {halt, Context1, Req2} ->
+                    #cb_context{resp_error_code=StatusCode}=Context2 = crossbar_util:response_invalid_data(
+                                 wh_json:set_value(<<"error">>, <<"failed to parse request body">>, wh_json:new())
+                                 ,Context1),
+                    {_, Req3, Context3} = v1_util:create_push_response(Req2, Context2),
+                    ?LOG("setting status code: ~p", [StatusCode]),
+                    {ok, Req4} = cowboy_http_req:reply(StatusCode, Req3),
+                    {halt, Req4, Context3};
+                {Context1, Req2} -> check_preflight(Req2, Context1#cb_context{req_nouns=Nouns})
             end;
         [] ->
             ?LOG("no path tokens: ~p", [Methods]),
             {Methods, Req1, Context#cb_context{allow_methods=Methods}}
+    end.
+
+-spec check_preflight/2 :: (#http_req{}, #cb_context{}) -> {http_methods(), #http_req{}, #cb_context{}}.
+check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Params}|_]}=Context) ->
+    ?LOG("run: check_preflight"),
+    Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
+    {Method, Req1} = cowboy_http_req:method(Req0),
+    Verb = v1_util:get_http_verb(Method, Context),
+
+    ?LOG("http method: ~s, actual verb to be used: ~s", [Method, Verb]),
+
+    Methods1 = v1_util:allow_methods(Responses, Methods, Verb, Method),
+    case v1_util:is_cors_preflight(Req1) of
+        {true, Req2} ->
+            ?LOG("allowing OPTIONS request for CORS preflight"),
+            {ok, Req3} = v1_util:add_cors_headers(Req2, Context),
+            {['OPTIONS'], Req3, Context#cb_context{allow_methods=Methods1
+                                                   ,req_verb=Verb
+                                                  }};
+        {false, Req2} ->
+            ?LOG("not CORS preflight"),
+            {ok, Req3} = v1_util:add_cors_headers(Req2, Context),
+            {Methods1, Req3, Context#cb_context{allow_methods=Methods1
+                                                ,req_verb=Verb
+                                               }}
     end.
 
 malformed_request(Req, #cb_context{req_json={malformed, _}}=Context) ->
@@ -139,7 +159,7 @@ malformed_request(Req, Context) ->
     ?LOG("request is not malformed"),
     {false, Req, Context}.
 
--spec is_authorized/2 :: (#http_req{}, #cb_context{}) -> {'true' | {'false', proplist()}, #http_req{}, #cb_context{}}.
+-spec is_authorized/2 :: (#http_req{}, #cb_context{}) -> {'true' | {'false', <<>>}, #http_req{}, #cb_context{}}.
 is_authorized(Req, Context) ->
     ?LOG("run: is_authorized"),
     v1_util:is_authentic(Req, Context).
@@ -181,14 +201,13 @@ options(Req0, Context) ->
 
 -type content_type_callbacks() :: [ {{ne_binary(), ne_binary(), proplist()}, atom()} | {ne_binary(), atom()},...] | [].
 -spec content_types_provided/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
-content_types_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+content_types_provided(Req, #cb_context{req_nouns=Nouns}=Context0) ->
     ?LOG("run: content_types_provided"),
-    {Req1, Context1} = lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
-                                           Event = <<"v1_resource.content_types_provided.", Mod/binary>>,
-                                           Payload = {ReqAcc, ContextAcc, Params},
-                                           {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
-                                           {ReqAcc1, ContextAcc1}
-                                   end, {Req0, Context0}, Nouns),
+    Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
+                                   Event = <<"v1_resource.content_types_provided.", Mod/binary>>,
+                                   Payload = [ContextAcc | Params],
+                                   crossbar_bindings:fold(Event, Payload)
+                           end, Context0, Nouns),
     CTP = lists:foldr(fun({Fun, L}, Acc) ->
                               lists:foldr(fun({Type, SubType}, Acc1) ->
                                                   [{{Type, SubType, []}, Fun} | Acc1];
@@ -197,18 +216,18 @@ content_types_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                                           end, Acc, L)
                       end, [], Context1#cb_context.content_types_provided),
 
-    {CTP, Req1, Context1}.
+    {CTP, Req, Context1}.
 
 -spec content_types_accepted/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
-content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+content_types_accepted(Req, #cb_context{req_nouns=Nouns}=Context0) ->
     ?LOG("run: content_types_accepted"),
-    {Req1, Context1=#cb_context{content_types_accepted=CTAs}} =
-        lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
+    Context1=#cb_context{content_types_accepted=CTAs} =
+        lists:foldr(fun({Mod, Params}, ContextAcc) ->
                             Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
-                            Payload = {ReqAcc, ContextAcc, Params},
-                            {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
-                            {ReqAcc1, ContextAcc1}
-                    end, {Req0, Context0}, Nouns),
+                            Payload = [ContextAcc | Params],
+                            ContextAcc1 = crossbar_bindings:fold(Event, Payload),
+                            ContextAcc1
+                    end, Context0, Nouns),
 
     CTA = lists:foldr(fun({Fun, L}, Acc) ->
                               lists:foldr(fun({Type, SubType}, Acc1) ->
@@ -217,7 +236,7 @@ content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                                                   [ {EncType, Fun} | Acc1 ]
                                           end, Acc, L)
                       end, [], CTAs),
-    {CTA, Req1, Context1}.
+    {CTA, Req, Context1}.
 
 -spec languages_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
 languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
@@ -267,14 +286,14 @@ resource_exists(Req0, Context0) ->
     case v1_util:does_resource_exist(Context0) of
         true ->
             ?LOG("requested resource exists, validating it"),
-            {Req1, Context1} = v1_util:validate(Req0, Context0),
+            Context1 = v1_util:validate(Context0),
             case v1_util:succeeded(Context1) of
                 true ->
                     ?LOG("requested resource validated, but is the request a PUT: ~s", [Context1#cb_context.req_verb]),
-                    {Context1#cb_context.req_verb =/= <<"put">>, Req1, Context1};
+                    {Context1#cb_context.req_verb =/= <<"put">>, Req0, Context1};
                 false ->
                     ?LOG("failed to validate resource"),
-                    {false, Req1, Context1}
+                    {false, Req0, Context1}
             end;
         false ->
             ?LOG("requested resource does not exist"),
@@ -300,13 +319,10 @@ previously_existed(Req, State) ->
 %% we need to allow POST to create a non-existent resource
 %% AKA, 201 Created header set
 -spec allow_missing_post/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
-allow_missing_post(Req0, #cb_context{req_verb = <<"put">>}=Context) ->
-    ?LOG("run: allow_missing_post when req_verb = put"),
+allow_missing_post(Req0, #cb_context{req_verb=_Verb}=Context) ->
+    ?LOG("run: allow_missing_post when req_verb = ~s", [_Verb]),
     {Method, Req1} = cowboy_http_req:method(Req0),
-    {Method =:= 'POST', Req1, Context};
-allow_missing_post(Req, Context) ->
-    ?LOG("run: allow_missing_post"),
-    {false, Req, Context}.
+    {Method =:= 'POST', Req1, Context}.
 
 -spec delete_resource/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 delete_resource(Req, Context) ->
@@ -323,16 +339,15 @@ post_is_create(Req, Context) ->
     ?LOG("run: post_is_create: false"),
     {false, Req, Context}.
 
-%% whatever (for now)
--spec create_path/2 :: (#http_req{}, #cb_context{}) -> {[], #http_req{}, #cb_context{}}.
+%% set the location header
+-spec create_path/2 :: (#http_req{}, #cb_context{}) -> {ne_binary(), #http_req{}, #cb_context{}}.
 create_path(Req, #cb_context{resp_headers=RespHeaders}=Context) ->
     ?LOG("run: create_path"),
     %% Location header goes here, I believe?
 
     Path = props:get_value(<<"Location">>, RespHeaders, <<>>),
 
-    {crossbar_util:new_path(Req, Path), Req, Context}.
-    
+    {crossbar_util:get_path(Req, Path), Req, Context}.
 
 -spec process_post/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 process_post(Req0, Context0) ->
@@ -390,7 +405,7 @@ from_form(Req0, Context0) ->
             Else
     end.
 
--spec to_json/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+-spec to_json/2 :: (#http_req{}, #cb_context{}) -> {iolist() | ne_binary() | 'halt', #http_req{}, #cb_context{}}.
 to_json(Req, Context) ->
     ?LOG("run: to_json"),
     Event = <<"v1_resource.to_json">>,
@@ -404,6 +419,7 @@ to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
     _ = crossbar_bindings:map(Event, {Req, Context}),
     {RespData, v1_util:set_resp_headers(Req, Context), Context}.
 
+-spec multiple_choices/2 :: (#http_req{}, #cb_context{}) -> {'false', #http_req{}, #cb_context{}}.
 multiple_choices(Req, Context) ->
     ?LOG("run: multiple_choices"),
     ?LOG("has resp_body: ~s", [cowboy_http_req:has_resp_body(Req)]),
@@ -418,7 +434,7 @@ generate_etag(Req0, Context0) ->
     case Context1#cb_context.resp_etag of
         automatic ->
             {Content, _} = v1_util:create_resp_content(Req1, Context1),
-            Tag = mochihex:to_hex(crypto:md5(Content)),
+            Tag = wh_util:to_hex_binary(crypto:md5(Content)),
             ?LOG("using automatic etag ~s", [Tag]),
             {Tag, Req1, Context1#cb_context{resp_etag=Tag}};
         undefined ->

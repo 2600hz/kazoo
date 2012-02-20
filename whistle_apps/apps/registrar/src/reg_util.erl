@@ -73,7 +73,7 @@ fetch_all_registrations() ->
 %% calculate expiration time
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_expires/1 :: (ne_binary()) -> binary().
+-spec get_expires/1 :: (ne_binary()) -> number().
 get_expires(JObj) ->
     Multiplier = whapps_config:get_float(?CONFIG_CAT, <<"expires_multiplier">>, 1.25),
     Fudge = whapps_config:get_float(?CONFIG_CAT, <<"expires_fudge_factor">>, 120),
@@ -86,9 +86,9 @@ get_expires(JObj) ->
 %% hash a registration contact string
 %% @end
 %%-----------------------------------------------------------------------------
--spec hash_contact/1 :: (ne_binary()) -> binary().
+-spec hash_contact/1 :: (ne_binary()) -> ne_binary().
 hash_contact(Contact) ->
-    wh_util:to_binary(wh_util:to_hex(erlang:md5(Contact))).
+    wh_util:to_hex_binary(erlang:md5(Contact)).
 
 %%-----------------------------------------------------------------------------
 %% @private

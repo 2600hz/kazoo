@@ -279,7 +279,7 @@ create_event(EventName, ApplicationName, Props) ->
     wh_api:default_headers(<<>>, ?EVENT_CAT, EventName, ?APP_NAME, ?APP_VERSION)
         ++ create_event_props(EventName, ApplicationName, Props).
 
--spec create_event_props/3 :: (ne_binary(), 'undefined' | ne_binary(), proplist()) -> proplist().
+-spec create_event_props/3 :: (binary(), 'undefined' | ne_binary(), proplist()) -> proplist().
 create_event_props(EventName, ApplicationName, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
     {Mega,Sec,Micro} = erlang:now(),

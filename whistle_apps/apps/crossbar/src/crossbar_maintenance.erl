@@ -3,7 +3,8 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created :  13 jan 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(crossbar_maintenance).
 
@@ -16,7 +17,7 @@
 %% Flush the crossbar local cache
 %% @end
 %%--------------------------------------------------------------------
--spec flush/0 :: () -> ok.
+-spec flush/0 :: () -> 'ok'.
 flush() ->
     {ok, Srv} = crossbar_sup:cache_proc(),
     wh_cache:flush_local(Srv).
@@ -28,7 +29,7 @@ flush() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh/0 :: () -> nonempty_string().
--spec refresh/1 :: (term()) -> nonempty_string().
+-spec refresh/1 :: (term()) -> iolist().
 
 refresh() ->
     "please use whapps_maintenance:refresh().".

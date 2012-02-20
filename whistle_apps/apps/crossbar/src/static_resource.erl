@@ -7,11 +7,11 @@
 -include("crossbar.hrl").
 
 -record(context, {
-	  root = "" :: iolist()
-	  ,filepath = "" :: string()
-	  ,fileinfo = #file_info{} :: #file_info{}
-	  ,data = <<>> :: binary()
-	 }).
+          root = "" :: iolist()
+          ,filepath = "" :: string()
+          ,fileinfo = #file_info{} :: #file_info{}
+          ,data = <<>> :: binary()
+         }).
 
 -spec init/1 :: (Opts) -> {'ok', #context{}} when
       Opts :: proplist().
@@ -32,18 +32,18 @@ resource_exists(RD, #context{root=Root}=Context) ->
     ?LOG_SYS("Disp_path: ~s", [wrq:disp_path(RD)]),
     ?LOG_SYS("Requested file: ~s", [FP]),
     case filelib:is_regular(FP) of
-	true ->
-	    ?LOG_SYS("File exists"),
+        true ->
+            ?LOG_SYS("File exists"),
             {ok, FileInfo} = file:read_file_info(FP),
-	    {true, RD, Context#context{filepath=FP, fileinfo=FileInfo}};
-	_ ->
-	    ?LOG_SYS("File doesn't exist"),
-	    {false, RD, Context}
+            {true, RD, Context#context{filepath=FP, fileinfo=FileInfo}};
+        _ ->
+            ?LOG_SYS("File doesn't exist"),
+            {false, RD, Context}
     end.
 
 generate_etag(RD, #context{filepath=FP}=Context) ->
     {ok, Data} = file:read_file(FP),
-    ETag = mochihex:to_hex(crypto:md5(Data)),
+    ETag = wh_util:to_hex_binary(crypto:md5(Data)),
     ?LOG_SYS("Etag: ~s", [ETag]),
     { ETag, RD, Context#context{data=Data} }.
 

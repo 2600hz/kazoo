@@ -11,14 +11,21 @@
 %%%-------------------------------------------------------------------
 -module(cb_accounts).
 
--behaviour(gen_server).
+%% Bindings API
+-export([init/0
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,validate/1, validate/2, validate/3
+         ,put/1, put/2
+         ,post/2, post/3
+         ,delete/2
+        ]).
 
 %% API
--export([start_link/0, create_account/1, get_realm_from_db/1, ensure_parent_set/0]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([create_account/1
+         ,get_realm_from_db/1
+         ,ensure_parent_set/0
+        ]).
 
 -include("../../include/crossbar.hrl").
 
@@ -38,17 +45,6 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
 -spec get_realm_from_db/1 :: (ne_binary()) -> {'ok', ne_binary()} | {'error', atom()}.
 get_realm_from_db(DBName) ->
     Doc = wh_util:format_account_id(DBName, raw),
@@ -66,11 +62,11 @@ ensure_parent_set() ->
         {ok, AcctJObjs} ->
             DefaultParentID = find_default_parent(AcctJObjs),
             ?LOG("default parent ID: ~s", [DefaultParentID]),
-            [ ensure_parent_set(DefaultParentID, wh_json:get_binary_value(<<"id">>, AcctJObj))
-              || AcctJObj <- AcctJObjs,
-                 wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
-                 wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj, []) =:= [] % empty tree (should have at least the parent)
-            ],
+            _ = [ ensure_parent_set(DefaultParentID, wh_json:get_binary_value(<<"id">>, AcctJObj))
+                  || AcctJObj <- AcctJObjs,
+                     wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
+                     wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj, []) =:= [] % empty tree (should have at least the parent)
+                ],
             ok;
         {error, _}=E -> E
     end.
@@ -103,258 +99,17 @@ find_default_parent(AcctJObjs) ->
         Default -> Default
     end.
 
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
+%% Bindings callbacks
+init() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.accounts">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.accounts">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.accounts">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.accounts">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init(_) ->
-    self() ! {rebind, all},
-    {ok, ok}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.accounts">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = allowed_methods(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.accounts">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = resource_exists(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, #cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}]}=Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  %% Do all of our prep-work out of the agg db
-                  %% later we will switch to save to the client db
-                  Context1 = validate(Params, Context#cb_context{db_name=?WH_ACCOUNTS_DB}),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.validate.accounts">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = load_account_db(Params, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, Context | [AccountId, <<"parent">>]=Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  case crossbar_doc:save(Context#cb_context{db_name=wh_util:format_account_id(AccountId, encoded)}) of
-                      #cb_context{resp_status=success}=Context1 ->
-                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data = wh_json:new()}, Params]};
-                      Else ->
-                          Pid ! {binding_result, true, [RD, Else, Params]}
-                  end
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.accounts">>, [RD, #cb_context{doc=Doc}=Context | [AccountId]=Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  %% this just got messy
-                  %% since we are not replicating, the accounts rev and the account rev on
-                  %% this doc can drift.... so set it to account save, then set it to
-                  %% accounts for the final operation... good times
-                  AccountDb = wh_util:format_account_id(AccountId, encoded),
-                  AccountsRev = wh_json:get_value(<<"_rev">>, Doc, <<>>),
-                  case couch_mgr:lookup_doc_rev(AccountDb, AccountId) of
-                      {ok, Rev} ->
-                          case crossbar_doc:save(Context#cb_context{db_name=AccountDb
-                                                                    ,doc=wh_json:set_value(<<"_rev">>, Rev, Doc)
-                                                                   }) of
-                              #cb_context{resp_status=success, doc=Doc1}=Context1 ->
-                                  couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
-                                  Pid ! {binding_result, true, [RD, Context1, Params]};
-                              Else ->
-                                  Pid ! {binding_result, true, [RD, Else, Params]}
-                          end;
-                      _ ->
-                          case crossbar_doc:save(Context#cb_context{db_name=AccountDb
-                                                                    ,doc=wh_json:delete_key(<<"_rev">>, Doc)
-                                                                   }) of
-                              #cb_context{resp_status=success, doc=Doc1}=Context1 ->
-                                  couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
-                                  Pid ! {binding_result, true, [RD, Context1, Params]};
-                              Else ->
-                                  Pid ! {binding_result, true, [RD, Else, Params]}
-                          end
-                  end
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.accounts">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = create_new_account_db(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.accounts">>, [RD, Context | [AccountId]=Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  %% dont use the account id in cb_context as it may not represent the db_name...
-                  DbName = wh_util:format_account_id(AccountId, encoded),
-                  try
-                      ok = wh_number_manager:free_numbers(AccountId),
-
-                      %% Ensure the DB that we are about to delete is an account
-                      case couch_mgr:open_doc(DbName, AccountId) of
-                          {ok, JObj1} ->
-                              ?PVT_TYPE = wh_json:get_value(<<"pvt_type">>, JObj1),
-                              ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
-
-                              ok = unassign_rep(AccountId, JObj1),
-
-                              true = couch_mgr:db_delete(DbName),
-
-                              ?LOG_SYS("deleted db ~s", [DbName]);
-                          _ -> ok
-                      end,
-                      _ = case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
-                              {ok, JObj2} ->
-                                  crossbar_doc:delete(Context#cb_context{db_name=?WH_ACCOUNTS_DB
-                                                                         ,doc=JObj2
-                                                                        });
-                              _ -> ok
-                          end,
-                      Pid ! {binding_result, true, [RD, Context, Params]}
-                  catch
-                      _:_E ->
-                          ?LOG_SYS("Exception while deleting account: ~p", [_E]),
-                          Pid ! {binding_result, true, [RD, crossbar_util:response_bad_identifier(AccountId, Context), Params]}
-                  end
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, _, Payload}, State) ->
-    Pid ! {binding_result, false, Payload},
-    {noreply, State};
-
-handle_info({binding_flushed, Binding}, State) ->
-    ?LOG("Lost binding ~s, wait and rebind", [Binding]),
-    erlang:send_after(100, self(), {rebind, Binding}),
-    {noreply, State};
-
-handle_info({rebind, all}, State) ->
-    _ = bind_to_crossbar(),
-    {noreply, State};
-
-handle_info({rebind, Binding}, State) ->
-    ?LOG("Rebinding ~s", [Binding]),
-    _ = crossbar_bindings:bind(Binding),
-    {noreply, State};
-
-handle_info(_Info, State) ->
-    ?LOG("Unhandled message: ~p", [_Info]),
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function binds this server to the crossbar bindings server,
-%% for the keys we need to consume.
-%% @end
-%%--------------------------------------------------------------------
--spec bind_to_crossbar/0 :: () ->  'ok' | {'error', 'exists'}.
-bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.accounts">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.accounts">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.accounts">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.accounts">>).
-
-%%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -362,40 +117,39 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
-allowed_methods([]) ->
-    {true, ['GET', 'PUT']};
-allowed_methods([_]) ->
-    {true, ['GET', 'PUT', 'POST', 'DELETE']};
-allowed_methods([_, <<"parent">>]) ->
-    {true, ['GET', 'POST', 'DELETE']};
-allowed_methods([_, Path]) ->
-    Valid = lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]),
-    {Valid, ['GET']};
+-spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods/2 :: (path_token(), ne_binary()) -> http_methods().
+allowed_methods() ->
+    ['GET', 'PUT'].
 allowed_methods(_) ->
-    {false, []}.
+    ['GET', 'PUT', 'POST', 'DELETE'].
+allowed_methods(_, <<"parent">>) ->
+    ['GET', 'POST', 'DELETE'];
+allowed_methods(_, Path) ->
+    case lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]) of
+        true -> ['GET'];
+        false -> []
+    end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
-resource_exists([]) ->
-    {true, []};
-resource_exists([_]) ->
-    {true, []};
-resource_exists([_, Path]) ->
-    Valid = lists:member(Path, [<<"parent">>, <<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]),
-    {Valid, []};
-resource_exists(_T) ->
-    {false, []}.
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_tokens()) -> 'true'.
+-spec resource_exists/2 :: (path_tokens(), ne_binary()) -> boolean().
+resource_exists() -> true.
+resource_exists(_) -> true.
+resource_exists(_, Path) ->
+    lists:member(Path, [<<"parent">>, <<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -403,33 +157,133 @@ resource_exists(_T) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
+-spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate/3 :: (#cb_context{}, path_token(), ne_binary()) -> #cb_context{}.
+validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}]}=Context) ->
+    validate_req(Context#cb_context{db_name=?WH_ACCOUNTS_DB}).
+
+validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}]}=Context, Id) ->
+    validate_req(Context#cb_context{db_name=?WH_ACCOUNTS_DB}, Id);
+validate(Context, Id) ->
+    load_account_db(Id, Context).
+
+validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}]}=Context, Id, Relationship) ->
+    validate_req(Context#cb_context{db_name=?WH_ACCOUNTS_DB}, Id, Relationship);
+validate(Context, Id, Relationship) ->
+    validate_req(Context, Id, Relationship).
+
+-spec validate_req/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate_req/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate_req/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+validate_req(#cb_context{req_verb = <<"get">>}=Context) ->
     load_account_summary([], Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_account(Context);
-validate([ParentId], #cb_context{req_verb = <<"put">>}=Context) ->
+validate_req(#cb_context{req_verb = <<"put">>}=Context) ->
+    create_account(Context).
+
+validate_req(#cb_context{req_verb = <<"put">>}=Context, ParentId) ->
     create_account(Context, ParentId);
-validate([AccountId], #cb_context{req_verb = <<"get">>}=Context) ->
+validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId) ->
     load_account(AccountId, Context);
-validate([AccountId], #cb_context{req_verb = <<"post">>}=Context) ->
+validate_req(#cb_context{req_verb = <<"post">>}=Context, AccountId) ->
     update_account(AccountId, Context);
-validate([AccountId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_account(AccountId, Context);
-validate([AccountId, <<"parent">>], #cb_context{req_verb = <<"get">>}=Context) ->
+validate_req(#cb_context{req_verb = <<"delete">>}=Context, AccountId) ->
+    load_account(AccountId, Context).
+
+validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"parent">>) ->
     load_parent(AccountId, Context);
-validate([AccountId, <<"parent">>], #cb_context{req_verb = <<"post">>}=Context) ->
+validate_req(#cb_context{req_verb = <<"post">>}=Context, AccountId, <<"parent">>) ->
     update_parent(AccountId, Context);
-validate([AccountId, <<"parent">>], #cb_context{req_verb = <<"delete">>}=Context) ->
+validate_req(#cb_context{req_verb = <<"delete">>}=Context, AccountId, <<"parent">>) ->
     load_account(AccountId, Context);
-validate([AccountId, <<"children">>], #cb_context{req_verb = <<"get">>}=Context) ->
+validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"children">>) ->
     load_children(AccountId, Context);
-validate([AccountId, <<"descendants">>], #cb_context{req_verb = <<"get">>}=Context) ->
+validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"descendants">>) ->
     load_descendants(AccountId, Context);
-validate([AccountId, <<"siblings">>], #cb_context{req_verb = <<"get">>}=Context) ->
-    load_siblings(AccountId, Context);
-validate(_, Context) ->
-    crossbar_util:response_faulty_request(Context).
+validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"siblings">>) ->
+    load_siblings(AccountId, Context).
+
+-spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+post(#cb_context{doc=Doc}=Context, AccountId) ->
+    _ = crossbar_util:put_reqid(Context),
+    %% this just got messy
+    %% since we are not replicating, the accounts rev and the account rev on
+    %% this doc can drift.... so set it to account save, then set it to
+    %% accounts for the final operation... good times
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    AccountsRev = wh_json:get_value(<<"_rev">>, Doc, <<>>),
+    case couch_mgr:lookup_doc_rev(AccountDb, AccountId) of
+        {ok, Rev} ->
+            case crossbar_doc:save(Context#cb_context{db_name=AccountDb
+                                                      ,doc=wh_json:set_value(<<"_rev">>, Rev, Doc)
+                                                     }) of
+                #cb_context{resp_status=success, doc=Doc1}=Context1 ->
+                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
+                    Context1;
+                Else ->
+                    Else
+            end;
+        _ ->
+            case crossbar_doc:save(Context#cb_context{db_name=AccountDb
+                                                      ,doc=wh_json:delete_key(<<"_rev">>, Doc)
+                                                     }) of
+                #cb_context{resp_status=success, doc=Doc1}=Context1 ->
+                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
+                    Context1;
+                Else ->
+                    Else
+            end
+    end.
+post(Context, AccountId, <<"parent">>) ->
+    case crossbar_doc:save(Context#cb_context{db_name=wh_util:format_account_id(AccountId, encoded)}) of
+        #cb_context{resp_status=success}=Context1 ->
+            Context1#cb_context{resp_data = wh_json:new()};
+        Else ->
+            Else
+    end.
+
+-spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+put(Context) ->
+    create_new_account_db(Context).
+put(Context, _) ->
+    create_new_account_db(Context).
+
+-spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+delete(Context, AccountId) ->
+    _ = crossbar_util:put_reqid(Context),
+    %% dont use the account id in cb_context as it may not represent the db_name...
+    DbName = wh_util:format_account_id(AccountId, encoded),
+    try
+        ok = wh_number_manager:free_numbers(AccountId),
+
+        %% Ensure the DB that we are about to delete is an account
+        case couch_mgr:open_doc(DbName, AccountId) of
+            {ok, JObj1} ->
+                ?PVT_TYPE = wh_json:get_value(<<"pvt_type">>, JObj1),
+                ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
+
+                ok = unassign_rep(AccountId, JObj1),
+
+                true = couch_mgr:db_delete(DbName),
+
+                ?LOG_SYS("deleted db ~s", [DbName]);
+            _ -> ok
+        end,
+        _ = case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+                {ok, JObj2} ->
+                    crossbar_doc:delete(Context#cb_context{db_name=?WH_ACCOUNTS_DB
+                                                           ,doc=JObj2
+                                                          });
+                _ -> ok
+            end,
+        Context
+    catch
+        _:_E ->
+            ?LOG_SYS("Exception while deleting account: ~p", [_E]),
+            crossbar_util:response_bad_identifier(AccountId, Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -709,7 +563,7 @@ add_pvt_type(JObj, _) ->
     wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
 
 add_pvt_api_key(JObj, _) ->
-    wh_json:set_value(<<"pvt_api_key">>, wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(32))), JObj).
+    wh_json:set_value(<<"pvt_api_key">>, wh_util:to_hex_binary(crypto:rand_bytes(32)), JObj).
 
 add_pvt_tree(JObj, #cb_context{auth_doc=undefined}) ->
     case whapps_config:get(?CONFIG_CAT, <<"default_parent">>) of

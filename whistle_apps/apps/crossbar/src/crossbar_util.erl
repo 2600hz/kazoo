@@ -11,7 +11,7 @@
 -export([rand_chars/1]).
 -export([response/2, response/3, response/4, response/5]).
 -export([response_deprecated/1, response_deprecated_redirect/2, response_deprecated_redirect/3
-         ,response_redirect/3
+         ,response_redirect/3, response_redirect/4
         ]).
 -export([response_202/2]).
 -export([response_faulty_request/1]).
@@ -44,7 +44,7 @@
 %%--------------------------------------------------------------------
 -spec rand_chars/1 :: (pos_integer()) -> ne_binary().
 rand_chars(Count) ->
-    wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(Count))).
+    wh_util:to_hex_binary(crypto:rand_bytes(Count)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -146,21 +146,25 @@ response_faulty_request(Context) ->
 %% ../module2
 %% @end
 %%--------------------------------------------------------------------
--spec response_deprecated(#cb_context{}) -> #cb_context{}.
+-spec response_deprecated/1 :: (#cb_context{}) -> #cb_context{}.
 response_deprecated(Context) ->
     create_response(error, <<"deprecated">>, 410, wh_json:new(), Context).
 
--spec response_deprecated_redirect(#cb_context{}, wh_json:json_string()) -> #cb_context{}.
--spec response_deprecated_redirect(#cb_context{}, wh_json:json_string(), wh_json:json_object()) -> #cb_context{}.
+-spec response_deprecated_redirect/2 :: (#cb_context{}, wh_json:json_string()) -> #cb_context{}.
+-spec response_deprecated_redirect/3 :: (#cb_context{}, wh_json:json_string(), wh_json:json_object()) -> #cb_context{}.
 response_deprecated_redirect(Context, RedirectUrl) ->
     response_deprecated_redirect(Context, RedirectUrl, wh_json:new()).
 response_deprecated_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj) ->
     create_response(error, <<"deprecated">>, 301, JObj
                     ,Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 
--spec response_redirect(#cb_context{}, wh_json:json_string(), wh_json:json_object()) -> #cb_context{}.
-response_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj) ->
-    create_response(error, <<"redirect">>, 301, JObj, Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
+-spec response_redirect/3 :: (#cb_context{}, wh_json:json_string(), wh_json:json_object()) -> #cb_context{}.
+response_redirect(Context, RedirectUrl, JObj) ->
+    response_redirect(Context, RedirectUrl, JObj, 301).
+
+-spec response_redirect/4 :: (#cb_context{}, wh_json:json_string(), wh_json:json_object(), integer()) -> #cb_context{}.
+response_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JObj, Redirect) ->
+    create_response(error, <<"redirect">>, Redirect, JObj, Context#cb_context{resp_headers=[{"Location", RedirectUrl} | RespHeaders]}).
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -603,15 +607,14 @@ get_path(Req, Relative) ->
     PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>)),
     UrlTokens = binary:split(Relative, <<"/">>),
 
-    Url1 = wh_util:join_binary(
-             lists:reverse(
-               lists:foldl(fun(<<"..">>, []) -> [];
-                              (<<"..">>, [_ | PathTokens]) -> PathTokens;
-                              (<<".">>, PathTokens) -> PathTokens;
-                              (Segment, PathTokens) -> [Segment | PathTokens]
-                           end, PathTokensRev, UrlTokens)
-              ), <<"/">>),
-    erlang:iolist_to_binary(Url1).
+    wh_util:join_binary(
+      lists:reverse(
+        lists:foldl(fun(<<"..">>, []) -> [];
+                       (<<"..">>, [_ | PathTokens]) -> PathTokens;
+                       (<<".">>, PathTokens) -> PathTokens;
+                       (Segment, PathTokens) -> [Segment | PathTokens]
+                    end, PathTokensRev, UrlTokens)
+       ), <<"/">>).
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).

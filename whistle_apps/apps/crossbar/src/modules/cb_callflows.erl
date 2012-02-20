@@ -1,21 +1,23 @@
-%%%============================================================================
-%%% @author Vladimir Darmin <vova@2600hz.org>
-%%% @copyright (C) 2011, Vladimir Darmin
+%%%----------------------------------------------------------------------------
+%%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Callflow gen server for CRUD
 %%%
 %%% @end
-%%% Created :  3 Feb 2011 by Vladimir Darmin <vova@2600hz.org>
-%%%============================================================================
+%%% @contributors
+%%%   Vladimir Darmin
+%%%   James Aimonetti
+%%%----------------------------------------------------------------------------
 -module(cb_callflows).
 
--behaviour(gen_server).
-
-%% API
--export([start_link/0]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+-export([init/0
+         ,allowed_methods/0, allowed_methods/1
+         ,resource_exists/0, resource_exists/1
+         ,validate/1, validate/2
+         ,put/1
+         ,post/2
+         ,delete/2
+        ]).
 
 -include("../../include/crossbar.hrl").
 
@@ -24,218 +26,48 @@
 -define(CALLFLOWS_LIST, <<"callflows/listing_by_id">>).
 -define(CB_LIST, <<"callflows/crossbar_listing">>).
 
-%%-----------------------------------------------------------------------------
-%% PUBLIC API
-%%-----------------------------------------------------------------------------
-%%
-
-%------------------------------------------------------------------------------
-% @public
-% @doc
-% Starts the server
-%
-% @end
-%------------------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
-start_link() ->
-    gen_server:start_link( {local, ?SERVER}, ?MODULE, [], [] ).
-
-%%-----------------------------------------------------------------------------
-%% GEN SERVER CALLBACKS
-%%-----------------------------------------------------------------------------
-%%
-
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% Initializes the server
-%
-% @end
-%------------------------------------------------------------------------------
-init(_) ->
-    {ok, ok, 0}.
-
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% Handles call messages
-%
-% @end
-%------------------------------------------------------------------------------
-handle_call (_Request, _From, State) ->
-   {reply, ok, State}.
-
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% Handles cast messages
-%
-% @end
-%------------------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-   {noreply, State}.
-
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% Handles all non call/cast messages
-%
-% @end
-%------------------------------------------------------------------------------
-handle_info ({binding_fired, Pid, <<"v1_resource.allowed_methods.callflows">>, Payload}, State) ->
-    spawn(fun ( ) ->
-                  {Result, Payload1} = allowed_methods(Payload),
-                  Pid ! { binding_result, Result, Payload1 }
-          end),
-    {noreply, State};
-
-handle_info ({binding_fired, Pid, <<"v1_resource.resource_exists.callflows">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = resource_exists(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info ({binding_fired, Pid, <<"v1_resource.validate.callflows">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  _ = crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-         end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.callflows">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = case crossbar_doc:save(Context) of
-                                #cb_context{account_id=AccountId, doc=JObj, resp_status=success}=C ->
-                                     spawn(fun() -> 
-                                                   [wh_number_manager:reconcile_number(Number, AccountId)
-                                                    || Number <- wh_json:get_value(<<"numbers">>, JObj, [])]
-                                           end),
-                                    C;
-                                Else ->
-                                    Else
-                            end,
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.callflows">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = case crossbar_doc:save(Context) of
-                                #cb_context{account_id=AccountId, doc=JObj, resp_status=success}=C ->
-                                     spawn(fun() -> 
-                                                   [wh_number_manager:reconcile_number(Number, AccountId)
-                                                    || Number <- wh_json:get_value(<<"numbers">>, JObj, [])]
-                                           end),
-                                    C;
-                                Else ->
-                                    Else
-                            end,
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.callflows">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, _, Payload}, State) ->
-    Pid ! {binding_result, false, Payload},
-    {noreply, State};
-
-handle_info(timeout, State) ->
-    bind_to_crossbar(),
-    {noreply, State};
-
-handle_info (_Info, State) ->
-   {noreply, State}.
-
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% Is called by a gen_server when it is about to terminate. It should be the
-% opposite of Module:init/1 and do any necessary cleaning up. When it returns,
-% the gen_server terminates with Reason. The return value is ignored.
-%
-% @end
-%------------------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% Converts process state when code is changed
-%
-% @end
-%------------------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-%%-----------------------------------------------------------------------------
-%% INTERNAL API
-%%-----------------------------------------------------------------------------
-%%
-
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% binds this server to the crossbar bindings server for the keys we need to
-% consume.
-%
-% @end
-%------------------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () -> no_return()).
-bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.callflows">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.callflows">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.callflows">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.callflows">>).
-
-%------------------------------------------------------------------------------
-% @private
-% @doc
-% This function determines the verbs that are appropriate for the given nouns.
-%
-% @end
-%------------------------------------------------------------------------------
--spec (allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), list(atom()) | [])).
-allowed_methods([]) ->
-   { true, ['PUT', 'GET'] };                    % PUT - create new callflow
-                                                % GET - call flow collection
-allowed_methods([_]) ->
-   { true, ['GET', 'POST', 'DELETE'] };         % GET    - retrieve callflow
-                                                % POST   - update callflow
-                                                % DELETE - delete callflow
-allowed_methods(_) ->
-    { false, [] }.
+%%%===================================================================
+%%% API
+%%%===================================================================
+init() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.callflows">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.callflows">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.callflows">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.callflows">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.callflows">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.callflows">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
+%% @doc
+%% This function determines the verbs that are appropriate for the
+%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
+%%
+%% Failure here returns 405
+%% @end
+%%--------------------------------------------------------------------
+-spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods/1 :: (path_token()) -> http_methods().
+allowed_methods() ->
+    ['GET', 'PUT'].
+allowed_methods(_MediaID) ->
+    ['GET', 'POST', 'DELETE'].
+
+%%--------------------------------------------------------------------
+%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
-resource_exists([]) ->
-    {true, []};
-resource_exists([_]) ->
-    {true, []};
-resource_exists(_) ->
-    {false, []}.
+-spec resource_exists/0 :: () -> boolean().
+-spec resource_exists/1 :: (path_token()) -> boolean().
+resource_exists() -> true.
+resource_exists(_) -> true.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -243,19 +75,49 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec(validate/2 :: (Params :: list(), Context :: #cb_context{}) -> #cb_context{}).
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
+-spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_callflow_summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create_callflow(Context);
-validate([DocId], #cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = <<"put">>}=Context) ->
+    create_callflow(Context).
+
+validate(#cb_context{req_verb = <<"get">>}=Context, DocId) ->
     load_callflow(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"post">>}=Context) ->
+validate(#cb_context{req_verb = <<"post">>}=Context, DocId) ->
     update_callflow(DocId, Context);
-validate([DocId], #cb_context{req_verb = <<"delete">>}=Context) ->
-    load_callflow(DocId, Context);
-validate(_, Context) ->
-    crossbar_util:response_faulty_request(Context).
+validate(#cb_context{req_verb = <<"delete">>}=Context, DocId) ->
+    load_callflow(DocId, Context).
+
+-spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+post(Context, _DocId) ->
+    case crossbar_doc:save(Context) of
+        #cb_context{account_id=AccountId, doc=JObj, resp_status=success}=C ->
+            spawn(fun() -> 
+                          [wh_number_manager:reconcile_number(Number, AccountId)
+                           || Number <- wh_json:get_value(<<"numbers">>, JObj, [])]
+                  end),
+            C;
+        Else ->
+            Else
+    end.
+
+-spec put/1 :: (#cb_context{}) -> #cb_context{}.
+put(Context) ->
+    case crossbar_doc:save(Context) of
+        #cb_context{account_id=AccountId, doc=JObj, resp_status=success}=C ->
+            spawn(fun() -> 
+                          [wh_number_manager:reconcile_number(Number, AccountId)
+                           || Number <- wh_json:get_value(<<"numbers">>, JObj, [])]
+                  end),
+            C;
+        Else ->
+            Else
+    end.
+
+-spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+delete(Context, _DocId) ->
+    crossbar_doc:delete(Context).
 
 %%--------------------------------------------------------------------
 %% @private

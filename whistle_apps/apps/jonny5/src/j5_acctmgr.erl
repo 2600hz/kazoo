@@ -220,7 +220,7 @@ handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P, 
             ?LOG(CallID, "call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
             {noreply, State};
         error ->
-            {User, _} = whapps_util:get_destination(JObj),
+            {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
             ToDID = wnm_util:to_e164(User),
 
             {Resp, State1} = case is_us48(ToDID) of
@@ -240,7 +240,7 @@ handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P, trunks_in
             ?LOG(CallID, "call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
             {noreply, State};
         error ->
-            {User, _} = whapps_util:get_destination(JObj),
+            {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
             ToDID = wnm_util:to_e164(User),
 
             {Resp, State1} = case erlang:byte_size(ToDID) > 6 of
@@ -447,7 +447,7 @@ handle_event(_JObj, #state{acct_id=_AcctId}=_State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{acct_id=AcctID}) ->
-    j5_util:store_account_handler(AcctID, undefined).
+    ?LOG(AcctID, "j5_acctmgr going down: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
