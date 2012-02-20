@@ -20,7 +20,7 @@
 %% otherwise, the call is not authorized
 -spec default/0 :: () -> {boolean(), []}.
 default() ->
-    case ecallmgr_util:get_setting(authz_default, <<"deny">>) of
+    case ecallmgr_util:get_setting(<<"authz_default">>, <<"deny">>) of
         {ok, <<"allow">>} -> {true, []};
         _ -> {false, []}
     end.
@@ -86,7 +86,7 @@ authorize_loop(JObj) ->
 
         {authz_win, From, Ref} ->
             wapi_authz:publish_win(wh_json:get_value(<<"Server-ID">>, JObj), wh_json:delete_key(<<"Event-Name">>, JObj)),
-            ?LOG("Sent authz_win, nice"),
+            ?LOG("sent authz_win, nice"),
 
             From ! {authz_win_sent, Ref},
 
@@ -94,7 +94,7 @@ authorize_loop(JObj) ->
 
         _ -> authorize_loop(JObj)
     after ?AUTHZ_LOOP_TIMEOUT ->
-            ?LOG_SYS("Going down from timeout")
+            ?LOG_SYS("going down from timeout")
     end.
 
 -spec request/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().

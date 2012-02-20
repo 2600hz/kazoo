@@ -1,5 +1,4 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Signup module
@@ -12,23 +11,25 @@
 %%% * it operates without an account id (or account db)
 %%%
 %%% @end
-%%% Created : 22 Apr 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_signup).
 
--behaviour(gen_server).
+-export([init/0
+         ,allowed_methods/0, allowed_methods/1 %% only accept 0 or 1 path token
+         ,resource_exists/0, resource_exists/1
+         ,authorize/1
+         ,authenticate/1
+         ,validate/1, validate/2
+         ,put/1, post/2
+        ]).
 
-%% API
--export([start_link/0]).
--export([reload/0]).
+%% cleanup process
+-export([start_link/0, init_it/0]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
-
--include("../../include/crossbar.hrl").
-
--define(SERVER, ?MODULE).
+-include_lib("crossbar/include/crossbar.hrl").
 
 -define(SIGNUP_DB, <<"signups">>).
 
@@ -46,277 +47,57 @@
                 ,activation_email_html = 'undefined' :: 'undefined' | atom()
                 ,activation_email_from = 'undefined' :: 'undefined' | atom()
                 ,activation_email_subject = 'undefined' :: 'undefined' | atom()
-                ,cleanup_timer = 'undefined' :: 'undefined' | reference()
                }).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+init() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize),
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.signup">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.signup">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.signup">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.signup">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.signup">>, ?MODULE, put),
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
+    _ = couch_mgr:db_create(?SIGNUP_DB),
+
+    _ = case couch_mgr:update_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE) of
+            {error, _} ->
+                couch_mgr:load_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE);
+            {ok, _} -> ok
+        end,
+
+    supervisor:start_child(crossbar_sup, crossbar_sup:child_spec(?MODULE)).
+
+
+
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    {ok, proc_lib:spawn_link(?MODULE, init_it, [])}.
 
-reload() ->
-    gen_server:cast(?SERVER, {reload}).
+init_it() ->
+    State = init_state(),
+    cleanup_loop(State).
 
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init(_) ->
-    _ = bind_to_crossbar(),
-    couch_mgr:db_create(?SIGNUP_DB),
-
-    case couch_mgr:update_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE) of
-        {error, _} ->
-            couch_mgr:load_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE);
-        {ok, _} -> ok
-    end,
-
-    #state{cleanup_interval=CleanupInterval}=State = init_state(),
-    TRef = erlang:send_after(CleanupInterval * 1000, self(), cleanup),
-    {ok, State#state{cleanup_timer=TRef}}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast({reload}, State) ->
-    {noreply, State, 0};
-
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
-                 ,{RD, #cb_context{req_nouns=[{<<"signup">>,[]}]
-                                   ,req_id=ReqId}=Context}}, State) ->
-    ?LOG(ReqId, "authorizing request", []),
-    Pid ! {binding_result, true, {RD, Context}},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.authorize">>
-                 ,{RD, #cb_context{req_nouns=[{<<"signup">>,[_]}]
-                                   ,req_id=ReqId}=Context}}, State) ->
-    ?LOG(ReqId, "authorizing request", []),
-    Pid ! {binding_result, true, {RD, Context}},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
-                 ,{RD, #cb_context{req_nouns=[{<<"signup">>,[]}]
-                                   ,req_id=ReqId}=Context}}, State) ->
-    ?LOG(ReqId, "authenticating request", []),
-    Pid ! {binding_result, true, {RD, Context}},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.authenticate">>
-                 ,{RD, #cb_context{req_nouns=[{<<"signup">>,[_]}]
-                                   ,req_id=ReqId}=Context}}, State) ->
-    ?LOG(ReqId, "authenticating request", []),
-    Pid ! {binding_result, true, {RD, Context}},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.signup">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = allowed_methods(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.signup">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = resource_exists(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.validate.signup">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, Context#cb_context{db_name=?SIGNUP_DB}),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.signup">>, [RD, #cb_context{doc=JObj}=Context | [_]=Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  case activate_signup(JObj) of
-                      {ok, Account, User} ->
-                          delete_signup(JObj),
-                          Context1 = Context#cb_context{resp_status=success
-                                                        ,resp_data=wh_json:from_list([{<<"account">>, Account}
-                                                                                      ,{<<"user">>, User}
-                                                                                     ])},
-                          Pid ! {binding_result, true, [RD, Context1, Params]};
-                      _Else ->
-                          Context1 = crossbar_util:response_db_fatal(Context),
-                          Pid ! {binding_result, true, [RD, Context1, Params]}
-                  end
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.signup">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  _ = case crossbar_doc:save(Context#cb_context{db_name=?SIGNUP_DB}) of
-                          #cb_context{resp_status=success}=Context1 ->
-                              Pid ! {binding_result, true, [RD, Context1#cb_context{resp_data=[]}, Params]},
-                              _ = send_activation_email(RD, Context1, State),
-                              exec_register_command(RD, Context1, State);
-                          _ ->
-                              Context1 = crossbar_util:response_db_fatal(Context),
-                              Pid ! {binding_result, true, [RD, Context1, Params]}
-                      end
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, _, Payload}, State) ->
-    Pid ! {binding_result, false, Payload},
-    {noreply, State};
-
-handle_info(cleanup, #state{cleanup_interval=CleanupInterval}=State) ->
-    _ = cleanup_signups(State),
-
-    {ok, TRef} = erlang:send_after(CleanupInterval * 1000, cleanup),
-    {noreply, State#state{cleanup_timer=TRef}};
-
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
--spec code_change/3 :: (_, #state{}, _) -> {'ok', #state{}}.
-code_change(_OldVsn, #state{cleanup_timer=CurTRef}, _Extra) ->
-    _ = erlang:cancel_timer(CurTRef),
-    _ = bind_to_crossbar(),
-    {ok, init_state()}.
-
--spec init_state/0 :: () -> #state{}.
-init_state() ->
-    case get_configs() of
-        {ok, Terms} ->
-            ?LOG_SYS("loaded config from ~s", [?SIGNUP_CONF]),
-            Defaults = #state{},
-            #state{cleanup_interval =
-                       props:get_integer_value(cleanup_interval, Terms, Defaults#state.cleanup_interval)
-                   ,signup_lifespan =
-                       props:get_integer_value(signup_lifespan, Terms, Defaults#state.signup_lifespan)
-                   ,register_cmd =
-                       compile_template(props:get_value(register_cmd, Terms), cb_signup_register_cmd)
-                   ,activation_email_plain =
-                       compile_template(props:get_value(activation_email_plain, Terms), cb_signup_email_plain)
-                   ,activation_email_html =
-                       compile_template(props:get_value(activation_email_html, Terms), cb_signup_email_html)
-                   ,activation_email_from =
-                       compile_template(props:get_value(activation_email_from, Terms), cb_signup_email_from)
-                   ,activation_email_subject =
-                       compile_template(props:get_value(activation_email_subject, Terms), cb_signup_email_subject)
-                  };
-        {error, _} ->
-            ?LOG_SYS("could not read config from ~s", [?SIGNUP_CONF]),
-            #state{}
+cleanup_loop(#state{cleanup_interval=CleanupInterval}=State) ->
+    Wait = CleanupInterval * 1000,
+    receive
+        {send_activation_email, Context} ->
+            send_activation_email(Context, State),
+            cleanup_loop(State);
+        {register, Context} ->
+            exec_register_command(Context, State),
+            cleanup_loop(State);
+        _ -> cleanup_loop(State)
+    after
+        Wait ->
+            cleanup_signups(State),
+            cleanup_loop(State)
     end.
 
--spec get_configs/0 :: () -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
-                                                   | {integer(), module(), term()}}.
-get_configs() ->
-    file:consult(lists:flatten(?SIGNUP_CONF)).
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
 %%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function binds this server to the crossbar bindings server,
-%% for the keys we need to consume.
-%% @end
-%%--------------------------------------------------------------------
--spec bind_to_crossbar/0 :: () ->  'ok' | {'error', 'exists'}.
-bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.signup">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.signup">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.signup">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.signup">>).
-
-%%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
 %% given Nouns.  IE: '/accounts/' can only accept GET and PUT
@@ -324,34 +105,30 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (Paths) -> tuple(boolean(), http_methods()) when
-      Paths :: list().
-allowed_methods([]) ->
-    {true, ['PUT']};
-allowed_methods([_]) ->
-    {true, ['POST']};
+-spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods/1 :: (path_token()) -> http_methods().
+allowed_methods() ->
+    ['PUT'].
 allowed_methods(_) ->
-    {false, []}.
+    ['POST'].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: (Paths) -> tuple(boolean(), []) when
-      Paths :: list().
-resource_exists([]) ->
-    {true, []};
-resource_exists([_]) ->
-    {true, []};
+-spec resource_exists/0 :: () -> boolean().
+-spec resource_exists/1 :: (path_token()) -> boolean().
+resource_exists() ->
+    true.
 resource_exists(_) ->
-    {false, []}.
+    true.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -359,24 +136,62 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: (Params, Context) -> #cb_context{} when
-      Params :: list(),
-      Context :: #cb_context{}.
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    validate_new_signup(Context);
-validate([ActivationKey], #cb_context{req_verb = <<"post">>}=Context) ->
-    check_activation_key(ActivationKey, Context);
-validate(_, Context) ->
-    crossbar_util:response_faulty_request(Context).
+-spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+validate(#cb_context{req_verb = <<"put">>}=Context) ->
+    validate_new_signup(Context#cb_context{db_name=?SIGNUP_DB}).
 
+validate(#cb_context{req_verb = <<"post">>}=Context, ActivationKey) ->
+    check_activation_key(ActivationKey, Context#cb_context{db_name=?SIGNUP_DB}).
+
+-spec authorize/1 :: (#cb_context{}) -> 'true'.
+authorize(#cb_context{req_nouns=[{<<"signup">>,[]}]}) ->
+    true;
+authorize(#cb_context{req_nouns=[{<<"signup">>,[_]}]}) ->
+    true.
+
+-spec authenticate/1 :: (#cb_context{}) -> 'true'.
+authenticate(#cb_context{req_nouns=[{<<"signup">>,[]}]}) ->
+    true;
+authenticate(#cb_context{req_nouns=[{<<"signup">>,[_]}]}) ->
+    true.
+
+-spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+post(#cb_context{doc=JObj}=Context, _) ->
+    case activate_signup(JObj) of
+        {ok, Account, User} ->
+            _ = couch_mgr:delete_doc(?SIGNUP_DB, JObj),
+            Context#cb_context{resp_status=success
+                               ,resp_data=wh_json:from_list([{<<"account">>, Account}
+                                                             ,{<<"user">>, User}
+                                                            ])
+                              };
+        _Else ->
+            crossbar_util:response_db_fatal(Context)
+    end.
+
+-spec put/1 :: (#cb_context{}) -> #cb_context{}.
+put(Context) ->
+    case crossbar_doc:save(Context#cb_context{db_name=?SIGNUP_DB}) of
+        #cb_context{resp_status=success}=Context1 ->
+            P = crossbar_sup:find_proc(?MODULE),
+            P ! {send_activation_email, Context1},
+            P ! {register, Context},
+            Context1#cb_context{resp_data=[]};
+        _ ->
+                crossbar_util:response_db_fatal(Context)
+    end.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Create a new signup document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_new_signup/1 :: (Context) -> #cb_context{} when
-      Context :: #cb_context{}.
+-spec validate_new_signup/1 :: (#cb_context{}) -> #cb_context{}.
 validate_new_signup(#cb_context{req_data=JObj}=Context) ->
     {AccountErrors, Account} = validate_account(wh_json:get_value(<<"account">>, JObj), Context),
     {UserErrors, User} = validate_user(wh_json:get_value(<<"user">>, JObj), Context),
@@ -398,9 +213,7 @@ validate_new_signup(#cb_context{req_data=JObj}=Context) ->
 %% Determines if the account realm is unique and if the account is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_account/2 :: (Account, Context) -> tuple(list(), undefined | wh_json:json_object()) when
-      Account :: undefined | wh_json:json_object(),
-      Context :: #cb_context{}.
+-spec validate_account/2 :: (wh_json:json_object() | 'undefined', #cb_context{}) -> {path_tokens(), wh_json:json_object() | 'undefined'}.
 validate_account(undefined, _) ->
     ?LOG("signup did not contain an account definition"),
     {[<<"account">>], undefined};
@@ -423,9 +236,7 @@ validate_account(Account, Context) ->
 %% Determines if the user object is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_user/2 :: (User, Context) -> tuple(list(), undefined | wh_json:json_object()) when
-      User :: undefined | wh_json:json_object(),
-      Context :: #cb_context{}.
+-spec validate_user/2 :: (wh_json:json_object() | 'undefined', #cb_context{}) -> {path_tokens(), 'undefined' | wh_json:json_object()}.
 validate_user(undefined, _) ->
     ?LOG("signup did not contain an user definition"),
     {[<<"user">>], undefined};
@@ -445,10 +256,10 @@ validate_user(User, Context) ->
 %% generates a random activation key
 %% @end
 %%--------------------------------------------------------------------
--spec create_activation_key/0 :: () -> binary().
+-spec create_activation_key/0 :: () -> ne_binary().
 create_activation_key() ->
     ActivationKey =
-        wh_util:to_binary(wh_util:to_hex(crypto:rand_bytes(32))),
+        wh_util:to_hex_binary(crypto:rand_bytes(32)),
     ?LOG("created new activation key ~s", [ActivationKey]),
     ActivationKey.
 
@@ -543,11 +354,11 @@ activate_user(Account, User) ->
 %% then exectute it now.
 %% @end
 %%--------------------------------------------------------------------
--spec exec_register_command/3 :: (#wm_reqdata{}, #cb_context{}, #state{}) -> 'ok' | string().
-exec_register_command(_, _, #state{register_cmd=undefined}) ->
+-spec exec_register_command/2 :: (#cb_context{}, #state{}) -> 'ok' | string().
+exec_register_command(_, #state{register_cmd=undefined}) ->
     ok;
-exec_register_command(RD, Context, #state{register_cmd=CmdTmpl}) ->
-    Props = template_props(RD, Context),
+exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
+    Props = template_props(Context),
     {ok, Cmd} = CmdTmpl:render(Props),
     ?LOG("executing register command ~s", [Cmd]),
     os:cmd(binary_to_list(iolist_to_binary(Cmd))).
@@ -557,10 +368,10 @@ exec_register_command(RD, Context, #state{register_cmd=CmdTmpl}) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_activation_email/3 :: (#wm_reqdata{}, #cb_context{}, #state{}) -> {'ok', pid()} | {'error', term()}.
-send_activation_email(RD, #cb_context{doc=JObj, req_id=ReqId}=Context, #state{activation_email_subject=SubjectTmpl
-                                                                ,activation_email_from=FromTmpl}=State) ->
-    Props = template_props(RD, Context),
+-spec send_activation_email/2 :: (#cb_context{}, #state{}) -> {'ok', pid()} | {'error', term()}.
+send_activation_email(#cb_context{doc=JObj, req_id=ReqId}=Context, #state{activation_email_subject=SubjectTmpl
+                                                                          ,activation_email_from=FromTmpl}=State) ->
+    Props = template_props(Context),
     To = wh_json:get_value([<<"pvt_user">>, <<"email">>], JObj),
     Subject = case SubjectTmpl:render(Props) of
                   {ok, S} -> S;
@@ -626,23 +437,25 @@ create_body(_, _, Body) ->
 %% create a proplist to provide to the templates during render
 %% @end
 %%--------------------------------------------------------------------
--spec template_props/2 :: (#wm_reqdata{}, #cb_context{}) -> [{ne_binary(), proplist() | ne_binary()},...].
-template_props(RD, #cb_context{doc=JObj, req_data=Data}) ->
-    Port = case wrq:port(RD) of
-               80 -> "";
-               P -> [":", wh_util:to_list(P)]
-           end,
-    ApiHost = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
+-spec template_props/1 :: (#cb_context{}) -> [{ne_binary(), proplist() | ne_binary()},...].
+template_props(#cb_context{doc=JObj
+                           ,req_data=Data
+                           ,raw_host=RawHost
+                           ,port=Port
+                          }) ->
+
+    ApiHost = list_to_binary(["http://", RawHost, ":", wh_util:to_list(Port), "/"]),
     %% remove the redundant request data
-    Req1 = wh_json:delete_key(<<"account">>, Data),
-    Req2 = wh_json:delete_key(<<"user">>, Req1),
+    Req = wh_json:delete_keys([<<"account">>, <<"user">>], Data),
+
     %% create props to expose to the template
     [{<<"account">>, wh_json:to_proplist(<<"pvt_account">>, JObj)}
      ,{<<"user">>, wh_json:to_proplist(<<"pvt_user">>, JObj)}
-     ,{<<"request">>, wh_json:to_proplist(Req2)}
-     ,{<<"api_url">>, [{<<"host">>, wh_util:to_binary(ApiHost)}
-                       ,{<<"path">>, <<"v1/signup/">>}]}
-     ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
+     ,{<<"request">>, wh_json:to_proplist(Req)}
+     ,{<<"api_url">>, [{<<"host">>, ApiHost}
+                       ,{<<"path">>, <<"v1/signup/">>}
+                      ]}
+     ,{<<"host">>, RawHost}
      ,{<<"activation_key">>, wh_json:get_value(<<"pvt_activation_key">>, JObj, <<>>)}
     ].
 
@@ -683,11 +496,7 @@ cleanup_signups(#state{signup_lifespan=Lifespan}) ->
                                                                       ,{<<"include_docs">>, true}
                                                                      ]) of
         {ok, Expired} ->
-            _ = [spawn(fun() ->
-                               timer:sleep(random:uniform(500) * 1000),
-                               delete_signup(wh_json:get_value(<<"doc">>, JObj))
-                       end)
-                 || JObj <- Expired],
+            _ = couch_mgr:delete_docs(?SIGNUP_DB, [wh_json:get_value(<<"doc">>, JObj, wh_json:new()) || JObj <- Expired]),
             ok;
         _Else ->
             ok
@@ -696,15 +505,38 @@ cleanup_signups(#state{signup_lifespan=Lifespan}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% The helper function spanwed by cleanup_signups to mark a signup
-%% as expired.
 %% @end
 %%--------------------------------------------------------------------
--spec delete_signup/1 :: ('undefined' | wh_json:json_object()) -> 'ok' | #cb_context{}.
-delete_signup(undefined) -> ok;
-delete_signup(JObj) ->
-    ?LOG_SYS("removing expired signup ~s", [wh_json:get_value(<<"_id">>, JObj)]),
-    crossbar_doc:delete(#cb_context{doc=JObj, db_name=?SIGNUP_DB}).
+-spec init_state/0 :: () -> #state{}.
+init_state() ->
+    case get_configs() of
+        {ok, Terms} ->
+            ?LOG_SYS("loaded config from ~s", [?SIGNUP_CONF]),
+            Defaults = #state{},
+            #state{cleanup_interval =
+                       props:get_integer_value(cleanup_interval, Terms, Defaults#state.cleanup_interval)
+                   ,signup_lifespan =
+                       props:get_integer_value(signup_lifespan, Terms, Defaults#state.signup_lifespan)
+                   ,register_cmd =
+                       compile_template(props:get_value(register_cmd, Terms), cb_signup_register_cmd)
+                   ,activation_email_plain =
+                       compile_template(props:get_value(activation_email_plain, Terms), cb_signup_email_plain)
+                   ,activation_email_html =
+                       compile_template(props:get_value(activation_email_html, Terms), cb_signup_email_html)
+                   ,activation_email_from =
+                       compile_template(props:get_value(activation_email_from, Terms), cb_signup_email_from)
+                   ,activation_email_subject =
+                       compile_template(props:get_value(activation_email_subject, Terms), cb_signup_email_subject)
+                  };
+        {error, _} ->
+            ?LOG_SYS("could not read config from ~s", [?SIGNUP_CONF]),
+            #state{}
+    end.
+
+-spec get_configs/0 :: () -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
+                                                   | {integer(), module(), term()}}.
+get_configs() ->
+    file:consult(lists:flatten(?SIGNUP_CONF)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -749,3 +581,4 @@ do_compile_template(Template, Name) ->
             ?LOG("could not compile ~s template, ignoring", [Name]),
             undefined
     end.
+

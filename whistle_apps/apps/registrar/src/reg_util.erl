@@ -13,6 +13,7 @@
 -export([hash_contact/1, get_expires/1]).
 -export([lookup_registrations/1, lookup_registration/2, fetch_all_registrations/0]).
 -export([reg_removed_from_cache/3]).
+-export([search_for_registration/2]).
 -include("reg.hrl").
 
 cache_reg_key(Id) -> {?MODULE, registration, Id}.
@@ -73,7 +74,7 @@ fetch_all_registrations() ->
 %% calculate expiration time
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_expires/1 :: (ne_binary()) -> binary().
+-spec get_expires/1 :: (ne_binary()) -> number().
 get_expires(JObj) ->
     Multiplier = whapps_config:get_float(?CONFIG_CAT, <<"expires_multiplier">>, 1.25),
     Fudge = whapps_config:get_float(?CONFIG_CAT, <<"expires_fudge_factor">>, 120),
@@ -86,9 +87,9 @@ get_expires(JObj) ->
 %% hash a registration contact string
 %% @end
 %%-----------------------------------------------------------------------------
--spec hash_contact/1 :: (ne_binary()) -> binary().
+-spec hash_contact/1 :: (ne_binary()) -> ne_binary().
 hash_contact(Contact) ->
-    wh_util:to_binary(wh_util:to_hex(erlang:md5(Contact))).
+    wh_util:to_hex_binary(erlang:md5(Contact)).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -176,35 +177,43 @@ get_auth_user_in_account(Name, Realm, AccountDB) ->
 -spec reg_removed_from_cache/3 :: (term(), term(), expire | flush | erase) -> ok.
 reg_removed_from_cache({?MODULE, registration, Realm, User}, Reg, expire) ->
     ?LOG("received notice that user ~s@~s registration has expired", [User, Realm]),
+    SuppressUnregister = wh_json:is_true(<<"Suppress-Unregister-Notify">>, Reg),
+    case search_for_registration(User, Realm) of
+        {ok, _} -> 
+            ?LOG("registration still exists in another segment, defering to their expiration");
+        {error, timeout} when SuppressUnregister ->
+            ?LOG("registration for ~s@~s has expired in this segment, but notifications are suppressed", [Realm, User]);
+        {error, timeout} ->
+            ?LOG("registration for ~s@~s has expired in this segment, sending notification", [Realm, User]),
+            Updaters = [fun(J) -> wh_json:set_value(<<"Event-Name">>,  <<"deregister">>, J) end
+                        ,fun(J) -> wh_json:set_value(<<"Event-Category">>, <<"notification">>, J) end 
+                        ,fun(J) -> wh_json:delete_key(<<"App-Version">>, J) end
+                        ,fun(J) -> wh_json:delete_key(<<"App-Name">>, J) end 
+                        ,fun(J) -> wh_json:delete_key(<<"Server-ID">>, J) end
+                       ],
+            Event = wh_json:to_proplist(lists:foldr(fun(F, J) -> F(J) end, Reg, Updaters)) 
+                ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
+            wapi_notifications:publish_deregister(Event)
+    end,       
+    ok;
+reg_removed_from_cache(_, _, _) ->
+    ok.
+
+-spec search_for_registration/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} | {error, timeout}.
+search_for_registration(User, Realm) ->
     {ok, Srv} = registrar_sup:listener_proc(),
     Q = gen_listener:queue_name(Srv),
-    registrar_listener:add_query_resp_consumer(Srv, User, Realm),
+    gen_server:cast(Srv, {add_consumer, User, Realm, self()}),
     Req = [{<<"Username">>, User}
            ,{<<"Realm">>, Realm}
            ,{<<"Fields">>, [<<"Username">>, <<"Realm">>]}
            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION) 
           ],
     wapi_registration:publish_query_req(Req),
-    receive
-        {reg_query_resp, _} ->
-            ?LOG("registration still exists in another segment, defering to their expiration")
-    after
-        5000 ->  
-            case wh_json:is_true(<<"Suppress-Unregister-Notify">>, Reg) of
-                true  ->
-                    ?LOG("registration for ~s@~s has expired in this segment, but notifications are suppressed", [Realm, User]);
-                false ->
-                    ?LOG("registration for ~s@~s has expired in this segment, sending notification", [Realm, User]),
-                    Updaters = [fun(J) -> wh_json:set_value(<<"Event-Name">>,  <<"deregister">>, J) end
-                                ,fun(J) -> wh_json:set_value(<<"Event-Category">>, <<"notification">>, J) end 
-                                ,fun(J) -> wh_json:delete_key(<<"App-Version">>, J) end
-                                ,fun(J) -> wh_json:delete_key(<<"App-name">>, J) end 
-                                ,fun(J) -> wh_json:delete_key(<<"Server-ID">>, J) end
-                               ],
-                    Event = wh_json:to_proplist(lists:foldr(fun(F, J) -> F(J) end, Reg, Updaters)) 
-                                                ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
-                    wapi_notifications:publish_deregister(Event)
-            end        
-    end;
-reg_removed_from_cache(_, _, _) ->
-    ok.
+    Result = receive
+                 {reg_query_resp, Reg} -> {ok, Reg}
+             after
+                 2000 -> {error, timeout}
+             end,
+    gen_server:cast(Srv, {remove_consumer, self()}),
+    Result.

@@ -1,241 +1,48 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%% Upload a rate deck, query rates for a given DID
 %%% @end
-%%% Created : 26 Jan 2012 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_rates).
 
--behaviour(gen_server).
-
-%% API
--export([start_link/0]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([init/0
+         ,allowed_methods/0, allowed_methods/1
+         ,resource_exists/0, resource_exists/1
+         ,content_types_accepted/1
+         ,validate/1, validate/2
+         ,put/1
+         ,post/1, post/2
+         ,delete/2
+        ]).
 
 -include("../../include/crossbar.hrl").
 
--define(SERVER, ?MODULE).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(PVT_TYPE, <<"rate">>).
 -define(CB_LIST, <<"rates/crossbar_listing">>).
 
--define(UPLOAD_MIME_TYPES, ["text/csv", "text/comma-separated-values"]).
+-define(UPLOAD_MIME_TYPES, [{<<"text">>, <<"csv">>}
+                            ,{<<"text">>, <<"comma-separated-values">>}
+                           ]).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init(_) ->
+init() ->
     _ = couch_mgr:db_create(?WH_RATES_DB),
     _ = couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, "views/rates.json"),
     _ = couch_mgr:load_doc_from_file(?WH_RATES_DB, crossbar, "fixtures/us-1.json"),
-    _ = bind_to_crossbar(),
-    {ok, ok}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.rates">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = allowed_methods(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.rates">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = resource_exists(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.content_types_accepted.rates">>, {RD, Context, Params}}, State) ->
-    spawn(fun() ->
-                  Context1 = content_types_accepted(Params, Context),
-                  Pid ! {binding_result, true, {RD, Context1, Params}}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.validate.rates">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-
-                  Context1 = try
-                                 validate(Params, Context#cb_context{db_name=?WH_RATES_DB})
-                             catch
-                                 _E:R ->
-                                     ?LOG("failed to validate: ~p:~p", [_E, R]),
-                                     crossbar_util:response(fatal, <<"exception encountered">>, 500, wh_json:new(), Context)
-                             end,
-
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.rates">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-
-                  Pid ! {binding_result
-                         ,true
-                         ,[RD
-                           ,crossbar_util:response_202(list_to_binary(["attempting to insert rates from the uploaded document"]), Context)
-                           ,Params
-                          ]},
-
-                  Now = erlang:now(),
-                  {ok, {Count, Rates}} = process_upload_file(Context),
-
-                  ?LOG("trying to save ~b rates (took ~b ms to process)", [Count, timer:now_diff(erlang:now(), Now) div 1000]),
-
-                  crossbar_doc:save(Context#cb_context{doc=Rates}, [{publish_doc, false}]),
-
-                  ?LOG("it took ~b milli to process and save ~b rates", [timer:now_diff(erlang:now(), Now) div 1000, Count])
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.rates">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = crossbar_doc:save(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.rates">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = crossbar_doc:delete(Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, _, Payload}, State) ->
-    Pid ! {binding_result, false, Payload},
-    {noreply, State};
-
-handle_info({binding_flushed, B}, State) ->
-    ?LOG("binding ~s flushed", [B]),
-    {noreply, State};
-
-handle_info(_Info, State) ->
-    ?LOG("unhandled message: ~p", [_Info]),
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function binds this server to the crossbar bindings server,
-%% for the keys we need to consume.
-%% @end
-%%--------------------------------------------------------------------
--spec bind_to_crossbar/0 :: () ->  'ok' | {'error', 'exists'}.
-bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.rates">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.rates">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.rates">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.rates">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.rates">>).
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.rates">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.rates">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.rates">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.rates">>, ?MODULE, content_types_accepted),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.rates">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.rates">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"v1_resource.execute.delete.rates">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -246,13 +53,12 @@ bind_to_crossbar() ->
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
-allowed_methods([]) ->
-    {true, ['GET', 'PUT', 'POST']};
-allowed_methods([_]) ->
-    {true, ['GET', 'POST', 'DELETE']};
+-spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods/1 :: (path_token()) -> http_methods().
+allowed_methods() ->
+    ['GET', 'PUT', 'POST'].
 allowed_methods(_) ->
-    {false, []}.
+    ['GET', 'POST', 'DELETE'].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -262,32 +68,16 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
-resource_exists([]) ->
-    {true, []};
-resource_exists([_]) ->
-    {true, []};
+-spec resource_exists/0 :: () -> boolean().
+-spec resource_exists/1 :: (path_token()) -> boolean().
+resource_exists() ->
+    true.
 resource_exists(_) ->
-    {false, []}.
+    true.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Add content types accepted and provided by this module
-%%
-%% @end
-%%--------------------------------------------------------------------
-
-%% -spec content_types_provided/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
-%% content_types_provided([], #cb_context{req_verb = <<"post">>}=Context) ->
-%%     CTP = [{to_binary, ?UPLOAD_MIME_TYPES}],
-%%     Context#cb_context{content_types_provided=CTP};
-%% content_types_provided(_, Context) -> Context.
-
--spec content_types_accepted/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
-content_types_accepted([], #cb_context{req_verb = <<"post">>}=Context) ->
-    Context#cb_context{content_types_accepted = [{from_binary, ?UPLOAD_MIME_TYPES}]};
-content_types_accepted(_, Context) -> Context.
+-spec content_types_accepted/1 :: (#cb_context{}) -> #cb_context{}.
+content_types_accepted(#cb_context{req_verb = <<"post">>}=Context) ->
+    Context#cb_context{content_types_accepted = [{from_binary, ?UPLOAD_MIME_TYPES}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -298,22 +88,41 @@ content_types_accepted(_, Context) -> Context.
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: (path_tokens(), #cb_context{}) -> #cb_context{}.
-validate([], #cb_context{req_verb = <<"get">>}=Context) ->
-    summary(Context);
-validate([], #cb_context{req_verb = <<"put">>}=Context) ->
-    create(Context);
-validate([], #cb_context{req_verb = <<"post">>}=Context) ->
-    check_uploaded_file(Context);
-validate([Id], #cb_context{req_verb = <<"get">>}=Context) ->
-    read(Id, Context);
-validate([Id], #cb_context{req_verb = <<"post">>}=Context) ->
-    update(Id, Context);
-validate([Id], #cb_context{req_verb = <<"delete">>}=Context) ->
-    read(Id, Context);
-validate(_, Context) ->
-    crossbar_util:response_faulty_request(Context).
+-spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+validate(#cb_context{req_verb = <<"get">>}=Context) ->
+    summary(Context#cb_context{db_name=?WH_RATES_DB});
+validate(#cb_context{req_verb = <<"put">>}=Context) ->
+    create(Context#cb_context{db_name=?WH_RATES_DB});
+validate(#cb_context{req_verb = <<"post">>}=Context) ->
+    check_uploaded_file(Context#cb_context{db_name=?WH_RATES_DB}).
 
+validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
+    read(Id, Context#cb_context{db_name=?WH_RATES_DB});
+validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
+    update(Id, Context#cb_context{db_name=?WH_RATES_DB});
+validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
+    read(Id, Context#cb_context{db_name=?WH_RATES_DB}).
+
+-spec post/1 :: (#cb_context{}) -> #cb_context{}.
+-spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+post(#cb_context{}=Context) ->
+    spawn(fun() -> upload_csv(Context) end),
+    crossbar_util:response_202(list_to_binary(["attempting to insert rates from the uploaded document"]), Context).
+post(#cb_context{}=Context, _RateId) ->
+    crossbar_doc:save(Context).
+
+-spec put/1 :: (#cb_context{}) -> #cb_context{}.
+put(#cb_context{}=Context) ->
+    crossbar_doc:save(Context).
+
+-spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+delete(#cb_context{}=Context, _RateId) ->
+    crossbar_doc:delete(Context).
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -515,3 +324,13 @@ strip_quotes(Bin) ->
 constrain_weight(X) when X =< 0 -> 1;
 constrain_weight(X) when X >= 100 -> 100;
 constrain_weight(X) -> X.
+
+upload_csv(Context) ->
+    crossbar_util:put_reqid(Context),
+    Now = erlang:now(),
+    {ok, {Count, Rates}} = process_upload_file(Context),
+
+    ?LOG("trying to save ~b rates (took ~b ms to process)", [Count, timer:now_diff(erlang:now(), Now) div 1000]),
+    crossbar_doc:save(Context#cb_context{doc=Rates}, [{publish_doc, false}]),
+
+    ?LOG("it took ~b milli to process and save ~b rates", [timer:now_diff(erlang:now(), Now) div 1000, Count]).

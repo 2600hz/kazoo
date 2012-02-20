@@ -1,14 +1,17 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP, INC
 %%% @doc
 %%%
 %%% @end
-%%% Created :  19 Aug 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(crossbar).
 
--export([start_link/0, stop/0]).
+-export([start_link/0, stop/0
+         ,start_mod/1, stop_mod/1
+        ]).
 
 -include("../include/crossbar.hrl").
 
@@ -20,7 +23,7 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
 
     %% maybe move this into a config file?
     Dispatch = [
@@ -67,6 +70,26 @@ stop() ->
     ok = application:stop(crossbar).
 
 %%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Load a crossbar module's bindings into the bindings server
+%% @end
+%%--------------------------------------------------------------------
+-spec start_mod/1 :: (atom()) -> any().
+start_mod(CBMod) ->
+    CBMod:init().
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Load a crossbar module's bindings into the bindings server
+%% @end
+%%--------------------------------------------------------------------
+-spec stop_mod/1 :: (atom()) -> any().
+stop_mod(CBMod) ->
+    crossbar_bindings:flush_mod(CBMod).
+
+%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Ensures that all dependencies for this app are already running
@@ -75,4 +98,5 @@ stop() ->
 -spec start_deps/0 :: () -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    [ wh_util:ensure_started(App) || App <- [sasl, crypto, inets, cowboy, whistle_amqp]].
+    _ = [ wh_util:ensure_started(App) || App <- [sasl, crypto, inets, cowboy, whistle_amqp]],
+    ok.

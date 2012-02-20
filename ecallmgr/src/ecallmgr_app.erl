@@ -8,14 +8,17 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type, Ref, Args), {Ref, {I, start_link, [{Ref, Args}]}, permanent, 5000, Type, [I]}).
 
--define(PIDFILE, [code:priv_dir(ecallmgr), "/ecallmgr.pid"]).
+-define(PIDFILE, "/ecallmgr.pid").
 
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    wh_util:write_pid(?PIDFILE),
+    _ = case code:priv_dir(ecallmgr) of
+            {error, _} -> ok;
+            Prefix -> wh_util:write_pid([Prefix, ?PIDFILE])
+        end,
     ecallmgr:start_link().
 
 stop(_State) ->

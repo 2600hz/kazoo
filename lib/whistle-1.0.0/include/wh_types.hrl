@@ -3,6 +3,9 @@
 -define(MILLISECONDS_IN_DAY, 86400000).
 -define(SECONDS_IN_DAY, 86400).
 
+%% Hangup Causes that are fine
+-define(SUCCESSFUL_HANGUPS, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
+
 -define(IS_JSON_OBJECT,
         fun({struct, L}) when is_list(L) ->
                 lists:all(fun({K, V}) when (is_binary(K) orelse is_atom(K)) andalso
@@ -15,6 +18,7 @@
 -type api_terms() :: wh_json:json_object() | proplist().
 
 %% non-empty binary
+-define(NE_BINARY, <<_:8,_/binary>>).
 -type ne_binary() :: <<_:8,_:_*8>>.
 
 -type proplist_key() :: nonempty_string() | ne_binary() | atom().

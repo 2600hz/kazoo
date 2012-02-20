@@ -1,3 +1,5 @@
+-ifndef(CROSSBAR_HRL).
+
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
@@ -45,17 +47,17 @@
           ,auth_token = <<>> :: binary()
           ,auth_account_id = 'undefined' :: 'undefined' | ne_binary()
           ,auth_doc = 'undefined' :: wh_json:json_object() | 'undefined'
-          ,req_verb = <<"get">> :: binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>, <<"head">>
-          ,req_nouns = [{<<"404">>, []}] :: [{binary(), list()},...] | []
+          ,req_verb = <<"get">> :: ne_binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>, <<"head">>
+          ,req_nouns = [{<<"404">>, []}] :: [{ne_binary(), list()},...] | []
           ,req_json = wh_json:new() :: wh_json:json_object() | {'malformed', binary()} %% the request JSON envelope
-          ,req_files = [] :: [{binary(), wh_json:json_object()},...] | []
+          ,req_files = [] :: [{ne_binary(), wh_json:json_object()},...] | [] %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
           ,req_data = [] :: wh_json:json_objects()  % the "data" from the request JSON envelope
           ,query_json = wh_json:new() :: wh_json:json_object()
-          ,account_id = 'undefined' :: 'undefined' | binary()
-          ,db_name = 'undefined' :: 'undefined' | binary()
-          ,doc = wh_json:new() :: wh_json:json_object() | wh_json:json_objects() | {integer(), wh_json:json_objects()}
+          ,account_id = 'undefined' :: 'undefined' | ne_binary()
+          ,db_name = 'undefined' :: 'undefined' | ne_binary()
+          ,doc = wh_json:new() :: wh_json:json_object() | wh_json:json_objects()
           ,resp_expires = {{1999,1,1},{0,0,0}} :: wh_datetime()
-          ,resp_etag = 'undefined' :: 'undefined' | 'automatic' | string()
+          ,resp_etag = 'undefined' :: 'undefined' | 'automatic' | ne_binary()
           ,resp_status = 'error' :: crossbar_status()
           ,resp_error_msg = 'undefined' :: wh_json:json_string() | 'undefined'
           ,resp_error_code = 'undefined' :: wh_json:json_number() | 'undefined'
@@ -63,7 +65,12 @@
           ,resp_headers = [] :: proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
           ,start = erlang:now() :: wh_now()
           ,req_id = <<"000000000000">> :: ne_binary()
-          ,storage = []
+          ,storage = [] :: proplist()
+          ,raw_host = <<>> :: binary()
+          ,port = 8000 :: integer()
+          ,raw_path = <<>> :: binary()
+          ,raw_qs = <<>> :: binary()
+          ,method = 'GET' :: http_methods()
          }).
 
 -ifdef(PROFILE).
@@ -74,4 +81,7 @@
 -define(TIMER_START(Str), ok).
 -define(TIMER_TICK(Str), ok).
 -define(TIMER_STOP(Str), ok).
+-endif.
+
+-define(CROSSBAR_HRL, true).
 -endif.

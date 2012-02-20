@@ -130,13 +130,12 @@ handle(Data, #cf_call{owner_id=OwnerId, account_db=AccountDb}=Call) ->
             cf_call_command:answer(Call),
             compose_voicemail(get_mailbox_profile(Data, Call), Call),
             ?LOG("compose voicemail complete"),
-            spawn(fun() -> cf_util:update_mwi(OwnerId, AccountDb) end),
             cf_exe:stop(Call);
         <<"check">> ->
             cf_call_command:answer(Call),
             check_mailbox(get_mailbox_profile(Data, Call), Call),
             ?LOG("check voicemail complete"),
-            spawn(fun() -> cf_util:update_mwi(OwnerId, AccountDb) end),
+            cf_util:update_mwi(OwnerId, AccountDb),
             cf_exe:stop(Call);
         _ ->
             cf_exe:continue(Call)
@@ -380,8 +379,9 @@ main_menu(#mailbox{prompts=#prompts{goodbye=Goodbye}}, Call, Loop) when Loop > 4
     ?LOG("entered main menu with too many invalid entries"),
     cf_call_command:b_play(Goodbye, Call),
     ok;
-main_menu(#mailbox{prompts=#prompts{main_menu=MainMenu}=Prompts
-                   ,keys=#keys{hear_new=HearNew, hear_saved=HearSaved, configure=Configure, exit=Exit}}=Box, Call, Loop) ->
+main_menu(#mailbox{prompts=#prompts{main_menu=MainMenu}=Prompts, owner_id=OwnerId
+                   ,keys=#keys{hear_new=HearNew, hear_saved=HearSaved, configure=Configure, exit=Exit}}=Box
+          , #cf_call{account_db=AccountDb}=Call, Loop) ->
     ?LOG("playing mailbox main menu"),
     cf_call_command:b_flush(Call),
     Messages = get_messages(Box, Call),
@@ -392,9 +392,11 @@ main_menu(#mailbox{prompts=#prompts{main_menu=MainMenu}=Prompts
     case cf_call_command:collect_digits(1, 5000, 2000, NoopId, Call) of
         {error, _} -> 
             ?LOG("error during mailbox main menu"),
+            cf_util:update_mwi(OwnerId, AccountDb),
             ok;
         {ok, Exit} -> 
             ?LOG("user choose to exit voicemail menu"),
+            cf_util:update_mwi(OwnerId, AccountDb),
             ok;
         {ok, HearNew} ->
             ?LOG("playing all messages in folder: ~s", [?FOLDER_NEW]),
@@ -702,9 +704,10 @@ change_pin(#mailbox{prompts=#prompts{enter_new_pin=EnterNewPin, reenter_new_pin=
 %% @end
 %%--------------------------------------------------------------------
 -spec new_message/4 :: (ne_binary(), pos_integer(), #mailbox{}, #cf_call{}) -> ok.
-new_message(AttachmentName, Length, #mailbox{mailbox_id=Id}=Box, #cf_call{account_db=Db, cid_name=CIDName, cid_number=CIDNumber
-                                                                          ,from=From, from_user=FromU, from_realm=FromR
-                                                                          ,to=To, to_user=ToU, to_realm=ToR}=Call) ->
+new_message(AttachmentName, Length, #mailbox{mailbox_id=Id, owner_id=OwnerId}=Box
+            ,#cf_call{account_db=Db, cid_name=CIDName, cid_number=CIDNumber
+                      ,from=From, from_user=FromU, from_realm=FromR
+                      ,to=To, to_user=ToU, to_realm=ToR}=Call) ->
     ?LOG("saving new ~bms voicemail message and metadata", [Length]),
     CallID = cf_exe:callid(Call),
     MediaId = message_media_doc(Db, Box),
@@ -741,7 +744,8 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id}=Box, #cf_call{accoun
                                           ,{<<"Voicemail-Length">>, Length}
                                           ,{<<"Call-ID">>, CallID}
                                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                         ]).
+                                         ]),
+    cf_util:update_mwi(OwnerId, Db).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1084,9 +1088,9 @@ update_doc(Key, Value, Id, Db) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec tmp_file/0 :: () -> binary().
+-spec tmp_file/0 :: () -> ne_binary().
 tmp_file() ->
-     <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
+     <<(wh_util:to_hex(crypto:rand_bytes(16)))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1097,7 +1101,7 @@ tmp_file() ->
 %% with year 0.
 %% @end
 %%--------------------------------------------------------------------
--spec new_timestamp/0 :: () -> binary().
+-spec new_timestamp/0 :: () -> ne_binary().
 new_timestamp() ->
     wh_util:to_binary(wh_util:current_tstamp()).
 

@@ -227,7 +227,7 @@ send_uuid_to_app(JObj, UUID, CtlQ) ->
 send_failed_req(JObj, Errors) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Failed-Attempts">>, length(Errors)}
-            ,{<<"Failure-Message">>, [wh_json:to_binary(E) || E <- Errors]}
+            ,{<<"Failure-Message">>, [wh_util:to_binary(E) || E <- Errors]}
             | wh_api:default_headers(<<"resource">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
     ?LOG("sending resource error"),
     wapi_resource:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).

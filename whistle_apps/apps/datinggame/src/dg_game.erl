@@ -241,7 +241,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 new_recording_name() ->
-    <<(list_to_binary(wh_util:to_hex(crypto:rand_bytes(16))))/binary, ".mp3">>.
+    <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>.
 
 -spec connect_agent/2 :: (#dg_agent{}, #dg_customer{}) -> 'ok'.
 connect_agent(_Agent, #dg_customer{switch_hostname = <<>>}=Customer) ->

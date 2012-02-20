@@ -46,9 +46,10 @@ get(Key0, Default, Node0) ->
                 {ok, RespJObj} ->
                     true = wapi_sysconf:get_resp_v(RespJObj),
                     V = case wh_json:get_value(<<"Value">>, RespJObj) of
-                            <<"undefined">> -> Default;
                             undefined -> Default;
                             null -> Default;
+                            <<"undefined">> -> Default;
+                            <<"null">> -> Default;
                             Value ->
                                 wh_cache:store_local(Cache, cache_key(Key, Node), Value),
                                 Value

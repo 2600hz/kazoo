@@ -1,0 +1,58 @@
+var a = {
+   "_id":"queues",
+   "$schema":"http://json-schema.org/draft-03/schema#",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Call Queues - FIFO call queues for serializing callers connecting to agents",
+   "properties":{
+      "name":{
+         "description":"A friendly name for the queue",
+         "required":"true",
+         "type":"string",
+         "minLength":1,
+         "maxLength":128
+      },
+      "connection_timeout":{
+          "description":"In seconds, how long to try to connect the caller before progressing past the queue callflow action",
+          "type":"integer",
+          "default":30,
+          "minimum":1
+      },
+       "member_timeout":{
+           "description":"In seconds, how long to ring an agent of the queue before progressing to the next agent available",
+           "type":"integer",
+           "default":5,
+           "minimum":1
+       },
+       "ring_simultaneously":{
+           "description":"The number of agents to try in parallel when connecting a caller",
+           "type":"integer",
+           "default":1,
+           "minimum":1
+       },
+       "wrapup_time":{
+           "description":"How long to wait after the caller hangs up before adding the agent back into the available agent queue",
+           "type":"integer",
+           "default":0,
+           "minimum":0
+       },
+       "endpoints":{
+           "description":"List of endpoint device IDs (agents) available to ring when callers enter the queue",
+           "type":"array",
+           "default":[]
+       },
+       "moh":{
+           "description":"Media ID (or appropriate media URI) of media to play while caller is on hold.",
+           "type":"string"
+       },
+       "announce":{
+           "description":"Media ID (or appropriate media URI) of media to play when caller is about to be connected.",
+           "type":"string"
+       },
+       "strategy":{
+           "description":"The queue strategy for connecting agents to callers"
+           ,"type":"string"
+           ,"enum":["round_robin", "most_idle"]
+           ,"default":"round_robin"
+       }
+   }
+};
