@@ -90,12 +90,15 @@ validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
     read(Id, Context).
 
+-spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _) ->
     crossbar_doc:save(Context).
 
+-spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(Context) ->
     crossbar_doc:save(Context).
 
+-spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
