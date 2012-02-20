@@ -261,22 +261,9 @@ update_device(DocId, #cb_context{req_data=Req, db_name=Db}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_device_status/1 :: (#cb_context{}) -> #cb_context{}.
-load_device_status(#cb_context{db_name=Db}=Context) ->
-    {ok, JObjs} = couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]),
+load_device_status(Context) ->
     AccountRealm = crossbar_util:get_account_realm(Context),
-    AccountDevices = lists:foldl(fun(JObj, Acc) -> 
-                                         [{wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], JObj, AccountRealm),
-                                           wh_json:get_value([<<"doc">>, <<"sip">>, <<"username">>], JObj)} 
-                                          | Acc
-                                         ] 
-                                 end, [], JObjs),
-    Result = lists:foldl(fun(AuthorizingId, Acc) ->
-                                 Props = [{<<"device_id">>, AuthorizingId}
-                                          ,{<<"registered">>, true}
-                                         ],
-                                 [wh_json:from_list(Props)| Acc]
-                         end, [], lookup_regs(AccountDevices)),
-    crossbar_util:response(Result, Context).
+    crossbar_util:response(lookup_regs(AccountRealm), Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -291,66 +278,38 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% For a given [{Realm, Username}|...], returns  [[Realm, Username]|...]
-%% whose device is registered, ready to be used in a view filter
+%% Returns the complete list of registrations in a the first registrar
+%% to respond for a given account realm.  This is not 100% accurate
+%% as an endpoint might be stored in another registrar, but it is
+%% accurate enough for the status icons.
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_regs/1 :: ([{ne_binary(), ne_binary()},...] | []) -> [[ne_binary(),...],...] | [].
-lookup_regs([]) -> [];
-lookup_regs(RealmUserList) ->
+-spec lookup_regs/1 :: (ne_binary()) -> wh_json:json_objects().
+lookup_regs(AccountRealm) ->
     Q = amqp_util:new_queue(),
     ok = amqp_util:bind_q_to_targeted(Q),
     ok = amqp_util:basic_consume(Q),
-    _ = [spawn(fun() -> lookup_registration(Realm, User, Q) end) || {Realm, User} <- RealmUserList],
-    wait_for_reg_resp(RealmUserList, []). %% number of devices we're supposed to get an answer from
-
--spec lookup_registration/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-lookup_registration(Realm, User, Q) ->
-    ?LOG_SYS("looking up registration information for ~s@~s", [User, Realm]),
-    Req = [{<<"Username">>, User}
-           ,{<<"Realm">>, Realm}
+    Req = [{<<"Realm">>, AccountRealm}
+           ,{<<"Fields">>, [<<"Authorizing-ID">>]}
            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
           ],
-    wapi_registration:publish_query_req(Req).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Collect Len number of registrations in Acc unless the timeout
-%% occurs
-%% @end
-%%--------------------------------------------------------------------
--spec wait_for_reg_resp/2 :: (list(), list()) -> [[ne_binary(),...],...] | [].
-wait_for_reg_resp([], Acc) -> Acc;
-wait_for_reg_resp([_|T], Acc) ->
-    try
-        receive
-            {amqp_host_down, _} ->
-                ?LOG("lost AMQP connection"),
-                Acc;
-            {amqp_lost_channel,no_connection} ->
-                ?LOG("lost AMQP connection"),
-                Acc;
-            {_, #amqp_msg{payload = Payload}} ->
-                Resp = wh_json:decode(Payload),
-                true = wapi_registration:query_resp_v(Resp),
-                AuthorizingId = wh_json:get_value([<<"Fields">>, <<"Authorizing-ID">>], Resp),
-                case lists:member(AuthorizingId, Acc) of
-                    true ->
-                        wait_for_reg_resp([ok|T], Acc);
-                    false ->
-                        wait_for_reg_resp(T, [AuthorizingId | Acc])
-                end;
-            #'basic.consume_ok'{} ->
-                wait_for_reg_resp([ok|T], Acc)
-        after
-            1000 ->
-                ?LOG("timeout for registration query"),
-                Acc
-        end
-    catch
-        _:_ ->
-            wait_for_reg_resp([ok|T], Acc)
+    wapi_registration:publish_query_req(Req),
+    receive
+        {_, #amqp_msg{payload = Payload}} ->
+            JObj = wh_json:decode(Payload),
+            true = wapi_registration:query_resp_v(JObj),
+            case wh_json:get_value(<<"Fields">>, JObj) of
+                undefined -> [];
+                Regs ->
+                    [wh_json:from_list([{<<"device_id">>, AuthorizingId}
+                                        ,{<<"registered">>, true}
+                                       ])
+                     || Reg <- Regs
+                            ,(AuthorizingId = wh_json:get_value(<<"Authorizing-ID">>, Reg)) =/= undefined
+                    ]
+            end
+    after
+        1000 -> []
     end.
 
 %%--------------------------------------------------------------------
