@@ -12,6 +12,8 @@
 
 %% API
 -export([start_link/0, stop/1]).
+-export([handle_call_status_resp/2]).
+-export([get_call_status/1]).
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2
@@ -26,6 +28,7 @@
 -define(RESPONDERS, [{cf_route_req, [{<<"dialplan">>, <<"route_req">>}]}
                      ,{cf_route_win, [{<<"dialplan">>, <<"route_win">>}]}
                      ,{{cf_util, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
+                     ,{{?MODULE, handle_call_status_resp}, [{<<"call_event">>, <<"channel_status_resp">>}]}
                     ]).
 -define(BINDINGS, [{route, []}
                    ,{notifications, [{restrict_to, [presence_probe]}]}
@@ -57,6 +60,36 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
+-spec get_call_status/1 :: (ne_binary()) -> {ok, wh_json:json_object()} | {error, timeout | wh_json:json_object()}.
+get_call_status(CallId) ->
+    {ok, Srv} = callflow_sup:listener_proc(),
+    gen_server:cast(Srv, {add_consumer, CallId, self()}),
+    Command = [{<<"Call-ID">>, CallId}
+               | wh_api:default_headers(gen_listener:queue_name(Srv), ?APP_NAME, ?APP_VERSION)
+              ],
+    wapi_call:publish_channel_status_req(CallId, Command),
+    Result = receive
+                 {call_status_resp, JObj} -> 
+                    case wh_json:get_value(<<"Status">>, JObj) of 
+                        <<"active">> -> {ok, JObj};
+                        _Else -> {error, JObj}
+                    end
+             after
+                 2000 -> {error, timeout}
+             end,
+    gen_server:cast(Srv, {remove_consumer, self()}),
+    Result.
+
+-spec handle_call_status_resp/2 :: (wh_json:json_object(), proplist()) -> ok.
+handle_call_status_resp(JObj, Props) ->
+    Consumers = props:get_value(consumers, Props),
+    StatusCallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    [Consumer ! {call_status_resp, JObj}
+     || {CallId, Consumer, _} <- Consumers
+            ,CallId =:= StatusCallId
+    ],
+    ok.
+
 %%%===================================================================
 %%% gen_listener callbacks
 %%%===================================================================
@@ -73,8 +106,9 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    process_flag(trap_exit, true),
     ?LOG_SYS("starting new callflow listener"),
-    {ok, ok}.
+    {ok, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -90,8 +124,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Msg, _From, State) ->
-    {noreply, State}.
+handle_call(_Msg, _From, Consumers) ->
+    {noreply, Consumers}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -103,8 +137,19 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast({add_consumer, CallId, Consumer}, Consumers) ->
+    MRef = erlang:monitor(process, Consumer),
+    ?LOG("added call status response consumer (~p) for ~s", [Consumer, CallId]),
+    {noreply, [{CallId, Consumer, MRef}|Consumers]};
+handle_cast({remove_consumer, Consumer}, Consumers) ->
+    {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
+                                   ?LOG("removed call status response consumer (~p): status sent", [Consumer]),
+                                   erlang:demonitor(MRef, [flush]),
+                                   false; 
+                              (_) -> true 
+                           end, Consumers)};
+handle_cast(_Msg, Consumers) ->
+    {noreply, Consumers}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -116,8 +161,15 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_info({'DOWN', _, _, Consumer, _R}, Consumers) ->
+    {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
+                                   ?LOG("removed call status response consumer (~p): ~p", [Consumer, _R]),
+                                   erlang:demonitor(MRef, flush),
+                                   false; 
+                              (_) -> true 
+                           end, Consumers)};
+handle_info(_Info, Consumers) ->
+    {noreply, Consumers}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -127,8 +179,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {reply, []}.
+handle_event(_JObj, Consumers) ->
+    {reply, [{consumers, Consumers}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -153,8 +205,8 @@ terminate(_Reason, _) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+code_change(_OldVsn, Consumers, _Extra) ->
+    {ok, Consumers}.
 
 %%%===================================================================
 %%% Internal functions
