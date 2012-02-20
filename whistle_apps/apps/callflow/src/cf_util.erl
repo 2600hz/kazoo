@@ -4,6 +4,7 @@
 
 -export([presence_probe/2]).
 -export([update_mwi/2, update_mwi/4]).
+-export([get_call_status/1]).
 -export([get_prompt/1, get_prompt/2]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
 -export([correct_media_path/2]).
@@ -16,7 +17,7 @@
 -define(PROMPTS_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".prompts">>).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% 
 %% @end
@@ -82,7 +83,7 @@ presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% 
 %% @end
@@ -137,8 +138,35 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
             ok
     end.
 
+
 %%--------------------------------------------------------------------
-%% @private
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec get_call_status/1 :: (ne_binary()) -> {ok, wh_json:json_object()} | {error, timeout | wh_json:json_object()}.
+get_call_status(CallId) ->
+    {ok, Srv} = callflow_sup:listener_proc(),
+    gen_server:cast(Srv, {add_consumer, CallId, self()}),
+    Command = [{<<"Call-ID">>, CallId}
+               | wh_api:default_headers(gen_listener:queue_name(Srv), ?APP_NAME, ?APP_VERSION)
+              ],
+    wapi_call:publish_channel_status_req(CallId, Command),
+    Result = receive
+                 {call_status_resp, JObj} -> 
+                    case wh_json:get_value(<<"Status">>, JObj) of 
+                        <<"active">> -> {ok, JObj};
+                        _Else -> {error, JObj}
+                    end
+             after
+                 2000 -> {error, timeout}
+             end,
+    gen_server:cast(Srv, {remove_consumer, self()}),
+    Result.
+
+%%--------------------------------------------------------------------
+%% @public
 %% @doc
 %% 
 %% @end
@@ -148,7 +176,7 @@ alpha_to_dialpad(Value) ->
     << <<(dialpad_digit(C))>> || <<C>> <= strip_nonalpha(wh_util:to_lower_binary(Value))>>.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% 
 %% @end
@@ -158,7 +186,7 @@ strip_nonalpha(Value) ->
     re:replace(Value, <<"[^[:alpha:]]">>, <<>>, [{return,binary}, global]).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% 
 %% @end

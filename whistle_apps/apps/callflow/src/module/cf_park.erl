@@ -32,7 +32,7 @@ update_presence(SlotNumber, PresenceId, AccountDb) ->
     {State, CallId} = case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls) of
                           undefined -> {<<"terminated">>, undefined};
                           CId -> 
-                              case cf_listener:get_call_status(CId) of
+                              case cf_util:get_call_status(CId) of
                                   {ok, _} -> {<<"early">>, CId};
                                   {error, _} ->
                                       cleanup_slot(SlotNumber, CId, #cf_call{account_db=AccountDb}),

@@ -11,12 +11,43 @@
 -export([blocking_refresh/0]).
 -export([refresh/0, refresh/1]).
 -export([migrate_menus/0, migrate_menus/1]).
+-export([show_calls/0]).
+-export([flush/0]).
 
 -include("callflow.hrl").
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec flush/0 :: () -> 'ok'.
+flush() ->
+    wh_cache:flush().
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec show_calls/0 :: () -> 'ok'.
+show_calls() ->
+    do_show_calls(cf_exe_sup:workers(), 0).
+
+do_show_calls([], Total) ->
+    io:format("Total: ~p~n", [Total]);
+do_show_calls([Srv|Srvs], Total) ->
+    case catch(cf_exe:get_call_info(Srv)) of
+        {ok, Call} -> 
+            io:format("CF_EXE(~p): ~p~n", [Srv, cf_util:call_to_proplist(Call)]);
+        _ -> ok
+    end,
+    do_show_calls(Srvs, Total + 1).
+
+%%--------------------------------------------------------------------
+%% @public
 %% @doc
 %%
 %% @end
@@ -29,7 +60,7 @@ blocking_refresh() ->
     ok.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %%
 %% @end
