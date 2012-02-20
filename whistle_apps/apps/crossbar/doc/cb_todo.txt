@@ -1,4 +1,2 @@
            "cb_conferences",
            "cb_clicktocall",
-           "cb_ts_accounts",
-           "cb_braintree",

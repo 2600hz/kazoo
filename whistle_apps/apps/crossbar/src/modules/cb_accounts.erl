@@ -203,15 +203,8 @@ validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"descendant
 validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"siblings">>) ->
     load_siblings(AccountId, Context).
 
-post(Context, AccountId, <<"parent">>) ->
-    case crossbar_doc:save(Context#cb_context{db_name=wh_util:format_account_id(AccountId, encoded)}) of
-        #cb_context{resp_status=success}=Context1 ->
-            Context1#cb_context{resp_data = wh_json:new()};
-        Else ->
-            Else
-    end.
-
-
+-spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 post(#cb_context{doc=Doc}=Context, AccountId) ->
     _ = crossbar_util:put_reqid(Context),
     %% this just got messy
@@ -242,12 +235,22 @@ post(#cb_context{doc=Doc}=Context, AccountId) ->
                     Else
             end
     end.
+post(Context, AccountId, <<"parent">>) ->
+    case crossbar_doc:save(Context#cb_context{db_name=wh_util:format_account_id(AccountId, encoded)}) of
+        #cb_context{resp_status=success}=Context1 ->
+            Context1#cb_context{resp_data = wh_json:new()};
+        Else ->
+            Else
+    end.
 
+-spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 put(Context) ->
     create_new_account_db(Context).
 put(Context, _) ->
     create_new_account_db(Context).
 
+-spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, AccountId) ->
     _ = crossbar_util:put_reqid(Context),
     %% dont use the account id in cb_context as it may not represent the db_name...
