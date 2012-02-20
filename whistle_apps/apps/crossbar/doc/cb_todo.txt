@@ -1,2 +1,1 @@
            "cb_conferences",
-           "cb_clicktocall",
