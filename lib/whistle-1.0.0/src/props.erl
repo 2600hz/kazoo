@@ -69,3 +69,12 @@ unique([], Uniques) ->
     lists:reverse(Uniques);
 unique([{Key, _}=H|T], Uniques) ->
     unique(lists:filter(fun({K, _}) when K =:= Key -> false; (_) -> true end, T), [H|Uniques]).
+
+-include_lib("eunit/include/eunit.hrl").
+-ifdef(TEST).
+
+unique_test() ->
+    L = [{a, b}, {a, b}, {a, c}, {b,c}, {b,d}],
+    ?assertEqual([{a, b}, {b, c}], unique(L)).
+
+-endif.
