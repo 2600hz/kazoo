@@ -26,6 +26,7 @@
          ,map/2, fold/2
          ,flush/0, flush/1, flush_mod/1
          ,stop/0
+         ,modules_loaded/0
         ]).
 
 %% Helper Functions for Results of a map/2
@@ -123,6 +124,10 @@ flush(Binding) ->
 flush_mod(CBMod) ->
     gen_server:cast(?MODULE, {flush_mod, CBMod}).
 
+-spec modules_loaded/0 :: () -> [atom(),...] | [].
+modules_loaded() ->
+    gen_server:call(?MODULE, modules_loaded).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -179,6 +184,12 @@ maybe_init_mod(ModBin) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(modules_loaded, _, #state{bindings=Bs}=State) ->
+    Mods = lists:foldl(fun({_, _, MFs}, Acc) ->
+                               [ K || {K, _} <- props:unique(queue:to_list(MFs))] ++ Acc
+                       end, [], Bs),
+    {reply, lists:usort(Mods), State};
+
 handle_call({map, Routing, Payload, ReqId}, From, State) when not is_list(Payload) ->
     handle_call({map, Routing, [Payload], ReqId}, From, State);
 handle_call({map, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) ->
