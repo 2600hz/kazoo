@@ -6,6 +6,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(v1_util).
 
@@ -19,6 +20,7 @@
          ,execute_request/2
          ,create_push_response/2, set_resp_headers/2
          ,create_resp_content/2, create_pull_response/2
+         ,halt/3
         ]).
 
 -include("crossbar.hrl").
@@ -477,7 +479,7 @@ process_billing(Context0)->
 succeeded(#cb_context{resp_status=success}) -> true;
 succeeded(_) -> false.
 
--spec execute_request/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+-spec execute_request/2 :: (#http_req{}, #cb_context{}) -> {boolean() | 'halt', #http_req{}, #cb_context{}}.
 execute_request(Req, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context0) ->
     Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
     Payload = [Context0 | Params],
@@ -497,17 +499,17 @@ execute_request(Req, Context) ->
     ?LOG("execute request false end"),
     {false, Req, Context}.
 
--spec execute_request_results/2 :: (#http_req{}, #cb_context{}) -> {'true', #http_req{}, #cb_context{}}.
-execute_request_results(Req0, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
+-spec execute_request_results/2 :: (#http_req{}, #cb_context{}) -> {'true' | 'halt', #http_req{}, #cb_context{}}.
+execute_request_results(Req0, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb, resp_error_code=StatusCode}=Context) ->
     case succeeded(Context) of
         false ->
             ?LOG("execute did not succeed"),
             {Content, Req1} = create_resp_content(Req0, Context),
-            ?LOG("setting resp body: ~p", [Content]),
+            ?LOG("setting resp body: ~s", [Content]),
             {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
 
             ?LOG("failed to execute request, returning ~s", [Content]),
-            {true, Req2, Context};
+            ?MODULE:halt(StatusCode, Req2, Context);
         true ->
             ?LOG("executed ~s request for ~s: ~p", [Verb, Mod, Params]),
             {true, Req0, Context}
@@ -654,3 +656,9 @@ fix_header(<<"Location">> = H, Path, Req) ->
     {H, crossbar_util:get_path(Req, Path)};
 fix_header(H, V, _) ->
     {wh_util:to_binary(H), wh_util:to_binary(V)}.
+
+-spec halt/3 :: (pos_integer(), #http_req{}, #cb_context{}) -> {'halt', #http_req{}, #cb_context{}}.
+halt(StatusCode, Req0, Context) ->
+    ?LOG("setting status code: ~p", [StatusCode]),
+    {ok, Req1} = cowboy_http_req:reply(StatusCode, Req0),
+    {halt, Req1, Context}.

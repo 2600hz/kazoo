@@ -2,8 +2,6 @@
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% API resource
-%%%
-%%%
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
@@ -117,10 +115,10 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
                                  wh_json:set_value(<<"error">>, <<"failed to parse request body">>, wh_json:new())
                                  ,Context1),
                     {_, Req3, Context3} = v1_util:create_push_response(Req2, Context2),
-                    ?LOG("setting status code: ~p", [StatusCode]),
-                    {ok, Req4} = cowboy_http_req:reply(StatusCode, Req3),
-                    {halt, Req4, Context3};
-                {Context1, Req2} -> check_preflight(Req2, Context1#cb_context{req_nouns=Nouns})
+
+                    v1_util:halt(StatusCode, Req3, Context3);
+                {Context1, Req2} ->
+                    check_preflight(Req2, Context1#cb_context{req_nouns=Nouns})
             end;
         [] ->
             ?LOG("no path tokens: ~p", [Methods]),
@@ -137,6 +135,7 @@ check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Para
     ?LOG("http method: ~s, actual verb to be used: ~s", [Method, Verb]),
 
     Methods1 = v1_util:allow_methods(Responses, Methods, Verb, Method),
+
     case v1_util:is_cors_preflight(Req1) of
         {true, Req2} ->
             ?LOG("allowing OPTIONS request for CORS preflight"),
@@ -324,7 +323,7 @@ allow_missing_post(Req0, #cb_context{req_verb=_Verb}=Context) ->
     {Method, Req1} = cowboy_http_req:method(Req0),
     {Method =:= 'POST', Req1, Context}.
 
--spec delete_resource/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+-spec delete_resource/2 :: (#http_req{}, #cb_context{}) -> {boolean() | 'halt', #http_req{}, #cb_context{}}.
 delete_resource(Req, Context) ->
     ?LOG("run: delete_resource"),
     v1_util:execute_request(Req, Context).
