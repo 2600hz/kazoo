@@ -220,7 +220,8 @@ handle_call({fold, Routing, Payload, ReqId}, From, State) when not is_list(Paylo
     handle_call({fold, Routing, [Payload], ReqId}, From, State);
 handle_call({fold, Routing, Payload, ReqId}, From, #state{bindings=Bs}=State) ->
     spawn(fun() ->
-                  ?LOG(ReqId, "running fold for binding ~s", [Routing]),
+                  put(callid, ReqId),
+                  ?LOG("running fold for binding ~s", [Routing]),
 
                   RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
 
@@ -405,7 +406,7 @@ fold_bind_results(MFs, Payload, Route) ->
 -spec fold_bind_results/5 :: ([{atom(), atom()},...] | [], term(), ne_binary(), non_neg_integer(), [{atom(), atom()},...] | []) -> term().
 fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
     case catch apply(M, F, Payload) of
-        eoq -> fold_bind_results(MFs, Payload, Route, MFsLen, [{M,F}|ReRunQ]);
+        eoq -> ?LOG("putting ~s to eoq", [M]), fold_bind_results(MFs, Payload, Route, MFsLen, [{M,F}|ReRunQ]);
         {error, _E}=E -> ?LOG("error, E"), E;
         {'EXIT', _E} -> ?LOG("excepted: ~p", [_E]), fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         Pay1 ->

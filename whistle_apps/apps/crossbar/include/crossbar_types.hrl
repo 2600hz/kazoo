@@ -9,6 +9,10 @@
 -type path_tokens() :: [path_token(),...] | [].
 
 %% {handler_fun, {type, sub_type}} => {to_json, [{<<"application">>, <<"json">>}]}
+
+%% {Type, SubType, Options}
+-type content_type() :: {ne_binary(), ne_binary(), wh_proplist()}.
+
 -type crossbar_content_handler() :: {atom(), [{ne_binary(), ne_binary()},...]}.
 -type crossbar_content_handlers() :: [crossbar_content_handler(),...] | [].
 
