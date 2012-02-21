@@ -93,11 +93,11 @@ behaviour_info(_) ->
                                                             {'error', term()}.
 -spec start_link/4 :: (atom(), ne_binary(), ne_binary(), wh_proplist()) -> {'ok', pid()} |
                                                                            {'error', term()}.
-start_link(Module, JobQueue, ResourceQueue) ->
-    start_link(Module, JobQueue, ResourceQueue, []).
-start_link(Module, <<_/binary>> = JobQueue, <<_/binary>> = ResourceQueue, InitArgs) when is_atom(Module),
+start_link(Module, JobsQueue, ResourceQueue) ->
+    start_link(Module, JobsQueue, ResourceQueue, []).
+start_link(Module, <<_/binary>> = JobsQueue, <<_/binary>> = ResourceQueue, InitArgs) when is_atom(Module),
                                                            is_list(InitArgs) ->
-    gen_server:start_link(?MODULE, [Module, JobQueue, ResourceQueue, InitArgs], []).
+    gen_server:start_link(?MODULE, [Module, JobsQueue, ResourceQueue, InitArgs], []).
 
 -spec stop/1 :: (pid()) -> 'ok'.
 stop(Srv) when is_pid(Srv) ->
@@ -135,7 +135,7 @@ reply(From, Msg) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Module, JobQueue, ResourceQueue, InitArgs]) ->
+init([Module, JobsQueue, ResourceQueue, InitArgs]) ->
     process_flag(trap_exit, true),
 
     ?LOG_START("new gen_job_queue proc: ~s", [Module]),
@@ -151,12 +151,12 @@ init([Module, JobQueue, ResourceQueue, InitArgs]) ->
                                      throw(Err)
                              end,
 
-    ok = start_jobs_queue(JobQueue),
+    ok = start_jobs_queue(JobsQueue),
     ok = start_resource_queue(ResourceQueue),
 
     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
 
-    {ok, #state{jobs_queue=JobQueue
+    {ok, #state{jobs_queue=JobsQueue
                 ,resource_queue=ResourceQueue
                 ,module=Module
                 ,module_state=ModState
@@ -209,6 +209,8 @@ handle_call(Request, From, #state{module=Module, module_state=ModState, module_t
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(stop, State) ->
+    {stop, normal, State};
 handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
     _ = stop_timer(OldRef),
     case catch Module:handle_cast(Message, ModState) of
@@ -242,14 +244,14 @@ handle_info({#'basic.deliver'{exchange=_Ex, routing_key=_Rk, delivery_tag=_Dt}, 
     ?LOG("amqp payload: ~s", [Payload]),
     {noreply, State};
 
-handle_info({amqp_host_down, _H}=Down, #state{jobs_queue=JobQueue
+handle_info({amqp_host_down, _H}=Down, #state{jobs_queue=JobsQueue
                                               ,resource_queue=ResourceQueue
                                              }=State) ->
     ?LOG(alert, "amqp host down msg: ~p", [_H]),
     case amqp_util:is_host_available() of
         true ->
             ?LOG("host is available, let's try wiring up"),
-            ok = start_jobs_queue(JobQueue),
+            ok = start_jobs_queue(JobsQueue),
             ok = start_resource_queue(ResourceQueue),
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
             {noreply, State#state{is_consuming=false}, hibernate};
@@ -337,8 +339,17 @@ start_timer(Timeout) when is_integer(Timeout) andalso Timeout >= 0 ->
     erlang:send_after(Timeout, self(), ?CALLBACK_TIMEOUT_MSG);
 start_timer(_) -> 'undefined'.
 
-start_jobs_queue(_JobQueue) ->
-    ok.
+-spec start_jobs_queue/1 :: (ne_binary()) -> 'ok' | {'error', term()}.
+start_jobs_queue(JobsQueue) ->
+    amqp_util:new_queue(JobsQueue),
+    amqp_util:bind_q_to_targeted(JobsQueue).
 
-start_resource_queue(_ResourceQueue) ->
-    ok.
+-spec start_resource_queue/1 :: (ne_binary()) -> 'ok' | {'error', term()}.
+start_resource_queue(ResourceQueue) ->
+    amqp_util:new_queue(ResourceQueue),
+    amqp_util:bind_q_to_targeted(ResourceQueue),
+    ConsumeOpts = [{no_ack, false}
+                   ,{exclusive, false}
+                  ],
+    amqp_util:basic_consume(ResourceQueue, ConsumeOpts),
+    amqp_util:basic_qos(1).
