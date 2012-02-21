@@ -308,25 +308,43 @@ basic_publish(Exchange, Queue, Payload, ContentType) ->
 
 basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_list(Payload) ->
     basic_publish(Exchange, Queue, iolist_to_binary(Payload), ContentType, Prop);
-basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_binary(Payload),
+basic_publish(Exchange, Queue, Payload, ContentType, Props) when is_binary(Payload),
                                                                 is_binary(Exchange),
                                                                 is_binary(Queue),
                                                                 is_binary(ContentType),
-                                                                is_list(Prop) ->
+                                                                is_list(Props) ->
     BP = #'basic.publish'{
       exchange = Exchange
       ,routing_key = Queue
-      ,mandatory = props:get_value(mandatory, Prop, false)
-      ,immediate = props:get_value(immediate, Prop, false)
+      ,mandatory = props:get_value(mandatory, Props, false)
+      ,immediate = props:get_value(immediate, Props, false)
      },
 
     %% Add the message to the publish, converting to binary
-    AM = #'amqp_msg'{
-      payload = Payload
-      ,props=#'P_basic'{content_type=ContentType}
+    %% See http://www.rabbitmq.com/amqp-0-9-1-reference.html#class.basic
+    MsgProps = #'P_basic'{
+      content_type = ContentType % MIME content type
+      ,content_encoding = props:get_value(content_encoding, Props) % MIME encoding
+      ,headers = props:get_value(headers, Props) % message headers
+      ,delivery_mode = props:get_value(delivery_mode, Props) % non-persistent(1) or persistent(2)
+      ,priority = props:get_value(priority, Props) % message priority, 0-9
+      ,correlation_id = props:get_value(correlation_id, Props) % correlation identifier
+      ,reply_to = props:get_value(reply_to, Props) % address to reply to
+      ,expiration = props:get_value(expiration, Props) % expires time
+      ,message_id = props:get_value(message_id, Props) % app message id
+      ,timestamp = props:get_value(timestamp, Props) % message timestamp
+      ,type = props:get_value(type, Props) % message type
+      ,user_id = props:get_value(user_id, Props) % creating user
+      ,app_id = props:get_value(app_id, Props) % creating app
+      ,cluster_id = props:get_value(cluster_id, Props) % cluster
      },
 
-    ?AMQP_DEBUG andalso ?LOG("publish ~s ~s (~p): ~s", [Exchange, Queue, Prop, Payload]),
+    AM = #'amqp_msg'{
+      payload = Payload
+      ,props = MsgProps
+     },
+
+    ?AMQP_DEBUG andalso ?LOG("publish ~s ~s: ~s", [Exchange, Queue, Payload]),
 
     amqp_mgr:publish(BP, AM).
 
@@ -906,30 +924,27 @@ register_return_handler() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec encode/1 :: (ne_binary()) -> ne_binary().
-encode(<<"*">>) ->
-    <<"*">>;
-encode(<<"#">>) ->
-    <<"#">>;
-encode(Binary) ->
-    do_encode(Binary, <<>>).
+encode(Bin) ->
+    << <<(encode_char(B))/binary>> || <<B>> <= Bin >>.
 
--spec do_encode/2 :: (binary(), binary()) -> ne_binary().
-do_encode(<<>>, Acc) ->
-    Acc;
-do_encode(<<C:8, Rest/binary>>, Acc) when ?KEY_SAFE(C) ->
-    do_encode(Rest, <<Acc/binary, (<<C>>)/binary>>);
-do_encode(<<$\s, Rest/binary>>, Acc) ->
-    do_encode(Rest, <<Acc/binary, $+>>);
-do_encode(<<$., Rest/binary>>, Acc) ->
-    do_encode(Rest, <<Acc/binary, "%2E">>);
-do_encode(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
-    do_encode(Rest, <<Acc/binary, $%, (hexdigit(Hi))/binary, (hexdigit(Lo))/binary>>).
+-define(HI4(C), (C band 2#11110000) bsr 4).
+-define(LO4(C), (C band 2#00001111)).
 
--spec hexdigit/1 :: (byte()) -> <<_:8>>.
-hexdigit(C) when C < 10 ->
-    <<($0 + C)>>;
-hexdigit(C) when C < 16 ->
-    <<($A + (C - 10))>>.
+encode_char(C) when ?KEY_SAFE(C) ->
+    <<C>>;
+encode_char($\s) ->
+    <<$+>>;
+encode_char($.) ->
+    <<$%, $2, $E>>;
+encode_char(C) ->
+    Hi4 = ?HI4(C),
+    Lo4 = ?LO4(C),
+    <<$%, (hexint(Hi4)), (hexint(Lo4))>>.
+
+hexint(C) when C < 10 ->
+    ($0 + C);
+hexint(C) when C < 16 ->
+    ($A + (C - 10)).
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
