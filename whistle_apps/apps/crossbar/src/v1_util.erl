@@ -23,7 +23,7 @@
          ,halt/2, content_type_matches/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -type cowboy_multipart_response() :: {{'headers', cowboy_http:headers()} |
                                       {'data', binary()} |
