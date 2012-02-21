@@ -4,7 +4,9 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, config_cache_proc/0]).
+-export([start_link/0]).
+-export([config_cache_proc/0]).
+-export([whapps_call_cache_proc/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -27,6 +29,10 @@ config_cache_proc() ->
     %%          Mod =:= config_cache],
     %% {ok, P}.
 
+-spec whapps_call_cache_proc/0 :: () -> {'ok', pid()}.
+whapps_call_cache_proc() ->
+    {ok, whereis(whapps_call_cache)}.
+
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
@@ -36,6 +42,7 @@ init([]) ->
            , [?CHILD(wh_alert, worker)
               ,?CHILD(wh_cache, worker)
               ,?CACHE(config_cache)
+              ,?CACHE(whapps_call_cache)
               ,?CHILD(whistle_couch_sup, worker)
               %% ,?CHILD(wh_timer, worker)
               ,?CHILD(whapps_sup, supervisor)
