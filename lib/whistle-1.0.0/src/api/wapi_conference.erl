@@ -7,6 +7,8 @@
 %%%-------------------------------------------------------------------
 -module(wapi_conference).
 
+-export([search_req/1, search_req_v/1]).
+-export([search_resp/1, search_resp_v/1]).
 -export([discovery_req/1, discovery_req_v/1]).
 %% -export([discovery_resp/1, discovery_resp_v/1]).
 -export([deaf_participant/1, deaf_participant_v/1]).
@@ -26,9 +28,12 @@
 -export([unmute_participant/1, unmute_participant_v/1]).
 -export([participant_volume_in/1, participant_volume_in_v/1]).
 -export([participant_volume_out/1, participant_volume_out_v/1]).
+-export([conference_error/1, conference_error_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
 
+-export([publish_search_req/1, publish_search_req/2]).
+-export([publish_search_resp/2, publish_search_resp/3]).
 -export([publish_discovery_req/1, publish_discovery_req/2]).
 %% -export([publish_discovery_resp/1, publish_discovery_resp/2]).
 -export([publish_deaf_participant/2, publish_deaf_participant/3]).
@@ -48,8 +53,26 @@
 -export([publish_unmute_participant/2, publish_unmute_participant/3]).
 -export([publish_participant_volume_in/2, publish_participant_volume_in/3]).
 -export([publish_participant_volume_out/2, publish_participant_volume_out/3]).
+-export([publish_error/2, publish_error/3]).
 
 -include("../wh_api.hrl").
+
+%% Conference Search
+-define(SEARCH_REQ_HEADERS, [<<"Conference-ID">>]).
+-define(OPTIONAL_SEARCH_REQ_HEADERS, []).
+-define(SEARCH_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                            ,{<<"Event-Name">>, <<"search_req">>}
+                           ]).
+-define(SEARCH_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
+
+-define(SEARCH_RESP_HEADERS, [<<"Conference-ID">>, <<"Participant-Count">>, <<"Switch-Hostname">>]).
+-define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"Switch-URL">>, <<"Switch-External-IP">>, <<"Rate">>
+                                           ,<<"UUID">>, <<"Running">>, <<"Answered">>, <<"Dynamic">>
+                                           ,<<"Run-Time">>, <<"Participants">>, <<"Locked">>]).
+-define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                             ,{<<"Event-Name">>, <<"search_resp">>}
+                            ]).
+-define(SEARCH_RESP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 %% Conference Discovery
 -define(DISCOVERY_REQ_HEADERS, [<<"Account-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
@@ -108,8 +131,8 @@
 -define(PARTICIPANTS_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 %% Conference Participants Resp
--define(PARTICIPANTS_RESP_HEADERS, [<<"Application-Name">>, <<"Conference">>]).
--define(OPTIONAL_PARTICIPANTS_RESP_HEADERS, [<<"Participants">>, <<"Error">>]).
+-define(PARTICIPANTS_RESP_HEADERS, [<<"Participants">>]).
+-define(OPTIONAL_PARTICIPANTS_RESP_HEADERS, []).
 -define(PARTICIPANTS_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                    ,{<<"Event-Name">>, <<"participants_resp">>}
                                   ]).
@@ -254,6 +277,54 @@
                                        ,{<<"Participant">>, fun is_binary/1}
                                       ]).
 
+%% Conference Error
+-define(CONFERENCE_ERROR_HEADERS, [<<"Error-Message">>, <<"Request">>]).
+-define(OPTIONAL_CONFERENCE_ERROR_HEADERS, [<<"Msg-ID">>]).
+-define(CONFERENCE_ERROR_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                                    ,{<<"Event-Name">>, <<"error">>}
+                                   ]).
+-define(CONFERENCE_ERROR_TYPES, []).
+
+%%--------------------------------------------------------------------
+%% @doc 
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec search_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+search_req(Prop) when is_list(Prop) ->
+    case search_req_v(Prop) of
+        true -> wh_api:build_message(Prop, ?SEARCH_REQ_HEADERS, ?OPTIONAL_SEARCH_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for search request"}
+    end;
+search_req(JObj) ->
+    search_req(wh_json:to_proplist(JObj)).
+
+-spec search_req_v/1 :: (api_terms()) -> boolean().
+search_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SEARCH_REQ_HEADERS, ?SEARCH_REQ_VALUES, ?SEARCH_REQ_TYPES);
+search_req_v(JObj) ->
+    search_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc 
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec search_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+search_resp(Prop) when is_list(Prop) ->
+    case search_resp_v(Prop) of
+        true -> wh_api:build_message(Prop, ?SEARCH_RESP_HEADERS, ?OPTIONAL_SEARCH_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for search response"}
+    end;
+search_resp(JObj) ->
+    search_resp(wh_json:to_proplist(JObj)).
+
+-spec search_resp_v/1 :: (api_terms()) -> boolean().
+search_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SEARCH_RESP_HEADERS, ?SEARCH_RESP_VALUES, ?SEARCH_RESP_TYPES);
+search_resp_v(JObj) ->
+    search_resp_v(wh_json:to_proplist(JObj)).
+
 %%--------------------------------------------------------------------
 %% @doc 
 %% Takes proplist, creates JSON string or error
@@ -263,7 +334,7 @@
 discovery_req(Prop) when is_list(Prop) ->
     case discovery_req_v(Prop) of
         true -> wh_api:build_message(Prop, ?DISCOVERY_REQ_HEADERS, ?OPTIONAL_DISCOVERY_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for channel status req"}
+        false -> {error, "Proplist failed validation for discovery"}
     end;
 discovery_req(JObj) ->
     discovery_req(wh_json:to_proplist(JObj)).
@@ -283,7 +354,7 @@ discovery_req_v(JObj) ->
 deaf_participant(Prop) when is_list(Prop) ->
     case deaf_participant_v(Prop) of
         true -> wh_api:build_message(Prop, ?DEAF_PARTICIPANT_HEADERS, ?OPTIONAL_DEAF_PARTICIPANT_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for deaf participant"}
     end;
 deaf_participant(JObj) ->
     deaf_participant(wh_json:to_proplist(JObj)).
@@ -303,7 +374,7 @@ deaf_participant_v(JObj) ->
 participant_energy(Prop) when is_list(Prop) ->
     case participant_energy_v(Prop) of
         true -> wh_api:build_message(Prop, ?PARTICIPANT_ENERGY_HEADERS, ?OPTIONAL_PARTICIPANT_ENERGY_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for participant energy"}
     end;
 participant_energy(JObj) ->
     participant_energy(wh_json:to_proplist(JObj)).
@@ -323,7 +394,7 @@ participant_energy_v(JObj) ->
 kick(Prop) when is_list(Prop) ->
     case kick_v(Prop) of
         true -> wh_api:build_message(Prop, ?KICK_HEADERS, ?OPTIONAL_KICK_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for kick"}
     end;
 kick(JObj) ->
     kick(wh_json:to_proplist(JObj)).
@@ -343,7 +414,7 @@ kick_v(JObj) ->
 participants_req(Prop) when is_list(Prop) ->
     case participants_req_v(Prop) of
         true -> wh_api:build_message(Prop, ?PARTICIPANTS_REQ_HEADERS, ?OPTIONAL_PARTICIPANTS_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for participants request"}
     end;
 participants_req(JObj) ->
     participants_req(wh_json:to_proplist(JObj)).
@@ -363,7 +434,7 @@ participants_req_v(JObj) ->
 participants_resp(Prop) when is_list(Prop) ->
     case participants_resp_v(Prop) of
         true -> wh_api:build_message(Prop, ?PARTICIPANTS_RESP_HEADERS, ?OPTIONAL_PARTICIPANTS_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for participants response"}
     end;
 participants_resp(JObj) ->
     participants_resp(wh_json:to_proplist(JObj)).
@@ -383,7 +454,7 @@ participants_resp_v(JObj) ->
 lock(Prop) when is_list(Prop) ->
     case lock_v(Prop) of
         true -> wh_api:build_message(Prop, ?LOCK_HEADERS, ?OPTIONAL_LOCK_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for lock"}
     end;
 lock(JObj) ->
     lock(wh_json:to_proplist(JObj)).
@@ -403,7 +474,7 @@ lock_v(JObj) ->
 mute_participant(Prop) when is_list(Prop) ->
     case mute_participant_v(Prop) of
         true -> wh_api:build_message(Prop, ?MUTE_PARTICIPANT_HEADERS, ?OPTIONAL_MUTE_PARTICIPANT_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for mute participant"}
     end;
 mute_participant(JObj) ->
     mute_participant(wh_json:to_proplist(JObj)).
@@ -423,7 +494,7 @@ mute_participant_v(JObj) ->
 play(Prop) when is_list(Prop) ->
     case play_v(Prop) of
         true -> wh_api:build_message(Prop, ?PLAY_HEADERS, ?OPTIONAL_PLAY_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for play"}
     end;
 play(JObj) ->
     play(wh_json:to_proplist(JObj)).
@@ -443,7 +514,7 @@ play_v(JObj) ->
 record(Prop) when is_list(Prop) ->
     case record_v(Prop) of
         true -> wh_api:build_message(Prop, ?RECORD_HEADERS, ?OPTIONAL_RECORD_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for record"}
     end;
 record(JObj) ->
     record(wh_json:to_proplist(JObj)).
@@ -463,7 +534,7 @@ record_v(JObj) ->
 relate_participants(Prop) when is_list(Prop) ->
     case relate_participants_v(Prop) of
         true -> wh_api:build_message(Prop, ?RELATE_PARTICIPANTS_HEADERS, ?OPTIONAL_RELATE_PARTICIPANTS_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for relate participants"}
     end;
 relate_participants(JObj) ->
     relate_participants(wh_json:to_proplist(JObj)).
@@ -483,7 +554,7 @@ relate_participants_v(JObj) ->
 set(Prop) when is_list(Prop) ->
     case set_v(Prop) of
         true -> wh_api:build_message(Prop, ?SET_HEADERS, ?OPTIONAL_SET_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for set"}
     end;
 set(JObj) ->
     set(wh_json:to_proplist(JObj)).
@@ -503,7 +574,7 @@ set_v(JObj) ->
 stop_play(Prop) when is_list(Prop) ->
     case stop_play_v(Prop) of
         true -> wh_api:build_message(Prop, ?STOP_PLAY_HEADERS, ?OPTIONAL_STOP_PLAY_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for stop play"}
     end;
 stop_play(JObj) ->
     stop_play(wh_json:to_proplist(JObj)).
@@ -523,7 +594,7 @@ stop_play_v(JObj) ->
 undeaf_participant(Prop) when is_list(Prop) ->
     case undeaf_participant_v(Prop) of
         true -> wh_api:build_message(Prop, ?UNDEAF_PARTICIPANT_HEADERS, ?OPTIONAL_UNDEAF_PARTICIPANT_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for undeaf participant"}
     end;
 undeaf_participant(JObj) ->
     undeaf_participant(wh_json:to_proplist(JObj)).
@@ -543,7 +614,7 @@ undeaf_participant_v(JObj) ->
 unlock(Prop) when is_list(Prop) ->
     case unlock_v(Prop) of
         true -> wh_api:build_message(Prop, ?UNLOCK_HEADERS, ?OPTIONAL_UNLOCK_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for unlock"}
     end;
 unlock(JObj) ->
     unlock(wh_json:to_proplist(JObj)).
@@ -563,7 +634,7 @@ unlock_v(JObj) ->
 unmute_participant(Prop) when is_list(Prop) ->
     case unmute_participant_v(Prop) of
         true -> wh_api:build_message(Prop, ?UNMUTE_PARTICIPANT_HEADERS, ?OPTIONAL_UNMUTE_PARTICIPANT_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for unmute participant"}
     end;
 unmute_participant(JObj) ->
     unmute_participant(wh_json:to_proplist(JObj)).
@@ -583,7 +654,7 @@ unmute_participant_v(JObj) ->
 participant_volume_in(Prop) when is_list(Prop) ->
     case participant_volume_in_v(Prop) of
         true -> wh_api:build_message(Prop, ?PARTICIPANT_VOLUME_IN_HEADERS, ?OPTIONAL_PARTICIPANT_VOLUME_IN_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for volume in"}
     end;
 participant_volume_in(JObj) ->
     participant_volume_in(wh_json:to_proplist(JObj)).
@@ -603,7 +674,7 @@ participant_volume_in_v(JObj) ->
 participant_volume_out(Prop) when is_list(Prop) ->
     case participant_volume_out_v(Prop) of
         true -> wh_api:build_message(Prop, ?PARTICIPANT_VOLUME_OUT_HEADERS, ?OPTIONAL_PARTICIPANT_VOLUME_OUT_HEADERS);
-        false -> {error, "Proplist failed validation for channel status participant"}
+        false -> {error, "Proplist failed validation for volume out"}
     end;
 participant_volume_out(JObj) ->
     participant_volume_out(wh_json:to_proplist(JObj)).
@@ -613,6 +684,26 @@ participant_volume_out_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PARTICIPANT_VOLUME_OUT_HEADERS, ?PARTICIPANT_VOLUME_OUT_VALUES, ?PARTICIPANT_VOLUME_OUT_TYPES);
 participant_volume_out_v(JObj) ->
     participant_volume_out_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc 
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec conference_error/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+conference_error(Prop) when is_list(Prop) ->
+    case conference_error_v(Prop) of
+        true -> wh_api:build_message(Prop, ?CONFERENCE_ERROR_HEADERS, ?OPTIONAL_CONFERENCE_ERROR_HEADERS);
+        false -> {error, "Proplist failed validation for conference error"}
+    end;
+conference_error(JObj) ->
+    conference_error(wh_json:to_proplist(JObj)).
+
+-spec conference_error_v/1 :: (api_terms()) -> boolean().
+conference_error_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CONFERENCE_ERROR_HEADERS, ?CONFERENCE_ERROR_VALUES, ?CONFERENCE_ERROR_TYPES);
+conference_error_v(JObj) ->
+    conference_error_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -673,6 +764,32 @@ unbind_from_q(Q, [{conference, ConfId}|T]) ->
     unbind_from_q(Q, T);
 unbind_from_q(_Q, []) ->
     ok.
+
+%%--------------------------------------------------------------------
+%% @doc 
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_search_req/1 :: (api_terms()) -> 'ok'.
+-spec publish_search_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_search_req(JObj) ->
+    publish_search_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_search_req(Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?SEARCH_REQ_VALUES, fun ?MODULE:search_req/1),
+    amqp_util:conference_publish(Payload, discovery, undefined, [], ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc 
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_search_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_search_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_search_resp(Queue, Resp) ->
+    publish_search_resp(Queue, Resp, ?DEFAULT_CONTENT_TYPE).
+publish_search_resp(Queue, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?SEARCH_RESP_VALUES, fun ?MODULE:search_resp/1),
+    amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -746,11 +863,11 @@ publish_participants_req(ConferenceId, Req, ContentType) ->
 %%--------------------------------------------------------------------
 -spec publish_participants_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_participants_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_participants_resp(ConferenceId, JObj) ->
-    publish_participants_resp(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_participants_resp(ConferenceId, Resp, ContentType) ->
+publish_participants_resp(Queue, Resp) ->
+    publish_participants_resp(Queue, Resp, ?DEFAULT_CONTENT_TYPE).
+publish_participants_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?PARTICIPANTS_RESP_VALUES, fun ?MODULE:participants_resp/1),
-    amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
+    amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -907,3 +1024,16 @@ publish_participant_volume_out(ConferenceId, JObj) ->
 publish_participant_volume_out(ConferenceId, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?PARTICIPANT_VOLUME_OUT_VALUES, fun ?MODULE:participant_volume_out/1),
     amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType).
+
+%%--------------------------------------------------------------------
+%% @doc 
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_error/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_error/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_error(Queue, JObj) ->
+    publish_error(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_error(Queue, Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?CONFERENCE_ERROR_VALUES, fun ?MODULE:conference_error/1),
+    amqp_util:targeted_publish(Queue, Payload, ContentType).

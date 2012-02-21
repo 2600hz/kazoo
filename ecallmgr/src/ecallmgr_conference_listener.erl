@@ -12,15 +12,17 @@
 %% API
 -export([start_link/0]).
 -export([conferences_on_node/1]).
--export([handle_req/2]).
--export([debug/0]).
+-export([handle_command/2]).
+-export([handle_search_req/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
          terminate/2, code_change/3]).
 
--define(RESPONDERS, [{?MODULE, [{<<"conference">>, <<"command">>}]}]).
--define(BINDINGS, [{conference, [{restrict_to, [command]}]}]).
+-define(RESPONDERS, [{{?MODULE, handle_command}, [{<<"conference">>, <<"command">>}]}
+                     ,{{?MODULE, handle_search_req}, [{<<"conference">>, <<"search_req">>}]}
+                    ]).
+-define(BINDINGS, [{conference, [{restrict_to, [command, discovery]}]}]).
 -define(QUEUE_NAME, <<"ecallmgr_conference_listener">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
@@ -56,13 +58,28 @@ conferences_on_node(Node) ->
     {Xml, _} = xmerl_scan:string(binary_to_list(binary:replace(Response, <<"\n">>, <<>>, [global]))),
     conferences_xml_to_json(Xml, [{<<"Hostname">>, Hostname}|Props], wh_json:new()).
 
-debug() ->
-    conferences_on_node('freeswitch@fs001-dev-vb.2600hz.com').
-
-handle_req(JObj, _Props) ->
+-spec handle_command/2 :: (wh_json:json_object(), proplist()) -> ok.
+handle_command(JObj, _Props) ->
     ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
     Focus = get_conference_focus(ConferenceId),
-    ecallmgr_conference_command:exec(Focus, ConferenceId, JObj),
+    ecallmgr_conference_command:exec(Focus, ConferenceId, JObj),   
+    ok.
+
+-spec handle_search_req/2 :: (wh_json:json_object(), proplist()) -> ok.
+handle_search_req(JObj, _Props) ->
+    ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
+    case search_nodes_for_conference(ConferenceId) of
+        undefined ->
+            Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+                     ,{<<"Error-Message">>, <<"Conference ", ConferenceId/binary, " not found">>}
+                     ,{<<"Request">>, JObj}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ],
+            wapi_conference:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error);
+        Conference ->
+            Resp = wh_json:set_values(wh_api:default_headers(?APP_NAME, ?APP_VERSION), Conference),
+            wapi_conference:publish_search_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
+    end,
     ok.
 
 %%%===================================================================
@@ -163,7 +180,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec search_nodes_for_conference/1 :: (ne_binary()) -> undefined | wh_json:json_object(). 
 -spec search_nodes_for_conference/2 :: ([atom(),...], ne_binary()) -> undefined | wh_json:json_object(). 
+
+search_nodes_for_conference(ConferenceId) ->
+    search_nodes_for_conference(get_nodes(), ConferenceId).
+
 search_nodes_for_conference([], _) ->
     undefined;
 search_nodes_for_conference([Node|Nodes], ConferenceId) ->                            
@@ -175,12 +197,11 @@ search_nodes_for_conference([Node|Nodes], ConferenceId) ->
 
 -spec get_conference_focus/1 :: (ne_binary()) -> undefined | atom().
 get_conference_focus(ConferenceId) ->
-    Cache = ecallmgr_sup:cache_sup(),
+    {ok, Cache} = ecallmgr_sup:cache_proc(),
     case wh_cache:fetch_local(Cache, {conference, focus, ConferenceId}) of
         {ok, Focus} -> Focus;
         {error, not_found} ->
-            Nodes = [],
-            case search_for_conference_focus(Nodes, ConferenceId) of
+            case search_for_conference_focus(get_nodes(), ConferenceId) of
                 undefined -> undefined;
                 Focus -> 
                     wh_cache:store_local(Cache, {conference, focus, ConferenceId}, Focus),
@@ -268,8 +289,8 @@ member_flags_xml_to_json([#xmlElement{name=Name, content=Content}|Xml], JObj) ->
 member_flags_xml_to_json([_|Xml], JObj) ->
     member_flags_xml_to_json(Xml, JObj).
 
-
-
-
+-spec get_nodes/0 :: () -> [atom(),...] | [].
+get_nodes() ->
+    [ecallmgr_fs_node:fs_node(Srv) || Srv <- ecallmgr_fs_sup:node_handlers()].
 
 

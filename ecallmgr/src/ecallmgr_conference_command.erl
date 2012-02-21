@@ -19,10 +19,10 @@ exec(Focus, ConferenceId, JObj) ->
         {'error', Msg}=E ->
             _ = ecallmgr_util:fs_log(Focus, "whistle error while building command ~s: ~s", [App, Msg]),
             send_response(App, E, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
-        {noop, JObj} ->
-            send_response(App, {noop, JObj}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
+        {noop, Conference} ->
+            send_response(App, {noop, Conference}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
-            Command = wh_util:to_list(list_to_binary([ConferenceId, AppName, " ", AppData])),
+            Command = wh_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
             Result = freeswitch:api(Focus, 'conference', Command),
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj)
     end.
@@ -55,7 +55,7 @@ get_conf_command(<<"kick">>, _Focus, _ConferenceId, JObj) ->
             {<<"hup">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
 get_conf_command(<<"participants">>, Focus, ConferenceId, JObj) ->
-    case wapi_conference:participants_v(JObj) of
+    case wapi_conference:participants_req_v(JObj) of
         false ->
             {'error', <<"conference participants failed to execute as JObj did not validate.">>};
         true ->
@@ -73,7 +73,7 @@ get_conf_command(<<"mute_participant">>, _Focus, _ConferenceId, JObj) ->
         false ->
             {'error', <<"conference mute_participant failed to execute as JObj did not validate.">>};
         true ->
-            {<<"lock">>, <<>>}
+            {<<"mute">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
 get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
     case wapi_conference:play_v(JObj) of
@@ -124,7 +124,7 @@ get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->
         false ->
             {'error', <<"conference stop_play failed to execute as JObj did not validate.">>};
         true ->
-            Affects = wh_json:get_binary_value(<<"Affects">>, JObj, <<>>),
+            Affects = wh_json:get_binary_value(<<"Affects">>, JObj, <<"all">>),
             Args = case wh_json:get_binary_value(<<"Participant">>, JObj) of
                        undefined -> Affects;
                        Participant -> list_to_binary([Affects, " ", Participant])
@@ -145,8 +145,8 @@ get_conf_command(<<"unlock">>, _Focus, _ConferenceId, JObj) ->
         true ->
             {<<"unlock">>, <<>>}
     end;
-get_conf_command(<<"unmute">>, _Focus, _ConferenceId, JObj) ->
-    case wapi_conference:unmute_v(JObj) of
+get_conf_command(<<"unmute_participant">>, _Focus, _ConferenceId, JObj) ->
+    case wapi_conference:unmute_participant_v(JObj) of
         false ->
             {'error', <<"conference unmute failed to execute as JObj did not validate.">>};
         true ->
@@ -180,18 +180,13 @@ send_response(_, {ok, <<"Non-Existant ID", _/binary>> = Msg}, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
              ,{<<"Error-Message">>, binary:replace(Msg, <<"\n">>, <<>>)}
              ,{<<"Request">>, Command}
-             | wh_api:default_headers(<<>>, <<"conference">>, <<"error">>, ?APP_NAME, ?APP_VERSION)
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     wapi_conference:publish_error(RespQ, Error);
-send_response(<<"find">>, {noop, Conference}, RespQ, Command) ->
-    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
-            | wh_api:default_headers(<<>>, <<"conference">>, <<"find">>, ?APP_NAME, ?APP_VERSION)
-           ],
-    wapi_conference:publish_participants_resp(RespQ, Resp);
 send_response(<<"participants">>, {noop, Conference}, RespQ, Command) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
             ,{<<"Participants">>, wh_json:get_value(<<"Participants">>, Conference, wh_json:new())}
-            | wh_api:default_headers(<<>>, <<"conference">>, <<"participants_resp">>, ?APP_NAME, ?APP_VERSION)
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     wapi_conference:publish_participants_resp(RespQ, Resp);
 send_response(_, {ok, Response}, RespQ, Command) ->
@@ -201,7 +196,7 @@ send_response(_, {ok, Response}, RespQ, Command) ->
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
                      ,{<<"Error-Message">>, binary:replace(Response, <<"\n">>, <<>>)}
                      ,{<<"Request">>, Command}
-                     | wh_api:default_headers(<<>>, <<"conference">>, <<"error">>, ?APP_NAME, ?APP_VERSION)
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
             wapi_conference:publish_error(RespQ, Error)
     end;
@@ -209,13 +204,13 @@ send_response(_, {error, Msg}, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
              ,{<<"Error-Message">>, binary:replace(wh_util:to_binary(Msg), <<"\n">>, <<>>)}
              ,{<<"Request">>, Command}
-             | wh_api:default_headers(<<>>, <<"conference">>, <<"error">>, ?APP_NAME, ?APP_VERSION)
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     wapi_conference:publish_error(RespQ, Error);
 send_response(_, timeout, RespQ, Command) ->
     Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Command, <<>>)}
              ,{<<"Error-Message">>, <<"Node Timeout">>}
              ,{<<"Request">>, Command}
-             | wh_api:default_headers(<<>>, <<"conference">>, <<"error">>, ?APP_NAME, ?APP_VERSION)
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     wapi_conference:publish_error(RespQ, Error).
