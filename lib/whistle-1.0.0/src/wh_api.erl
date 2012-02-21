@@ -180,10 +180,10 @@ error_resp(JObj) ->
     error_resp(wh_json:to_proplist(JObj)).
 
 -spec error_resp_v/1 :: (api_terms()) -> boolean().
-error_resp_v({struct, Prop}) ->
-    error_resp_v(Prop);
-error_resp_v(Prop) ->
-    validate(Prop, ?ERROR_RESP_HEADERS, ?ERROR_RESP_VALUES, ?ERROR_RESP_TYPES).
+error_resp_v(Prop) when is_list(Prop) ->
+    validate(Prop, ?ERROR_RESP_HEADERS, ?ERROR_RESP_VALUES, ?ERROR_RESP_TYPES);
+error_resp_v(JObj) ->
+    error_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Conference::discovery - Used to identify the conference ID

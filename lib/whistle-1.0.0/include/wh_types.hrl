@@ -15,7 +15,7 @@
            (_) -> false
         end).
 
--type api_terms() :: wh_json:json_object() | proplist().
+-type api_terms() :: wh_json:json_object() | wh_json:json_proplist().
 
 %% non-empty binary
 -define(NE_BINARY, <<_:8,_/binary>>).
@@ -30,7 +30,10 @@
 %% for setting types on dicts
 -type dict(K,V) :: [{K, V}].
 
--type wh_proplist() :: [{ne_binary() | atom(), binary() | atom() | integer() | float() | string()} | atom(),...] | [].
+-type wh_proplist_value() :: binary() | atom() | integer() | float() | string().
+-type wh_proplist_kv(K, V) :: [{K, V},...] | [].
+-type wh_proplist_k(K) :: wh_proplist_kv(K, wh_proplist_value()).
+-type wh_proplist() :: wh_proplist_kv(ne_binary() | atom(), wh_proplist_value()).
 
 %% result of calendar:datetime_to_gregorian_seconds({{1970,1,1},{0,0,0}}).
 %% Subtract this value from a gregorian seconds version of a date

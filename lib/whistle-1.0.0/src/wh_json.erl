@@ -48,13 +48,14 @@
 -export_type([json_object/0, json_objects/0
               ,json_string/0, json_strings/0
               ,json_term/0
+              ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
              ]).
 
 -spec new/0 :: () -> wh_json:json_object().
 new() ->
     ?EMPTY_JSON_OBJECT.
 
--spec encode/1 :: (json_object()) -> iolist() | ne_binary().
+-spec encode/1 :: (wh_json:json_object()) -> iolist() | ne_binary().
 encode(JObj) ->
     mochijson2:encode(JObj).
 
@@ -71,8 +72,8 @@ decode(JSON, <<"application/json">>) ->
 is_empty(MaybeJObj) ->
     MaybeJObj =:= ?EMPTY_JSON_OBJECT.
 
--spec is_json_object/1 :: (wh_json:json_object() | any()) -> boolean().
-is_json_object({struct, _}) -> true;
+-spec is_json_object/1 :: (term()) -> boolean().
+is_json_object({struct, P}) when is_list(P) -> true;
 is_json_object(_) -> false.
 
 -spec is_valid_json_object/1 :: (term()) -> boolean().
@@ -131,7 +132,7 @@ merge_recursive(JObj1, {struct, Prop}, Keys) ->
 merge_recursive(JObj1, Value, Keys) ->
     set_value(lists:reverse(Keys), Value, JObj1).
 
--spec to_proplist/1 :: (json_object() | json_objects()) -> json_proplist() | [json_proplist(),...].
+-spec to_proplist/1 :: (wh_json:json_object() | json_objects()) -> json_proplist() | [json_proplist(),...].
 -spec to_proplist/2 :: (json_string() | json_strings(), wh_json:json_object() | json_objects()) -> json_proplist() | [json_proplist(),...].
 %% Convert a json object to a proplist
 %% only top-level conversion is supported
@@ -143,10 +144,10 @@ to_proplist({struct, Prop}) ->
 %% convert everything starting at a specific key
 to_proplist(Key, JObj) ->
     true = is_json_object(JObj),
-    V = get_json_value(Key, JObj),
+    V = get_json_value(Key, JObj, new()),
     to_proplist(V).
 
--spec recursive_to_proplist/1 :: (json_object()) -> proplist().
+-spec recursive_to_proplist/1 :: (wh_json:json_object() | proplist()) -> proplist().
 recursive_to_proplist({struct, Props}) ->
     [{K, recursive_to_proplist(V)} || {K, V} <- Props];
 recursive_to_proplist(Props) when is_list(Props) ->
@@ -156,11 +157,12 @@ recursive_to_proplist(Else) ->
 
 %% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>
 %%   key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1
--spec to_querystring/1 :: (json_object()) -> iolist().
+-spec to_querystring/1 :: (wh_json:json_object()) -> iolist().
 to_querystring(JObj) ->
     to_querystring(normalize(JObj), "").
 
 %% if Prefix is empty, don't wrap keys in array tags, otherwise Prefix[key]=value
+-spec to_querystring/2 :: (wh_json:json_object(), iolist()) -> iolist().
 to_querystring(JObj, Prefix) ->
     {Vs, Ks} = get_values(JObj),
     fold_kvs(Ks, Vs, Prefix, "").
@@ -177,7 +179,7 @@ encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
 
 % key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
 encode_kv("", K, JObj) ->
-    to_querystring(JObj, K);
+    to_querystring(JObj, [K]);
 encode_kv(Prefix, K, JObj) ->
     to_querystring(JObj, [Prefix, "[", K, "]"]).
 
@@ -544,6 +546,15 @@ no_prune([K], JObj) when not is_list(JObj) ->
         [] -> new();
         L -> from_list(L)
     end;
+no_prune([K|T], Array) when is_list(Array) ->
+    {Less, [V|More]} = lists:split(wh_util:to_integer(K)-1, Array),
+    case {is_json_object(V), T, V} of
+        {true, [_|_]=Keys, JObj} ->
+            Less ++ [no_prune(Keys, JObj)] ++ More;
+        {false, [_|_]=Keys, Arr} when is_list(Arr) ->
+            Less ++ no_prune(Keys, Arr) ++ More;
+        {_,_,_} -> Less ++ More
+    end;
 no_prune([K|T], JObj) ->
     case get_value(K, JObj) of
         undefined -> JObj;
@@ -578,11 +589,11 @@ replace_in_list(N, V1, [V | Vs], Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_jobj/1 :: (json_object()) -> wh_json:json_object().
+-spec normalize_jobj/1 :: (wh_json:json_object()) -> wh_json:json_object().
 normalize_jobj(JObj) ->
     normalize(JObj).
 
--spec normalize/1 :: (json_object()) -> wh_json:json_object().
+-spec normalize/1 :: (wh_json:json_object()) -> wh_json:json_object().
 normalize(JObj) ->
     map(fun(K, V) -> {normalize_key(K), normalize_value(V)} end, JObj).
 
@@ -615,7 +626,7 @@ normalize_key_char(C) -> C.
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec public_fields/1 :: (json_object() | json_objects()) -> wh_json:json_object() | json_objects().
+-spec public_fields/1 :: (wh_json:json_object() | json_objects()) -> wh_json:json_object() | json_objects().
 public_fields(JObjs) when is_list(JObjs) ->
     [public_fields(JObj) || JObj <- JObjs];
 public_fields(JObj) ->
@@ -633,7 +644,7 @@ public_fields(JObj) ->
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec private_fields/1 :: (json_object() | json_objects()) -> wh_json:json_object() | json_objects().
+-spec private_fields/1 :: (wh_json:json_object() | json_objects()) -> wh_json:json_object() | json_objects().
 private_fields(JObjs) when is_list(JObjs) ->
     [private_fields(JObj) || JObj <- JObjs];
 private_fields(JObj) ->
@@ -821,6 +832,9 @@ is_json_object_test() ->
 -define(P12, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14},{<<"sub_d1">>, [{<<"d1k1">>, "d1v1"}]}]).
 -define(P13, [{<<"d1k1">>, <<"d1v1">>}]).
 
+%% deleting [k1, 1] should return empty json object
+-define(D_ARR, {struct, [{<<"k1">>, [1]}]}).
+-define(P_ARR, {struct, [{<<"k1">>, []}]}).
 
 -spec get_keys_test/0 :: () -> no_return().
 get_keys_test() ->
@@ -862,7 +876,9 @@ delete_key_test() ->
     ?assertEqual(?D1_AFTER_K3_V2, delete_key([<<"d1k3">>, 2], ?D1)),
     ?assertEqual(?D1_AFTER_K3_V2, delete_key([<<"d1k3">>, 2], ?D1, prune)),
     ?assertEqual(?D6_AFTER_SUB, delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6)),
-    ?assertEqual(?D6_AFTER_SUB_PRUNE, delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6, prune)).
+    ?assertEqual(?D6_AFTER_SUB_PRUNE, delete_key([<<"sub_d1">>, <<"d1k1">>], ?D6, prune)),
+    ?assertEqual(?P_ARR, delete_key([<<"k1">>, 1], ?D_ARR)),
+    ?assertEqual(?EMPTY_JSON_OBJECT, delete_key([<<"k1">>, 1], ?D_ARR, prune)).
 
 -spec get_value_test/0 :: () -> no_return().
 get_value_test() ->
