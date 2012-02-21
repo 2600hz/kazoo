@@ -8,7 +8,6 @@
 -export([get_prompt/1, get_prompt/2]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
 -export([correct_media_path/2]).
--export([call_to_proplist/1]).
 -export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
 -export([send_default_response/2]).
@@ -238,33 +237,20 @@ ignore_early_media(Endpoints) ->
 %% the account id
 %% @end
 %%--------------------------------------------------------------------
--spec correct_media_path/2 :: ('undefined' | ne_binary(), #cf_call{}) -> 'undefined' | ne_binary().
+-spec correct_media_path/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> 'undefined' | ne_binary().
 correct_media_path(undefined, _) ->
     undefined;
 correct_media_path(<<"silence_stream://", _/binary>> = Media, _) ->
     Media;
 correct_media_path(<<"tone_stream://", _/binary>> = Media, _) ->
     Media;
-correct_media_path(Media, #cf_call{account_id=AccountId}) ->
+correct_media_path(Media, Call) ->
     case binary:match(Media, <<"/">>) of
         nomatch ->
-            <<$/, AccountId/binary, $/, Media/binary>>;
+            <<$/, (whapps_call:account_id(Call))/binary, $/, Media/binary>>;
         _Else ->
             Media
     end.
-
-%%-----------------------------------------------------------------------------
-%% @public
-%% @doc
-%% Convert the call record to a proplist
-%% @end
-%%-----------------------------------------------------------------------------
--spec call_to_proplist/1 :: (#cf_call{}) -> proplist().
-call_to_proplist(#cf_call{} = Call) ->
-    [{wh_util:to_binary(K), V}
-     || {K, V} <- lists:zip(record_info(fields, cf_call), tl(tuple_to_list(Call)))
-            ,K =/= cf_pid andalso K =/= call_kvs
-    ].
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -272,11 +258,11 @@ call_to_proplist(#cf_call{} = Call) ->
 %% lookup the callflow based on the requested number in the account
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_callflow/1 :: (#cf_call{}) -> {'ok', wh_json:json_object(), boolean()} | {'error', term()}.
+-spec lookup_callflow/1 :: (whapps_call:call()) -> {'ok', wh_json:json_object(), boolean()} | {'error', term()}.
 -spec lookup_callflow/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object(), boolean()} | {'error', term()}.
 
-lookup_callflow(#cf_call{request_user=Number, account_id=AccountId}) ->
-    lookup_callflow(Number, AccountId).
+lookup_callflow(Call) ->
+    lookup_callflow(whapps_call:request_user(Call), whapps_call:account_id(Call)).
 
 lookup_callflow(Number, AccountId) ->
     case wh_util:is_empty(Number) of
@@ -389,8 +375,8 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
 %% certain actions, like cf_offnet and cf_resources
 %% @end
 %%--------------------------------------------------------------------
--spec handle_bridge_failure/2 :: ({'fail', wh_json:json_object()} | ne_binary() | 'undefined', #cf_call{}) -> 'ok' | 'not_found'.
--spec handle_bridge_failure/3 :: (ne_binary() | 'undefined', ne_binary() | 'undefined', #cf_call{}) -> 'ok' | 'not_found'.
+-spec handle_bridge_failure/2 :: ({'fail', wh_json:json_object()} | ne_binary() | 'undefined', whapps_call:call()) -> 'ok' | 'not_found'.
+-spec handle_bridge_failure/3 :: (ne_binary() | 'undefined', ne_binary() | 'undefined', whapps_call:call()) -> 'ok' | 'not_found'.
 
 handle_bridge_failure({fail, Reason}, Call) ->
     {Cause, Code} = whapps_util:get_call_termination_reason(Reason),
@@ -422,7 +408,7 @@ handle_bridge_failure(Cause, Code, Call) ->
 %% Send and wait for a call failure cause response
 %% @end
 %%--------------------------------------------------------------------
--spec send_default_response/2 :: (ne_binary(), #cf_call{}) -> ok.
+-spec send_default_response/2 :: (ne_binary(), whapps_call:call()) -> ok.
 send_default_response(Cause, Call) ->
     case cf_exe:wildcard_is_empty(Call) of
         false -> ok;

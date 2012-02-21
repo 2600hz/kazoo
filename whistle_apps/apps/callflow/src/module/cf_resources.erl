@@ -52,7 +52,7 @@ bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Rin
         {fail, R} when T =:= [] ->
             {Cause, Code} = whapps_util:get_call_termination_reason(R),
             ?LOG(notice, "exhausted all local resources attempting bridge, final cause ~s:~s"
-                 ,[Code, Cause, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+                 ,[Code, Cause, {extra_data, [{details, whapps_call:to_proplist(Call)}
                                               ,{account_id, AccountId}
                                              ]}]),
             case (cf_util:handle_bridge_failure(Cause, Call) =:= ok)
@@ -65,7 +65,7 @@ bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Rin
         {fail, _} ->
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call);
         {error, _R} ->
-            ?LOG(notice, "error attemping local resource to ~s: ~p", [DestNum, _R, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+            ?LOG(notice, "error attemping local resource to ~s: ~p", [DestNum, _R, {extra_data, [{details, whapps_call:to_proplist(Call)}
                                                                                                  ,{account_id, AccountId}
                                                                                                 ]}]),
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call)

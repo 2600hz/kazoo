@@ -29,7 +29,7 @@ handle(Data, #cf_call{account_id=AccountId}=Call) ->
     ?LOG("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
     case length(Endpoints) > 0 andalso cf_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
         false ->
-            ?LOG(notice, "ring group has no endpoints", [{extra_data, [{details, cf_util:call_to_proplist(Call)}
+            ?LOG(notice, "ring group has no endpoints", [{extra_data, [{details, whapps_call:to_proplist(Call)}
                                                                        ,{account_id, AccountId}
                                                                       ]}]),
             cf_exe:continue(Call);

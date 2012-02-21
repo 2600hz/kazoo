@@ -340,14 +340,14 @@ handle_info({'EXIT', _, normal}, State) ->
     {noreply, State};
 handle_info({'EXIT', Pid, Reason}, #state{cf_module_pid=Pid, call=#cf_call{account_id=AccountId, last_action=Action}=Call}=State) ->
     ?LOG(error, "action ~s died unexpectedly: ~p"
-         ,[Action, Reason, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+         ,[Action, Reason, {extra_data, [{details, whapps_call:to_proplist(Call)}
                                          ,{account_id, AccountId}
                                         ]}]),
     ?MODULE:continue(self()),
     {noreply, State};
 handle_info({call_sanity_check}, #state{status = <<"testing">>, call=#cf_call{account_id=AccountId}=Call}=State) ->
     ?LOG(info, "callflow executer is insane, shuting down"
-         ,[{extra_data, [{details, cf_util:call_to_proplist(Call)}
+         ,[{extra_data, [{details, whapps_call:to_proplist(Call)}
                          ,{account_id, AccountId}
                          ]}]),
     {stop, {shutdown, insane}, State#state{status = <<"insane">>}};
@@ -472,7 +472,7 @@ launch_cf_module(#state{call=#cf_call{last_action=LastAction, account_id=Account
         catch
             _:_ ->
                 ?LOG(error, "unknown callflow action: ~p"
-                     ,[Module, {extra_data, [{details, cf_util:call_to_proplist(Call)}
+                     ,[Module, {extra_data, [{details, whapps_call:to_proplist(Call)}
                                              ,{account_id, AccountId}
                                             ]}]),
                 ?MODULE:continue(self()),
