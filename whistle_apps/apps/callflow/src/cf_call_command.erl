@@ -172,7 +172,6 @@ redirect(Contact, Server, Call) ->
 flush_dtmf(Call) ->
     play(<<"silence_stream://50">>, Call).
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -743,43 +742,15 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 %% Produces the low level wh_api request to say text to a caller
 %% @end
 %%--------------------------------------------------------------------
--spec say/2 :: (Say, Call) -> 'ok' when
-      Say :: binary(),
-      Call :: #cf_call{}.
--spec say/3 :: (Say, Type, Call) -> 'ok' when
-      Say :: binary(),
-      Type :: binary(),
-      Call :: #cf_call{}.
--spec say/4 :: (Say, Type, Method, Call) -> 'ok' when
-      Say :: binary(),
-      Type :: binary(),
-      Method :: binary(),
-      Call :: #cf_call{}.
--spec say/5 :: (Say, Type, Method, Language, Call) -> 'ok' when
-      Say :: binary(),
-      Type :: binary(),
-      Method :: binary(),
-      Language :: binary(),
-      Call :: #cf_call{}.
+-spec say/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
+-spec say/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
+-spec say/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
+-spec say/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
 
--spec b_say/2 :: (Say, Call) -> cf_api_std_return() when
-      Say :: binary(),
-      Call :: #cf_call{}.
--spec b_say/3 :: (Say, Type, Call) -> cf_api_std_return() when
-      Say :: binary(),
-      Type :: binary(),
-      Call :: #cf_call{}.
--spec b_say/4 :: (Say, Type, Method, Call) -> cf_api_std_return() when
-      Say :: binary(),
-      Type :: binary(),
-      Method :: binary(),
-      Call :: #cf_call{}.
--spec b_say/5 :: (Say, Type, Method, Language, Call) -> cf_api_std_return() when
-      Say :: binary(),
-      Type :: binary(),
-      Method :: binary(),
-      Language :: binary(),
-      Call :: #cf_call{}.
+-spec b_say/2 :: (ne_binary(), #cf_call{}) -> cf_api_std_return().
+-spec b_say/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> cf_api_std_return().
+-spec b_say/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> cf_api_std_return().
+-spec b_say/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> cf_api_std_return().
 
 say(Say, Call) ->
     say(Say, <<"name_spelled">>, Call).
@@ -829,43 +800,15 @@ b_say(Say, Type, Method, Language, Call) ->
 %% with a conference, with optional entry flags
 %% @end
 %%--------------------------------------------------------------------
--spec conference/2 :: (ConfId, Call) -> 'ok' when
-      ConfId :: binary(),
-      Call :: #cf_call{}.
--spec conference/3 :: (ConfId, Mute, Call) -> 'ok' when
-      ConfId :: binary(),
-      Mute :: binary(),
-      Call :: #cf_call{}.
--spec conference/4 :: (ConfId, Mute, Deaf, Call) -> 'ok' when
-      ConfId :: binary(),
-      Mute :: binary(),
-      Deaf :: binary(),
-      Call :: #cf_call{}.
--spec conference/5 :: (ConfId, Mute, Deaf, Moderator, Call) -> 'ok' when
-      ConfId :: binary(),
-      Mute :: binary(),
-      Deaf :: binary(),
-      Moderator :: binary(),
-      Call :: #cf_call{}.
+-spec conference/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
+-spec conference/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
+-spec conference/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
+-spec conference/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
 
--spec b_conference/2 :: (ConfId, Call) -> cf_api_std_return() when
-      ConfId :: binary(),
-      Call :: #cf_call{}.
--spec b_conference/3 :: (ConfId, Mute, Call) -> cf_api_std_return() when
-      ConfId :: binary(),
-      Mute :: binary(),
-      Call :: #cf_call{}.
--spec b_conference/4 :: (ConfId, Mute, Deaf, Call) -> cf_api_std_return() when
-      ConfId :: binary(),
-      Mute :: binary(),
-      Deaf :: binary(),
-      Call :: #cf_call{}.
--spec b_conference/5 :: (ConfId, Mute, Deaf, Moderator, Call) -> cf_api_std_return() when
-      ConfId :: binary(),
-      Mute :: binary(),
-      Deaf :: binary(),
-      Moderator :: binary(),
-      Call :: #cf_call{}.
+-spec b_conference/2 :: (ne_binary(), #cf_call{}) -> cf_api_std_return().
+-spec b_conference/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> cf_api_std_return().
+-spec b_conference/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> cf_api_std_return().
+-spec b_conference/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> cf_api_std_return().
 
 conference(ConfId, Call) ->
     conference(ConfId, <<"false">>, Call).
@@ -954,33 +897,15 @@ b_flush(Call) ->
 %% execution untill the call is terminated.
 %% @end
 %%--------------------------------------------------------------------
--type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | wh_json:json_object()} | {'ok', binary()}.
-
--spec collect_digits/2 :: (MaxDigits, Call) -> collect_digits_return() when
-      MaxDigits :: integer() | binary(),
-      Call :: #cf_call{}.
--spec collect_digits/3 :: (MaxDigits, Timeout, Call) -> collect_digits_return() when
-      MaxDigits :: integer() | binary(),
-      Timeout :: integer() | binary(),
-      Call :: #cf_call{}.
--spec collect_digits/4 :: (MaxDigits, Timeout, Interdigit, Call) -> collect_digits_return() when
-      MaxDigits :: integer() | binary(),
-      Timeout :: integer() | binary(),
-      Interdigit :: integer() | binary(),
-      Call :: #cf_call{}.
--spec collect_digits/5 :: (MaxDigits, Timeout, Interdigit, NoopId, Call) -> collect_digits_return() when
-      MaxDigits :: integer() | binary(),
-      Timeout :: integer() | binary(),
-      Interdigit :: integer() | binary(),
-      NoopId :: 'undefined' | binary(),
-      Call :: #cf_call{}.
--spec collect_digits/6 :: (MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) -> collect_digits_return() when
-      MaxDigits :: integer() | binary(),
-      Timeout :: integer() | binary(),
-      Interdigit :: integer() | binary(),
-      NoopId :: 'undefined' | binary(),
-      Terminators :: list(),
-      Call :: #cf_call{}.
+-type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | wh_json:json_object()} | {'ok', ne_binary()}.
+-spec collect_digits/2 :: (integer() | ne_binary(), #cf_call{}) -> collect_digits_return().
+-spec collect_digits/3 :: (integer() | ne_binary(), integer() | ne_binary(), #cf_call{}) -> collect_digits_return().
+-spec collect_digits/4 :: (integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), #cf_call{}) 
+                          -> collect_digits_return().
+-spec collect_digits/5 :: (integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), undefined | ne_binary(), #cf_call{}) 
+                          -> collect_digits_return().
+-spec collect_digits/6 :: (integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), undefined | ne_binary(), list()
+                           ,#cf_call{}) -> collect_digits_return().
 
 collect_digits(MaxDigits, Call) ->
     collect_digits(MaxDigits, 3000, Call).
