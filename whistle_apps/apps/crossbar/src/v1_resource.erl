@@ -2,8 +2,6 @@
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% API resource
-%%%
-%%%
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
@@ -113,14 +111,13 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
             %% HTTP method with the tunneled version
             case v1_util:get_req_data(Context, Req1) of
                 {halt, Context1, Req2} ->
-                    #cb_context{resp_error_code=StatusCode}=Context2 = crossbar_util:response_invalid_data(
+                    Context2 = crossbar_util:response_invalid_data(
                                  wh_json:set_value(<<"error">>, <<"failed to parse request body">>, wh_json:new())
                                  ,Context1),
-                    {_, Req3, Context3} = v1_util:create_push_response(Req2, Context2),
-                    ?LOG("setting status code: ~p", [StatusCode]),
-                    {ok, Req4} = cowboy_http_req:reply(StatusCode, Req3),
-                    {halt, Req4, Context3};
-                {Context1, Req2} -> check_preflight(Req2, Context1#cb_context{req_nouns=Nouns})
+
+                    v1_util:halt(Req2, Context2);
+                {Context1, Req2} ->
+                    check_preflight(Req2, Context1#cb_context{req_nouns=Nouns})
             end;
         [] ->
             ?LOG("no path tokens: ~p", [Methods]),
@@ -137,6 +134,7 @@ check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Para
     ?LOG("http method: ~s, actual verb to be used: ~s", [Method, Verb]),
 
     Methods1 = v1_util:allow_methods(Responses, Methods, Verb, Method),
+
     case v1_util:is_cors_preflight(Req1) of
         {true, Req2} ->
             ?LOG("allowing OPTIONS request for CORS preflight"),
@@ -203,25 +201,27 @@ options(Req0, Context) ->
 -spec content_types_provided/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
 content_types_provided(Req, #cb_context{req_nouns=Nouns}=Context0) ->
     ?LOG("run: content_types_provided"),
-    Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                                   Event = <<"v1_resource.content_types_provided.", Mod/binary>>,
-                                   Payload = [ContextAcc | Params],
-                                   crossbar_bindings:fold(Event, Payload)
-                           end, Context0, Nouns),
-    CTP = lists:foldr(fun({Fun, L}, Acc) ->
-                              lists:foldr(fun({Type, SubType}, Acc1) ->
-                                                  [{{Type, SubType, []}, Fun} | Acc1];
-                                             (EncType, Acc1) ->
-                                                  [ {EncType, Fun} | Acc1 ]
-                                          end, Acc, L)
-                      end, [], Context1#cb_context.content_types_provided),
+    #cb_context{content_types_provided=CTPs}=Context1 =
+        lists:foldr(fun({Mod, Params}, ContextAcc) ->
+                            Event = <<"v1_resource.content_types_provided.", Mod/binary>>,
+                            Payload = [ContextAcc | Params],
+                            crossbar_bindings:fold(Event, Payload)
+                    end, Context0, Nouns),
+    CTP =
+        lists:foldr(fun({Fun, L}, Acc) ->
+                            lists:foldr(fun({Type, SubType}, Acc1) ->
+                                                [{{Type, SubType, []}, Fun} | Acc1];
+                                           (EncType, Acc1) ->
+                                                [ {EncType, Fun} | Acc1 ]
+                                        end, Acc, L)
+                    end, [], CTPs),
 
     {CTP, Req, Context1}.
 
 -spec content_types_accepted/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
-content_types_accepted(Req, #cb_context{req_nouns=Nouns}=Context0) ->
+content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     ?LOG("run: content_types_accepted"),
-    Context1=#cb_context{content_types_accepted=CTAs} =
+    #cb_context{content_types_accepted=CTAs}=Context1 =
         lists:foldr(fun({Mod, Params}, ContextAcc) ->
                             Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
                             Payload = [ContextAcc | Params],
@@ -229,53 +229,61 @@ content_types_accepted(Req, #cb_context{req_nouns=Nouns}=Context0) ->
                             ContextAcc1
                     end, Context0, Nouns),
 
+    {CT, Req1} = cowboy_http_req:parse_header('Content-Type', Req0),
+
     CTA = lists:foldr(fun({Fun, L}, Acc) ->
                               lists:foldr(fun({Type, SubType}, Acc1) ->
-                                                  [{{Type, SubType, []}, Fun} | Acc1];
+                                                  case v1_util:content_type_matches(CT, {Type, SubType, []}) of
+                                                      true ->
+                                                          [{CT, Fun} | Acc1];
+                                                      false ->
+                                                          Acc
+                                                  end;
                                              (EncType, Acc1) ->
                                                   [ {EncType, Fun} | Acc1 ]
                                           end, Acc, L)
                       end, [], CTAs),
-    {CTA, Req, Context1}.
+
+    {CTA, Req1, Context1}.
 
 -spec languages_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
 languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     ?LOG("run: languages_provided"),
 
-    {Req1, Context1} = 
+    {Req1, #cb_context{languages_provided=LangsProvided}=Context1} = 
         lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
                             Event = <<"v1_resource.languages_provided.", Mod/binary>>,
                             Payload = {ReqAcc, ContextAcc, Params},
                             {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
                             {ReqAcc1, ContextAcc1}
                     end, {Req0, Context0}, Nouns),
-    {Context1#cb_context.languages_provided, Req1, Context1}.
+    {LangsProvided, Req1, Context1}.
 
 -spec charsets_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
 charsets_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     ?LOG("run: charsets_provided"),
 
-    {Req1, Context1} = 
+    {Req1, #cb_context{charsets_provided=CharsetsProvided}=Context1} = 
         lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
                             Event = <<"v1_resource.charsets_provided.", Mod/binary>>,
                             Payload = {ReqAcc, ContextAcc, Params},
                             {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
                             {ReqAcc1, ContextAcc1}
                     end, {Req0, Context0}, Nouns),
-    {Context1#cb_context.charsets_provided, Req1, Context1}.
+    {CharsetsProvided, Req1, Context1}.
 
 -spec encodings_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
 encodings_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
     ?LOG("run: encodings_provided"),
 
-    {Req1, Context1} = 
+    {Req1, #cb_context{encodings_provided=EncodingsProvided}=Context1} = 
         lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
                             Event = <<"v1_resource.encodings_provided.", Mod/binary>>,
                             Payload = {ReqAcc, ContextAcc, Params},
                             {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
                             {ReqAcc1, ContextAcc1}
                     end, {Req0, Context0}, Nouns),
-    {Context1#cb_context.encodings_provided, Req1, Context1}.
+    {EncodingsProvided, Req1, Context1}.
 
 -spec resource_exists/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 resource_exists(Req, #cb_context{req_nouns=[{<<"404">>,_}|_]}=Context) ->
@@ -324,7 +332,7 @@ allow_missing_post(Req0, #cb_context{req_verb=_Verb}=Context) ->
     {Method, Req1} = cowboy_http_req:method(Req0),
     {Method =:= 'POST', Req1, Context}.
 
--spec delete_resource/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+-spec delete_resource/2 :: (#http_req{}, #cb_context{}) -> {boolean() | 'halt', #http_req{}, #cb_context{}}.
 delete_resource(Req, Context) ->
     ?LOG("run: delete_resource"),
     v1_util:execute_request(Req, Context).

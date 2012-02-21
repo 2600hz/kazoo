@@ -11,9 +11,11 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, stop/1]).
+-export([start_link/0]).
+-export([stop/0]).
+-export([pause/0]).
+-export([resume/0]).
 -export([handle_call_status_resp/2]).
--export([get_call_status/1]).
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2
@@ -57,28 +59,20 @@ start_link() ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], []).
 
-stop(Srv) ->
-    gen_listener:stop(Srv).
-
--spec get_call_status/1 :: (ne_binary()) -> {ok, wh_json:json_object()} | {error, timeout | wh_json:json_object()}.
-get_call_status(CallId) ->
+-spec pause/0 :: () -> ok.
+pause() ->
     {ok, Srv} = callflow_sup:listener_proc(),
-    gen_server:cast(Srv, {add_consumer, CallId, self()}),
-    Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(gen_listener:queue_name(Srv), ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_call:publish_channel_status_req(CallId, Command),
-    Result = receive
-                 {call_status_resp, JObj} -> 
-                    case wh_json:get_value(<<"Status">>, JObj) of 
-                        <<"active">> -> {ok, JObj};
-                        _Else -> {error, JObj}
-                    end
-             after
-                 2000 -> {error, timeout}
-             end,
-    gen_server:cast(Srv, {remove_consumer, self()}),
-    Result.
+    gen_listener:rm_responder(Srv, cf_route_req).
+
+-spec resume/0 :: () -> ok.
+resume() ->
+    {ok, Srv} = callflow_sup:listener_proc(),
+    gen_listener:add_responder(Srv, cf_route_req, [{<<"dialplan">>, <<"route_req">>}]).
+
+-spec stop/0 :: () -> ok.
+stop() ->
+    {ok, Srv} = callflow_sup:listener_proc(),
+    gen_listener:stop(Srv).
 
 -spec handle_call_status_resp/2 :: (wh_json:json_object(), proplist()) -> ok.
 handle_call_status_resp(JObj, Props) ->
@@ -143,7 +137,7 @@ handle_cast({add_consumer, CallId, Consumer}, Consumers) ->
     {noreply, [{CallId, Consumer, MRef}|Consumers]};
 handle_cast({remove_consumer, Consumer}, Consumers) ->
     {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
-                                   ?LOG("removed call status response consumer (~p): status sent", [Consumer]),
+                                   ?LOG("removed call status response consumer (~p): response sent", [Consumer]),
                                    erlang:demonitor(MRef, [flush]),
                                    false; 
                               (_) -> true 
