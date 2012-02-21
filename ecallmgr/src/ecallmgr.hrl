@@ -177,7 +177,7 @@
                               ,{'mute_detect', <<"Mute-Detect">>}
                               ,{'talking', <<"Talking">>}
                               ,{'has_video', <<"Has-Video">>}
-                              ,{'had_floor', <<"Has-Floor">>}
+                              ,{'had_floor', <<"Had-Floor">>}
                               ,{'is_moderator', <<"Moderator">>}
                               ,{'end_conference', <<"End-Conference">>}
                              ]).

@@ -729,7 +729,6 @@ bind_to_q(Q, [event|T]) ->
     amqp_util:bind_q_to_conference(Q, event),
     bind_to_q(Q, T);
 bind_to_q(Q, [{conference, ConfId}|T]) ->
-    amqp_util:bind_q_to_conference(Q, command, ConfId),
     amqp_util:bind_q_to_conference(Q, event, ConfId),
     bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
@@ -759,7 +758,6 @@ unbind_from_q(Q, [event|T]) ->
     amqp_util:unbind_q_from_conference(Q, event),
     unbind_from_q(Q, T);
 unbind_from_q(Q, [{conference, ConfId}|T]) ->
-    amqp_util:unbind_q_from_conference(Q, command, ConfId),
     amqp_util:unbind_q_from_conference(Q, event, ConfId),
     unbind_from_q(Q, T);
 unbind_from_q(_Q, []) ->

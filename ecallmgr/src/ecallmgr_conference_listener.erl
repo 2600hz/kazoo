@@ -62,7 +62,7 @@ conferences_on_node(Node) ->
 handle_command(JObj, _Props) ->
     ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
     Focus = get_conference_focus(ConferenceId),
-    ecallmgr_conference_command:exec(Focus, ConferenceId, JObj),   
+    ecallmgr_conference_command:exec(Focus, ConferenceId, JObj),
     ok.
 
 -spec handle_search_req/2 :: (wh_json:json_object(), proplist()) -> ok.
@@ -112,7 +112,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
-             
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -180,21 +180,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec search_nodes_for_conference/1 :: (ne_binary()) -> undefined | wh_json:json_object(). 
--spec search_nodes_for_conference/2 :: ([atom(),...], ne_binary()) -> undefined | wh_json:json_object(). 
+-spec search_nodes_for_conference/1 :: (ne_binary()) -> undefined | wh_json:json_object().
+-spec search_nodes_for_conference/2 :: ([atom(),...], ne_binary()) -> undefined | wh_json:json_object().
 
 search_nodes_for_conference(ConferenceId) ->
     search_nodes_for_conference(get_nodes(), ConferenceId).
 
 search_nodes_for_conference([], _) ->
     undefined;
-search_nodes_for_conference([Node|Nodes], ConferenceId) ->                            
+search_nodes_for_conference([Node|Nodes], ConferenceId) ->
     JObj = conferences_on_node(Node),
     case wh_json:get_value(ConferenceId, JObj) of
         undefined -> search_nodes_for_conference(Nodes, ConferenceId);
         Conference -> Conference
     end.
 
+%% TODO: Flush cache on conference end
 -spec get_conference_focus/1 :: (ne_binary()) -> undefined | atom().
 get_conference_focus(ConferenceId) ->
     {ok, Cache} = ecallmgr_sup:cache_proc(),
@@ -203,7 +204,7 @@ get_conference_focus(ConferenceId) ->
         {error, not_found} ->
             case search_for_conference_focus(get_nodes(), ConferenceId) of
                 undefined -> undefined;
-                Focus -> 
+                Focus ->
                     wh_cache:store_local(Cache, {conference, focus, ConferenceId}, Focus),
                     Focus
             end
@@ -212,7 +213,7 @@ get_conference_focus(ConferenceId) ->
 -spec search_for_conference_focus/2 :: ([atom(),...], ne_binary()) -> undefined | atom().
 search_for_conference_focus([], _) ->
     undefined;
-search_for_conference_focus([Node|Nodes], ConferenceId) ->                            
+search_for_conference_focus([Node|Nodes], ConferenceId) ->
     JObj = conferences_on_node(Node),
     case wh_json:get_value(ConferenceId, JObj) of
         undefined -> search_for_conference_focus(Nodes, ConferenceId);
@@ -231,7 +232,7 @@ conferences_xml_to_json([#xmlElement{attributes=Attributes, name='conference', c
                                     ,{<<"Switch-Hostname">>, props:get_value(<<"Hostname">>, Props)}
                                     ,{<<"Switch-URL">>, props:get_value(<<"URL">>, Props)}
                                     ,{<<"Switch-External-IP">>, props:get_value(<<"Ext-SIP-IP">>, Props)}
-                                    |[{K, wh_util:to_binary(V)} 
+                                    |[{K, wh_util:to_binary(V)}
                                       || #xmlAttribute{name=Name, value=V} <- Attributes
                                              ,(K = props:get_value(Name, ?FS_CONFERNCE_ATTRS)) =/= undefined
                                      ]]),
@@ -257,7 +258,7 @@ members_xml_to_json([#xmlElement{content=Content, name='member'}|MembersXml], JO
         ParticipantId ->
             members_xml_to_json(MembersXml, wh_json:set_value(ParticipantId, Member, JObj))
     end;
-members_xml_to_json([_|MembersXml], JObj) ->    
+members_xml_to_json([_|MembersXml], JObj) ->
     members_xml_to_json(MembersXml, JObj).
 
 -spec member_xml_to_json/2 :: (list(), wh_json:json_object()) -> wh_json:json_object().
