@@ -587,9 +587,6 @@ get_abs_url(RD, Url) ->
 get_abs_url(Host, PathTokensRev, Url) ->
     UrlTokens = string:tokens(wh_util:to_list(Url), "/"),
 
-    ?LOG("path: ~p", [PathTokensRev]),
-    ?LOG("rel: ~p", [UrlTokens]),
-
     Url1 = string:join(
       lists:reverse(
         lists:foldl(fun("..", []) -> [];
