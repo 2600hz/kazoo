@@ -1,6 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
+%%%
 %%% Behaviour for setting up an AMQP listener.
 %%% Add/rm responders for Event-Cat/Event-Name pairs. Each responder
 %%% corresponds to a module that has defined a handle/1 function, receiving
