@@ -528,8 +528,11 @@ new_queue(Queue, Options) when is_binary(Queue) ->
       ,arguments = props:get_value(arguments, Options, [])
      },
     case amqp_mgr:consume(QD) of
+        {'ok', #'queue.declare_ok'{queue=Q}} ->
+            ?AMQP_DEBUG andalso ?LOG("create queue: ~s)", [Queue]),
+            Q;
         {'ok', Q} ->
-            ?AMQP_DEBUG andalso ?LOG("create queue(~p) ~s)", [Options, Queue]),
+            ?AMQP_DEBUG andalso ?LOG("create queue: ~s)", [Queue]),
             Q;
         {error, _Other} ->
             ?AMQP_DEBUG andalso ?LOG("error creating queue(~p): ~p", [Options, _Other]),
