@@ -9,6 +9,7 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
+-export([new/0]).
 -export([flush/0, cache/1, cache/2, retrieve/1]).
 
 -export([exec/2]).
@@ -17,9 +18,11 @@
 -export([from_route_req/1, from_route_req/2]).
 -export([from_route_win/1, from_route_win/2]).
 
+-export([set_application_name/2, application_name/1]).
+-export([set_application_version/2, application_version/1]).
 -export([set_call_id/2, call_id/1]).
--export([set_control_q/2, control_q/1]).
--export([set_controller_q/2, controller_q/1]).
+-export([set_control_queue/2, control_queue/1]).
+-export([set_controller_queue/2, controller_queue/1]).
 
 -export([set_caller_id_name/2, caller_id_name/1]).
 -export([set_caller_id_number/2, caller_id_number/1]).
@@ -83,12 +86,21 @@
                        ,account_id = 'undefined' :: 'undefined' | ne_binary()                          %% The account id that authorized this call
                        ,authorizing_id = 'undefined' :: 'undefined' | ne_binary()                      %% The ID of the record that authorized this call
                        ,authorizing_type = 'undefined' :: 'undefined' | ne_binary()                    %% The pvt_type of the record that authorized this call
+                       ,app_name = <<"whapps_call">> :: ne_binary()                                    %% The application name used during whapps_call_command
+                       ,app_version = <<"1.0.0">> :: ne_binary()                                       %% The application version used during whapps_call_command
                        ,ccvs = wh_json:new() :: wh_json:json_object()                                  %% Any custom channel vars that where provided with the route request
                        ,kvs = orddict:new() :: orddict:orddict()                                       %% allows callflows to set values that propogate to children
                       }).
 
 -opaque call() :: call().
 -export_type([call/0]).
+
+-define(APP_NAME, <<"whapps_call">>).
+-define(APP_VERSION, <<"1.0.0">>).
+
+-spec new/0 :: () -> call().
+new() ->
+    #whapps_call{}.
 
 -spec flush/0 :: () -> 'ok'.
 flush() ->
@@ -197,6 +209,22 @@ from_route_win(RouteWin, #whapps_call{}=Call) ->
                      ,ccvs = CCVs
                     }.    
 
+-spec set_application_name/2 :: (ne_binary(), call()) -> call().
+set_application_name(AppName, #whapps_call{}=Call) when is_binary(AppName) ->
+    Call#whapps_call{app_name=AppName}.
+
+-spec application_name/1 :: (call()) -> ne_binary().
+application_name(#whapps_call{app_name=AppName}) ->
+    AppName.
+
+-spec set_application_version/2 :: (ne_binary(), call()) -> call().
+set_application_version(AppVersion, #whapps_call{}=Call) when is_binary(AppVersion) ->
+    Call#whapps_call{app_version=AppVersion}.
+
+-spec application_version/1 :: (call()) -> ne_binary().
+application_version(#whapps_call{app_version=AppVersion}) ->
+    AppVersion.
+
 -spec set_call_id/2 :: (ne_binary(), call()) -> call().
 set_call_id(CallId, #whapps_call{}=Call) when is_binary(CallId) ->
     Call#whapps_call{call_id=CallId}.
@@ -205,20 +233,29 @@ set_call_id(CallId, #whapps_call{}=Call) when is_binary(CallId) ->
 call_id(#whapps_call{call_id=CallId}) ->
     CallId.
 
--spec set_control_q/2 :: (ne_binary(), call()) -> call().
-set_control_q(ControlQ, #whapps_call{}=Call) when is_binary(ControlQ) ->
+-spec set_control_queue/2 :: (ne_binary(), call()) -> call().
+set_control_queue(ControlQ, #whapps_call{}=Call) when is_binary(ControlQ) ->
     Call#whapps_call{control_q=ControlQ}.
 
--spec control_q/1 :: (call()) -> 'undefined' | binary().
-control_q(#whapps_call{control_q=ControlQ}) ->
+-spec control_queue/1 :: (call()) -> 'undefined' | binary().
+control_queue(#whapps_call{control_q=ControlQ}) ->
     ControlQ.
 
--spec set_controller_q/2 :: (ne_binary(), call()) -> call().
-set_controller_q(ControllerQ, #whapps_call{}=Call) when is_binary(ControllerQ) ->
+-spec set_controller_queue/2 :: (ne_binary(), call()) -> call().
+set_controller_queue(ControllerQ, #whapps_call{call_id=CallId, control_q=CtrlQ}=Call) when is_binary(ControllerQ) ->
+    spawn(fun() when is_binary(CtrlQ) ->
+                  Props = [{<<"Call-ID">>, CallId}
+                           ,{<<"Controller-Queue">>, ControllerQ}
+                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                          ],
+                  wapi_call:publish_controller_queue(CtrlQ, Props);
+             () ->
+                  ok
+          end),
     Call#whapps_call{controller_q=ControllerQ}.
 
--spec controller_q/1 :: (call()) -> 'undefined' | binary().
-controller_q(#whapps_call{controller_q=ControllerQ}) ->
+-spec controller_queue/1 :: (call()) -> 'undefined' | binary().
+controller_queue(#whapps_call{controller_q=ControllerQ}) ->
     ControllerQ.
 
 -spec set_caller_id_name/2 :: (ne_binary(), call()) -> call().
@@ -355,13 +392,13 @@ authorizing_type(#whapps_call{authorizing_type=AuthorizingType}) ->
 
 -spec set_custom_channel_var/3 :: (term(), term(), call()) -> call().
 set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
-    io:format("update ccv ~s: ~p~n", [Key, Value]),
+    whapps_call_command:set(wh_json:from_list([{Key, Value}]), undefined, Call),
     Call#whapps_call{ccvs=wh_json:set_value(Key, Value, CCVs)}.
 
 -spec update_custom_channel_vars/2 :: (fun((wh_json:json_object()) -> wh_json:json_object()), call()) -> call().
 update_custom_channel_vars(Updaters, #whapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = lists:foldr(fun(F, J) -> F(J) end, CCVs, Updaters),
-    io:format("sync ccvs: ~p~n", [NewCCVs]),
+    whapps_call_command:set(NewCCVs, undefined, Call),
     Call#whapps_call{ccvs=NewCCVs}.
 
 -spec custom_channel_var/3 :: (term(), Default, call()) -> Default | term().
