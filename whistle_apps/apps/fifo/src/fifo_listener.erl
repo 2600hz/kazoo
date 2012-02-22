@@ -73,31 +73,6 @@ init([]) ->
               end),
     {'ok', 'ok'}.
 
--spec maybe_init_fifo_queue/1 :: (ne_binary()) -> 'ok'.
-maybe_init_fifo_queue(AcctDB) ->
-    case couch_mgr:get_results(AcctDB, <<"queues/crossbar_listing">>, []) of
-        {ok, []} ->
-            ?LOG("acct ~s has no queues to manage", [AcctDB]);
-        {ok, Queues} ->
-            ?LOG("acct ~s has some queues to start, doing so now", [AcctDB]),
-            {ok, Cache} = fifo_sup:cache_proc(),
-            _ = [maybe_start_queue(AcctDB, wh_json:get_value(<<"id">>, QJObj), Cache) || QJObj <- Queues],
-            ok;
-        {error, _E} ->
-            ?LOG("failed to query view for ~s: ~p", [AcctDB, _E])
-    end.
-
--spec maybe_start_queue/3 :: (ne_binary(), ne_binary(), pid()) -> 'ok'.
-maybe_start_queue(AcctDB, QueueID, Cache) ->
-    case fifo_util:find_fifo_queue(AcctDB, QueueID, Cache) of
-        {error, not_found} ->
-            {ok, Pid} = fifo_queues_sup:new(AcctDB, QueueID),
-            ?LOG("queue for ~s:~s started: ~p", [AcctDB, QueueID, Pid]),
-            fifo_util:store_fifo_queue(AcctDB, QueueID, Pid, Cache);
-        {ok, Pid} ->
-            ?LOG("queue for ~s:~s already started: ~p", [AcctDB, QueueID, Pid])
-    end.
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -173,3 +148,27 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec maybe_init_fifo_queue/1 :: (ne_binary()) -> 'ok'.
+maybe_init_fifo_queue(AcctDB) ->
+    case couch_mgr:get_results(AcctDB, <<"queues/crossbar_listing">>, []) of
+        {ok, []} ->
+            ?LOG("acct ~s has no queues to manage", [AcctDB]);
+        {ok, Queues} ->
+            ?LOG("acct ~s has some queues to start, doing so now", [AcctDB]),
+            {ok, Cache} = fifo_sup:cache_proc(),
+            _ = [maybe_start_queue(AcctDB, wh_json:get_value(<<"id">>, QJObj), Cache) || QJObj <- Queues],
+            ok;
+        {error, _E} ->
+            ?LOG("failed to query view for ~s: ~p", [AcctDB, _E])
+    end.
+
+-spec maybe_start_queue/3 :: (ne_binary(), ne_binary(), pid()) -> 'ok'.
+maybe_start_queue(AcctDB, QueueID, Cache) ->
+    case fifo_util:find_fifo_queue(AcctDB, QueueID, Cache) of
+        {error, not_found} ->
+            {ok, Pid} = fifo_queues_sup:new(AcctDB, QueueID),
+            ?LOG("queue for ~s:~s started: ~p", [AcctDB, QueueID, Pid]),
+            fifo_util:store_fifo_queue(AcctDB, QueueID, Pid, Cache);
+        {ok, Pid} ->
+            ?LOG("queue for ~s:~s already started: ~p", [AcctDB, QueueID, Pid])
+    end.
