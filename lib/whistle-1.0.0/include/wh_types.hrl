@@ -21,7 +21,7 @@
 -define(NE_BINARY, <<_:8,_/binary>>).
 -type ne_binary() :: <<_:8,_:_*8>>.
 
--type proplist_key() :: nonempty_string() | ne_binary() | atom().
+-type proplist_key() :: nonempty_string() | ne_binary() | atom() | number().
 -type proplist() :: [{proplist_key(), term()} | atom(),...] | [].
 
 %% when using gen_smtp to send emails, it takes a 5-tuple for a message-body part
@@ -30,10 +30,11 @@
 %% for setting types on dicts
 -type dict(K,V) :: [{K, V}].
 
--type wh_proplist_value() :: binary() | atom() | integer() | float() | string().
+-type wh_proplist_value() :: binary() | atom() | number() | string().
+-type wh_proplist_key() :: binary() | atom() | number() | string().
 -type wh_proplist_kv(K, V) :: [{K, V},...] | [].
 -type wh_proplist_k(K) :: wh_proplist_kv(K, wh_proplist_value()).
--type wh_proplist() :: wh_proplist_kv(ne_binary() | atom(), wh_proplist_value()).
+-type wh_proplist() :: wh_proplist_kv(proplist_key(), wh_proplist_value()).
 
 %% result of calendar:datetime_to_gregorian_seconds({{1970,1,1},{0,0,0}}).
 %% Subtract this value from a gregorian seconds version of a date

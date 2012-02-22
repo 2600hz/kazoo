@@ -207,33 +207,31 @@ handle_cast(#alert{req_id=ReqId, level=Level, section=Section, module=Module, li
         end,
     {noreply, State};
 handle_cast({publish, #alert{req_id=ReqId, level=Level, section=Section, module=Module, line=Line, msg=Msg, args=Args}}, State) ->
-    try
-        Data = case lists:keyfind(extra_data, 1, Args) of {extra_data, D} -> D; _Else -> [] end,
-        Str = list_to_binary(io_lib:format(Msg, lists:keydelete(extra_data, 1, Args))),
-        AccountId = case props:get_value(account_id, Data) of undefined -> undefined; Else -> wh_util:to_binary(Else) end,
-        Details = case wh_json:is_json_object(Data) of false when is_list(Data) -> wh_json:from_list(Data); _ -> Data end,
-        Notify = [{<<"Line">>, wh_util:to_binary(Line)}
-                  ,{<<"Module">>, wh_util:to_binary(Module)}
-                  ,{<<"Section">>, wh_util:to_binary(Section)}
-                  ,{<<"Request-ID">>, wh_util:to_binary(ReqId)}
-                  ,{<<"Node">>, wh_util:to_binary(net_adm:localhost())}
-                  ,{<<"Level">>, wh_util:to_binary(Level)}
-                  ,{<<"Message">>, Str}
-                  ,{<<"Account-ID">>, AccountId}
-                  ,{<<"Details">>, Details}
-                  | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
-                 ],
-        wapi_notifications:publish_system_alert(Notify)
-    catch
-        A:B ->
-            ST = erlang:get_stacktrace(),
-            syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) logger error: ~p: ~p"
-                                            ,[?MODULE, ?LINE, self(), A, B])),
-            [syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) st line: ~p"
-                                             ,[?MODULE, ?LINE, self(), STLine])) || STLine <- ST]
-    end,
-    {noreply, State};
-handle_cast(_Msg, State) ->
+    _ = try
+            Data = case lists:keyfind(extra_data, 1, Args) of {extra_data, D} -> D; _Else -> [] end,
+            Str = list_to_binary(io_lib:format(Msg, lists:keydelete(extra_data, 1, Args))),
+            AccountId = case props:get_value(account_id, Data) of undefined -> undefined; Else -> wh_util:to_binary(Else) end,
+            Details = case wh_json:is_json_object(Data) of false when is_list(Data) -> wh_json:from_list(Data); _ -> Data end,
+            Notify = [{<<"Line">>, wh_util:to_binary(Line)}
+                      ,{<<"Module">>, wh_util:to_binary(Module)}
+                      ,{<<"Section">>, wh_util:to_binary(Section)}
+                      ,{<<"Request-ID">>, wh_util:to_binary(ReqId)}
+                      ,{<<"Node">>, wh_util:to_binary(net_adm:localhost())}
+                      ,{<<"Level">>, wh_util:to_binary(Level)}
+                      ,{<<"Message">>, Str}
+                      ,{<<"Account-ID">>, AccountId}
+                      ,{<<"Details">>, Details}
+                      | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+                     ],
+            wapi_notifications:publish_system_alert(Notify)
+        catch
+            A:B ->
+                ST = erlang:get_stacktrace(),
+                syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) logger error: ~p: ~p"
+                                                ,[?MODULE, ?LINE, self(), A, B])),
+                [syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) st line: ~p"
+                                                 ,[?MODULE, ?LINE, self(), STLine])) || STLine <- ST]
+        end,
     {noreply, State}.
 
 %%--------------------------------------------------------------------
