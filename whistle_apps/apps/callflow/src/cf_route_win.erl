@@ -22,6 +22,10 @@ handle_req(JObj, _Options) ->
         {ok, Call} ->
             ?LOG("bootstrapping callflow executer"),
             Updaters = [fun(C) -> 
+                                CCVUpdaters = get_channel_ccvs_updaters(C),
+                                whapps_call:update_custom_channel_vars(CCVUpdaters, C)
+                        end
+                        ,fun(C) -> 
                                  {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, C),
                                  whapps_call:set_caller_id_name(CIDName, whapps_call:set_caller_id_number(CIDNumber, C)) 
                          end
@@ -46,7 +50,7 @@ handle_req(JObj, _Options) ->
 -spec execute_callflow/1 :: (whapps_call:call()) -> {'ok', pid()}.
 execute_callflow(Call) ->
     ?LOG("call has been setup, passing control to callflow executer"),
-    cf_exe_sup:new(whapps_call:update_custom_channel_vars(get_channel_ccvs_updaters(Call), Call)).
+    cf_exe_sup:new(Call).
 
 %%-----------------------------------------------------------------------------
 %% @private

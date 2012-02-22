@@ -86,7 +86,7 @@ audio_macro([], Call, Queue) ->
     NoopId = couch_mgr:get_uuid(),
     Prompts = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                   ,{<<"Msg-ID">>, NoopId}
-                                  ,{<<"Call-ID">>, cf_exe:callid(Call)}
+                                  ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                                  ]) | Queue
               ],
     Command = [{<<"Application-Name">>, <<"queue">>}
@@ -127,8 +127,8 @@ response(Code, Call) ->
 response(Code, Cause, Call) ->
     response(Code, Cause, undefined, Call).
 response(Code, Cause, Media, Call) ->
-    CallId = cf_exe:callid(Call),
-    CtrlQ = cf_exe:control_queue_name(Call),
+    CallId = whapps_call:call_id(Call),
+    CtrlQ = whapps_call:control_queue(Call),
     wh_call_response:send(CallId, CtrlQ, Code, Cause, Media).
 
 %%--------------------------------------------------------------------
@@ -187,7 +187,7 @@ presence(State, PresenceId) ->
     presence(State, PresenceId, undefined).
 
 presence(State, PresenceId, Call) when is_tuple(Call) ->
-    presence(State, PresenceId, cf_exe:callid(Call));
+    presence(State, PresenceId, whapps_call:call_id(Call));
 presence(State, PresenceId, CallId) ->
     Command = [{<<"Presence-ID">>, PresenceId}
                ,{<<"State">>, State}
@@ -309,10 +309,10 @@ call_status(Call) ->
     call_status(undefined, Call).
 
 call_status(undefined, Call) ->
-    call_status(cf_exe:callid(Call), Call);
+    call_status(whapps_call:call_id(Call), Call);
 call_status(CallId, Call) ->
     Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
               ],
     wapi_call:publish_call_status_req(CallId, Command).
 
@@ -320,7 +320,7 @@ b_call_status(Call) ->
     b_call_status(undefined, Call).
 
 b_call_status(undefined, Call) ->
-    b_call_status(cf_exe:callid(Call), Call);
+    b_call_status(whapps_call:call_id(Call), Call);
 b_call_status(CallId, Call) ->
     call_status(CallId, Call),
     wait_for_our_call_status(CallId).
@@ -351,10 +351,10 @@ channel_status(Call) ->
     channel_status(undefined, Call).
 
 channel_status(undefined, Call) ->
-    channel_status(cf_exe:callid(Call), Call);
+    channel_status(whapps_call:call_id(Call), Call);
 channel_status(CallId, Call) ->
     Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
               ],
     wapi_call:publish_channel_status_req(CallId, Command).
 
@@ -362,7 +362,7 @@ b_channel_status(Call) ->
     b_channel_status(undefined, Call).
 
 b_channel_status(undefined, Call) ->
-    b_channel_status(cf_exe:callid(Call), Call);
+    b_channel_status(whapps_call:call_id(Call), Call);
 b_channel_status(CallId, Call) ->
     channel_status(CallId, Call),
     wait_for_our_channel_status(CallId).
@@ -501,8 +501,8 @@ play(Media, Call) ->
     play(Media, ?ANY_DIGIT, Call).
 play(Media, Terminators, Call) ->
     NoopId = couch_mgr:get_uuid(),
-    CallId = cf_exe:callid(Call),
-    Q = cf_exe:queue_name(Call),
+    CallId = whapps_call:call_id(Call),
+    Q = whapps_call:controller_queue(Call),
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                    ,{<<"Call-ID">>, CallId}
                                    ,{<<"Msg-ID">>, NoopId}
@@ -532,7 +532,7 @@ play_command(Media, Terminators, Call) ->
     wh_json:from_list([{<<"Application-Name">>, <<"play">>}
                        ,{<<"Media-Name">>, Media}
                        ,{<<"Terminators">>, Terminators}
-                       ,{<<"Call-ID">>, cf_exe:callid(Call)}
+                       ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                       ]).
 
 %%--------------------------------------------------------------------
@@ -638,7 +638,7 @@ tones(Tones, Call) ->
 
 -spec tones_command/2 :: (wh_json:json_objects(), whapps_call:call()) -> wh_json:json_object().
 tones_command(Tones, Call) ->
-    CallId = cf_exe:callid(Call),
+    CallId = whapps_call:call_id(Call),
     wh_json:from_list([{<<"Application-Name">>, <<"tones">>}
                        ,{<<"Tones">>, Tones}
                        ,{<<"Call-ID">>, CallId}
@@ -767,14 +767,9 @@ say(Say, Type, Method, Language,Call) ->
               ],
     send_command(Command, Call).
 
--spec say_command/5 :: (Say, Type, Method, Language, Call) -> wh_json:json_object() when
-      Say :: binary(),
-      Type :: binary(),
-      Method :: binary(),
-      Language :: binary(),
-      Call :: whapps_call:call().
+-spec say_command/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:json_object().
 say_command(Say, Type, Method, Language, Call) ->
-    CallId = cf_exe:callid(Call),
+    CallId = whapps_call:call_id(Call),
     wh_json:from_list([{<<"Application-Name">>, <<"say">>}
                        ,{<<"Say-Text">>, Say}
                        ,{<<"Type">>, Type}
@@ -1402,10 +1397,10 @@ get_event_type(JObj) ->
 -spec send_command/2 :: (proplist(), whapps_call:call()) -> 'ok'.
 send_command(Command, Call) ->
     CustomPublisher = whapps_call:custom_publish_function(Call),
+    CtrlQ = whapps_call:control_queue(Call),    
     case is_function(CustomPublisher) of
         true -> CustomPublisher(Command, Call);
-        false ->
-            CtrlQ = whapps_call:control_queue(Call),
+        false when is_binary(CtrlQ) ->
             Q = whapps_call:controller_queue(Call),
             CallId = whapps_call:call_id(Call),
             AppName = whapps_call:application_name(Call),
@@ -1413,5 +1408,6 @@ send_command(Command, Call) ->
             Prop = Command ++ [{<<"Call-ID">>, CallId}
                                | wh_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion)
                               ],
-            wapi_dialplan:publish_command(CtrlQ, Prop)
+            wapi_dialplan:publish_command(CtrlQ, Prop);
+        false -> ok
     end.

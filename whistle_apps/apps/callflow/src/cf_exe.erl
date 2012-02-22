@@ -13,9 +13,9 @@
 -export([start_link/1]).
 -export([relay_amqp/2]).
 -export([get_call/1, set_call/1]).
--export([callid/1]).
+-export([callid/1, callid/2]).
 -export([queue_name/1]).
--export([control_queue_name/1]).
+-export([control_queue/1, control_queue/2]).
 -export([continue/1, continue/2]).
 -export([branch/2]).
 -export([stop/1]).
@@ -92,7 +92,7 @@ continue(Key, Srv) when is_pid(Srv) ->
     gen_server:cast(Srv, {continue, Key});
 continue(Key, Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
-    gen_server:cast(Srv, {continue, Key, Call}).
+    continue(Key, Srv).
 
 -spec branch/2 :: (wh_json:json_object(), whapps_call:call() | pid()) -> 'ok'.
 branch(Flow, Srv) when is_pid(Srv) ->
@@ -131,6 +131,8 @@ callid_update(CallId, CtrlQ, Call) ->
     callid_update(CallId, CtrlQ, Srv).
 
 -spec callid/1 :: (whapps_call:call() | pid()) -> ne_binary().
+-spec callid/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> ne_binary().
+
 callid(Srv) when is_pid(Srv) ->
     CallId = gen_server:call(Srv, {callid}, 500),
     put(callid, CallId),
@@ -139,6 +141,9 @@ callid(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     callid(Srv).
 
+callid(_, Call) ->
+    callid(Call).
+
 -spec queue_name/1 :: (whapps_call:call() | pid()) -> ne_binary().
 queue_name(Srv) when is_pid(Srv) ->
     gen_listener:queue_name(Srv);
@@ -146,12 +151,17 @@ queue_name(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     queue_name(Srv).
 
--spec control_queue_name/1 :: (whapps_call:call() | pid()) -> ne_binary().
-control_queue_name(Srv) when is_pid(Srv) ->
+-spec control_queue/1 :: (whapps_call:call() | pid()) -> ne_binary().
+-spec control_queue/2 :: ('undefined' | ne_binary(), whapps_call:call() | pid()) -> ne_binary().
+
+control_queue(Srv) when is_pid(Srv) ->
     gen_server:call(Srv, {control_queue_name});
-control_queue_name(Call) ->
+control_queue(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
-    control_queue_name(Srv).
+    control_queue(Srv).
+
+control_queue(_, Call) ->
+    control_queue(Call).
 
 -spec get_branch_keys/1 :: (whapps_call:call() | pid()) -> {branch_keys, [ne_binary(),...]}.
 get_branch_keys(Srv) when is_pid(Srv) ->
@@ -194,7 +204,7 @@ relay_amqp(JObj, Props) ->
             ok;
         _Else ->
             %% TODO: queue?
-            ?LOG("received event to relay while no module running, dropping"),
+            ?LOG("received event to relay while no module running, dropping: ~s", [wh_json:encode(JObj)]),
             ok
     end.
 
@@ -232,8 +242,11 @@ init([Call]) ->
                   ControllerQ = queue_name(Self),
                   gen_server:cast(Self, {controller_queue, ControllerQ})
           end),
-    NewCall = whapps_call:set_custom_publish_function(get_custom_publish_function(), Call),
-    {ok, #state{call=whapps_call:kvs_store(cf_exe_pid, self(), NewCall), flow=Flow, sanity_timer=TRef}, 0}.
+    Updaters = [fun(C) -> whapps_call:kvs_store(cf_exe_pid, Self, C) end
+                ,fun(C) -> whapps_call:call_id_helper(fun cf_exe:callid/2, C) end
+                ,fun(C) -> whapps_call:control_queue_helper(fun cf_exe:control_queue/2, C) end
+               ],
+    {ok, #state{call=lists:foldr(fun(F, C) -> F(C) end, Call, Updaters), flow=Flow, sanity_timer=TRef}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -252,9 +265,9 @@ init([Call]) ->
 handle_call({get_call}, _From, #state{call=Call}=State) ->
     {reply, {ok, Call}, State};
 handle_call({callid}, _From, #state{call=Call}=State) ->
-    {reply, whapps_call:call_id(Call), State};
+    {reply, whapps_call:call_id_direct(Call), State};
 handle_call({control_queue_name}, _From, #state{call=Call}=State) ->
-    {reply, whapps_call:control_queue(Call), State};
+    {reply, whapps_call:control_queue_direct(Call), State};
 handle_call({get_branch_keys}, _From, #state{flow = Flow}=State) ->
     {struct, Children} = wh_json:get_value(<<"children">>, Flow, wh_json:new()),
     Reply = {branch_keys, lists:delete(<<"_">>, proplists:get_keys(Children))},
@@ -344,7 +357,7 @@ handle_cast({channel_status_received, JObj}, #state{sanity_timer=RunningTRef}=St
     end;            
 handle_cast({callid_update, NewCallId, NewCtrlQ}, #state{call=Call}=State) ->
     put(callid, NewCallId),
-    PrevCallId = whapps_call:call_id(Call),
+    PrevCallId = whapps_call:call_id_direct(Call),
     ?LOG(PrevCallId, "updating callid to ~s, catch you on the flip side", [NewCallId]),
     ?LOG("removing call event bindings for ~s", [PrevCallId]),
     gen_listener:rm_binding(self(), call, [{callid, PrevCallId}]),
@@ -386,9 +399,11 @@ handle_info({call_sanity_check}, #state{status = <<"testing">>, call=Call}=State
                          ]}]),
     {stop, {shutdown, insane}, State#state{status = <<"insane">>}};
 handle_info({call_sanity_check}, #state{call=Call}=State) ->
-    CallId = whapps_call:call_id(Call),
     ?LOG("ensuring call is active, requesting controlling channel status"),
-    spawn(fun() -> whapps_call_command:channel_status(CallId, Call) end),
+    spawn(fun() ->
+                  CallId = whapps_call:call_id_direct(Call), 
+                  whapps_call_command:channel_status(CallId, Call) 
+          end),
     {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
     {noreply, State#state{status = <<"testing">>, sanity_timer=TRef}};
 handle_info(_, State) ->
@@ -400,7 +415,7 @@ handle_info(_, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
-    CallId = whapps_call:call_id(Call),
+    CallId = whapps_call:call_id_direct(Call),
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)}of
         {{<<"call_event">>, <<"channel_status_resp">>}, _} ->
             gen_server:cast(self(), {channel_status_received, JObj}),
@@ -463,7 +478,7 @@ terminate(_Reason, #state{sanity_timer=TRef, call=Call}) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Insert-At">>, <<"now">>}
               ],
-    send_command(Command, whapps_call:control_queue(Call), whapps_call:call_id(Call)),
+    send_command(Command, whapps_call:control_queue_direct(Call), whapps_call:call_id_direct(Call)),
     ?LOG_END("callflow execution has been stopped: ~p", [_Reason]),
     ok.
 
@@ -520,7 +535,7 @@ launch_cf_module(#state{call=Call, flow=Flow}=State) ->
 -spec spawn_cf_module/3 :: (atom(), list(), whapps_call:call()) -> {pid(), atom()}.
 spawn_cf_module(CFModule, Data, Call) ->
     {spawn_link(fun() ->
-                        put(callid, whapps_call:call_id(Call)),
+                        put(callid, whapps_call:call_id_direct(Call)),
                         CFModule:handle(Data, Call)
                 end), CFModule}.
 
@@ -543,24 +558,3 @@ send_command(Command, ControlQ, CallId) ->
                        | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                       ],
     wapi_dialplan:publish_command(ControlQ, Prop).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Since callflows can be transfered the Call object that is passed to
-%% cf modules may become stale, as such we need a custom publisher 
-%% function that checks back with the running cf_exe for the latest
-%% callid and control q.
-%% @end
-%%--------------------------------------------------------------------
--spec get_custom_publish_function/0 :: () -> fun((proplist(), whapps_call:call()) -> 'ok').
-get_custom_publish_function() ->
-    fun(Command, Call) ->
-            CtrlQ = cf_exe:control_queue_name(Call),            
-            Q = cf_exe:queue_name(Call),
-            CallId = cf_exe:callid(Call),
-            Prop = Command ++ [{<<"Call-ID">>, CallId}
-                               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-                              ],
-            wapi_dialplan:publish_command(CtrlQ, Prop)
-    end.
