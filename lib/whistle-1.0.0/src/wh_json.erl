@@ -438,7 +438,6 @@ set_values(KVs, JObj) when is_list(KVs) ->
                       ,json_object() | json_objects()) ->
                              json_object() | json_objects().
 set_value(Keys, Value, JObj) when is_list(Keys) ->
-    io:format("set_value: keys: ~p~n~p~n", [Keys, Value]),
     set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) ->
     set_value1([Key], Value, JObj).
