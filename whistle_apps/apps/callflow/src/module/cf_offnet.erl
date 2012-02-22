@@ -27,7 +27,7 @@ handle(Data, Call) ->
            ,{<<"To-DID">>, whapps_call:request_user(Call)}
            ,{<<"Account-ID">>, whapps_call:account_id(Call)}
            ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-           ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
+           ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
            ,{<<"Application-Name">>, <<"bridge">>}
            ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Data)}
            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}

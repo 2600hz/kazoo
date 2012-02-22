@@ -207,7 +207,7 @@ send_asr_info(Call, #dbn_state{asr_endpoint=EP, asr_account_id=AID, asr_account_
            ,{<<"ASR-Account-ID">>, AID}
            ,{<<"ASR-Account-Password">>, Pass}
            ,{<<"Call-ID">>, cf_exe:callid(Call)}
-           ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
+           ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
            ,{<<"Language">>, Lang}
            ,{<<"Stream-Response">>, false}
            | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)],

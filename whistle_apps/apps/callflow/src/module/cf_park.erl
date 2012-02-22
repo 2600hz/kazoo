@@ -457,6 +457,7 @@ cleanup_slot(SlotNumber, ParkedCall, Call) ->
 -spec wait_for_pickup/3 :: (ne_binary(), undefined | ne_binary(), whapps_call:call()) -> ok.
 wait_for_pickup(SlotNumber, undefined, Call) ->
     whapps_call_command:b_hold(Call),
+    ?LOG("(no ringback) parked caller has been picked up or hungup"),    
     cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
     ok;
 wait_for_pickup(SlotNumber, RingbackId, Call) ->
@@ -465,9 +466,14 @@ wait_for_pickup(SlotNumber, RingbackId, Call) ->
             TmpCID = <<"Parking slot ", SlotNumber/binary>>,
             Hungup = get_switch_hostname(Call) =/= undefined,
             case Hungup andalso ringback_parker(RingbackId, SlotNumber, TmpCID, Call) of
-                answered -> cf_exe:continue(Call);
-                failed -> wait_for_pickup(SlotNumber, RingbackId, Call);
+                answered -> 
+                    ?LOG("parked caller ringback was answered"),
+                    cf_exe:continue(Call);
+                failed -> 
+                    ?LOG("ringback was not answered, continuing to hold parked call"),
+                    wait_for_pickup(SlotNumber, RingbackId, Call);
                 false -> 
+                    ?LOG("parked call doesnt exist anymore, hangup"),
                     cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
                     cf_exe:stop(Call)                    
             end;
@@ -513,7 +519,7 @@ publish_usurp_control(Call) ->
 
 publish_usurp_control(CallId, Call) ->
     Notice = [{<<"Call-ID">>, CallId}
-              ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
+              ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
               ,{<<"Controller-Queue">>, cf_exe:queue_name(Call)}
               ,{<<"Reason">>, <<"park">>}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)

@@ -18,7 +18,7 @@ handle(Data, Call) ->
     ShouldRecord andalso ?LOG("will record this call"),   
     Skills = whapps_call:kvs_fetch(cf_agent_skills, Call),
     Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
-           ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
+           ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
            ,{<<"Skills-Needed">>, Skills}
            ,{<<"Record-Call">>, ShouldRecord}
            ,{<<"To-User">>, whapps_call:to_user(Call)}
