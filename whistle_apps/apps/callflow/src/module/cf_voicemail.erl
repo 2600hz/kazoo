@@ -78,12 +78,12 @@
 handle(Data, Call) ->
     case wh_json:get_value(<<"action">>, Data, <<"compose">>) of
         <<"compose">> ->
-            cf_call_command:answer(Call),
+            whapps_call_command:answer(Call),
             compose_voicemail(get_mailbox_profile(Data, Call), Call),
             ?LOG("compose voicemail complete"),
             cf_exe:stop(Call);
         <<"check">> ->
-            cf_call_command:answer(Call),
+            whapps_call_command:answer(Call),
             check_mailbox(get_mailbox_profile(Data, Call), Call),
             ?LOG("check voicemail complete"),
             cf_util:update_mwi(Call),
@@ -118,7 +118,7 @@ check_mailbox(#mailbox{owner_id=OwnerId}=Box, Call, Loop) ->
 check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, _, Call, Loop) when Loop > MaxLoginAttempts ->
     %% if we have exceeded the maximum loop attempts then terminate this call
     ?LOG("maximum number of invalid attempts to check mailbox"),
-    cf_call_command:b_prompt(<<"vm-abort">>, Call),
+    whapps_call_command:b_prompt(<<"vm-abort">>, Call),
     ok;
 check_mailbox(#mailbox{exists=false}=Box, _ , Call, Loop) ->
     %% if the callflow did not define the mailbox to check then request the mailbox ID from the user
@@ -137,18 +137,18 @@ check_mailbox(#mailbox{pin = <<>>, exists=true}, false, Call, _) ->
     %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
     %% then terminate this call.
     ?LOG("attempted to sign into a mailbox with no pin"),
-    cf_call_command:b_prompt(<<"vm-no_access">>, Call),
+    whapps_call_command:b_prompt(<<"vm-no_access">>, Call),
     ok;
 check_mailbox(#mailbox{pin=Pin}=Box, IsOwner, Call, Loop) ->
     ?LOG("requesting pin number to check mailbox"),
     EnterPass = cf_util:get_prompt(<<"vm-enter_pass">>),
-    case cf_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call) of
+    case whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call) of
         {ok, Pin} ->
             ?LOG("caller entered a valid pin"),
             main_menu(Box, Call);
         {ok, _} ->
             ?LOG("invalid mailbox login"),
-            _ = cf_call_command:b_prompt(<<"vm-fail_auth">>, Call),
+            _ = whapps_call_command:b_prompt(<<"vm-fail_auth">>, Call),
             check_mailbox(Box, IsOwner, Call, Loop + 1);
         _ ->
             ok
@@ -166,12 +166,12 @@ check_mailbox(#mailbox{pin=Pin}=Box, IsOwner, Call, Loop) ->
 find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loop > MaxLoginAttempts ->
     %% if we have exceeded the maximum loop attempts then terminate this call
     ?LOG("maximum number of invalid attempts to find mailbox"),
-    cf_call_command:b_prompt(<<"vm-abort">>, Call),
+    whapps_call_command:b_prompt(<<"vm-abort">>, Call),
     ok;
 find_mailbox(Box, Call, Loop) ->
     ?LOG("requesting mailbox number to check"),
     EnterBox = cf_util:get_prompt(<<"vm-enter_id">>),
-    case cf_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterBox, <<"1">>, Call) of 
+    case whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterBox, <<"1">>, Call) of 
         {ok, <<>>} -> find_mailbox(Box, Call, Loop + 1);
         {ok, Mailbox} ->
             BoxNum = try wh_util:to_integer(Mailbox) catch _:_ -> 0 end,
@@ -221,24 +221,24 @@ compose_voicemail(#mailbox{check_if_owner=true}=Box, true, Call) ->
     check_mailbox(Box, Call);
 compose_voicemail(#mailbox{exists=false}, _, Call) ->
     ?LOG("attempted to compose voicemail for missing mailbox"),
-    cf_call_command:b_prompt(<<"vm-not_available_no_voicemail">>, Call),
+    whapps_call_command:b_prompt(<<"vm-not_available_no_voicemail">>, Call),
     ok;
 compose_voicemail(#mailbox{max_message_count=Count, message_count=Count}, _, Call) when Count /= 0->
     ?LOG("voicemail box is full, cannot hold more messages"),
-    cf_call_command:b_prompt(<<"vm-mailbox_full">>, Call),
+    whapps_call_command:b_prompt(<<"vm-mailbox_full">>, Call),
     ok;
 compose_voicemail(#mailbox{keys=#keys{login=Login}}=Box, _, Call) ->
     ?LOG("playing mailbox greeting to caller"),
     play_greeting(Box, Call),
     play_instructions(Box, Call),
-    _NoopId = cf_call_command:noop(Call),
+    _NoopId = whapps_call_command:noop(Call),
     %% timeout after 5 min for saftey, so this process cant hang around forever
-    case cf_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
+    case whapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
         {ok, _} -> 
             ?LOG("played greeting and instructions to caller, recording new message"),
             record_voicemail(tmp_file(), Box, Call);
         {dtmf, Digit} ->
-            _ = cf_call_command:b_flush(Call),
+            _ = whapps_call_command:b_flush(Call),
             case Digit of
                 Login ->
                     ?LOG("caller pressed '~s', redirecting to check voicemail", [Login]), 
@@ -264,16 +264,16 @@ play_greeting(#mailbox{skip_greeting=true}, _) ->
     ok;
 play_greeting(#mailbox{unavailable_media_id=undefined, mailbox_number=Mailbox}, Call) ->
     ?LOG("mailbox has no greeting, playing the generic"),
-    cf_call_command:audio_macro([{prompt, <<"vm-person">>}
+    whapps_call_command:audio_macro([{prompt, <<"vm-person">>}
                                  ,{say,  Mailbox}
                                  ,{prompt, <<"vm-not_available">>}
                                 ], Call);
 play_greeting(#mailbox{unavailable_media_id = <<"local_stream://", _/binary>> = Id}, Call) ->
     ?LOG("mailbox has a greeting file on the softswitch: ~s", Id),
-    cf_call_command:play(Id, Call);
+    whapps_call_command:play(Id, Call);
 play_greeting(#mailbox{unavailable_media_id=Id}, Call) ->
     ?LOG("streaming mailbox greeting"),
-    cf_call_command:play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
+    whapps_call_command:play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -285,7 +285,7 @@ play_greeting(#mailbox{unavailable_media_id=Id}, Call) ->
 play_instructions(#mailbox{skip_instructions=true}, _) ->
     ok;
 play_instructions(#mailbox{skip_instructions=false}, Call) ->
-    cf_call_command:prompt(<<"vm-record_message">>, Call).
+    whapps_call_command:prompt(<<"vm-record_message">>, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -299,9 +299,9 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                               ,{<<"Duration-ON">>, <<"500">>}
                               ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
-    cf_call_command:tones([Tone], Call),
+    whapps_call_command:tones([Tone], Call),
     ?LOG("composing new voicemail"),
-    case cf_call_command:b_record(AttachmentName, ?ANY_DIGIT, wh_util:to_binary(MaxMessageLength), Call) of
+    case whapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, wh_util:to_binary(MaxMessageLength), Call) of
         {ok, Msg} ->
             Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
             case review_recording(AttachmentName, Box, Call) of
@@ -311,11 +311,11 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                 {ok, save} ->
                     ?LOG("caller choose to save the message"),
                     new_message(AttachmentName, Length, Box, Call),
-                    cf_call_command:b_prompt(<<"vm-saved">>, Call);
+                    whapps_call_command:b_prompt(<<"vm-saved">>, Call);
                 {ok, no_selection} ->
                     ?LOG("caller made no selection or hungup, saving the message"),
                     new_message(AttachmentName, Length, Box, Call),
-                    cf_call_command:b_prompt(<<"vm-saved">>, Call)
+                    whapps_call_command:b_prompt(<<"vm-saved">>, Call)
             end;
         {error, R} ->
             ?LOG("error while attempting to record a new message: ~p", [R]),
@@ -331,15 +331,15 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
 -spec setup_mailbox/2 :: (#mailbox{}, whapps_call:call()) -> #mailbox{}.
 setup_mailbox(Box, Call) ->
     ?LOG("starting voicemail configuration wizard"),
-    {ok, _} = cf_call_command:b_prompt(<<"vm-setup_intro">>, Call),
+    {ok, _} = whapps_call_command:b_prompt(<<"vm-setup_intro">>, Call),
     ?LOG("prompting caller to set a pin"),
     change_pin(Box, Call),
-    {ok, _} = cf_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
+    {ok, _} = whapps_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
     ?LOG("prompting caller to record an unavailable greeting"),
     Box1 = record_unavailable_greeting(tmp_file(), Box, Call),
     ok = update_doc(<<"is_setup">>, true, Box1, Call),
     ?LOG("voicemail configuration wizard is complete"),
-    {ok, _} = cf_call_command:b_play(<<"vm-setup_complete">>, Call),
+    {ok, _} = whapps_call_command:b_play(<<"vm-setup_complete">>, Call),
     Box1#mailbox{is_setup=true}.
 
 %%--------------------------------------------------------------------
@@ -360,19 +360,19 @@ main_menu(_, Call, Loop) when Loop > 4 ->
     %% If there have been too may loops with no action from the caller this
     %% is likely a abandonded channel, terminate
     ?LOG("entered main menu with too many invalid entries"),
-    cf_call_command:b_prompt(<<"vm-goodbye">>, Call),
+    whapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
     ok;
 main_menu(#mailbox{owner_id=OwnerId, keys=#keys{hear_new=HearNew, hear_saved=HearSaved, configure=Configure, exit=Exit}}=Box, Call, Loop) ->
     ?LOG("playing mailbox main menu"),
-    cf_call_command:b_flush(Call),
+    whapps_call_command:b_flush(Call),
     AccountDb = whapps_call:account_db(Call),
     Messages = get_messages(Box, Call),
     New = count_messages(Messages, ?FOLDER_NEW),
     Saved = count_messages(Messages, ?FOLDER_SAVED),
     ?LOG("mailbox has ~p new and ~p saved messages", [New, Saved]),
-    NoopId = cf_call_command:audio_macro(message_count_prompts(New, Saved) 
+    NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved) 
                                          ++ [{prompt, <<"vm-main_menu">>}], Call),
-    case cf_call_command:collect_digits(1, 5000, 2000, NoopId, Call) of
+    case whapps_call_command:collect_digits(1, 5000, 2000, NoopId, Call) of
         {error, _} -> 
             ?LOG("error during mailbox main menu"),
             cf_util:update_mwi(OwnerId, AccountDb),
@@ -484,17 +484,17 @@ play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
     case message_menu(Prompt, Box, Call) of
         {ok, keep} ->
             ?LOG("caller choose to save the message"),
-            cf_call_command:b_prompt(<<"vm-saved">>, Call),
+            whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             set_folder(?FOLDER_SAVED, H, Box, Call),
             play_messages(T, Count, Box, Call);
         {ok, delete} ->
             ?LOG("caller choose to delete the message"),
-            cf_call_command:b_prompt(<<"vm-deleted">>, Call),
+            whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
             set_folder(?FOLDER_DELETED, H, Box, Call),
             play_messages(T, Count, Box, Call);
         {ok, return} ->
             ?LOG("caller choose to return to the main menu"),
-            cf_call_command:b_prompt(<<"vm-saved">>, Call),
+            whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             set_folder(?FOLDER_SAVED, H, Box, Call),
             complete;
         {ok, replay} ->
@@ -519,15 +519,15 @@ play_messages([], _, _, _) ->
 
 -spec message_menu/2 :: (#mailbox{}, whapps_call:call()) ->
                                 {'error', 'channel_hungup' | 'channel_unbridge' | wh_json:json_object()} | message_menu_returns().
--spec message_menu/3 :: ([cf_call_command:audio_macro_prompt(),...], #mailbox{}, whapps_call:call()) ->
+-spec message_menu/3 :: ([whapps_call_command:audio_macro_prompt(),...], #mailbox{}, whapps_call:call()) ->
                                 {'error', 'channel_hungup' | 'channel_unbridge' | wh_json:json_object()} | message_menu_returns().
 message_menu(Box, Call) ->
     message_menu([{prompt, <<"vm-message_menu">>}], Box, Call).
 message_menu(Prompt, #mailbox{keys=#keys{replay=Replay, keep=Keep,
                                          delete=Delete, return_main=ReturnMain}}=Box, Call) ->
     ?LOG("playing message menu"),
-    NoopId = cf_call_command:audio_macro(Prompt, Call),
-    case cf_call_command:collect_digits(1, 5000, 2000, NoopId, Call)of
+    NoopId = whapps_call_command:audio_macro(Prompt, Call),
+    case whapps_call_command:collect_digits(1, 5000, 2000, NoopId, Call)of
         {ok, Keep} -> {ok, keep};
         {ok, Delete} -> {ok, delete};
         {ok, ReturnMain} -> {ok, return};
@@ -551,9 +551,9 @@ config_menu(Box, Call) ->
 config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName
                                 ,set_pin=SetPin, return_main=ReturnMain}}=Box, Call, Loop) when Loop < 4 ->
     ?LOG("playing mailbox configuration menu"),
-    {ok, _} = cf_call_command:b_flush(Call),
+    {ok, _} = whapps_call_command:b_flush(Call),
     SettingsMenu = cf_util:get_prompts(<<"vm-settings_menu">>),
-    case cf_call_command:b_play_and_collect_digit(SettingsMenu, Call) of
+    case whapps_call_command:b_play_and_collect_digit(SettingsMenu, Call) of
         {ok, RecUnavailable} ->
             ?LOG("caller choose to record their unavailable greeting"),
             case record_unavailable_greeting(tmp_file(), Box, Call) of
@@ -598,20 +598,20 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaI
                               ,{<<"Duration-ON">>, <<"500">>}
                               ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
-    _NoopId = cf_call_command:audio_macro([{prompt, <<"vm-record_greeting">>}
+    _NoopId = whapps_call_command:audio_macro([{prompt, <<"vm-record_greeting">>}
                                            ,{tones, [Tone]}
                                           ], Call),
-    cf_call_command:b_record(AttachmentName, Call),
+    whapps_call_command:b_record(AttachmentName, Call),
     case review_recording(AttachmentName, Box, Call) of
         {ok, record} ->
             record_unavailable_greeting(tmp_file(), Box, Call);
         {ok, save} ->
             store_recording(AttachmentName, MediaId, Call),
             ok = update_doc([<<"media">>, <<"unavailable">>], MediaId, Box, Call),
-            cf_call_command:b_prompt(<<"vm-saved">>, Call),
+            whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             Box;
         {ok, no_selection} ->
-            cf_call_command:b_prompt(<<"vm-deleted">>, Call),
+            whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
             ok;
         {error, _} -> ok
     end.
@@ -632,20 +632,20 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call) ->
                               ,{<<"Duration-ON">>, <<"500">>}
                               ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
-    _NoopId = cf_call_command:audio_macro([{play,  <<"vm-record_name">>}
+    _NoopId = whapps_call_command:audio_macro([{play,  <<"vm-record_name">>}
                                            ,{tones, [Tone]}
                                           ], Call),
-    cf_call_command:b_record(AttachmentName, Call),
+    whapps_call_command:b_record(AttachmentName, Call),
     case review_recording(AttachmentName, Box, Call) of
         {ok, record} ->
             record_name(tmp_file(), Box, Call);
         {ok, save} ->
             store_recording(AttachmentName, MediaId, Call),
             ok = update_doc([<<"media">>, <<"name">>], MediaId, Box, Call),
-            cf_call_command:b_prompt(<<"vm-saved">>, Call),
+            whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             Box;
         {ok, no_selection} ->
-            cf_call_command:b_prompt(<<"vm-deleted">>, Call),
+            whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
             ok;
         {error, _} -> ok
     end.
@@ -661,23 +661,23 @@ change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
     ?LOG("requesting new mailbox pin number"),
     try
         EnterNewPin = cf_util:prompts(<<"vm-enter_new_pin">>),
-        {ok, Pin} = cf_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterNewPin, <<"1">>, Call),
+        {ok, Pin} = whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterNewPin, <<"1">>, Call),
         ?LOG("collected first pin"),
         ReenterNewPin = cf_util:prompts(<<"vm-enter_new_pin_confirm">>),
-        {ok, Pin} = cf_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, ReenterNewPin, <<"1">>, Call),
+        {ok, Pin} = whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, ReenterNewPin, <<"1">>, Call),
         ?LOG("collected second pin"),
         if byte_size(Pin) == 0 -> throw(pin_empty); true -> ok end,
         ?LOG("entered pin is not empty"),
         AccountDb = whapps_call:account_db(Call),
         {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
         {ok, _} = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pin">>, Pin, JObj)),
-        {ok, _} = cf_call_command:b_prompt(<<"vm-pin_set">>, Call),
+        {ok, _} = whapps_call_command:b_prompt(<<"vm-pin_set">>, Call),
         ?LOG("updated mailbox pin number"),
         Box
     catch
         _:_ ->
             ?LOG("new pin was invalid, trying again"),
-            case cf_call_command:b_prompt(<<"vm-pin_invalid">>, Call) of
+            case whapps_call_command:b_prompt(<<"vm-pin_invalid">>, Call) of
                 {ok, _} -> change_pin(Box, Call);
                 _ -> ok
             end
@@ -854,10 +854,10 @@ review_recording(_, _, _, Loop) when Loop > 4 ->
     {ok, no_selection};
 review_recording(AttachmentName, #mailbox{keys=#keys{listen=Listen, save=Save, record=Record}}=Box, Call, Loop) ->
     ?LOG("playing recording review options"),
-    case cf_call_command:b_play_and_collect_digit(<<"vm-review_recording">>, Call) of
+    case whapps_call_command:b_play_and_collect_digit(<<"vm-review_recording">>, Call) of
         {ok, Listen} ->
             ?LOG("caller choose to replay the recording"),
-            _ = cf_call_command:b_play(AttachmentName, Call),
+            _ = whapps_call_command:b_play(AttachmentName, Call),
             review_recording(AttachmentName, Box, Call);
         {ok, Record} ->
             ?LOG("caller choose to re-record"),
@@ -881,7 +881,7 @@ review_recording(AttachmentName, #mailbox{keys=#keys{listen=Listen, save=Save, r
 store_recording(AttachmentName, MediaId, Call) ->
     ?LOG("storing recording ~s as media ~s", [AttachmentName, MediaId]),
     ok = update_doc(<<"content_type">>, <<"audio/mpeg">>, MediaId, Call),
-    cf_call_command:b_store(AttachmentName, get_new_attachment_url(AttachmentName, MediaId, Call), Call).
+    whapps_call_command:b_store(AttachmentName, get_new_attachment_url(AttachmentName, MediaId, Call), Call).
 
 %%--------------------------------------------------------------------
 %% @private

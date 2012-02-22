@@ -46,7 +46,7 @@
 handle(Data, Call) ->
     DynamicCID = #dynamic_cid{},
     Prompts = DynamicCID#dynamic_cid.prompts,
-    cf_call_command:b_play("silence_stream://100", Call),
+    whapps_call_command:b_play("silence_stream://100", Call),
     Media = case wh_json:get_ne_value(<<"media_id">>, Data) of
                 undefined ->
                     Prompts#prompts.default_prompt;
@@ -57,17 +57,17 @@ handle(Data, Call) ->
     Max = DynamicCID#dynamic_cid.max_digits,
     Regex = DynamicCID#dynamic_cid.whitelist, 
     DefaultCID = DynamicCID#dynamic_cid.default_cid,
-    CID = case cf_call_command:b_play_and_collect_digits(Min, Max, Media, <<"1">>, <<"5000">>, undefined, Regex, Call) of
+    CID = case whapps_call_command:b_play_and_collect_digits(Min, Max, Media, <<"1">>, <<"5000">>, undefined, Regex, Call) of
               {ok, <<>>} ->
-                  cf_call_command:play(Prompts#prompts.reject_tone, Call),
+                  whapps_call_command:play(Prompts#prompts.reject_tone, Call),
                   DefaultCID;
               {ok, Digits} ->
-                  cf_call_command:play(Prompts#prompts.accept_tone, Call),
+                  whapps_call_command:play(Prompts#prompts.accept_tone, Call),
                   Digits;
               {error, _} ->
-                  cf_call_command:play(Prompts#prompts.reject_tone, Call),
+                  whapps_call_command:play(Prompts#prompts.reject_tone, Call),
                   DefaultCID
           end,
     ?LOG("setting the caller id number to ~s", [CID]),
-    cf_call_command:set(wh_json:from_list([{<<"Caller-ID-Number">> ,CID}]), undefined, Call),
+    whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Number">> ,CID}]), undefined, Call),
     cf_exe:continue(Call).

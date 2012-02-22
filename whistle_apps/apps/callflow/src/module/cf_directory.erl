@@ -280,7 +280,7 @@ matches_menu(Call, Prompts, [JObj|_] = LookupList, DB, MatchNo) ->
     case play_result(Call, Prompts, MatchNo, JObj, DB) of
         {ok, <<>>} ->
             case play_result_menu(Call, Prompts) of
-                {ok, <<>>} -> matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF));
+                {ok, <<>>} -> matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF));
                 {ok, _DTMF}=OK -> matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, OK)
             end;
         {ok, _DTMF}=OK -> matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, OK)
@@ -309,7 +309,7 @@ matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, _) ->
 -spec no_matches_menu/2 :: (whapps_call:call(), #prompts{}) -> 'continue' | 'start_over'.
 no_matches_menu(Call, Prompts) ->
     case play_no_results_menu(Call, Prompts) of
-        {ok, <<>>} -> no_matches_dtmf(Call, Prompts, cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF));
+        {ok, <<>>} -> no_matches_dtmf(Call, Prompts, whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF));
         {ok, _DTMF}=OK -> no_matches_dtmf(Call, Prompts, OK)
     end.
 
@@ -328,13 +328,13 @@ play_no_results_menu(Call, #prompts{no_results_menu=NoResultsMenu}) ->
 
 -spec play_asr_instructions/3 :: (whapps_call:call(), #prompts{}, #dbn_state{}) -> 'ok'.
 play_asr_instructions(Call, #prompts{asr_instructions=AsrInstructions}, DbN) ->
-    NoopID = cf_call_command:audio_macro([{play, AsrInstructions}], Call),
+    NoopID = whapps_call_command:audio_macro([{play, AsrInstructions}], Call),
 
     ?LOG("Send asr amqp"),
     send_asr_info(Call, DbN),
 
     ?LOG("Waiting for prompt to finish"),
-    {ok, _JObj} = cf_call_command:wait_for_noop(NoopID),
+    {ok, _JObj} = whapps_call_command:wait_for_noop(NoopID),
     ok.
 
 -spec play_no_more_results/2 :: (whapps_call:call(), #prompts{}) -> {'ok', binary()}.
@@ -375,7 +375,7 @@ confirm_match(_Call, _Prompts, false, _) ->
     true;
 confirm_match(Call, Prompts, true, JObj) ->
     case play_confirm_match(Call, Prompts, JObj) of
-        {ok, <<>>} -> confirm_match_dtmf(Call, Prompts, JObj, cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF));
+        {ok, <<>>} -> confirm_match_dtmf(Call, Prompts, JObj, whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF));
         {ok, _DTMF}=OK -> confirm_match_dtmf(Call, Prompts, JObj, OK)
     end.
 
@@ -419,26 +419,26 @@ play_min_digits_needed(Call, #prompts{specify_minimum=SpecifyMinimum, letters_of
                       ,{play, LettersOfName, ?ANY_DIGIT}
                      ], Call).
 
--spec play_and_wait/2 :: ([cf_call_command:audio_macro_prompt(),...], whapps_call:call()) -> 'ok'.
+-spec play_and_wait/2 :: ([whapps_call_command:audio_macro_prompt(),...], whapps_call:call()) -> 'ok'.
 play_and_wait(AudioMacro, Call) ->
-    NoopID = cf_call_command:audio_macro(AudioMacro, Call),
-    {ok, _JObj} = cf_call_command:wait_for_noop(NoopID),
+    NoopID = whapps_call_command:audio_macro(AudioMacro, Call),
+    {ok, _JObj} = whapps_call_command:wait_for_noop(NoopID),
     ok.
 
 %% {'ok', <<>>} usually indicates a timeout waiting for DTMF
--spec play_and_collect/2 :: ([cf_call_command:audio_macro_prompt(),...], whapps_call:call()) -> {'ok', binary()}.
--spec play_and_collect/3 :: ([cf_call_command:audio_macro_prompt(),...], whapps_call:call(), non_neg_integer()) -> {'ok', binary()}.
+-spec play_and_collect/2 :: ([whapps_call_command:audio_macro_prompt(),...], whapps_call:call()) -> {'ok', binary()}.
+-spec play_and_collect/3 :: ([whapps_call_command:audio_macro_prompt(),...], whapps_call:call(), non_neg_integer()) -> {'ok', binary()}.
 play_and_collect(AudioMacro, Call) ->
     play_and_collect(AudioMacro, Call, 1).
 play_and_collect(AudioMacro, Call, NumDigits) ->
-    NoopID = cf_call_command:audio_macro(AudioMacro, Call),
+    NoopID = whapps_call_command:audio_macro(AudioMacro, Call),
     ?LOG("NoopID: ~s", [NoopID]),
-    cf_call_command:collect_digits(NumDigits, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, NoopID, Call).
+    whapps_call_command:collect_digits(NumDigits, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, NoopID, Call).
 
 %% collect DTMF digits individually until length of DTMFs is == MinDTMF
 -spec collect_min_digits/2 :: (non_neg_integer(), binary()) -> {'ok', ne_binary()} | {'error', 'timeout', binary()}.
 collect_min_digits(MinDTMF, DTMFs) when MinDTMF > 0 ->
-    case cf_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
+    case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
         {ok, <<>>} ->
             {error, timeout, DTMFs};
         {ok, DTMF} ->

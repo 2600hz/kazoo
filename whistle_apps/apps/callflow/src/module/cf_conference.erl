@@ -35,5 +35,5 @@ handle(Data, Call) ->
               ],
     {ok, Payload} = wh_api:conference_discovery_req(Command),
     amqp_util:conference_publish(Payload, discovery),
-    {ok, _} = cf_call_command:wait_for_hangup(),
+    {ok, _} = whapps_call_command:wait_for_hangup(),
     cf_exe:stop(Call).

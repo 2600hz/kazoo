@@ -47,7 +47,7 @@
 -spec handle/2 :: (Data :: wh_json:json_object(), Call :: whapps_call:call()) -> ok.
 handle(Data, Call) ->
     Menu = get_menu_profile(Data, Call),
-    cf_call_command:answer(Call),
+    whapps_call_command:answer(Call),
     menu_loop(Menu, Call).
 
 %%--------------------------------------------------------------------
@@ -61,21 +61,21 @@ handle(Data, Call) ->
 -spec menu_loop/2 :: (#menu{}, whapps_call:call()) -> ok.
 menu_loop(#menu{retries=Retries}=Menu, Call) when Retries =< 0 ->
     ?LOG("maxium number of retries reached"),
-    cf_call_command:flush_dtmf(Call),
+    whapps_call_command:flush_dtmf(Call),
     play_exit_prompt(Menu, Call),
     case cf_exe:attempt(<<"max_retries">>, Call) of
         {attempt_resp, ok} ->
             ok;
         {attempt_resp, {error, _}} ->
             case cf_exe:wildcard_is_empty(Call) of
-                true -> cf_call_command:b_prompt(<<"vm-goodbye">>, Call);
+                true -> whapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
                 false -> play_transferring_prompt(Menu, Call)
             end,
             cf_exe:continue(Call)
     end;
 menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout
                 ,record_pin=RecordPin, record_from_offnet=RecOffnet}=Menu, Call) ->
-    case cf_call_command:b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu, Call), <<"1">>, Timeout, Call) of
+    case whapps_call_command:b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu, Call), <<"1">>, Timeout, Call) of
         {ok, <<>>} ->
             ?LOG("menu entry timeout"),
             case cf_exe:attempt(<<"timeout">>, Call) of
@@ -98,7 +98,7 @@ menu_loop(#menu{retries=Retries, max_length=MaxLength, timeout=Timeout
                     case record_greeting(tmp_file(), Menu, Call) of
                         {ok, M} ->
                             ?LOG("returning caller to menu"),
-                            cf_call_command:b_prompt(<<"menu-return">>, Call),
+                            whapps_call_command:b_prompt(<<"menu-return">>, Call),
                             menu_loop(M, Call);
                         {error, _} -> 
                             cf_exe:stop(Call)
@@ -209,7 +209,7 @@ hunt_for_callflow(Digits, Menu, Call) ->
     case cf_util:lookup_callflow(Digits, AccountId) of
         {ok, Flow, false} ->
             ?LOG("callflow hunt succeeded, branching"),
-            cf_call_command:flush_dtmf(Call),
+            whapps_call_command:flush_dtmf(Call),
             play_transferring_prompt(Menu, Call),
             cf_exe:branch(wh_json:get_value(<<"flow">>, Flow, wh_json:new()), Call),
             true;
@@ -230,14 +230,14 @@ record_greeting(AttachmentName, #menu{greeting_id=undefined}=Menu, Call) ->
     record_greeting(AttachmentName, Menu#menu{greeting_id=MediaId}, Call);
 record_greeting(AttachmentName, #menu{greeting_id=MediaId}=Menu, Call) ->
     ?LOG("recording new menu greeting"),
-    cf_call_command:audio_macro([{prompt, <<"vm-record_greeting">>}
+    whapps_call_command:audio_macro([{prompt, <<"vm-record_greeting">>}
                                  ,{tones, [wh_json:from_list([{<<"Frequencies">>, [440]}
                                                               ,{<<"Duration-ON">>, 500}
                                                               ,{<<"Duration-OFF">>, 100}
                                                              ])
                                           ]}
                                 ], Call),
-    case cf_call_command:b_record(AttachmentName, Call) of
+    case whapps_call_command:b_record(AttachmentName, Call) of
         {error, _}=E -> E;
         {ok, JObj} ->
             NoRec = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"min_greeting_length">>, 1500) 
@@ -246,16 +246,16 @@ record_greeting(AttachmentName, #menu{greeting_id=MediaId}=Menu, Call) ->
                 {ok, record} ->
                     record_greeting(tmp_file(), Menu, Call);
                 {ok, save} when NoRec ->
-                    cf_call_command:b_prompt(<<"vm-recording_to_short">>, Call),
+                    whapps_call_command:b_prompt(<<"vm-recording_to_short">>, Call),
                     record_greeting(tmp_file(), Menu, Call);
                 {ok, save} ->
                     {ok, _} = store_recording(AttachmentName, MediaId, Call),
                     ok = update_doc([<<"media">>, <<"greeting">>], MediaId, Menu, Call),
-                    cf_call_command:b_prompt(<<"vm-saved">>, Call),
+                    whapps_call_command:b_prompt(<<"vm-saved">>, Call),
                     {ok, Menu};
                 {ok, no_selection} ->
                     ?LOG("abandoning recorded greeting"),
-                    cf_call_command:b_prompt(<<"vm-deleted">>, Call),
+                    whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
                     {ok, Menu};
                 {error, _}=E -> E
             end
@@ -272,9 +272,9 @@ record_greeting(AttachmentName, #menu{greeting_id=MediaId}=Menu, Call) ->
 play_invalid_prompt(#menu{invalid_media=false}, _) ->
     {ok, wh_json:new()};
 play_invalid_prompt(#menu{invalid_media=true}, Call) ->
-    cf_call_command:b_prompt(<<"menu-invalid_entry">>, Call);
+    whapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call);
 play_invalid_prompt(#menu{invalid_media=Id}, Call) ->
-    cf_call_command:b_play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
+    whapps_call_command:b_play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -286,9 +286,9 @@ play_invalid_prompt(#menu{invalid_media=Id}, Call) ->
 play_transferring_prompt(#menu{transfer_media=false}, _) ->
     {ok, wh_json:new()};
 play_transferring_prompt(#menu{transfer_media=true}, Call) ->
-    cf_call_command:b_prompt(<<"menu-transferring_call">>, Call);
+    whapps_call_command:b_prompt(<<"menu-transferring_call">>, Call);
 play_transferring_prompt(#menu{transfer_media=Id}, Call) ->
-    cf_call_command:b_play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
+    whapps_call_command:b_play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -300,9 +300,9 @@ play_transferring_prompt(#menu{transfer_media=Id}, Call) ->
 play_exit_prompt(#menu{exit_media=false}, _) ->
     {ok, wh_json:new()};
 play_exit_prompt(#menu{exit_media=true}, Call) ->
-    cf_call_command:b_prompt(<<"menu-exit">>, Call);
+    whapps_call_command:b_prompt(<<"menu-exit">>, Call);
 play_exit_prompt(#menu{exit_media=Id}, Call) ->
-    cf_call_command:b_play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
+    whapps_call_command:b_play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -327,7 +327,7 @@ get_prompt(#menu{greeting_id=Id}, Call) ->
 store_recording(AttachmentName, MediaId, Call) ->
     ?LOG("storing recording ~s as media ~s", [AttachmentName, MediaId]),
     ok = update_doc(<<"content_type">>, <<"audio/mpeg">>, MediaId, Call),
-    cf_call_command:b_store(AttachmentName, get_new_attachment_url(AttachmentName, MediaId, Call), Call).
+    whapps_call_command:b_store(AttachmentName, get_new_attachment_url(AttachmentName, MediaId, Call), Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -378,11 +378,11 @@ tmp_file() ->
 -spec review_recording/3 :: (ne_binary(), #menu{}, whapps_call:call()) -> {ok, record | save | no_selection}.
 review_recording(MediaName, #menu{keys=#keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
     ?LOG("playing menu greeting review options"),
-    cf_call_command:flush_dtmf(Call),
+    whapps_call_command:flush_dtmf(Call),
     Prompt = cf_util:get_prompt(<<"vm-review_recording">>),
-    case cf_call_command:b_play_and_collect_digit(Prompt, Call) of
+    case whapps_call_command:b_play_and_collect_digit(Prompt, Call) of
         {ok, ListenKey} ->
-            cf_call_command:b_play(MediaName, Call),
+            whapps_call_command:b_play(MediaName, Call),
             review_recording(MediaName, Menu, Call);
         {ok, RecordKey} ->
             {ok, record};

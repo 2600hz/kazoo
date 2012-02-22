@@ -232,7 +232,8 @@ init([Call]) ->
                   ControllerQ = queue_name(Self),
                   gen_server:cast(Self, {controller_queue, ControllerQ})
           end),
-    {ok, #state{call=whapps_call:kvs_store(cf_exe_pid, self(), Call), flow=Flow, sanity_timer=TRef}, 0}.
+    NewCall = whapps_call:set_custom_publish_function(get_custom_publish_function(), Call),
+    {ok, #state{call=whapps_call:kvs_store(cf_exe_pid, self(), NewCall), flow=Flow, sanity_timer=TRef}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -387,7 +388,7 @@ handle_info({call_sanity_check}, #state{status = <<"testing">>, call=Call}=State
 handle_info({call_sanity_check}, #state{call=Call}=State) ->
     CallId = whapps_call:call_id(Call),
     ?LOG("ensuring call is active, requesting controlling channel status"),
-    spawn(fun() -> cf_call_command:channel_status(CallId, Call) end),
+    spawn(fun() -> whapps_call_command:channel_status(CallId, Call) end),
     {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
     {noreply, State#state{status = <<"testing">>, sanity_timer=TRef}};
 handle_info(_, State) ->
@@ -526,7 +527,7 @@ spawn_cf_module(CFModule, Data, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% unlike the cf_call_command this send command does not call the 
+%% unlike the whapps_call_command this send command does not call the 
 %% functions of this module to form the headers, nor does it set
 %% the reply queue.  Used when this module is terminating to send
 %% a hangup command without relying on the (now terminated) cf_exe.
@@ -542,3 +543,24 @@ send_command(Command, ControlQ, CallId) ->
                        | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                       ],
     wapi_dialplan:publish_command(ControlQ, Prop).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Since callflows can be transfered the Call object that is passed to
+%% cf modules may become stale, as such we need a custom publisher 
+%% function that checks back with the running cf_exe for the latest
+%% callid and control q.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_custom_publish_function/0 :: () -> fun((proplist(), whapps_call:call()) -> 'ok').
+get_custom_publish_function() ->
+    fun(Command, Call) ->
+            CtrlQ = cf_exe:control_queue_name(Call),            
+            Q = cf_exe:queue_name(Call),
+            CallId = cf_exe:callid(Call),
+            Prop = Command ++ [{<<"Call-ID">>, CallId}
+                               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                              ],
+            wapi_dialplan:publish_command(CtrlQ, Prop)
+    end.

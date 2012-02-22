@@ -7,7 +7,7 @@
 %%%============================================================================
 -module(whapps_call).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle_apps/include/whapps_call_command.hrl").
 
 -export([new/0]).
 -export([flush/0, cache/1, cache/2, retrieve/1]).
@@ -44,6 +44,10 @@
 -export([set_custom_channel_var/3, update_custom_channel_vars/2
          ,custom_channel_var/3, custom_channel_var/2
          ,custom_channel_vars/1
+        ]).
+
+-export([set_custom_publish_function/2, clear_custom_publish_function/1
+         ,custom_publish_function/1
         ]).
 
 -export([kvs_append/3
@@ -88,15 +92,13 @@
                        ,authorizing_type = 'undefined' :: 'undefined' | ne_binary()                    %% The pvt_type of the record that authorized this call
                        ,app_name = <<"whapps_call">> :: ne_binary()                                    %% The application name used during whapps_call_command
                        ,app_version = <<"1.0.0">> :: ne_binary()                                       %% The application version used during whapps_call_command
+                       ,custom_publish_fun = undefined :: 'undefined' | whapps_custom_publish()        %% A custom command used to publish whapps_call_command
                        ,ccvs = wh_json:new() :: wh_json:json_object()                                  %% Any custom channel vars that where provided with the route request
                        ,kvs = orddict:new() :: orddict:orddict()                                       %% allows callflows to set values that propogate to children
                       }).
 
 -opaque call() :: call().
 -export_type([call/0]).
-
--define(APP_NAME, <<"whapps_call">>).
--define(APP_VERSION, <<"1.0.0">>).
 
 -spec new/0 :: () -> call().
 new() ->
@@ -260,7 +262,7 @@ controller_queue(#whapps_call{controller_q=ControllerQ}) ->
 
 -spec set_caller_id_name/2 :: (ne_binary(), call()) -> call().
 set_caller_id_name(CIDName, #whapps_call{}=Call) when is_binary(CIDName) ->
-    io:format("set caller id name: ~p~n", [CIDName]),
+    whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Name">>, CIDName}]), undefined, Call),
     Call#whapps_call{caller_id_name=CIDName}.
 
 -spec caller_id_name/1 :: (call()) -> binary().
@@ -269,7 +271,7 @@ caller_id_name(#whapps_call{caller_id_name=CIDName}) ->
 
 -spec set_caller_id_number/2 :: (ne_binary(), call()) -> call().
 set_caller_id_number(CIDNumber, #whapps_call{}=Call) when is_binary(CIDNumber) ->
-    io:format("set caller id number: ~p~n", [CIDNumber]),
+    whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}]), undefined, Call),
     Call#whapps_call{caller_id_number=CIDNumber}.
 
 -spec caller_id_number/1 :: (call()) -> binary().
@@ -413,6 +415,18 @@ custom_channel_var(Key, #whapps_call{ccvs=CCVs}) ->
 custom_channel_vars(#whapps_call{ccvs=CCVs}) ->
     CCVs.
 
+-spec set_custom_publish_function/2 :: (whapps_custom_publish(), call()) -> call().
+set_custom_publish_function(Fun, #whapps_call{}=Call) when is_function(Fun) ->
+    Call#whapps_call{custom_publish_fun=Fun}.
+
+-spec clear_custom_publish_function/1 :: (call()) -> call().
+clear_custom_publish_function(#whapps_call{}=Call) ->
+    Call#whapps_call{custom_publish_fun=undefined}.
+
+-spec custom_publish_function/1 :: (call()) -> call().
+custom_publish_function(#whapps_call{custom_publish_fun=Fun}) ->
+    Fun.
+    
 -spec kvs_append/3 :: (term(), term(), call()) -> call().
 kvs_append(Key, Value, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:append(Key, Value, Dict)}.

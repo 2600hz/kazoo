@@ -27,7 +27,7 @@
 
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    cf_call_command:answer(Call),
+    whapps_call_command:answer(Call),
     case find_agent(Data, wh_json:get_integer_value(<<"pin_retries">>, Data, 3), Call) of
         {ok, AgentJObj} ->
             play_welcome(Call),
@@ -52,22 +52,22 @@ send_available(AgentJObj, Call) ->
     wapi_acd:publish_agent_online(Req).
 
 put_on_hold(Call) ->
-    cf_call_command:hold(Call).
+    whapps_call_command:hold(Call).
 
 play_welcome(Call) ->
     #prompts{welcome_prompt=WelcomePrompt} = #prompts{},
-    cf_call_command:play(WelcomePrompt, Call).
+    whapps_call_command:play(WelcomePrompt, Call).
 
 prompt_and_get_pin(#prompts{pin_prompt=PinPrompt}, Data, Call) ->
     MinPinDigits = wh_json:get_integer_value(<<"min_digits">>, Data, 3),
     MaxPinDigits = wh_json:get_integer_value(<<"max_digits">>, Data, 5),
 
-    cf_call_command:b_play_and_collect_digits(MinPinDigits, MaxPinDigits, PinPrompt, Call).
+    whapps_call_command:b_play_and_collect_digits(MinPinDigits, MaxPinDigits, PinPrompt, Call).
 
 find_agent(_Data, 0, Call) ->
     ?LOG("retries exceeded"),
     #prompts{retries_exceeded_prompt=RetriesPrompt} = #prompts{},
-    cf_call_command:play(RetriesPrompt, Call),
+    whapps_call_command:play(RetriesPrompt, Call),
     {error, retries_exceeded};
 find_agent(Data, Retries, Call) ->
     ?LOG("retries left: ~b", [Retries]),
@@ -81,7 +81,7 @@ find_agent(Data, Retries, Call) ->
                 {ok, []} ->
                     ?LOG("no agent found with pin"),
                     #prompts{invalid_pin_prompt=InvalidPinPrompt}=Prompts,
-                    cf_call_command:b_play(InvalidPinPrompt, Call),
+                    whapps_call_command:b_play(InvalidPinPrompt, Call),
                     find_agent(Data, Retries-1, Call);
                 {ok, [AgentJObj]} ->
                     ?LOG("agent found"),
@@ -89,7 +89,7 @@ find_agent(Data, Retries, Call) ->
                 {error, _E} ->
                     ?LOG("error loading agent: ~p", [_E]),
                     #prompts{invalid_pin_prompt=InvalidPinPrompt}=Prompts,
-                    cf_call_command:b_play(InvalidPinPrompt, Call),
+                    whapps_call_command:b_play(InvalidPinPrompt, Call),
                     find_agent(Data, Retries-1, Call)
             end;
         {error, _E}=E ->

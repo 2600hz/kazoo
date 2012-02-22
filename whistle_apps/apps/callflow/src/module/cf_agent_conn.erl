@@ -27,5 +27,5 @@ handle(Data, Call) ->
           ],
     wapi_acd:publish_agent_connect(Req),
     ?LOG("waiting for hangup"),
-    cf_call_command:wait_for_hangup(),
+    whapps_call_command:wait_for_hangup(),
     cf_exe:continue(Call).

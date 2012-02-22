@@ -27,7 +27,7 @@ handle(Data, Call) ->
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     ?LOG("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case length(Endpoints) > 0 andalso cf_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
+    case length(Endpoints) > 0 andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
         false ->
             ?LOG(notice, "ring group has no endpoints", [{extra_data, [{details, whapps_call:to_proplist(Call)}
                                                                        ,{account_id, whapps_call:account_id(Call)}

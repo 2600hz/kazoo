@@ -27,7 +27,7 @@ handle(Data, Call) ->
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     ?LOG("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
-    case length(Endpoints) > 0 andalso cf_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Call) of
+    case length(Endpoints) > 0 andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Call) of
         false ->
             ?LOG(notice, "user ~s has no endpoints", [UserId, {extra_data, [{details, whapps_call:to_proplist(Call)}
                                                                             ,{account_id, whapps_call:account_id(Call)}

@@ -39,7 +39,7 @@ update_presence(SlotNumber, PresenceId, AccountDb) ->
                                       {<<"terminated">>, CId}
                               end
                       end,
-    cf_call_command:presence(State, PresenceId, CallId).
+    whapps_call_command:presence(State, PresenceId, CallId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -65,8 +65,8 @@ handle(Data, Call) ->
                     case retrieve(SlotNumber, ParkedCalls, Call) of
                         {ok, _} -> ok;
                         _Else ->
-                            cf_call_command:b_answer(Call),
-                            cf_call_command:b_prompt(<<"park-no_caller">>, Call),
+                            whapps_call_command:b_answer(Call),
+                            whapps_call_command:b_prompt(<<"park-no_caller">>, Call),
                             cf_exe:continue(Call)
                     end;
                 <<"auto">> ->
@@ -99,7 +99,7 @@ get_switch_hostname(Call) ->
     get_switch_hostname(undefined, Call).
 
 get_switch_hostname(CallId, Call) ->
-    case cf_call_command:b_channel_status(CallId, Call) of
+    case whapps_call_command:b_channel_status(CallId, Call) of
         {ok, CallerStatus} ->
             wh_json:get_ne_value(<<"Switch-Hostname">>, CallerStatus);
         _Else ->
@@ -143,8 +143,8 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
                                       ,{<<"Callee-ID-Name">>, Name}
                                       ,{<<"Callee-ID-Number">>, Number}
                                      ],
-                            cf_call_command:set(wh_json:from_list(Update), undefined, Call),
-                            cf_call_command:b_pickup(ParkedCall, Call),
+                            whapps_call_command:set(wh_json:from_list(Update), undefined, Call),
+                            whapps_call_command:b_pickup(ParkedCall, Call),
                             cf_exe:continue(Call),
                             Ok;
                         %% if we cant clean up the slot then someone beat us to it
@@ -155,7 +155,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
                     Contact = <<"sip:", (whapps_call:to_user(Call))/binary
                                 ,"@", (whapps_call:to_realm(Call))/binary>>,
                     Server = <<"sip:", IP/binary, ":5060">>,
-                    cf_call_command:redirect(Contact, Server, Call),
+                    whapps_call_command:redirect(Contact, Server, Call),
                     cf_exe:transfer(Call),
                     {ok, ParkedCalls}
             end
@@ -177,9 +177,9 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
         {undefined, {error, occupied}} ->
             ?LOG("selected slot is occupied"),
             %% Update screen with error that the slot is occupied
-            cf_call_command:b_answer(Call),
+            whapps_call_command:b_answer(Call),
             %% playback message that caller will have to try a different slot
-            cf_call_command:b_prompt(<<"park-already_in_use">>, Call),
+            whapps_call_command:b_prompt(<<"park-already_in_use">>, Call),
             cf_exe:continue(Call),
             ok;
         %% attended transfer and allowed to update the provided slot number, we are still connected to the 'parker'
@@ -187,10 +187,10 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
         {undefined, _} ->
             ?LOG("playback slot number to caller"),
             %% Update screen with new slot number
-            cf_call_command:b_answer(Call),
+            whapps_call_command:b_answer(Call),
             %% Caller parked in slot number...
-            cf_call_command:b_prompt(<<"park-call_placed_in_spot">>, Call),
-            cf_call_command:b_say(wh_util:to_binary(SlotNumber), Call),
+            whapps_call_command:b_prompt(<<"park-call_placed_in_spot">>, Call),
+            whapps_call_command:b_say(wh_util:to_binary(SlotNumber), Call),
             cf_exe:transfer(Call),
             ok;
         %% blind transfer and but the provided slot number is occupied
@@ -207,7 +207,7 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
             ParkedCallId = wh_json:get_value(<<"Call-ID">>, Slot),
             PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
             ?LOG("update presence-id '~s' with state: early", [PresenceId]),
-            cf_call_command:presence(<<"early">>, PresenceId, ParkedCallId),
+            whapps_call_command:presence(<<"early">>, PresenceId, ParkedCallId),
             wait_for_pickup(SlotNumber, wh_json:get_value(<<"Ringback-ID">>, Slot), Call),
             ok
     end.
@@ -290,7 +290,7 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
             ?LOG("slot number '~s' does not have a call id in it, allowing use of slot", [SlotNumber]),
             do_save_slot(SlotNumber, Slot, ParkedCalls, Call);
         CallId ->
-            case cf_call_command:b_channel_status(CallId, Call) of
+            case whapps_call_command:b_channel_status(CallId, Call) of
                 {ok, _} ->
                     ?LOG("slot number '~s' has an active call id in it, denying use of slot", [SlotNumber]),
                     {error, occupied};
@@ -352,7 +352,7 @@ update_call_id(Replaces, ParkedCalls, Call) ->
                     ParkedCallId = wh_json:get_value(<<"Call-ID">>, Slot),
                     PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
                     ?LOG("update presence-id '~s' with state: early", [PresenceId]),
-                    cf_call_command:presence(<<"early">>, PresenceId, ParkedCallId),
+                    whapps_call_command:presence(<<"early">>, PresenceId, ParkedCallId),
                     {ok, SlotNumber, UpdatedSlot};
                 {error, conflict} ->
                     update_call_id(Replaces, get_parked_calls(Call), Call)
@@ -431,7 +431,7 @@ cleanup_slot(SlotNumber, ParkedCall, Call) ->
                     ParkedCallId = wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj),
                     PresenceId = wh_json:get_value([<<"slots">>, SlotNumber, <<"Presence-ID">>], JObj),
                     ?LOG("update presence-id '~s' with state: terminated", [PresenceId]),
-                    cf_call_command:presence(<<"terminated">>, PresenceId, ParkedCallId),
+                    whapps_call_command:presence(<<"terminated">>, PresenceId, ParkedCallId),
                     case couch_mgr:save_doc(AccountDb, wh_json:delete_key([<<"slots">>, SlotNumber], JObj)) of
                         {ok, _}=Ok -> Ok;
                         {error, conflict} -> cleanup_slot(SlotNumber, ParkedCall, Call);
@@ -456,11 +456,11 @@ cleanup_slot(SlotNumber, ParkedCall, Call) ->
 %%--------------------------------------------------------------------
 -spec wait_for_pickup/3 :: (ne_binary(), undefined | ne_binary(), whapps_call:call()) -> ok.
 wait_for_pickup(SlotNumber, undefined, Call) ->
-    cf_call_command:b_hold(Call),
+    whapps_call_command:b_hold(Call),
     cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
     ok;
 wait_for_pickup(SlotNumber, RingbackId, Call) ->
-    case cf_call_command:b_hold(?DEFAULT_RINGBACK_TM, Call) of
+    case whapps_call_command:b_hold(?DEFAULT_RINGBACK_TM, Call) of
         {error, timeout} ->
             TmpCID = <<"Parking slot ", SlotNumber/binary>>,
             Hungup = get_switch_hostname(Call) =/= undefined,
@@ -560,8 +560,8 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
                          end,
             whapps_call:set_caller_id_name(TmpCID, Call),
             whapps_call:set_caller_id_name(TmpCID, Call),
-            cf_call_command:bridge(Endpoints, <<"20">>, Call),
-            case cf_call_command:wait_for_bridge(30000, CleanUpFun, Call) of
+            whapps_call_command:bridge(Endpoints, <<"20">>, Call),
+            case whapps_call_command:wait_for_bridge(30000, CleanUpFun, Call) of
                 {ok, _} ->
                     ?LOG("completed successful bridge to the ringback device"),
                     answered;

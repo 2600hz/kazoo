@@ -24,7 +24,7 @@ handle(_, Call) ->
     AccountId = whapps_call:account_id(Call),
     case is_binary(CaptureGroup) andalso cf_util:lookup_callflow(CaptureGroup, AccountId) of
         {ok, Flow, false} ->
-            cf_call_command:set(undefined, wh_json:from_list([{<<"Auto-Answer">>, <<"true">>}]), Call),
+            whapps_call_command:set(undefined, wh_json:from_list([{<<"Auto-Answer">>, <<"true">>}]), Call),
             cf_exe:branch(wh_json:get_value(<<"flow">>, Flow, wh_json:new()), Call);
         _ ->
             cf_exe:continue(Call)

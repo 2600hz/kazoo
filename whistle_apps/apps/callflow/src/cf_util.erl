@@ -421,7 +421,7 @@ send_default_response(Cause, Call) ->
             CtrlQ = cf_exe:control_queue_name(Call),
             case wh_call_response:send_default(CallId, CtrlQ, Cause) of
                 {error, no_response} -> ok;
-                {ok, NoopId} -> cf_call_command:wait_for_noop(NoopId)
+                {ok, NoopId} -> whapps_call_command:wait_for_noop(NoopId)
             end
     end,
     ok.

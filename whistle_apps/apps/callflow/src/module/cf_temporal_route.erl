@@ -233,7 +233,7 @@ get_date(Seconds) when is_integer(Seconds) ->
       Call :: whapps_call:call().
 temporal_route_menu(#temporal{keys=#keys{enable=Enable, disable=Disable, reset=Reset}
                               ,prompts=Prompts}=Temporal, Rules, Call) ->
-    case cf_call_command:b_play_and_collect_digit(Prompts#prompts.main_menu, Call) of
+    case whapps_call_command:b_play_and_collect_digit(Prompts#prompts.main_menu, Call) of
         {ok, Enable} ->
             enable_temporal_rules(Temporal, Rules, Call);
         {ok, Disable} ->
@@ -259,7 +259,7 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable, disable=Disable, reset=R
       Rules :: [#rule{},...] | [],
       Call :: whapps_call:call().
 disable_temporal_rules(#temporal{prompts=#prompts{marked_disabled=Disabled}}, [], Call) ->
-    cf_call_command:b_play(Disabled, Call);
+    whapps_call_command:b_play(Disabled, Call);
 disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
         AccountDb = whapps_call:account_db(Call),
@@ -294,7 +294,7 @@ disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
       Rules :: [#rule{},...] | [],
       Call :: whapps_call:call().
 reset_temporal_rules(#temporal{prompts=#prompts{marker_reset=Reset}}, [], Call) ->
-    cf_call_command:b_play(Reset, Call);
+    whapps_call_command:b_play(Reset, Call);
 reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
         AccountDb = whapps_call:account_db(Call),
@@ -329,7 +329,7 @@ reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
       Rules :: [#rule{},...] | [],
       Call :: whapps_call:call().
 enable_temporal_rules(#temporal{prompts=#prompts{marked_enabled=Enabled}}, [], Call) ->
-    cf_call_command:b_play(Enabled, Call);
+    whapps_call_command:b_play(Enabled, Call);
 enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
         AccountDb = whapps_call:account_db(Call),

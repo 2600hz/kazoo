@@ -1401,12 +1401,17 @@ get_event_type(JObj) ->
 %%--------------------------------------------------------------------
 -spec send_command/2 :: (proplist(), whapps_call:call()) -> 'ok'.
 send_command(Command, Call) ->
-    CtrlQ = whapps_call:control_queue(Call),
-    Q = whapps_call:controller_queue(Call),
-    CallId = whapps_call:call_id(Call),
-    AppName = whapps_call:application_name(Call),
-    AppVersion = whapps_call:application_version(Call),
-    Prop = Command ++ [{<<"Call-ID">>, CallId}
-                       | wh_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion)
-                      ],
-    wapi_dialplan:publish_command(CtrlQ, Prop).
+    CustomPublisher = whapps_call:custom_publish_function(Call),
+    case is_function(CustomPublisher) of
+        true -> CustomPublisher(Command, Call);
+        false ->
+            CtrlQ = whapps_call:control_queue(Call),
+            Q = whapps_call:controller_queue(Call),
+            CallId = whapps_call:call_id(Call),
+            AppName = whapps_call:application_name(Call),
+            AppVersion = whapps_call:application_version(Call),
+            Prop = Command ++ [{<<"Call-ID">>, CallId}
+                               | wh_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion)
+                              ],
+            wapi_dialplan:publish_command(CtrlQ, Prop)
+    end.

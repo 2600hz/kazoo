@@ -60,11 +60,11 @@ handle(Data, Call) ->
         <<"bridge">> ->
             cf_exe:continue(Call);
         <<"login">> ->
-            cf_call_command:answer(Call),          
+            whapps_call_command:answer(Call),          
             login(Devices, H, Call),
             cf_exe:stop(Call);
         <<"logout">> ->
-            cf_call_command:answer(Call),
+            whapps_call_command:answer(Call),
             logout(Devices, H, Call),
             cf_exe:stop(Call);
         <<"toggle">> ->
@@ -94,7 +94,7 @@ bridge_to_endpoints(Devices, Data, Call) ->
                                    end)],
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-    cf_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call).
+    whapps_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call).
     
 %%--------------------------------------------------------------------
 %% @private
@@ -115,20 +115,20 @@ login(Devices, H, Call) ->
 
 login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, undefined, Call, _) ->
     %% sanitize authorizing_id
-    cf_call_command:b_play(AbortLogin, Call),
+    whapps_call_command:b_play(AbortLogin, Call),
     ok;
 login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, _, Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS->
     %% if we have exceeded the maximum loop attempts then terminate this call
     ?LOG("maximum number of invalid attempts to check mailbox"),
-    cf_call_command:b_play(AbortLogin, Call),
+    whapps_call_command:b_play(AbortLogin, Call),
     ok;
 login(Devices, #hotdesk{prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}
                         ,require_pin=true, pin=Pin}=H, AuthorizingId, Call, Loop) ->
-    case cf_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call) of
+    case whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call) of
         {ok, Pin} ->
             do_login(Devices, H, Call);
         {ok, _} ->
-            case cf_call_command:b_play(InvalidLogin, Call) of
+            case whapps_call_command:b_play(InvalidLogin, Call) of
                 {ok, _} ->
                     login(Devices, H, Call, AuthorizingId, Loop + 1);
                 {error, _} ->
@@ -156,16 +156,16 @@ login(Devices, #hotdesk{require_pin=false}=H, _, Call, _) ->
 do_login(_, #hotdesk{keep_logged_in_elsewhere=true, owner_id=OwnerId, prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, Call) ->
     %% keep logged in elsewhere, so we update only the device used to call
     {ok, _} = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
-    cf_call_command:b_play(HotdeskLogin, Call),
-    cf_call_command:b_play(Bye, Call),
+    whapps_call_command:b_play(HotdeskLogin, Call),
+    whapps_call_command:b_play(Bye, Call),
     ok;
 do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId
                            ,prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, Call) ->
     %% log out from owned devices , since we don't want to keep logged in elsewhere, then log unto the device currently used
     logout_from_elsewhere(Devices, Call),
     {ok, _} = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
-    cf_call_command:b_play(HotdeskLogin, Call),
-    cf_call_command:b_play(Bye, Call),
+    whapps_call_command:b_play(HotdeskLogin, Call),
+    whapps_call_command:b_play(Bye, Call),
     ok.
 
 %%--------------------------------------------------------------------
@@ -184,14 +184,14 @@ do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId
 -spec logout/3 :: ([ne_binary(),...], #hotdesk{}, whapps_call:call()) -> ok.
 logout(_, #hotdesk{keep_logged_in_elsewhere=true, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, Call) ->
     {ok, _} = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
-    cf_call_command:b_play(HotdeskLogout, Call),
-    cf_call_command:b_play(Bye, Call),
+    whapps_call_command:b_play(HotdeskLogout, Call),
+    whapps_call_command:b_play(Bye, Call),
     ok;
 logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, Call) ->
     logout_from_elsewhere(Devices, Call),
     {ok, _} = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
-    cf_call_command:b_play(HotdeskLogout, Call),
-    cf_call_command:b_play(Bye, Call),
+    whapps_call_command:b_play(HotdeskLogout, Call),
+    whapps_call_command:b_play(Bye, Call),
     ok.
 
 %%--------------------------------------------------------------------
@@ -214,8 +214,8 @@ get_hotdesk_profile(_, _, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
     {error, too_many_attempts};
 get_hotdesk_profile(undefined, Call, Loop) ->
     P = #prompts{},
-    cf_call_command:answer(Call),
-    case cf_call_command:b_play_and_collect_digits(<<"1">>, <<"10">>, P#prompts.enter_hotdesk, <<"1">>, Call) of
+    whapps_call_command:answer(Call),
+    case whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"10">>, P#prompts.enter_hotdesk, <<"1">>, Call) of
         {ok, <<>>} ->
             get_hotdesk_profile(undefined, Call, Loop + 1);
         {ok, HId} ->

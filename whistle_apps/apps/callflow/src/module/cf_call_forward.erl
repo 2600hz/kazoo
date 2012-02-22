@@ -40,10 +40,10 @@
 handle(Data, Call) ->
     case get_call_forward(Call) of
         {error, _} ->
-            catch({ok, _} = cf_call_command:b_prompt(<<"cf-not_available">>, Call)),
+            catch({ok, _} = whapps_call_command:b_prompt(<<"cf-not_available">>, Call)),
             cf_exe:stop(Call);
         CF ->
-            cf_call_command:answer(Call),
+            whapps_call_command:answer(Call),
             CaptureGroup = whapps_call:kvs_fetch(cf_capture_group, Call),
             CF1 = case wh_json:get_value(<<"action">>, Data) of
                       <<"activate">> -> cf_activate(CF, CaptureGroup, Call);       %% Support for NANPA *72
@@ -69,8 +69,8 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle, menu_change_number=ChangeNum}
                  true -> cf_util:get_prompt(<<"cf-enabled_menu">>);
                  false -> cf_util:get_prompt(<<"cf-disabled_menu">>)
              end,
-    _  = cf_call_command:b_flush(Call),
-    case cf_call_command:b_play_and_collect_digit(Prompt, Call) of
+    _  = whapps_call_command:b_flush(Call),
+    case whapps_call_command:b_play_and_collect_digit(Prompt, Call) of
         {ok, Toggle} ->
             CF1 = cf_toggle(CF, CaptureGroup, Call),
             cf_menu(CF1, CaptureGroup, Call);
@@ -93,8 +93,8 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle, menu_change_number=ChangeNum}
 -spec cf_toggle/3 :: (#callfwd{}, undefined | binary(), whapps_call:call()) -> #callfwd{}.
 cf_toggle(#callfwd{enabled=false, number=Number}=CF, _, Call) when is_binary(Number), size(Number) > 0 ->
     _ = try
-            {ok, _} = cf_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
-            {ok, _} = cf_call_command:b_say(Number, Call)
+            {ok, _} = whapps_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
+            {ok, _} = whapps_call_command:b_say(Number, Call)
         catch
             _:_ -> ok
         end,
@@ -116,8 +116,8 @@ cf_activate(CF1, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:
     ?LOG("activating call forwarding"),
     CF2 = #callfwd{number=Number} = cf_update_number(CF1, CaptureGroup, Call),
     _ = try
-            {ok, _} = cf_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
-            {ok, _} = cf_call_command:b_say(Number, Call)
+            {ok, _} = whapps_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
+            {ok, _} = whapps_call_command:b_say(Number, Call)
         catch
             _:_ -> ok
         end,
@@ -125,8 +125,8 @@ cf_activate(CF1, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:
 cf_activate(CF, CaptureGroup, Call) ->
     ?LOG("activating call forwarding with number ~s", [CaptureGroup]),
     _ = try
-            {ok, _} = cf_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
-            {ok, _} = cf_call_command:b_say(CaptureGroup, Call)
+            {ok, _} = whapps_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
+            {ok, _} = whapps_call_command:b_say(CaptureGroup, Call)
         catch
             _:_ -> ok
         end,
@@ -142,7 +142,7 @@ cf_activate(CF, CaptureGroup, Call) ->
 -spec cf_deactivate/2 :: (#callfwd{}, whapps_call:call()) -> #callfwd{}.
 cf_deactivate(CF, Call) ->
     ?LOG("deactivating call forwarding"),
-    catch({ok, _} = cf_call_command:b_prompt(<<"cf-disabled">>, Call)),
+    catch({ok, _} = whapps_call_command:b_prompt(<<"cf-disabled">>, Call)),
     CF#callfwd{enabled=false}.
 
 %%--------------------------------------------------------------------
@@ -155,10 +155,10 @@ cf_deactivate(CF, Call) ->
 -spec cf_update_number/3 :: (#callfwd{}, undefined | binary(), whapps_call:call()) -> #callfwd{}.
 cf_update_number(CF, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
     EnterNumber = cf_util:get_prompt(<<"cf-enter_number">>),
-    case cf_call_command:b_play_and_collect_digits(<<"3">>, <<"20">>, EnterNumber, <<"1">>, <<"8000">>, Call) of
+    case whapps_call_command:b_play_and_collect_digits(<<"3">>, <<"20">>, EnterNumber, <<"1">>, <<"8000">>, Call) of
         {ok, <<>>} -> cf_update_number(CF, CaptureGroup, Call);
         {ok, Number} ->
-            _ = cf_call_command:b_prompt(<<"vm-saved">>, Call),
+            _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             ?LOG("update call forwarding number with ~s", [Number]),
             CF#callfwd{number=Number};
         {error, _} -> exit(normal)
