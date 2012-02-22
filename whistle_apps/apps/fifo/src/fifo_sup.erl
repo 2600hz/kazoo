@@ -31,8 +31,8 @@ cache_proc() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
                                   ?CACHE(fifo_cache)
-                                  ,?CHILD(fifo_listener, worker)
                                   ,?CHILD(fifo_queues_sup, supervisor)
+                                  ,?CHILD(fifo_listener, worker)
                                  ]
          } }.
 
