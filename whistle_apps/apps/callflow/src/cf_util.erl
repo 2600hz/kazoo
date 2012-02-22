@@ -3,7 +3,7 @@
 -include("callflow.hrl").
 
 -export([presence_probe/2]).
--export([update_mwi/2, update_mwi/4]).
+-export([update_mwi/1, update_mwi/2, update_mwi/4]).
 -export([get_call_status/1]).
 -export([get_prompt/1, get_prompt/2]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
@@ -87,8 +87,12 @@ presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
+-spec update_mwi/1 :: (whapps_call:call()) -> ok.
 -spec update_mwi/2 :: (undefined | ne_binary(), ne_binary()) -> ok.
 -spec update_mwi/4 :: (non_neg_integer() | ne_binary(), non_neg_integer() | ne_binary(), ne_binary(), ne_binary()) -> ok.
+
+update_mwi(Call) ->
+    update_mwi(whapps_call:kvs_fetch(owner_id, Call), whapps_call:account_db(Call)).
 
 update_mwi(undefined, _) ->
     ok;

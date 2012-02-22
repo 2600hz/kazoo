@@ -80,7 +80,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data,Call) ->
     Temporal = get_temporal_route(Data, Call),
     case wh_json:get_value(<<"action">>, Data) of
@@ -124,7 +124,7 @@ handle(Data,Call) ->
 -spec process_rules/3 :: (Temporal, Rules, Call) -> 'default' | binary() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...] | [],
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 process_rules(Temporal, [#rule{enabled = <<"false">>, id=Id, name=Name}|Rs], Call) ->
     ?LOG("time based rule ~s (~s) disabled", [Id, Name]),
     process_rules(Temporal, Rs, Call);
@@ -163,7 +163,7 @@ process_rules(_, [], _) ->
 %%--------------------------------------------------------------------
 -spec get_temporal_rules/2 :: (Temporal, Call) -> [#rule{},...] when
       Temporal :: #temporal{},
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
     [#rule{id = ID
            ,enabled =
@@ -200,7 +200,7 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
 %%--------------------------------------------------------------------
 -spec get_temporal_route/2 :: (JObj, Call) -> #temporal{} when
       JObj :: wh_json:json_object(),
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 get_temporal_route(JObj, Call) ->
     ?LOG("loading temporal route"),
     {branch_keys, Keys} = cf_exe:get_branch_keys(Call),
@@ -230,7 +230,7 @@ get_date(Seconds) when is_integer(Seconds) ->
 -spec temporal_route_menu/3 :: (Temporal, Rules, Call) -> cf_api_std_return() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...],
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 temporal_route_menu(#temporal{keys=#keys{enable=Enable, disable=Disable, reset=Reset}
                               ,prompts=Prompts}=Temporal, Rules, Call) ->
     case cf_call_command:b_play_and_collect_digit(Prompts#prompts.main_menu, Call) of
@@ -257,13 +257,14 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable, disable=Disable, reset=R
 -spec disable_temporal_rules/3 :: (Temporal, Rules, Call) -> cf_api_std_return() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...] | [],
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 disable_temporal_rules(#temporal{prompts=#prompts{marked_disabled=Disabled}}, [], Call) ->
     cf_call_command:b_play(Disabled, Call);
-disable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
+disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
-        {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        case couch_mgr:save_doc(Db, wh_json:set_value(<<"enabled">>, false, JObj)) of
+        AccountDb = whapps_call:account_db(Call),
+        {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
+        case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"enabled">>, false, JObj)) of
             {ok, _} ->
                 ?LOG("set temporal rule ~s to disabled", [Id]),
                 disable_temporal_rules(Temporal, T, Call);
@@ -291,13 +292,14 @@ disable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
 -spec reset_temporal_rules/3 :: (Temporal, Rules, Call) -> cf_api_std_return() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...] | [],
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 reset_temporal_rules(#temporal{prompts=#prompts{marker_reset=Reset}}, [], Call) ->
     cf_call_command:b_play(Reset, Call);
-reset_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
+reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
-        {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        case couch_mgr:save_doc(Db, wh_json:delete_key(<<"enabled">>, JObj)) of
+        AccountDb = whapps_call:account_db(Call),
+        {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
+        case couch_mgr:save_doc(AccountDb, wh_json:delete_key(<<"enabled">>, JObj)) of
             {ok, _} ->
                 ?LOG("reset temporal rule ~s", [Id]),
                 reset_temporal_rules(Temporal, T, Call);
@@ -325,13 +327,14 @@ reset_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
 -spec enable_temporal_rules/3 :: (Temporal, Rules, Call) -> cf_api_std_return() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...] | [],
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 enable_temporal_rules(#temporal{prompts=#prompts{marked_enabled=Enabled}}, [], Call) ->
     cf_call_command:b_play(Enabled, Call);
-enable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
+enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
-        {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        case couch_mgr:save_doc(Db, wh_json:set_value(<<"enabled">>, true, JObj)) of
+        AccountDb = whapps_call:account_db(Call),
+        {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
+        case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"enabled">>, true, JObj)) of
             {ok, _} ->
                 ?LOG("set temporal rule ~s to enabled active", [Id]),
                 enable_temporal_rules(Temporal, T, Call);

@@ -18,7 +18,8 @@ handle_req(JObj, Options) ->
     case is_binary(whapps_call:account_id(Call)) andalso callflow_should_respond(Call) of
         true ->
             ?LOG_START("received route request"),
-            fulfill_call_request(JObj, whapps_call:set_controller_q(props:get_value(queue, Options), Call));
+            ControllerQ = props:get_value(queue, Options),
+            fulfill_call_request(JObj, whapps_call:set_controller_queue(ControllerQ, Call));
         {_, _} ->
             ok
     end.
@@ -52,13 +53,13 @@ fulfill_call_request(JObj, Call) ->
             FlowId = wh_json:get_value(<<"_id">>, Flow),
             CaptureGroup = wh_json:get_ne_value(<<"capture_group">>, Flow),
             ?LOG("callflow ~s in ~s satisfies request", [FlowId, whapps_call:account_id(Call)]),
-            Call2=whapps_call:kvs_store_proplist([{flow_id, FlowId}
-                                                  ,{flow, wh_json:get_value(<<"flow">>, Flow)}
-                                                  ,{capture_group, CaptureGroup}
-                                                  ,{no_match, NoMatch}
+            Call2=whapps_call:kvs_store_proplist([{cf_flow_id, FlowId}
+                                                  ,{cf_flow, wh_json:get_value(<<"flow">>, Flow)}
+                                                  ,{cf_capture_group, CaptureGroup}
+                                                  ,{cf_no_match, NoMatch}
                                                  ], Call),
             whapps_call:cache(Call2),
-            send_route_response(JObj, whapps_call:controller_q(Call2));
+            send_route_response(JObj, whapps_call:controller_queue(Call2));
         {error, R} ->
             ?LOG_END("unable to find callflow ~p", [R]),
             ok

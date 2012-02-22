@@ -25,7 +25,7 @@
          ,logged_in_prompt = <<"/system_media/hotdesk-logged_in">>
          }).
 
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> 'ok'.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     cf_call_command:answer(Call),
     case find_agent(Data, wh_json:get_integer_value(<<"pin_retries">>, Data, 3), Call) of
@@ -41,12 +41,12 @@ handle(Data, Call) ->
 publish_agent_available(AgentJObj, Call) ->
     send_available(AgentJObj, Call).
 
-send_available(AgentJObj, #cf_call{account_db=DB}=Call) ->
+send_available(AgentJObj, Call) ->
     Req = [{<<"Agent-ID">>, wh_json:get_value(<<"id">>, AgentJObj)}
            ,{<<"Skills">>, wh_json:get_value(<<"skills">>, AgentJObj, [])}
            ,{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
-           ,{<<"Account-DB">>, DB}
+           ,{<<"Account-DB">>, whapps_call:account_db(Call)}
            | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)],
 
     wapi_acd:publish_agent_online(Req).
@@ -69,13 +69,15 @@ find_agent(_Data, 0, Call) ->
     #prompts{retries_exceeded_prompt=RetriesPrompt} = #prompts{},
     cf_call_command:play(RetriesPrompt, Call),
     {error, retries_exceeded};
-find_agent(Data, Retries, #cf_call{account_db=Db}=Call) ->
+find_agent(Data, Retries, Call) ->
     ?LOG("retries left: ~b", [Retries]),
     Prompts = #prompts{},
     case prompt_and_get_pin(Prompts, Data, Call) of
         {ok, Pin} -> % Pin = <<"315">>
             ?LOG("got ~s for pin", [Pin]),
-            case couch_mgr:get_results(Db, <<"agents/listing_by_pin">>, [{<<"include_docs">>, true}, {<<"key">>, Pin}]) of
+            AccountDb = whapps_call:account_db(Call),
+            ViewOptions = [{<<"include_docs">>, true}, {<<"key">>, Pin}],
+            case couch_mgr:get_results(AccountDb, <<"agents/listing_by_pin">>, ViewOptions) of
                 {ok, []} ->
                     ?LOG("no agent found with pin"),
                     #prompts{invalid_pin_prompt=InvalidPinPrompt}=Prompts,

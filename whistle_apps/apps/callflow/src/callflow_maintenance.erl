@@ -39,7 +39,7 @@ show_calls() ->
 do_show_calls([], Total) ->
     io:format("Total: ~p~n", [Total]);
 do_show_calls([Srv|Srvs], Total) ->
-    case catch(cf_exe:get_call_info(Srv)) of
+    case catch(cf_exe:get_call(Srv)) of
         {ok, Call} -> 
             io:format("CF_EXE(~p): ~p~n", [Srv, whapps_call:to_proplist(Call)]);
         _ -> ok

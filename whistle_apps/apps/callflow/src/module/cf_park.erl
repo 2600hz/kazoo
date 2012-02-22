@@ -28,14 +28,14 @@
 -spec update_presence/3 :: (ne_binary(), ne_binary(), ne_binary()) -> ok.
 update_presence(SlotNumber, PresenceId, AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
-    ParkedCalls = get_parked_calls(#cf_call{account_db=AccountDb, account_id=AccountId}),
+    ParkedCalls = get_parked_calls(AccountDb, AccountId),
     {State, CallId} = case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls) of
                           undefined -> {<<"terminated">>, undefined};
                           CId -> 
                               case cf_util:get_call_status(CId) of
                                   {ok, _} -> {<<"early">>, CId};
                                   {error, _} ->
-                                      cleanup_slot(SlotNumber, CId, #cf_call{account_db=AccountDb}),
+                                      cleanup_slot(SlotNumber, CId, AccountDb),
                                       {<<"terminated">>, CId}
                               end
                       end,
@@ -48,11 +48,11 @@ update_presence(SlotNumber, PresenceId, AccountDb) ->
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
-handle(Data, #cf_call{channel_vars=CCVs}=Call) ->
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+handle(Data, Call) ->
     ParkedCalls = get_parked_calls(Call),
-    SlotNumber = get_slot_number(ParkedCalls, Call),
-    ReferredTo = wh_json:get_ne_value(<<"Referred-To">>, CCVs, <<>>),
+    SlotNumber = get_slot_number(ParkedCalls, whapps_call:kvs_fetch(cf_capture_group, Call)),
+    ReferredTo = whapps_call:custom_channel_var(<<"Referred-To">>, <<>>, Call),
     case re:run(ReferredTo, "Replaces=([^;]*)", [{capture, [1], binary}]) of
         nomatch when ReferredTo =:= <<>> ->
             ?LOG("call was the result of a direct dial"),
@@ -92,8 +92,8 @@ handle(Data, #cf_call{channel_vars=CCVs}=Call) ->
 %% Determine the hostname of the switch
 %% @end
 %%--------------------------------------------------------------------
--spec get_switch_hostname/1 :: (#cf_call{}) -> undefined | ne_binary().
--spec get_switch_hostname/2 :: (undefined | ne_binary(), #cf_call{}) -> undefined | ne_binary().
+-spec get_switch_hostname/1 :: (whapps_call:call()) -> undefined | ne_binary().
+-spec get_switch_hostname/2 :: (undefined | ne_binary(), whapps_call:call()) -> undefined | ne_binary().
 
 get_switch_hostname(Call) ->
     get_switch_hostname(undefined, Call).
@@ -112,10 +112,10 @@ get_switch_hostname(CallId, Call) ->
 %% Determine the appropriate action to retrieve a parked call
 %% @end
 %%--------------------------------------------------------------------
--spec retrieve/3 :: (ne_binary(), wh_json:json_object(), #cf_call{}) -> {ok, wh_json:json_object()} | 
+-spec retrieve/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> {ok, wh_json:json_object()} | 
                                                                         {hungup, wh_json:json_object()} |
                                                                         {error, term()}.
-retrieve(SlotNumber, ParkedCalls, #cf_call{to_user=ToUser, to_realm=ToRealm}=Call) ->
+retrieve(SlotNumber, ParkedCalls, Call) ->
     case wh_json:get_value([<<"slots">>, SlotNumber], ParkedCalls) of
         undefined ->
             ?LOG("They hungup? play back nobody here message", []),
@@ -152,7 +152,8 @@ retrieve(SlotNumber, ParkedCalls, #cf_call{to_user=ToUser, to_realm=ToRealm}=Cal
                     end;
                 OtherNode ->
                     IP = get_node_ip(OtherNode),
-                    Contact = <<"sip:", ToUser/binary, "@", ToRealm/binary>>,
+                    Contact = <<"sip:", (whapps_call:to_user(Call))/binary
+                                ,"@", (whapps_call:to_realm(Call))/binary>>,
                     Server = <<"sip:", IP/binary, ":5060">>,
                     cf_call_command:redirect(Contact, Server, Call),
                     cf_exe:transfer(Call),
@@ -166,7 +167,7 @@ retrieve(SlotNumber, ParkedCalls, #cf_call{to_user=ToUser, to_realm=ToRealm}=Cal
 %% Determine the appropriate action to park the current call scenario
 %% @end
 %%--------------------------------------------------------------------
--spec park_call/4 :: (ne_binary(), wh_json:json_object(), undefined | ne_binary(), #cf_call{}) -> ok.
+-spec park_call/4 :: (ne_binary(), wh_json:json_object(), undefined | ne_binary(), whapps_call:call()) -> ok.
 park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
     ?LOG("attempting to park call in slot ~p", [SlotNumber]),
     Slot = create_slot(ReferredTo, Call),
@@ -217,32 +218,33 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
 %% Builds the json object representing the call in the parking slot
 %% @end
 %%--------------------------------------------------------------------
--spec create_slot/2 :: (undefined | ne_binary(), #cf_call{}) -> wh_json:json_object().
-create_slot(undefined, #cf_call{request_user=Request, from_realm=FromRealm
-                                ,cid_name=CIDName, cid_number=CIDNum}=Call) ->
+-spec create_slot/2 :: (undefined | ne_binary(), whapps_call:call()) -> wh_json:json_object().
+create_slot(undefined, Call) ->
     CallId = cf_exe:callid(Call),
     wh_json:from_list([{<<"Call-ID">>, CallId}
-                       ,{<<"Presence-ID">>, <<Request/binary, "@", FromRealm/binary>>}
+                       ,{<<"Presence-ID">>, <<(whapps_call:request_user(Call))/binary
+                                              ,"@", (whapps_call:from_realm(Call))/binary>>}
                        ,{<<"Node">>, get_switch_hostname(Call)}
-                       ,{<<"CID-Number">>, CIDNum}
-                       ,{<<"CID-Name">>, CIDName}
+                       ,{<<"CID-Number">>, whapps_call:caller_id_number(Call)}
+                       ,{<<"CID-Name">>, whapps_call:caller_id_name(Call)}
                       ]);
-create_slot(_, #cf_call{request_user=Request, account_db=Db, account_id=AccountId, channel_vars=CCVs
-                        ,cid_name=CIDName, cid_number=CIDNum}=Call) ->
+create_slot(_, Call) ->
     CallId = cf_exe:callid(Call),
-    FromRealm = wh_util:get_account_realm(Db, AccountId),
-    Referred = wh_json:get_value(<<"Referred-By">>, CCVs),
+    AccountDb = whapps_call:account_db(Call),
+    AccountId = whapps_call:account_id(Call),
+    Referred = whapps_call:custom_channel_var(<<"Referred-By">>, Call),
     ReOptions = [{capture, [1], binary}],
     RingbackId = case catch(re:run(Referred, <<".*sip:(.*)@.*">>, ReOptions)) of
                      {match, [Match]} -> get_endpoint_id(Match, Call);
                      _ -> undefined
                  end,
     wh_json:from_list([{K, V} || {K, V} <- [{<<"Call-ID">>, CallId}
-                                            ,{<<"Presence-ID">>, <<Request/binary, "@", FromRealm/binary>>}
+                                            ,{<<"Presence-ID">>, <<(whapps_call:request_user(Call))/binary
+                                                                   ,"@", (wh_util:get_account_realm(AccountDb, AccountId))/binary>>}
                                             ,{<<"Ringback-ID">>, RingbackId}
                                             ,{<<"Node">>, get_switch_hostname(Call)}
-                                            ,{<<"CID-Number">>, CIDNum}
-                                            ,{<<"CID-Name">>, CIDName}
+                                            ,{<<"CID-Number">>, whapps_call:caller_id_number(Call)}
+                                            ,{<<"CID-Name">>, whapps_call:caller_id_name(Call)}
                                            ], V =/= undefined
                       ]).
 
@@ -253,9 +255,9 @@ create_slot(_, #cf_call{request_user=Request, account_db=Db, account_id=AccountI
 %% was provided
 %% @end
 %%--------------------------------------------------------------------
--spec get_slot_number/2 :: (wh_json:json_object(), #cf_call{}) -> ne_binary().
-get_slot_number(_, #cf_call{capture_group=CG}) when is_binary(CG) andalso size(CG) > 0 ->
-    CG;
+-spec get_slot_number/2 :: (wh_json:json_object(), whapps_call:call()) -> ne_binary().
+get_slot_number(_, CaptureGroup) when is_binary(CaptureGroup) andalso size(CaptureGroup) > 0 ->
+    CaptureGroup;
 get_slot_number(ParkedCalls, _) ->
     Slots = wh_json:get_value(<<"slots">>, ParkedCalls, []),
     Next = case [wh_util:to_integer(Key) || Key <- wh_json:get_keys(Slots)] of
@@ -279,8 +281,8 @@ get_slot_number(ParkedCalls, _) ->
 %% and tries again, determining the new slot.
 %% @end
 %%--------------------------------------------------------------------
--spec save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), #cf_call{}) -> {ok, integer()} | {error, atom()}.
--spec do_save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), #cf_call{}) -> {ok, integer()} | {error, atom()}.
+-spec save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {ok, integer()} | {error, atom()}.
+-spec do_save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {ok, integer()} | {error, atom()}.
 
 save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls) of
@@ -298,8 +300,9 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
             end
     end.
 
-do_save_slot(SlotNumber, Slot, ParkedCalls, #cf_call{account_db=Db}=Call) ->
-    case couch_mgr:save_doc(Db, wh_json:set_value([<<"slots">>, SlotNumber], Slot, ParkedCalls)) of
+do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:save_doc(AccountDb, wh_json:set_value([<<"slots">>, SlotNumber], Slot, ParkedCalls)) of
         {ok, _}=Ok ->
             ?LOG("successfully stored call parking data in slot ~p", [SlotNumber]),
             Ok;
@@ -315,9 +318,8 @@ do_save_slot(SlotNumber, Slot, ParkedCalls, #cf_call{account_db=Db}=Call) ->
 %% actuall "A-Leg".  Find the old callid and update it with the new one.
 %% @end
 %%--------------------------------------------------------------------
--spec update_call_id/3 :: (ne_binary(), wh_json:json_object(), #cf_call{}) -> 'ok'.
-update_call_id(Replaces, ParkedCalls, #cf_call{account_db=Db, channel_vars=CCVs
-                                               ,cid_name=CIDName, cid_number=CIDNum}=Call) ->
+-spec update_call_id/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> 'ok'.
+update_call_id(Replaces, ParkedCalls, Call) ->
     CallId = cf_exe:callid(Call),
     Slots = wh_json:get_value(<<"slots">>, ParkedCalls, wh_json:new()),
     case find_slot_by_callid(Slots, Replaces) of
@@ -326,10 +328,10 @@ update_call_id(Replaces, ParkedCalls, #cf_call{account_db=Db, channel_vars=CCVs
             CallerHost = get_switch_hostname(Call),
             Updaters = [fun(J) -> wh_json:set_value(<<"Call-ID">>, CallId, J) end
                         ,fun(J) -> wh_json:set_value(<<"Node">>, CallerHost, J) end
-                        ,fun(J) -> wh_json:set_value(<<"CID-Number">>, CIDNum, J) end
-                        ,fun(J) -> wh_json:set_value(<<"CID-Name">>, CIDName, J) end
+                        ,fun(J) -> wh_json:set_value(<<"CID-Number">>, whapps_call:caller_id_number(Call), J) end
+                        ,fun(J) -> wh_json:set_value(<<"CID-Name">>, whapps_call:caller_id_name(Call), J) end
                         ,fun(J) ->
-                                 Referred = wh_json:get_value(<<"Referred-By">>, CCVs),
+                                 Referred = whapps_call:custom_channel_var(<<"Referred-By">>, Call),
                                  ReOptions = [{capture, [1], binary}],
                                  case catch(re:run(Referred, <<".*sip:(.*)@.*">>, ReOptions)) of
                                      {match, [Match]} ->
@@ -344,7 +346,7 @@ update_call_id(Replaces, ParkedCalls, #cf_call{account_db=Db, channel_vars=CCVs
                        ],
             UpdatedSlot = lists:foldr(fun(F, J) -> F(J) end, Slot, Updaters),
             JObj = wh_json:set_value([<<"slots">>, SlotNumber], UpdatedSlot, ParkedCalls),
-            case couch_mgr:save_doc(Db, JObj) of
+            case couch_mgr:save_doc(whapps_call:account_db(Call), JObj) of
                 {ok, _} ->
                     publish_usurp_control(Call),
                     ParkedCallId = wh_json:get_value(<<"Call-ID">>, Slot),
@@ -389,15 +391,20 @@ find_slot_by_callid([SlotNumber|SlotNumbers], Slots, CallId) ->
 %% the list does not exist then it returns an new empty instance
 %% @end
 %%--------------------------------------------------------------------
--spec get_parked_calls/1 :: (#cf_call{}) -> wh_json:json_object().
-get_parked_calls(#cf_call{account_db=Db, account_id=Id}) ->
-    case couch_mgr:open_doc(Db, ?DB_DOC_NAME) of
+-spec get_parked_calls/1 :: (whapps_call:call()) -> wh_json:json_object().
+-spec get_parked_calls/2 :: (ne_binary(), ne_binary()) -> wh_json:json_object().
+
+get_parked_calls(Call) ->
+    get_parked_calls(whapps_call:account_db(Call), whapps_call:account_id(Call)).
+
+get_parked_calls(AccountDb, AccountId) ->
+    case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {error, not_found} ->
             Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
             Generators = [fun(J) -> wh_json:set_value(<<"_id">>, <<"parked_calls">>, J) end
                           ,fun(J) -> wh_json:set_value(<<"pvt_type">>, <<"parked_calls">>, J) end
-                          ,fun(J) -> wh_json:set_value(<<"pvt_account_db">>, Db, J) end
-                          ,fun(J) -> wh_json:set_value(<<"pvt_account_id">>, Id, J) end
+                          ,fun(J) -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, J) end
+                          ,fun(J) -> wh_json:set_value(<<"pvt_account_id">>, AccountId, J) end
                           ,fun(J) -> wh_json:set_value(<<"pvt_created">>, Timestamp, J) end
                           ,fun(J) -> wh_json:set_value(<<"pvt_modified">>, Timestamp, J) end
                           ,fun(J) -> wh_json:set_value(<<"pvt_vsn">>, <<"1">>, J) end
@@ -413,9 +420,10 @@ get_parked_calls(#cf_call{account_db=Db, account_id=Id}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_slot/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> {ok, wh_json:json_object()} | {error, term()}.
-cleanup_slot(SlotNumber, ParkedCall, #cf_call{account_db=Db}=Call) ->
-    case couch_mgr:open_doc(Db, ?DB_DOC_NAME) of
+-spec cleanup_slot/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {ok, wh_json:json_object()} | {error, term()}.
+cleanup_slot(SlotNumber, ParkedCall, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {ok, JObj} ->
             case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj) of
                 ParkedCall ->
@@ -424,7 +432,7 @@ cleanup_slot(SlotNumber, ParkedCall, #cf_call{account_db=Db}=Call) ->
                     PresenceId = wh_json:get_value([<<"slots">>, SlotNumber, <<"Presence-ID">>], JObj),
                     ?LOG("update presence-id '~s' with state: terminated", [PresenceId]),
                     cf_call_command:presence(<<"terminated">>, PresenceId, ParkedCallId),
-                    case couch_mgr:save_doc(Db, wh_json:delete_key([<<"slots">>, SlotNumber], JObj)) of
+                    case couch_mgr:save_doc(AccountDb, wh_json:delete_key([<<"slots">>, SlotNumber], JObj)) of
                         {ok, _}=Ok -> Ok;
                         {error, conflict} -> cleanup_slot(SlotNumber, ParkedCall, Call);
                         {error, _R}=E ->
@@ -446,7 +454,7 @@ cleanup_slot(SlotNumber, ParkedCall, #cf_call{account_db=Db}=Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_pickup/3 :: (ne_binary(), undefined | ne_binary(), #cf_call{}) -> ok.
+-spec wait_for_pickup/3 :: (ne_binary(), undefined | ne_binary(), whapps_call:call()) -> ok.
 wait_for_pickup(SlotNumber, undefined, Call) ->
     cf_call_command:b_hold(Call),
     cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
@@ -497,8 +505,8 @@ get_node_ip(Node) ->
 %% timeout.
 %% @end
 %%--------------------------------------------------------------------
--spec publish_usurp_control/1 :: (#cf_call{}) -> 'ok'.
--spec publish_usurp_control/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
+-spec publish_usurp_control/1 :: (whapps_call:call()) -> 'ok'.
+-spec publish_usurp_control/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
 
 publish_usurp_control(Call) ->
     publish_usurp_control(cf_exe:callid(Call), Call).
@@ -518,14 +526,15 @@ publish_usurp_control(CallId, Call) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoint_id/2 :: (ne_binary(), #cf_call{}) -> undefined | ne_binary().
+-spec get_endpoint_id/2 :: (ne_binary(), whapps_call:call()) -> undefined | ne_binary().
 get_endpoint_id(undefined, _) ->
     undefined;
-get_endpoint_id(Username, #cf_call{account_db=Db}) ->
+get_endpoint_id(Username, Call) ->
+    AccountDb = whapps_call:account_db(Call),
     ViewOptions = [{<<"key">>, Username}
                    ,{<<"limit">>, 1}
                   ],
-    case couch_mgr:get_results(Db, <<"cf_attributes/sip_credentials">>, ViewOptions) of
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
         {ok, [Device]} -> wh_json:get_value(<<"id">>, Device);
         _ -> undefined
     end.
@@ -536,24 +545,22 @@ get_endpoint_id(Username, #cf_call{account_db=Db}) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
--spec ringback_parker/4 :: (undefined | ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> answered | failed.
+-spec ringback_parker/4 :: (undefined | ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> answered | failed.
 ringback_parker(undefined, _, _, _) ->
     failed;
-ringback_parker(EndpointId, SlotNumber, TmpCID, #cf_call{cid_name=OriginalName, channel_vars=CCVs}=Call) ->
+ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
     case cf_endpoint:build(EndpointId, wh_json:from_list([{<<"can_call_self">>, true}]), Call) of
         {ok, Endpoints} ->
             ?LOG("attempting to ringback ~s", [EndpointId]),
-            Update = [{<<"Caller-ID-Name">>, TmpCID}
-                      ,{<<"Callee-ID-Name">>, TmpCID}
-                     ],
+            OriginalCID = whapps_call:caller_id_name(Call),
             CleanUpFun = fun(_) ->
                                  cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
-                                 Restore = [{<<"Caller-ID-Name">>, OriginalName}
-                                            ,{<<"Callee-ID-Name">>, OriginalName}
-                                           ],
-                                 cf_call_command:set(wh_json:from_list(Restore), undefined, Call)
+                                 whapps_call:set_caller_id_name(OriginalCID, Call),
+                                 whapps_call:set_caller_id_name(OriginalCID, Call)
                          end,
-            cf_call_command:bridge(Endpoints, <<"20">>, Call#cf_call{channel_vars=wh_json:set_values(Update, CCVs)}),
+            whapps_call:set_caller_id_name(TmpCID, Call),
+            whapps_call:set_caller_id_name(TmpCID, Call),
+            cf_call_command:bridge(Endpoints, <<"20">>, Call),
             case cf_call_command:wait_for_bridge(30000, CleanUpFun, Call) of
                 {ok, _} ->
                     ?LOG("completed successful bridge to the ringback device"),

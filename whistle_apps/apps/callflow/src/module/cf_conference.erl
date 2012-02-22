@@ -20,9 +20,9 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
-handle(Data, #cf_call{account_id=AccountId}=Call) ->
-    Command = [{<<"Account-ID">>, AccountId}
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+handle(Data, Call) ->
+    Command = [{<<"Account-ID">>, whapps_call:account_id(Call)}
                ,{<<"Call-ID">>, cf_exe:callid(Call)}
                ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
                ,{<<"Conference-ID">>, wh_json:get_value(<<"id">>, Data)}

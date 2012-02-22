@@ -23,7 +23,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
     {ok, Endpoints} = find_endpoints(Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
@@ -42,8 +42,9 @@ handle(Data, Call) ->
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), #cf_call{}) -> ok.
-bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, #cf_call{account_id=AccountId}=Call) ->
+-spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), whapps_call:call()) -> ok.
+bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Call) ->
+    AccountId = whapps_call:account_id(Call),
     Endpoint = [create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
     case cf_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
@@ -114,17 +115,18 @@ create_endpoint(DestNum, JObj) ->
 %% number as formated by that rule (ie: capture group or full number).
 %% @end
 %%--------------------------------------------------------------------
--spec find_endpoints/1 :: (#cf_call{}) -> {'ok', endpoints()} | {'error', atom()}.
-find_endpoints(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
+-spec find_endpoints/1 :: (whapps_call:call()) -> {'ok', endpoints()} | {'error', atom()}.
+find_endpoints(Call) ->
     ?LOG("searching for resource endpoints"),
-    case couch_mgr:get_results(Db, ?VIEW_BY_RULES, []) of
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:get_results(AccountDb, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
             ?LOG("found resources, filtering by rules"),
             {ok, [{Number
                    ,wh_json:get_value([<<"value">>], Resource, [])
                    ,get_caller_id_type(Resource, Call)}
                   || Resource <- Resources
-                         ,Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), ReqNum)
+                         ,Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), whapps_call:request_user(Call))
                          ,Number =/= []
                  ]};
         {error, R}=E ->
@@ -138,14 +140,15 @@ find_endpoints(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(get_caller_id_type/2 :: (Resource :: wh_json:json_object(), Call :: #cf_call{}) -> raw | binary()).
-get_caller_id_type(Resource, #cf_call{channel_vars=CVs}) ->
+-spec(get_caller_id_type/2 :: (Resource :: wh_json:json_object(), Call :: whapps_call:call()) -> raw | binary()).
+get_caller_id_type(Resource, Call) ->
     case wh_json:is_true(<<"emergency">>, Resource) of
         true ->
             <<"emergency">>;
         false ->
+            CCVs = whapps_call:custom_channel_vars(Call),
             Type = wh_json:get_value([<<"value">>, <<"caller_id_options">>, <<"type">>], Resource, <<"external">>),
-            case wh_json:is_true(<<"CF-Keep-Caller-ID">>, CVs) andalso (Type =/= <<"emergency">>) of
+            case wh_json:is_true(<<"CF-Keep-Caller-ID">>, CCVs) andalso (Type =/= <<"emergency">>) of
                 false -> Type;
                 true -> raw
             end

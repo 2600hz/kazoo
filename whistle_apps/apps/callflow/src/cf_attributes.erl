@@ -341,7 +341,7 @@ owned_by(OwnerId, Call) ->
 owned_by(undefined, _, _) ->
     [];
 owned_by(OwnerId, false, Call) ->
-    wh_cache:erase({?MODULE, whapp_call:account_db(Call), owned}),
+    wh_cache:erase({?MODULE, whapps_call:account_db(Call), owned}),
     owned_by(OwnerId, Call);
 owned_by(OwnerId, Attribute, Call) when not is_binary(Attribute) ->
     owned_by(OwnerId, wh_util:to_binary(Attribute), Call);
@@ -350,11 +350,11 @@ owned_by(OwnerId, Attribute, Call) ->
     [V || {[I, T], V} <- Attributes, I =:= OwnerId, T =:= Attribute].
 
 fetch_owned_by(OwnerId, Call) ->
-    wh_cache:erase({?MODULE, whapp_call:account_db(Call), owned}),
+    wh_cache:erase({?MODULE, whapps_call:account_db(Call), owned}),
     owned_by(OwnerId, Call).
 
 fetch_owned_by(OwnerId, Attribute, Call) ->
-    wh_cache:erase({?MODULE, whapp_call:account_db(Call), owned}),
+    wh_cache:erase({?MODULE, whapps_call:account_db(Call), owned}),
     owned_by(OwnerId, Attribute, Call).
 
 %%-----------------------------------------------------------------------------
