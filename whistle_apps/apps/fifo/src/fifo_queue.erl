@@ -36,7 +36,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (ne_binary(), ne_binary()) -> {ok, pid()}.
+-spec start_link/2 :: (ne_binary(), ne_binary()) -> {'ok', pid()}.
 start_link(AccountDB, QueueID) ->
     gen_server:start_link(?MODULE, [AccountDB, QueueID], []).
 

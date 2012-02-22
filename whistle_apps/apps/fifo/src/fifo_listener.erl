@@ -12,15 +12,22 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, stop/1]).
+
+%% Process AMQP API messages
+-export([handle_agent_update/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
          ,terminate/2, code_change/3]).
 
--define(SERVER, ?MODULE). 
+-include("fifo.hrl").
 
--record(state, {}).
+-define(RESPONDERS, [{{?MODULE, handle_agent_update}, [{<<"queue">>, <<"agent_login">>}
+                                                       ,{<<"queue">>, <<"agent_logout">>}
+                                                      ]}
+                    ]).
+-define(BINDINGS, [{queue, []}]).
 
 %%%===================================================================
 %%% API
@@ -34,7 +41,16 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
+                                      ,{bindings, ?BINDINGS}
+                                     ], []).
+
+-spec stop/1 :: (pid()) -> 'ok'.
+stop(Srv) ->
+    gen_listener:stop(Srv).
+
+handle_agent_update(JObj, Props) ->
+    ?LOG("agent update: ~p", [JObj]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -52,7 +68,8 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    Accounts = whapps_util:get_all_accounts(encoded),
+    {'ok', 'ok'}.
 
 %%--------------------------------------------------------------------
 %% @private
