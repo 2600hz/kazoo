@@ -47,6 +47,7 @@ get(Key0, Default, Node0) ->
                     true = wapi_sysconf:get_resp_v(RespJObj),
                     V = case wh_json:get_value(<<"Value">>, RespJObj) of
                             undefined -> Default;
+                            null -> Default;
                             <<"undefined">> -> Default;
                             <<"null">> -> Default;
                             Value ->
