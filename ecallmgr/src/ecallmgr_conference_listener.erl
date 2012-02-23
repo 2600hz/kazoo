@@ -77,7 +77,9 @@ handle_search_req(JObj, _Props) ->
                     ],
             wapi_conference:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error);
         Conference ->
-            Resp = wh_json:set_values(wh_api:default_headers(?APP_NAME, ?APP_VERSION), Conference),
+            Resp = wh_json:set_values([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+                                       |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                      ], Conference),
             wapi_conference:publish_search_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end,
     ok.
@@ -269,6 +271,9 @@ member_xml_to_json([#xmlElement{name='flags', content=Content}|Xml], JObj) ->
     member_xml_to_json(Xml, wh_json:set_value(<<"Flags">>, Flags, JObj));
 member_xml_to_json([#xmlElement{name=Name, content=Content}|Xml], JObj) ->
     case {props:get_value(Name, ?FS_CONFERENCE_PARTICIPANT), Content} of
+        {_, [#xmlText{value=Value}]} when Name =:= 'uuid' ->
+            V = wh_util:to_binary(http_uri:decode(Value)),
+            member_xml_to_json(Xml, wh_json:set_value(<<"Call-ID">>, V, JObj));
         {Key, [#xmlText{value=Value}]} when is_binary(Key) ->
             member_xml_to_json(Xml, wh_json:set_value(Key, wh_util:to_binary(Value), JObj));
         _Else ->

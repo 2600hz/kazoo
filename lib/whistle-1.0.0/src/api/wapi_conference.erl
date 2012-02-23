@@ -57,34 +57,32 @@
 
 -include("../wh_api.hrl").
 
-%% Conference Search
+%% Conference Search Request
 -define(SEARCH_REQ_HEADERS, [<<"Conference-ID">>]).
--define(OPTIONAL_SEARCH_REQ_HEADERS, []).
+-define(OPTIONAL_SEARCH_REQ_HEADERS, [<<"Msg-ID">>]).
 -define(SEARCH_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                             ,{<<"Event-Name">>, <<"search_req">>}
                            ]).
 -define(SEARCH_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
+%% Conference Search Response
 -define(SEARCH_RESP_HEADERS, [<<"Conference-ID">>, <<"Participant-Count">>, <<"Switch-Hostname">>]).
 -define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"Switch-URL">>, <<"Switch-External-IP">>, <<"Rate">>
                                            ,<<"UUID">>, <<"Running">>, <<"Answered">>, <<"Dynamic">>
-                                           ,<<"Run-Time">>, <<"Participants">>, <<"Locked">>]).
+                                           ,<<"Run-Time">>, <<"Participants">>, <<"Locked">>, <<"Msg-ID">>]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                              ,{<<"Event-Name">>, <<"search_resp">>}
                             ]).
 -define(SEARCH_RESP_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
-%% Conference Discovery
--define(DISCOVERY_REQ_HEADERS, [<<"Account-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
+%% Conference Discovery Request
+-define(DISCOVERY_REQ_HEADERS, [<<"Call">>]).
 -define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>]).
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
-                               ,{<<"Event-Name">>, <<"discovery">>}
+                               ,{<<"Event-Name">>, <<"discovery_req">>}
                                ,{<<"Moderator">>, [<<"true">>, <<"false">>]}
                               ]).
--define(DISCOVERY_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
-                              ,{<<"Control-Queue">>, fun is_binary/1}
-                              ,{<<"Conference-ID">>, fun is_binary/1}
-                             ]).
+-define(DISCOVERY_REQ_TYPES, []).
 
 %% Conference Deaf
 -define(DEAF_PARTICIPANT_HEADERS, [<<"Application-Name">>, <<"Conference-ID">>, <<"Participant">>]).

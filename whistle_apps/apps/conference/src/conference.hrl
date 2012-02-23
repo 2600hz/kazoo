@@ -1,10 +1,6 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
--include_lib("amqp_client/include/amqp_client.hrl").
-
--define(EXCHANGE_CONFERENCE, <<"conference">>).
--define(TYPE_CONFERENCE, <<"topic">>).
 
 -define(APP_NAME, <<"conference">>).
 -define(APP_VERSION, <<"0.0.6">>).
@@ -28,42 +24,20 @@
                   ,undeaf = <<"/system_media/conf-undeaf">>
                  }).
 
--record(control, {mute = <<"1">>
-                  ,unmute = <<"2">>
-                  ,deaf = <<"3">>
-                  ,undeaf = <<"4">>
-                  ,toggle_mute = <<"0">>
-                  ,toggle_deaf = <<"*">>
-                  ,hangup = <<"#">>
-                 }).
-
--record(participant, {call_id = undefined
-                      ,control_q = undefined
-                      ,bridge_id = undefined
-                      ,bridge_ctrl = undefined
-                      ,moderator = false
-                      ,muted = false
-                      ,deaf = false
-                      ,participant_id = 0
-                     }).
-
--record(conf, {service = undefined
-               ,amqp_q = undefined
-               ,conf_id = undefined
-               ,route = undefined
-               ,focus = undefined
-               ,ctrl_q = []
-               ,auth_pwd = <<"\/\/|-|157L3_(0|\|Ph3R3|\|(3">>
-               ,member_pins = []
-               ,moderator_pins = []
-               ,member_join_muted = true
-               ,member_join_deaf = false
-               ,moderator_join_muted = false
-               ,moderator_join_deaf = false
-               ,max_members = 0
-               ,require_moderator = false
-               ,wait_for_moderator = false
-               ,participants = dict:new()
-               ,prompts = #prompts{}
-               ,controls = #control{}
-              }).
+-record(conference, {id = undefined
+                     ,focus = undefined
+                     ,bridge_password = <<"\/\/|-|157L3_(0|\|Ph3R3|\|(3">>
+                     ,bridge_username = <<"test">>
+                     ,member_pins = []
+                     ,moderator_pins = []
+                     ,join_as_moderator = undefined
+                     ,member_join_muted = true
+                     ,member_join_deaf = false
+                     ,moderator_join_muted = false
+                     ,moderator_join_deaf = false
+                     ,max_members = 0
+                     ,require_moderator = false
+                     ,wait_for_moderator = false
+                     ,member_play_name = false
+                     ,conference_doc = wh_json:new()
+                    }).
