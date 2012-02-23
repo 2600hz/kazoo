@@ -55,7 +55,7 @@
          ,kvs_append_list/3
          ,kvs_erase/2
          ,kvs_fetch/2
-         ,kvs_fetch_keys/2
+         ,kvs_fetch_keys/1
          ,kvs_filter/2
          ,kvs_find/2
          ,kvs_fold/3
@@ -191,6 +191,14 @@ from_route_win(RouteWin, #whapps_call{}=Call) ->
 from_json(JObj) ->
     from_json(JObj, #whapps_call{}).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% READ THIS CAVEAT!!
+%% custom publisher and helper functions are not maintained when 
+%% converting to/from json 
+%% @end
+%%--------------------------------------------------------------------
 -spec from_json/2 :: (wh_json:json_object(), call()) -> whapps_call:call().    
 from_json(JObj, Call) ->
     CCVs = wh_json:merge_recursive(Call#whapps_call.ccvs, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
@@ -222,37 +230,56 @@ from_json(JObj, Call) ->
                      ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Call#whapps_call.kvs, KVS)
                     }.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% READ THIS CAVEAT!!
+%% custom publisher and helper functions are not maintained when 
+%% converting to/from json 
+%% @end
+%%--------------------------------------------------------------------
 -spec to_json/1 :: (call()) -> wh_json:json_object().
 to_json(#whapps_call{}=Call) ->
-    Props = [{<<"Call-ID">>, call_id_direct(Call)}
-             ,{<<"Control-Queue">>, control_queue_direct(Call)}
-             ,{<<"Controller-Queue">>, controller_queue(Call)}
-             ,{<<"Caller-ID-Name">>, caller_id_name(Call)}
-             ,{<<"Caller-ID-Number">>, caller_id_number(Call)}
-             ,{<<"Callee-ID-Name">>, callee_id_name(Call)}
-             ,{<<"Callee-ID-Number">>, callee_id_number(Call)}
-             ,{<<"Request">>, request(Call)}
-             ,{<<"Request-User">>, request_user(Call)}
-             ,{<<"Request-Realm">>, request_realm(Call)}
-             ,{<<"From">>, from(Call)}
-             ,{<<"From-User">>, from_user(Call)}
-             ,{<<"From-Realm">>, from_realm(Call)}
-             ,{<<"To">>, to(Call)}
-             ,{<<"To-User">>, to_user(Call)}
-             ,{<<"To-Realm">>, to_realm(Call)}
-             ,{<<"Inception">>, inception(Call)}
-             ,{<<"Account-DB">>, account_db(Call)}
-             ,{<<"Account-ID">>, account_id(Call)}
-             ,{<<"Authorizing-ID">>, authorizing_id(Call)}
-             ,{<<"Authorizing-Type">>, authorizing_type(Call)}
-             ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
-             ,{<<"Key-Value-Store">>, wh_json:from_list(kvs_to_proplist(Call))}
-            ],
-    wh_json:from_list([KV || {_, V}=KV <- Props, V =/= undefined]).
+    Props = to_proplist(Call),
+    KVS = [KV 
+           || {_, V}=KV <- props:get_value(<<"Key-Value-Store">>, Props, [])
+                  ,V =/= undefined
+                  ,wh_json:is_json_term(V)
+          ],
+    wh_json:from_list([KV 
+                       || {_, V}=KV <- [{<<"Key-Value-Store">>, wh_json:from_list(KVS)} |
+                                        proplists:delete(<<"Key-Value-Store">>, Props)
+                                       ]
+                              ,V =/= undefined
+                              ,wh_json:is_json_term(V)
+                      ]).
 
 -spec to_proplist/1 :: (#whapps_call{}) -> proplist().
 to_proplist(#whapps_call{}=Call) ->
-    wh_json:to_proplist(to_json(Call)).
+    [{<<"Call-ID">>, call_id_direct(Call)}
+     ,{<<"Control-Queue">>, control_queue_direct(Call)}
+     ,{<<"Controller-Queue">>, controller_queue(Call)}
+     ,{<<"Caller-ID-Name">>, caller_id_name(Call)}
+     ,{<<"Caller-ID-Number">>, caller_id_number(Call)}
+     ,{<<"Callee-ID-Name">>, callee_id_name(Call)}
+     ,{<<"Callee-ID-Number">>, callee_id_number(Call)}
+     ,{<<"Request">>, request(Call)}
+     ,{<<"Request-User">>, request_user(Call)}
+     ,{<<"Request-Realm">>, request_realm(Call)}
+     ,{<<"From">>, from(Call)}
+     ,{<<"From-User">>, from_user(Call)}
+     ,{<<"From-Realm">>, from_realm(Call)}
+     ,{<<"To">>, to(Call)}
+     ,{<<"To-User">>, to_user(Call)}
+     ,{<<"To-Realm">>, to_realm(Call)}
+     ,{<<"Inception">>, inception(Call)}
+     ,{<<"Account-DB">>, account_db(Call)}
+     ,{<<"Account-ID">>, account_id(Call)}
+     ,{<<"Authorizing-ID">>, authorizing_id(Call)}
+     ,{<<"Authorizing-Type">>, authorizing_type(Call)}
+     ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
+     ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
+    ].
     
 -spec exec/2 :: ([fun((call()) -> call()),...], call()) -> call().
 exec(Funs, #whapps_call{}=Call) ->
@@ -498,27 +525,27 @@ custom_publish_function(#whapps_call{custom_publish_fun=Fun}) ->
 
 -spec kvs_append/3 :: (term(), term(), call()) -> call().
 kvs_append(Key, Value, #whapps_call{kvs=Dict}=Call) ->
-    Call#whapps_call{kvs=orddict:append(Key, Value, Dict)}.
+    Call#whapps_call{kvs=orddict:append(wh_util:to_binary(Key), Value, Dict)}.
 
 -spec kvs_append_list/3 :: (term(), [term(),...], call()) -> call().
 kvs_append_list(Key, ValList, #whapps_call{kvs=Dict}=Call) ->
-    Call#whapps_call{kvs=orddict:append_list(Key, ValList, Dict)}.
+    Call#whapps_call{kvs=orddict:append_list(wh_util:to_binary(Key), ValList, Dict)}.
 
 -spec kvs_erase/2 :: (term(), call()) -> call().
 kvs_erase(Key, #whapps_call{kvs=Dict}=Call) ->
-    Call#whapps_call{kvs=orddict:erase(Key, Dict)}.
+    Call#whapps_call{kvs=orddict:erase(wh_util:to_binary(Key), Dict)}.
 
 -spec kvs_fetch/2 :: (term(), call()) -> term().
 kvs_fetch(Key, #whapps_call{kvs=Dict}) ->
-    try orddict:fetch(Key, Dict) of
+    try orddict:fetch(wh_util:to_binary(Key), Dict) of
         Ok -> Ok
     catch
         error:function_clause -> undefined
     end.     
 
--spec kvs_fetch_keys/2 :: (term(), call()) -> [term(),...].
-kvs_fetch_keys(Key, #whapps_call{kvs=Dict}) ->
-    orddict:fetch_keys(Key, Dict).
+-spec kvs_fetch_keys/1 :: (call()) -> [term(),...].
+kvs_fetch_keys( #whapps_call{kvs=Dict}) ->
+    orddict:fetch_keys(Dict).
 
 -spec kvs_filter/2 :: (fun((term(), term()) -> boolean()), call()) -> call().
 kvs_filter(Pred, #whapps_call{kvs=Dict}=Call) ->
@@ -526,7 +553,7 @@ kvs_filter(Pred, #whapps_call{kvs=Dict}=Call) ->
 
 -spec kvs_find/2 :: (term(), call()) -> {ok, term()} | error.
 kvs_find(Key, #whapps_call{kvs=Dict}) ->
-    orddict:find(Key, Dict).
+    orddict:find(wh_util:to_binary(Key), Dict).
  
 -spec kvs_fold/3 :: (fun((term(), term(), term()) -> term()), term(), call()) -> call().
 kvs_fold(Fun, Acc0, #whapps_call{kvs=Dict}) ->
@@ -534,11 +561,12 @@ kvs_fold(Fun, Acc0, #whapps_call{kvs=Dict}) ->
 
 -spec kvs_from_proplist/2 :: (proplist(), call()) -> call().
 kvs_from_proplist(List, #whapps_call{kvs=Dict}=Call) ->
-    Call#whapps_call{kvs=orddict:from_list(List, Dict)}.
+    L = [{wh_util:to_binary(K), V} || {K, V} <- List],
+    Call#whapps_call{kvs=orddict:from_list(L, Dict)}.
 
 -spec kvs_is_key/2 :: (term(), call()) -> boolean().
 kvs_is_key(Key, #whapps_call{kvs=Dict}) ->
-    orddict:is_key(Key, Dict).
+    orddict:is_key(wh_util:to_binary(Key), Dict).
 
 -spec kvs_map/2 :: (fun((term(), term()) -> term()), call()) -> call().
 kvs_map(Pred, #whapps_call{kvs=Dict}=Call) ->
@@ -546,12 +574,12 @@ kvs_map(Pred, #whapps_call{kvs=Dict}=Call) ->
 
 -spec kvs_store/3 :: (term(), term(), call()) -> call().
 kvs_store(Key, Value, #whapps_call{kvs=Dict}=Call) ->
-    Call#whapps_call{kvs=orddict:store(Key, Value, Dict)}.
+    Call#whapps_call{kvs=orddict:store(wh_util:to_binary(Key), Value, Dict)}.
 
 -spec kvs_store_proplist/2 :: (proplist(), call()) -> call().
 kvs_store_proplist(List, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=lists:foldr(fun({K, V}, D) -> 
-                                             orddict:store(K, V, D) 
+                                             orddict:store(wh_util:to_binary(K), V, D) 
                                      end, Dict, List)}.
 
 -spec kvs_to_proplist/1 :: (call()) -> proplist().
@@ -560,15 +588,15 @@ kvs_to_proplist(#whapps_call{kvs=Dict}) ->
 
 -spec kvs_update/3 :: (term(), fun((term()) -> term()), call()) -> call().
 kvs_update(Key, Fun, #whapps_call{kvs=Dict}=Call) ->
-    Call#whapps_call{kvs=orddict:update(Key, Fun, Dict)}.
+    Call#whapps_call{kvs=orddict:update(wh_util:to_binary(Key), Fun, Dict)}.
 
 -spec kvs_update/4 :: (term(), fun((term()) -> term()), term(), call()) -> call().
 kvs_update(Key, Fun, Initial, #whapps_call{kvs=Dict}=Call) ->
-    Call#whapps_call{kvs=orddict:update(Key, Fun, Initial, Dict)}.
+    Call#whapps_call{kvs=orddict:update(wh_util:to_binary(Key), Fun, Initial, Dict)}.
 
 -spec kvs_update_counter/3 :: (term(), number(), call()) -> call().
 kvs_update_counter(Key, Number, #whapps_call{kvs=Dict}=Call) ->
-    Call#whapps_call{kvs=orddict:update_counter(Key,Number, Dict)}.
+    Call#whapps_call{kvs=orddict:update_counter(wh_util:to_binary(Key), Number, Dict)}.
 
 -spec flush/0 :: () -> 'ok'.
 flush() ->

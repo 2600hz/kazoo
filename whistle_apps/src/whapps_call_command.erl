@@ -23,6 +23,10 @@
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([store/3, store/4, store/5]).
 -export([tones/2]).
+-export([prompt_and_collect_digit/2]).
+-export([prompt_and_collect_digits/4, prompt_and_collect_digits/5, prompt_and_collect_digits/6,
+         prompt_and_collect_digits/7, prompt_and_collect_digits/8, prompt_and_collect_digits/9
+        ]).
 -export([play_and_collect_digit/2]).
 -export([play_and_collect_digits/4, play_and_collect_digits/5, play_and_collect_digits/6,
          play_and_collect_digits/7, play_and_collect_digits/8, play_and_collect_digits/9
@@ -39,6 +43,10 @@
 -export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_store/3, b_store/4, b_store/5]).
+-export([b_prompt_and_collect_digit/2]).
+-export([b_prompt_and_collect_digits/4, b_prompt_and_collect_digits/5, b_prompt_and_collect_digits/6,
+         b_prompt_and_collect_digits/7, b_prompt_and_collect_digits/8, b_prompt_and_collect_digits/9
+        ]).
 -export([b_play_and_collect_digit/2]).
 -export([b_play_and_collect_digits/4, b_play_and_collect_digits/5, b_play_and_collect_digits/6,
          b_play_and_collect_digits/7, b_play_and_collect_digits/8, b_play_and_collect_digits/9
@@ -647,6 +655,73 @@ tones_command(Tones, Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Produces the low level wh_api request to prompt a
+%% caller, and collect a number of DTMF events.
+%% @end
+%%--------------------------------------------------------------------
+-spec prompt_and_collect_digit/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec prompt_and_collect_digits/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec prompt_and_collect_digits/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec prompt_and_collect_digits/6 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec prompt_and_collect_digits/7 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec prompt_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
+                                    ,whapps_call:call()) -> ok.
+-spec prompt_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
+                                    ,[ne_binary(),...], whapps_call:call()) -> 'ok'.
+
+
+-spec b_prompt_and_collect_digit/2 :: (ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
+-spec b_prompt_and_collect_digits/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
+-spec b_prompt_and_collect_digits/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
+-spec b_prompt_and_collect_digits/6 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) 
+                                     -> b_play_and_collect_digits_return().
+-spec b_prompt_and_collect_digits/7 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) 
+                                     -> b_play_and_collect_digits_return().
+-spec b_prompt_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
+                                      ,whapps_call:call()) -> b_play_and_collect_digits_return().
+-spec b_prompt_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
+                                      ,[ne_binary(),...], whapps_call:call()) -> b_play_and_collect_digits_return().
+
+prompt_and_collect_digit(Prompt, Call) ->
+    prompt_and_collect_digits(<<"1">>, <<"1">>, Prompt, Call).
+
+prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Call) ->
+    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, <<"1">>,  Call).
+prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Call) ->
+    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, <<"3000">>, Call).
+prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Call) ->
+    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, undefined, Call).
+prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Call) ->
+    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, <<"\\d+">>, Call).
+prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Call) ->
+    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, [<<"#">>], Call).
+prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
+    play_and_collect_digits(MinDigits, MaxDigits, cf_util:get_prompt(Prompt), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
+
+b_prompt_and_collect_digit(Prompt, Call) ->
+    b_prompt_and_collect_digits(<<"1">>, <<"1">>, Prompt, Call).
+b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Call) ->
+    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, <<"3">>,  Call).
+b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Call) ->
+    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, <<"5000">>, Call).
+b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Call) ->
+    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, undefined, Call).
+b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Call) ->
+    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, <<"\\d+">>, Call).
+b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Call) ->
+    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, ?ANY_DIGIT, Call).
+
+b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, <<"0">>, _Timeout, undefined, _Regex, _Terminators, _Call) ->
+    {ok, <<>>};
+b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, <<"0">>, _Timeout, InvalidPrompt, _Regex, _Terminators, Call) ->
+    _ = b_prompt(InvalidPrompt, Call),
+    {ok, <<>>};
+b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
+    b_play_and_collect_digits(MinDigits, MaxDigits, cf_util:get_prompt(Prompt), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Produces the low level wh_api request to play media to a
 %% caller, and collect a number of DTMF events.
 %% @end
@@ -717,8 +792,8 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 
 b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, <<"0">>, _Timeout, undefined, _Regex, _Terminators, _Call) ->
     {ok, <<>>};
-b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, <<"0">>, _Timeout, MediaInvalid, _Regex, Terminators, Call) ->
-    _ = b_play(MediaInvalid, Terminators, Call),
+b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, <<"0">>, _Timeout, MediaInvalid, _Regex, _Terminators, Call) ->
+    _ = b_play(MediaInvalid, Call),
     {ok, <<>>};
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call) ->
     NoopId = play(Media, Terminators, Call),
