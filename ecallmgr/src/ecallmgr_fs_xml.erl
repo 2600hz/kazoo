@@ -42,7 +42,7 @@ route_resp_xml(RespJObj) ->
     route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj), wh_json:get_value(<<"Routes">>, RespJObj), RespJObj).
 
 config_req_xml(JObj) ->
-    {ok, ""}.
+    {ok, lists:flatten([])}.
 
 %% Prop = Route Response
 -spec route_resp_xml/3 :: (binary(), wh_json:json_objects(), wh_json:json_object()) -> {'ok', iolist()}.

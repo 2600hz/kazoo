@@ -11,7 +11,7 @@
 
 %% API
 -export([start_link/1, start_link/2, 
-        handle_config_req/3]).
+        handle_config_req/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -24,8 +24,6 @@
 
 -record(state, {
           node = undefined :: atom()
-          ,stats = #handler_stats{} :: #handler_stats{}
-          ,lookups = [] :: [{pid(), binary(), {integer(), integer(), integer()}},...] | []
          }).
 
 %%%===================================================================
@@ -65,9 +63,7 @@ init([Node, _Options]) ->
     process_flag(trap_exit, true),
 
     erlang:monitor_node(Node, true),
-
-    Stats = #handler_stats{started=erlang:now()},
-    {ok, #state{node=Node, stats=Stats}, 0}.
+    {ok, #state{node=Node}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -110,76 +106,32 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({fetch, configuration, <<"configuration">>, <<"name">>, Conf, ID, [undefined | _Data]}, #state{node=Node}=State) ->
+    ?LOG_START(ID, "received acls switch config request from ~s", [Node]),
+    {ok, ConfigReqPid} = ecallmgr_fs_config_sup:start_req(Node, ID, fsconf_to_sysconf(Conf), _Data),
+    erlang:monitor(process, ConfigReqPid),
+    ?LOG_END("replying acls switch config request from ~s", [Node]),
+    {noreply, State};
 
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
-    ?LOG_START(ID, "received switch event request for ~s ~s from ~s", [ _Section, _Something, Node]),
+    ?LOG_START(ID, "received switch config request for ~s ~s from ~s", [ _Section, _Something, Node]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
-    ?LOG_END("ignoring request from for ~s", [Node, props:get_value(<<"Event-Name">>, _Data)]),
+    ?LOG_END("ignoring request ~s from ~s", [props:get_value(<<"Event-Name">>, _Data), Node]),
     {noreply, State};
-
-
-handle_info({nodedown, Node}, #state{node=Node}=State) ->
-    ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
-    freeswitch:close(Node),
-    _Ref = erlang:send_after(0, self(), {is_node_up, 100}),
-    {noreply, State};
-
-handle_info({is_node_up, Timeout}, State) when Timeout > ?FS_TIMEOUT ->
-    handle_info({is_node_up, ?FS_TIMEOUT}, State);
-handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
-    case ecallmgr_fs_handler:is_node_up(Node) of
-        true ->
-            ?LOG_SYS("node ~s recovered, rebinding", [Node]),
-            {noreply, State, 0};
-        false ->
-            ?LOG_SYS("node ~s still down, retrying in ~b ms", [Node, Timeout]),
-            _Ref = erlang:send_after(Timeout, self(), {is_node_up, Timeout*2}),
-            {noreply, State}
-    end;
-
-handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
-    lists:foreach(fun({Pid, _CallID, _StartTime}) ->
-                          case erlang:is_process_alive(Pid) of
-                              true -> Pid ! shutdown;
-                              false -> ok
-                          end
-                  end, LUs),
-    freeswitch:close(Node),
-    ?LOG_SYS("asked to shut down for node ~s", [Node]),
-    {stop, normal, State};
-
-handle_info({diagnostics, Pid}, #state{lookups=LUs, stats=Stats}=State) ->
-    ActiveLUs = [ [{fs_relaodacl_id, ID}, {started, Started}] || {_, ID, Started} <- LUs ],
-    Resp = [{active_lookups, ActiveLUs}
-            | ecallmgr_diagnostics:get_diagnostics(Stats)
-           ],
-    Pid ! Resp,
-    {noreply, State};
-
-handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
-    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
-
-handle_info({'EXIT', _Pid, noconnection}, #state{node=Node}=State) ->
-    ?LOG("noconnection received for node ~s, pid: ~p", [Node, _Pid]),
-    {stop, normal, State};
-
-handle_info({'EXIT', LU, _Reason}, #state{node=Node, lookups=LUs}=State) ->
-    ?LOG_SYS("lookup ~w for node ~s exited unexpectedly", [LU, Node]),
-    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
 
 handle_info(timeout, #state{node=Node}=State) ->
-    Type = {bind, directory},
+    Type = {bind, config},
 
     {foo, Node} ! Type,
     receive
         ok ->
-            ?LOG_SYS("bound to directory request on ~s", [Node]),
+            ?LOG_SYS("bound to config request on ~s", [Node]),
             {noreply, State};
         {error, Reason} ->
-            ?LOG_SYS("failed to bind to directory requests on ~s, ~p", [Node, Reason]),
+            ?LOG_SYS("failed to bind to config requests on ~s, ~p", [Node, Reason]),
             {stop, Reason, State}
     after ?FS_TIMEOUT ->
-            ?LOG_SYS("timed out binding to directory requests on ~s", [Node]),
+            ?LOG_SYS("timed out binding to config requests on ~s", [Node]),
             {stop, timeout, State}
     end;
 
@@ -215,11 +167,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_config_req/3 :: (Node, ID, Data) -> {ok, pid()} when
+-spec handle_config_req/4 :: (Node, ID, Conf, Data) -> {ok, pid()} when
       Node :: atom(),
       ID :: binary(),
+      Conf :: binary(),
       Data :: proplist().
-handle_config_req(Node, ID, Data) ->
-    Pid = spawn_link(fun() -> ok
+handle_config_req(Node, ID, Conf, _Data) ->
+    Pid = spawn_link(fun() -> 
+          put(callid, ID),
+          try
+              {ok, AclResp} = ecallmgr_config:get(Conf),
+              ?LOG(ID, "received ecallmgr_config response for ~p", [Conf]),
+              {ok, Xml} = ecallmgr_fs_xml:config_resp_xml(AclResp),
+              ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml]),
+              _ = freeswitch:fetch_reply(Node, ID, Xml)
+          catch 
+            throw:_T ->
+                ?LOG("config request failed: thrown ~w", [_T]);
+            erro:_E ->
+                ?LOG("config request failed: error ~w", [_E])
+            end
         end),
     {ok, Pid}.
+
+%%% FS conf keys are not necessarily the same as we store them, remap it
+fsconf_to_sysconf(FsConf) ->
+  case FsConf of
+    <<"acl.conf">> -> <<"acls">>
+  end.
