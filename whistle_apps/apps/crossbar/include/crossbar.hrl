@@ -7,8 +7,6 @@
 -include_lib("whistle/include/wh_databases.hrl").
 -include_lib("cowboy/include/http.hrl").
 
--include_lib("webmachine/include/webmachine.hrl").
-
 -include("crossbar_types.hrl").
 
 -define(CONFIG_CAT, <<"crossbar">>).

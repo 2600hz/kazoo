@@ -30,7 +30,7 @@
 -export([cache_doc/2, cache_view/3]).
 -export([flush_doc_cache/2]).
 -export([get_results/3, open_doc/2]).
--export([store/3, fetch/2, get_abs_url/2, get_path/2]).
+-export([store/3, fetch/2, get_path/2]).
 -export([find_account_id/3, find_account_id/4]).
 -export([find_account_db/3, find_account_db/4]).
 
@@ -562,46 +562,14 @@ get_results(Db, View, ViewOptions) ->
             end
     end.    
 
--spec get_abs_url/2 :: (#wm_reqdata{}, ne_binary() | nonempty_string()) -> ne_binary().
-get_abs_url(RD, Url) ->
-    %% http://some.host.com:port/"
-    Port = case wrq:port(RD) of
-               80 -> "";
-               P -> [":", wh_util:to_list(P)]
-           end,
-
-    Host = ["http://", string:join(lists:reverse(wrq:host_tokens(RD)), "."), Port, "/"],
-    ?LOG("host: ~s", [Host]),
-
-    PathTokensRev = lists:reverse(string:tokens(wrq:path(RD), "/")),
-    get_abs_url(Host, PathTokensRev, Url).
-
-%% Request: http[s]://some.host.com:port/v1/accounts/acct_id/module
-%%
-%% Host : http[s]://some.host.com:port/
-%% PathTokensRev: /v1/accounts/acct_id/module => [module, acct_id, accounts, v1]
-%% Url: ../other_mod
-%%
-%% Result: http[s]://some.host.com:port/v1/accounts/acct_id/other_mod
--spec get_abs_url/3 :: (iolist(), [nonempty_string(),...], ne_binary() | nonempty_string()) -> ne_binary().
-get_abs_url(Host, PathTokensRev, Url) ->
-    UrlTokens = string:tokens(wh_util:to_list(Url), "/"),
-
-    Url1 = string:join(
-      lists:reverse(
-        lists:foldl(fun("..", []) -> [];
-                       ("..", [_ | PathTokens]) -> PathTokens;
-                       (".", PathTokens) -> PathTokens;
-                       (Segment, PathTokens) -> [Segment | PathTokens]
-                    end, PathTokensRev, UrlTokens)
-       ), "/"),
-    ?LOG("final url: ~s", [Url1]),
-    erlang:iolist_to_binary([Host, Url1]).
-
 -spec get_path/2 :: (#http_req{}, ne_binary()) -> ne_binary().
 get_path(Req, Relative) ->
     {RawPath, _} = cowboy_http_req:raw_path(Req),
-    PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>)),
+
+    get_path1(RawPath, Relative).
+
+get_path1(RawPath, Relative) ->
+    PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>, [global])),
     UrlTokens = binary:split(Relative, <<"/">>),
 
     wh_util:join_binary(
@@ -616,11 +584,9 @@ get_path(Req, Relative) ->
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 
-get_abs_url_test() ->
-    Host = ["http://", "some.host.com", ":8000", "/"],
-    PTs = ["module", "acct_id", "accounts", "v1"],
-    Url = "../other_mod",
-    ?assertEqual(get_abs_url(Host, PTs, Url), <<"http://some.host.com:8000/v1/accounts/acct_id/other_mod">>),
-    ?assertEqual(get_abs_url(Host, ["mod_id" | PTs], "../../other_mod"++"/mod_id"), <<"http://some.host.com:8000/v1/accounts/acct_id/other_mod/mod_id">>).
-
+get_path_test() ->
+    RawPath = <<"/v1/accounts/acct_id/module">>,
+    Relative = <<"../other_mod">>,
+    ?assertEqual(get_path1(RawPath, Relative), <<"/v1/accounts/acct_id/other_mod">>),
+    ?assertEqual(get_path1(RawPath, <<Relative/binary, "/mod_id">>), <<"/v1/accounts/acct_id/other_mod/mod_id">>).
 -endif.
