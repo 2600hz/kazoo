@@ -17,10 +17,10 @@ You can reach PropEr's developers in the following ways:
 We welcome user contributions and feedback (comments, suggestions, feature
 requests, bug reports, patches etc.).
 
-Copyright 2010-2011 by Manolis Papadakis, Eirini Arvaniti and Kostis Sagonas.
+Copyright 2010-2012 by Manolis Papadakis, Eirini Arvaniti and Kostis Sagonas.
 
-This program is distributed under the GPL, version 3 or later. Please see the
-COPYING file for details.
+This program is distributed under the [GPL](http://www.gnu.org/licenses/gpl.html),
+version 3 or later. Please see the COPYING file for details.
 
 
 Introduction
@@ -38,9 +38,9 @@ automate, suffers from a few problems, such as:
 
 Property-based testing is a novel approach to software testing, where the tester
 needs only specify the generic structure of valid inputs for the program under
-test, plus certain properties (regarding the program's behaviour and the input-
-output relation) which are expected to hold for every valid input. A property-
-based testing tool, when supplied with this information, should randomly
+test, plus certain properties (regarding the program's behaviour and the
+input-output relation) which are expected to hold for every valid input.
+A property-based testing tool, when supplied with this information, should randomly
 produce progressively more complex valid inputs, then apply those inputs to the
 program while monitoring its execution, to ensure that it behaves according to
 its specification, as outlined in the supplied properties.
@@ -75,8 +75,13 @@ PropEr is also tightly integrated with Erlang's type language:
 Quickstart guide
 ----------------
 
-*   Obtain a copy of PropEr's sources.
-*   Compile PropEr: run `make` (or `make all`, if you also want to build the
+*   Obtain a copy of PropEr's sources. You can either get a tagged version of
+    the tool (look under `Tags` on github) or you can clone the current code
+    base:
+
+        git clone git://github.com/manopapad/proper.git
+
+*   Compile PropEr: Run `make` (or `make all` if you also want to build the
     documentation; in that case, you are going to need the `syntax_tools`
     application and a recent version of `EDoc`).
 *   Add PropEr's base directory to your Erlang library path, using one of the
@@ -110,7 +115,7 @@ if you prefer, by running `make doc`), as well as links to more resources on
 property-based testing.
 
 
-Common Problems
+Common problems
 ---------------
 
 ### Using PropEr in conjunction with EUnit
@@ -119,27 +124,19 @@ The main issue is that both systems define a `?LET` macro. To avoid a potential
 clash, simply include PropEr's header file before EUnit's. That way, any
 instance of `?LET` will count as a PropEr `?LET`.
 
-### Using PropEr under Erlang/OTP R13B03 or older
-
-PropEr makes heavy use of recursive types, which are unsupported on versions of
-the Erlang/OTP distribution prior to R13B04. To compile PropEr on such a system,
-add `{d,'NO_TYPES'}` to the `erl_opts` option inside `rebar.config`. This
-enables the spec+type-stripping parse transform included in PropEr, which fixes
-the problem by stripping all type information from PropEr's source files during
-compilation.
-
 
 Incompatibilities with QuviQ's QuickCheck
 -----------------------------------------
 
-We have generally tried to keep PropEr's notation and output format as compatible
-as possible with QuviQ's QuickCheck, to allow for the reuse of existing testing
-code written for that tool. However, incompatibilities are to be expected, since
-the two programs probably bear little resemblance under the hood. Here we
-provide a nonexhaustive list of known incompatibilities:
+PropEr's notation and output format has been kept quite similar to that of
+QuviQ's QuickCheck in order to ease the reuse of existing testing code written
+for that tool. However, incompatibilities are to be expected, since we never
+run or owned a copy of QuviQ's QuickCheck and the two programs probably bear
+little resemblance under the hood. Here we provide a nonexhaustive list of
+known incompatibilities:
 
 *   `?SUCHTHATMAYBE` behaves differently in PropEr.
 *   `proper_gen:pick/1` differs from `eqc_gen:pick/1` in return value format.
 *   PropEr handles `size` differently from QuickCheck.
 *   `proper:module/2` accepts options in the second argument instead of the
-    first
+    first; this is for consistency with other `module/2` functions in Erlang/OTP.

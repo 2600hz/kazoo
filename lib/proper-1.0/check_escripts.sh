@@ -20,6 +20,17 @@
 # along with PropEr.  If not, see <http://www.gnu.org/licenses/>.
 
 # Author:      Manolis Papadakis
-# Description: Cleanup script for EDoc-generated documentation files
+# Description: Script for testing the validity of escript files
 
-rm -f doc/*.html doc/stylesheet.css doc/erlang.png doc/edoc-info
+for ESCRIPT_NAME in "$@"; do
+    SRC_FILE="$ESCRIPT_NAME".erl
+    BIN_FILE="$ESCRIPT_NAME".beam
+    > $SRC_FILE
+    echo "-module($ESCRIPT_NAME)." >> $SRC_FILE
+    echo "-export([main/1])." >> $SRC_FILE
+    echo -n "%" >> $SRC_FILE
+    cat $ESCRIPT_NAME >> $SRC_FILE
+    erlc +debug_info $SRC_FILE; true
+    dialyzer -Wunmatched_returns $BIN_FILE; true
+    rm -f $SRC_FILE $BIN_FILE
+done

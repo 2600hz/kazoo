@@ -506,7 +506,13 @@
 -type exception() :: {'exception',exc_kind(),exc_reason(),stacktrace()}.
 -type exc_kind() :: 'throw' | 'error' | 'exit'.
 -type exc_reason() :: term().
--type stacktrace() :: [{atom(),atom(),arity() | [term()]}].
+-type stacktrace() :: [call_record()].
+-ifdef(OLD_STACKTRACE_FORMAT).
+-type call_record() :: {mod_name(),fun_name(),arity() | list()}.
+-else.
+-type call_record() :: {mod_name(),fun_name(),arity() | list(),location()}.
+-type location() :: [{atom(),term()}].
+-endif.
 -type error_reason() :: 'arity_limit' | 'cant_generate' | 'cant_satisfy'
 		      | 'non_boolean_result' | 'rejected' | 'too_many_instances'
 		      | 'type_mismatch' | 'wrong_type' | {'typeserver',term()}
@@ -748,7 +754,7 @@ check(OuterTest, CExm, UserOpts) ->
     end.
 
 %% @doc Tests all properties (i.e., all 0-arity functions whose name begins with
-%% `prop_')exported from module `Mod'.
+%% `prop_') exported from module `Mod'.
 -spec module(mod_name()) -> module_result().
 module(Mod) ->
     module(Mod, []).
@@ -1357,7 +1363,17 @@ clear_mailbox() ->
     end.
 
 -spec threw_exception(function(), stacktrace()) -> boolean().
+-ifdef(OLD_STACKTRACE_FORMAT).
 threw_exception(Fun, [{TopMod,TopName,TopArgs} | _Rest]) ->
+    threw_exception_aux(Fun, TopMod, TopName, TopArgs).
+-else.
+threw_exception(Fun, [{TopMod,TopName,TopArgs,_Location} | _Rest]) ->
+    threw_exception_aux(Fun, TopMod, TopName, TopArgs).
+-endif.
+
+-spec threw_exception_aux(function(), mod_name(), fun_name(),
+			  arity() | list()) -> boolean().
+threw_exception_aux(Fun, TopMod, TopName, TopArgs) ->
     {module,FunMod} = erlang:fun_info(Fun, module),
     {name,FunName} = erlang:fun_info(Fun, name),
     {arity,FunArity} = erlang:fun_info(Fun, arity),
@@ -1369,12 +1385,17 @@ threw_exception(Fun, [{TopMod,TopName,TopArgs} | _Rest]) ->
 
 -spec clean_stacktrace(stacktrace()) -> stacktrace().
 clean_stacktrace(RawTrace) ->
-    IsNotPropErCall =
-	fun({Mod,_Fun,_Args}) ->
-	    not lists:prefix("proper", atom_to_list(Mod))
-	end,
-    {Trace,_Rest} = lists:splitwith(IsNotPropErCall, RawTrace),
+    {Trace,_Rest} = lists:splitwith(fun is_not_proper_call/1, RawTrace),
     Trace.
+
+-spec is_not_proper_call(call_record()) -> boolean().
+-ifdef(OLD_STACKTRACE_FORMAT).
+is_not_proper_call({Mod,_Fun,_Args}) ->
+    not lists:prefix("proper", atom_to_list(Mod)).
+-else.
+is_not_proper_call({Mod,_Fun,_Args,_Location}) ->
+    not lists:prefix("proper", atom_to_list(Mod)).
+-endif.
 
 -spec clean_testcase(imm_testcase()) -> counterexample().
 clean_testcase(ImmTestCase) ->
@@ -1432,17 +1453,19 @@ shrink(ImmTestCase, Test, Reason,
     of
 	{Shrinks,MinImmTestCase} ->
 	    case rerun(Test, true, MinImmTestCase) of
-		#pass{} ->
-		    %% TODO: The fail actions are silently skipped.
-		    report_shrinking(Shrinks, MinImmTestCase, [], Print),
-		    {ok, MinImmTestCase};
 		#fail{actions = MinActions} ->
 		    report_shrinking(Shrinks, MinImmTestCase, MinActions,
 				     Print),
 		    {ok, MinImmTestCase};
-		{error,_Reason} = Error ->
-		    Print("~n", []),
-		    Error
+		%% The cases below should never occur for deterministic tests.
+		%% When they do happen, we have no choice but to silently
+		%% skip the fail actions.
+		#pass{} ->
+		    report_shrinking(Shrinks, MinImmTestCase, [], Print),
+		    {ok, MinImmTestCase};
+		{error,_Reason} ->
+		    report_shrinking(Shrinks, MinImmTestCase, [], Print),
+		    {ok, MinImmTestCase}
 	    end
     catch
 	throw:non_boolean_result ->
@@ -1546,12 +1569,13 @@ still_fails(ImmInstance, TestTail, Prop, OldReason) ->
     end.
 
 -spec same_fail_reason(fail_reason(), fail_reason()) -> boolean().
-same_fail_reason({trapped,{SameExcReason,_StackTrace1}},
-		 {trapped,{SameExcReason,_StackTrace2}}) ->
-    true;
-same_fail_reason({exception,SameExcKind,SameExcReason,_StackTrace1},
-		 {exception,SameExcKind,SameExcReason,_StackTrace2}) ->
-    true; %% We don't mind if the stacktraces are different.
+ %% We don't mind if the stacktraces are different.
+same_fail_reason({trapped,{ExcReason1,_StackTrace1}},
+		 {trapped,{ExcReason2,_StackTrace2}}) ->
+    same_exc_reason(ExcReason1, ExcReason2);
+same_fail_reason({exception,SameExcKind,ExcReason1,_StackTrace1},
+		 {exception,SameExcKind,ExcReason2,_StackTrace2}) ->
+    same_exc_reason(ExcReason1, ExcReason2);
 same_fail_reason({sub_props,SubReasons1}, {sub_props,SubReasons2}) ->
     length(SubReasons1) =:= length(SubReasons2) andalso
     lists:all(fun({A,B}) -> same_sub_reason(A,B) end,
@@ -1560,6 +1584,24 @@ same_fail_reason(SameReason, SameReason) ->
     true;
 same_fail_reason(_, _) ->
     false.
+
+-spec same_exc_reason(exc_reason(), exc_reason()) -> boolean().
+same_exc_reason(ExcReason1, ExcReason2) ->
+    %% We assume that exception reasons are either atoms or tagged tuples.
+    %% What we try to do is force the generation of the same exception reason.
+    if
+	is_atom(ExcReason1) ->
+	    ExcReason1 =:= ExcReason2;
+	is_tuple(ExcReason1) ->
+	    is_tuple(ExcReason2)
+	    andalso tuple_size(ExcReason1) >= 1
+	    andalso tuple_size(ExcReason1) =:= tuple_size(ExcReason2)
+	    %% We assume that the tag is the first element.
+	    andalso is_atom(element(1, ExcReason1))
+	    andalso element(1, ExcReason1) =:= element(1, ExcReason2);
+	true ->
+	    false
+    end.
 
 -spec same_sub_reason({tag(),fail_reason()},{tag(),fail_reason()}) -> boolean().
 same_sub_reason({SameTag,Reason1}, {SameTag,Reason2}) ->
