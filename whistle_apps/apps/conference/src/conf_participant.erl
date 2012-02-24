@@ -48,7 +48,6 @@
 
 -record(participant, {conference_id = undefined
                       ,participant_id = 0
-                      ,controller_queue = undefined
                       ,call = undefined
                       ,bridge = undefined
                       ,moderator = false
@@ -186,7 +185,6 @@ handle_participants_resp(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Call]) ->
-    %% publish call status request
     process_flag(trap_exit, true),
     Self = self(),
     spawn(fun() ->
@@ -367,7 +365,9 @@ handle_event(JObj, #participant{call_event_consumers=Consumers, call=Call, self=
             ?LOG("received event from call ~s while relaying for ~s, dropping", [EventCallId, CallId]),
             ignore;
         {_Else, _} ->
-            {reply, [{call_event_consumers, Consumers}, {in_conference, InConf}]}
+            {reply, [{call_event_consumers, Consumers}
+                     ,{in_conference, InConf}
+                    ]}
     end.
 
 %%--------------------------------------------------------------------
