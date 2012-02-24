@@ -102,7 +102,7 @@ do_send(CallId, CtrlQ, Commands) ->
 send_default(_, _, undefined) ->
     {error, no_response};    
 send_default(CallId, CtrlQ, Cause) ->
-    ?LOG("attempting to send default response for ~s", [Cause]),
+    lager:debug("attempting to send default response for ~s", [Cause]),
     Response = get_response(Cause),
     send(CallId, CtrlQ
          ,wh_json:get_value(<<"Code">>, Response)

@@ -31,8 +31,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
 -define(EXPIRES, 3600). %% an hour
@@ -154,7 +154,7 @@ filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred, 2) ->
 %%--------------------------------------------------------------------
 init([Name]) ->
     {ok, _} = timer:send_interval(1000, flush),
-    ?LOG("started new cache proc: ~s", [Name]),
+    lager:debug("started new cache proc: ~s", [Name]),
     {ok, dict:new()}.
 
 %%--------------------------------------------------------------------

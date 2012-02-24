@@ -79,7 +79,7 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
 
 disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
-    ?LOG("Wapi mod: ~s", [Wapi]),
+    lager:debug("Wapi mod: ~s", [Wapi]),
     ApiMod = wh_util:to_atom(Wapi),
     ApiMod:disambiguate_and_publish(ReqJObj, RespJObj).
 
@@ -421,7 +421,7 @@ validate(Prop, ReqH, Vals, Types) when is_list(Prop) ->
         true ->
             true;
         false ->
-            ?LOG("failing API JSON: ~s", [wh_json:encode(wh_json:from_list(Prop))]),
+            lager:debug("failing API JSON: ~s", [wh_json:encode(wh_json:from_list(Prop))]),
             false
     end;
 validate(JObj, ReqH, Vals, Types) ->
@@ -439,7 +439,7 @@ validate_message(JObj, ReqH, Vals, Types) ->
 build_message(Prop, ReqH, OptH) when is_list(Prop) ->
     case defaults(Prop) of
         {error, _Reason}=Error ->
-            ?LOG("API message does not have the default headers ~s: ~p"
+            lager:debug("API message does not have the default headers ~s: ~p"
                  ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
             Error;
         HeadAndProp ->
@@ -458,7 +458,7 @@ build_message(JObj, ReqH, OptH) ->
 build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {error, _Reason} = Error ->
-            ?LOG("API message does not have the required headers ~s: ~p"
+            lager:debug("API message does not have the required headers ~s: ~p"
                  ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
             Error;
         {Headers1, Prop1} ->
@@ -475,7 +475,7 @@ build_message_specific_headers(Prop, ReqH, OptH) ->
 build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {error, _Reason} = Error ->
-            ?LOG("API message does not have the required headers ~s: ~p"
+            lager:debug("API message does not have the required headers ~s: ~p"
                  ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
             Error;
         {Headers1, Prop1} ->
@@ -563,7 +563,7 @@ has_all(Prop, Headers) ->
                       case props:is_defined(Header, Prop) of
                           true -> true;
                           false ->
-                              ?LOG("failed to find key '~s' on API message", [Header]),
+                              lager:debug("failed to find key '~s' on API message", [Header]),
                               false
                       end
               end, Headers).
@@ -582,7 +582,7 @@ values_check(Prop, Values) ->
                           V -> case lists:member(V, Vs) of
                                    true -> true;
                                    false ->
-                                       ?LOG("API key '~s' value '~p' is not one of the values: ~p"
+                                       lager:debug("API key '~s' value '~p' is not one of the values: ~p"
                                             ,[Key, V, Vs]),
                                        false
                                end
@@ -592,7 +592,7 @@ values_check(Prop, Values) ->
                           undefined -> true; % isn't defined in Prop, has_all will error if req'd
                           V -> true;
                           _Val ->
-                              ?LOG("API key '~s' value '~p' is not '~p'"
+                              lager:debug("API key '~s' value '~p' is not '~p'"
                                    ,[Key, _Val, V]),
                               false
                       end
@@ -607,12 +607,12 @@ type_check(Prop, Types) ->
                           Value -> try case Fun(Value) of % returns boolean
                                            true -> true;
                                            false ->
-                                               ?LOG("API key '~s' value '~p' failed validation fun", [Key, Value]),
+                                               lager:debug("API key '~s' value '~p' failed validation fun", [Key, Value]),
                                                false
                                        end
                                    catch 
                                        _:R -> 
-                                           ?LOG("API key '~s' value '~p' caused validation fun exception: ~p", [Key, Value, R]),
+                                           lager:debug("API key '~s' value '~p' caused validation fun exception: ~p", [Key, Value, R]),
                                            false
                                    end
                       end
