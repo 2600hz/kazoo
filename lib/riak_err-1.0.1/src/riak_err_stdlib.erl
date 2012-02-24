@@ -22,7 +22,7 @@
 %%
 %% All functions in this module are covered by the Erlang/OTP source
 %% distribution's license, the Erlang Public License.  See
-%% http://www.erlang.org/ for full details.
+%% <a href="http://www.erlang.org/">Erlang.org</a> for full details.
 
 -module(riak_err_stdlib).
 -export([write_time/2, maybe_utc/1]).
@@ -40,7 +40,7 @@
 -type t_time()         :: {hour(),minute(),second()}.
 -type t_datetime1970() :: {{year1970(),month(),day()},t_time()}.
 
-%% From OTP stdlib's error_logger_tty_h.erl ... These functions aren't
+%% @doc From OTP stdlib's error_logger_tty_h.erl ... These functions aren't
 %% exported.
 -spec write_time({utc, t_datetime1970()} | t_datetime1970(), string()) -> string().
 write_time({utc,{{Y,Mo,D},{H,Mi,S}}},Type) ->
@@ -50,6 +50,8 @@ write_time({{Y,Mo,D},{H,Mi,S}},Type) ->
     io_lib:format("~n=~s==== ~p-~s-~p::~s:~s:~s ===~n",
                   [Type,D,month(Mo),Y,t(H),t(Mi),t(S)]).
 
+%% @doc From OTP stdlib's error_logger_tty_h.erl ... These functions aren't
+%% exported.
 -spec maybe_utc(t_datetime1970()) -> {utc, t_datetime1970()} | t_datetime1970().
 maybe_utc(Time) ->
     UTC = case application:get_env(sasl, utc_log) of
@@ -95,17 +97,21 @@ month(10) -> "Oct";
 month(11) -> "Nov";
 month(12) -> "Dec".
 
-%% From OTP sasl's sasl_report.erl ... These functions aren't
+%% @doc From OTP sasl's sasl_report.erl ... These functions aren't
 %% exported.
 -spec is_my_error_report(atom()) -> boolean().
 is_my_error_report(supervisor_report)   -> true;
 is_my_error_report(crash_report)        -> true;
 is_my_error_report(_)                   -> false.
 
+%% @doc From OTP sasl's sasl_report.erl ... These functions aren't
+%% exported.
 -spec is_my_info_report(atom()) -> boolean().
 is_my_info_report(progress)  -> true;
 is_my_info_report(_)         -> false.
 
+%% @doc From OTP sasl's sasl_report.erl ... These functions aren't
+%% exported.
 -spec sup_get(term(), [proplists:property()]) -> term().
 sup_get(Tag, Report) ->
     case lists:keysearch(Tag, 1, Report) of
@@ -115,7 +121,7 @@ sup_get(Tag, Report) ->
             ""
     end.
 
-%% From OTP stdlib's proc_lib.erl ... These functions aren't exported.
+%% @doc From OTP stdlib's proc_lib.erl ... These functions aren't exported.
 -spec proc_lib_format([term()], pos_integer()) -> string().
 proc_lib_format([OwnReport,LinkReport], FmtMaxBytes) ->
     OwnFormat = format_report(OwnReport, FmtMaxBytes),
