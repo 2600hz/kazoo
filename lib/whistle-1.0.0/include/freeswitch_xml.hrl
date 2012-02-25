@@ -109,5 +109,33 @@
   </section>
 </document>").
 
+-define(FS_ACL,
+"<document type=\"freeswitch/xml\">
+  <section name=\"configuration\">
+    <configuration name=\"acls.conf\" description=\"Configuration data\">
+      <network-lists>
+        <list name=\"trusted\" default=\"deny\">
+          <node type=\"allow\" cidr=\"12.23.34.45\"/>
+          <node type=\"allow\" cird=\"43.32.12.54\"/>
+        </list>
+      </network-lists>
+    </configuration>
+  </section>
+</document>").
+
+-define(FS_CONFIG,
+"<document type=\"freeswitch/xml\">
+  <section name=\"configuration\">
+    <configuration name=\"~s.conf\" description=\"Configuration data\">
+      <settings>
+      ~s
+      </settings>
+    </configuration>
+  </section>
+</document>").
+
+-define(CONFIG_PARAM, "          <variable name=\"~s\" value=\"~s\" />~n").
+
+
 -define(FREESWITCH_XML_HRL, true).
 -endif.

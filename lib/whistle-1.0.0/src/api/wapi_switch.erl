@@ -7,34 +7,34 @@
 %%%-------------------------------------------------------------------
 -module(wapi_switch).
 
--export([reloadacl_req/1, reloadacl_req_v/1]).
+-export([reloadacl/1, reloadacl_v/1]).
 -export([bind_q/2, unbind_q/2]).
--export([publish_reloadacl_req/2, publish_reloadacl_req/3]).
+-export([publish_reloadacl/2, publish_reloadacl/3]).
 
 -include("../wh_api.hrl").
 
 -define(SWITCH_EVENT_VALUES, [{<<"Event-Category">>, <<"switch_event">>}]).
 
 %% request to reload acl
--define(SWITCH_EVENT_RELOADACL_REQ_HEADERS, []).
--define(OPTIONAL_SWITCH_EVENT_RELOADACL_REQ_HEADERS, []).
--define(SWITCH_EVENT_RELOADACL_REQ_VALUES, [{<<"Event-Name">>, <<"reloadacl">>} | ?SWITCH_EVENT_VALUES]).
+-define(SWITCH_EVENT_RELOADACL_HEADERS, []).
+-define(OPTIONAL_SWITCH_EVENT_RELOADACL_HEADERS, []).
+-define(SWITCH_EVENT_RELOADACL_VALUES, [{<<"Event-Name">>, <<"reloadacl">>} | ?SWITCH_EVENT_VALUES]).
 -define(SWITCH_EVENT_TYPES, []).
 %% Request a reloadacl
--spec reloadacl_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
-reloadacl_req(Prop) when is_list(Prop) ->
-    case reloadacl_req_v(Prop) of
-        true -> wh_api:build_message(Prop, ?SWITCH_EVENT_RELOADACL_REQ_HEADERS, ?OPTIONAL_SWITCH_EVENT_RELOADACL_REQ_HEADERS);
+-spec reloadacl/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+reloadacl(Prop) when is_list(Prop) ->
+    case reloadacl_v(Prop) of
+        true -> wh_api:build_message(Prop, ?SWITCH_EVENT_RELOADACL_HEADERS, ?OPTIONAL_SWITCH_EVENT_RELOADACL_HEADERS);
         false -> {error, "Proplist failed validation for switch event reloadacl req"}
     end;
-reloadacl_req(JObj) ->
-    reloadacl_req(wh_json:to_proplist(JObj)).
+reloadacl(JObj) ->
+    reloadacl(wh_json:to_proplist(JObj)).
 
--spec reloadacl_req_v/1 :: (api_terms()) -> boolean().
-reloadacl_req_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?SWITCH_EVENT_RELOADACL_REQ_HEADERS, ?SWITCH_EVENT_RELOADACL_REQ_VALUES, ?SWITCH_EVENT_TYPES);
-reloadacl_req_v(JObj) ->
-    reloadacl_req_v(wh_json:to_proplist(JObj)).
+-spec reloadacl_v/1 :: (api_terms()) -> boolean().
+reloadacl_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SWITCH_EVENT_RELOADACL_HEADERS, ?SWITCH_EVENT_RELOADACL_VALUES, ?SWITCH_EVENT_TYPES);
+reloadacl_v(JObj) ->
+    reloadacl_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
@@ -68,9 +68,9 @@ unbind_q(Q, [_|T], SwitchId) ->
 unbind_q(_Q, [], _SwitchId) ->
     ok.
 
--spec publish_reloadacl_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_reloadacl_req(Q, JObj) ->
-    publish_reloadacl_req(Q, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_reloadacl_req(Q, JObj, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?SWITCH_EVENT_RELOADACL_REQ_VALUES, fun ?MODULE:reloadacl_req/1),
+-spec publish_reloadacl/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_reloadacl(Q, JObj) ->
+    publish_reloadacl(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_reloadacl(Q, JObj, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?SWITCH_EVENT_RELOADACL_VALUES, fun ?MODULE:reloadacl/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
