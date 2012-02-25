@@ -378,6 +378,7 @@ find(Key, JObjs, Default) when is_list(JObjs) ->
 -spec get_value/2 :: (json_string() | json_strings(), wh_json:json_object() | json_objects()) -> json_term() | 'undefined'.
 -spec get_value/3 :: (json_string() | json_strings(), wh_json:json_object() | json_objects(), Default) -> json_term() | Default.
 get_value(Key, JObj) ->
+    lager:debug("key: ~p", [Key]),
     get_value(Key, JObj, undefined).
 
 get_value([Key|Ks], L, Default) when is_list(L) ->
