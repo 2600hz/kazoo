@@ -479,7 +479,7 @@ process_transfer_event(_, Data) ->
             ok
     end,
     TransfereeCtrlUUId = props:get_value(<<"Replaces">>, Data),
-    case ecallmgr_call_control_sup:find_worker(TransfereeCtrlUUId) of
+    case ecallmgr_call_control_sup:find_workers(TransfereeCtrlUUId) of
         {ok, ReplacesPids} -> 
             [begin 
                  ecallmgr_call_control:transferee(Pid, Data),
