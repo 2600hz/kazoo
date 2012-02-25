@@ -40,7 +40,7 @@ start_link() ->
 start_proc([_, CallId]=Args) ->
     case find_worker(CallId) of
         {ok, Srv}=Ok -> 
-            ?LOG("recycling existing call events worker ~p", [Srv]),
+            lager:debug("recycling existing call events worker ~p", [Srv]),
             Ok;
         _ -> 
             supervisor:start_child(?SERVER, Args)

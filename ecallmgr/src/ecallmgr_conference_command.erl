@@ -25,7 +25,7 @@ exec_cmd(Node, CallId, JObj, _) ->
                 {ok, Reply} when AppName =:= <<"participants">> ->
                     spawn(fun() -> participants_response(Reply, ConfName, CallId, wh_json:get_value(<<"Server-ID">>, JObj)) end), ok;
                 {ok, _} -> ok;
-		timeout -> timeout;
+                timeout -> timeout;
                 {error, _} -> {error, bad_reply}
             end
     end.
@@ -36,16 +36,16 @@ get_fs_app(_Node, ConfName, _JObj, _Application) when not is_binary(ConfName) ->
     {error, "invalid conference id"};
 get_fs_app(_Node, _ConfName, JObj, <<"participants">>) ->
     case wh_api:conference_participants_req_v(JObj) of
-	false ->
+        false ->
             {error, "conference participants failed to execute as JObj did not validate."};
-	true ->
+        true ->
             <<"list">>
     end;
 get_fs_app(_Node, ConfName, JObj, <<"play">>) ->
     case wh_api:conference_play_req_v(JObj) of
-	false ->
+        false ->
             {error, "conference play failed to execute as JObj did not validate."};
-	true ->
+        true ->
             Media = list_to_binary(["'", media_path(wh_json:get_value(<<"Media-Name">>, JObj), ConfName), "'"]),
             case wh_json:get_value(<<"Participant-ID">>, JObj) of
                 ParticipantId when is_binary(ParticipantId) ->
@@ -56,48 +56,48 @@ get_fs_app(_Node, ConfName, JObj, <<"play">>) ->
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"deaf">>) ->
     case wh_api:conference_deaf_req_v(JObj) of
-	false ->
+        false ->
             {error, "conference deaf failed to execute as JObj did not validate."};
-	true ->
+        true ->
             <<"deaf ", (wh_json:get_value(<<"Participant-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"undeaf">>) ->
     case wh_api:conference_undeaf_req_v(JObj) of
-	false ->
+        false ->
             {error, "conference undeaf failed to execute as JObj did not validate."};
-	true ->
+        true ->
             <<"undeaf ", (wh_json:get_value(<<"Participant-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"mute">>) ->
     case wh_api:conference_mute_req_v(JObj) of
-	false ->
+        false ->
             {error, "conference mute failed to execute as JObj did not validate."};
-	true ->
+        true ->
             <<"mute ", (wh_json:get_value(<<"Participant-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"unmute">>) ->
     case wh_api:conference_unmute_req_v(JObj) of
-	false ->
+        false ->
             {error, "conference unmute failed to execute as JObj did not validate."};
-	true ->
+        true ->
             <<"unmute ", (wh_json:get_value(<<"Participant-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"kick">>) ->
     case wh_api:conference_kick_req_v(JObj) of
-	false ->
+        false ->
             {error, "conference kick failed to execute as JObj did not validate."};
-	true ->
+        true ->
             <<"kick ", (wh_json:get_value(<<"Participant-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _ConfName, JObj, <<"move">>) ->
     case wh_api:conference_move_req_v(JObj) of
-	false ->
+        false ->
             {error, "conference unmute failed to execute as JObj did not validate."};
-	true ->
+        true ->
             <<"transfer ", (wh_json:get_value(<<"Participant-ID">>, JObj))/binary>>
     end;
 get_fs_app(_Node, _UUID, _JObj, _App) ->
-    ?LOG_SYS("Unknown App ~p: ~p", [_App, _JObj]),
+    lager:debug("unknown App ~p: ~p", [_App, _JObj]),
     {error, "Application unknown"}.
 
 %%%===================================================================
@@ -108,7 +108,7 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 api(Node, AppName, Args) ->
     App = wh_util:to_atom(AppName, true),
     Arg = wh_util:to_list(Args),
-    ?LOG_SYS("FS-API -> Node: ~p Api: ~s ~s", [Node, App, Arg]),
+    lager:debug("FS-API -> Node: ~p Api: ~s ~s", [Node, App, Arg]),
     freeswitch:api(Node, App, Arg, 5000).
 
 -spec media_path/2 :: (ne_binary(), ne_binary()) -> ne_binary().

@@ -18,6 +18,8 @@ start() ->
 start_deps() ->
     ecallmgr_deps:ensure(),
 
+    lager:start(),
+
     case application:get_env(reloader) of
         {ok, true} -> reloader:start();
         _ -> ok

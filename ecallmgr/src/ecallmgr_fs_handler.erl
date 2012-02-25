@@ -100,7 +100,7 @@ request_node(Type) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new fs handler"),
+    lager:debug("starting new fs handler"),
     process_flag(trap_exit, true),
 
     spawn(fun() -> start_preconfigured_servers() end),
@@ -161,7 +161,7 @@ handle_call({diagnostics}, From, #state{fs_nodes=Nodes}=State) ->
           end),
     {noreply, State};
 handle_call({add_fs_node, Node, Options}, _From, State) ->
-    ?LOG("trying to add ~s", [Node]),
+    lager:debug("trying to add ~s", [Node]),
     {Resp, State1} = add_fs_node(Node, check_options(Options), State),
     {reply, Resp, State1, hibernate};
 handle_call({request_resource, Type, Options}, From, #state{fs_nodes=Nodes}=State) ->
@@ -200,26 +200,26 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({nodedown, Node}, #state{fs_nodes=Nodes, node_reconnect_pids=ReconPids}=State) ->
-    ?LOG_SYS("node ~p has gone down", [Node]),
+    lager:debug("node ~p has gone down", [Node]),
     WatcherPid = spawn_link(fun() ->
                                     case [N || #node_handler{node=Node1}=N <- Nodes, Node =:= Node1] of
                                         [#node_handler{node=Node, options=Opts}] ->
                                             erlang:monitor_node(Node, false),
                                             _ = ecallmgr_fs_sup:stop_handlers(Node),
-                                            ?LOG_SYS("node watch starting for ~p", [Node]),
+                                            lager:debug("node watch starting for ~p", [Node]),
                                             watch_node_for_restart(Node, Opts);
                                         [] ->
-                                            ?LOG_SYS("node watch starting for ~p", [Node]),
+                                            lager:debug("node watch starting for ~p", [Node]),
                                             watch_node_for_restart(Node, [])
                                     end
                             end),
-    ?LOG("Started ~p to watch ~s", [WatcherPid, Node]),
+    lager:debug("started ~p to watch ~s", [WatcherPid, Node]),
     {noreply, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes), node_reconnect_pids = [{Node, WatcherPid} | ReconPids]}, hibernate};
 handle_info({'EXIT', Pid, _Reason}, #state{node_reconnect_pids=ReconPids}=State) ->
-    ?LOG_SYS("Pid ~p exited: ~p", [Pid, _Reason]),
+    lager:debug("pid ~p exited: ~p", [Pid, _Reason]),
     {noreply, State#state{node_reconnect_pids=lists:keydelete(Pid, 2, ReconPids)}};
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -234,7 +234,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{fs_nodes=Nodes}) ->
-    ?LOG_SYS("fs handler ~p termination", [_Reason]),
+    lager:debug("fs handler ~p termination", [_Reason]),
     lists:foreach(fun close_node/1, Nodes).
 
 %%--------------------------------------------------------------------
@@ -251,16 +251,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec watch_node_for_restart/2 :: (Node, Opts) -> 'ok' | {'error', 'no_connection'} when
-      Node :: atom(),
-      Opts :: proplist().
+-spec watch_node_for_restart/2 :: (atom(), proplist()) -> 'ok' | {'error', 'no_connection'}.
+-spec watch_node_for_restart/3 :: (atom(), proplist(), pos_integer()) -> 'ok' | {'error', 'no_connection'}.
 watch_node_for_restart(Node, Opts) ->
     watch_node_for_restart(Node, Opts, 250).
 
--spec watch_node_for_restart/3 :: (Node, Opts, Timeout) -> 'ok' | {'error', 'no_connection'} when
-      Node :: atom(),
-      Opts :: proplist(),
-      Timeout :: pos_integer().
 watch_node_for_restart(Node, Opts, Timeout) when Timeout > ?MAX_TIMEOUT_FOR_NODE_RESTART ->
     is_node_up(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART);
 watch_node_for_restart(Node, Opts, ?MAX_TIMEOUT_FOR_NODE_RESTART) ->
@@ -272,16 +267,16 @@ watch_node_for_restart(Node, Opts, Timeout) ->
 is_node_up(Node, Opts, Timeout) ->
     case net_adm:ping(Node) of
         pong ->
-            ?LOG_SYS("node ~s has risen", [Node]),
+            lager:debug("node ~s has risen", [Node]),
             ?MODULE:add_fs_node(Node, Opts);
         pang ->
-            ?LOG_SYS("waiting ~b seconds to ping again", [Timeout div 1000]),
+            lager:debug("waiting ~b seconds to ping again", [Timeout div 1000]),
             receive
                 shutdown ->
-                    ?LOG_SYS("watcher for ~s asked to go down", [Node])
+                    lager:debug("watcher for ~s asked to go down", [Node])
             after
                 Timeout ->
-                    ?LOG_SYS("Pinging ~s again", [Node]),
+                    lager:debug("Pinging ~s again", [Node]),
                     watch_node_for_restart(Node, Opts, Timeout)
             end
     end.
@@ -323,7 +318,7 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
             case net_adm:ping(Node) of
                 pong ->
                     erlang:monitor_node(Node, true),
-                    ?LOG_SYS("no node matching ~p found, adding", [Node]),
+                    lager:debug("no node matching ~p found, adding", [Node]),
 
                     case lists:all(fun({ok, Pid}) when is_pid(Pid) -> true;
                                       ({error, {already_started, Pid}}) when is_pid(Pid) -> true;
@@ -336,12 +331,12 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
                             {{error, failed_starting_handlers}, State}
                     end;
                 pang ->
-                    ?LOG_SYS("node ~p not responding, can't connect", [Node]),
+                    lager:debug("node ~p not responding, can't connect", [Node]),
                     self() ! {nodedown, Node},
                     {{error, no_connection}, State}
             end;
         [#node_handler{node=Node}=N] ->
-            ?LOG_SYS("handlers known for node ~p", [Node]),
+            lager:debug("handlers known for node ~p", [Node]),
 
             {_, _, NHP} = Handlers = ecallmgr_fs_sup:get_handler_pids(Node),
             is_pid(NHP) andalso NHP ! {update_options, Options},
@@ -349,7 +344,7 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
             case lists:any(fun(error) -> true; (undefined) -> true; (_) -> false end, tuple_to_list(Handlers)) of
                 true ->
                     _ = ecallmgr_fs_sup:stop_handlers(Node),
-                    ?LOG_SYS("removed handlers for node ~p because something is wonky: handlers: ~p", [Node, Handlers]),
+                    lager:debug("removed handlers for node ~p because something is wonky: handlers: ~p", [Node, Handlers]),
                     add_fs_node(Node, Options, State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)});
                 false ->
                     {ok, State#state{fs_nodes=[N#node_handler{options=Options} | lists:keydelete(Node, 2, Nodes)]}}
@@ -361,10 +356,10 @@ rm_fs_node(Node, #state{fs_nodes=Nodes, node_reconnect_pids=ReconPids}=State) ->
     kill_watchers(Node, ReconPids),
     case lists:keyfind(Node, 2, Nodes) of
         false ->
-            ?LOG_SYS("no handlers found for ~s", [Node]),
+            lager:debug("no handlers found for ~s", [Node]),
             State;
         N ->
-            ?LOG_SYS("closing node handler for ~s", [Node]),
+            lager:debug("closing node handler for ~s", [Node]),
             _ = close_node(N),
             State#state{fs_nodes=lists:keydelete(Node, 2, Nodes)}
     end.
@@ -394,19 +389,19 @@ process_resource_request(<<"audio">> = Type, Nodes, Options) ->
                  end || #node_handler{node=Node} <- Nodes],
     [ X || X <- NodesResp, X =/= []];
 process_resource_request(Type, _Nodes, _Options) ->
-    ?LOG_SYS("unhandled resource request type ~p", [Type]),
+    lager:debug("unhandled resource request type ~p", [Type]),
     [].
 
 start_preconfigured_servers() ->
     case ecallmgr_config:get(<<"fs_nodes">>, []) of
         [] ->
-            ?LOG("no preconfigured servers, waiting then trying again"),
+            lager:debug("no preconfigured servers, waiting then trying again"),
             timer:sleep(5000),
             start_preconfigured_servers();
         Nodes when is_list(Nodes) ->
             [?MODULE:add_fs_node(wh_util:to_atom(N, true)) || N <- Nodes];
         _E ->
-            ?LOG("recieved a non-list for fs_nodes: ~p", [_E]),
+            lager:debug("recieved a non-list for fs_nodes: ~p", [_E]),
             timer:sleep(5000),
             start_preconfigured_servers()
     end.

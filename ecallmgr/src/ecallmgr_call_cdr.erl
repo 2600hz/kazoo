@@ -45,7 +45,7 @@
 new_cdr(UUID, EvtProp) ->
     CDR = create_cdr(EvtProp),
     wapi_call:publish_cdr(UUID, CDR),
-    ?LOG_SYS(UUID, "sent cdr: ~s", [mochijson2:encode(CDR)]).
+    lager:debug("sent cdr: ~s", [mochijson2:encode(CDR)]).
 
 -spec create_cdr/1 :: (proplist()) -> proplist().
 create_cdr(EvtProp) ->
