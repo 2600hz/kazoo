@@ -24,9 +24,9 @@ start_deps() ->
         {ok, true} -> reloader:start();
         _ -> ok
     end,
+
     wh_util:ensure_started(sasl),
     wh_util:ensure_started(crypto),
-    wh_util:ensure_started(riak_err),
     wh_util:ensure_started(whistle_amqp),
     wh_util:ensure_started(ibrowse).
 

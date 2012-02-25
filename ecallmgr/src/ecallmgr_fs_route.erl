@@ -65,6 +65,7 @@ start_link(Node, _Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node]) ->
+    put(callid, Node),
     lager:debug("starting new fs route listener for ~s", [Node]),
     process_flag(trap_exit, true),
 

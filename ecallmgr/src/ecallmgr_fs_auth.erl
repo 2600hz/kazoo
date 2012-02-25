@@ -61,8 +61,10 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, _Options]) ->
-    lager:debug("starting new fs auth listener for ~s", [Node]),
     process_flag(trap_exit, true),
+
+    put(callid, Node),
+    lager:debug("starting new fs auth listener for ~s", [Node]),
 
     erlang:monitor_node(Node, true),
 

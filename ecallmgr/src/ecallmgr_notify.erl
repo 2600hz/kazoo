@@ -153,6 +153,7 @@ send_presence_event(_, _, _) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting new ecallmgr notify process"),
     {ok, ok}.
 

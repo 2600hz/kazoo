@@ -43,6 +43,7 @@
 
 -spec new_cdr/2 :: (ne_binary(), proplist()) -> 'ok'.
 new_cdr(UUID, EvtProp) ->
+    put(callid, UUID),
     CDR = create_cdr(EvtProp),
     wapi_call:publish_cdr(UUID, CDR),
     lager:debug("sent cdr: ~s", [mochijson2:encode(CDR)]).

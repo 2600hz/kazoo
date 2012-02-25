@@ -86,6 +86,7 @@ start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout) when is_pid(Srv),
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    put(callid, ?LOG_SYSTEM_ID),
     lager:debug("AMQP pool worker started"),
     {ok, #state{}}.
 

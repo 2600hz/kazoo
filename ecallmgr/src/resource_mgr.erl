@@ -86,6 +86,7 @@ handle_req(JObj, _Prop) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting new resource manager"),
     {ok, ok}.
 

@@ -94,6 +94,7 @@ start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
 init([Node, Options]) ->
+    put(callid, Node),
     lager:debug("starting new fs node ~s", [Node]),
 
     process_flag(trap_exit, true),

@@ -136,6 +136,7 @@ worker_count() ->
 %%--------------------------------------------------------------------
 init([Count]) ->
     process_flag(trap_exit, true),
+    put(callid, ?LOG_SYSTEM_ID),
 
     'ok' = ecallmgr_amqp_pool_worker_sup:release_all(),
 
