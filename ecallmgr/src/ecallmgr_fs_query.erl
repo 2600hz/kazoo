@@ -27,7 +27,7 @@
 -define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
                      ,{{?MODULE, handle_channel_query}, [{<<"call_event">>, <<"channel_query_req">>}]}
-                     ,{{?MODULE, handle_switch_reloadacl}, [{<<"switch_event">>, <<"reloadacl_req">>}]}
+                     ,{{?MODULE, handle_switch_reloadacl}, [{<<"switch_event">>, <<"reloadacl">>}]}
                     ]).
 %% ?? Bindings
 -define(BINDINGS, [{call, [{restrict_to, [query_req, status_req]}]}

@@ -153,10 +153,8 @@ handle_cast({distributed_presence, Presence, Event}, #state{node=Node}=State) ->
     {noreply, State};
 
 handle_cast(reloadacl, #state{node=Node}=State) ->
-    _Acls = ecallmgr_config:get(<<"acls">>),
-    EventName = wh_util:to_atom(<<"ACLS">>, true),
-    Headers = [],
-    _ = freeswitch:sendevent(Node, EventName, Headers),
+    ?LOG("reloadacl sent to ~s~n", [Node]),
+    _ = freeswitch:api(Node, reloadacl),
     {noreply, State};
 
 handle_cast(_Req, State) ->

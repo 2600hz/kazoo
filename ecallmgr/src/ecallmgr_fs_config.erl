@@ -106,9 +106,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({fetch, configuration, <<"configuration">>, <<"name">>, Conf, ID, [undefined | _Data]}, #state{node=Node}=State) ->
+handle_info({fetch, configuration, <<"configuration">>, <<"name">>, Conf, ID, Data}, #state{node=Node}=State) ->
     ?LOG_START(ID, "received acls switch config request from ~s", [Node]),
-    {ok, ConfigReqPid} = ecallmgr_fs_config_sup:start_req(Node, ID, fsconf_to_sysconf(Conf), _Data),
+    {ok, ConfigReqPid} = ecallmgr_fs_config_sup:start_req(Node, ID, Conf, Data),
     erlang:monitor(process, ConfigReqPid),
     ?LOG_END("replying acls switch config request from ~s", [Node]),
     {noreply, State};
@@ -167,27 +167,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_config_req/4 :: (Node, ID, Conf, Data) -> {ok, pid()} when
+-spec handle_config_req/4 :: (Node, ID, FsConf, Data) -> {ok, pid()} when
       Node :: atom(),
       ID :: binary(),
-      Conf :: binary(),
+      FsConf :: binary(),
       Data :: proplist().
-handle_config_req(Node, ID, Conf, _Data) ->
+handle_config_req(Node, ID, FsConf, _Data) ->
     Pid = spawn_link(fun() -> 
-          put(callid, ID),
-          try
-              {ok, AclResp} = ecallmgr_config:get(Conf),
-              ?LOG(ID, "received ecallmgr_config response for ~p", [Conf]),
-              {ok, Xml} = ecallmgr_fs_xml:config_resp_xml(AclResp),
-              ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml]),
-              _ = freeswitch:fetch_reply(Node, ID, Xml)
-          catch 
-            throw:_T ->
-                ?LOG("config request failed: thrown ~w", [_T]);
-            erro:_E ->
-                ?LOG("config request failed: error ~w", [_E])
-            end
-        end),
+              put(callid, ID),
+              try
+                  ?LOG_START(ID, "mapping FS conf to ecallmgr conf key ~s", [FsConf]),
+                  EcallMgrConf = fsconf_to_sysconf(FsConf),
+                  SysconfResp = ecallmgr_config:get(EcallMgrConf),
+                  ?LOG(ID, "received sysconf response for ecallmngr config ~p", [EcallMgrConf]),
+                  {ok, ConfigXml} = case EcallMgrConf of
+                                      <<"acls">> -> ecallmgr_fs_xml:config_acl_xml(SysconfResp)
+                                    end,
+                  ?LOG_END(ID, "sending XML to ~w: ~s", [Node, ConfigXml]),
+                  _ = freeswitch:fetch_reply(Node, ID, ConfigXml)
+              catch 
+                  throw:_T ->
+                    ?LOG("config request failed: thrown ~w", [_T]);
+                  error:_E ->
+                    ?LOG("config request failed: error ~s", [_E])
+              end
+          end),
     {ok, Pid}.
 
 %%% FS conf keys are not necessarily the same as we store them, remap it
