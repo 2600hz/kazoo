@@ -93,6 +93,7 @@ register_return_handler() ->
 %%--------------------------------------------------------------------
 -spec init/1 :: ([]) -> {'ok', #state{}}.
 init([]) ->
+    put(callid, ?LOG_SYSTEM_ID),
     Init = get_config(),
     Uri = props:get_value(amqp_uri, Init, ?DEFAULT_AMQP_URI),
     UseFederation = props:get_value(use_federation, Init, true),

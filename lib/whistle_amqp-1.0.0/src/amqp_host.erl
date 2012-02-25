@@ -111,6 +111,7 @@ stop(Srv) ->
 %%--------------------------------------------------------------------
 init([Host, Conn, UseFederation]) when is_pid(Conn) ->
     process_flag(trap_exit, true),
+    put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting amqp host for broker ~s", [Host]),
 
     Ref = erlang:monitor(process, Conn),

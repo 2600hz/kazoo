@@ -29,6 +29,7 @@
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -export([behaviour_info/1]).
 
@@ -181,6 +182,7 @@ rm_binding(Srv, Binding, Props) ->
 -spec init/1 :: ([atom() | wh_proplist(),...]) -> {'ok', #state{}, 'hibernate'}.
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
+    put(callid, ?LOG_SYSTEM_ID),
 
     lager:debug("starting new gen_listener proc: ~s", [wh_util:to_binary(Module)]),
 

@@ -608,6 +608,7 @@ rm_change_handler(DBName, DocID) ->
 -spec init/1 :: ([]) -> {'ok', #state{}}.
 init([]) ->
     process_flag(trap_exit, true),
+    put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting couch_mgr"),
     {ok, init_state()}.
 

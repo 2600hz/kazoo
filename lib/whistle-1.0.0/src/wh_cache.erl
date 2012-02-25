@@ -153,6 +153,7 @@ filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred, 2) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Name]) ->
+    put(callid, ?LOG_SYSTEM_ID),
     {ok, _} = timer:send_interval(1000, flush),
     lager:debug("started new cache proc: ~s", [Name]),
     {ok, dict:new()}.
