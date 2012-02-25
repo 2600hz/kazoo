@@ -138,30 +138,30 @@ other_legs(Srv) ->
 event_execute_complete(Srv, CallId, App) ->
     gen_server:cast(Srv, {event_execute_complete, CallId, App}).
 
--spec add_leg/1 :: (wh_proplist()) -> 'ok'.
-add_leg(Props) when is_list(Props) ->
+-spec add_leg/1 :: (proplist()) -> pid().
+add_leg(Props) ->
     %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
     %% by call_control, if so add the leg to it
     CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
     put(callid, CallId),
-    case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
+    case is_binary(CallId) andalso ecallmgr_call_control_sup:find_workers(CallId) of
         false -> ok;
         {error, _} -> ok;
-        {ok, Srv} -> 
-            gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)})
+        {ok, Srvs} -> 
+            [gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)}) || Srv <- Srvs]
     end.
 
--spec rm_leg/1 :: (wh_proplist()) -> 'ok'.
-rm_leg(Props) when is_list(Props) ->
+-spec rm_leg/1 :: (proplist()) -> pid().
+rm_leg(Props) ->
     %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
     %% by call_control, if so remove the leg from it
     CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
     put(callid, CallId),
-    case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
+    case is_binary(CallId) andalso ecallmgr_call_control_sup:find_workers(CallId) of
         false -> ok;
         {error, _} -> ok;
-        {ok, Srv} -> 
-            gen_server:cast(Srv, {rm_leg, wh_json:from_list(Props)})
+        {ok, Srvs} -> 
+            [gen_server:cast(Srv, {rm_leg, wh_json:from_list(Props)}) || Srv <- Srvs]
     end.
 
 -spec transferer/2 :: (pid(), proplist()) -> 'ok'.

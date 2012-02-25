@@ -298,12 +298,11 @@ handle_cast({money, _Evt, _JObj}, #state{prepay=Prepay, acct_id=AcctId}=State) -
 
 handle_cast({authz_win, JObj}, #state{trunks_in_use=Dict}=State) ->
     spawn(fun() ->
-                  ?LOG("authz won!"),
-
                   CID = wh_json:get_value(<<"Call-ID">>, JObj),
+                  ?LOG(CID, "authz won!", []),
 
                   [Pid] = [ P || {CallID,{_,P}} <- dict:to_list(Dict), CallID =:= CID],
-                  ?LOG("Sending authz_win to ~p", [Pid]),
+                  ?LOG(CID, "sending authz_win to ~p", [Pid]),
                   j5_call_monitor:authz_won(Pid)
           end),
     {noreply, State};

@@ -504,7 +504,7 @@ execute_request(Req, #cb_context{req_nouns=Nouns, req_verb=Verb}=Context0) ->
 
     case Context1 of
         #cb_context{resp_status=success} ->
-            ?LOG("excution finished"),
+            ?LOG("execution finished"),
             execute_request_results(Req, Context1);
         #cb_context{} ->
             ?MODULE:halt(Req, Context1);
