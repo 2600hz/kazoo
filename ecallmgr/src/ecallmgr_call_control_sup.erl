@@ -17,7 +17,7 @@
 %% API
 -export([start_link/0, start_proc/1]).
 -export([workers/0]).
--export([find_worker/1]).
+-export([find_workers/1]).
 -export([find_control_queue/1]).
 
 -include("ecallmgr.hrl").
@@ -52,24 +52,27 @@ workers() ->
              Worker =:= ecallmgr_call_control
     ].
 
--spec find_worker/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
--spec do_find_worker/2 :: ([pid(),...] | [], ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
-find_worker(CallID) ->
-    do_find_worker(workers(), CallID).
+-spec find_workers/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', [pid(),...]}.
+-spec do_find_worker/3 :: ([pid(),...] | [], [pid(),...] | [], ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
+find_workers(CallID) ->
+    C = wh_util:to_binary(http_uri:decode(wh_util:to_list(CallID))),
+    do_find_worker(workers(), [], C).
 
-do_find_worker([], _CallId) ->
+do_find_worker([], [], _CallId) ->
     {error, not_found};
-do_find_worker([Srv|T], CallID) ->
+do_find_worker([], Acc, _CallId) ->
+    {ok, Acc};
+do_find_worker([Srv|T], Acc, CallID) ->
     case catch(ecallmgr_call_control:callid(Srv)) of
-        CallID -> {ok, Srv};
-        _E -> do_find_worker(T, CallID)
+        CallID -> do_find_worker(T, [Srv|Acc], CallID);
+        _E -> do_find_worker(T, Acc, CallID)
     end.
 
 -spec find_control_queue/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', ne_binary()}.
 find_control_queue(CallID) ->    
-    case find_worker(CallID) of
+    case find_workers(CallID) of
         {error, _}=E -> E;
-        {ok, Worker} ->
+        {ok, [Worker|_]} ->
             {ok, ecallmgr_call_control:queue_name(Worker)}
     end.
 

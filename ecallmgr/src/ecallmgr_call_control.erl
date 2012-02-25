@@ -145,11 +145,11 @@ add_leg(Props) ->
                   %% by call_control, if so add the leg to it
                   CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
                   put(callid, CallId),
-                  case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
+                  case is_binary(CallId) andalso ecallmgr_call_control_sup:find_workers(CallId) of
                       false -> ok;
                       {error, _} -> ok;
-                      {ok, Srv} -> 
-                          gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)})
+                      {ok, Srvs} -> 
+                          [gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)}) || Srv <- Srvs]
                   end
           end).
 
@@ -160,11 +160,11 @@ rm_leg(Props) ->
                   %% by call_control, if so remove the leg from it
                   CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
                   put(callid, CallId),
-                  case is_binary(CallId) andalso ecallmgr_call_control_sup:find_worker(CallId) of
+                  case is_binary(CallId) andalso ecallmgr_call_control_sup:find_workers(CallId) of
                       false -> ok;
                       {error, _} -> ok;
-                      {ok, Srv} -> 
-                          gen_server:cast(Srv, {rm_leg, wh_json:from_list(Props)})
+                      {ok, Srvs} -> 
+                          [gen_server:cast(Srv, {rm_leg, wh_json:from_list(Props)}) || Srv <- Srvs]
                   end
           end).
 
