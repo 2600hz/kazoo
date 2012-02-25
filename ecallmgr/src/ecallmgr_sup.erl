@@ -44,6 +44,7 @@ init([]) ->
          ,?CHILD(ecallmgr_shout_sup, supervisor) % handles dynamic record streams from FreeSWITCH to local filesystem
          ,?CHILD(ecallmgr_fs_route_sup, supervisor)
          ,?CHILD(ecallmgr_fs_auth_sup, supervisor)
+         ,?CHILD(ecallmgr_fs_config_sup, supervisor)
          ,?CHILD(ecallmgr_amqp_pool_worker_sup, supervisor)
 
          ,?CACHE(ecallmgr_cache) % provides a cache
