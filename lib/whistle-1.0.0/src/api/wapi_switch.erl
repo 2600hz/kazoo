@@ -9,7 +9,7 @@
 
 -export([reloadacl/1, reloadacl_v/1]).
 -export([bind_q/2, unbind_q/2]).
--export([publish_reloadacl/2, publish_reloadacl/3]).
+-export([publish_reloadacl/0]).
 
 -include("../wh_api.hrl").
 
@@ -20,6 +20,7 @@
 -define(OPTIONAL_SWITCH_EVENT_RELOADACL_HEADERS, []).
 -define(SWITCH_EVENT_RELOADACL_VALUES, [{<<"Event-Name">>, <<"reloadacl">>} | ?SWITCH_EVENT_VALUES]).
 -define(SWITCH_EVENT_TYPES, []).
+-define(SWITCH_RELOADACL_KEY, <<"switch.reloadacl">>).
 %% Request a reloadacl
 -spec reloadacl/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 reloadacl(Prop) when is_list(Prop) ->
@@ -38,6 +39,7 @@ reloadacl_v(JObj) ->
 
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
+    io:format(Props),
     SwitchId = props:get_value(switchid, Props, <<"*">>),
     amqp_util:configuration_exchange(),
     bind_q(Queue, props:get_value(restrict_to, Props), SwitchId).
@@ -68,9 +70,9 @@ unbind_q(Q, [_|T], SwitchId) ->
 unbind_q(_Q, [], _SwitchId) ->
     ok.
 
--spec publish_reloadacl/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_reloadacl(Q, JObj) ->
-    publish_reloadacl(Q, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_reloadacl(Q, JObj, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?SWITCH_EVENT_RELOADACL_VALUES, fun ?MODULE:reloadacl/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+-spec publish_reloadacl/0 :: () -> 'ok'.
+publish_reloadacl() ->
+    {ok, Payload} = wh_api:prepare_api_payload(wh_api:default_headers(<<>>, <<"switch_event">>, <<"reloadacl">>), 
+                                              ?SWITCH_EVENT_RELOADACL_VALUES, 
+                                              fun ?MODULE:reloadacl/1),
+    amqp_util:configuration_publish(<<>>, Payload, ?DEFAULT_CONTENT_TYPE).
