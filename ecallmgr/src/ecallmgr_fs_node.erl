@@ -52,14 +52,14 @@ distributed_presence(Srv, Type, Event) ->
 
 -spec show_channels/1 :: (pid()) -> [proplist(),...] | [].
 show_channels(Srv) ->
-    case catch(gen_server:call(Srv, show_channels, 100)) of
+    case catch(gen_server:call(Srv, show_channels, ?FS_TIMEOUT)) of
         {'EXIT', _} -> [];
         Else -> Else
     end.        
 
 -spec hostname/1 :: (pid()) -> fs_api_ret().
 hostname(Srv) ->
-    case catch(gen_server:call(Srv, hostname, 100)) of
+    case catch(gen_server:call(Srv, hostname, ?FS_TIMEOUT)) of
         {'EXIT', _} -> timeout;
         Else -> Else
     end.
@@ -70,21 +70,21 @@ reloadacl(Srv) ->
 
 -spec fs_node/1 :: (pid()) -> atom().
 fs_node(Srv) ->
-    case catch(gen_server:call(Srv, fs_node, 100)) of
+    case catch(gen_server:call(Srv, fs_node, ?FS_TIMEOUT)) of
         {'EXIT', _} -> undefined;
         Else -> Else
     end.
 
 -spec uuid_exists/2 :: (pid(), ne_binary()) -> boolean().
 uuid_exists(Srv, UUID) ->
-    case catch(gen_server:call(Srv, {uuid_exists, UUID}, 100)) of
+    case catch(gen_server:call(Srv, {uuid_exists, UUID}, ?FS_TIMEOUT)) of
         {'EXIT', _} -> false;
         Else -> Else
     end.
 
 -spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | {'error', ne_binary()} | 'timeout'.
 uuid_dump(Srv, UUID) ->
-    case catch(gen_server:call(Srv, {uuid_dump, UUID}, 100)) of
+    case catch(gen_server:call(Srv, {uuid_dump, UUID}, ?FS_TIMEOUT)) of
         {'EXIT', _} -> [];
         Else -> Else
     end.        
@@ -459,10 +459,14 @@ process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
                              _ ->
                                  props:get_value(<<"Transferee-UUID">>, Data)
     end,
-    case ecallmgr_call_control_sup:find_worker(TransfererCtrlUUId) of
-        {ok, Pid1} -> 
-            ?LOG(TransfererCtrlUUId, "sending transferer notice to ecallmgr_call_control ~p", [Pid1]),
-            ecallmgr_call_control:transferer(Pid1, Data);
+    case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
+        {ok, Pids} -> 
+            [begin 
+                 ecallmgr_call_control:transferer(Pid, Data),
+                 ?LOG(TransfererCtrlUUId, "sending transferer notice to ecallmgr_call_control ~p", [Pid])
+             end
+             || Pid <- Pids
+            ];
         {error, not_found} -> 
             ok
     end;
@@ -473,18 +477,26 @@ process_transfer_event(_, Data) ->
                              _ ->
                                  props:get_value(<<"Transferee-UUID">>, Data)
     end,
-    case ecallmgr_call_control_sup:find_worker(TransfererCtrlUUId) of
-        {ok, Pid1} -> 
-            ?LOG(TransfererCtrlUUId, "sending transferer notice to ecallmgr_call_control ~p", [Pid1]),
-            ecallmgr_call_control:transferer(Pid1, Data);
+    case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
+        {ok, TransfererPids} -> 
+            [begin 
+                 ecallmgr_call_control:transferer(Pid, Data),
+                 ?LOG(TransfererCtrlUUId, "sending transferer notice to ecallmgr_call_control ~p", [Pid])
+             end
+             || Pid <- TransfererPids
+            ];
         {error, not_found} -> 
             ok
     end,
     TransfereeCtrlUUId = props:get_value(<<"Replaces">>, Data),
-    case ecallmgr_call_control_sup:find_worker(TransfereeCtrlUUId) of
-        {ok, Pid2} -> 
-            ?LOG(TransfereeCtrlUUId, "sending transferee notice to ecallmgr_call_control ~p", [Pid2]),
-            ecallmgr_call_control:transferee(Pid2, Data);
+    case ecallmgr_call_control_sup:find_workers(TransfereeCtrlUUId) of
+        {ok, ReplacesPids} -> 
+            [begin 
+                 ecallmgr_call_control:transferee(Pid, Data),
+                 ?LOG(TransfereeCtrlUUId, "sending transferee notice to ecallmgr_call_control ~p", [Pid])
+             end
+             || Pid <- ReplacesPids
+            ];
         {error, not_found} ->
             ok
     end.    
