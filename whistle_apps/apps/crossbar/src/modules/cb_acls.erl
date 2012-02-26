@@ -94,7 +94,7 @@ validate(Context) ->
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
-    read(Id, Context);
+    delete(Context, Id);
 validate(Context, _) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -119,11 +119,10 @@ put(#cb_context{req_data=JObj}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-delete(#cb_context{resp_data=Acl}=Context, _) ->
-    Cidr = wh_json:get_value(<<"cidr">>, Acl),
+delete(Context, Id) ->
     Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS),
-    whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, wh_json:delete_key(Cidr, Acls)),
-    Context.
+    whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, wh_json:delete_key(Id, Acls)),
+    Context#cb_context{doc=wh_json:new(), resp_data=[], resp_status=success}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -134,10 +133,10 @@ delete(#cb_context{resp_data=Acl}=Context, _) ->
 -spec create/1 :: (#cb_context{}) -> #cb_context{}.
 create(#cb_context{req_data=Data}=Context) ->
     case wh_json_validator:is_valid(Data, <<"acls">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Context#cb_context{doc=JObj, resp_status=success}
+    {fail, Errors} ->
+        crossbar_util:response_invalid_data(Errors, Context);
+    {pass, JObj} ->
+        Context#cb_context{req_data=JObj, resp_status=success}
     end.
 
 %%--------------------------------------------------------------------
@@ -149,7 +148,7 @@ create(#cb_context{req_data=Data}=Context) ->
 -spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
     case whapps_config:get(?ECALLMGR, [?ECALLMGR_ACLS, Id]) of
-        undefined -> Context#cb_context{resp_status='error', resp_error_code=404};
+        undefined -> crossbar_util:response_bad_identifier(Id, Context);
         Acl -> Context#cb_context{resp_data=Acl, resp_status=success}
     end.
 
