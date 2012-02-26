@@ -146,7 +146,7 @@ channel_query(JObj) ->
 
 -spec handle_switch_reloadacl/2 ::(wh_json:json_object(), proplist()) -> any().
 handle_switch_reloadacl(JObj, _Props) ->
-  true = wapi_switch:reloacacl_req_v(JObj),
+  true = wapi_switch:reloadacl_v(JObj),
   [ecallmgr_fs_node:reloadacl(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()].
 
 %%%===================================================================
