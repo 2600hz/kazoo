@@ -41,9 +41,28 @@ route_resp_xml([_|_]=RespProp) ->
 route_resp_xml(RespJObj) ->
     route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj), wh_json:get_value(<<"Routes">>, RespJObj), RespJObj).
 
-config_acl_xml(_JObj) ->
+config_acl_xml({struct, Acls}) ->
     ?LOG("Creating an ACL config XML"),
-    {ok, lists:flatten(io_lib:format(?FS_ACL, []))}.
+    FNodes = fun({_, JObj}, AccJObj) ->
+                  Type = wh_json:get_value(<<"network-list-name">>, JObj),
+              
+                  %ensure Type exists as a key
+                  Acc = case wh_json:get_value(Type, AccJObj, undefined) of
+                            undefined -> wh_json:set_value(Type, [],  AccJObj);
+                            _ -> AccJObj
+                       end,
+                  
+                  Acl = [wh_json:get_value(<<"type">>, JObj), wh_json:get_value(<<"cidr">>, JObj)],
+                  wh_json:set_value(Type, [io_lib:format(?CONFIG_ACL_NODE, Acl) | wh_json:get_value(Type, Acc)], Acc)
+             end,
+
+    Nodes = lists:foldl(FNodes, wh_json:new(), Acls),
+
+    FLists = fun({ListName, ListNodes}, Acc) ->
+                [io_lib:format(?CONFIG_ACL_LIST, [ListName, lists:flatten(ListNodes)]) |Acc]  
+             end,
+    Lists = lists:foldl(FLists, [], wh_json:to_proplist(Nodes)),
+    {ok, lists:flatten(io_lib:format(?CONFIG_ACL, [lists:flatten(Lists)]))}.
 
 %% Prop = Route Response
 -spec route_resp_xml/3 :: (binary(), wh_json:json_objects(), wh_json:json_object()) -> {'ok', iolist()}.
