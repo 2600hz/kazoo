@@ -127,13 +127,7 @@ handle_channel_query(JObj, _Props) ->
 
 -spec channel_query/1 :: (wh_json:json_object()) -> wh_json:json_objects().
 channel_query(JObj) ->
-    SearchParams = lists:foldl(fun(Field, Acc) ->
-                                       case wh_json:get_value(Field, JObj) of
-                                           undefined -> Acc;
-                                           Value -> [{Field, Value} | Acc]
-                                       end
-                               end, [], wapi_call:channel_query_search_fields()),
-    Channels = lists:flatten([ecallmgr_fs_node:show_channels(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()]),
+    Channels = lists:concat([ecallmgr_fs_node:show_channels(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()]),
     SearchParams = lists:foldl(fun(Field, Acc) ->
                                        case wh_json:get_value(Field, JObj) of
                                            undefined -> Acc;
