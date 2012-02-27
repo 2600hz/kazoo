@@ -42,7 +42,7 @@ handle_req(JObj, Options) ->
                     ?LOG_END("unable to find callflow ~p", [R]),
                     ok
             end;
-        {_, _} ->
+        false ->
             ok
     end.
 
