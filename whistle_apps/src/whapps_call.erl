@@ -14,6 +14,7 @@
 -export([from_route_win/1, from_route_win/2]).
 -export([to_json/1, from_json/1, from_json/2]).
 -export([to_proplist/1]).
+-export([is_call/1]).
 
 -export([exec/2]).
 
@@ -102,7 +103,7 @@
                        ,kvs = orddict:new() :: orddict:orddict()                                       %% allows callflows to set values that propogate to children
                       }).
 
--opaque call() :: call().
+-opaque call() :: #whapps_call{}.
 -export_type([call/0]).
 
 -spec new/0 :: () -> call().
@@ -280,6 +281,10 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
      ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
     ].
+
+-spec is_call/1 :: (term()) -> boolean().
+is_call(#whapps_call{}) -> true;
+is_call(_) -> false.
     
 -spec exec/2 :: ([fun((call()) -> call()),...], call()) -> call().
 exec(Funs, #whapps_call{}=Call) ->
