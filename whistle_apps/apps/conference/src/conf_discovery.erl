@@ -67,98 +67,116 @@ start_link() ->
 
 -spec handle_discovery_req/2 :: (wh_json:json_object(), proplist()) -> ok.
 handle_discovery_req(JObj, Props) ->
+    true = wapi_conference:discovery_req_v(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
+    put(callid, whapps_call:call_id(Call)),
+    ?LOG("received conference discovery request"),
+
     {ok, Srv} = conf_participant_sup:start_participant(Call),
+    conf_participant:set_discovery_event(JObj, Srv),
+    ?LOG("started participant process as ~p", [Srv]),
+
     conf_participant:consume_call_events(Srv),
     whapps_call_command:answer(Call),
 %%    whapps_call_command:b_prompt(<<"conf-welcome">>, Call),
-    case validate_conference_id(wh_json:get_value(<<"Conference-ID">>, JObj), Call) of
-        {error, _} -> 
+
+    try
+        Updaters = [fun(C1) ->
+                            {ok, C2} = validate_conference_pin(C1, Call),
+                            C2
+                    end
+                    ,fun(C) ->
+                             case wh_json:is_true(<<"Moderator">>, JObj, undefined) of
+                                 undefined -> C;
+                                 true ->
+                                     ?LOG("discovery request defines participant as moderator, overriding previous value"),
+                                     whapps_conference:moderator(true, C);
+                                 false ->
+                                     ?LOG("discovery request defines participant as member, overriding previous value"),
+                                     whapps_conference:moderator(false, C)
+                             end
+                     end
+                    ,fun(C) -> whapps_conference:controller_queue(props:get_value(queue, Props), C) end
+                    ,fun(C) -> whapps_conference:controller_queue(props:get_value(queue, Props), C) end
+                    ,fun(_) -> 
+                             {ok, C} = validate_conference_id(wh_json:get_value(<<"Conference-ID">>, JObj), Call),
+                             C
+                     end
+                   ],
+        Conference = whapps_conference:update(Updaters, whapps_conference:new()),
+        conf_participant:set_conference(Conference, Srv),
+        {ok, Cache} = conference_sup:cache_proc(),
+        SearchId = couch_mgr:get_uuid(),
+        wh_cache:store_local(Cache, {?MODULE, discovery, SearchId}, Srv, 300),
+        ?LOG("publishing conference search request ~s", [SearchId]),
+        %% !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        %%   TODO: Q MUST be a targeted queue...
+        %% !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        whapps_conference:search(SearchId, Conference)
+    catch
+        _:_ ->
             %% TODO: send discovery error
-            ok;
-        {ok, #conference{id=ConferenceId}=C1} ->
-            C2 = case wh_json:is_true(<<"Moderator">>, JObj, undefined) of
-                     undefined -> C1;
-                     true -> C1#conference{join_as_moderator=true};
-                     false -> C1#conference{join_as_moderator=false}
-                 end,
-            %% TODO: This shouldnt crash, so we can send a discovery error back
-            {ok, C3} = validate_conference_pin(C2, Call),
-            conf_participant:set_conference(C3, Srv),
-            conf_participant:set_discovery_event(JObj, Srv),
-            {ok, Cache} = conference_sup:cache_proc(),
-            SearchId = couch_mgr:get_uuid(),
-            wh_cache:store_local(Cache, {?MODULE, discovery, SearchId}, Srv, 300),
-            %% !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            %%   TODO: Q MUST be a targeted queue...
-            %% !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            Q = props:get_value(queue, Props),
-            Search = [{<<"Conference-ID">>, ConferenceId}
-                      ,{<<"Msg-ID">>, SearchId}
-                      | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-                     ],
-            wapi_conference:publish_search_req(Search)
+            %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
+            ok
     end,
     ok.
 
 -spec handle_search_error/2 :: (wh_json:json_object(), proplist()) -> ok.
-handle_search_error(JObj, Props) ->
+handle_search_error(JObj, _Props) ->
+    true = wapi_conference:conference_error_v(JObj),
     <<"search_req">> = wh_json:get_value([<<"Request">>, <<"Event-Name">>], JObj),
     SearchId = wh_json:get_value(<<"Msg-ID">>, JObj),
+    ?LOG("recieved search request error for ~s", [SearchId]),
+
     {ok, Cache} = conference_sup:cache_proc(),
     {ok, Srv} = wh_cache:fetch_local(Cache, {?MODULE, discovery, SearchId}),
+    ?LOG("found participant process as ~p", [Srv]),
+
+    {ok, Conference} = conf_participant:conference(Srv),
     {ok, Call} = conf_participant:call(Srv),
+    put(callid, whapps_call:call_id(Call)),
     conf_participant:consume_call_events(Srv),
-    case whapps_call_command:b_channel_status(Call) of
-        {error, _} -> 
+    
+    {ok, Status} = whapps_call_command:b_channel_status(Call),        
+    SwitchHostname = wh_json:get_value(<<"Switch-Hostname">>, Status),
+    case negotiate_focus(SwitchHostname, Conference, Call) of
+        {ok, _} -> 
+            ?LOG("conference is not currently running but our update was accepted, starting on ~s", [SwitchHostname]),
+            conf_participant:join_local(Srv);
+        {error, conflict} ->
+            ?LOG("conference is not currently running but our update was in conflict, searching again"),
+            whapps_conference:search(SearchId, Conference);
+        {error, _R} ->
+            ?LOG("conference is not currently running but our update failed: ~p", [_R]),
             %% TODO: send discovery error
             %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
-            ok;
-        {ok, Status} ->
-            SwitchHostname = wh_json:get_value(<<"Switch-Hostname">>, Status),
-            {ok, #conference{id=ConferenceId}=Conference} = conf_participant:conference(Srv),
-            case negotiate_focus(SwitchHostname, Conference, Call) of
-                {ok, _} -> 
-                    io:format("JOIN CONFERENCE ON ~p~n", [SwitchHostname]),
-                    conf_participant:join_local(Srv);
-                {error, conflict} ->
-                    io:format("TRY AGAIN...~n", []),
-                    Q = props:get_value(queue, Props),
-                    Search = [{<<"Conference-ID">>, ConferenceId}
-                              ,{<<"Msg-ID">>, SearchId}
-                              | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-                             ],
-                    wapi_conference:publish_search_req(Search);
-                {error, _} ->
-                    %% TODO: send discovery error
-                    %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
-                    ok
-            end
+            ok
     end,
     ok.
 
 -spec handle_search_resp/2 :: (wh_json:json_object(), proplist()) -> ok.
 handle_search_resp(JObj, _Props) ->    
+    true = wapi_conference:search_resp_v(JObj),
     SearchId = wh_json:get_value(<<"Msg-ID">>, JObj),
+    ?LOG("recieved search response for ~s", [SearchId]),
+
     {ok, Cache} = conference_sup:cache_proc(),
     {ok, Srv} = wh_cache:fetch_local(Cache, {?MODULE, discovery, SearchId}),
+    ?LOG("found participant process as ~p", [Srv]),
+
     {ok, Call} = conf_participant:call(Srv),
+    put(callid, whapps_call:call_id(Call)),
+
     conf_participant:consume_call_events(Srv),
-    case whapps_call_command:b_channel_status(Call) of
-        {error, _} -> 
-            %% TODO: send discovery error
-            %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
-            ok;
-        {ok, Status} ->
-            SwitchHostname = wh_json:get_value(<<"Switch-Hostname">>, Status),    
-            case wh_json:get_value(<<"Switch-Hostname">>, JObj) of
-                SwitchHostname -> 
-                    io:format("JOIN EXISTING CONFERENCE ON ~p~n", [SwitchHostname]),
-                    conf_participant:join_local(Srv);
-                _Else -> 
-                    SwitchUrl = wh_json:get_value(<<"Switch-URL">>, Status),
-                    io:format("conf_participant:join_remote(~p, ~p)", [SwitchUrl, Srv])
-            end
+    {ok, Status} = whapps_call_command:b_channel_status(Call),        
+    SwitchHostname = wh_json:get_value(<<"Switch-Hostname">>, Status),
+    case wh_json:get_value(<<"Switch-Hostname">>, JObj) of
+        SwitchHostname -> 
+            ?LOG("running conference is on the same switch, joining on ~s", [SwitchHostname]),
+            conf_participant:join_local(Srv);
+        _Else -> 
+            ?LOG("running conference is on a different switch, bridging to ~s", [_Else]),
+            conf_participant:join_remote(Srv, JObj)
     end,
     ok.
 
@@ -272,6 +290,7 @@ validate_conference_id(undefined, Call, Loop) when Loop > 3 ->
     whapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
     {error, to_many_attempts};
 validate_conference_id(undefined, Call, Loop) ->
+    ?LOG("requesting conference id from caller"),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"conf-enter_conf_number">>, <<"1">>, Call) of
         {error, _}=E -> E;
         {ok, Digits} ->
@@ -281,6 +300,7 @@ validate_conference_id(undefined, Call, Loop) ->
                           ],
             case couch_mgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
                 {ok, [JObj]} -> 
+                    ?LOG("caller has entered a valid conference id, building object"),
                     {ok, create_record(wh_json:get_value(<<"doc">>, JObj), Digits)};
                 _Else ->
                     ?LOG("could not find conference number ~s: ~p", [Digits, _Else]),
@@ -291,7 +311,9 @@ validate_conference_id(undefined, Call, Loop) ->
 validate_conference_id(ConferenceId, Call, Loop) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, ConferenceId) of
-        {ok, JObj} -> {ok, JObj};
+        {ok, JObj} -> 
+            ?LOG("discovery request contained a valid conference id, building object"),
+            {ok, JObj};
         _Else ->
             ?LOG("could not find conference ~s: ~p", [ConferenceId, _Else]),
             validate_conference_id(undefined, Call, Loop)
@@ -301,8 +323,10 @@ validate_conference_id(ConferenceId, Call, Loop) ->
 -spec validate_conference_pin/3 :: (#conference{}, whapps_call:call(), pos_integer()) -> #conference{}.
 
 validate_conference_pin(#conference{join_as_moderator=true, moderator_pins=[]}=Conf, _) ->
+    ?LOG("moderator entry requires no pin"),
     {ok, Conf};
 validate_conference_pin(#conference{join_as_moderator=false, member_pins=[]}=Conf, _) ->
+    ?LOG("member entry requires no pin"),
     {ok, Conf};
 validate_conference_pin(Conference, Call) ->
     validate_conference_pin(Conference, Call, 1).
@@ -312,6 +336,7 @@ validate_conference_pin(_, Call, Loop) when Loop > 3->
     whapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
     {error, to_many_attempts};
 validate_conference_pin(#conference{join_as_moderator=true, moderator_pins=Pins}=Conf, Call, Loop) ->
+    ?LOG("requesting moderator pin from caller"),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"conf-enter_conf_pin">>, <<"1">>, Call) of
         {error, _}=E -> E;
         {ok, Digits} ->
@@ -326,6 +351,7 @@ validate_conference_pin(#conference{join_as_moderator=true, moderator_pins=Pins}
             end
     end;
 validate_conference_pin(#conference{join_as_moderator=false, member_pins=Pins}=Conf, Call, Loop) ->
+    ?LOG("requesting member pin from caller"),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"conf-enter_conf_pin">>, <<"1">>, Call) of
         {error, _}=E -> E;
         {ok, Digits} ->
@@ -340,6 +366,7 @@ validate_conference_pin(#conference{join_as_moderator=false, member_pins=Pins}=C
             end
     end;
 validate_conference_pin(#conference{member_pins=Member, moderator_pins=Moderator}=Conf, Call, Loop) ->
+    ?LOG("requesting conference pin from caller, which will be used to disambiguate member/moderator"),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"conf-enter_conf_pin">>, <<"1">>, Call) of
         {error, _}=E -> E;
         {ok, Digits} ->
@@ -361,37 +388,24 @@ validate_conference_pin(#conference{member_pins=Member, moderator_pins=Moderator
                                                                                              {error, term()}.
 negotiate_focus(undefined, _, _) ->
     {error, hungup};
-negotiate_focus(SwitchHostname, #conference{conference_doc=JObj}, Call) ->
+negotiate_focus(SwitchHostname, Conference, Call) ->
     AccountDb = whapps_call:account_db(Call),
+    JObj = whapps_conference:kvs_fetch(conference_doc, Conference),
     couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"focus">>, SwitchHostname, JObj)).
 
--spec create_record/2 :: (wh_json:json_object(), wh_json:json_object()) -> #conference{}.
+-spec create_record/2 :: (wh_json:json_object(), wh_json:json_object()) -> whapps_conference:conference().
 create_record(JObj, Digits) ->
-    Conf = #conference{},
+    Conference = whapps_conference:from_conference_doc(JObj),
     ModeratorNumbers = wh_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),
     MemberNumbers = wh_json:get_value([<<"member">>, <<"numbers">>], JObj, []),
-    Moderator = case {lists:member(Digits, MemberNumbers), lists:member(Digits, ModeratorNumbers)} of
-                    {true, false} -> false;
-                    {false, true} -> true;
-                    %% the conference number is ambiguous regarding member: either both have the same number
-                    %%   or they joined by the discovery event having the conference id
-                    _Else -> undefined
-                end,
-    #conference{id = wh_json:get_value(<<"_id">>, JObj, Conf#conference.id)
-                ,focus = wh_json:get_value(<<"focus">>, JObj, Conf#conference.focus)               
-                ,bridge_password = wh_json:get_value(<<"bridge_password">>, JObj, Conf#conference.bridge_password) 
-                ,bridge_username = wh_json:get_value(<<"bridge_username">>, JObj, Conf#conference.bridge_username) 
-                ,member_pins = wh_json:get_value([<<"member">>, <<"pins">>], JObj, Conf#conference.member_pins)
-                ,moderator_pins = wh_json:get_value([<<"moderator">>, <<"pins">>], JObj, Conf#conference.moderator_pins)
-                ,join_as_moderator = Moderator
-                ,member_join_muted = wh_json:is_true(<<"member_join_muted">>, JObj, Conf#conference.member_join_muted)
-                ,member_join_deaf = wh_json:is_true(<<"member_join_deaf">>, JObj, Conf#conference.member_join_deaf)
-                ,moderator_join_muted = wh_json:is_true(<<"moderator_join_muted">>, JObj, Conf#conference.moderator_join_muted) 
-                ,moderator_join_deaf = wh_json:is_true(<<"moderator_join_deaf">>, JObj, Conf#conference.moderator_join_deaf)
-                ,max_members = wh_json:get_integer_value(<<"max_members">>, JObj, Conf#conference.max_members)
-                ,require_moderator = wh_json:is_true(<<"require_moderator">>, JObj, Conf#conference.require_moderator)
-                ,wait_for_moderator = wh_json:is_true(<<"wait_for_moderator">>, JObj, Conf#conference.wait_for_moderator)
-                ,member_play_name = wh_json:is_true(<<"member_play_name">>, JObj, Conf#conference.member_play_name)
-                ,conference_doc = JObj
-               }.
-    
+    case {lists:member(Digits, MemberNumbers), lists:member(Digits, ModeratorNumbers)} of
+        {true, false} -> 
+            ?LOG("the digits used to find the conference where unambiguously a member"),
+            whapps_conference:set_moderator(false, Conference);
+        {false, true} -> 
+            ?LOG("the digits used to find the conference where unambiguously a moderator"),
+            whapps_conference:set_moderator(true, Conference);
+        %% the conference number is ambiguous regarding member: either both have the same number
+        %%   or they joined by the discovery event having the conference id
+        _Else -> Conference
+    end.

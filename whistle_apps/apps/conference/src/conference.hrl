@@ -24,8 +24,9 @@
                   ,undeaf = <<"/system_media/conf-undeaf">>
                  }).
 
--record(conference, {id = undefined
+-record(conference22, {id = undefined
                      ,focus = undefined
+                     ,controller_q = undefined
                      ,bridge_password = <<"\/\/|-|157L3_(0|\|Ph3R3|\|(3">>
                      ,bridge_username = <<"test">>
                      ,member_pins = []
