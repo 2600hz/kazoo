@@ -134,3 +134,9 @@ process, in case you need to make queries from the process's state.
 The ConfigList ++ [{queue_name, Name}, {server, pid()}] is passed as the second
 argument to the handler module(s)' functions (the first being the AMQP payload.
 
+
+** Other setup
+
+Add the whapp directory name to whistle_apps/rebar.config to make sure it gets
+compiled by default when running 'rebar compile' from either the root or
+whistle_apps directory.
