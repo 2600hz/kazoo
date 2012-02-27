@@ -281,7 +281,6 @@ create_presence_in(PresenceId, Status, State, JObj) ->
                          ,{"event_type", "presence"}
                          ,{"alt_event_type", "dialog"}
                          ,{"presence-call-direction", "outbound"}
-                         ,{"event_count", "0"}
                         ]
                ,V =/= undefined
     ].
