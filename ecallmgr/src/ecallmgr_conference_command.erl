@@ -17,7 +17,7 @@ exec(Focus, ConferenceId, JObj) ->
     App = wh_json:get_value(<<"Application-Name">>, JObj),
     case get_conf_command(App, Focus, ConferenceId, JObj) of
         {'error', Msg}=E ->
-            _ = ecallmgr_util:fs_log(Focus, "whistle error while building command ~s: ~s", [App, Msg]),
+            Focus =/= undefined andalso ecallmgr_util:fs_log(Focus, "whistle error while building command ~s: ~s", [App, Msg]),
             send_response(App, E, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {noop, Conference} ->
             send_response(App, {noop, Conference}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
@@ -54,6 +54,8 @@ get_conf_command(<<"kick">>, _Focus, _ConferenceId, JObj) ->
         true ->
             {<<"hup">>, wh_json:get_binary_value(<<"Participant">>, JObj, <<"last">>)}
     end;
+get_conf_command(<<"participants">>, undefined, ConferenceId, _) ->
+    {error, <<"Non-Existant ID ", ConferenceId/binary>>};
 get_conf_command(<<"participants">>, Focus, ConferenceId, JObj) ->
     case wapi_conference:participants_req_v(JObj) of
         false ->
