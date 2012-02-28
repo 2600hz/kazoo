@@ -23,7 +23,7 @@
          ,halt/2, content_type_matches/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -type cowboy_multipart_response() :: {{'headers', cowboy_http:headers()} |
                                       {'data', binary()} |
@@ -504,7 +504,7 @@ execute_request(Req, #cb_context{req_nouns=Nouns, req_verb=Verb}=Context0) ->
 
     case Context1 of
         #cb_context{resp_status=success} ->
-            ?LOG("excution finished"),
+            ?LOG("execution finished"),
             execute_request_results(Req, Context1);
         #cb_context{} ->
             ?MODULE:halt(Req, Context1);

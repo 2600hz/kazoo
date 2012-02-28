@@ -132,7 +132,6 @@ resource_exists(_) -> true.
 content_types_provided(_) ->
     [].
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -174,7 +173,7 @@ charsets_provided(_) ->
 %% @doc
 %% If you provide alternative encodings, return a list of encodings and optional
 %% quality value:
-%% [<<"gzip;q=1.0">>, <<"identity">>;q=0.5">>, <<"*;q=0">>]
+%% [<<"gzip;q=1.0">>, <<"identity;q=0.5">>, <<"*;q=0">>]
 %% @end
 %%--------------------------------------------------------------------
 -spec encodings_provided/1 :: (path_tokens()) -> [ne_binary(),...] | [].

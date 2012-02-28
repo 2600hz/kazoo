@@ -59,11 +59,11 @@
 -export([resource_publish/1, resource_publish/2, resource_publish/3]).
 
 -export([conference_exchange/0]).
--export([new_conference_queue/1, new_conference_queue/2]).
+-export([new_conference_queue/0, new_conference_queue/1]).
 -export([delete_conference_queue/1]).
 -export([bind_q_to_conference/2, bind_q_to_conference/3]).
 -export([unbind_q_from_conference/2, unbind_q_from_conference/3]).
--export([conference_publish/2, conference_publish/3, conference_publish/4]).
+-export([conference_publish/2, conference_publish/3, conference_publish/4, conference_publish/5]).
 
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 
@@ -264,35 +264,39 @@ offnet_resource_publish(Payload, ContentType) ->
 monitor_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_MONITOR, RoutingKey, Payload, ContentType).
 
--spec conference_publish/2 :: (amqp_payload(), Queue) -> 'ok' when
-      Queue :: 'discovery' | 'events' | 'service'.
--spec conference_publish/3 :: (Payload, Queue, ConfId) -> 'ok' when
-      Payload :: amqp_payload(),
-      Queue :: 'events' | 'service',
-      ConfId :: ne_binary().
--spec conference_publish/4 :: (Payload, Queue, ConfId, Options) -> 'ok' when
-      Payload :: amqp_payload(),
-      Queue :: 'discovery' | 'events' | 'service',
-      ConfId :: 'undefined' | ne_binary(),
-      Options :: proplist().
+-type conf_routing_type() :: 'discovery' | 'event' | 'command'.
+-spec conference_publish/2 :: (amqp_payload(), conf_routing_type()) -> 'ok'.
+-spec conference_publish/3 :: (amqp_payload(), conf_routing_type(), undefined | ne_binary()) -> 'ok'.
+-spec conference_publish/4 :: (amqp_payload(), conf_routing_type(), undefined | ne_binary(), proplist()) -> 'ok'.
+-spec conference_publish/5 :: (amqp_payload(), conf_routing_type(), undefined | ne_binary(), proplist(), ne_binary()) -> 'ok'.
+
 conference_publish(Payload, discovery) ->
-    conference_publish(Payload, discovery, undefined, []);
-conference_publish(Payload, events) ->
-    conference_publish(Payload, events, <<"*">>);
-conference_publish(Payload, service) ->
-    conference_publish(Payload, service, <<"*">>).
+    conference_publish(Payload, discovery, <<"*">>);
+conference_publish(Payload, event) ->
+    conference_publish(Payload, event, <<"*">>);
+conference_publish(Payload, command) ->
+    conference_publish(Payload, command, <<"*">>).
 
-conference_publish(Payload, events, ConfId) ->
-    conference_publish(Payload, events, ConfId, []);
-conference_publish(Payload, service, ConfId) ->
-    conference_publish(Payload, events, ConfId, []).
+conference_publish(Payload, discovery, ConfId) ->
+    conference_publish(Payload, discovery, ConfId, []);
+conference_publish(Payload, event, ConfId) ->
+    conference_publish(Payload, event, ConfId, []);
+conference_publish(Payload, command, ConfId) ->
+    conference_publish(Payload, command, ConfId, []).
 
-conference_publish(Payload, discovery, _, Options) ->
-    basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONF_DISCOVERY_REQ, Payload, ?DEFAULT_CONTENT_TYPE, Options);
-conference_publish(Payload, events, ConfId, Options) ->
-    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, Payload, ?DEFAULT_CONTENT_TYPE, Options);
-conference_publish(Payload, service, ConfId, Options) ->
-    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Payload, ?DEFAULT_CONTENT_TYPE, Options).
+conference_publish(Payload, discovery, ConfId, Options) ->
+    conference_publish(Payload, discovery, ConfId, Options, ?DEFAULT_CONTENT_TYPE);
+conference_publish(Payload, event, ConfId, Options) ->
+    conference_publish(Payload, event, ConfId, Options, ?DEFAULT_CONTENT_TYPE);
+conference_publish(Payload, command, ConfId, Options) ->
+    conference_publish(Payload, command, ConfId, Options, ?DEFAULT_CONTENT_TYPE).
+
+conference_publish(Payload, discovery, _, Options, ContentType) ->
+    basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONFERENCE_DISCOVERY, Payload, ContentType, Options);
+conference_publish(Payload, event, ConfId, Options, ContentType) ->
+    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary>>, Payload, ContentType, Options);
+conference_publish(Payload, command, ConfId, Options, ContentType) ->
+    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, Payload, ContentType, Options).
 
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
@@ -497,17 +501,12 @@ new_monitor_queue() ->
 new_monitor_queue(Queue) ->
     new_queue(Queue, [{exclusive, false}, {auto_delete, true}]).
 
--spec new_conference_queue/1 :: (ne_binary() | 'discovery') -> ne_binary() | {'error', 'amqp_error'}.
--spec new_conference_queue/2 :: (ne_binary() | 'discovery', proplist()) -> ne_binary() | {'error', 'amqp_error'}.
-new_conference_queue(discovery) ->
-    new_queue(?CONF_DISCOVERY_QUEUE_NAME, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
-new_conference_queue(ConfId) ->
-    new_queue(<<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, [{exclusive, true}, {auto_delete, true}, {nowait, false}]).
-
-new_conference_queue(discovery, Options) ->
-    new_queue(?CONF_DISCOVERY_QUEUE_NAME, Options);
-new_conference_queue(ConfId, Options) ->
-    new_queue(<<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Options).
+-spec new_conference_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_conference_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
+new_conference_queue() ->
+    new_conference_queue(<<>>).
+new_conference_queue(Queue) ->
+    new_queue(Queue, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 %% Declare a queue and returns the queue Name
 -spec new_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
@@ -674,22 +673,22 @@ bind_q_to_configuration(Queue, Routing) ->
 bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
--type conf_routing_type() :: 'discovery' | 'service' | 'events'.
 -spec bind_q_to_conference/2 :: (ne_binary(), conf_routing_type()) -> 'ok' | {'error', atom()}.
 -spec bind_q_to_conference/3 :: (ne_binary(), conf_routing_type(), 'undefined' | ne_binary()) -> 'ok' | {'error', atom()}.
+
 bind_q_to_conference(Queue, discovery) ->
     bind_q_to_conference(Queue, discovery, undefined);
-bind_q_to_conference(Queue, service) ->
-    bind_q_to_conference(Queue, service, <<"*">>);
-bind_q_to_conference(Queue, events) ->
-    bind_q_to_conference(Queue, events, <<"*">>).
+bind_q_to_conference(Queue, command) ->
+    bind_q_to_conference(Queue, command, <<"*">>);
+bind_q_to_conference(Queue, event) ->
+    bind_q_to_conference(Queue, event, <<"*">>).
 
 bind_q_to_conference(Queue, discovery, _) ->
-    bind_q_to_exchange(Queue, ?KEY_CONF_DISCOVERY_REQ, ?EXCHANGE_CONFERENCE, [{nowait, false}]);
-bind_q_to_conference(Queue, service, ConfId) ->
-    bind_q_to_exchange(Queue, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE, [{nowait, false}]);
-bind_q_to_conference(Queue, events, ConfId) ->
-    bind_q_to_exchange(Queue, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE, [{nowait, false}]).
+    bind_q_to_exchange(Queue, ?KEY_CONFERENCE_DISCOVERY, ?EXCHANGE_CONFERENCE);
+bind_q_to_conference(Queue, event, ConfId) ->
+    bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
+bind_q_to_conference(Queue, command, ConfId) ->
+    bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
 
 -spec bind_q_to_exchange/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
 -spec bind_q_to_exchange/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> 'ok' | {'error', atom()}.
@@ -737,21 +736,23 @@ unbind_q_from_callevt(Queue, CallID, cdr) ->
 unbind_q_from_callevt(Queue, Routing, other) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
+
 -spec unbind_q_from_conference/2 :: (ne_binary(), conf_routing_type()) -> 'ok' | {'error', atom()}.
 -spec unbind_q_from_conference/3 :: (ne_binary(), conf_routing_type(), 'undefined' | ne_binary()) -> 'ok' | {'error', atom()}.
+
 unbind_q_from_conference(Queue, discovery) ->
     unbind_q_from_conference(Queue, discovery, undefined);
-unbind_q_from_conference(Queue, service) ->
-    unbind_q_from_conference(Queue, service, <<"*">>);
-unbind_q_from_conference(Queue, events) ->
-    unbind_q_from_conference(Queue, events, <<"*">>).
+unbind_q_from_conference(Queue, command) ->
+    unbind_q_from_conference(Queue, command, <<"*">>);
+unbind_q_from_conference(Queue, event) ->
+    unbind_q_from_conference(Queue, event, <<"*">>).
 
 unbind_q_from_conference(Queue, discovery, _) ->
-    unbind_q_from_exchange(Queue, ?KEY_CONF_DISCOVERY_REQ, ?EXCHANGE_CONFERENCE);
-unbind_q_from_conference(Queue, service, ConfId) ->
-    unbind_q_from_exchange(Queue, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
-unbind_q_from_conference(Queue, events, ConfId) ->
-    unbind_q_from_exchange(Queue, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
+    unbind_q_from_exchange(Queue, ?KEY_CONFERENCE_DISCOVERY, ?EXCHANGE_CONFERENCE);
+unbind_q_from_conference(Queue, event, ConfId) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
+unbind_q_from_conference(Queue, command, ConfId) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
 
 unbind_q_from_callctl(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_CALLCTL).

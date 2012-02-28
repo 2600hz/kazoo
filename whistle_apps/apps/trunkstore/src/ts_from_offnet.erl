@@ -97,25 +97,20 @@ wait_for_bridge(State) ->
 
 wait_for_cdr(State) ->
     case ts_callflow:wait_for_cdr(State) of
-        {cdr, aleg, CDR, State1} ->
-            ALeg = ts_callflow:get_aleg_id(State1),
+        {cdr, aleg, _CDR, State1} ->
             AcctID = ts_callflow:get_account_id(State1),
             Cost = ts_callflow:get_call_cost(State1),
 
             ?LOG("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
-            _ = ts_cdr:store(wh_json:set_value(<<"A-Leg">>, ALeg, CDR)),
-
             wait_for_other_leg(State1, bleg);
-        {cdr, bleg, CDR, State2} ->
+        {cdr, bleg, _CDR, State2} ->
             BLeg = ts_callflow:get_bleg_id(State2),
             AcctID = ts_callflow:get_account_id(State2),
             Cost = ts_callflow:get_call_cost(State2),
 
             ?LOG("b-leg CDR for ~s costs ~p", [AcctID, Cost]),
             ?LOG(BLeg, "b-leg CDR for ~s costs ~p", [AcctID, Cost]),
-
-            _ = ts_cdr:store(wh_json:set_value(<<"B-Leg">>, BLeg, CDR)),
 
             wait_for_other_leg(State2, aleg);
         {timeout, State3} ->
@@ -130,19 +125,14 @@ wait_for_other_leg(State, aleg) ->
 wait_for_other_leg(State, bleg) ->
     wait_for_other_leg(State, bleg, ts_callflow:wait_for_cdr(State)).
 
-wait_for_other_leg(_State, aleg, {cdr, aleg, CDR, State1}) ->
-    ALeg = ts_callflow:get_aleg_id(State1),
-    _ = ts_cdr:store(wh_json:set_value(<<"A-Leg">>, ALeg, CDR)),
-    ts_callflow:finish_leg(State1, ALeg);
-wait_for_other_leg(_State, bleg, {cdr, bleg, CDR, State1}) ->
-    BLeg = ts_callflow:get_bleg_id(State1),
-    _ = ts_cdr:store(wh_json:set_value(<<"B-Leg">>, BLeg, CDR)),
-    ts_callflow:finish_leg(State1, BLeg);
+wait_for_other_leg(_State, aleg, {cdr, aleg, _CDR, State1}) ->
+    ts_callflow:finish_leg(State1, ts_callflow:get_aleg_id(State1));
+wait_for_other_leg(_State, bleg, {cdr, bleg, _CDR, State1}) ->
+    ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1));
 wait_for_other_leg(_State, Leg, {timeout, State1}) ->
     ?LOG("Timed out waiting for ~s CDR, cleaning up", [Leg]),
 
-    ALeg = ts_callflow:get_bleg_id(State1),
-    ts_callflow:finish_leg(State1, ALeg).
+    ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1)).
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State), ts_callflow:get_failover(State)} of

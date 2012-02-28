@@ -464,15 +464,13 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
 
 populate_new_account(Props, _) ->
     Context = props:get_value(?WH_ACCOUNTS_DB, Props),
-    Payload = [undefined
-               ,Context
-              ],
+    Payload = [Context],
     case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, Payload) of
-        [_, #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId, doc=JObj}=Context1 | _] ->
+        #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId, doc=JObj}=Context1 ->
             Results = populate_new_account(proplists:delete(?WH_ACCOUNTS_DB, Props), AccountDb, wh_json:new()),
             notfy_new_account(JObj),
             Context1#cb_context{doc=wh_json:set_value(<<"account_id">>, AccountId, Results)};
-        [_, ErrorContext | _] ->
+        ErrorContext ->
             AccountId = wh_json:get_value(<<"_id">>, Context#cb_context.req_data),
             couch_mgr:db_delete(wh_util:format_account_id(AccountId, encoded)),
             ErrorContext#cb_context{account_id=undefined}

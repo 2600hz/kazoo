@@ -180,32 +180,31 @@ handle_call(_Msg, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(#alert{req_id=undefined}=Alert, State) ->
-    gen_server:cast(?MODULE, Alert#alert{req_id=?LOG_SYSTEM_ID}),
-    {noreply, State};
+    handle_cast(Alert#alert{req_id=?LOG_SYSTEM_ID}, State);
 handle_cast(#alert{req_id=ReqId, level=Level, section=Section, module=Module, line=Line, pid=Pid, msg=Msg, args=Args}=Alert, State) ->
-    _ = try
-            Format = "|~s|~s|~s|~p:~b (~w) " ++ Msg,
-            Str = io_lib:format(Format, [ReqId, Level, Section, Module, Line, Pid | lists:keydelete(extra_data, 1, Args)]),
-            syslog:log(Level, binary_to_list(list_to_binary(Str))),
-            case lists:member(Level, ?LOG_PUBLISH_LEVELS) of
-                false -> ok;
-                true -> gen_server:cast(?MODULE, {publish, Alert})
-            end
-        catch
-            A:B ->
-                ST = erlang:get_stacktrace(),
-                syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) logger error: ~p: ~p"
-                                                ,[?MODULE, ?LINE, self(), A, B])),
-                syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) type: ~p"
-                                                ,[?MODULE, ?LINE, self(), Level])),
-                syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) format: ~p"
-                                                ,[?MODULE, ?LINE, self(), Msg])),
-                syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) data: ~p"
-                                                ,[?MODULE, ?LINE, self(), Args])),
-                [syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) st line: ~p"
-                                                 ,[?MODULE, ?LINE, self(), STLine])) || STLine <- ST]
-        end,
-    {noreply, State};
+    try
+        Format = "|~s|~s|~s|~p:~b (~w) " ++ Msg,
+        Str = io_lib:format(Format, [ReqId, Level, Section, Module, Line, Pid | lists:keydelete(extra_data, 1, Args)]),
+        syslog:log(Level, binary_to_list(list_to_binary(Str))),
+        case lists:member(Level, ?LOG_PUBLISH_LEVELS) of
+            false -> ok;
+            true -> gen_server:cast(?MODULE, {publish, Alert})
+        end
+    catch
+        A:B ->
+            ST = erlang:get_stacktrace(),
+            syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) logger error: ~p: ~p"
+                                            ,[?MODULE, ?LINE, self(), A, B])),
+            syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) type: ~p"
+                                            ,[?MODULE, ?LINE, self(), Level])),
+            syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) format: ~p"
+                                            ,[?MODULE, ?LINE, self(), Msg])),
+            syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) data: ~p"
+                                            ,[?MODULE, ?LINE, self(), Args])),
+            [syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) st line: ~p"
+                                             ,[?MODULE, ?LINE, self(), STLine])) || STLine <- ST]
+    end,
+    {noreply, State, hibernate};
 handle_cast({publish, #alert{req_id=ReqId, level=Level, section=Section, module=Module, line=Line, msg=Msg, args=Args}}, State) ->
     _ = try
             Data = case lists:keyfind(extra_data, 1, Args) of {extra_data, D} -> D; _Else -> [] end,
