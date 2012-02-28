@@ -190,4 +190,4 @@ send_command(Command, Conference) ->
     Prop = Command ++ [{<<"Conference-ID">>, ConferenceId}
                        | wh_api:default_headers(Q, <<"conference">>, <<"command">>, AppName, AppVersion)
                       ],
-    wapi_dialplan:publish_command(ConferenceId, Prop).
+    wapi_conference:publish_command(ConferenceId, Prop).

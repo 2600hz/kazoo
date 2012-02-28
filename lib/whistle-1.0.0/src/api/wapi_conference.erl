@@ -54,6 +54,7 @@
 -export([publish_participant_volume_in/2, publish_participant_volume_in/3]).
 -export([publish_participant_volume_out/2, publish_participant_volume_out/3]).
 -export([publish_error/2, publish_error/3]).
+-export([publish_command/2, publish_command/3]).
 
 -include("../wh_api.hrl").
 
@@ -282,6 +283,23 @@
                                     ,{<<"Event-Name">>, <<"error">>}
                                    ]).
 -define(CONFERENCE_ERROR_TYPES, []).
+
+-define(APPLICTION_MAP, [{<<"deaf_participant">>, ?DEAF_PARTICIPANT_VALUES, fun ?MODULE:deaf_participant/1}
+                         ,{<<"participant_energy">>, ?PARTICIPANT_ENERGY_VALUES, fun ?MODULE:participant_energy/1}
+                         ,{<<"kick">>, ?KICK_VALUES, fun ?MODULE:kick/1}
+                         ,{<<"participants">>, ?PARTICIPANTS_REQ_VALUES, fun ?MODULE:participants_req/1}
+                         ,{<<"lock">>, ?LOCK_VALUES, fun ?MODULE:lock/1}
+                         ,{<<"mute_participant">>, ?MUTE_PARTICIPANT_VALUES, fun ?MODULE:mute_participant/1}
+                         ,{<<"play">>, ?PLAY_VALUES, fun ?MODULE:play/1}
+                         ,{<<"record">>, ?RECORD_VALUES, fun ?MODULE:record/1}
+                         ,{<<"relate_participants">>, ?RELATE_PARTICIPANTS_VALUES, fun ?MODULE:relate_participants/1}
+                         ,{<<"stop_play">>, ?STOP_PLAY_VALUES, fun ?MODULE:stop_play/1}
+                         ,{<<"undeaf_participant">>, ?UNDEAF_PARTICIPANT_VALUES, fun ?MODULE:undeaf_participant/1}
+                         ,{<<"unlock">>, ?UNLOCK_VALUES, fun ?MODULE:unlock/1}
+                         ,{<<"unmute_participant">>, ?UNMUTE_PARTICIPANT_VALUES, fun ?MODULE:unmute_participant/1}
+                         ,{<<"participant_volume_in">>, ?PARTICIPANT_VOLUME_IN_VALUES, fun ?MODULE:participant_volume_in/1}
+                         ,{<<"participant_volume_out">>, ?PARTICIPANT_VOLUME_OUT_VALUES, fun ?MODULE:participant_volume_out/1}
+                        ]).
 
 %%--------------------------------------------------------------------
 %% @doc 
@@ -1033,3 +1051,23 @@ publish_error(Queue, JObj) ->
 publish_error(Queue, Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?CONFERENCE_ERROR_VALUES, fun ?MODULE:conference_error/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+
+
+%%--------------------------------------------------------------------
+%% @doc 
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_command/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_command/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_command(ConferenceId, JObj) ->
+    publish_command(ConferenceId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_command(ConferenceId, Req, ContentType) ->
+    App = props:get_value(<<"Application-Name">>, Req),
+    case lists:keyfind(App, 1, ?APPLICTION_MAP) of
+        false -> throw({invalid_conference_command, Req});
+        {_, Values, Fun} ->
+            {ok, Payload} = wh_api:prepare_api_payload(Req, Values, Fun),
+            amqp_util:conference_publish(Payload, command, ConferenceId, [], ContentType)
+    end.
