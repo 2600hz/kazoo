@@ -18,6 +18,8 @@
 
 -export([id/1, set_id/2]).
 -export([focus/1, set_focus/2]).
+-export([application_name/1, set_application_name/2]).
+-export([application_version/1, set_application_version/2]).
 -export([controller_queue/1, set_controller_queue/2]).
 -export([bridge_username/1, set_bridge_username/2]).
 -export([bridge_password/1, set_bridge_password/2]).
@@ -72,6 +74,8 @@
                             ,wait_for_moderator = false :: boolean()                                      %% can members wait for a moderator
                             ,play_name_on_join = false :: boolean()                                       %% should participants have their name played on join
                             ,conference_doc = undefined :: undefined | wh_json:json_object()              %% the complete conference doc used to create the record (when and if)
+                            ,app_name = <<"whapps_conference">> :: ne_binary()                            %% The application name used during whapps_conference_command
+                            ,app_version = <<"1.0.0">> :: ne_binary()                                     %% The application version used during whapps_conference_command
                             ,kvs = orddict:new() :: orddict:orddict()                                     %% allows conferences to set values that propogate to children
                            }).
 
@@ -158,8 +162,8 @@ from_conference_doc(JObj) ->
     from_conference_doc(JObj, #whapps_conference{}).
 
 from_conference_doc(JObj, Conference) ->
-    Moderator = wh_json:get_value(<<"moderator">>, JObj),
     Member = wh_json:get_value(<<"member">>, JObj),
+    Moderator = wh_json:get_value(<<"moderator">>, JObj),
     Conference#whapps_conference{id = wh_json:get_ne_value(<<"_id">>, JObj, id(Conference))
                                  ,focus = wh_json:get_ne_value(<<"focus">>, JObj, focus(Conference))
                                  ,bridge_username = wh_json:get_ne_value(<<"bridge_username">>, JObj, bridge_username(Conference))
@@ -188,6 +192,22 @@ id(#whapps_conference{id=Id}) ->
 -spec set_id/2 :: (ne_binary(), conference()) -> conference().
 set_id(Id, Conference) when is_binary(Id) ->
     Conference#whapps_conference{id=Id}.
+
+-spec application_name/1 :: (conference()) -> ne_binary().
+application_name(#whapps_conference{app_name=AppName}) ->
+    AppName.
+
+-spec set_application_name/2 :: (ne_binary(), conference()) -> conference().
+set_application_name(AppName, #whapps_conference{}=Conference) when is_binary(AppName) ->
+    Conference#whapps_conference{app_name=AppName}.
+
+-spec application_version/1 :: (conference()) -> ne_binary().
+application_version(#whapps_conference{app_version=AppVersion}) ->
+    AppVersion.
+
+-spec set_application_version/2 :: (ne_binary(), conference()) -> conference().
+set_application_version(AppVersion, #whapps_conference{}=Conference) when is_binary(AppVersion) ->
+    Conference#whapps_conference{app_version=AppVersion}.
 
 -spec focus/1 :: (conference()) -> undefined | ne_binary().
 focus(#whapps_conference{focus=Focus}) ->
