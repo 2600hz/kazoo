@@ -96,8 +96,9 @@ handle_discovery_req(JObj, Props) ->
                                      whapps_conference:moderator(false, C)
                              end
                      end
-                    ,fun(C) -> whapps_conference:controller_queue(props:get_value(queue, Props), C) end
-                    ,fun(C) -> whapps_conference:controller_queue(props:get_value(queue, Props), C) end
+                    ,fun(C) -> whapps_conference:set_controller_queue(props:get_value(queue, Props), C) end
+                    ,fun(C) -> whapps_conference:set_application_version(<<"2.0.0">>, C) end
+                    ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
                     ,fun(_) -> 
                              {ok, C} = validate_conference_id(wh_json:get_value(<<"Conference-ID">>, JObj), Call),
                              C
@@ -112,7 +113,7 @@ handle_discovery_req(JObj, Props) ->
         %% !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         %%   TODO: Q MUST be a targeted queue...
         %% !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        whapps_conference:search(SearchId, Conference)
+        whapps_conference_command:search(SearchId, Conference)
     catch
         _:_ ->
             %% TODO: send discovery error
@@ -145,7 +146,7 @@ handle_search_error(JObj, _Props) ->
             conf_participant:join_local(Srv);
         {error, conflict} ->
             ?LOG("conference is not currently running but our update was in conflict, searching again"),
-            whapps_conference:search(SearchId, Conference);
+            whapps_conference_command:search(SearchId, Conference);
         {error, _R} ->
             ?LOG("conference is not currently running but our update failed: ~p", [_R]),
             %% TODO: send discovery error
@@ -278,9 +279,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec validate_conference_id/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> {ok, #conference{}} |
+-spec validate_conference_id/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> {ok, whapps_conference:conference()} |
                                                                                      {error, term()}.
--spec validate_conference_id/3 :: ('undefined' | ne_binary(), whapps_call:call(), pos_integer()) -> {ok, #conference{}} |
+-spec validate_conference_id/3 :: ('undefined' | ne_binary(), whapps_call:call(), pos_integer()) -> {ok, whapps_conference:conference()} |
                                                                                                     {error, term()}.
 validate_conference_id(ConferenceId, Call) ->
     validate_conference_id(ConferenceId, Call, 1).
@@ -301,7 +302,7 @@ validate_conference_id(undefined, Call, Loop) ->
             case couch_mgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
                 {ok, [JObj]} -> 
                     ?LOG("caller has entered a valid conference id, building object"),
-                    {ok, create_record(wh_json:get_value(<<"doc">>, JObj), Digits)};
+                    {ok, create_conference(wh_json:get_value(<<"doc">>, JObj), Digits)};
                 _Else ->
                     ?LOG("could not find conference number ~s: ~p", [Digits, _Else]),
                     whapps_call_command:b_prompt(<<"conf-bad_conf">>, Call),
@@ -313,88 +314,108 @@ validate_conference_id(ConferenceId, Call, Loop) ->
     case couch_mgr:open_doc(AccountDb, ConferenceId) of
         {ok, JObj} -> 
             ?LOG("discovery request contained a valid conference id, building object"),
-            {ok, JObj};
+            {ok, create_conference(JObj, <<"none">>)};
         _Else ->
             ?LOG("could not find conference ~s: ~p", [ConferenceId, _Else]),
             validate_conference_id(undefined, Call, Loop)
     end.
 
--spec validate_conference_pin/2 :: (#conference{}, whapps_call:call()) -> #conference{}.
--spec validate_conference_pin/3 :: (#conference{}, whapps_call:call(), pos_integer()) -> #conference{}.
+-spec validate_conference_pin/2 :: (whapps_conference:conference(), whapps_call:call()) -> {ok, whapps_conference:conference()} |
+                                                                                           {error, term()}.
+-spec validate_conference_pin/4 :: (undefined | boolean(), whapps_conference:conference(), whapps_call:call(), pos_integer()) 
+                                   -> {ok, whapps_conference:conference()} |
+                                      {error, term()}.
 
-validate_conference_pin(#conference{join_as_moderator=true, moderator_pins=[]}=Conf, _) ->
-    ?LOG("moderator entry requires no pin"),
-    {ok, Conf};
-validate_conference_pin(#conference{join_as_moderator=false, member_pins=[]}=Conf, _) ->
-    ?LOG("member entry requires no pin"),
-    {ok, Conf};
 validate_conference_pin(Conference, Call) ->
-    validate_conference_pin(Conference, Call, 1).
+    case whapps_conference:moderator(Conference) of
+        true ->
+            case whapps_conference:moderator_pins(Conference) of
+                [] -> 
+                    ?LOG("moderator entry requires no pin"),
+                    {ok, Conference};
+                _Else -> 
+                    validate_conference_pin(true, Conference, Call, 1)
+            end;
+         false ->
+            case whapps_conference:member_pins(Conference) of
+                [] -> 
+                    ?LOG("member entry requires no pin"),
+                    {ok, Conference};
+                _Else -> 
+                    validate_conference_pin(false, Conference, Call, 1)
+            end;
+        _Else ->
+            validate_conference_pin(undefined, Conference, Call, 1)            
+    end.
 
-validate_conference_pin(_, Call, Loop) when Loop > 3->
+validate_conference_pin(_, _, Call, Loop) when Loop > 3->
     ?LOG_END("caller has failed to provide a valid conference pin to many times"),    
     whapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
     {error, to_many_attempts};
-validate_conference_pin(#conference{join_as_moderator=true, moderator_pins=Pins}=Conf, Call, Loop) ->
+validate_conference_pin(true, Conference, Call, Loop) ->
     ?LOG("requesting moderator pin from caller"),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"conf-enter_conf_pin">>, <<"1">>, Call) of
         {error, _}=E -> E;
         {ok, Digits} ->
+            Pins = whapps_conference:moderator_pins(Conference),
             case lists:member(Digits, Pins) of
                 true ->            
                     ?LOG("caller entered a valid moderator pin"),
-                    {ok, Conf};
+                    {ok, Conference};
                 false ->   
                     ?LOG("caller entered an invalid pin"),
                     whapps_call_command:b_prompt(<<"conf-bad_pin">>, Call),
-                    validate_conference_pin(Conf, Call, Loop + 1)
+                    validate_conference_pin(true, Conference, Call, Loop + 1)
             end
     end;
-validate_conference_pin(#conference{join_as_moderator=false, member_pins=Pins}=Conf, Call, Loop) ->
+validate_conference_pin(false, Conference, Call, Loop) ->
     ?LOG("requesting member pin from caller"),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"conf-enter_conf_pin">>, <<"1">>, Call) of
         {error, _}=E -> E;
         {ok, Digits} ->
+            Pins = whapps_conference:member_pins(Conference),
             case lists:member(Digits, Pins) of
                 true ->            
                     ?LOG("caller entered a valid member pin"),
-                    {ok, Conf};
+                    {ok, Conference};
                 false ->   
                     ?LOG("caller entered an invalid pin"),
                     whapps_call_command:b_prompt(<<"conf-bad_pin">>, Call),
-                    validate_conference_pin(Conf, Call, Loop + 1)
+                    validate_conference_pin(false, Conference, Call, Loop + 1)
             end
     end;
-validate_conference_pin(#conference{member_pins=Member, moderator_pins=Moderator}=Conf, Call, Loop) ->
+validate_conference_pin(_, Conference, Call, Loop) ->
     ?LOG("requesting conference pin from caller, which will be used to disambiguate member/moderator"),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"conf-enter_conf_pin">>, <<"1">>, Call) of
         {error, _}=E -> E;
         {ok, Digits} ->
-            case {lists:member(Digits, Member), lists:member(Digits, Moderator)} of
+            MemberPins = whapps_conference:member_pins(Conference),
+            ModeratorPins = whapps_conference:moderator_pins(Conference),
+            case {lists:member(Digits, MemberPins), lists:member(Digits, ModeratorPins)} of
                 {true, _} ->
                     ?LOG("caller entered a pin belonging to a member"),
-                    {ok, Conf#conference{join_as_moderator=false}};
+                    {ok, whapps_conference:set_moderator(false, Conference)};
                 {false, true} ->
                     ?LOG("caller entered a pin belonging to a moderator"),
-                    {ok, Conf#conference{join_as_moderator=true}};
+                    {ok, whapps_conference:set_moderator(true, Conference)};
                 _Else ->
                     ?LOG("caller entered an invalid pin"),
                     whapps_call_command:b_prompt(<<"conf-bad_pin">>, Call),
-                    validate_conference_pin(Conf, Call, Loop + 1)
+                    validate_conference_pin(undefined, Conference, Call, Loop + 1)
             end
     end.
 
--spec negotiate_focus/3 :: ('undefined' | ne_binary(), #conference{}, whapps_call:call()) -> {ok, wh_json:object()} |
-                                                                                             {error, term()}.
+-spec negotiate_focus/3 :: ('undefined' | ne_binary(), whapps_conference:conference(), whapps_call:call()) -> {ok, wh_json:object()} |
+                                                                                                              {error, term()}.
 negotiate_focus(undefined, _, _) ->
     {error, hungup};
 negotiate_focus(SwitchHostname, Conference, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    JObj = whapps_conference:kvs_fetch(conference_doc, Conference),
+    JObj = whapps_conference:conference_doc(Conference),
     couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"focus">>, SwitchHostname, JObj)).
 
--spec create_record/2 :: (wh_json:json_object(), wh_json:json_object()) -> whapps_conference:conference().
-create_record(JObj, Digits) ->
+-spec create_conference/2 :: (wh_json:json_object(), wh_json:json_object()) -> whapps_conference:conference().
+create_conference(JObj, Digits) ->
     Conference = whapps_conference:from_conference_doc(JObj),
     ModeratorNumbers = wh_json:get_value([<<"moderator">>, <<"numbers">>], JObj, []),
     MemberNumbers = wh_json:get_value([<<"member">>, <<"numbers">>], JObj, []),

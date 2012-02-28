@@ -63,7 +63,7 @@
                       ,call_event_consumers = []
                       ,self = self()
                       ,in_conference = false
-                      ,conference = #conference{}
+                      ,conference = whapps_conference:new()
                       ,discovery_event = wh_json:new()
                      }).
 
@@ -90,11 +90,11 @@ start_link(Call) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Call]).
 
--spec conference/1 :: (pid()) -> {ok, #conference{}}.
+-spec conference/1 :: (pid()) -> {ok, whapps_conference:conference()}.
 conference(Srv) ->
     gen_server:call(Srv, {get_conference}, 500).
 
--spec set_conference/2 :: (#conference{}, pid()) -> 'ok'.
+-spec set_conference/2 :: (whapps_conference:conference(), pid()) -> 'ok'.
 set_conference(Conference, Srv) ->
     gen_server:cast(Srv, {set_conference, Conference}).
 
@@ -282,21 +282,39 @@ handle_cast({add_consumer, Consumer}, #participant{call_event_consumers=Consumer
 handle_cast({remove_consumer, Consumer}, #participant{call_event_consumers=Consumers}=Participant) ->
     ?LOG("removing call event consumer ~p", [Consumer]),
     {noreply, Participant#participant{call_event_consumers=lists:filter(fun(C) -> C =/= Consumer end, Consumers)}};
-handle_cast({set_conference, #conference{id=ConferenceId}=Conference}, #participant{call=Call}=Participant) ->
-    ?LOG("received conference record for conference ~s", [ConferenceId]),
-    {noreply, Participant#participant{conference=Conference#conference{controller_q=whapps_call:controller_queue(Call)}}};
+handle_cast({set_conference, Conference}, Participant) ->
+    ?LOG("received conference record for conference ~s", [whapps_conference:id(Conference)]),
+    {noreply, Participant#participant{conference=Conference}};
 handle_cast({set_discovery_event, DiscoveryEvent}, Participant) ->
     {noreply, Participant#participant{discovery_event=DiscoveryEvent}};
-handle_cast(join_local, #participant{call=Call, conference=Conference}=Participant) ->
-    join_conference(Call, Conference),
-    {noreply, Participant};
-handle_cast({join_remote, JObj}, #participant{call=Call, conference=Conference}=Participant) ->
+handle_cast(join_local, #participant{call=Call, conference=DiscoveryConference}=Participant) ->
+    ControllerQ = whapps_call:controller_queue(Call),
+    Conference = whapps_conference:set_controller_queue(ControllerQ, DiscoveryConference),
+    Self = self(),
+    spawn(fun() ->
+                  consume_call_events(Self),
+                  whapps_call_command:b_answer(Call),
+                  ConferenceId = whapps_conference:id(Conference),
+                  case whapps_conference:moderator(Conference) of 
+                      true ->
+                          ?LOG("moderator is joining conference ~s", [ConferenceId]),
+                          whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"true">>, Call);
+                      false ->
+                          ?LOG("member is joining conference ~s", [ConferenceId]),
+                          whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"false">>, Call)
+                  end,
+                  whapps_conference_command:participants(Conference)
+          end),
+    {noreply, Participant#participant{conference=Conference}};
+handle_cast({join_remote, JObj}, #participant{call=Call, conference=DiscoveryConference}=Participant) ->
     gen_listener:add_binding(self(), route, []),
     gen_listener:add_binding(self(), authn, []),
     BridgeRequest = couch_mgr:get_uuid(),
     Route = binary:replace(wh_json:get_value(<<"Switch-URL">>, JObj), <<"mod_sofia">>, BridgeRequest),
+    ControllerQ = whapps_call:controller_queue(Call),
+    Conference = whapps_conference:set_controller_queue(ControllerQ, DiscoveryConference),
     bridge_to_conference(Route, Conference, Call),
-    {noreply, Participant#participant{bridge_request=BridgeRequest}};
+    {noreply, Participant#participant{bridge_request=BridgeRequest, conference=Conference}};
 handle_cast({route_req, JObj}, #participant{call=Call}=Participant) ->
     Bridge = whapps_call:from_route_req(JObj),
     ControllerQ = whapps_call:controller_queue(Call),
@@ -315,57 +333,41 @@ handle_cast({route_win, JObj}, #participant{conference=Conference, bridge=Bridge
     gen_listener:rm_binding(self(), route, []),
     gen_listener:rm_binding(self(), authn, []),
     B = whapps_call:from_route_win(JObj, Bridge),
-    join_conference(B, Conference),
+    Self = self(),
+    spawn(fun() ->
+                  consume_call_events(Self),
+                  whapps_call_command:answer(B),
+                  ConferenceId = whapps_conference:id(Conference),
+                  case whapps_conference:moderator(Conference) of 
+                      true ->
+                          ?LOG("moderator is joining remote conference ~s", [ConferenceId]),
+                          whapps_call_command:conference(ConferenceId, <<"false">>, <<"false">>, <<"true">>, B);
+                      false ->
+                          ?LOG("member is joining remote conference ~s", [ConferenceId]),
+                          whapps_call_command:conference(ConferenceId, <<"false">>, <<"false">>, <<"false">>, B)
+                  end,
+                  whapps_conference_command:participants(Conference)
+          end),
     {noreply, Participant#participant{bridge=B}};
-handle_cast({sync_participant, Participants}, Participant) ->
-    {noreply, sync_participant(Participants, Participant)};
-handle_cast(play_member_entry, #participant{call=Call, conference=#conference{id=ConferenceId}}=Participant) ->
-    ControllerQ = whapps_call:controller_queue(Call),
-    Command = [{<<"Conference-ID">>, ConferenceId}
-               ,{<<"Media-Name">>, <<"tone_stream://%(200,0,500,600,700)">>}
-               | wh_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_conference:publish_play(ConferenceId, Command),
+handle_cast({sync_participant, Participants}, #participant{bridge=undefined, call=Call}=Participant) ->
+    {noreply, sync_participant(Participants, Call, Participant)};
+handle_cast({sync_participant, Participants}, #participant{bridge=Bridge}=Participant) ->
+    {noreply, sync_participant(Participants, Bridge, Participant)};
+handle_cast(play_member_entry, #participant{conference=Conference}=Participant) ->
+    whapps_conference_command:play(<<"tone_stream://%(200,0,500,600,700)">>, Conference),
     {noreply, Participant};
-handle_cast(play_moderator_entry, #participant{call=Call, conference=#conference{id=ConferenceId}}=Participant) ->
-    ControllerQ = whapps_call:controller_queue(Call),
-    Command = [{<<"Conference-ID">>, ConferenceId}
-               ,{<<"Media-Name">>, <<"tone_stream://%(200,0,500,600,700)">>}
-               | wh_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_conference:publish_play(ConferenceId, Command),
+handle_cast(play_moderator_entry, #participant{conference=Conference}=Participant) ->
+    whapps_conference_command:play(<<"tone_stream://%(200,0,500,600,700)">>, Conference),
     {noreply, Participant};
-handle_cast(mute, #participant{call=Call, participant_id=ParticipantId
-                               ,conference=#conference{id=ConferenceId}}=Participant) ->
-    Q = whapps_call:controller_queue(Call),
+handle_cast(mute, #participant{participant_id=ParticipantId, conference=Conference}=Participant) ->
     ?LOG("received in-conference command, muting participant ~s", [ParticipantId]),
-    Command = [{<<"Conference-ID">>, ConferenceId}
-               ,{<<"Participant">>, ParticipantId}
-               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_conference:publish_mute_participant(ConferenceId, Command),
-    Command = [{<<"Conference-ID">>, ConferenceId}
-               ,{<<"Participant">>, ParticipantId}
-               ,{<<"Media-Name">>, <<"/system_media/conf-muted">>}
-               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_conference:publish_play(ConferenceId, Command),
+    whapps_conference_command:mute_participant(ParticipantId, Conference),
+    whapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference),
     {noreply, Participant#participant{muted=true}};
-handle_cast(unmute, #participant{call=Call, participant_id=ParticipantId
-                                 ,conference=#conference{id=ConferenceId}}=Participant) ->
+handle_cast(unmute, #participant{participant_id=ParticipantId, conference=Conference}=Participant) ->
     ?LOG("received in-conference command, unmuting participant ~s", [ParticipantId]),
-    Q = whapps_call:controller_queue(Call),
-    Command = [{<<"Conference-ID">>, ConferenceId}
-               ,{<<"Participant">>, ParticipantId}
-               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_conference:publish_unmute_participant(ConferenceId, Command),
-    Command = [{<<"Conference-ID">>, ConferenceId}
-               ,{<<"Participant">>, ParticipantId}
-               ,{<<"Media-Name">>, <<"/system_media/conf-unmuted">>}
-               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_conference:publish_play(ConferenceId, Command),
+    whapps_conference_command:unmute_participant(ParticipantId, Conference),
+    whapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference),
     {noreply, Participant#participant{muted=false}};
 handle_cast(toggle_mute, #participant{muted=true}=Participant) ->
     unmute(self()),
@@ -373,37 +375,15 @@ handle_cast(toggle_mute, #participant{muted=true}=Participant) ->
 handle_cast(toggle_mute, #participant{muted=false}=Participant) ->
     mute(self()),
     {noreply, Participant};
-handle_cast(deaf, #participant{call=Call, participant_id=ParticipantId
-                               ,conference=#conference{id=ConferenceId}}=Participant) ->
+handle_cast(deaf, #participant{participant_id=ParticipantId, conference=Conference}=Participant) ->
     ?LOG("received in-conference command, making participant ~s deaf", [ParticipantId]),
-    Q = whapps_call:controller_queue(Call),
-    Command = [{<<"Conference-ID">>, ConferenceId}
-               ,{<<"Participant">>, ParticipantId}
-               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_conference:publish_deaf_participant(ConferenceId, Command),
-    Command = [{<<"Conference-ID">>, ConferenceId}
-               ,{<<"Participant">>, ParticipantId}
-               ,{<<"Media-Name">>, <<"/system_media/conf-deaf">>}
-               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_conference:publish_play(ConferenceId, Command),
+    whapps_conference_command:deaf_participant(ParticipantId, Conference),
+    whapps_conference_command:prompt(<<"conf-deaf">>, ParticipantId, Conference),
     {noreply, Participant#participant{deaf=true}};
-handle_cast(undeaf, #participant{call=Call, participant_id=ParticipantId
-                                 ,conference=#conference{id=ConferenceId}}=Participant) ->
+handle_cast(undeaf, #participant{participant_id=ParticipantId, conference=Conference}=Participant) ->
     ?LOG("received in-conference command, making participant ~s undeaf", [ParticipantId]),
-    Q = whapps_call:controller_queue(Call),
-    Command = [{<<"Conference-ID">>, ConferenceId}
-               ,{<<"Participant">>, ParticipantId}
-               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_conference:publish_undeaf_participant(ConferenceId, Command),
-    Command = [{<<"Conference-ID">>, ConferenceId}
-               ,{<<"Participant">>, ParticipantId}
-               ,{<<"Media-Name">>, <<"/system_media/conf-undeaf">>}
-               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_conference:publish_play(ConferenceId, Command),
+    whapps_conference_command:undeaf_participant(ParticipantId, Conference),
+    whapps_conference_command:prompt(<<"conf-undeaf">>, ParticipantId, Conference),
     {noreply, Participant#participant{deaf=false}};
 handle_cast(toggle_deaf, #participant{deaf=true}=Participant) ->
     undeaf(self()),
@@ -475,12 +455,8 @@ handle_event(JObj, #participant{call_event_consumers=Consumers, call=Call, self=
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #participant{conference=#conference{id=ConferenceId}}) ->
-    Command = [{<<"Conference-ID">>, ConferenceId}
-               ,{<<"Media-Name">>, <<"tone_stream://%(500,0,300,200,100,50,25)">>}
-               | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_conference:publish_play(ConferenceId, Command),            
+terminate(_Reason, #participant{conference=Conference}) ->
+    whapps_conference_command:play(<<"tone_stream://%(500,0,300,200,100,50,25)">>, Conference),
     ?LOG_END("conference participant execution has been stopped: ~p", [_Reason]),
     ok.
 
@@ -507,89 +483,37 @@ find_participant([{_, Participant}|Participants], CallId) ->
         CallId -> {ok, Participant};
         _Else -> find_participant(Participants, CallId)
     end.
-        
--spec join_conference/2 :: (whapps_call:call(), #conference{}) -> #conference{}.
-join_conference(Call, #conference{id=ConferenceId, member_play_name=true, join_as_moderator=true})->
-    ?LOG("moderator is joining conference ~s", [ConferenceId]),
-    whapps_call_command:answer(Call),
-    whapps_call_command:conference(ConferenceId, <<"true">>, <<"true">>, <<"true">>, Call),
-    conference_command_participants(ConferenceId, Call);
-join_conference(Call, #conference{id=ConferenceId, member_play_name=true, join_as_moderator=false})->
-    ?LOG("member is joining conference ~s", [ConferenceId]),
-    whapps_call_command:answer(Call),
-    whapps_call_command:conference(ConferenceId, <<"true">>, <<"true">>, <<"false">>, Call),
-    conference_command_participants(ConferenceId, Call);
-join_conference(Call, #conference{id=ConferenceId, member_play_name=false, join_as_moderator=true})->
-    ?LOG("moderator is joining conference ~s", [ConferenceId]),
-    whapps_call_command:answer(Call),
-    whapps_call_command:conference(ConferenceId, <<"false">>, <<"false">>, <<"true">>, Call),
-    conference_command_participants(ConferenceId, Call);
-join_conference(Call, #conference{id=ConferenceId, member_play_name=false, join_as_moderator=false})->
-    ?LOG("member is joining conference ~s", [ConferenceId]),
-    whapps_call_command:answer(Call),
-    whapps_call_command:conference(ConferenceId, <<"false">>, <<"false">>, <<"false">>, Call),
-    conference_command_participants(ConferenceId, Call).
 
--spec conference_command_participants/2 :: (ne_binary(), whapps_call:call()) -> ok.
-conference_command_participants(ConferenceId, Call) ->
-    ControllerQ = whapps_call:controller_queue(Call),
-    Command = [{<<"Conference-ID">>, ConferenceId}
-               | wh_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_conference:publish_participants_req(ConferenceId, Command).
-
--spec sync_participant/2 :: (wh_json:json_object(), #participant{}) -> #participant{}.
-sync_participant(Participants, #participant{in_conference=false, bridge=Bridge, call=Caller
-                                            ,conference=#conference{id=ConferenceId, join_as_moderator=false, member_join_muted=Muted
-                                                                    ,member_join_deaf=Deaf}}=Participant) ->
-    Call = case whapps_call:is_call(Participant#participant.bridge) of
-               true -> Bridge;
-               false -> Caller
-           end,
+-spec sync_participant/3 :: (wh_json:json_object(), whapps_call:call(), #participant{}) -> #participant{}.
+sync_participant(Participants, Call, #participant{in_conference=false, conference=Conference}=Participant) ->
+    Moderator = whapps_conference:moderator(Conference),
     case find_participant(wh_json:to_proplist(Participants), whapps_call:call_id(Call)) of
+        {ok, JObj} when Moderator ->
+            ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
+            ?LOG("caller has joined the local conference as moderator ~s", [ParticipantId]),
+            Deaf = not wh_json:is_true([<<"Flags">>, <<"Can-Hear">>], JObj),
+            Muted = not wh_json:is_true([<<"Flags">>, <<"Can-Speak">>], JObj),
+            gen_server:cast(self(), play_moderator_entry),
+            whapps_conference:moderator_join_muted(Conference) andalso gen_server:cast(self(), mute),
+            whapps_conference:moderator_join_deaf(Conference) andalso gen_server:cast(self(), deaf),      
+            Participant#participant{in_conference=true, muted=Muted
+                                    ,deaf=Deaf, participant_id=ParticipantId};
         {ok, JObj} ->
             ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
             ?LOG("caller has joined the local conference as member ~s", [ParticipantId]),
             Deaf = not wh_json:is_true([<<"Flags">>, <<"Can-Hear">>], JObj),
             Muted = not wh_json:is_true([<<"Flags">>, <<"Can-Speak">>], JObj),
             gen_server:cast(self(), play_member_entry),
-            Muted andalso gen_server:cast(self(), muted),
-            Deaf andalso gen_server:cast(self(), deaf),     
+            whapps_conference:member_join_muted(Conference) andalso gen_server:cast(self(), mute),
+            whapps_conference:member_join_deaf(Conference) andalso gen_server:cast(self(), deaf),     
             Participant#participant{in_conference=true, muted=Muted
                                     ,deaf=Deaf, participant_id=ParticipantId};
         {error, not_found} ->
             timer:sleep(500),
-            conference_command_participants(ConferenceId, Call),
+            whapps_conference_command:participants(Conference),
             Participant
     end;
-sync_participant(Participants, #participant{in_conference=false, bridge=Bridge, call=Caller
-                                            ,conference=#conference{id=ConferenceId, join_as_moderator=true, moderator_join_muted=Muted
-                                                                    ,moderator_join_deaf=Deaf}}=Participant) ->
-    Call = case whapps_call:is_call(Participant#participant.bridge) of
-               true -> Bridge;
-               false -> Caller
-           end,
-    case find_participant(wh_json:to_proplist(Participants), whapps_call:call_id(Call)) of
-        {ok, JObj} ->
-            ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
-            ?LOG("caller has joined the local conference as moderator ~s", [ParticipantId]),
-            Deaf = not wh_json:is_true([<<"Flags">>, <<"Can-Hear">>], JObj),
-            Muted = not wh_json:is_true([<<"Flags">>, <<"Can-Speak">>], JObj),
-            gen_server:cast(self(), play_moderator_entry),
-            Muted andalso gen_server:cast(self(), muted),
-            Deaf andalso gen_server:cast(self(), deaf),     
-            Participant#participant{in_conference=true, muted=Muted
-                                    ,deaf=Deaf, participant_id=ParticipantId};
-        {error, not_found} ->
-            timer:sleep(500),
-            conference_command_participants(ConferenceId, Call),
-            Participant
-    end;
-sync_participant(Participants, #participant{in_conference=true, bridge=Bridge, call=Caller}=Participant) ->
-    Call = case whapps_call:is_call(Participant#participant.bridge) of
-               true -> Bridge;
-               false -> Caller
-           end,
+sync_participant(Participants, Call, #participant{in_conference=true}=Participant) ->
     case find_participant(wh_json:to_proplist(Participants), whapps_call:call_id(Call)) of
         {ok, JObj} ->
             ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
@@ -604,13 +528,13 @@ sync_participant(Participants, #participant{in_conference=true, bridge=Bridge, c
             Participant#participant{in_conference=false}
     end.
 
--spec bridge_to_conference/3 :: (ne_binary(), #conference{}, whapps_call:call()) -> ok.
-bridge_to_conference(Route, #conference{bridge_username=Username, bridge_password=Password}, Call) ->
+-spec bridge_to_conference/3 :: (ne_binary(), whapps_conference:conference(), whapps_call:call()) -> ok.
+bridge_to_conference(Route, Conference, Call) ->
     ?LOG("briding to conference running at '~s'", [Route]),
     Endpoint = wh_json:from_list([{<<"Invite-Format">>, <<"route">>}
                                   ,{<<"Route">>, Route}
-                                  ,{<<"Auth-User">>, Username}
-                                  ,{<<"Auth-Password">>, Password}
+                                  ,{<<"Auth-User">>, whapps_conference:bridge_username(Conference)}
+                                  ,{<<"Auth-Password">>, whapps_conference:bridge_password(Conference)}
                                   ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
                                   ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
                                   ,{<<"Ignore-Early-Media">>, <<"true">>}
@@ -627,17 +551,17 @@ publish_route_response(ControllerQ, MsgId, ServerId) ->
             | wh_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)],
     wapi_route:publish_resp(ServerId, Resp).    
 
--spec send_authn_response/4 :: (undefined | ne_binary(), ne_binary(), #conference{}, whapps_call:call()) -> ok.
-send_authn_response(MsgId, ServerId, #conference{bridge_username=Username, bridge_password=Password, id=ConferenceId}, Call) ->
+-spec send_authn_response/4 :: (undefined | ne_binary(), ne_binary(), whapps_conference:conference(), whapps_call:call()) -> ok.
+send_authn_response(MsgId, ServerId, Conference, Call) ->
     ?LOG("sending authn response for participant invite from local server"),
-    CCVs = [{<<"Username">>, Username}
+    CCVs = [{<<"Username">>, whapps_conference:bridge_username(Conference)}
             ,{<<"Account-ID">>, whapps_call:account_db(Call)}
             ,{<<"Authorizing-Type">>, <<"conference">>}
             ,{<<"Inception">>, <<"on-net">>}
-            ,{<<"Authorizing-ID">>, ConferenceId}
+            ,{<<"Authorizing-ID">>, whapps_conference:id(Conference)}
            ],
     Resp = [{<<"Msg-ID">>, MsgId}
-            ,{<<"Auth-Password">>, Password}
+            ,{<<"Auth-Password">>, whapps_conference:bridge_password(Conference)}
             ,{<<"Auth-Method">>, <<"password">>}
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list([CCV || {_, V}=CCV <- CCVs, V =/= undefined ])}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
