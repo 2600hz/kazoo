@@ -600,7 +600,7 @@ get_fs_app(_Node, _UUID, JObj, <<"conference">>) ->
         false -> {'error', <<"conference failed to execute as JObj did not validate">>};
         true ->
             ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-            {<<"conference">>, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}
+            {<<"conference">>, list_to_binary([ConfName, "@default"])}
     end;
 
 get_fs_app(_Node, _UUID, _JObj, _App) ->
@@ -826,23 +826,6 @@ set(Node, UUID, Arg) ->
 -spec export/3 :: (atom(), ne_binary(), binary()) -> send_cmd_ret().
 export(Node, UUID, Arg) ->
     send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% builds a FS specific flag string for the conference command
-%% @end
-%%--------------------------------------------------------------------
--spec get_conference_flags/1 :: (wh_json:json_object()) -> binary().
-get_conference_flags(JObj) ->
-    Flags = [<<Flag/binary, Delim/binary>>
-                 || {Flag, Parameter} <- ?CONFERENCE_FLAGS, Delim <- [<<",">>]
-                        ,wh_util:to_boolean(wh_json:get_value(Parameter, JObj, false))
-            ],
-    case list_to_binary(Flags) of
-        <<>> -> <<>>;
-        F -> <<"+flags{", (erlang:binary_part(F, {0, byte_size(F)-1}))/binary, "}">>
-    end.
 
 %%--------------------------------------------------------------------
 %% @private

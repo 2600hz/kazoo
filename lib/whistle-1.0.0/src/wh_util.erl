@@ -183,8 +183,10 @@ join_binary([], _) ->
     <<>>;
 join_binary([Bin], _) ->
     Bin;
-join_binary([Bin|Rest], Sep) ->
-    <<Bin/binary, Sep/binary, (join_binary(Rest, Sep))/binary>>.
+join_binary([Bin|Rest], Sep) when is_binary(Bin) ->
+    <<Bin/binary, Sep/binary, (join_binary(Rest, Sep))/binary>>;
+join_binary([_|Rest], Sep) ->
+    join_binary(Rest, Sep).
 
 %%--------------------------------------------------------------------
 %% @public

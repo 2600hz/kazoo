@@ -18,16 +18,16 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
-handle(Data, #cf_call{account_id=AccountId, from_realm=AccountRealm, request_user=ReqNum}=Call) ->
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+handle(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNum, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
     Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Resource-Type">>, <<"audio">>}
-           ,{<<"To-DID">>, ReqNum}
-           ,{<<"Account-ID">>, AccountId}
-           ,{<<"Account-Realm">>, AccountRealm}
-           ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
+           ,{<<"To-DID">>, whapps_call:request_user(Call)}
+           ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+           ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
+           ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
            ,{<<"Application-Name">>, <<"bridge">>}
            ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Data)}
            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}

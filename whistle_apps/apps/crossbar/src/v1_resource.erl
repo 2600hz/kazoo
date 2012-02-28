@@ -42,7 +42,7 @@
          ,expires/2
         ]).
 
--include("crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 %%%===================================================================
 %%% Startup and shutdown of request
