@@ -55,6 +55,7 @@ init([]) ->
          ,?CHILD(ecallmgr_media_registry, worker) % handles tracking media names and files per-call
          ,?CHILD(ecallmgr_notify, worker) % handles notify-type API calls (like MWI, BLF, check-sync
          ,?CHILD(ecallmgr_fs_query, worker) % handles queries for call information/location
+         ,?CHILD(ecallmgr_conference_listener, worker)
         ]
       }
     }.

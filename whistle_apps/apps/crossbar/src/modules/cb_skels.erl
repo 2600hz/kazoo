@@ -134,7 +134,6 @@ resource_exists(_) -> true.
 content_types_provided(_) ->
     [].
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -176,7 +175,7 @@ charsets_provided(_) ->
 %% @doc
 %% If you provide alternative encodings, return a list of encodings and optional
 %% quality value:
-%% [<<"gzip;q=1.0">>, <<"identity">>;q=0.5">>, <<"*;q=0">>]
+%% [<<"gzip;q=1.0">>, <<"identity;q=0.5">>, <<"*;q=0">>]
 %% @end
 %%--------------------------------------------------------------------
 -spec encodings_provided/1 :: (path_tokens()) -> [ne_binary(),...] | [].
@@ -198,18 +197,14 @@ encodings_provided(_) ->
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
-    create(Context);
-validate(Context) ->
-    crossbar_util:response_faulty_request(Context).
+    create(Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
     update(Id, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
-    read(Id, Context);
-validate(Context, _) ->
-    crossbar_util:response_faulty_request(Context).
+    read(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @public

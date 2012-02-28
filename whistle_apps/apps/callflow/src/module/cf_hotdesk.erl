@@ -40,7 +40,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
     {ok, H} = get_hotdesk_profile(wh_json:get_value(<<"id">>, Data), Call),
     Devices = cf_attributes:fetch_owned_by(H#hotdesk.owner_id, device, Call),
@@ -60,11 +60,11 @@ handle(Data, Call) ->
         <<"bridge">> ->
             cf_exe:continue(Call);
         <<"login">> ->
-            cf_call_command:answer(Call),          
+            whapps_call_command:answer(Call),          
             login(Devices, H, Call),
             cf_exe:stop(Call);
         <<"logout">> ->
-            cf_call_command:answer(Call),
+            whapps_call_command:answer(Call),
             logout(Devices, H, Call),
             cf_exe:stop(Call);
         <<"toggle">> ->
@@ -83,7 +83,7 @@ handle(Data, Call) ->
 %% Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints/3 :: ([ne_binary(),...], wh_json:json_object(), #cf_call{}) -> {'ok', wh_json:json_object()} |
+-spec bridge_to_endpoints/3 :: ([ne_binary(),...], wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                                                          {'fail', wh_json:json_object()} |
                                                                                          {'error', term()}.
 bridge_to_endpoints(Devices, Data, Call) ->
@@ -94,7 +94,7 @@ bridge_to_endpoints(Devices, Data, Call) ->
                                    end)],
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-    cf_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call).
+    whapps_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call).
     
 %%--------------------------------------------------------------------
 %% @private
@@ -107,30 +107,30 @@ bridge_to_endpoints(Devices, Data, Call) ->
 %% 3y) Is the pin valid?
 %% 3n) Login
 %%--------------------------------------------------------------------
--spec login/3 :: ([ne_binary(),...], #hotdesk{}, #cf_call{}) -> ok.
--spec login/4 :: ([ne_binary(),...], #hotdesk{}, #cf_call{}, non_neg_integer()) -> ok.
+-spec login/3 :: ([ne_binary(),...], #hotdesk{}, whapps_call:call()) -> ok.
+-spec login/5 :: ([ne_binary(),...], #hotdesk{}, undefined | ne_binary(), whapps_call:call(), non_neg_integer()) -> ok.
 
 login(Devices, H, Call) ->
-    login(Devices, H, Call, 1).
+    login(Devices, H, whapps_call:authorizing_id(Call), Call, 1).
 
-login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, #cf_call{authorizing_id=undefined}=Call, _) ->
+login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, undefined, Call, _) ->
     %% sanitize authorizing_id
-    cf_call_command:b_play(AbortLogin, Call),
+    whapps_call_command:b_play(AbortLogin, Call),
     ok;
-login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS->
+login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, _, Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS->
     %% if we have exceeded the maximum loop attempts then terminate this call
     ?LOG("maximum number of invalid attempts to check mailbox"),
-    cf_call_command:b_play(AbortLogin, Call),
+    whapps_call_command:b_play(AbortLogin, Call),
     ok;
-login(Devices, #hotdesk{require_pin=true, pin=Pin, prompts=#prompts{enter_password=EnterPass
-                                                                    ,invalid_login=InvalidLogin}}=H, Call, Loop) ->
-    case cf_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call) of
+login(Devices, #hotdesk{prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}
+                        ,require_pin=true, pin=Pin}=H, AuthorizingId, Call, Loop) ->
+    case whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call) of
         {ok, Pin} ->
             do_login(Devices, H, Call);
         {ok, _} ->
-            case cf_call_command:b_play(InvalidLogin, Call) of
+            case whapps_call_command:b_play(InvalidLogin, Call) of
                 {ok, _} ->
-                    login(Devices, H, Call, Loop + 1);
+                    login(Devices, H, Call, AuthorizingId, Loop + 1);
                 {error, _} ->
                     ?LOG("caller hungup during login")
             end;
@@ -138,7 +138,7 @@ login(Devices, #hotdesk{require_pin=true, pin=Pin, prompts=#prompts{enter_passwo
             ?LOG("caller hungup during login")
     end,
     ok;
-login(Devices, #hotdesk{require_pin=false}=H, Call, _) ->
+login(Devices, #hotdesk{require_pin=false}=H, _, Call, _) ->
     do_login(Devices, H, Call),
     ok.
 
@@ -152,22 +152,20 @@ login(Devices, #hotdesk{require_pin=false}=H, Call, _) ->
 %% 3) Infrom the user
 %% @end
 %%--------------------------------------------------------------------
--spec do_login/3 :: ([ne_binary(),...], #hotdesk{}, #cf_call{}) -> ok.
-do_login(_, #hotdesk{keep_logged_in_elsewhere=true, owner_id=OwnerId, prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}
-         ,#cf_call{authorizing_id=AId, account_db=Db}=Call) ->
+-spec do_login/3 :: ([ne_binary(),...], #hotdesk{}, whapps_call:call()) -> ok.
+do_login(_, #hotdesk{keep_logged_in_elsewhere=true, owner_id=OwnerId, prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, Call) ->
     %% keep logged in elsewhere, so we update only the device used to call
-    {ok, _} = set_device_owner(Db, AId, OwnerId),
-    cf_call_command:b_play(HotdeskLogin, Call),
-    cf_call_command:b_play(Bye, Call),
+    {ok, _} = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
+    whapps_call_command:b_play(HotdeskLogin, Call),
+    whapps_call_command:b_play(Bye, Call),
     ok;
 do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId
-                           ,prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}
-         ,#cf_call{authorizing_id=AId, account_db=Db}=Call) ->
+                           ,prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, Call) ->
     %% log out from owned devices , since we don't want to keep logged in elsewhere, then log unto the device currently used
-    logout_from_elsewhere(Db, Devices),
-    {ok, _} = set_device_owner(Db, AId, OwnerId),
-    cf_call_command:b_play(HotdeskLogin, Call),
-    cf_call_command:b_play(Bye, Call),
+    logout_from_elsewhere(Devices, Call),
+    {ok, _} = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
+    whapps_call_command:b_play(HotdeskLogin, Call),
+    whapps_call_command:b_play(Bye, Call),
     ok.
 
 %%--------------------------------------------------------------------
@@ -183,19 +181,17 @@ do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId
 %% 3) Infrom the user
 %% @end
 %%--------------------------------------------------------------------
--spec logout/3 :: ([ne_binary(),...], #hotdesk{}, #cf_call{}) -> ok.
-logout(_, #hotdesk{keep_logged_in_elsewhere=true, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}
-       ,#cf_call{authorizing_id=AId, account_db=Db}=Call) ->
-    {ok, _} = set_device_owner(Db, AId, <<>>),
-    cf_call_command:b_play(HotdeskLogout, Call),
-    cf_call_command:b_play(Bye, Call),
+-spec logout/3 :: ([ne_binary(),...], #hotdesk{}, whapps_call:call()) -> ok.
+logout(_, #hotdesk{keep_logged_in_elsewhere=true, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, Call) ->
+    {ok, _} = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
+    whapps_call_command:b_play(HotdeskLogout, Call),
+    whapps_call_command:b_play(Bye, Call),
     ok;
-logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}
-       ,#cf_call{authorizing_id=AId, account_db=Db}=Call) ->
-    logout_from_elsewhere(Db, Devices),
-    {ok, _} = set_device_owner(Db, AId, <<>>),
-    cf_call_command:b_play(HotdeskLogout, Call),
-    cf_call_command:b_play(Bye, Call),
+logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, Call) ->
+    logout_from_elsewhere(Devices, Call),
+    {ok, _} = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
+    whapps_call_command:b_play(HotdeskLogout, Call),
+    whapps_call_command:b_play(Bye, Call),
     ok.
 
 %%--------------------------------------------------------------------
@@ -205,10 +201,10 @@ logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{hotdes
 %% mailbox record
 %% @end
 %%--------------------------------------------------------------------
--spec get_hotdesk_profile/2 :: (undefined | ne_binary(), #cf_call{}) -> {ok, #hotdesk{}}
-                                                                            | {error, term()}.
--spec get_hotdesk_profile/3 :: (undefined | ne_binary(), #cf_call{}, non_neg_integer()) -> {ok, #hotdesk{}}
-                                                                                               | {error, term()}.
+-spec get_hotdesk_profile/2 :: (undefined | ne_binary(), whapps_call:call()) -> {ok, #hotdesk{}} |
+                                                                                {error, term()}.
+-spec get_hotdesk_profile/3 :: (undefined | ne_binary(), whapps_call:call(), non_neg_integer()) -> {ok, #hotdesk{}} |
+                                                                                                   {error, term()}.
 
 get_hotdesk_profile(OwnerId, Call) ->
     get_hotdesk_profile(OwnerId, Call, 1).
@@ -216,15 +212,16 @@ get_hotdesk_profile(OwnerId, Call) ->
 get_hotdesk_profile(_, _, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
     ?LOG("too many failed attempts to get the hotdesk id"),
     {error, too_many_attempts};
-get_hotdesk_profile(undefined, #cf_call{account_db=Db}=Call, Loop) ->
+get_hotdesk_profile(undefined, Call, Loop) ->
     P = #prompts{},
-    cf_call_command:answer(Call),
-    case cf_call_command:b_play_and_collect_digits(<<"1">>, <<"10">>, P#prompts.enter_hotdesk, <<"1">>, Call) of
+    whapps_call_command:answer(Call),
+    case whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"10">>, P#prompts.enter_hotdesk, <<"1">>, Call) of
         {ok, <<>>} ->
             get_hotdesk_profile(undefined, Call, Loop + 1);
         {ok, HId} ->
             %% get user id from hotdesk id
-            case couch_mgr:get_results(Db, <<"cf_attributes/hotdesk_id">>, [{<<"key">>, HId}]) of
+            AccountDb = whapps_call:account_db(Call),
+            case couch_mgr:get_results(AccountDb, <<"cf_attributes/hotdesk_id">>, [{<<"key">>, HId}]) of
                 {ok, [JObj]} ->
                     ?LOG("found hotdesk id ~s", [HId]),
                     get_hotdesk_profile(wh_json:get_ne_value([<<"value">>, <<"owner_id">>], JObj), Call, Loop);
@@ -237,8 +234,9 @@ get_hotdesk_profile(undefined, #cf_call{account_db=Db}=Call, Loop) ->
             ?LOG("failed to get owner id from caller: ~p", [R]),
             E
     end;
-get_hotdesk_profile(OwnerId, #cf_call{account_db=Db}, _) ->
-    case couch_mgr:open_doc(Db, OwnerId) of
+get_hotdesk_profile(OwnerId, Call, _) ->
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:open_doc(AccountDb, OwnerId) of
         {ok, JObj} ->
             ?LOG("using hotdesk owner id ~s", [OwnerId]), 
             {ok, #hotdesk{hotdesk_id = wh_json:get_value([<<"hotdesk">>, <<"id">>], JObj)
@@ -260,8 +258,8 @@ get_hotdesk_profile(OwnerId, #cf_call{account_db=Db}, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec logout_from_elsewhere/2 :: (ne_binary(), [ne_binary(),...]) -> ok.
-logout_from_elsewhere(Db, Devices) ->
-    [set_device_owner(Db, Device, undefined) || Device <- Devices],
+logout_from_elsewhere(Devices, Call) ->
+    [set_device_owner(undefined, Device, Call) || Device <- Devices],
     ok.
 
 %%--------------------------------------------------------------------
@@ -270,24 +268,26 @@ logout_from_elsewhere(Db, Devices) ->
 %% Set owner id for a specified device
 %% @end
 %%--------------------------------------------------------------------
--spec set_device_owner/3 :: (ne_binary(), ne_binary(), undefined) -> ok.
-set_device_owner(Db, Device, undefined) ->
-    case couch_mgr:open_doc(Db, Device) of
+-spec set_device_owner/3 :: (undefined | ne_binary(), ne_binary(), whapps_call:call()) -> ok.
+set_device_owner(undefined, Device, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:open_doc(AccountDb, Device) of
         {ok, JObj} -> 
-            ?LOG("removing owner id from device ~s in ~s", [Device, Db]),
-            couch_mgr:save_doc(Db, wh_json:delete_key(<<"owner_id">>, JObj)),
+            ?LOG("removing owner id from device ~s in ~s", [Device, AccountDb]),
+            couch_mgr:save_doc(AccountDb, wh_json:delete_key(<<"owner_id">>, JObj)),
             ok;
         {error, R} -> 
-            ?LOG("failed to load device ~s in ~s: ~p", [Device, Db, R]),
+            ?LOG("failed to load device ~s in ~s: ~p", [Device, AccountDb, R]),
             ok
     end;
-set_device_owner(Db, Device, OwnerId) ->
-    case couch_mgr:open_doc(Db, Device) of
+set_device_owner(OwnerId, Device, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:open_doc(AccountDb, Device) of
         {ok, JObj} -> 
-            ?LOG("setting owner id to ~s on device ~s in ~s", [OwnerId, Device, Db]),
-            couch_mgr:save_doc(Db, wh_json:set_value(<<"owner_id">>, OwnerId, JObj)),
+            ?LOG("setting owner id to ~s on device ~s in ~s", [OwnerId, Device, AccountDb]),
+            couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"owner_id">>, OwnerId, JObj)),
             ok;
         {error, R} -> 
-            ?LOG("failed load device ~s in ~s: ~p", [Device, Db, R]),
+            ?LOG("failed load device ~s in ~s: ~p", [Device, AccountDb, R]),
             ok
     end.

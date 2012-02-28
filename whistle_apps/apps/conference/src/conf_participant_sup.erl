@@ -1,27 +1,28 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011 VoIP Inc
+%%% @copyright (C) 2012 VoIP Inc
 %%% @doc
-%%% Supervisor for running conference service processes
+%%% Supervisor for running conference participant processes
 %%% @end
-%%% Created : 28 Jun 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 20 Feb 2012 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(conf_service_sup).
+-module(conf_participant_sup).
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("conference.hrl").
 
 %% API
--export([start_link/0, start_service/2, start_service/3]).
+-export([start_link/0]).
+-export([start_participant/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
--include("conference.hrl").
-
 -define(SERVER, ?MODULE).
--define(CHILD(Name, Mod, Args), {Name, {Mod, start_link, Args}, transient, 5000, worker, [Mod]}).
+
+%% Helper macro for declaring children of supervisor
+-define(CHILD(Name, Restart, Shutdown, Type),
+        {Name, {Name, start_link, []}, Restart, Shutdown, Type, [Name]}).
 
 %%%===================================================================
 %%% API functions
@@ -38,19 +39,9 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
--spec start_service/2 :: (ConfId, Conference) -> sup_startchild_ret() when
-      ConfId :: binary(),
-      Conference :: wh_json:json_object().
-start_service(ConfId, Conference) ->
-    start_service(ConfId, Conference, undefined).
-
--spec start_service/3 :: (ConfId, Conference, Caller) -> sup_startchild_ret() when
-      ConfId :: binary(),
-      Conference :: wh_json:json_object(),
-      Caller :: undefined | wh_json:json_object().
-start_service(ConfId, Conference, Caller) ->
-    _ = supervisor:delete_child(conf_service_sup, ConfId),
-    supervisor:start_child(?SERVER, ?CHILD(ConfId, conf_service, [Conference, Caller])).
+-spec start_participant/1 :: (whapps_call:call()) -> sup_startchild_ret().
+start_participant(Call) ->
+    supervisor:start_child(?MODULE, [Call]).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -69,13 +60,12 @@ start_service(ConfId, Conference, Caller) ->
 %%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init(Args) -> sup_init_ret() when
-      Args :: [].
+-spec init([]) -> sup_init_ret().
 init([]) ->
-    RestartStrategy = one_for_one,
-    MaxRestarts = 1,
-    MaxSecondsBetweenRestarts = 5,
+    RestartStrategy = simple_one_for_one,
+    MaxRestarts = 0,
+    MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, []}}.
+    {ok, {SupFlags, [?CHILD(conf_participant, temporary, 2000, worker)]}}.

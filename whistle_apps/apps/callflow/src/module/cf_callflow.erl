@@ -18,10 +18,10 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
-handle(Data, #cf_call{account_db=AccountDb}=Call) ->
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+handle(Data, Call) ->
     Id = wh_json:get_value(<<"id">>, Data),
-    case couch_mgr:open_doc(AccountDb, Id) of
+    case couch_mgr:open_doc(whapps_call:account_db(Call), Id) of
         {ok, JObj} ->
             ?LOG("branching to callflow ~s", [Id]),
             Flow = wh_json:get_value(<<"flow">>, JObj, wh_json:new()),

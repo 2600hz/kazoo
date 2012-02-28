@@ -14,13 +14,14 @@
 
 %% API
 -export([start_link/0]).
+-export([cache_proc/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
--define(CHILDREN, [{conf_discovery, worker}, {conf_service_sup, supervisor}]).
+-define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
 
 %% ===================================================================
 %% API functions
@@ -36,6 +37,12 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
+-spec cache_proc/0 :: () -> {'ok', pid()}.
+cache_proc() ->
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+                Mod =:= conference_cache],
+    {ok, P}.
+
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
@@ -43,20 +50,22 @@ start_link() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%% Whenever a supervisor is started using supervisor:start_link/N,
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(Args) -> sup_init_ret() when
-      Args :: [].
+-spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = one_for_one,
     MaxRestarts = 3,
     MaxSecondsBetweenRestarts = 5,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
+    Children = [?CACHE(conference_cache)
+                ,?CHILD(conf_discovery, worker)
+                ,?CHILD(conf_participant_sup, supervisor)
+               ],
 
     {ok, {SupFlags, Children}}.
