@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
+%%%
 %%% Behaviour for setting up an AMQP listener.
 %%% Add/rm responders for Event-Cat/Event-Name pairs. Each responder
 %%% corresponds to a module that has defined a handle/1 function, receiving
@@ -20,7 +20,9 @@
 %%%   {basic_qos, integer()} -> optional, if QoS is being set on this queue
 %%% ]
 %%% @end
-%%% Created : 19 Aug 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(gen_listener).
 
@@ -183,7 +185,7 @@ rm_binding(Srv, Binding, Props) ->
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
 
-    ?LOG("starting new gen_listener proc: ~s", [wh_util:to_binary(Module)]),
+    ?LOG_START("starting new gen_listener proc: ~s", [wh_util:to_binary(Module)]),
 
     {ModState, TimeoutRef} = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
                                  {ok, MS} ->
@@ -355,7 +357,7 @@ handle_info({amqp_lost_channel, no_connection}, State) ->
 
 handle_info(#'basic.consume_ok'{}, S) ->
     ?LOG("consuming from our queue"),
-    {noreply, S#state{is_consuming=true}};
+    {noreply, S#state{is_consuming=true}, hibernate};
 
 handle_info(is_consuming, #state{is_consuming=false, queue=Q}=State) ->
     ?LOG("huh, we're not consuming. Queue: ~p", [Q]),
@@ -391,7 +393,7 @@ code_change(_OldVersion, State, _Extra) ->
 
 terminate(Reason, #state{module=Module, module_state=ModState}) ->
     Module:terminate(Reason, ModState),
-    ?LOG("~s terminated cleanly, going down", [Module]).
+    ?LOG_END("~s terminated cleanly, going down", [Module]).
 
 -spec handle_event/4 :: (ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) -> pid().
 handle_event(Payload, <<"application/json">>, BD, State) ->
@@ -523,5 +525,3 @@ stop_timer(Ref) when is_reference(Ref) ->
 start_timer(Timeout) when is_integer(Timeout) andalso Timeout >= 0 ->
     erlang:send_after(Timeout, self(), ?CALLBACK_TIMEOUT_MSG);
 start_timer(_) -> 'undefined'.
-
-

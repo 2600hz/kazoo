@@ -2,41 +2,28 @@
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
-%%% Listing of all expected v1 callbacks
+%%% CRUD for call queues
 %%%
 %%% @end
 %%% @contributors:
-%%%   Karl Anderson
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cb_skels).
+-module(cb_queues).
 
 -export([init/0
-         ,authenticate/1
-         ,authorize/1
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
-         ,content_types_provided/1
-         ,content_types_accepted/1
-         ,languages_provided/1
-         ,charsets_provided/1
-         ,encodings_provided/1
          ,validate/1, validate/2
-         ,billing/1
-         ,get/1, get/2
-         ,put/1, put/2
-         ,post/1, post/2
-         ,delete/1, delete/2
-         ,etag/1
-         ,expires/1
-         ,finish_request/1
+         ,put/1
+         ,post/2
+         ,delete/2
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
 
--define(PVT_TYPE, <<"skel">>).
+-define(PVT_TYPE, <<"queue">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
--define(CB_LIST, <<"skels/crossbar_listing">>).
+-define(CB_LIST, <<"queues/crossbar_listing">>).
 
 %%%===================================================================
 %%% API
@@ -50,25 +37,12 @@
 %%--------------------------------------------------------------------
 -spec init/0 :: () -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize),
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.skels">>, ?MODULE, allowed_methods),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.skels">>, ?MODULE, resource_exists),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.skels">>, ?MODULE, content_types_provided),
-    _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.skels">>, ?MODULE, content_types_accepted),
-    _ = crossbar_bindings:bind(<<"v1_resource.languages_provided.skels">>, ?MODULE, languages_provided),
-    _ = crossbar_bindings:bind(<<"v1_resource.charsets_provided.skels">>, ?MODULE, charsets_provided),
-    _ = crossbar_bindings:bind(<<"v1_resource.encodings_provided.skels">>, ?MODULE, encodings_provided),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.skels">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, billing),
-    _ = crossbar_bindings:bind(<<"v1_resource.get.skels">>, ?MODULE, get),
-    _ = crossbar_bindings:bind(<<"v1_resource.put.skels">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.post.skels">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"v1_resource.delete.skels">>, ?MODULE, delete),
-    _ = crossbar_bindings:bind(<<"v1_resource.etag.skels">>, ?MODULE, etag),
-    _ = crossbar_bindings:bind(<<"v1_resource.expires.skels">>, ?MODULE, expires),
-    _ = crossbar_bindings:bind(<<"v1_resource.finish_request">>, ?MODULE, finish_request),
-    ok.
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.queues">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.queues">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.queues">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"v1_resource.put.queues">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"v1_resource.post.queues">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"v1_resource.delete.queues">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -110,9 +84,9 @@ allowed_methods(_) ->
 %% @public
 %% @doc
 %% Does the path point to a valid resource
-%% So /skels => []
-%%    /skels/foo => [<<"foo">>]
-%%    /skels/foo/bar => [<<"foo">>, <<"bar">>]
+%% So /queues => []
+%%    /queues/foo => [<<"foo">>]
+%%    /queues/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> boolean().
@@ -131,6 +105,7 @@ resource_exists(_) -> true.
 -spec content_types_provided/1 :: (path_tokens()) -> [crossbar_content_handler(),...] | [].
 content_types_provided(_) ->
     [].
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -173,7 +148,7 @@ charsets_provided(_) ->
 %% @doc
 %% If you provide alternative encodings, return a list of encodings and optional
 %% quality value:
-%% [<<"gzip;q=1.0">>, <<"identity;q=0.5">>, <<"*;q=0">>]
+%% [<<"gzip;q=1.0">>, <<"identity">>;q=0.5">>, <<"*;q=0">>]
 %% @end
 %%--------------------------------------------------------------------
 -spec encodings_provided/1 :: (path_tokens()) -> [ne_binary(),...] | [].
@@ -185,8 +160,8 @@ encodings_provided(_) ->
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /skels mights load a list of skel objects
-%% /skels/123 might load the skel object 123
+%% /queues mights load a list of queue objects
+%% /queues/123 might load the queue object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
@@ -308,7 +283,7 @@ finish_request(#cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec create/1 :: (#cb_context{}) -> #cb_context{}.
 create(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"skels">>) of
+    case wh_json_validator:is_valid(Data, <<"queues">>) of
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
@@ -337,7 +312,7 @@ read(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 update(Id, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"skels">>) of
+    case wh_json_validator:is_valid(Data, <<"queues">>) of
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
