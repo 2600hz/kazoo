@@ -46,7 +46,7 @@ start_handlers(Node, Options) when is_atom(Node) ->
           lager:debug("starting handler ~s", [Name]),
           supervisor:start_child(?SERVER, ?CHILD(Name, Mod, [Node, Options]))
       end
-      || H <- [<<"_auth">>, <<"_route">>, <<"_node">>] ].
+      || H <- [<<"_auth">>, <<"_route">>, <<"_node">>, <<"_config">>] ].
 
 -spec stop_handlers/1 :: (atom()) -> ['ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'},...].
 stop_handlers(Node) when is_atom(Node) ->
@@ -71,6 +71,7 @@ get_handler_pids(Node) when is_atom(Node) ->
     {props:get_value(ecallmgr_fs_auth, NodePids, error)
      ,props:get_value(ecallmgr_fs_route, NodePids, error)
      ,props:get_value(ecallmgr_fs_node, NodePids, error)
+     ,props:get_value(ecallmgr_fs_config, NodePids, error)
     }.
 
 %%%===================================================================

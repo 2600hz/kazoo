@@ -11,7 +11,7 @@
 %% API
 -export([start_link/1, start_link/2]).
 -export([resource_consume/3, show_channels/1, fs_node/1, uuid_exists/2
-         ,uuid_dump/2, hostname/1
+         ,uuid_dump/2, hostname/1, reloadacl/1
         ]).
 -export([distributed_presence/3]).
 
@@ -63,6 +63,10 @@ hostname(Srv) ->
         {'EXIT', _} -> timeout;
         Else -> Else
     end.
+
+-spec reloadacl/1 ::(pid()) -> 'ok'.
+reloadacl(Srv) ->
+    gen_server:cast(Srv, reloadacl).
 
 -spec fs_node/1 :: (pid()) -> atom().
 fs_node(Srv) ->
@@ -151,6 +155,11 @@ handle_cast({distributed_presence, Presence, Event}, #state{node=Node}=State) ->
               ],
     EventName = wh_util:to_atom(Presence, true), %% Presence = <<"PRESENCE_", Type/binary>>
     _ = freeswitch:sendevent(Node, EventName, Headers),
+    {noreply, State};
+
+handle_cast(reloadacl, #state{node=Node}=State) ->
+    lager:debug("reloadacl command sent to FS ~s", [Node]),
+    _ = freeswitch:api(Node, reloadacl),
     {noreply, State};
 
 handle_cast(_Req, State) ->

@@ -13,6 +13,7 @@
 -export([handle_channel_query/2]).
 -export([handle_channel_status/2]).
 -export([handle_call_status/2]).
+-export([handle_switch_reloadacl/2]).
 -export([channel_query/1]).
 
 %% gen_server callbacks
@@ -26,9 +27,11 @@
 -define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
                      ,{{?MODULE, handle_channel_query}, [{<<"call_event">>, <<"channel_query_req">>}]}
+                     ,{{?MODULE, handle_switch_reloadacl}, [{<<"switch_event">>, <<"reloadacl">>}]}
                     ]).
-
--define(BINDINGS, [{call, [{restrict_to, [query_req, status_req]}]}]).
+%% ?? Bindings
+-define(BINDINGS, [{call, [{restrict_to, [query_req, status_req]}]}
+                   ,{switch, []}]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -140,6 +143,11 @@ channel_query(JObj) ->
                             false -> Results
                         end
                 end, [], Channels).    
+
+-spec handle_switch_reloadacl/2 ::(wh_json:json_object(), proplist()) -> any().
+handle_switch_reloadacl(JObj, _Props) ->
+  true = wapi_switch:reloadacl_v(JObj),
+  [ecallmgr_fs_node:reloadacl(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()].
 
 %%%===================================================================
 %%% gen_server callbacks
