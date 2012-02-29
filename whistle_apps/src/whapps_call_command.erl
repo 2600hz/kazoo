@@ -1,14 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 19 Mar 2011 by Karl Anderson <karl@2600hz.org>
+%%% Created : 21 Feb 2012 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(cf_call_command).
+-module(whapps_call_command).
 
--include("callflow.hrl").
+-include_lib("whistle_apps/include/whapps_call_command.hrl").
 
 -export([audio_macro/2]).
 -export([response/2, response/3, response/4]).
@@ -24,9 +23,14 @@
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([store/3, store/4, store/5]).
 -export([tones/2]).
+-export([prompt_and_collect_digit/2]).
+-export([prompt_and_collect_digits/4, prompt_and_collect_digits/5, prompt_and_collect_digits/6,
+         prompt_and_collect_digits/7, prompt_and_collect_digits/8, prompt_and_collect_digits/9
+        ]).
 -export([play_and_collect_digit/2]).
 -export([play_and_collect_digits/4, play_and_collect_digits/5, play_and_collect_digits/6,
-         play_and_collect_digits/7, play_and_collect_digits/8, play_and_collect_digits/9]).
+         play_and_collect_digits/7, play_and_collect_digits/8, play_and_collect_digits/9
+        ]).
 -export([say/2, say/3, say/4, say/5]).
 -export([conference/2, conference/3, conference/4, conference/5]).
 -export([noop/1]).
@@ -39,9 +43,14 @@
 -export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_store/3, b_store/4, b_store/5]).
+-export([b_prompt_and_collect_digit/2]).
+-export([b_prompt_and_collect_digits/4, b_prompt_and_collect_digits/5, b_prompt_and_collect_digits/6,
+         b_prompt_and_collect_digits/7, b_prompt_and_collect_digits/8, b_prompt_and_collect_digits/9
+        ]).
 -export([b_play_and_collect_digit/2]).
 -export([b_play_and_collect_digits/4, b_play_and_collect_digits/5, b_play_and_collect_digits/6,
-         b_play_and_collect_digits/7, b_play_and_collect_digits/8, b_play_and_collect_digits/9]).
+         b_play_and_collect_digits/7, b_play_and_collect_digits/8, b_play_and_collect_digits/9
+        ]).
 -export([b_say/2, b_say/3, b_say/4, b_say/5]).
 -export([b_conference/2, b_conference/3, b_conference/4, b_conference/5]).
 -export([b_noop/1]).
@@ -73,8 +82,8 @@
                               {'tones', wh_json:json_objects()}.
 -export_type([audio_macro_prompt/0]).
 
--spec audio_macro/2 :: ([audio_macro_prompt(),...], #cf_call{}) -> ne_binary().
--spec audio_macro/3 :: ([audio_macro_prompt(),...], #cf_call{}, wh_json:json_objects()) -> binary().
+-spec audio_macro/2 :: ([audio_macro_prompt(),...], whapps_call:call()) -> ne_binary().
+-spec audio_macro/3 :: ([audio_macro_prompt(),...], whapps_call:call(), wh_json:json_objects()) -> binary().
 
 audio_macro([], Call) ->
     noop(Call);
@@ -85,7 +94,7 @@ audio_macro([], Call, Queue) ->
     NoopId = couch_mgr:get_uuid(),
     Prompts = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                   ,{<<"Msg-ID">>, NoopId}
-                                  ,{<<"Call-ID">>, cf_exe:callid(Call)}
+                                  ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                                  ]) | Queue
               ],
     Command = [{<<"Application-Name">>, <<"queue">>}
@@ -117,17 +126,17 @@ audio_macro([{tones, Tones}|T], Call, Queue) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec response/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
--spec response/3 :: (ne_binary(), 'undefined' | ne_binary(), #cf_call{}) -> 'ok'.
--spec response/4 :: (ne_binary(), 'undefined' | binary(), 'undefined' | binary(), #cf_call{}) -> 'ok'.
+-spec response/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec response/3 :: (ne_binary(), 'undefined' | ne_binary(), whapps_call:call()) -> 'ok'.
+-spec response/4 :: (ne_binary(), 'undefined' | binary(), 'undefined' | binary(), whapps_call:call()) -> 'ok'.
 
 response(Code, Call) ->
     response(Code, undefined, Call).
 response(Code, Cause, Call) ->
     response(Code, Cause, undefined, Call).
 response(Code, Cause, Media, Call) ->
-    CallId = cf_exe:callid(Call),
-    CtrlQ = cf_exe:control_queue_name(Call),
+    CallId = whapps_call:call_id(Call),
+    CtrlQ = whapps_call:control_queue(Call),
     wh_call_response:send(CallId, CtrlQ, Code, Cause, Media).
 
 %%--------------------------------------------------------------------
@@ -135,7 +144,7 @@ response(Code, Cause, Media, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec pickup/2 :: (ne_binary(), #cf_call{}) -> ok.
+-spec pickup/2 :: (ne_binary(), whapps_call:call()) -> ok.
 pickup(TargetCallId, Call) ->
     Command = [{<<"Application-Name">>, <<"call_pickup">>}
                ,{<<"Target-Call-ID">>, TargetCallId}
@@ -152,7 +161,7 @@ b_pickup(TargetCallId, Call) ->
 %% Create a redirect request to the Contact on Server
 %% @end
 %%--------------------------------------------------------------------
--spec redirect/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> ok.
+-spec redirect/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> ok.
 redirect(Contact, Server, Call) ->
     ?LOG("redirect to ~s on ~s", [Contact, Server]),
     Command = [{<<"Redirect-Contact">>, Contact}
@@ -168,26 +177,25 @@ redirect(Contact, Server, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec flush_dtmf/1 :: (#cf_call{}) -> 'ok'.
+-spec flush_dtmf/1 :: (whapps_call:call()) -> 'ok'.
 flush_dtmf(Call) ->
     play(<<"silence_stream://50">>, Call).
-
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec presence/2 :: (ne_binary(), ne_binary() | #cf_call{}) -> 'ok'.
--spec presence/3 :: (ne_binary(), ne_binary() | #cf_call{}, ne_binary() | #cf_call{}) -> 'ok'.
+-spec presence/2 :: (ne_binary(), ne_binary() | whapps_call:call()) -> 'ok'.
+-spec presence/3 :: (ne_binary(), ne_binary() | whapps_call:call(), ne_binary() | whapps_call:call()) -> 'ok'.
 
-presence(State, #cf_call{from=User}) ->
-    presence(State, User);
+presence(State, Call) when is_tuple(Call) ->
+    presence(State, whapps_call:from(Call));
 presence(State, PresenceId) ->
     presence(State, PresenceId, undefined).
 
-presence(State, PresenceId, #cf_call{}=Call) ->
-    presence(State, PresenceId, cf_exe:callid(Call));
+presence(State, PresenceId, Call) when is_tuple(Call) ->
+    presence(State, PresenceId, whapps_call:call_id(Call));
 presence(State, PresenceId, CallId) ->
     Command = [{<<"Presence-ID">>, PresenceId}
                ,{<<"State">>, State}
@@ -204,7 +212,7 @@ presence(State, PresenceId, CallId) ->
 %%   can not be used to set system settings
 %% @end
 %%--------------------------------------------------------------------
--spec set/3 :: ('undefined' | wh_json:json_object(), 'undefined' | wh_json:json_object(), #cf_call{}) -> 'ok'.
+-spec set/3 :: ('undefined' | wh_json:json_object(), 'undefined' | wh_json:json_object(), whapps_call:call()) -> 'ok'.
 set(undefined, CallVars, Call) ->
     set(wh_json:new(), CallVars, Call);
 set(ChannelVars, undefined, Call) ->
@@ -229,11 +237,11 @@ set(ChannelVars, CallVars, Call) ->
 %%   can not the switch vars
 %% @end
 %%--------------------------------------------------------------------
--spec fetch/1 :: (#cf_call{}) -> 'ok'.
--spec fetch/2 :: (boolean(), #cf_call{}) -> 'ok'.
+-spec fetch/1 :: (whapps_call:call()) -> 'ok'.
+-spec fetch/2 :: (boolean(), whapps_call:call()) -> 'ok'.
 
--spec b_fetch/1 :: (#cf_call{}) -> cf_api_std_return().
--spec b_fetch/2 :: (boolean(), #cf_call{}) -> cf_api_std_return().
+-spec b_fetch/1 :: (whapps_call:call()) -> whapps_api_std_return().
+-spec b_fetch/2 :: (boolean(), whapps_call:call()) -> whapps_api_std_return().
 
 fetch(Call) ->
     fetch(false, Call).
@@ -261,8 +269,8 @@ b_fetch(FromOtherLeg, Call) ->
 %% Produces the low level wh_api request to answer the channel
 %% @end
 %%--------------------------------------------------------------------
--spec answer/1 :: (#cf_call{}) -> 'ok'.
--spec b_answer/1 :: (#cf_call{}) -> cf_api_error() | {'ok', wh_json:json_object()}.
+-spec answer/1 :: (whapps_call:call()) -> 'ok'.
+-spec b_answer/1 :: (whapps_call:call()) -> whapps_api_error() | {'ok', wh_json:json_object()}.
 
 answer(Call) ->
     Command = [{<<"Application-Name">>, <<"answer">>}],
@@ -279,8 +287,8 @@ b_answer(Call) ->
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec hangup/1 :: (#cf_call{}) -> 'ok'.
--spec b_hangup/1 :: (#cf_call{}) -> {'ok', 'channel_hungup'}.
+-spec hangup/1 :: (whapps_call:call()) -> 'ok'.
+-spec b_hangup/1 :: (whapps_call:call()) -> {'ok', 'channel_hungup'}.
 
 hangup(Call) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
@@ -299,20 +307,20 @@ b_hangup(Call) ->
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec call_status/1 :: (#cf_call{}) -> 'ok'.
--spec call_status/2 :: ('undefined' | ne_binary(), #cf_call{}) -> 'ok'.
--spec b_call_status/1 :: (#cf_call{}) -> cf_api_std_return().
--spec b_call_status/2 :: ('undefined' | ne_binary(), #cf_call{}) -> cf_api_std_return().
+-spec call_status/1 :: (whapps_call:call()) -> 'ok'.
+-spec call_status/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> 'ok'.
+-spec b_call_status/1 :: (whapps_call:call()) -> whapps_api_std_return().
+-spec b_call_status/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 
 
 call_status(Call) ->    
     call_status(undefined, Call).
 
 call_status(undefined, Call) ->
-    call_status(cf_exe:callid(Call), Call);
+    call_status(whapps_call:call_id(Call), Call);
 call_status(CallId, Call) ->
     Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
               ],
     wapi_call:publish_call_status_req(CallId, Command).
 
@@ -320,7 +328,7 @@ b_call_status(Call) ->
     b_call_status(undefined, Call).
 
 b_call_status(undefined, Call) ->
-    b_call_status(cf_exe:callid(Call), Call);
+    b_call_status(whapps_call:call_id(Call), Call);
 b_call_status(CallId, Call) ->
     call_status(CallId, Call),
     wait_for_our_call_status(CallId).
@@ -342,19 +350,19 @@ wait_for_our_call_status(CallId) ->
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec channel_status/1 :: (#cf_call{}) -> 'ok'.
--spec channel_status/2 :: (undefined | ne_binary(), #cf_call{}) -> 'ok'.
--spec b_channel_status/1 :: (#cf_call{}) -> cf_api_std_return().
--spec b_channel_status/2 :: (undefined | ne_binary(), #cf_call{}) -> cf_api_std_return().
+-spec channel_status/1 :: (whapps_call:call()) -> 'ok'.
+-spec channel_status/2 :: (undefined | ne_binary(), whapps_call:call()) -> 'ok'.
+-spec b_channel_status/1 :: (whapps_call:call()) -> whapps_api_std_return().
+-spec b_channel_status/2 :: (undefined | ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 
 channel_status(Call) ->
     channel_status(undefined, Call).
 
 channel_status(undefined, Call) ->
-    channel_status(cf_exe:callid(Call), Call);
+    channel_status(whapps_call:call_id(Call), Call);
 channel_status(CallId, Call) ->
     Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
               ],
     wapi_call:publish_channel_status_req(CallId, Command).
 
@@ -362,7 +370,7 @@ b_channel_status(Call) ->
     b_channel_status(undefined, Call).
 
 b_channel_status(undefined, Call) ->
-    b_channel_status(cf_exe:callid(Call), Call);
+    b_channel_status(whapps_call:call_id(Call), Call);
 b_channel_status(CallId, Call) ->
     channel_status(CallId, Call),
     wait_for_our_channel_status(CallId).
@@ -387,18 +395,18 @@ wait_for_our_channel_status(CallId) ->
 %% Produces the low level wh_api request to bridge the call
 %% @end
 %%--------------------------------------------------------------------
--spec bridge/2 :: (wh_json:json_objects(), #cf_call{}) -> 'ok'.
--spec bridge/3 :: (wh_json:json_objects(), cf_api_binary(), #cf_call{}) -> 'ok'.
--spec bridge/4 :: (wh_json:json_objects(), cf_api_binary(), cf_api_binary(), #cf_call{}) -> 'ok'.
--spec bridge/5 :: (wh_json:json_objects(), cf_api_binary(), cf_api_binary(), cf_api_binary(), #cf_call{}) -> 'ok'.
--spec bridge/6 :: (wh_json:json_objects(), cf_api_binary(), cf_api_binary(), cf_api_binary(), cf_api_binary(), #cf_call{}) -> 'ok'.
+-spec bridge/2 :: (wh_json:json_objects(), whapps_call:call()) -> 'ok'.
+-spec bridge/3 :: (wh_json:json_objects(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec bridge/4 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec bridge/5 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec bridge/6 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
 
--spec b_bridge/2 :: (wh_json:json_objects(), #cf_call{}) -> cf_api_bridge_return().
--spec b_bridge/3 :: (wh_json:json_objects(), cf_api_binary(), #cf_call{}) -> cf_api_bridge_return().
--spec b_bridge/4 :: (wh_json:json_objects(), cf_api_binary(), cf_api_binary(), #cf_call{}) -> cf_api_bridge_return().
--spec b_bridge/5 :: (wh_json:json_objects(), cf_api_binary(), cf_api_binary(), cf_api_binary(), #cf_call{}) -> cf_api_bridge_return().
--spec b_bridge/6 :: (wh_json:json_objects(), cf_api_binary(), cf_api_binary(), cf_api_binary(), cf_api_binary(), #cf_call{}) 
-                    -> cf_api_bridge_return().
+-spec b_bridge/2 :: (wh_json:json_objects(), whapps_call:call()) -> whapps_api_bridge_return().
+-spec b_bridge/3 :: (wh_json:json_objects(), whapps_api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
+-spec b_bridge/4 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
+-spec b_bridge/5 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
+-spec b_bridge/6 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) 
+                    -> whapps_api_bridge_return().
 
 bridge(Endpoints, Call) ->
     bridge(Endpoints, ?DEFAULT_TIMEOUT, Call).
@@ -408,14 +416,13 @@ bridge(Endpoints, Timeout, Strategy, Call) ->
     bridge(Endpoints, Timeout, Strategy, <<"false">>, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, undefined, Call).
-bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, #cf_call{channel_vars=CCVs}=Call) ->
+bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, Timeout}
                ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
                ,{<<"Ringback">>, cf_util:correct_media_path(Ringback, Call)}
                ,{<<"Dial-Endpoint-Method">>, Strategy}
-               ,{<<"Custom-Channel-Vars">>, CCVs}
               ],
     send_command(Command, Call).
 
@@ -442,10 +449,10 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
 %% Produces the low level wh_api request to park the channel
 %% @end
 %%--------------------------------------------------------------------
--spec hold/1 :: (#cf_call{}) -> 'ok'.
+-spec hold/1 :: (whapps_call:call()) -> 'ok'.
 
--spec b_hold/1 :: (#cf_call{}) -> 'ok'.
--spec b_hold/2 :: ('infinity' | pos_integer(), #cf_call{}) -> 'ok'.
+-spec b_hold/1 :: (whapps_call:call()) -> 'ok'.
+-spec b_hold/2 :: ('infinity' | pos_integer(), whapps_call:call()) -> 'ok'.
 
 hold(Call) ->
     Command = [{<<"Application-Name">>, <<"hold">>}
@@ -466,11 +473,11 @@ b_hold(Timeout, Call) ->
 %% caller.
 %% @end
 %%--------------------------------------------------------------------
--spec prompt/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
--spec prompt/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
+-spec prompt/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec prompt/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 
--spec b_prompt/2 :: (ne_binary(), #cf_call{}) -> cf_api_std_return().
--spec b_prompt/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> cf_api_std_return().
+-spec b_prompt/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_prompt/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 
 prompt(Prompt, Call) ->
     prompt(Prompt, <<"en">>, Call).
@@ -492,18 +499,18 @@ b_prompt(Prompt, Lang, Call) ->
 %% can use to skip playback.
 %% @end
 %%--------------------------------------------------------------------
--spec play/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
--spec play/3 :: (ne_binary(), [ne_binary(),...], #cf_call{}) -> 'ok'.
+-spec play/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec play/3 :: (ne_binary(), [ne_binary(),...], whapps_call:call()) -> 'ok'.
 
--spec b_play/2 :: (ne_binary(), #cf_call{}) -> cf_api_std_return().
--spec b_play/3 :: (ne_binary(), [ne_binary(),...], #cf_call{}) -> cf_api_std_return().
+-spec b_play/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_play/3 :: (ne_binary(), [ne_binary(),...], whapps_call:call()) -> whapps_api_std_return().
 
 play(Media, Call) ->
     play(Media, ?ANY_DIGIT, Call).
 play(Media, Terminators, Call) ->
     NoopId = couch_mgr:get_uuid(),
-    CallId = cf_exe:callid(Call),
-    Q = cf_exe:queue_name(Call),
+    CallId = whapps_call:call_id(Call),
+    Q = whapps_call:controller_queue(Call),
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                    ,{<<"Call-ID">>, CallId}
                                    ,{<<"Msg-ID">>, NoopId}
@@ -528,12 +535,12 @@ b_play(Media, Terminators, Call) ->
     NoopId = play(Media, Terminators, Call),
     wait_for_noop(NoopId).
 
--spec play_command/3 :: (ne_binary(), [ne_binary(),...], #cf_call{}) -> wh_json:json_object().
+-spec play_command/3 :: (ne_binary(), [ne_binary(),...], whapps_call:call()) -> wh_json:json_object().
 play_command(Media, Terminators, Call) ->
     wh_json:from_list([{<<"Application-Name">>, <<"play">>}
                        ,{<<"Media-Name">>, Media}
                        ,{<<"Terminators">>, Terminators}
-                       ,{<<"Call-ID">>, cf_exe:callid(Call)}
+                       ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                       ]).
 
 %%--------------------------------------------------------------------
@@ -543,17 +550,17 @@ play_command(Media, Terminators, Call) ->
 %% A list of keys can be used as the terminator or a silence threshold.
 %% @end
 %%--------------------------------------------------------------------
--spec record/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
--spec record/3 :: (ne_binary(), [binary(),...], #cf_call{}) -> 'ok'.
--spec record/4 :: (ne_binary(), [binary(),...],  cf_api_binary(), #cf_call{}) -> 'ok'.
--spec record/5 :: (ne_binary(), [binary(),...],  cf_api_binary(), cf_api_binary(), #cf_call{}) -> 'ok'.
--spec record/6 :: (ne_binary(), [binary(),...],  cf_api_binary(), cf_api_binary(),  cf_api_binary(), #cf_call{}) -> 'ok'.
+-spec record/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec record/3 :: (ne_binary(), [binary(),...], whapps_call:call()) -> 'ok'.
+-spec record/4 :: (ne_binary(), [binary(),...],  whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec record/5 :: (ne_binary(), [binary(),...],  whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec record/6 :: (ne_binary(), [binary(),...],  whapps_api_binary(), whapps_api_binary(),  whapps_api_binary(), whapps_call:call()) -> 'ok'.
 
--spec b_record/2 :: (ne_binary(), #cf_call{}) -> cf_api_std_return().
--spec b_record/3 :: (ne_binary(), [binary(),...], #cf_call{}) -> cf_api_std_return().
--spec b_record/4 :: (ne_binary(), [binary(),...], cf_api_binary(), #cf_call{}) -> cf_api_std_return().
--spec b_record/5 :: (ne_binary(), [binary(),...], cf_api_binary(), cf_api_binary(), #cf_call{}) -> cf_api_std_return().
--spec b_record/6 :: (ne_binary(), [binary(),...], cf_api_binary(), cf_api_binary(), cf_api_binary(), #cf_call{}) -> cf_api_std_return().
+-spec b_record/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record/3 :: (ne_binary(), [binary(),...], whapps_call:call()) -> whapps_api_std_return().
+-spec b_record/4 :: (ne_binary(), [binary(),...], whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record/5 :: (ne_binary(), [binary(),...], whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record/6 :: (ne_binary(), [binary(),...], whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
 
 record(MediaName, Call) ->
     record(MediaName, ?ANY_DIGIT, Call).
@@ -593,13 +600,13 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 %%--------------------------------------------------------------------
 -type b_store_return() :: {'error', 'timeout' | wh_json:json_object()} | {'ok', wh_json:json_object()}.
 
--spec store/3 :: (ne_binary(), cf_api_binary(), #cf_call{}) -> 'ok'.
--spec store/4 :: (ne_binary(), cf_api_binary(), cf_api_binary(), #cf_call{}) -> 'ok'.
--spec store/5 :: (ne_binary(), cf_api_binary(), cf_api_binary(), wh_json:json_objects(), #cf_call{}) -> 'ok'.
+-spec store/3 :: (ne_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec store/4 :: (ne_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec store/5 :: (ne_binary(), whapps_api_binary(), whapps_api_binary(), wh_json:json_objects(), whapps_call:call()) -> 'ok'.
 
--spec b_store/3 :: (ne_binary(), ne_binary(), #cf_call{}) -> b_store_return().
--spec b_store/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> b_store_return().
--spec b_store/5 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_objects(), #cf_call{}) -> b_store_return().
+-spec b_store/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> b_store_return().
+-spec b_store/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_store_return().
+-spec b_store/5 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_objects(), whapps_call:call()) -> b_store_return().
 
 store(MediaName, Transfer, Call) ->
     store(MediaName, Transfer, <<"put">>, Call).
@@ -630,20 +637,87 @@ b_store(MediaName, Transfer, Method, Headers, Call) ->
 %% caller
 %% @end
 %%--------------------------------------------------------------------
--spec tones/2 :: (wh_json:json_objects(), #cf_call{}) -> 'ok'.
+-spec tones/2 :: (wh_json:json_objects(), whapps_call:call()) -> 'ok'.
 tones(Tones, Call) ->
     Command = [{<<"Application-Name">>, <<"tones">>}
                ,{<<"Tones">>, Tones}
               ],
     send_command(Command, Call).
 
--spec tones_command/2 :: (wh_json:json_objects(), #cf_call{}) -> wh_json:json_object().
+-spec tones_command/2 :: (wh_json:json_objects(), whapps_call:call()) -> wh_json:json_object().
 tones_command(Tones, Call) ->
-    CallId = cf_exe:callid(Call),
+    CallId = whapps_call:call_id(Call),
     wh_json:from_list([{<<"Application-Name">>, <<"tones">>}
                        ,{<<"Tones">>, Tones}
                        ,{<<"Call-ID">>, CallId}
                       ]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level wh_api request to prompt a
+%% caller, and collect a number of DTMF events.
+%% @end
+%%--------------------------------------------------------------------
+-spec prompt_and_collect_digit/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec prompt_and_collect_digits/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec prompt_and_collect_digits/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec prompt_and_collect_digits/6 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec prompt_and_collect_digits/7 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec prompt_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
+                                    ,whapps_call:call()) -> ok.
+-spec prompt_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
+                                    ,[ne_binary(),...], whapps_call:call()) -> 'ok'.
+
+
+-spec b_prompt_and_collect_digit/2 :: (ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
+-spec b_prompt_and_collect_digits/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
+-spec b_prompt_and_collect_digits/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
+-spec b_prompt_and_collect_digits/6 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) 
+                                     -> b_play_and_collect_digits_return().
+-spec b_prompt_and_collect_digits/7 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) 
+                                     -> b_play_and_collect_digits_return().
+-spec b_prompt_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
+                                      ,whapps_call:call()) -> b_play_and_collect_digits_return().
+-spec b_prompt_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
+                                      ,[ne_binary(),...], whapps_call:call()) -> b_play_and_collect_digits_return().
+
+prompt_and_collect_digit(Prompt, Call) ->
+    prompt_and_collect_digits(<<"1">>, <<"1">>, Prompt, Call).
+
+prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Call) ->
+    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, <<"1">>,  Call).
+prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Call) ->
+    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, <<"3000">>, Call).
+prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Call) ->
+    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, undefined, Call).
+prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Call) ->
+    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, <<"\\d+">>, Call).
+prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Call) ->
+    prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, [<<"#">>], Call).
+prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
+    play_and_collect_digits(MinDigits, MaxDigits, cf_util:get_prompt(Prompt), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
+
+b_prompt_and_collect_digit(Prompt, Call) ->
+    b_prompt_and_collect_digits(<<"1">>, <<"1">>, Prompt, Call).
+b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Call) ->
+    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, <<"3">>,  Call).
+b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Call) ->
+    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, <<"5000">>, Call).
+b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Call) ->
+    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, undefined, Call).
+b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Call) ->
+    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, <<"\\d+">>, Call).
+b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Call) ->
+    b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, ?ANY_DIGIT, Call).
+
+b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, <<"0">>, _Timeout, undefined, _Regex, _Terminators, _Call) ->
+    {ok, <<>>};
+b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, <<"0">>, _Timeout, InvalidPrompt, _Regex, _Terminators, Call) ->
+    _ = b_prompt(InvalidPrompt, Call),
+    {ok, <<>>};
+b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
+    b_play_and_collect_digits(MinDigits, MaxDigits, cf_util:get_prompt(Prompt), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -654,28 +728,28 @@ tones_command(Tones, Call) ->
 %%--------------------------------------------------------------------
 -type b_play_and_collect_digits_return() :: {'error', 'channel_hungup' | 'channel_unbridge' | wh_json:json_object()} | {'ok', binary()}.
 
--spec play_and_collect_digit/2 :: (ne_binary(), #cf_call{}) -> 'ok'.
--spec play_and_collect_digits/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
--spec play_and_collect_digits/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
--spec play_and_collect_digits/6 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> 'ok'.
--spec play_and_collect_digits/7 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), cf_api_binary(), #cf_call{}) -> 'ok'.
--spec play_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), cf_api_binary(), ne_binary()
-                                    ,#cf_call{}) -> ok.
--spec play_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), cf_api_binary(), ne_binary()
-                                    ,[ne_binary(),...], #cf_call{}) -> 'ok'.
+-spec play_and_collect_digit/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec play_and_collect_digits/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec play_and_collect_digits/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec play_and_collect_digits/6 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec play_and_collect_digits/7 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec play_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
+                                    ,whapps_call:call()) -> ok.
+-spec play_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
+                                    ,[ne_binary(),...], whapps_call:call()) -> 'ok'.
 
 
--spec b_play_and_collect_digit/2 :: (ne_binary(), #cf_call{}) -> b_play_and_collect_digits_return().
--spec b_play_and_collect_digits/4 :: (ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> b_play_and_collect_digits_return().
--spec b_play_and_collect_digits/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), #cf_call{}) -> b_play_and_collect_digits_return().
--spec b_play_and_collect_digits/6 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), #cf_call{}) 
+-spec b_play_and_collect_digit/2 :: (ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
+-spec b_play_and_collect_digits/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
+-spec b_play_and_collect_digits/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
+-spec b_play_and_collect_digits/6 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) 
                                      -> b_play_and_collect_digits_return().
--spec b_play_and_collect_digits/7 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), cf_api_binary(), #cf_call{}) 
+-spec b_play_and_collect_digits/7 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) 
                                      -> b_play_and_collect_digits_return().
--spec b_play_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), cf_api_binary(), ne_binary()
-                                      ,#cf_call{}) -> b_play_and_collect_digits_return().
--spec b_play_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), cf_api_binary(), ne_binary()
-                                      ,[ne_binary(),...], #cf_call{}) -> b_play_and_collect_digits_return().
+-spec b_play_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
+                                      ,whapps_call:call()) -> b_play_and_collect_digits_return().
+-spec b_play_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
+                                      ,[ne_binary(),...], whapps_call:call()) -> b_play_and_collect_digits_return().
 
 play_and_collect_digit(Media, Call) ->
     play_and_collect_digits(<<"1">>, <<"1">>, Media, Call).
@@ -718,8 +792,8 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 
 b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, <<"0">>, _Timeout, undefined, _Regex, _Terminators, _Call) ->
     {ok, <<>>};
-b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, <<"0">>, _Timeout, MediaInvalid, _Regex, Terminators, Call) ->
-    _ = b_play(MediaInvalid, Terminators, Call),
+b_play_and_collect_digits(_MinDigits, _MaxDigits, _Media, <<"0">>, _Timeout, MediaInvalid, _Regex, _Terminators, Call) ->
+    _ = b_play(MediaInvalid, Call),
     {ok, <<>>};
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Terminators, Call) ->
     NoopId = play(Media, Terminators, Call),
@@ -743,43 +817,15 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
 %% Produces the low level wh_api request to say text to a caller
 %% @end
 %%--------------------------------------------------------------------
--spec say/2 :: (Say, Call) -> 'ok' when
-      Say :: binary(),
-      Call :: #cf_call{}.
--spec say/3 :: (Say, Type, Call) -> 'ok' when
-      Say :: binary(),
-      Type :: binary(),
-      Call :: #cf_call{}.
--spec say/4 :: (Say, Type, Method, Call) -> 'ok' when
-      Say :: binary(),
-      Type :: binary(),
-      Method :: binary(),
-      Call :: #cf_call{}.
--spec say/5 :: (Say, Type, Method, Language, Call) -> 'ok' when
-      Say :: binary(),
-      Type :: binary(),
-      Method :: binary(),
-      Language :: binary(),
-      Call :: #cf_call{}.
+-spec say/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec say/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec say/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec say/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 
--spec b_say/2 :: (Say, Call) -> cf_api_std_return() when
-      Say :: binary(),
-      Call :: #cf_call{}.
--spec b_say/3 :: (Say, Type, Call) -> cf_api_std_return() when
-      Say :: binary(),
-      Type :: binary(),
-      Call :: #cf_call{}.
--spec b_say/4 :: (Say, Type, Method, Call) -> cf_api_std_return() when
-      Say :: binary(),
-      Type :: binary(),
-      Method :: binary(),
-      Call :: #cf_call{}.
--spec b_say/5 :: (Say, Type, Method, Language, Call) -> cf_api_std_return() when
-      Say :: binary(),
-      Type :: binary(),
-      Method :: binary(),
-      Language :: binary(),
-      Call :: #cf_call{}.
+-spec b_say/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_say/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_say/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_say/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 
 say(Say, Call) ->
     say(Say, <<"name_spelled">>, Call).
@@ -796,14 +842,9 @@ say(Say, Type, Method, Language,Call) ->
               ],
     send_command(Command, Call).
 
--spec say_command/5 :: (Say, Type, Method, Language, Call) -> wh_json:json_object() when
-      Say :: binary(),
-      Type :: binary(),
-      Method :: binary(),
-      Language :: binary(),
-      Call :: #cf_call{}.
+-spec say_command/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:json_object().
 say_command(Say, Type, Method, Language, Call) ->
-    CallId = cf_exe:callid(Call),
+    CallId = whapps_call:call_id(Call),
     wh_json:from_list([{<<"Application-Name">>, <<"say">>}
                        ,{<<"Say-Text">>, Say}
                        ,{<<"Type">>, Type}
@@ -829,43 +870,15 @@ b_say(Say, Type, Method, Language, Call) ->
 %% with a conference, with optional entry flags
 %% @end
 %%--------------------------------------------------------------------
--spec conference/2 :: (ConfId, Call) -> 'ok' when
-      ConfId :: binary(),
-      Call :: #cf_call{}.
--spec conference/3 :: (ConfId, Mute, Call) -> 'ok' when
-      ConfId :: binary(),
-      Mute :: binary(),
-      Call :: #cf_call{}.
--spec conference/4 :: (ConfId, Mute, Deaf, Call) -> 'ok' when
-      ConfId :: binary(),
-      Mute :: binary(),
-      Deaf :: binary(),
-      Call :: #cf_call{}.
--spec conference/5 :: (ConfId, Mute, Deaf, Moderator, Call) -> 'ok' when
-      ConfId :: binary(),
-      Mute :: binary(),
-      Deaf :: binary(),
-      Moderator :: binary(),
-      Call :: #cf_call{}.
+-spec conference/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec conference/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec conference/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec conference/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 
--spec b_conference/2 :: (ConfId, Call) -> cf_api_std_return() when
-      ConfId :: binary(),
-      Call :: #cf_call{}.
--spec b_conference/3 :: (ConfId, Mute, Call) -> cf_api_std_return() when
-      ConfId :: binary(),
-      Mute :: binary(),
-      Call :: #cf_call{}.
--spec b_conference/4 :: (ConfId, Mute, Deaf, Call) -> cf_api_std_return() when
-      ConfId :: binary(),
-      Mute :: binary(),
-      Deaf :: binary(),
-      Call :: #cf_call{}.
--spec b_conference/5 :: (ConfId, Mute, Deaf, Moderator, Call) -> cf_api_std_return() when
-      ConfId :: binary(),
-      Mute :: binary(),
-      Deaf :: binary(),
-      Moderator :: binary(),
-      Call :: #cf_call{}.
+-spec b_conference/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_conference/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_conference/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_conference/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 
 conference(ConfId, Call) ->
     conference(ConfId, <<"false">>, Call).
@@ -898,8 +911,8 @@ b_conference(ConfId, Mute, Deaf, Moderator, Call) ->
 %% Produces the low level wh_api request to preform a noop
 %% @end
 %%--------------------------------------------------------------------
--spec noop/1 :: (#cf_call{}) -> ne_binary().
--spec b_noop/1 :: (#cf_call{}) -> cf_api_std_return().
+-spec noop/1 :: (whapps_call:call()) -> ne_binary().
+-spec b_noop/1 :: (whapps_call:call()) -> whapps_api_std_return().
 
 noop(Call) ->
     NoopId = couch_mgr:get_uuid(),
@@ -919,8 +932,8 @@ b_noop(Call) ->
 %% queue
 %% @end
 %%--------------------------------------------------------------------
--spec flush/1 :: (#cf_call{}) -> binary().
--spec b_flush/1 :: (#cf_call{}) -> cf_api_std_return().
+-spec flush/1 :: (whapps_call:call()) -> binary().
+-spec b_flush/1 :: (whapps_call:call()) -> whapps_api_std_return().
 
 flush(Call) ->
     NoopId = couch_mgr:get_uuid(),
@@ -954,33 +967,15 @@ b_flush(Call) ->
 %% execution untill the call is terminated.
 %% @end
 %%--------------------------------------------------------------------
--type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | wh_json:json_object()} | {'ok', binary()}.
-
--spec collect_digits/2 :: (MaxDigits, Call) -> collect_digits_return() when
-      MaxDigits :: integer() | binary(),
-      Call :: #cf_call{}.
--spec collect_digits/3 :: (MaxDigits, Timeout, Call) -> collect_digits_return() when
-      MaxDigits :: integer() | binary(),
-      Timeout :: integer() | binary(),
-      Call :: #cf_call{}.
--spec collect_digits/4 :: (MaxDigits, Timeout, Interdigit, Call) -> collect_digits_return() when
-      MaxDigits :: integer() | binary(),
-      Timeout :: integer() | binary(),
-      Interdigit :: integer() | binary(),
-      Call :: #cf_call{}.
--spec collect_digits/5 :: (MaxDigits, Timeout, Interdigit, NoopId, Call) -> collect_digits_return() when
-      MaxDigits :: integer() | binary(),
-      Timeout :: integer() | binary(),
-      Interdigit :: integer() | binary(),
-      NoopId :: 'undefined' | binary(),
-      Call :: #cf_call{}.
--spec collect_digits/6 :: (MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) -> collect_digits_return() when
-      MaxDigits :: integer() | binary(),
-      Timeout :: integer() | binary(),
-      Interdigit :: integer() | binary(),
-      NoopId :: 'undefined' | binary(),
-      Terminators :: list(),
-      Call :: #cf_call{}.
+-type collect_digits_return() :: {'error','channel_hungup' | 'channel_unbridge' | wh_json:json_object()} | {'ok', ne_binary()}.
+-spec collect_digits/2 :: (integer() | ne_binary(), whapps_call:call()) -> collect_digits_return().
+-spec collect_digits/3 :: (integer() | ne_binary(), integer() | ne_binary(), whapps_call:call()) -> collect_digits_return().
+-spec collect_digits/4 :: (integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), whapps_call:call()) 
+                          -> collect_digits_return().
+-spec collect_digits/5 :: (integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), undefined | ne_binary(), whapps_call:call()) 
+                          -> collect_digits_return().
+-spec collect_digits/6 :: (integer() | ne_binary(), integer() | ne_binary(), integer() | ne_binary(), undefined | ne_binary(), list()
+                           ,whapps_call:call()) -> collect_digits_return().
 
 collect_digits(MaxDigits, Call) ->
     collect_digits(MaxDigits, 3000, Call).
@@ -1084,10 +1079,10 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
 %% for the optional timeout period then errors are returned.
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_message/1 :: (ne_binary()) -> cf_api_std_return().
--spec wait_for_message/2 :: (ne_binary(), ne_binary()) -> cf_api_std_return().
--spec wait_for_message/3 :: (ne_binary(), ne_binary(), ne_binary()) -> cf_api_std_return().
--spec wait_for_message/4 :: (ne_binary(), ne_binary(), ne_binary(), 'infinity' | pos_integer()) -> cf_api_std_return().
+-spec wait_for_message/1 :: (ne_binary()) -> whapps_api_std_return().
+-spec wait_for_message/2 :: (ne_binary(), ne_binary()) -> whapps_api_std_return().
+-spec wait_for_message/3 :: (ne_binary(), ne_binary(), ne_binary()) -> whapps_api_std_return().
+-spec wait_for_message/4 :: (ne_binary(), ne_binary(), ne_binary(), 'infinity' | pos_integer()) -> whapps_api_std_return().
 
 wait_for_message(Application) ->
     wait_for_message(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
@@ -1271,8 +1266,8 @@ wait_for_dtmf(Timeout) ->
 %% Waits for and determines the status of the bridge command
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_bridge/2 :: ('infinity' | pos_integer(), #cf_call{}) -> cf_api_bridge_return().
--spec wait_for_bridge/3 :: ('infinity' | pos_integer(), undefined | fun(), #cf_call{}) -> cf_api_bridge_return().
+-spec wait_for_bridge/2 :: ('infinity' | pos_integer(), whapps_call:call()) -> whapps_api_bridge_return().
+-spec wait_for_bridge/3 :: ('infinity' | pos_integer(), undefined | fun(), whapps_call:call()) -> whapps_api_bridge_return().
 
 wait_for_bridge(Timeout, Call) ->
     wait_for_bridge(Timeout, undefined, Call).
@@ -1328,7 +1323,7 @@ wait_for_bridge(Timeout, Fun, Call) ->
 %% Wait for a noop or a specific noop to occur
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_noop/1 :: ('undefined' | ne_binary()) -> cf_api_std_return().
+-spec wait_for_noop/1 :: ('undefined' | ne_binary()) -> whapps_api_std_return().
 wait_for_noop(NoopId) ->
     case wait_for_message(<<"noop">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, infinity) of
         {ok, JObj}=OK ->
@@ -1419,7 +1414,7 @@ wait_for_hangup() ->
 %% Waits for and determines the status of the bridge command
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_application_or_dtmf/2 :: (ne_binary(), 'infinity' | pos_integer()) -> cf_api_std_return() | {'dtmf', binary()}.
+-spec wait_for_application_or_dtmf/2 :: (ne_binary(), 'infinity' | pos_integer()) -> whapps_api_std_return() | {'dtmf', binary()}.
 wait_for_application_or_dtmf(Application, Timeout) ->
     Start = erlang:now(),
     receive
@@ -1474,12 +1469,20 @@ get_event_type(JObj) ->
 %% Sends call commands to the appropriate call control process
 %% @end
 %%--------------------------------------------------------------------
--spec send_command/2 :: (proplist(), #cf_call{}) -> 'ok'.
+-spec send_command/2 :: (proplist(), whapps_call:call()) -> 'ok'.
 send_command(Command, Call) ->
-    CtrlQ = cf_exe:control_queue_name(Call),
-    Q = cf_exe:queue_name(Call),
-    CallId = cf_exe:callid(Call),
-    Prop = Command ++ [{<<"Call-ID">>, CallId}
-                       | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-                      ],
-    wapi_dialplan:publish_command(CtrlQ, Prop).
+    CustomPublisher = whapps_call:custom_publish_function(Call),
+    CtrlQ = whapps_call:control_queue(Call),    
+    case is_function(CustomPublisher) of
+        true -> CustomPublisher(Command, Call);
+        false when is_binary(CtrlQ) ->
+            Q = whapps_call:controller_queue(Call),
+            CallId = whapps_call:call_id(Call),
+            AppName = whapps_call:application_name(Call),
+            AppVersion = whapps_call:application_version(Call),
+            Prop = Command ++ [{<<"Call-ID">>, CallId}
+                               | wh_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion)
+                              ],
+            wapi_dialplan:publish_command(CtrlQ, Prop);
+        false -> ok
+    end.

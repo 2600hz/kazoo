@@ -56,6 +56,7 @@ start_link() ->
                                       ,{consume_options, ?REG_CONSUME_OPTIONS}
                                      ], []).
 
+-spec stop/1 :: (pid()) -> 'ok'.
 stop(Srv) ->
     gen_listener:stop(Srv).
 

@@ -29,10 +29,9 @@
 
 -define(KEY_ASR_REQ, <<"asr.req">>).
 
--define(KEY_CONF_DISCOVERY_REQ, <<"conference.discovery">>).
--define(KEY_CONF_SERVICE_REQ, <<"conference.service.">>).
--define(KEY_CONF_EVENTS, <<"conference.events.">>).
--define(CONF_DISCOVERY_QUEUE_NAME, <<"conference_discovery">>).
+-define(KEY_CONFERENCE_DISCOVERY, <<"conference.discovery">>).
+-define(KEY_CONFERENCE_COMMAND, <<"conference.command.">>).
+-define(KEY_CONFERENCE_EVENT, <<"conference.event.">>).
 
 %% To listen for auth requests, bind your queue in the CallMgr Exchange with the <<"auth.req">> routing key.
 %% To listen for route requests, bind your queue in the CallMgr Exchange with the <<"route.req">> routing key.

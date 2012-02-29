@@ -8,18 +8,13 @@
 %%%-------------------------------------------------------------------
 -module(cf_set).
 
-
 -export([handle/2]).
 
 -include("../callflow.hrl").
 
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> 'ok'.
-handle(Data, #cf_call{call_kvs=KVs}=Call) ->
-    cf_exe:continue(Call#cf_call{call_kvs=merge(Data, KVs)}).
-
--spec merge/2 :: (wh_json:json_object(), orddict:orddict()) -> orddict:orddict().
-merge(New, Old) ->
-    lists:foldl(fun({K,NewV}, AccDict) ->
-                        ?LOG("adding ~p : ~p", [K, NewV]),
-                        orddict:update(K, fun(_) -> NewV end, NewV, AccDict)
-                end, Old, wh_json:to_proplist(New)).
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+handle(Data, Call) ->
+    Call1 = cf_exe:get_call(Call),
+    Skills = wh_json:merge_recursive(whapps_call:kvs_fetch(cf_agent_skills, wh_json:new(), Call1), Data),
+    cf_exe:set_call(whapps_call:kvs_store(cf_agent_skills, Skills, Call1)),
+    cf_exe:continue().

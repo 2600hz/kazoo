@@ -13,6 +13,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_util).
 
+-export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
@@ -22,6 +23,25 @@
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 
 -include("ecallmgr.hrl").
+
+-spec get_interface_properties/1 :: (atom()) -> proplist().
+-spec get_interface_properties/2 :: (atom(), string() | ne_binary()) -> proplist().
+
+get_interface_properties(Node) ->
+    get_interface_properties(Node, ?DEFAULT_FS_PROFILE).
+
+get_interface_properties(Node, Interface) ->
+    case freeswitch:api(Node, 'sofia', wh_util:to_list(list_to_binary(["status profile ", Interface]))) of
+        {ok, Response} ->
+            R = binary:replace(Response, <<" ">>, <<>>, [global]),
+            [KV || Line <- binary:split(R, <<"\n">>, [global]),
+                   (KV = case binary:split(Line, <<"\t">>) of 
+                             [K, V] -> {K, V};
+                             _ -> false 
+                         end) =/= false
+            ];
+        _Else -> []
+    end.
 
 %% retrieves the sip address for the 'to' field
 -spec get_sip_to/1 :: (proplist()) -> ne_binary().

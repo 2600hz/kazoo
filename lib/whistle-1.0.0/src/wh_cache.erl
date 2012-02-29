@@ -204,18 +204,18 @@ handle_cast({store, K, V, infinity=T, F}, Dict) ->
 handle_cast({store, K, V, T, F}, Dict) ->
     {noreply, dict:store(K, {wh_util:current_tstamp()+T, V, T, F}, Dict), hibernate};
 handle_cast({erase, K}, Dict) ->
-    case dict:find(K, Dict) of
-        {ok, {_, _, _, undefined}} -> ok;
-        {ok, {_, V, _, F}} -> spawn(fun() -> F(K, V, erase) end);
-        _ -> ok
-    end,
+    ok = case dict:find(K, Dict) of
+             {ok, {_, _, _, undefined}} -> ok;
+             {ok, {_, V, _, F}} -> spawn(fun() -> F(K, V, erase) end), ok;
+             _ -> ok
+         end,
     {noreply, dict:erase(K, Dict), hibernate};
 handle_cast({flush}, Dict) ->
-    [(fun({_, {_, _, _, undefined}}) -> ok;
-         ({K, {_, V, _, F}}) -> spawn(fun() -> F(K, V, flush) end) 
-      end)(Elem)
-     || Elem <- dict:to_list(Dict) 
-    ],
+    _ = [(fun({_, {_, _, _, undefined}}) -> ok;
+             ({K, {_, V, _, F}}) -> spawn(fun() -> F(K, V, flush) end) 
+          end)(Elem)
+         || Elem <- dict:to_list(Dict) 
+        ],
     {noreply, dict:new(), hibernate}.
 
 %%--------------------------------------------------------------------

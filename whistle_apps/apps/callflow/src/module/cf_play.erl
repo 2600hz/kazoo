@@ -18,8 +18,9 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
-handle(Data, #cf_call{account_id=AccountId}=Call) ->
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+handle(Data, Call) ->
+    AccountId = whapps_call:account_id(Call),
     Media = case wh_json:get_value(<<"id">>, Data) of
                 <<"/system_media", _/binary>> = Path -> Path;
                 <<"system_media", _/binary>> = Path -> Path;
@@ -30,8 +31,8 @@ handle(Data, #cf_call{account_id=AccountId}=Call) ->
             end,
     case wh_json:is_false(<<"answer">>, Data) of
         true -> ok;
-        false -> cf_call_command:answer(Call)
+        false -> whapps_call_command:answer(Call)
     end,
     ?LOG("playing media ~s", [Media]),
-    cf_call_command:b_play(Media, wh_json:get_value(<<"terminators">>, Data), Call),
+    whapps_call_command:b_play(Media, wh_json:get_value(<<"terminators">>, Data), Call),
     cf_exe:continue(Call).

@@ -187,8 +187,10 @@ join_binary([], _) ->
     <<>>;
 join_binary([Bin], _) ->
     Bin;
-join_binary([Bin|Rest], Sep) ->
-    <<Bin/binary, Sep/binary, (join_binary(Rest, Sep))/binary>>.
+join_binary([Bin|Rest], Sep) when is_binary(Bin) ->
+    <<Bin/binary, Sep/binary, (join_binary(Rest, Sep))/binary>>;
+join_binary([_|Rest], Sep) ->
+    join_binary(Rest, Sep).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -535,11 +537,11 @@ is_ipv6(Address) when is_list(Address) ->
 
 -spec gc_all/0 :: () -> 'ok'.
 gc_all() ->
-    [begin erlang:garbage_collect(P), timer:sleep(500) end || P <- processes()],
+    _ = [begin erlang:garbage_collect(P), timer:sleep(500) end || P <- processes()],
     ok.
 
--spec top_mem_consumers/0 :: () -> [{pid(), integer()},...].
--spec top_mem_consumers/1 :: (pos_integer()) -> [{pid(), integer()},...].
+-spec top_mem_consumers/0 :: () -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
+-spec top_mem_consumers/1 :: (pos_integer()) -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
 top_mem_consumers() ->
     top_mem_consumers(10).
 top_mem_consumers(Len) when is_integer(Len), Len > 0 ->

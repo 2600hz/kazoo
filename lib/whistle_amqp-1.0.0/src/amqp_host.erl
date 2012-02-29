@@ -315,8 +315,8 @@ handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #stat
                 {C,R} when is_pid(C) andalso is_reference(R) ->
                     FromRef = erlang:monitor(process, FromPid),
                     case amqp_channel:call(C, QueueDeclare) of
-                        #'queue.declare_ok'{queue=Q} ->
-                            gen_server:reply(From, {ok, Q});
+                        #'queue.declare_ok'{}=QD ->
+                            gen_server:reply(From, {ok, QD});
                         ok ->
                             gen_server:reply(From, ok);
                         {error, _E}=Err ->
@@ -334,8 +334,8 @@ handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #stat
             end;
         {ok, {C,_,_,_}} ->
             case amqp_channel:call(C, QueueDeclare) of
-                #'queue.declare_ok'{queue=Q} ->
-                    gen_server:reply(From, {ok, Q});
+                #'queue.declare_ok'{}=QD ->
+                    gen_server:reply(From, {ok, QD});
                 ok ->
                     gen_server:reply(From, ok);
                 {error, _E}=Err ->

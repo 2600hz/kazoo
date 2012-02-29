@@ -20,17 +20,17 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
-handle(Data, #cf_call{account_id=AccountId}=Call) ->
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+handle(Data, Call) ->
     Endpoints = get_endpoints(Data, Call),
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
     ?LOG("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case length(Endpoints) > 0 andalso cf_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
+    case length(Endpoints) > 0 andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
         false ->
-            ?LOG(notice, "ring group has no endpoints", [{extra_data, [{details, cf_util:call_to_proplist(Call)}
-                                                                       ,{account_id, AccountId}
+            ?LOG(notice, "ring group has no endpoints", [{extra_data, [{details, whapps_call:to_proplist(Call)}
+                                                                       ,{account_id, whapps_call:account_id(Call)}
                                                                       ]}]),
             cf_exe:continue(Call);
         {ok, _} ->
@@ -50,7 +50,7 @@ handle(Data, #cf_call{account_id=AccountId}=Call) ->
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints/2 :: (wh_json:json_object(), #cf_call{}) -> wh_json:json_objects().
+-spec get_endpoints/2 :: (wh_json:json_object(), whapps_call:call()) -> wh_json:json_objects().
 get_endpoints(Data, Call) ->
     lists:foldr(fun(Member, Acc) ->
                         EndpointId = wh_json:get_value(<<"id">>, Member),
