@@ -460,7 +460,7 @@ process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
         {ok, Pids} -> 
             [begin
                  ecallmgr_call_control:transferer(Pid, Data),
-                 lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid1])
+                 lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
              end
              || Pid <- Pids
             ];
@@ -479,7 +479,7 @@ process_transfer_event(_, Data) ->
         {ok, TransfererPids} -> 
             [begin 
                  ecallmgr_call_control:transferer(Pid, Data),
-                 lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid1])
+                 lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
              end
              || Pid <- TransfererPids
             ];
@@ -492,7 +492,7 @@ process_transfer_event(_, Data) ->
         {ok, ReplacesPids} -> 
             [begin 
                  ecallmgr_call_control:transferee(Pid, Data),
-                 lager:debug("sending transferee notice for ~s to ecallmgr_call_control ~p", [TransfereeCtrlUUId, Pid2])
+                 lager:debug("sending transferee notice for ~s to ecallmgr_call_control ~p", [TransfereeCtrlUUId, Pid])
              end
              || Pid <- ReplacesPids
             ];

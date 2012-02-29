@@ -348,7 +348,7 @@ basic_publish(Exchange, Queue, Payload, ContentType, Props) when is_binary(Paylo
       ,props = MsgProps
      },
 
-    ?AMQP_DEBUG andalso lager:debug("publish ~s ~s (~p): ~s", [Exchange, Queue, Prop, Payload]),
+    ?AMQP_DEBUG andalso lager:debug("publish ~s ~s (~p): ~s", [Exchange, Queue, Props, Payload]),
 
     amqp_mgr:publish(BP, AM).
 
@@ -528,7 +528,7 @@ new_queue(Queue, Options) when is_binary(Queue) ->
      },
     case amqp_mgr:consume(QD) of
         {'ok', #'queue.declare_ok'{queue=Q}} ->
-            ?AMQP_DEBUG andalso ?LOG("create queue: ~s)", [Queue]),
+            ?AMQP_DEBUG andalso lager:debug("create queue: ~s)", [Queue]),
             Q;
         {'ok', Q} ->
             ?AMQP_DEBUG andalso lager:debug("create queue(~p) ~s)", [Options, Queue]),
