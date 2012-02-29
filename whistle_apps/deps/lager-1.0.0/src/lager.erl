@@ -34,6 +34,9 @@
 
 -export_type([log_level/0, log_level_number/0]).
 
+%% CallID, Module, Line, Pid
+-define(DEFAULT_LOG_FORMAT, "|~s|~p:~b (~w) ").
+
 %% API
 
 %% @doc Start the application. Mainly useful for using `-s lager' as a command
@@ -83,7 +86,7 @@ dispatch_log(Severity, Module, Function, Line, Pid, Traces, Format, Args) ->
 log(Level, Module, Function, Line, Pid, Time, Format, Args) ->
     Timestamp = lager_util:format_time(Time),
     Msg = [["[", atom_to_list(Level), "] "],
-           io_lib:format("~p@~p:~p:~p ", [Pid, Module, Function, Line]),
+           io_lib:format(?DEFAULT_LOG_FORMAT, [Function, Module, Line, Pid]),
            safe_format_chop(Format, Args, 4096)],
     safe_notify({log, lager_util:level_to_num(Level), Timestamp, Msg}).
 
@@ -95,7 +98,7 @@ log_dest(_Level, _Module, _Function, _Line, _Pid, _Time, [], _Format, _Args) ->
 log_dest(Level, Module, Function, Line, Pid, Time, Dest, Format, Args) ->
     Timestamp = lager_util:format_time(Time),
     Msg = [["[", atom_to_list(Level), "] "],
-           io_lib:format("~p@~p:~p:~p ", [Pid, Module, Function, Line]),
+           io_lib:format(?DEFAULT_LOG_FORMAT, [Function, Module, Line, Pid]),
            safe_format_chop(Format, Args, 4096)],
     safe_notify({log, Dest, lager_util:level_to_num(Level), Timestamp, Msg}).
 
