@@ -1,5 +1,0 @@
-127.0.0.1 - - [30/Nov/2011:13:01:53 -0800] "PUT /v1/accounts/04152ed2b428922e99ac66f3a71b0215/webhooks HTTP/1.1" 400 152 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [30/Nov/2011:13:02:18 -0800] "PUT /v1/accounts/04152ed2b428922e99ac66f3a71b0215/webhooks HTTP/1.1" 500 104326 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [30/Nov/2011:13:04:34 -0800] "PUT /v1/accounts/04152ed2b428922e99ac66f3a71b0215/webhooks HTTP/1.1" 201 258 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [30/Nov/2011:13:04:40 -0800] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/webhooks HTTP/1.1" 200 217 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [30/Nov/2011:13:04:48 -0800] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/webhooks/556ffb7eb78be5ef4a5d6ae05acc3517 HTTP/1.1" 200 258 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"

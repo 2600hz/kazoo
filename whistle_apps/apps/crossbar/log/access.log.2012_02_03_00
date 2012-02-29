@@ -1,8 +1,0 @@
-127.0.0.1 - - [02/Feb/2012:16:09:53 -0800] "POST /v1/rates HTTP/1.1" 202 0 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [02/Feb/2012:16:28:09 -0800] "POST /v1/rates HTTP/1.1" 202 0 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [02/Feb/2012:16:40:34 -0800] "POST /v1/rates HTTP/1.1" 202 0 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [02/Feb/2012:16:42:33 -0800] "POST /v1/rates HTTP/1.1" 202 0 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [02/Feb/2012:16:43:19 -0800] "POST /v1/rates HTTP/1.1" 202 0 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [02/Feb/2012:16:45:45 -0800] "POST /v1/rates HTTP/1.1" 202 0 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [02/Feb/2012:16:46:49 -0800] "POST /v1/rates HTTP/1.1" 202 0 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [02/Feb/2012:16:47:46 -0800] "POST /v1/rates HTTP/1.1" 202 0 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"

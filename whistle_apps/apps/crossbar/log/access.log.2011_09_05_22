@@ -1,7 +1,0 @@
-127.0.0.1 - - [05/Sep/2011:15:45:21 -0700] "GET / HTTP/1.1" 200 120 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [05/Sep/2011:15:45:29 -0700] "GET /v1/accounts HTTP/1.1" 200 221 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [05/Sep/2011:15:45:56 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215 HTTP/1.1" 200 144 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [05/Sep/2011:15:46:10 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/events HTTP/1.1" 404 193 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [05/Sep/2011:15:46:52 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/events HTTP/1.1" 404 193 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [05/Sep/2011:15:46:59 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/events HTTP/1.1" 404 193 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [05/Sep/2011:15:47:24 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/events HTTP/1.1" 500 100 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"

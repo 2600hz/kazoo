@@ -1,8 +1,0 @@
-127.0.0.1 - - [26/Oct/2011:13:49:17 -0700] "GET /v1 HTTP/1.1" 404 193 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Oct/2011:13:49:24 -0700] "GET /v1/accounts HTTP/1.1" 200 267 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Oct/2011:13:49:58 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215 HTTP/1.1" 200 193 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Oct/2011:13:50:08 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/cdrs HTTP/1.1" 500 90 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Oct/2011:13:50:24 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/cdrs HTTP/1.1" 500 90 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Oct/2011:13:54:22 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/cdrs HTTP/1.1" 500 90 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Oct/2011:13:55:28 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/cdrs HTTP/1.1" 500 90 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Oct/2011:13:59:57 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/cdrs HTTP/1.1" 500 90 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"

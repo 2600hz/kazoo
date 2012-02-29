@@ -1,8 +1,0 @@
-127.0.0.1 - - [26/Jan/2012:14:19:17 -0800] "POST /v1/accounts/934a5d7bfc8a097d535297caab003839/rates/ HTTP/1.1" 200 133 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Jan/2012:14:21:04 -0800] "POST /v1/accounts/934a5d7bfc8a097d535297caab003839/rates/ HTTP/1.1" 200 46 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Jan/2012:14:21:34 -0800] "POST /v1/accounts/934a5d7bfc8a097d535297caab003839/rates/ HTTP/1.1" 200 46 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Jan/2012:14:25:11 -0800] "POST /v1/accounts/934a5d7bfc8a097d535297caab003839/rates/ HTTP/1.1" 500 100 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Jan/2012:14:27:32 -0800] "POST /v1/accounts/934a5d7bfc8a097d535297caab003839/rates/ HTTP/1.1" 200 46 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Jan/2012:14:28:01 -0800] "POST /v1/accounts/934a5d7bfc8a097d535297caab003839/rates/ HTTP/1.1" 500 100 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Jan/2012:14:54:50 -0800] "POST /v1/accounts/934a5d7bfc8a097d535297caab003839/rates/ HTTP/1.1" 500 3926 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
-127.0.0.1 - - [26/Jan/2012:14:55:19 -0800] "POST /v1/accounts/934a5d7bfc8a097d535297caab003839/rates/ HTTP/1.1" 500 1173 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
