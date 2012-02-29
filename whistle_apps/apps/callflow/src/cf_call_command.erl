@@ -558,11 +558,11 @@ play_command(Media, Terminators, Call) ->
 record(MediaName, Call) ->
     record(MediaName, ?ANY_DIGIT, Call).
 record(MediaName, Terminators, Call) ->
-    record(MediaName, Terminators, <<"120">>, Call).
+    record(MediaName, Terminators, <<"300">>, Call).
 record(MediaName, Terminators, TimeLimit, Call) ->
-    record(MediaName, Terminators, TimeLimit, <<"250">>,  Call).
+    record(MediaName, Terminators, TimeLimit, <<"200">>,  Call).
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
-    record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"3">>, Call).
+    record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"2">>, Call).
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     Command = [{<<"Application-Name">>, <<"record">>}
                ,{<<"Media-Name">>, MediaName}
@@ -576,11 +576,11 @@ record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) -
 b_record(MediaName, Call) ->
     b_record(MediaName, ?ANY_DIGIT, Call).
 b_record(MediaName, Terminators, Call) ->
-    b_record(MediaName, Terminators, <<"120">>, Call).
+    b_record(MediaName, Terminators, <<"300">>, Call).
 b_record(MediaName, Terminators, TimeLimit, Call) ->
-    b_record(MediaName, Terminators, TimeLimit, <<"250">>,  Call).
+    b_record(MediaName, Terminators, TimeLimit, <<"200">>,  Call).
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
-    b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"3">>, Call).
+    b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"2">>, Call).
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
@@ -1101,9 +1101,9 @@ wait_for_message(Application, Event, Type, Timeout) ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } ->
-                    ?LOG("channel was unbridged while waiting for ~s", [Application]),
-                    {error, channel_unbridge};
+                { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
+                    ?LOG("channel was destroyed while waiting for ~s", [Application]),
+                    {error, channel_destroy};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
                     ?LOG("channel was hungup while waiting for ~s", [Application]),
                     {error, channel_hungup};
@@ -1236,9 +1236,9 @@ wait_for_dtmf(Timeout) ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case whapps_util:get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
-                    ?LOG("channel was unbridged while waiting for DTMF"),
-                    {error, channel_unbridge};
+                { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
+                    ?LOG("channel was destroyed while waiting for DTMF"),
+                    {error, channel_destroy};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
                     ?LOG("channel was destroyed while waiting for DTMF"),
                     {error, channel_hungup};
@@ -1425,9 +1425,9 @@ wait_for_application_or_dtmf(Application, Timeout) ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } ->
-                    ?LOG("channel was unbridged while waiting for ~s or DTMF", [Application]),
-                    {error, channel_unbridge};
+                { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
+                    ?LOG("channel was destroyed while waiting for ~s or DTMF", [Application]),
+                    {error, channel_destroy};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
                     ?LOG("channel was hungup while waiting for ~s or DTMF", [Application]),
                     {error, channel_hungup};
