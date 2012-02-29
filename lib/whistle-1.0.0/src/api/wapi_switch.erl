@@ -21,6 +21,7 @@
 -define(SWITCH_EVENT_RELOADACL_VALUES, [{<<"Event-Name">>, <<"reloadacl">>} | ?SWITCH_EVENT_VALUES]).
 -define(SWITCH_EVENT_TYPES, []).
 -define(SWITCH_RELOADACL_KEY, <<"switch.reloadacl">>).
+
 %% Request a reloadacl
 -spec reloadacl/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 reloadacl(Prop) when is_list(Prop) ->
@@ -39,40 +40,17 @@ reloadacl_v(JObj) ->
 
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    io:format(Props),
-    SwitchId = props:get_value(switchid, Props, <<"*">>),
     amqp_util:configuration_exchange(),
-    bind_q(Queue, props:get_value(restrict_to, Props), SwitchId).
-
-bind_q(Q, undefined, SwitchId) ->
-    amqp_util:bind_q_to_configuration(Q, SwitchId);
-
-bind_q(Q, [relodacl|T], SwitchId) ->
-    amqp_util:bind_q_to_configuration(Q, SwitchId),
-    bind_q(Q, T, SwitchId);
-bind_q(Q, [_|T], SwitchId) ->
-    bind_q(Q, T, SwitchId);
-bind_q(_Q, [], _SwitchId) ->
-    ok.
+    amqp_util:bind_q_to_configuration(Queue, ?SWITCH_RELOADACL_KEY).
 
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
-    SwitchId = props:get_value(switchid, Props, <<"*">>),
-    unbind_q(Queue, props:get_value(restrict_to, Props), SwitchId).
-
-unbind_q(Q, undefined, _SwitchId) ->
-    amqp_util:unbind_q_from_configuration(Q);
-unbind_q(Q, [reloadacl|T], SwitchId) ->
-    amqp_util:unbind_q_from_configuration(Q, SwitchId),
-    unbind_q(Q, T, SwitchId);
-unbind_q(Q, [_|T], SwitchId) ->
-    unbind_q(Q, T, SwitchId);
-unbind_q(_Q, [], _SwitchId) ->
-    ok.
+    amqp_util:unbind_q_from_configuration(Queue, ?SWITCH_RELOADACL_KEY).
 
 -spec publish_reloadacl/0 :: () -> 'ok'.
 publish_reloadacl() ->
     {ok, Payload} = wh_api:prepare_api_payload(wh_api:default_headers(<<>>, <<"switch_event">>, <<"reloadacl">>), 
                                               ?SWITCH_EVENT_RELOADACL_VALUES, 
                                               fun ?MODULE:reloadacl/1),
-    amqp_util:configuration_publish(<<>>, Payload, ?DEFAULT_CONTENT_TYPE).
+    amqp_util:configuration_publish(?SWITCH_RELOADACL_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
+
