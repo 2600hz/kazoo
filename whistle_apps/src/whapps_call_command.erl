@@ -569,7 +569,7 @@ record(MediaName, Terminators, Call) ->
 record(MediaName, Terminators, TimeLimit, Call) ->
     record(MediaName, Terminators, TimeLimit, <<"200">>,  Call).
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
-    record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"2">>, Call).
+    record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"5">>, Call).
 record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     Command = [{<<"Application-Name">>, <<"record">>}
                ,{<<"Media-Name">>, MediaName}
@@ -587,7 +587,7 @@ b_record(MediaName, Terminators, Call) ->
 b_record(MediaName, Terminators, TimeLimit, Call) ->
     b_record(MediaName, Terminators, TimeLimit, <<"200">>,  Call).
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
-    b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"2">>, Call).
+    b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, <<"5">>, Call).
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
