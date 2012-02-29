@@ -77,6 +77,7 @@ start_link() ->
     {ok, proc_lib:spawn_link(?MODULE, init_it, [])}.
 
 init_it() ->
+    put(callid, ?LOG_SYSTEM_ID),
     State = init_state(),
     cleanup_loop(State).
 

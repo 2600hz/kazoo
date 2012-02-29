@@ -25,6 +25,7 @@
 
 -spec start_link/0 :: () -> 'ignore'.
 start_link() ->
+    put(callid, ?LOG_SYSTEM_ID),
     _ = load_config(?CONFIG_FILE_PATH),
     lager:debug("loaded couch configs"),
     ignore.

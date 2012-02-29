@@ -25,7 +25,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    spawn(fun() -> initialize_whapps() end),
+    spawn(fun() -> put(callid, ?LOG_SYSTEM_ID), initialize_whapps() end),
     ignore.
 
 -spec start_app/1 :: (atom() | nonempty_string() | ne_binary()) -> 'ok' | 'error' | 'exists'.

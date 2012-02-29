@@ -145,9 +145,12 @@ modules_loaded() ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
+    put(callid, ?LOG_SYSTEM_ID),
+
     lager:debug("starting bindings server"),
 
     spawn(fun() ->
+                  put(callid, ?LOG_SYSTEM_ID),
                   [ maybe_init_mod(Mod)
                     || Mod <- whapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, [])
                   ]

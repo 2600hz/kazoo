@@ -449,6 +449,8 @@ handle_cast({consume, {FromPid, _}=From, #'basic.nack'{}=BasicNack}, #state{conn
 handle_cast({misc_req, From, #'exchange.declare'{}=ED}
             ,#state{misc_channel={C,_}, use_federation=UseFederation}=State) ->
     spawn(fun() ->
+                  put(callid, ?LOG_SYSTEM_ID),
+
                   lager:debug("sending exchange.declare to ~p (federated: ~s)", [C, UseFederation]),
                   case amqp_channel:call(C, exchange_declare(ED, UseFederation)) of
                       #'exchange.declare_ok'{} ->
@@ -488,6 +490,7 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{return_handlers=RHDict
 
 handle_info({#'basic.return'{}, #amqp_msg{}}=ReturnMsg, #state{return_handlers=RHDict}=State) ->
     spawn(fun() ->
+                  put(callid, ?LOG_SYSTEM_ID),
                   lager:debug("recieved notification a message couldnt be delivered, forwarding to registered return handlers"),
                   dict:map(fun(_, Pid) -> Pid ! ReturnMsg end, RHDict)
           end),
@@ -512,7 +515,10 @@ terminate(_Reason, {_H, _Conn, _UseF}) ->
     lager:debug("amqp host failed to startup: ~p", [_Reason]),
     lager:debug("params: ~s on conn ~p, use federation: ~s", [_H, _Conn, _UseF]);
 terminate(_Reason, #state{consumers=Consumers, amqp_h=Host}) ->
-    spawn(fun() -> notify_consumers({amqp_host_down, Host}, Consumers) end),
+    spawn(fun() ->
+                  put(callid, ?LOG_SYSTEM_ID),
+                  notify_consumers({amqp_host_down, Host}, Consumers)
+          end),
     lager:debug("amqp host for ~s terminated ~p", [Host, _Reason]).
 
 %%--------------------------------------------------------------------
