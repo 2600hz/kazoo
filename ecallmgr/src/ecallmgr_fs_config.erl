@@ -59,7 +59,7 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, _Options]) ->
-    ?LOG_SYS("starting new fs config listener for ~s", [Node]),
+    lager:debug("starting new fs config listener for ~s", [Node]),
     process_flag(trap_exit, true),
 
     erlang:monitor_node(Node, true),
@@ -107,16 +107,14 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({fetch, configuration, <<"configuration">>, <<"name">>, Conf, ID, Data}, #state{node=Node}=State) ->
-    ?LOG_START(ID, "received acls switch config request from ~s", [Node]),
     {ok, ConfigReqPid} = ecallmgr_fs_config_sup:start_req(Node, ID, Conf, Data),
     erlang:monitor(process, ConfigReqPid),
-    ?LOG_END("replying acls switch config request from ~s", [Node]),
+    lager:debug("fetch configuration request from from ~s", [Node]),
     {noreply, State};
 
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
-    ?LOG_START(ID, "received switch config request for ~s ~s from ~s", [ _Section, _Something, Node]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
-    ?LOG_END("ignoring request ~s from ~s", [props:get_value(<<"Event-Name">>, _Data), Node]),
+    lager:debug("ignoring request ~s from ~s", [props:get_value(<<"Event-Name">>, _Data), Node]),
     {noreply, State};
 
 handle_info(timeout, #state{node=Node}=State) ->
@@ -125,13 +123,13 @@ handle_info(timeout, #state{node=Node}=State) ->
     {foo, Node} ! Type,
     receive
         ok ->
-            ?LOG_SYS("bound to config request on ~s", [Node]),
+            lager:debug("bound to config request on ~s", [Node]),
             {noreply, State};
         {error, Reason} ->
-            ?LOG_SYS("failed to bind to config requests on ~s, ~p", [Node, Reason]),
+            lager:debug("failed to bind to config requests on ~s, ~p", [Node, Reason]),
             {stop, Reason, State}
     after ?FS_TIMEOUT ->
-            ?LOG_SYS("timed out binding to config requests on ~s", [Node]),
+            lager:debug("timed out binding to config requests on ~s", [Node]),
             {stop, timeout, State}
     end;
 
@@ -150,7 +148,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG_SYS("fs config ~p termination", [_Reason]),
+    lager:debug("fs config ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -176,20 +174,19 @@ handle_config_req(Node, ID, FsConf, _Data) ->
     Pid = spawn_link(fun() -> 
               put(callid, ID),
               try
-                  ?LOG_START(ID, "mapping FS conf to ecallmgr conf key ~s", [FsConf]),
                   EcallMgrConf = fsconf_to_sysconf(FsConf),
                   SysconfResp = ecallmgr_config:get(EcallMgrConf),
-                  ?LOG(ID, "received sysconf response for ecallmngr config ~p", [EcallMgrConf]),
+                  lager:debug("received sysconf response for ecallmngr config ~p", [EcallMgrConf]),
                   {ok, ConfigXml} = case EcallMgrConf of
                                       <<"acls">> -> ecallmgr_fs_xml:config_acl_xml(SysconfResp)
                                     end,
-                  ?LOG_END(ID, "sending XML to ~w: ~s", [Node, ConfigXml]),
+                  lager:debug("sending XML to ~w: ~s", [Node, ConfigXml]),
                   _ = freeswitch:fetch_reply(Node, ID, ConfigXml)
               catch 
                   throw:_T ->
-                    ?LOG("config request failed: thrown ~w", [_T]);
+                    lager:debug("config request failed: thrown ~w", [_T]);
                   error:_E ->
-                    ?LOG("config request failed: error ~s", [_E])
+                    lager:debug("config request failed: error ~p", [_E])
               end
           end),
     {ok, Pid}.

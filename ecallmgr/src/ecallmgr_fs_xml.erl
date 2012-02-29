@@ -42,7 +42,6 @@ route_resp_xml(RespJObj) ->
     route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj), wh_json:get_value(<<"Routes">>, RespJObj), RespJObj).
 
 config_acl_xml({struct, Acls}) ->
-    ?LOG("Creating an ACL config XML"),
     FNodes = fun({_, JObj}, AccJObj) ->
                   Type = wh_json:get_value(<<"network-list-name">>, JObj),
               

@@ -158,7 +158,7 @@ handle_cast({distributed_presence, Presence, Event}, #state{node=Node}=State) ->
     {noreply, State};
 
 handle_cast(reloadacl, #state{node=Node}=State) ->
-    ?LOG("reloadacl sent to ~s~n", [Node]),
+    lager:debug("reloadacl command sent to FS ~s", [Node]),
     _ = freeswitch:api(Node, reloadacl),
     {noreply, State};
 
