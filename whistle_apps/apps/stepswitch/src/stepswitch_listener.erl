@@ -94,8 +94,7 @@ handle_call({lookup_number, Number}, From, State) ->
     {noreply, State};
 
 handle_call({reload_resrcs}, _, State) ->
-    Resrcs = get_resrcs(),
-    {reply, ok, State#state{resrcs=Resrcs}, hibernate};
+    {reply, ok, State#state{resrcs=get_resrcs()}};
 
 handle_call({process_number, Number}, From, #state{resrcs=Resrcs}=State) ->
     spawn(fun() ->
