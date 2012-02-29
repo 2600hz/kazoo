@@ -171,12 +171,12 @@ get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
                      ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, get(callid)))
                     ]) | Vars];
 
-get_channel_vars({<<"Codecs">>, []}, Vars) ->
+get_channel_vars({<<"Codecs">>, _}, Vars) ->
     Vars;
-get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
-    Codecs = [ wh_util:to_list(C) || C <- Cs, not wh_util:is_empty(C) ],
-    CodecStr = string:join(Codecs, ","),
-    [ list_to_binary(["codec_string='", CodecStr, "'"]) | Vars];
+%%get_channel_vars({<<"Codecs">>, Cs}, Vars) ->
+%%    Codecs = [ wh_util:to_list(C) || C <- Cs, not wh_util:is_empty(C) ],
+%%    CodecStr = string:join(Codecs, "\\,"),
+%%    [ list_to_binary(["codec_string='", CodecStr, "'"]) | Vars];
 
 %% SPECIAL CASE: Timeout must be larger than zero
 get_channel_vars({<<"Timeout">>, V}, Vars) ->
