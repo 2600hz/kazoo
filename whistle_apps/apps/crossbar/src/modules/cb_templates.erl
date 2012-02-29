@@ -142,10 +142,10 @@ load_template_db(TemplateName, Context) ->
     DbName = format_template_name(TemplateName, encoded),
     case couch_mgr:db_exists(DbName) of
         false ->
-            ?LOG("check failed for template db ~s", [DbName]),
+            lager:debug("check failed for template db ~s", [DbName]),
             crossbar_util:response_db_missing(Context);
         true ->
-            ?LOG("check succeeded for template db ~s", [DbName]),
+            lager:debug("check succeeded for template db ~s", [DbName]),
             Context#cb_context{resp_status=success
                                ,db_name = DbName
                                ,account_id = TemplateName
@@ -190,10 +190,10 @@ create_template_db(TemplateName, Context) ->
     TemplateDb = format_template_name(TemplateName, encoded),
     case couch_mgr:db_create(TemplateDb) of
         false ->
-            ?LOG_SYS("failed to create database: ~s", [TemplateDb]),
+            lager:debug("failed to create database: ~s", [TemplateDb]),
             crossbar_util:response_db_fatal(Context);
         true ->
-            ?LOG_SYS("created DB for template ~s", [TemplateName]),
+            lager:debug("created DB for template ~s", [TemplateName]),
             couch_mgr:revise_docs_from_folder(TemplateDb, crossbar, "account", false),
             couch_mgr:revise_doc_from_file(TemplateDb, crossbar, ?MAINTENANCE_VIEW_FILE),
             Context#cb_context{resp_status=success}

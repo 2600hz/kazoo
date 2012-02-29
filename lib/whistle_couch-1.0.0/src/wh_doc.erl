@@ -81,7 +81,7 @@ public_fields([{struct, _}|_]=Json)->
 public_fields({struct, Prop}) ->
     {struct, [ Tuple || {K, _}=Tuple <- Prop, not is_private_key(K)]};
 public_fields(Json) ->
-    ?LOG_SYS("Unhandled JSON format in public_fields: ~p", [Json]),
+    lager:debug("Unhandled JSON format in public_fields: ~p", [Json]),
     Json.
 
 %%--------------------------------------------------------------------
@@ -109,7 +109,7 @@ private_fields([{struct, _}|_]=Json)->
 private_fields({struct, Prop}) ->
     {struct, [ Tuple || {K,_}=Tuple <- Prop, is_private_key(K)]};
 private_fields(Json) ->
-    ?LOG_SYS("Unhandled JSON format in private fields: ~p", [Json]),
+    lager:debug("Unhandled JSON format in private fields: ~p", [Json]),
     Json.
 
 jobj_to_list({struct, List}=_) ->

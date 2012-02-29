@@ -24,6 +24,6 @@
 init() ->
     crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate).
 
-authenticate(#cb_context{req_id=ReqId}) ->
-    ?LOG(ReqId, "noauthn authenticating request", []),
+authenticate(#cb_context{}) ->
+    lager:debug("noauthn authenticating request"),
     true.

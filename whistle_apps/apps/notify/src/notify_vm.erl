@@ -29,25 +29,25 @@ init() ->
     notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
-    ?LOG_SYS("init done for ~s", [?MODULE]).
+    lager:debug("init done for ~s", [?MODULE]).
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_notifications:voicemail_v(JObj),
     whapps_util:put_callid(JObj),
 
-    ?LOG_START("new voicemail left, sending to email if enabled"),
+    lager:debug("new voicemail left, sending to email if enabled"),
 
     AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
     {ok, VMBox} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Voicemail-Box">>, JObj)),
     {ok, UserJObj} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"owner_id">>, VMBox)),
     case {wh_json:get_ne_value(<<"email">>, UserJObj), wh_json:is_true(<<"vm_to_email_enabled">>, UserJObj)} of
         {undefined, _} ->
-            ?LOG_END("no email found for user ~s", [wh_json:get_value(<<"username">>, UserJObj)]);
+            lager:debug("no email found for user ~s", [wh_json:get_value(<<"username">>, UserJObj)]);
         {_Email, false} ->
-            ?LOG_END("voicemail to email disabled for ~s", [_Email]);
+            lager:debug("voicemail to email disabled for ~s", [_Email]);
         {Email, true} ->
-            ?LOG("VM->Email enabled for user, sending to ~s", [Email]),
+            lager:debug("VM->Email enabled for user, sending to ~s", [Email]),
             {ok, AcctObj} = couch_mgr:open_doc(AcctDB, wh_util:format_account_id(AcctDB, raw)),
             Docs = [VMBox, UserJObj, AcctObj],
 
@@ -125,15 +125,15 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     From = props:get_value(<<"from_address">>, Voicemail, HostFrom),
     To = props:get_value(<<"email_address">>, Props),
 
-    ?LOG("attempting to attach media ~s in ~s", [DocId, DB]),
+    lager:debug("attempting to attach media ~s in ~s", [DocId, DB]),
     {ok, VMJObj} = couch_mgr:open_doc(DB, DocId),
 
     [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
-    ?LOG("attachment id ~s", [AttachmentId]),
+    lager:debug("attachment id ~s", [AttachmentId]),
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, DocId, AttachmentId),
 
     AttachmentFileName = get_file_name(Props),
-    ?LOG("attachment renamed to ~s", [AttachmentFileName]),
+    lager:debug("attachment renamed to ~s", [AttachmentFileName]),
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>

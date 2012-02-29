@@ -66,16 +66,16 @@ call_forward(EndpointId, OwnerId, Call) ->
                               ,not wh_util:is_empty(wh_json:get_value([<<"value">>, <<"number">>], CF))
                       ];
                   {error, R}->
-                      ?LOG("failed to load call fowarding objects: ~p", [R]),
+                      lager:debug("failed to load call fowarding objects: ~p", [R]),
                       []
               end,
     case props:get_value(EndpointId, CallFwd) of
         undefined ->
             Fwd = props:get_value(OwnerId, CallFwd),
-            Fwd =/= undefined andalso ?LOG("found enabled call forwarding on ~s", [OwnerId]),
+            Fwd =/= undefined andalso lager:debug("found enabled call forwarding on ~s", [OwnerId]),
             Fwd;
         Fwd ->
-            ?LOG("found enabled call forwarding on ~s", [EndpointId]),
+            lager:debug("found enabled call forwarding on ~s", [EndpointId]),
             Fwd
     end.
 
@@ -106,12 +106,12 @@ caller_id(EndpointId, OwnerId, Attribute, Call) ->
     CID = case (Inception =:= <<"off-net">> andalso not wh_json:is_true(<<"Call-Forward">>, CCVs))
               orelse wh_json:is_true(<<"Retain-CID">>, CCVs) of
               true ->
-                  ?LOG("retaining original caller id"),
+                  lager:debug("retaining original caller id"),
                   wh_json:from_list([{<<"number">>, whapps_call:caller_id_number(Call)}
                                      ,{<<"name">>, whapps_call:caller_id_name(Call)}
                                     ]);
               false ->
-                  ?LOG("find ~s caller id on ~s", [Attribute, wh_util:join_binary(Ids)]),
+                  lager:debug("find ~s caller id on ~s", [Attribute, wh_util:join_binary(Ids)]),
                   Attributes = fetch_attributes(caller_id, Call),
                   case search_attributes(Attribute, Ids, Attributes) of
                       undefined ->
@@ -119,11 +119,11 @@ caller_id(EndpointId, OwnerId, Attribute, Call) ->
                               undefined ->
                                   wh_json:new();
                               {Id, Value} ->
-                                  ?LOG("found default caller id on ~s", [Id]),
+                                  lager:debug("found default caller id on ~s", [Id]),
                                   Value
                           end;
                       {Id, Value} ->
-                          ?LOG("found ~s caller id on ~s", [Attribute, Id]),
+                          lager:debug("found ~s caller id on ~s", [Attribute, Id]),
                           Value
                   end
           end,
@@ -135,7 +135,7 @@ caller_id(EndpointId, OwnerId, Attribute, Call) ->
                   undefined -> friendly_name(EndpointId, OwnerId, Call);
                   Name -> Name
               end,
-    ?LOG("using caller id ~s '~s'", [CIDNum, CIDName]),
+    lager:debug("using caller id ~s '~s'", [CIDNum, CIDName]),
     {CIDNum, CIDName}.
 
 %%-----------------------------------------------------------------------------
@@ -165,7 +165,7 @@ callee_id(EndpointId, Attribute, Call) ->
 callee_id(EndpointId, OwnerId, Attribute, Call) ->
     AccountId = whapps_call:account_id(Call),
     Ids = [EndpointId, OwnerId, AccountId],
-    ?LOG("find ~s callee id on ~s", [Attribute, wh_util:join_binary(Ids)]),
+    lager:debug("find ~s callee id on ~s", [Attribute, wh_util:join_binary(Ids)]),
     Attributes = fetch_attributes(caller_id, Call),
     CID = case search_attributes(Attribute, Ids, Attributes) of
                       undefined ->
@@ -173,11 +173,11 @@ callee_id(EndpointId, OwnerId, Attribute, Call) ->
                               undefined ->
                                   wh_json:new();
                               {Id, Value} ->
-                                  ?LOG("found default callee id on ~s", [Id]),
+                                  lager:debug("found default callee id on ~s", [Id]),
                                   Value
                           end;
                       {Id, Value} ->
-                          ?LOG("found ~s callee id on ~s", [Attribute, Id]),
+                          lager:debug("found ~s callee id on ~s", [Attribute, Id]),
                           Value
           end,
     CIDNum = case wh_json:get_ne_value(<<"number">>, CID) of
@@ -188,7 +188,7 @@ callee_id(EndpointId, OwnerId, Attribute, Call) ->
                   undefined -> friendly_name(EndpointId, OwnerId, Call);
                   Name -> Name
               end,
-    ?LOG("using callee id ~s '~s'", [CIDNum, CIDName]),
+    lager:debug("using callee id ~s '~s'", [CIDNum, CIDName]),
     {CIDNum, CIDName}.
 
 %%-----------------------------------------------------------------------------
@@ -208,14 +208,14 @@ caller_id_attributes(EndpointId, Attribute, Call) ->
 
 caller_id_attributes(EndpointId, OwnerId, Attribute, Call) ->
     Ids = [EndpointId, OwnerId, whapps_call:account_id(Call)],
-    ?LOG("find caller id attr ~s on ~s", [Attribute, wh_util:join_binary(Ids)]),
+    lager:debug("find caller id attr ~s on ~s", [Attribute, wh_util:join_binary(Ids)]),
     Attributes = fetch_attributes(caller_id_options, Call),
     case search_attributes(Attribute, Ids, Attributes) of
         undefined ->
-            ?LOG("unable to find caller id attribute ~s", [Attribute]),
+            lager:debug("unable to find caller id attribute ~s", [Attribute]),
             undefined;
         {Id, Value} ->
-            ?LOG("found caller id attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
+            lager:debug("found caller id attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
             Value
     end.
 
@@ -240,20 +240,20 @@ media_attributes(EndpointId, OwnerId, <<"codecs">>, Call) ->
     Audio ++ Video;
 media_attributes(EndpointId, OwnerId, Attribute, Call) ->
     Ids = [EndpointId, OwnerId, whapps_call:account_id(Call)],
-    ?LOG("find media attr ~s on ~s", [Attribute, wh_util:join_binary(Ids)]),
+    lager:debug("find media attr ~s on ~s", [Attribute, wh_util:join_binary(Ids)]),
     Attributes = fetch_attributes(media_options, Call),
     case search_attributes(Attribute, Ids, Attributes) of
         undefined when Attribute =:= <<"audio">>; Attribute =:= <<"video">> ->
             []; 
         undefined ->
-            ?LOG("unable to find media attribute ~s", [Attribute]),
+            lager:debug("unable to find media attribute ~s", [Attribute]),
             undefined;
         {Id, Value} when Attribute =:= <<"audio">>; Attribute =:= <<"video">> ->
             Codecs = wh_json:get_value(<<"codecs">>, Value, []),
-            _ = [?LOG("found media attribute ~s codec ~s on ~s", [Attribute, Codec, Id]) || Codec <- Codecs],
+            _ = [lager:debug("found media attribute ~s codec ~s on ~s", [Attribute, Codec, Id]) || Codec <- Codecs],
             Codecs;
         {Id, Value} ->
-            ?LOG("found media attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
+            lager:debug("found media attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
             Value
     end.
 
@@ -278,18 +278,18 @@ moh_attributes(EndpointId, Attribute, Call) ->
 
 moh_attributes(EndpointId, OwnerId, Attribute, Call) ->
     Ids = [EndpointId, OwnerId, whapps_call:account_id(Call)],
-    ?LOG("find moh attr ~s on ~s", [Attribute, wh_util:join_binary(Ids)]),
+    lager:debug("find moh attr ~s on ~s", [Attribute, wh_util:join_binary(Ids)]),
     Attributes = fetch_attributes(moh_options, Call),
     case search_attributes(Attribute, Ids, Attributes) of
         undefined ->
-            ?LOG("unable to find moh attribute ~s", [Attribute]),
+            lager:debug("unable to find moh attribute ~s", [Attribute]),
             undefined;
         {Id, Value} when Attribute =:= <<"media_id">> ->
             MediaId = cf_util:correct_media_path(Value, Call),
-            ?LOG("found moh attribute ~s on ~s: '~p'", [Attribute, Id, MediaId]),
+            lager:debug("found moh attribute ~s on ~s: '~p'", [Attribute, Id, MediaId]),
             MediaId;
         {Id, Value} ->
-            ?LOG("found moh attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
+            lager:debug("found moh attribute ~s on ~s: '~p'", [Attribute, Id, Value]),
             Value
     end.
  
@@ -310,10 +310,10 @@ owner_id(ObjectId, Call) ->
     Attributes = fetch_attributes(owner, Call),
     case props:get_value(ObjectId, Attributes) of
         undefined ->
-            ?LOG("object ~s has no owner", [ObjectId]),
+            lager:debug("object ~s has no owner", [ObjectId]),
             undefined;
         Value ->
-            ?LOG("object ~s is owned by ~s", [ObjectId, Value]),
+            lager:debug("object ~s is owned by ~s", [ObjectId, Value]),
             Value
     end.
 
@@ -374,14 +374,14 @@ friendly_name(EndpointId, Call) ->
 
 friendly_name(EndpointId, OwnerId, Call) ->
     Ids = [OwnerId, EndpointId],
-    ?LOG("find friendly name on ~s", [wh_util:join_binary(Ids)]),
+    lager:debug("find friendly name on ~s", [wh_util:join_binary(Ids)]),
     Attributes = fetch_attributes(friendly_name, Call),
     case search_attributes(<<"friendly_name">>, Ids, Attributes) of
         undefined ->
-            ?LOG("unable to find a usable friendly name"),
+            lager:debug("unable to find a usable friendly name"),
             whapps_call:caller_id_name(Call);
         {Id, Value} ->
-            ?LOG("using name '~s' from ~s", [Value, Id]),
+            lager:debug("using name '~s' from ~s", [Value, Id]),
             Value
     end.
 
@@ -462,7 +462,7 @@ fetch_attributes(Attribute, Call) ->
                     wh_cache:store({?MODULE, AccountDb, Attribute}, Props, 900),
                     Props;
                 {error, R} ->
-                    ?LOG("unable to fetch attribute ~s: ~p", [Attribute, R]),
+                    lager:debug("unable to fetch attribute ~s: ~p", [Attribute, R]),
                     []
             end
     end.

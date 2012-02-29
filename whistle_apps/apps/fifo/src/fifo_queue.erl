@@ -109,7 +109,7 @@ handle_info(_Info, State) ->
     {noreply, State}.
 
 handle_job(JobJObj, ResourceJObj, State) ->
-    ?LOG("job to process"),
+    lager:debug("job to process"),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

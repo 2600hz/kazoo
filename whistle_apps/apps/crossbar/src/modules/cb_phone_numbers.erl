@@ -168,18 +168,18 @@ validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?ACTIVATE) ->
 validate(#cb_context{req_verb = <<"get">>}=Context, Number, ?PORT_DOCS) ->
     list_attachments(Number, Context);
 validate(#cb_context{req_verb = <<"put">>, req_files=[]}=Context, _, ?PORT_DOCS) ->
-    ?LOG_SYS("No files in request to save attachment"),
+    lager:debug("No files in request to save attachment"),
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
 validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?PORT_DOCS) ->
     read(Number, Context).
 
 validate(#cb_context{req_verb = <<"put">>, req_files=[]}=Context, _, ?PORT_DOCS, _) ->
-    ?LOG_SYS("No files in request to save attachment"),
+    lager:debug("No files in request to save attachment"),
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
 validate(#cb_context{req_verb = <<"put">>, req_files=[{_, FileObj}]}=Context, Number, ?PORT_DOCS, Name) ->
     read(Number, Context#cb_context{req_files=[{Name, FileObj}]});
 validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, _, ?PORT_DOCS, _) ->
-    ?LOG_SYS("No files in request to save attachment"),
+    lager:debug("No files in request to save attachment"),
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
 validate(#cb_context{req_verb = <<"post">>, req_files=[{_, FileObj}]}=Context, Number, ?PORT_DOCS, Name) ->
     read(Number, Context#cb_context{req_files=[{Name, FileObj}]});
@@ -358,7 +358,7 @@ put_attachments(Number, AccountId, Context, [{Filename, FileObj}|Files]) ->
     Content = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
     Options = [{headers, [{content_type, wh_util:to_list(CT)}]}],
-    ?LOG("setting Content-Type to ~s", [CT]),   
+    lager:debug("setting Content-Type to ~s", [CT]),   
     case wh_number_manager:put_attachment(Number, AccountId, Filename, Content, Options) of
         {ok, NewDoc} ->
             put_attachments(Number, AccountId, Context#cb_context{resp_data=NewDoc}, Files);
@@ -448,10 +448,10 @@ update_callflows([Update|Updates], Number, Replaces, Context) ->
                                           ,req_verb = <<"post">>}
                       ,CallflowId
                      ],
-            ?LOG("replacing '~s' with '~s' on callflow ~s", [Replaces, Number, CallflowId]),
+            lager:debug("replacing '~s' with '~s' on callflow ~s", [Replaces, Number, CallflowId]),
             crossbar_bindings:fold(<<"v1_resource.execute.post.callflows">>, Payload2),
             update_callflows(Updates, Number, Replaces, Context);
         _ ->
-            ?LOG("failed to replace '~s' with '~s' on callflow ~s", [Replaces, Number, CallflowId]),
+            lager:debug("failed to replace '~s' with '~s' on callflow ~s", [Replaces, Number, CallflowId]),
             update_callflows(Updates, Number, Replaces, Context)
     end.

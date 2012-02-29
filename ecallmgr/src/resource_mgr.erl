@@ -86,7 +86,8 @@ handle_req(JObj, _Prop) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new resource manager"),
+    put(callid, ?LOG_SYSTEM_ID),
+    lager:debug("starting new resource manager"),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -130,7 +131,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    ?LOG("Unhandled message: ~p", [_Info]),
+    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_,_) ->
@@ -148,7 +149,7 @@ handle_event(_,_) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG_SYS("resource manager ~p termination", [_Reason]).
+    lager:debug("resource manager terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -166,7 +167,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec get_resources/2 :: ({binary(), binary(), binary()}, proplist()) -> [proplist(),...] | [].
 get_resources({<<"resource">>, <<"originate_req">>, <<"audio">>=Type}, Options) ->
-    ?LOG("request to originate new ~s resource", [Type]),
+    lager:debug("request to originate new ~s resource", [Type]),
     %% merge other switch results into this list as well (eventually)
     FSAvail = ecallmgr_fs_handler:request_resource(Type, Options),
     lists:usort(fun sort_resources/2, FSAvail);
@@ -209,7 +210,7 @@ start_channel(N, Route, JObj) ->
             spawn(fun() -> send_uuid_to_app(JObj, UUID, CtlQ) end),
             {ok, AvailableChan};
         {resource_error, E} ->
-            ?LOG("Error starting channel on ~p: ~p", [Pid, E]),
+            lager:debug("Error starting channel on ~p: ~p", [Pid, E]),
             spawn(fun() -> send_failed_consume(Route, JObj, E) end),
             {error, E}
     end.
@@ -220,7 +221,7 @@ send_uuid_to_app(JObj, UUID, CtlQ) ->
             ,{<<"Call-ID">>, UUID}
             ,{<<"Control-Queue">>, CtlQ}
             | wh_api:default_headers(CtlQ, <<"resource">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)],
-    ?LOG("sending resource response for ~s", [UUID]),
+    lager:debug("sending resource response for ~s", [UUID]),
     wapi_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec send_failed_req/2 :: (wh_json:json_object(), list()) -> 'ok'.
@@ -229,7 +230,7 @@ send_failed_req(JObj, Errors) ->
             ,{<<"Failed-Attempts">>, length(Errors)}
             ,{<<"Failure-Message">>, [wh_util:to_binary(E) || E <- Errors]}
             | wh_api:default_headers(<<"resource">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
-    ?LOG("sending resource error"),
+    lager:debug("sending resource error"),
     wapi_resource:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec send_failed_consume/3 :: (binary() | list(), wh_json:json_object(), binary()) -> 'ok'.
@@ -238,7 +239,7 @@ send_failed_consume(Route, JObj, E) ->
             ,{<<"Failed-Route">>, Route}
             ,{<<"Failure-Message">>, wh_util:to_binary(E)}
             | wh_api:default_headers(<<"resource">>, <<"originate_error">>, ?APP_NAME, ?APP_VERSION)],
-    ?LOG("sending originate error ~s", [E]),
+    lager:debug("sending originate error ~s", [E]),
     wapi_resource:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 %% sort first by percentage utilized (less utilized first), then by bias (larger goes first), then by available channels (more available first)

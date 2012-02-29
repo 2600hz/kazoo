@@ -152,7 +152,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=
     end;
 
 validate(#cb_context{req_verb = <<"put">>, auth_doc=AuthDoc, account_id=AcctId, req_data=ReqData}=Context, <<"subscription">>) ->
-    ?LOG("reqd: ~p", [ReqData]),
+    lager:debug("reqd: ~p", [ReqData]),
     Subscriptions = wh_json:get_value(<<"subscriptions">>, ReqData, []),
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
@@ -163,7 +163,7 @@ validate(#cb_context{req_verb = <<"put">>, auth_doc=AuthDoc, account_id=AcctId, 
     end;
 
 validate(#cb_context{req_verb = <<"delete">>, auth_doc=AuthDoc, account_id=AcctId, req_data=ReqData}=Context, <<"subscription">>) ->
-    ?LOG("reqd: ~p", [ReqData]),
+    lager:debug("reqd: ~p", [ReqData]),
     Subscriptions = wh_json:get_value(<<"subscriptions">>, ReqData, []),
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
     case cb_events_sup:find_srv(AcctId, UserId) of
@@ -201,7 +201,7 @@ load_events(Context, Srv, User) ->
 update_srv(#cb_context{req_data=ReqJObj}=Context, Srv, User) ->
     MaxEvents = wh_json:get_integer_value(<<"max_events">>, ReqJObj, 100),
     {ok, EventsDropped} = cb_events_srv:set_maxevents(Srv, MaxEvents),
-    ?LOG("set max events to ~b: dropped ~b events", [MaxEvents, EventsDropped]),
+    lager:debug("set max events to ~b: dropped ~b events", [MaxEvents, EventsDropped]),
     save_latest(Context, Srv, User, wh_json:set_value(<<"events_dropped">>, EventsDropped, wh_json:new())).
 
 stop_srv(Context, Srv, User) ->
@@ -223,7 +223,7 @@ load_current_subscriptions(Context, Srv) ->
     crossbar_util:response(RespJObj, Context).
 
 add_subscriptions(#cb_context{req_data=ReqJObj}=Context, Srv, Subs, User) ->
-    ?LOG("Adding ~p", [Subs]),
+    lager:debug("Adding ~p", [Subs]),
     RespJObj = wh_json:from_list([{Sub
                                    ,format_sub_result(cb_events_srv:subscribe(Srv, Sub, wh_json:get_value(<<"options">>, ReqJObj, [])))
                          } || Sub <- Subs]),
@@ -238,7 +238,7 @@ format_sub_result({'error', 'already_present'}) ->
     <<"already subscribed">>.
 
 rm_subscriptions(Context, Srv, Subs, User) ->
-    ?LOG("removing: ~p", [Subs]),
+    lager:debug("removing: ~p", [Subs]),
     _ = [cb_events_srv:unsubscribe(Srv, Sub) || Sub <- Subs],
     save_latest(Context, Srv, User).
 

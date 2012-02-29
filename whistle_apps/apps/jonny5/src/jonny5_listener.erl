@@ -94,7 +94,7 @@ init([]) ->
                        end;
                    _ -> ?DEFAULT_BL_PROVIDER
                end,
-    ?LOG_SYS("Blacklist provider: ~s", [Provider]),
+    lager:debug("Blacklist provider: ~s", [Provider]),
 
     _ = whapps_config:get_is_true(<<"jonny5">>, <<"authz_on_no_prepay">>, true), % preload
 
@@ -129,7 +129,7 @@ handle_call(_, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({set_blacklist_provider, Provider}, #state{bl_provider_mod=PMod, bl_provider_pid=PPid}=State) ->
     PMod:stop(PPid),
-    ?LOG_SYS("Switching blacklist provider from ~s to ~s", [PMod, Provider]),
+    lager:debug("Switching blacklist provider from ~s to ~s", [PMod, Provider]),
     {noreply, State#state{bl_provider_mod=Provider, bl_provider_pid=undefined}}.
 
 %%--------------------------------------------------------------------
@@ -143,7 +143,7 @@ handle_cast({set_blacklist_provider, Provider}, #state{bl_provider_mod=PMod, bl_
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', PRef, process, _PPid, _Reason}, #state{bl_provider_ref=PRef, bl_provider_mod=PMod}=State) ->
-    ?LOG_SYS("blacklist provider ~s down: ~p", [PMod, _Reason]),
+    lager:debug("blacklist provider ~s down: ~p", [PMod, _Reason]),
     try
     case find_bl_provider_pid(PMod) of
         PPid1 when is_pid(PPid1) ->
@@ -158,7 +158,7 @@ handle_info({'DOWN', PRef, process, _PPid, _Reason}, #state{bl_provider_ref=PRef
     end;
 
 handle_info(timeout, #state{bl_provider_mod=PMod, bl_provider_pid=undefined}=State) ->
-    ?LOG_SYS("blacklist provider ~s unknown, starting", [PMod]),
+    lager:debug("blacklist provider ~s unknown, starting", [PMod]),
     case find_bl_provider_pid(PMod) of
         PPid1 when is_pid(PPid1) ->
             PRef1 = erlang:monitor(process, PPid1),
@@ -168,7 +168,7 @@ handle_info(timeout, #state{bl_provider_mod=PMod, bl_provider_pid=undefined}=Sta
     end;
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
+    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -180,7 +180,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    ?LOG("Event received"),
+    lager:debug("Event received"),
     {reply, []}.
 
 %%--------------------------------------------------------------------
@@ -196,7 +196,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), #state{}) -> 'ok'.
 terminate(_Reason, _) ->
-    ?LOG_SYS("jonny5 server ~p termination", [_Reason]).
+    lager:debug("jonny5 server ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -211,16 +211,16 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec find_bl_provider_pid/1 :: (atom()) -> pid() | 'ignore'.
 find_bl_provider_pid(PMod) ->
-    ?LOG_SYS("trying to start ~s" , [PMod]),
+    lager:debug("trying to start ~s" , [PMod]),
     {module, PMod} = code:ensure_loaded(PMod),
     case jonny5_sup:start_child(PMod) of
-        {ok, undefined} -> ?LOG("ignored"), 'ignore';
-        {ok, Pid} -> ?LOG("started"), Pid;
-        {ok, Pid, _Info} -> ?LOG("started with ~p", [_Info]), Pid;
+        {ok, undefined} -> lager:debug("ignored"), 'ignore';
+        {ok, Pid} -> lager:debug("started"), Pid;
+        {ok, Pid, _Info} -> lager:debug("started with ~p", [_Info]), Pid;
         {error, already_present} ->
-            ?LOG_SYS("already present"),
+            lager:debug("already present"),
             ignore;
         {error, {already_started, Pid}} ->
-            ?LOG("already started"),
+            lager:debug("already started"),
             Pid
     end.

@@ -50,7 +50,8 @@ start_link() ->
 
 -spec handle_cdr/2 :: (wh_json:json_object(), proplist()) -> no_return().
 handle_cdr(JObj, _Props) ->
-    true  = wapi_call:cdr_v(JObj),
+    true = wapi_call:cdr_v(JObj),
+    wh_util:put_callid(JObj),
 
     AccountDb = wh_util:format_account_id(wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj), encoded),
 
@@ -66,7 +67,7 @@ handle_cdr(JObj, _Props) ->
     Id = wh_json:get_value(<<"call_id">>, NormDoc, couch_mgr:get_uuid()),
     NewDoc = wh_json:set_value(<<"_id">>, Id, JObj1),
 
-    ?LOG_SYS(Id, "Saving CDR to ~s", [Db]),
+    lager:debug("saving CDR to ~s", [Db]),
 
     couch_mgr:save_doc(Db, NewDoc).
 
@@ -88,7 +89,7 @@ handle_cdr(JObj, _Props) ->
 init([]) ->
     _ = create_anonymous_cdr_db(?ANONYMOUS_CDR_DB),
 
-    ?LOG_SYS("Init complete"),
+    lager:debug("init complete"),
 
     {ok, ok}.
 
@@ -151,8 +152,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG_SYS("CDR listener ~p termination", [_Reason]),
-    ok.
+    lager:debug("listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

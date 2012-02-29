@@ -99,7 +99,7 @@ hash_contact(Contact) ->
 %%-----------------------------------------------------------------------------
 -spec lookup_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
 lookup_auth_user(Name, Realm) ->
-    ?LOG("looking up auth creds for ~s@~s", [Name, Realm]),
+    lager:debug("looking up auth creds for ~s@~s", [Name, Realm]),
     {ok, Cache} = registrar_sup:cache_proc(),
     CacheKey = cache_user_key(Realm, Name),
     case wh_cache:fetch_local(Cache, CacheKey) of
@@ -109,7 +109,7 @@ lookup_auth_user(Name, Realm) ->
                     case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], UserJObj)) of
                         true -> 
                             CacheTTL = whapps_config:get_integer(?CONFIG_CAT, <<"credentials_cache_ttl">>, 300),
-                            ?LOG("storing ~s@~s in cache", [Name, Realm]),
+                            lager:debug("storing ~s@~s in cache", [Name, Realm]),
                             wh_cache:store_local(Cache, CacheKey, UserJObj, CacheTTL),
                             OK;
                         false -> 
@@ -121,7 +121,7 @@ lookup_auth_user(Name, Realm) ->
         {'ok', UserJObj}=OK ->
             case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], UserJObj)) of
                 true -> 
-                    ?LOG("pulling auth user from cache"),
+                    lager:debug("pulling auth user from cache"),
                     OK;
                 false -> 
                     {error, not_found}
@@ -132,10 +132,10 @@ lookup_auth_user(Name, Realm) ->
 get_auth_user(Name, Realm) ->
     case whapps_util:get_account_by_realm(Realm) of
         {'error', E} ->
-            ?LOG("failed to lookup realm ~s in accounts: ~p", [Realm, E]),
+            lager:debug("failed to lookup realm ~s in accounts: ~p", [Realm, E]),
             get_auth_user_in_agg(Name, Realm);
         {'ok', []} ->
-            ?LOG("failed to find realm ~s in accounts", [Realm]),
+            lager:debug("failed to find realm ~s in accounts", [Realm]),
             get_auth_user_in_agg(Name, Realm);
         {'ok', AccountDB} ->
             get_auth_user_in_account(Name, Realm, AccountDB)
@@ -147,16 +147,16 @@ get_auth_user_in_agg(Name, Realm) ->
     ViewOptions = [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}],
     case UseAggregate andalso couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         false ->
-            ?LOG_END("SIP credential aggregate db is disabled"),
+            lager:debug("SIP credential aggregate db is disabled"),
             {'error', 'not_found'};            
         {'error', R} ->
-            ?LOG_END("failed to look up SIP credentials ~p in aggregate", [R]),
+            lager:debug("failed to look up SIP credentials ~p in aggregate", [R]),
             {'error', 'not_found'};
         {'ok', []} ->
-            ?LOG("~s@~s not found in aggregate", [Name, Realm]),
+            lager:debug("~s@~s not found in aggregate", [Name, Realm]),
             {'error', 'not_found'};
         {'ok', [User|_]} ->
-            ?LOG("~s@~s found in aggregate", [Name, Realm]),
+            lager:debug("~s@~s found in aggregate", [Name, Realm]),
             {'ok', User}
     end.
 
@@ -164,27 +164,27 @@ get_auth_user_in_agg(Name, Realm) ->
 get_auth_user_in_account(Name, Realm, AccountDB) ->
     case couch_mgr:get_results(AccountDB, <<"devices/sip_credentials">>, [{<<"key">>, Name}, {<<"include_docs">>, true}]) of
         {'error', R} ->
-            ?LOG("failed to look up SIP credentials in ~s: ~p", [AccountDB, R]),
+            lager:debug("failed to look up SIP credentials in ~s: ~p", [AccountDB, R]),
             get_auth_user_in_agg(Name, Realm);
         {'ok', []} ->
-            ?LOG("~s@~s not found in ~s", [Name, Realm, AccountDB]),
+            lager:debug("~s@~s not found in ~s", [Name, Realm, AccountDB]),
             get_auth_user_in_agg(Name, Realm);
         {'ok', [User|_]} ->
-            ?LOG("~s@~s found in account db: ~s", [Name, Realm, AccountDB]),
+            lager:debug("~s@~s found in account db: ~s", [Name, Realm, AccountDB]),
             {'ok', User}
     end.
 
 -spec reg_removed_from_cache/3 :: (term(), term(), expire | flush | erase) -> ok.
 reg_removed_from_cache({?MODULE, registration, Realm, User}, Reg, expire) ->
-    ?LOG("received notice that user ~s@~s registration has expired", [User, Realm]),
+    lager:debug("received notice that user ~s@~s registration has expired", [User, Realm]),
     SuppressUnregister = wh_json:is_true(<<"Suppress-Unregister-Notify">>, Reg),
     case search_for_registration(User, Realm) of
         {ok, _} -> 
-            ?LOG("registration still exists in another segment, defering to their expiration");
+            lager:debug("registration still exists in another segment, defering to their expiration");
         {error, timeout} when SuppressUnregister ->
-            ?LOG("registration for ~s@~s has expired in this segment, but notifications are suppressed", [Realm, User]);
+            lager:debug("registration for ~s@~s has expired in this segment, but notifications are suppressed", [Realm, User]);
         {error, timeout} ->
-            ?LOG("registration for ~s@~s has expired in this segment, sending notification", [Realm, User]),
+            lager:debug("registration for ~s@~s has expired in this segment, sending notification", [Realm, User]),
             Updaters = [fun(J) -> wh_json:set_value(<<"Event-Name">>,  <<"deregister">>, J) end
                         ,fun(J) -> wh_json:set_value(<<"Event-Category">>, <<"notification">>, J) end 
                         ,fun(J) -> wh_json:delete_key(<<"App-Version">>, J) end

@@ -79,8 +79,8 @@ validate(#cb_context{req_verb = <<"get">>}=Context) ->
     catch
         _T:_R ->
             ST = erlang:get_stacktrace(),
-            ?LOG("loading summary crashed: ~p: ~p", [_T, _R]),
-            _ = [?LOG("~p", [S]) || S <- ST],
+            lager:debug("loading summary crashed: ~p: ~p", [_T, _R]),
+            _ = [lager:debug("~p", [S]) || S <- ST],
             crossbar_util:response_db_fatal(Context)
     end;
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
@@ -91,7 +91,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context, LimitId) ->
         load_limit(LimitId, Context)
     catch
         _T:_R ->
-            ?LOG("loading limit crashed: ~p: ~p", [_T, _R]),
+            lager:debug("loading limit crashed: ~p: ~p", [_T, _R]),
             crossbar_util:response_db_fatal(Context)
     end;
 validate(#cb_context{req_verb = <<"post">>}=Context, LimitId) ->
@@ -138,12 +138,12 @@ load_limit(LimitId, Context) ->
 create_limits(Context) ->
     case load_limit_summary(Context) of
         #cb_context{doc=[]} ->
-            ?LOG("No other limit doc exists, creating"),
+            lager:debug("No other limit doc exists, creating"),
             validate_create(Context);
         #cb_context{doc=[LimitDoc]} ->
             DocId = wh_json:get_value(<<"id">>, LimitDoc),
 
-            ?LOG("limit doc ~s exists, redirecting", [DocId]),
+            lager:debug("limit doc ~s exists, redirecting", [DocId]),
 
             crossbar_util:response_redirect(Context, DocId, wh_json:from_list([{<<"Location">>, DocId}]))
     end.

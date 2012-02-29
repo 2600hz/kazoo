@@ -100,13 +100,13 @@ authenticate(_) ->
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
     crossbar_util:put_reqid(Context),
-    ?LOG("validating user_auth"),
+    lager:debug("validating user_auth"),
     case catch(wh_json_validator:is_valid(Data, <<"user_auth">>)) of
         {fail, Errors} ->
-            ?LOG("fail json validation"),
+            lager:debug("fail json validation"),
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
-            ?LOG("pass json validation"),
+            lager:debug("pass json validation"),
             Credentials = wh_json:get_value(<<"credentials">>, JObj),
             Method = wh_json:get_value(<<"method">>, JObj, <<"md5">>),
             AccountName = normalize_account_name(wh_json:get_value(<<"account_name">>, JObj)),
@@ -115,13 +115,13 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
                                              wh_json:get_value(<<"realm">>, JObj)),
             case crossbar_util:find_account_db(PhoneNumber, AccountRealm, AccountName) of
                 {error, Errors} ->
-                    ?LOG("failed to find account DB"),
+                    lager:debug("failed to find account DB"),
                     crossbar_util:response_invalid_data(Errors, Context);
                 {ok, AccountDb} ->
-                    ?LOG("found account DB"),
+                    lager:debug("found account DB"),
                     authorize_user(Context, Credentials, Method, AccountDb);
                 {multiples, AccountDbs} ->
-                    ?LOG("found multiple account DBs"),
+                    lager:debug("found multiple account DBs"),
                     authorize_user(Context, Credentials, Method, AccountDbs)
             end
     end.
@@ -139,16 +139,16 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context, <<"recovery">
             case crossbar_util:find_account_db(PhoneNumber, AccountRealm, AccountName, false) of
                 {error, Errors} -> crossbar_util:response_invalid_data(Errors, Context);
                 {ok, AccountDb} ->
-                    ?LOG("attempting to load username in db: ~s", [AccountDb]),
+                    lager:debug("attempting to load username in db: ~s", [AccountDb]),
                     Username = wh_json:get_value(<<"username">>, JObj),
                     case couch_mgr:get_results(AccountDb, ?USERNAME_LIST, [{<<"key">>, Username}, {<<"include_docs">>, true}]) of
                         {ok, [User]} -> 
                             case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
                                 false ->
-                                    ?LOG("the username '~s' was found and is not disabled, continue", [Username]),
+                                    lager:debug("the username '~s' was found and is not disabled, continue", [Username]),
                                     Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"doc">>, User), db_name=AccountDb};
                                 true ->
-                                    ?LOG("the username '~s' was found but is disabled", [Username]),
+                                    lager:debug("the username '~s' was found but is disabled", [Username]),
                                     Error = wh_json:set_value([<<"username">>, <<"disabled">>]
                                                               ,<<"The user is disabled">>
                                                               ,wh_json:new()),
@@ -164,8 +164,8 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context, <<"recovery">
     end;
 validate(Context, _Path) ->
     crossbar_util:put_reqid(Context),
-    ?LOG("bad path: ~p", [_Path]),
-    ?LOG("req verb: ~s", [Context#cb_context.req_verb]),
+    lager:debug("bad path: ~p", [_Path]),
+    lager:debug("req verb: ~s", [Context#cb_context.req_verb]),
     crossbar_util:response_faulty_request(Context).
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
@@ -210,12 +210,12 @@ normalize_account_name(AccountName) ->
 %%--------------------------------------------------------------------
 -spec authorize_user/4 :: (#cb_context{}, ne_binary(), ne_binary(), ne_binary() | [] | [ne_binary(),...] ) -> #cb_context{}.
 authorize_user(Context, _, _, []) ->
-    ?LOG("no account(s) specified"),
+    lager:debug("no account(s) specified"),
     crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
 authorize_user(Context, Credentials, Method, [AccountDb|AccountDbs]) ->
     case authorize_user(Context, Credentials, Method, AccountDb) of
         #cb_context{resp_status=success}=Context1 ->
-            ?LOG("authz user creds: ~s", [AccountDb]),
+            lager:debug("authz user creds: ~s", [AccountDb]),
             Context1;
         _ ->
             authorize_user(Context, Credentials, Method, AccountDbs)
@@ -223,29 +223,29 @@ authorize_user(Context, Credentials, Method, [AccountDb|AccountDbs]) ->
 authorize_user(Context, Credentials, <<"md5">>, AccountDb) ->
     case crossbar_doc:load_view(?ACCT_MD5_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=AccountDb}) of
         #cb_context{resp_status=success, doc=[JObj|_]} ->
-            ?LOG("found more that one user with MD5 ~s, using ~s", [Credentials, wh_json:get_value(<<"id">>, JObj)]),
+            lager:debug("found more that one user with MD5 ~s, using ~s", [Credentials, wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         #cb_context{resp_status=success, doc=JObj} when JObj =/= []->
-            ?LOG("found MD5 credentials belong to user ~s", [wh_json:get_value(<<"id">>, JObj)]),
+            lager:debug("found MD5 credentials belong to user ~s", [wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         _ ->
-            ?LOG("credentials do not belong to any user"),
+            lager:debug("credentials do not belong to any user"),
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
 authorize_user(Context, Credentials, <<"sha">>, AccountDb) ->
     case crossbar_doc:load_view(?ACCT_SHA1_LIST, [{<<"key">>, Credentials}], Context#cb_context{db_name=AccountDb}) of
         #cb_context{resp_status=success, doc=[JObj|_]} ->
-            ?LOG("found more that one user with SHA1 ~s, using ~s", [Credentials, wh_json:get_value(<<"id">>, JObj)]),
+            lager:debug("found more that one user with SHA1 ~s, using ~s", [Credentials, wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         #cb_context{resp_status=success, doc=JObj} when JObj =/= []->
-            ?LOG("found SHA1 credentials belong to user ~s", [wh_json:get_value(<<"id">>, JObj)]),
+            lager:debug("found SHA1 credentials belong to user ~s", [wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         _ ->
-            ?LOG("credentials do not belong to any user"),
+            lager:debug("credentials do not belong to any user"),
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end;
 authorize_user(Context, _, _, _) ->
-    ?LOG("invalid creds"),
+    lager:debug("invalid creds"),
     crossbar_util:response(error, <<"invalid credentials">>, 401, Context).
 
 %%--------------------------------------------------------------------
@@ -271,12 +271,12 @@ create_token(#cb_context{doc=JObj}=Context) ->
             case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
                 {ok, Doc} ->
                     AuthToken = wh_json:get_value(<<"_id">>, Doc),
-                    ?LOG("created new local auth token ~s", [AuthToken]),
+                    lager:debug("created new local auth token ~s", [AuthToken]),
                     crossbar_util:response(wh_json:from_list([{<<"account_id">>, AccountId}
                                                               ,{<<"owner_id">>, OwnerId}])
                                            ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
                 {error, R} ->
-                    ?LOG("could not create new local auth token, ~p", [R]),
+                    lager:debug("could not create new local auth token, ~p", [R]),
                     crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
             end
     end.

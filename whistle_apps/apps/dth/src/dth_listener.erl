@@ -142,10 +142,10 @@ handle_info(blacklist_refresh, #state{wsdl_model=WSDL, cache=Cache}=State) ->
     spawn(fun() -> refresh_blacklist(Cache, WSDL) end),
     {noreply, State};
 handle_info({'DOWN', _, process, Pid, Reason}, #state{cache=Pid}=State) ->
-    ?LOG_SYS("Cache ~p went down: ~p", [Pid, Reason]),
+    lager:debug("Cache ~p went down: ~p", [Pid, Reason]),
     {noreply, State#state{cache=undefined}, 0};
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
+    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -172,7 +172,7 @@ handle_event(_JObj, #state{dth_cdr_url=Url, cache=Cache, wsdl_model=WSDL}) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), #state{}) -> 'ok'.
 terminate(_Reason, _) ->
-    ?LOG_SYS("dth: ~p termination", [_Reason]).
+    lager:debug("dth: ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -192,7 +192,7 @@ code_change(_OldVsn, State, _Extra) ->
 refresh_blacklist(Cache, WSDL) ->
     {ok, _, [Response]} = detergent:call(WSDL, "GetBlockList", []),
     BlockListEntries = get_blocklist_entries(Response),
-    ?LOG_SYS("Entries: ~p", [BlockListEntries]),
+    lager:debug("Entries: ~p", [BlockListEntries]),
     wh_cache:store_local(Cache, dth_util:blacklist_cache_key(), BlockListEntries).
 
 -spec get_blocklist_entries/1 :: (#'p:GetBlockListResponse'{}) -> wh_json:json_object().

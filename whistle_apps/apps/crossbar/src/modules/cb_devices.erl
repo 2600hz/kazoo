@@ -103,13 +103,13 @@ post(#cb_context{}=Context, _DocId) ->
             IsRealmDefined = wh_util:is_empty(wh_json:get_value([<<"sip">>, <<"realm">>], Doc1)),
             case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
                 {ok, Rev} when IsRealmDefined ->
-                    ?LOG("removing device from sip auth aggregate as it is using the account realm"),
+                    lager:debug("removing device from sip auth aggregate as it is using the account realm"),
                     couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1));
                 {ok, Rev} ->
-                    ?LOG("updating device in sip auth aggregate"),
+                    lager:debug("updating device in sip auth aggregate"),
                     couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1));
                 {error, not_found} ->
-                    ?LOG("adding device to the sip auth aggregate"),
+                    lager:debug("adding device to the sip auth aggregate"),
                     couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
             end,
             provision(Context1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_type">>)),
@@ -126,7 +126,7 @@ put(#cb_context{}=Context) ->
             case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
                 undefined -> ok;
                 _Else ->
-                    ?LOG("adding device to the sip auth aggregate"),
+                    lager:debug("adding device to the sip auth aggregate"),
                     couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
             end,    
             provision(Context1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_type">>)),
@@ -360,7 +360,7 @@ provision(Context, "simple_provisioner") ->
 provision(Context, "provisioner.net") ->
     spawn(fun() -> do_awesome_provision(Context) end);
 provision(_, _Else) ->
-    ?LOG("unsupported provisioning type: ~s", [_Else]),
+    lager:debug("unsupported provisioning type: ~s", [_Else]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -375,10 +375,10 @@ do_awesome_provision(#cb_context{doc=JObj, db_name=Db}) ->
     TemplateId = wh_json:get_value([<<"provision">>, <<"id">>], JObj),
     case is_binary(TemplateId) andalso couch_mgr:open_doc(Db, TemplateId) of
         false ->
-             ?LOG("unknown template id ~s", [TemplateId]),
+             lager:debug("unknown template id ~s", [TemplateId]),
              ok;
         {error, _R} ->
-             ?LOG("could not fetch template doc ~s: ~p", [TemplateId, _R]),
+             lager:debug("could not fetch template doc ~s: ~p", [TemplateId, _R]),
              ok;
         {ok, TemplateJObj} ->
             TemplateBase = wh_json:get_value(<<"template">>, TemplateJObj),
@@ -430,12 +430,12 @@ send_awesome_provisioning_request(ProvisionRequest, MACAddress) ->
               ],
     Body = wh_json:encode(ProvisionRequest),
     HTTPOptions = [],
-    ?LOG("provisioning via ~s with settings ~s", [UrlString, Body]),
+    lager:debug("provisioning via ~s with settings ~s", [UrlString, Body]),
     case ibrowse:send_req(UrlString, Headers, post, Body, HTTPOptions) of
         {ok, "200", _, Response} ->
-            ?LOG("SUCCESS! BOOM! ~s", [Response]);
+            lager:debug("SUCCESS! BOOM! ~s", [Response]);
         {ok, Code, _, Response} ->
-            ?LOG("ERROR! OH NO! ~s. ~s", [Code, Response])
+            lager:debug("ERROR! OH NO! ~s. ~s", [Code, Response])
     end.
 
 %%--------------------------------------------------------------------
@@ -462,5 +462,5 @@ do_simple_provision(#cb_context{doc=JObj}=Context) ->
             ,{"sip[password]", wh_json:get_string_value([<<"sip">>, <<"password">>], JObj)}
             ,{"submit", "true"}],
     Encoded = mochiweb_util:urlencode(Body),
-    ?LOG("posting to ~s with ~s", [Url, Encoded]),
+    lager:debug("posting to ~s with ~s", [Url, Encoded]),
     ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions).

@@ -203,9 +203,9 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId, doc=JObj}=Conte
     %% TODO: request current balance from jonny5 and put it here
     DB = wh_util:format_account_id(AccountId, encoded),
     Units = case couch_mgr:get_results(DB, <<"transactions/credit_remaining">>, [{<<"reduce">>, true}]) of
-                {ok, []} -> ?LOG("No results"), 0;
-                {ok, [ViewRes|_]} -> ?LOG("Found obj ~p", [ViewRes]), wh_json:get_value(<<"value">>, ViewRes, 0);
-                {error, _E} -> ?LOG("Error loading view: ~p", [_E]), 0
+                {ok, []} -> lager:debug("No results"), 0;
+                {ok, [ViewRes|_]} -> lager:debug("Found obj ~p", [ViewRes]), wh_json:get_value(<<"value">>, ViewRes, 0);
+                {error, _E} -> lager:debug("Error loading view: ~p", [_E]), 0
             end,
     crossbar_util:response(wh_json:from_list([{<<"amount">>, wapi_money:units_to_dollars(Units)}
                                               ,{<<"billing_account_id">>, wh_json:get_value(<<"billing_account_id">>, JObj, AccountId)}
@@ -337,7 +337,7 @@ put(#cb_context{req_data=ReqData, resp_data=RespData}=Context, ?CREDITS_PATH_TOK
     _ = crossbar_util:put_reqid(Context),
 
     Units = wapi_money:dollars_to_units(wh_json:get_float_value(<<"amount">>, ReqData)),
-    ?LOG("putting ~p units", [Units]),
+    lager:debug("putting ~p units", [Units]),
 
     BTCleanup = [fun(J) -> wh_json:delete_key([<<"card">>, <<"billing_address">>], J) end
                  ,fun(J) -> wh_json:delete_key(<<"billing_address">>, J) end
@@ -450,15 +450,15 @@ disable_cardless_accounts(_, #cb_context{account_id=AccountId}) ->
 create_placeholder_account(#cb_context{account_id=AccountId}=Context) ->
     case braintree_customer:create(#bt_customer{id=wh_util:to_list(AccountId)}) of
         {ok, #bt_customer{}=C} ->
-            ?LOG("created new customer ~s", [AccountId]),
+            lager:debug("created new customer ~s", [AccountId]),
             Resp = braintree_customer:record_to_json(C),
             crossbar_util:response(Resp, Context);
         {error, #bt_api_error{message=Msg}=ApiError} ->
-            ?LOG("failed to created new customer ~s", [Msg]),
+            lager:debug("failed to created new customer ~s", [Msg]),
             Resp = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Resp, Context);
         {error, _}=E ->
-            ?LOG("failed to created new customer ~p", [E]),
+            lager:debug("failed to created new customer ~p", [E]),
             crossbar_util:response_db_fatal(Context)
     end.
 
@@ -528,16 +528,16 @@ authorize_trunkstore([_], #cb_context{req_verb = <<"delete">>, doc=JObj, account
         {ok, #bt_subscription{id=SubscriptionId}} ->
             case braintree_subscription:cancel(SubscriptionId) of
                 {ok, #bt_subscription{}} ->
-                    ?LOG("cancelled braintree subscription ~s", [SubscriptionId]),
+                    lager:debug("cancelled braintree subscription ~s", [SubscriptionId]),
                     Context#cb_context{resp_status=success};
                 {error, not_found} ->
                     Context#cb_context{resp_status=success};
                 {error, #bt_api_error{message=Msg}=ApiError} ->
-                    ?LOG("failed to cancel braintree subscription: ~s", [Msg]),
+                    lager:debug("failed to cancel braintree subscription: ~s", [Msg]),
                     Resp = braintree_util:bt_api_error_to_json(ApiError),
                     crossbar_util:response(error, <<"braintree api error">>, 400, Resp, Context);
                 Error ->
-                    ?LOG("failed to cancel braintree subscription: ~p", [Error]),
+                    lager:debug("failed to cancel braintree subscription: ~p", [Error]),
                     crossbar_util:response_db_fatal(Context)
             end;
         {api_error, Resp} ->    
@@ -608,30 +608,30 @@ ts_get_subscription(JObj, BillingAccount, Create) ->
     SubscriptionId = wh_json:get_string_value([<<"pvt_braintree">>, <<"trunkstore_subscription_id">>], JObj),
     case SubscriptionId =/= undefined andalso braintree_subscription:find(SubscriptionId) of
         false when Create ->
-            ?LOG("no trunkstore subscription id found"),
+            lager:debug("no trunkstore subscription id found"),
             Token = get_payment_token(BillingAccount),
             create_subscription(Token, "SIP_Services");
         false -> {error, not_found};
         {ok, #bt_subscription{status=?BT_ACTIVE}}=Ok ->
-            ?LOG("found active trunkstore subscription ~s for account ~s", [SubscriptionId, BillingAccount]),
+            lager:debug("found active trunkstore subscription ~s for account ~s", [SubscriptionId, BillingAccount]),
             Ok;
         {error, not_found} when Create ->
-            ?LOG("trunkstore subscription id is not valid"),
+            lager:debug("trunkstore subscription id is not valid"),
             Token = get_payment_token(BillingAccount),
             create_subscription(Token, "SIP_Services");
         {error, not_found} -> {error, not_found};
         {ok, #bt_subscription{status=Status}} ->
-            ?LOG("found trunkstore subscription ~s for account ~s", [SubscriptionId, BillingAccount]),
+            lager:debug("found trunkstore subscription ~s for account ~s", [SubscriptionId, BillingAccount]),
             {inactive, wh_util:to_binary(Status)};
         {error, #bt_api_error{}=ApiError} ->
             Resp = braintree_util:bt_api_error_to_json(ApiError),
-            ?LOG("api error getting ts subscription for account ~s: ~p", [BillingAccount, wh_json:encode(Resp)]),
+            lager:debug("api error getting ts subscription for account ~s: ~p", [BillingAccount, wh_json:encode(Resp)]),
             {api_error, Resp};
         {error, no_card} ->
-            ?LOG("account ~s has no card on file", [BillingAccount]),
+            lager:debug("account ~s has no card on file", [BillingAccount]),
             {error, no_card};
         {error, _E} ->
-            ?LOG("error getting ts subscription for account ~s: ~p", [BillingAccount, _E]),
+            lager:debug("error getting ts subscription for account ~s: ~p", [BillingAccount, _E]),
             {error, fatal}                     
     end.
 
@@ -645,17 +645,17 @@ change_subscription(Updates, #bt_subscription{id=undefined}=Subscription, #cb_co
                     end, Subscription, Updates),
     case braintree_subscription:create(NewSubscription) of
         {ok, #bt_subscription{id=Id}} ->
-            ?LOG("created braintree subscription ~s", [Id]),
+            lager:debug("created braintree subscription ~s", [Id]),
             Context#cb_context{doc=wh_json:set_value([<<"pvt_braintree">>, <<"trunkstore_subscription_id">>]
                                                      ,wh_util:to_binary(Id)
                                                      ,JObj)
                                ,resp_status=success};
         {error, #bt_api_error{message=Msg}=ApiError} ->
-            ?LOG("failed to create braintree subscription: ~s", [Msg]),
+            lager:debug("failed to create braintree subscription: ~s", [Msg]),
             Resp = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Resp, Context);
         Error ->
-            ?LOG("failed to create braintree subscription: ~p", [Error]),
+            lager:debug("failed to create braintree subscription: ~p", [Error]),
             crossbar_util:response_db_fatal(Context)
     end;
 change_subscription(Updates, Subscription, #cb_context{doc=JObj}=Context) ->
@@ -667,17 +667,17 @@ change_subscription(Updates, Subscription, #cb_context{doc=JObj}=Context) ->
                     end, Subscription, Updates),
     case braintree_subscription:update(NewSubscription) of
         {ok, #bt_subscription{id=Id}} ->
-            ?LOG("updated braintree subscription ~s", [Id]),
+            lager:debug("updated braintree subscription ~s", [Id]),
             Context#cb_context{doc=wh_json:set_value([<<"pvt_braintree">>, <<"trunkstore_subscription_id">>]
                                                      ,wh_util:to_binary(Id)
                                                      ,JObj)
                                ,resp_status=success};
         {error, #bt_api_error{message=Msg}=ApiError} ->
-            ?LOG("failed to updated braintree subscription: ~s", [Msg]),
+            lager:debug("failed to updated braintree subscription: ~s", [Msg]),
             Resp = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Resp, Context);
         Error ->
-            ?LOG("failed to updated braintree subscription: ~p", [Error]),
+            lager:debug("failed to updated braintree subscription: ~p", [Error]),
             crossbar_util:response_db_fatal(Context)
     end.
 
@@ -690,7 +690,7 @@ change_subscription(Updates, Subscription, #cb_context{doc=JObj}=Context) ->
                                                  {'inactive', ne_binary()} |
                                                  {'api_error', wh_json:json_object()}.
 create_subscription({ok, Token}, Plan) ->
-    ?LOG("creating new subscription ~s with token ~s", [Plan, Token]),
+    lager:debug("creating new subscription ~s with token ~s", [Plan, Token]),
     {ok, #bt_subscription{payment_token=Token, plan_id=Plan, do_not_inherit=true}};
 create_subscription(Error, _) ->
     Error.
@@ -703,19 +703,19 @@ get_payment_token(BillingAccount) when not is_list(BillingAccount) ->
 get_payment_token(BillingAccount) ->
     case braintree_customer:find(BillingAccount) of
         {ok, #bt_customer{credit_cards=Cards}} ->
-            ?LOG("found braintree customer ~s", [BillingAccount]),
+            lager:debug("found braintree customer ~s", [BillingAccount]),
             case [Card || #bt_card{default=Default}=Card <- Cards, Default] of
                 [#bt_card{token=Token}] ->
-                    ?LOG("braintree customer ~s default credit card token ~s", [BillingAccount, Token]),
+                    lager:debug("braintree customer ~s default credit card token ~s", [BillingAccount, Token]),
                     {ok, Token};
                 _ ->
-                    ?LOG("braintree customer ~s has no credit card on file", [BillingAccount]),
+                    lager:debug("braintree customer ~s has no credit card on file", [BillingAccount]),
                     {error, no_card}
             end;
         {error, not_found} ->
             case  braintree_customer:create(#bt_customer{id=BillingAccount}) of
                 {ok, #bt_customer{}} ->
-                    ?LOG("braintree customer ~s has no credit card on file", [BillingAccount]),
+                    lager:debug("braintree customer ~s has no credit card on file", [BillingAccount]),
                     {error, no_card};
                 {error, #bt_api_error{}=ApiError} ->
                     Resp = braintree_util:bt_api_error_to_json(ApiError),
@@ -724,10 +724,10 @@ get_payment_token(BillingAccount) ->
                     {error, fatal}
             end;
         {error, #bt_api_error{message=Msg}=ApiError} ->
-            ?LOG("failed to find braintree customer: ~s", [Msg]),
+            lager:debug("failed to find braintree customer: ~s", [Msg]),
             Resp = braintree_util:bt_api_error_to_json(ApiError),
             {api_error, Resp};
         _Else ->
-            ?LOG("failed to find braintree customer: ~p", [_Else]),
+            lager:debug("failed to find braintree customer: ~p", [_Else]),
             {error, fatal}
     end.

@@ -116,7 +116,7 @@ handle_req(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([AccountID, UserID]) ->
-    ?LOG_SYS("Started for ~s / ~s", [UserID, AccountID]),
+    lager:debug("Started for ~s / ~s", [UserID, AccountID]),
     {ok, #state{account_id=AccountID, user_id=UserID}}.
 
 %%--------------------------------------------------------------------
@@ -158,7 +158,7 @@ handle_call({subscribe, Sub, Options}, _, #state{subscriptions=Subs}=State) ->
 	    case lists:member(Sub, Subs) of
 		true -> {reply, {error, already_present}, State};
 		false ->
-		    ?LOG("Adding binding ~s", [Sub]),
+		    lager:debug("Adding binding ~s", [Sub]),
 		    gen_listener:add_binding(self(), Sub, Options),
 		    {reply, ok, State#state{subscriptions=[Sub|Subs]}}
 	    end
@@ -175,7 +175,7 @@ handle_call({subscribe, Sub, Options}, _, #state{subscriptions=Subs}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({unsubscribe, Sub}, #state{subscriptions=Subs}=State) ->
-    ?LOG("removing binding: ~s", [Sub]),
+    lager:debug("removing binding: ~s", [Sub]),
     gen_listener:rm_binding(self(), Sub),
     {noreply, State#state{subscriptions=lists:delete(Sub, Subs)}};
 handle_cast({add_event, JObj}, #state{events=Events, max_events=Max}=State) ->
@@ -198,7 +198,7 @@ handle_cast({add_event, JObj}, #state{events=Events, max_events=Max}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
+    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -225,7 +225,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), #state{}) -> ok.
 terminate(_Reason, _) ->
-    ?LOG_SYS("termination: ~p", [_Reason]).
+    lager:debug("termination: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

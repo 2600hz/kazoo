@@ -33,12 +33,12 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.schemas">>, ?MODULE, validate).
 
-authorize(#cb_context{req_nouns=[{<<"schema">>,_}], req_id=ReqId}) ->
-    ?LOG(ReqId, "authorizing request to fetch schema(s)", []),
+authorize(#cb_context{req_nouns=[{<<"schema">>,_}]}) ->
+    lager:debug("authorizing request to fetch schema(s)"),
     true.
 
-authenticate(#cb_context{req_nouns=[{<<"schema">>,_}], req_id=ReqId}) ->
-    ?LOG(ReqId, "authenticating request to fetch schema(s)", []),
+authenticate(#cb_context{req_nouns=[{<<"schema">>,_}]}) ->
+    lager:debug("authenticating request to fetch schema(s)"),
     true.
 
 %%--------------------------------------------------------------------
@@ -91,7 +91,7 @@ resource_exists(_, ?VALIDATION_PATH_TOKEN) ->
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
-    ?LOG("load summary of schemas from ~s", [?WH_SCHEMA_DB]),
+    lager:debug("load summary of schemas from ~s", [?WH_SCHEMA_DB]),
     summary(Context#cb_context{db_name = ?WH_SCHEMA_DB}).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->

@@ -65,7 +65,8 @@ start_link(Node, _Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node]) ->
-    ?LOG_SYS("starting new fs route listener for ~s", [Node]),
+    put(callid, Node),
+    lager:debug("starting new fs route listener for ~s", [Node]),
     process_flag(trap_exit, true),
 
     erlang:monitor_node(Node, true),
@@ -123,7 +124,7 @@ handle_cast(_Msg, State) ->
                        ({'DOWN', reference(), 'process', pid(), term()}, #state{}) -> {'noreply', #state{}};
                        ({'EXIT', pid(), term()}, #state{}) -> {'noreply', #state{}}.
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
-    ?LOG("fetch unknown section from ~s: ~p So: ~p, K: ~p V: ~p ID: ~s", [Node, _Section, _Something, _Key, _Value, ID]),
+    lager:debug("fetch unknown section from ~s: ~p So: ~p, K: ~p V: ~p ID: ~s", [Node, _Section, _Something, _Key, _Value, ID]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
     {noreply, State};
 
@@ -134,29 +135,29 @@ handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #sta
             erlang:monitor(process, LookupPid),
 
             LookupsReq = Stats#handler_stats.lookups_requested + 1,
-            ?LOG_START(CallID, "processing fetch request ~s (~b) from ~s in PID ~p", [FSID, LookupsReq, Node, LookupPid]),
+            lager:debug("processing fetch request ~s (# ~b for ~s) from ~s in PID ~p", [FSID, LookupsReq, CallID, Node, LookupPid]),
             {noreply, State#state{lookups=[{LookupPid, FSID, erlang:now()} | LUs]
                                   ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}, hibernate};
         {_Other, _Context} ->
-            ?LOG("ignoring event ~s in context ~s from ~s", [_Other, _Context, Node]),
+            lager:debug("ignoring event ~s in context ~s from ~s", [_Other, _Context, Node]),
             _ = freeswitch:fetch_reply(Node, FSID, ?EMPTYRESPONSE),
             {noreply, State, hibernate}
     end;
 
 handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs, node=Node}=State) ->
-    ?LOG("lookup task ~p from node ~s went down, ~p", [LU, Node, _Reason]),
+    lager:debug("lookup task ~p from node ~s went down, ~p", [LU, Node, _Reason]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
 
 handle_info({'EXIT', _Pid, noconnection}, #state{node=Node}=State) ->
-    ?LOG("noconnection received for node ~s, pid: ~p", [Node, _Pid]),
+    lager:debug("noconnection received for node ~s, pid: ~p", [Node, _Pid]),
     {stop, normal, State};
 
 handle_info({'EXIT', LU, _Reason}, #state{lookups=LUs, node=Node}=State) ->
-    ?LOG("lookup task ~p from node ~s exited, ~p", [LU, Node, _Reason]),
+    lager:debug("lookup task ~p from node ~s exited, ~p", [LU, Node, _Reason]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
 
 handle_info({nodedown, Node}, #state{node=Node}=State) ->
-    ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
+    lager:debug("lost connection to node ~s, waiting for reconnection", [Node]),
     freeswitch:close(Node),
     _Ref = erlang:send_after(0, self(), {is_node_up, 100}),
     {noreply, State};
@@ -166,10 +167,10 @@ handle_info({is_node_up, Timeout}, State) when Timeout > ?FS_TIMEOUT ->
 handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
     case ecallmgr_fs_handler:is_node_up(Node) of
         true ->
-            ?LOG("node ~p recovered, restarting", [self(), Node]),
+            lager:debug("node ~p recovered, restarting", [self(), Node]),
             {noreply, State, 0};
         false ->
-            ?LOG("node ~p still down, retrying in ~p ms", [self(), Node, Timeout]),
+            lager:debug("node ~p still down, retrying in ~p ms", [self(), Node, Timeout]),
             _Ref = erlang:send_after(Timeout, self(), {is_node_up, Timeout*2}),
             {noreply, State}
     end;
@@ -181,7 +182,7 @@ handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
                               false -> ok
                           end
                   end, LUs),
-    ?LOG("commanded to shutdown node ~s", [Node]),
+    lager:debug("commanded to shutdown node ~s", [Node]),
     {stop, normal, State};
 
 handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
@@ -198,13 +199,13 @@ handle_info(timeout, #state{node=Node}=State) ->
     {foo, Node} ! Type,
     receive
         ok ->
-            ?LOG_SYS("bound to dialplan request on ~s", [Node]),
+            lager:debug("bound to dialplan request on ~s", [Node]),
             {noreply, State};
         {error, Reason} ->
-            ?LOG_SYS("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
+            lager:debug("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
             {stop, Reason, State}
     after ?FS_TIMEOUT ->
-            ?LOG_SYS("timed out binding to dialplan requests on ~s", [Node]),
+            lager:debug("timed out binding to dialplan requests on ~s", [Node]),
             {stop, timeout, State}
     end;
 
@@ -223,7 +224,7 @@ handle_info(_Other, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{node=Node}) ->
-    ?LOG_SYS("fs route ~p termination", [_Reason]),
+    lager:debug("fs route ~p termination", [_Reason]),
     freeswitch:close(Node).
 
 %%--------------------------------------------------------------------
@@ -273,33 +274,33 @@ process_route_req(Node, FSID, CallID, FSData) ->
 
 -spec authorize_and_route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), proplist()) -> 'ok'.
 authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
-    ?LOG("starting authorization request from node ~s", [Node]),
+    lager:debug("starting authorization request from node ~s", [Node]),
     {ok, AuthZPid} = ecallmgr_authz:authorize(FSID, CallID, FSData),
     route(Node, FSID, CallID, DefProp, AuthZPid).
 
 -spec route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), pid() | 'undefined') -> 'ok'.
 route(Node, FSID, CallID, DefProp, AuthZPid) ->
-    ?LOG("starting route request from node ~s", [Node]),
+    lager:debug("starting route request from node ~s", [Node]),
     {ok, RespJObj} = ecallmgr_amqp_pool:route_req(DefProp),
     RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
     authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV).
 
 -spec authorize/6 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), pid() | 'undefined', wh_json:json_object()) -> 'ok'.
 authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->
-    ?LOG("no authz available, validating route_resp on node ~s", [Node]),
+    lager:debug("no authz available, validating route_resp on node ~s", [Node]),
     true = wapi_route:resp_v(RespJObj),
     reply(Node, FSID, CallID, RespJObj, RouteCCV);
 authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
-    ?LOG("checking authz_resp on node ~s", [Node]),
+    lager:debug("checking authz_resp on node ~s", [Node]),
     case ecallmgr_authz:is_authorized(AuthZPid) of
         {false, _} ->
-            ?LOG("sending reply to node ~s: authz is false", [Node]),
+            lager:debug("sending reply to node ~s: authz is false", [Node]),
             reply_forbidden(Node, FSID);
         {true, CCVJObj} ->
             CCV = wh_json:to_proplist(CCVJObj),
-            ?LOG("sending reply to node ~s: authz is true", [Node]),
+            lager:debug("sending reply to node ~s: authz is true", [Node]),
             true = wapi_route:resp_v(RespJObj),
-            ?LOG("sending reply to node ~s: valid route resp", [Node]),
+            lager:debug("sending reply to node ~s: valid route resp", [Node]),
             RouteCCV1 = lists:foldl(fun({K,V}, RouteCCV0) -> wh_json:set_value(K, V, RouteCCV0) end, RouteCCV, CCV),
 
             reply(Node, FSID, CallID, RespJObj, RouteCCV1, AuthZPid)
@@ -315,11 +316,11 @@ reply_forbidden(Node, FSID) ->
     case freeswitch:fetch_reply(Node, FSID, XML) of
         ok ->
             %% only start control if freeswitch recv'd reply
-            ?LOG_END("node ~s accepted our route unauthz", [Node]);
+            lager:debug("node ~s accepted our route unauthz", [Node]);
         {error, Reason} ->
-            ?LOG_END("node ~s rejected our route unauthz, ~p", [Node, Reason]);
+            lager:debug("node ~s rejected our route unauthz, ~p", [Node, Reason]);
         timeout ->
-            ?LOG_END("received no reply from node ~s, timeout", [Node])
+            lager:debug("received no reply from node ~s, timeout", [Node])
     end.
 
 -spec reply/5 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), wh_json:json_object()) -> 'ok'.
@@ -334,13 +335,13 @@ reply(Node, FSID, CallID, RespJObj, CCVs, AuthZPid) ->
     case freeswitch:fetch_reply(Node, FSID, XML) of
         ok ->
             %% only start control if freeswitch recv'd reply
-            ?LOG("node ~s accepted our route (authzed), starting control and events", [Node]),
+            lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
             start_control_and_events(Node, CallID, ServerQ, CCVs),
             ecallmgr_authz:authz_win(AuthZPid);
         {error, Reason} ->
-            ?LOG_END("node ~s rejected our route response, ~p", [Node, Reason]);
+            lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
         timeout ->
-            ?LOG_END("received no reply from node ~s, timeout", [Node])
+            lager:debug("received no reply from node ~s, timeout", [Node])
     end.
 
 -spec start_control_and_events/4 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
@@ -359,11 +360,11 @@ start_control_and_events(Node, CallID, SendTo, CCVs) ->
         send_control_queue(SendTo, CtlProp)
     catch
         _:Reason ->
-            ?LOG_END("error during control handoff to whapp, ~p", [Reason]),
+            lager:debug("error during control handoff to whapp, ~p", [Reason]),
             {error, amqp_error}
     end.
 
 -spec send_control_queue/2 :: (ne_binary(), proplist()) -> 'ok'.
 send_control_queue(SendTo, CtlProp) ->
-    ?LOG_END("sending route_win to ~s", [SendTo]),
+    lager:debug("sending route_win to ~s", [SendTo]),
     wapi_route:publish_win(SendTo, CtlProp).

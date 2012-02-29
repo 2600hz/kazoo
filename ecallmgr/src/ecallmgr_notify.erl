@@ -76,7 +76,7 @@ presence_update(JObj, _Props) ->
             end,
     NodeHandlers = ecallmgr_fs_sup:node_handlers(),
     _ = [begin
-             ?LOG("sending presence in event to ~p~n", [Node]),
+             lager:debug("sending presence in event to ~p~n", [Node]),
              freeswitch:sendevent(Node, 'PRESENCE_IN', [{"Distributed-From", wh_util:to_list(Node)} | Event])
          end
          || NodeHandler <- NodeHandlers,
@@ -95,7 +95,7 @@ mwi_update(JObj, _Props) ->
 
     case get_endpoint(User, Realm) of
         {error, timeout} ->
-            ?LOG_END("mwi timed out looking up contact for ~s@~s", [User, Realm]);
+            lager:debug("mwi timed out looking up contact for ~s@~s", [User, Realm]);
         Endpoint ->
             NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
             Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end
@@ -105,7 +105,7 @@ mwi_update(JObj, _Props) ->
                                              ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
                                              ,wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
                                             ]),
-            ?LOG("created mwi notify body ~s", [Body]),
+            lager:debug("created mwi notify body ~s", [Body]),
             Headers = [{"profile", ?DEFAULT_FS_PROFILE}
                        ,{"to-uri", Endpoint}
                        ,{"from-uri", "sip:2600hz@2600hz.com"}
@@ -116,7 +116,7 @@ mwi_update(JObj, _Props) ->
                       ],
             {ok, Node} = ecallmgr_fs_handler:request_node(<<"audio">>),
             Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
-            ?LOG("sending of MWI update to ~s resulted in: ~p", [Node, Resp])
+            lager:debug("sending of MWI update to ~s resulted in: ~p", [Node, Resp])
     end.
 
 -spec send_presence_event/3 :: (ne_binary(), ne_binary() | atom(), proplist()) -> 'ok'.
@@ -153,7 +153,8 @@ send_presence_event(_, _, _) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new ecallmgr notify process"),
+    put(callid, ?LOG_SYSTEM_ID),
+    lager:debug("starting new ecallmgr notify process"),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -197,7 +198,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
+    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, _State) ->
@@ -215,7 +216,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG_SYS("ecallmgr notify ~p termination", [_Reason]),
+    lager:debug("ecallmgr notify ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------

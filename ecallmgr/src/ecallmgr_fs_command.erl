@@ -18,5 +18,5 @@ exec_cmd(Node, UUID, JObj, _ControlPid) ->
     true = wapi_fs:req_v(JObj),
     AppName = wh_json:get_value(<<"Application-Name">>, JObj),
     AppArgs = wh_json:get_value(<<"Args">>, JObj),
-    ?LOG(UUID, "Executing fs api ~s with ~s", [AppName, AppArgs]),
+    lager:debug("executing fs api ~s with ~s for ~s", [AppName, AppArgs, UUID]),
     freeswitch:api(Node, wh_util:to_atom(AppName), wh_util:to_list(AppArgs)).

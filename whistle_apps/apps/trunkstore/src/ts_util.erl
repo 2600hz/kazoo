@@ -79,26 +79,26 @@ lookup_did(DID, AcctID) ->
     case wh_cache:fetch({lookup_did, DID, AcctID}) of
         {ok, _}=Resp ->
             %% wh_timer:tick("lookup_did/1 cache hit"),
-            ?LOG("Cache hit for ~s", [DID]),
+            lager:debug("Cache hit for ~s", [DID]),
             Resp;
         {error, not_found} ->
             %% wh_timer:tick("lookup_did/1 cache miss"),
             case couch_mgr:get_results(AcctDB, ?TS_VIEW_DIDLOOKUP, Options) of
-                {ok, []} -> ?LOG("Cache miss for ~s, no results", [DID]), {error, no_did_found};
+                {ok, []} -> lager:debug("Cache miss for ~s, no results", [DID]), {error, no_did_found};
                 {ok, [ViewJObj]} ->
-                    ?LOG("Cache miss for ~s, found result with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
+                    lager:debug("Cache miss for ~s, found result with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
                     ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
                     Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
                     wh_cache:store({lookup_did, DID, AcctID}, Resp),
                     {ok, Resp};
                 {ok, [ViewJObj | _Rest]} ->
-                    ?LOG(notice, "multiple results for did ~s in acct ~s", [DID, AcctID]),
-                    ?LOG("Cache miss for ~s, found multiple results, using first with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
+                    lager:notice("multiple results for did ~s in acct ~s", [DID, AcctID]),
+                    lager:debug("Cache miss for ~s, found multiple results, using first with id ~s", [DID, wh_json:get_value(<<"id">>, ViewJObj)]),
                     ValueJObj = wh_json:get_value(<<"value">>, ViewJObj),
                     Resp = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, ViewJObj), ValueJObj),
                     wh_cache:store({lookup_did, DID, AcctID}, Resp),
                     {ok, Resp};
-                {error, _}=E -> ?LOG("Cache miss for ~s, error ~p", [DID, E]), E
+                {error, _}=E -> lager:debug("Cache miss for ~s, error ~p", [DID, E]), E
             end
     end.
 
@@ -108,13 +108,13 @@ lookup_user_flags(Name, Realm, AcctID) ->
     AcctDB = wh_util:format_account_id(AcctID, encoded),
 
     case wh_cache:fetch({lookup_user_flags, Realm, Name, AcctID}) of
-        {ok, _}=Result -> ?LOG("Cache hit for ~s@~s", [Name, Realm]), Result;
+        {ok, _}=Result -> lager:debug("Cache hit for ~s@~s", [Name, Realm]), Result;
         {error, not_found} ->
             case couch_mgr:get_results(AcctDB, <<"trunkstore/LookUpUserFlags">>, [{<<"key">>, [Realm, Name]}]) of
-                {error, _}=E -> ?LOG("Cache miss for ~s@~s, err: ~p", [Name, Realm, E]), E;
-                {ok, []} -> ?LOG("Cache miss for ~s@~s, no results", [Name, Realm]), {error, no_user_flags};
+                {error, _}=E -> lager:debug("Cache miss for ~s@~s, err: ~p", [Name, Realm, E]), E;
+                {ok, []} -> lager:debug("Cache miss for ~s@~s, no results", [Name, Realm]), {error, no_user_flags};
                 {ok, [User|_]} ->
-                    ?LOG("Cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_json:get_value(<<"id">>, User)]),
+                    lager:debug("Cache miss, found view result for ~s@~s with id ~s", [Name, Realm, wh_json:get_value(<<"id">>, User)]),
                     ValJObj = wh_json:get_value(<<"value">>, User),
                     JObj = wh_json:set_value(<<"id">>, wh_json:get_value(<<"id">>, User), ValJObj),
                     wh_cache:store({lookup_user_flags, Realm, Name, AcctID}, JObj),

@@ -1,19 +1,23 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(wh_alert).
 
 -behaviour(gen_server).
 
--include("../include/wh_log.hrl").
+-compile([{parse_transform, lager_transform}]).
+
+-include_lib("whistle/include/wh_log.hrl").
 
 %% API
--export([start_link/0, start_link/1, start_link/2]).
+-export([start_link/0]).
 -export([format/1, format/2, format/3, format/4, format/5, format/6]).
--export([emerg/2, alert/2, crit/2, err/2, warning/2, notice/2, info/2, debug/2]).
+%-export([emerg/2, alert/2, crit/2, err/2, warning/2, notice/2, info/2, debug/2]).
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2
@@ -33,7 +37,7 @@
                 ,args=[]}).
 
 -type msg() :: string() | binary().
--type options() :: ['cons' | 'perror' | 'pid' | 'odelay' | 'ndelay',...].
+%-type options() :: ['cons' | 'perror' | 'pid' | 'odelay' | 'ndelay',...].
 
 %%%===================================================================
 %%% API
@@ -48,47 +52,39 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> {'ok', pid()}.
 start_link() ->
-    start_link(local0).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
--spec start_link/1 :: (atom()) -> {'ok', pid()}.
-start_link(Facility) ->
-    start_link(Facility, [cons, perror, pid, odelay, ndelay]).
+%% -spec emerg/2 :: (string(), list(term())) -> 'ok'.
+%% emerg(Msg, Args) ->
+%%     gen_server:cast(?MODULE, #alert{level=emergency, msg=Msg, args=Args}).
 
--spec start_link/2 :: (atom(), options()) -> {'ok', pid()}.
-start_link(Facility, Opts) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [Facility, Opts], []).
+%% -spec alert/2 :: (string(), list(term())) -> 'ok'.
+%% alert(Msg, Args) ->
+%%     gen_server:cast(?MODULE, #alert{level=alert, msg=Msg, args=Args}).
 
--spec emerg/2 :: (string(), list(term())) -> 'ok'.
-emerg(Msg, Args) ->
-    gen_server:cast(?MODULE, #alert{level=emergency, msg=Msg, args=Args}).
+%% -spec crit/2 :: (string(), list(term())) -> 'ok'.
+%% crit(Msg, Args) ->
+%%     gen_server:cast(?MODULE, #alert{level=critical, msg=Msg, args=Args}).
 
--spec alert/2 :: (string(), list(term())) -> 'ok'.
-alert(Msg, Args) ->
-    gen_server:cast(?MODULE, #alert{level=alert, msg=Msg, args=Args}).
+%% -spec err/2 :: (string(), list(term())) -> 'ok'.
+%% err(Msg, Args) ->
+%%     gen_server:cast(?MODULE, #alert{level=error, msg=Msg, args=Args}).
 
--spec crit/2 :: (string(), list(term())) -> 'ok'.
-crit(Msg, Args) ->
-    gen_server:cast(?MODULE, #alert{level=critical, msg=Msg, args=Args}).
+%% -spec warning/2 :: (string(), list(term())) -> 'ok'.
+%% warning(Msg, Args) ->
+%%     gen_server:cast(?MODULE, #alert{level=warning, msg=Msg, args=Args}).
 
--spec err/2 :: (string(), list(term())) -> 'ok'.
-err(Msg, Args) ->
-    gen_server:cast(?MODULE, #alert{level=error, msg=Msg, args=Args}).
+%% -spec notice/2 :: (string(), list(term())) -> 'ok'.
+%% notice(Msg, Args) ->
+%%     gen_server:cast(?MODULE, #alert{level=notice, msg=Msg, args=Args}).
 
--spec warning/2 :: (string(), list(term())) -> 'ok'.
-warning(Msg, Args) ->
-    gen_server:cast(?MODULE, #alert{level=warning, msg=Msg, args=Args}).
+%% -spec info/2 :: (string(), list(term())) -> 'ok'.
+%% info(Msg, Args) ->
+%%     gen_server:cast(?MODULE, #alert{level=info, msg=Msg, args=Args}).
 
--spec notice/2 :: (string(), list(term())) -> 'ok'.
-notice(Msg, Args) ->
-    gen_server:cast(?MODULE, #alert{level=notice, msg=Msg, args=Args}).
-
--spec info/2 :: (string(), list(term())) -> 'ok'.
-info(Msg, Args) ->
-    gen_server:cast(?MODULE, #alert{level=info, msg=Msg, args=Args}).
-
--spec debug/2 :: (string(), list(term())) -> 'ok'.
-debug(Msg, Args) ->
-    gen_server:cast(?MODULE, #alert{level=debug, msg=Msg, args=Args}).
+%% -spec debug/2 :: (string(), list(term())) -> 'ok'.
+%% debug(Msg, Args) ->
+%%     gen_server:cast(?MODULE, #alert{level=debug, msg=Msg, args=Args}).
 
 -spec format/1 :: (#alert{} | msg()) -> 'ok'.
 format(Msg) ->
@@ -96,13 +92,16 @@ format(Msg) ->
 
 -spec format/2 :: (atom() | msg(), msg() | list()) -> 'ok'.
 format(Level, Msg) when is_atom(Level) ->
-    gen_server:cast(?MODULE, #alert{section=sys, req_id=erlang:get(callid), module=?MODULE, line=?LINE, pid=self(), level=Level, msg=Msg});
+    lager:level(Msg);
+    %% gen_server:cast(?MODULE, #alert{section=sys, req_id=erlang:get(callid), module=?MODULE, line=?LINE, pid=self(), level=Level, msg=Msg});
 format(Msg, Args) ->
-    gen_server:cast(?MODULE, #alert{section=sys, req_id=erlang:get(callid), module=?MODULE, line=?LINE, pid=self(), msg=Msg, args=Args}).
+    lager:debug(Msg, Args).
+    %% gen_server:cast(?MODULE, #alert{section=sys, req_id=erlang:get(callid), module=?MODULE, line=?LINE, pid=self(), msg=Msg, args=Args}).
 
 -spec format/3 :: (atom(), list(), msg()) -> 'ok'.
 format(Section, [ReqId, Module, Line, Pid], Msg) ->
-    gen_server:cast(?MODULE, #alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, msg=Msg}).
+    lager:debug(Msg).
+    %% gen_server:cast(?MODULE, #alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, msg=Msg}).
 
 -spec format/4 :: (atom(), list(), atom() | msg(), msg() | list()) -> 'ok'.
 format(Section, [undefined|_]=Defaults, undefined, Msg) ->
@@ -110,9 +109,11 @@ format(Section, [undefined|_]=Defaults, undefined, Msg) ->
 format(Section, [ReqId|_]=Defaults, undefined, Msg) ->
     format(Section, Defaults, ReqId, Msg);
 format(Section, [ReqId, Module, Line, Pid], Level, Msg) when is_atom(Level) ->
-    gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, level=Level, msg=Msg});
+    lager:Level(Msg);
+    %% gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, level=Level, msg=Msg});
 format(Section, [ReqId, Module, Line, Pid], Msg, Args) ->
-    gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, msg=Msg, args=Args}).
+    lager:debug(Msg, Args).
+    %% gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, msg=Msg, args=Args}).
 
 -spec format/5 :: (atom(), list(), undefined | atom() | binary(), msg(), list()) -> 'ok'.
 format(Section, [undefined | _]=Defaults, undefined, Msg, Args) when is_atom(Section) ->
@@ -120,9 +121,11 @@ format(Section, [undefined | _]=Defaults, undefined, Msg, Args) when is_atom(Sec
 format(Section, [ReqId | _]=Defaults, undefined, Msg, Args) ->
     format(Section, Defaults, ReqId, Msg, Args);
 format(Section, [ReqId, Module, Line, Pid], Level, Msg, Args) when is_atom(Level) ->
-    gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, level=Level, msg=Msg, args=Args});
+    lager:Level(Msg, Args);
+    %% gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, level=Level, msg=Msg, args=Args});
 format(Section, [_, Module, Line, Pid], ReqId, Msg, Args) ->
-    gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, msg=Msg, args=Args}).
+    lager:debug(Msg, Args).
+    %% gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, msg=Msg, args=Args}).
 
 -spec format/6 :: (atom(), list(), atom(), undefined | binary(), msg(), list()) -> 'ok'.
 format(Section, [undefined | _]=Defaults, Level, undefined, Msg, Args) ->
@@ -130,7 +133,8 @@ format(Section, [undefined | _]=Defaults, Level, undefined, Msg, Args) ->
 format(Section, [ReqId | _]=Defaults, Level, undefined, Msg, Args) ->
     format(Section, Defaults, Level, ReqId, Msg, Args);
 format(Section, [_, Module, Line, Pid], Level, ReqId, Msg, Args) ->
-    gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, level=Level, msg=Msg, args=Args}).
+    lager:Level(Msg, Args).
+    %% gen_server:cast(?MODULE,#alert{section=Section, req_id=ReqId, module=Module, line=Line, pid=Pid, level=Level, msg=Msg, args=Args}).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -147,9 +151,7 @@ format(Section, [_, Module, Line, Pid], Level, ReqId, Msg, Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Facility, Opts]) ->
-    syslog:start_link(),
-    syslog:open(atom_to_list(node()), Opts, Facility),
+init(_) ->
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -179,32 +181,6 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(#alert{req_id=undefined}=Alert, State) ->
-    handle_cast(Alert#alert{req_id=?LOG_SYSTEM_ID}, State);
-handle_cast(#alert{req_id=ReqId, level=Level, section=Section, module=Module, line=Line, pid=Pid, msg=Msg, args=Args}=Alert, State) ->
-    try
-        Format = "|~s|~s|~s|~p:~b (~w) " ++ Msg,
-        Str = io_lib:format(Format, [ReqId, Level, Section, Module, Line, Pid | lists:keydelete(extra_data, 1, Args)]),
-        syslog:log(Level, binary_to_list(list_to_binary(Str))),
-        case lists:member(Level, ?LOG_PUBLISH_LEVELS) of
-            false -> ok;
-            true -> gen_server:cast(?MODULE, {publish, Alert})
-        end
-    catch
-        A:B ->
-            ST = erlang:get_stacktrace(),
-            syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) logger error: ~p: ~p"
-                                            ,[?MODULE, ?LINE, self(), A, B])),
-            syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) type: ~p"
-                                            ,[?MODULE, ?LINE, self(), Level])),
-            syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) format: ~p"
-                                            ,[?MODULE, ?LINE, self(), Msg])),
-            syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) data: ~p"
-                                            ,[?MODULE, ?LINE, self(), Args])),
-            [syslog:log(debug, io_lib:format("|000000000000|debug|sys|~p:~b (~w) st line: ~p"
-                                             ,[?MODULE, ?LINE, self(), STLine])) || STLine <- ST]
-    end,
-    {noreply, State, hibernate};
 handle_cast({publish, #alert{req_id=ReqId, level=Level, section=Section, module=Module, line=Line, msg=Msg, args=Args}}, State) ->
     _ = try
             Data = case lists:keyfind(extra_data, 1, Args) of {extra_data, D} -> D; _Else -> [] end,
@@ -259,7 +235,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
-    ?LOG_SYS("alert listner ~p termination", [_Reason]).
+    lager:debug("alert listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

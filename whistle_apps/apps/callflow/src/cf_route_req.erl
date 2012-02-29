@@ -17,10 +17,10 @@ handle_req(JObj, Options) ->
     Call = whapps_call:from_route_req(JObj),
     case is_binary(whapps_call:account_id(Call)) andalso callflow_should_respond(Call) of
         true ->
-            ?LOG_START("received route request"),
+            lager:debug("received route request"),
             case cf_util:lookup_callflow(Call) of
                 {ok, Flow, NoMatch} ->
-                    ?LOG("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
+                    lager:debug("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
                                                                  ,whapps_call:account_id(Call)
                                                                 ]),                    
                     ControllerQ = props:get_value(queue, Options),
@@ -39,7 +39,7 @@ handle_req(JObj, Options) ->
                     whapps_call:cache(lists:foldr(fun(F, C) -> F(C) end, Call, Updaters)),
                     send_route_response(JObj, ControllerQ);
                 {error, R} ->
-                    ?LOG_END("unable to find callflow ~p", [R]),
+                    lager:debug("unable to find callflow ~p", [R]),
                     ok
             end;
         false ->
@@ -76,4 +76,4 @@ send_route_response(JObj, Q) ->
             ,{<<"Method">>, <<"park">>}
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
     wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp),
-    ?LOG_END("sent route response to park the call").
+    lager:debug("sent route response to park the call").

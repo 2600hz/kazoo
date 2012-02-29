@@ -90,12 +90,12 @@ resource_exists(_, ?HISTORY) ->
 
 -spec authenticate/1 :: (#cb_context{}) -> 'true'.
 authenticate(#cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = <<"post">>, req_id=ReqId}) ->
-    ?LOG(ReqId, "authenticating request", []),
+    lager:debug("authenticating request"),
     true.
 
 -spec authorize/1 :: (#cb_context{}) -> 'true'.
 authorize(#cb_context{req_nouns = ?CONNECT_C2C_URL, req_verb = <<"post">>, req_id=ReqId}) ->
-    ?LOG(ReqId, "authorizing request", []),
+    lager:debug("authorizing request"),
     true.
 
 %%--------------------------------------------------------------------
@@ -225,7 +225,7 @@ originate_call(Contact, JObj, AccountId) ->
     Exten = wnm_util:to_e164(wh_json:get_binary_value(<<"extension">>, JObj)),
     FriendlyName = wh_json:get_ne_value(<<"name">>, JObj, <<>>),
 
-    ?LOG("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
+    lager:debug("attempting clicktocall ~s in account ~s", [FriendlyName, AccountId]),
 
     Amqp = amqp_util:new_queue(),
     amqp_util:bind_q_to_targeted(Amqp),
@@ -256,7 +256,7 @@ originate_call(Contact, JObj, AccountId) ->
            ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Contact}])}
            | wh_api:default_headers(Amqp, ?APP_NAME, ?APP_VERSION)],
 
-    ?LOG("pubishing origination request from ~s to ~s", [Contact, Exten]),
+    lager:debug("pubishing origination request from ~s to ~s", [Contact, Exten]),
     wapi_resource:publish_req(Req),
     wait_for_originate().
 
@@ -285,7 +285,7 @@ wait_for_originate() ->
             wait_for_originate()
     after
         15000 ->
-            ?LOG("cannot establish click to call, timeout"),
+            lager:debug("cannot establish click to call, timeout"),
             {timeout}
     end.
 

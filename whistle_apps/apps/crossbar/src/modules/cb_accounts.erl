@@ -61,7 +61,7 @@ ensure_parent_set() ->
         {ok, []} -> {error, no_accounts};
         {ok, AcctJObjs} ->
             DefaultParentID = find_default_parent(AcctJObjs),
-            ?LOG("default parent ID: ~s", [DefaultParentID]),
+            lager:debug("default parent ID: ~s", [DefaultParentID]),
             _ = [ ensure_parent_set(DefaultParentID, wh_json:get_binary_value(<<"id">>, AcctJObj))
                   || AcctJObj <- AcctJObjs,
                      wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
@@ -75,10 +75,10 @@ ensure_parent_set() ->
 ensure_parent_set(DefaultParentID, AccountID) ->
     case update_tree(AccountID, DefaultParentID, #cb_context{db_name=?WH_ACCOUNTS_DB}) of
         #cb_context{resp_status=success}=Context ->
-            ?LOG("updating tree of ~s", [AccountID]),
+            lager:debug("updating tree of ~s", [AccountID]),
             crossbar_doc:save(Context);
         _Context ->
-            ?LOG("failed to update tree for ~s", [AccountID])
+            lager:debug("failed to update tree for ~s", [AccountID])
     end.
 
 -spec find_default_parent/1 :: (wh_json:json_objects()) -> ne_binary().
@@ -262,13 +262,13 @@ delete(Context, AccountId) ->
         case couch_mgr:open_doc(DbName, AccountId) of
             {ok, JObj1} ->
                 ?PVT_TYPE = wh_json:get_value(<<"pvt_type">>, JObj1),
-                ?LOG_SYS("opened ~s in ~s", [DbName, AccountId]),
+                lager:debug("opened ~s in ~s", [DbName, AccountId]),
 
                 ok = unassign_rep(AccountId, JObj1),
 
                 true = couch_mgr:db_delete(DbName),
 
-                ?LOG_SYS("deleted db ~s", [DbName]);
+                lager:debug("deleted db ~s", [DbName]);
             _ -> ok
         end,
         _ = case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
@@ -281,7 +281,7 @@ delete(Context, AccountId) ->
         Context
     catch
         _:_E ->
-            ?LOG_SYS("Exception while deleting account: ~p", [_E]),
+            lager:debug("Exception while deleting account: ~p", [_E]),
             crossbar_util:response_bad_identifier(AccountId, Context)
     end.
 
@@ -489,7 +489,7 @@ is_valid_parent(_JObj) ->
 %%--------------------------------------------------------------------
 -spec update_tree/3 :: (ne_binary(), ne_binary() | 'undefined', #cb_context{}) -> #cb_context{}.
 update_tree(_AccountId, undefined, Context) ->
-    ?LOG("Parent ID is undefined"),
+    lager:debug("Parent ID is undefined"),
     Context;
 update_tree(AccountId, ParentId, Context) ->
     case crossbar_doc:load(ParentId, Context) of
@@ -568,10 +568,10 @@ add_pvt_api_key(JObj, _) ->
 add_pvt_tree(JObj, #cb_context{auth_doc=undefined}) ->
     case whapps_config:get(?CONFIG_CAT, <<"default_parent">>) of
         undefined ->
-            ?LOG("there really should be a parent unless this is the first ever account"),
+            lager:debug("there really should be a parent unless this is the first ever account"),
             wh_json:set_value(<<"pvt_tree">>, [], JObj);
         ParentId ->
-            ?LOG("setting tree to [~s]", [ParentId]),
+            lager:debug("setting tree to [~s]", [ParentId]),
             wh_json:set_value(<<"pvt_tree">>, [ParentId], JObj)
     end;
 add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
@@ -580,14 +580,14 @@ add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
         {ok, AuthJObj} ->
             Tree = wh_json:get_value(<<"pvt_tree">>, AuthJObj, []) ++ [AuthAccId],
             Enabled = wh_json:is_false(<<"pvt_enabled">>, AuthJObj) =/= true,
-            ?LOG("setting parent tree to ~p", [Tree]),
-            ?LOG("setting initial pvt_enabled to ~s", [Enabled]),
+            lager:debug("setting parent tree to ~p", [Tree]),
+            lager:debug("setting initial pvt_enabled to ~s", [Enabled]),
             wh_json:set_value(<<"pvt_tree">>, Tree
                               ,wh_json:set_value(<<"pvt_enabled">>, Enabled, JObj));
         false ->
             add_pvt_tree(JObj, #cb_context{auth_doc=undefined});
         _ ->
-            ?LOG("setting parent tree to [~s]", [AuthAccId]),
+            lager:debug("setting parent tree to [~s]", [AuthAccId]),
             wh_json:set_value(<<"pvt_tree">>, [AuthAccId]
                               ,wh_json:set_value(<<"pvt_enabled">>, false, JObj))
     end.
@@ -605,21 +605,21 @@ load_account_db([AccountId|_], Context) ->
 load_account_db(AccountId, Context) when is_binary(AccountId) ->
     {ok, Srv} = crossbar_sup:cache_proc(),
     AccountDb = wh_util:format_account_id(AccountId, encoded),
-    ?LOG_SYS("account determined that db name: ~s", [AccountDb]),
+    lager:debug("account determined that db name: ~s", [AccountDb]),
     case wh_cache:peek_local(Srv, {crossbar, exists, AccountId}) of
         {ok, true} ->
-            ?LOG("check succeeded for db_exists on ~s", [AccountId]),
+            lager:debug("check succeeded for db_exists on ~s", [AccountId]),
             Context#cb_context{db_name = AccountDb
                                ,account_id = AccountId
                               };
         _ ->
             case couch_mgr:db_exists(AccountDb) of
                 false ->
-                    ?LOG("check failed for db_exists on ~s", [AccountId]),
+                    lager:debug("check failed for db_exists on ~s", [AccountId]),
                     crossbar_util:response_db_missing(Context);
                 true ->
                     wh_cache:store_local(Srv, {crossbar, exists, AccountId}, true, ?CACHE_TTL),
-                    ?LOG("check succeeded for db_exists on ~s", [AccountId]),
+                    lager:debug("check succeeded for db_exists on ~s", [AccountId]),
                     Context#cb_context{db_name = AccountDb
                                        ,account_id = AccountId
                                       }
@@ -646,10 +646,10 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
     end,
     case couch_mgr:db_create(AccountDb) of
         false ->
-            ?LOG_SYS("Failed to create database: ~s", [AccountDb]),
+            lager:debug("Failed to create database: ~s", [AccountDb]),
             crossbar_util:response_db_fatal(Context);
         true ->
-            ?LOG_SYS("Created DB for account id ~s", [AccountId]),
+            lager:debug("Created DB for account id ~s", [AccountId]),
             Generators = [fun(J) -> wh_json:set_value(<<"_id">>, AccountId, J) end
                           ,fun(J) -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, J) end
                           ,fun(J) -> wh_json:set_value(<<"pvt_account_id">>, AccountId, J) end
@@ -668,19 +668,19 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
                     assign_rep(AccountId, JObj),
                     Credit = whapps_config:get(<<"crossbar.accounts">>, <<"starting_credit">>, 0.0),
                     Units = wapi_money:dollars_to_units(wh_util:to_float(Credit)),
-                    ?LOG("Putting ~p units", [Units]),
+                    lager:debug("Putting ~p units", [Units]),
                     Transaction = wh_json:from_list([{<<"amount">>, Units}
                                                      ,{<<"pvt_type">>, <<"credit">>}
                                                      ,{<<"pvt_description">>, <<"initial account balance">>}
                                                     ]),
                     case crossbar_doc:save(Context#cb_context{doc=Transaction, db_name=AccountDb}) of
                         #cb_context{resp_status=success} -> ok;
-                        #cb_context{resp_error_msg=Err} -> ?LOG("failed to save credit doc: ~p", [Err])
+                        #cb_context{resp_error_msg=Err} -> lager:debug("failed to save credit doc: ~p", [Err])
                     end,
                     notfy_new_account(Context1),
                     Context1;
                 Else ->
-                    ?LOG_SYS("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
+                    lager:debug("Other PUT resp: ~s: ~p~n", [Else#cb_context.resp_status, Else#cb_context.doc]),
                     Else
             end
     end.
@@ -697,16 +697,16 @@ is_unique_realm(AccountId, #cb_context{req_data=JObj}=Context) ->
     is_unique_realm(AccountId, Context, wh_json:get_ne_value(<<"realm">>, JObj)).
 
 is_unique_realm(_, _, undefined) ->
-    ?LOG("invalid or non-unique realm: undefined"),
+    lager:debug("invalid or non-unique realm: undefined"),
     false;
 is_unique_realm(undefined, _, Realm) ->
     %% unique if Realm doesn't exist in agg DB
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_REALM, [{<<"key">>, Realm}]) of
         {ok, []} ->
-            ?LOG("realm ~s is valid and unique", [Realm]),
+            lager:debug("realm ~s is valid and unique", [Realm]),
             true;
         {ok, [_|_]} ->
-            ?LOG("invalid or non-unique realm: ~s", [Realm]),
+            lager:debug("invalid or non-unique realm: ~s", [Realm]),
             false
     end;
 
@@ -716,7 +716,7 @@ is_unique_realm(AccountId, Context, Realm) ->
     %% or request Realm doesn't exist in DB (cf is_unique_realm(undefined ...)
     case wh_json:get_value(<<"realm">>, Doc) of
         Realm ->
-            ?LOG("realm ~s is valid and unique", [Realm]),
+            lager:debug("realm ~s is valid and unique", [Realm]),
             true;
         _ ->
             is_unique_realm(undefined, Context, Realm)
@@ -732,7 +732,7 @@ is_unique_realm(AccountId, Context, Realm) ->
 assign_rep(AccountId, JObj) ->
     case wh_json:get_value(<<"pvt_tree">>, JObj, []) of
         [] ->
-            ?LOG("failed to find a pvt_tree for sub account assignment"),
+            lager:debug("failed to find a pvt_tree for sub account assignment"),
             ok;
         Tree ->
             Parent = lists:last(Tree),
@@ -747,7 +747,7 @@ assign_rep(AccountId, JObj) ->
                     couch_mgr:save_doc(ParentDb, wh_json:set_value(<<"pvt_sub_account_assignments">>, [AccountId|Assignments], Rep)),
                     ok;
                 _E ->
-                    ?LOG("failed to find sub account reps: ~p", [_E]),
+                    lager:debug("failed to find sub account reps: ~p", [_E]),
                     ok
             end
     end.
