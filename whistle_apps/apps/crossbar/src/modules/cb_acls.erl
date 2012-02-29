@@ -87,7 +87,8 @@ resource_exists(_) -> true.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
-    create(Context);
+   create(Context);
+
 validate(Context) ->
     crossbar_util:response_faulty_request(Context).
 
@@ -105,7 +106,7 @@ validate(Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
-put(#cb_context{req_data=JObj}=Context) ->
+put(#cb_context{doc=JObj}=Context) ->
     Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS),
     Merged = wh_json:set_value(wh_json:get_value(<<"cidr">>, JObj), JObj, Acls),
     whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, Merged),
@@ -136,7 +137,7 @@ create(#cb_context{req_data=Data}=Context) ->
     {fail, Errors} ->
         crossbar_util:response_invalid_data(Errors, Context);
     {pass, JObj} ->
-        Context#cb_context{req_data=JObj, resp_status=success}
+        Context#cb_context{doc=JObj, resp_status=success}
     end.
 
 %%--------------------------------------------------------------------
