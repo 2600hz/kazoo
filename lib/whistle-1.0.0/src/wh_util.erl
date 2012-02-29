@@ -201,7 +201,7 @@ join_binary([_|Rest], Sep) ->
 %%--------------------------------------------------------------------
 -spec put_callid/1 :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
 put_callid(JObj) ->
-    erlang:put(callid, wh_json:get_binary_value(<<"Call-ID">>, JObj, wh_json:get_binary_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
+    erlang:put(callid, wh_json:get_binary_value(<<"Call-ID">>, JObj, wh_json:get_binary_value(<<"Msg-ID">>, JObj, ?LOG_SYSTEM_ID))).
 
 %%--------------------------------------------------------------------
 %% @public
