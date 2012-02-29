@@ -81,7 +81,7 @@ init([AcctDB, Webhook]) ->
     BindEvent = wh_json:get_atom_value(<<"bind_event">>, Webhook),
     setup_binding(BindEvent, BindOptions, Realm, AcctID),
 
-    ?LOG("Starting webhook listener(~s) for ~s (~s)", [BindEvent, AcctID, Realm]),
+    lager:debug("Starting webhook listener(~s) for ~s (~s)", [BindEvent, AcctID, Realm]),
 
     {ok, #state{acct_db=AcctDB
                 ,acct_id=AcctID
@@ -127,10 +127,10 @@ handle_cast({config_change, ConfJObj}, #state{webhook=Hook, realm=Realm, acct_id
 
     case {wh_json:get_atom_value(<<"bind_event">>, Hook), wh_json:get_atom_value(<<"bind_event">>, JObj)} of
         {A, A} ->
-            ?LOG("no big changes to be done"),
+            lager:debug("no big changes to be done"),
             {noreply, State#state{webhook=Hook1}};
         {Old, New} ->
-            ?LOG("changing hook from ~s to ~s", [Old, New]),
+            lager:debug("changing hook from ~s to ~s", [Old, New]),
             OldBindOptions = case wh_json:get_value(<<"bind_options">>, Hook, []) of
                                  Prop1 when is_list(Prop1) -> Prop1;
                                  JObj1 -> wh_json:to_proplist(JObj1) % maybe [{restrict_to, [call, events]},...] or other json-y type
@@ -157,7 +157,7 @@ handle_cast({config_change, ConfJObj}, #state{webhook=Hook, realm=Realm, acct_id
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    ?LOG("unhandled message: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, #state{webhook=Webhook, realm=Realm, acct_id=AcctId}) ->

@@ -69,7 +69,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new stepswitch outbound responder"),
+    lager:debug("starting new stepswitch outbound responder"),
     stepswitch_maintenance:refresh(),
     {ok, #state{resrcs=get_resrcs()}}.
 
@@ -155,13 +155,13 @@ handle_info({document_deleted, DocId}, #state{resrcs=Resrcs}=State) ->
     case lists:keyfind(DocId, #resrc.id, Resrcs) of
         false -> {noreply, State};
         _ ->
-            ?LOG_SYS("resource ~s deleted", [DocId]),
+            lager:debug("resource ~s deleted", [DocId]),
             couch_mgr:rm_change_handler(?RESOURCES_DB, DocId),
             {noreply, State#state{resrcs=lists:keydelete(DocId, #resrc.id, Resrcs)}, hibernate}
     end;
 
 handle_info(_Info, State) ->
-    ?LOG("Unhandled message: ~p", [_Info]),
+    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -229,20 +229,20 @@ get_resrcs() ->
 %%--------------------------------------------------------------------
 -spec update_resrc/2 :: (ne_binary(), [#resrc{},...] | []) -> [#resrc{},...] | [].
 update_resrc(DocId, Resrcs) ->
-    ?LOG_SYS("received notification that resource ~s has changed", [DocId]),
+    lager:debug("received notification that resource ~s has changed", [DocId]),
     case couch_mgr:open_doc(?RESOURCES_DB, DocId) of
         {ok, JObj} ->
             case wh_util:is_true(wh_json:get_value(<<"enabled">>, JObj)) of
                 'true' ->
                     NewResrc = create_resrc(JObj),
-                    ?LOG_SYS("resource ~s updated to rev ~s", [DocId, NewResrc#resrc.rev]),
+                    lager:debug("resource ~s updated to rev ~s", [DocId, NewResrc#resrc.rev]),
                     [NewResrc|lists:keydelete(DocId, #resrc.id, Resrcs)];
                 false ->
-                    ?LOG_SYS("resource ~s disabled", [DocId]),
+                    lager:debug("resource ~s disabled", [DocId]),
                     lists:keydelete(DocId, #resrc.id, Resrcs)
             end;
         {error, R} ->
-            ?LOG_SYS("removing resource ~s, ~w", [DocId, R]),
+            lager:debug("removing resource ~s, ~w", [DocId, R]),
             couch_mgr:rm_change_handler(?RESOURCES_DB, DocId),
             lists:keydelete(DocId, #resrc.id, Resrcs)
     end.
@@ -258,7 +258,7 @@ update_resrc(DocId, Resrcs) ->
 create_resrc(JObj) ->
     Default = #resrc{},
     Id = wh_json:get_value(<<"_id">>, JObj),
-    ?LOG_SYS("loading resource ~s", [Id]),
+    lager:debug("loading resource ~s", [Id]),
     #resrc{id = Id
            ,rev =
                wh_json:get_value(<<"_rev">>, JObj)
@@ -326,10 +326,10 @@ create_gateway(JObj, Id) ->
 compile_rule(Rule, Id) ->
     case re:compile(Rule) of
         {ok, MP} ->
-            ?LOG_SYS("compiled ~s on resource ~s", [Rule, Id]),
+            lager:debug("compiled ~s on resource ~s", [Rule, Id]),
             MP;
         {error, R} ->
-            ?LOG_SYS("bad rule '~s' on resource ~s, ~p", [Rule, Id, R]),
+            lager:debug("bad rule '~s' on resource ~s, ~p", [Rule, Id, R]),
             error
     end.
 

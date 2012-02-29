@@ -94,19 +94,19 @@ validate(#cb_context{req_verb = <<"get">>}=Context, CDRId) ->
 load_cdr_summary(#cb_context{req_nouns=Nouns}=Context) ->
     case Nouns of
         [_, {?WH_ACCOUNTS_DB, _AID} | _] ->
-            ?LOG("loading cdrs for account ~s", [_AID]),
+            lager:debug("loading cdrs for account ~s", [_AID]),
             crossbar_doc:load_view(?CB_LIST
                                    ,[]
                                    ,Context
                                    ,fun normalize_view_results/2);
         [_, {<<"users">>, [UserId] } | _] ->
-            ?LOG("loading cdrs for user ~s", [UserId]),
+            lager:debug("loading cdrs for user ~s", [UserId]),
             crossbar_doc:load_view(?CB_LIST_BY_USER
                                    ,[{<<"key">>, UserId}]
                                    ,Context
                                    ,fun normalize_view_results/2);
         _ ->
-            ?LOG("invalid URL chain for cdr summary request"),
+            lager:debug("invalid URL chain for cdr summary request"),
             crossbar_util:response_faulty_request(Context)
     end.
 

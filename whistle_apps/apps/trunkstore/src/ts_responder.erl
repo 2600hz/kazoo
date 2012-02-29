@@ -75,7 +75,7 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG("Started responder"),
+    lager:debug("Started responder"),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -119,7 +119,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Unhandled, State) ->
-    ?LOG_SYS("Unknown message: ~p~n", [_Unhandled]),
+    lager:debug("Unknown message: ~p~n", [_Unhandled]),
     {noreply, State, 1000}.
 
 handle_event(_JObj, _State) ->
@@ -137,7 +137,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _) ->
-    ?LOG_SYS("Terminating: ~p~n", [_Reason]).
+    lager:debug("Terminating: ~p~n", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -148,7 +148,7 @@ terminate(_Reason, _) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    ?LOG_SYS("Code Change from ~p~n", [_OldVsn]),
+    lager:debug("Code Change from ~p~n", [_OldVsn]),
     {ok, State}.
 
 %%%===================================================================

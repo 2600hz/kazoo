@@ -76,15 +76,15 @@ resource_exists(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authorize/1 :: (#cb_context{}) -> boolean().
-authorize(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns, req_verb=Verb, req_id=ReqId}) ->
+authorize(#cb_context{auth_doc=AuthDoc, req_nouns=Nouns, req_verb=Verb}) ->
     AccountId = wh_json:get_value(<<"account_id">>, AuthDoc, <<"0000000000">>),
 
     _ = case props:get_value(<<"ts_accounts">>, Nouns) of
             [] when Verb =:= <<"put">> ->
-                ?LOG(ReqId, "authorizing request to create a new trunkstore doc", []),
+                lager:debug("authorizing request to create a new trunkstore doc"),
                 true;
             [AccountId] ->
-                ?LOG(ReqId, "authorizing request to trunkstore doc ~s", [AccountId]),
+                lager:debug("authorizing request to trunkstore doc ~s", [AccountId]),
                 true;
             _Args ->
                 false

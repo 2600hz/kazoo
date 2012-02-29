@@ -65,7 +65,7 @@ handle_req(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     Dict = start_known_webhooks(),
-    ?LOG("webhooks listener started"),
+    lager:debug("webhooks listener started"),
     {ok, #state{hooks_started=Dict}}.
 
 %%--------------------------------------------------------------------
@@ -103,18 +103,18 @@ handle_cast({config_change, JObj}, #state{hooks_started=Dict}=State) ->
 
     DocAction = wh_json:get_value(<<"Event-Name">>, JObj), % doc_created, doc_edited, doc_deleted
 
-    ?LOG("config change ~s to ~s.~s", [DocAction, AcctDB, ID]),
+    lager:debug("config change ~s to ~s.~s", [DocAction, AcctDB, ID]),
 
     Key = {AcctDB, ID},
 
     case dict:find(Key, Dict) of
         {ok, {Pid, _}} ->
-            ?LOG("server ~p found for webhooks doc", [Pid]),
+            lager:debug("server ~p found for webhooks doc", [Pid]),
             _ = handle_action(DocAction, Pid, JObj),
             {noreply, State};
         error ->
             PubDoc = wh_json:get_value(<<"doc">>, JObj),
-            ?LOG("unknown webhook doc, starting handler: ~s", [wh_json:get_value(<<"bind_event">>, JObj)]),
+            lager:debug("unknown webhook doc, starting handler: ~s", [wh_json:get_value(<<"bind_event">>, JObj)]),
             {ok, Pid} = hook_acct_sup:start_listener(AcctDB, PubDoc),
             Ref = erlang:monitor(process, Pid),
             {noreply, State#state{hooks_started=dict:store(Key, {Pid, Ref}, Dict)}, hibernate}
@@ -132,20 +132,20 @@ handle_cast({config_change, JObj}, #state{hooks_started=Dict}=State) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, process, Pid, normal}, #state{hooks_started=Dict}=State) ->
     Dict1 = dict:filter(fun({AcctDB, DocID}, {Pid1, Ref1}) when Pid =:= Pid1 andalso Ref =:= Ref1 ->
-                                ?LOG("hook handler for ~s.~s down normally", [AcctDB, DocID]),
+                                lager:debug("hook handler for ~s.~s down normally", [AcctDB, DocID]),
                                 false;
                            (_, _) -> true
                         end, Dict),
     {noreply, State#state{hooks_started=Dict1}, hibernate};
 handle_info({'DOWN', Ref, process, Pid, Reason}, #state{hooks_started=Dict}=State) ->
     Dict1 = dict:filter(fun({AcctDB, DocID}, {Pid1, Ref1}) when Pid =:= Pid1 andalso Ref =:= Ref1 ->
-                                ?LOG("hook handler for ~s.~s down: ~p", [AcctDB, DocID, Reason]),
+                                lager:debug("hook handler for ~s.~s down: ~p", [AcctDB, DocID, Reason]),
                                 false;
                            (_, _) -> true
                         end, Dict),
     {noreply, State#state{hooks_started=Dict1}, hibernate};
 handle_info(_Info, State) ->
-    ?LOG("unhandled message: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, _State) ->
@@ -163,7 +163,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG("webhooks listener going down").
+    lager:debug("webhooks listener going down").
 
 %%--------------------------------------------------------------------
 %% @private
@@ -192,24 +192,24 @@ start_known_webhooks() ->
 -spec maybe_start_handler/1 :: (ne_binary()) -> [{ne_binary(), pid()},...] | [].
 maybe_start_handler(Db) ->
     case couch_mgr:get_results(Db, <<"webhooks/crossbar_listing">>, [{<<"include_docs">>, true}]) of
-        {ok, []} -> ?LOG("No webhooks in ~s", [Db]), [];
+        {ok, []} -> lager:debug("No webhooks in ~s", [Db]), [];
         {ok, WebHooks} ->
-            ?LOG("Starting webhooks listener(s) for ~s: ~b", [Db, length(WebHooks)]),
+            lager:debug("Starting webhooks listener(s) for ~s: ~b", [Db, length(WebHooks)]),
             [begin
                  {ok, Pid} = hook_acct_sup:start_listener(Db, wh_json:get_value(<<"doc">>, Hook)),
                  {wh_json:get_value(<<"id">>, Hook), Pid}
              end
              || Hook <- WebHooks];
         {error, _E} ->
-            ?LOG_SYS("Failed to load webhooks view for account ~s", [Db]),
+            lager:debug("Failed to load webhooks view for account ~s", [Db]),
             []
     end.
 
 handle_action(<<"doc_created">>, Pid, _JObj) ->
-    ?LOG("doc was created but we know the pid (~p) already?", [Pid]);
+    lager:debug("doc was created but we know the pid (~p) already?", [Pid]);
 handle_action(<<"doc_edited">>, Pid, JObj) ->
-    ?LOG("webhook updated for ~p", [Pid]),
+    lager:debug("webhook updated for ~p", [Pid]),
     hook_acct_listener:update_config(Pid, JObj);
 handle_action(<<"doc_deleted">>, Pid, _) ->
-    ?LOG("webhook deleted, shutting down ~p", [Pid]),
+    lager:debug("webhook deleted, shutting down ~p", [Pid]),
     hook_acct_listener:stop(Pid).

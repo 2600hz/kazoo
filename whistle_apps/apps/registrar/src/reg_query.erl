@@ -52,7 +52,7 @@ req_query_req(ApiJObj, _Props) ->
     CallId = wh_json:get_value(<<"Call-ID">>, ApiJObj, <<"000000000000">>),
     put(callid, CallId),
 
-    ?LOG_START("received registration query"),
+    lager:debug("received registration query"),
     true = wapi_registration:query_req_v(ApiJObj),
 
     Realm = wh_json:get_value(<<"Realm">>, ApiJObj),
@@ -61,7 +61,7 @@ req_query_req(ApiJObj, _Props) ->
     %% only send data if a registration is found
     case reg_util:lookup_registration(Realm, Username) of
         {ok, RegJObjs} when is_list(RegJObjs) ->
-            ?LOG("found multiple contacts for ~s@~s in cache", [Username, Realm]),
+            lager:debug("found multiple contacts for ~s@~s in cache", [Username, Realm]),
             Resp = [{<<"Multiple">>, <<"true">>}
                     ,{<<"Fields">>, [filter(ApiJObj, RegJObj) 
                                      || RegJObj <- RegJObjs
@@ -69,16 +69,16 @@ req_query_req(ApiJObj, _Props) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp),
-            ?LOG_END("sent multiple registration AORs");
+            lager:debug("sent multiple registration AORs");
         {ok, RegJObj} ->
-            ?LOG("found contact for ~s@~s in cache", [Username, Realm]),
+            lager:debug("found contact for ~s@~s in cache", [Username, Realm]),
             Resp = [{<<"Fields">>, filter(ApiJObj, RegJObj)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp),
-            ?LOG_END("sent reply for AOR: ~s", [wh_json:get_value(<<"Contact">>, RegJObj)]);
+            lager:debug("sent reply for AOR: ~s", [wh_json:get_value(<<"Contact">>, RegJObj)]);
         {error, not_found} ->
-            ?LOG_END("no registration for ~s@~s", [Username, Realm])
+            lager:debug("no registration for ~s@~s", [Username, Realm])
     end.
 
 %%-----------------------------------------------------------------------------

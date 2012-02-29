@@ -26,20 +26,18 @@ handle(Data, Call) ->
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
-    ?LOG("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
+    lager:debug("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
     case length(Endpoints) > 0 andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
         false ->
-            ?LOG(notice, "ring group has no endpoints", [{extra_data, [{details, whapps_call:to_proplist(Call)}
-                                                                       ,{account_id, whapps_call:account_id(Call)}
-                                                                      ]}]),
+            lager:notice("ring group has no endpoints"),
             cf_exe:continue(Call);
         {ok, _} ->
-            ?LOG("completed successful bridge to the ring group"),
+            lager:debug("completed successful bridge to the ring group"),
             cf_exe:stop(Call);
         {fail, _}=F ->
             cf_util:handle_bridge_failure(F, Call);
         {error, _R} ->
-            ?LOG("error bridging to ring group: ~p", [_R]),
+            lager:debug("error bridging to ring group: ~p", [_R]),
             cf_exe:continue(Call)
     end.
 

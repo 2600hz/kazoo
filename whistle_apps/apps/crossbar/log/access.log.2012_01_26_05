@@ -1,0 +1,1 @@
+127.0.0.1 - - [25/Jan/2012:21:00:28 -0800] "GET /v1/accounts/934a5d7bfc8a097d535297caab003839/directories/46fd4ac2e0e606ca9bc6fd152901f609 HTTP/1.1" 200 389 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"

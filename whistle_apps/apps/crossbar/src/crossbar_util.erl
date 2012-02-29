@@ -23,7 +23,6 @@
 -export([response_missing_view/1]).
 -export([response_db_missing/1]).
 -export([response_db_fatal/1]).
--export([binding_heartbeat/1, binding_heartbeat/2]).
 -export([get_account_realm/1, get_account_realm/2]).
 -export([disable_account/1, enable_account/1, change_pvt_enabled/2]).
 -export([put_reqid/1]).
@@ -253,44 +252,6 @@ response_db_fatal(Context) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This spawns a function that will monitor the parent and hearbeat
-%% the crossbar_binding PID provided as long as the parent lives
-%% @end
-%%--------------------------------------------------------------------
--spec binding_heartbeat/1 :: (pid()) -> pid().
--spec binding_heartbeat/2 :: (pid(), non_neg_integer()) -> pid().
--spec binding_heartbeat/3 :: (pid(), non_neg_integer(), ne_binary()) -> ok.
-
-binding_heartbeat(BPid) ->    
-    binding_heartbeat(BPid, 300000). % five minutes
-
-binding_heartbeat(BPid, Timeout) ->
-    BPid ! heartbeat,
-    PPid = self(),
-    ReqId = get(callid),
-    spawn(fun() ->
-                  BPid ! heartbeat,
-                  erlang:monitor(process, PPid),
-                  binding_heartbeat(BPid, Timeout, ReqId)
-    end).
-
-binding_heartbeat(_, Timeout, ReqId) when Timeout =< 0 ->
-    ?LOG(ReqId, "bound client too slow, timed out", []);
-binding_heartbeat(BPid, Timeout, ReqId) ->
-    BPid ! heartbeat,
-    receive
-        {'DOWN', _, process, _Pid, normal} ->
-            ?LOG(ReqId, "client ~p went down normally", [_Pid]);
-        {'DOWN', _, process, Pid, Reason} ->
-            ?LOG(ReqId, "bound client (~p) down for non-normal reason: ~p", [Pid, Reason]),
-            BPid ! {binding_error, Reason}
-    after 100 ->
-            binding_heartbeat(BPid, Timeout - 100, ReqId)
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% This function extracts the request ID and sets it as 'callid' in
 %% the process dictionary, where the logger expects it.
 %% @end
@@ -354,13 +315,13 @@ find_account_db(undefined, undefined, undefined, _, Errors) ->
 find_account_db(undefined, undefined, AccountName, AllowMultiples, Errors) ->
     case whapps_util:get_accounts_by_name(AccountName) of
         {ok, AccountDb} ->
-            ?LOG("found account by name '~s': ~s", [AccountName, AccountDb]),
+            lager:debug("found account by name '~s': ~s", [AccountName, AccountDb]),
             {ok, AccountDb};
         {multiples, AccountDbs} when AllowMultiples ->
-            ?LOG("the account name returned multiple results, requestor allowed multiple"),
+            lager:debug("the account name returned multiple results, requestor allowed multiple"),
             {multiples, AccountDbs};
         {multiples, _} ->
-            ?LOG("the account realm returned multiple results"),
+            lager:debug("the account realm returned multiple results"),
             Error = wh_json:set_value([<<"account_name">>, <<"ambiguous">>]
                                       ,<<"The specific account could not be identified">>
                                      ,Errors),
@@ -374,13 +335,13 @@ find_account_db(undefined, undefined, AccountName, AllowMultiples, Errors) ->
 find_account_db(undefined, AccountRealm, AccountName, AllowMultiples, Errors) ->
     case whapps_util:get_account_by_realm(AccountRealm) of
         {ok, AccountDb} ->
-            ?LOG("found account by realm '~s': ~s", [AccountRealm, AccountDb]),
+            lager:debug("found account by realm '~s': ~s", [AccountRealm, AccountDb]),
             {ok, AccountDb};
         {multiples, AccountDbs} when AllowMultiples ->
-            ?LOG("the account realm returned multiple results, requestor allowed multiple"),
+            lager:debug("the account realm returned multiple results, requestor allowed multiple"),
             {multiples, AccountDbs};
         {multiples, _} ->
-            ?LOG("the account realm realm multiple results"),
+            lager:debug("the account realm realm multiple results"),
             Error = wh_json:set_value([<<"account_realm">>, <<"ambiguous">>]
                                       ,<<"The specific account could not be identified">>
                                      ,Errors),
@@ -395,7 +356,7 @@ find_account_db(PhoneNumber, AccountRealm, AccountName, AllowMultiples, Errors) 
     case wh_number_manager:lookup_account_by_number(PhoneNumber) of
         {ok, AccountId, _} -> 
             AccountDb = wh_util:format_account_id(AccountId, encoded),
-            ?LOG("found account by phone number '~s': ~s", [PhoneNumber, AccountDb]),
+            lager:debug("found account by phone number '~s': ~s", [PhoneNumber, AccountDb]),
             {ok, AccountDb};
         {error, _} -> 
             Error = wh_json:set_value([<<"phone_number">>, <<"not_found">>]
@@ -425,7 +386,7 @@ get_account_realm(Db, AccountId) ->
         {ok, JObj} ->
             wh_json:get_ne_value(<<"realm">>, JObj);
         {error, R} ->
-            ?LOG("error while looking up account realm: ~p", [R]),
+            lager:debug("error while looking up account realm: ~p", [R]),
             undefined
     end.
 
@@ -445,7 +406,7 @@ disable_account(AccountId) ->
             _ = [change_pvt_enabled(false, wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
             ok;
         {error, R}=E ->
-            ?LOG("unable to disable descendants of ~s: ~p", [AccountId, R]),
+            lager:debug("unable to disable descendants of ~s: ~p", [AccountId, R]),
             E
     end.
 
@@ -465,7 +426,7 @@ enable_account(AccountId) ->
             _ = [change_pvt_enabled(true, wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs],
             ok;
         {error, R}=E ->
-            ?LOG("unable to enable descendants of ~s: ~p", [AccountId, R]),
+            lager:debug("unable to enable descendants of ~s: ~p", [AccountId, R]),
             E
     end.
 
@@ -481,7 +442,7 @@ change_pvt_enabled(State, AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     try 
       {ok, JObj1} = couch_mgr:open_doc(AccountDb, AccountId),
-      ?LOG("set pvt_enabled to ~s on account ~s", [State, AccountId]),
+      lager:debug("set pvt_enabled to ~s on account ~s", [State, AccountId]),
       {ok, JObj2} = couch_mgr:ensure_saved(AccountDb, wh_json:set_value(<<"pvt_enabled">>, State, JObj1)),
       case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
           {ok, Rev} ->
@@ -491,7 +452,7 @@ change_pvt_enabled(State, AccountId) ->
       end
     catch
         _:R ->
-            ?LOG("unable to set pvt_enabled to ~s on account ~s: ~p", [State, AccountId, R]),
+            lager:debug("unable to set pvt_enabled to ~s on account ~s: ~p", [State, AccountId, R]),
             {error, R}
     end.
     
@@ -500,7 +461,7 @@ cache_view(Db, ViewOptions, JObj) ->
     {ok, Srv} = crossbar_sup:cache_proc(),
     (?CACHE_TTL =/= 0) andalso
         begin
-            ?LOG("caching views results in cache"),
+            lager:debug("caching views results in cache"),
             wh_cache:store_local(Srv, {crossbar, view, {Db, ?MODULE}}, {ViewOptions, JObj}, ?CACHE_TTL)
         end.
 
@@ -510,7 +471,7 @@ cache_doc(Db, JObj) ->
     Id = wh_json:get_value(<<"_id">>, JObj),
     (?CACHE_TTL =/= 0) andalso
         begin 
-            ?LOG("caching document and flushing related views in cache"),
+            lager:debug("caching document and flushing related views in cache"),
             wh_cache:store_local(Srv, {crossbar, doc, {Db, Id}}, JObj, ?CACHE_TTL),
             wh_cache:erase_local(Srv, {crossbar, view, {Db, ?MODULE}})
         end.
@@ -520,7 +481,7 @@ flush_doc_cache(Db, <<Id>>) ->
     {ok, Srv} = crossbar_sup:cache_proc(),
     (?CACHE_TTL =/= 0) andalso
         begin
-            ?LOG("flushing document and related views from cache"),
+            lager:debug("flushing document and related views from cache"),
             wh_cache:erase_local(Srv, {crossbar, doc, {Db, Id}}),
             wh_cache:erase_local(Srv, {crossbar, view, {Db, ?MODULE}})
         end;
@@ -532,7 +493,7 @@ open_doc(Db, Id) ->
     {ok, Srv} = crossbar_sup:cache_proc(),
     case wh_cache:peek_local(Srv, {crossbar, doc, {Db, Id}}) of
         {ok, _}=Ok -> 
-            ?LOG("found document in cache"),
+            lager:debug("found document in cache"),
             Ok;
         {error, not_found} ->
             case couch_mgr:open_doc(Db, Id) of
@@ -540,7 +501,7 @@ open_doc(Db, Id) ->
                     cache_doc(Db, JObj),
                     Ok;
                 {error, R}=E ->
-                    ?LOG("error fetching ~s/~s: ~p", [Db, Id, R]),
+                    lager:debug("error fetching ~s/~s: ~p", [Db, Id, R]),
                     E
             end
     end.
@@ -549,7 +510,7 @@ get_results(Db, View, ViewOptions) ->
     {ok, Srv} = crossbar_sup:cache_proc(),
     case wh_cache:peek_local(Srv, {crossbar, view, {Db, ?MODULE}}) of
         {ok, {ViewOptions, ViewResults}} -> 
-            ?LOG("found view results in cache"),
+            lager:debug("found view results in cache"),
             {ok, ViewResults};
         _ ->
             case couch_mgr:get_results(Db, View, ViewOptions) of
@@ -557,7 +518,7 @@ get_results(Db, View, ViewOptions) ->
                     cache_view(Db, ViewOptions, JObj),
                     Ok;
                 {error, R}=E ->
-                    ?LOG("error fetching ~s/~s: ~p", [Db, View, R]),
+                    lager:debug("error fetching ~s/~s: ~p", [Db, View, R]),
                     E
             end
     end.    

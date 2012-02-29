@@ -82,7 +82,7 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
 %%--------------------------------------------------------------------
 -spec replicate_from_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'error', 'matching_dbs'} | 'ok'.
 replicate_from_account(AccountDb, AccountDb, _) ->
-    ?LOG_SYS("requested to replicate from db ~s to self, skipping", [AccountDb]),
+    lager:debug("requested to replicate from db ~s to self, skipping", [AccountDb]),
     {error, matching_dbs};
 replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
     ReplicateProps = [{<<"source">>, wh_util:format_account_id(AccountDb, ?REPLICATE_ENCODING)}
@@ -93,13 +93,13 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
     try
         case couch_mgr:db_replicate(ReplicateProps) of
             {ok, _} ->
-                ?LOG_SYS("replicate ~s to ~s using filter ~s succeeded", [AccountDb, TargetDb, FilterDoc]);
+                lager:debug("replicate ~s to ~s using filter ~s succeeded", [AccountDb, TargetDb, FilterDoc]);
             {error, _} ->
-                ?LOG_SYS("replicate ~s to ~s using filter ~s failed", [AccountDb, TargetDb, FilterDoc])
+                lager:debug("replicate ~s to ~s using filter ~s failed", [AccountDb, TargetDb, FilterDoc])
         end
     catch
         _:_ ->
-            ?LOG_SYS("replicate ~s to ~s using filter ~s error", [AccountDb, TargetDb, FilterDoc])
+            lager:debug("replicate ~s to ~s using filter ~s error", [AccountDb, TargetDb, FilterDoc])
     end.
 
 %%--------------------------------------------------------------------
@@ -138,7 +138,7 @@ get_account_by_realm(Realm) ->
         {ok, JObjs} ->
             {multiples, [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs]};
         _E ->
-            ?LOG("error while fetching accounts by realm: ~p", [_E]),
+            lager:debug("error while fetching accounts by realm: ~p", [_E]),
             {error, not_found}
     end.
 
@@ -158,7 +158,7 @@ get_accounts_by_name(Name) ->
         {ok, JObjs} ->
             {multiples, [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs]};
         _E ->
-            ?LOG("error while fetching accounts by name: ~p", [_E]),
+            lager:debug("error while fetching accounts by name: ~p", [_E]),
             {error, not_found}
     end.
 
@@ -268,7 +268,7 @@ get_view_json(App, File) ->
     get_view_json(Path).
 
 get_view_json(Path) ->
-    ?LOG_SYS("fetch view from ~s", [Path]),
+    lager:debug("fetch view from ~s", [Path]),
     {ok, Bin} = file:read_file(Path),
     JObj = wh_json:decode(Bin),
     {wh_json:get_value(<<"_id">>, JObj), JObj}.
@@ -301,7 +301,7 @@ update_views(Db, Views, Remove) ->
 update_views([], _, [], _) ->
     ok;
 update_views([], Db, [{Id,View}|Views], Remove) ->
-    ?LOG("adding view '~s' to '~s'", [Id, Db]),
+    lager:debug("adding view '~s' to '~s'", [Id, Db]),
     couch_mgr:ensure_saved(Db, View),
     update_views([], Db, Views, Remove);
 update_views([Found|Finds], Db, Views, Remove) ->
@@ -310,16 +310,16 @@ update_views([Found|Finds], Db, Views, Remove) ->
     RawDoc = wh_json:delete_key(<<"_rev">>, Doc),
     case props:get_value(Id, Views) of
         undefined when Remove -> 
-            ?LOG("removing view '~s' from '~s'", [Id, Db]),
+            lager:debug("removing view '~s' from '~s'", [Id, Db]),
             couch_mgr:del_doc(Db, Doc),
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         undefined ->
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         View1 when View1 =:= RawDoc ->
-            ?LOG("view '~s' matches the raw doc, skipping", [Id]),
+            lager:debug("view '~s' matches the raw doc, skipping", [Id]),
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         View2 ->
-            ?LOG("updating view '~s' in '~s'", [Id, Db]),
+            lager:debug("updating view '~s' in '~s'", [Id, Db]),
             Rev = wh_json:get_value(<<"_rev">>, Doc),
             couch_mgr:ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, View2)),
             update_views(Finds, Db, props:delete(Id, Views), Remove)
@@ -338,10 +338,10 @@ add_aggregate_device(Db, Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
     _ = case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
             {ok, Rev} ->
-                ?LOG("aggregating device ~s/~s", [Db, DeviceId]),
+                lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
                 couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Device));
             {error, not_found} ->
-                ?LOG("aggregating device ~s/~s", [Db, DeviceId]),
+                lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
                 couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Device))
         end,
     ok.
@@ -359,7 +359,7 @@ rm_aggregate_device(Db, Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
     _ = case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
             {ok, JObj} ->
-                ?LOG("removing aggregated device ~s/~s", [Db, DeviceId]),
+                lager:debug("removing aggregated device ~s/~s", [Db, DeviceId]),
                 couch_mgr:del_doc(?WH_SIP_DB, JObj);
             {error, not_found} ->
                 ok

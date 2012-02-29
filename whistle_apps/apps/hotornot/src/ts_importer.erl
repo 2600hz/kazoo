@@ -16,7 +16,7 @@
 %%     couch_mgr:save_docs(?TS_RATES_DB, Docs);
 %% parse(Lines, Docs) when length(Docs) >= 100 ->
 %%     spawn(fun() -> couch_mgr:save_docs(?TS_RATES_DB, Docs) end),
-%%     ?LOG_SYS("Saving 100 docs"),
+%%     lager:debug("Saving 100 docs"),
 %%     parse(Lines, []);
 %% parse([Line | Lines], Docs) ->
 %%     {Prefix, CC, De, InternalCost, RC} = case binary:split(Line, <<",">>, [global]) of

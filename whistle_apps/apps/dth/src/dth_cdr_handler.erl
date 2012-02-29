@@ -62,9 +62,11 @@ init() ->
 handle_req(JObj, Props) ->
     true = wapi_call:cdr_v(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
+    put(callid, CallID),
+
     CallDirection = wh_json:get_value(<<"Call-Direction">>, JObj),
-    ?LOG_SYS(CallID, "Valid call cdr", []),
-    ?LOG_SYS(CallID, "Call Direction: ~s", [CallDirection]),
+    lager:debug("valid call cdr"),
+    lager:debug("call direction: ~s", [CallDirection]),
 
     <<"outbound">> = CallDirection, %% b-leg only, though not the greatest way of determining this
 
@@ -78,7 +80,7 @@ handle_req(JObj, Props) ->
 
     AccountCode = get_account_code(JObj),
 
-    ?LOG(CallID, "CDR from ~s to ~s with account code ~s", [FromE164, ToE164, AccountCode]),
+    lager:debug("cdr from ~s to ~s with account code ~s", [FromE164, ToE164, AccountCode]),
 
     XML = iolist_to_binary(io_lib:format(?DTH_SUBMITCALLRECORD
                                          ,[AccountCode
@@ -90,7 +92,7 @@ handle_req(JObj, Props) ->
                                            ,?DTH_CALL_TYPE_OTHER
                                           ])),
 
-    ?LOG(CallID, "XML to send: ~s", [XML]),
+    lager:debug("XML to send: ~s", [XML]),
 
     send_xml(XML, Props).
 
@@ -102,9 +104,9 @@ send_xml(XML, Props) ->
 
     case ibrowse:send_req(props:get_value(cdr_url, Props), Headers, post, XML) of
         {ok, "200", _, RespXML} ->
-            ?LOG_END("XML sent to DTH successfully: ~s", [RespXML]);
+            lager:debug("XML sent to DTH successfully: ~s", [RespXML]);
         _Resp ->
-            ?LOG("Error with request: ~p", [_Resp])
+            lager:debug("error with request: ~p", [_Resp])
     end.
 
 now_to_datetime(Secs) ->

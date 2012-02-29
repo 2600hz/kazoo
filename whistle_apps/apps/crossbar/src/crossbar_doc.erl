@@ -56,13 +56,13 @@ load(_DocId, #cb_context{db_name=undefined}=Context) ->
 load(DocId, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:open_doc(DB, DocId) of
         {error, db_not_reachable} ->
-            ?LOG("loading doc ~s from ~s failed: db not reachable", [DocId, DB]),
+            lager:debug("loading doc ~s from ~s failed: db not reachable", [DocId, DB]),
             crossbar_util:response_datastore_timeout(Context);
         {error, not_found} ->
-            ?LOG("loading doc ~s from ~s failed: doc not found", [DocId, DB]),
+            lager:debug("loading doc ~s from ~s failed: doc not found", [DocId, DB]),
             crossbar_util:response_bad_identifier(DocId, Context);
         {ok, Doc} ->
-            ?LOG("loaded doc ~s from ~s", [DocId, DB]),
+            lager:debug("loaded doc ~s from ~s", [DocId, DB]),
             case wh_util:is_true(wh_json:get_value(<<"pvt_deleted">>, Doc)) of
                 true ->
                     crossbar_util:response_bad_identifier(DocId, Context);
@@ -74,7 +74,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
                                       }
             end;
         _Else ->
-            ?LOG("unexpected return from datastore: ~p", [_Else]),
+            lager:debug("unexpected return from datastore: ~p", [_Else]),
             Context#cb_context{doc=wh_json:new()}
     end.
 
@@ -104,12 +104,12 @@ load_from_file(Db, File) ->
 %%--------------------------------------------------------------------
 -spec load_merge/3 :: (ne_binary(), wh_json:json_object(), #cb_context{}) -> #cb_context{}.
 load_merge(_DocId, _Data, #cb_context{db_name=undefined}=Context) ->
-    ?LOG("db missing from #cb_context for doc ~s", [_DocId]),
+    lager:debug("db missing from #cb_context for doc ~s", [_DocId]),
     crossbar_util:response_db_missing(Context);
 load_merge(DocId, DataJObj, #cb_context{db_name=DBName}=Context) ->
     case load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc}=Context1 ->
-            ?LOG("loaded doc ~s from ~s, merging", [DocId, DBName]),
+            lager:debug("loaded doc ~s from ~s, merging", [DocId, DBName]),
             PrivJObj = private_fields(Doc),
             Doc1 = wh_json:merge_jobjs(PrivJObj, DataJObj),
             Context1#cb_context{doc=Doc1
@@ -118,7 +118,7 @@ load_merge(DocId, DataJObj, #cb_context{db_name=DBName}=Context) ->
                                 ,resp_etag=rev_to_etag(Doc1)
                                };
         Else ->
-            ?LOG("loading doc ~s from ~s failed unexpectedly", [DocId, DBName]),
+            lager:debug("loading doc ~s from ~s failed unexpectedly", [DocId, DBName]),
             Else
     end.
 
@@ -133,7 +133,7 @@ load_merge(DocId, DataJObj, #cb_context{db_name=DBName}=Context) ->
 %%--------------------------------------------------------------------
 -spec load_view/3 :: (ne_binary(), proplist(), #cb_context{}) -> #cb_context{}.
 load_view(_View, _Options, #cb_context{db_name=undefined}=Context) ->
-    ?LOG("db missing from #cb_context for view ~s", [_View]),
+    lager:debug("db missing from #cb_context for view ~s", [_View]),
     crossbar_util:response_db_missing(Context);
 load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
     HasFilter = has_filter(RJ),
@@ -144,13 +144,13 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
                   end,
     case couch_mgr:get_results(DB, View, ViewOptions) of
         {error, invalid_view_name} ->
-            ?LOG("loading view ~s from ~s failed: invalid view", [View, DB]),
+            lager:debug("loading view ~s from ~s failed: invalid view", [View, DB]),
             crossbar_util:response_missing_view(Context);
         {error, not_found} ->
-            ?LOG("loading view ~s from ~s failed: not found", [View, DB]),
+            lager:debug("loading view ~s from ~s failed: not found", [View, DB]),
             crossbar_util:response_missing_view(Context);
         {ok, Docs} when HasFilter ->
-            ?LOG("loaded view ~s from ~s, running query filter", [View, DB]),
+            lager:debug("loaded view ~s from ~s, running query filter", [View, DB]),
             Filtered = [Doc || Doc <- Docs, Doc =/= undefined
                                    ,filter_doc(wh_json:get_value(<<"doc">>, Doc), RJ)],
             Context#cb_context{
@@ -159,14 +159,14 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
               ,resp_etag=rev_to_etag(Filtered)
              };
         {ok, Docs} ->
-            ?LOG("loaded view ~s from ~s", [View, DB]),
+            lager:debug("loaded view ~s from ~s", [View, DB]),
             Context#cb_context{
               doc=Docs
               ,resp_status=success
               ,resp_etag=rev_to_etag(Docs)
              };
         _Else ->
-            ?LOG("loading view ~s from ~s failed: unexpected ~p", [View, DB, _Else]),
+            lager:debug("loading view ~s from ~s failed: unexpected ~p", [View, DB, _Else]),
             Context#cb_context{doc=[]}
     end.
 
@@ -227,18 +227,18 @@ load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) -
 %%--------------------------------------------------------------------
 -spec load_attachment/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 load_attachment(_DocId, _AName, #cb_context{db_name = undefined}=Context) ->
-    ?LOG("loading attachment ~s from doc ~s failed: no db", [_DocId, _AName]),
+    lager:debug("loading attachment ~s from doc ~s failed: no db", [_DocId, _AName]),
     crossbar_util:response_db_missing(Context);
 load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:fetch_attachment(DB, DocId, AName) of
         {error, db_not_reachable} ->
-            ?LOG("loading attachment ~s from doc ~s from db ~s failed: db not reachable", [AName, DocId, DB]),
+            lager:debug("loading attachment ~s from doc ~s from db ~s failed: db not reachable", [AName, DocId, DB]),
             crossbar_util:response_datastore_timeout(Context);
         {error, not_found} ->
-            ?LOG("loading attachment ~s from doc ~s from db ~s failed: attachment not found", [AName, DocId, DB]),
+            lager:debug("loading attachment ~s from doc ~s from db ~s failed: attachment not found", [AName, DocId, DB]),
             crossbar_util:response_bad_identifier(DocId, Context);
         {ok, AttachBin} ->
-            ?LOG("loaded attachment ~s from doc ~s from db ~s", [AName, DocId, DB]),
+            lager:debug("loaded attachment ~s from doc ~s from db ~s", [AName, DocId, DB]),
             #cb_context{resp_status=success, doc=Doc} = Context1 = load(DocId, Context),
             Context1#cb_context{resp_status=success
                                 ,doc=Doc
@@ -246,7 +246,7 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
                                 ,resp_etag=rev_to_etag(Doc)
                                };
         _Else ->
-            ?LOG("loading attachment ~s from doc ~s from db ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
+            lager:debug("loading attachment ~s from doc ~s from db ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
             Context
     end.
 
@@ -265,19 +265,19 @@ save(#cb_context{}=Context) ->
     save(Context, []).
 
 save(#cb_context{db_name=undefined}=Context, _) ->
-    ?LOG("db undefined, cannot save"),
+    lager:debug("db undefined, cannot save"),
     crossbar_util:response_db_missing(Context);
 save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:save_doc(DB, JObj0, Options) of
         {error, db_not_reachable} ->
-            ?LOG("failed to save json: db not reachable"),
+            lager:debug("failed to save json: db not reachable"),
             crossbar_util:response_datastore_timeout(Context);
         {error, conflict} ->
-            ?LOG("failed to save json: conflicts with existing doc"),
+            lager:debug("failed to save json: conflicts with existing doc"),
             crossbar_util:response_conflicting_docs(Context);
         {ok, JObj1} when Verb =:= <<"put">> ->
-            ?LOG("saved a put request, setting location headers"),
+            lager:debug("saved a put request, setting location headers"),
             _ = send_document_change(created, DB, JObj1, Options),
             Context#cb_context{doc=JObj1
                                ,resp_status=success
@@ -286,7 +286,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
                                ,resp_etag=rev_to_etag(JObj1)
                               };
         {ok, JObj2} ->
-            ?LOG("saved json doc"),
+            lager:debug("saved json doc"),
             _ = send_document_change(edited, DB, JObj2, Options),
             Context#cb_context{doc=JObj2
                                ,resp_status=success
@@ -294,7 +294,7 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
                                ,resp_etag=rev_to_etag(JObj2)
                               };
         _Else ->
-            ?LOG("save failed: unexpected return from datastore: ~p", [_Else]),
+            lager:debug("save failed: unexpected return from datastore: ~p", [_Else]),
             Context
     end.
 
@@ -313,16 +313,16 @@ ensure_saved(#cb_context{}=Context) ->
     ensure_saved(Context, []).
 
 ensure_saved(#cb_context{db_name=undefined}=Context, _) ->
-    ?LOG("db undefined, cannot ensure save"),
+    lager:debug("db undefined, cannot ensure save"),
     crossbar_util:response_db_missing(Context);
 ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:ensure_saved(DB, JObj0, Options) of
         {error, db_not_reachable} ->
-            ?LOG("failed to save json: db not reachable"),
+            lager:debug("failed to save json: db not reachable"),
             crossbar_util:response_datastore_timeout(Context);
         {ok, JObj1} when Verb =:= <<"put">> ->
-            ?LOG("saved a put request, setting location headers"),
+            lager:debug("saved a put request, setting location headers"),
             _ = send_document_change(created, DB, JObj1, Options),
             Context#cb_context{doc=JObj1
                                ,resp_status=success
@@ -331,7 +331,7 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
                                ,resp_etag=rev_to_etag(JObj1)
                               };
         {ok, JObj2} ->
-            ?LOG("saved json doc"),
+            lager:debug("saved json doc"),
             _ = send_document_change(edited, DB, JObj2, Options),
             Context#cb_context{doc=JObj2
                                ,resp_status=success
@@ -339,7 +339,7 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
                                ,resp_etag=rev_to_etag(JObj2)
                               };
         _Else ->
-            ?LOG("save failed: unexpected return from datastore: ~p", [_Else]),
+            lager:debug("save failed: unexpected return from datastore: ~p", [_Else]),
             Context
     end.
 
@@ -411,7 +411,7 @@ save_attachment(DocId, AName, Contents, Context) ->
 %%--------------------------------------------------------------------
 -spec save_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), #cb_context{}, proplist()) -> #cb_context{}.
 save_attachment(_DocId, _AName, _, #cb_context{db_name=undefined}=Context, _) ->
-    ?LOG("saving attachment ~s to doc ~s failed: no db specified", [_AName, _DocId]),
+    lager:debug("saving attachment ~s to doc ~s failed: no db specified", [_AName, _DocId]),
     crossbar_util:response_db_missing(Context);
 save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options) ->
     Opts1 = case props:get_value(rev, Options) of
@@ -422,20 +422,20 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
             end,
     case couch_mgr:put_attachment(DB, DocId, AName, Contents, Opts1) of
         {error, db_not_reachable} ->
-            ?LOG("saving attachment ~s to doc ~s to db ~s failed: db not reachable", [AName, DocId, DB]),
+            lager:debug("saving attachment ~s to doc ~s to db ~s failed: db not reachable", [AName, DocId, DB]),
             crossbar_util:response_datastore_timeout(Context);
         {error, conflict} ->
-            ?LOG("saving attachment ~s to doc ~s to db ~s failed: conflict", [AName, DocId, DB]),
+            lager:debug("saving attachment ~s to doc ~s to db ~s failed: conflict", [AName, DocId, DB]),
             crossbar_util:response_conflicting_docs(Context);
         {ok, _Res} ->
-            ?LOG("saved attachment ~s to doc ~s to db ~s", [AName, DocId, DB]),
+            lager:debug("saved attachment ~s to doc ~s to db ~s", [AName, DocId, DB]),
             {ok, Rev1} = couch_mgr:lookup_doc_rev(DB, DocId),
             Context#cb_context{resp_status=success
                                ,resp_data=[]
                                ,resp_etag=rev_to_etag(Rev1)
                               };
         _Else ->
-            ?LOG("saving attachment ~s to doc ~s to db ~s failed: unexpected: ~p", [AName, DocId, DB, _Else]),
+            lager:debug("saving attachment ~s to doc ~s to db ~s failed: unexpected: ~p", [AName, DocId, DB, _Else]),
             crossbar_util:response_datastore_conn_refused(Context)
     end.
 
@@ -453,44 +453,44 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
 -spec delete/1 :: (#cb_context{}) -> #cb_context{}.
 -spec delete/2 :: (#cb_context{}, 'permanent') -> #cb_context{}.
 delete(#cb_context{db_name=undefined, doc=JObj}=Context) ->
-    ?LOG("deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
+    lager:debug("deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
     crossbar_util:response_db_missing(Context);
 delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     JObj1 = wh_json:set_value(<<"pvt_deleted">>, true, JObj0),
     case couch_mgr:save_doc(DB, JObj1) of
         {error, db_not_reachable} ->
-            ?LOG("deleting ~s from ~s failed, db not reachable", [wh_json:get_value(<<"_id">>, JObj), DB]),
+            lager:debug("deleting ~s from ~s failed, db not reachable", [wh_json:get_value(<<"_id">>, JObj), DB]),
             crossbar_util:response_datastore_timeout(Context);
         {ok, _Doc} ->
-            ?LOG("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
+            lager:debug("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
             _ = send_document_change(deleted, DB, JObj1),
             Context#cb_context{doc = wh_json:new()
                                ,resp_status=success
                                ,resp_data=[]
                               };
         _Else ->
-            ?LOG("deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
+            lager:debug("deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
             Context
     end.
 
 delete(#cb_context{db_name=undefined, doc=JObj}=Context, permanent) ->
-    ?LOG("permanent deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
+    lager:debug("permanent deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
     crossbar_util:response_db_missing(Context);
 delete(#cb_context{db_name=DB, doc=JObj}=Context, permanent) ->
     case couch_mgr:del_doc(DB, JObj) of
         {error, db_not_reachable} ->
-            ?LOG("permanent deleting ~s from ~s failed, db not reachable", [wh_json:get_value(<<"_id">>, JObj), DB]),
+            lager:debug("permanent deleting ~s from ~s failed, db not reachable", [wh_json:get_value(<<"_id">>, JObj), DB]),
             crossbar_util:response_datastore_timeout(Context);
         {ok, _Doc} ->
-            ?LOG("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
+            lager:debug("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
             _ = send_document_change(deleted, DB, wh_json:set_value(<<"pvt_deleted">>, true, JObj)),
             Context#cb_context{doc = wh_json:new()
                                ,resp_status=success
                                ,resp_data=[]
                               };
         _Else ->
-            ?LOG("permanently deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
+            lager:debug("permanently deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
             Context
     end.
 
@@ -505,25 +505,25 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context, permanent) ->
 %%--------------------------------------------------------------------
 -spec delete_attachment/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 delete_attachment(_DocId, _AName, #cb_context{db_name=undefined}=Context) ->
-    ?LOG("deleting attachment ~s from doc ~s failed: no db", [_AName, _DocId]),
+    lager:debug("deleting attachment ~s from doc ~s failed: no db", [_AName, _DocId]),
     crossbar_util:response_db_missing(Context);
 delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
     case couch_mgr:delete_attachment(DB, DocId, AName) of
         {error, db_not_reachable} ->
-            ?LOG("deleting attachment ~s from doc ~s from ~s failed: db not reachable", [AName, DocId, DB]),
+            lager:debug("deleting attachment ~s from doc ~s from ~s failed: db not reachable", [AName, DocId, DB]),
             crossbar_util:response_datastore_timeout(Context);
         {error, not_found} ->
-            ?LOG("deleting attachment ~s from doc ~s from ~s failed: not found", [AName, DocId, DB]),
+            lager:debug("deleting attachment ~s from doc ~s from ~s failed: not found", [AName, DocId, DB]),
             crossbar_util:response_bad_identifier(DocId, Context);
         {ok, _Res} ->
-            ?LOG("deleted attachment ~s from doc ~s from ~s", [AName, DocId, DB]),
+            lager:debug("deleted attachment ~s from doc ~s from ~s", [AName, DocId, DB]),
             {ok, Rev} = couch_mgr:lookup_doc_rev(DB, DocId),
             Context#cb_context{resp_status=success
                                ,resp_data=[]
                                ,resp_etag=rev_to_etag(Rev)
                               };
         _Else ->
-            ?LOG("deleting attachment ~s from doc ~s from ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
+            lager:debug("deleting attachment ~s from doc ~s from ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
             Context
     end.
 

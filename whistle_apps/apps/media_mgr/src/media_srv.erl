@@ -65,7 +65,7 @@ next_port() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new media server"),
+    lager:debug("starting new media server"),
     amqp_util:callmgr_exchange(),
     amqp_util:targeted_exchange(),
     {ok, #state{}, 0}.
@@ -129,7 +129,7 @@ handle_info(timeout, #state{amqp_q = <<>>, ports=Ps, port_range=PortRange}=S) ->
         {noreply, S#state{amqp_q=Q, ports=Ps1}, hibernate}
     catch
         _:_ ->
-            ?LOG_SYS("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
+            lager:debug("attempting to connect AMQP again in ~b ms", [?AMQP_RECONNECT_INIT_TIMEOUT]),
             {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
             Ps2 = updated_reserved_ports(Ps, PortRange),
             {noreply, S#state{amqp_q = <<>>, ports=Ps2}, hibernate}
@@ -143,18 +143,18 @@ handle_info({amqp_reconnect, T}, State) ->
         _:_ ->
             case T * 2 of
                 Timeout when Timeout > ?AMQP_RECONNECT_MAX_TIMEOUT ->
-                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
+                    lager:debug("attempting to reconnect AMQP again in ~b ms", [?AMQP_RECONNECT_MAX_TIMEOUT]),
                     {ok, _} = timer:send_after(?AMQP_RECONNECT_MAX_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_MAX_TIMEOUT}),
                     {noreply, State};
                 Timeout ->
-                    ?LOG_SYS("attempting to reconnect AMQP again in ~b ms", [Timeout]),
+                    lager:debug("attempting to reconnect AMQP again in ~b ms", [Timeout]),
                     {ok, _} = timer:send_after(Timeout, {amqp_reconnect, Timeout}),
                     {noreply, State}
             end
     end;
 
 handle_info({amqp_host_down, _}, State) ->
-    ?LOG_SYS("lost AMQP connection, attempting to reconnect"),
+    lager:debug("lost AMQP connection, attempting to reconnect"),
     {ok, _} = timer:send_after(?AMQP_RECONNECT_INIT_TIMEOUT, {amqp_reconnect, ?AMQP_RECONNECT_INIT_TIMEOUT}),
     {noreply, State#state{amqp_q = <<>>}, hibernate};
 
@@ -163,13 +163,13 @@ handle_info({_, #amqp_msg{payload = Payload}}, #state{ports=Ports, port_range=Po
     spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
                   put(callid, wh_json:get_value(<<"Call-ID">>, JObj, <<"0000000000">>)),
-                  ?LOG_START("received request for media"),
+                  lager:debug("received request for media"),
 
                   try
                       handle_req(JObj, Port, Streams)
                   catch
                       _Type:Err ->
-                          ?LOG_END("caught ~p: ~p", [_Type, Err]),
+                          lager:debug("caught ~p: ~p", [_Type, Err]),
                           send_error_resp(JObj, <<"other">>, Err)
                   end
           end),
@@ -186,10 +186,10 @@ handle_info({_, #amqp_msg{payload = Payload}}, #state{ports=Ports, port_range=Po
 handle_info({'DOWN', Ref, process, ShoutSrv, Info}, #state{streams=Ss}=S) ->
     case lists:keyfind(ShoutSrv, 2, Ss) of
         {MediaID, _, Ref1} when Ref =:= Ref1 ->
-            ?LOG_SYS("MediaSrv for ~s(~p) went down(~p)", [MediaID, ShoutSrv, Info]),
+            lager:debug("MediaSrv for ~s(~p) went down(~p)", [MediaID, ShoutSrv, Info]),
             {noreply, S#state{streams=lists:keydelete(MediaID, 1, Ss)}, hibernate};
         _ ->
-            ?LOG_SYS("Unknown 'DOWN' received for ~p(~p)", [ShoutSrv, Info]),
+            lager:debug("Unknown 'DOWN' received for ~p(~p)", [ShoutSrv, Info]),
             {noreply, S}
     end;
 
@@ -211,7 +211,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG_SYS("media server ~p termination", [_Reason]),
+    lager:debug("media server ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -238,11 +238,11 @@ start_amqp() ->
 
         amqp_util:basic_consume(Q),
 
-        ?LOG_SYS("connected to AMQP"),
+        lager:debug("connected to AMQP"),
         {ok, Q}
     catch
         _:R ->
-            ?LOG_SYS("failed to connect to AMQP ~p", [R]),
+            lager:debug("failed to connect to AMQP ~p", [R]),
             {error, amqp_error}
     end.
 
@@ -251,7 +251,7 @@ send_error_resp(JObj, ErrCode, <<>>) ->
     Error = [{<<"Media-Name">>, MediaName}
              ,{<<"Error-Code">>, wh_util:to_binary(ErrCode)}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    ?LOG_END("sending error reply ~s for ~s", [ErrCode, MediaName]),
+    lager:debug("sending error reply ~s for ~s", [ErrCode, MediaName]),
     wapi_media:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error);
 send_error_resp(JObj, _ErrCode, ErrMsg) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
@@ -259,7 +259,7 @@ send_error_resp(JObj, _ErrCode, ErrMsg) ->
              ,{<<"Error-Code">>, <<"other">>}
              ,{<<"Error-Msg">>, wh_util:to_binary(ErrMsg)}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    ?LOG_END("sending error reply ~s for ~s", [_ErrCode, MediaName]),
+    lager:debug("sending error reply ~s for ~s", [_ErrCode, MediaName]),
     wapi_media:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error).
 
 -spec(handle_req/3 :: (JObj :: wh_json:json_object(), Port :: port(), Streams :: list()) -> no_return()).
@@ -358,7 +358,7 @@ start_stream(JObj, Db, Doc, Attachment, CType, Port) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
     To = wh_json:get_value(<<"Server-ID">>, JObj),
     Media = {MediaName, Db, Doc, Attachment, CType},
-    ?LOG_END("request for ~s is starting in new stream server", [MediaName]),
+    lager:debug("request for ~s is starting in new stream server", [MediaName]),
     {ok, _} = media_shout_sup:start_shout(Media, To, single, Port, get(callid)).
 
 -spec join_stream/7 :: (JObj, Db, Doc, Attachment, CType, Port, Streams) -> no_return() when
@@ -376,10 +376,10 @@ join_stream(JObj, Db, Doc, Attachment, CType, Port, Streams) ->
 
     case lists:keyfind(MediaName, 1, Streams) of
         {_, ShoutSrv, _} ->
-            ?LOG_END("request for ~s is joining running stream server", [MediaName]),
+            lager:debug("request for ~s is joining running stream server", [MediaName]),
             ShoutSrv ! {add_listener, To};
         false ->
-            ?LOG_END("request for ~s is starting a new continuous stream server", [MediaName]),
+            lager:debug("request for ~s is starting a new continuous stream server", [MediaName]),
             {ok, ShoutSrv} = media_shout_sup:start_shout(Media, To, continuous, Port, get(callid)),
             ?SERVER:add_stream(MediaName, ShoutSrv)
     end.

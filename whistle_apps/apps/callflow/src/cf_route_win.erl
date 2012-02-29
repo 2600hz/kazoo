@@ -17,10 +17,10 @@ handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
 
-    ?LOG_START("received route win"),
+    lager:debug("received route win"),
     case whapps_call:retrieve(CallId) of
         {ok, Call} ->
-            ?LOG("bootstrapping callflow executer"),
+            lager:debug("bootstrapping callflow executer"),
             Updaters = [fun(C) -> 
                                 CCVUpdaters = get_channel_ccvs_updaters(C),
                                 whapps_call:update_custom_channel_vars(CCVUpdaters, C)
@@ -37,7 +37,7 @@ handle_req(JObj, _Options) ->
                        ],
             execute_callflow(lists:foldr(fun(F, C) -> F(C) end, Call, Updaters));
         {error, R} ->
-            ?LOG_END("unable to find callflow during second lookup (HUH?) ~p", [R])
+            lager:debug("unable to find callflow during second lookup (HUH?) ~p", [R])
     end.
 
 %%-----------------------------------------------------------------------------
@@ -49,7 +49,7 @@ handle_req(JObj, _Options) ->
 %%-----------------------------------------------------------------------------
 -spec execute_callflow/1 :: (whapps_call:call()) -> {'ok', pid()}.
 execute_callflow(Call) ->
-    ?LOG("call has been setup, passing control to callflow executer"),
+    lager:debug("call has been setup, passing control to callflow executer"),
     cf_exe_sup:new(Call).
 
 %%-----------------------------------------------------------------------------
@@ -71,7 +71,7 @@ get_channel_ccvs_updaters(Call) ->
               case cf_attributes:moh_attributes(<<"media_id">>, Call) of
                   undefined -> J;
                   MediaId ->
-                      ?LOG("set hold media to ~s", [MediaId]),
+                      lager:debug("set hold media to ~s", [MediaId]),
                       wh_json:set_value(<<"Hold-Media">>, MediaId, J)
               end
       end

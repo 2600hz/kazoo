@@ -127,23 +127,23 @@ put(Context) ->
 %%--------------------------------------------------------------------
 -spec authorize_api_key/2 :: (#cb_context{}, ne_binary()) -> #cb_context{}.
 authorize_api_key(Context, ApiKey) when not is_binary(ApiKey) ->
-    ?LOG("api key is not the correct format"),
+    lager:debug("api key is not the correct format"),
     crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
 authorize_api_key(Context, <<>>) ->
-    ?LOG("request has no api key"),
+    lager:debug("request has no api key"),
     crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
 authorize_api_key(Context, ApiKey) ->
     case crossbar_doc:load_view(?AGG_VIEW_API, [{<<"key">>, ApiKey}], Context#cb_context{db_name=?WH_ACCOUNTS_DB}) of
         #cb_context{resp_status=success, doc=[JObj|_]}->
-            ?LOG("found more account with ~s, using ~s", [ApiKey, wh_json:get_value(<<"id">>, JObj)]),
+            lager:debug("found more account with ~s, using ~s", [ApiKey, wh_json:get_value(<<"id">>, JObj)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         #cb_context{resp_status=success, doc=JObj} ->
             case wh_json:is_empty(JObj) of
                 true ->
-                    ?LOG("found API key belongs to account ~s", [wh_json:get_value(<<"id">>, JObj)]),
+                    lager:debug("found API key belongs to account ~s", [wh_json:get_value(<<"id">>, JObj)]),
                     Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
                 false ->
-                    ?LOG("API key does not belong to any account"),
+                    lager:debug("API key does not belong to any account"),
                     crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
             end
     end.
@@ -158,7 +158,7 @@ authorize_api_key(Context, ApiKey) ->
 create_token(#cb_context{doc=JObj}=Context) ->
     case wh_json:is_empty(JObj) of
         true ->
-            ?LOG("refusing to create auth token for an empty doc"),
+            lager:debug("refusing to create auth token for an empty doc"),
             crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
         false ->
             AccountId = wh_json:get_value(<<"account_id">>, JObj),
@@ -170,11 +170,11 @@ create_token(#cb_context{doc=JObj}=Context) ->
             case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
                 {ok, Doc} ->
                     AuthToken = wh_json:get_value(<<"_id">>, Doc),
-                    ?LOG("created new local auth token ~s", [AuthToken]),
+                    lager:debug("created new local auth token ~s", [AuthToken]),
                     crossbar_util:response(wh_json:from_list([{<<"account_id">>, AccountId}])
                                            ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
                 {error, R} ->
-                    ?LOG("could not create new local auth token, ~p", [R]),
+                    lager:debug("could not create new local auth token, ~p", [R]),
                     crossbar_util:response(error, <<"invalid crentials">>, 401, Context)
             end
     end.

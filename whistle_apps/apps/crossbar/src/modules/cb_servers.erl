@@ -218,7 +218,7 @@ delete(Context, _) ->
 init_templates() ->
     case get_configs() of
         {ok, Terms} ->
-            ?LOG_SYS("loaded config from ~s", [?SERVER_CONF]),
+            lager:debug("loaded config from ~s", [?SERVER_CONF]),
             whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"data_bag_tmpl">>, compile_template(props:get_value(data_bag_tmpl, Terms), cb_servers_data_bag)),
             whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"databag_mapping">>, props:get_value(databag_mapping, Terms, [])),
             whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"databag_path_tmpl">>, compile_template(props:get_value(databag_path_tmpl, Terms), cb_servers_databag_path_tmpl)),
@@ -230,7 +230,7 @@ init_templates() ->
             whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"delete_tmpl">>, compile_template(props:get_value(delete_tmpl, Terms), cb_server_delete_tmpl)),
             ok;
         {error, _} ->
-            ?LOG_SYS("could not read config from ~s", [?SERVER_CONF]),
+            lager:debug("could not read config from ~s", [?SERVER_CONF]),
             ok
     end.
 
@@ -320,14 +320,14 @@ normalize_view_results(JObj, Acc) ->
 execute_delete_command(#cb_context{doc=JObj}) ->
     case whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"delete_tmpl">>) of
         undefined ->
-            ?LOG("no delete template defined");
+            lager:debug("no delete template defined");
         DeleteTmpl ->
             Props = wh_json:to_proplist(JObj),
             {ok, C} = DeleteTmpl:render([{<<"server">>, Props}]),
             Cmd = binary_to_list(iolist_to_binary(C)),
-            ?LOG("executing delete template: ~s", [Cmd]),
+            lager:debug("executing delete template: ~s", [Cmd]),
             Res = os:cmd(Cmd),
-            ?LOG("deleting template resulted in ~s", [Cmd, Res])
+            lager:debug("deleting template resulted in ~s", [Cmd, Res])
     end.
 
 %%--------------------------------------------------------------------
@@ -342,12 +342,12 @@ execute_delete_command(#cb_context{doc=JObj}) ->
 execute_deploy_command(Context) ->
     case whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"dev_deploy_tmpl">>) of
         undefined ->
-            ?LOG("no development deploy template defined"),
+            lager:debug("no development deploy template defined"),
             crossbar_util:response(error, <<"failed to start deployment">>, Context);
         _ ->
             case whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"prod_deploy_tmpl">>) of
                 undefined ->
-                    ?LOG("no production deploy template defined"),
+                    lager:debug("no production deploy template defined"),
                     crossbar_util:response(error, <<"failed to start deployment">>, Context);
                 _ ->
                     exec_deploy(Context)
@@ -363,11 +363,11 @@ exec_deploy(#cb_context{db_name=Db, doc=JObj}=Context) ->
     case mark_deploy_running(Db, ServerId) of
         {ok, _} ->
             spawn(fun() ->
-                          ?LOG("executing deploy command ~s", [Cmd]),
+                          lager:debug("executing deploy command ~s", [Cmd]),
                           Res = os:cmd(Cmd),
-                          ?LOG("deploy command execution completed", []),
+                          lager:debug("deploy command execution completed", []),
                           {ok, _} = mark_deploy_complete(Db, ServerId),
-                          ?LOG("attempting to upload log ~s", [Res]),
+                          lager:debug("attempting to upload log ~s", [Res]),
                           {ok, Log} = file:read_file(Res),
                           couch_mgr:put_attachment(Db, ServerId, <<"deployment.log">>, Log)
                   end),
@@ -381,10 +381,10 @@ get_command_tmpl(#cb_context{doc=JObj}) ->
     Roles = wh_json:get_value(<<"roles">>, JObj, []),
     case lists:member(DevRole, Roles) of
         true ->
-            ?LOG("use development template"),
+            lager:debug("use development template"),
             whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"dev_deploy_tmpl">>);
         false ->
-            ?LOG("use production template"),
+            lager:debug("use production template"),
             whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"prod_deploy_tmpl">>)
     end.
 
@@ -489,7 +489,7 @@ write_databag(Account, Server, JObj, PathTmpl) ->
              ,{<<"server">>, Server}],
     {ok, P} = PathTmpl:render(Props),
     Path = iolist_to_binary(P),
-    ?LOG("writing databag to ~s", [Path]),
+    lager:debug("writing databag to ~s", [Path]),
     ok = file:write_file(Path, JSON),
     Path.
 
@@ -529,7 +529,7 @@ write_role(Account, Server, JObj, PathTmpl) ->
              ,{<<"server">>, Server}],
     {ok, P} = PathTmpl:render(Props),
     Path = binary_to_list(iolist_to_binary(P)),
-    ?LOG("writing role to ~s", [Path]),
+    lager:debug("writing role to ~s", [Path]),
     ok = file:write_file(Path, JSON),
     Path.
 
@@ -579,7 +579,7 @@ compile_template(Template, Name) when not is_binary(Template) ->
                    BasePath = code:lib_dir(crossbar, priv),
                    lists:concat([BasePath, "/servers/", Template])
            end,
-    ?LOG("sourcing template from file at ~s", [Path]),
+    lager:debug("sourcing template from file at ~s", [Path]),
     do_compile_template(Path, Name);
 compile_template(Template, Name) ->
     do_compile_template(Template, Name).
@@ -594,12 +594,12 @@ compile_template(Template, Name) ->
 do_compile_template(Template, Name) ->
     case erlydtl:compile(Template, Name) of
         ok ->
-            ?LOG("compiled ~s template file", [Name]),
+            lager:debug("compiled ~s template file", [Name]),
             Name;
         {ok, _} ->
-            ?LOG("compiled ~s template file", [Name]),
+            lager:debug("compiled ~s template file", [Name]),
             Name;
         _E ->
-            ?LOG("could not compile ~s template, ignoring (~p)", [Name, _E]),
+            lager:debug("could not compile ~s template, ignoring (~p)", [Name, _E]),
             undefined
     end.

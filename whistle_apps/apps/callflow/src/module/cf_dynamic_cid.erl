@@ -68,6 +68,6 @@ handle(Data, Call) ->
                   whapps_call_command:play(Prompts#prompts.reject_tone, Call),
                   DefaultCID
           end,
-    ?LOG("setting the caller id number to ~s", [CID]),
+    lager:debug("setting the caller id number to ~s", [CID]),
     whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Number">> ,CID}]), undefined, Call),
     cf_exe:continue(Call).

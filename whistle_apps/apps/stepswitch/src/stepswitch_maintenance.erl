@@ -34,7 +34,7 @@ flush() ->
 %%--------------------------------------------------------------------
 -spec refresh/0 :: () -> ok.
 refresh() ->
-    ?LOG_SYS("ensuring database ~s exists", [?RESOURCES_DB]),
+    lager:debug("ensuring database ~s exists", [?RESOURCES_DB]),
     couch_mgr:db_create(?RESOURCES_DB),
     Views = whapps_util:get_views_json(stepswitch, "views"),
     whapps_util:update_views(?RESOURCES_DB, Views, true),

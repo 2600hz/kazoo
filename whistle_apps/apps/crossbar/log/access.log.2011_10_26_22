@@ -1,0 +1,6 @@
+127.0.0.1 - - [26/Oct/2011:15:29:58 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/cdrs?filter_hangup_cause=NORMAL_CLEARING HTTP/1.1" 200 306271 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
+127.0.0.1 - - [26/Oct/2011:15:31:34 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/cdrs HTTP/1.1" 200 589722 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
+127.0.0.1 - - [26/Oct/2011:15:43:27 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/cdr HTTP/1.1" 404 193 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
+127.0.0.1 - - [26/Oct/2011:15:43:55 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/cdr HTTP/1.1" 500 100 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
+127.0.0.1 - - [26/Oct/2011:15:44:50 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/cdr HTTP/1.1" 200 46 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"
+127.0.0.1 - - [26/Oct/2011:15:51:49 -0700] "GET /v1/accounts/04152ed2b428922e99ac66f3a71b0215/cdr HTTP/1.1" 301 79 "" "curl/7.21.0 (x86_64-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18"

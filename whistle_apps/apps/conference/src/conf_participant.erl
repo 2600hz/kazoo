@@ -276,14 +276,14 @@ handle_cast(hungup, Participant) ->
 handle_cast({controller_queue, ControllerQ}, #participant{call=Call}=Participant) ->
     {noreply, Participant#participant{call=whapps_call:set_controller_queue(ControllerQ, Call)}};
 handle_cast({add_consumer, Consumer}, #participant{call_event_consumers=Consumers}=Participant) ->
-    ?LOG("adding call event consumer ~p", [Consumer]),
+    lager:debug("adding call event consumer ~p", [Consumer]),
     link(Consumer),
     {noreply, Participant#participant{call_event_consumers=[Consumer|Consumers]}};
 handle_cast({remove_consumer, Consumer}, #participant{call_event_consumers=Consumers}=Participant) ->
-    ?LOG("removing call event consumer ~p", [Consumer]),
+    lager:debug("removing call event consumer ~p", [Consumer]),
     {noreply, Participant#participant{call_event_consumers=lists:filter(fun(C) -> C =/= Consumer end, Consumers)}};
 handle_cast({set_conference, Conference}, Participant) ->
-    ?LOG("received conference record for conference ~s", [whapps_conference:id(Conference)]),
+    lager:debug("received conference record for conference ~s", [whapps_conference:id(Conference)]),
     {noreply, Participant#participant{conference=Conference}};
 handle_cast({set_discovery_event, DiscoveryEvent}, Participant) ->
     {noreply, Participant#participant{discovery_event=DiscoveryEvent}};
@@ -297,10 +297,10 @@ handle_cast(join_local, #participant{call=Call, conference=DiscoveryConference}=
                   ConferenceId = whapps_conference:id(Conference),
                   case whapps_conference:moderator(Conference) of 
                       true ->
-                          ?LOG("moderator is joining conference ~s", [ConferenceId]),
+                          lager:debug("moderator is joining conference ~s", [ConferenceId]),
                           whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"true">>, Call);
                       false ->
-                          ?LOG("member is joining conference ~s", [ConferenceId]),
+                          lager:debug("member is joining conference ~s", [ConferenceId]),
                           whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"false">>, Call)
                   end,
                   whapps_conference_command:participants(Conference)
@@ -329,7 +329,7 @@ handle_cast({authn_req, JObj}, #participant{conference=Conference,  call=Call}=P
                         ,Call),
     {noreply, Participant};
 handle_cast({route_win, JObj}, #participant{conference=Conference, bridge=Bridge}=Participant) ->
-    ?LOG("won route for participant invite from local server"),
+    lager:debug("won route for participant invite from local server"),
     gen_listener:rm_binding(self(), route, []),
     gen_listener:rm_binding(self(), authn, []),
     B = whapps_call:from_route_win(JObj, Bridge),
@@ -340,10 +340,10 @@ handle_cast({route_win, JObj}, #participant{conference=Conference, bridge=Bridge
                   ConferenceId = whapps_conference:id(Conference),
                   case whapps_conference:moderator(Conference) of 
                       true ->
-                          ?LOG("moderator is joining remote conference ~s", [ConferenceId]),
+                          lager:debug("moderator is joining remote conference ~s", [ConferenceId]),
                           whapps_call_command:conference(ConferenceId, <<"false">>, <<"false">>, <<"true">>, B);
                       false ->
-                          ?LOG("member is joining remote conference ~s", [ConferenceId]),
+                          lager:debug("member is joining remote conference ~s", [ConferenceId]),
                           whapps_call_command:conference(ConferenceId, <<"false">>, <<"false">>, <<"false">>, B)
                   end,
                   whapps_conference_command:participants(Conference)
@@ -360,12 +360,12 @@ handle_cast(play_moderator_entry, #participant{conference=Conference}=Participan
     whapps_conference_command:play(<<"tone_stream://%(200,0,500,600,700)">>, Conference),
     {noreply, Participant};
 handle_cast(mute, #participant{participant_id=ParticipantId, conference=Conference}=Participant) ->
-    ?LOG("received in-conference command, muting participant ~s", [ParticipantId]),
+    lager:debug("received in-conference command, muting participant ~s", [ParticipantId]),
     whapps_conference_command:mute_participant(ParticipantId, Conference),
     whapps_conference_command:prompt(<<"conf-muted">>, ParticipantId, Conference),
     {noreply, Participant#participant{muted=true}};
 handle_cast(unmute, #participant{participant_id=ParticipantId, conference=Conference}=Participant) ->
-    ?LOG("received in-conference command, unmuting participant ~s", [ParticipantId]),
+    lager:debug("received in-conference command, unmuting participant ~s", [ParticipantId]),
     whapps_conference_command:unmute_participant(ParticipantId, Conference),
     whapps_conference_command:prompt(<<"conf-unmuted">>, ParticipantId, Conference),
     {noreply, Participant#participant{muted=false}};
@@ -376,12 +376,12 @@ handle_cast(toggle_mute, #participant{muted=false}=Participant) ->
     mute(self()),
     {noreply, Participant};
 handle_cast(deaf, #participant{participant_id=ParticipantId, conference=Conference}=Participant) ->
-    ?LOG("received in-conference command, making participant ~s deaf", [ParticipantId]),
+    lager:debug("received in-conference command, making participant ~s deaf", [ParticipantId]),
     whapps_conference_command:deaf_participant(ParticipantId, Conference),
     whapps_conference_command:prompt(<<"conf-deaf">>, ParticipantId, Conference),
     {noreply, Participant#participant{deaf=true}};
 handle_cast(undeaf, #participant{participant_id=ParticipantId, conference=Conference}=Participant) ->
-    ?LOG("received in-conference command, making participant ~s undeaf", [ParticipantId]),
+    lager:debug("received in-conference command, making participant ~s undeaf", [ParticipantId]),
     whapps_conference_command:undeaf_participant(ParticipantId, Conference),
     whapps_conference_command:prompt(<<"conf-undeaf">>, ParticipantId, Conference),
     {noreply, Participant#participant{deaf=false}};
@@ -392,7 +392,7 @@ handle_cast(toggle_deaf, #participant{deaf=false}=Participant) ->
     deaf(self()),
     {noreply, Participant};
 handle_cast(hangup, Participant) ->
-    ?LOG("received in-conference command, hangup participant"),
+    lager:debug("received in-conference command, hangup participant"),
     {noreply, Participant};
 handle_cast(_, Participant) ->
     {noreply, Participant}.
@@ -408,7 +408,7 @@ handle_cast(_, Participant) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'EXIT', Consumer, _R}, #participant{call_event_consumers=Consumers}=Participant) ->
-    ?LOG("call event consumer ~p died: ~p", [Consumer, _R]),
+    lager:debug("call event consumer ~p died: ~p", [Consumer, _R]),
     {noreply, Participant#participant{call_event_consumers=lists:filter(fun(C) -> C =/= Consumer end, Consumers)}};
 handle_info(_, Participant) ->
     {noreply, Participant}.
@@ -423,19 +423,19 @@ handle_event(JObj, #participant{call_event_consumers=Consumers, call=Call, self=
     CallId = whapps_call:call_id_direct(Call),
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_HANGUP">>}, CallId} ->
-            ?LOG("received channel hangup event, terminate"),
+            lager:debug("received channel hangup event, terminate"),
             gen_server:cast(Self, hungup),
             {reply, [{call_event_consumers, Consumers}]};
         {{<<"call_detail">>, <<"cdr">>}, CallId} ->
-            ?LOG("received channel cdr event, terminate"),
+            lager:debug("received channel cdr event, terminate"),
             gen_server:cast(Self, hungup),
             ignore;
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
-            ?LOG("received channel destry, terminate"),
+            lager:debug("received channel destry, terminate"),
             gen_server:cast(Self, hungup),
             {reply, [{call_event_consumers, Consumers}]};
         {{<<"call_event">>, _}, EventCallId} when EventCallId =/= CallId ->
-            ?LOG("received event from call ~s while relaying for ~s, dropping", [EventCallId, CallId]),
+            lager:debug("received event from call ~s while relaying for ~s, dropping", [EventCallId, CallId]),
             ignore;
         {_Else, _} ->
             {reply, [{call_event_consumers, Consumers}
@@ -457,7 +457,7 @@ handle_event(JObj, #participant{call_event_consumers=Consumers, call=Call, self=
 %%--------------------------------------------------------------------
 terminate(_Reason, #participant{conference=Conference}) ->
     whapps_conference_command:play(<<"tone_stream://%(500,0,300,200,100,50,25)">>, Conference),
-    ?LOG_END("conference participant execution has been stopped: ~p", [_Reason]),
+    lager:debug("conference participant execution has been stopped: ~p", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -490,7 +490,7 @@ sync_participant(Participants, Call, #participant{in_conference=false, conferenc
     case find_participant(wh_json:to_proplist(Participants), whapps_call:call_id(Call)) of
         {ok, JObj} when Moderator ->
             ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
-            ?LOG("caller has joined the local conference as moderator ~s", [ParticipantId]),
+            lager:debug("caller has joined the local conference as moderator ~s", [ParticipantId]),
             Deaf = not wh_json:is_true([<<"Flags">>, <<"Can-Hear">>], JObj),
             Muted = not wh_json:is_true([<<"Flags">>, <<"Can-Speak">>], JObj),
             gen_server:cast(self(), play_moderator_entry),
@@ -500,7 +500,7 @@ sync_participant(Participants, Call, #participant{in_conference=false, conferenc
                                     ,deaf=Deaf, participant_id=ParticipantId};
         {ok, JObj} ->
             ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
-            ?LOG("caller has joined the local conference as member ~s", [ParticipantId]),
+            lager:debug("caller has joined the local conference as member ~s", [ParticipantId]),
             Deaf = not wh_json:is_true([<<"Flags">>, <<"Can-Hear">>], JObj),
             Muted = not wh_json:is_true([<<"Flags">>, <<"Can-Speak">>], JObj),
             gen_server:cast(self(), play_member_entry),
@@ -517,20 +517,20 @@ sync_participant(Participants, Call, #participant{in_conference=true}=Participan
     case find_participant(wh_json:to_proplist(Participants), whapps_call:call_id(Call)) of
         {ok, JObj} ->
             ParticipantId = wh_json:get_value(<<"Participant-ID">>, JObj),
-            ?LOG("caller has is still in the conference as participant ~s", [ParticipantId]),
+            lager:debug("caller has is still in the conference as participant ~s", [ParticipantId]),
             Deaf = not wh_json:is_true([<<"Flags">>, <<"Can-Hear">>], JObj),
             Muted = not wh_json:is_true([<<"Flags">>, <<"Can-Speak">>], JObj),
             Participant#participant{in_conference=true, muted=Muted
                                     ,deaf=Deaf, participant_id=ParticipantId};
         {error, not_found} ->
-            ?LOG("participant is not present in conference anymore, terminating"),
+            lager:debug("participant is not present in conference anymore, terminating"),
             gen_server:cast(self(), hungup),
             Participant#participant{in_conference=false}
     end.
 
 -spec bridge_to_conference/3 :: (ne_binary(), whapps_conference:conference(), whapps_call:call()) -> ok.
 bridge_to_conference(Route, Conference, Call) ->
-    ?LOG("briding to conference running at '~s'", [Route]),
+    lager:debug("briding to conference running at '~s'", [Route]),
     Endpoint = wh_json:from_list([{<<"Invite-Format">>, <<"route">>}
                                   ,{<<"Route">>, Route}
                                   ,{<<"Auth-User">>, whapps_conference:bridge_username(Conference)}
@@ -544,7 +544,7 @@ bridge_to_conference(Route, Conference, Call) ->
 
 -spec publish_route_response/3 :: (ne_binary(), undefined | ne_binary(), ne_binary()) -> ok.
 publish_route_response(ControllerQ, MsgId, ServerId) ->
-    ?LOG("sending route response for participant invite from local server"),
+    lager:debug("sending route response for participant invite from local server"),
     Resp = [{<<"Msg-ID">>, MsgId}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
@@ -553,7 +553,7 @@ publish_route_response(ControllerQ, MsgId, ServerId) ->
 
 -spec send_authn_response/4 :: (undefined | ne_binary(), ne_binary(), whapps_conference:conference(), whapps_call:call()) -> ok.
 send_authn_response(MsgId, ServerId, Conference, Call) ->
-    ?LOG("sending authn response for participant invite from local server"),
+    lager:debug("sending authn response for participant invite from local server"),
     CCVs = [{<<"Username">>, whapps_conference:bridge_username(Conference)}
             ,{<<"Account-ID">>, whapps_call:account_db(Call)}
             ,{<<"Authorizing-Type">>, <<"conference">>}

@@ -19,7 +19,7 @@ init() ->
 handle_req(ApiJObj, _Props) ->
     wh_util:put_callid(ApiJObj),
 
-    ?LOG_START("received registration success"),
+    lager:debug("received registration success"),
     true = wapi_registration:success_v(ApiJObj),
 
     [User, AfterAt] = binary:split(wh_json:get_value(<<"Contact">>, ApiJObj), <<"@">>), % only one @ allowed
@@ -27,7 +27,7 @@ handle_req(ApiJObj, _Props) ->
     AfterUnquoted = wh_util:to_binary(mochiweb_util:unquote(AfterAt)),
     Contact1 = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
 
-    ?LOG("registration contact: ~s", [Contact1]),
+    lager:debug("registration contact: ~s", [Contact1]),
 
     JObj1 = wh_json:set_value(<<"Contact">>, Contact1, ApiJObj),
 
@@ -67,7 +67,7 @@ handle_req(ApiJObj, _Props) ->
     end,
     wh_cache:store_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username), JObj2, Expires, fun reg_util:reg_removed_from_cache/3),
 
-    ?LOG_END("cached registration ~s@~s for ~psec", [Username, Realm, Expires]).
+    lager:debug("cached registration ~s@~s for ~psec", [Username, Realm, Expires]).
 
 -spec send_new_register/1 :: (wh_json:json_object()) -> ok.
 send_new_register(JObj) ->
@@ -77,7 +77,7 @@ send_new_register(JObj) ->
                 ,fun(J) -> wh_json:delete_key(<<"App-name">>, J) end 
                 ,fun(J) -> wh_json:delete_key(<<"Server-ID">>, J) end
                ],
-    ?LOG("sending new registration event for ~s@~s", [wh_json:get_value(<<"Username">>, JObj), wh_json:get_value(<<"Realm">>, JObj)]),
+    lager:debug("sending new registration event for ~s@~s", [wh_json:get_value(<<"Username">>, JObj), wh_json:get_value(<<"Realm">>, JObj)]),
     Event = wh_json:to_proplist(lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters)) 
         ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
     wapi_notifications:publish_register(Event).

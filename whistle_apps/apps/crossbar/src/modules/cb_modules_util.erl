@@ -24,9 +24,9 @@ pass_hashes(Username, Password) ->
 get_devices_owned_by(OwnerID, DB) ->
     case couch_mgr:get_results(DB, <<"cf_attributes/owned">>, [{<<"key">>, [OwnerID, <<"device">>]}, {<<"include_docs">>, true}]) of
         {ok, JObjs} ->
-            ?LOG("Found ~b devices owned by ~s", [length(JObjs), OwnerID]),
+            lager:debug("Found ~b devices owned by ~s", [length(JObjs), OwnerID]),
             [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
         {error, _R} ->
-            ?LOG("unable to fetch devices: ~p", [_R]),
+            lager:debug("unable to fetch devices: ~p", [_R]),
             []
     end.

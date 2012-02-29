@@ -48,7 +48,7 @@ init() ->
                       },
             supervisor:start_child(notify_sup, Crawler)
     end,
-    ?LOG_SYS("init done for ~s", [?MODULE]).
+    lager:debug("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -131,7 +131,7 @@ first_occurrence_notice(Account, Occurrence) ->
     From = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"send_from">>], Account
                              ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
 
-    ?LOG("creating first occurrence notice"),
+    lager:debug("creating first occurrence notice"),
     
     Props = [{<<"From">>, From}
              |create_template_props(Account, Occurrence)
@@ -235,7 +235,7 @@ crawler_loop() ->
 test_for_initial_occurrences(Result) ->
     Realm = wh_json:get_value([<<"value">>, <<"realm">>], Result),
     {ok, Srv} = notify_sup:listener_proc(),
-    ?LOG("testing realm '~s' for intial occurrences~n", [Realm]),
+    lager:debug("testing realm '~s' for intial occurrences~n", [Realm]),
     case wh_json:is_true([<<"value">>, <<"sent_initial_registration">>], Result) orelse wh_util:is_empty(Realm) of
         true -> ok;
         false ->
