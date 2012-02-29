@@ -69,6 +69,8 @@ authn_req(Prop, Timeout) ->
                     ,{request, Prop, fun wapi_authn:publish_req/1, get(callid), Timeout}
                     ,Timeout).
 
+-spec authz_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()}.
+-spec authz_req/2 :: (proplist() | wh_json:json_object(), pos_integer()) -> {'ok', wh_json:json_object()}.
 authz_req(Prop) ->
     authz_req(Prop, ?DEFAULT_TIMEOUT).
 authz_req(Prop, Timeout) ->
@@ -134,6 +136,7 @@ worker_count() ->
 %%--------------------------------------------------------------------
 init([Count]) ->
     process_flag(trap_exit, true),
+    put(callid, ?LOG_SYSTEM_ID),
 
     'ok' = ecallmgr_amqp_pool_worker_sup:release_all(),
 
@@ -165,7 +168,7 @@ handle_call({request, Prop, ApiFun, CallId, Timeout}, From, #state{workers=W, wo
             {noreply, State#state{workers=W1, requests_per=RP+1}, hibernate};
         {empty, _} ->
             Worker = start_worker(),
-            ?LOG("starting additional worker ~p", [Worker]),
+            lager:debug("starting additional worker ~p", [Worker]),
             ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, CallId, From, self(), Timeout),
             {noreply, State#state{worker_count=WC+1, requests_per=RP+1}, hibernate}
     end.
@@ -197,12 +200,12 @@ handle_info({worker_free, W, Elapsed}, #state{workers=Ws, elapsed_micro_per=EMP}
     {noreply, State#state{workers=queue:in(W, Ws), elapsed_micro_per=EMP+Elapsed}, hibernate};
 
 handle_info({'EXIT', W, _Reason}, #state{workers=Ws, worker_count=WC, orig_worker_count=OWC}=State) when WC < OWC ->
-    ?LOG("Worker down: ~p", [_Reason]),
+    lager:debug("Worker down: ~p", [_Reason]),
     Ws1 = queue:in(start_worker(), queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws)),
     {noreply, State#state{workers=Ws1, worker_count=worker_count()}, hibernate};
 
 handle_info({'EXIT', W, _Reason}, #state{workers=Ws}=State) ->
-    ?LOG("Worker down: ~p", [_Reason]),
+    lager:debug("Worker down: ~p", [_Reason]),
     Ws1 = queue:filter(fun(W1) when W =:= W1 -> false; (_) -> true end, Ws),
 
     {noreply, State#state{workers=Ws1, worker_count=worker_count()}, hibernate};
@@ -211,20 +214,20 @@ handle_info(reduce_labor_force
             ,#state{workers=Ws, worker_count=WC, requests_per=RP, orig_worker_count=OWC, elapsed_micro_per=EMP}=State)
   when RP > 0 andalso EMP > 0 andalso WC > OWC ->
     AvgMicro = EMP div RP, % average micro per request
-    ?LOG("Req per ~b: ~b", [?BACKOFF_PERIOD, RP]),
-    ?LOG("Avg micro per req: ~b (~b total micro)", [AvgMicro, EMP]),
+    lager:debug("Req per ~b: ~b", [?BACKOFF_PERIOD, RP]),
+    lager:debug("Avg micro per req: ~b (~b total micro)", [AvgMicro, EMP]),
     WsNeeded = round((1 / AvgMicro) * (?BACKOFF_PERIOD * 1000)), % avg workers needed
-    ?LOG("WsNeeded: ~b (have ~b)", [WsNeeded, WC]),
+    lager:debug("WsNeeded: ~b (have ~b)", [WsNeeded, WC]),
 
     erlang:send_after(?BACKOFF_PERIOD, self(), reduce_labor_force),
 
     case round((WC - WsNeeded) * 0.1) of
         Reduce when Reduce > 0 ->
-            ?LOG_SYS("Reducing worker count from ~b by ~b", [WC, Reduce]),
+            lager:debug("reducing worker count from ~b by ~b", [WC, Reduce]),
             Ws1 = reduce_workers(Ws, Reduce, OWC),
             {noreply, State#state{workers=Ws1, worker_count=worker_count(), requests_per=0, elapsed_micro_per=0}, hibernate};
         _Other ->
-            ?LOG_SYS("Not reducing workers (~b suggested)", [_Other]),
+            lager:debug("not reducing workers (~b suggested)", [_Other]),
             {noreply, State#state{requests_per=0, elapsed_micro_per=0}}
     end;
 
@@ -233,16 +236,16 @@ handle_info(reduce_labor_force, #state{requests_per=RP, worker_count=WC, orig_wo
 
     case round((WC - RP) * 0.1) of
         Reduce when Reduce > 0 andalso WC > OWC ->
-            ?LOG("Reducing worker count from ~b by ~b", [WC, Reduce]),
+            lager:debug("Reducing worker count from ~b by ~b", [WC, Reduce]),
             Ws1 = reduce_workers(Ws, Reduce, OWC),
-            ?LOG("Queue len before ~b and after ~b", [queue:len(Ws), queue:len(Ws1)]),
+            lager:debug("Queue len before ~b and after ~b", [queue:len(Ws), queue:len(Ws1)]),
             {noreply, State#state{requests_per=0, elapsed_micro_per=0, workers=Ws1, worker_count=worker_count()}, hibernate};
         _Else ->
             {noreply, State#state{requests_per=0, elapsed_micro_per=0}, hibernate}
     end;
 
 handle_info(_Info, State) ->
-    ?LOG("Unhandled message: ~p", [_Info]),
+    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 reduce_workers(Ws, Reduce, OWC) ->
@@ -268,7 +271,7 @@ reduce_workers(Ws, Reduce, OWC) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG("Terminating: ~p", [_Reason]).
+    lager:debug("Terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -287,5 +290,5 @@ code_change(_OldVsn, State, _Extra) ->
 start_worker() ->
     {ok, Pid} = ecallmgr_amqp_pool_worker_sup:start_child(),
     link(Pid),
-    ?LOG("Worker ~p started", [Pid]),
+    lager:debug("Worker ~p started", [Pid]),
     Pid.

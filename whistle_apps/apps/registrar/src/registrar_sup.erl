@@ -8,9 +8,12 @@
 
 -behaviour(supervisor).
 
+-include_lib("whistle/include/wh_types.hrl").
+
 %% API
 -export([start_link/0]).
--export([listener_proc/0, cache_proc/0]).
+-export([listener_proc/0]).
+-export([cache_proc/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -24,6 +27,13 @@
 %% API functions
 %% ===================================================================
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the supervisor
+%% @end
+%%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
@@ -43,9 +53,25 @@ listener_proc() ->
 %% Supervisor callbacks
 %% ===================================================================
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Whenever a supervisor is started using supervisor:start_link/N,
+%% this function is called by the new process to find out about
+%% restart strategy, maximum restart frequency and child
+%% specifications.
+%% @end
+%%--------------------------------------------------------------------
+-spec init([]) -> sup_init_ret().
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [
-                                  ?CACHE(reg_cache)
-                                  ,?CHILD(registrar_listener, worker)
-                                  %% Put list of ?CHILD(registration_server, worker) or ?CHILD(registration_other_sup, supervisor)
-                                 ]} }.
+    RestartStrategy = one_for_one,
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 10,
+
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+    Children = [?CACHE(reg_cache)
+                ,?CHILD(registrar_listener, worker)
+               ],
+
+    {ok, {SupFlags, Children}}.
+

@@ -19,7 +19,7 @@ handle_req(JObj, _Prop) ->
     whapps_util:put_callid(JObj),
     case wh_json:get_ne_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
         undefined ->
-            ?LOG_START("received new inbound dialplan route request"),
+            lager:debug("received new inbound dialplan route request"),
             _ =  inbound_handler(JObj);
         _AcctID ->
             ok
@@ -38,16 +38,12 @@ inbound_handler(JObj) ->
 inbound_handler(JObj, Number) ->
     case wh_number_manager:lookup_account_by_number(Number) of
         {ok, AccountId, _} ->
-            ?LOG("number associated with account ~s", [AccountId]),
+            lager:debug("number associated with account ~s", [AccountId]),
             relay_route_req(
               wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
              );
         {error, R} ->
-            whapps_util:alert(<<"alert">>, ["Source: ~s(~p)~n"
-                                            ,"Alert: could not lookup ~s~n"
-                                            ,"Fault: ~p~n"]
-                              ,[?MODULE, ?LINE, Number, R]),
-            ?LOG_END("unable to get account id ~w", [R])
+            lager:notice("unable to get account id for ~s: ~p", [Number, R])
     end.
 
 %%--------------------------------------------------------------------
@@ -58,24 +54,7 @@ inbound_handler(JObj, Number) ->
 %%--------------------------------------------------------------------
 -spec get_dest_number/1 :: (wh_json:json_object()) -> ne_binary().
 get_dest_number(JObj) ->
-    User = case whapps_config:get(<<"stepswitch">>, <<"inbound_user_field">>, <<"Request">>) of
-               <<"To">> ->
-                   case binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>) of
-                       [<<"nouser">>, _] ->
-                           [ReqUser, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
-                           ReqUser;
-                       [ToUser, _] ->
-                           ToUser
-                   end;
-               _ ->
-                   case binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>) of
-                       [<<"nouser">>, _] ->
-                           [ReqUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj), <<"@">>),
-                           ReqUser;
-                       [ToUser, _] ->
-                           ToUser
-                   end
-           end,
+    {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     wnm_util:to_e164(User).
 
 %%--------------------------------------------------------------------
@@ -108,4 +87,4 @@ custom_channel_vars(AccountId, AuthId, JObj) ->
 -spec relay_route_req/1 :: (wh_json:json_object()) -> 'ok'.
 relay_route_req(Req) ->
     wapi_route:publish_req(Req),
-    ?LOG_END("relayed route request").
+    lager:debug("relayed route request").

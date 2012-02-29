@@ -25,9 +25,9 @@
 %% like devices, ring groups, and resources.
 %% @end
 %%--------------------------------------------------------------------
--spec build/2 :: ('undefined' | ne_binary() | wh_json:json_object(), #cf_call{}) -> {'ok', wh_json:json_objects()} | 
+-spec build/2 :: ('undefined' | ne_binary() | wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_objects()} | 
                                                                                     {'error', term()}.
--spec build/3 :: ('undefined' | ne_binary() | wh_json:json_object(), 'undefined' | wh_json:json_object(), #cf_call{}) -> {'ok', wh_json:json_objects()} |
+-spec build/3 :: ('undefined' | ne_binary() | wh_json:json_object(), 'undefined' | wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_objects()} |
                                                                                                                          {'error', term()}.
 build(EndpointId, Call) ->
     build(EndpointId, wh_json:new(), Call).
@@ -47,7 +47,9 @@ build(EndpointId, Properties, Call) when is_binary(EndpointId) ->
         {error, _}=E ->
             E
     end;
-build(Endpoint, Properties, #cf_call{owner_id=OwnerId, authorizing_id=AuthorizingId}=Call) ->
+build(Endpoint, Properties, Call) ->
+    OwnerId = whapps_call:kvs_fetch(owner_id, Call),
+    AuthorizingId = whapps_call:authorizing_id(Call),
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
     EndpointOwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
     CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
@@ -70,7 +72,7 @@ build(Endpoint, Properties, #cf_call{owner_id=OwnerId, authorizing_id=Authorizin
 %% bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoints/3 :: (wh_json:json_object(), wh_json:json_object(), #cf_call{}) -> {'ok', wh_json:json_objects()} |
+-spec create_endpoints/3 :: (wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_objects()} |
                                                                                           {'error', 'no_endpoints'}.
 create_endpoints(Endpoint, Properties, Call) ->
     Fwd = cf_attributes:call_forward(Endpoint, Call),
@@ -80,27 +82,28 @@ create_endpoints(Endpoint, Properties, Call) ->
     Endpoints = case {IgnoreFwd, Substitue, Fwd} of
                     %% if the call forward object is undefined then there is no fwd'n
                     {_, _, undefined} ->
-                        ?LOG("callfwd is undefined, try creating sip endpoint"),
+                        lager:debug("callfwd is undefined, try creating sip endpoint"),
                         [catch(create_sip_endpoint(Endpoint, Properties, Call))];
                     %% if ignore ring groups is true and susbtitues is true (hence false via is_false)
                     %% then there are no endpoints to ring
                     {true, false, _} ->
-                        ?LOG("no endpoints to ring"),
+                        lager:debug("no endpoints to ring"),
                         [];
                     %% if ignore ring groups is true and susbtitues is false (hence true via is_false)
                     %% then try to ring just the device
                     {true, true, _} ->
-                        ?LOG("trying to ring just the device"),
+                        lager:debug("trying to ring just the device"),
                         [catch(create_sip_endpoint(Endpoint, Properties, Call))];
-                    %% if we are not ignoring ring groups and and substitute is not set to false
+           
+         %% if we are not ignoring ring groups and and substitute is not set to false
                     %% (hence false via is_false) then only ring the fwd'd number
                     {false, false, _} ->
-                        ?LOG("trying to ring the fwd number in ring group"),
+                        lager:debug("trying to ring the fwd number in ring group"),
                         [catch(create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call))];
                     %% if we are not ignoring ring groups and and substitute is set to false
                     %% (hence true via is_false) then only ring the fwd'd number
                     {false, true, _} ->
-                        ?LOG("trying to ring the fwd number only"),
+                        lager:debug("trying to ring the fwd number only"),
                         [catch(create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call))
                          ,catch(create_sip_endpoint(Endpoint, Properties, Call))]
                 end,
@@ -117,20 +120,21 @@ create_endpoints(Endpoint, Properties, Call) ->
 %% Fetches a endpoint defintion from the database or cache
 %% @end
 %%--------------------------------------------------------------------
--spec get/2 :: ('undefined' | ne_binary(), #cf_call{}) -> {'ok', wh_json:json_object()} | {'error', term()}.
+-spec get/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()} | {'error', term()}.
 get(undefined, _Call) ->
     {error, invalid_endpoint_id};
-get(EndpointId, #cf_call{account_db=Db}) ->
-    case wh_cache:peek({?MODULE, Db, EndpointId}) of
+get(EndpointId, Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    case wh_cache:peek({?MODULE, AccountDb, EndpointId}) of
         {ok, _}=Ok ->
             Ok;
         {error, not_found} ->
-            case couch_mgr:open_doc(Db, EndpointId) of
+            case couch_mgr:open_doc(AccountDb, EndpointId) of
                 {ok, JObj}=OK ->
-                    wh_cache:store({?MODULE, Db, EndpointId}, JObj, 300),
+                    wh_cache:store({?MODULE, AccountDb, EndpointId}, JObj, 300),
                     OK;
                 {error, R}=E ->
-                    ?LOG("unable to fetch endpoint ~s: ~p", [EndpointId, R]),
+                    lager:debug("unable to fetch endpoint ~s: ~p", [EndpointId, R]),
                     E
             end
     end.
@@ -143,11 +147,12 @@ get(EndpointId, #cf_call{account_db=Db}) ->
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec create_sip_endpoint/3 :: (wh_json:json_object(), wh_json:json_object(), #cf_call{}) -> wh_json:json_object().
-create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_id=OwnerId, account_id=AccountId
-                                                   ,request_user=RUser, cid_name=CIDName, cid_number=CIDNum}=Call) ->
+-spec create_sip_endpoint/3 :: (wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> wh_json:json_object().
+create_sip_endpoint(Endpoint, Properties, Call) ->
+    CIDName = whapps_call:caller_id_name(Call),
+    CIDNum = whapps_call:caller_id_number(Call),
     {CalleeNum, CalleeName} = cf_attributes:callee_id(Endpoint, Call),
-    {IntCIDNumber, IntCIDName} = case cf_attributes:caller_id(AuthId, OwnerId, <<"internal">>, Call) of
+    {IntCIDNumber, IntCIDName} = case cf_attributes:caller_id(<<"internal">>, Call) of
                                      %% if both the internal name and number are the same as the current
                                      %% caller id then leave it alone
                                      {CIDNum, CIDName} -> {undefined, undefined};
@@ -163,8 +168,8 @@ create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_
 
     Prop = [{<<"Invite-Format">>, wh_json:get_value([<<"sip">>, <<"invite_format">>], Endpoint, <<"username">>)}
             ,{<<"To-User">>, wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)}
-            ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, AccountId)}
-            ,{<<"To-DID">>, wh_json:get_value([<<"sip">>, <<"number">>], Endpoint, RUser)}
+            ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call))}
+            ,{<<"To-DID">>, wh_json:get_value([<<"sip">>, <<"number">>], Endpoint, whapps_call:request_user(Call))}
             ,{<<"Route">>, wh_json:get_value([<<"sip">>, <<"route">>], Endpoint)}
             ,{<<"Outgoing-Caller-ID-Number">>, IntCIDNumber}
             ,{<<"Outgoing-Caller-ID-Name">>, IntCIDName}
@@ -193,16 +198,16 @@ create_sip_endpoint(Endpoint, Properties, #cf_call{authorizing_id=AuthId, owner_
 %% the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec create_call_fwd_endpoint/4 :: (wh_json:json_object(), wh_json:json_object(), wh_json:json_object(), #cf_call{}) -> wh_json:json_object().
-create_call_fwd_endpoint(Endpoint, Properties, CallFwd, #cf_call{request_user=ReqUser}=Call) ->
-    ?LOG("call forwarding endpoint to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
+-spec create_call_fwd_endpoint/4 :: (wh_json:json_object(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> wh_json:json_object().
+create_call_fwd_endpoint(Endpoint, Properties, CallFwd, Call) ->
+    lager:debug("call forwarding endpoint to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
     IgnoreEarlyMedia = case wh_json:is_true(<<"require_keypress">>, CallFwd)
                            orelse not wh_json:is_true(<<"substitute">>, CallFwd) of
                            true -> <<"true">>;
                            false -> wh_json:get_binary_boolean(<<"ignore_early_media">>, CallFwd)
                        end,
     Prop = [{<<"Invite-Format">>, <<"route">>}
-            ,{<<"To-DID">>, wh_json:get_value(<<"number">>, Endpoint, ReqUser)}
+            ,{<<"To-DID">>, wh_json:get_value(<<"number">>, Endpoint, whapps_call:request_user(Call))}
             ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallFwd, <<"unknown">>))/binary>>}
             ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
             ,{<<"Bypass-Media">>, <<"false">>}
@@ -221,7 +226,8 @@ create_call_fwd_endpoint(Endpoint, Properties, CallFwd, #cf_call{request_user=Re
 %% the endpoint
 %% @end
 %%--------------------------------------------------------------------
-generate_sip_headers(Endpoint, #cf_call{inception=Inception}) ->
+generate_sip_headers(Endpoint, Call) ->
+    Inception = whapps_call:inception(Call),
     HeaderFuns = [fun(J) ->
                           case wh_json:get_value([<<"sip">>, <<"custom_sip_headers">>], Endpoint) of
                               undefined -> J;
@@ -253,17 +259,17 @@ generate_sip_headers(Endpoint, #cf_call{inception=Inception}) ->
 %% call.
 %% @end
 %%--------------------------------------------------------------------
--spec generate_ccvs/2 :: (wh_json:json_object(), #cf_call{}) -> wh_json:json_object().
--spec generate_ccvs/3 :: (wh_json:json_object(), #cf_call{}, 'undefined' | wh_json:json_object()) -> wh_json:json_object().
+-spec generate_ccvs/2 :: (wh_json:json_object(), whapps_call:call()) -> wh_json:json_object().
+-spec generate_ccvs/3 :: (wh_json:json_object(), whapps_call:call(), 'undefined' | wh_json:json_object()) -> wh_json:json_object().
 
 generate_ccvs(Endpoint, Call) ->
     generate_ccvs(Endpoint, Call, undefined).
-generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
+generate_ccvs(Endpoint, Call, CallFwd) ->
     CCVFuns = [fun(J) ->
                        case wh_json:is_true(<<"keep_caller_id">>, CallFwd) of
                            false -> J;
                            true ->
-                                ?LOG("call forwarding configured to keep the caller id"),
+                                lager:debug("call forwarding configured to keep the caller id"),
                                wh_json:set_value(<<"Retain-CID">>, <<"true">>, J)
                        end
                end
@@ -284,7 +290,7 @@ generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
                ,fun(J) ->
                         case wh_json:get_value(<<"pvt_account_id">>, Endpoint) of
                             undefined ->
-                                wh_json:set_value(<<"Account-ID">>, AccountId, J);
+                                wh_json:set_value(<<"Account-ID">>, whapps_call:account_id(Call), J);
                             PvtAccountId ->
                                 wh_json:set_value(<<"Account-ID">>, PvtAccountId, J)
                         end
@@ -293,14 +299,16 @@ generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
                         case CallFwd of
                             undefined -> J;
                             _ ->
-                                wh_json:set_value(<<"Call-Forward">>, <<"true">>, J)
+                                wh_json:set_values([{<<"Call-Forward">>, <<"true">>}
+                                                    ,{<<"Authorizing-Type">>, <<"device">>}
+                                                   ], J)
                         end
                 end
                ,fun(J) ->
                         case wh_json:is_true(<<"require_keypress">>, CallFwd) of
                             false -> J;
                             _ ->
-                                ?LOG("call forwarding configured to require key press"),
+                                lager:debug("call forwarding configured to require key press"),
                                 Confirm = [{<<"Confirm-Key">>, <<"1">>}
                                            ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
                                            ,{<<"Confirm-File">>, ?CONFIRM_FILE}],
@@ -316,7 +324,7 @@ generate_ccvs(Endpoint, #cf_call{account_id=AccountId}, CallFwd) ->
                ,fun(J) ->
                         case wh_json:get_value(<<"pvt_type">>, Endpoint) of
                             <<"device">> ->
-                                ?LOG("setting inherit_codec"),
+                                lager:debug("setting inherit_codec"),
                                 wh_json:set_value(<<"Inherit-Codec">>, <<"true">>, J);
                             false -> J
                         end

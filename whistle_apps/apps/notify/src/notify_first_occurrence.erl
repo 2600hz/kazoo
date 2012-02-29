@@ -39,9 +39,16 @@ init() ->
     notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
-    Crawler = {notify_first_occurrence, {notify_first_occurrence, start_crawler, []}, permanent, 5000, worker, [notify_first_occurrence]},
-    supervisor:start_child(notify_sup, Crawler),
-    ?LOG_SYS("init done for ~s", [?MODULE]).
+    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"crawl_for_first_occurrence">>, true) of
+        false -> ok;
+        true ->
+            Crawler = {notify_first_occurrence
+                       ,{notify_first_occurrence, start_crawler, []}
+                       ,permanent, 5000, worker, [notify_first_occurrence]
+                      },
+            supervisor:start_child(notify_sup, Crawler)
+    end,
+    lager:debug("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -124,7 +131,7 @@ first_occurrence_notice(Account, Occurrence) ->
     From = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"send_from">>], Account
                              ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
 
-    ?LOG("creating first occurrence notice"),
+    lager:debug("creating first occurrence notice"),
     
     Props = [{<<"From">>, From}
              |create_template_props(Account, Occurrence)
@@ -140,7 +147,7 @@ first_occurrence_notice(Account, Occurrence) ->
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
     
     To = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"send_to">>], Account
-                           ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"sales@2600hz.com">>)),
+                           ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
     RepEmail = notify_util:get_rep_email(Account),
 
     build_and_send_email(TxtBody, HTMLBody, Subject, To, Props),
@@ -207,7 +214,8 @@ crawler_loop() ->
         _ ->
             ok
     end,
-    erlang:send_after(30000, self(), wakeup),
+    Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_sleep_time">>, 300000),
+    erlang:send_after(Cycle, self(), wakeup),
     flush(),
     proc_lib:hibernate(?MODULE, crawler_loop, []).
 
@@ -227,8 +235,8 @@ crawler_loop() ->
 test_for_initial_occurrences(Result) ->
     Realm = wh_json:get_value([<<"value">>, <<"realm">>], Result),
     {ok, Srv} = notify_sup:listener_proc(),
-    ?LOG("testing realm '~s' for intial occurrences~n", [Realm]),
-    case wh_json:is_true([<<"value">>, <<"sent_initial_registration">>], Result) of
+    lager:debug("testing realm '~s' for intial occurrences~n", [Realm]),
+    case wh_json:is_true([<<"value">>, <<"sent_initial_registration">>], Result) orelse wh_util:is_empty(Realm) of
         true -> ok;
         false ->
             Q = gen_listener:queue_name(Srv),
@@ -256,7 +264,8 @@ test_for_initial_occurrences(Result) ->
                 _ -> ok 
             end
     end,
-    timer:sleep(1000).
+    Delay = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_interaccount_delay">>, 1000),
+    timer:sleep(Delay).
 
 %%--------------------------------------------------------------------
 %% @private

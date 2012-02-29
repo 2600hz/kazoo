@@ -38,14 +38,8 @@
 
 -define(FS_TIMEOUT, 5000).
 
-%% keep in sync with wh_api.hrl OPTIONAL_CHANNEL_QUERY_REQ_HEADERS
--define(CALL_STATUS_HEADERS, [<<"Unique-ID">>, <<"Call-Direction">>, <<"Caller-Caller-ID-Name">>, <<"Caller-Caller-ID-Number">>
-                                  ,<<"Caller-Network-Addr">>, <<"Caller-Destination-Number">>, <<"FreeSWITCH-Hostname">>
-                             ]).
--define(CALL_STATUS_MAPPING, lists:zip(?CALL_STATUS_HEADERS, [<<"Call-ID">> | wapi_channel_query:optional_headers()])).
-
 -spec resource_consume/3 :: (pid(), ne_binary(), wh_json:json_object()) -> {'resource_consumed', binary(), binary(), integer()} |
-                                                                   {'resource_error', binary() | 'error'}.
+                                                                           {'resource_error', binary() | 'error'}.
 resource_consume(FsNodePid, Route, JObj) ->
     FsNodePid ! {resource_consume, self(), Route, JObj},
     receive Resp -> Resp
@@ -58,35 +52,35 @@ distributed_presence(Srv, Type, Event) ->
 
 -spec show_channels/1 :: (pid()) -> [proplist(),...] | [].
 show_channels(Srv) ->
-    case catch(gen_server:call(Srv, show_channels, 100)) of
+    case catch(gen_server:call(Srv, show_channels, ?FS_TIMEOUT)) of
         {'EXIT', _} -> [];
         Else -> Else
     end.        
 
 -spec hostname/1 :: (pid()) -> fs_api_ret().
 hostname(Srv) ->
-    case catch(gen_server:call(Srv, hostname, 100)) of
+    case catch(gen_server:call(Srv, hostname, ?FS_TIMEOUT)) of
         {'EXIT', _} -> timeout;
         Else -> Else
     end.
 
 -spec fs_node/1 :: (pid()) -> atom().
 fs_node(Srv) ->
-    case catch(gen_server:call(Srv, fs_node, 100)) of
+    case catch(gen_server:call(Srv, fs_node, ?FS_TIMEOUT)) of
         {'EXIT', _} -> undefined;
         Else -> Else
     end.
 
 -spec uuid_exists/2 :: (pid(), ne_binary()) -> boolean().
 uuid_exists(Srv, UUID) ->
-    case catch(gen_server:call(Srv, {uuid_exists, UUID}, 100)) of
+    case catch(gen_server:call(Srv, {uuid_exists, UUID}, ?FS_TIMEOUT)) of
         {'EXIT', _} -> false;
         Else -> Else
     end.
 
 -spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | {'error', ne_binary()} | 'timeout'.
 uuid_dump(Srv, UUID) ->
-    case catch(gen_server:call(Srv, {uuid_dump, UUID}, 100)) of
+    case catch(gen_server:call(Srv, {uuid_dump, UUID}, ?FS_TIMEOUT)) of
         {'EXIT', _} -> [];
         Else -> Else
     end.        
@@ -100,7 +94,8 @@ start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
 init([Node, Options]) ->
-    ?LOG_SYS("starting new fs node ~s", [Node]),
+    put(callid, Node),
+    lager:debug("starting new fs node ~s", [Node]),
 
     process_flag(trap_exit, true),
     put(callid, wh_util:to_binary(Node)),
@@ -116,8 +111,12 @@ handle_call(hostname, _From, #state{node=Node}=State) ->
 handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
     spawn(fun() ->
                   case freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
-                      {'ok', Result} -> ?LOG(UUID, "result of uuid_exists: ~s", [Result]), gen_server:reply(From, wh_util:is_true(Result));
-                      _ -> ?LOG(UUID, "failed to get result from uuid_exists", []), gen_server:reply(From, false)
+                      {'ok', Result} ->
+                          lager:debug("result of uuid_exists(~s): ~s", [UUID, Result]),
+                          gen_server:reply(From, wh_util:is_true(Result));
+                      _ ->
+                          lager:debug("failed to get result from uuid_exists(~s)", [UUID]),
+                          gen_server:reply(From, false)
                   end
           end),
     {noreply, State};
@@ -128,7 +127,7 @@ handle_call({uuid_dump, UUID}, From, #state{node=Node}=State) ->
                           Props = ecallmgr_util:eventstr_to_proplist(Result),
                           gen_server:reply(From, {ok, Props});
                       Error -> 
-                          ?LOG(UUID, "failed to get result from uuid_dump", []),
+                          lager:debug("failed to get result from uuid_dump(~s)", [UUID]),
                           gen_server:reply(From, Error)
                   end
           end),
@@ -167,7 +166,9 @@ handle_info({event, [undefined | Data]}, #state{stats=Stats, node=Node}=State) -
         <<"PRESENCE_", _/binary>> = EvtName ->
             _ = case props:get_value(<<"Distributed-From">>, Data) of
                     undefined ->
-                        Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)} | Data],
+                        NodeBin = wh_util:to_binary(Node),
+                        ecallmgr_notify:send_presence_event(EvtName, NodeBin, Data),
+                        Headers = [{<<"Distributed-From">>, NodeBin} | Data],
                         [distributed_presence(Srv, EvtName, Headers)
                          || Srv <- ecallmgr_fs_sup:node_handlers(),
                             Srv =/= self()
@@ -188,17 +189,17 @@ handle_info({event, [undefined | Data]}, #state{stats=Stats, node=Node}=State) -
 handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
     case props:get_value(<<"Event-Name">>, Data) of
         <<"CHANNEL_CREATE">> ->
-            ?LOG(UUID, "received channel create event", []),
+            lager:debug("received channel create event: ~s", [UUID]),
             spawn(fun() -> ecallmgr_call_control:add_leg(Data) end),
             {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}, hibernate};
         <<"CHANNEL_DESTROY">> ->
             ChanState = props:get_value(<<"Channel-State">>, Data),
             case ChanState of
                 <<"CS_NEW">> -> % ignore
-                    ?LOG(UUID, "ignoring channel destroy because of CS_NEW", []),
+                    lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]),
                     {noreply, State, hibernate};
                 <<"CS_DESTROY">> ->
-                    ?LOG(UUID, "received channel destroyed", []),
+                    lager:debug("received channel destroyed: ~s", [UUID]),
                     spawn(fun() -> 
                                   ecallmgr_call_control:rm_leg(Data),
                                   ecallmgr_call_events:publish_channel_destroy(Data)
@@ -211,6 +212,7 @@ handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_
         <<"PRESENCE_", _/binary>> = EvtName ->
             _ = case props:get_value(<<"Distributed-From">>, Data) of
                     undefined ->
+                        ecallmgr_notify:send_presence_event(EvtName, Node, Data),
                         Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
                         [distributed_presence(Srv, EvtName, Headers)
                          || Srv <- ecallmgr_fs_sup:node_handlers(),
@@ -257,12 +259,12 @@ handle_info(timeout, #state{node=Node}=State) ->
     {foo, Node} ! register_event_handler,
     receive
         ok ->
-            ?LOG("event handler registered on node ~s", [Node]),
+            lager:debug("event handler registered on node ~s", [Node]),
             Res = lists:flatten(run_start_cmds(Node)),
 
             case lists:filter(fun was_not_successful_cmd/1, Res) of
                 [] ->
-                    ?LOG("everything went according to plan"),
+                    lager:debug("everything went according to plan"),
                     {noreply, continue_startup(State), hibernate};
                 Errs ->
                     print_api_responses(Errs),
@@ -270,34 +272,34 @@ handle_info(timeout, #state{node=Node}=State) ->
                     {stop, normal, State}
             end;
         {error, Reason} ->
-            ?LOG("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
+            lager:debug("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
             {stop, Reason, State};
         timeout ->
-            ?LOG("timeout when trying to register event handler on node ~s", [Node]),
+            lager:debug("timeout when trying to register event handler on node ~s", [Node]),
             {stop, timeout, State}
     after ?FS_TIMEOUT ->
-            ?LOG("fs timeout when trying to register event handler on node ~s", [Node]),
+            lager:debug("fs timeout when trying to register event handler on node ~s", [Node]),
             {stop, timeout, State}
     end;
 
 handle_info({'EXIT', _Pid, noconnection}, State) ->
-    ?LOG("noconnection received for node, pid: ~p", [_Pid]),
+    lager:debug("noconnection received for node, pid: ~p", [_Pid]),
     {stop, normal, State};
 
 handle_info({nodedown, Node}, #state{node=Node}=State) ->
-    ?LOG("nodedown received from node ~s", [Node]),
+    lager:debug("nodedown received from node ~s", [Node]),
     {stop, normal, State};
 
 handle_info(nodedown, #state{node=Node}=State) ->
-    ?LOG("nodedown received from node ~s", [Node]),
+    lager:debug("nodedown received from node ~s", [Node]),
     {stop, normal, State};
 
 handle_info(_Msg, #state{node=Node}=State) ->
-    ?LOG("unhandled message from node ~s: ~p", [Node, _Msg]),
+    lager:debug("unhandled message from node ~s: ~p", [Node, _Msg]),
     {noreply, State}.
 
 terminate(_Reason, #state{node=Node}) ->
-    ?LOG_SYS("fs node ~s termination: ~p", [Node, _Reason]).
+    lager:debug("fs node ~s termination: ~p", [Node, _Reason]).
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -311,7 +313,7 @@ continue_startup(#state{node=Node, stats=Stats}=State) ->
                                  ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
                                  ,'CUSTOM', 'sofia::register', 'sofia::transfer'
                                 ]),
-    ?LOG("bound to switch events on node ~s", [Node]),
+    lager:debug("bound to switch events on node ~s", [Node]),
 
     State#state{stats=(Stats#node_stats{
                          created_channels = Active
@@ -323,7 +325,7 @@ originate_channel(Node, Pid, Route, AvailChan, JObj) ->
     ChannelVars = ecallmgr_fs_xml:get_channel_vars(JObj),
     Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), JObj),
     OrigStr = binary_to_list(list_to_binary([ChannelVars, Route, " ", Action])),
-    ?LOG_SYS("originate ~s on node ~s", [OrigStr, Node]),
+    lager:debug("originate ~s on node ~s", [OrigStr, Node]),
     _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [OrigStr]),
     Result = freeswitch:bgapi(Node, originate, OrigStr),
     case Result of
@@ -331,24 +333,24 @@ originate_channel(Node, Pid, Route, AvailChan, JObj) ->
             receive
                 {bgok, JobId, X} ->
                     CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
-                    ?LOG_START(CallID, "originate on ~s with job id ~s received bgok ~s", [Node, JobId, X]),
+                    lager:debug("originate on ~s with job id ~s received bgok ~s", [Node, JobId, X]),
                     CtlQ = start_call_handling(Node, CallID),
                     Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
                 {bgerror, JobId, Y} ->
                     ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-                    ?LOG_SYS("~s failed to originate, ~p", [Node, ErrMsg]),
+                    lager:debug("~s failed to originate, ~p", [Node, ErrMsg]),
                     Pid ! {resource_error, ErrMsg}
             after
                 9000 ->
-                    ?LOG_SYS("~s originate timed out", [Node]),
+                    lager:debug("~s originate timed out", [Node]),
                     Pid ! {resource_error, timeout}
             end;
         {error, Y} ->
             ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-            ?LOG_SYS("~s failed to originate ~p", [Node, ErrMsg]),
+            lager:debug("~s failed to originate ~p", [Node, ErrMsg]),
             Pid ! {resource_error, ErrMsg};
         timeout ->
-            ?LOG_SYS("~s originate timed out", [Node]),
+            lager:debug("~s originate timed out", [Node]),
             Pid ! {resource_error, timeout}
     end.
 
@@ -369,7 +371,7 @@ diagnostics(Pid, Stats) ->
     Pid ! Resp.
 
 channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) ->
-    ?LOG("requested for ~p channels with ~p avail", [MinReq, AvailChan]),
+    lager:debug("requested for ~p channels with ~p avail", [MinReq, AvailChan]),
     case MinReq > AvailChan of
         true -> Pid ! {resource_response, FSHandlerPid, []};
         false -> Pid ! {resource_response, FSHandlerPid, [{node, FSHandlerPid}
@@ -418,10 +420,10 @@ process_custom_data(Data) ->
     Subclass = props:get_value(<<"Event-Subclass">>, Data),
     case Subclass of
         <<"sofia::register">> ->
-            ?LOG("received registration event"),
+            lager:debug("received registration event"),
             publish_register_event(Data);
         <<"sofia::transfer">> ->
-            ?LOG("received transfer event"),
+            lager:debug("received transfer event"),
             process_transfer_event(props:get_value(<<"Type">>, Data), Data);
         _ ->
             ok
@@ -442,7 +444,7 @@ publish_register_event(Data) ->
                             ,{<<"Call-ID">>, get(callid)}
                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
                           ,wapi_registration:success_keys()),
-    ?LOG("sending successful registration"),
+    lager:debug("sending successful registration"),
     wapi_registration:publish_success(ApiProp).
 
 -spec process_transfer_event/2 :: (ne_binary(), proplist()) -> ok.
@@ -452,11 +454,16 @@ process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
                                  props:get_value(<<"Transferor-UUID">>, Data);
                              _ ->
                                  props:get_value(<<"Transferee-UUID">>, Data)
-    end,
-    case ecallmgr_call_control_sup:find_worker(TransfererCtrlUUId) of
-        {ok, Pid1} -> 
-            ?LOG(TransfererCtrlUUId, "sending transferer notice to ecallmgr_call_control ~p", [Pid1]),
-            ecallmgr_call_control:transferer(Pid1, Data);
+                         end,
+
+    case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
+        {ok, Pids} -> 
+            [begin
+                 ecallmgr_call_control:transferer(Pid, Data),
+                 lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
+             end
+             || Pid <- Pids
+            ];
         {error, not_found} -> 
             ok
     end;
@@ -466,19 +473,29 @@ process_transfer_event(_, Data) ->
                                  props:get_value(<<"Transferor-UUID">>, Data);
                              _ ->
                                  props:get_value(<<"Transferee-UUID">>, Data)
-    end,
-    case ecallmgr_call_control_sup:find_worker(TransfererCtrlUUId) of
-        {ok, Pid1} -> 
-            ?LOG(TransfererCtrlUUId, "sending transferer notice to ecallmgr_call_control ~p", [Pid1]),
-            ecallmgr_call_control:transferer(Pid1, Data);
+                         end,
+
+    case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
+        {ok, TransfererPids} -> 
+            [begin 
+                 ecallmgr_call_control:transferer(Pid, Data),
+                 lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
+             end
+             || Pid <- TransfererPids
+            ];
         {error, not_found} -> 
             ok
     end,
     TransfereeCtrlUUId = props:get_value(<<"Replaces">>, Data),
-    case ecallmgr_call_control_sup:find_worker(TransfereeCtrlUUId) of
-        {ok, Pid2} -> 
-            ?LOG(TransfereeCtrlUUId, "sending transferee notice to ecallmgr_call_control ~p", [Pid2]),
-            ecallmgr_call_control:transferee(Pid2, Data);
+
+    case ecallmgr_call_control_sup:find_workers(TransfereeCtrlUUId) of
+        {ok, ReplacesPids} -> 
+            [begin 
+                 ecallmgr_call_control:transferee(Pid, Data),
+                 lager:debug("sending transferee notice for ~s to ecallmgr_call_control ~p", [TransfereeCtrlUUId, Pid])
+             end
+             || Pid <- ReplacesPids
+            ];
         {error, not_found} ->
             ok
     end.    
@@ -503,7 +520,7 @@ get_unset_vars(JObj) ->
     %% Refactor (Karl wishes he had unit tests here for you to use)
     ExportProps = [{K, <<>>} || K <- wh_json:get_value(<<"Export-Custom-Channel-Vars">>, JObj, [])],
 
-    Export = [K || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], [{<<"Custom-Channel-Vars">>, ExportProps}])
+    Export = [K || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], [{<<"Custom-Channel-Vars">>, wh_json:from_list(ExportProps)}])
                        ,([K, _] = string:tokens(binary_to_list(KV), "=")) =/= undefined],
     case [[$u,$n,$s,$e,$t,$: | K] || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], wh_json:to_proplist(JObj))
                                ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)] of
@@ -520,9 +537,9 @@ get_unset_vars(JObj) ->
 
 -spec run_start_cmds/1 :: (atom()) -> cmd_results().
 run_start_cmds(Node) ->
-    case ecallmgr_config:get(fs_cmds, [], Node) of
+    case ecallmgr_config:get(<<"fs_cmds">>, [], Node) of
         [] ->
-            ?LOG("no freeswitch commands to run, seems suspect"),
+            lager:debug("no freeswitch commands to run, seems suspect"),
             timer:sleep(5000),
             [];
         Cmds when is_list(Cmds) ->
@@ -532,7 +549,7 @@ run_start_cmds(Node) ->
                 true ->
                     process_cmd(Node, CmdJObj);
                 false ->
-                    ?LOG("recv something other than a list for fs_cmds: ~p", [CmdJObj]),
+                    lager:debug("recv something other than a list for fs_cmds: ~p", [CmdJObj]),
                     timer:sleep(5000),
                     run_start_cmds(Node)
             end
@@ -573,7 +590,7 @@ process_resp(_, _, [], Acc) ->
 was_bad_error(<<"[Module already loaded]">>, load, _) ->
     false;
 was_bad_error(_E, _, _) ->
-    ?LOG("bad error: ~s", [_E]),
+    lager:debug("bad error: ~s", [_E]),
     true.
 
 was_not_successful_cmd({ok, _}) ->
@@ -593,8 +610,8 @@ get_active_channels(Node) ->
     end.
 
 -spec convert_rows/2 :: (atom(), binary()) -> [proplist(),...] | [].
-convert_rows(_, <<"\n0 total.\n">>) ->
-    ?LOG("No channels up"),
+convert_rows(Node, <<"\n0 total.\n">>) ->
+    lager:debug("no channels up on node ~s", [Node]),
     [];
 convert_rows(Node, RowsBin) ->
     [_|Rows] = binary:split(RowsBin, <<"\n">>, [global]),
@@ -604,34 +621,39 @@ convert_rows(Node, RowsBin) ->
 return_rows(Node, [<<>>|Rs], Acc) ->
     return_rows(Node, Rs, Acc);
 return_rows(Node, [R|Rs], Acc) ->
-    ?LOG("R: ~s", [R]),
     case binary:split(R, <<",">>) of
         [_Total] ->
-            ?LOG("Total: ~s", [_Total]),
+            lager:debug("found ~s calls on node ~s", [_Total, Node]),
             return_rows(Node, Rs, Acc);
         [UUID|_] ->
-            ?LOG("UUID: ~s", [UUID]),
-            {ok, Dump} = freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)),
-            DumpProp = ecallmgr_util:eventstr_to_proplist(Dump),
-
-            %% Pull wanted data from the converted DUMP proplist
-            Prop = [{AMQPKey, props:get_value(FSKey, DumpProp)} || {FSKey, AMQPKey} <- ?CALL_STATUS_MAPPING],
-            return_rows(Node, Rs, [ Prop | Acc ])
+            case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
+                {'ok', Result} -> 
+                    Props = ecallmgr_util:eventstr_to_proplist(Result),
+                    ApplicationName = props:get_value(<<"variable_current_application">>, Props),
+                    JObj = wh_json:from_list([{<<"Switch-Hostname">>, Node}
+                                              ,{<<"Answer-State">>, props:get_value(<<"Answer-State">>, Props)}
+                                              | ecallmgr_call_events:create_event_props(<<>>, ApplicationName, Props)
+                                             ]),
+                    return_rows(Node, Rs, [JObj|Acc]);
+                Error -> 
+                    lager:debug("failed to get result from uuid_dump(~s): ~p", [UUID, Error]),
+                    return_rows(Node, Rs, Acc)
+            end
     end;
 return_rows(_Node, [], Acc) -> Acc.
 
 print_api_responses(Res) ->
-    ?LOG_SYS("Start cmd results:"),
+    lager:debug("start cmd results:"),
     _ = [ print_api_response(ApiRes) || ApiRes <- lists:flatten(Res)],
-    ?LOG_SYS("End cmd results").
+    lager:debug("end cmd results").
 
 print_api_response({ok, {Cmd, Args}, Res}) ->
-    ?LOG_SYS("ok: ~s(~s) => ~s", [Cmd, Args, Res]);
+    lager:debug("ok: ~s(~s) => ~s", [Cmd, Args, Res]);
 print_api_response({error, {Cmd, Args}, Res}) ->
-    ?LOG_SYS("error: ~s(~s) => ~s", [Cmd, Args, Res]);
+    lager:debug("error: ~s(~s) => ~s", [Cmd, Args, Res]);
 print_api_response({error, Res}) ->
-    ?LOG_SYS("error: ~s", [Res]);
+    lager:debug("error: ~s", [Res]);
 print_api_response({timeout, {Cmd, Arg}}) ->
-    ?LOG_SYS("timeout: ~s(~s)", [Cmd, Arg]);
+    lager:debug("timeout: ~s(~s)", [Cmd, Arg]);
 print_api_response(Other) ->
-    ?LOG_SYS("other: ~p", [Other]).
+    lager:debug("other: ~p", [Other]).

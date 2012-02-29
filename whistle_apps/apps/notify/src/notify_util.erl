@@ -40,10 +40,10 @@ send_email(_, <<>>, _) ->
 send_email(From, To, Email) ->
     Encoded = mimemail:encode(Email),
     Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
-    ?LOG("sending email to ~s from ~s via ~s", [To, From, Relay]),
+    lager:debug("sending email to ~s from ~s via ~s", [To, From, Relay]),
     ReqId = get(callid),
     gen_smtp_client:send({From, [To], Encoded}, [{relay, Relay}]
-                         ,fun(X) -> ?LOG(ReqId, "email relay responded: ~p", [X]) end).
+                         ,fun(X) -> put(callid, ReqId), lager:debug("email relay responded: ~p", [X]) end).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -67,6 +67,8 @@ normalize_proplist(Props) ->
 
 normalize_proplist_element({K, V}) when is_list(V) -> 
     {normalize_value(K), normalize_proplist(V)};
+normalize_proplist_element({K, V}) when is_binary(V) -> 
+    {normalize_value(K), mochiweb_html:escape(V)};
 normalize_proplist_element({K, V}) -> 
     {normalize_value(K), V};
 normalize_proplist_element(Else) ->
@@ -106,24 +108,24 @@ compile_default_template(TemplateModule, Category, Key) ->
 %%--------------------------------------------------------------------
 -spec render_template/3 :: (ne_binary() | 'undefined', atom(), proplist()) -> {'ok', iolist()} | {'error', term()}.
 render_template(undefined, DefaultTemplate, Props) ->
-    ?LOG("rendering default ~s template", [DefaultTemplate]),
+    lager:debug("rendering default ~s template", [DefaultTemplate]),
     DefaultTemplate:render(Props);
 render_template(Template, DefaultTemplate, Props) ->
     try       
         CustomTemplate = wh_util:to_atom(list_to_binary([couch_mgr:get_uuid(), "_"
-                                                        ,wh_json:to_binary(DefaultTemplate)
+                                                        ,wh_util:to_binary(DefaultTemplate)
                                                         ])
                                          ,true),
-        ?LOG("compiling custom ~s template", [DefaultTemplate]),
+        lager:debug("compiling custom ~s template", [DefaultTemplate]),
         {ok, CustomTemplate} = erlydtl:compile(Template, CustomTemplate),
-        ?LOG("rendering custom template ~s", [CustomTemplate]),
+        lager:debug("rendering custom template ~s", [CustomTemplate]),
         Result = CustomTemplate:render(Props),
         code:purge(CustomTemplate),
         code:delete(CustomTemplate),
         Result
     catch
         _:_E ->
-            ?LOG("error compiling custom ~s template: ~p", [DefaultTemplate, _E]),
+            lager:debug("error compiling custom ~s template: ~p", [DefaultTemplate, _E]),
             render_template(undefined, DefaultTemplate, Props)
     end.
 
@@ -155,7 +157,7 @@ get_service_props(Request, Account, ConfigCat) ->
     [_, Module] = binary:split(ConfigCat, <<".">>),
     case Tree =/= [] andalso couch_mgr:open_doc(?WH_ACCOUNTS_DB, lists:last(Tree)) of
         {ok, JObj} ->
-            ?LOG("looking for notifications '~s' service info in: ~s", [Module, wh_json:get_value(<<"_id">>, JObj)]),
+            lager:debug("looking for notifications '~s' service info in: ~s", [Module, wh_json:get_value(<<"_id">>, JObj)]),
             [{<<"url">>, wh_json:get_value([<<"notifications">>, Module, <<"service_url">>], JObj, DefaultUrl)}
              ,{<<"name">>, wh_json:get_value([<<"notifications">>, Module, <<"service_name">>], JObj, DefaultName)}
              ,{<<"provider">>, wh_json:get_value([<<"notifications">>, Module, <<"service_provider">>], JObj, DefaultProvider)}
@@ -164,7 +166,7 @@ get_service_props(Request, Account, ConfigCat) ->
              ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
             ];
         _E ->
-            ?LOG("failed to find parent for notifications '~s' service info: ~p", [Module, _E]),
+            lager:debug("failed to find parent for notifications '~s' service info: ~p", [Module, _E]),
             [{<<"url">>, DefaultUrl}
              ,{<<"name">>, DefaultName}
              ,{<<"provider">>, DefaultProvider}
@@ -196,19 +198,19 @@ get_rep_email([Parent|Parents], AccountId) ->
     ViewOptions = [{<<"include_docs">>, true}
                    ,{<<"key">>, AccountId}
                   ],
-    ?LOG("attempting to find sub account rep for ~s in parent account ~s", [AccountId, Parent]),
+    lager:debug("attempting to find sub account rep for ~s in parent account ~s", [AccountId, Parent]),
     case couch_mgr:get_results(ParentDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
         {ok, [Result|_]} ->
             case wh_json:get_value([<<"doc">>, <<"email">>], Result) of
                 undefined ->
-                    ?LOG("found rep but they have no email, attempting to get email of admin"),
+                    lager:debug("found rep but they have no email, attempting to get email of admin"),
                     wh_json:get_value(<<"email">>, find_admin(ParentDb));
                 Else ->
-                    ?LOG("found rep but email: ~s", [Else]), 
+                    lager:debug("found rep but email: ~s", [Else]), 
                     Else
             end;
         _E -> 
-            ?LOG("failed to find rep for sub account, attempting next parent"),
+            lager:debug("failed to find rep for sub account, attempting next parent"),
             get_rep_email(Parents, Parents)
     end.
     
@@ -235,13 +237,13 @@ find_admin(AccountDb) when is_binary(AccountDb) ->
                      ],
             case Admins of
                 [] ->
-                    ?LOG("failed to find any admins with email addresses in ~s", [AccountDb]),
+                    lager:debug("failed to find any admins with email addresses in ~s", [AccountDb]),
                     wh_json:new();
                 Else -> 
                     wh_json:get_value(<<"doc">>, hd(Else))
             end;
         _E -> 
-            ?LOG("faild to find users in ~s: ~p", [AccountDb, _E]),
+            lager:debug("faild to find users in ~s: ~p", [AccountDb, _E]),
             wh_json:new()
     end;
 find_admin(Account) ->
@@ -255,13 +257,12 @@ find_admin(Account) ->
 %%--------------------------------------------------------------------
 -spec get_account_doc/1 :: (wh_json:json_object()) -> {ok, wh_json:json_object()} | {error, term()}.
 get_account_doc(JObj) ->
-    {AcctDb, AcctId} = case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
-                           {undefined, undefined} -> undefined;
-                           {undefined, Id1} ->
-                               {wh_util:format_account_id(Id1, encoded), Id1};
-                           {Id2, undefined} ->
-                               {Id2, wh_util:format_account_id(Id2, raw)};
-                           Else -> Else 
-                       end,
-    ?LOG("attempting to load account doc ~s from ~s", [AcctId, AcctDb]),
-    couch_mgr:open_doc(AcctDb, AcctId).
+    case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
+        {undefined, undefined} -> undefined;
+        {undefined, Id1} ->
+            couch_mgr:open_doc(wh_util:format_account_id(Id1, encoded), Id1);
+        {Id2, undefined} ->
+            couch_mgr:open_doc(Id2, wh_util:format_account_id(Id2, raw));
+        {Db, AccountId} -> 
+            couch_mgr:open_doc(Db, AccountId)
+    end.

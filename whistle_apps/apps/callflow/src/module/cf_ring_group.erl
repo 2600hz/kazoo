@@ -20,25 +20,24 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
     Endpoints = get_endpoints(Data, Call),
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
-    ?LOG("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case length(Endpoints) > 0 andalso cf_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
+    lager:debug("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
+    case length(Endpoints) > 0 andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
         false ->
-            ?CF_ALERT({error, wh_json:new()}, "ring group has no endpoints", Call),
+            lager:notice("ring group has no endpoints"),
             cf_exe:continue(Call);
         {ok, _} ->
-            ?LOG("completed successful bridge to the ring group"),
+            lager:debug("completed successful bridge to the ring group"),
             cf_exe:stop(Call);
         {fail, _}=F ->
-            ?CF_ALERT(F, Call),
             cf_util:handle_bridge_failure(F, Call);
-        {error, _}=E ->
-            ?CF_ALERT(E, "error bridging to ring group", Call),
+        {error, _R} ->
+            lager:debug("error bridging to ring group: ~p", [_R]),
             cf_exe:continue(Call)
     end.
 
@@ -49,7 +48,7 @@ handle(Data, Call) ->
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints/2 :: (wh_json:json_object(), #cf_call{}) -> wh_json:json_objects().
+-spec get_endpoints/2 :: (wh_json:json_object(), whapps_call:call()) -> wh_json:json_objects().
 get_endpoints(Data, Call) ->
     lists:foldr(fun(Member, Acc) ->
                         EndpointId = wh_json:get_value(<<"id">>, Member),

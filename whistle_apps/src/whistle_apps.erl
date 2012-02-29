@@ -25,12 +25,12 @@ start() ->
 start_deps() ->
     whistle_apps_deps:ensure(),
 
-    case application:get_env(reloader) of
-	{ok, true} -> reloader:start();
-	_ -> ok
-    end,
+    lager:start(),
 
-    logger:start_link(),
+    case application:get_env(reloader) of
+        {ok, true} -> reloader:start();
+        _ -> ok
+    end,
 
     wh_util:ensure_started(sasl),
     wh_util:ensure_started(crypto),

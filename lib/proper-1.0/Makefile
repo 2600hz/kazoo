@@ -20,11 +20,14 @@
 # Author:      Manolis Papadakis
 # Description: Instructions for make
 
-.PHONY: default all compile dialyze check_scripts tests doc clean distclean rebuild retest
+.PHONY: default all compile dialyze check_escripts tests doc clean distclean rebuild retest
 
 default: compile
 
 all: compile doc
+
+include/compile_flags.hrl:
+	./write_compile_flags $@
 
 compile:
 	./rebar compile
@@ -32,17 +35,10 @@ compile:
 dialyze: compile
 	./rebar dialyze
 
-check_scripts:
-	@> make_doc.erl
-	@echo "-module(make_doc)." >> make_doc.erl
-	@echo "-export([main/1])." >> make_doc.erl
-	@echo -n "%" >> make_doc.erl
-	@cat make_doc >> make_doc.erl
-	erlc +debug_info make_doc.erl; true
-	dialyzer -Wunmatched_returns make_doc.beam; true
-	@rm -f make_doc.erl make_doc.beam
+check_escripts:
+	./check_escripts.sh make_doc write_compile_flags
 
-tests:
+tests: compile
 	./rebar eunit
 
 doc:
@@ -52,12 +48,12 @@ clean:
 	./clean_temp.sh
 
 distclean: clean
+	rm include/compile_flags.hrl
 	./rebar clean
 
-rebuild:
-	./rebar clean
+rebuild: distclean include/compile_flags.hrl
 	./rebar compile
 
-retest:
+retest: compile
 	rm -rf .eunit
 	./rebar eunit

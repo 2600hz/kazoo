@@ -59,9 +59,9 @@ start_link(AsrReq) ->
 -spec handle_amqp/2 :: (json_object(), proplist()) -> no_return().
 handle_amqp(JObj, _Props) ->
     wh_util:put_callid(JObj).
-    %% ?LOG("AMQP Recv: ~p", [wh_util:get_event_type(JObj)]),
-    %% ?LOG("App: ~s", [wh_json:get_value(<<"Application-Name">>, JObj)]),
-    %% ?LOG("Other UUID: ~s", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]).
+    %% lager:debug("AMQP Recv: ~p", [wh_util:get_event_type(JObj)]),
+    %% lager:debug("App: ~s", [wh_json:get_value(<<"Application-Name">>, JObj)]),
+    %% lager:debug("Other UUID: ~s", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -81,13 +81,13 @@ handle_amqp(JObj, _Props) ->
 init([AsrReq]) ->
     wh_util:put_callid(AsrReq),
 
-    ?LOG("Starting up vx_xmpp"),
+    lager:debug("Starting up vx_xmpp"),
 
     JID = exmpp_jid:parse(wh_util:to_list(wh_json:get_value(<<"ASR-Account-ID">>, AsrReq))),
     CallID = wh_json:get_value(<<"Call-ID">>, AsrReq),
 
     gen_listener:add_binding(self(), call_events, [{callid, CallID}]),
-    ?LOG("Adding binding for call events"),
+    lager:debug("Adding binding for call events"),
 
     Self = self(),
     State = #state{
@@ -151,18 +151,18 @@ handle_info(#received_packet{}=Packet, #state{aleg_callid=CallID, xmpp_session=S
     {noreply, State};
 
 handle_info({'DOWN', _Ref, process, _Pid, normal}, State) ->
-    ?LOG("~p when down normally", [_Pid]),
+    lager:debug("~p when down normally", [_Pid]),
     {noreply, State};
 
 handle_info({'DOWN', _Ref, process, _Pid, Reason}, State) ->
-    ?LOG("~p when down: ~p", [_Pid, Reason]),
+    lager:debug("~p when down: ~p", [_Pid, Reason]),
     {noreply, State, 5000};
 
 handle_info(timeout, State) ->
     {stop, timeout, State};
 
 handle_info(_Info, State) ->
-    ?LOG("Unhandled message: ~p", [_Info]),
+    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, _State) ->
@@ -180,7 +180,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{xmpp_session=Session}) ->
-    ?LOG("VX going down: ~p", [_Reason]),
+    lager:debug("VX going down: ~p", [_Reason]),
     exmpp_session:stop(Session).
 
 %%--------------------------------------------------------------------
@@ -210,24 +210,24 @@ make_ep(SIP) ->
     ].
 
 handle_packet(Session, #received_packet{packet_type='iq', type_attr=Type, raw_packet=IQ}) ->
-    ?LOG("IQ packet of type ~p", [Type]),
-    ?LOG("Sender: ~p", [exmpp_stanza:get_sender(IQ)]),
-    ?LOG("Recv: ~p", [exmpp_stanza:get_recipient(IQ)]),
+    lager:debug("IQ packet of type ~p", [Type]),
+    lager:debug("Sender: ~p", [exmpp_stanza:get_sender(IQ)]),
+    lager:debug("Recv: ~p", [exmpp_stanza:get_recipient(IQ)]),
     process_iq(Session, Type, exmpp_xml:get_ns_as_atom(exmpp_iq:get_payload(IQ)), IQ);
 handle_packet(Session, #received_packet{packet_type='presence', type_attr=Type, raw_packet=P}) ->
-    ?LOG("Presence packet of type ~p", [Type]),
-    ?LOG("Sender: ~p", [exmpp_stanza:get_sender(P)]),
-    ?LOG("Recv: ~p", [exmpp_stanza:get_recipient(P)]),
+    lager:debug("Presence packet of type ~p", [Type]),
+    lager:debug("Sender: ~p", [exmpp_stanza:get_sender(P)]),
+    lager:debug("Recv: ~p", [exmpp_stanza:get_recipient(P)]),
     process_presence(Session, Type, P);
 handle_packet(_Session, Packet) ->
-    ?LOG("Unhandled packet ~p", [Packet]).
+    lager:debug("Unhandled packet ~p", [Packet]).
 
 process_presence(Session, Type, Presence) ->
     case exmpp_xml:get_element(Presence, offer) of
 	undefined ->
-	    ?LOG("Ignoring");
+	    lager:debug("Ignoring");
 	Offer ->
-	    ?LOG("Is Offer"),
+	    lager:debug("Is Offer"),
 	    process_offer(Session, Presence, Offer)
     end.
 
@@ -239,7 +239,7 @@ process_offer(Session, Presence, Offer) ->
 		|| H <- exmpp_xml:get_elements(Offer, header),
 		   exmpp_xml:get_attribute(H, <<"name">>, undefined) =:= <<"Call-ID">>
 	       ],
-    ?LOG("B-LEG: ~s", [CallID]),
+    lager:debug("B-LEG: ~s", [CallID]),
 
     answer(Session, Sender, Recipient).
 
@@ -256,7 +256,7 @@ answer(Session, From, To) ->
 			      ]
 			    )
 	   , set),
-    ?LOG("IQ: ~s", [exmpp_stanza:to_binary(IQ)]),
+    lager:debug("IQ: ~s", [exmpp_stanza:to_binary(IQ)]),
     exmpp_session:send_packet(Session, IQ).
 
 %% Create this XML structure next:
@@ -277,15 +277,15 @@ answer(Session, From, To) ->
 %% </iq>
 
 process_iq(Session, "get", ?NS_TIME, IQ) ->
-    ?LOG("NS_TIME from"),
-    ?LOG("Type: ~p", [exmpp_iq:get_type(IQ)]),
-    ?LOG("Kind: ~p", [exmpp_iq:get_kind(IQ)]),
-    ?LOG("Req: ~p", [exmpp_iq:get_request(IQ)]),
-    ?LOG("Res: ~p", [exmpp_iq:is_result(IQ) andalso exmpp_iq:get_result(IQ)]),
-    ?LOG("Payload: ~p", [exmpp_iq:get_payload(IQ)]);
+    lager:debug("NS_TIME from"),
+    lager:debug("Type: ~p", [exmpp_iq:get_type(IQ)]),
+    lager:debug("Kind: ~p", [exmpp_iq:get_kind(IQ)]),
+    lager:debug("Req: ~p", [exmpp_iq:get_request(IQ)]),
+    lager:debug("Res: ~p", [exmpp_iq:is_result(IQ) andalso exmpp_iq:get_result(IQ)]),
+    lager:debug("Payload: ~p", [exmpp_iq:get_payload(IQ)]);
 
 process_iq(Session, "get", ?NS_PING, IQ) ->
-    ?LOG("NS_PING from ~s", [exmpp_stanza:get_sender(IQ)]),
+    lager:debug("NS_PING from ~s", [exmpp_stanza:get_sender(IQ)]),
     Reply = exmpp_xml:element(exmpp_xml:get_ns_as_atom(IQ), 'iq', [
 								   exmpp_xml:attribute(<<"from">>, exmpp_stanza:get_recipient(IQ))
 								   ,exmpp_xml:attribute(<<"to">>, exmpp_stanza:get_sender(IQ))
@@ -294,12 +294,12 @@ process_iq(Session, "get", ?NS_PING, IQ) ->
     exmpp_session:send_packet(Session, Reply);
 
 process_iq(Session, _Type, NS, IQ) ->
-    ?LOG("NS: ~p", [NS]),
-    ?LOG("Type: ~p", [exmpp_iq:get_type(IQ)]),
-    ?LOG("Kind: ~p", [exmpp_iq:get_kind(IQ)]),
-    ?LOG("Req: ~p", [exmpp_iq:get_request(IQ)]),
-    ?LOG("Res: ~p", [exmpp_iq:is_result(IQ) andalso exmpp_iq:get_result(IQ)]),
-    ?LOG("Payload: ~p", [exmpp_iq:get_payload(IQ)]).
+    lager:debug("NS: ~p", [NS]),
+    lager:debug("Type: ~p", [exmpp_iq:get_type(IQ)]),
+    lager:debug("Kind: ~p", [exmpp_iq:get_kind(IQ)]),
+    lager:debug("Req: ~p", [exmpp_iq:get_request(IQ)]),
+    lager:debug("Res: ~p", [exmpp_iq:is_result(IQ) andalso exmpp_iq:get_result(IQ)]),
+    lager:debug("Payload: ~p", [exmpp_iq:get_payload(IQ)]).
 
 
 authenticate(Srv, #state{xmpp_session=Session, xmpp_server=Server, xmpp_port=Port
@@ -307,29 +307,29 @@ authenticate(Srv, #state{xmpp_session=Session, xmpp_server=Server, xmpp_port=Por
     try
 	AmqpQ = gen_listener:queue_name(Srv),
 
-	?LOG("Auth with session ~p", [Session]),
-	?LOG("JID: ~p", [JID]),
-	?LOG("Pass: ~p", [Pass]),
+	lager:debug("Auth with session ~p", [Session]),
+	lager:debug("JID: ~p", [JID]),
+	lager:debug("Pass: ~p", [Pass]),
 
 	ok = exmpp_session:auth(Session, JID, Pass, password),
 
 	{ok, _StreamId} = exmpp_session:connect_TCP(Session, Server, Port),
 
-	?LOG("Server: ~p:~p", [Server, Port]),
-	?LOG("StreamID: ~p", [_StreamId]),
+	lager:debug("Server: ~p:~p", [Server, Port]),
+	lager:debug("StreamID: ~p", [_StreamId]),
 
 	{ok, _JID} = exmpp_session:login(Session),
 
 	exmpp_session:send_packet(Session, exmpp_presence:set_status(exmpp_presence:available(), "VX Whapp Ready")),
-	?LOG("Sent presence"),
+	lager:debug("Sent presence"),
 
 	bridge(Srv, State#state{my_q=AmqpQ})
     catch
 	_:{auth_error, 'not-authorized'} ->
-	    ?LOG("Unauthorized login with the given credentials"),
+	    lager:debug("Unauthorized login with the given credentials"),
 	    exit(unauthed);
 	_T:R ->
-	    ?LOG("failed to login: ~p:~p", [_T, R]),
+	    lager:debug("failed to login: ~p:~p", [_T, R]),
 	    exit(R)
     end.
 
@@ -339,7 +339,7 @@ bridge(Srv, #state{my_q=Q
 		   ,stream_response=StreamIt
 		   ,aleg_callid=CallID
 		   ,aleg_ctl_q=CtrlQ}=State) ->
-    ?LOG("Bridge to ASR"),
+    lager:debug("Bridge to ASR"),
 
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, make_endpoint(SIP)}
@@ -349,7 +349,7 @@ bridge(Srv, #state{my_q=Q
 	      ],
 
     {ok, Payload} = wapi_dialplan:bridge([ KV || {_, V}=KV <- Command, V =/= undefined ]),
-    ?LOG("Sending ~s", [Payload]),
+    lager:debug("Sending ~s", [Payload]),
     wapi_dialplan:publish_action(CtrlQ, Payload),
     gen_server:cast(Srv, bridge_sent).
     

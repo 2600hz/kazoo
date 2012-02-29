@@ -15,7 +15,7 @@
 -module(couch_config).
 
 -export([start_link/0, ready/0]).
--export([load_config/1, write_config/1]).
+-export([load_config/1]).
 -export([fetch/1, fetch/2]).
 -export([store/2, store/3]).
 
@@ -25,13 +25,14 @@
 
 -spec start_link/0 :: () -> 'ignore'.
 start_link() ->
+    put(callid, ?LOG_SYSTEM_ID),
     _ = load_config(?CONFIG_FILE_PATH),
-    ?LOG("loaded couch configs"),
+    lager:debug("loaded couch configs"),
     ignore.
 
 -spec load_config/1 :: (file:name()) -> 'ok' | {'error', 'enoent'}.
 load_config(Path) ->
-    ?LOG("loading ~s", [Path]),
+    lager:debug("loading ~s", [Path]),
     case file:consult(Path) of
         {ok, Startup} ->
             _ = [cache_from_file(T) || T <- Startup],
@@ -49,12 +50,6 @@ cache_from_file(T) when is_tuple(T) ->
     [Key|V] = erlang:tuple_to_list(T),
     Value = erlang:list_to_tuple(V),
     store(Key, Value).
-
--spec write_config/1 :: (file:name()) -> 'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
-write_config(Path) ->
-    Contents = lists:foldl(fun(I, Acc) -> [io_lib:format("~p.~n", [I]) | Acc] end
-                           , "", whapps_config:get_all_kvs(?CONFIG_CAT)),
-    file:write_file(Path, Contents).
 
 ready() ->
     whapps_config:couch_ready().

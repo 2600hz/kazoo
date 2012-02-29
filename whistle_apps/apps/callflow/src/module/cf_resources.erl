@@ -23,7 +23,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
     {ok, Endpoints} = find_endpoints(Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
@@ -42,33 +42,40 @@ handle(Data, Call) ->
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), #cf_call{}) -> ok.
+-spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), whapps_call:call()) -> ok.
 bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Call) ->
+    AccountId = whapps_call:account_id(Call),
     Endpoint = [create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
-    case cf_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
+    case whapps_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
-            ?LOG("completed successful bridge to resource"),
+            lager:debug("completed successful bridge to resource"),
             cf_exe:stop(Call);
-        {fail, R}=F when T =:= [] ->
-            ?CF_ALERT(F, Call),
+        {fail, R} when T =:= [] ->
             {Cause, Code} = whapps_util:get_call_termination_reason(R),
-            ?LOG("attempting failure branch ~s:~s", [Code, Cause]),
+            lager:notice("exhausted all local resources attempting bridge, final cause ~s:~s", [Code, Cause]),
             case (cf_util:handle_bridge_failure(Cause, Call) =:= ok)
                 orelse (cf_util:handle_bridge_failure(Code, Call) =:= ok) of
-                true -> 
-                    ok;
-                false -> 
-                    bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call)
+                true -> ok;
+                false ->
+                    cf_util:send_default_response(Cause, Call),
+                    cf_exe:continue(Call)
             end;
         {fail, _} ->
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call);
-        {error, _}=E ->
-            ?CF_ALERT(E, "error bridging to device", Call),
+        {error, _R} ->
+            lager:notice("error attemping local resource to ~s: ~p", [DestNum, _R]),
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call)
     end;
 bridge_to_resources([], _, _, _, Call) ->
-    ?LOG("resources exhausted without success"),
-    cf_exe:continue(Call).
+    lager:debug("resources exhausted without success"),
+    WildcardIsEmpty = cf_exe:wildcard_is_empty(Call),
+    case cf_util:handle_bridge_failure(<<"NO_ROUTE_DESTINATION">>, Call) =:= ok of
+        true -> ok;
+        false when WildcardIsEmpty ->
+            cf_util:send_default_response(<<"NO_ROUTE_DESTINATION">>, Call),
+            cf_exe:continue(Call);
+        false -> cf_exe:continue(Call)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -84,7 +91,7 @@ create_endpoint(DestNum, JObj) ->
               ,DestNum/binary
               ,(wh_json:get_value(<<"suffix">>, JObj, <<>>))/binary
               ,$@ ,(wh_json:get_value(<<"server">>, JObj))/binary>>,
-    ?LOG("attempting resource ~s", [Rule]),
+    lager:debug("attempting resource ~s", [Rule]),
     Endpoint = [{<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>, Rule}
                 ,{<<"Auth-User">>, wh_json:get_value(<<"username">>, JObj)}
@@ -103,21 +110,22 @@ create_endpoint(DestNum, JObj) ->
 %% number as formated by that rule (ie: capture group or full number).
 %% @end
 %%--------------------------------------------------------------------
--spec find_endpoints/1 :: (#cf_call{}) -> {'ok', endpoints()} | {'error', atom()}.
-find_endpoints(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
-    ?LOG("searching for resource endpoints"),
-    case couch_mgr:get_results(Db, ?VIEW_BY_RULES, []) of
+-spec find_endpoints/1 :: (whapps_call:call()) -> {'ok', endpoints()} | {'error', atom()}.
+find_endpoints(Call) ->
+    lager:debug("searching for resource endpoints"),
+    AccountDb = whapps_call:account_db(Call),
+    case couch_mgr:get_results(AccountDb, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
-            ?LOG("found resources, filtering by rules"),
+            lager:debug("found resources, filtering by rules"),
             {ok, [{Number
                    ,wh_json:get_value([<<"value">>], Resource, [])
                    ,get_caller_id_type(Resource, Call)}
                   || Resource <- Resources
-                         ,Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), ReqNum)
+                         ,Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), whapps_call:request_user(Call))
                          ,Number =/= []
                  ]};
         {error, R}=E ->
-            ?LOG("search failed ~w", [R]),
+            lager:debug("search failed ~w", [R]),
             E
     end.
 
@@ -127,14 +135,15 @@ find_endpoints(#cf_call{account_db=Db, request_user=ReqNum}=Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(get_caller_id_type/2 :: (Resource :: wh_json:json_object(), Call :: #cf_call{}) -> raw | binary()).
-get_caller_id_type(Resource, #cf_call{channel_vars=CVs}) ->
+-spec(get_caller_id_type/2 :: (Resource :: wh_json:json_object(), Call :: whapps_call:call()) -> raw | binary()).
+get_caller_id_type(Resource, Call) ->
     case wh_json:is_true(<<"emergency">>, Resource) of
         true ->
             <<"emergency">>;
         false ->
+            CCVs = whapps_call:custom_channel_vars(Call),
             Type = wh_json:get_value([<<"value">>, <<"caller_id_options">>, <<"type">>], Resource, <<"external">>),
-            case wh_json:is_true(<<"CF-Keep-Caller-ID">>, CVs) andalso (Type =/= <<"emergency">>) of
+            case wh_json:is_true(<<"CF-Keep-Caller-ID">>, CCVs) andalso (Type =/= <<"emergency">>) of
                 false -> Type;
                 true -> raw
             end

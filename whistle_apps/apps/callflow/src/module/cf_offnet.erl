@@ -18,15 +18,16 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
-handle(Data, #cf_call{account_id=AccountId, request_user=ReqNum}=Call) ->
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+handle(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNum, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
     Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Resource-Type">>, <<"audio">>}
-           ,{<<"To-DID">>, ReqNum}
-           ,{<<"Account-ID">>, AccountId}
-           ,{<<"Control-Queue">>, cf_exe:control_queue_name(Call)}
+           ,{<<"To-DID">>, whapps_call:request_user(Call)}
+           ,{<<"Account-ID">>, whapps_call:account_id(Call)}
+           ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
+           ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
            ,{<<"Application-Name">>, <<"bridge">>}
            ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Data)}
            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
@@ -41,13 +42,17 @@ handle(Data, #cf_call{account_id=AccountId, request_user=ReqNum}=Call) ->
     wapi_offnet_resource:publish_req(Req),
     case wait_for_offnet() of
         {<<"SUCCESS">>, _} ->
-            ?LOG("completed successful offnet request"),
+            lager:debug("completed successful offnet request"),
             cf_exe:stop(Call);
-        {<<"ERROR">>, Msg} ->
-            ?LOG("offnet request error: ~p", [Msg]),
-            cf_exe:continue(Call);
         {Cause, Code} ->
-            cf_util:handle_bridge_failure(Cause, Code, Call)
+            lager:debug("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
+            case (cf_util:handle_bridge_failure(Cause, Call) =:= ok)
+                orelse (cf_util:handle_bridge_failure(Code, Call) =:= ok) of
+                true -> ok;
+                false ->
+                    cf_util:send_default_response(Cause, Call),
+                    cf_exe:continue(Call)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -63,8 +68,7 @@ wait_for_offnet() ->
             case wh_util:get_event_type(JObj) of
                 { <<"resource">>, <<"offnet_resp">> } ->
                     {wh_json:get_value(<<"Response-Message">>, JObj)
-                     ,wh_json:get_value(<<"Error-Message">>, JObj
-                                        ,wh_json:get_value(<<"Response-Code">>, JObj))};
+                     ,wh_json:get_value(<<"Response-Code">>, JObj)};
                 _ ->
                     wait_for_offnet()
             end;

@@ -4,9 +4,13 @@
 -export([get_account_realm/1, get_account_realm/2]).
 -export([is_account_enabled/1]).
 
--export([to_integer/1, to_integer/2, to_float/1, to_float/2, to_number/1
-         ,to_hex/1, to_list/1, to_binary/1
-         ,to_atom/1, to_atom/2]).
+-export([to_integer/1, to_integer/2
+         ,to_float/1, to_float/2
+         ,to_number/1
+         ,to_hex/1, to_hex_binary/1
+         ,to_list/1, to_binary/1
+         ,to_atom/1, to_atom/2
+        ]).
 -export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
 -export([to_lower_binary/1, to_upper_binary/1, binary_join/2]).
 
@@ -21,7 +25,6 @@
 
 -export([put_callid/1]).
 -export([get_event_type/1]).
--export([call_response/3, call_response/4, call_response/5]).
 -export([get_xml_value/2]).
 
 -export([whistle_version/0, write_pid/1]).
@@ -51,6 +54,26 @@
 
 format_account_id(Doc) -> format_account_id(Doc, unencoded).
 
+format_account_id(<<"accounts">>, _) ->
+    <<"accounts">>;
+%% unencode the account db name
+format_account_id(<<"account/", _/binary>> = DbName, unencoded) ->
+    DbName;
+format_account_id(<<"account%2F", _/binary>> = DbName, unencoded) ->
+    binary:replace(DbName, <<"%2F">>, <<"/">>, [global]);
+
+%% encode the account db name
+format_account_id(<<"account%2F", _/binary>>=DbName, encoded) ->
+    DbName;
+format_account_id(<<"account/", _/binary>>=DbName, encoded) ->
+    binary:replace(DbName, <<"/">>, <<"%2F">>, [global]);
+
+%% get just the account ID from the account db name
+format_account_id(<<"account%2F", AccountId/binary>>, raw) ->
+    binary:replace(AccountId, <<"%2F">>, <<>>, [global]);
+format_account_id(<<"account/", AccountId/binary>>, raw) ->
+    binary:replace(AccountId, <<"/">>, <<>>, [global]);
+
 format_account_id([AccountId], Encoding) when is_binary(AccountId) ->
     format_account_id(AccountId, Encoding);
 format_account_id(Account, Encoding) when not is_binary(Account) ->
@@ -58,29 +81,13 @@ format_account_id(Account, Encoding) when not is_binary(Account) ->
         true -> format_account_id([wh_json:get_value([<<"_id">>], Account)], Encoding);
         false -> format_account_id(wh_util:to_binary(Account), Encoding)
     end;
-format_account_id(<<"accounts">>, _) ->
-    <<"accounts">>;
-%% unencode the account db name
-format_account_id(<<"account/", _/binary>>=DbName, unencoded) ->
-    DbName;
-format_account_id(<<"account%2F", _/binary>>=DbName, unencoded) ->
-    binary:replace(DbName, <<"%2F">>, <<"/">>, [global]);
+
 format_account_id(AccountId, unencoded) ->
     [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
     wh_util:to_binary(["account/", Id1, Id2, $/, Id3, Id4, $/, IdRest]);
-%% encode the account db name
-format_account_id(<<"account%2F", _/binary>>=DbName, encoded) ->
-    DbName;
-format_account_id(<<"account/", _/binary>>=DbName, encoded) ->
-    binary:replace(DbName, <<"/">>, <<"%2F">>, [global]);
 format_account_id(AccountId, encoded) when is_binary(AccountId) ->
     [Id1, Id2, Id3, Id4 | IdRest] = wh_util:to_list(AccountId),
     wh_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
-%% get just the account ID from the account db name
-format_account_id(<<"account%2F", AccountId/binary>>, raw) ->
-    binary:replace(AccountId, <<"%2F">>, <<>>, [global]);
-format_account_id(<<"account/", AccountId/binary>>, raw) ->
-    binary:replace(AccountId, <<"/">>, <<>>, [global]);
 format_account_id(AccountId, raw) ->
     AccountId.
 
@@ -99,17 +106,17 @@ is_account_enabled(undefined) ->
 is_account_enabled(AccountId) ->
     case wh_cache:peek({?MODULE, is_account_enabled, AccountId}) of
         {ok, Enabled} -> 
-            ?LOG("account ~s enabled flag is ~s", [AccountId, Enabled]),
+            lager:debug("account ~s enabled flag is ~s", [AccountId, Enabled]),
             Enabled;
         {error, not_found} ->
             case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
                 {ok, JObj} ->
                     PvtEnabled = wh_json:is_false(<<"pvt_enabled">>, JObj) =/= true,
-                    ?LOG("account ~s enabled flag is ~s", [AccountId, PvtEnabled]),
+                    lager:debug("account ~s enabled flag is ~s", [AccountId, PvtEnabled]),
                     wh_cache:store({?MODULE, is_account_enabled, AccountId}, PvtEnabled, 300),
                     PvtEnabled;
                 {error, R} ->
-                    ?LOG("unable to find enabled status of account ~s: ~p", [AccountId, R]),
+                    lager:debug("unable to find enabled status of account ~s: ~p", [AccountId, R]),
                     wh_cache:store({?MODULE, is_account_enabled, AccountId}, true, 300),
                     true
             end
@@ -134,7 +141,7 @@ get_account_realm(Db, AccountId) ->
         {ok, JObj} ->
             wh_json:get_ne_value(<<"realm">>, JObj);
         {error, R} ->
-            ?LOG("error while looking up account realm: ~p", [R]),
+            lager:debug("error while looking up account realm: ~p", [R]),
             undefined
     end.
 
@@ -180,54 +187,10 @@ join_binary([], _) ->
     <<>>;
 join_binary([Bin], _) ->
     Bin;
-join_binary([Bin|Rest], Sep) ->
-    <<Bin/binary, Sep/binary, (join_binary(Rest, Sep))/binary>>.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create a call response, as a queue of events when media should be
-%% played as part of the error.
-%% @end
-%%--------------------------------------------------------------------
--spec call_response/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
--spec call_response/4 :: (ne_binary(), ne_binary(), ne_binary(), 'undefined' | binary()) -> 'ok'.
--spec call_response/5 :: (ne_binary(), ne_binary(), ne_binary(), 'undefined' | binary(), 'undefined' | binary()) -> 'ok'.
-
-call_response(CallId, CtrlQ, Code) ->
-    call_response(CallId, CtrlQ, Code, <<>>).
-call_response(CallId, CtrlQ, Code, undefined) ->
-    call_response(CallId, CtrlQ, Code, <<>>);
-call_response(CallId, CtrlQ, Code, Cause) ->
-    call_response(CallId, CtrlQ, Code, Cause, undefined).
-call_response(CallId, CtrlQ, Code, Cause, Media) ->
-    Respond = wh_json:from_list([{<<"Application-Name">>, <<"respond">>}
-                                 ,{<<"Response-Code">>, Code}
-                                 ,{<<"Response-Message">>, Cause}
-                                 ,{<<"Call-ID">>, CallId}
-                                ]),
-    call_response1(CallId, CtrlQ, Media, Respond).
-
-call_response1(CallId, CtrlQ, undefined, Respond) ->
-    call_response1(CallId, CtrlQ, [Respond]);
-call_response1(CallId, CtrlQ, Media, Respond) ->
-    call_response1(CallId, CtrlQ, [Respond
-                                   ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
-                                                       ,{<<"Media-Name">>, Media}
-                                                       ,{<<"Call-ID">>, CallId}
-                                                      ])
-                                   ,wh_json:from_list([{<<"Application-Name">>, <<"progress">>}
-                                                       ,{<<"Call-ID">>, CallId}
-                                                      ])
-                                  ]).
-
-call_response1(CallId, CtrlQ, Commands) ->
-    Command = [{<<"Application-Name">>, <<"queue">>}
-               ,{<<"Call-ID">>, CallId}
-               ,{<<"Commands">>, Commands}
-               | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
-    {ok, Payload} = wapi_dialplan:queue(Command),
-    wapi_dialplan:publish_action(CtrlQ, Payload).
+join_binary([Bin|Rest], Sep) when is_binary(Bin) ->
+    <<Bin/binary, Sep/binary, (join_binary(Rest, Sep))/binary>>;
+join_binary([_|Rest], Sep) ->
+    join_binary(Rest, Sep).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -238,7 +201,7 @@ call_response1(CallId, CtrlQ, Commands) ->
 %%--------------------------------------------------------------------
 -spec put_callid/1 :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
 put_callid(JObj) ->
-    erlang:put(callid, wh_json:get_binary_value(<<"Call-ID">>, JObj, wh_json:get_binary_value(<<"Msg-ID">>, JObj, <<"0000000000">>))).
+    erlang:put(callid, wh_json:get_binary_value(<<"Call-ID">>, JObj, wh_json:get_binary_value(<<"Msg-ID">>, JObj, ?LOG_SYSTEM_ID))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -268,7 +231,7 @@ get_xml_value(Path, Xml) ->
         _ -> undefined
     catch
         E:R ->
-            ?LOG("~s getting value of '~s': ~p", [E, Path, R]),
+            lager:debug("~s getting value of '~s': ~p", [E, Path, R]),
             undefined
     end.
 
@@ -276,6 +239,16 @@ get_xml_value(Path, Xml) ->
 -spec to_hex/1 :: (binary() | string()) -> string().
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
+
+-spec to_hex_binary/1 :: (binary() | string()) -> binary().
+to_hex_binary(S) ->
+    Bin = to_binary(S),
+    << <<(binary_to_hex_char(B div 16)), (binary_to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
+
+binary_to_hex_char(N) when N < 10 ->
+    $0 + N;
+binary_to_hex_char(N) when N < 16 ->
+    $a - 10 + N.
 
 -spec to_integer/1 :: (string() | binary() | integer() | float()) -> integer().
 -spec to_integer/2 :: (string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
@@ -411,7 +384,11 @@ is_empty(<<"NULL">>) -> true;
 is_empty(null) -> true;
 is_empty(false) -> true;
 is_empty(undefined) -> true;
-is_empty(MaybeJObj) -> wh_json:is_empty(MaybeJObj).
+is_empty(MaybeJObj) ->
+    case wh_json:is_json_object(MaybeJObj) of
+        false -> false; %% if not a json object, its not empty
+        true -> wh_json:is_empty(MaybeJObj)
+    end.
 
 -spec is_proplist/1 :: (term()) -> boolean().
 is_proplist(Term) when is_list(Term) ->
@@ -505,7 +482,7 @@ whistle_version(FileName) ->
             Version
     end.
 
--spec write_pid/1 :: (ne_binary() | nonempty_string()) -> 'ok' | {'error', atom()}.
+-spec write_pid/1 :: (ne_binary() | nonempty_string() | iolist()) -> 'ok' | {'error', atom()}.
 write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), [write, binary]).
 
@@ -560,11 +537,11 @@ is_ipv6(Address) when is_list(Address) ->
 
 -spec gc_all/0 :: () -> 'ok'.
 gc_all() ->
-    [begin erlang:garbage_collect(P), timer:sleep(500) end || P <- processes()],
+    _ = [begin erlang:garbage_collect(P), timer:sleep(500) end || P <- processes()],
     ok.
 
--spec top_mem_consumers/0 :: () -> [{pid(), integer()},...].
--spec top_mem_consumers/1 :: (pos_integer()) -> [{pid(), integer()},...].
+-spec top_mem_consumers/0 :: () -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
+-spec top_mem_consumers/1 :: (pos_integer()) -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
 top_mem_consumers() ->
     top_mem_consumers(10).
 top_mem_consumers(Len) when is_integer(Len), Len > 0 ->

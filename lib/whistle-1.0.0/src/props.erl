@@ -16,8 +16,8 @@
 
 -include_lib("whistle/include/wh_types.hrl").
 
--spec get_value/2 :: (ne_binary() | atom(), wh_proplist()) -> term().
--spec get_value/3 :: (ne_binary() | atom(), wh_proplist(), Default) -> Default | term().
+-spec get_value/2 :: (wh_proplist_key(), wh_proplist()) -> term().
+-spec get_value/3 :: (wh_proplist_key(), wh_proplist(), Default) -> Default | term().
 get_value(Key, Prop) ->
     get_value(Key, Prop, undefined).
 
@@ -35,8 +35,8 @@ get_value(Key, Prop, Default) when is_list(Prop) ->
             Default
     end.
 
--spec get_integer_value/2 :: (ne_binary() | atom(), wh_proplist()) -> integer() | 'undefined'.
--spec get_integer_value/3 :: (ne_binary() | atom(), wh_proplist(), Default) -> integer() | Default.
+-spec get_integer_value/2 :: (wh_proplist_key(), wh_proplist()) -> integer() | 'undefined'.
+-spec get_integer_value/3 :: (wh_proplist_key(), wh_proplist(), Default) -> integer() | Default.
 get_integer_value(Key, Prop) ->
     get_integer_value(Key, Prop, undefined).
 get_integer_value(Key, Prop, Default) ->
@@ -45,7 +45,7 @@ get_integer_value(Key, Prop, Default) ->
         Val -> wh_util:to_integer(Val)
     end.
 
--spec get_keys/1 :: (wh_proplist()) -> [term(),...] | [].
+-spec get_keys/1 :: (wh_proplist()) -> [wh_proplist_key(),...] | [].
 get_keys(Prop) ->
     [ K || {K,_} <- Prop].
 
@@ -53,7 +53,7 @@ get_keys(Prop) ->
 delete(K, Prop) ->
     lists:keydelete(K, 1, Prop).
 
--spec is_defined/2 :: (ne_binary() | atom(), wh_proplist()) -> boolean().
+-spec is_defined/2 :: (wh_proplist_key(), wh_proplist()) -> boolean().
 is_defined(Key, Prop) ->
     case lists:keyfind(Key, 1, Prop) of
         {Key,_} -> true;
@@ -69,3 +69,12 @@ unique([], Uniques) ->
     lists:reverse(Uniques);
 unique([{Key, _}=H|T], Uniques) ->
     unique(lists:filter(fun({K, _}) when K =:= Key -> false; (_) -> true end, T), [H|Uniques]).
+
+-include_lib("eunit/include/eunit.hrl").
+-ifdef(TEST).
+
+unique_test() ->
+    L = [{a, b}, {a, b}, {a, c}, {b,c}, {b,d}],
+    ?assertEqual([{a, b}, {b, c}], unique(L)).
+
+-endif.

@@ -59,11 +59,11 @@
 -export([resource_publish/1, resource_publish/2, resource_publish/3]).
 
 -export([conference_exchange/0]).
--export([new_conference_queue/1, new_conference_queue/2]).
+-export([new_conference_queue/0, new_conference_queue/1]).
 -export([delete_conference_queue/1]).
 -export([bind_q_to_conference/2, bind_q_to_conference/3]).
 -export([unbind_q_from_conference/2, unbind_q_from_conference/3]).
--export([conference_publish/2, conference_publish/3, conference_publish/4]).
+-export([conference_publish/2, conference_publish/3, conference_publish/4, conference_publish/5]).
 
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 
@@ -264,35 +264,39 @@ offnet_resource_publish(Payload, ContentType) ->
 monitor_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_MONITOR, RoutingKey, Payload, ContentType).
 
--spec conference_publish/2 :: (amqp_payload(), Queue) -> 'ok' when
-      Queue :: 'discovery' | 'events' | 'service'.
--spec conference_publish/3 :: (Payload, Queue, ConfId) -> 'ok' when
-      Payload :: amqp_payload(),
-      Queue :: 'events' | 'service',
-      ConfId :: ne_binary().
--spec conference_publish/4 :: (Payload, Queue, ConfId, Options) -> 'ok' when
-      Payload :: amqp_payload(),
-      Queue :: 'discovery' | 'events' | 'service',
-      ConfId :: 'undefined' | ne_binary(),
-      Options :: proplist().
+-type conf_routing_type() :: 'discovery' | 'event' | 'command'.
+-spec conference_publish/2 :: (amqp_payload(), conf_routing_type()) -> 'ok'.
+-spec conference_publish/3 :: (amqp_payload(), conf_routing_type(), undefined | ne_binary()) -> 'ok'.
+-spec conference_publish/4 :: (amqp_payload(), conf_routing_type(), undefined | ne_binary(), proplist()) -> 'ok'.
+-spec conference_publish/5 :: (amqp_payload(), conf_routing_type(), undefined | ne_binary(), proplist(), ne_binary()) -> 'ok'.
+
 conference_publish(Payload, discovery) ->
-    conference_publish(Payload, discovery, undefined, []);
-conference_publish(Payload, events) ->
-    conference_publish(Payload, events, <<"*">>);
-conference_publish(Payload, service) ->
-    conference_publish(Payload, service, <<"*">>).
+    conference_publish(Payload, discovery, <<"*">>);
+conference_publish(Payload, event) ->
+    conference_publish(Payload, event, <<"*">>);
+conference_publish(Payload, command) ->
+    conference_publish(Payload, command, <<"*">>).
 
-conference_publish(Payload, events, ConfId) ->
-    conference_publish(Payload, events, ConfId, []);
-conference_publish(Payload, service, ConfId) ->
-    conference_publish(Payload, events, ConfId, []).
+conference_publish(Payload, discovery, ConfId) ->
+    conference_publish(Payload, discovery, ConfId, []);
+conference_publish(Payload, event, ConfId) ->
+    conference_publish(Payload, event, ConfId, []);
+conference_publish(Payload, command, ConfId) ->
+    conference_publish(Payload, command, ConfId, []).
 
-conference_publish(Payload, discovery, _, Options) ->
-    basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONF_DISCOVERY_REQ, Payload, ?DEFAULT_CONTENT_TYPE, Options);
-conference_publish(Payload, events, ConfId, Options) ->
-    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, Payload, ?DEFAULT_CONTENT_TYPE, Options);
-conference_publish(Payload, service, ConfId, Options) ->
-    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Payload, ?DEFAULT_CONTENT_TYPE, Options).
+conference_publish(Payload, discovery, ConfId, Options) ->
+    conference_publish(Payload, discovery, ConfId, Options, ?DEFAULT_CONTENT_TYPE);
+conference_publish(Payload, event, ConfId, Options) ->
+    conference_publish(Payload, event, ConfId, Options, ?DEFAULT_CONTENT_TYPE);
+conference_publish(Payload, command, ConfId, Options) ->
+    conference_publish(Payload, command, ConfId, Options, ?DEFAULT_CONTENT_TYPE).
+
+conference_publish(Payload, discovery, _, Options, ContentType) ->
+    basic_publish(?EXCHANGE_CONFERENCE, ?KEY_CONFERENCE_DISCOVERY, Payload, ContentType, Options);
+conference_publish(Payload, event, ConfId, Options, ContentType) ->
+    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary>>, Payload, ContentType, Options);
+conference_publish(Payload, command, ConfId, Options, ContentType) ->
+    basic_publish(?EXCHANGE_CONFERENCE, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, Payload, ContentType, Options).
 
 %% generic publisher for an Exchange.Queue
 %% Use <<"#">> for a default Queue
@@ -308,25 +312,43 @@ basic_publish(Exchange, Queue, Payload, ContentType) ->
 
 basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_list(Payload) ->
     basic_publish(Exchange, Queue, iolist_to_binary(Payload), ContentType, Prop);
-basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_binary(Payload),
+basic_publish(Exchange, Queue, Payload, ContentType, Props) when is_binary(Payload),
                                                                 is_binary(Exchange),
                                                                 is_binary(Queue),
                                                                 is_binary(ContentType),
-                                                                is_list(Prop) ->
+                                                                is_list(Props) ->
     BP = #'basic.publish'{
       exchange = Exchange
       ,routing_key = Queue
-      ,mandatory = props:get_value(mandatory, Prop, false)
-      ,immediate = props:get_value(immediate, Prop, false)
+      ,mandatory = props:get_value(mandatory, Props, false)
+      ,immediate = props:get_value(immediate, Props, false)
      },
 
     %% Add the message to the publish, converting to binary
-    AM = #'amqp_msg'{
-      payload = Payload
-      ,props=#'P_basic'{content_type=ContentType}
+    %% See http://www.rabbitmq.com/amqp-0-9-1-reference.html#class.basic
+    MsgProps = #'P_basic'{
+      content_type = ContentType % MIME content type
+      ,content_encoding = props:get_value(content_encoding, Props) % MIME encoding
+      ,headers = props:get_value(headers, Props) % message headers
+      ,delivery_mode = props:get_value(delivery_mode, Props) % non-persistent(1) or persistent(2)
+      ,priority = props:get_value(priority, Props) % message priority, 0-9
+      ,correlation_id = props:get_value(correlation_id, Props) % correlation identifier
+      ,reply_to = props:get_value(reply_to, Props) % address to reply to
+      ,expiration = props:get_value(expiration, Props) % expires time
+      ,message_id = props:get_value(message_id, Props) % app message id
+      ,timestamp = props:get_value(timestamp, Props) % message timestamp
+      ,type = props:get_value(type, Props) % message type
+      ,user_id = props:get_value(user_id, Props) % creating user
+      ,app_id = props:get_value(app_id, Props) % creating app
+      ,cluster_id = props:get_value(cluster_id, Props) % cluster
      },
 
-    ?AMQP_DEBUG andalso ?LOG("publish ~s ~s (~p): ~s", [Exchange, Queue, Prop, Payload]),
+    AM = #'amqp_msg'{
+      payload = Payload
+      ,props = MsgProps
+     },
+
+    ?AMQP_DEBUG andalso lager:debug("publish ~s ~s (~p): ~s", [Exchange, Queue, Props, Payload]),
 
     amqp_mgr:publish(BP, AM).
 
@@ -396,7 +418,7 @@ new_exchange(Exchange, Type, Options) ->
       ,nowait = props:get_value(nowait, Options, false)
       ,arguments = props:get_value(arguments, Options, [])
      },
-    ?AMQP_DEBUG andalso ?LOG("create new ~s exchange: ~s", [Type, Exchange]),
+    ?AMQP_DEBUG andalso lager:debug("create new ~s exchange: ~s", [Type, Exchange]),
     amqp_mgr:misc_req(ED).
 
 %%------------------------------------------------------------------------------
@@ -479,17 +501,12 @@ new_monitor_queue() ->
 new_monitor_queue(Queue) ->
     new_queue(Queue, [{exclusive, false}, {auto_delete, true}]).
 
--spec new_conference_queue/1 :: (ne_binary() | 'discovery') -> ne_binary() | {'error', 'amqp_error'}.
--spec new_conference_queue/2 :: (ne_binary() | 'discovery', proplist()) -> ne_binary() | {'error', 'amqp_error'}.
-new_conference_queue(discovery) ->
-    new_queue(?CONF_DISCOVERY_QUEUE_NAME, [{exclusive, false}, {auto_delete, true}, {nowait, false}]);
-new_conference_queue(ConfId) ->
-    new_queue(<<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, [{exclusive, true}, {auto_delete, true}, {nowait, false}]).
-
-new_conference_queue(discovery, Options) ->
-    new_queue(?CONF_DISCOVERY_QUEUE_NAME, Options);
-new_conference_queue(ConfId, Options) ->
-    new_queue(<<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, Options).
+-spec new_conference_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
+-spec new_conference_queue/1 :: (binary()) -> ne_binary() | {'error', 'amqp_error'}.
+new_conference_queue() ->
+    new_conference_queue(<<>>).
+new_conference_queue(Queue) ->
+    new_queue(Queue, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 %% Declare a queue and returns the queue Name
 -spec new_queue/0 :: () -> ne_binary() | {'error', 'amqp_error'}.
@@ -510,11 +527,14 @@ new_queue(Queue, Options) when is_binary(Queue) ->
       ,arguments = props:get_value(arguments, Options, [])
      },
     case amqp_mgr:consume(QD) of
+        {'ok', #'queue.declare_ok'{queue=Q}} ->
+            ?AMQP_DEBUG andalso lager:debug("create queue: ~s)", [Queue]),
+            Q;
         {'ok', Q} ->
-            ?AMQP_DEBUG andalso ?LOG("create queue(~p) ~s)", [Options, Queue]),
+            ?AMQP_DEBUG andalso lager:debug("create queue(~p) ~s)", [Options, Queue]),
             Q;
         {error, _Other} ->
-            ?AMQP_DEBUG andalso ?LOG("error creating queue(~p): ~p", [Options, _Other]),
+            ?AMQP_DEBUG andalso lager:debug("error creating queue(~p): ~p", [Options, _Other]),
             {'error', 'amqp_error'}
     end.
 
@@ -573,7 +593,7 @@ queue_delete(Queue, Prop) ->
       ,if_empty = props:get_value(if_empty, Prop, false)
       ,nowait = props:get_value(nowait, Prop, true)
      },
-    ?AMQP_DEBUG andalso ?LOG("delete queue ~s", [Queue]),
+    ?AMQP_DEBUG andalso lager:debug("delete queue ~s", [Queue]),
     amqp_mgr:consume(QD).
 
 %%------------------------------------------------------------------------------
@@ -653,22 +673,22 @@ bind_q_to_configuration(Queue, Routing) ->
 bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
--type conf_routing_type() :: 'discovery' | 'service' | 'events'.
 -spec bind_q_to_conference/2 :: (ne_binary(), conf_routing_type()) -> 'ok' | {'error', atom()}.
 -spec bind_q_to_conference/3 :: (ne_binary(), conf_routing_type(), 'undefined' | ne_binary()) -> 'ok' | {'error', atom()}.
+
 bind_q_to_conference(Queue, discovery) ->
     bind_q_to_conference(Queue, discovery, undefined);
-bind_q_to_conference(Queue, service) ->
-    bind_q_to_conference(Queue, service, <<"*">>);
-bind_q_to_conference(Queue, events) ->
-    bind_q_to_conference(Queue, events, <<"*">>).
+bind_q_to_conference(Queue, command) ->
+    bind_q_to_conference(Queue, command, <<"*">>);
+bind_q_to_conference(Queue, event) ->
+    bind_q_to_conference(Queue, event, <<"*">>).
 
 bind_q_to_conference(Queue, discovery, _) ->
-    bind_q_to_exchange(Queue, ?KEY_CONF_DISCOVERY_REQ, ?EXCHANGE_CONFERENCE, [{nowait, false}]);
-bind_q_to_conference(Queue, service, ConfId) ->
-    bind_q_to_exchange(Queue, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE, [{nowait, false}]);
-bind_q_to_conference(Queue, events, ConfId) ->
-    bind_q_to_exchange(Queue, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE, [{nowait, false}]).
+    bind_q_to_exchange(Queue, ?KEY_CONFERENCE_DISCOVERY, ?EXCHANGE_CONFERENCE);
+bind_q_to_conference(Queue, event, ConfId) ->
+    bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
+bind_q_to_conference(Queue, command, ConfId) ->
+    bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
 
 -spec bind_q_to_exchange/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', atom()}.
 -spec bind_q_to_exchange/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> 'ok' | {'error', atom()}.
@@ -686,10 +706,10 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
      },
     case amqp_mgr:consume(QB) of
         ok ->
-            ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
+            ?AMQP_DEBUG andalso lager:debug("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
             ok;
         {error, _E}=Else ->
-            ?AMQP_DEBUG andalso ?LOG("failed to bind queue ~s: ~p", [Queue, Else]),
+            ?AMQP_DEBUG andalso lager:debug("failed to bind queue ~s: ~p", [Queue, Else]),
             Else
     end.
 
@@ -716,21 +736,23 @@ unbind_q_from_callevt(Queue, CallID, cdr) ->
 unbind_q_from_callevt(Queue, Routing, other) ->
     unbind_q_from_exchange(Queue, Routing, ?EXCHANGE_CALLEVT).
 
+
 -spec unbind_q_from_conference/2 :: (ne_binary(), conf_routing_type()) -> 'ok' | {'error', atom()}.
 -spec unbind_q_from_conference/3 :: (ne_binary(), conf_routing_type(), 'undefined' | ne_binary()) -> 'ok' | {'error', atom()}.
+
 unbind_q_from_conference(Queue, discovery) ->
     unbind_q_from_conference(Queue, discovery, undefined);
-unbind_q_from_conference(Queue, service) ->
-    unbind_q_from_conference(Queue, service, <<"*">>);
-unbind_q_from_conference(Queue, events) ->
-    unbind_q_from_conference(Queue, events, <<"*">>).
+unbind_q_from_conference(Queue, command) ->
+    unbind_q_from_conference(Queue, command, <<"*">>);
+unbind_q_from_conference(Queue, event) ->
+    unbind_q_from_conference(Queue, event, <<"*">>).
 
 unbind_q_from_conference(Queue, discovery, _) ->
-    unbind_q_from_exchange(Queue, ?KEY_CONF_DISCOVERY_REQ, ?EXCHANGE_CONFERENCE);
-unbind_q_from_conference(Queue, service, ConfId) ->
-    unbind_q_from_exchange(Queue, <<?KEY_CONF_SERVICE_REQ/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
-unbind_q_from_conference(Queue, events, ConfId) ->
-    unbind_q_from_exchange(Queue, <<?KEY_CONF_EVENTS/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
+    unbind_q_from_exchange(Queue, ?KEY_CONFERENCE_DISCOVERY, ?EXCHANGE_CONFERENCE);
+unbind_q_from_conference(Queue, event, ConfId) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_EVENT/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE);
+unbind_q_from_conference(Queue, command, ConfId) ->
+    unbind_q_from_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
 
 unbind_q_from_callctl(Queue) ->
     unbind_q_from_exchange(Queue, Queue, ?EXCHANGE_CALLCTL).
@@ -764,7 +786,7 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
       ,routing_key = Routing
       ,arguments = []
      },
-    ?AMQP_DEBUG andalso ?LOG("unbound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
+    ?AMQP_DEBUG andalso lager:debug("unbound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
     amqp_mgr:consume(QU).
 
 %%------------------------------------------------------------------------------
@@ -790,13 +812,13 @@ basic_consume(Queue, Options) ->
      },
     case amqp_mgr:consume(BC) of
         {error, E}=Err ->
-            ?AMQP_DEBUG andalso ?LOG("error when trying to consume on ~s: ~p", [Queue, E]),
+            ?AMQP_DEBUG andalso lager:debug("error when trying to consume on ~s: ~p", [Queue, E]),
             Err;
         {ok, Pid} when is_pid(Pid) ->
-            ?AMQP_DEBUG andalso ?LOG("started consume of queue(~p) ~s", [Options, Queue]),
+            ?AMQP_DEBUG andalso lager:debug("started consume of queue(~p) ~s", [Options, Queue]),
             ok;
         Else ->
-            ?AMQP_DEBUG andalso ?LOG("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Else]),
+            ?AMQP_DEBUG andalso lager:debug("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Else]),
             Else
     end.
 
@@ -809,7 +831,7 @@ basic_consume(Queue, Options) ->
 %%------------------------------------------------------------------------------
 -spec basic_cancel/1 :: (ne_binary()) -> 'ok'.
 basic_cancel(Queue) ->
-    ?AMQP_DEBUG andalso ?LOG("cancel consume for queue ~s", [Queue]),
+    ?AMQP_DEBUG andalso lager:debug("cancel consume for queue ~s", [Queue]),
     amqp_mgr:consume(#'basic.cancel'{consumer_tag = Queue, nowait = false}).
 
 %%------------------------------------------------------------------------------
@@ -851,7 +873,7 @@ is_json(#'P_basic'{content_type=CT}) ->
 %%------------------------------------------------------------------------------
 -spec basic_ack/1 :: (integer()) -> 'ok'.
 basic_ack(DTag) ->
-    ?AMQP_DEBUG andalso ?LOG("basic ack of ~s", [DTag]),
+    ?AMQP_DEBUG andalso lager:debug("basic ack of ~s", [DTag]),
     amqp_mgr:consume(#'basic.ack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
@@ -863,7 +885,7 @@ basic_ack(DTag) ->
 %%------------------------------------------------------------------------------
 -spec basic_nack/1 :: (integer()) -> 'ok'.
 basic_nack(DTag) ->
-    ?AMQP_DEBUG andalso ?LOG("basic nack of ~s", [DTag]),
+    ?AMQP_DEBUG andalso lager:debug("basic nack of ~s", [DTag]),
     amqp_mgr:consume(#'basic.nack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
@@ -884,7 +906,7 @@ is_host_available() ->
 %%------------------------------------------------------------------------------
 -spec basic_qos/1 :: (non_neg_integer()) -> 'ok'.
 basic_qos(PreFetch) when is_integer(PreFetch) ->
-    ?AMQP_DEBUG andalso ?LOG("set basic qos prefetch to ~p", [PreFetch]),
+    ?AMQP_DEBUG andalso lager:debug("set basic qos prefetch to ~p", [PreFetch]),
     amqp_mgr:consume(#'basic.qos'{prefetch_count = PreFetch}).
 
 %%------------------------------------------------------------------------------
@@ -896,7 +918,7 @@ basic_qos(PreFetch) when is_integer(PreFetch) ->
 %%------------------------------------------------------------------------------
 -spec register_return_handler/0 :: () -> 'ok'.
 register_return_handler() ->
-    ?AMQP_DEBUG andalso ?LOG("registering return handler", []),
+    ?AMQP_DEBUG andalso lager:debug("registering return handler", []),
     amqp_mgr:register_return_handler().
 
 %%------------------------------------------------------------------------------
@@ -906,30 +928,27 @@ register_return_handler() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec encode/1 :: (ne_binary()) -> ne_binary().
-encode(<<"*">>) ->
-    <<"*">>;
-encode(<<"#">>) ->
-    <<"#">>;
-encode(Binary) ->
-    do_encode(Binary, <<>>).
+encode(Bin) ->
+    << <<(encode_char(B))/binary>> || <<B>> <= Bin >>.
 
--spec do_encode/2 :: (binary(), binary()) -> ne_binary().
-do_encode(<<>>, Acc) ->
-    Acc;
-do_encode(<<C:8, Rest/binary>>, Acc) when ?KEY_SAFE(C) ->
-    do_encode(Rest, <<Acc/binary, (<<C>>)/binary>>);
-do_encode(<<$\s, Rest/binary>>, Acc) ->
-    do_encode(Rest, <<Acc/binary, $+>>);
-do_encode(<<$., Rest/binary>>, Acc) ->
-    do_encode(Rest, <<Acc/binary, "%2E">>);
-do_encode(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
-    do_encode(Rest, <<Acc/binary, $%, (hexdigit(Hi))/binary, (hexdigit(Lo))/binary>>).
+-define(HI4(C), (C band 2#11110000) bsr 4).
+-define(LO4(C), (C band 2#00001111)).
 
--spec hexdigit/1 :: (byte()) -> <<_:8>>.
-hexdigit(C) when C < 10 ->
-    <<($0 + C)>>;
-hexdigit(C) when C < 16 ->
-    <<($A + (C - 10))>>.
+encode_char(C) when ?KEY_SAFE(C) ->
+    <<C>>;
+encode_char($\s) ->
+    <<$+>>;
+encode_char($.) ->
+    <<$%, $2, $E>>;
+encode_char(C) ->
+    Hi4 = ?HI4(C),
+    Lo4 = ?LO4(C),
+    <<$%, (hexint(Hi4)), (hexint(Lo4))>>.
+
+hexint(C) when C < 10 ->
+    ($0 + C);
+hexint(C) when C < 16 ->
+    ($A + (C - 10)).
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).

@@ -12,8 +12,7 @@
 
 %% API
 -export([start_link/0, stop/1]).
--export([reg_query_resp/2]).
--export([add_query_resp_consumer/3]).
+-export([handle_reg_query_resp/2]).
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -23,11 +22,13 @@
 
 -define(RESPONDERS, [{reg_authn_req, [{<<"directory">>, <<"authn_req">>}]}
                      ,{reg_success, [{<<"directory">>, <<"reg_success">>}]}
-                     ,{reg_query, [{<<"directory">>, <<"reg_query">>}]}
-                     ,{{?MODULE, reg_query_resp}, [{<<"directory">>, <<"reg_query_resp">>}]}
+                     ,{{reg_query, req_query_req}, [{<<"directory">>, <<"reg_query">>}]}
+                     ,{{?MODULE, handle_reg_query_resp}, [{<<"directory">>, <<"reg_query_resp">>}]}
+                     ,{{reg_query, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
                     ]).
 -define(BINDINGS, [{authn, []}
                    ,{registration, []}
+                   ,{notifications, [{restrict_to, [presence_probe]}]}
                    ,{self, []}
                   ]).
 
@@ -55,23 +56,21 @@ start_link() ->
                                       ,{consume_options, ?REG_CONSUME_OPTIONS}
                                      ], []).
 
+-spec stop/1 :: (pid()) -> 'ok'.
 stop(Srv) ->
     gen_listener:stop(Srv).
 
--spec add_query_resp_consumer/3 :: (pid(), ne_binary(), ne_binary()) -> ok.
-add_query_resp_consumer(Srv, User, Realm) ->
-    gen_server:cast(Srv, {add_consumer, User, Realm, self()}).
-
--spec reg_query_resp/2 :: (wh_json:json_object(), proplist()) -> ok.
-reg_query_resp(JObj, Props) ->
+-spec handle_reg_query_resp/2 :: (wh_json:json_object(), proplist()) -> ok.
+handle_reg_query_resp(JObj, Props) ->
     Reg = wh_json:get_value(<<"Fields">>, JObj),
-    User =  wh_json:get_value(<<"Username">>, Reg),
+    Username =  wh_json:get_value(<<"Username">>, Reg),
     Realm =  wh_json:get_value(<<"Realm">>, Reg),
     Consumers = props:get_value(consumers, Props),
-    case props:get_value({User, Realm}, Consumers) of
-        undefined -> ok;
-        Consumer -> Consumer ! {reg_query_resp, Reg}, ok
-    end.
+    [Consumer ! {reg_query_resp, Reg}
+     || {User, Consumer, _} <- Consumers
+            ,User =:= {Username, Realm}
+    ],
+    ok.
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -90,7 +89,7 @@ reg_query_resp(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    ?LOG_SYS("starting new registrar server"),
+    lager:debug("starting new registrar server"),
     {ok, []}.
 
 %%--------------------------------------------------------------------
@@ -121,9 +120,16 @@ handle_call(_Msg, _From, Consumers) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({add_consumer, User, Realm, Consumer}, Consumers) ->
-    erlang:monitor(process, Consumer),
-    ?LOG("added req query response consumer (~p) for ~s@~s", [Consumer, User, Realm]),
-    {noreply, [{{User, Realm}, Consumer}|Consumers]};
+    MRef = erlang:monitor(process, Consumer),
+    lager:debug("added req query response consumer (~p) for ~s@~s", [Consumer, User, Realm]),
+    {noreply, [{{User, Realm}, Consumer, MRef}|Consumers]};
+handle_cast({remove_consumer, Consumer}, Consumers) ->
+    {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
+                                   lager:debug("removed req query response consumer (~p): response sent", [Consumer]),
+                                   erlang:demonitor(MRef, [flush]),
+                                   false; 
+                              (_) -> true 
+                           end, Consumers)};
 handle_cast(_Msg, Consumers) ->
     {noreply, Consumers}.
 
@@ -138,10 +144,13 @@ handle_cast(_Msg, Consumers) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _, _, Consumer, _R}, Consumers) ->
-    ?LOG("removed req query response consumer (~p): ~p", [Consumer, _R]),
-    {noreply, lists:filter(fun({_, C}) when C =:= Consumer -> false; (_) -> true end, Consumers)};
+    {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
+                                   lager:debug("removed req query response consumer (~p): ~p", [Consumer, _R]),
+                                   erlang:demonitor(MRef, flush),
+                                   false; 
+                              (_) -> true 
+                           end, Consumers)};
 handle_info(_Info, Consumers) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
     {noreply, Consumers}.
 
 %%--------------------------------------------------------------------
@@ -168,7 +177,7 @@ handle_event(_JObj, Consumers) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
-    ?LOG_SYS("registrar server ~p termination", [_Reason]).
+    lager:debug("registrar server ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -20,18 +20,17 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> 'ok'.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     case bridge_to_endpoints(Data, Call) of
         {ok, _} ->
-            ?LOG("completed successful bridge to the device"),
+            lager:debug("completed successful bridge to the device"),
             cf_exe:stop(Call);
-        {error, _}=E ->
-            ?CF_ALERT(E, "error bridging to device", Call),
-            cf_exe:continue(Call);
         {fail, _}=F ->
-            ?CF_ALERT(F, Call),
-            cf_util:handle_bridge_failure(F, Call)
+            cf_util:handle_bridge_failure(F, Call);
+        {error, _R} ->
+            lager:debug("error bridging to device: ~p", [_R]),
+            cf_exe:continue(Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -40,7 +39,7 @@ handle(Data, Call) ->
 %% Attempts to bridge to the endpoints created to reach this device
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints/2 :: (wh_json:json_object(), #cf_call{}) -> cf_api_bridge_return().
+-spec bridge_to_endpoints/2 :: (wh_json:json_object(), whapps_call:call()) -> cf_api_bridge_return().
 bridge_to_endpoints(Data, Call) ->
     EndpointId = wh_json:get_value(<<"id">>, Data),
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
@@ -50,5 +49,5 @@ bridge_to_endpoints(Data, Call) ->
         {ok, Endpoints} ->
             Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
             IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-            cf_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call)
+            whapps_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, IgnoreEarlyMedia, Call)
     end.

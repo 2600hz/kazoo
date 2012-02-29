@@ -101,14 +101,17 @@
          start/2,
          stop/1]).
 
+%% @doc  Starts the application
 -spec start() -> 'ok' | {'error', term()}.
 start() ->
     application:start(riak_err).
 
+%% @hidden
 -spec start(normal | {takeover, node()} | {failover, node()}, term()) -> {ok, pid()}.
 start(_StartType, _StartArgs) ->
     riak_err_sup:start_link().
 
+%% @hidden
 -spec stop([]) -> ok.
 stop(_State) ->
     ok.

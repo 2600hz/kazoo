@@ -32,14 +32,22 @@ init() ->
 handle_req(JObj, Props) ->
     whapps_util:put_callid(JObj),
     true = wapi_offnet_resource:req_v(JObj),
-    ?LOG_START("received outbound request"),
+    lager:debug("received outbound request"),
     <<"audio">> = wh_json:get_value(<<"Resource-Type">>, JObj),
-    Number = wh_json:get_value(<<"To-DID">>, JObj),
-    ?LOG("outbound request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
+    {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
+
+    lager:debug("outbound request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
     CtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj),
-    Result = attempt_to_fullfill_req(Number, CtrlQ, JObj, Props),
-    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
-                                      ,response(Result, JObj)).
+    Response = case attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) of
+                   {ok, _}=R1 -> response(R1, JObj);
+                   {fail, _}=R2 -> response(R2, JObj);
+                   {error, _}=R3 ->
+                       Error = response(R3, JObj),
+                       AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+                       lager:notice("error attempting global resources to ~s", [Number]),
+                       Error
+               end,
+    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Response).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -51,6 +59,7 @@ handle_req(JObj, Props) ->
 attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
     Result = case stepswitch_util:lookup_number(Number) of
                  {ok, AccountId, false} ->
+                     lager:debug("found local extension, keeping onnet"),
                      execute_local_extension(Number, AccountId, CtrlQ, JObj);
                  _ ->
                      Flags = wh_json:get_value(<<"Flags">>, JObj),
@@ -63,7 +72,7 @@ attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
     case {Result, correct_shortdial(Number, CIDNum)} of
         {{error, no_resources}, fail} -> Result;
         {{error, no_resources}, CorrectedNumber} -> 
-            ?LOG("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
+            lager:debug("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
             attempt_to_fullfill_req(CorrectedNumber, CtrlQ, JObj, Props);
         _Else -> Result
     end.
@@ -81,13 +90,12 @@ attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
 bridge_to_endpoints([], _, _, _) ->
     {error, no_resources};
 bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
-    ?LOG("found resources that handle the number...to the cloud!"),
+    lager:debug("found resources that handle the number...to the cloud!"),
     Q = create_queue(JObj),
-    CCVs = wh_json:set_value(<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)
-                             ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+
     {CIDNum, CIDName} = case IsEmergency of
                             'true' ->
-                                ?LOG("outbound call is using an emergency route, attempting to set CID accordingly"),
+                                lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
                                 {wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj,
                                                    wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
                                  wh_json:get_value(<<"Emergency-Caller-ID-Name">>, JObj,
@@ -96,7 +104,25 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                                 {wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj),
                                  wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
                         end,
-    ?LOG("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
+    lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
+
+    FromURI = case catch whapps_config:get_atom(?APP_NAME, <<"format_from_uri">>, false) of
+                  true ->
+                      case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
+                          {undefined, _} -> undefined;
+                          {_, undefined} -> undefined;
+                          {FromNumber, FromRealm} -> <<"sip:", FromNumber/binary, "@", FromRealm/binary>>
+                      end;
+                  _ -> undefined
+              end,
+    lager:debug("setting from-uri to ~s", [FromURI]),
+
+    CCVs = wh_json:set_values([ KV || {_,V}=KV <- [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}
+                                                   ,{<<"From-URI">>, FromURI}
+                                                  ],
+                                      V =/= undefined
+                              ], wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
@@ -127,7 +153,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 %%--------------------------------------------------------------------
 -spec execute_local_extension/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> execute_ext_resp().
 execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
-    ?LOG("number belongs to another account, executing callflow from that account"),
+    lager:debug("number belongs to another account, executing callflow from that account"),
     Q = create_queue(JObj),
     CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj),
     CIDName = wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj),
@@ -139,7 +165,7 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
             ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
             ,{<<"Callee-ID-Name">>, get_account_name(Number, AccountId)}
            ],
-    ?LOG("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
+    lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Command = [{<<"Call-ID">>, get(callid)}
                ,{<<"Extension">>, Number}
                ,{<<"Reset">>, true}
@@ -209,7 +235,7 @@ wait_for_bridge(Timeout) ->
                     {error, JObj};
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
                     CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-                    ?LOG("outbound request bridged to call ~s", [CallId]),
+                    lager:debug("outbound request bridged to call ~s", [CallId]),
                     wait_for_bridge(infinity);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     {Result, JObj};
@@ -244,7 +270,7 @@ create_queue(JObj) ->
                          ,{callid, get(callid)}
                         ]),
     wapi_self:bind_q(Q, []),
-    ?LOG("consuming call events"),
+    lager:debug("consuming call events"),
     request_rating(JObj),
     Q.    
 
@@ -257,7 +283,7 @@ create_queue(JObj) ->
 -spec request_rating/1 :: (wh_json:json_object()) -> 'ok'.
 request_rating(JObj) ->
     whapps_util:put_callid(JObj),
-    ?LOG("sending rate request"),
+    lager:debug("sending rate request"),
     Req = [{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
            ,{<<"From-DID">>, wh_json:get_value(<<"From-DID">>, JObj)}
            ,{<<"Call-ID">>, get(callid)}
@@ -296,7 +322,7 @@ find_endpoints(Number, Flags, Resources) ->
                     'undefined' -> 
                         stepswitch_util:evaluate_number(Number, Resources);
                     Flags ->
-                        _ = [?LOG("resource must have ~s flag", [F]) || F <- Flags],
+                        _ = [lager:debug("resource must have ~s flag", [F]) || F <- Flags],
                         FilteredResources = stepswitch_util:evaluate_flags(Flags, Resources),
                         stepswitch_util:evaluate_number(Number, FilteredResources)
                 end,
@@ -352,7 +378,8 @@ build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], Delay, Acc0) ->
 -spec build_endpoint/3 :: (ne_binary(), #gateway{}, non_neg_integer()) -> wh_json:json_object().
 build_endpoint(Number, Gateway, _Delay) ->
     Route = stepswitch_util:get_dialstring(Gateway, Number),
-    ?LOG("found resource ~s (~s)", [Gateway#gateway.resource_id, Route]),
+    lager:debug("found resource ~s (~s)", [Gateway#gateway.resource_id, Route]),
+
     CCVs = [{<<"Resource-ID">>, Gateway#gateway.resource_id}],
     Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"Route">>, stepswitch_util:get_dialstring(Gateway, Number)}
@@ -378,7 +405,7 @@ build_endpoint(Number, Gateway, _Delay) ->
 %%--------------------------------------------------------------------
 -spec response/2 :: (bridge_resp() | execute_ext_resp(), wh_json:json_object()) -> proplist().
 response({ok, _}, JObj) ->
-    ?LOG_END("outbound request successfully completed"),
+    lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
      ,{<<"Response-Message">>, <<"SUCCESS">>}
@@ -386,7 +413,7 @@ response({ok, _}, JObj) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 response({fail, BridgeResp}, JObj) ->
-    ?LOG_END("resources for outbound request failed"),
+    lager:debug("resources for outbound request failed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
      ,{<<"Response-Message">>, wh_json:get_value(<<"Application-Response">>, BridgeResp
@@ -395,50 +422,33 @@ response({fail, BridgeResp}, JObj) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 response({error, no_resources}, JObj) ->
-    ?LOG_END("no available resources"),
-    ErrorMsg = <<"no available resources">>,
-    To = wh_json:get_value(<<"To-DID">>, JObj),
-    whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
-                                    ,"Alert: could not process ~s~n"
-                                    ,"Fault: ~p~n"
-                                    ,"Call-ID: ~s~n"]
-                      ,[?MODULE, ?LINE, To, ErrorMsg, get(callid)]),    
+    lager:debug("no available resources"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, <<"NO_RESOURCES">>}
+     ,{<<"Response-Message">>, <<"NO_ROUTE_DESTINATION">>}
      ,{<<"Response-Code">>, <<"sip:404">>}
+     ,{<<"Error-Message">>, <<"no available resources">>}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 response({error, timeout}, JObj) ->
-    ?LOG_END("attempt to connect to resources timed out"),
-    ErrorMsg = <<"bridge request timed out">>,
-    To = wh_json:get_value(<<"To-DID">>, JObj),
-    whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
-                                    ,"Alert: could not process ~s~n"
-                                    ,"Fault: ~p~n"
-                                    ,"Call-ID: ~s~n"]
-                      ,[?MODULE, ?LINE, To, ErrorMsg, get(callid)]),
+    lager:debug("attempt to connect to resources timed out"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, <<"ERROR">>}
+     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
-     ,{<<"Error-Message">>, ErrorMsg}
+     ,{<<"Error-Message">>, <<"bridge request timed out">>}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 response({error, Error}, JObj) ->
-    ?LOG_END("error during outbound request: ~s", [wh_json:encode(Error)]),
-    ErrorMsg = wh_json:get_value(<<"Error-Message">>, Error),
-    To = wh_json:get_value(<<"To-DID">>, JObj),
-    whapps_util:alert(<<"error">>, ["Source: ~s(~p)~n"
-                                    ,"Alert: could not process ~s~n"
-                                    ,"Fault: ~p~n"
-                                    ,"Call-ID: ~s~n"]
-                      ,[?MODULE, ?LINE, To, ErrorMsg, get(callid)]),
+    lager:debug("error during outbound request: ~s", [wh_json:encode(Error)]),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, <<"ERROR">>}
+     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
-     ,{<<"Error-Message">>, ErrorMsg}
+     ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, Error)}
+     ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 

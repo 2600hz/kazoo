@@ -23,7 +23,7 @@ handle_req(ApiJObj, _Props) ->
 
     put(callid, wh_json:get_value(<<"Msg-ID">>, ApiJObj, <<"000000000000">>)),
 
-    ?LOG_START("received SIP authentication request"),
+    lager:debug("received SIP authentication request"),
 
     AuthU = wapi_authn:get_auth_user(ApiJObj),
     AuthR = wapi_authn:get_auth_realm(ApiJObj),
@@ -32,7 +32,7 @@ handle_req(ApiJObj, _Props) ->
         {ok, AuthJObj} ->
             send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj);
         {error, not_found} ->
-            ?LOG_END("user ~s@~s is unknown", [AuthU, AuthR])
+            lager:debug("user ~s@~s is unknown", [AuthU, AuthR])
     end.
 
 %%-----------------------------------------------------------------------------
@@ -55,6 +55,7 @@ send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
     CCVs = [{<<"Username">>, AuthU}
             ,{<<"Realm">>, AuthR}
             ,{<<"Account-ID">>, get_account_id(AuthDoc)}
+            ,{<<"Authorizing-Type">>, wh_json:get_value(<<"authorizing_type">>, AuthValue, <<"anonymous">>)}
             ,{<<"Inception">>, <<"on-net">>}
             ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, AuthDoc)}],
 
@@ -66,7 +67,7 @@ send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list([CCV || {_, V}=CCV <- CCVs, V =/= undefined ])}
             | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)],
 
-    ?LOG_END("sending SIP authentication reply, with credentials"),
+    lager:debug("sending SIP authentication reply, with credentials"),
     wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp).
 
 %%-----------------------------------------------------------------------------

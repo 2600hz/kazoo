@@ -14,7 +14,7 @@
 -type io_device() :: pid() | fd().
 -type file_stream_state() :: {'undefined' | io_device(), binary()}.
 
--spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) -> 'ok' | 'timeout' | {'error', 'invalid_callid' | 'failed'}.
+-spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) -> 'ok' | 'timeout' | {'error', ne_binary()}.
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     App = wh_json:get_value(<<"Application-Name">>, JObj),
@@ -37,7 +37,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                     send_cmd(Node, UUID, AppName, AppData)
             end;
         false ->
-            ?LOG("command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
+            lager:debug("command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
             throw(<<"call command provided with a command for a different call id">>)
     end.
 
@@ -48,10 +48,9 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 %% the FS ESL via mod_erlang_event
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> {binary(), binary() | 'noop'}
+-spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> {ne_binary(), ne_binary() | 'noop'}
                                                                                | {'return', 'ok'}
-                                                                               | {'error', binary()}
-                                                                               | {'error', binary(), binary()}.
+                                                                               | {'error', ne_binary()}.
 get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
     case wapi_dialplan:noop_v(JObj) of
         false ->
@@ -157,10 +156,10 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
             MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
             case ecallmgr_media_registry:is_local(MediaName, UUID) of
                 {'error', not_local} ->
-                    ?LOG("failed to find media ~s for storing", [MediaName]),
+                    lager:debug("failed to find media ~s for storing", [MediaName]),
                     {error, <<"failed to find media requested for storage">>};
                 {ok, Media} ->
-                    ?LOG("Streaming media ~s", [MediaName]),
+                    lager:debug("Streaming media ~s", [MediaName]),
                     case filelib:is_regular(Media) andalso wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
                         <<"stream">> ->
                             %% stream file over AMQP
@@ -168,25 +167,25 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
                                        ,{<<"Media-Name">>, MediaName}
                                        ,{<<"Application-Name">>, <<"store">>}
                                       ],
-                            ?LOG("stream ~s via AMQP", [MediaName]),
+                            lager:debug("stream ~s via AMQP", [MediaName]),
                             stream_over_amqp(Node, UUID, Media, JObj, Headers),
                             {<<"store">>, noop};
                         <<"put">> ->
                             %% stream file over HTTP PUT
-                            ?LOG("stream ~s via HTTP PUT", [MediaName]),
+                            lager:debug("stream ~s via HTTP PUT", [MediaName]),
                             stream_over_http(Node, UUID, Media, put, JObj),
                             {<<"store">>, noop};
                         <<"post">> ->
                             %% stream file over HTTP POST
-                            ?LOG("stream ~s via HTTP POST", [MediaName]),
+                            lager:debug("stream ~s via HTTP POST", [MediaName]),
                             stream_over_http(Node, UUID, Media, post, JObj),
                             {<<"store">>, noop};
                         false ->
-                            ?LOG("file ~s has gone missing!", [Media]),
+                            lager:debug("file ~s has gone missing!", [Media]),
                             {return, error};
                         _Method ->
                             %% unhandled method
-                            ?LOG("unhandled stream method ~s", [_Method]),
+                            lager:debug("unhandled stream method ~s", [_Method]),
                             {return, error}
                     end
             end
@@ -223,7 +222,11 @@ get_fs_app(_Node, _UUID, _JObj, <<"progress">>) ->
     {<<"pre_answer">>, <<>>};
 
 get_fs_app(_Node, _UUID, _JObj, <<"hold">>) ->
-    {<<"endless_playback">>, <<"${hold_music}">>};
+    DP = [{"application", "endless_playback ${hold_music}"}
+          ,{"application", create_masquerade_event(<<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
+          ,{"application", "park "}
+         ],
+    {<<"xferext">>, DP};
 
 get_fs_app(_Node, _UUID, _JObj, <<"park">>) ->
     {<<"park">>, <<>>};
@@ -243,7 +246,7 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
             Method = wh_json:get_value(<<"Method">>, JObj),
             Txt = wh_json:get_value(<<"Say-Text">>, JObj),
             Arg = list_to_binary([Lang, " ", Type, " ", Method, " ", Txt]),
-            ?LOG("say command ~s", [Arg]),
+            lager:debug("say command ~s", [Arg]),
             {<<"say">>, Arg}
     end;
 
@@ -259,20 +262,25 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
             %% since that is one of the things we want to be ringing during
             DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
                                 <<"simultaneous">> when length(Endpoints) > 1 ->
-                                    ?LOG("bridge is simultaneous to multiple endpoints, starting local ringing"),
+                                    lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
                                     %% we don't really care if this succeeds, the call will fail later on
                                     _ = send_cmd(Node, UUID, <<"ring_ready">>, ""),
-                                    ",";
+                                    <<",">>;
                                 _Else ->
-                                    "|"
+                                    <<"|">>
                             end,
 
+            %% { [ne_binary(),...], json_object() }
             KeyedEPs = [{[wh_json:get_value(<<"Invite-Format">>, Endpoint)
-                         ,wh_json:get_value(<<"To-User">>, Endpoint)
-                         ,wh_json:get_value(<<"To-Realm">>, Endpoint)
-                         ,wh_json:get_value(<<"To-DID">>, Endpoint)
-                         ,wh_json:get_value(<<"Route">>, Endpoint)], Endpoint}
-                       || Endpoint <- Endpoints],
+                          ,wh_json:get_value(<<"To-User">>, Endpoint)
+                          ,wh_json:get_value(<<"To-Realm">>, Endpoint)
+                          ,wh_json:get_value(<<"To-DID">>, Endpoint)
+                          ,wh_json:get_value(<<"Route">>, Endpoint)
+                         ]
+                         ,Endpoint}
+                        || Endpoint <- Endpoints,
+                           wh_json:is_json_object(Endpoint)
+                       ],
 
             S = self(),
             DialStrings = [D || D <- [receive {Pid, DS} -> DS end
@@ -280,26 +288,28 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                                                put(callid, UUID),
                                                                S ! {self(), (catch get_bridge_endpoint(EP))}
                                                        end)
-                                                 || {_, EP} <- props:unique(KeyedEPs)]
-                                     ], D =/= ""],
+                                                 || {_, EP} <- props:unique(KeyedEPs),
+                                                    wh_json:is_json_object(EP)
+                                                ]
+                                     ], not wh_util:is_empty(D)],
 
             Generators = [fun(DP) ->
                                   case wh_json:get_integer_value(<<"Timeout">>, JObj) of
                                       undefined ->
                                           DP;
                                       TO when TO > 0 ->
-                                          ?LOG("bridge will be attempted for ~p seconds", [TO]),
+                                          lager:debug("bridge will be attempted for ~p seconds", [TO]),
                                           [{"application", "set call_timeout=" ++ wh_util:to_list(TO)}|DP]
                                   end
                           end
                           ,fun(DP) ->
                                    case wh_json:get_value(<<"Ringback">>, JObj) of
                                        undefined ->
-                                           {ok, RBSetting} = ecallmgr_util:get_setting(default_ringback, <<"%(2000,4000,440,480)">>),
+                                           {ok, RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
                                            [{"application", "set ringback=" ++ wh_util:to_list(RBSetting)}|DP];
                                        Ringback ->
                                            Stream = ecallmgr_util:media_path(Ringback, extant, UUID),
-                                           ?LOG("bridge has custom ringback: ~s", [Stream]),
+                                           lager:debug("bridge has custom ringback: ~s", [Stream]),
                                            [{"application", <<"set ringback=", Stream/binary>>},
                                             {"application", "set instant_ringback=true"}
                                             |DP
@@ -313,32 +323,33 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                                undefined -> DP;
                                                Media ->
                                                    Stream = ecallmgr_util:media_path(Media, extant, UUID),
-                                                   ?LOG("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
+                                                   lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
                                                    [{"application", <<"set hold_music=", Stream/binary>>}|DP]
                                            end;
                                        Media ->
                                            Stream = ecallmgr_util:media_path(Media, extant, UUID),
-                                           ?LOG("bridge has custom music-on-hold: ~s", [Stream]),
+                                           lager:debug("bridge has custom music-on-hold: ~s", [Stream]),
                                            [{"application", <<"set hold_music=", Stream/binary>>}|DP]
                                    end
                            end
                           ,fun(DP) ->
                                    case wh_json:get_value(<<"Media">>, JObj) of
                                        <<"process">> ->
-                                           ?LOG("bridge will process media through host switch"),
+                                           lager:debug("bridge will process media through host switch"),
                                            [{"application", "set bypass_media=false"}|DP];
                                        <<"bypass">> ->
-                                           ?LOG("bridge will connect the media peer-to-peer"),
+                                           lager:debug("bridge will connect the media peer-to-peer"),
                                            [{"application", "set bypass_media=true"}|DP];
                                        _ ->
                                            DP
                                    end
                            end
                           ,fun(DP) ->
-                                   case wh_json:get_value(<<"Custom-Channel-Vars">>, JObj) of
-                                       {struct, Props} ->
+                                   CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
+                                   case wh_json:is_json_object(CCVs) of
+                                       true ->
                                            [{"application", <<"set ", Var/binary, "=", (wh_util:to_binary(V))/binary>>}
-                                            || {K, V} <- Props,
+                                            || {K, V} <- wh_json:to_proplist(CCVs),
                                                (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= undefined
                                            ] ++ DP;
                                        _ ->
@@ -366,8 +377,8 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                    ]
                            end
                           ,fun(DP) ->
-                                   BridgeCmd = lists:flatten(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)])
-                                       ++ string:join([D || D <- DialStrings, D =/= ""], DialSeparator),
+                                   BridgeCmd = list_to_binary(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)
+                                                               ,wh_util:binary_join([D || D <- DialStrings], DialSeparator)]),
                                    [{"application", BridgeCmd}|DP]
                            end
                           ,fun(DP) ->
@@ -382,7 +393,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                 [] ->
                     {error, <<"registrar returned no endpoints">>};
                 _ ->
-                    ?LOG("creating bridge dialplan"),
+                    lager:debug("creating bridge dialplan"),
                     {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
             end
     end;
@@ -573,10 +584,10 @@ get_fs_app(_Node, _UUID, JObj, <<"presence">>) ->
              ,{"event_type", "presence"}
              ,{"alt_event_type", "dialog"}
              ,{"presence-call-direction", "outbound"}
-             ,{"event_cound", "0"}
+             ,{"event_count", "0"}
             ],
     _ = [begin
-             ?LOG("sending presence in event to ~p~n", [Node]),
+             lager:debug("sending presence in event to ~p~n", [Node]),
              freeswitch:sendevent(Node, 'PRESENCE_IN', Event) 
          end
          || NodeHandler <- NodeHandlers,
@@ -589,11 +600,11 @@ get_fs_app(_Node, _UUID, JObj, <<"conference">>) ->
         false -> {'error', <<"conference failed to execute as JObj did not validate">>};
         true ->
             ConfName = wh_json:get_value(<<"Conference-ID">>, JObj),
-            {<<"conference">>, list_to_binary([ConfName, "@default", get_conference_flags(JObj)])}
+            {<<"conference">>, list_to_binary([ConfName, "@default"])}
     end;
 
 get_fs_app(_Node, _UUID, _JObj, _App) ->
-    ?LOG("unknown application ~s", [_App]),
+    lager:debug("unknown application ~s", [_App]),
     {'error', <<"application unknown">>}.
 
 %%--------------------------------------------------------------------
@@ -624,25 +635,25 @@ get_fs_kv(Key, Val, _) ->
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -spec send_cmd/4 :: (atom(), ne_binary(), ne_binary() | string(), ne_binary() | string()) -> send_cmd_ret().
 send_cmd(Node, UUID, <<"hangup">>, _) ->
-    ?LOG("terminate call on node ~s", [Node]),
+    lager:debug("terminate call on node ~s", [Node]),
     _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
     freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
 send_cmd(Node, UUID, <<"record_call">>, Args) ->
     Cmd = list_to_binary([UUID, " ", Args]),
-    ?LOG("execute on node ~s: uuid_record(~s)", [Node, Cmd]),
+    lager:debug("execute on node ~s: uuid_record(~s)", [Node, Cmd]),
     Ret = freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd)),
-    ?LOG("executing uuid_record returned ~p", [Ret]),
+    lager:debug("executing uuid_record returned ~p", [Ret]),
     Ret;
 send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
     XferExt = [begin
                    _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),
-                   ?LOG("building xferext on node ~s: ~s", [Node, V]),
+                   lager:debug("building xferext on node ~s: ~s", [Node, V]),
                    {wh_util:to_list(K), wh_util:to_list(V)}    
                end || {K, V} <- Dialplan],
     ok = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ XferExt),
     ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
 send_cmd(Node, UUID, AppName, Args) ->
-    ?LOG("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
+    lager:debug("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
     _ = ecallmgr_util:fs_log(Node, "whistle executing ~s ~s", [AppName, Args]),
     freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                     ,{"execute-app-name", wh_util:to_list(AppName)}
@@ -656,9 +667,9 @@ send_cmd(Node, UUID, AppName, Args) ->
 %%--------------------------------------------------------------------
 -spec create_masquerade_event/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 create_masquerade_event(Application, EventName) ->
-    wh_util:to_list(<<"event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade"
-                      ,",whistle_event_name=", EventName/binary
-                      ,",whistle_application_name=", Application/binary>>).
+    <<"event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade"
+      ,",whistle_event_name=", EventName/binary
+      ,",whistle_application_name=", Application/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -668,15 +679,15 @@ create_masquerade_event(Application, EventName) ->
 %%                              ,origination_caller_id_number=Num]Endpoint)
 %% @end
 %%--------------------------------------------------------------------
--spec get_bridge_endpoint/1 :: (wh_json:json_object()) -> string().
+-spec get_bridge_endpoint/1 :: (wh_json:json_object()) -> binary().
 get_bridge_endpoint(JObj) ->
     case ecallmgr_fs_xml:build_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
         {'error', 'timeout'} ->
-            ?LOG("unable to build route to endpoint"),
-            "";
+            lager:debug("unable to build route to endpoint"),
+            <<>>;
         EndPoint ->
             CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
-            wh_util:to_list(list_to_binary([CVs, EndPoint]))
+            list_to_binary([CVs, EndPoint])
     end.
 
 %%--------------------------------------------------------------------
@@ -694,7 +705,7 @@ stream_over_amqp(Node, UUID, File, JObj, Headers) ->
                 Q ->
                     Q
             end,
-    amqp_stream(DestQ, fun stream_file/1, {undefined, File}, Headers, 1),
+    _ = amqp_stream(DestQ, fun stream_file/1, {undefined, File}, Headers, 1),
     send_store_call_event(Node, UUID, <<"complete">>).
 
 %%--------------------------------------------------------------------
@@ -705,7 +716,7 @@ stream_over_amqp(Node, UUID, File, JObj, Headers) ->
 %%--------------------------------------------------------------------
 -spec amqp_stream/5 :: (ne_binary(), fun(), {term(), ne_binary()}, proplist(), pos_integer()) -> 'eof'.
 amqp_stream(DestQ, F, State, Headers, Seq) ->
-    ?LOG("streaming via AMQP to ~s", [DestQ]),
+    lager:debug("streaming via AMQP to ~s", [DestQ]),
     case F(State) of
         {ok, Data, State1} ->
             %% send msg
@@ -732,7 +743,7 @@ amqp_stream(DestQ, F, State, Headers, Seq) ->
 -spec stream_over_http/5 :: (atom(), ne_binary(), ne_binary(), 'put' | 'post', wh_json:json_object()) -> 'ok'.
 stream_over_http(Node, UUID, File, Method, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
-    ?LOG("streaming via HTTP(~s) to ~s", [Method, Url]),
+    lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
     AddHeaders = wh_json:to_proplist(wh_json:get_value(<<"Additional-Headers">>, JObj, wh_json:new())),
     Headers = [{"Content-Length", filelib:file_size(File)}
                | [ {wh_util:to_list(K), V} || {K,V} <- AddHeaders] ],
@@ -756,15 +767,15 @@ stream_over_http(Node, UUID, File, Method, JObj) ->
 
             case wapi_dialplan:store_http_resp(JObj1) of
                 {ok, Payload} ->
-                    ?LOG("ibrowse 'OK'ed with ~p publishing to ~s: ~s", [StatusCode, AppQ, Payload]),
+                    lager:debug("ibrowse 'OK'ed with ~p publishing to ~s: ~s", [StatusCode, AppQ, Payload]),
                     amqp_util:targeted_publish(AppQ, Payload, <<"application/json">>);
                 {'error', Msg} ->
-                    ?LOG("store via HTTP ~s errored: ~p", [Method, Msg])
+                    lager:debug("store via HTTP ~s errored: ~p", [Method, Msg])
             end;
         {'error', Error} ->
-            ?LOG("ibrowse error: ~p", [Error]);
+            lager:debug("ibrowse error: ~p", [Error]);
         {ibrowse_req_id, ReqId} ->
-            ?LOG("ibrowse req id: ~p", [ReqId])
+            lager:debug("ibrowse req id: ~p", [ReqId])
     end.
 
 %%--------------------------------------------------------------------
@@ -819,23 +830,6 @@ export(Node, UUID, Arg) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% builds a FS specific flag string for the conference command
-%% @end
-%%--------------------------------------------------------------------
--spec get_conference_flags/1 :: (wh_json:json_object()) -> binary().
-get_conference_flags(JObj) ->
-    Flags = [<<Flag/binary, Delim/binary>>
-                 || {Flag, Parameter} <- ?CONFERENCE_FLAGS, Delim <- [<<",">>]
-                        ,wh_util:to_boolean(wh_json:get_value(Parameter, JObj, false))
-            ],
-    case list_to_binary(Flags) of
-        <<>> -> <<>>;
-        F -> <<"+flags{", (erlang:binary_part(F, {0, byte_size(F)-1}))/binary, "}">>
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec send_fetch_call_event/3 :: (atom(), ne_binary(), wh_json:json_object()) -> 'ok'.
@@ -883,7 +877,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec send_store_call_event/3 :: (atom(), ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec send_store_call_event/3 :: (atom(), ne_binary(), wh_json:json_object() | ne_binary()) -> 'ok'.
 send_store_call_event(Node, UUID, MediaTransResults) ->
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
     Prop = try
@@ -891,9 +885,9 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                ecallmgr_util:eventstr_to_proplist(Dump)
            catch
                _E:_R ->
-                   ?LOG_SYS("Failed get params from uuid_dump"),
-                   ?LOG_SYS("~p : ~p", [_E, _R]),
-                   ?LOG_SYS("sending less interesting call_event message"),
+                   lager:debug("Failed get params from uuid_dump"),
+                   lager:debug("~p : ~p", [_E, _R]),
+                   lager:debug("sending less interesting call_event message"),
                    []
            end,
 
@@ -932,7 +926,7 @@ create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
                                 Acc
                         end, DP, Props);
         _Error -> 
-            ?LOG(UUID, "failed to get result from uuid_dump", []),
+            lager:debug("failed to get result from uuid_dump for ~s", [UUID]),
             DP
     end.
         

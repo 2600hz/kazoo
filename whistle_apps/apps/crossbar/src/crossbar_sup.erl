@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0, upgrade/0]).
--export([cache_proc/0]).
+-export([cache_proc/0, child_spec/1, find_proc/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -39,6 +39,15 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+-spec child_spec/1 :: (atom()) -> ?CHILD(atom, worker).
+child_spec(Mod) ->
+    ?CHILD(Mod, worker).
+
+-spec find_proc/1 :: (atom()) -> pid().
+find_proc(Mod) ->
+    [P] = [P || {Mod1, P, _, _} <- supervisor:which_children(?MODULE), Mod =:= Mod1],
+    P.
 
 -spec cache_proc/0 :: () -> {'ok', pid()}.
 cache_proc() ->
@@ -82,19 +91,6 @@ upgrade() ->
 -spec init(Args) -> sup_init_ret() when
       Args :: [].
 init([]) ->
-    {ok, Dispatch} = file:consult(?DISPATCH_FILE),
-    IP = whapps_config:get_string(?CONFIG_CAT, <<"ip">>, <<"0.0.0.0">>),
-    Port = whapps_config:get_string(?CONFIG_CAT, <<"port">>, <<"8000">>),
-    Name = whapps_config:get_string(?CONFIG_CAT, <<"service_name">>, <<"crossbar">>),
-    WebConfig = [{ip, IP}
-                 ,{port, Port}
-                 ,{name, Name}
-                 ,{dispatch, Dispatch}
-                 ,{log_dir, whapps_config:get_string(?CONFIG_CAT, <<"log_dir">>, ?DEFAULT_LOG_DIR)}
-                 ,{ssl, whapps_config:get_is_true(?CONFIG_CAT, <<"ssl">>, false)}
-                 ,{ssl_opts, wh_json:to_proplist(whapps_config:get(?CONFIG_CAT, <<"ssl_opts">>, wh_json:new()))}],
-    ?LOG("starting webmachine ~s:~s as ~s", [IP, Port, Name]),
-    Web = ?CHILD(webmachine_mochiweb, worker, WebConfig),
-    ModuleSup = ?CHILD(crossbar_module_sup, supervisor),
-    BindingServer = ?CHILD(crossbar_bindings, worker),
-    {ok, { {one_for_one, 10, 10}, [Web, BindingServer, ModuleSup, ?CACHE(crossbar_cache)]} }.
+    {ok, {{one_for_one, 10, 10}, [?CACHE(crossbar_cache)
+                                  ,?CHILD(crossbar_bindings, worker)
+                                 ]}}.

@@ -11,8 +11,22 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, set_host/1, set_host/2, set_host/3, set_host/4, set_host/5, get_host/0, get_port/0, get_creds/0, get_url/0, get_uuid/0, get_uuids/1]).
--export([get_admin_port/0, get_admin_conn/0, get_admin_url/0, get_node_cookie/0, set_node_cookie/1]).
+-export([start_link/0
+         ,set_host/1, set_host/2, set_host/3, set_host/4, set_host/5
+         ,get_host/0
+         ,get_port/0
+         ,get_creds/0
+         ,get_url/0
+         ,get_uuid/0
+         ,get_uuids/1
+        ]).
+-export([get_admin_port/0
+         ,get_admin_conn/0
+         ,get_admin_url/0
+         ,get_node_cookie/0
+         ,set_node_cookie/1
+         ,load_configs/0
+        ]).
 
 %% System manipulation
 -export([db_exists/1, db_info/0, db_info/1, db_create/1, db_create/2, db_compact/1, db_view_cleanup/1, db_delete/1, db_replicate/1]).
@@ -69,16 +83,16 @@
 -spec load_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 load_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
-    ?LOG_SYS("read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
+    lager:debug("read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
     try
         {ok, Bin} = file:read_file(Path),
         ?MODULE:save_doc(DbName, wh_json:decode(Bin)) %% if it crashes on the match, the catch will let us know
     catch
         _Type:{badmatch,{error,Reason}} ->
-            ?LOG_SYS("badmatch error: ~p", [Reason]),
+            lager:debug("badmatch error: ~p", [Reason]),
             {error, Reason};
         _Type:Reason ->
-            ?LOG_SYS("exception: ~p", [Reason]),
+            lager:debug("exception: ~p", [Reason]),
             {error, Reason}
     end.
 
@@ -92,7 +106,7 @@ load_doc_from_file(DbName, App, File) ->
 -spec update_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 update_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
-    ?LOG_SYS("update db ~s from CouchDB file: ~s", [DbName, Path]),
+    lager:debug("update db ~s from CouchDB file: ~s", [DbName, Path]),
     try
         {ok, Bin} = file:read_file(Path),
         JObj = wh_json:decode(Bin),
@@ -100,10 +114,10 @@ update_doc_from_file(DbName, App, File) ->
         ?MODULE:save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj))
     catch
         _Type:{badmatch,{error,Reason}} ->
-            ?LOG_SYS("bad match: ~p", [Reason]),
+            lager:debug("bad match: ~p", [Reason]),
             {error, Reason};
         _Type:Reason ->
-            ?LOG_SYS("exception: ~p", [Reason]),
+            lager:debug("exception: ~p", [Reason]),
             {error, Reason}
     end.
 
@@ -118,10 +132,10 @@ update_doc_from_file(DbName, App, File) ->
 revise_doc_from_file(DbName, App, File) ->
     case ?MODULE:update_doc_from_file(DbName, App, File) of
         {error, _E} ->
-            ?LOG_SYS("failed to update doc: ~p", [_E]),
+            lager:debug("failed to update doc: ~p", [_E]),
             ?MODULE:load_doc_from_file(DbName, App, File);
         {ok, _}=Resp ->
-            ?LOG_SYS("revised ~s", [File]),
+            lager:debug("revised ~s", [File]),
             Resp
     end.
 
@@ -162,13 +176,13 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
         Sleep andalso timer:sleep(250),
         case lookup_doc_rev(DbName, wh_json:get_value(<<"_id">>, JObj)) of
             {ok, Rev} ->
-                ?LOG("update doc from file ~s in ~s", [H, DbName]),
+                lager:debug("update doc from file ~s in ~s", [H, DbName]),
                 save_doc(DbName, wh_json:set_value(<<"_rev">>, Rev, JObj));
             {error, not_found} ->
-                ?LOG("import doc from file ~s in ~s", [H, DbName]),
+                lager:debug("import doc from file ~s in ~s", [H, DbName]),
                 save_doc(DbName, JObj);
             {error, Reason} ->
-                ?LOG("failed to load doc ~s into ~s, ~p", [H, DbName, Reason])
+                lager:debug("failed to load doc ~s into ~s, ~p", [H, DbName, Reason])
         end,
         do_revise_docs_from_folder(DbName, Sleep, T)
     catch
@@ -517,9 +531,10 @@ get_conn() ->
         Srv when is_pid(Srv) ->
             gen_server:call(?SERVER, get_conn);
         _E ->
-            ?LOG("no server by the name of ~s", [?SERVER]),
+            lager:debug("no server by the name of ~s", [?SERVER]),
             ST = erlang:get_stacktrace(),
-            ?LOG_STACKTRACE(ST)
+            [lager:debug("st: ~p", [T]) || T <- ST],
+            exit(couch_mgr_died)
     end.
 
 get_admin_conn() ->
@@ -543,6 +558,10 @@ get_node_cookie() ->
 set_node_cookie(Cookie) when is_atom(Cookie) ->
     couch_config:store(bigcouch_cookie, Cookie).
 
+-spec load_configs/0 :: () -> 'ok'.
+load_configs() ->
+    gen_server:cast(?SERVER, load_configs).
+
 -spec get_url/0 :: () -> ne_binary() | 'undefined'.
 -spec get_admin_url/0 :: () -> ne_binary() | 'undefined'.
 get_url() ->
@@ -560,15 +579,15 @@ get_url(H, {User, Pwd}, P) ->
                    ]).
 
 add_change_handler(DBName, DocID) ->
-    ?LOG_SYS("add change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
+    lager:debug("add change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
     gen_server:cast(?SERVER, {add_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID), self()}).
 
 add_change_handler(DBName, DocID, Pid) ->
-    ?LOG_SYS("add change handler for Pid: ~p for DB: ~s and Doc: ~s", [Pid, DBName, DocID]),
+    lager:debug("add change handler for Pid: ~p for DB: ~s and Doc: ~s", [Pid, DBName, DocID]),
     gen_server:cast(?SERVER, {add_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID), Pid}).
 
 rm_change_handler(DBName, DocID) ->
-    ?LOG_SYS("rm change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
+    lager:debug("rm change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
     gen_server:call(?SERVER, {rm_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID)}).
 
 %%%===================================================================
@@ -589,7 +608,8 @@ rm_change_handler(DBName, DocID) ->
 -spec init/1 :: ([]) -> {'ok', #state{}}.
 init([]) ->
     process_flag(trap_exit, true),
-    ?LOG("starting couch_mgr"),
+    put(callid, ?LOG_SYSTEM_ID),
+    lager:debug("starting couch_mgr"),
     {ok, init_state()}.
 
 %%--------------------------------------------------------------------
@@ -616,13 +636,11 @@ handle_call(get_admin_port, _From, #state{host={_,_,P}}=State) ->
     {reply, P, State};
 
 handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={OldHost,_,_}}=State) ->
-    ?LOG_SYS("updating host from ~p to ~p", [OldHost, Host]),
+    lager:debug("updating host from ~p to ~p", [OldHost, Host]),
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
 
-    couch_config:store(couch_config, {Host, Port, User, Pass, AdminPort}),
-
-    spawn(fun() -> save_config() end),
+    couch_config:store(couch_host, {Host, Port, User, Pass, AdminPort}),
 
     {reply, ok, State#state{host={Host, Port, AdminPort}
                             ,connection=Conn
@@ -632,13 +650,11 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={O
                            }};
 
 handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
-    ?LOG_SYS("setting host for the first time to ~p", [Host]),
+    lager:debug("setting host for the first time to ~p", [Host]),
     Conn = couch_util:get_new_connection(Host, Port, User, Pass),
     AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
 
-    couch_config:store(couch_config, {Host, Port, User, Pass, AdminPort}),
-
-    spawn(fun() -> save_config() end),
+    couch_config:store(couch_host, {Host, Port, User, Pass, AdminPort}),
 
     {reply, ok, State#state{host={Host,Port,AdminPort}
                             ,connection=Conn
@@ -659,7 +675,7 @@ handle_call(get_creds, _, #state{creds=Cred}=State) ->
 handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handlers=CH}=State) ->
     spawn(fun() ->
                   {ok, {Srv, _}} = dict:find(DBName, CH),
-                  ?LOG_SYS("found CH(~p): Rm listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
+                  lager:debug("found CH(~p): Rm listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
                   change_handler:rm_listener(Srv, Pid, DocID)
           end),
     {reply, ok, State}.
@@ -674,19 +690,23 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(load_configs, State) ->
+    couch_config:ready(),
+    {noreply, State};
 handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
     case dict:find(DBName, CH) of
         {ok, {Srv, _}} ->
-            ?LOG_SYS("found CH(~p): Adding listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
+            lager:debug("found change handler(~p): adding listener(~p) for ~s:~s", [Srv, Pid, DBName, DocID]),
             change_handler:add_listener(Srv, Pid, DocID),
             {noreply, State};
         error ->
             {ok, Srv} = change_handler:start_link(couch_util:get_db(S, DBName), []),
-            ?LOG_SYS("started CH(~p): added listener(~p) for db:doc ~s:~s", [Srv, Pid, DBName, DocID]),
+            lager:debug("started change handler(~p): adding listener(~p) for ~s:~s", [Srv, Pid, DBName, DocID]),
             SrvRef = erlang:monitor(process, Srv),
             change_handler:add_listener(Srv, Pid, DocID),
             {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
     end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -698,15 +718,15 @@ handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH,
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, process, Srv, complete}, #state{change_handlers=CH}=State) ->
-    ?LOG_SYS("srv ~p down after complete", [Srv]),
+    lager:debug("srv ~p down after complete", [Srv]),
     erlang:demonitor(Ref, [flush]),
     {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
 handle_info({'DOWN', Ref, process, Srv, {error,connection_closed}}, #state{change_handlers=CH}=State) ->
-    ?LOG_SYS("srv ~p down after conn closed", [Srv]),
+    lager:debug("srv ~p down after conn closed", [Srv]),
     erlang:demonitor(Ref, [flush]),
     {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
 handle_info(_Info, State) ->
-    ?LOG_SYS("unexpected message ~p", [_Info]),
+    lager:debug("unexpected message ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -747,10 +767,10 @@ code_change(_OldVsn, State, _Extra) ->
 init_state() ->
     case couch_config:fetch(<<"couch_host">>) of
         undefined ->
-            ?LOG("starting conns with default_couch_host"),
+            lager:debug("starting conns with default_couch_host"),
             init_state_from_config(couch_config:fetch(<<"default_couch_host">>));
         HostData ->
-            ?LOG("starting conns with couch_host"),
+            lager:debug("starting conns with couch_host"),
             init_state_from_config(HostData)
     end.
 
@@ -770,22 +790,13 @@ init_state_from_config({H, Port, User, Pass, AdminPort}) ->
     Conn = couch_util:get_new_connection(H, wh_util:to_integer(Port), User, Pass),
     AdminConn = couch_util:get_new_connection(H, wh_util:to_integer(AdminPort), User, Pass),
 
-    ?LOG_SYS("returning state record"),
+    lager:debug("returning state record"),
     couch_config:ready(),
     #state{connection=Conn
            ,admin_connection=AdminConn
            ,host={H, wh_util:to_integer(Port), wh_util:to_integer(AdminPort)}
            ,creds={User, Pass}
           }.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec save_config/0 :: () -> 'ok'.
-save_config() ->
-    couch_config:write_config(?CONFIG_FILE_PATH).
 
 -spec remove_ref/2 :: (reference(), dict()) -> dict().
 remove_ref(Ref, CH) ->

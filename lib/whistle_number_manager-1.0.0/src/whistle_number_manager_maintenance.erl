@@ -40,10 +40,6 @@ reconcile(all) ->
 reconcile(AccountId) when not is_binary(AccountId) ->
     reconcile(wh_util:to_binary(AccountId));
 reconcile(AccountId) ->
-%%     Numbers = get_trunkstore_account_numbers(AccountId),
-%%     _ = reconcile_numbers(Numbers, wh_util:format_account_id(AccountId, raw)),
-%%     done;
-%% reconcile(AccountId, false) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     Numbers = get_callflow_account_numbers(AccountDb),
     Numbers1 = get_trunkstore_account_numbers(AccountId, AccountDb) ++ Numbers,
@@ -101,22 +97,22 @@ is_trunkstore_account(JObj) ->
 %%--------------------------------------------------------------------
 -spec get_trunkstore_account_numbers/2 :: (ne_binary(), ne_binary()) -> [ne_binary(),...] | [].
 get_trunkstore_account_numbers(AccountId, AccountDb) ->
-    ?LOG("looking in ~s for trunkstore DIDs", [AccountDb]),
+    lager:debug("looking in ~s for trunkstore DIDs", [AccountDb]),
     case couch_mgr:get_results(AccountDb, <<"trunkstore/LookUpDID">>, []) of
         {ok, []} ->
-            ?LOG("no trunkstore DIDs listed in account ~s, trying ts db", [AccountDb]),
+            lager:debug("no trunkstore DIDs listed in account ~s, trying ts db", [AccountDb]),
             get_trunkstore_account_numbers(AccountId);
         {ok, JObjs} ->
-            ?LOG("account db ~s has trunkstore DIDs", [AccountDb]),
+            lager:debug("account db ~s has trunkstore DIDs", [AccountDb]),
             Assigned = [wh_json:get_value(<<"key">>, JObj) || JObj <- JObjs],
 
             TSDocId = wh_json:get_value(<<"id">>, hd(JObjs)),
             {ok, TSDoc} = couch_mgr:open_doc(AccountDb, TSDocId),
-            ?LOG("fetched ts doc ~s from ~s", [TSDocId, AccountDb]),
+            lager:debug("fetched ts doc ~s from ~s", [TSDocId, AccountDb]),
 
             wh_json:get_keys(wh_json:get_value(<<"DIDs_Unassigned">>, TSDoc, wh_json:new())) ++ Assigned;
         {error, _} ->
-            ?LOG("failed to find DIDs in account db, trying ts doc"),
+            lager:debug("failed to find DIDs in account db, trying ts doc"),
             get_trunkstore_account_numbers(AccountId)
     end.
 
@@ -126,7 +122,7 @@ get_trunkstore_account_numbers(AccountId) ->
         {ok, JObj} ->
             case is_trunkstore_account(JObj) of
                 true ->
-                    ?LOG("account ~s is a trunkstore doc...", [AccountId]),
+                    lager:debug("account ~s is a trunkstore doc...", [AccountId]),
                     Assigned = [wh_json:get_value(<<"DIDs">>, Server, wh_json:new())
                                 || Server <- wh_json:get_value(<<"servers">>, JObj, wh_json:new())],
                     Unassigned = [wh_json:get_value(<<"DIDs_Unassigned">>, JObj, wh_json:new())],
@@ -159,7 +155,7 @@ reconcile_numbers([Number|Numbers], AccountId) ->
         throw:not_reconcilable ->
             reconcile_numbers(Numbers, AccountId);
         _E:_R ->
-            ?LOG("error reconciling ~s: ~p:~p", [Number, _E, _R]),
+            lager:debug("error reconciling ~s: ~p:~p", [Number, _E, _R]),
             reconcile_numbers(Numbers, AccountId)
     end;
 reconcile_numbers([], _) ->

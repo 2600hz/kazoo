@@ -8,23 +8,51 @@
 %%%-------------------------------------------------------------------
 -module(reg_query).
 
--export([init/0, handle_req/2]).
-
 -include("reg.hrl").
+
+-export([init/0]).
+-export([req_query_req/2]).
+-export([presence_probe/2]).
 
 init() ->
     ok.
 
--spec handle_req/2 :: (ApiJObj, Props) -> no_return() when
-      ApiJObj :: wh_json:json_object(),
-      Props :: proplist().
-handle_req(ApiJObj, _Props) ->
+-spec presence_probe/2 :: (wh_json:json_object(), proplist()) -> ok.
+presence_probe(ApiJObj, _Props) ->
+    case wh_json:get_value(<<"Subscription">>, ApiJObj) of
+        <<"message-summary">> -> ok;
+        _Else ->
+            ToRealm = wh_json:get_ne_value(<<"To-Realm">>, ApiJObj),
+            ToUser = wh_json:get_ne_value(<<"To-User">>, ApiJObj),
+            FromRealm = wh_json:get_ne_value(<<"From-Realm">>, ApiJObj),
+            FromUser = wh_json:get_ne_value(<<"From-User">>, ApiJObj),
+            case reg_util:lookup_registration(ToRealm, ToUser) of
+                {ok, RegJObjs} when is_list(RegJObjs) ->
+                    PresenceUpdate = [{<<"Presence-ID">>, list_to_binary([ToUser, "@", ToRealm])}
+                                      ,{<<"To">>, list_to_binary([FromUser, "@", FromRealm])}
+                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                     ],
+                    wapi_notifications:publish_presence_update(PresenceUpdate);
+                {ok, _} ->
+                    PresenceUpdate = [{<<"Presence-ID">>, list_to_binary([ToUser, "@", ToRealm])}
+                                      ,{<<"To">>, list_to_binary([FromUser, "@", FromRealm])}
+                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                     ],
+                    wapi_notifications:publish_presence_update(PresenceUpdate);
+                {error, not_found} -> 
+                    ok
+            end
+    end,
+    ok.
+
+-spec req_query_req/2 :: (wh_json:json_object(), proplist()) -> ok.
+req_query_req(ApiJObj, _Props) ->
     true = wapi_registration:query_req_v(ApiJObj),
 
     CallId = wh_json:get_value(<<"Call-ID">>, ApiJObj, <<"000000000000">>),
     put(callid, CallId),
 
-    ?LOG_START("received registration query"),
+    lager:debug("received registration query"),
     true = wapi_registration:query_req_v(ApiJObj),
 
     Realm = wh_json:get_value(<<"Realm">>, ApiJObj),
@@ -33,7 +61,7 @@ handle_req(ApiJObj, _Props) ->
     %% only send data if a registration is found
     case reg_util:lookup_registration(Realm, Username) of
         {ok, RegJObjs} when is_list(RegJObjs) ->
-            ?LOG("found multiple contacts for ~s@~s in cache", [Username, Realm]),
+            lager:debug("found multiple contacts for ~s@~s in cache", [Username, Realm]),
             Resp = [{<<"Multiple">>, <<"true">>}
                     ,{<<"Fields">>, [filter(ApiJObj, RegJObj) 
                                      || RegJObj <- RegJObjs
@@ -41,16 +69,16 @@ handle_req(ApiJObj, _Props) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp),
-            ?LOG_END("sent multiple registration AORs");
+            lager:debug("sent multiple registration AORs");
         {ok, RegJObj} ->
-            ?LOG("found contact for ~s@~s in cache", [Username, Realm]),
+            lager:debug("found contact for ~s@~s in cache", [Username, Realm]),
             Resp = [{<<"Fields">>, filter(ApiJObj, RegJObj)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp),
-            ?LOG_END("sent reply for AOR: ~s", [wh_json:get_value(<<"Contact">>, RegJObj)]);
+            lager:debug("sent reply for AOR: ~s", [wh_json:get_value(<<"Contact">>, RegJObj)]);
         {error, not_found} ->
-            ?LOG_END("no registration for ~s@~s", [Username, Realm])
+            lager:debug("no registration for ~s@~s", [Username, Realm])
     end.
 
 %%-----------------------------------------------------------------------------

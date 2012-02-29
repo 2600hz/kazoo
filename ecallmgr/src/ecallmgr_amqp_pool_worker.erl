@@ -55,14 +55,18 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
--spec start_req/7 :: (pid(), proplist(), fun(), ne_binary(), {pid(), reference()}, pid() | atom(), non_neg_integer()) -> 'ok'.
-start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout) when is_integer(Timeout) ->
+-spec start_req/7 :: (pid(), wh_json:json_object() | proplist(), fun((api_terms()) -> 'ok'), ne_binary() | 'undefined', {pid(), reference()}, pid() | atom(), pos_integer()) -> 'ok'.
+start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout) when is_pid(Srv),
+                                                                 is_function(ApiFun, 1),
+                                                                 is_pid(Parent),
+                                                                 is_integer(Timeout) ->
     JObj = case wh_json:is_json_object(Prop) of
                true -> Prop;
                false -> wh_json:from_list(Prop)
            end,
-    JObj1 = wh_json:set_value(<<"Server-ID">>, gen_listener:queue_name(Srv)
-                              ,wh_json:set_value(<<"Call-ID">>, CallId, JObj)),
+    JObj1 = wh_json:set_values([{<<"Server-ID">>, gen_listener:queue_name(Srv)}
+                                ,{<<"Call-ID">>, CallId}
+                               ], JObj),
     PubFun = fun() -> put(callid, CallId), ApiFun(JObj1) end,
     gen_listener:cast(Srv, {employed, From, Parent, PubFun, CallId, Timeout}).
 
@@ -82,7 +86,8 @@ start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout) when is_integer(Time
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG("AMQP pool worker started"),
+    put(callid, ?LOG_SYSTEM_ID),
+    lager:debug("AMQP pool worker started"),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -114,40 +119,40 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({employed, {Pid, _}=From, Parent, PubFun, CallId, Timeout}, #state{status=free}=State) ->
-    ?LOG(CallId, "Employed by ~p via ~p", [Pid, Parent]),
+    lager:debug("Employed by ~p via ~p for ~s", [Pid, Parent, CallId]),
     Ref = erlang:monitor(process, Pid),
     ReqRef = erlang:start_timer(Timeout, self(), req_timeout),
 
     try
         PubFun(),
-        ?LOG("req ref: ~p", [ReqRef]),
+        lager:debug("req ref: ~p", [ReqRef]),
         {noreply, State#state{status=busy, from=From, ref=Ref
                               ,parent=Parent, start=erlang:now()
                               ,req_ref=ReqRef
                              }}
     catch
         E:R ->
-            ?LOG("publish fun ~s: ~p", [E,R]),
-            erlang:cancel_timer(ReqRef),
+            lager:debug("publish fun ~s: ~p", [E,R]),
+            _ = erlang:cancel_timer(ReqRef),
             ecallmgr_amqp_pool:worker_free(Parent, self(), 0),
             {noreply, State}
     end;
 handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent, ref=Ref
                                           ,start=Start, req_ref=ReqRef}) ->
     Elapsed = timer:now_diff(erlang:now(), Start),
-    ?LOG("received response after ~b ms, returning to pool ~p", [Elapsed div 1000, Parent]),
+    lager:debug("received response after ~b ms, returning to pool ~p", [Elapsed div 1000, Parent]),
 
-    erlang:demonitor(Ref, [flush]),
-    erlang:cancel_timer(ReqRef),
+    _ = erlang:demonitor(Ref, [flush]),
+    _ = erlang:cancel_timer(ReqRef),
     gen_server:reply(From, {ok, JObj}),
 
     ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
     {noreply, #state{}};
 handle_cast({response_recv, JObj}, State) ->
-    ?LOG("WTF, I'm free, yet receiving a response?"),
-    ?LOG("EvtCat: ~s", [wh_json:get_value(<<"Event-Category">>, JObj)]),
-    ?LOG("EvtName: ~s", [wh_json:get_value(<<"Event-Name">>, JObj)]),
-    ?LOG("SrvID: ~s", [wh_json:get_value(<<"Server-ID">>, JObj)]),
+    lager:debug("WTF, I'm free, yet receiving a response?"),
+    lager:debug("EvtCat: ~s", [wh_json:get_value(<<"Event-Category">>, JObj)]),
+    lager:debug("EvtName: ~s", [wh_json:get_value(<<"Event-Name">>, JObj)]),
+    lager:debug("SrvID: ~s", [wh_json:get_value(<<"Server-ID">>, JObj)]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -161,10 +166,10 @@ handle_cast({response_recv, JObj}, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, process, Pid, _Info}, #state{status=busy, ref=Ref, parent=Parent, req_ref=ReqRef}) ->
-    ?LOG_END("requestor (~w) down, giving up on task", [Pid]),
+    lager:debug("requestor (~w) down, giving up on task", [Pid]),
 
-    erlang:demonitor(Ref, [flush]),
-    erlang:cancel_timer(ReqRef),
+    _ = erlang:demonitor(Ref, [flush]),
+    _ = erlang:cancel_timer(ReqRef),
 
     ecallmgr_amqp_pool:worker_free(Parent, self(), 0),
     {noreply, #state{}};
@@ -172,12 +177,12 @@ handle_info({'DOWN', Ref, process, Pid, _Info}, #state{status=busy, ref=Ref, par
 handle_info({timeout, ReqRef, req_timeout}, #state{status=busy, from=From, parent=Parent, ref=Ref
                                 ,start=Start, req_ref=ReqRef
                                }) ->
-    ?LOG("request took too long, timing out caller"),
+    lager:debug("request took too long, timing out caller"),
     Elapsed = timer:now_diff(erlang:now(), Start),
-    ?LOG("received response after ~b ms, returning to pool ~p", [Elapsed div 1000, Parent]),
+    lager:debug("received response after ~b ms, returning to pool ~p", [Elapsed div 1000, Parent]),
 
-    erlang:demonitor(Ref, [flush]),
-    erlang:cancel_timer(ReqRef),
+    _ = erlang:demonitor(Ref, [flush]),
+    _ = erlang:cancel_timer(ReqRef),
 
     gen_server:reply(From, {error, timeout}),
 
@@ -187,12 +192,12 @@ handle_info({timeout, ReqRef, req_timeout}, #state{status=busy, from=From, paren
 handle_info(req_timeout, #state{status=busy, from=From, parent=Parent, ref=Ref
                                 ,start=Start, req_ref=ReqRef
                                }) ->
-    ?LOG("request took too long, timing out caller"),
+    lager:debug("request took too long, timing out caller"),
     Elapsed = timer:now_diff(erlang:now(), Start),
-    ?LOG("received response after ~b ms, returning to pool ~p", [Elapsed div 1000, Parent]),
+    lager:debug("received response after ~b ms, returning to pool ~p", [Elapsed div 1000, Parent]),
 
-    erlang:demonitor(Ref, [flush]),
-    erlang:cancel_timer(ReqRef),
+    _ = erlang:demonitor(Ref, [flush]),
+    _ = erlang:cancel_timer(ReqRef),
 
     gen_server:reply(From, {error, timeout}),
 
@@ -200,7 +205,7 @@ handle_info(req_timeout, #state{status=busy, from=From, parent=Parent, ref=Ref
     {noreply, #state{}};
 
 handle_info(_Info, State) ->
-    ?LOG("Unhandled message: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, _State) ->

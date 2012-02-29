@@ -31,8 +31,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
 -define(EXPIRES, 3600). %% an hour
@@ -65,13 +65,12 @@ start_local_link() ->
 store(K, V) ->
     store(K, V, ?EXPIRES).
 
-store(K, V, Fun) when is_function(Fun) ->
+store(K, V, Fun) when is_function(Fun, 3) ->
     store(K, V, ?EXPIRES, Fun);
 store(K, V, T) ->
     gen_server:cast(?SERVER, {store, K, V, T, undefined}).
 
-store(K, V, T, Fun) when is_function(Fun) ->
-    {arity, 3} = erlang:fun_info(Fun, arity),
+store(K, V, T, Fun) when is_function(Fun, 3) ->
     gen_server:cast(?SERVER, {store, K, V, T, Fun}).
 
 -spec peek/1 :: (term()) -> {'ok', term()} | {'error', 'not_found'}.
@@ -106,13 +105,12 @@ filter(Pred) when is_function(Pred, 2) ->
 store_local(Srv, K, V) when is_pid(Srv) ->
     store_local(Srv, K, V, ?EXPIRES).
 
-store_local(Srv, K, V, Fun) when is_pid(Srv), is_function(Fun) ->
+store_local(Srv, K, V, Fun) when is_pid(Srv), is_function(Fun, 3) ->
     store_local(Srv, K, V, ?EXPIRES, Fun);
 store_local(Srv, K, V, T) when is_pid(Srv) ->
     gen_server:cast(Srv, {store, K, V, T, undefined}).
 
-store_local(Srv, K, V, T, Fun) when is_pid(Srv), is_function(Fun) ->
-    {arity, 3} = erlang:fun_info(Fun, arity),
+store_local(Srv, K, V, T, Fun) when is_pid(Srv), is_function(Fun, 3) ->
     gen_server:cast(Srv, {store, K, V, T, Fun}).
 
 -spec peek_local/2 :: (pid(), term()) -> {'ok', term()} | {'error', 'not_found'}.
@@ -155,8 +153,9 @@ filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred, 2) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Name]) ->
+    put(callid, ?LOG_SYSTEM_ID),
     {ok, _} = timer:send_interval(1000, flush),
-    ?LOG("started new cache proc: ~s", [Name]),
+    lager:debug("started new cache proc: ~s", [Name]),
     {ok, dict:new()}.
 
 %%--------------------------------------------------------------------
@@ -205,18 +204,18 @@ handle_cast({store, K, V, infinity=T, F}, Dict) ->
 handle_cast({store, K, V, T, F}, Dict) ->
     {noreply, dict:store(K, {wh_util:current_tstamp()+T, V, T, F}, Dict), hibernate};
 handle_cast({erase, K}, Dict) ->
-    case dict:find(K, Dict) of
-        {ok, {_, _, _, undefined}} -> ok;
-        {ok, {_, V, _, F}} -> spawn(fun() -> F(K, V, erase) end);
-        _ -> ok
-    end,
+    ok = case dict:find(K, Dict) of
+             {ok, {_, _, _, undefined}} -> ok;
+             {ok, {_, V, _, F}} -> spawn(fun() -> F(K, V, erase) end), ok;
+             _ -> ok
+         end,
     {noreply, dict:erase(K, Dict), hibernate};
 handle_cast({flush}, Dict) ->
-    [(fun({_, {_, _, _, undefined}}) -> ok;
-         ({K, {_, V, _, F}}) -> spawn(fun() -> F(K, V, flush) end) 
-      end)(Elem)
-     || Elem <- dict:to_list(Dict) 
-    ],
+    _ = [(fun({_, {_, _, _, undefined}}) -> ok;
+             ({K, {_, V, _, F}}) -> spawn(fun() -> F(K, V, flush) end) 
+          end)(Elem)
+         || Elem <- dict:to_list(Dict) 
+        ],
     {noreply, dict:new(), hibernate}.
 
 %%--------------------------------------------------------------------

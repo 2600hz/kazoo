@@ -1,243 +1,66 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 02 Nov 2011 James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_limits).
 
--behaviour(gen_server).
+-export([init/0
+         ,allowed_methods/0, allowed_methods/1
+         ,resource_exists/0, resource_exists/1
+         ,validate/1, validate/2
+         ,put/1
+         ,post/2
+        ]).
 
-%% API
--export([start_link/0]).
+-include_lib("crossbar/include/crossbar.hrl").
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
-
--include("../../include/crossbar.hrl").
-
--define(SERVER, ?MODULE).
 -define(CB_LIST, <<"limits/crossbar_listing">>).
 -define(PVT_TYPE, <<"sip_service">>).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+init() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.limits">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.limits">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.limits">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.limits">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.limits">>, ?MODULE, post).
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init(_) ->
-    {ok, ok, 0}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.limits">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = allowed_methods(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.limits">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = resource_exists(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.validate.limits">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  _BPid = crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, RD, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.get.limits">>, [RD, Context | Params]}, State) ->
-    Pid ! {binding_result, true, [RD, Context, Params]},
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.limits">>, [RD, Context | Params]}, State) ->
-    spawn_monitor(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  case crossbar_doc:save(Context) of
-                      #cb_context{resp_status=success, doc=Doc, resp_headers=RespHeaders}=Context1 ->
-                          ?LOG("Updated: ~p", [Doc]),
-                          LimitId = wh_json:get_value(<<"_id">>, Doc),
-                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_headers=[{"Location", LimitId} | props:delete("Location", RespHeaders)]}, Params]};
-                      Else ->
-                          Pid ! {binding_result, true, [RD, Else, Params]}
-                  end
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.limits">>, [RD, Context | Params]}, State) ->
-    spawn_monitor(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  case crossbar_doc:save(Context) of
-                      #cb_context{resp_status=success, doc=Doc, resp_headers=RespHeaders}=Context1 ->
-                          ?LOG("Created: ~p", [Doc]),
-                          LimitId = wh_json:get_value(<<"_id">>, Doc),
-                          Pid ! {binding_result, true, [RD, Context1#cb_context{resp_headers=[{"Location", LimitId} | props:delete("Location", RespHeaders)]}, Params]};
-                      Else ->
-                          Pid ! {binding_result, true, [RD, Else, Params]}
-                  end
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, _B, Payload}, State) ->
-    Pid ! {binding_result, false, Payload},
-    {noreply, State};
-
-handle_info(timeout, State) ->
-    bind_to_crossbar(),
-    {noreply, State};
-
-handle_info(_Info, State) ->
-    ?LOG("Unhandled: ~p", [_Info]),
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function binds this server to the crossbar bindings server,
-%% for the keys we need to consume.
-%% @end
-%%--------------------------------------------------------------------
--spec(bind_to_crossbar/0 :: () ->  no_return()).
-bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.limits">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.limits">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.limits">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.limits">>).
-
-%%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines the verbs that are appropriate for the
-%% given Nouns.  IE: '/limit/' can only accept GET
+%% given Nouns.  IE: '/accounts/' can only accept GET and PUT
 %%
 %% Failure here returns 405
 %% @end
 %%--------------------------------------------------------------------
--spec(allowed_methods/1 :: (Paths :: list()) -> tuple(boolean(), http_methods())).
-allowed_methods([]) ->
-    {true, ['GET', 'PUT']};
-allowed_methods([_]) ->
-    {true, ['GET', 'POST']};
+-spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods/1 :: (path_token()) -> http_methods().
+allowed_methods() ->
+    ['GET', 'PUT'].
 allowed_methods(_) ->
-    {false, []}.
+    ['GET', 'POST'].
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the provided list of Nouns are valid.
 %%
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec(resource_exists/1 :: (Paths :: list()) -> tuple(boolean(), [])).
-resource_exists([]) ->
-    {true, []};
-resource_exists([_]) ->
-    {true, []};
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
+resource_exists() ->
+    true.
 resource_exists(_) ->
-    {false, []}.
+    true.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -248,32 +71,43 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/3 :: ([binary(),...] | [], #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
-validate([], _RD, #cb_context{req_verb = <<"get">>}=Context) ->
+-spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+validate(#cb_context{req_verb = <<"get">>}=Context) ->
     try
         load_limit_summary(Context)
     catch
         _T:_R ->
             ST = erlang:get_stacktrace(),
-            ?LOG("Loading summary crashed: ~p: ~p", [_T, _R]),
-            _ = [?LOG("~p", [S]) || S <- ST],
+            lager:debug("loading summary crashed: ~p: ~p", [_T, _R]),
+            _ = [lager:debug("~p", [S]) || S <- ST],
             crossbar_util:response_db_fatal(Context)
     end;
-validate([], RD, #cb_context{req_verb = <<"put">>}=Context) ->
-    create_limits(RD, Context);
-validate([LimitId], _, #cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = <<"put">>}=Context) ->
+    create_limits(Context).
+
+validate(#cb_context{req_verb = <<"get">>}=Context, LimitId) ->
     try
         load_limit(LimitId, Context)
     catch
         _T:_R ->
-            ?LOG("Loading limit crashed: ~p: ~p", [_T, _R]),
+            lager:debug("loading limit crashed: ~p: ~p", [_T, _R]),
             crossbar_util:response_db_fatal(Context)
     end;
-validate([LimitId], _, #cb_context{req_verb = <<"post">>}=Context) ->
-    update_limits(LimitId, Context);
-validate(_, _, Context) ->
-    crossbar_util:response_faulty_request(Context).
+validate(#cb_context{req_verb = <<"post">>}=Context, LimitId) ->
+    update_limits(LimitId, Context).
 
+-spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+post(Context, _) ->
+    crossbar_doc:save(Context).
+
+-spec put/1 :: (#cb_context{}) -> #cb_context{}.
+put(Context) ->
+    crossbar_doc:save(Context).
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -300,19 +134,18 @@ load_limit(LimitId, Context) ->
 %% Create a new limits document with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create_limits/2 :: (#wm_reqdata{}, #cb_context{}) -> #cb_context{}.
-create_limits(RD, Context) ->
+-spec create_limits/1 :: (#cb_context{}) -> #cb_context{}.
+create_limits(Context) ->
     case load_limit_summary(Context) of
         #cb_context{doc=[]} ->
-            ?LOG("No other limit doc exists, creating"),
+            lager:debug("No other limit doc exists, creating"),
             validate_create(Context);
         #cb_context{doc=[LimitDoc]} ->
             DocId = wh_json:get_value(<<"id">>, LimitDoc),
-            Location = crossbar_util:get_abs_url(RD, DocId),
 
-            ?LOG("Limit doc ~s exists, redirecting to ~s", [DocId, Location]),
+            lager:debug("limit doc ~s exists, redirecting", [DocId]),
 
-            crossbar_util:response_redirect(Context, DocId, wh_json:from_list([{<<"Location">>, wh_util:to_binary(Location)}]))
+            crossbar_util:response_redirect(Context, DocId, wh_json:from_list([{<<"Location">>, DocId}]))
     end.
 
 -spec validate_create/1 :: (#cb_context{}) -> #cb_context{}.

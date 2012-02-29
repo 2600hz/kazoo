@@ -48,7 +48,7 @@ start_link(JObj, Props) ->
                                      ], [JObj, Props]).
 
 handle_req(JObj, Props) ->
-    ?LOG("received another payload, sending to callback"),
+    lager:debug("received another payload, sending to callback"),
     gen_listener:cast(props:get_value(server, Props), {event, JObj}).
 
 %%%===================================================================
@@ -73,7 +73,7 @@ init([JObj, Props]) ->
 
     gen_listener:cast(self(), {start_req, JObj}),
 
-    ?LOG("started req handler for acct ~s: ~s", [props:get_value(acct_id, Props)
+    lager:debug("started req handler for acct ~s: ~s", [props:get_value(acct_id, Props)
                                                  ,wh_json:get_value(<<"bind_event">>, Hook)
                                                 ]),
 
@@ -118,36 +118,36 @@ handle_cast({event, JObj}, #state{bind_event=route, ctl_q=undefined}=State) ->
         {<<"dialplan">>, <<"route_win">>} ->
             true = wapi_route:win_v(JObj),
             CtlQ = wh_json:get_value(<<"Server-ID">>, JObj),
-            ?LOG("route_win recv, ctl q: ~s", [CtlQ]),
+            lager:debug("route_win recv, ctl q: ~s", [CtlQ]),
 
             add_call_bindings(JObj),
-            ?LOG("bound to call events"),
+            lager:debug("bound to call events"),
 
             handle_cast({send_event, JObj}, State#state{ctl_q=CtlQ});
         {_Cat, _Name} ->
-            ?LOG("recv unexpected route event: ~s:~s", [_Cat, _Name]),
+            lager:debug("recv unexpected route event: ~s:~s", [_Cat, _Name]),
             {noreply, State, 5000}
     end;
 handle_cast({event, JObj}, #state{bind_event=route}=State) ->
     case wh_util:get_event_type(JObj) of
         {<<"call_event">>, _} ->
-            ?LOG("send call event to webhook"),
+            lager:debug("send call event to webhook"),
             handle_cast({send_event, JObj}, State);
         {<<"call_detail">>, _} ->
-            ?LOG("send cdr to webhook"),
+            lager:debug("send cdr to webhook"),
             _ = handle_cast({send_event, JObj}, State),
             {stop, normal, State};
         {_Cat, _Name} ->
-            ?LOG("recv unexpected route event: ~s:~s", [_Cat, _Name]),
+            lager:debug("recv unexpected route event: ~s:~s", [_Cat, _Name]),
             {noreply, State, 5000}
     end;
 handle_cast({event, JObj}, #state{bind_event=authn}=State) ->
     true = wapi_registration:success_v(JObj),
-    ?LOG("registration was a success"),
+    lager:debug("registration was a success"),
     handle_cast({send_event, JObj}, State);
 handle_cast({event, JObj}, #state{bind_event=authz}=State) ->
     true = wapi_authz:win_v(JObj),
-    ?LOG("authz_win recv"),
+    lager:debug("authz_win recv"),
     handle_cast({send_event, JObj}, State);
 
 handle_cast({send_event, JObj}, #state{bind_event=route, ctl_q=CtlQ}=State) ->
@@ -155,25 +155,25 @@ handle_cast({send_event, JObj}, #state{bind_event=route, ctl_q=CtlQ}=State) ->
     case send_http_req(JSON, State) of
         {ok, RespJObj} ->
             send_amqp_event_resp(CtlQ, RespJObj),
-            ?LOG("possibly sent amqp resp"),
+            lager:debug("possibly sent amqp resp"),
             {noreply, State, 5000};
         {error, _E} ->
-            ?LOG("failed to send event: ~p", [_E]),
+            lager:debug("failed to send event: ~p", [_E]),
             {noreply, State, 5000};
         ignore ->
-            ?LOG("ignoring HTTP response"),
+            lager:debug("ignoring HTTP response"),
             {noreply, State, 5000}
     end;
 handle_cast({send_event, JObj}, #state{bind_event=BindEvent}=State) ->
     {ok, JSON} = encode_event(BindEvent, JObj),
     _ = send_http_req(JSON, State),
-    ?LOG("sent followup event to HTTP"),
+    lager:debug("sent followup event to HTTP"),
     {stop, normal, State};
 
 handle_cast({start_req, ReqJObj}, #state{bind_event=BindEvent}=State) ->
     case is_valid_req(ReqJObj, BindEvent) of
         false ->
-            ?LOG("json failed validation for ~s", [BindEvent]),
+            lager:debug("json failed validation for ~s", [BindEvent]),
             {stop, invalid_req, State};
         true ->
             {ok, JSON} = encode_req(BindEvent, wh_json:set_value(<<"Server-ID">>, <<>>, ReqJObj)),
@@ -194,14 +194,14 @@ handle_cast({start_req, ReqJObj}, #state{bind_event=BindEvent}=State) ->
                           end),
                     {noreply, State, 5000};
                 {error, {conn_failed, nxdomain}=E} ->
-                    ?LOG(alert, "failed to find domain of callback"),
+                    lager:info("failed to find domain of callback"),
                     %% email someone
                     %% disable the webhook
                     {stop, E, State};
                 {error, E} ->
                     {stop, E, State};
                 ignore ->
-                    ?LOG("ignoring response, no answer for the request"),
+                    lager:debug("ignoring response, no answer for the request"),
                     {stop, normal, State}
             end
     end.
@@ -217,10 +217,10 @@ handle_cast({start_req, ReqJObj}, #state{bind_event=BindEvent}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, State) ->
-    ?LOG("timed out waiting, going down"),
+    lager:debug("timed out waiting, going down"),
     {stop, normal, State};
 handle_info(_Info, State) ->
-    ?LOG("unhandled message: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State, 5000}.
 
 handle_event(_JObj, _State) ->
@@ -238,7 +238,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG("terminating handler for reason: ~p", [_Reason]).
+    lager:debug("terminating handler for reason: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -278,15 +278,15 @@ send_http_req_once(JSON, #state{callback_uri=CB_URI
                                 ,callback_method=Method
                                }) ->
     URI = uri(Method, CB_URI, JSON),
-    ?LOG("sending req to ~s using http ~s", [URI, Method]),
-    ?LOG("req: ~s", [JSON]),
+    lager:debug("sending req to ~s using http ~s", [URI, Method]),
+    lager:debug("req: ~s", [JSON]),
 
     case ibrowse:send_req(URI, ?DEFAULT_REQ_HEADERS, Method, JSON, ?DEFAULT_OPTS) of
         {ok, Status, RespHeaders, RespBody} ->
-            ?LOG("resp: ~s", [RespBody]),
+            lager:debug("resp: ~s", [RespBody]),
             process_resp(Status, RespHeaders, RespBody);
         {error, _E}=E ->
-            ?LOG("failed to send request to ~s", [URI]),
+            lager:debug("failed to send request to ~s", [URI]),
             E
     end.
 
@@ -312,7 +312,7 @@ encode_event(route, JObj) ->
         {<<"dialplan">>, <<"route_win">>} ->
             wapi_route:win(JObj);
         {_Cat, _Name} ->
-            ?LOG("unhandled route event: ~s:~s", [_Cat, _Name]),
+            lager:debug("unhandled route event: ~s:~s", [_Cat, _Name]),
             {error, unhandled_event}
     end;
 encode_event(authn, JObj) ->
@@ -320,7 +320,7 @@ encode_event(authn, JObj) ->
         {<<"directory">>, <<"reg_success">>} ->
             wapi_registration:success(JObj);
         {_Cat, _Name} ->
-            ?LOG("unhandled authn event: ~s:~s", [_Cat, _Name]),
+            lager:debug("unhandled authn event: ~s:~s", [_Cat, _Name]),
             {error, unhandled_event}
     end;
 encode_event(authz, JObj) ->
@@ -328,19 +328,19 @@ encode_event(authz, JObj) ->
         {<<"dialplan">>, <<"authz_win">>} ->
             wapi_authz:win(JObj);
         {_Cat, _Name} ->
-            ?LOG("unhandled authz event: ~s:~s", [_Cat, _Name]),
+            lager:debug("unhandled authz event: ~s:~s", [_Cat, _Name]),
             {error, unhandled_event}
     end.
 
 -spec process_resp/3 :: (nonempty_string(), proplist(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'retry' | 'unsupported_content_type'} | 'ignore'.
 process_resp(_, _, <<>>) ->
-    ?LOG("no response to decode"),
+    lager:debug("no response to decode"),
     ignore;
 process_resp([$2|_]=_Status, RespHeaders, RespBody) ->
-    ?LOG("successful status ~s received", [_Status]),
+    lager:debug("successful status ~s received", [_Status]),
     decode_to_json(props:get_value("Content-Type", RespHeaders), RespBody);
 process_resp(_Status, _RespHeaders, _RespBody) ->
-    ?LOG("failed status ~s received", [_Status]),
+    lager:debug("failed status ~s received", [_Status]),
     {error, retry}.
 
 %% Should convert from ContentType to a JSON binary (like xml -> Erlang XML -> Erlang JSON -> json)
@@ -348,7 +348,7 @@ process_resp(_Status, _RespHeaders, _RespBody) ->
 decode_to_json("application/json" ++ _, JSON) ->
     {ok, wh_json:decode(JSON)};
 decode_to_json(_ContentType, _RespBody) ->
-    ?LOG("unhandled content type: ~s", [_ContentType]),
+    lager:debug("unhandled content type: ~s", [_ContentType]),
     {error, unsupported_content_type}.
 
 -spec encode_req/2 :: (hook_types(), wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
@@ -376,10 +376,10 @@ send_amqp_resp(RespQ, RespJObj, BindEvent) ->
 send_amqp_event_resp(RespQ, RespJObj) ->
     case wh_util:get_event_type(RespJObj) of
         {<<"dialplan">>, <<"command">>} ->
-            ?LOG("publish dialplan command(s)"),
+            lager:debug("publish dialplan command(s)"),
             wapi_dialplan:publish_command(RespQ, RespJObj);
         {_Cat, _Evt} ->
-            ?LOG("unhandled route event: ~s: ~s", [_Cat, _Evt]),
+            lager:debug("unhandled route event: ~s: ~s", [_Cat, _Evt]),
             ok
     end.
 
@@ -388,19 +388,19 @@ attempts(N) when N > 3 -> 3;
 attempts(N) -> N.
 
 add_followup_bindings(Srv, authn, ReqJObj, _RespJObj) ->
-    ?LOG("listening for reg success"),
+    lager:debug("listening for reg success"),
     gen_listener:add_binding(Srv, registration, [{user, wh_json:get_value(<<"Auth-User">>, ReqJObj)}
                                                  ,{realm, wh_json:get_value(<<"Auth-Realm">>, ReqJObj)}
                                                  ,{restrict_to, [reg_success]}
                                                 ]);
 add_followup_bindings(_, authz, _ReqJObj, _RespJObj) ->
-    ?LOG("waiting for authz_win to come");
+    lager:debug("waiting for authz_win to come");
 add_followup_bindings(_, route, _ReqJObj, _RespJObj) ->
-    ?LOG("waiting for route_win to come").
+    lager:debug("waiting for route_win to come").
 
 add_call_bindings(JObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    ?LOG(CallID, "listening for call events and cdr", []),
+    lager:debug("listening for call events and cdr on ~s", [CallID]),
     gen_listener:add_binding(self(), call, [{callid, CallID}
                                             ,{restrict_to, [events, cdr]}
                                            ]).

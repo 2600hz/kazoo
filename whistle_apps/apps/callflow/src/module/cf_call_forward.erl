@@ -12,34 +12,15 @@
 
 -export([handle/2]).
 
--define(GET_CONFIG, fun(Key, Default) ->
-                      whapps_config:get_binary(<<"callflow.call_forward">>, Key, Default)
-                    end).
-                            
--record(prompts, {has_been_enabled =
-                      ?GET_CONFIG(<<"has_been_enabled_prompt">>, <<"/system_media/cf-now_forwarded_to">>)
-                  ,has_been_disabled = 
-                      ?GET_CONFIG(<<"has_been_disabled_prompt">>, <<"/system_media/cf-disabled">>)
-                  ,feature_not_available =
-                      ?GET_CONFIG(<<"feature_not_available">>, <<"/system_media/cf-not_available">>)
-                  ,enter_forwarding_number =
-                      ?GET_CONFIG(<<"enter_forwarding_number_prompt">>, <<"/system_media/cf-enter_number">>)
-                  ,main_menu_enabled = 
-                      ?GET_CONFIG(<<"main_menu_enabled_prompt">>, <<"/system_media/cf-enabled_menu">>)
-                  ,main_menu_disabled = 
-                      ?GET_CONFIG(<<"main_menu_disabled_prompt">>, <<"/system_media/cf-disabled_menu">>)
-                  ,saved = 
-                      ?GET_CONFIG(<<"saved_prompt">>, <<"/system_media/vm-saved">>)
-                 }).
+-define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".call_forward">>).
 
--record(keys, {menu_toggle_cf = 
-                   ?GET_CONFIG(<<"menu_option_toggle_key">>, <<"1">>)
+-record(keys, {menu_toggle_cf =
+                   whapps_config:get_binary(?MOD_CONFIG_CAT, [<<"keys">>, <<"menu_toggle_option">>], <<"1">>)
                ,menu_change_number =
-                   ?GET_CONFIG(<<"menu_option_change_number_key">>, <<"2">>)
+                   whapps_config:get_binary(?MOD_CONFIG_CAT, [<<"keys">>, <<"menu_change_number">>], <<"2">>)
               }).
 
--record(callfwd, {prompts = #prompts{}
-                  ,keys = #keys{}
+-record(callfwd, {keys = #keys{}
                   ,doc_id = undefined
                   ,enabled = false
                   ,number = <<>>
@@ -55,20 +36,21 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> 'ok'.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     case get_call_forward(Call) of
-        {error, #callfwd{prompts=Prompts}} ->
-            catch({ok, _} = cf_call_command:b_play(Prompts#prompts.feature_not_available, Call)),
+        {error, _} ->
+            catch({ok, _} = whapps_call_command:b_prompt(<<"cf-not_available">>, Call)),
             cf_exe:stop(Call);
         CF ->
-            cf_call_command:answer(Call),
+            whapps_call_command:answer(Call),
+            CaptureGroup = whapps_call:kvs_fetch(cf_capture_group, Call),
             CF1 = case wh_json:get_value(<<"action">>, Data) of
-                      <<"activate">> -> cf_activate(CF, Call);       %% Support for NANPA *72
-                      <<"deactivate">> -> cf_deactivate(CF, Call);   %% Support for NANPA *73
-                      <<"update">> -> cf_update_number(CF, Call);    %% Support for NANPA *56
-                      <<"toggle">> -> cf_toggle(CF, Call);
-                      <<"menu">> -> cf_menu(CF, Call)
+                      <<"activate">> -> cf_activate(CF, CaptureGroup, Call);       %% Support for NANPA *72
+                      <<"deactivate">> -> cf_deactivate(CF, Call);                 %% Support for NANPA *73
+                      <<"update">> -> cf_update_number(CF, CaptureGroup, Call);    %% Support for NANPA *56
+                      <<"toggle">> -> cf_toggle(CF, CaptureGroup, Call);
+                      <<"menu">> -> cf_menu(CF, CaptureGroup, Call)
                   end,
             {ok, _} = update_callfwd(CF1, Call),
             cf_exe:continue(Call)
@@ -80,26 +62,25 @@ handle(Data, Call) ->
 %% This function provides a menu with the call forwarding options
 %% @end
 %%--------------------------------------------------------------------
--spec cf_menu/2 :: (#callfwd{}, #cf_call{}) -> no_return().
-cf_menu(#callfwd{prompts=#prompts{main_menu_enabled=EnabledMenu, main_menu_disabled=DisabledMenu}
-                 ,keys=#keys{menu_toggle_cf=Toggle, menu_change_number=ChangeNum}}=CF, Call) ->
-    ?LOG("playing call forwarding menu"),
+-spec cf_menu/3 :: (#callfwd{}, ne_binary(), whapps_call:call()) -> #callfwd{}.
+cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle, menu_change_number=ChangeNum}}=CF, CaptureGroup, Call) ->
+    lager:debug("playing call forwarding menu"),
     Prompt = case CF#callfwd.enabled of
-                 true -> EnabledMenu;
-                 false -> DisabledMenu
+                 true -> cf_util:get_prompt(<<"cf-enabled_menu">>);
+                 false -> cf_util:get_prompt(<<"cf-disabled_menu">>)
              end,
-    {ok, _} = cf_call_command:b_flush(Call),
-    case cf_call_command:b_play_and_collect_digit(Prompt, Call) of
+    _  = whapps_call_command:b_flush(Call),
+    case whapps_call_command:b_play_and_collect_digit(Prompt, Call) of
         {ok, Toggle} ->
-            CF1 = cf_toggle(CF, Call),
-            {ok, _} = update_callfwd(CF1, Call),
-            cf_menu(CF1, Call);
+            CF1 = cf_toggle(CF, CaptureGroup, Call),
+            cf_menu(CF1, CaptureGroup, Call);
         {ok, ChangeNum} ->
-            CF1 = cf_update_number(CF, Call),
-            {ok, _} = update_callfwd(CF1, Call),
-            cf_menu(CF1, Call);
+            CF1 = cf_update_number(CF, CaptureGroup, Call),
+            cf_menu(CF1, CaptureGroup, Call);
         {ok, _} ->
-            cf_menu(CF, Call)
+            cf_menu(CF, CaptureGroup, Call);
+        {error, _} ->
+            CF
     end.
 
 %%--------------------------------------------------------------------
@@ -109,11 +90,19 @@ cf_menu(#callfwd{prompts=#prompts{main_menu_enabled=EnabledMenu, main_menu_disab
 %% not, and disabling it if it is
 %% @end
 %%--------------------------------------------------------------------
--spec cf_toggle/2 :: (#callfwd{}, #cf_call{}) -> #callfwd{}.
-cf_toggle(CF, #cf_call{capture_group=undefined}=Call) ->
-    cf_deactivate(CF, Call);
-cf_toggle(CF, Call) ->
-    cf_activate(CF, Call).
+-spec cf_toggle/3 :: (#callfwd{}, undefined | binary(), whapps_call:call()) -> #callfwd{}.
+cf_toggle(#callfwd{enabled=false, number=Number}=CF, _, Call) when is_binary(Number), size(Number) > 0 ->
+    _ = try
+            {ok, _} = whapps_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
+            {ok, _} = whapps_call_command:b_say(Number, Call)
+        catch
+            _:_ -> ok
+        end,
+    CF#callfwd{enabled=true};    
+cf_toggle(#callfwd{enabled=false}=CF, CaptureGroup, Call) ->
+    cf_activate(CF, CaptureGroup, Call);
+cf_toggle(CF, _, Call) ->
+    cf_deactivate(CF, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -122,23 +111,22 @@ cf_toggle(CF, Call) ->
 %% document to enable call forwarding
 %% @end
 %%--------------------------------------------------------------------
--spec cf_activate/2 :: (#callfwd{}, #cf_call{}) -> #callfwd{}.
-cf_activate(#callfwd{number = <<>>}=CF, Call) ->
-    cf_activate(cf_update_number(CF, Call), Call);
-cf_activate(#callfwd{number=Number, prompts=Prompts}=CF, #cf_call{capture_group=undefined}=Call) ->
-    ?LOG("activating call forwarding"),
+-spec cf_activate/3 :: (#callfwd{}, undefined | binary(), whapps_call:call()) -> #callfwd{}.
+cf_activate(CF1, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
+    lager:debug("activating call forwarding"),
+    CF2 = #callfwd{number=Number} = cf_update_number(CF1, CaptureGroup, Call),
     _ = try
-            {ok, _} = cf_call_command:b_play(Prompts#prompts.has_been_enabled, Call),
-            {ok, _} = cf_call_command:b_say(Number, Call)
+            {ok, _} = whapps_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
+            {ok, _} = whapps_call_command:b_say(Number, Call)
         catch
             _:_ -> ok
         end,
-    CF#callfwd{enabled=true};
-cf_activate(#callfwd{prompts=Prompts}=CF, #cf_call{capture_group=CaptureGroup}=Call) ->
-    ?LOG("activating call forwarding with number ~s", [CaptureGroup]),
+    CF2#callfwd{enabled=true};
+cf_activate(CF, CaptureGroup, Call) ->
+    lager:debug("activating call forwarding with number ~s", [CaptureGroup]),
     _ = try
-            {ok, _} = cf_call_command:b_play(Prompts#prompts.has_been_enabled, Call),
-            {ok, _} = cf_call_command:b_say(CaptureGroup, Call)
+            {ok, _} = whapps_call_command:b_prompt(<<"cf-now_forwarded_to">>, Call),
+            {ok, _} = whapps_call_command:b_say(CaptureGroup, Call)
         catch
             _:_ -> ok
         end,
@@ -151,10 +139,10 @@ cf_activate(#callfwd{prompts=Prompts}=CF, #cf_call{capture_group=CaptureGroup}=C
 %% document to disable call forwarding
 %% @end
 %%--------------------------------------------------------------------
--spec cf_deactivate/2 :: (#callfwd{}, #cf_call{}) -> #callfwd{}.
-cf_deactivate(#callfwd{prompts=Prompts}=CF, Call) ->
-    ?LOG("deactivating call forwarding"),
-    catch({ok, _} = cf_call_command:b_play(Prompts#prompts.has_been_disabled, Call)),
+-spec cf_deactivate/2 :: (#callfwd{}, whapps_call:call()) -> #callfwd{}.
+cf_deactivate(CF, Call) ->
+    lager:debug("deactivating call forwarding"),
+    catch({ok, _} = whapps_call_command:b_prompt(<<"cf-disabled">>, Call)),
     CF#callfwd{enabled=false}.
 
 %%--------------------------------------------------------------------
@@ -164,15 +152,19 @@ cf_deactivate(#callfwd{prompts=Prompts}=CF, Call) ->
 %% document with a new number
 %% @end
 %%--------------------------------------------------------------------
--spec cf_update_number/2 :: (#callfwd{}, #cf_call{}) -> #callfwd{}.
-cf_update_number(#callfwd{prompts=#prompts{saved=Saved, enter_forwarding_number=EnterNumber}}=CF
-                 ,#cf_call{capture_group=undefined}=Call) ->
-    {ok, Number} = cf_call_command:b_play_and_collect_digits(<<"3">>, <<"20">>, EnterNumber, <<"1">>, <<"8000">>, Call),
-    _ = cf_call_command:b_play(Saved, Call),
-    ?LOG("update call forwarding number with ~s", [Number]),
-    CF#callfwd{number=Number};
-cf_update_number(CF, #cf_call{capture_group=CaptureGroup}) ->
-    ?LOG("update call forwarding number with ~s", [CaptureGroup]),
+-spec cf_update_number/3 :: (#callfwd{}, undefined | binary(), whapps_call:call()) -> #callfwd{}.
+cf_update_number(CF, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
+    EnterNumber = cf_util:get_prompt(<<"cf-enter_number">>),
+    case whapps_call_command:b_play_and_collect_digits(<<"3">>, <<"20">>, EnterNumber, <<"1">>, <<"8000">>, Call) of
+        {ok, <<>>} -> cf_update_number(CF, CaptureGroup, Call);
+        {ok, Number} ->
+            _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+            lager:debug("update call forwarding number with ~s", [Number]),
+            CF#callfwd{number=Number};
+        {error, _} -> exit(normal)
+    end;
+cf_update_number(CF, CaptureGroup, _) ->
+    lager:debug("update call forwarding number with ~s", [CaptureGroup]),
     CF#callfwd{number=CaptureGroup}.
 
 %%--------------------------------------------------------------------
@@ -182,25 +174,26 @@ cf_update_number(CF, #cf_call{capture_group=CaptureGroup}) ->
 %% rev tag if the document is in conflict
 %% @end
 %%--------------------------------------------------------------------
--spec update_callfwd/2 :: (#callfwd{}, #cf_call{}) -> {'ok', wh_json:json_object()} | {'error', atom()}.
-update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress=RK, keep_caller_id=KCI}=CF
-               ,#cf_call{account_db=Db}=Call) ->
-    ?LOG("updating call forwarding settings on ~s", [Id]),
-    {ok, JObj} = couch_mgr:open_doc(Db, Id),
+-spec update_callfwd/2 :: (#callfwd{}, whapps_call:call()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress=RK, keep_caller_id=KCI}=CF, Call) ->
+    lager:debug("updating call forwarding settings on ~s", [Id]),
+    AccountDb = whapps_call:account_db(Call),
+    AccountId = whapps_call:account_id(Call),
+    {ok, JObj} = couch_mgr:open_doc(AccountDb, AccountId),
     CF1 = {struct, [{<<"enabled">>, Enabled}
                     ,{<<"number">>, Num}
                     ,{<<"require_keypress">>, RK}
                     ,{<<"keep_caller_id">>, KCI}
                    ]},
-    case couch_mgr:save_doc(Db, wh_json:set_value(<<"call_forward">>, CF1, JObj)) of
+    case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"call_forward">>, CF1, JObj)) of
         {error, conflict} ->
-            ?LOG("update conflicted, trying again"),
+            lager:debug("update conflicted, trying again"),
             update_callfwd(CF, Call);
         {ok, JObj1} ->
-            ?LOG("updated call forwarding in db"),
+            lager:debug("updated call forwarding in db"),
             {ok, JObj1};
         {error, R}=E ->
-            ?LOG("failed to update call forwarding in db ~w", [R]),
+            lager:debug("failed to update call forwarding in db ~w", [R]),
             E
     end.
 
@@ -210,15 +203,18 @@ update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress
 %% This function will load the call forwarding record
 %% @end
 %%--------------------------------------------------------------------
--spec get_call_forward/1 :: (#cf_call{}) -> #callfwd{} | {'error', #callfwd{}}.
-get_call_forward(#cf_call{authorizing_id=AuthId, account_db=Db}) ->
-    Id = case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"owner">>}, [{<<"key">>, AuthId}]) of
-             {ok, [Owner]} -> wh_json:get_value(<<"value">>, Owner, AuthId);
-             _E -> AuthId
+-spec get_call_forward/1 :: (whapps_call:call()) -> #callfwd{} | {'error', #callfwd{}}.
+get_call_forward(Call) ->
+    AccountDb = whapps_call:account_db(Call),
+    AuthorizingId = whapps_call:authorizing_id(Call),
+    ViewOptions = [{<<"key">>, AuthorizingId}],
+    Id = case couch_mgr:get_results(AccountDb, {<<"cf_attributes">>, <<"owner">>}, ViewOptions) of
+             {ok, [Owner]} -> wh_json:get_value(<<"value">>, Owner, AuthorizingId);
+             _E -> AuthorizingId
          end,
-    case couch_mgr:open_doc(Db, Id) of
+    case couch_mgr:open_doc(AccountDb, Id) of
         {ok, JObj} ->
-            ?LOG("loaded call forwarding object from ~s", [Id]),
+            lager:debug("loaded call forwarding object from ~s", [Id]),
             #callfwd{doc_id = wh_json:get_value(<<"_id">>, JObj)
                      ,enabled = wh_json:is_true([<<"call_forward">>, <<"enabled">>], JObj)
                      ,number = wh_json:get_ne_value([<<"call_forward">>, <<"number">>], JObj, <<>>)
@@ -226,6 +222,6 @@ get_call_forward(#cf_call{authorizing_id=AuthId, account_db=Db}) ->
                      ,keep_caller_id = wh_json:is_true([<<"call_forward">>, <<"keep_caller_id">>], JObj, true)
                     };
         {error, R} ->
-            ?LOG("failed to load call forwarding object from ~s, ~w", [Id, R]),
+            lager:debug("failed to load call forwarding object from ~s, ~w", [Id, R]),
             {error, #callfwd{}}
     end.

@@ -9,10 +9,22 @@
 -include("stepswitch.hrl").
 
 %% API
+-export([flush/0]).
 -export([refresh/0]).
 -export([lookup_number/1]).
 -export([reload_resources/0]).
 -export([process_number/1, process_number/2]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Flush the stepswitch local cache
+%% @end
+%%--------------------------------------------------------------------
+-spec flush/0 :: () -> ok.
+flush() ->
+    {ok, Pid} = stepswitch_sup:cache_proc(),
+    wh_cache:flush_local(Pid).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -22,7 +34,7 @@
 %%--------------------------------------------------------------------
 -spec refresh/0 :: () -> ok.
 refresh() ->
-    ?LOG_SYS("ensuring database ~s exists", [?RESOURCES_DB]),
+    lager:debug("ensuring database ~s exists", [?RESOURCES_DB]),
     couch_mgr:db_create(?RESOURCES_DB),
     Views = whapps_util:get_views_json(stepswitch, "views"),
     whapps_util:update_views(?RESOURCES_DB, Views, true),

@@ -29,6 +29,7 @@
                      ,{notify_port_request, [{<<"notification">>, <<"port_request">>}]}
                      ,{notify_first_occurrence, [{<<"directory">>, <<"reg_query_resp">>}]}
                      ,{notify_low_balance, [{<<"notification">>, <<"low_balance">>}]}
+                     ,{notify_system_alert, [{<<"notification">>, <<"system_alert">>}]}
                     ]).
 -define(BINDINGS, [{notifications, []}
                    ,{self, []}
@@ -77,7 +78,7 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new vm notify process"),
+    lager:debug("starting new vm notify process"),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -121,7 +122,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
+    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -147,7 +148,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG_SYS("vm notify process ~p termination", [_Reason]),
+    lager:debug("vm notify process ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------

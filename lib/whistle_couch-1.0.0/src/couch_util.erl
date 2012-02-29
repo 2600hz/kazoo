@@ -67,13 +67,13 @@ get_new_connection(Host, Port, User, Pass) ->
 -spec get_new_conn/3 :: (nonempty_string(), pos_integer(), proplist()) -> #server{}.
 get_new_conn(Host, Port, Opts) ->
     Conn = couchbeam:server_connection(Host, Port, "", Opts),
-    ?LOG_SYS("new connection to Host ~s, testing", [Host]),
+    lager:debug("new connection to Host ~s, testing", [Host]),
     {'ok', ConnData} = couchbeam:server_info(Conn),
     CouchVersion = wh_json:get_value(<<"version">>, ConnData),
     BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
-    ?LOG_SYS("connected successfully to ~s", [Host]),
-    ?LOG_SYS("CouchDB: ~s", [CouchVersion]),
-    is_binary(BigCouchVersion) andalso ?LOG_SYS("BigCouch: ~s", [BigCouchVersion]),
+    lager:debug("connected successfully to ~s", [Host]),
+    lager:debug("CouchDB: ~s", [CouchVersion]),
+    is_binary(BigCouchVersion) andalso lager:debug("BigCouch: ~s", [BigCouchVersion]),
     Conn.
 
 -spec server_url/1 :: (#server{}) -> ne_binary().
@@ -394,7 +394,7 @@ get_view(#db{}=Db, DesignDoc, ViewOptions) ->
 retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
 retry504s(_Fun, 3) ->
-    ?LOG_SYS("504 retry failed"),
+    lager:debug("504 retry failed"),
     {'error', 'timeout'};
 retry504s(Fun, Cnt) ->
     case Fun() of

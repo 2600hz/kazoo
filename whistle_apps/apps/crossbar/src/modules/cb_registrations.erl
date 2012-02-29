@@ -1,240 +1,44 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Registration viewer / creator
 %%% @end
-%%% Created : 15 Apr 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_registrations).
 
--behaviour(gen_server).
+-export([init/0
+         ,allowed_methods/0
+         ,resource_exists/0
+         ,validate/1
+        ]).
 
-%% API
--export([start_link/0]).
+-include_lib("crossbar/include/crossbar.hrl").
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
-
--include("../../include/crossbar.hrl").
-
--define(SERVER, ?MODULE).
--define(REG_DB, <<"registrations">>).
+-define(MASK_REG_FIELDS, [<<"Account-DB">>, <<"Account-ID">>, <<"App-Name">>
+                              ,<<"App-Version">>, <<"Event-Category">>, <<"Event-Name">>
+                              ,<<"Server-ID">>
+                         ]).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
+init() ->
+    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.registrations">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.registrations">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.validate.registrations">>, ?MODULE, validate).
+
+-spec allowed_methods/0 :: () -> http_methods().
+allowed_methods() ->
+    ['GET'].
+
+-spec resource_exists/0 :: () -> 'true'.
+resource_exists() ->
+    true.
 
 %%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
-%% @end
-%%--------------------------------------------------------------------
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
-%%--------------------------------------------------------------------
-init(_) ->
-    _ = setup_couch(),
-    _ = bind_to_crossbar(),
-    {ok, ok}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-handle_info({binding_fired, Pid, <<"v1_resource.allowed_methods.registrations">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = allowed_methods(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.resource_exists.registrations">>, Payload}, State) ->
-    spawn(fun() ->
-                  {Result, Payload1} = resource_exists(Payload),
-                  Pid ! {binding_result, Result, Payload1}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.validate.registrations">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Context1 = validate(Params, RD, Context),
-                  Pid ! {binding_result, true, [RD, Context1, Params]}
-         end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.get.registrations">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  Pid ! {binding_result, true, [RD, Context, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.post.registrations">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  {Context1, Resp} = case Context#cb_context.resp_status =:= success of
-                                         true -> {crossbar_doc:save(Context), true};
-                                         false -> {Context, false}
-                                     end,
-                  Pid ! {binding_result, Resp, [RD, Context1, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.put.registrations">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Pid ! {binding_result, true, [RD, Context, Params]}
-          end),
-    {noreply, State};
-
-handle_info({binding_fired, Pid, <<"v1_resource.execute.delete.registrations">>, [RD, Context | Params]}, State) ->
-    spawn(fun() ->
-                  _ = crossbar_util:put_reqid(Context),
-                  crossbar_util:binding_heartbeat(Pid),
-                  Pid ! {binding_result, true, [RD, Context, Params]}
-          end),
-    {noreply, State};
-
-handle_info(_Info, State) ->
-    {noreply, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%%
-%% @spec terminate(Reason, State) -> void()
-%% @end
-%%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
--spec setup_couch/0 :: () -> 'ok'.
-setup_couch() ->
-    ok.
-
--spec bind_to_crossbar/0 :: () -> 'ok' | {'error', 'exists'}.
-bind_to_crossbar() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.registrations">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.registrations">>),
-    _ = crossbar_bindings:bind(<<"v1_resource.validate.registrations">>),
-    crossbar_bindings:bind(<<"v1_resource.execute.#.registrations">>).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Paths contains the tokenized portions of the URI after the module
-%% /account/{AID}/registrations => Paths == []
-%% /account/{AID}/registrations/{RegistrationsID} => Paths = [<<RegistrationsID>>]
-%% /account/{AID}/registrations/{RegistrationsID}/raw => Paths = [<<"RegistrationsID">>, <<"raw">>]
-%%
-%% Failure here returns 405
-%% @end
-%%--------------------------------------------------------------------
--spec allowed_methods/1 :: (path_tokens()) -> {boolean(), http_methods()}.
-allowed_methods([]) ->
-    {true, ['GET', 'PUT']};
-allowed_methods([_RegID]) ->
-    {true, ['GET', 'POST', 'DELETE']};
-allowed_methods(_) ->
-    {false, []}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Paths contains the tokenized portions of the URI after the module
-%% /account/{AID}/registrations => Paths == []
-%% /account/{AID}/registrations/{RegistrationsID} => Paths = [<<<RegistrationsID>>]
-%% /account/{AID}/registrations/{RegistrationsID}/raw => Paths = [<<"RegistrationsID">>, <<"raw">>]
-%%
-%% Failure here returns 404
-%% @end
-%%--------------------------------------------------------------------
--spec resource_exists/1 :: (path_tokens()) -> {boolean(), []}.
-resource_exists([]) ->
-    {true, []};
-resource_exists([_]) ->
-    {true, []};
-resource_exists(_) ->
-    {false, []}.
-
-%%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
@@ -242,28 +46,75 @@ resource_exists(_) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/3 :: (path_tokens(), #wm_reqdata{}, #cb_context{}) -> #cb_context{}.
-validate([], _, #cb_context{req_verb = <<"get">>, db_name=DbName, account_id=AccountId}=Context) ->
-    {ok, JObjs} = couch_mgr:get_all_results(DbName, <<"devices/sip_credentials">>),
-    DefaultRealm = wh_util:get_account_realm(DbName, AccountId),
-    AccountUsers = [{wh_json:get_value([<<"value">>, <<"realm">>], JObj, DefaultRealm)
-                     ,wh_json:get_value([<<"value">>, <<"username">>], JObj)} || JObj <- JObjs],
-    ?LOG("CurrentRegs:"),
-    CurrentRegs = [ begin ?LOG("~p", [JObj]), wh_json:normalize(JObj) end || {_, JObj} <- cb_modules_util:lookup_regs(AccountUsers)],
+-spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+validate(#cb_context{req_verb = <<"get">>, db_name=DbName, account_id=AccountId}=Context) ->
+    AccountRealm = wh_util:get_account_realm(DbName, AccountId),
+    crossbar_util:response(lookup_regs(AccountRealm), Context).
 
-    crossbar_util:response(CurrentRegs, Context);
+-spec lookup_regs/1 :: (ne_binary()) -> wh_json:json_objects().
+lookup_regs(AccountRealm) ->
+    Q = amqp_util:new_queue(),
+    ok = amqp_util:bind_q_to_targeted(Q),
+    ok = amqp_util:basic_consume(Q),
+    Req = [{<<"Realm">>, AccountRealm}
+           ,{<<"Fields">>, []}
+           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+          ],
+    wapi_registration:publish_query_req(Req),
+    [normalize_registration(JObj) || {_, JObj} <- collect_registrar_responses([])].
 
-validate([], _, #cb_context{req_verb = <<"put">>, req_data=_Data}=Context) ->
-    Context#cb_context{db_name=?REG_DB};
+-spec collect_registrar_responses/1 :: (proplist()) -> proplist().
+collect_registrar_responses(Registrations) ->
+    receive
+        {_, #amqp_msg{payload = Payload}} ->
+            JObj = wh_json:decode(Payload),
+            true = wapi_registration:query_resp_v(JObj),
+            case wh_json:get_value(<<"Fields">>, JObj) of
+                undefined -> collect_registrar_responses(Registrations);
+                Response -> 
+                    Regs = accumulate_unique_registrations(Response, Registrations),
+                    collect_registrar_responses(Regs)
+            end
+    after
+        500 -> Registrations
+    end.
 
-validate([RegID], _, #cb_context{req_verb = <<"get">>}=Context) ->
-    crossbar_doc:load(RegID, Context#cb_context{db_name=?REG_DB});
-
-validate([RegID], _, #cb_context{req_verb = <<"post">>, req_data=Data}=Context) ->
-    crossbar_doc:load_merge(RegID, Data, Context#cb_context{db_name=?REG_DB});
-
-validate([RegID], _, #cb_context{req_verb = <<"delete">>}=Context) ->
-    crossbar_doc:delete(crossbar_doc:load(RegID, Context#cb_context{db_name=?REG_DB}));
-
-validate(_Params, _, Context) ->
-    crossbar_util:response_faulty_request(Context).
+-spec accumulate_unique_registrations/2 :: (wh_json:objects(), proplist()) -> proplist().
+accumulate_unique_registrations([], Accumulator) ->
+    Accumulator;
+accumulate_unique_registrations([Registration|Registrations], Accumulator) ->
+    AuthorizingId = wh_json:get_value(<<"Authorizing-ID">>, Registration),
+    case AuthorizingId =:= undefined orelse proplists:is_defined(AuthorizingId, Accumulator) of
+        true -> accumulate_unique_registrations(Registrations, Accumulator);
+        false -> accumulate_unique_registrations(Registrations, [{AuthorizingId, Registration}|Accumulator])
+    end.
+            
+normalize_registration(JObj) ->
+    Contact = wh_json:get_binary_value(<<"Contact">>, JObj, <<>>),
+    Updaters = [fun(J) -> wh_json:delete_keys(?MASK_REG_FIELDS, J) end
+                ,fun(J) -> 
+                         case re:run(Contact, "sip:[^@]+@(.*?):([0-9]+)", [{capture, [1, 2], binary}]) of
+                             {match,[Ip, Port]} ->
+                                 wh_json:set_value(<<"Contact-IP">>, Ip
+                                                   ,wh_json:set_value(<<"Contact-Port">>, Port, J));
+                             _Else -> J
+                         end
+                 end
+                ,fun(J) -> 
+                         case re:run(Contact, "received=sip:([^:;]+):?([0-9]+)?", [{capture, [1, 2], binary}]) of
+                             {match,[Ip, Port]} ->
+                                 wh_json:set_value(<<"Received-IP">>, Ip
+                                                   ,wh_json:set_value(<<"Received-Port">>, Port, J));
+                             _Else -> J
+                         end
+                 end
+                ,fun(J) -> 
+                         case re:run(Contact, "fs_path=sip:([^:;]+):?([0-9]+)?", [{capture, [1, 2], binary}]) of
+                             {match,[Ip, Port]} ->
+                                 wh_json:set_value(<<"Proxy-IP">>, Ip
+                                                   ,wh_json:set_value(<<"Proxy-Port">>, Port, J));
+                             _Else -> J
+                         end
+                 end
+               ],
+    wh_json:normalize(lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters)).

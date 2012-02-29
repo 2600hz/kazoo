@@ -118,13 +118,13 @@ try_load_module(Name) ->
         end
     catch
         error:badarg ->
-            ?LOG_SYS("carrier module ~s not found", [Name]),
+            lager:debug("carrier module ~s not found", [Name]),
             case code:where_is_file(wh_util:to_list(<<Name/binary, ".beam">>)) of
                 non_existing ->
-                    ?LOG_SYS("beam file not found for ~s", [Name]),
+                    lager:debug("beam file not found for ~s", [Name]),
                     false;
                 _Path ->
-                    ?LOG_SYS("beam file found: ~s", [_Path]),
+                    lager:debug("beam file found: ~s", [_Path]),
                     wh_util:to_atom(Name, true), %% put atom into atom table
                     try_load_module(Name)
             end;

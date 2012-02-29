@@ -80,27 +80,27 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), #cf_call{}) -> ok.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data,Call) ->
     Temporal = get_temporal_route(Data, Call),
     case wh_json:get_value(<<"action">>, Data) of
         <<"menu">> ->
-            ?LOG("temporal rules main menu"),
+            lager:debug("temporal rules main menu"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
             {ok, _} = temporal_route_menu(Temporal, Rules, Call),
             cf_exe:stop(Call);
         <<"enable">> ->
-            ?LOG("force temporal rules to enable"),
+            lager:debug("force temporal rules to enable"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
             {ok, _} = enable_temporal_rules(Temporal, Rules, Call),
             cf_exe:stop(Call);
         <<"disable">> ->
-            ?LOG("force temporal rules to disable"),
+            lager:debug("force temporal rules to disable"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
             {ok, _} = disable_temporal_rules(Temporal, Rules, Call),
             cf_exe:stop(Call);
         <<"reset">> ->
-            ?LOG("resume normal temporal rule operation"),
+            lager:debug("resume normal temporal rule operation"),
             Rules = wh_json:get_value(<<"rules">>, Data, []),
             {ok, _} = reset_temporal_rules(Temporal, Rules, Call),
             cf_exe:stop(Call);
@@ -124,33 +124,33 @@ handle(Data,Call) ->
 -spec process_rules/3 :: (Temporal, Rules, Call) -> 'default' | binary() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...] | [],
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 process_rules(Temporal, [#rule{enabled = <<"false">>, id=Id, name=Name}|Rs], Call) ->
-    ?LOG("time based rule ~s (~s) disabled", [Id, Name]),
+    lager:debug("time based rule ~s (~s) disabled", [Id, Name]),
     process_rules(Temporal, Rs, Call);
 process_rules(_, [#rule{enabled = <<"true">>, id=Id, name=Name}|_], _) ->
-    ?LOG("time based rule ~s (~s) is forced active", [Id, Name]),
+    lager:debug("time based rule ~s (~s) is forced active", [Id, Name]),
     Id;
 process_rules(#temporal{local_sec=LSec, local_date={Y, M, D}}=T,
               [#rule{id=Id, name=Name, wtime_start=TStart, wtime_stop=TStop}=R|Rs]
               ,Call) ->
-    ?LOG("processing temporal rule ~s (~s)", [Id, Name]),
+    lager:debug("processing temporal rule ~s (~s)", [Id, Name]),
     PrevDay = normalize_date({Y, M, D - 1}),
     BaseDate = next_rule_date(R, PrevDay),
     BastTime = calendar:datetime_to_gregorian_seconds({BaseDate, {0,0,0}}),
     case {BastTime + TStart, BastTime + TStop} of
         {Start, _} when LSec < Start ->
-            ?LOG("rule applies in the future ~w", [calendar:gregorian_seconds_to_datetime(Start)]),
+            lager:debug("rule applies in the future ~w", [calendar:gregorian_seconds_to_datetime(Start)]),
             process_rules(T, Rs, Call);
         {_, End} when LSec > End ->
-            ?LOG("rule was valid today but expired ~w", [calendar:gregorian_seconds_to_datetime(End)]),
+            lager:debug("rule was valid today but expired ~w", [calendar:gregorian_seconds_to_datetime(End)]),
             process_rules(T, Rs, Call);
         {_, End} ->
-            ?LOG("within active time window until ~w", [calendar:gregorian_seconds_to_datetime(End)]),
+            lager:debug("within active time window until ~w", [calendar:gregorian_seconds_to_datetime(End)]),
             Id
     end;
 process_rules(_, [], _) ->
-    ?LOG("continuing with default callflow"),
+    lager:debug("continuing with default callflow"),
     default.
 
 
@@ -163,7 +163,7 @@ process_rules(_, [], _) ->
 %%--------------------------------------------------------------------
 -spec get_temporal_rules/2 :: (Temporal, Call) -> [#rule{},...] when
       Temporal :: #temporal{},
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
     [#rule{id = ID
            ,enabled =
@@ -200,9 +200,9 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
 %%--------------------------------------------------------------------
 -spec get_temporal_route/2 :: (JObj, Call) -> #temporal{} when
       JObj :: wh_json:json_object(),
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 get_temporal_route(JObj, Call) ->
-    ?LOG("loading temporal route"),
+    lager:debug("loading temporal route"),
     {branch_keys, Keys} = cf_exe:get_branch_keys(Call),
     load_current_time(#temporal{routes = Keys
                                 ,timezone = wh_json:get_value(<<"timezone">>, JObj, ?TEMPORAL_DEFAULT_TIMEZONE)
@@ -230,10 +230,10 @@ get_date(Seconds) when is_integer(Seconds) ->
 -spec temporal_route_menu/3 :: (Temporal, Rules, Call) -> cf_api_std_return() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...],
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 temporal_route_menu(#temporal{keys=#keys{enable=Enable, disable=Disable, reset=Reset}
                               ,prompts=Prompts}=Temporal, Rules, Call) ->
-    case cf_call_command:b_play_and_collect_digit(Prompts#prompts.main_menu, Call) of
+    case whapps_call_command:b_play_and_collect_digit(Prompts#prompts.main_menu, Call) of
         {ok, Enable} ->
             enable_temporal_rules(Temporal, Rules, Call);
         {ok, Disable} ->
@@ -257,26 +257,27 @@ temporal_route_menu(#temporal{keys=#keys{enable=Enable, disable=Disable, reset=R
 -spec disable_temporal_rules/3 :: (Temporal, Rules, Call) -> cf_api_std_return() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...] | [],
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 disable_temporal_rules(#temporal{prompts=#prompts{marked_disabled=Disabled}}, [], Call) ->
-    cf_call_command:b_play(Disabled, Call);
-disable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
+    whapps_call_command:b_play(Disabled, Call);
+disable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
-        {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        case couch_mgr:save_doc(Db, wh_json:set_value(<<"enabled">>, false, JObj)) of
+        AccountDb = whapps_call:account_db(Call),
+        {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
+        case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"enabled">>, false, JObj)) of
             {ok, _} ->
-                ?LOG("set temporal rule ~s to disabled", [Id]),
+                lager:debug("set temporal rule ~s to disabled", [Id]),
                 disable_temporal_rules(Temporal, T, Call);
             {error, conflict} ->
-                ?LOG("conflict during disable of temporal rule ~s, trying again", [Id]),
+                lager:debug("conflict during disable of temporal rule ~s, trying again", [Id]),
                 disable_temporal_rules(Temporal, Rules, Call);
             {error, R1} ->
-                ?LOG("unable to update temporal rule ~s, ~p",[Id, R1]),
+                lager:debug("unable to update temporal rule ~s, ~p",[Id, R1]),
                 disable_temporal_rules(Temporal, T, Call)
         end
     catch
         _:R2 ->
-            ?LOG("unable to update temporal rules ~p",[R2]),
+            lager:debug("unable to update temporal rules ~p",[R2]),
             disable_temporal_rules(Temporal, T, Call)
     end.
 
@@ -291,26 +292,27 @@ disable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
 -spec reset_temporal_rules/3 :: (Temporal, Rules, Call) -> cf_api_std_return() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...] | [],
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 reset_temporal_rules(#temporal{prompts=#prompts{marker_reset=Reset}}, [], Call) ->
-    cf_call_command:b_play(Reset, Call);
-reset_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
+    whapps_call_command:b_play(Reset, Call);
+reset_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
-        {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        case couch_mgr:save_doc(Db, wh_json:delete_key(<<"enabled">>, JObj)) of
+        AccountDb = whapps_call:account_db(Call),
+        {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
+        case couch_mgr:save_doc(AccountDb, wh_json:delete_key(<<"enabled">>, JObj)) of
             {ok, _} ->
-                ?LOG("reset temporal rule ~s", [Id]),
+                lager:debug("reset temporal rule ~s", [Id]),
                 reset_temporal_rules(Temporal, T, Call);
             {error, conflict} ->
-                ?LOG("conflict during reset of temporal rule ~s, trying again", [Id]),
+                lager:debug("conflict during reset of temporal rule ~s, trying again", [Id]),
                 reset_temporal_rules(Temporal, Rules, Call);
             {error, R1} ->
-                ?LOG("unable to reset temporal rule ~s, ~p",[Id, R1]),
+                lager:debug("unable to reset temporal rule ~s, ~p",[Id, R1]),
                 reset_temporal_rules(Temporal, T, Call)
         end
     catch
         _:R2 ->
-            ?LOG("unable to reset temporal rule ~s ~p",[Id, R2]),
+            lager:debug("unable to reset temporal rule ~s ~p",[Id, R2]),
             reset_temporal_rules(Temporal, T, Call)
     end.
 
@@ -325,26 +327,27 @@ reset_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
 -spec enable_temporal_rules/3 :: (Temporal, Rules, Call) -> cf_api_std_return() when
       Temporal :: #temporal{},
       Rules :: [#rule{},...] | [],
-      Call :: #cf_call{}.
+      Call :: whapps_call:call().
 enable_temporal_rules(#temporal{prompts=#prompts{marked_enabled=Enabled}}, [], Call) ->
-    cf_call_command:b_play(Enabled, Call);
-enable_temporal_rules(Temporal, [Id|T]=Rules, #cf_call{account_db=Db}=Call) ->
+    whapps_call_command:b_play(Enabled, Call);
+enable_temporal_rules(Temporal, [Id|T]=Rules, Call) ->
     try
-        {ok, JObj} = couch_mgr:open_doc(Db, Id),
-        case couch_mgr:save_doc(Db, wh_json:set_value(<<"enabled">>, true, JObj)) of
+        AccountDb = whapps_call:account_db(Call),
+        {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
+        case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"enabled">>, true, JObj)) of
             {ok, _} ->
-                ?LOG("set temporal rule ~s to enabled active", [Id]),
+                lager:debug("set temporal rule ~s to enabled active", [Id]),
                 enable_temporal_rules(Temporal, T, Call);
             {error, conflict} ->
-                ?LOG("conflict during enable of temporal rule ~s, trying again", [Id]),
+                lager:debug("conflict during enable of temporal rule ~s, trying again", [Id]),
                 enable_temporal_rules(Temporal, Rules, Call);
             {error, R1} ->
-                ?LOG("unable to enable temporal rule ~s, ~p",[Id, R1]),
+                lager:debug("unable to enable temporal rule ~s, ~p",[Id, R1]),
                 enable_temporal_rules(Temporal, T, Call)
         end
     catch
         _:R2 ->
-            ?LOG("unable to enable temporal rule ~s ~p",[Id, R2]),
+            lager:debug("unable to enable temporal rule ~s ~p",[Id, R2]),
             enable_temporal_rules(Temporal, T, Call)
     end.
 
@@ -361,7 +364,7 @@ load_current_time(#temporal{timezone=Timezone}=Temporal)->
                                calendar:universal_time()
                                ,wh_util:to_list(Timezone)
                               ),
-    ?LOG("local time for ~s is {~w,~w}", [Timezone, LocalDate, LocalTime]),
+    lager:debug("local time for ~s is {~w,~w}", [Timezone, LocalDate, LocalTime]),
     Temporal#temporal{local_sec=calendar:datetime_to_gregorian_seconds({LocalDate, LocalTime})
                       ,local_date=LocalDate
                       ,local_time=LocalTime}.

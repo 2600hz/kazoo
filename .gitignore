@@ -1,6 +1,6 @@
 *~
-*/log/error_log*
-*/error_log
+*.log
+*.sasl
 */ebin/*.beam
 */ebin/*.app
 */priv/*.pid
@@ -9,11 +9,10 @@ ecallmgr/priv/startup.config
 whistle_apps/priv/startup.config
 whistle_apps/apps/*/ebin/*.beam
 whistle_apps/apps/*/ebin/*.app
-whistle_apps/apps/*/log/*
 lib/whistle*/ebin/*.beam
 lib/whistle*/ebin/*.app
-lib/whistle*/log/*.sasl
 lib/erlydtl*/ebin
 lib/erlydtl*/src/erlydtl_parser.erl
 utils/*/ebin/*.beam
 utils/*/ebin/*.app
+.platform_dialyzer.plt

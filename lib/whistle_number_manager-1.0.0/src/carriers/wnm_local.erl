@@ -32,15 +32,15 @@ find_numbers(Number, Quanity) ->
                                                           ,{<<"limit">>, Quanity}
                                                          ]) of
         {ok, []} -> 
-            ?LOG("found no available local numbers"),
+            lager:debug("found no available local numbers"),
             {error, non_available};
         {ok, JObjs} ->
-            ?LOG("found ~p available local numbers", [length(JObjs)]),
+            lager:debug("found ~p available local numbers", [length(JObjs)]),
             {ok, wh_json:from_list([{wh_json:get_value(<<"id">>, JObj), wh_json:new()}
                                     || JObj <- JObjs
                                    ])};
         {error, R}=E ->
-            ?LOG("failed to lookup available local numbers: ~p", [R]),
+            lager:debug("failed to lookup available local numbers: ~p", [R]),
             E
     end.
 

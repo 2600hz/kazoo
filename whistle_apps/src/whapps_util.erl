@@ -16,13 +16,13 @@
 -export([calculate_cost/5]).
 -export([get_event_type/1, put_callid/1]).
 -export([get_call_termination_reason/1]).
--export([alert/3, alert/4]).
 -export([hangup_cause_to_alert_level/1]).
 -export([get_view_json/1, get_view_json/2]).
 -export([get_views_json/2]).
 -export([update_views/2, update_views/3]).
 -export([add_aggregate_device/2]).
 -export([rm_aggregate_device/2]).
+-export([get_destination/3]).
 
 -include("whistle_apps.hrl").
 
@@ -38,8 +38,7 @@
 %% @spec update_all_accounts() -> ok | error
 %% @end
 %%--------------------------------------------------------------------
--spec update_all_accounts/1 :: (File) -> no_return() when
-      File :: binary().
+-spec update_all_accounts/1 :: (ne_binary()) -> 'ok'.
 update_all_accounts(File) ->
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2000),
@@ -53,8 +52,7 @@ update_all_accounts(File) ->
 %% application priv/couchdb/views/ folder into every account
 %% @end
 %%--------------------------------------------------------------------
--spec revise_whapp_views_in_accounts/1 :: (App) -> no_return() when
-      App :: atom().
+-spec revise_whapp_views_in_accounts/1 :: (atom()) -> 'ok'.
 revise_whapp_views_in_accounts(App) ->
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2000),
@@ -68,9 +66,7 @@ revise_whapp_views_in_accounts(App) ->
 %% account db into the target database
 %% @end
 %%--------------------------------------------------------------------
--spec replicate_from_accounts/2 :: (TargetDb, FilterDoc) -> no_return() when
-      TargetDb :: binary(),
-      FilterDoc :: binary().
+-spec replicate_from_accounts/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
     lists:foreach(fun(AccountDb) ->
                           timer:sleep(2000),
@@ -84,12 +80,9 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
 %% source database into the target database
 %% @end
 %%--------------------------------------------------------------------
--spec replicate_from_account/3 :: (AccountDb, TargetDb, FilterDoc) -> no_return() when
-      AccountDb :: binary(),
-      TargetDb :: binary(),
-      FilterDoc :: binary().
+-spec replicate_from_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'error', 'matching_dbs'} | 'ok'.
 replicate_from_account(AccountDb, AccountDb, _) ->
-    ?LOG_SYS("requested to replicate from db ~s to self, skipping", [AccountDb]),
+    lager:debug("requested to replicate from db ~s to self, skipping", [AccountDb]),
     {error, matching_dbs};
 replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
     ReplicateProps = [{<<"source">>, wh_util:format_account_id(AccountDb, ?REPLICATE_ENCODING)}
@@ -100,13 +93,13 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
     try
         case couch_mgr:db_replicate(ReplicateProps) of
             {ok, _} ->
-                ?LOG_SYS("replicate ~s to ~s using filter ~s succeeded", [AccountDb, TargetDb, FilterDoc]);
+                lager:debug("replicate ~s to ~s using filter ~s succeeded", [AccountDb, TargetDb, FilterDoc]);
             {error, _} ->
-                ?LOG_SYS("replicate ~s to ~s using filter ~s failed", [AccountDb, TargetDb, FilterDoc])
+                lager:debug("replicate ~s to ~s using filter ~s failed", [AccountDb, TargetDb, FilterDoc])
         end
     catch
         _:_ ->
-            ?LOG_SYS("replicate ~s to ~s using filter ~s error", [AccountDb, TargetDb, FilterDoc])
+            lager:debug("replicate ~s to ~s using filter ~s error", [AccountDb, TargetDb, FilterDoc])
     end.
 
 %%--------------------------------------------------------------------
@@ -116,8 +109,8 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
 %% in the requested encoding
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_accounts/0 :: () -> [binary(),...] | [].
--spec get_all_accounts/1 :: ('unencoded' | 'encoded' | 'raw') -> [binary(),...] | [].
+-spec get_all_accounts/0 :: () -> [ne_binary(),...] | [].
+-spec get_all_accounts/1 :: ('unencoded' | 'encoded' | 'raw') -> [ne_binary(),...] | [].
 get_all_accounts() ->
     get_all_accounts(?REPLICATE_ENCODING).
 
@@ -126,6 +119,8 @@ get_all_accounts(Encoding) ->
     [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_acct_db(Db)].
 
 is_acct_db(<<"account/", _/binary>>) -> true;
+is_acct_db(<<"account%2f", _/binary>>) -> true;
+is_acct_db(<<"account%2F", _/binary>>) -> true;
 is_acct_db(_) -> false.
 
 %%--------------------------------------------------------------------
@@ -133,7 +128,7 @@ is_acct_db(_) -> false.
 %% @doc Realms are one->one with accounts.
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_by_realm/1 :: (ne_binary()) -> {ok, ne_binary()} | {error, not_found}.
+-spec get_account_by_realm/1 :: (ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_found'}.
 get_account_by_realm(Realm) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
         {ok, [JObj]} -> 
@@ -143,7 +138,7 @@ get_account_by_realm(Realm) ->
         {ok, JObjs} ->
             {multiples, [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs]};
         _E ->
-            ?LOG("error while fetching accounts by realm: ~p", [_E]),
+            lager:debug("error while fetching accounts by realm: ~p", [_E]),
             {error, not_found}
     end.
 
@@ -153,7 +148,7 @@ get_account_by_realm(Realm) ->
 %% unique.
 %% @end
 %%--------------------------------------------------------------------
--spec get_accounts_by_name/1 :: (ne_binary()) -> {ok, [ne_binary(),...]} | {error, not_found}.
+-spec get_accounts_by_name/1 :: (ne_binary()) -> {'ok', [ne_binary(),...]} | {'error', 'not_found'}.
 get_accounts_by_name(Name) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_NAME, [{<<"key">>, Name}]) of
         {ok, [JObj]} -> 
@@ -163,7 +158,7 @@ get_accounts_by_name(Name) ->
         {ok, JObjs} ->
             {multiples, [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs]};
         _E ->
-            ?LOG("error while fetching accounts by name: ~p", [_E]),
+            lager:debug("error while fetching accounts by name: ~p", [_E]),
             {error, not_found}
     end.
 
@@ -174,8 +169,7 @@ get_accounts_by_name(Name) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (JObj) -> {binary(), binary()} when
-      JObj :: wh_json:json_object().
+-spec get_event_type/1 :: (wh_json:json_object()) -> {ne_binary(), ne_binary()}.
 get_event_type(JObj) ->
     wh_util:get_event_type(JObj).
 
@@ -186,8 +180,7 @@ get_event_type(JObj) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (JObj) -> binary() | 'undefined' when
-      JObj :: wh_json:json_object().
+-spec put_callid/1 :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
 put_callid(JObj) ->
     wh_util:put_callid(JObj).
 
@@ -198,151 +191,16 @@ put_callid(JObj) ->
 %% this returns the cause and code for the call termination
 %% @end
 %%--------------------------------------------------------------------
--spec get_call_termination_reason/1 :: (wh_json:json_object()) -> {binary(), binary()}.
+-spec get_call_termination_reason/1 :: (wh_json:json_object()) -> {ne_binary(), ne_binary()}.
 get_call_termination_reason(JObj) ->
-    Cause = case wh_json:get_value(<<"Application-Response">>, JObj, <<>>) of
-               <<>> ->
-                   wh_json:get_value(<<"Hangup-Cause">>, JObj, <<>>);
+    Cause = case wh_json:get_ne_value(<<"Application-Response">>, JObj) of
+               undefined ->
+                   wh_json:get_ne_value(<<"Hangup-Cause">>, JObj, <<"UNSPECIFIED">>);
                Response ->
                    Response
            end,
-    Code = wh_json:get_value(<<"Hangup-Code">>, JObj, <<>>),
+    Code = wh_json:get_value(<<"Hangup-Code">>, JObj, <<"sip:600">>),
     {Cause, Code}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Send an email alert to the system admin and account admin if they
-%% are configured for the alert level or better
-%% @end
-%%--------------------------------------------------------------------
--spec alert/3 :: (Level, Format, Args) -> pid() when
-      Level :: atom() | string() | binary(),
-      Format :: string(),
-      Args :: list().
--spec alert/4 :: (Level, Format, Args, AccountId) -> pid() when
-      Level :: atom() | string() | binary(),
-      Format :: string(),
-      Args :: list(),
-      AccountId :: undefined | binary().
-
-alert(Level, Format, Args) ->
-    alert(Level, Format, Args, undefined).
-alert(Level, Format, Args, AccountId) ->
-    spawn(fun() -> maybe_send_alert(Level, Format, Args, AccountId) end).
-
-maybe_send_alert(Level, Format, Args, AccountId) ->
-    AlertLevel = alert_level_to_integer(Level),
-    case [To || To <- [should_alert_system_admin(AlertLevel)
-                       ,should_alert_account_admin(AlertLevel, AccountId)]
-                    ,To =/= undefined] of
-        [] ->
-            ok;
-        NestedTo ->
-            To = lists:flatten(NestedTo),
-            Node = wh_util:to_binary(erlang:node()),
-            Subject = io_lib:format("WHISTLE: ~s alert from ~s", [Level, Node]),
-            From = whapps_config:get(<<"alerts">>, <<"from">>, Node),
-            Alert = io_lib:format(lists:flatten(Format), Args),
-            Email = {<<"text">>,<<"plain">>,
-                     [{<<"From">>,wh_util:to_binary(From)},
-                      {<<"To">>, hd(To)},
-                      {<<"Subject">>, wh_util:to_binary(Subject)}],
-                     [], wh_util:to_binary(Alert)},
-            Encoded = mimemail:encode(Email),
-            ?LOG_SYS("sending ~s alert email to ~p", [Level, To]),
-            Relay = wh_util:to_list(whapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
-            gen_smtp_client:send({From, To, Encoded}, [{relay, Relay}]
-                                 ,fun(X) -> ?LOG("sending email to ~p resulted in ~p", [To, X]) end)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% If the system admin is configured to recieve this alert level
-%% return the system admin emal address
-%% @end
-%%--------------------------------------------------------------------
--spec should_alert_system_admin/1 :: (AlertLevel) -> undefined | binary() when
-      AlertLevel :: 0..8.
-should_alert_system_admin(AlertLevel) ->
-    SystemLevel = whapps_config:get(<<"alerts">>, <<"system_admin_level">>, <<"debug">>),
-    ?LOG("system level: ~p", [SystemLevel]),
-    case alert_level_to_integer(SystemLevel) of
-        0 -> undefined;
-        L when is_integer(L), L =< AlertLevel ->
-            case whapps_config:get(<<"alerts">>, <<"system_admin_email">>) of
-                Email when is_binary(Email) ->
-                    Email;
-                Emails when is_list(Emails) ->
-                    [wh_util:to_binary(E) || E <- Emails];
-                _ -> undefined
-            end;
-        _ -> undefined
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% If the account admin is configured to recieve this alert level
-%% return the account admin emal address
-%% @end
-%%--------------------------------------------------------------------
--spec should_alert_account_admin/2 :: (AlertLevel, AccountId) -> undefined | binary() when
-      AlertLevel :: 0..8,
-      AccountId :: undefined | binary().
-should_alert_account_admin(_, undefined) ->
-    undefined;
-should_alert_account_admin(AlertLevel, AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
-        {ok, JObj} ->
-            AdminLevel = wh_json:get_value([<<"alerts">>, <<"level">>], JObj),
-            case alert_level_to_integer(AdminLevel) of
-                0 -> undefined;
-                L when L =< AlertLevel ->
-                    case wh_json:get_value([<<"alerts">>, <<"email">>], JObj) of
-                        Email when is_binary(Email) ->
-                            Email;
-                        Emails when is_list(Emails) ->
-                            [wh_util:to_binary(E) || E <- Emails];
-                        _ -> undefined
-                    end;
-                _ -> undefined
-            end;
-        {error, _} ->
-            undefined
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% convert the textual alert level to an interger value
-%% @end
-%%--------------------------------------------------------------------
--spec alert_level_to_integer/1 :: (atom() | string() | binary()) -> 0..8.
-alert_level_to_integer(<<"emerg">>) ->
-    8;
-alert_level_to_integer(<<"critical">>) ->
-    7;
-alert_level_to_integer(<<"alert">>) ->
-    6;
-alert_level_to_integer(<<"error">>) ->
-    5;
-alert_level_to_integer(<<"warning">>) ->
-    4;
-alert_level_to_integer(<<"notice">>) ->
-    3;
-alert_level_to_integer(<<"info">>) ->
-    2;
-alert_level_to_integer(<<"debug">>) ->
-    1;
-alert_level_to_integer(<<_/binary>>) ->
-    0;
-alert_level_to_integer(undefined) ->
-    5;
-alert_level_to_integer(Level) ->
-    alert_level_to_integer(wh_util:to_binary(Level)).
 
 %% R :: rate, per minute, in dollars (0.01, 1 cent per minute)
 %% RI :: rate increment, in seconds, bill in this increment AFTER rate minimum is taken from Secs
@@ -410,7 +268,7 @@ get_view_json(App, File) ->
     get_view_json(Path).
 
 get_view_json(Path) ->
-    ?LOG_SYS("fetch view from ~s", [Path]),
+    lager:debug("fetch view from ~s", [Path]),
     {ok, Bin} = file:read_file(Path),
     JObj = wh_json:decode(Bin),
     {wh_json:get_value(<<"_id">>, JObj), JObj}.
@@ -421,9 +279,9 @@ get_view_json(Path) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec update_views/2 :: (ne_binary(), proplist()) -> ok.
--spec update_views/3 :: (ne_binary(), proplist(), boolean()) -> ok.
--spec update_views/4 :: (wh_json:json_objects(), ne_binary(), proplist(), boolean()) -> ok.
+-spec update_views/2 :: (ne_binary(), proplist()) -> 'ok'.
+-spec update_views/3 :: (ne_binary(), proplist(), boolean()) -> 'ok'.
+-spec update_views/4 :: (wh_json:json_objects(), ne_binary(), proplist(), boolean()) -> 'ok'.
 
 update_views(Db, Views) ->
     update_views(Db, Views, false).
@@ -443,7 +301,7 @@ update_views(Db, Views, Remove) ->
 update_views([], _, [], _) ->
     ok;
 update_views([], Db, [{Id,View}|Views], Remove) ->
-    ?LOG("adding view '~s' to '~s'", [Id, Db]),
+    lager:debug("adding view '~s' to '~s'", [Id, Db]),
     couch_mgr:ensure_saved(Db, View),
     update_views([], Db, Views, Remove);
 update_views([Found|Finds], Db, Views, Remove) ->
@@ -452,17 +310,16 @@ update_views([Found|Finds], Db, Views, Remove) ->
     RawDoc = wh_json:delete_key(<<"_rev">>, Doc),
     case props:get_value(Id, Views) of
         undefined when Remove -> 
-            ?LOG("removing view '~s' from '~s'", [Id, Db]),
+            lager:debug("removing view '~s' from '~s'", [Id, Db]),
             couch_mgr:del_doc(Db, Doc),
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         undefined ->
-            ?LOG("no id in the views"),
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         View1 when View1 =:= RawDoc ->
-            ?LOG("view '~s' matches the raw doc, skipping", [Id]),
+            lager:debug("view '~s' matches the raw doc, skipping", [Id]),
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         View2 ->
-            ?LOG("updating view '~s' in '~s'", [Id, Db]),
+            lager:debug("updating view '~s' in '~s'", [Id, Db]),
             Rev = wh_json:get_value(<<"_rev">>, Doc),
             couch_mgr:ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, View2)),
             update_views(Finds, Db, props:delete(Id, Views), Remove)
@@ -474,19 +331,19 @@ update_views([Found|Finds], Db, Views, Remove) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec add_aggregate_device/2 :: (ne_binary(), undefined | ne_binary()) -> ok.
+-spec add_aggregate_device/2 :: (ne_binary(), 'undefined' | ne_binary()) -> 'ok'.
 add_aggregate_device(_, undefined) ->
     ok;
 add_aggregate_device(Db, Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
-    case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
-        {ok, Rev} ->
-            ?LOG("aggregating device ~s/~s", [Db, DeviceId]),
-            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Device));
-        {error, not_found} ->
-            ?LOG("aggregating device ~s/~s", [Db, DeviceId]),
-            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Device))
-    end,
+    _ = case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
+            {ok, Rev} ->
+                lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
+                couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Device));
+            {error, not_found} ->
+                lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
+                couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Device))
+        end,
     ok.
 
 %%--------------------------------------------------------------------
@@ -495,16 +352,59 @@ add_aggregate_device(Db, Device) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec rm_aggregate_device/2 :: (ne_binary(), undefined | ne_binary()) -> ok.
+-spec rm_aggregate_device/2 :: (ne_binary(), 'undefined' | ne_binary()) -> 'ok'.
 rm_aggregate_device(_, undefined) ->
     ok;
 rm_aggregate_device(Db, Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
-    case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
-        {ok, JObj} ->
-            ?LOG("removing aggregated device ~s/~s", [Db, DeviceId]),
-            couch_mgr:del_doc(?WH_SIP_DB, JObj);
-        {error, not_found} ->
-            ok
-    end,
+    _ = case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
+            {ok, JObj} ->
+                lager:debug("removing aggregated device ~s/~s", [Db, DeviceId]),
+                couch_mgr:del_doc(?WH_SIP_DB, JObj);
+            {error, not_found} ->
+                ok
+        end,
     ok.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Extracts the User and Realm from either the Request or To field, configured
+%% in the system_config DB. Defaults to Request (To is the other option)
+%% @end
+%%--------------------------------------------------------------------
+-spec get_destination/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+get_destination(JObj, Cat, Key) ->
+    case whapps_config:get(Cat, Key, <<"Request">>) of
+        <<"To">> ->
+            case try_split(<<"To">>, JObj) of
+                {_,_}=UserRealm -> UserRealm;
+                undefined ->
+                    case try_split(<<"Request">>, JObj) of
+                        {_,_}=UserRealm -> UserRealm;
+                        undefined -> {wh_json:get_value(<<"To-DID">>, JObj), wh_json:get_value(<<"To-Realm">>, JObj)}
+                    end
+            end;
+        _ ->
+            case try_split(<<"Request">>, JObj) of
+                {_,_}=UserRealm -> UserRealm;
+                undefined ->
+                    case try_split(<<"To">>, JObj) of
+                        {_,_}=UserRealm -> UserRealm;
+                        undefined -> {wh_json:get_value(<<"To-DID">>, JObj), wh_json:get_value(<<"To-Realm">>, JObj)}
+                    end
+            end
+    end.
+
+-spec try_split/2 :: (ne_binary(), wh_json:json_object()) -> {ne_binary(), ne_binary()} | 'undefined'.
+try_split(Key, JObj) ->
+    case wh_json:get_value(Key, JObj) of
+        undefined -> undefined;
+        Bin when is_binary(Bin) ->
+            case binary:split(Bin, <<"@">>) of
+                [<<"nouser">>, _] ->
+                    undefined;
+                [_, _]=Dest ->
+                    list_to_tuple(Dest)
+            end
+    end.

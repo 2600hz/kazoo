@@ -69,7 +69,7 @@ stop(Srv) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    ?LOG_SYS("starting new sysconf server"),
+    lager:debug("starting new sysconf server"),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -113,7 +113,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    ?LOG_SYS("unhandled message: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -140,7 +140,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
-    ?LOG_SYS("sysconf server ~p termination", [_Reason]).
+    lager:debug("sysconf server ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

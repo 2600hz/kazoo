@@ -20,10 +20,10 @@ init() ->
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     true = wapi_call:rate_req_v(JObj),
-    ?LOG("Valid rating request"),
+    lager:debug("Valid rating request"),
 
     {ok, RatesData} = get_rate_data(JObj),
-    ?LOG("Rate data retrieved"),
+    lager:debug("Rate data retrieved"),
 
     RespProp = [{<<"Rates">>, RatesData}
                 | wh_api:default_headers(props:get_value(queue, Props, <<>>), ?APP_NAME, ?APP_VERSION)
@@ -39,15 +39,15 @@ get_rate_data(JObj) ->
     FromDID = wh_json:get_value(<<"From-DID">>, JObj),
 
     case hon_util:candidate_rates(ToDID, FromDID) of
-        {ok, []} -> ?LOG("rate lookup had no results"), {error, no_rate_found};
-        {error, _E} -> ?LOG("rate lookup error: ~p", [_E]), {error, no_rate_found};
+        {ok, []} -> lager:debug("rate lookup had no results"), {error, no_rate_found};
+        {error, _E} -> lager:debug("rate lookup error: ~p", [_E]), {error, no_rate_found};
         {ok, Rates} ->
             RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
             Direction = wh_json:get_value(<<"Direction">>, JObj),
 
             Matching = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions),
             case hon_util:sort_rates(Matching) of
-                [] -> ?LOG("no rates left after filter"), {error, no_rate_found};
+                [] -> lager:debug("no rates left after filter"), {error, no_rate_found};
                 [_|_]=SortedRates ->
                     {ok, [rate_to_json(Rate) || Rate <- SortedRates]}
             end
@@ -55,13 +55,13 @@ get_rate_data(JObj) ->
 
 -spec rate_to_json/1 :: (wh_json:json_object()) -> wh_json:json_object().
 rate_to_json(Rate) ->
-    ?LOG("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
+    lager:debug("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
 
     BaseCost = wapi_money:base_call_cost(wh_json:get_float_value(<<"rate_cost">>, Rate, 0.01)
                                          ,wh_json:get_integer_value(<<"rate_minimum">>, Rate, 60)
                                          ,wh_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0)),
 
-    ?LOG("base cost for a minute call: ~p", [BaseCost]),
+    lager:debug("base cost for a minute call: ~p", [BaseCost]),
 
     wh_json:from_list([{<<"Rate">>, wh_json:get_binary_value(<<"rate_cost">>, Rate)}
                        ,{<<"Rate-Increment">>, wh_json:get_binary_value(<<"rate_increment">>, Rate)}
@@ -77,11 +77,7 @@ set_rate_ccvs(Response, CtrlQ, JObj) ->
     case props:get_value(<<"Rates">>, Response) of
         [] ->
             ToDID = wnm_util:to_e164(wh_json:get_value(<<"To-DID">>, JObj)),
-            whapps_util:alert(<<"error">>, ["Source: ~s(~b)~n"
-                                            ,"Alert: rate information unavailable for ~s~n"
-                                            ,"Call-ID: ~s~n"]
-                              ,[?MODULE, ?LINE, ToDID, wh_json:get_value(<<"Call-ID">>, JObj)]),
-            ?LOG("no rates found for ~s", [ToDID]);
+            lager:notice("rate information unavailable for ~s", [ToDID]);
         [RateInfoJObj | _] ->                    
             Command = [{<<"Application-Name">>, <<"set">>}
                        ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
@@ -91,5 +87,5 @@ set_rate_ccvs(Response, CtrlQ, JObj) ->
                        | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                       ],
             wapi_dialplan:publish_command(CtrlQ, Command),
-            ?LOG("set rate information on call channel")
+            lager:debug("set rate information on call channel")
     end.

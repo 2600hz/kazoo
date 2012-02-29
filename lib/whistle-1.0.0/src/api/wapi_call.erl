@@ -22,6 +22,7 @@
 -export([callid_update/1, callid_update_v/1]).
 -export([control_transfer/1, control_transfer_v/1]).
 -export([controller_queue/1, controller_queue_v/1]).
+-export([usurp_control/1, usurp_control_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
 
@@ -36,15 +37,19 @@
 -export([publish_callid_update/2, publish_callid_update/3]).
 -export([publish_control_transfer/2, publish_control_transfer/3]).
 -export([publish_controller_queue/2, publish_controller_queue/3]).
-
--export([publish_channel_query_req/2, publish_channel_query_req/3]).
+-export([publish_usurp_control/2, publish_usurp_control/3]).
+-export([publish_channel_query_req/1, publish_channel_query_req/2]).
 -export([publish_channel_query_resp/2, publish_channel_query_resp/3]).
 
--export([optional_channel_headers/0]).
+-export([channel_query_search_fields/0]).
 
 -export([get_status/1]).
 
 -include("../wh_api.hrl").
+
+%% Routing key prefix for rating
+-define(KEY_RATING_REQ, <<"call.rating">>). %% Routing key to bind with in AMQP
+-define(KEY_CHANNEL_QUERY, <<"channel.query">>). %% Routing key to bind with in AMQP
 
 %% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Timestamp">>, <<"Call-ID">>, <<"Channel-Call-State">>]).
@@ -73,7 +78,7 @@
 -define(OPTIONAL_CHANNEL_STATUS_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Error-Msg">>, <<"Switch-Hostname">>]).
 -define(CHANNEL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                   ,{<<"Event-Name">>, <<"channel_status_resp">>}
-                                  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>]}
+                                  ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
                                  ]).
 -define(CHANNEL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
@@ -91,7 +96,7 @@
                                                 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                                 ,<<"Destination-Number">>, <<"Other-Leg-Unique-ID">>
                                                 ,<<"Other-Leg-Caller-ID-Name">>, <<"Other-Leg-Caller-ID-Number">>
-                                                ,<<"Other-Leg-Destination-Number">>
+                                                ,<<"Other-Leg-Destination-Number">>, <<"Presence-ID">>
                                            ]).
 -define(CALL_STATUS_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                   ,{<<"Event-Name">>, <<"call_status_resp">>}
@@ -101,19 +106,22 @@
 
 %% Channel Query Request
 -define(CHANNEL_QUERY_REQ_HEADERS, []).
--define(OPTIONAL_CHANNEL_QUERY_REQ_HEADERS, [<<"Call-Direction">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                                 ,<<"IP-Address">>, <<"Destination-Number">>, <<"Switch-Hostname">>
+-define(OPTIONAL_CHANNEL_QUERY_REQ_HEADERS, [<<"Call-ID">>, <<"Call-Direction">>, <<"Created">>, <<"Channel-State">>
+                                                 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"IP-Address">>
+                                                 ,<<"Destination-Number">>, <<"Application">>, <<"Application-Data">>
+                                                 ,<<"Secure">>, <<"Switch-Hostname">>, <<"Presence-ID">>, <<"Callee-ID-Name">>
+                                                 ,<<"Callee-ID-Number">>, <<"Other-Leg-Direction">>
                                             ]).
--define(CHANNEL_QUERY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+-define(CHANNEL_QUERY_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                    ,{<<"Event-Name">>, <<"channel_query_req">>}
                                    ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
-                                     ]).
+                                  ]).
 -define(CHANNEL_QUERY_REQ_TYPES, []).
 
 %% Channel Query Response
 -define(CHANNEL_QUERY_RESP_HEADERS, [<<"Active-Calls">>]).
 -define(OPTIONAL_CHANNEL_QUERY_RESP_HEADERS, []).
--define(CHANNEL_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"call">>}
+-define(CHANNEL_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                     ,{<<"Event-Name">>, <<"channel_query_resp">>}
                                    ]).
 -define(CHANNEL_QUERY_RESP_TYPES, []).
@@ -152,6 +160,14 @@
                                  ]).
 -define(CALL_CONTROL_TRANSFER_TYPES, []).
 
+%% Call Usurp Control
+-define(CALL_USURP_CONTROL_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>, <<"Controller-Queue">>]).
+-define(OPTIONAL_CALL_USURP_CONTROL_HEADERS, [<<"Reason">>]).
+-define(CALL_USURP_CONTROL_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                    ,{<<"Event-Name">>, <<"usurp_control">>}
+                                   ]).
+-define(CALL_USURP_CONTROL_TYPES, []).
+
 %% Controller Queue Update
 -define(CONTROLLER_QUEUE_HEADERS, [<<"Call-ID">>, <<"Controller-Queue">>]).
 -define(OPTIONAL_CONTROLLER_QUEUE_HEADERS, []).
@@ -159,10 +175,6 @@
                                   ,{<<"Event-Name">>, <<"controller_queue">>}
                                  ]).
 -define(CONTROLLER_QUEUE_TYPES, []).
-
-
-%% Routing key prefix for rating
--define(KEY_RATING_REQ, <<"call.rating">>). %% Routing key to bind with in AMQP
 
 %% AMQP fields for Rating Request
 -define(RATING_REQ_HEADERS, [<<"To-DID">>]).
@@ -252,8 +264,8 @@ channel_status_resp_v(Prop) when is_list(Prop) ->
 channel_status_resp_v(JObj) ->
     channel_status_resp_v(wh_json:to_proplist(JObj)).
 
-optional_channel_headers() ->
-    ?OPTIONAL_CALL_STATUS_RESP_HEADERS.
+channel_query_search_fields() ->
+    ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS.
 
 %%--------------------------------------------------------------------
 %% @doc Inquire into the status of a call
@@ -326,7 +338,7 @@ channel_query_req_v(JObj) ->
 channel_query_resp(Prop) when is_list(Prop) ->
     case channel_query_resp_v(Prop) of
         true -> wh_api:build_message(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?OPTIONAL_CHANNEL_QUERY_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for resource_resp"}
+        false -> {error, "Proplist failed validation for channel_query_resp"}
     end;
 channel_query_resp(JObj) ->
     channel_query_resp(wh_json:to_proplist(JObj)).
@@ -396,6 +408,26 @@ control_transfer_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_CONTROL_TRANSFER_HEADERS, ?CALL_CONTROL_TRANSFER_VALUES, ?CALL_CONTROL_TRANSFER_TYPES);
 control_transfer_v(JObj) ->
     control_transfer_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Format a call id update from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec usurp_control/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+usurp_control(Prop) when is_list(Prop) ->
+    case usurp_control_v(Prop) of
+        true -> wh_api:build_message(Prop, ?CALL_USURP_CONTROL_HEADERS, ?OPTIONAL_CALL_USURP_CONTROL_HEADERS);
+        false -> {error, "Proplist failed validation for usurp_control"}
+    end;
+usurp_control(JObj) ->
+    usurp_control(wh_json:to_proplist(JObj)).
+
+-spec usurp_control_v/1 :: (api_terms()) -> boolean().
+usurp_control_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?CALL_USURP_CONTROL_HEADERS, ?CALL_USURP_CONTROL_VALUES, ?CALL_USURP_CONTROL_TYPES);
+usurp_control_v(JObj) ->
+    usurp_control_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Format a call id update from the switch for the listener
@@ -490,13 +522,12 @@ bind_q(Queue, Props) ->
     CallID = props:get_value(callid, Props, <<"*">>),
     amqp_util:callevt_exchange(),
     amqp_util:callmgr_exchange(),
-    amqp_util:resource_exchange(),
     bind_q(Queue, props:get_value(restrict_to, Props), CallID).
 
 bind_q(Q, undefined, CallID) ->
     amqp_util:bind_q_to_callevt(Q, CallID),
     amqp_util:bind_q_to_callevt(Q, CallID, cdr),
-    amqp_util:bind_q_to_resource(Q, ?KEY_CHANNEL_QUERY),
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_CHANNEL_QUERY),
     amqp_util:bind_q_to_callmgr(Q, rating_key(CallID));
 
 bind_q(Q, [events|T], CallID) ->
@@ -512,7 +543,7 @@ bind_q(Q, [status_req|T], CallID) ->
     amqp_util:bind_q_to_callevt(Q, CallID, status_req),
     bind_q(Q, T, CallID);
 bind_q(Q, [query_req|T], CallID) ->
-    amqp_util:bind_q_to_resource(Q, ?KEY_CHANNEL_QUERY),
+    amqp_util:bind_q_to_callmgr(Q, ?KEY_CHANNEL_QUERY),
     bind_q(Q, T, CallID);
 bind_q(Q, [_|T], CallID) ->
     bind_q(Q, T, CallID);
@@ -527,7 +558,7 @@ unbind_q(Queue, Props) ->
 unbind_q(Q, undefined, CallID) ->
     amqp_util:unbind_q_from_callevt(Q, CallID),
     amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
-    amqp_util:unbind_q_from_resource(Q, ?KEY_CHANNEL_QUERY),
+    amqp_util:unbind_q_from_callmgr(Q, ?KEY_CHANNEL_QUERY),
     amqp_util:unbind_q_from_callmgr(Q, rating_key(CallID));
 
 unbind_q(Q, [events|T], CallID) ->
@@ -543,7 +574,7 @@ unbind_q(Q, [status_req|T], CallID) ->
     amqp_util:unbind_q_from_callevt(Q, CallID, status_req),
     unbind_q(Q, T, CallID);
 unbind_q(Q, [query_req|T], CallID) ->
-    amqp_util:unbind_q_from_resource(Q, ?KEY_CHANNEL_QUERY),
+    amqp_util:unbind_q_from_callmgr(Q, ?KEY_CHANNEL_QUERY),
     unbind_q(Q, T, CallID);
 unbind_q(Q, [_|T], CallID) ->
     unbind_q(Q, T, CallID);
@@ -634,6 +665,14 @@ publish_controller_queue(TargetQ, JObj, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CONTROLLER_QUEUE_VALUES, fun ?MODULE:controller_queue/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
+-spec publish_usurp_control/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_usurp_control/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_usurp_control(CallID, JObj) ->
+    publish_usurp_control(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_usurp_control(CallID, JObj, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CALL_USURP_CONTROL_VALUES, fun ?MODULE:usurp_control/1),
+    amqp_util:callevt_publish(CallID, Payload, event, ContentType).
+
 -spec publish_rate_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_rate_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_rate_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -656,13 +695,13 @@ publish_rate_resp(Queue, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?RATING_RESP_VALUES, fun ?MODULE:rate_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec publish_channel_query_req/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_channel_query_req/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_channel_query_req(CallID, JObj) ->
-    publish_channel_query_req(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_channel_query_req(CallID, Req, ContentType) ->
+-spec publish_channel_query_req/1 :: (api_terms()) -> 'ok'.
+-spec publish_channel_query_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_channel_query_req(JObj) ->
+    publish_channel_query_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_channel_query_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?CHANNEL_QUERY_REQ_VALUES, fun ?MODULE:channel_query_req/1),
-    amqp_util:callevt_publish(CallID, Payload, ContentType).
+    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_CHANNEL_QUERY).
 
 -spec publish_channel_query_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_channel_query_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.

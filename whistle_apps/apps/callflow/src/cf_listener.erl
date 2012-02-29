@@ -11,7 +11,11 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, stop/1]).
+-export([start_link/0]).
+-export([stop/0]).
+-export([pause/0]).
+-export([resume/0]).
+-export([handle_call_status_resp/2]).
 
 %% gen_listener callbacks
 -export([init/1, handle_call/3, handle_cast/2
@@ -25,8 +29,11 @@
 
 -define(RESPONDERS, [{cf_route_req, [{<<"dialplan">>, <<"route_req">>}]}
                      ,{cf_route_win, [{<<"dialplan">>, <<"route_win">>}]}
+                     ,{{cf_util, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
+                     ,{{?MODULE, handle_call_status_resp}, [{<<"call_event">>, <<"channel_status_resp">>}]}
                     ]).
 -define(BINDINGS, [{route, []}
+                   ,{notifications, [{restrict_to, [presence_probe]}]}
                    ,{self, []}
                   ]).
 -define(QUEUE_NAME, <<"">>).
@@ -46,14 +53,36 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				      ,{queue_name, ?QUEUE_NAME}
-				      ,{queue_options, ?QUEUE_OPTIONS}
-				      ,{consume_options, ?CONSUME_OPTIONS}
-				     ], []).
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                     ], []).
 
-stop(Srv) ->
+-spec pause/0 :: () -> ok.
+pause() ->
+    {ok, Srv} = callflow_sup:listener_proc(),
+    gen_listener:rm_responder(Srv, cf_route_req).
+
+-spec resume/0 :: () -> ok.
+resume() ->
+    {ok, Srv} = callflow_sup:listener_proc(),
+    gen_listener:add_responder(Srv, cf_route_req, [{<<"dialplan">>, <<"route_req">>}]).
+
+-spec stop/0 :: () -> ok.
+stop() ->
+    {ok, Srv} = callflow_sup:listener_proc(),
     gen_listener:stop(Srv).
+
+-spec handle_call_status_resp/2 :: (wh_json:json_object(), proplist()) -> ok.
+handle_call_status_resp(JObj, Props) ->
+    Consumers = props:get_value(consumers, Props),
+    StatusCallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    [Consumer ! {call_status_resp, JObj}
+     || {CallId, Consumer, _} <- Consumers
+            ,CallId =:= StatusCallId
+    ],
+    ok.
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -71,8 +100,9 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new callflow listener"),
-    {ok, ok}.
+    process_flag(trap_exit, true),
+    lager:debug("starting new callflow listener"),
+    {ok, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -88,8 +118,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Msg, _From, State) ->
-    {noreply, State}.
+handle_call(_Msg, _From, Consumers) ->
+    {noreply, Consumers}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -101,8 +131,19 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+handle_cast({add_consumer, CallId, Consumer}, Consumers) ->
+    MRef = erlang:monitor(process, Consumer),
+    lager:debug("added call status response consumer (~p) for ~s", [Consumer, CallId]),
+    {noreply, [{CallId, Consumer, MRef}|Consumers]};
+handle_cast({remove_consumer, Consumer}, Consumers) ->
+    {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
+                                   lager:debug("removed call status response consumer (~p): response sent", [Consumer]),
+                                   erlang:demonitor(MRef, [flush]),
+                                   false; 
+                              (_) -> true 
+                           end, Consumers)};
+handle_cast(_Msg, Consumers) ->
+    {noreply, Consumers}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -114,8 +155,15 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_info({'DOWN', _, _, Consumer, _R}, Consumers) ->
+    {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
+                                   lager:debug("removed call status response consumer (~p): ~p", [Consumer, _R]),
+                                   erlang:demonitor(MRef, flush),
+                                   false; 
+                              (_) -> true 
+                           end, Consumers)};
+handle_info(_Info, Consumers) ->
+    {noreply, Consumers}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -125,8 +173,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {reply, []}.
+handle_event(_JObj, Consumers) ->
+    {reply, [{consumers, Consumers}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -141,7 +189,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
-    ?LOG_SYS("callflow listner ~p termination", [_Reason]).
+    lager:debug("callflow listner ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -151,8 +199,8 @@ terminate(_Reason, _) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+code_change(_OldVsn, Consumers, _Extra) ->
+    {ok, Consumers}.
 
 %%%===================================================================
 %%% Internal functions

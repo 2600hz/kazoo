@@ -81,6 +81,7 @@
                                ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
                                ,{<<"Presence-ID">>, <<"presence_id">>}
                                ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
+                               ,{<<"From-URI">>, <<"sip_from_uri">>}
                                %% ,{<<"Hold-Media">>, <<"hold_music">>}
                               ]).
 
@@ -108,7 +109,7 @@
                                ,{<<"conference">>, <<"conference">>}
                                ,{<<"noop">>, <<"noop">>}
                                ,{<<"execute_extension">>, <<"execute_extension">>}
-                               ,{<<"playback">>, <<"hold">>}
+                               ,{<<"hold">>, <<"hold">>}
                                ,{<<"uuid_record">>, <<"record_call">>}
                                ,{<<"presence">>, <<"presence">>}
                               ]).
@@ -145,6 +146,41 @@
                               ,<<"uuid_kill">>, <<"uuid_getvar">>, <<"show">>
                               ,<<"uuid_exists">>
                          ]).
+
+-define(FS_CONFERNCE_ATTRS, [{'name', <<"Conference-ID">>}
+                             ,{'member-count', <<"Participant-Count">>}
+                             ,{'rate', <<"Rate">>}
+                             ,{'uuid', <<"UUID">>}
+                             ,{'locked', <<"Locked">>}
+                             ,{'run_time', <<"Run-Time">>}
+                             ,{'running', <<"Running">>}
+                             ,{'answered', <<"Answered">>}
+                             ,{'dynamic', <<"Dynamic">>}
+                            ]).
+
+-define(FS_CONFERENCE_PARTICIPANT, [{'id', <<"Participant-ID">>}
+                                    ,{'uuid', <<"Call-ID">>}
+                                    ,{'caller_id_name', <<"Caller-ID-Name">>}
+                                    ,{'caller_id_number', <<"Caller-ID-Number">>}
+                                    ,{'join_time', <<"Join-Time">>}
+                                    ,{'last_talking', <<"Last-Talking-Time">>}
+                                    ,{'energy', <<"Energy-Level">>}
+                                    ,{'volume_in', <<"Volume-In-Level">>}
+                                    ,{'volume_out', <<"Volume-Out-Level">>}
+                                    ,{'output-volume', <<"Output-Volume-Level">>}
+                                    ,{'input-volume', <<"Input-Volume-Level">>}
+                                    ,{'auto-adjusted-input-volume', <<"Adjusted-Input-Volume-Level">>}
+                                   ]).
+
+-define(FS_CONFERENCE_FLAGS, [{'can_hear', <<"Can-Hear">>}
+                              ,{'can_speak', <<"Can-Speak">>}
+                              ,{'mute_detect', <<"Mute-Detect">>}
+                              ,{'talking', <<"Talking">>}
+                              ,{'has_video', <<"Has-Video">>}
+                              ,{'had_floor', <<"Had-Floor">>}
+                              ,{'is_moderator', <<"Moderator">>}
+                              ,{'end_conference', <<"End-Conference">>}
+                             ]).
 
 -define(ECALLMGR_HRL, true).
 -endif.

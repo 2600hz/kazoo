@@ -23,7 +23,7 @@
 -include("jonny5.hrl").
 
 -define(SERVER, ?MODULE).
--define(SYNC_TIMER, 60000).
+-define(SYNC_TIMER, 600000). % 10 minutes
 
 -record(state, {
          acct_id = <<>> :: binary()
@@ -85,31 +85,33 @@ refresh(Srv) ->
 authz_trunk(Pid, JObj, CallDir) when is_pid(Pid) ->
     {Bool, Prop} = gen_listener:call(Pid, {authz, JObj, CallDir}),
     Queue = gen_listener:queue_name(Pid),
-    ?LOG("sending ~s to ~s", [Bool, Queue]),
+    lager:debug("sending ~s to ~s", [Bool, Queue]),
     {Bool, [{<<"Server-ID">>, Queue} | Prop]};
 
 authz_trunk(AcctID, JObj, CallDir) ->
+    lager:debug("fetch acct handler"),
     case j5_util:fetch_account_handler(AcctID) of
         {ok, AcctPID} ->
+            lager:debug("got acct pid"),
             case erlang:is_process_alive(AcctPID) of
                 true ->
-                    ?LOG_SYS("Account(~s) AuthZ proc ~p found", [AcctID, AcctPID]),
+                    lager:debug("account(~s) authz proc ~p found", [AcctID, AcctPID]),
                     j5_acctmgr:authz_trunk(AcctPID, JObj, CallDir);
                 false ->
-                    ?LOG_SYS("Account(~s) AuthZ proc ~p not alive", [AcctID, AcctPID]),
+                    lager:debug("account(~s) authz proc ~p not alive", [AcctID, AcctPID]),
                     {ok, AcctPID} = jonny5_acct_sup:start_proc(AcctID),
                     j5_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
             end;
         {error, not_found} ->
-            ?LOG_SYS("No AuthZ proc for account ~s, starting", [AcctID]),
+            lager:debug("no authz proc for account ~s, starting", [AcctID]),
             try
                 {ok, AcctPID} = jonny5_acct_sup:start_proc(AcctID),
                 j5_acctmgr:authz_trunk(AcctPID, JObj, CallDir)
             catch
                 E:R ->
                     ST = erlang:get_stacktrace(),
-                    ?LOG_SYS("Error: ~p: ~p", [E, R]),
-                    ?LOG_STACKTRACE(ST),
+                    lager:debug("error: ~p: ~p", [E, R]),
+                    [lager:debug("st: ~p", [T]) || T <- ST],
                     {false, [{<<"Server-ID">>, <<>>}]}
             end
     end.
@@ -160,18 +162,23 @@ init([AcctID]) ->
     StartTime = wh_util:current_tstamp(),
 
     put(callid, AcctID),
-    {TwoWay, Inbound, Prepay} = get_trunks_available(AcctID),
-    ?LOG_SYS("Init for account ~s complete", [AcctID]),
 
-    {ok, #state{prepay=try_update_value(Prepay, 0)
-                ,two_way=try_update_value(TwoWay, 0)
-                ,inbound=try_update_value(Inbound, 0)
-                ,max_two_way=try_update_value(TwoWay, 0)
-                ,max_inbound=try_update_value(Inbound, 0)
-                ,acct_id=AcctID
-                ,start_time=StartTime, sync_ref=SyncRef
-                ,ledger_db=wh_util:format_account_id(AcctID, encoded)
-               }}.
+    HowLow = wapi_money:dollars_to_units(whapps_config:get_float(<<"jonny5">>, <<"how_low_can_you_go">>, 0.0)),
+    case get_trunks_available(AcctID) of
+        {0, 0, Per} when Per =< HowLow -> {stop, normal};
+        {TwoWay, Inbound, Prepay} ->
+            lager:debug("Init for account ~s complete", [AcctID]),
+
+            {ok, #state{prepay=try_update_value(Prepay, 0)
+                        ,two_way=try_update_value(TwoWay, 0)
+                        ,inbound=try_update_value(Inbound, 0)
+                        ,max_two_way=try_update_value(TwoWay, 0)
+                        ,max_inbound=try_update_value(Inbound, 0)
+                        ,acct_id=AcctID
+                        ,start_time=StartTime, sync_ref=SyncRef
+                        ,ledger_db=wh_util:format_account_id(AcctID, encoded)
+                       }}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -205,48 +212,43 @@ handle_call(known_calls, _, #state{trunks_in_use=Dict}=State) ->
 %% pull from inbound, then two_way, then prepay
 handle_call({authz, JObj, inbound}, _From, #state{two_way=T,inbound=I,prepay=P, trunks_in_use=Dict}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    ?LOG_START(CallID, "authorizing inbound call...", []),
-    ?LOG(CallID, "trunks available: two: ~b in: ~b prepay: ~b", [T, I, P]),
+    OldCallID = put(callid, CallID),
+
+    lager:debug("authorizing inbound call..."),
+    lager:debug("trunks available: two: ~b in: ~b prepay: ~b", [T, I, P]),
 
     case dict:find(CallID, Dict) of
         {ok, {_CallType, _Pid}} ->
-            ?LOG(CallID, "call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
+            lager:debug("call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
+            put(callid, OldCallID),
             {noreply, State};
         error ->
-            ToDID = case binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>) of
-                        [<<"nouser">>, _] ->
-                            [RUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"nouser">>), <<"@">>),
-                            wnm_util:to_e164(RUser);
-                        [ToUser, _] -> wnm_util:to_e164(ToUser)
-                    end,
-
-            ?LOG("ToDID: ~s", [ToDID]),
-
+            {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
+            ToDID = wnm_util:to_e164(User),
+            
             {Resp, State1} = case is_us48(ToDID) of
                                  true -> try_inbound_then_twoway(CallID, State);
                                  false -> try_prepay(CallID, State, wapi_money:default_per_min_charge())
                              end,
+            put(callid, OldCallID),
             {reply, Resp, State1}
     end;
 
 handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P, trunks_in_use=Dict}=State) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    ?LOG_START(CallID, "authorizing outbound call...", []),
-    ?LOG(CallID, "trunks available: two: ~b prepay: ~b", [T, P]),
+    OldCallID = put(callid, CallID),
+
+    lager:debug("authorizing outbound call..."),
+    lager:debug("trunks available: two: ~b prepay: ~b", [T, P]),
 
     case dict:find(CallID, Dict) of
         {ok, {_CallType, _Pid}} ->
-            ?LOG(CallID, "call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
+            lager:debug("call has been authzed as ~s and is followed by ~p", [_CallType, _Pid]),
+            put(callid, OldCallID),
             {noreply, State};
         error ->
-            ToDID = case binary:split(wh_json:get_value(<<"Request">>, JObj, <<"nouser">>), <<"@">>) of
-                        [<<"nouser">>, _] ->
-                            [RUser, _] = binary:split(wh_json:get_value(<<"To">>, JObj, <<"nouser">>), <<"@">>),
-                            wnm_util:to_e164(RUser);
-                        [ToUser, _] -> wnm_util:to_e164(ToUser)
-                    end,
-
-            ?LOG("ToDID: ~s", [ToDID]),
+            {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
+            ToDID = wnm_util:to_e164(User),
 
             {Resp, State1} = case erlang:byte_size(ToDID) > 6 of
                                  true ->
@@ -255,9 +257,10 @@ handle_call({authz, JObj, outbound}, _From, #state{two_way=T,prepay=P, trunks_in
                                          false -> try_prepay(CallID, State, wapi_money:default_per_min_charge())
                                      end;
                                  false ->
-                                     ?LOG(CallID, "auto-authz call to internal-seeming extension: ~s", [ToDID]),
+                                     lager:debug("auto-authz call to internal-seeming extension: ~s", [ToDID]),
                                      { {true, [{<<"Trunk-Type">>, <<"internal">>}]}, State}
                              end,
+            put(callid, OldCallID),
             {reply, Resp, State1}
     end.
 
@@ -276,7 +279,7 @@ handle_cast({money, <<"balance_req">>, JObj}, #state{max_two_way=MaxTwoWay, max_
                                                      ,acct_id=AcctId, trunks_in_use=Dict
                                                     }=State) ->
     SrvId = wh_json:get_value(<<"Server-ID">>, JObj),
-    ?LOG("sending balance resp to ~s", [SrvId]),
+    lager:debug("sending balance resp to ~s", [SrvId]),
     wapi_money:publish_balance_resp(SrvId, [
                                             {<<"Max-Two-Way">>, MaxTwoWay}
                                             ,{<<"Two-Way">>, TwoWay}
@@ -291,44 +294,48 @@ handle_cast({money, <<"balance_req">>, JObj}, #state{max_two_way=MaxTwoWay, max_
     {noreply, State};
 
 handle_cast({money, _Evt, _JObj}, #state{prepay=Prepay, acct_id=AcctId}=State) ->
-    ?LOG("'~s' update received", [_Evt]),
+    lager:debug("'~s' update received", [_Evt]),
 
     timer:sleep(200), %% view needs time to update
     NewPre = j5_util:current_usage(AcctId),
 
-    ?LOG("old prepay value: ~p", [Prepay]),
-    ?LOG("new prepay (from DB ~s): ~p", [wh_util:format_account_id(AcctId, encoded), NewPre]),
+    lager:debug("old prepay value: ~p", [Prepay]),
+    lager:debug("new prepay (from DB ~s): ~p", [wh_util:format_account_id(AcctId, encoded), NewPre]),
 
     {noreply, State#state{prepay=try_update_value(NewPre, Prepay)}};
 
 handle_cast({authz_win, JObj}, #state{trunks_in_use=Dict}=State) ->
     spawn(fun() ->
-                  ?LOG("authz won!"),
-
                   CID = wh_json:get_value(<<"Call-ID">>, JObj),
+                  put(callid, CID),
+                  lager:debug("authz won!"),
 
                   [Pid] = [ P || {CallID,{_,P}} <- dict:to_list(Dict), CallID =:= CID],
-                  ?LOG("Sending authz_win to ~p", [Pid]),
+                  lager:debug("sending authz_win to ~p", [Pid]),
                   j5_call_monitor:authz_won(Pid)
           end),
     {noreply, State};
 handle_cast(refresh, #state{acct_id=AcctID, max_two_way=OldTwo, max_inbound=OldIn, prepay=OldPrepay}=State) ->
-    case catch get_trunks_available(AcctID) of
+    HowLow = wapi_money:dollars_to_units(whapps_config:get_float(<<"jonny5">>, <<"how_low_can_you_go">>, 0.0)),
+    case get_trunks_available(AcctID) of
+        {0, 0, Pre} when Pre =< HowLow ->
+            lager:debug("nothing to authz with, going down"),
+            {stop, normal, State};
         {Trunks, InboundTrunks, Prepay} ->
-            ?LOG("maybe changing max two way from ~b to ~p", [OldTwo, Trunks]),
-            ?LOG("maybe changing max inbound from ~b to ~p", [OldIn, InboundTrunks]),
-            ?LOG("maybe changing prepay from ~b to ~p", [OldPrepay, Prepay]),
+            lager:debug("maybe changing max two way from ~b to ~p", [OldTwo, Trunks]),
+            lager:debug("maybe changing max inbound from ~b to ~p", [OldIn, InboundTrunks]),
+            lager:debug("maybe changing prepay from ~b to ~p", [OldPrepay, Prepay]),
             {noreply, State#state{max_two_way=try_update_value(Trunks, OldTwo)
                                   ,max_inbound=try_update_value(InboundTrunks, OldIn)
                                   ,prepay=try_update_value(Prepay, OldPrepay)
                                  }};
         _E ->
-            ?LOG("failed to refresh: ~p", [_E]),
+            lager:debug("failed to refresh: ~p", [_E]),
             {noreply, State}
     end;
 
 handle_cast({conf_change, <<"doc_deleted">>, _JObj}, State) ->
-    ?LOG("document was deleted"),
+    lager:debug("document was deleted"),
     {stop, normal, State};
 handle_cast({conf_change, <<"doc_created">>, JObj}, State) ->
     handle_cast({conf_change, <<"doc_edited">>, JObj}, State);
@@ -348,8 +355,8 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID
                                                   Levels -> Levels
                                               end;
                                           false ->
-                                              ?LOG("No change necessary"),
-                                              ?LOG("Conf acct id: ~s", [ConfAcctID]),
+                                              lager:debug("No change necessary"),
+                                              lager:debug("Conf acct id: ~s", [ConfAcctID]),
                                               {MTW, MI, P}
                                       end,
 
@@ -358,11 +365,11 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID
 
     {NTWIU, NTIIU, Dict1} = update_in_use(NMTW, NMI, Dict),
 
-    ?LOG("changing max two way from ~b to ~p", [MTW, NMTW]),
-    ?LOG("changing max inbound from ~b to ~p", [MI, NMI]),
-    ?LOG("changing two-way avail from ~b to ~p", [_TW, NTWIU]),
-    ?LOG("changing inbound avail from ~b to ~p", [_I, NTIIU]),
-    ?LOG("maybe changing prepay from ~b to ~p", [P, Prepay]),
+    lager:debug("changing max two way from ~b to ~p", [MTW, NMTW]),
+    lager:debug("changing max inbound from ~b to ~p", [MI, NMI]),
+    lager:debug("changing two-way avail from ~b to ~p", [_TW, NTWIU]),
+    lager:debug("changing inbound avail from ~b to ~p", [_I, NTIIU]),
+    lager:debug("maybe changing prepay from ~b to ~p", [P, Prepay]),
 
     {noreply, State#state{max_two_way=NMTW
                           ,max_inbound=NMI
@@ -373,7 +380,7 @@ handle_cast({conf_change, <<"doc_edited">>, JObj}, #state{acct_id=AcctID
                          }};
 
 handle_cast(Req, State) ->
-    ?LOG("failed cast request: ~p", [Req]),
+    lager:debug("failed cast request: ~p", [Req]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -391,41 +398,46 @@ handle_info({timeout, SyncRef, sync}, #state{sync_ref=SyncRef, acct_id=AcctID
                                              ,two_way=_TwoAvail, inbound=_InAvail
                                              ,trunks_in_use=Dict
                                             }=State) ->
-    ?LOG_SYS("syncing with DB"),
-    {NewTwo, NewIn, NewPre} = get_trunks_available(AcctID),
+    lager:debug("syncing with DB"),
+    HowLow = wapi_money:dollars_to_units(whapps_config:get_float(<<"jonny5">>, <<"how_low_can_you_go">>, 0.0)),
+    case get_trunks_available(AcctID) of
+        {0,0,Pre} when Pre =< HowLow ->
+            lager:debug("nothing here to authz with, going down"),
+            {stop, normal, State};
+        {NewTwo, NewIn, NewPre} ->
+            lager:debug("old maxs: two: ~p, in: ~p, prepay: ~p", [Two, In, Pre]),
+            lager:debug("new possible maxs: two: ~p, in: ~p, prepay: ~p", [NewTwo, NewIn, NewPre]),
+            lager:debug("old in use: two: ~p in: ~p", [_TwoAvail, _InAvail]),
 
-    ?LOG("old maxs: two: ~p, in: ~p, prepay: ~p", [Two, In, Pre]),
-    ?LOG("new possible maxs: two: ~p, in: ~p, prepay: ~p", [NewTwo, NewIn, NewPre]),
-    ?LOG("old in use: two: ~p in: ~p", [_TwoAvail, _InAvail]),
+            MaxTwo = try_update_value(NewTwo, Two),
+            MaxIn = try_update_value(NewIn, In),
 
-    MaxTwo = try_update_value(NewTwo, Two),
-    MaxIn = try_update_value(NewIn, In),
+            {TAvail, IAvail, Dict1} = update_in_use(MaxTwo, MaxIn, Dict),
 
-    {TAvail, IAvail, Dict1} = update_in_use(MaxTwo, MaxIn, Dict),
-
-    {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)
-                          ,max_two_way=MaxTwo
-                          ,max_inbound=MaxIn
-                          ,two_way=TAvail
-                          ,inbound=IAvail
-                          ,trunks_in_use=Dict1
-                          ,prepay=try_update_value(NewPre, Pre)
-                         }};
+            {noreply, State#state{sync_ref=erlang:start_timer(?SYNC_TIMER + sync_fudge(), self(), sync)
+                                  ,max_two_way=MaxTwo
+                                  ,max_inbound=MaxIn
+                                  ,two_way=TAvail
+                                  ,inbound=IAvail
+                                  ,trunks_in_use=Dict1
+                                  ,prepay=try_update_value(NewPre, Pre)
+                                 }}
+    end;
 
 handle_info({'DOWN', _Ref, process, Pid, Reason}, #state{two_way=T, inbound=I, trunks_in_use=Dict}=State) ->
-    ?LOG("pid ~p down: ~p, checking for call monitor proc", [Pid, Reason]),
+    lager:debug("pid ~p down: ~p, checking for call monitor proc", [Pid, Reason]),
     case unmonitor_call(Pid, Dict) of
-        {twoway, Dict1} -> ?LOG("was two-way trunk, adding 1 to ~b", [T]), {noreply, State#state{two_way=T+1, trunks_in_use=Dict1}};
-        {inbound, Dict1} -> ?LOG("was inbound trunk, adding 1 to ~b", [I]), {noreply, State#state{inbound=T+1, trunks_in_use=Dict1}};
-        {per_min, Dict1} -> ?LOG("was prepay trunk"), {noreply, State#state{trunks_in_use=Dict1}};
-        _ -> ?LOG("ignoring down proc"), {noreply, State}
+        {twoway, Dict1} -> lager:debug("was two-way trunk, adding 1 to ~b", [T]), {noreply, State#state{two_way=T+1, trunks_in_use=Dict1}};
+        {inbound, Dict1} -> lager:debug("was inbound trunk, adding 1 to ~b", [I]), {noreply, State#state{inbound=T+1, trunks_in_use=Dict1}};
+        {per_min, Dict1} -> lager:debug("was prepay trunk"), {noreply, State#state{trunks_in_use=Dict1}};
+        _ -> lager:debug("ignoring down proc"), {noreply, State}
     end;
 
 handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
 
 handle_info(_Info, State) ->
-    ?LOG_SYS("unhandled message: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, #state{acct_id=_AcctId}=_State) ->
@@ -443,7 +455,8 @@ handle_event(_JObj, #state{acct_id=_AcctId}=_State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{acct_id=AcctID}) ->
-    j5_util:store_account_handler(AcctID, undefined).
+    put(callid, AcctID),
+    lager:debug("j5_acctmgr going down: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -463,49 +476,53 @@ code_change(_OldVsn, State, _Extra) ->
 -spec get_trunks_available/1 :: (ne_binary()) -> {'undefined' | non_neg_integer()
                                                   ,'undefined' | non_neg_integer()
                                                   ,integer()
-                                                 }.
+                                                 } |
+                                                 {error, _}.
 get_trunks_available(AcctID) ->
     AcctDB = wh_util:format_account_id(AcctID, encoded),
     case couch_mgr:get_results(AcctDB, <<"trunkstore/crossbar_listing">>, [{<<"reduce">>, false}
                                                                            ,{<<"include_docs">>, true}
                                                                           ]) of
         {ok, [JObj|_]} ->
-            ?LOG("ts view result retrieved"),
+            lager:debug("ts view result retrieved"),
             get_ts_values(AcctID, wh_json:get_value([<<"doc">>, <<"account">>], JObj));
         _ ->
             case couch_mgr:get_results(AcctDB, <<"limits/crossbar_listing">>, [{<<"include_docs">>, true}]) of
                 {ok, [JObj|_]} ->
-                    ?LOG("view result retrieved"),
+                    lager:debug("view result retrieved"),
                     get_account_values(AcctID, wh_json:get_value(<<"doc">>, JObj));
-                _ ->
-                    ?LOG("missing limits or trunkstore doc, generating one"),
+                {ok, []} ->
+                    lager:debug("missing limits or trunkstore doc, generating one"),
                     {ok, _} = create_new_limits(AcctID, AcctDB),
-                    {0, 0, j5_util:current_usage(AcctID)}
+                    {0, 0, j5_util:current_usage(AcctID)};
+                {error, _E}=E ->
+                    lager:debug("view errored out: ~p", [_E]),
+                    E
             end
     end.
 
 get_ts_values(AcctID, AcctDoc) ->
-    Trunks = wh_json:get_integer_value(<<"trunks">>, AcctDoc),
-    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, AcctDoc),
+    Trunks = wh_json:get_integer_value(<<"trunks">>, AcctDoc, 0),
+    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, AcctDoc, 0),
 
     Prepay = j5_util:current_usage(AcctID),
 
-    ?LOG_SYS("found ts trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
+    lager:debug("found ts trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
     {Trunks, InboundTrunks, Prepay}.
 
 get_account_values(AcctID, JObj) ->
-    Trunks = wh_json:get_integer_value(<<"trunks">>, JObj),
-    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, JObj),
+    Trunks = wh_json:get_integer_value(<<"trunks">>, JObj, 0),
+    InboundTrunks = wh_json:get_integer_value(<<"inbound_trunks">>, JObj, 0),
     Prepay = j5_util:current_usage(AcctID),
 
-    ?LOG_SYS("found trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
+    lager:debug("found trunk levels: ~p two way, ~p inbound, and $ ~p prepay", [Trunks, InboundTrunks, Prepay]),
     {Trunks, InboundTrunks, Prepay}.
 
 -spec try_inbound_then_twoway/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
 try_inbound_then_twoway(CallID, State) ->
     case try_inbound(CallID, State) of
         {{true, _}, _}=Resp ->
-            ?LOG_END(CallID, "inbound call authorized with inbound trunk", []),
+            lager:debug("inbound call authorized with inbound trunk"),
             Resp;
         {{false, _}, State2} ->
             try_twoway_then_prepay(CallID, State2)
@@ -515,7 +532,7 @@ try_inbound_then_twoway(CallID, State) ->
 try_twoway_then_prepay(CallID, State) ->
     case try_twoway(CallID, State) of
         {{true, _}, _}=Resp ->
-            ?LOG_END(CallID, "authorized using a two-way trunk", []),
+            lager:debug("authorized using a two-way trunk"),
             Resp;
         {{false, _}, State2} ->
             try_prepay(CallID, State2, wapi_money:default_per_min_charge())
@@ -523,10 +540,10 @@ try_twoway_then_prepay(CallID, State) ->
 
 -spec try_twoway/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
 try_twoway(_CallID, #state{two_way=T}=State) when T < 1 ->
-    ?LOG_SYS(_CallID, "failed to authz a two-way trunk", []),
+    lager:debug("failed to authz a two-way trunk"),
     {{false, []}, State#state{two_way=0}};
 try_twoway(CallID, #state{two_way=Two, trunks_in_use=Dict, ledger_db=DB}=State) ->
-    ?LOG_SYS(CallID, "authz a two-way trunk", []),
+    lager:debug("authz a two-way trunk", []),
     {ok, Pid} = monitor_call(CallID, DB, twoway),
     erlang:monitor(process, Pid),
 
@@ -536,10 +553,10 @@ try_twoway(CallID, #state{two_way=Two, trunks_in_use=Dict, ledger_db=DB}=State) 
 
 -spec try_inbound/2 :: (ne_binary(), #state{}) -> {{boolean(), proplist()}, #state{}}.
 try_inbound(_CallID, #state{inbound=I}=State) when I < 1 ->
-    ?LOG_SYS(_CallID, "failed to authz an inbound_only trunk", []),
+    lager:debug("failed to authz an inbound_only trunk"),
     {{false, []}, State#state{inbound=0}};
 try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) ->
-    ?LOG_SYS(CallID, "authz an inbound_only trunk", []),
+    lager:debug("authz an inbound_only trunk"),
     {ok, Pid} = monitor_call(CallID, DB, inbound),
     erlang:monitor(process, Pid),
 
@@ -549,7 +566,7 @@ try_inbound(CallID, #state{inbound=In, trunks_in_use=Dict, ledger_db=DB}=State) 
 
 -spec try_prepay/3 :: (ne_binary(), #state{}, integer()) -> {{boolean(), proplist()}, #state{}}.
 try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId, trunks_in_use=Dict, ledger_db=LedgerDB}=State, PerMinCharge) when Pre =< PerMinCharge ->
-    ?LOG_SYS(CallID, "failed to authz a per_min trunk", []),
+    lager:debug("failed to authz a per_min trunk"),
 
     case whapps_config:get_is_true(<<"jonny5">>, <<"authz_on_no_prepay">>, true) of
         true ->
@@ -558,20 +575,17 @@ try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId, trunks_in_use=Dict, ledger
             case HowLow > PrepayLeft of
                 true -> % 0 > -1
                     %% Alert admins of the situation
-                    whapps_util:alert(<<"emerg">>, ["Source: ~s(~p)~n"
-                                                    ,"Alert: Insufficient prepay to authorize the call.~n"
-                                                    ,"Call-ID: ~s~n"
-                                                    ,"Account-ID: ~s~n"
-                                                    ,"Current Prepay Balance: ~p~n"
-                                                   ]
-                                      ,[?MODULE, ?LINE, CallID, AcctId, wapi_money:units_to_dollars(Pre)]),
+                    lager:notice("insufficient prepay to authorize call, current balance $~p", [CallID, wapi_money:units_to_dollars(Pre)]),
 
-                    catch(wapi_notifications:publish_low_balance([{<<"Account-ID">>, AcctId}, {<<"Current-Balance">>, wapi_money:units_to_dollars(Pre)}])),
+                    catch(wapi_notifications:publish_low_balance([{<<"Account-ID">>, AcctId}
+                                                                  ,{<<"Current-Balance">>, wapi_money:units_to_dollars(Pre)}
+                                                                  | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)
+                                                                 ])),
 
-                    ?LOG(CallID, "howlow (~p) > prepay (~p), noauthz this call!", [HowLow, Pre]),
+                    lager:debug("howlow (~p) > prepay (~p), noauthz this call!", [HowLow, Pre]),
                     {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State};
                 false ->
-                    ?LOG(CallID, "authz_on_no_prepay set to true, and prepay (~p) still > howlow (~p)", [PrepayLeft, HowLow]),
+                    lager:debug("authz_on_no_prepay set to true, and prepay (~p) still > howlow (~p)", [PrepayLeft, HowLow]),
 
                     {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
                     erlang:monitor(process, Pid),
@@ -581,17 +595,17 @@ try_prepay(CallID, #state{prepay=Pre, acct_id=AcctId, trunks_in_use=Dict, ledger
                     }
             end;
         false ->
-            ?LOG("authz_on_no_prepay set to false, denying the call"),
+            lager:debug("authz_on_no_prepay set to false, denying the call"),
             {{false, [{<<"Error">>, <<"Insufficient Funds">>}]}, State}
     end;
 try_prepay(CallID, #state{acct_id=AcctId, prepay=Prepay, trunks_in_use=Dict, ledger_db=LedgerDB}=State, PerMinCharge) ->
     case jonny5_listener:is_blacklisted(AcctId) of
         {true, Reason} ->
-            ?LOG_SYS(CallID, "Authz false for per_min: ~s", [Reason]),
+            lager:debug("authz false for per_min: ~s", [Reason]),
             {{false, [{<<"Error">>, Reason}]}, State};
         false ->
             PrepayLeft = Prepay - PerMinCharge,
-            ?LOG_SYS(CallID, "authz per_min trunk; ~p prepay left, ~p charged up-front", [PrepayLeft, PerMinCharge]),
+            lager:debug("authz per_min trunk; ~p prepay left, ~p charged up-front", [PrepayLeft, PerMinCharge]),
             {ok, Pid} = monitor_call(CallID, LedgerDB, per_min, PerMinCharge),
             erlang:monitor(process, Pid),
 
@@ -610,8 +624,8 @@ monitor_call(CallID, LedgerDB, CallType, Debit) ->
 
 -spec unmonitor_call/2 :: (pid(), dict()) -> {call_types() | 'ignore', dict()}.
 unmonitor_call(Pid, Dict) ->
-    dict:fold(fun(CallId, {Type, MonPid}, {_, Dict0}) when MonPid =:= Pid ->
-                      ?LOG(CallId, "Found monitor pid: ~p for trunk of type ~s", [Pid, Type]),
+    dict:fold(fun(_CallId, {Type, MonPid}, {_, Dict0}) when MonPid =:= Pid ->
+                      lager:debug("found monitor pid: ~p for trunk of type ~s", [Pid, Type]),
                       {Type, Dict0};
                  (CallId, V, {Type, Dict0}) ->
                       {Type, dict:store(CallId, V, Dict0)}
@@ -648,11 +662,10 @@ create_new_limits(AcctID, AcctDB) ->
     JObj = wh_json:from_list([{<<"pvt_account_db">>, AcctDB}
                               ,{<<"pvt_account_id">>, AcctID}
                               ,{<<"pvt_type">>, <<"sys_info">>}
-                              ,{<<"pvt_created">>< TStamp}
+                              ,{<<"pvt_created">>, TStamp}
                               ,{<<"pvt_modified">>, TStamp}
                               ,{<<"pvt_created_by">>, <<"jonny5">>}
                               ,{<<"account">>, Account}
-                              ,{<<"servers">>, []}
                              ]),
     couch_mgr:save_doc(AcctDB, JObj).
 
