@@ -42,10 +42,10 @@ handle(Data, Call) ->
     wapi_offnet_resource:publish_req(Req),
     case wait_for_offnet() of
         {<<"SUCCESS">>, _} ->
-            ?LOG("completed successful offnet request"),
+            lager:debug("completed successful offnet request"),
             cf_exe:stop(Call);
         {Cause, Code} ->
-            ?LOG("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
+            lager:debug("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
             case (cf_util:handle_bridge_failure(Cause, Call) =:= ok)
                 orelse (cf_util:handle_bridge_failure(Code, Call) =:= ok) of
                 true -> ok;

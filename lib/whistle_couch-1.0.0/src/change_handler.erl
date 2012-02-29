@@ -53,11 +53,11 @@ add_listener(Srv, Pid) ->
     add_listener(Srv, Pid, <<>>).
 
 add_listener(Srv, Pid, Doc) ->
-    ?LOG_SYS("adding listener ~p for doc ~s to CH ~p", [Pid, Doc, Srv]),
+    lager:debug("adding listener ~p for doc ~s to CH ~p", [Pid, Doc, Srv]),
     gen_changes:cast(Srv, {add_listener, Pid, Doc}).
 
 rm_listener(Srv, Pid, Doc) ->
-    ?LOG_SYS("removing listener ~p for doc ~s to CH ~p", [Pid, Doc, Srv]),
+    lager:debug("removing listener ~p for doc ~s to CH ~p", [Pid, Doc, Srv]),
     gen_changes:cast(Srv, {rm_listener, Pid, Doc}).
 
 %%%===================================================================
@@ -76,7 +76,7 @@ rm_listener(Srv, Pid, Doc) ->
 %% @end
 %%--------------------------------------------------------------------
 init([DbName]) ->
-    ?LOG_SYS("starting change handler for ~s", [DbName]),
+    lager:debug("starting change handler for ~s", [DbName]),
     {ok, #state{db=DbName}}.
 
 %%--------------------------------------------------------------------
@@ -131,7 +131,7 @@ handle_cast(_, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _Ref, process, Pid, Info}, #state{listeners=Ls}=State) ->
-    ?LOG_SYS("DOWN recv for ~p(~p)", [Pid, Info]),
+    lager:debug("DOWN recv for ~p(~p)", [Pid, Info]),
     Ls1 = [ V || V <- Ls, keep_listener(V, Pid)],
     {noreply, State#state{listeners=Ls1}};
 handle_info(_Info, State) ->
@@ -180,7 +180,7 @@ handle_change({struct, Change}, #state{listeners=Ls}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{listeners=Ls, db=DbName}) ->
-    ?LOG_SYS("going down, down, down for ~p(~p)", [DbName, _Reason]),
+    lager:debug("going down, down, down for ~p(~p)", [DbName, _Reason]),
     lists:foreach(fun(#listener{pid=Pid, monitor_ref=Ref, doc=Doc}) ->
                           Pid ! {change_handler_terminating, DbName, Doc},
                           erlang:demonitor(Ref, [flush])

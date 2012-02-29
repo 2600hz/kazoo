@@ -144,7 +144,7 @@ order_number(JObj) ->
 %%--------------------------------------------------------------------
 -spec make_numbers_request/2 :: (atom(), proplist()) -> {ok, term()} | {error, term()}.
 make_numbers_request(Verb, Props) ->
-    ?LOG("making ~s request to bandwidth.com ~s", [Verb, ?BW_NUMBER_URL]),
+    lager:debug("making ~s request to bandwidth.com ~s", [Verb, ?BW_NUMBER_URL]),
     DevKey = whapps_config:get_string(?WNM_BW_CONFIG_CAT, <<"developer_key">>, <<>>),
     Request = [{'developerKey', [DevKey]}
                | Props],
@@ -166,53 +166,53 @@ make_numbers_request(Verb, Props) ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n401~n~s~n", [_Response])
                                               ,[append]),
-            ?LOG("bandwidth.com request error: 401 (unauthenticated)"),
+            lager:debug("bandwidth.com request error: 401 (unauthenticated)"),
             {error, authentication};
         {ok, "403", _, _Response} ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n403~n~s~n", [_Response])
                                               ,[append]),
-            ?LOG("bandwidth.com request error: 403 (unauthorized)"),
+            lager:debug("bandwidth.com request error: 403 (unauthorized)"),
             {error, authorization};
         {ok, "404", _, _Response} ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n404~n~s~n", [_Response])
                                               ,[append]),
-            ?LOG("bandwidth.com request error: 404 (not found)"),
+            lager:debug("bandwidth.com request error: 404 (not found)"),
             {error, not_found};
         {ok, "500", _, _Response} ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n500~n~s~n", [_Response])
                                               ,[append]),
-            ?LOG("bandwidth.com request error: 500 (server error)"),
+            lager:debug("bandwidth.com request error: 500 (server error)"),
             {error, server_error};
         {ok, "503", _, _Response} ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n503~n~s~n", [_Response])
                                               ,[append]),
-            ?LOG("bandwidth.com request error: 503"),
+            lager:debug("bandwidth.com request error: 503"),
             {error, server_error};
         {ok, Code, _, [$<,$?,$x,$m,$l|_]=Response} ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n~p~n~s~n", [Code, Response])
                                               ,[append]),
-            ?LOG("received response from bandwidth.com"),
+            lager:debug("received response from bandwidth.com"),
             try
                 {Xml, _} = xmerl_scan:string(Response),
                 verify_response(Xml)
             catch
                 _:R ->
-                    ?LOG("failed to decode xml: ~p", [R]),
+                    lager:debug("failed to decode xml: ~p", [R]),
                     {error, empty_response}
             end;
         {ok, Code, _, _Response} ->
             ?BW_DEBUG andalso file:write_file("/tmp/bandwidth.com.xml"
                                               ,io_lib:format("Response:~n~p~n~s~n", [Code, _Response])
                                               ,[append]),
-            ?LOG("bandwidth.com empty response: ~p", [Code]),
+            lager:debug("bandwidth.com empty response: ~p", [Code]),
             {error, empty_response};
         {error, _}=E ->
-            ?LOG("bandwidth.com request error: ~p", [E]),
+            lager:debug("bandwidth.com request error: ~p", [E]),
             E
     end.
 
@@ -291,9 +291,9 @@ rate_center_to_json(Xml) ->
 verify_response(Xml) ->
     case wh_util:get_xml_value("/*/status/text()", Xml) of
         <<"success">> -> 
-            ?LOG("request was successful"),
+            lager:debug("request was successful"),
             {ok, Xml};
         _ ->
-            ?LOG("request failed"),
+            lager:debug("request failed"),
             {error, wh_util:get_xml_value("/*/errors/error/message/text()", Xml)}
     end.

@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
+%%%
 %%% Behaviour for setting up an AMQP listener.
 %%% Add/rm responders for Event-Cat/Event-Name pairs. Each responder
 %%% corresponds to a module that has defined a handle/1 function, receiving
@@ -20,7 +20,9 @@
 %%%   {basic_qos, integer()} -> optional, if QoS is being set on this queue
 %%% ]
 %%% @end
-%%% Created : 19 Aug 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(gen_listener).
 
@@ -182,8 +184,9 @@ rm_binding(Srv, Binding, Props) ->
 -spec init/1 :: ([atom() | wh_proplist(),...]) -> {'ok', #state{}, 'hibernate'}.
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
+    put(callid, ?LOG_SYSTEM_ID),
 
-    ?LOG("starting new gen_listener proc: ~s", [wh_util:to_binary(Module)]),
+    lager:debug("starting new gen_listener proc: ~s", [wh_util:to_binary(Module)]),
 
     {ModState, TimeoutRef} = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
                                  {ok, MS} ->
@@ -259,7 +262,7 @@ handle_call(Request, From, #state{module=Module, module_state=ModState, module_t
         {stop, Reason, Reply, ModState1} ->
             {stop, Reason, Reply, State#state{module_state=ModState1}};
         {'EXIT', Why} ->
-            ?LOG(alert, "exception: ~p", [Why]),
+            lager:alert("exception: ~p", [Why]),
             {stop, Why, State}
     end.
 
@@ -303,8 +306,8 @@ handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
         {'EXIT', {Reason, ST}} ->
-            ?LOG("exception: ~p", [Reason]),
-            ?LOG_STACKTRACE(ST),
+            lager:debug("exception: ~p", [Reason]),
+            [lager:debug("st: ~p", [T]) || T <- ST],
             {stop, Reason, State}
     end.
 
@@ -316,7 +319,7 @@ handle_info({#'basic.deliver'{}=BD, #amqp_msg{props = #'P_basic'{content_type=CT
         ignore ->
             {noreply, State};
         {'EXIT', Why} ->
-            ?LOG(alert, "exception: ~p", [Why]),
+            lager:alert("exception: ~p", [Why]),
             {stop, Why, State}
     end;
 
@@ -327,10 +330,10 @@ handle_info({'EXIT', Pid, _Reason}=Message, #state{active_responders=ARs}=State)
     end;
 
 handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=State) ->
-    ?LOG(alert, "amqp host down msg: ~p", [_H]),
+    lager:alert("amqp host down msg: ~p", [_H]),
     case amqp_util:is_host_available() of
         true ->
-            ?LOG("host is available, let's try wiring up"),
+            lager:debug("host is available, let's try wiring up"),
             case start_amqp(Params) of
                 {ok, Q} ->
                     Self = self(),
@@ -338,27 +341,27 @@ handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=
                     proc_lib:spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
                     {noreply, State#state{queue=Q, is_consuming=false}, hibernate};
                 {error, _} ->
-                    ?LOG("failed to start amqp, waiting another second"),
+                    lager:debug("failed to start amqp, waiting another second"),
                     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
                     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
             end;
         false ->
-            ?LOG("no AMQP host ready, waiting another second"),
+            lager:debug("no AMQP host ready, waiting another second"),
             erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
             {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
     end;
 
 handle_info({amqp_lost_channel, no_connection}, State) ->
-    ?LOG(alert, "lost our channel, checking every second for a host to come back up"),
+    lager:alert("lost our channel, checking every second for a host to come back up"),
     _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
 
 handle_info(#'basic.consume_ok'{}, S) ->
-    ?LOG("consuming from our queue"),
+    lager:debug("consuming from our queue"),
     {noreply, S#state{is_consuming=true}};
 
 handle_info(is_consuming, #state{is_consuming=false, queue=Q}=State) ->
-    ?LOG("huh, we're not consuming. Queue: ~p", [Q]),
+    lager:debug("huh, we're not consuming. Queue: ~p", [Q]),
     _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
     {noreply, State};
 
@@ -382,7 +385,7 @@ handle_callback_info(Message, #state{module=Module, module_state=ModState, modul
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
         {'EXIT', Why} ->
-            ?LOG(alert, "exception: ~p", [Why]),
+            lager:alert("exception: ~p", [Why]),
             {stop, Why, State}
     end.
 
@@ -391,7 +394,7 @@ code_change(_OldVersion, State, _Extra) ->
 
 terminate(Reason, #state{module=Module, module_state=ModState}) ->
     Module:terminate(Reason, ModState),
-    ?LOG("~s terminated cleanly, going down", [Module]).
+    lager:debug("~s terminated cleanly, going down", [Module]).
 
 -spec handle_event/4 :: (ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) -> pid().
 handle_event(Payload, <<"application/json">>, BD, State) ->
@@ -453,8 +456,8 @@ start_amqp(Props) ->
     QueueProps = props:get_value(queue_options, Props, []),
     QueueName = props:get_value(queue_name, Props, <<>>),
     case catch amqp_util:new_queue(QueueName, QueueProps) of
-        {error, amqp_error}=E -> ?LOG("failed to start new queue"), E;
-        {'EXIT', _Why} -> ?LOG(alert, "exit: ~p", [_Why]), {error, amqp_error};
+        {error, amqp_error}=E -> lager:debug("failed to start new queue"), E;
+        {'EXIT', _Why} -> lager:alert("exit: ~p", [_Why]), {error, amqp_error};
         Queue ->
             ConsumeProps = props:get_value(consume_options, Props, []),
 
@@ -475,18 +478,18 @@ remove_binding(Binding, Props, Q) ->
         ApiMod:bind_q(Q, Props)
     catch
         error:badarg ->
-            ?LOG_SYS("api module ~s not found", [Wapi]),
+            lager:debug("api module ~s not found", [Wapi]),
             case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
                 non_existing ->
-                    ?LOG_SYS("beam file not found for ~s, trying old method", [Wapi]),
+                    lager:debug("beam file not found for ~s, trying old method", [Wapi]),
                     error(api_module_undefined);
                 _Path ->
-                    ?LOG_SYS("beam file found: ~s", [_Path]),
+                    lager:debug("beam file found: ~s", [_Path]),
                     wh_util:to_atom(Wapi, true), %% put atom into atom table
                     remove_binding(Binding, Props, Q)
             end;
         error:undef ->
-            ?LOG_SYS("module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
+            lager:debug("module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
             error(api_call_undefined)
     end.
 
@@ -498,18 +501,18 @@ create_binding(Binding, Props, Q) ->
         ApiMod:bind_q(Q, Props)
     catch
         error:badarg ->
-            ?LOG_SYS("api module ~s not found", [Wapi]),
+            lager:debug("api module ~s not found", [Wapi]),
             case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
                 non_existing ->
-                    ?LOG_SYS("beam file not found for ~s, trying old method", [Wapi]),
+                    lager:debug("beam file not found for ~s, trying old method", [Wapi]),
                     error(api_module_undefined);
                 _Path ->
-                    ?LOG_SYS("beam file found: ~s", [_Path]),
+                    lager:debug("beam file found: ~s", [_Path]),
                     wh_util:to_atom(Wapi, true), %% put atom into atom table
                     create_binding(Binding, Props, Q)
             end;
         error:undef ->
-            ?LOG_SYS("module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
+            lager:debug("module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
             error(api_call_undefined)
     end.
 
@@ -523,5 +526,3 @@ stop_timer(Ref) when is_reference(Ref) ->
 start_timer(Timeout) when is_integer(Timeout) andalso Timeout >= 0 ->
     erlang:send_after(Timeout, self(), ?CALLBACK_TIMEOUT_MSG);
 start_timer(_) -> 'undefined'.
-
-

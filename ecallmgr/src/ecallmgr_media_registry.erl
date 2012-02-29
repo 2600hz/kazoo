@@ -99,9 +99,9 @@ handle_call({register_local_media, MediaName, CallId, Version}, {Pid, _Ref}, Dic
             link(Pid),
             Path = binary:replace(generate_local_path(MediaName), <<".wav">>, <<".mp3">>),
             {ok, RecvSrv} = ecallmgr_shout_sup:start_recv(Path),
-            ?LOG("recv shout server on ~p for media ~s", [RecvSrv, Path]),
+            lager:debug("recv shout server on ~p for media ~s", [RecvSrv, Path]),
             Url = ecallmgr_shout:get_recv_url(RecvSrv),
-            ?LOG("recv at ~s", [Url]),
+            lager:debug("recv at ~s", [Url]),
             {reply, Url, dict:store({Pid, CallId, MediaName, RecvSrv}, {Path, Url}, Dict), hibernate};
         [{_, {Path, Url}}] ->
             case Version of
@@ -111,7 +111,7 @@ handle_call({register_local_media, MediaName, CallId, Version}, {Pid, _Ref}, Dic
     end;
 
 handle_call({lookup_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
-    ?LOG(CallId, "Lookup local media: ~s", [MediaName]),
+    lager:debug("lookup local media ~s for ~s", [MediaName, CallId]),
     Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when FromPid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
                                 true;
                            (_, _) -> false
@@ -131,7 +131,7 @@ handle_call({lookup_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
     end;
 
 handle_call({is_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
-    ?LOG(CallId, "Is local: ~s", [MediaName]),
+    lager:debug("is ~s for ~s", [MediaName, CallId]),
     Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when FromPid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
                                 true;
                            (_, _) -> false
@@ -176,22 +176,22 @@ handle_cast(_Msg, Dict) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _Ref, process, Pid, _Reason}, Dict) ->
-    ?LOG("Pid ~p down, Reason: ~p, cleaning up...", [Pid, _Reason]),
+    lager:debug("Pid ~p down, Reason: ~p, cleaning up...", [Pid, _Reason]),
     {noreply, dict:filter(fun({Pid1, _CallId, _Name}, _Value) -> Pid =/= Pid1 end, Dict), hibernate};
 
 handle_info({'EXIT', Pid, _Reason}, Dict) ->
-    {noreply, dict:filter(fun({Pid1, CallId, _Name, _RecvSrv}, Path) ->
+    {noreply, dict:filter(fun({Pid1, _CallId, _Name, _RecvSrv}, Path) ->
                                   case Pid =/= Pid1 of
                                       true -> true;
                                       false ->
-                                          ?LOG(CallId, "Pid ~p exited, Reason ~p, cleaning up ~p...", [Pid, _Reason, Path]),
+                                          lager:debug("pid ~p exited, reason ~p, cleaning up ~p...", [Pid, _Reason, Path]),
                                           _ = file:delete(Path),
                                           false
                                   end
                           end, Dict), hibernate};
 
 handle_info(_Info, Dict) ->
-    ?LOG("Unhandled message: ~p", [self(), _Info]),
+    lager:debug("unhandled message: ~p", [self(), _Info]),
     {noreply, Dict}.
 
 %%--------------------------------------------------------------------
@@ -272,19 +272,19 @@ wait_for_fs_media({Path,_}, RecvSrv, FromPid) ->
 wait_for_fs_media(Path, RecvSrv, FromPid) ->
     case erlang:is_process_alive(RecvSrv) of
         true ->
-            ?LOG("Waiting for ~p to die for ~s", [RecvSrv, Path]),
+            lager:debug("Waiting for ~p to die for ~s", [RecvSrv, Path]),
             receive
                 {'EXIT', RecvSrv, Reason} ->
-                    ?LOG("SHOUT srv ~p went down(~p) for ~s", [RecvSrv, Reason, Path]),
+                    lager:debug("SHOUT srv ~p went down(~p) for ~s", [RecvSrv, Reason, Path]),
                     {ok, Path};
                 {'EXIT', FromPid, Reason} ->
-                    ?LOG("Caller ~p went down(~p) waiting for ~p(~s)", [FromPid, Reason, RecvSrv, Path]),
+                    lager:debug("Caller ~p went down(~p) waiting for ~p(~s)", [FromPid, Reason, RecvSrv, Path]),
                     exit(timeout);
                 _Other ->
-                    ?LOG("Received unhandled message: ~p", [_Other]),
+                    lager:debug("Received unhandled message: ~p", [_Other]),
                     wait_for_fs_media(Path, RecvSrv, FromPid)
             after ?TIMEOUT_MEDIA_TRANSFER ->
-                    ?LOG("Waited long enough for ~p, going down with timeout", [RecvSrv]),
+                    lager:debug("Waited long enough for ~p, going down with timeout", [RecvSrv]),
                     exit(timeout)
             end;
         false ->

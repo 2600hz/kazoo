@@ -1,0 +1,12 @@
+{application, fifo,
+ [
+  {description, "FIFO call queues"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { fifo_app, []}},
+  {env, []}
+ ]}.

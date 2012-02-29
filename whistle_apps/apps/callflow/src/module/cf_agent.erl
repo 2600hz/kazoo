@@ -65,34 +65,34 @@ prompt_and_get_pin(#prompts{pin_prompt=PinPrompt}, Data, Call) ->
     whapps_call_command:b_play_and_collect_digits(MinPinDigits, MaxPinDigits, PinPrompt, Call).
 
 find_agent(_Data, 0, Call) ->
-    ?LOG("retries exceeded"),
+    lager:debug("retries exceeded"),
     #prompts{retries_exceeded_prompt=RetriesPrompt} = #prompts{},
     whapps_call_command:play(RetriesPrompt, Call),
     {error, retries_exceeded};
 find_agent(Data, Retries, Call) ->
-    ?LOG("retries left: ~b", [Retries]),
+    lager:debug("retries left: ~b", [Retries]),
     Prompts = #prompts{},
     case prompt_and_get_pin(Prompts, Data, Call) of
         {ok, Pin} -> % Pin = <<"315">>
-            ?LOG("got ~s for pin", [Pin]),
+            lager:debug("got ~s for pin", [Pin]),
             AccountDb = whapps_call:account_db(Call),
             ViewOptions = [{<<"include_docs">>, true}, {<<"key">>, Pin}],
             case couch_mgr:get_results(AccountDb, <<"agents/listing_by_pin">>, ViewOptions) of
                 {ok, []} ->
-                    ?LOG("no agent found with pin"),
+                    lager:debug("no agent found with pin"),
                     #prompts{invalid_pin_prompt=InvalidPinPrompt}=Prompts,
                     whapps_call_command:b_play(InvalidPinPrompt, Call),
                     find_agent(Data, Retries-1, Call);
                 {ok, [AgentJObj]} ->
-                    ?LOG("agent found"),
+                    lager:debug("agent found"),
                     {ok, AgentJObj};
                 {error, _E} ->
-                    ?LOG("error loading agent: ~p", [_E]),
+                    lager:debug("error loading agent: ~p", [_E]),
                     #prompts{invalid_pin_prompt=InvalidPinPrompt}=Prompts,
                     whapps_call_command:b_play(InvalidPinPrompt, Call),
                     find_agent(Data, Retries-1, Call)
             end;
         {error, _E}=E ->
-            ?LOG("error getting pin: ~p", [_E]),
+            lager:debug("error getting pin: ~p", [_E]),
             E
     end.

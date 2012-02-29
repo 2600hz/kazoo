@@ -111,7 +111,8 @@ stop(Srv) ->
 %%--------------------------------------------------------------------
 init([Host, Conn, UseFederation]) when is_pid(Conn) ->
     process_flag(trap_exit, true),
-    ?LOG_SYS("starting amqp host for broker ~s", [Host]),
+    put(callid, ?LOG_SYSTEM_ID),
+    lager:debug("starting amqp host for broker ~s", [Host]),
 
     Ref = erlang:monitor(process, Conn),
     case start_channel(Conn) of
@@ -128,7 +129,7 @@ init([Host, Conn, UseFederation]) when is_pid(Conn) ->
                ,use_federation = UseFederation
               }};
         {error, E} ->
-            ?LOG_SYS("unable to initialize publish channel for amqp host ~s, ~p", [Host, E]),
+            lager:debug("unable to initialize publish channel for amqp host ~s, ~p", [Host, E]),
             erlang:demonitor(Ref, [flush]),
             {stop, E, Conn}
     end.
@@ -164,13 +165,13 @@ handle_call(stop, {From, _}, #state{manager=Mgr}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({publish, From, #'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg}, #state{publish_channel={C,_}}=State) ->
-    ?LOG_SYS("Pub on ch ~p x: ~s rt: ~s", [C, _Exchange, _RK]),
+    lager:debug("Pub on ch ~p x: ~s rt: ~s", [C, _Exchange, _RK]),
     spawn(fun() -> gen_server:reply(From, amqp_channel:cast(C, BasicPub, AmqpMsg)) end),
     {noreply, State};
 
 handle_cast({register_return_handler, {FromPid, _}=From}, #state{return_handlers=RHDict}=State) ->
     gen_server:reply(From, ok),
-    ?LOG_SYS("adding ~p as a return handler", [FromPid]),
+    lager:debug("adding ~p as a return handler", [FromPid]),
     {noreply, State#state{return_handlers=dict:store(erlang:monitor(process, FromPid), FromPid, RHDict)}, hibernate};
 
 handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #state{connection=Conn, consumers=Consumers}=State) ->
@@ -178,7 +179,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
         error ->
             case start_channel(Conn, FromPid) of
                 {C,R} when is_pid(C) andalso is_reference(R) -> % channel, channel ref
-                    ?LOG("Consuming on ch: ~p for proc: ~p", [C, FromPid]),
+                    lager:debug("Consuming on ch: ~p for proc: ~p", [C, FromPid]),
                     FromRef = erlang:monitor(process, FromPid),
                     amqp_selective_consumer:register_default_consumer(C, self()),
 
@@ -191,17 +192,17 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
                             {noreply, State}
                     end;
                 closing ->
-                    ?LOG_SYS("Failed to start channel: closing"),
+                    lager:debug("Failed to start channel: closing"),
                     gen_server:reply(From, {error, closing}),
                     {noreply, State};
                 {error, _}=E ->
-                    ?LOG_SYS("Failed to start channel: ~p", [E]),
+                    lager:debug("Failed to start channel: ~p", [E]),
                     gen_server:reply(From, E),
                     {noreply, State}
             end;
         {ok, {C,R,<<>>,FromRef}} ->
             amqp_selective_consumer:register_default_consumer(C, self()),
-            ?LOG("Channel ~p exists for proc ~p, but we aren't consuming yet", [C, FromPid]),
+            lager:debug("Channel ~p exists for proc ~p, but we aren't consuming yet", [C, FromPid]),
 
             case try_to_subscribe(C, BasicConsume, FromPid) of
                 {ok, Tag} ->
@@ -212,7 +213,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
                     {noreply, State}
             end;
         {ok, {C,_,Tag,_}} ->
-            ?LOG("Already consuming on ch: ~p for proc: ~p on tag ~s", [C, FromPid, Tag]),
+            lager:debug("Already consuming on ch: ~p for proc: ~p on tag ~s", [C, FromPid, Tag]),
             gen_server:reply(From, {ok, C}),
             {noreply, State, hibernate}
     end;
@@ -241,16 +242,16 @@ handle_cast({consume, {FromPid, _}=From, #'queue.bind'{}=QueueBind}, #state{conn
                             gen_server:reply(From, ok),
                             {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate};
                         {error, _E}=Err ->
-                            ?LOG("Error binding queue: ~p", [_E]),
+                            lager:debug("Error binding queue: ~p", [_E]),
                             gen_server:reply(From, {error, Err}),
                             {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate};
                         E ->
-                            ?LOG("Unexpected ~p", [E]),
+                            lager:debug("Unexpected ~p", [E]),
                             gen_server:reply(From, {error, E}),
                             {noreply, State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}, hibernate}
                     end;
                 closing ->
-                    ?LOG_SYS("Failed to start channel: closing"),
+                    lager:debug("Failed to start channel: closing"),
                     gen_server:reply(From, {error, closing}),
                     {noreply, State};
                 {error, _}=E ->
@@ -314,8 +315,8 @@ handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #stat
                 {C,R} when is_pid(C) andalso is_reference(R) ->
                     FromRef = erlang:monitor(process, FromPid),
                     case amqp_channel:call(C, QueueDeclare) of
-                        #'queue.declare_ok'{queue=Q} ->
-                            gen_server:reply(From, {ok, Q});
+                        #'queue.declare_ok'{}=QD ->
+                            gen_server:reply(From, {ok, QD});
                         ok ->
                             gen_server:reply(From, ok);
                         {error, _E}=Err ->
@@ -333,8 +334,8 @@ handle_cast({consume, {FromPid, _}=From, #'queue.declare'{}=QueueDeclare}, #stat
             end;
         {ok, {C,_,_,_}} ->
             case amqp_channel:call(C, QueueDeclare) of
-                #'queue.declare_ok'{queue=Q} ->
-                    gen_server:reply(From, {ok, Q});
+                #'queue.declare_ok'{}=QD ->
+                    gen_server:reply(From, {ok, QD});
                 ok ->
                     gen_server:reply(From, ok);
                 {error, _E}=Err ->
@@ -448,16 +449,18 @@ handle_cast({consume, {FromPid, _}=From, #'basic.nack'{}=BasicNack}, #state{conn
 handle_cast({misc_req, From, #'exchange.declare'{}=ED}
             ,#state{misc_channel={C,_}, use_federation=UseFederation}=State) ->
     spawn(fun() ->
-                  ?LOG("sending exchange.declare to ~p (federated: ~s)", [C, UseFederation]),
+                  put(callid, ?LOG_SYSTEM_ID),
+
+                  lager:debug("sending exchange.declare to ~p (federated: ~s)", [C, UseFederation]),
                   case amqp_channel:call(C, exchange_declare(ED, UseFederation)) of
                       #'exchange.declare_ok'{} ->
-                          ?LOG("exchange declared"),
+                          lager:debug("exchange declared"),
                           gen_server:reply(From, ok);
                       {error, _E}=Err ->
-                          ?LOG("error declaring exchange: ~p", [_E]),
+                          lager:debug("error declaring exchange: ~p", [_E]),
                           gen_server:reply(From, Err);
                       E ->
-                          ?LOG("error declaring exchange: ~p", [E]),
+                          lager:debug("error declaring exchange: ~p", [E]),
                           gen_server:reply(From, {error, E})
                   end
           end),
@@ -477,17 +480,18 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, process, ConnPid, Reason}, #state{connection={ConnPid, Ref}}=State) ->
-    ?LOG_SYS("recieved notification our connection to the amqp broker died: ~p", [Reason]),
+    lager:debug("recieved notification our connection to the amqp broker died: ~p", [Reason]),
     {stop, normal, State};
 
 handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{return_handlers=RHDict}=State) ->
-    ?LOG_SYS("recieved notification monitored process ~p  died ~p, searching for reference", [_Pid, _Reason]),
+    lager:debug("recieved notification monitored process ~p  died ~p, searching for reference", [_Pid, _Reason]),
     erlang:demonitor(Ref, [flush]),
     {noreply, remove_ref(Ref, State#state{return_handlers=dict:erase(Ref, RHDict)}), hibernate};
 
 handle_info({#'basic.return'{}, #amqp_msg{}}=ReturnMsg, #state{return_handlers=RHDict}=State) ->
     spawn(fun() ->
-                  ?LOG_SYS("recieved notification a message couldnt be delivered, forwarding to registered return handlers"),
+                  put(callid, ?LOG_SYSTEM_ID),
+                  lager:debug("recieved notification a message couldnt be delivered, forwarding to registered return handlers"),
                   dict:map(fun(_, Pid) -> Pid ! ReturnMsg end, RHDict)
           end),
     {noreply, State};
@@ -508,11 +512,14 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), #state{}) -> 'ok'.
 terminate(_Reason, {_H, _Conn, _UseF}) ->
-    ?LOG("amqp host failed to startup: ~p", [_Reason]),
-    ?LOG("params: ~s on conn ~p, use federation: ~s", [_H, _Conn, _UseF]);
+    lager:debug("amqp host failed to startup: ~p", [_Reason]),
+    lager:debug("params: ~s on conn ~p, use federation: ~s", [_H, _Conn, _UseF]);
 terminate(_Reason, #state{consumers=Consumers, amqp_h=Host}) ->
-    spawn(fun() -> notify_consumers({amqp_host_down, Host}, Consumers) end),
-    ?LOG_SYS("amqp host for ~s terminated ~p", [Host, _Reason]).
+    spawn(fun() ->
+                  put(callid, ?LOG_SYSTEM_ID),
+                  notify_consumers({amqp_host_down, Host}, Consumers)
+          end),
+    lager:debug("amqp host for ~s terminated ~p", [Host, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -537,14 +544,14 @@ start_channel(Connection) when is_pid(Connection) ->
     %% Open an AMQP channel to access our realm
     case erlang:is_process_alive(Connection) andalso amqp_connection:open_channel(Connection) of
         {ok, Channel} ->
-            ?LOG_SYS("Opened channel ~p", [Channel]),
+            lager:debug("Opened channel ~p", [Channel]),
 
             ChanMRef = erlang:monitor(process, Channel),
             {Channel, ChanMRef};
         false ->
             {error, no_connection};
         E ->
-            ?LOG_SYS("Error opening channel: ~p", [E]),
+            lager:debug("Error opening channel: ~p", [E]),
             E
     end.
 
@@ -552,13 +559,13 @@ start_channel(Connection) when is_pid(Connection) ->
 start_channel(Connection, Pid) ->
     case start_channel(Connection) of
         {C, _} = Channel when is_pid(C) ->
-            ?LOG_SYS("Started channel ~p for caller ~p", [C, Pid]),
+            lager:debug("Started channel ~p for caller ~p", [C, Pid]),
             Channel;
         {error, no_connection}=E ->
-            ?LOG_SYS("No connection available to start channel"),
+            lager:debug("No connection available to start channel"),
             E;
         E ->
-            ?LOG_SYS("failed to start new channel for ~p: ~p", [Pid, E]),
+            lager:debug("failed to start new channel for ~p: ~p", [Pid, E]),
             E
     end.
 
@@ -574,11 +581,11 @@ load_exchanges(C, UseFederation) ->
 
 -spec remove_ref/2 :: (reference(), #state{}) -> #state{}.
 remove_ref(Ref, #state{connection={Conn, _}, publish_channel={C,Ref}}=State) ->
-    ?LOG_SYS("reference was for publish channel ~p, restarting", [C]),
+    lager:debug("reference was for publish channel ~p, restarting", [C]),
     State#state{publish_channel=start_channel(Conn)};
 
 remove_ref(Ref, #state{connection={Conn, _}, misc_channel={C,Ref}}=State) ->
-    ?LOG_SYS("reference was for misc channel ~p, restarting", [C]),
+    lager:debug("reference was for misc channel ~p, restarting", [C]),
     State#state{misc_channel=start_channel(Conn)};
 
 remove_ref(Ref, #state{connection={Conn, _}, consumers=Cs}=State) ->
@@ -593,28 +600,28 @@ notify_consumers(Msg, Dict) ->
 %% Channel died
 -spec clean_consumers/5 :: (pid(), consumer_data(), dict(), reference(), pid()) -> dict().
 clean_consumers(FromPid, {C,Ref1,_,FromRef}, AccDict, Ref, Conn) when Ref =:= Ref1 ->
-    ?LOG_SYS("reference was for channel ~p for ~p, restarting", [C, FromPid]),
+    lager:debug("reference was for channel ~p for ~p, restarting", [C, FromPid]),
 
     erlang:demonitor(Ref1, [flush]),
     erlang:is_process_alive(C) andalso amqp_channel:close(C),
 
     case start_channel(Conn, FromPid) of
         {CNew, RefNew} when is_pid(CNew) andalso is_reference(RefNew) ->
-            ?LOG_SYS("New channel started for ~p", [FromPid]),
+            lager:debug("New channel started for ~p", [FromPid]),
             dict:store(FromPid, {CNew, RefNew, <<>>, FromRef}, AccDict);
         {error, no_connection} ->
-            ?LOG_SYS("No connection available"),
+            lager:debug("No connection available"),
             FromPid ! {amqp_lost_channel, no_connection},
             dict:erase(FromPid, AccDict);
         closing ->
-            ?LOG_SYS("Closing, no connection"),
+            lager:debug("Closing, no connection"),
             FromPid ! {amqp_lost_channel, no_connection},
             dict:erase(FromPid, AccDict)
     end;
 
 %% Consumer died
 clean_consumers(FromPid, {C,CRef,_,FromRef}, AccDict, Ref, _) when Ref =:= FromRef ->
-    ?LOG_SYS("reference was for consumer ~p, removing channel ~p", [FromPid, C]),
+    lager:debug("reference was for consumer ~p, removing channel ~p", [FromPid, C]),
     erlang:demonitor(CRef, [flush]),
     erlang:demonitor(FromRef, [flush]),
     erlang:is_process_alive(C) andalso amqp_channel:close(C),
@@ -625,7 +632,7 @@ clean_consumers(FromPid, {C,CRef,_,FromRef}, AccDict, _, _) ->
     case erlang:is_process_alive(FromPid) of
         true -> AccDict;
         false ->
-            ?LOG_SYS("reference was a consumer ~p that shutdown, removing channel ~p", [FromPid, C]),
+            lager:debug("reference was a consumer ~p that shutdown, removing channel ~p", [FromPid, C]),
             erlang:demonitor(FromRef, [flush]),
             erlang:demonitor(CRef, [flush]),
             erlang:is_process_alive(C) andalso amqp_channel:close(C),

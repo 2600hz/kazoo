@@ -169,10 +169,12 @@ alist(L, Max) ->
 
 %%--------------------
 %% The start of a test suite. So far, it only checks for not crashing.
+%% @hidden
 -spec test() -> ok.
 test() ->
     test(trunc_io, print).
 
+%% @hidden
 -spec test(atom(), atom()) -> ok.
 test(Mod, Func) ->
     Simple_items = [atom, 1234, 1234.0, {tuple}, [], [list], "string", self(),
@@ -202,12 +204,14 @@ test(Mod, Func) ->
     lists:foreach(G, Tuples),
     lists:foreach(G, Lists).
 
+%% @hidden
 -spec perf() -> ok.
 perf() ->
     {New, _} = timer:tc(trunc_io, perf, [trunc_io, print, 1000]),
     {Old, _} = timer:tc(trunc_io, perf, [io_lib, write, 1000]),
     io:fwrite("New code took ~p us, old code ~p\n", [New, Old]).
 
+%% @hidden
 -spec perf(atom(), atom(), integer()) -> done.
 perf(M, F, Reps) when Reps > 0 ->
     test(M,F),
@@ -215,6 +219,7 @@ perf(M, F, Reps) when Reps > 0 ->
 perf(_,_,_) ->
     done.    
 
+%% @hidden
 %% Performance test. Needs a particularly large term I saved as a binary...
 -spec perf1() -> {non_neg_integer(), non_neg_integer()}.
 perf1() ->

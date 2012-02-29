@@ -1,5 +1,4 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% APIs for events concerning money (like credits, debits, and others)
@@ -9,7 +8,8 @@
 %%%   debit - a debit has been applied to account-id
 %%%   balance - a request for any whapp with the balance of account-id to reply
 %%% @end
-%%% Created : 19 Nov 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(wapi_money).
 
@@ -150,13 +150,14 @@ balance_resp_v(Prop) when is_list(Prop) ->
 balance_resp_v(JObj) ->
     balance_resp_v(wh_json:to_proplist(JObj)).
 
-
+-spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     Routing = routing_key(Props),
     amqp_util:configuration_exchange(),
     amqp_util:bind_q_to_configuration(Queue, Routing),
     ok.
 
+-spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Routing = routing_key(Props),
     amqp_util:unbind_q_from_configuration(Queue, Routing).

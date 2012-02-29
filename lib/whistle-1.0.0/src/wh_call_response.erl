@@ -17,10 +17,10 @@
 %% played as part of the error.
 %% @end
 %%--------------------------------------------------------------------
--spec send/3 :: (ne_binary(), ne_binary(), undefined | ne_binary()) -> {'ok', ne_binary()} | {error, no_response}.
--spec send/4 :: (ne_binary(), ne_binary(), undefined | ne_binary(), 'undefined' | binary()) ->  {'ok', ne_binary()} | {error, no_response}.
--spec send/5 :: (ne_binary(), ne_binary(), undefined | ne_binary(), 'undefined' | binary(), 'undefined' | binary()) 
-                ->  {'ok', ne_binary()} | {error, no_response}.
+-spec send/3 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary()) -> {'ok', ne_binary()} | {'error', 'no_response'}.
+-spec send/4 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary(), 'undefined' | binary()) ->  {'ok', ne_binary()} | {'error', 'no_response'}.
+-spec send/5 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary(), 'undefined' | binary(), 'undefined' | binary()) 
+                ->  {'ok', ne_binary()} | {'error', 'no_response'}.
 
 send(CallId, CtrlQ, Code) ->
     send(CallId, CtrlQ, Code, <<>>).
@@ -98,11 +98,11 @@ do_send(CallId, CtrlQ, Commands) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_default/3 :: (ne_binary(), ne_binary(), undefined | ne_binary()) -> {'ok', ne_binary()} | {error, no_response}.
+-spec send_default/3 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary()) -> {'ok', ne_binary()} | {'error', 'no_response'}.
 send_default(_, _, undefined) ->
     {error, no_response};    
 send_default(CallId, CtrlQ, Cause) ->
-    ?LOG("attempting to send default response for ~s", [Cause]),
+    lager:debug("attempting to send default response for ~s", [Cause]),
     Response = get_response(Cause),
     send(CallId, CtrlQ
          ,wh_json:get_value(<<"Code">>, Response)
@@ -115,7 +115,7 @@ send_default(CallId, CtrlQ, Cause) ->
 %% returns the configured response proplist
 %% @end
 %%--------------------------------------------------------------------
--spec get_response/1 :: (ne_binary()) -> undefined | proplist().
+-spec get_response/1 :: (ne_binary()) -> 'undefined' | proplist().
 get_response(Cause) ->
     case default_response(Cause) of
         undefined -> whapps_config:get(?CALL_RESPONSE_CONF, Cause);
@@ -128,7 +128,7 @@ get_response(Cause) ->
 %% returns the default action given the error
 %% @end
 %%--------------------------------------------------------------------
--spec default_response/1 :: (ne_binary()) -> undefined | proplist().
+-spec default_response/1 :: (ne_binary()) -> 'undefined' | proplist().
 default_response(<<"UNSPECIFIED">>) ->
     undefined;
 default_response(<<"UNALLOCATED_NUMBER">>) ->

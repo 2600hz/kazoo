@@ -18,22 +18,22 @@ test_reg(SendCnt) ->
 send(Prop, SendCnt) when SendCnt > 100 ->
     SendCnt1 = SendCnt div ?CHUNK_SENDS,
 
-    ?LOG("I'm spawing 10 senders"),
+    lager:debug("I'm spawing 10 senders"),
 
     F = fun() -> [ send(Prop, SendCnt1) || _ <- lists:seq(1,?CHUNK_SENDS) ] end,
     Pids = [ spawn_monitor(F) || _ <- lists:seq(1,?CHUNK_SENDS)],
     wait_for_pids(Pids);
 send(Prop, SendCnt) ->
-    ?LOG("I'm sending ~b authn_req", [SendCnt]),
+    lager:debug("I'm sending ~b authn_req", [SendCnt]),
     [ ecallmgr_amqp_pool:authn_req(Prop) || _ <- lists:seq(1,SendCnt) ].
 
 wait_for_pids([{P,Ref}|Ps]) ->
     receive
-	{'DOWN', Ref, process, P, _Reason} ->
-	    wait_for_pids(Ps)
+        {'DOWN', Ref, process, P, _Reason} ->
+            wait_for_pids(Ps)
     end;
 wait_for_pids([]) ->
-    ?LOG("End of send/2").
+    lager:debug("End of send/2").
 
 
 gc_all() ->
@@ -43,8 +43,8 @@ gc_all(Type) ->
     HSDelta = [ gc(P, Type) || P <- erlang:processes()],
     Sorted = lists:reverse(lists:keysort(2, HSDelta)),
     Top10 = lists:sublist(Sorted, 10),
-    ?LOG_SYS("Top10 deltas:"),
-    [ ?LOG_SYS("~p: ~b", [Pid, HS]) || {Pid, HS} <- Top10].
+    lager:debug("top10 deltas:"),
+    [ lager:debug("~p: ~b", [Pid, HS]) || {Pid, HS} <- Top10].
 
 gc(P, Type) ->
     {Type, HS} = erlang:process_info(P, Type),

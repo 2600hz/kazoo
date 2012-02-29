@@ -210,19 +210,19 @@ get(Category0, Keys, Default, Node0) ->
                 undefined ->
                     case wh_json:get_value([<<"default">> | Keys], JObj) of
                         undefined ->
-                            ?LOG("missing key ~s(~s) ~p: ~p", [Category, Node, Keys, Default]),
+                            lager:debug("missing key ~s(~s) ~p: ~p", [Category, Node, Keys, Default]),
                             set_default(Category, Keys, Default),
                             Default;
                         Else ->
-                            ?LOG("fetched config ~s(default) ~p: ~p", [Category, Keys, Else]),
+                            lager:debug("fetched config ~s(default) ~p: ~p", [Category, Keys, Else]),
                             Else
                     end;
                 Else ->
-                    ?LOG("fetched config ~s(~s) ~p: ~p", [Category, Node, Keys, Else]),
+                    lager:debug("fetched config ~s(~s) ~p: ~p", [Category, Node, Keys, Else]),
                     Else
             end;
         {error, _} ->
-            ?LOG("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
+            lager:debug("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
             Default
     end.
 
@@ -237,7 +237,7 @@ get_all_kvs(Category) ->
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
     case fetch_category(Category, Cache) of
         {error, _} ->
-            ?LOG("missing category ~s(~s)", [Category, "default"]),
+            lager:debug("missing category ~s(~s)", [Category, "default"]),
             [];
         {ok, JObj} ->
             Node = wh_util:to_binary(node()),
@@ -245,14 +245,14 @@ get_all_kvs(Category) ->
                 undefined ->
                     case wh_json:get_value(<<"default">>, JObj) of
                         undefined ->
-                            ?LOG("missing category ~s(~s)", [Category, Node]),
+                            lager:debug("missing category ~s(~s)", [Category, Node]),
                             [];
                         DefJObj ->
-                            ?LOG("fetched configs ~s(~s)", [Category, "default"]),
+                            lager:debug("fetched configs ~s(~s)", [Category, "default"]),
                             wh_json:to_proplist(DefJObj)
                     end;
                 NodeJObj ->
-                    ?LOG("fetched configs ~s(~s)", [Category, Node]),
+                    lager:debug("fetched configs ~s(~s)", [Category, Node]),
                     wh_json:to_proplist(NodeJObj)
             end
     end.
@@ -336,13 +336,13 @@ fetch_category(Category, Cache) ->
 %%-----------------------------------------------------------------------------
 -spec fetch_db_config/2 :: (ne_binary(), pid()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
 fetch_db_config(Category, Cache) ->
-    ?LOG("fetch db config for ~s", [Category]),
+    lager:debug("fetch db config for ~s", [Category]),
     case couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj}=Ok ->
             wh_cache:store_local(Cache, {?MODULE, Category}, JObj),
             Ok;
         {error, _E} ->
-            ?LOG("could not fetch config ~s from db: ~p", [Category, _E]),
+            lager:debug("could not fetch config ~s from db: ~p", [Category, _E]),
             {error, not_found}
     end.
 
@@ -360,13 +360,13 @@ fetch_file_config(Category, Cache) ->
         {ok, Terms} ->
             JObj = config_terms_to_json(Terms),
             UpdateFun = fun(J) ->
-                                ?LOG("initializing ~s from ~s", [Category, File]),
+                                lager:debug("initializing ~s from ~s", [Category, File]),
                                 DefaultConfig = wh_json:get_value(<<"default">>, J, wh_json:new()),
                                 wh_json:merge_jobjs(DefaultConfig, JObj)
                         end,
             update_category_node(Category, <<"default">>, UpdateFun, Cache);
         {error, _}=E ->
-            ?LOG("initializing category ~s without configuration: ~p", [Category, E]),
+            lager:debug("initializing category ~s without configuration: ~p", [Category, E]),
             UpdateFun = fun(J) ->
                                 wh_json:set_value(<<"default">>, wh_json:new(), J)
                         end,
@@ -424,11 +424,11 @@ update_category_node(Category, Node, UpdateFun, Cache) ->
                 UpdatedCat -> update_category(Category, UpdatedCat, Cache)
             end;
         {error, _E} ->
-            ?LOG("failed to find category in DB: ~p", [_E]),
+            lager:debug("failed to find category in DB: ~p", [_E]),
             NewCat = wh_json:set_value(Node, UpdateFun(wh_json:new()), wh_json:new()),
             update_category(Category, NewCat, Cache);
         false ->
-            ?LOG("couch_mgr hasn't started; just cache the json object"),
+            lager:debug("couch_mgr hasn't started; just cache the json object"),
             case wh_cache:peek_local(Cache, {?MODULE, Category}) of
                 {ok, JObj} ->
                     case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
@@ -449,11 +449,11 @@ update_category_node(Category, Node, UpdateFun, Cache) ->
 %%-----------------------------------------------------------------------------
 -spec update_category/3 :: (ne_binary(), wh_json:json_object(), pid()) -> {'ok', wh_json:json_object()}.
 update_category(Category, JObj, Cache) ->
-    ?LOG("updating configuration category ~s", [Category]),
+    lager:debug("updating configuration category ~s", [Category]),
     JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),
     couch_mgr:db_create(?WH_CONFIG_DB),
     {ok, SavedJObj} = couch_mgr:ensure_saved(?WH_CONFIG_DB, JObj1),
-    ?LOG("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
+    lager:debug("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
     cache_jobj(Cache, Category, SavedJObj).
 
 cache_jobj(Cache, Category, JObj) ->

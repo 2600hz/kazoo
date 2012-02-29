@@ -43,7 +43,7 @@ start_handlers(Node, Options) when is_atom(Node) ->
     [ begin
           Name = wh_util:to_atom(<<NodeB/binary, H/binary>>, true),
           Mod = wh_util:to_atom(<<"ecallmgr_fs", H/binary>>),
-          ?LOG("Starting handler ~s", [Name]),
+          lager:debug("starting handler ~s", [Name]),
           supervisor:start_child(?SERVER, ?CHILD(Name, Mod, [Node, Options]))
       end
       || H <- [<<"_auth">>, <<"_route">>, <<"_node">>, <<"_config">>] ].

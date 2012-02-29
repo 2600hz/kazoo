@@ -61,7 +61,7 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting hotornot listener"),
+    lager:debug("starting hotornot listener"),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -105,7 +105,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
+    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -131,7 +131,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG_SYS("vm hotornot process ~p termination", [_Reason]),
+    lager:debug("vm hotornot process ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------

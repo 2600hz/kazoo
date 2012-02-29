@@ -194,18 +194,18 @@ get_provision_defaults(#cb_context{req_data=JObj}=Context) ->
     Body = [],
     HTTPOptions = [],
 
-    ?LOG("Attempting to pull provisioning configs from ~s", [UrlString]),
+    lager:debug("Attempting to pull provisioning configs from ~s", [UrlString]),
 
     case ibrowse:send_req(UrlString, Headers, get, Body, HTTPOptions) of
         {ok, "200", _, Response} ->
-            ?LOG("Great success! Acquired provisioning template."),
+            lager:debug("Great success! Acquired provisioning template."),
             JResp = wh_json:decode(Response),
             Context#cb_context{
                 doc = wh_json:set_value(<<"template">>, JResp, JObj)
                 ,resp_status = success
             };
         _ ->
-            ?LOG("Error! Could not acquiring provisioning template."),
+            lager:debug("Error! Could not acquiring provisioning template."),
             crossbar_util:response(error, <<"Error retrieving content from external site">>, 500, Context)
     end.
 

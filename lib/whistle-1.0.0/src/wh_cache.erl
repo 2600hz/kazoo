@@ -31,8 +31,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
 -define(EXPIRES, 3600). %% an hour
@@ -153,8 +153,9 @@ filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred, 2) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Name]) ->
+    put(callid, ?LOG_SYSTEM_ID),
     {ok, _} = timer:send_interval(1000, flush),
-    ?LOG("started new cache proc: ~s", [Name]),
+    lager:debug("started new cache proc: ~s", [Name]),
     {ok, dict:new()}.
 
 %%--------------------------------------------------------------------
@@ -203,18 +204,18 @@ handle_cast({store, K, V, infinity=T, F}, Dict) ->
 handle_cast({store, K, V, T, F}, Dict) ->
     {noreply, dict:store(K, {wh_util:current_tstamp()+T, V, T, F}, Dict), hibernate};
 handle_cast({erase, K}, Dict) ->
-    case dict:find(K, Dict) of
-        {ok, {_, _, _, undefined}} -> ok;
-        {ok, {_, V, _, F}} -> spawn(fun() -> F(K, V, erase) end);
-        _ -> ok
-    end,
+    ok = case dict:find(K, Dict) of
+             {ok, {_, _, _, undefined}} -> ok;
+             {ok, {_, V, _, F}} -> spawn(fun() -> F(K, V, erase) end), ok;
+             _ -> ok
+         end,
     {noreply, dict:erase(K, Dict), hibernate};
 handle_cast({flush}, Dict) ->
-    [(fun({_, {_, _, _, undefined}}) -> ok;
-         ({K, {_, V, _, F}}) -> spawn(fun() -> F(K, V, flush) end) 
-      end)(Elem)
-     || Elem <- dict:to_list(Dict) 
-    ],
+    _ = [(fun({_, {_, _, _, undefined}}) -> ok;
+             ({K, {_, V, _, F}}) -> spawn(fun() -> F(K, V, flush) end) 
+          end)(Elem)
+         || Elem <- dict:to_list(Dict) 
+        ],
     {noreply, dict:new(), hibernate}.
 
 %%--------------------------------------------------------------------

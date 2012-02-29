@@ -48,7 +48,7 @@ authz_win(Pid) when is_pid(Pid) ->
     receive
         {authz_win_sent, Ref} -> ok
     after 1000 ->
-            ?LOG("Timed out sending authz_win, odd")
+            lager:debug("Timed out sending authz_win, odd")
     end.
 
 
@@ -57,7 +57,7 @@ init_authorize(Parent, FSID, CallID, FSData) ->
     proc_lib:init_ack(Parent, {ok, self()}),
     put(callid, CallID),
 
-    ?LOG_START("authorize started"),
+    lager:debug("authorize started"),
 
     ReqProp = request(FSID, CallID, FSData),
 
@@ -67,8 +67,8 @@ init_authorize(Parent, FSID, CallID, FSData) ->
                RespJObj
            catch
                _T:_R ->
-                   ?LOG("authz request un-answered or improper"),
-                   ?LOG("authz ~p: ~p", [_T, _R]),
+                   lager:debug("authz request un-answered or improper"),
+                   lager:debug("authz ~p: ~p", [_T, _R]),
                    default()
            end,
 
@@ -80,13 +80,13 @@ authorize_loop(JObj) ->
         {is_authorized, From, Ref} ->
             IsAuthz = wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, JObj)),
             CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, []),
-            ?LOG("Is authz: ~s", [IsAuthz]),
+            lager:debug("Is authz: ~s", [IsAuthz]),
             From ! {is_authorized, Ref, IsAuthz, CCV},
             authorize_loop(JObj);
 
         {authz_win, From, Ref} ->
             wapi_authz:publish_win(wh_json:get_value(<<"Server-ID">>, JObj), wh_json:delete_key(<<"Event-Name">>, JObj)),
-            ?LOG("sent authz_win, nice"),
+            lager:debug("sent authz_win, nice"),
 
             From ! {authz_win_sent, Ref},
 
@@ -94,7 +94,7 @@ authorize_loop(JObj) ->
 
         _ -> authorize_loop(JObj)
     after ?AUTHZ_LOOP_TIMEOUT ->
-            ?LOG_SYS("going down from timeout")
+            lager:debug("going down from timeout")
     end.
 
 -spec request/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().

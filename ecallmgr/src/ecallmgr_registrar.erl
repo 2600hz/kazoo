@@ -50,7 +50,7 @@ handle_req(JObj, _Props) ->
     {ok, Cache} = ecallmgr_sup:cache_proc(),
     User = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
-    ?LOG_SYS("Received successful registration for ~s@~s, erasing cache", [User, Realm]),
+    lager:debug("received successful registration for ~s@~s, erasing cache", [User, Realm]),
     wh_cache:erase_local(Cache, cache_key(Realm, User)).
 
 %%%===================================================================
@@ -69,7 +69,7 @@ handle_req(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG("Starting up"),
+    lager:debug("Starting up"),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -117,7 +117,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
-    ?LOG_SYS("storing registration information for ~s@~s", [User, Realm]),
+    lager:debug("storing registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),
 
     wh_cache:store_local(Cache, cache_key(Realm, User), RegFields
@@ -162,7 +162,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Returns a proplist with the keys corresponding to the elements of Fields
 -spec lookup_reg/3 :: (ne_binary(), ne_binary(), [ne_binary(),...] | []) -> proplist() | {'error', 'timeout'}.
 lookup_reg(Realm, User, Fields) ->
-    ?LOG("looking up registration information for ~s@~s", [User, Realm]),
+    lager:debug("looking up registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_sup:cache_proc(),
     FilterFun = fun({K, _}=V, Acc) ->
                         case lists:member(K, Fields) of
@@ -173,7 +173,7 @@ lookup_reg(Realm, User, Fields) ->
 
     case wh_cache:fetch_local(Cache, cache_key(Realm, User)) of
         {error, not_found} ->
-            ?LOG_SYS("Valid cached registration not found, querying whapps"),
+            lager:debug("valid cached registration not found, querying whapps"),
             RegProp = [{<<"Username">>, User}
                        ,{<<"Realm">>, Realm}
                        ,{<<"Fields">>, []}
@@ -188,22 +188,22 @@ lookup_reg(Realm, User, Fields) ->
                         {ok, Srv} = ecallmgr_sup:registrar_proc(),
                         Srv ! {cache_registrations, Realm, User, RegFields},
 
-                        ?LOG("received registration information"),
+                        lager:debug("received registration information"),
                         lists:foldr(FilterFun, [], RegFields);
                     timeout ->
-                        ?LOG("Looking up registration timed out"),
+                        lager:debug("Looking up registration timed out"),
                         {error, timeout}
                 end
             catch
                 _:{timeout, _} ->
-                    ?LOG("looking up registration threw exception: timeout", []),
+                    lager:debug("looking up registration threw exception: timeout", []),
                     {error, timeout};
                 _:R ->
-                    ?LOG("looking up registration threw exception: ~p", [R]),
+                    lager:debug("looking up registration threw exception: ~p", [R]),
                     {error, timeout}
             end;
         {ok, RegFields} ->
-            ?LOG("found cached registration information"),
+            lager:debug("found cached registration information"),
             lists:foldr(FilterFun, [], RegFields)
     end.
 

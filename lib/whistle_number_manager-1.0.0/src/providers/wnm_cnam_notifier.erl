@@ -30,10 +30,10 @@ save(JObj, PriorJObj, Number, <<"reserved">>) ->
     Cnam = wh_json:get_value(<<"cnam">>, JObj, EmptyJObj),
     case Cnam =/= EmptyJObj andalso Cnam =/= wh_json:get_value(<<"cnam">>, PriorJObj) of
         false ->
-            ?LOG("cnam is unchanged or empty on a reserved number"),
+            lager:debug("cnam is unchanged or empty on a reserved number"),
             {ok, JObj};
         true ->
-            ?LOG("cnam information has been updated"),
+            lager:debug("cnam information has been updated"),
             Notify = [{<<"Account-ID">>, wh_json:get_value(<<"pvt_reserved_for">>, JObj)}
                       ,{<<"Number-State">>, wh_json:get_value(<<"pvt_number_state">>, JObj)}
                       ,{<<"Local-Number">>, wh_json:get_value(<<"pvt_module_name">>, JObj) =:= <<"wnm_local">>}
@@ -50,10 +50,10 @@ save(JObj, PriorJObj, Number, <<"in_service">>) ->
     Cnam = wh_json:get_value(<<"cnam">>, JObj, EmptyJObj),
     case Cnam =/= EmptyJObj andalso Cnam =/= wh_json:get_value(<<"cnam">>, PriorJObj) of
         false ->
-            ?LOG("cnam is unchanged or empty on a number in service"), 
+            lager:debug("cnam is unchanged or empty on a number in service"), 
             {ok, JObj};
         true ->
-            ?LOG("cnam information has been updated"),
+            lager:debug("cnam information has been updated"),
             Notify = [{<<"Account-ID">>, wh_json:get_value(<<"pvt_assigned_to">>, JObj)}
                       ,{<<"Number-State">>, wh_json:get_value(<<"pvt_number_state">>, JObj)}
                       ,{<<"Local-Number">>, wh_json:get_value(<<"pvt_module_name">>, JObj) =:= <<"wnm_local">>}
@@ -66,7 +66,7 @@ save(JObj, PriorJObj, Number, <<"in_service">>) ->
             {ok, JObj}
     end;
 save(JObj, _, _, State) ->
-    ?LOG("ignoring cnam in number with state ~s", [State]),
+    lager:debug("ignoring cnam in number with state ~s", [State]),
     {ok, JObj}.
 
 %%--------------------------------------------------------------------

@@ -30,12 +30,14 @@
 -type startlink_err() :: {'already_started', pid()} | 'shutdown' | term().
 -type startlink_ret() :: {'ok', pid()} | 'ignore' | {'error', startlink_err()}.
 
+%% @doc Starts the supervisor
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 % R14B spec is commented, use R13B spec for now.
 %-spec init([]) -> {ok, {{one_for_one, 1000, 3600}, [supervisor:child_spec()]}}.
+%% @hidden
 -spec init([]) -> {ok, {{one_for_one, 1000, 3600}, [tuple()]}}.
 init([]) ->
     RestartStrategy = one_for_one,

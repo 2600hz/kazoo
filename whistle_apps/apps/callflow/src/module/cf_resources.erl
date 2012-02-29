@@ -48,14 +48,11 @@ bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Rin
     Endpoint = [create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
     case whapps_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
-            ?LOG("completed successful bridge to resource"),
+            lager:debug("completed successful bridge to resource"),
             cf_exe:stop(Call);
         {fail, R} when T =:= [] ->
             {Cause, Code} = whapps_util:get_call_termination_reason(R),
-            ?LOG(notice, "exhausted all local resources attempting bridge, final cause ~s:~s"
-                 ,[Code, Cause, {extra_data, [{details, whapps_call:to_proplist(Call)}
-                                              ,{account_id, AccountId}
-                                             ]}]),
+            lager:notice("exhausted all local resources attempting bridge, final cause ~s:~s", [Code, Cause]),
             case (cf_util:handle_bridge_failure(Cause, Call) =:= ok)
                 orelse (cf_util:handle_bridge_failure(Code, Call) =:= ok) of
                 true -> ok;
@@ -66,13 +63,11 @@ bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Rin
         {fail, _} ->
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call);
         {error, _R} ->
-            ?LOG(notice, "error attemping local resource to ~s: ~p", [DestNum, _R, {extra_data, [{details, whapps_call:to_proplist(Call)}
-                                                                                                 ,{account_id, AccountId}
-                                                                                                ]}]),
+            lager:notice("error attemping local resource to ~s: ~p", [DestNum, _R]),
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call)
     end;
 bridge_to_resources([], _, _, _, Call) ->
-    ?LOG("resources exhausted without success"),
+    lager:debug("resources exhausted without success"),
     WildcardIsEmpty = cf_exe:wildcard_is_empty(Call),
     case cf_util:handle_bridge_failure(<<"NO_ROUTE_DESTINATION">>, Call) =:= ok of
         true -> ok;
@@ -96,7 +91,7 @@ create_endpoint(DestNum, JObj) ->
               ,DestNum/binary
               ,(wh_json:get_value(<<"suffix">>, JObj, <<>>))/binary
               ,$@ ,(wh_json:get_value(<<"server">>, JObj))/binary>>,
-    ?LOG("attempting resource ~s", [Rule]),
+    lager:debug("attempting resource ~s", [Rule]),
     Endpoint = [{<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>, Rule}
                 ,{<<"Auth-User">>, wh_json:get_value(<<"username">>, JObj)}
@@ -117,11 +112,11 @@ create_endpoint(DestNum, JObj) ->
 %%--------------------------------------------------------------------
 -spec find_endpoints/1 :: (whapps_call:call()) -> {'ok', endpoints()} | {'error', atom()}.
 find_endpoints(Call) ->
-    ?LOG("searching for resource endpoints"),
+    lager:debug("searching for resource endpoints"),
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:get_results(AccountDb, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
-            ?LOG("found resources, filtering by rules"),
+            lager:debug("found resources, filtering by rules"),
             {ok, [{Number
                    ,wh_json:get_value([<<"value">>], Resource, [])
                    ,get_caller_id_type(Resource, Call)}
@@ -130,7 +125,7 @@ find_endpoints(Call) ->
                          ,Number =/= []
                  ]};
         {error, R}=E ->
-            ?LOG("search failed ~w", [R]),
+            lager:debug("search failed ~w", [R]),
             E
     end.
 

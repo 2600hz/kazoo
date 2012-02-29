@@ -188,7 +188,7 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 -spec check_uploaded_file/1 :: (#cb_context{}) -> #cb_context{}.
 check_uploaded_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
-    ?LOG("checking file ~s", [_Name]),
+    lager:debug("checking file ~s", [_Name]),
     case wh_json:get_value(<<"contents">>, File) of
         undefined ->
             Context#cb_context{resp_status=error};
@@ -196,7 +196,7 @@ check_uploaded_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
             Context#cb_context{resp_status=success}
     end;
 check_uploaded_file(Context) ->
-    ?LOG("no file to process"),
+    lager:debug("no file to process"),
     crossbar_util:response_faulty_request(Context).
 
 %%--------------------------------------------------------------------
@@ -256,7 +256,7 @@ process_upload_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
 convert_file(<<"text/csv">>, FileContents, Context) ->
     csv_to_rates(FileContents, Context);
 convert_file(ContentType, _, _) ->
-    ?LOG("unknown content type: ~s", [ContentType]),
+    lager:debug("unknown content type: ~s", [ContentType]),
     throw({unknown_content_type, ContentType}).
 
 -spec csv_to_rates/2 :: (ne_binary(), #cb_context{}) -> {'ok', {integer(), wh_json:json_objects()}}.
@@ -269,7 +269,7 @@ csv_to_rates(CSV, Context) ->
                                                               spawn(fun() ->
                                                                             crossbar_util:put_reqid(Context),
                                                                             crossbar_doc:save(Context#cb_context{doc=RateDocs}),
-                                                                            ?LOG("saved up to ~b docs", [Cnt])
+                                                                            lager:debug("saved up to ~b docs", [Cnt])
                                                                     end),
                                                               [];
                                                           false -> RateDocs
@@ -330,7 +330,7 @@ upload_csv(Context) ->
     Now = erlang:now(),
     {ok, {Count, Rates}} = process_upload_file(Context),
 
-    ?LOG("trying to save ~b rates (took ~b ms to process)", [Count, timer:now_diff(erlang:now(), Now) div 1000]),
+    lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, timer:now_diff(erlang:now(), Now) div 1000]),
     crossbar_doc:save(Context#cb_context{doc=Rates}, [{publish_doc, false}]),
 
-    ?LOG("it took ~b milli to process and save ~b rates", [timer:now_diff(erlang:now(), Now) div 1000, Count]).
+    lager:debug("it took ~b milli to process and save ~b rates", [timer:now_diff(erlang:now(), Now) div 1000, Count]).

@@ -18,13 +18,15 @@ start() ->
 start_deps() ->
     ecallmgr_deps:ensure(),
 
+    lager:start(),
+
     case application:get_env(reloader) of
         {ok, true} -> reloader:start();
         _ -> ok
     end,
+
     wh_util:ensure_started(sasl),
     wh_util:ensure_started(crypto),
-    wh_util:ensure_started(riak_err),
     wh_util:ensure_started(whistle_amqp),
     wh_util:ensure_started(ibrowse).
 

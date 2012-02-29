@@ -40,7 +40,7 @@ start_link() ->
 start_proc([_, CallId]=Args) ->
     case find_worker(CallId) of
         {ok, Srv}=Ok -> 
-            ?LOG("recycling existing call events worker ~p", [Srv]),
+            lager:debug("recycling existing call events worker ~p", [Srv]),
             Ok;
         _ -> 
             supervisor:start_child(?SERVER, Args)
@@ -56,7 +56,8 @@ workers() ->
 -spec do_find_worker/2 :: ([] | [pid(),...], ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
 
 find_worker(CallId) ->
-    do_find_worker(workers(), CallId).
+    C = wh_util:to_binary(http_uri:decode(wh_util:to_list(CallId))),
+    do_find_worker(workers(), C).
 
 do_find_worker([], _) ->
     {error, not_found};

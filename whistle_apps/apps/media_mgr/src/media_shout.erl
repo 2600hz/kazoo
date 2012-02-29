@@ -73,7 +73,7 @@ stop(Srv) ->
 init([Media, To, Type, Port, CallID]) ->
     put(callid, CallID),
     {MediaName, Db, Doc, Attachment, ContentTypeExt} = Media,
-    ?LOG_START("starting a ~s stream server to provide ~s", [Type, MediaName]),
+    lager:debug("starting a ~s stream server to provide ~s", [Type, MediaName]),
     case inet:getstat(Port) of
         {ok, _} ->
             process_flag(trap_exit, true),
@@ -88,7 +88,7 @@ init([Media, To, Type, Port, CallID]) ->
                ,stream_type=Type
               }, 0};
         {error, Posix} ->
-            ?LOG("stream server failed to start; lsock ~p error ~p", [Port, Posix]),
+            lager:debug("stream server failed to start; lsock ~p error ~p", [Port, Posix]),
             {stop, Posix}
     end.
 
@@ -138,7 +138,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
     {ok, PortNo} = inet:port(LSocket),
 
     {ok, Content} = fetch_attachment(Db, Doc, Attachment),
-    ?LOG("attachment binary fetched"),
+    lager:debug("attachment binary fetched"),
 
     Size = byte_size(Content),
     ChunkSize = case ?CHUNKSIZE > Size of
@@ -146,8 +146,8 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
                     false -> ?CHUNKSIZE
                 end,
 
-    ?LOG("filesize: ~p", [Size]),
-    ?LOG("chunksize: ~p", [ChunkSize]),
+    lager:debug("filesize: ~p", [Size]),
+    lager:debug("chunksize: ~p", [ChunkSize]),
 
     Extension = case ContentTypeExt =:= undefined andalso filename:extension(Attachment) of
                     false -> ContentTypeExt; % if content type is known
@@ -156,10 +156,10 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
                     <<$., Ext/binary>> -> Ext;
                     _ -> ContentTypeExt
                 end,
-    ?LOG("extension: ~s", [Extension]),
+    lager:debug("extension: ~s", [Extension]),
 
     Hostname = wh_util:get_hostname(),
-    ?LOG("hostname: ~s", [Hostname]),
+    lager:debug("hostname: ~s", [Hostname]),
 
     CallID = get(callid),
     {Resp, Header, CT, StreamUrl} = case Extension of
@@ -167,7 +167,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
                                             Self = self(),
 
                                             _Acceptor = spawn(fun() -> put(callid, CallID), start_shout_acceptor(Self, LSocket) end),
-                                            ?LOG("spawned shout server for mp3: ~p", [_Acceptor]),
+                                            lager:debug("spawned shout server for mp3: ~p", [_Acceptor]),
 
                                             Url = list_to_binary(["shout://", Hostname, ":", integer_to_list(PortNo), "/stream.mp3"]),
 
@@ -181,7 +181,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
                                             Self = self(),
 
                                             _Acceptor = spawn(fun() -> put(callid, CallID), start_stream_acceptor(Self, LSocket) end),
-                                            ?LOG("spawned shout server for wav: ~p", [_Acceptor]),
+                                            lager:debug("spawned shout server for wav: ~p", [_Acceptor]),
 
                                             {
                                               get_http_response_headers(?CONTENT_TYPE_WAV, Size)
@@ -191,7 +191,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
                                             }
                                     end,
 
-    ?LOG("sending media_resp AMQP"),
+    lager:debug("sending media_resp AMQP"),
 
     lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
 
@@ -199,7 +199,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
                             ,shout_response=Resp, shout_header=Header, continuous=(StreamType =:= continuous), pad_response=(CT =:= ?CONTENT_TYPE_MP3)},
 
     MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
-    ?LOG("spawned media_loop: ~p", [MediaLoop]),
+    lager:debug("spawned media_loop: ~p", [MediaLoop]),
 
     {noreply, S#state{media_loop=MediaLoop, media_file=MediaFile}, hibernate};
 
@@ -218,7 +218,7 @@ handle_info({add_listener, ListenerQ}, #state{media_file=#media_file{stream_url=
 
 handle_info({send_media, Socket}, #state{media_loop=undefined, media_file=MediaFile}=S) ->
     CallID = get(callid),
-    ?LOG("starting a new process to satisfy send media request"),
+    lager:debug("starting a new process to satisfy send media request"),
     MediaLoop = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
     ok = gen_tcp:controlling_process(Socket, MediaLoop),
     MediaLoop ! {add_socket, Socket},
@@ -235,7 +235,7 @@ handle_info({'EXIT', From, normal}, #state{media_loop=MediaLoop}=S) when From =:
 handle_info({'EXIT', From, Reason}, #state{media_loop=MediaLoop, media_file=MediaFile}=S) when From =:= MediaLoop ->
     CallID = get(callid),
     MediaLoop1 = spawn_link(fun() -> put(callid, CallID), play_media(MediaFile) end),
-    ?LOG("media stream process ~p unexpectly died ~s, restarting", [From, Reason]),
+    lager:debug("media stream process ~p unexpectly died ~s, restarting", [From, Reason]),
     {noreply, S#state{media_loop = MediaLoop1}, hibernate};
 
 handle_info(_Info, State) ->
@@ -253,12 +253,12 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{lsocket=undefined}) ->
-    ?LOG_END("stream server ~s termination", [_Reason]);
+    lager:debug("stream server ~s termination", [_Reason]);
 terminate(_Reason, #state{lsocket=LSock}) ->
     {ok, PortNo} = inet:port(LSock),
-    ?LOG("closing port ~b", [PortNo]),
+    lager:debug("closing port ~b", [PortNo]),
     gen_tcp:close(LSock),
-    ?LOG_END("stream server ~s termination", [_Reason]).
+    lager:debug("stream server ~s termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -278,12 +278,12 @@ send_media_resp(MediaName, Url, To) ->
     Resp = [{<<"Media-Name">>, MediaName}
             ,{<<"Stream-URL">>, Url}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    ?LOG("notifying requestor that ~s as available at ~s", [MediaName, Url]),
+    lager:debug("notifying requestor that ~s as available at ~s", [MediaName, Url]),
     wapi_media:publish_resp(To, Resp).
 
 start_shout_acceptor(Parent, LSock) ->
     {ok, PortNo} = inet:port(LSock),
-    ?LOG_START("shout acceptor listening on ~b for client connections", [PortNo]),
+    lager:debug("shout acceptor listening on ~b for client connections", [PortNo]),
     case gen_tcp:accept(LSock) of
         {ok, S} ->
             CallID = get(callid),
@@ -291,10 +291,10 @@ start_shout_acceptor(Parent, LSock) ->
 
             case wh_shout:get_request(S) of
                 void ->
-                    ?LOG_END("recieved invalid client request"),
+                    lager:debug("recieved invalid client request"),
                     gen_tcp:close(S);
                 _ ->
-                    ?LOG_END("new client connected"),
+                    lager:debug("new client connected"),
                     ok = gen_tcp:controlling_process(S, Parent),
                     Parent ! {send_media, S}
             end;
@@ -303,14 +303,14 @@ start_shout_acceptor(Parent, LSock) ->
 
 start_stream_acceptor(Parent, LSock) ->
     {ok, PortNo} = inet:port(LSock),
-    ?LOG_START("raw acceptor listening on ~b for client connections", [PortNo]),
+    lager:debug("raw acceptor listening on ~b for client connections", [PortNo]),
     case gen_tcp:accept(LSock) of
         {ok, S} ->
             CallID = get(callid),
             spawn(fun() -> put(callid, CallID), start_stream_acceptor(Parent, LSock) end),
 
             {ok, {Address, Port}} = inet:peername(S),
-            ?LOG_END("client connected from ~s:~b", [inet_parse:ntoa(Address), Port]),
+            lager:debug("client connected from ~s:~b", [inet_parse:ntoa(Address), Port]),
 
             _Req = wh_shout:get_request(S),
 
@@ -323,16 +323,16 @@ play_media(#media_file{contents=Contents, shout_header=Header}=MediaFile) ->
     play_media(MediaFile, [], 0, byte_size(Contents), <<>>, Header).
 
 play_media(#media_file{shout_response=ShoutResponse, shout_header=ShoutHeader}=MediaFile, [], _, Stop, _, _) ->
-    ?LOG_START("started new process to stream media to client"),
+    lager:debug("started new process to stream media to client"),
     receive
         {add_socket, S} ->
-            ?LOG("started stream"),
+            lager:debug("started stream"),
             ok = gen_tcp:send(S, [ShoutResponse]),
             play_media(MediaFile, [S], 0, Stop, <<>>, ShoutHeader);
         shutdown ->
-            ?LOG_END("stream shutdown")
+            lager:debug("stream shutdown")
     after ?MAX_WAIT_FOR_LISTENERS ->
-            ?LOG_END("stream stood up waiting for connection, outta here")
+            lager:debug("stream stood up waiting for connection, outta here")
     end;
 play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shout_header=ShoutHeader}=MediaFile
            ,Socks, Offset, Stop, SoFar, Header) ->
@@ -341,20 +341,20 @@ play_media(#media_file{continuous=Continuous, shout_response=ShoutResponse, shou
             ok = gen_tcp:send(S, [ShoutResponse]),
             play_media(MediaFile, [S | Socks], Offset, Stop, SoFar, Header);
         shutdown ->
-            ?LOG_END("stream shutdown")
+            lager:debug("stream shutdown")
     after 0 ->
-            ?LOG("playing at offset ~p", [Offset]),
+            lager:debug("playing at offset ~p", [Offset]),
             case wh_shout:play_chunk(MediaFile, Socks, Offset, Stop, SoFar, Header) of
                 {Socks1, Header1, Offset1, SoFar1} ->
-                    ?LOG("continue playing at offset ~p", [Offset1]),
+                    lager:debug("continue playing at offset ~p", [Offset1]),
                     play_media(MediaFile, Socks1, Offset1, Stop, SoFar1, Header1);
                 {done, Socks1} ->
                     case Continuous of
                         true ->
-                            ?LOG("end of stream, looping"),
+                            lager:debug("end of stream, looping"),
                             play_media(MediaFile, Socks1, 0, Stop, <<>>, ShoutHeader);
                         false ->
-                            ?LOG_END("end of stream"),
+                            lager:debug("end of stream"),
                             [gen_tcp:close(S) || S <- Socks1]
                     end
             end
@@ -372,16 +372,16 @@ fetch_attachment(Db, Doc, Attachment) ->
     fetch_attachment(Db, Doc, Attachment, 0).
 
 fetch_attachment(_DB, _Doc, _A, ?MAX_FETCH_RETRIES) ->
-    ?LOG_SYS("Failed to retrieve attachment"),
-    ?LOG_SYS("DB: ~s", [_DB]),
-    ?LOG_SYS("Doc: ~s", [_Doc]),
-    ?LOG_SYS("Attachment: ~s", [_A]),
+    lager:debug("Failed to retrieve attachment"),
+    lager:debug("DB: ~s", [_DB]),
+    lager:debug("Doc: ~s", [_Doc]),
+    lager:debug("Attachment: ~s", [_A]),
     {error, timeout};
 fetch_attachment(Db, Doc, Attachment, Retries) ->
     case couch_mgr:fetch_attachment(Db, Doc, Attachment) of
         {ok, _Content}=OK -> OK;
         {error, _Err} ->
-            ?LOG_SYS("Error getting attachment: ~s", [_Err]),
+            lager:debug("Error getting attachment: ~s", [_Err]),
             timer:sleep(100 * Retries),
             fetch_attachment(Db, Doc, Attachment, Retries+1)
     end.

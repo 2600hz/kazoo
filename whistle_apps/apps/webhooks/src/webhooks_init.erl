@@ -18,10 +18,10 @@ start_link() ->
 
 maybe_start_handler(Db) ->
     case couch_mgr:get_results(Db, <<"webhooks/crossbar_listing">>, [{<<"include_docs">>, true}]) of
-        {ok, []} -> ?LOG("No webhooks in ~s", [Db]), ignore;
+        {ok, []} -> lager:debug("No webhooks in ~s", [Db]), ignore;
         {ok, WebHooks} ->
-            ?LOG("Starting webhooks listener(s) for ~s: ~b", [Db, length(WebHooks)]),
+            lager:debug("Starting webhooks listener(s) for ~s: ~b", [Db, length(WebHooks)]),
             [webhooks_listener_sup:start_listener(Db, wh_json:get_value(<<"doc">>, Hook)) || Hook <- WebHooks];
         {error, _E} ->
-            ?LOG_SYS("Failed to load webhooks view for account ~s", [Db])
+            lager:debug("Failed to load webhooks view for account ~s", [Db])
     end.

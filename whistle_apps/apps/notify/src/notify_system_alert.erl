@@ -34,7 +34,7 @@ init() ->
     notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
-    ?LOG_SYS("init done for ~s", [?MODULE]).
+    lager:debug("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -47,7 +47,7 @@ handle_req(JObj, _Props) ->
     true = wapi_notifications:system_alert_v(JObj),
     whapps_util:put_callid(JObj),
 
-    ?LOG_START("an alert has occured, sending email notification"),
+    lager:debug("an alert has occured, sending email notification"),
 
     Account = case notify_util:get_account_doc(JObj) of
                   undefined -> wh_json:new();
@@ -73,7 +73,7 @@ handle_req(JObj, _Props) ->
             From = wh_json:get_value([<<"notifications">>, <<"alert">>, <<"send_from">>], Account
                                      ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
 
-            ?LOG("creating system alert notice"),
+            lager:debug("creating system alert notice"),
             
             Props = [{<<"From">>, From}
                      ,{<<"Level">>, AlertLevel}

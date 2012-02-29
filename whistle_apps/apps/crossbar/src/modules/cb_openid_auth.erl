@@ -53,17 +53,17 @@ init() ->
     crossbar_bindings:bind(<<"v1_resource.execute.get.openid_auth">>, ?MODULE, get).
 
 authorize(#cb_context{req_nouns=[{<<"openid_auth">>,[_]}], req_id=ReqId}) ->
-    ?LOG(ReqId, "authorizing request", []),
+    lager:debug("authorizing request"),
     true;
 authorize(#cb_context{req_nouns=[{<<"openid_auth">>,[<<"checkauth">>, _]}], req_id=ReqId}) ->
-    ?LOG(ReqId, "authorizing request", []),
+    lager:debug("authorizing request"),
     true.
 
 authenticate(#cb_context{req_nouns=[{<<"openid_auth">>,[_]}], req_id=ReqId}) ->
-    ?LOG(ReqId, "authenticating request", []),
+    lager:debug("authenticating request"),
     true;
 authenticate(#cb_context{req_nouns=[{<<"openid_auth">>,[<<"checkauth">>, _]}], req_id=ReqId}) ->
-    ?LOG(ReqId, "authenticating request", []),
+    lager:debug("authenticating request"),
     true.
 
 %%--------------------------------------------------------------------
@@ -111,10 +111,10 @@ resource_exists(<<"checkauth">>, _) ->
 validate(Context, Provider) ->
     case lists:member(Provider, ?IdPs) of
         true ->
-            ?LOG("requested openid identity provider ~s is supported", [Provider]),
+            lager:debug("requested openid identity provider ~s is supported", [Provider]),
             Context#cb_context{resp_status=success};
         false ->
-            ?LOG("requested openid identity provider ~s is unsupported", [Provider]),
+            lager:debug("requested openid identity provider ~s is unsupported", [Provider]),
             Context#cb_context{resp_status=error
                                ,resp_error_msg = <<"unsupported openid identity provider">>
                                ,resp_error_code=400
@@ -149,16 +149,16 @@ get(#cb_context{query_json=QS}=Context, Provider) ->
         %% Yay! Its friendly.. redirect the user to it
         {ok, AuthReq} when Popup ->
             Location = wh_util:to_binary(openid:authentication_url(AuthReq, Return, Realm)),
-            ?LOG("providing redirect location ~s as openid auth ~s", [Location, Seed]),
+            lager:debug("providing redirect location ~s as openid auth ~s", [Location, Seed]),
             Context#cb_context{resp_data=wh_json:from_list([{"location", Location}])
                                ,resp_status=success};
         {ok, AuthReq} ->
             Location = wh_util:to_list(openid:authentication_url(AuthReq, Return, Realm)),
-            ?LOG("redirecting client to ~s as openid auth ~s", [Location, Seed]),
+            lager:debug("redirecting client to ~s as openid auth ~s", [Location, Seed]),
             redirect_client(Location, Context);
         %% Must be grumpy today
         {error, Error} ->
-            ?LOG("openid auth srv prepare: ~p", [Error]),
+            lager:debug("openid auth srv prepare: ~p", [Error]),
             E = wh_util:to_binary(Error),
             crossbar_util:response(fatal, E, Context)
     end.
@@ -185,17 +185,17 @@ get(#cb_context{query_json=QS}=Context, <<"checkauth">>, CacheKey) ->
             case find_account(Identity, Provider) of
                 %% ...we do, we do
                 {ok, AccountId} when Popup->
-                    ?LOG("determined that ~s id ~s is associated with account ~s", [Provider, Identity, AccountId]),
+                    lager:debug("determined that ~s id ~s is associated with account ~s", [Provider, Identity, AccountId]),
                     create_token(IdentityUrl, AccountId, Context);
                 {ok, AccountId} ->
                     #cb_context{auth_token=AuthToken} = create_token(IdentityUrl, AccountId, Context),
                     Location = wh_util:to_list(list_to_binary([AppUrl, "?account_id=", AccountId, "&token=", AuthToken])),
-                    ?LOG("redirecting client to web app url: ~s", [Location]),
+                    lager:debug("redirecting client to web app url: ~s", [Location]),
                     redirect_client(Location, Context);
                 %% ...nope-ish
                 {error, _} when Popup->
                     JObj = wh_json:from_list(extract_attributes(QS)),
-                    ?LOG("determined that ~s id ~s (~s) has no associated account", [Provider, Identity, wh_json:get_value(<<"email">>, JObj)]),
+                    lager:debug("determined that ~s id ~s (~s) has no associated account", [Provider, Identity, wh_json:get_value(<<"email">>, JObj)]),
                     Context#cb_context{resp_data=JObj
                                        ,resp_status=error
                                        ,resp_error_code=400
@@ -204,12 +204,12 @@ get(#cb_context{query_json=QS}=Context, <<"checkauth">>, CacheKey) ->
                 {error, _}  ->
                     RespQS = mochiweb_util:urlencode(extract_attributes(QS)),
                     Location = list_to_binary([RegUrl, "?", RespQS]),
-                    ?LOG("redirecting client to registration url: ~s", [Location]),
+                    lager:debug("redirecting client to registration url: ~s", [Location]),
                     redirect_client(Location, Context)
             end;
         %% bugger
         {error, Error} ->
-            ?LOG("openid auth srv verify error: ~p", [Error]),
+            lager:debug("openid auth srv verify error: ~p", [Error]),
             E = wh_util:to_binary(Error),
             crossbar_util:response(error, E, 400, Context)
     end.
@@ -260,10 +260,10 @@ find_account(Identifier, Provider) ->
             {error, not_registered};
         {ok, [JObj]} ->
             AccountId = wh_json:get_value([<<"value">>, <<"account_id">>], JObj),
-            ?LOG("found openid ~s belongs to account ~s", [AccountId]),
+            lager:debug("found openid ~s belongs to account ~s", [AccountId]),
             {ok, AccountId};
         {error, R}=E ->
-            ?LOG("failed to find account for ~s from ~s, ~p", [Identifier, Provider, R]),
+            lager:debug("failed to find account for ~s from ~s, ~p", [Identifier, Provider, R]),
             E
     end.
 
@@ -285,13 +285,13 @@ create_token(IdentityUrl, AccountId, Context) ->
     case couch_mgr:save_doc(?TOKEN_DB, Token) of
         {ok, Doc} ->
             AuthToken = wh_json:get_value(<<"_id">>, Doc),
-            ?LOG("created new local auth token ~s", [AuthToken]),
+            lager:debug("created new local auth token ~s", [AuthToken]),
             crossbar_util:response(wh_json:from_list([{<<"account_id">>, AccountId}
                                                       ,{<<"owner_id">>, <<>>}
                                                      ])
                                    ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, R} ->
-            ?LOG("could not create new local auth token, ~p", [R]),
+            lager:debug("could not create new local auth token, ~p", [R]),
             crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
     end.
 

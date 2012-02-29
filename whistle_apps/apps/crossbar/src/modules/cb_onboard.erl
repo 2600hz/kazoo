@@ -570,11 +570,11 @@ create_response(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
     case couch_mgr:save_doc(?TOKEN_DB, wh_json:from_list(Token)) of
         {ok, Doc} ->
             AuthToken = wh_json:get_value(<<"_id">>, Doc),
-            ?LOG("created new local auth token ~s", [AuthToken]),
+            lager:debug("created new local auth token ~s", [AuthToken]),
             crossbar_util:response(wh_json:set_value(<<"auth_token">>, AuthToken, JObj)
                                    ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, R} ->
-            ?LOG("could not create new local auth token, ~p", [R]),
+            lager:debug("could not create new local auth token, ~p", [R]),
             crossbar_util:response(error, JObj, 400, Context)
     end.
 

@@ -25,13 +25,14 @@
 
 -spec start_link/0 :: () -> 'ignore'.
 start_link() ->
+    put(callid, ?LOG_SYSTEM_ID),
     _ = load_config(?CONFIG_FILE_PATH),
-    ?LOG("loaded couch configs"),
+    lager:debug("loaded couch configs"),
     ignore.
 
 -spec load_config/1 :: (file:name()) -> 'ok' | {'error', 'enoent'}.
 load_config(Path) ->
-    ?LOG("loading ~s", [Path]),
+    lager:debug("loading ~s", [Path]),
     case file:consult(Path) of
         {ok, Startup} ->
             _ = [cache_from_file(T) || T <- Startup],

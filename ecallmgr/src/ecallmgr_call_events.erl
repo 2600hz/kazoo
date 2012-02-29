@@ -107,7 +107,7 @@ publish_channel_destroy(Props) ->
 -spec init/1 :: ([atom() | ne_binary(),...]) -> {'ok', #state{}, 0}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
-    ?LOG_START("starting call events listener"),
+    lager:debug("starting call events listener"),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
     {'ok', #state{node=Node, callid=CallId, sanity_check_tref=TRef, self=self()}, 0}.
 
@@ -141,12 +141,12 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({channel_destroyed, Props}, State) ->
-    ?LOG("our channel has been destroyed, preparing to shutdown"),
+    lager:debug("our channel has been destroyed, preparing to shutdown"),
     process_channel_event(Props, State),
     erlang:send_after(5000, self(), {shutdown}),
     {noreply, State};
 handle_cast({transferer, _}, State) ->
-    ?LOG("call control has been transfered."),
+    lager:debug("call control has been transfered."),
     {stop, normal, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -174,51 +174,51 @@ handle_info({call_event, {event, [CallId | Props]}}, #state{callid=CallId}=State
     end,
     {'noreply', State};
 handle_info({nodedown, _}, #state{node=Node, is_node_up=true}=State) ->
-    ?LOG_SYS("lost connection to node ~s, waiting for reconnection", [Node]),
+    lager:debug("lost connection to node ~s, waiting for reconnection", [Node]),
     erlang:monitor_node(Node, false),
     TRef = erlang:send_after(?NODE_CHECK_PERIOD, self(), {check_node_status}),
     {'noreply', State#state{node_down_tref=TRef, is_node_up=false}, hibernate};
 handle_info({check_node_status}, #state{is_node_up=false, failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
-    ?LOG("node still not up after ~p checks, giving up", [FNC]),
+    lager:debug("node still not up after ~p checks, giving up", [FNC]),
     {stop, normal, State};
 handle_info({check_node_status}, #state{node=Node, callid=CallId, is_node_up=false, failed_node_checks=FNC}=State) ->
     case ecallmgr_util:is_node_up(Node, CallId) of
         true ->
-            ?LOG("reconnected to node ~s and call is active", [Node]),
+            lager:debug("reconnected to node ~s and call is active", [Node]),
             {'noreply', State#state{node_down_tref=undefined, is_node_up=true, failed_node_checks=0}, hibernate};
         false ->
-            ?LOG("node ~s still not up, waiting ~pms to test again", [Node, ?NODE_CHECK_PERIOD]),
+            lager:debug("node ~s still not up, waiting ~pms to test again", [Node, ?NODE_CHECK_PERIOD]),
             TRef = erlang:send_after(?NODE_CHECK_PERIOD, self(), {check_node_status}),
             {'noreply', State#state{node_down_tref=TRef, failed_node_checks=FNC+1}}
     end;
 handle_info(timeout, #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
-    ?LOG("unable to establish initial connectivity to the media node, laterz"),
+    lager:debug("unable to establish initial connectivity to the media node, laterz"),
     {stop, normal, State};
 handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC}=State) ->
     erlang:monitor_node(Node, true),
     %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
     case freeswitch:handlecall(Node, CallId) of
         ok ->
-            ?LOG("listening to channel events from ~s", [Node]),
+            lager:debug("listening to channel events from ~s", [Node]),
             {'noreply', State, hibernate};
         timeout ->
-            ?LOG("timed out trying to listen to channel events from ~s, trying again", [Node]),
+            lager:debug("timed out trying to listen to channel events from ~s, trying again", [Node]),
             {'noreply', State#state{failed_node_checks=FNC+1}, 1000};
         {'error', badsession} ->
-            ?LOG("bad session received when setting up listener for events from ~s", [Node]),
+            lager:debug("bad session received when setting up listener for events from ~s", [Node]),
             {stop, normal, State};
         _E ->
-            ?LOG("failed to setup listener for channel events from ~s: ~p", [Node, _E]),
+            lager:debug("failed to setup listener for channel events from ~s: ~p", [Node, _E]),
             {stop, normal, State}
     end;
 handle_info({sanity_check}, #state{node=Node, callid=CallId}=State) ->
     case freeswitch:api(Node, uuid_exists, wh_util:to_list(CallId)) of
         {'ok', <<"true">>} -> 
-            ?LOG("listener passed sanity check, call is still up"),
+            lager:debug("listener passed sanity check, call is still up"),
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
             {'noreply', State#state{sanity_check_tref=TRef}};
         _E ->
-            ?LOG("But I tried, didn't I? Goddamnit, at least I did that"),
+            lager:debug("But I tried, didn't I? Goddamnit, at least I did that"),
             {stop, normal, State#state{sanity_check_tref=undefined}}
     end;
 handle_info({shutdown}, State) ->
@@ -240,7 +240,7 @@ handle_info(_Info, State) ->
 terminate(_Reason, #state{node_down_tref=NDTRef, sanity_check_tref=SCTRef}) ->   
     catch (erlang:cancel_timer(SCTRef)), 
     catch (erlang:cancel_timer(NDTRef)),
-    ?LOG_END("goodbye and thanks for all the fish").
+    lager:debug("goodbye and thanks for all the fish").
 
 %%--------------------------------------------------------------------
 %% @private
@@ -320,9 +320,9 @@ publish_event(Props) ->
     put(callid, CallId),
     case props:get_value(<<"Application-Name">>, Props) of
         undefined ->
-            ?LOG("publishing channel event ~s", [EventName]);
+            lager:debug("publishing channel event ~s", [EventName]);
         ApplicationName -> 
-            ?LOG("publishing channel command ~s ~s", [ApplicationName, EventName])
+            lager:debug("publishing channel command ~s ~s", [ApplicationName, EventName])
     end,
     wapi_call:publish_event(CallId, Props).
 
@@ -386,7 +386,7 @@ event_specific(<<"DETECTED_TONE">>, _, Prop) ->
 event_specific(<<"DTMF">>, _, Prop) ->
     Pressed = props:get_value(<<"DTMF-Digit">>, Prop),
     Duration = props:get_value(<<"DTMF-Duration">>, Prop),
-    ?LOG("received DTMF ~s (~s)", [Pressed, Duration]),
+    lager:debug("received DTMF ~s (~s)", [Pressed, Duration]),
     [{<<"DTMF-Digit">>, Pressed}
      ,{<<"DTMF-Duration">>, Duration}
     ];
@@ -419,13 +419,16 @@ get_fs_var(Node, CallId, Var, Default) ->
 
 -spec should_publish/3 :: (ne_binary(), ne_binary(), boolean()) -> boolean().
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, false) ->
-    ?LOG("suppressing bridge execute complete in favour the whistle masquerade of this event"),
+    lager:debug("suppressing bridge execute complete in favour the whistle masquerade of this event"),
     false;
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, false) ->
-    ?LOG("suppressing intercept execute complete in favour the whistle masquerade of this event"),
+    lager:debug("suppressing intercept execute complete in favour the whistle masquerade of this event"),
     false;
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>, false) ->
-    ?LOG("suppressing execute_extension execute complete in favour the whistle masquerade of this event"),
+    lager:debug("suppressing execute_extension execute complete in favour the whistle masquerade of this event"),
+    false;
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"endless_playback">>, false) ->
+    lager:debug("suppressing endless_playback execute complete in favour the whistle masquerade of this event"),
     false;
 should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
     props:get_value(Application, ?FS_APPLICATION_NAMES) =/= undefined;

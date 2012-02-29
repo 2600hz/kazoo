@@ -20,22 +20,22 @@ api_call(BindEvent, ApiFun) when is_function(ApiFun, 1) ->
         ApiFun(ApiMod)
     catch
         error:badarg ->
-            ?LOG_SYS("api module ~s not found", [Wapi]),
+            lager:debug("api module ~s not found", [Wapi]),
             case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
                 non_existing ->
-                    ?LOG_SYS("beam file not found for ~s, fail", [Wapi]),
+                    lager:debug("beam file not found for ~s, fail", [Wapi]),
                     {error, non_existing};
                 _Path ->
-                    ?LOG_SYS("beam file found: ~s", [_Path]),
+                    lager:debug("beam file found: ~s", [_Path]),
                     wh_util:to_atom(Wapi, true), %% put atom into atom table
                     api_call(BindEvent, ApiFun)
             end;
         error:undef ->
-            ?LOG_SYS("module ~s doesn't exist or fun isn't exported", [Wapi]),
+            lager:debug("module ~s doesn't exist or fun isn't exported", [Wapi]),
             {error, undefined};
         _E:R ->
             ST = erlang:get_stacktrace(),
-            ?LOG("exception in executing ApiFun: ~p:~p", [_E,R]),
-            ?LOG_STACKTRACE(ST),
+            lager:debug("exception in executing ApiFun: ~p:~p", [_E,R]),
+            [lager:debug("st: ~p", [T]) || T <- ST],
             {error, R}
     end.

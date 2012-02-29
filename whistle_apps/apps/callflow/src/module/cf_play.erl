@@ -26,13 +26,13 @@ handle(Data, Call) ->
                 <<"system_media", _/binary>> = Path -> Path;
                 <<"local_stream://",_/binary>> = Path -> Path;
                 Path ->
-                    ?LOG("prepending media ID with /~s/", [AccountId]),
+                    lager:debug("prepending media ID with /~s/", [AccountId]),
                     <<$/, (wh_util:to_binary(AccountId))/binary, $/, Path/binary>>
             end,
     case wh_json:is_false(<<"answer">>, Data) of
         true -> ok;
         false -> whapps_call_command:answer(Call)
     end,
-    ?LOG("playing media ~s", [Media]),
+    lager:debug("playing media ~s", [Media]),
     whapps_call_command:b_play(Media, wh_json:get_value(<<"terminators">>, Data), Call),
     cf_exe:continue(Call).

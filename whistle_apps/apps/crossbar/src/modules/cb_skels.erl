@@ -1,15 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
 %%%
 %%% @end
-%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
-%%% Contributors: Karl Anderson
-%%%               James Aimonetti
-%%% 
+%%% @contributors:
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_skels).
 
@@ -34,7 +32,7 @@
          ,finish_request/1
         ]).
 
--include("../../include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -define(PVT_TYPE, <<"skel">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
@@ -52,8 +50,8 @@
 %%--------------------------------------------------------------------
 -spec init/0 :: () -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v1_resource.authenticate.skels">>, ?MODULE, authenticate),
-    _ = crossbar_bindings:bind(<<"v1_resource.authorize.skels">>, ?MODULE, authorize),
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.skels">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.skels">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.skels">>, ?MODULE, content_types_provided),
@@ -69,7 +67,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.delete.skels">>, ?MODULE, delete),
     _ = crossbar_bindings:bind(<<"v1_resource.etag.skels">>, ?MODULE, etag),
     _ = crossbar_bindings:bind(<<"v1_resource.expires.skels">>, ?MODULE, expires),
-    _ = crossbar_bindings:bind(<<"v1_resource.finish_request.skels">>, ?MODULE, finish_request),
+    _ = crossbar_bindings:bind(<<"v1_resource.finish_request">>, ?MODULE, finish_request),
     ok.
 
 %%--------------------------------------------------------------------

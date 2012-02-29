@@ -312,25 +312,43 @@ basic_publish(Exchange, Queue, Payload, ContentType) ->
 
 basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_list(Payload) ->
     basic_publish(Exchange, Queue, iolist_to_binary(Payload), ContentType, Prop);
-basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_binary(Payload),
+basic_publish(Exchange, Queue, Payload, ContentType, Props) when is_binary(Payload),
                                                                 is_binary(Exchange),
                                                                 is_binary(Queue),
                                                                 is_binary(ContentType),
-                                                                is_list(Prop) ->
+                                                                is_list(Props) ->
     BP = #'basic.publish'{
       exchange = Exchange
       ,routing_key = Queue
-      ,mandatory = props:get_value(mandatory, Prop, false)
-      ,immediate = props:get_value(immediate, Prop, false)
+      ,mandatory = props:get_value(mandatory, Props, false)
+      ,immediate = props:get_value(immediate, Props, false)
      },
 
     %% Add the message to the publish, converting to binary
-    AM = #'amqp_msg'{
-      payload = Payload
-      ,props=#'P_basic'{content_type=ContentType}
+    %% See http://www.rabbitmq.com/amqp-0-9-1-reference.html#class.basic
+    MsgProps = #'P_basic'{
+      content_type = ContentType % MIME content type
+      ,content_encoding = props:get_value(content_encoding, Props) % MIME encoding
+      ,headers = props:get_value(headers, Props) % message headers
+      ,delivery_mode = props:get_value(delivery_mode, Props) % non-persistent(1) or persistent(2)
+      ,priority = props:get_value(priority, Props) % message priority, 0-9
+      ,correlation_id = props:get_value(correlation_id, Props) % correlation identifier
+      ,reply_to = props:get_value(reply_to, Props) % address to reply to
+      ,expiration = props:get_value(expiration, Props) % expires time
+      ,message_id = props:get_value(message_id, Props) % app message id
+      ,timestamp = props:get_value(timestamp, Props) % message timestamp
+      ,type = props:get_value(type, Props) % message type
+      ,user_id = props:get_value(user_id, Props) % creating user
+      ,app_id = props:get_value(app_id, Props) % creating app
+      ,cluster_id = props:get_value(cluster_id, Props) % cluster
      },
 
-    ?AMQP_DEBUG andalso ?LOG("publish ~s ~s (~p): ~s", [Exchange, Queue, Prop, Payload]),
+    AM = #'amqp_msg'{
+      payload = Payload
+      ,props = MsgProps
+     },
+
+    ?AMQP_DEBUG andalso lager:debug("publish ~s ~s (~p): ~s", [Exchange, Queue, Props, Payload]),
 
     amqp_mgr:publish(BP, AM).
 
@@ -400,7 +418,7 @@ new_exchange(Exchange, Type, Options) ->
       ,nowait = props:get_value(nowait, Options, false)
       ,arguments = props:get_value(arguments, Options, [])
      },
-    ?AMQP_DEBUG andalso ?LOG("create new ~s exchange: ~s", [Type, Exchange]),
+    ?AMQP_DEBUG andalso lager:debug("create new ~s exchange: ~s", [Type, Exchange]),
     amqp_mgr:misc_req(ED).
 
 %%------------------------------------------------------------------------------
@@ -509,11 +527,14 @@ new_queue(Queue, Options) when is_binary(Queue) ->
       ,arguments = props:get_value(arguments, Options, [])
      },
     case amqp_mgr:consume(QD) of
+        {'ok', #'queue.declare_ok'{queue=Q}} ->
+            ?AMQP_DEBUG andalso lager:debug("create queue: ~s)", [Queue]),
+            Q;
         {'ok', Q} ->
-            ?AMQP_DEBUG andalso ?LOG("create queue(~p) ~s)", [Options, Queue]),
+            ?AMQP_DEBUG andalso lager:debug("create queue(~p) ~s)", [Options, Queue]),
             Q;
         {error, _Other} ->
-            ?AMQP_DEBUG andalso ?LOG("error creating queue(~p): ~p", [Options, _Other]),
+            ?AMQP_DEBUG andalso lager:debug("error creating queue(~p): ~p", [Options, _Other]),
             {'error', 'amqp_error'}
     end.
 
@@ -572,7 +593,7 @@ queue_delete(Queue, Prop) ->
       ,if_empty = props:get_value(if_empty, Prop, false)
       ,nowait = props:get_value(nowait, Prop, true)
      },
-    ?AMQP_DEBUG andalso ?LOG("delete queue ~s", [Queue]),
+    ?AMQP_DEBUG andalso lager:debug("delete queue ~s", [Queue]),
     amqp_mgr:consume(QD).
 
 %%------------------------------------------------------------------------------
@@ -685,10 +706,10 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
      },
     case amqp_mgr:consume(QB) of
         ok ->
-            ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
+            ?AMQP_DEBUG andalso lager:debug("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
             ok;
         {error, _E}=Else ->
-            ?AMQP_DEBUG andalso ?LOG("failed to bind queue ~s: ~p", [Queue, Else]),
+            ?AMQP_DEBUG andalso lager:debug("failed to bind queue ~s: ~p", [Queue, Else]),
             Else
     end.
 
@@ -765,7 +786,7 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
       ,routing_key = Routing
       ,arguments = []
      },
-    ?AMQP_DEBUG andalso ?LOG("unbound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
+    ?AMQP_DEBUG andalso lager:debug("unbound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
     amqp_mgr:consume(QU).
 
 %%------------------------------------------------------------------------------
@@ -791,13 +812,13 @@ basic_consume(Queue, Options) ->
      },
     case amqp_mgr:consume(BC) of
         {error, E}=Err ->
-            ?AMQP_DEBUG andalso ?LOG("error when trying to consume on ~s: ~p", [Queue, E]),
+            ?AMQP_DEBUG andalso lager:debug("error when trying to consume on ~s: ~p", [Queue, E]),
             Err;
         {ok, Pid} when is_pid(Pid) ->
-            ?AMQP_DEBUG andalso ?LOG("started consume of queue(~p) ~s", [Options, Queue]),
+            ?AMQP_DEBUG andalso lager:debug("started consume of queue(~p) ~s", [Options, Queue]),
             ok;
         Else ->
-            ?AMQP_DEBUG andalso ?LOG("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Else]),
+            ?AMQP_DEBUG andalso lager:debug("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Else]),
             Else
     end.
 
@@ -810,7 +831,7 @@ basic_consume(Queue, Options) ->
 %%------------------------------------------------------------------------------
 -spec basic_cancel/1 :: (ne_binary()) -> 'ok'.
 basic_cancel(Queue) ->
-    ?AMQP_DEBUG andalso ?LOG("cancel consume for queue ~s", [Queue]),
+    ?AMQP_DEBUG andalso lager:debug("cancel consume for queue ~s", [Queue]),
     amqp_mgr:consume(#'basic.cancel'{consumer_tag = Queue, nowait = false}).
 
 %%------------------------------------------------------------------------------
@@ -852,7 +873,7 @@ is_json(#'P_basic'{content_type=CT}) ->
 %%------------------------------------------------------------------------------
 -spec basic_ack/1 :: (integer()) -> 'ok'.
 basic_ack(DTag) ->
-    ?AMQP_DEBUG andalso ?LOG("basic ack of ~s", [DTag]),
+    ?AMQP_DEBUG andalso lager:debug("basic ack of ~s", [DTag]),
     amqp_mgr:consume(#'basic.ack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
@@ -864,7 +885,7 @@ basic_ack(DTag) ->
 %%------------------------------------------------------------------------------
 -spec basic_nack/1 :: (integer()) -> 'ok'.
 basic_nack(DTag) ->
-    ?AMQP_DEBUG andalso ?LOG("basic nack of ~s", [DTag]),
+    ?AMQP_DEBUG andalso lager:debug("basic nack of ~s", [DTag]),
     amqp_mgr:consume(#'basic.nack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
@@ -885,7 +906,7 @@ is_host_available() ->
 %%------------------------------------------------------------------------------
 -spec basic_qos/1 :: (non_neg_integer()) -> 'ok'.
 basic_qos(PreFetch) when is_integer(PreFetch) ->
-    ?AMQP_DEBUG andalso ?LOG("set basic qos prefetch to ~p", [PreFetch]),
+    ?AMQP_DEBUG andalso lager:debug("set basic qos prefetch to ~p", [PreFetch]),
     amqp_mgr:consume(#'basic.qos'{prefetch_count = PreFetch}).
 
 %%------------------------------------------------------------------------------
@@ -897,7 +918,7 @@ basic_qos(PreFetch) when is_integer(PreFetch) ->
 %%------------------------------------------------------------------------------
 -spec register_return_handler/0 :: () -> 'ok'.
 register_return_handler() ->
-    ?AMQP_DEBUG andalso ?LOG("registering return handler", []),
+    ?AMQP_DEBUG andalso lager:debug("registering return handler", []),
     amqp_mgr:register_return_handler().
 
 %%------------------------------------------------------------------------------
@@ -907,30 +928,27 @@ register_return_handler() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec encode/1 :: (ne_binary()) -> ne_binary().
-encode(<<"*">>) ->
-    <<"*">>;
-encode(<<"#">>) ->
-    <<"#">>;
-encode(Binary) ->
-    do_encode(Binary, <<>>).
+encode(Bin) ->
+    << <<(encode_char(B))/binary>> || <<B>> <= Bin >>.
 
--spec do_encode/2 :: (binary(), binary()) -> ne_binary().
-do_encode(<<>>, Acc) ->
-    Acc;
-do_encode(<<C:8, Rest/binary>>, Acc) when ?KEY_SAFE(C) ->
-    do_encode(Rest, <<Acc/binary, (<<C>>)/binary>>);
-do_encode(<<$\s, Rest/binary>>, Acc) ->
-    do_encode(Rest, <<Acc/binary, $+>>);
-do_encode(<<$., Rest/binary>>, Acc) ->
-    do_encode(Rest, <<Acc/binary, "%2E">>);
-do_encode(<<Hi:4, Lo:4, Rest/binary>>, Acc) ->
-    do_encode(Rest, <<Acc/binary, $%, (hexdigit(Hi))/binary, (hexdigit(Lo))/binary>>).
+-define(HI4(C), (C band 2#11110000) bsr 4).
+-define(LO4(C), (C band 2#00001111)).
 
--spec hexdigit/1 :: (byte()) -> <<_:8>>.
-hexdigit(C) when C < 10 ->
-    <<($0 + C)>>;
-hexdigit(C) when C < 16 ->
-    <<($A + (C - 10))>>.
+encode_char(C) when ?KEY_SAFE(C) ->
+    <<C>>;
+encode_char($\s) ->
+    <<$+>>;
+encode_char($.) ->
+    <<$%, $2, $E>>;
+encode_char(C) ->
+    Hi4 = ?HI4(C),
+    Lo4 = ?LO4(C),
+    <<$%, (hexint(Hi4)), (hexint(Lo4))>>.
+
+hexint(C) when C < 10 ->
+    ($0 + C);
+hexint(C) when C < 16 ->
+    ($A + (C - 10)).
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).

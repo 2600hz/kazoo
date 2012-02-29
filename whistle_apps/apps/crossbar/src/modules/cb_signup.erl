@@ -77,6 +77,7 @@ start_link() ->
     {ok, proc_lib:spawn_link(?MODULE, init_it, [])}.
 
 init_it() ->
+    put(callid, ?LOG_SYSTEM_ID),
     State = init_state(),
     cleanup_loop(State).
 
@@ -215,7 +216,7 @@ validate_new_signup(#cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec validate_account/2 :: (wh_json:json_object() | 'undefined', #cb_context{}) -> {path_tokens(), wh_json:json_object() | 'undefined'}.
 validate_account(undefined, _) ->
-    ?LOG("signup did not contain an account definition"),
+    lager:debug("signup did not contain an account definition"),
     {[<<"account">>], undefined};
 validate_account(Account, Context) ->
     case is_unique_realm(wh_json:get_value(<<"realm">>, Account))
@@ -223,10 +224,10 @@ validate_account(Account, Context) ->
         false ->
             {[<<"duplicate realm">>], undefined};
         #cb_context{resp_status=success, doc=Acct} ->
-            ?LOG("signup account is valid"),
+            lager:debug("signup account is valid"),
             {[], Acct};
         #cb_context{resp_data=Errors} ->
-            ?LOG("signup account definition is not valid"),
+            lager:debug("signup account definition is not valid"),
             {Errors, undefined}
     end.
 
@@ -238,15 +239,15 @@ validate_account(Account, Context) ->
 %%--------------------------------------------------------------------
 -spec validate_user/2 :: (wh_json:json_object() | 'undefined', #cb_context{}) -> {path_tokens(), 'undefined' | wh_json:json_object()}.
 validate_user(undefined, _) ->
-    ?LOG("signup did not contain an user definition"),
+    lager:debug("signup did not contain an user definition"),
     {[<<"user">>], undefined};
 validate_user(User, Context) ->
     case cb_users:create_user(Context#cb_context{req_data=User}) of
         #cb_context{resp_status=success, doc=Usr} ->
-            ?LOG("signup user is valid"),
+            lager:debug("signup user is valid"),
             {[], Usr};
         #cb_context{resp_data=Errors} ->
-            ?LOG("signup user definition is not valid"),
+            lager:debug("signup user definition is not valid"),
             {Errors, undefined}
     end.
 
@@ -260,7 +261,7 @@ validate_user(User, Context) ->
 create_activation_key() ->
     ActivationKey =
         wh_util:to_hex_binary(crypto:rand_bytes(32)),
-    ?LOG("created new activation key ~s", [ActivationKey]),
+    lager:debug("created new activation key ~s", [ActivationKey]),
     ActivationKey.
 
 %%--------------------------------------------------------------------
@@ -274,13 +275,13 @@ check_activation_key(ActivationKey, Context) ->
     case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_KEYS, [{<<"key">>, ActivationKey}
                                                                    ,{<<"include_docs">>, true}]) of
         {ok, []} ->
-            ?LOG("activation key not found"),
+            lager:debug("activation key not found"),
             crossbar_util:response(error, <<"invalid activation key">>, 403, Context);
         {ok, [JObj|_]} ->
-            ?LOG("activation key is valid"),
+            lager:debug("activation key is valid"),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"doc">>, JObj)};
         _ ->
-            ?LOG("db error while looking up activation key"),
+            lager:debug("db error while looking up activation key"),
             crossbar_util:response(error, <<"invalid activation key">>, 403, Context)
     end.
 
@@ -314,10 +315,10 @@ activate_account(Account) ->
     case crossbar_bindings:fold(Event, Payload) of
         [_, #cb_context{resp_status=success, resp_data=JObj} | _] ->
             AccountId = wh_json:get_value(<<"id">>, JObj),
-            ?LOG("created new account ~s", [AccountId]),
+            lager:debug("created new account ~s", [AccountId]),
             {ok, JObj};
         _ ->
-            ?LOG("could not create a new account"),
+            lager:debug("could not create a new account"),
             {error, creation_failed}
     end.
 
@@ -340,10 +341,10 @@ activate_user(Account, User) ->
     case crossbar_bindings:fold(Event, Payload) of
         [_, #cb_context{resp_status=success, resp_data=JObj} | _] ->
             UserId = wh_json:get_value(<<"id">>, JObj),
-            ?LOG("created new user ~s in account ~s", [UserId, AccountId]),
+            lager:debug("created new user ~s in account ~s", [UserId, AccountId]),
             {ok, Account, JObj};
         _ ->
-            ?LOG("could not create a new user in account ~s", [AccountId]),
+            lager:debug("could not create a new user in account ~s", [AccountId]),
             {error, creation_failed}
     end.
 
@@ -360,7 +361,7 @@ exec_register_command(_, #state{register_cmd=undefined}) ->
 exec_register_command(Context, #state{register_cmd=CmdTmpl}) ->
     Props = template_props(Context),
     {ok, Cmd} = CmdTmpl:render(Props),
-    ?LOG("executing register command ~s", [Cmd]),
+    lager:debug("executing register command ~s", [Cmd]),
     os:cmd(binary_to_list(iolist_to_binary(Cmd))).
 
 %%--------------------------------------------------------------------
@@ -392,9 +393,9 @@ send_activation_email(#cb_context{doc=JObj, req_id=ReqId}=Context, #state{activa
              ,create_body(State, Props, [])
             },
     Encoded = mimemail:encode(Email),
-    ?LOG("sending activation email to ~s", [To]),
+    lager:debug("sending activation email to ~s", [To]),
     gen_smtp_client:send({From, [To], Encoded}, [{relay, "localhost"}]
-                         ,fun(X) -> ?LOG(ReqId, "sending email to ~s resulted in ~p", [To, X]) end).
+                         ,fun(X) -> put(callid, ReqId), lager:debug("sending email to ~s resulted in ~p", [To, X]) end).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -489,7 +490,7 @@ is_unique_realm(Realm) ->
 %%--------------------------------------------------------------------
 -spec cleanup_signups/1 :: (#state{}) -> 'ok'.
 cleanup_signups(#state{signup_lifespan=Lifespan}) ->
-    ?LOG_SYS("cleaning up signups"),
+    lager:debug("cleaning up signups"),
     Expiration = calendar:datetime_to_gregorian_seconds(calendar:universal_time()) + Lifespan,
     case couch_mgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_CREATED, [{<<"startkey">>, 0}
                                                                       ,{<<"endkey">>, Expiration}
@@ -511,7 +512,7 @@ cleanup_signups(#state{signup_lifespan=Lifespan}) ->
 init_state() ->
     case get_configs() of
         {ok, Terms} ->
-            ?LOG_SYS("loaded config from ~s", [?SIGNUP_CONF]),
+            lager:debug("loaded config from ~s", [?SIGNUP_CONF]),
             Defaults = #state{},
             #state{cleanup_interval =
                        props:get_integer_value(cleanup_interval, Terms, Defaults#state.cleanup_interval)
@@ -529,7 +530,7 @@ init_state() ->
                        compile_template(props:get_value(activation_email_subject, Terms), cb_signup_email_subject)
                   };
         {error, _} ->
-            ?LOG_SYS("could not read config from ~s", [?SIGNUP_CONF]),
+            lager:debug("could not read config from ~s", [?SIGNUP_CONF]),
             #state{}
     end.
 
@@ -557,7 +558,7 @@ compile_template(Template, Name) when not is_binary(Template) ->
                    BasePath = code:lib_dir(crossbar, priv),
                    lists:concat([BasePath, "/signup/", Template])
            end,
-    ?LOG("sourcing template from file at ~s", [Path]),
+    lager:debug("sourcing template from file at ~s", [Path]),
     do_compile_template(Path, Name);
 compile_template(Template, Name) ->
     do_compile_template(Template, Name).
@@ -572,13 +573,13 @@ compile_template(Template, Name) ->
 do_compile_template(Template, Name) ->
     case erlydtl:compile(Template, Name) of
         {ok, Name} ->
-            ?LOG("compiled ~s template", [Name]),
+            lager:debug("compiled ~s template", [Name]),
             Name;
         ok ->
-            ?LOG("compiled ~s template file", [Name]),
+            lager:debug("compiled ~s template file", [Name]),
             Name;
         _E ->
-            ?LOG("could not compile ~s template, ignoring", [Name]),
+            lager:debug("could not compile ~s template, ignoring", [Name]),
             undefined
     end.
 

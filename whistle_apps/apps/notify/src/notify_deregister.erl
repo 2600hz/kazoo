@@ -35,7 +35,7 @@ init() ->
     notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
-    ?LOG_SYS("init done for ~s", [?MODULE]).
+    lager:debug("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -48,7 +48,7 @@ handle_req(JObj, _Props) ->
     true = wapi_notifications:deregister_v(JObj),
     whapps_util:put_callid(JObj),
 
-    ?LOG_START("endpoint has become unregistered, sending email notification"),
+    lager:debug("endpoint has become unregistered, sending email notification"),
 
     {ok, Account} = notify_util:get_account_doc(JObj),
 
@@ -56,7 +56,7 @@ handle_req(JObj, _Props) ->
     From = wh_json:get_value([<<"notifications">>, <<"deregister">>, <<"send_from">>], Account
                              ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
 
-    ?LOG("creating deregisted notice"),
+    lager:debug("creating deregisted notice"),
     
     Props = [{<<"From">>, From}
              |create_template_props(JObj, Account)

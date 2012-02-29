@@ -48,7 +48,7 @@ init(RouteReqJObj) ->
 
     AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
 
-    ?LOG("Init done for route req for account ~s", [AcctID]),
+    lager:debug("Init done for route req for account ~s", [AcctID]),
     #state{aleg_callid=CallID, route_req_jobj=RouteReqJObj, acctid=AcctID, acctdb=wh_util:format_account_id(AcctID, encoded)}.
 
 -spec start_amqp/1 :: (#state{}) -> #state{}.
@@ -59,7 +59,7 @@ start_amqp(#state{}=State) ->
     _ = amqp_util:bind_q_to_targeted(Q),
     _ = amqp_util:basic_consume(Q, [{exclusive, false}]),
 
-    ?LOG("Started AMQP with queue ~s", [Q]),
+    lager:debug("Started AMQP with queue ~s", [Q]),
     State#state{my_q=Q}.
 
 -spec send_park/1 :: (#state{}) -> #state{}.
@@ -68,7 +68,7 @@ send_park(#state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
-    ?LOG("sending park route response"),
+    lager:debug("sending park route response"),
     wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp),
 
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
@@ -91,7 +91,7 @@ wait_for_win(#state{aleg_callid=CallID}=State) ->
 
             {won, State#state{callctl_q=CallctlQ}}
     after ?WAIT_FOR_WIN_TIMEOUT ->
-            ?LOG("Timed out(~b) waiting for route_win", [?WAIT_FOR_WIN_TIMEOUT]),
+            lager:debug("Timed out(~b) waiting for route_win", [?WAIT_FOR_WIN_TIMEOUT]),
             {lost, State}
     end.
 
@@ -112,10 +112,10 @@ wait_for_bridge(State, Timeout) ->
                 {hangup, _}=Hangup -> Hangup
             end;
         _E ->
-            ?LOG("Unexpected msg: ~p", [_E]),
+            lager:debug("Unexpected msg: ~p", [_E]),
             wait_for_bridge(State, Timeout - (timer:now_diff(erlang:now(), Start) div 1000))
     after Timeout ->
-            ?LOG("Timeout waiting for bridge"),
+            lager:debug("timeout waiting for bridge"),
             {timeout, State}
     end.
 
@@ -129,38 +129,37 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
             case wh_json:get_value(<<"Response-Message">>, JObj) of
                 <<"ERROR">> ->
                     Failure = wh_json:get_value(<<"Error-Message">>, JObj, wh_json:get_value(<<"Response-Code">>, JObj)),
-                    ?LOG("offnet failed: ~s", [Failure]),
+                    lager:debug("offnet failed: ~s", [Failure]),
                     {error, State};
                 <<"SUCCESS">> ->
-                    ?LOG("offnet bridge has completed"),
-                    ?LOG("~p", [JObj]),
+                    lager:debug("offnet bridge has completed"),
+                    lager:debug("~p", [JObj]),
                     {hangup, State}
             end;
 
         { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
             BLeg = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-            ?LOG("Bridged to ~s successful", [BLeg]),
-            ?LOG(BLeg, "Bridged from ~s successful", [ALeg]),
+            lager:debug("bridged from ~s to ~s successful", [ALeg, BLeg]),
 
             _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
             _ = amqp_util:basic_consume(Q),
             {bridged, State#state{bleg_callid=BLeg}};
 
         { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
-            ?LOG("Channel hungup before bridge"),
+            lager:debug("channel hungup before bridge"),
             {hangup, State};
 
         { _, _, <<"error">> } ->
-            ?LOG("Execution failed"),
+            lager:debug("execution failed"),
             {error, State};
 
         { _, <<"resource_error">>, <<"resource">> } ->
             Code = wh_json:get_value(<<"Failure-Code">>, JObj, <<"486">>),
             Message = wh_json:get_value(<<"Failure-Message">>, JObj),
 
-            ?LOG("Failed to bridge to offnet"),
-            ?LOG("Failure message: ~s", [Message]),
-            ?LOG("Failure code: ~s", [Code]),
+            lager:debug("failed to bridge to offnet"),
+            lager:debug("failure message: ~s", [Message]),
+            lager:debug("failure code: ~s", [Code]),
 
             %% send failure code to Call
             wh_call_response:send(ALeg, CtlQ, Code, Message),
@@ -169,14 +168,14 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
         {<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>} ->
             Resp = wh_json:get_value(<<"Application-Response">>, JObj),
 
-            ?LOG("bridge completed unexpectedly: ~s(~s)", [Resp, wh_json:get_value(<<"Hangup-Cause">>, JObj)]),
+            lager:debug("bridge completed unexpectedly: ~s(~s)", [Resp, wh_json:get_value(<<"Hangup-Cause">>, JObj)]),
 
             case lists:member(Resp, ?SUCCESSFUL_HANGUPS) of
                 true -> {hangup, State};
                 false -> {error, State}
             end;
         _Unhandled ->
-            ?LOG("Unhandled combo: ~p", [_Unhandled]),
+            lager:debug("unhandled combo: ~p", [_Unhandled]),
             ignore
     end.
 
@@ -206,34 +205,34 @@ process_event_for_cdr(#state{aleg_callid=ALeg}=State, JObj) ->
         {<<"resource">>, <<"offnet_resp">>} ->
             case wh_json:get_value(<<"Response-Message">>, JObj) of
                 <<"SUCCESS">> ->
-                    ?LOG("bridge was successful, still waiting on the CDR"),
+                    lager:debug("bridge was successful, still waiting on the CDR"),
                     ignore;
                 <<"ERROR">> ->
                     Failure = wh_json:get_value(<<"Error-Message">>, JObj, wh_json:get_value(<<"Response-Code">>, JObj)),
-                    ?LOG("offnet failed: ~s but waiting for the CDR still", [Failure]),
+                    lager:debug("offnet failed: ~s but waiting for the CDR still", [Failure]),
                     ignore
             end;
 
         { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
-            ?LOG("Hangup received, waiting on CDR"),
+            lager:debug("Hangup received, waiting on CDR"),
             {hangup, State};
 
         { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
-            ?LOG("Unbridge received, waiting on CDR"),
+            lager:debug("Unbridge received, waiting on CDR"),
             {hangup, State};
 
         { <<"error">>, _ } ->
-            ?LOG("Error received, waiting on CDR"),
+            lager:debug("Error received, waiting on CDR"),
             {hangup, State};
 
         { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
             case {wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Response">>, JObj)} of
                 {<<"bridge">>, <<"SUCCESS">>} ->
-                    ?LOG("Bridge event finished successfully, sending hangup"),
+                    lager:debug("Bridge event finished successfully, sending hangup"),
                     send_hangup(State),
                     ignore;
                 {<<"bridge">>, Cause} ->
-                    ?LOG("Failed to bridge: ~s", [Cause]),
+                    lager:debug("Failed to bridge: ~s", [Cause]),
                     {error, State};
                 {_,_} ->
                     ignore
@@ -244,15 +243,15 @@ process_event_for_cdr(#state{aleg_callid=ALeg}=State, JObj) ->
             Leg = wh_json:get_value(<<"Call-ID">>, JObj),
             Duration = ts_util:get_call_duration(JObj),
 
-            ?LOG("CDR received for leg ~s", [Leg]),
-            ?LOG("Leg to be billed for ~b seconds", [Duration]),
+            lager:debug("CDR received for leg ~s", [Leg]),
+            lager:debug("Leg to be billed for ~b seconds", [Duration]),
 
             case Leg =:= ALeg of
                 true -> {cdr, aleg, JObj, State};
                 false -> {cdr, bleg, JObj, State}
             end;
         _E ->
-            ?LOG("Ignorable event: ~p", [_E]),
+            lager:debug("Ignorable event: ~p", [_E]),
             ignore
     end.
 
@@ -273,7 +272,7 @@ send_hangup(#state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
     {ok, JSON} = wapi_dialplan:hangup(Command),
-    ?LOG("Sending hangup to ~s: ~s", [CtlQ, JSON]),
+    lager:debug("Sending hangup to ~s: ~s", [CtlQ, JSON]),
     wapi_dialplan:publish_action(CtlQ, JSON, <<"application/json">>).
 
 %%%-----------------------------------------------------------------------------
