@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(whapps_conference_command).
 
--include_lib("whistle_apps/include/whapps_call_command.hrl").
+-include("whapps_call_command.hrl").
 
 -export([search/1, search/2]).
 -export([deaf_participant/2]).
