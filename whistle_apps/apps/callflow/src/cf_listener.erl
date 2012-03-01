@@ -158,11 +158,12 @@ handle_cast(_Msg, Consumers) ->
 handle_info({'DOWN', _, _, Consumer, _R}, Consumers) ->
     {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
                                    lager:debug("removed call status response consumer (~p): ~p", [Consumer, _R]),
-                                   erlang:demonitor(MRef, flush),
+                                   erlang:demonitor(MRef, [flush]),
                                    false; 
                               (_) -> true 
                            end, Consumers)};
 handle_info(_Info, Consumers) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, Consumers}.
 
 %%--------------------------------------------------------------------

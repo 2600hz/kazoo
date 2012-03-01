@@ -73,7 +73,7 @@ start_link(Call) ->
 
 -spec get_call/1 :: (pid()) -> {ok, whapps_call:call()}.
 get_call(Srv) when is_pid(Srv) ->
-    gen_server:call(Srv, {get_call}, 500);
+    gen_listener:call(Srv, {get_call}, 500);
 get_call(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     get_call(Srv).
@@ -81,43 +81,43 @@ get_call(Call) ->
 -spec set_call/1 :: (whapps_call:call()) -> 'ok'.
 set_call(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
-    gen_server:cast(Srv, {set_call, Call}, 500).
-    
+    gen_listener:cast(Srv, {set_call, Call}).
+
 -spec continue/1 :: (whapps_call:call() | pid()) -> 'ok'.
 -spec continue/2 :: (ne_binary(), whapps_call:call() | pid()) -> 'ok'.
 continue(Srv) ->
     continue(<<"_">>, Srv).
 
 continue(Key, Srv) when is_pid(Srv) ->
-    gen_server:cast(Srv, {continue, Key});
+    gen_listener:cast(Srv, {continue, Key});
 continue(Key, Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     continue(Key, Srv).
 
 -spec branch/2 :: (wh_json:json_object(), whapps_call:call() | pid()) -> 'ok'.
 branch(Flow, Srv) when is_pid(Srv) ->
-    gen_server:cast(Srv, {branch, Flow});
+    gen_listener:cast(Srv, {branch, Flow});
 branch(Flow, Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     branch(Flow, Srv).
 
 -spec stop/1 :: (whapps_call:call() | pid()) -> 'ok'.
 stop(Srv) when is_pid(Srv) ->
-    gen_server:cast(Srv, {stop});
+    gen_listener:cast(Srv, {stop});
 stop(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     stop(Srv).
 
 -spec transfer/1 :: (whapps_call:call() | pid()) -> 'ok'.
 transfer(Srv) when is_pid(Srv) ->
-    gen_server:cast(Srv, {transfer});
+    gen_listener:cast(Srv, {transfer});
 transfer(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     transfer(Srv).
 
 -spec control_usurped/1 :: (whapps_call:call() | pid()) -> 'ok'.
 control_usurped(Srv) when is_pid(Srv) ->
-    gen_server:cast(Srv, {control_usurped});
+    gen_listener:cast(Srv, {control_usurped});
 control_usurped(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     control_usurped(Srv).
@@ -125,7 +125,7 @@ control_usurped(Call) ->
 -spec callid_update/3 :: (ne_binary(), ne_binary(), whapps_call:call() | pid()) -> 'ok'.
 callid_update(CallId, CtrlQ, Srv) when is_pid(Srv) ->
     put(callid, CallId),
-    gen_server:cast(Srv, {callid_update, CallId, CtrlQ});
+    gen_listener:cast(Srv, {callid_update, CallId, CtrlQ});
 callid_update(CallId, CtrlQ, Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     callid_update(CallId, CtrlQ, Srv).
@@ -134,7 +134,7 @@ callid_update(CallId, CtrlQ, Call) ->
 -spec callid/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> ne_binary().
 
 callid(Srv) when is_pid(Srv) ->
-    CallId = gen_server:call(Srv, {callid}, 500),
+    CallId = gen_listener:call(Srv, {callid}, 500),
     put(callid, CallId),
     CallId;
 callid(Call) ->
@@ -155,7 +155,7 @@ queue_name(Call) ->
 -spec control_queue/2 :: ('undefined' | ne_binary(), whapps_call:call() | pid()) -> ne_binary().
 
 control_queue(Srv) when is_pid(Srv) ->
-    gen_server:call(Srv, {control_queue_name});
+    gen_listener:call(Srv, {control_queue_name});
 control_queue(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     control_queue(Srv).
@@ -165,14 +165,14 @@ control_queue(_, Call) ->
 
 -spec get_branch_keys/1 :: (whapps_call:call() | pid()) -> {branch_keys, [ne_binary(),...]}.
 get_branch_keys(Srv) when is_pid(Srv) ->
-    gen_server:call(Srv, {get_branch_keys});
+    gen_listener:call(Srv, {get_branch_keys});
 get_branch_keys(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     get_branch_keys(Srv).
 
 -spec get_all_branch_keys/1 :: (whapps_call:call() | pid()) -> {branch_keys, [ne_binary(),...]}.
 get_all_branch_keys(Srv) when is_pid(Srv) ->
-    gen_server:call(Srv, {get_branch_keys, all});
+    gen_listener:call(Srv, {get_branch_keys, all});
 get_all_branch_keys(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     get_all_branch_keys(Srv).
@@ -184,14 +184,14 @@ attempt(Srv) ->
     attempt(<<"_">>, Srv).
 
 attempt(Key, Srv) when is_pid(Srv) ->
-    gen_server:call(Srv, {attempt, Key});
+    gen_listener:call(Srv, {attempt, Key});
 attempt(Key, Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     attempt(Key, Srv).
 
 -spec wildcard_is_empty/1 :: (whapps_call:call() | pid()) -> boolean().
 wildcard_is_empty(Srv) when is_pid(Srv) ->
-    gen_server:call(Srv, {wildcard_is_empty});
+    gen_listener:call(Srv, {wildcard_is_empty});
 wildcard_is_empty(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     wildcard_is_empty(Srv).
@@ -209,7 +209,7 @@ relay_amqp(JObj, Props) ->
     end.
 
 %%%===================================================================
-%%% gen_server callbacks
+%%% gen_listener callbacks
 %%%===================================================================
 
 %%--------------------------------------------------------------------
@@ -242,7 +242,7 @@ init([Call]) ->
     Self = self(),
     spawn(fun() ->
                   ControllerQ = queue_name(Self),
-                  gen_server:cast(Self, {controller_queue, ControllerQ})
+                  gen_listener:cast(Self, {controller_queue, ControllerQ})
           end),
     Updaters = [fun(C) -> whapps_call:kvs_store(cf_exe_pid, Self, C) end
                 ,fun(C) -> whapps_call:call_id_helper(fun cf_exe:callid/2, C) end
@@ -414,7 +414,7 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
     CallId = whapps_call:call_id_direct(Call),
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)}of
         {{<<"call_event">>, <<"channel_status_resp">>}, _} ->
-            gen_server:cast(self(), {channel_status_received, JObj}),
+            gen_listener:cast(self(), {channel_status_received, JObj}),
             {reply, [{cf_module_pid, Pid}]};
         {{<<"call_event">>, <<"call_status_resp">>}, _} ->
             {reply, [{cf_module_pid, Pid}]};
@@ -453,9 +453,9 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function is called by a gen_server when it is about to
+%% This function is called by a gen_listener when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%% necessary cleaning up. When it returns, the gen_listener terminates
 %% with Reason. The return value is ignored.
 %%
 %% @spec terminate(Reason, State) -> void()
