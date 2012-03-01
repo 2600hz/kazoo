@@ -456,13 +456,13 @@ cleanup_slot(SlotNumber, ParkedCall, Call) ->
 %%--------------------------------------------------------------------
 -spec wait_for_pickup/3 :: (ne_binary(), undefined | ne_binary(), whapps_call:call()) -> ok.
 wait_for_pickup(SlotNumber, undefined, Call) ->
-    ?LOG("(no ringback) waiting for parked caller to be picked up or hangup"),
+    lager:debug("(no ringback) waiting for parked caller to be picked up or hangup"),
     whapps_call_command:b_hold(Call),
     lager:debug("(no ringback) parked caller has been picked up or hungup"),    
     cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
     ok;
 wait_for_pickup(SlotNumber, RingbackId, Call) ->
-    ?LOG("waiting for parked caller to be picked up or hangup"),    
+    lager:debug("waiting for parked caller to be picked up or hangup"),    
     case whapps_call_command:b_hold(?DEFAULT_RINGBACK_TM, Call) of
         {error, timeout} ->
             TmpCID = <<"Parking slot ", SlotNumber/binary>>,
