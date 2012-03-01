@@ -23,6 +23,7 @@
 
 -define(BINDINGS, [ {call, [{restrict_to, [rating]}]} ]).
 -define(RESPONDERS, [{hon_rater, [{<<"call_mgmt">>, <<"rating_req">>}]}]).
+-define(QUEUE_NAME, <<"hotornot_rating">>).
 
 %%%===================================================================
 %%% API
@@ -39,6 +40,7 @@
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
                                       ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?QUEUE_NAME}
                                       ,{basic_qos, 1}
                                      ], []).
 
