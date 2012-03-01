@@ -1,5 +1,6 @@
+ROOT = .
 DIALYZER = dialyzer
-REBAR = rebar
+REBAR = $(ROOT)/bin/rebar
 
 DIRS = lib/whistle-1.0.0 lib/whistle_couch-1.0.0 lib/whistle_amqp-1.0.0 lib/whistle_number_manager-1.0.0 ecallmgr whistle_apps
 
@@ -16,9 +17,7 @@ clean:
 	rm -f test/*.beam
 	rm -f erl_crash.dump
 
-tests: clean app eunit ct
-
-inttests: clean app eunit intct
+test: clean app eunit
 
 eunit:
 	@$(REBAR) eunit skip_deps=true
@@ -28,7 +27,7 @@ build-plt:
 		--apps kernel stdlib sasl inets crypto public_key ssl
 
 dialyze: 
-	@$(DIALYZER) $(foreach DIR,$(DIRS),--src $(DIR)/src) \
+	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
                 --plt .platform_dialyzer.plt --no_native \
 		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
 

@@ -8,9 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(cf_menu).
 
--include("../callflow.hrl").
-
 -export([handle/2]).
+
+-include("../callflow.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".menu">>).
 
